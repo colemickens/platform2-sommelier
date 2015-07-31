@@ -22,11 +22,13 @@
 
 namespace buffet {
 
+class ApManagerClient;
+
 class ShillClient final : public weave::Network {
  public:
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
               const std::set<std::string>& device_whitelist);
-  ~ShillClient() = default;
+  ~ShillClient();
 
   void Init();
 
@@ -38,6 +40,8 @@ class ShillClient final : public weave::Network {
                         const base::Closure& on_success,
                         chromeos::ErrorPtr* error) override;
   weave::NetworkState GetConnectionState() const override;
+  void EnableAccessPoint(const std::string& ssid) override;
+  void DisableAccessPoint() override;
 
  private:
   struct DeviceState {
@@ -104,6 +108,8 @@ class ShillClient final : public weave::Network {
   // State for tracking our online connectivity.
   std::map<dbus::ObjectPath, DeviceState> devices_;
   weave::NetworkState connectivity_state_{weave::NetworkState::kOffline};
+
+  std::unique_ptr<ApManagerClient> ap_manager_client_;
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 

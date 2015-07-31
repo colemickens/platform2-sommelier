@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_SRC_PRIVET_AP_MANAGER_CLIENT_H_
-#define LIBWEAVE_SRC_PRIVET_AP_MANAGER_CLIENT_H_
+#ifndef BUFFET_AP_MANAGER_CLIENT_H_
+#define BUFFET_AP_MANAGER_CLIENT_H_
 
 #include <memory>
 #include <string>
@@ -13,8 +13,7 @@
 
 #include "apmanager/dbus-proxies.h"
 
-namespace weave {
-namespace privet {
+namespace buffet {
 
 // Manages soft AP for wifi bootstrapping.
 // Once created can handle multiple Start/Stop requests.
@@ -53,7 +52,6 @@ class ApManagerClient final {
   base::WeakPtrFactory<ApManagerClient> weak_ptr_factory_{this};
 };
 
-}  // namespace privet
-}  // namespace weave
+}  // namespace buffet
 
-#endif  // LIBWEAVE_SRC_PRIVET_AP_MANAGER_CLIENT_H_
+#endif  // BUFFET_AP_MANAGER_CLIENT_H_

@@ -25,6 +25,7 @@
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
       },
       'sources': [
+        'ap_manager_client.cc',
         'dbus_bindings/org.chromium.Buffet.Command.xml',
         'dbus_bindings/org.chromium.Buffet.Manager.xml',
         'dbus_command_dispatcher.cc',
@@ -57,7 +58,6 @@
         '../libweave/src/notification/xmpp_channel.cc',
         '../libweave/src/notification/xmpp_iq_stanza_handler.cc',
         '../libweave/src/notification/xmpp_stream_parser.cc',
-        '../libweave/src/privet/ap_manager_client.cc',
         '../libweave/src/privet/cloud_delegate.cc',
         '../libweave/src/privet/constants.cc',
         '../libweave/src/privet/device_delegate.cc',

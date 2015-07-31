@@ -29,7 +29,6 @@
 
 #include "buffet/dbus_constants.h"
 #include "libweave/src/device_registration_info.h"
-#include "libweave/src/privet/ap_manager_client.h"
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/device_delegate.h"
@@ -78,14 +77,12 @@ void Manager::Start(const Device::Options& options,
                                       disable_security_));
   network->AddOnConnectionChangedCallback(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
-  ap_manager_client_.reset(new ApManagerClient(bus));
 
   if (device->GetConfig().wifi_auto_setup_enabled()) {
     VLOG(1) << "Enabling WiFi bootstrapping.";
     wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
         device->GetConfig().last_configured_ssid(), options.test_privet_ssid,
-        device->GetConfig().ble_setup_enabled(),
-        network, ap_manager_client_.get(), cloud_.get()));
+        device->GetConfig().ble_setup_enabled(), network, cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }
 

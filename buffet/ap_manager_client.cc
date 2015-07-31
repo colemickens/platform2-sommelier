@@ -2,18 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/privet/ap_manager_client.h"
+#include "buffet/ap_manager_client.h"
 
-namespace weave {
-namespace privet {
+namespace buffet {
 
 using org::chromium::apmanager::ConfigProxy;
 using org::chromium::apmanager::ManagerProxy;
 using org::chromium::apmanager::ServiceProxy;
 
 ApManagerClient::ApManagerClient(const scoped_refptr<dbus::Bus>& bus)
-    : bus_(bus) {
-}
+    : bus_(bus) {}
 
 ApManagerClient::~ApManagerClient() {
   Stop();
@@ -113,5 +111,4 @@ void ApManagerClient::OnManagerRemoved(const dbus::ObjectPath& object_path) {
   Stop();
 }
 
-}  // namespace privet
-}  // namespace weave
+}  // namespace buffet

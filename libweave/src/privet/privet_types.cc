@@ -7,8 +7,8 @@
 #include <string>
 
 #include "weave/enum_to_string.h"
-#include "weave/privet.h"
 #include "weave/network.h"
+#include "weave/privet.h"
 
 namespace weave {
 

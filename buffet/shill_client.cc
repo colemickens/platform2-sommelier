@@ -13,6 +13,7 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
 
+#include "buffet/ap_manager_client.h"
 #include "weave/enum_to_string.h"
 
 using chromeos::Any;
@@ -85,7 +86,8 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
                          const set<string>& device_whitelist)
     : bus_{bus},
       manager_proxy_{bus_, ObjectPath{"/"}},
-      device_whitelist_{device_whitelist} {
+      device_whitelist_{device_whitelist},
+      ap_manager_client_{new ApManagerClient(bus)} {
   manager_proxy_.RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnManagerPropertyChange,
                  weak_factory_.GetWeakPtr()),
@@ -96,6 +98,8 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
   bus_->GetObjectProxy(shill::kFlimflamServiceName, ObjectPath{"/"})
       ->SetNameOwnerChangedCallback(owner_changed_cb);
 }
+
+ShillClient::~ShillClient() {}
 
 void ShillClient::Init() {
   VLOG(2) << "ShillClient::Init();";
@@ -146,6 +150,14 @@ bool ShillClient::ConnectToService(const string& ssid,
 
 weave::NetworkState ShillClient::GetConnectionState() const {
   return connectivity_state_;
+}
+
+void ShillClient::EnableAccessPoint(const std::string& ssid) {
+  ap_manager_client_->Start(ssid);
+}
+
+void ShillClient::DisableAccessPoint() {
+  ap_manager_client_->Stop();
 }
 
 void ShillClient::AddOnConnectionChangedCallback(

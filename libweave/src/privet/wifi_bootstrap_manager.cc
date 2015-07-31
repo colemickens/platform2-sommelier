@@ -10,7 +10,6 @@
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 
-#include "libweave/src/privet/ap_manager_client.h"
 #include "libweave/src/privet/constants.h"
 #include "weave/enum_to_string.h"
 #include "weave/network.h"
@@ -29,10 +28,8 @@ WifiBootstrapManager::WifiBootstrapManager(
     const std::string& test_privet_ssid,
     bool ble_setup_enabled,
     Network* network,
-    ApManagerClient* ap_manager_client,
     CloudDelegate* gcd)
     : network_{network},
-      ap_manager_client_{ap_manager_client},
       ssid_generator_{gcd, this},
       last_configured_ssid_{last_configured_ssid},
       test_privet_ssid_{test_privet_ssid},
@@ -86,15 +83,16 @@ void WifiBootstrapManager::StartBootstrapping() {
         base::TimeDelta::FromSeconds(kBootstrapTimeoutSeconds));
   }
   // TODO(vitalybuka): Add SSID probing.
-  std::string ssid = GenerateSsid();
-  CHECK(!ssid.empty());
-  ap_manager_client_->Start(ssid);
+  privet_ssid_ = GenerateSsid();
+  CHECK(!privet_ssid_.empty());
+  network_->EnableAccessPoint(privet_ssid_);
   LOG_IF(INFO, ble_setup_enabled_) << "BLE Bootstrap start: not implemented.";
 }
 
 void WifiBootstrapManager::EndBootstrapping() {
   LOG_IF(INFO, ble_setup_enabled_) << "BLE Bootstrap stop: not implemented.";
-  ap_manager_client_->Stop();
+  network_->DisableAccessPoint();
+  privet_ssid_.clear();
 }
 
 void WifiBootstrapManager::StartConnecting(const std::string& ssid,
@@ -194,7 +192,7 @@ std::string WifiBootstrapManager::GetCurrentlyConnectedSsid() const {
 }
 
 std::string WifiBootstrapManager::GetHostedSsid() const {
-  return ap_manager_client_->GetSsid();
+  return privet_ssid_;
 }
 
 std::set<WifiType> WifiBootstrapManager::GetTypes() const {

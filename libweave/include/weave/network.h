@@ -39,6 +39,12 @@ class Network {
 
   virtual NetworkState GetConnectionState() const = 0;
 
+  // Starts WiFi access point for wifi setup.
+  virtual void EnableAccessPoint(const std::string& ssid) = 0;
+
+  // Stops WiFi access point.
+  virtual void DisableAccessPoint() = 0;
+
  protected:
   virtual ~Network() = default;
 };

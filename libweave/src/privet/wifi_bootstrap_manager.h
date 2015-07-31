@@ -26,7 +26,6 @@ class Network;
 
 namespace privet {
 
-class ApManagerClient;
 class CloudDelegate;
 class DeviceDelegate;
 
@@ -41,7 +40,6 @@ class WifiBootstrapManager : public WifiDelegate,
                        const std::string& test_privet_ssid,
                        bool wifi_setup_enabled,
                        Network* shill_client,
-                       ApManagerClient* ap_manager_client,
                        CloudDelegate* gcd);
   ~WifiBootstrapManager() override = default;
   virtual void Init();
@@ -101,13 +99,13 @@ class WifiBootstrapManager : public WifiDelegate,
   SetupState setup_state_{SetupState::kNone};
   ConnectionState connection_state_{ConnectionState::kDisabled};
   Network* network_;
-  ApManagerClient* ap_manager_client_;
   WifiSsidGenerator ssid_generator_;
 
   std::vector<StateListener> state_listeners_;
   bool currently_online_{false};
   std::string last_configured_ssid_;
   std::string test_privet_ssid_;
+  std::string privet_ssid_;
   bool ble_setup_enabled_{false};
 
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
