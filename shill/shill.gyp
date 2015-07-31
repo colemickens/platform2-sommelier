@@ -322,6 +322,7 @@
             'dbus/chromeos_dhcpcd_proxy.cc',
             'dbus/chromeos_ipconfig_dbus_adaptor.cc',
             'dbus/chromeos_manager_dbus_adaptor.cc',
+            'dbus/chromeos_permission_broker_proxy.cc',
             'dbus/chromeos_power_manager_proxy.cc',
             'dbus/chromeos_profile_dbus_adaptor.cc',
             'dbus/chromeos_rpc_task_dbus_adaptor.cc',
@@ -337,6 +338,16 @@
               },
               'sources': [
                 'dbus_bindings/dhcpcd.xml',
+              ],
+              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+            },
+            {
+              'action_name': 'generate-permission-broker-proxies',
+              'variables': {
+                'proxy_output_file': 'include/permission-broker/dbus-proxies.h',
+              },
+              'sources': [
+                '../permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
               ],
               'includes': ['../common-mk/generate-dbus-proxies.gypi'],
             },

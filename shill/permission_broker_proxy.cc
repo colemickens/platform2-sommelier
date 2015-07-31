@@ -15,10 +15,6 @@ namespace shill {
 // static
 const int PermissionBrokerProxy::kInvalidHandle = -1;
 
-PermissionBrokerProxyInterface::PermissionBrokerProxyInterface() {}
-
-PermissionBrokerProxyInterface::~PermissionBrokerProxyInterface() {}
-
 PermissionBrokerProxy::PermissionBrokerProxy(DBus::Connection* connection)
     : proxy_(connection),
       lifeline_read_fd_(kInvalidHandle),

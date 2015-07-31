@@ -11,6 +11,7 @@
 #include <base/macros.h>
 
 #include "shill/dbus_proxies/org.chromium.PermissionBroker.h"
+#include "shill/permission_broker_proxy_interface.h"
 
 namespace DBus {
 class Connection;
@@ -18,20 +19,12 @@ class Connection;
 
 namespace shill {
 
-class PermissionBrokerProxyInterface {
- public:
-  PermissionBrokerProxyInterface();
-  virtual ~PermissionBrokerProxyInterface();
-  virtual bool RequestVpnSetup(const std::vector<std::string>& user_names,
-                               const std::string& interface) = 0;
-  virtual bool RemoveVpnSetup() = 0;
-};
-
 class PermissionBrokerProxy : public PermissionBrokerProxyInterface {
  public:
   explicit PermissionBrokerProxy(DBus::Connection* connection);
   ~PermissionBrokerProxy() override;
 
+  // Inherited from PermissionBrokerProxyInterface.
   bool RequestVpnSetup(const std::vector<std::string>& user_names,
                        const std::string& interface) override;
 

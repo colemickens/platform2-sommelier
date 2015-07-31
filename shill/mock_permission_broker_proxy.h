@@ -5,7 +5,7 @@
 #ifndef SHILL_MOCK_PERMISSION_BROKER_PROXY_H_
 #define SHILL_MOCK_PERMISSION_BROKER_PROXY_H_
 
-#include "shill/permission_broker_proxy.h"
+#include "shill/permission_broker_proxy_interface.h"
 
 #include <string>
 #include <vector>
