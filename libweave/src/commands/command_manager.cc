@@ -6,7 +6,6 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/values.h>
-#include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/errors/error.h>
 
 #include "libweave/src/commands/schema_constants.h"

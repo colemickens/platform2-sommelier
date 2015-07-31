@@ -52,7 +52,6 @@ class CommandQueue final {
 
  private:
   friend class CommandQueueTest;
-  friend class DBusCommandDispacherTest;
 
   // Removes a command identified by |id| from the queue.
   bool Remove(const std::string& id);

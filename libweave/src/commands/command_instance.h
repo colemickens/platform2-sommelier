@@ -115,8 +115,6 @@ class CommandInstance final : public Command {
   // The queue owns the command instance, so it outlives this object.
   CommandQueue* queue_ = nullptr;
 
-  friend class DBusCommandDispacherTest;
-  friend class DBusCommandProxyTest;
   DISALLOW_COPY_AND_ASSIGN(CommandInstance);
 };
 
