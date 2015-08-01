@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
 #include <base/strings/string_number_conversions.h>
@@ -34,7 +35,9 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/privet_handler.h"
 #include "libweave/src/privet/publisher.h"
+#include "libweave/src/privet/webserv_client.h"
 #include "weave/network.h"
+#include "weave/http_server.h"
 
 namespace weave {
 namespace privet {
@@ -42,14 +45,6 @@ namespace privet {
 namespace {
 
 using chromeos::dbus_utils::AsyncEventSequencer;
-using libwebserv::ProtocolHandler;
-using libwebserv::Request;
-using libwebserv::Response;
-
-std::string GetFirstHeader(const Request& request, const std::string& name) {
-  std::vector<std::string> headers = request.GetHeader(name);
-  return headers.empty() ? std::string() : headers.front();
-}
 
 }  // namespace
 
@@ -93,30 +88,16 @@ void Manager::Start(const Device::Options& options,
       new PrivetHandler(cloud_.get(), device_.get(), security_.get(),
                         wifi_bootstrap_manager_.get(), publisher_.get()));
 
-  web_server_.reset(new libwebserv::Server);
-  web_server_->OnProtocolHandlerConnected(base::Bind(
-      &Manager::OnProtocolHandlerConnected, weak_ptr_factory_.GetWeakPtr()));
-  web_server_->OnProtocolHandlerDisconnected(base::Bind(
-      &Manager::OnProtocolHandlerDisconnected, weak_ptr_factory_.GetWeakPtr()));
-
-  web_server_->Connect(bus, buffet::kServiceName,
-                       sequencer->GetHandler("Server::Connect failed.", true),
-                       base::Bind(&base::DoNothing),
-                       base::Bind(&base::DoNothing));
-
-  web_server_->GetDefaultHttpHandler()->AddHandlerCallback(
-      "/privet/", "",
-      base::Bind(&Manager::PrivetRequestHandler, base::Unretained(this)));
-  web_server_->GetDefaultHttpsHandler()->AddHandlerCallback(
-      "/privet/", "",
-      base::Bind(&Manager::PrivetRequestHandler, base::Unretained(this)));
+  web_server_.reset(new WebServClient{bus, sequencer});
+  web_server_->AddOnStateChangedCallback(base::Bind(
+      &Manager::OnHttpServerStatusChanged, weak_ptr_factory_.GetWeakPtr()));
+  web_server_->AddRequestHandler("/privet/",
+                                 base::Bind(&Manager::PrivetRequestHandler,
+                                            weak_ptr_factory_.GetWeakPtr()));
   if (options.enable_ping) {
-    web_server_->GetDefaultHttpHandler()->AddHandlerCallback(
-        "/privet/ping", chromeos::http::request_type::kGet,
-        base::Bind(&Manager::HelloWorldHandler, base::Unretained(this)));
-    web_server_->GetDefaultHttpsHandler()->AddHandlerCallback(
-        "/privet/ping", chromeos::http::request_type::kGet,
-        base::Bind(&Manager::HelloWorldHandler, base::Unretained(this)));
+    web_server_->AddRequestHandler("/privet/ping",
+                                   base::Bind(&Manager::HelloWorldHandler,
+                                              weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
@@ -141,55 +122,55 @@ void Manager::AddOnPairingChangedCallbacks(
 }
 
 void Manager::Shutdown() {
-  web_server_->Disconnect();
+  web_server_.reset();
 }
 
 void Manager::OnDeviceInfoChanged() {
   OnChanged();
 }
 
-void Manager::PrivetRequestHandler(std::unique_ptr<Request> request,
-                                   std::unique_ptr<Response> response) {
+void Manager::PrivetRequestHandler(
+    const HttpServer::Request& request,
+    const HttpServer::OnReplyCallback& callback) {
   std::string auth_header =
-      GetFirstHeader(*request, chromeos::http::request_header::kAuthorization);
+      request.GetFirstHeader(chromeos::http::request_header::kAuthorization);
   if (auth_header.empty() && disable_security_)
     auth_header = "Privet anonymous";
-  std::string data(request->GetData().begin(), request->GetData().end());
+  std::string data(request.GetData().begin(), request.GetData().end());
   VLOG(3) << "Input: " << data;
 
   base::DictionaryValue empty;
   std::unique_ptr<base::Value> value;
-  const base::DictionaryValue* dictionary = nullptr;
+  const base::DictionaryValue* dictionary = &empty;
 
-  if (data.empty()) {
-    dictionary = &empty;
-  } else {
-    std::string content_type = chromeos::mime::RemoveParameters(
-        GetFirstHeader(*request, chromeos::http::request_header::kContentType));
-    if (content_type == chromeos::mime::application::kJson) {
-      value.reset(base::JSONReader::Read(data).release());
-      if (value)
-        value->GetAsDictionary(&dictionary);
-    }
+  std::string content_type = chromeos::mime::RemoveParameters(
+      request.GetFirstHeader(chromeos::http::request_header::kContentType));
+  if (content_type == chromeos::mime::application::kJson) {
+    value.reset(base::JSONReader::Read(data).release());
+    if (value)
+      value->GetAsDictionary(&dictionary);
   }
 
   privet_handler_->HandleRequest(
-      request->GetPath(), auth_header, dictionary,
-      base::Bind(&Manager::PrivetResponseHandler, base::Unretained(this),
-                 base::Passed(&response)));
+      request.GetPath(), auth_header, dictionary,
+      base::Bind(&Manager::PrivetResponseHandler,
+                 weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
-void Manager::PrivetResponseHandler(std::unique_ptr<Response> response,
+void Manager::PrivetResponseHandler(const HttpServer::OnReplyCallback& callback,
                                     int status,
                                     const base::DictionaryValue& output) {
   VLOG(3) << "status: " << status << ", Output: " << output;
-  response->ReplyWithJson(status, &output);
+  std::string data;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::OPTIONS_PRETTY_PRINT, &data);
+  callback.Run(status, data, chromeos::mime::application::kJson);
 }
 
-void Manager::HelloWorldHandler(std::unique_ptr<Request> request,
-                                std::unique_ptr<Response> response) {
-  response->ReplyWithText(chromeos::http::status_code::Ok, "Hello, world!",
-                          chromeos::mime::text::kPlain);
+void Manager::HelloWorldHandler(const HttpServer::Request& request,
+                                const HttpServer::OnReplyCallback& callback) {
+  callback.Run(chromeos::http::status_code::Ok, "Hello, world!",
+               chromeos::mime::text::kPlain);
 }
 
 void Manager::OnChanged() {
@@ -201,27 +182,15 @@ void Manager::OnConnectivityChanged(bool online) {
   OnChanged();
 }
 
-void Manager::OnProtocolHandlerConnected(ProtocolHandler* protocol_handler) {
-  if (protocol_handler->GetName() == ProtocolHandler::kHttp) {
-    device_->SetHttpPort(*protocol_handler->GetPorts().begin());
+void Manager::OnHttpServerStatusChanged() {
+  if (device_->GetHttpEnpoint().first != web_server_->GetHttpPort()) {
+    device_->SetHttpPort(web_server_->GetHttpPort());
     if (publisher_)
       publisher_->Update();
-  } else if (protocol_handler->GetName() == ProtocolHandler::kHttps) {
-    device_->SetHttpsPort(*protocol_handler->GetPorts().begin());
-    security_->SetCertificateFingerprint(
-        protocol_handler->GetCertificateFingerprint());
   }
-}
-
-void Manager::OnProtocolHandlerDisconnected(ProtocolHandler* protocol_handler) {
-  if (protocol_handler->GetName() == ProtocolHandler::kHttp) {
-    device_->SetHttpPort(0);
-    if (publisher_)
-      publisher_->Update();
-  } else if (protocol_handler->GetName() == ProtocolHandler::kHttps) {
-    device_->SetHttpsPort(0);
-    security_->SetCertificateFingerprint({});
-  }
+  device_->SetHttpsPort(web_server_->GetHttpsPort());
+  security_->SetCertificateFingerprint(
+      web_server_->GetHttpsCertificateFingerprint());
 }
 
 }  // namespace privet

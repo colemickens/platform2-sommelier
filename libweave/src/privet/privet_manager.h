@@ -17,6 +17,7 @@
 #include "libweave/src/privet/security_manager.h"
 #include "libweave/src/privet/wifi_bootstrap_manager.h"
 #include "weave/device.h"
+#include "weave/http_server.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -47,6 +48,7 @@ class DeviceDelegate;
 class PrivetHandler;
 class Publisher;
 class SecurityManager;
+class WebServClient;
 
 class Manager : public Privet, public CloudDelegate::Observer {
  public:
@@ -77,24 +79,20 @@ class Manager : public Privet, public CloudDelegate::Observer {
   // CloudDelegate::Observer
   void OnDeviceInfoChanged() override;
 
-  void PrivetRequestHandler(std::unique_ptr<libwebserv::Request> request,
-                            std::unique_ptr<libwebserv::Response> response);
+  void PrivetRequestHandler(const HttpServer::Request& request,
+                            const HttpServer::OnReplyCallback& callback);
 
-  void PrivetResponseHandler(std::unique_ptr<libwebserv::Response> response,
+  void PrivetResponseHandler(const HttpServer::OnReplyCallback& callback,
                              int status,
                              const base::DictionaryValue& output);
 
-  void HelloWorldHandler(std::unique_ptr<libwebserv::Request> request,
-                         std::unique_ptr<libwebserv::Response> response);
+  void HelloWorldHandler(const HttpServer::Request& request,
+                         const HttpServer::OnReplyCallback& callback);
 
   void OnChanged();
   void OnConnectivityChanged(bool online);
 
-  void OnProtocolHandlerConnected(
-      libwebserv::ProtocolHandler* protocol_handler);
-
-  void OnProtocolHandlerDisconnected(
-      libwebserv::ProtocolHandler* protocol_handler);
+  void OnHttpServerStatusChanged();
 
   bool disable_security_{false};
   std::unique_ptr<CloudDelegate> cloud_;
@@ -103,7 +101,8 @@ class Manager : public Privet, public CloudDelegate::Observer {
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<Publisher> publisher_;
   std::unique_ptr<PrivetHandler> privet_handler_;
-  std::unique_ptr<libwebserv::Server> web_server_;
+
+  std::unique_ptr<WebServClient> web_server_;
 
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
 
