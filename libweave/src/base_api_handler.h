@@ -16,6 +16,7 @@ class Command;
 class CommandManager;
 class DeviceRegistrationInfo;
 class StateManager;
+struct Settings;
 
 // Handles commands from 'base' package.
 // Objects of the class subscribe for notification from CommandManager and
@@ -25,7 +26,7 @@ class StateManager;
 //  base.updateBaseConfiguration
 class BaseApiHandler final {
  public:
-  BaseApiHandler(const base::WeakPtr<DeviceRegistrationInfo>& device_info,
+  BaseApiHandler(DeviceRegistrationInfo* device_info,
                  const std::shared_ptr<StateManager>& state_manager,
                  const std::shared_ptr<CommandManager>& command_manager);
 
@@ -33,8 +34,12 @@ class BaseApiHandler final {
   void OnCommandAdded(Command* command);
   void UpdateBaseConfiguration(Command* command);
   void UpdateDeviceInfo(Command* command);
+  bool UpdateState(const std::string& anonymous_access_role,
+                   bool discovery_enabled,
+                   bool pairing_enabled);
+  void OnConfigChanged(const Settings& settings);
 
-  base::WeakPtr<DeviceRegistrationInfo> device_info_;
+  DeviceRegistrationInfo* device_info_;
   std::shared_ptr<StateManager> state_manager_;
 
   base::WeakPtrFactory<BaseApiHandler> weak_ptr_factory_{this};

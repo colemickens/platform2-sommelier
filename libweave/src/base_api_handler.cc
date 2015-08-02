@@ -11,11 +11,37 @@
 
 namespace weave {
 
+namespace {
+const char kBaseStateFirmwareVersion[] = "base.firmwareVersion";
+const char kBaseStateAnonymousAccessRole[] = "base.localAnonymousAccessMaxRole";
+const char kBaseStateDiscoveryEnabled[] = "base.localDiscoveryEnabled";
+const char kBaseStatePairingEnabled[] = "base.localPairingEnabled";
+}  // namespace
+
 BaseApiHandler::BaseApiHandler(
-    const base::WeakPtr<DeviceRegistrationInfo>& device_info,
+    DeviceRegistrationInfo* device_info,
     const std::shared_ptr<StateManager>& state_manager,
     const std::shared_ptr<CommandManager>& command_manager)
     : device_info_{device_info}, state_manager_{state_manager} {
+  device_info_->AddOnConfigChangedCallback(base::Bind(
+      &BaseApiHandler::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
+
+  // Populate state fields that belong to the system.
+  base::FilePath lsb_release_path("/etc/lsb-release");
+  chromeos::KeyValueStore lsb_release_store;
+  std::string firmware_version;
+  if (lsb_release_store.Load(lsb_release_path) &&
+      lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
+                                  &firmware_version)) {
+    base::DictionaryValue state;
+    state.SetStringWithoutPathExpansion(kBaseStateFirmwareVersion,
+                                        firmware_version);
+    CHECK(state_manager_->SetProperties(state, nullptr));
+  } else {
+    LOG(ERROR) << "Failed to get CHROMEOS_RELEASE_VERSION from "
+               << lsb_release_path.value();
+  }
+
   command_manager->AddOnCommandAddedCallback(base::Bind(
       &BaseApiHandler::OnCommandAdded, weak_ptr_factory_.GetWeakPtr()));
 }
@@ -44,23 +70,23 @@ void BaseApiHandler::UpdateBaseConfiguration(Command* command) {
   parameters->GetBoolean("localDiscoveryEnabled", &discovery_enabled);
   parameters->GetBoolean("localPairingEnabled", &pairing_enabled);
 
-  base::DictionaryValue state;
-  state.SetStringWithoutPathExpansion("base.localAnonymousAccessMaxRole",
-                                      anonymous_access_role);
-  state.SetBooleanWithoutPathExpansion("base.localDiscoveryEnabled",
-                                       discovery_enabled);
-  state.SetBooleanWithoutPathExpansion("base.localPairingEnabled",
-                                       pairing_enabled);
-  if (!state_manager_->SetProperties(state, nullptr)) {
-    return command->Abort();
-  }
-
   if (!device_info_->UpdateBaseConfig(anonymous_access_role, discovery_enabled,
                                       pairing_enabled, nullptr)) {
     return command->Abort();
   }
 
   command->Done();
+}
+
+void BaseApiHandler::OnConfigChanged(const Settings& settings) {
+  base::DictionaryValue state;
+  state.SetStringWithoutPathExpansion(kBaseStateAnonymousAccessRole,
+                                      settings.local_anonymous_access_role);
+  state.SetBooleanWithoutPathExpansion(kBaseStateDiscoveryEnabled,
+                                       settings.local_discovery_enabled);
+  state.SetBooleanWithoutPathExpansion(kBaseStatePairingEnabled,
+                                       settings.local_pairing_enabled);
+  state_manager_->SetProperties(state, nullptr);
 }
 
 void BaseApiHandler::UpdateDeviceInfo(Command* command) {

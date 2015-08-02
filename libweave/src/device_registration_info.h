@@ -149,12 +149,12 @@ class DeviceRegistrationInfo : public Cloud,
   const BuffetConfig& GetConfig() const { return *config_; }
   BuffetConfig* GetMutableConfig() { return config_.get(); }
 
+ private:
+  friend class DeviceRegistrationInfoTest;
+
   base::WeakPtr<DeviceRegistrationInfo> AsWeakPtr() {
     return weak_factory_.GetWeakPtr();
   }
-
- private:
-  friend class DeviceRegistrationInfoTest;
 
   // Cause DeviceRegistrationInfo to attempt to connect to cloud server on
   // its own later.

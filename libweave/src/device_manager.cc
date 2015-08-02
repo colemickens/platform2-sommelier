@@ -62,8 +62,8 @@ void DeviceManager::Start(
       command_manager_, state_manager_, std::move(config), transport,
       base::MessageLoop::current()->task_runner(), options.xmpp_enabled,
       network));
-  base_api_handler_.reset(new BaseApiHandler{device_info_->AsWeakPtr(),
-                                             state_manager_, command_manager_});
+  base_api_handler_.reset(
+      new BaseApiHandler{device_info_.get(), state_manager_, command_manager_});
 
   device_info_->Start();
 

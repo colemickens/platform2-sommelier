@@ -47,6 +47,7 @@ struct Settings {
 
 class Config {
  public:
+  // TODO(vitalybuka): Add information to identify changed values.
   using OnChangedCallback = base::Callback<void(const Settings& settings)>;
 
   // Sets callback which is called when config is changed.

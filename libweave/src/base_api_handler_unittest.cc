@@ -54,8 +54,8 @@ class BaseApiHandlerTest : public ::testing::Test {
         std::unique_ptr<BuffetConfig>{new BuffetConfig{
             std::unique_ptr<StorageInterface>{new MemStorage}}},
         transport_, nullptr, true, nullptr));
-    handler_.reset(new BaseApiHandler{
-        dev_reg_->AsWeakPtr(), state_manager_, command_manager_});
+    handler_.reset(
+        new BaseApiHandler{dev_reg_.get(), state_manager_, command_manager_});
   }
 
   void LoadCommands(const std::string& command_definitions) {
@@ -101,7 +101,7 @@ TEST_F(BaseApiHandlerTest, UpdateBaseConfiguration) {
     }
   })");
 
-  const BuffetConfig& config{dev_reg_->GetConfig()};
+  BuffetConfig& config{*dev_reg_->GetMutableConfig()};
 
   AddCommand(R"({
     'name' : 'base.updateBaseConfiguration',
@@ -141,6 +141,21 @@ TEST_F(BaseApiHandlerTest, UpdateBaseConfiguration) {
     'base': {
       'firmwareVersion': '123123',
       'localAnonymousAccessMaxRole': 'user',
+      'localDiscoveryEnabled': true,
+      'localPairingEnabled': true,
+      'network': {}
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *state_manager_->GetStateValuesAsJson());
+
+  {
+    BuffetConfig::Transaction change{&config};
+    change.set_local_anonymous_access_role("viewer");
+  }
+  expected = R"({
+    'base': {
+      'firmwareVersion': '123123',
+      'localAnonymousAccessMaxRole': 'viewer',
       'localDiscoveryEnabled': true,
       'localPairingEnabled': true,
       'network': {}

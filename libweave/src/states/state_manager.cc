@@ -18,12 +18,6 @@
 
 namespace weave {
 
-namespace {
-
-const char kBaseStateFirmwareVersion[] = "base.firmwareVersion";
-
-}  // namespace
-
 StateManager::StateManager(StateChangeQueueInterface* state_change_queue)
     : state_change_queue_(state_change_queue) {
   CHECK(state_change_queue_) << "State change queue not specified";
@@ -77,22 +71,6 @@ void StateManager::Startup() {
         << "Failed to load the state defaults.";
     json_file_path = enumerator2.Next();
   }
-
-  // Populate state fields that belong to the system.
-  base::FilePath lsb_release_path("/etc/lsb-release");
-  chromeos::KeyValueStore lsb_release_store;
-  std::string firmware_version;
-  if (lsb_release_store.Load(lsb_release_path)) {
-    if (!lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
-                                     &firmware_version))
-      LOG(ERROR) << "Missing key for firmware version in version file.";
-
-  } else {
-    LOG(ERROR) << "Failed to read file for firmwareVersion.";
-  }
-  CHECK(SetPropertyValue(kBaseStateFirmwareVersion,
-                         base::StringValue{firmware_version}, base::Time::Now(),
-                         nullptr));
 
   for (const auto& cb : on_changed_)
     cb.Run();
