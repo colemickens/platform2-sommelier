@@ -6,8 +6,7 @@
 #define LIBWEAVE_SRC_DEVICE_MANAGER_H_
 
 #include <base/memory/weak_ptr.h>
-
-#include "weave/device.h"
+#include <weave/device.h>
 
 namespace weave {
 

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <chromeos/errors/error.h>
 
 namespace weave {
 

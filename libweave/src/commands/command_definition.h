@@ -9,9 +9,9 @@
 #include <string>
 
 #include <base/macros.h>
+#include <weave/commands.h>
 
 #include "libweave/src/commands/object_schema.h"
-#include "weave/commands.h"
 
 namespace weave {
 

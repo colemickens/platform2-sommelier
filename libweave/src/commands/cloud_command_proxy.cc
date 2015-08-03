@@ -5,12 +5,12 @@
 #include "libweave/src/commands/cloud_command_proxy.h"
 
 #include <base/bind.h>
+#include <weave/enum_to_string.h>
 
 #include "libweave/src/commands/command_instance.h"
 #include "libweave/src/commands/prop_constraints.h"
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/schema_constants.h"
-#include "weave/enum_to_string.h"
 
 namespace weave {
 

@@ -17,6 +17,7 @@
 #include <base/values.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/strings/string_utils.h>
+#include <weave/enum_to_string.h>
 
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/constants.h"
@@ -24,7 +25,6 @@
 #include "libweave/src/privet/identity_delegate.h"
 #include "libweave/src/privet/security_delegate.h"
 #include "libweave/src/privet/wifi_delegate.h"
-#include "weave/enum_to_string.h"
 
 namespace weave {
 namespace privet {

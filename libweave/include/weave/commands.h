@@ -10,8 +10,7 @@
 #include <base/callback.h>
 #include <base/values.h>
 #include <chromeos/errors/error.h>
-
-#include "weave/command.h"
+#include <weave/command.h>
 
 namespace weave {
 

@@ -22,13 +22,13 @@
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
+#include <weave/enum_to_string.h>
 
 #include "buffet/dbus_command_dispatcher.h"
 #include "buffet/dbus_conversion.h"
 #include "buffet/peerd_client.h"
 #include "buffet/shill_client.h"
 #include "buffet/webserv_client.h"
-#include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;

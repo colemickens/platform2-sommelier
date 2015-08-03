@@ -8,12 +8,12 @@
 
 #include <chromeos/errors/error.h>
 #include <chromeos/strings/string_utils.h>
+#include <weave/mdns.h>
 
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/wifi_bootstrap_manager.h"
 #include "libweave/src/privet/wifi_ssid_generator.h"
-#include "weave/mdns.h"
 
 using chromeos::string_utils::Join;
 

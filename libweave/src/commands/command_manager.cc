@@ -7,10 +7,10 @@
 #include <base/files/file_enumerator.h>
 #include <base/values.h>
 #include <chromeos/errors/error.h>
+#include <weave/enum_to_string.h>
 
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/utils.h"
-#include "weave/enum_to_string.h"
 
 namespace weave {
 

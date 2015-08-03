@@ -7,6 +7,7 @@
 #include <base/values.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
+#include <weave/enum_to_string.h>
 
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_dictionary.h"
@@ -14,7 +15,6 @@
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/schema_utils.h"
-#include "weave/enum_to_string.h"
 
 namespace weave {
 

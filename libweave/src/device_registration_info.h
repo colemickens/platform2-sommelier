@@ -22,6 +22,8 @@
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
+#include <weave/cloud.h>
+#include <weave/config.h>
 
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
@@ -31,8 +33,6 @@
 #include "libweave/src/notification/pull_channel.h"
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/storage_interface.h"
-#include "weave/cloud.h"
-#include "weave/config.h"
 
 namespace base {
 class DictionaryValue;

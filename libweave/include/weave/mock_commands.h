@@ -5,7 +5,7 @@
 #ifndef LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMANDS_H_
 #define LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMANDS_H_
 
-#include "weave/commands.h"
+#include <weave/commands.h>
 
 #include <string>
 

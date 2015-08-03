@@ -13,9 +13,9 @@
 #include <base/files/file_path.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/key_value_store.h>
+#include <weave/config.h>
 
 #include "libweave/src/privet/security_delegate.h"
-#include "weave/config.h"
 
 namespace weave {
 

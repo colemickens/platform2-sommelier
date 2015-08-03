@@ -22,6 +22,7 @@
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
+#include <weave/network.h>
 
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/cloud_delegate.h"
@@ -29,7 +30,6 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/privet_handler.h"
 #include "libweave/src/privet/publisher.h"
-#include "weave/network.h"
 
 namespace weave {
 namespace privet {

@@ -10,15 +10,14 @@
 #include <string>
 
 #include <base/files/file_path.h>
-
-#include "weave/cloud.h"
-#include "weave/commands.h"
-#include "weave/config.h"
-#include "weave/http_server.h"
-#include "weave/mdns.h"
-#include "weave/network.h"
-#include "weave/privet.h"
-#include "weave/state.h"
+#include <weave/cloud.h>
+#include <weave/commands.h>
+#include <weave/config.h>
+#include <weave/http_server.h>
+#include <weave/mdns.h>
+#include <weave/network.h>
+#include <weave/privet.h>
+#include <weave/state.h>
 
 namespace weave {
 

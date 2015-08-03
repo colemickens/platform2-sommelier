@@ -13,10 +13,10 @@
 #include <base/macros.h>
 #include <base/observer_list.h>
 #include <chromeos/errors/error.h>
+#include <weave/command.h>
 
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_utils.h"
-#include "weave/command.h"
 
 namespace base {
 class Value;

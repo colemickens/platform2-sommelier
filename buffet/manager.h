@@ -18,9 +18,9 @@
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/exported_property_set.h>
 #include <chromeos/errors/error.h>
+#include <weave/device.h>
 
 #include "buffet/org.chromium.Buffet.Manager.h"
-#include "weave/device.h"
 
 namespace chromeos {
 namespace dbus_utils {

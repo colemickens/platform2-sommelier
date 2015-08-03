@@ -5,10 +5,10 @@
 #include "buffet/dbus_command_dispatcher.h"
 
 #include <chromeos/dbus/exported_object_manager.h>
+#include <weave/command.h>
 
 #include "buffet/dbus_command_proxy.h"
 #include "buffet/dbus_constants.h"
-#include "weave/command.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;

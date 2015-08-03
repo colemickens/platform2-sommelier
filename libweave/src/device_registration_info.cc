@@ -22,6 +22,7 @@
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
+#include <weave/network.h>
 
 #include "libweave/src/commands/cloud_command_proxy.h"
 #include "libweave/src/commands/command_definition.h"
@@ -30,7 +31,6 @@
 #include "libweave/src/notification/xmpp_channel.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
-#include "weave/network.h"
 
 namespace weave {
 

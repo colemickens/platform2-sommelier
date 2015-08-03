@@ -15,10 +15,10 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <chromeos/errors/error.h>
+#include <weave/state.h>
 
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/states/state_package.h"
-#include "weave/state.h"
 
 namespace base {
 class DictionaryValue;

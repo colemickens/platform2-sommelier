@@ -10,10 +10,10 @@
 
 #include <base/values.h>
 #include <gtest/gtest.h>
+#include <weave/unittest_utils.h>
 
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
-#include "weave/unittest_utils.h"
 
 namespace weave {
 namespace unittests {

@@ -14,8 +14,7 @@
 #include <base/values.h>
 #include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
-
-#include "weave/unittest_utils.h"
+#include <weave/unittest_utils.h>
 
 namespace buffet {
 

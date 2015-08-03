@@ -16,9 +16,9 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
+#include <weave/network.h>
 
 #include "shill/dbus-proxies.h"
-#include "weave/network.h"
 
 namespace buffet {
 

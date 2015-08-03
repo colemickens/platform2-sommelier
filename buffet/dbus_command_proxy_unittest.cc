@@ -14,13 +14,13 @@
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/dbus_object_test_helpers.h>
 #include <gtest/gtest.h>
+#include <weave/command.h>
+#include <weave/enum_to_string.h>
+#include <weave/mock_command.h>
+#include <weave/mock_commands.h>
+#include <weave/unittest_utils.h>
 
 #include "buffet/dbus_constants.h"
-#include "weave/command.h"
-#include "weave/enum_to_string.h"
-#include "weave/mock_command.h"
-#include "weave/mock_commands.h"
-#include "weave/unittest_utils.h"
 
 namespace buffet {
 

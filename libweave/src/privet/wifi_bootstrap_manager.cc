@@ -9,10 +9,10 @@
 #include <base/message_loop/message_loop.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
+#include <weave/enum_to_string.h>
+#include <weave/network.h>
 
 #include "libweave/src/privet/constants.h"
-#include "weave/enum_to_string.h"
-#include "weave/network.h"
 
 namespace weave {
 namespace privet {

@@ -6,9 +6,9 @@
 
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
+#include <weave/enum_to_string.h>
 
 #include "buffet/dbus_conversion.h"
-#include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;

@@ -6,10 +6,10 @@
 
 #include <base/values.h>
 #include <chromeos/strings/string_utils.h>
+#include <weave/enum_to_string.h>
 
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/schema_constants.h"
-#include "weave/enum_to_string.h"
 
 namespace weave {
 

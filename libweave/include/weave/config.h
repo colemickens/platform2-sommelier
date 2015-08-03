@@ -9,9 +9,8 @@
 #include <string>
 
 #include <base/callback.h>
-
-#include "weave/enum_to_string.h"
-#include "weave/privet.h"
+#include <weave/enum_to_string.h>
+#include <weave/privet.h>
 
 namespace weave {
 

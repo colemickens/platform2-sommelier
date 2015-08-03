@@ -10,8 +10,7 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-
-#include "weave/commands.h"
+#include <weave/commands.h>
 
 namespace chromeos {
 namespace dbus_utils {

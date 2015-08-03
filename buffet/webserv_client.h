@@ -10,8 +10,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-
-#include "weave/http_server.h"
+#include <weave/http_server.h>
 
 namespace dbus {
 class Bus;

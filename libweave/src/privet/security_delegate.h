@@ -11,9 +11,9 @@
 
 #include <base/time/time.h>
 #include <chromeos/secure_blob.h>
+#include <weave/privet.h>
 
 #include "libweave/src/privet/privet_types.h"
-#include "weave/privet.h"
 
 namespace weave {
 namespace privet {

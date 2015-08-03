@@ -5,13 +5,12 @@
 #ifndef LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMAND_H_
 #define LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMAND_H_
 
-#include "weave/command.h"
+#include <weave/command.h>
 
 #include <memory>
 #include <string>
 
 #include <base/values.h>
-
 #include <gmock/gmock.h>
 
 namespace weave {

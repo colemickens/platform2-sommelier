@@ -14,9 +14,9 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <weave/commands.h>
 
 #include "libweave/src/commands/command_instance.h"
-#include "weave/commands.h"
 
 namespace weave {
 

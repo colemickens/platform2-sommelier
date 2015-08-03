@@ -11,12 +11,12 @@
 #include <chromeos/data_encoding.h>
 #include <chromeos/streams/file_stream.h>
 #include <chromeos/streams/tls_stream.h>
+#include <weave/network.h>
 
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/notification_parser.h"
 #include "libweave/src/notification/xml_node.h"
 #include "libweave/src/utils.h"
-#include "weave/network.h"
 
 namespace weave {
 

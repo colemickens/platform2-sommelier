@@ -11,9 +11,9 @@
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
+#include <weave/mdns.h>
 
 #include "peerd/dbus-proxies.h"
-#include "weave/mdns.h"
 
 namespace dbus {
 class Bus;

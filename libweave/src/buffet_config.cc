@@ -10,10 +10,10 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/strings/string_utils.h>
+#include <weave/enum_to_string.h>
 
 #include "libweave/src/storage_impls.h"
 #include "libweave/src/storage_interface.h"
-#include "weave/enum_to_string.h"
 
 namespace {
 

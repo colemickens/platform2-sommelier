@@ -4,9 +4,10 @@
 
 #include <chromeos/errors/error.h>
 
+#include <weave/commands.h>
+#include <weave/enum_to_string.h>
+
 #include "libweave/src/commands/schema_constants.h"
-#include "weave/commands.h"
-#include "weave/enum_to_string.h"
 
 namespace weave {
 

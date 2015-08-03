@@ -11,9 +11,9 @@
 #include <base/scoped_observer.h>
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_object.h>
+#include <weave/command.h>
 
 #include "buffet/org.chromium.Buffet.Command.h"
-#include "weave/command.h"
 
 namespace chromeos {
 namespace dbus_utils {
