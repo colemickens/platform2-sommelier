@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <weave/export.h>
+
 namespace weave {
 
 // Helps to map enumeration to stings and back.
@@ -30,7 +32,7 @@ class EnumToStringMap final {
     const char* const name;
   };
 
-  EnumToStringMap();
+  LIBWEAVE_EXPORT EnumToStringMap();
 
   const Map* begin() const { return begin_; }
   const Map* end() const { return end_; }

@@ -13,6 +13,7 @@
 #include <weave/cloud.h>
 #include <weave/commands.h>
 #include <weave/config.h>
+#include <weave/export.h>
 #include <weave/http_server.h>
 #include <weave/mdns.h>
 #include <weave/network.h>
@@ -48,7 +49,7 @@ class Device {
   virtual Cloud* GetCloud() = 0;
   virtual Privet* GetPrivet() = 0;
 
-  static std::unique_ptr<Device> Create();
+  LIBWEAVE_EXPORT static std::unique_ptr<Device> Create();
 };
 
 }  // namespace weave
