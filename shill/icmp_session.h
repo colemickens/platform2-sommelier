@@ -71,6 +71,14 @@ class IcmpSession {
   // ICMP session that generated |result|.
   static bool AnyRepliesReceived(const IcmpSessionResult& result);
 
+  // Utility function that returns the packet loss rate for the ICMP session
+  // that generated |result| is greater than |percentage_threshold| percent.
+  // The percentage packet loss determined by this function will be rounded
+  // down to the closest integer percentage value. |percentage_threshold| is
+  // expected to be a non-negative integer value.
+  static bool IsPacketLossPercentageGreaterThan(const IcmpSessionResult& result,
+                                                int percentage_threshold);
+
  private:
   using SentRecvTimePair = std::pair<base::TimeTicks, base::TimeTicks>;
 

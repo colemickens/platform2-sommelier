@@ -428,4 +428,34 @@ TEST_F(IcmpSessionTest, AnyRepliesReceived) {
   EXPECT_TRUE(IcmpSession::AnyRepliesReceived(two_sent_one_received));
 }
 
+TEST_F(IcmpSessionTest, IsPacketLossPercentageGreaterThan) {
+  // If we sent no echo requests out, we expect no replies, therefore we have
+  // 0% packet loss.
+  IcmpSession::IcmpSessionResult none_sent_none_received;
+  EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
+      none_sent_none_received, 0));
+
+  // If we receive all replies, we experience 0% packet loss.
+  IcmpSession::IcmpSessionResult three_sent_three_received;
+  three_sent_three_received.push_back(base::TimeDelta::FromSeconds(10));
+  three_sent_three_received.push_back(base::TimeDelta::FromSeconds(10));
+  three_sent_three_received.push_back(base::TimeDelta::FromSeconds(10));
+  EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
+      three_sent_three_received, 0));
+
+  // If we sent 3 requests and received 2 replies, we have ~33% packet loss.
+  IcmpSession::IcmpSessionResult three_sent_two_received;
+  three_sent_two_received.push_back(base::TimeDelta::FromSeconds(10));
+  three_sent_two_received.push_back(base::TimeDelta::FromSeconds(10));
+  three_sent_two_received.push_back(base::TimeDelta());
+  EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
+      three_sent_two_received, 60));
+  EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
+      three_sent_two_received, 33));
+  EXPECT_TRUE(IcmpSession::IsPacketLossPercentageGreaterThan(
+      three_sent_two_received, 32));
+  EXPECT_TRUE(IcmpSession::IsPacketLossPercentageGreaterThan(
+      three_sent_two_received, 10));
+}
+
 }  // namespace shill

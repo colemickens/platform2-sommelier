@@ -96,6 +96,29 @@ bool IcmpSession::AnyRepliesReceived(const IcmpSessionResult& result) {
   return false;
 }
 
+// static
+bool IcmpSession::IsPacketLossPercentageGreaterThan(
+    const IcmpSessionResult& result, int percentage_threshold) {
+  if (percentage_threshold < 0) {
+    LOG(ERROR) << __func__ << ": negative percentage threshold ("
+               << percentage_threshold << ")";
+    return false;
+  }
+
+  if (result.size() == 0) {
+    return false;
+  }
+
+  int lost_packet_count = 0;
+  for (const base::TimeDelta& latency : result) {
+    if (latency.is_zero()) {
+      ++lost_packet_count;
+    }
+  }
+  int packet_loss_percentage = (lost_packet_count * 100) / result.size();
+  return packet_loss_percentage > percentage_threshold;
+}
+
 void IcmpSession::TransmitEchoRequestTask(const IPAddress& destination) {
   if (!IsStarted()) {
     // This might happen when ping times out or is stopped between two calls
