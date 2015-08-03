@@ -637,13 +637,6 @@ bool Service::Save(StoreInterface* storage) {
   return true;
 }
 
-void Service::SaveToCurrentProfile() {
-  // Some unittests do not specify a manager.
-  if (manager()) {
-    manager()->SaveServiceToProfile(this);
-  }
-}
-
 void Service::Configure(const KeyValueStore& args, Error* error) {
   for (const auto it : args.properties()) {
     if (it.second.GetType() == typeid(bool)) {    // NOLINT
