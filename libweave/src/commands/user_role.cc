@@ -6,6 +6,7 @@
 
 #include <weave/commands.h>
 #include <weave/enum_to_string.h>
+#include <weave/export.h>
 
 #include "libweave/src/commands/schema_constants.h"
 
@@ -23,7 +24,7 @@ const EnumToStringMap<UserRole>::Map kMap[] = {
 }  // namespace
 
 template <>
-EnumToStringMap<UserRole>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<UserRole>::EnumToStringMap()
     : EnumToStringMap(kMap) {}
 
 }  // namespace weave

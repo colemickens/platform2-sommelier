@@ -7,6 +7,7 @@
 #include <string>
 
 #include <weave/enum_to_string.h>
+#include <weave/export.h>
 #include <weave/network.h>
 #include <weave/privet.h>
 
@@ -76,35 +77,35 @@ const EnumToStringMap<NetworkState>::Map kNetworkStateMap[] = {
 }  // namespace
 
 template <>
-EnumToStringMap<PairingType>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<PairingType>::EnumToStringMap()
     : EnumToStringMap(kPairingTypeMap) {}
 
 template <>
-EnumToStringMap<ConnectionState::Status>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<ConnectionState::Status>::EnumToStringMap()
     : EnumToStringMap(kConnectionStateMap) {}
 
 template <>
-EnumToStringMap<SetupState::Status>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<SetupState::Status>::EnumToStringMap()
     : EnumToStringMap(kSetupStateMap) {}
 
 template <>
-EnumToStringMap<WifiType>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<WifiType>::EnumToStringMap()
     : EnumToStringMap(kWifiTypeMap) {}
 
 template <>
-EnumToStringMap<CryptoType>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<CryptoType>::EnumToStringMap()
     : EnumToStringMap(kCryptoTypeMap) {}
 
 template <>
-EnumToStringMap<AuthScope>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<AuthScope>::EnumToStringMap()
     : EnumToStringMap(kAuthScopeMap) {}
 
 template <>
-EnumToStringMap<WifiSetupState>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<WifiSetupState>::EnumToStringMap()
     : EnumToStringMap(kWifiSetupStateMap) {}
 
 template <>
-EnumToStringMap<NetworkState>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<NetworkState>::EnumToStringMap()
     : EnumToStringMap(kNetworkStateMap) {}
 
 }  // namespace weave

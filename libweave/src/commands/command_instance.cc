@@ -8,6 +8,7 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
 #include <weave/enum_to_string.h>
+#include <weave/export.h>
 
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_dictionary.h"
@@ -39,11 +40,11 @@ const EnumToStringMap<CommandOrigin>::Map kMapOrigin[] = {
 }  // namespace
 
 template <>
-EnumToStringMap<CommandStatus>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<CommandStatus>::EnumToStringMap()
     : EnumToStringMap(kMapStatus) {}
 
 template <>
-EnumToStringMap<CommandOrigin>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<CommandOrigin>::EnumToStringMap()
     : EnumToStringMap(kMapOrigin) {}
 
 CommandInstance::CommandInstance(const std::string& name,

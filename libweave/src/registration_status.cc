@@ -4,6 +4,7 @@
 
 #include <weave/cloud.h>
 #include <weave/enum_to_string.h>
+#include <weave/export.h>
 
 namespace weave {
 
@@ -19,7 +20,7 @@ const EnumToStringMap<RegistrationStatus>::Map kMap[] = {
 }  // namespace
 
 template <>
-EnumToStringMap<RegistrationStatus>::EnumToStringMap()
+LIBWEAVE_EXPORT EnumToStringMap<RegistrationStatus>::EnumToStringMap()
     : EnumToStringMap(kMap) {}
 
 }  // namespace weave

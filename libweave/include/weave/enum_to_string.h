@@ -5,9 +5,9 @@
 #ifndef LIBWEAVE_INCLUDE_WEAVE_ENUM_TO_STRING_H_
 #define LIBWEAVE_INCLUDE_WEAVE_ENUM_TO_STRING_H_
 
-#include <base/logging.h>
-
 #include <string>
+
+#include <base/logging.h>
 
 namespace weave {
 
