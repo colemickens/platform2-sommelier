@@ -52,6 +52,22 @@
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
+        {
+          # Generate D-Bus proxies for peerd.
+          'action_name': 'generate-peerd-proxies',
+          'variables': {
+            'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/peerd/dbus-proxies.h',
+            'mock_output_file': 'include/peerd/dbus-proxy-mocks.h',
+            'proxy_path_in_mocks': 'peerd/dbus-proxies.h',
+          },
+          'sources': [
+            'dbus_bindings/org.chromium.peerd.Manager.xml',
+            'dbus_bindings/org.chromium.peerd.Peer.xml',
+            'dbus_bindings/org.chromium.peerd.Service.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
     },
     {
