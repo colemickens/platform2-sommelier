@@ -27,6 +27,7 @@
 #include "buffet/dbus_conversion.h"
 #include "buffet/peerd_client.h"
 #include "buffet/shill_client.h"
+#include "buffet/webserv_client.h"
 #include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -57,12 +58,15 @@ Manager::~Manager() {
 void Manager::Start(const weave::Device::Options& options,
                     const std::set<std::string>& device_whitelist,
                     AsyncEventSequencer* sequencer) {
-  peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
   shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
+  if (!options.disable_privet) {
+    peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
+    web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
+  }
 
   device_ = weave::Device::Create();
-  device_->Start(options, peerd_client_.get(), shill_client_.get(),
-                 &dbus_object_, sequencer);
+  device_->Start(options, shill_client_.get(), peerd_client_.get(),
+                 web_serv_client_.get(), &dbus_object_, sequencer);
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});

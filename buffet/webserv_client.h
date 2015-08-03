@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_SRC_PRIVET_WEBSERV_CLIENT_H_
-#define LIBWEAVE_SRC_PRIVET_WEBSERV_CLIENT_H_
+#ifndef BUFFET_WEBSERV_CLIENT_H_
+#define BUFFET_WEBSERV_CLIENT_H_
 
 #include <memory>
 #include <string>
@@ -30,18 +30,18 @@ class Response;
 class Server;
 }
 
-namespace weave {
-namespace privet {
+namespace buffet {
 
 // Wrapper around libwebserv that implements HttpServer interface.
-class WebServClient : public HttpServer {
+class WebServClient : public weave::HttpServer {
  public:
   WebServClient(const scoped_refptr<dbus::Bus>& bus,
                 chromeos::dbus_utils::AsyncEventSequencer* sequencer);
   ~WebServClient() override;
 
   // HttpServer implementation.
-  void AddOnStateChangedCallback(const base::Closure& callback) override;
+  void AddOnStateChangedCallback(
+      const OnStateChangedCallback& callback) override;
   void AddRequestHandler(const std::string& path_prefix,
                          const OnRequestCallback& callback) override;
   uint16_t GetHttpPort() const override;
@@ -68,7 +68,7 @@ class WebServClient : public HttpServer {
   uint16_t https_port_{0};
   chromeos::Blob certificate_;
 
-  std::vector<base::Closure> on_state_changed_callbacks_;
+  std::vector<OnStateChangedCallback> on_state_changed_callbacks_;
 
   std::unique_ptr<libwebserv::Server> web_server_;
 
@@ -76,7 +76,6 @@ class WebServClient : public HttpServer {
   DISALLOW_COPY_AND_ASSIGN(WebServClient);
 };
 
-}  // namespace privet
-}  // namespace weave
+}  // namespace buffet
 
-#endif  // LIBWEAVE_SRC_PRIVET_WEBSERV_CLIENT_H_
+#endif  // BUFFET_WEBSERV_CLIENT_H_

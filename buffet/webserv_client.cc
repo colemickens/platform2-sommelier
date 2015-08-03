@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/privet/webserv_client.h"
-//
+#include "buffet/webserv_client.h"
+
 #include <memory>
 #include <string>
 
@@ -14,12 +14,11 @@
 
 #include "buffet/dbus_constants.h"
 
-namespace weave {
-namespace privet {
+namespace buffet {
 
 namespace {
 
-class RequestImpl : public HttpServer::Request {
+class RequestImpl : public weave::HttpServer::Request {
  public:
   explicit RequestImpl(std::unique_ptr<libwebserv::Request> request)
       : request_{std::move(request)} {}
@@ -46,9 +45,10 @@ WebServClient::~WebServClient() {
   web_server_->Disconnect();
 }
 
-void WebServClient::AddOnStateChangedCallback(const base::Closure& callback) {
+void WebServClient::AddOnStateChangedCallback(
+    const OnStateChangedCallback& callback) {
   on_state_changed_callbacks_.push_back(callback);
-  callback.Run();
+  callback.Run(*this);
 }
 
 void WebServClient::AddRequestHandler(const std::string& path_prefix,
@@ -116,7 +116,7 @@ void WebServClient::OnProtocolHandlerConnected(
     certificate_ = protocol_handler->GetCertificateFingerprint();
   }
   for (const auto& cb : on_state_changed_callbacks_)
-    cb.Run();
+    cb.Run(*this);
 }
 
 void WebServClient::OnProtocolHandlerDisconnected(
@@ -129,8 +129,7 @@ void WebServClient::OnProtocolHandlerDisconnected(
     certificate_.clear();
   }
   for (const auto& cb : on_state_changed_callbacks_)
-    cb.Run();
+    cb.Run(*this);
 }
 
-}  // namespace privet
-}  // namespace weave
+}  // namespace buffet

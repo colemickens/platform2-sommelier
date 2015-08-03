@@ -17,7 +17,6 @@
 #include "libweave/src/privet/security_manager.h"
 #include "libweave/src/privet/wifi_bootstrap_manager.h"
 #include "weave/device.h"
-#include "weave/http_server.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -48,7 +47,6 @@ class DeviceDelegate;
 class PrivetHandler;
 class Publisher;
 class SecurityManager;
-class WebServClient;
 
 class Manager : public Privet, public CloudDelegate::Observer {
  public:
@@ -58,10 +56,11 @@ class Manager : public Privet, public CloudDelegate::Observer {
   void Start(const weave::Device::Options& options,
              const scoped_refptr<dbus::Bus>& bus,
              Network* network,
+             Mdns* mdns,
+             HttpServer* http_server,
              DeviceRegistrationInfo* device,
              CommandManager* command_manager,
              StateManager* state_manager,
-             Mdns* mdns,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   std::string GetCurrentlyConnectedSsid() const;
@@ -72,8 +71,6 @@ class Manager : public Privet, public CloudDelegate::Observer {
   void AddOnPairingChangedCallbacks(
       const OnPairingStartedCallback& on_start,
       const OnPairingEndedCallback& on_end) override;
-
-  void Shutdown();
 
  private:
   // CloudDelegate::Observer
@@ -92,7 +89,7 @@ class Manager : public Privet, public CloudDelegate::Observer {
   void OnChanged();
   void OnConnectivityChanged(bool online);
 
-  void OnHttpServerStatusChanged();
+  void OnHttpServerStatusChanged(const HttpServer& server);
 
   bool disable_security_{false};
   std::unique_ptr<CloudDelegate> cloud_;
@@ -101,8 +98,6 @@ class Manager : public Privet, public CloudDelegate::Observer {
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<Publisher> publisher_;
   std::unique_ptr<PrivetHandler> privet_handler_;
-
-  std::unique_ptr<WebServClient> web_server_;
 
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
 

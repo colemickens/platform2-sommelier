@@ -35,9 +35,7 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/privet_handler.h"
 #include "libweave/src/privet/publisher.h"
-#include "libweave/src/privet/webserv_client.h"
 #include "weave/network.h"
-#include "weave/http_server.h"
 
 namespace weave {
 namespace privet {
@@ -57,10 +55,11 @@ Manager::~Manager() {
 void Manager::Start(const Device::Options& options,
                     const scoped_refptr<dbus::Bus>& bus,
                     Network* network,
+                    Mdns* mdns,
+                    HttpServer* http_server,
                     DeviceRegistrationInfo* device,
                     CommandManager* command_manager,
                     StateManager* state_manager,
-                    Mdns* mdns,
                     AsyncEventSequencer* sequencer) {
   disable_security_ = options.disable_security;
 
@@ -88,14 +87,13 @@ void Manager::Start(const Device::Options& options,
       new PrivetHandler(cloud_.get(), device_.get(), security_.get(),
                         wifi_bootstrap_manager_.get(), publisher_.get()));
 
-  web_server_.reset(new WebServClient{bus, sequencer});
-  web_server_->AddOnStateChangedCallback(base::Bind(
+  http_server->AddOnStateChangedCallback(base::Bind(
       &Manager::OnHttpServerStatusChanged, weak_ptr_factory_.GetWeakPtr()));
-  web_server_->AddRequestHandler("/privet/",
+  http_server->AddRequestHandler("/privet/",
                                  base::Bind(&Manager::PrivetRequestHandler,
                                             weak_ptr_factory_.GetWeakPtr()));
   if (options.enable_ping) {
-    web_server_->AddRequestHandler("/privet/ping",
+    http_server->AddRequestHandler("/privet/ping",
                                    base::Bind(&Manager::HelloWorldHandler,
                                               weak_ptr_factory_.GetWeakPtr()));
   }
@@ -119,10 +117,6 @@ void Manager::AddOnPairingChangedCallbacks(
     const SecurityManager::PairingStartListener& on_start,
     const SecurityManager::PairingEndListener& on_end) {
   security_->RegisterPairingListeners(on_start, on_end);
-}
-
-void Manager::Shutdown() {
-  web_server_.reset();
 }
 
 void Manager::OnDeviceInfoChanged() {
@@ -182,15 +176,14 @@ void Manager::OnConnectivityChanged(bool online) {
   OnChanged();
 }
 
-void Manager::OnHttpServerStatusChanged() {
-  if (device_->GetHttpEnpoint().first != web_server_->GetHttpPort()) {
-    device_->SetHttpPort(web_server_->GetHttpPort());
-    if (publisher_)
+void Manager::OnHttpServerStatusChanged(const HttpServer& server) {
+  if (device_->GetHttpEnpoint().first != server.GetHttpPort()) {
+    device_->SetHttpPort(server.GetHttpPort());
+    if (publisher_)  // Only HTTP port is published
       publisher_->Update();
   }
-  device_->SetHttpsPort(web_server_->GetHttpsPort());
-  security_->SetCertificateFingerprint(
-      web_server_->GetHttpsCertificateFingerprint());
+  device_->SetHttpsPort(server.GetHttpsPort());
+  security_->SetCertificateFingerprint(server.GetHttpsCertificateFingerprint());
 }
 
 }  // namespace privet

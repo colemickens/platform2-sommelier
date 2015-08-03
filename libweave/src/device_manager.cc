@@ -31,15 +31,13 @@ const int kRequestTimeoutSeconds = 30;
 
 DeviceManager::DeviceManager() {}
 
-DeviceManager::~DeviceManager() {
-  if (privet_)
-    privet_->Shutdown();
-}
+DeviceManager::~DeviceManager() {}
 
 void DeviceManager::Start(
     const Options& options,
-    Mdns* mdns,
     Network* network,
+    Mdns* mdns,
+    HttpServer* http_server,
     chromeos::dbus_utils::DBusObject* dbus_object,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   command_manager_ = std::make_shared<CommandManager>();
@@ -67,8 +65,12 @@ void DeviceManager::Start(
 
   device_info_->Start();
 
-  if (!options.disable_privet)
-    StartPrivet(options, mdns, network, dbus_object, sequencer);
+  if (!options.disable_privet) {
+    StartPrivet(options, network, mdns, http_server, dbus_object, sequencer);
+  } else {
+    CHECK(!http_server);
+    CHECK(!mdns);
+  }
 }
 
 Commands* DeviceManager::GetCommands() {
@@ -93,13 +95,15 @@ Privet* DeviceManager::GetPrivet() {
 
 void DeviceManager::StartPrivet(
     const Options& options,
-    Mdns* mdns,
     Network* network,
+    Mdns* mdns,
+    HttpServer* http_server,
     chromeos::dbus_utils::DBusObject* dbus_object,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   privet_.reset(new privet::Manager{});
-  privet_->Start(options, dbus_object->GetBus(), network, device_info_.get(),
-                 command_manager_.get(), state_manager_.get(), mdns, sequencer);
+  privet_->Start(options, dbus_object->GetBus(), network, mdns, http_server,
+                 device_info_.get(), command_manager_.get(),
+                 state_manager_.get(), sequencer);
 
   privet_->AddOnWifiSetupChangedCallback(
       base::Bind(&DeviceManager::OnWiFiBootstrapStateChanged,
