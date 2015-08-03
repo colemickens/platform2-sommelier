@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <chromeos/errors/error.h>
 
 #include "weave/cloud.h"
 #include "weave/commands.h"
@@ -20,13 +19,6 @@
 #include "weave/network.h"
 #include "weave/privet.h"
 #include "weave/state.h"
-
-namespace chromeos {
-namespace dbus_utils {
-class AsyncEventSequencer;
-class DBusObject;
-}
-}
 
 namespace weave {
 
@@ -49,9 +41,7 @@ class Device {
   virtual void Start(const Options& options,
                      Network* network,
                      Mdns* mdns,
-                     HttpServer* http_server,
-                     chromeos::dbus_utils::DBusObject* dbus_object,
-                     chromeos::dbus_utils::AsyncEventSequencer* sequencer) = 0;
+                     HttpServer* http_server) = 0;
 
   virtual Commands* GetCommands() = 0;
   virtual State* GetState() = 0;

@@ -201,7 +201,7 @@ std::set<WifiType> WifiBootstrapManager::GetTypes() const {
 }
 
 void WifiBootstrapManager::OnDeviceInfoChanged() {
-  // Initialization was delayed until buffet is ready.
+  // Initialization was delayed until dependencies are ready.
   if (!is_initialized_)
     Init();
 }

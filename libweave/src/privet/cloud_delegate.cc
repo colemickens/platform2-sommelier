@@ -256,7 +256,7 @@ class CloudDelegateImpl : public CloudDelegate {
       chromeos::ErrorPtr error;
       chromeos::Error::AddToPrintf(
           &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-          "Unexpected buffet status: %s", EnumToString(status).c_str());
+          "Unexpected registration status: %s", EnumToString(status).c_str());
       connection_state_ = ConnectionState{std::move(error)};
     }
     NotifyOnDeviceInfoChanged();

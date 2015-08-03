@@ -66,7 +66,7 @@ void Manager::Start(const weave::Device::Options& options,
 
   device_ = weave::Device::Create();
   device_->Start(options, shill_client_.get(), peerd_client_.get(),
-                 web_serv_client_.get(), &dbus_object_, sequencer);
+                 web_serv_client_.get());
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});

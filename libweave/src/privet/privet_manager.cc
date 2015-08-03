@@ -16,19 +16,13 @@
 #include <base/scoped_observer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/flag_helper.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
-#include <libwebserv/protocol_handler.h>
-#include <libwebserv/request.h>
-#include <libwebserv/response.h>
-#include <libwebserv/server.h>
 
-#include "buffet/dbus_constants.h"
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/constants.h"
@@ -40,12 +34,6 @@
 namespace weave {
 namespace privet {
 
-namespace {
-
-using chromeos::dbus_utils::AsyncEventSequencer;
-
-}  // namespace
-
 Manager::Manager() {
 }
 
@@ -53,14 +41,12 @@ Manager::~Manager() {
 }
 
 void Manager::Start(const Device::Options& options,
-                    const scoped_refptr<dbus::Bus>& bus,
                     Network* network,
                     Mdns* mdns,
                     HttpServer* http_server,
                     DeviceRegistrationInfo* device,
                     CommandManager* command_manager,
-                    StateManager* state_manager,
-                    AsyncEventSequencer* sequencer) {
+                    StateManager* state_manager) {
   disable_security_ = options.disable_security;
 
   device_ = DeviceDelegate::CreateDefault();

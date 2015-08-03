@@ -18,12 +18,6 @@
 #include "libweave/src/privet/wifi_bootstrap_manager.h"
 #include "weave/device.h"
 
-namespace chromeos {
-namespace dbus_utils {
-class AsyncEventSequencer;
-}
-}
-
 namespace libwebserv {
 class ProtocolHandler;
 class Request;
@@ -54,14 +48,12 @@ class Manager : public Privet, public CloudDelegate::Observer {
   ~Manager() override;
 
   void Start(const weave::Device::Options& options,
-             const scoped_refptr<dbus::Bus>& bus,
              Network* network,
              Mdns* mdns,
              HttpServer* http_server,
              DeviceRegistrationInfo* device,
              CommandManager* command_manager,
-             StateManager* state_manager,
-             chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+             StateManager* state_manager);
 
   std::string GetCurrentlyConnectedSsid() const;
 

@@ -12,10 +12,6 @@
 
 #include "libweave/src/privet/identity_delegate.h"
 
-namespace dbus {
-class Bus;
-}  // namespace dbus
-
 namespace weave {
 
 class Mdns;

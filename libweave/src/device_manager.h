@@ -9,12 +9,6 @@
 
 #include "weave/device.h"
 
-namespace chromeos {
-namespace dbus_utils {
-class DBusObject;
-}
-}
-
 namespace weave {
 
 class BaseApiHandler;
@@ -36,9 +30,7 @@ class DeviceManager final : public Device {
   void Start(const Options& options,
              Network* network,
              Mdns* mdns,
-             HttpServer* http_server,
-             chromeos::dbus_utils::DBusObject* dbus_object,
-             chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
+             HttpServer* http_server) override;
 
   Commands* GetCommands() override;
   State* GetState() override;
@@ -50,9 +42,7 @@ class DeviceManager final : public Device {
   void StartPrivet(const Options& options,
                    Network* network,
                    Mdns* mdns,
-                   HttpServer* http_server,
-                   chromeos::dbus_utils::DBusObject* dbus_object,
-                   chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+                   HttpServer* http_server);
 
   void OnWiFiBootstrapStateChanged(weave::WifiSetupState state);
 
