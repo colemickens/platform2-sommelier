@@ -38,7 +38,7 @@ class DBusParamWriter final {
   // The final overload of DBusParamWriter::Append() used when no more
   // parameters are remaining to be written.
   // Does nothing and finishes meta-recursion.
-  static void Append(dbus::MessageWriter* writer) {}
+  static void Append(dbus::MessageWriter* /*writer*/) {}
 
   // Generic writer method that takes 1 or more arguments. It recursively calls
   // itself (each time with one fewer arguments) until no more is left.
@@ -71,7 +71,7 @@ class DBusParamWriter final {
   // The final overload of DBusParamWriter::AppendDBusOutParams() used when no
   // more parameters are remaining to be written.
   // Does nothing and finishes meta-recursion.
-  static void AppendDBusOutParams(dbus::MessageWriter* writer) {}
+  static void AppendDBusOutParams(dbus::MessageWriter* /*writer*/) {}
 };
 
 }  // namespace dbus_utils
