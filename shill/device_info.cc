@@ -680,7 +680,7 @@ ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
 
   const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM, 0);
   if (fd < 0) {
-    LOG(ERROR) << __func__ << ": Unable to open socket: " << fd;
+    PLOG(ERROR) << __func__ << ": Unable to open socket";
     return ByteString();
   }
 
@@ -691,7 +691,7 @@ ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
   strcpy(ifr.ifr_ifrn.ifrn_name, info->name.c_str());  // NOLINT(runtime/printf)
   int err = sockets_->Ioctl(fd, SIOCGIFHWADDR, &ifr);
   if (err < 0) {
-    LOG(ERROR) << __func__ << ": Unable to read MAC address: " << errno;
+    PLOG(ERROR) << __func__ << ": Unable to read MAC address";
     return ByteString();
   }
 
@@ -713,7 +713,7 @@ bool DeviceInfo::GetMACAddressOfPeer(int interface_index,
 
   const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM, 0);
   if (fd < 0) {
-    LOG(ERROR) << __func__ << ": Unable to open socket: " << fd;
+    PLOG(ERROR) << __func__ << ": Unable to open socket";
     return false;
   }
 
@@ -737,7 +737,7 @@ bool DeviceInfo::GetMACAddressOfPeer(int interface_index,
 
   int err = sockets_->Ioctl(fd, SIOCGARP, &areq);
   if (err < 0) {
-    LOG(ERROR) << __func__ << ": Unable to perform ARP lookup: " << errno;
+    PLOG(ERROR) << __func__ << ": Unable to perform ARP lookup";
     return false;
   }
 
