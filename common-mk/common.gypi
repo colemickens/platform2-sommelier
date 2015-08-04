@@ -42,6 +42,7 @@
     'USE_vpn%': 0,
     'USE_wake_on_wifi%': 0,
     'USE_wifi%': 0,
+    'USE_wifi_bootstrapping%': 0,
     'USE_wimax%': 0,
     'USE_wired_8021x%': 0,
 

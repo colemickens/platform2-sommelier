@@ -19,10 +19,9 @@
         'dbus_adaptors_out_dir': 'include/buffet',
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'exported_deps': [
-          'libwebserv-<(libbase_ver)',
           'libweave-<(libbase_ver)',
         ],
-        'deps': ['<@(exported_deps)'],
+        'deps': ['>@(exported_deps)'],
       },
       'all_dependent_settings': {
         'variables': {
@@ -41,9 +40,25 @@
         'dbus_constants.cc',
         'http_transport_client.cc',
         'manager.cc',
-        'peerd_client.cc',
         'shill_client.cc',
-        'webserv_client.cc',
+      ],
+      'conditions': [
+        ['USE_wifi_bootstrapping == 1', {
+          'variables': {
+            'exported_deps': [
+              'libpeerd-client',
+              'libwebserv-<(libbase_ver)',
+            ],
+          },
+          'all_dependent_settings': {
+            'defines': [ 'BUFFET_USE_WIFI_BOOTSTRAPPING' ],
+          },
+          'defines': [ 'BUFFET_USE_WIFI_BOOTSTRAPPING' ],
+          'sources': [
+            'webserv_client.cc',
+            'peerd_client.cc',
+          ],
+        }],
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
       'actions': [
@@ -56,20 +71,6 @@
           'sources': [
             'dbus_bindings/org.chromium.Buffet.Command.xml',
             'dbus_bindings/org.chromium.Buffet.Manager.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-        {
-          # Import D-Bus bindings from peerd.
-          'action_name': 'generate-peerd-proxies',
-          'variables': {
-            'dbus_service_config': '../peerd/dbus_bindings/dbus-service-config.json',
-            'proxy_output_file': 'include/peerd/dbus-proxies.h'
-          },
-          'sources': [
-            '../peerd/dbus_bindings/org.chromium.peerd.Manager.xml',
-            '../peerd/dbus_bindings/org.chromium.peerd.Peer.xml',
-            '../peerd/dbus_bindings/org.chromium.peerd.Service.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
