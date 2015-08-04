@@ -18,7 +18,6 @@
 
 #include "policy/device_policy.h"
 
-static const char kAutotestPath[] = "/var/log/metrics/autotest-events";
 static const char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 static const char kConsentFile[] = "/home/chronos/Consent To Send Stats";
 static const char kCrosEventHistogramName[] = "Platform.CrOSEvent";
@@ -152,18 +151,6 @@ bool MetricsLibrary::AreMetricsEnabled() {
 
 void MetricsLibrary::Init() {
   uma_events_file_ = kUMAEventsPath;
-}
-
-bool MetricsLibrary::SendToAutotest(const std::string& name, int value) {
-  FILE* autotest_file = fopen(kAutotestPath, "a+");
-  if (autotest_file == nullptr) {
-    PLOG(ERROR) << kAutotestPath << ": fopen";
-    return false;
-  }
-
-  fprintf(autotest_file, "%s=%d\n", name.c_str(), value);
-  fclose(autotest_file);
-  return true;
 }
 
 bool MetricsLibrary::SendToUMA(const std::string& name,
