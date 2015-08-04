@@ -3,6 +3,7 @@
     'dbus_service_config%': '',
     'proxy_output_file%': '',
     'mock_output_file%': '',
+    'proxy_path_in_mocks%': '',
     'generator': '<!(which generate-chromeos-dbus-bindings)',
   },
   'inputs': [
@@ -30,6 +31,11 @@
       ],
       'action+': [
         '--mock=<(SHARED_INTERMEDIATE_DIR)/<(mock_output_file)',
+      ],
+    }],
+    ['proxy_path_in_mocks != ""', {
+      'action+': [
+        '--proxy-path-in-mocks=<(proxy_path_in_mocks)',
       ],
     }],
   ],
