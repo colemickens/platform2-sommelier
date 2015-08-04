@@ -5,7 +5,7 @@
 #include <chromeos/streams/input_stream_set.h>
 
 #include <base/bind.h>
-#include <base/message_loop/message_loop.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <chromeos/streams/stream_errors.h>
 #include <chromeos/streams/stream_utils.h>
 
@@ -170,10 +170,7 @@ bool InputStreamSet::WaitForData(
     return stream->WaitForData(mode, callback, error);
   }
 
-  CHECK(base::MessageLoop::current())
-      << "Message loop is required for asynchronous operations";
-
-  base::MessageLoop::current()->PostTask(FROM_HERE, base::Bind(callback, mode));
+  MessageLoop::current()->PostTask(FROM_HERE, base::Bind(callback, mode));
   return true;
 }
 

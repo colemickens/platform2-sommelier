@@ -17,6 +17,8 @@
 #include <base/run_loop.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/errors/error_codes.h>
+#include <chromeos/message_loops/base_message_loop.h>
+#include <chromeos/message_loops/message_loop_utils.h>
 #include <chromeos/streams/stream_errors.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -122,7 +124,8 @@ class MockFileDescriptor : public FileStream::FileDescriptorInterface {
   MOCK_CONST_METHOD1(Truncate, int(off64_t));
   MOCK_METHOD0(Flush, int());
   MOCK_METHOD0(Close, int());
-  MOCK_METHOD2(WaitForData, void(Stream::AccessMode, const DataCallback&));
+  MOCK_METHOD3(WaitForData,
+               bool(Stream::AccessMode, const DataCallback&, ErrorPtr*));
   MOCK_METHOD3(WaitForDataBlocking,
                int(Stream::AccessMode, base::TimeDelta, Stream::AccessMode*));
   MOCK_METHOD0(CancelPendingAsyncOperations, void());
@@ -366,8 +369,8 @@ TEST_F(FileStreamTest, ReadAsync) {
   auto error_callback = [&failed](const Error* error) { failed = true; };
   FileStream::FileDescriptorInterface::DataCallback data_callback;
 
-  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ, _))
-      .WillOnce(SaveArg<1>(&data_callback));
+  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_->ReadAsync(test_read_buffer_, 100,
                                  base::Bind(success_callback),
                                  base::Bind(error_callback),
@@ -503,8 +506,8 @@ TEST_F(FileStreamTest, WriteAsync) {
   auto error_callback = [&failed](const Error* error) { failed = true; };
   FileStream::FileDescriptorInterface::DataCallback data_callback;
 
-  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::WRITE, _))
-      .WillOnce(SaveArg<1>(&data_callback));
+  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::WRITE, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_->WriteAsync(test_write_buffer_, 100,
                                   base::Bind(success_callback),
                                   base::Bind(error_callback),
@@ -664,14 +667,21 @@ TEST_F(FileStreamTest, CloseBlocking_Fail) {
 }
 
 TEST_F(FileStreamTest, WaitForData) {
-  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ, _));
+  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ, _, _))
+      .WillOnce(Return(true));
   EXPECT_TRUE(CallWaitForData(Stream::AccessMode::READ, nullptr));
 
-  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::WRITE, _));
+  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::WRITE, _, _))
+      .WillOnce(Return(true));
   EXPECT_TRUE(CallWaitForData(Stream::AccessMode::WRITE, nullptr));
 
-  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ_WRITE, _));
+  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ_WRITE, _, _))
+      .WillOnce(Return(true));
   EXPECT_TRUE(CallWaitForData(Stream::AccessMode::READ_WRITE, nullptr));
+
+  EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ_WRITE, _, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(CallWaitForData(Stream::AccessMode::READ_WRITE, nullptr));
 }
 
 TEST_F(FileStreamTest, CreateTemporary) {
@@ -1009,19 +1019,18 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadAsync) {
   bool succeeded = false;
   bool failed = false;
   char buffer[100];
-  base::MessageLoopForIO message_loop;
-  base::RunLoop run_loop;
+  base::MessageLoopForIO base_loop;
+  BaseMessageLoop chromeos_loop{&base_loop};
+  chromeos_loop.SetAsCurrent();
 
-  auto success_callback = [&succeeded, &buffer, &run_loop](size_t size) {
+  auto success_callback = [&succeeded, &buffer](size_t size) {
     std::string data{buffer, buffer + size};
     ASSERT_EQ("abracadabra", data);
     succeeded = true;
-    base::MessageLoop::current()->PostTask(FROM_HERE, run_loop.QuitClosure());
   };
 
-  auto error_callback = [&failed, &run_loop](const Error* error) {
+  auto error_callback = [&failed](const Error* error) {
     failed = true;
-    base::MessageLoop::current()->PostTask(FROM_HERE, run_loop.QuitClosure());
   };
 
   auto write_data_callback = [](int write_fd) {
@@ -1034,19 +1043,18 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadAsync) {
   StreamPtr stream = FileStream::FromFileDescriptor(fds[0], true, nullptr);
 
   // Write to the pipe with a bit of delay.
-  base::MessageLoop::current()->PostDelayedTask(
+  chromeos_loop.PostDelayedTask(
       FROM_HERE,
       base::Bind(write_data_callback, fds[1]),
       base::TimeDelta::FromMilliseconds(10));
 
-  // Safety net: quit the message loop after 1 second.
-  base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromSeconds(1));
-
   EXPECT_TRUE(stream->ReadAsync(buffer, 100, base::Bind(success_callback),
                                 base::Bind(error_callback), nullptr));
 
-  run_loop.Run();
+  auto end_condition = [&failed, &succeeded] { return failed || succeeded; };
+  MessageLoopRunUntil(&chromeos_loop,
+                      base::TimeDelta::FromSeconds(1),
+                      base::Bind(end_condition));
 
   EXPECT_TRUE(succeeded);
   EXPECT_FALSE(failed);
@@ -1060,36 +1068,33 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteAsync) {
   bool succeeded = false;
   bool failed = false;
   const std::string data{"abracadabra"};
-  base::MessageLoopForIO message_loop;
-  base::RunLoop run_loop;
+  base::MessageLoopForIO base_loop;
+  BaseMessageLoop chromeos_loop{&base_loop};
+  chromeos_loop.SetAsCurrent();
 
   ASSERT_EQ(0, pipe(fds));
 
-  auto success_callback =
-      [&succeeded, &data, &run_loop](int read_fd, size_t size) {
+  auto success_callback = [&succeeded, &data](int read_fd, size_t size) {
     char buffer[100];
     EXPECT_TRUE(base::ReadFromFD(read_fd, buffer, data.size()));
     EXPECT_EQ(data, (std::string{buffer, buffer + data.size()}));
     succeeded = true;
-    base::MessageLoop::current()->PostTask(FROM_HERE, run_loop.QuitClosure());
   };
 
-  auto error_callback = [&failed, &run_loop](const Error* error) {
+  auto error_callback = [&failed](const Error* error) {
     failed = true;
-    base::MessageLoop::current()->PostTask(FROM_HERE, run_loop.QuitClosure());
   };
 
   StreamPtr stream = FileStream::FromFileDescriptor(fds[1], true, nullptr);
-
-  // Safety net: quit the message loop after 1 second.
-  base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromSeconds(1));
 
   EXPECT_TRUE(stream->WriteAsync(data.data(), data.size(),
                                  base::Bind(success_callback, fds[0]),
                                  base::Bind(error_callback), nullptr));
 
-  run_loop.Run();
+  auto end_condition = [&failed, &succeeded] { return failed || succeeded; };
+  MessageLoopRunUntil(&chromeos_loop,
+                      base::TimeDelta::FromSeconds(1),
+                      base::Bind(end_condition));
 
   EXPECT_TRUE(succeeded);
   EXPECT_FALSE(failed);

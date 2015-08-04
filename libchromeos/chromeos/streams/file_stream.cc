@@ -11,9 +11,9 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
-#include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/errors/error_codes.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <chromeos/streams/stream_errors.h>
 #include <chromeos/streams/stream_utils.h>
 
@@ -26,8 +26,7 @@ namespace chromeos {
 //    and MessageLoopForIO::Watcher interface.
 // The real FileStream uses this class to perform actual file I/O on the
 // contained file descriptor.
-class FileDescriptor : public base::MessageLoopForIO::Watcher,
-                       public FileStream::FileDescriptorInterface {
+class FileDescriptor : public FileStream::FileDescriptorInterface {
  public:
   FileDescriptor(int fd, bool own) : fd_{fd}, own_{own} {}
   ~FileDescriptor() override {
@@ -76,31 +75,50 @@ class FileDescriptor : public base::MessageLoopForIO::Watcher,
     // So, here we set it to -1 first and if we own the old descriptor, close
     // it before exiting.
     std::swap(fd, fd_);
-    read_watcher_.StopWatchingFileDescriptor();
-    write_watcher_.StopWatchingFileDescriptor();
+    CancelPendingAsyncOperations();
     return own_ ? IGNORE_EINTR(close(fd)) : 0;
   }
 
-  void WaitForData(Stream::AccessMode mode,
-                   const DataCallback& data_callback) override {
-    CHECK(base::MessageLoopForIO::current())
-        << "MessageLoopForIO is required for asynchronous operations";
-
+  bool WaitForData(Stream::AccessMode mode,
+                   const DataCallback& data_callback,
+                   ErrorPtr* error) override {
     if (stream_utils::IsReadAccessMode(mode)) {
       CHECK(read_data_callback_.is_null());
-      read_watcher_.StopWatchingFileDescriptor();
+      MessageLoop::current()->CancelTask(read_watcher_);
+      read_watcher_ = MessageLoop::current()->WatchFileDescriptor(
+          FROM_HERE,
+          fd_,
+          MessageLoop::WatchMode::kWatchRead,
+          false,  // persistent
+          base::Bind(&FileDescriptor::OnFileCanReadWithoutBlocking,
+                     base::Unretained(this)));
+      if (read_watcher_ == MessageLoop::kTaskIdNull) {
+        Error::AddTo(error, FROM_HERE, errors::stream::kDomain,
+                     errors::stream::kInvalidParameter,
+                     "File descriptor doesn't support watching for reading.");
+        return false;
+      }
       read_data_callback_ = data_callback;
-      base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_, false, base::MessageLoopForIO::WATCH_READ, &read_watcher_, this);
     }
     if (stream_utils::IsWriteAccessMode(mode)) {
       CHECK(write_data_callback_.is_null());
-      write_watcher_.StopWatchingFileDescriptor();
+      MessageLoop::current()->CancelTask(write_watcher_);
+      write_watcher_ = MessageLoop::current()->WatchFileDescriptor(
+          FROM_HERE,
+          fd_,
+          MessageLoop::WatchMode::kWatchWrite,
+          false,  // persistent
+          base::Bind(&FileDescriptor::OnFileCanWriteWithoutBlocking,
+                     base::Unretained(this)));
+      if (write_watcher_ == MessageLoop::kTaskIdNull) {
+        Error::AddTo(error, FROM_HERE, errors::stream::kDomain,
+                     errors::stream::kInvalidParameter,
+                     "File descriptor doesn't support watching for writing.");
+        return false;
+      }
       write_data_callback_ = data_callback;
-      base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_, false, base::MessageLoopForIO::WATCH_WRITE, &write_watcher_,
-          this);
     }
+    return true;
   }
 
   int WaitForDataBlocking(Stream::AccessMode in_mode,
@@ -137,21 +155,28 @@ class FileDescriptor : public base::MessageLoopForIO::Watcher,
 
   void CancelPendingAsyncOperations() override {
     read_data_callback_.Reset();
-    read_watcher_.StopWatchingFileDescriptor();
+    if (read_watcher_ != MessageLoop::kTaskIdNull) {
+      MessageLoop::current()->CancelTask(read_watcher_);
+      read_watcher_ = MessageLoop::kTaskIdNull;
+    }
 
     write_data_callback_.Reset();
-    write_watcher_.StopWatchingFileDescriptor();
+    if (write_watcher_ != MessageLoop::kTaskIdNull) {
+      MessageLoop::current()->CancelTask(write_watcher_);
+      write_watcher_ = MessageLoop::kTaskIdNull;
+    }
   }
 
-  // Overrides for base::MessageLoopForIO::Watcher interface methods.
-  void OnFileCanReadWithoutBlocking(int fd) override {
+  // Called from the chromeos::MessageLoop when the file descriptor is available
+  // for reading.
+  void OnFileCanReadWithoutBlocking() {
     CHECK(!read_data_callback_.is_null());
     DataCallback cb = read_data_callback_;
     read_data_callback_.Reset();
     cb.Run(Stream::AccessMode::READ);
   }
 
-  void OnFileCanWriteWithoutBlocking(int fd) override {
+  void OnFileCanWriteWithoutBlocking() {
     CHECK(!write_data_callback_.is_null());
     DataCallback cb = write_data_callback_;
     write_data_callback_.Reset();
@@ -173,9 +198,9 @@ class FileDescriptor : public base::MessageLoopForIO::Watcher,
   DataCallback read_data_callback_;
   DataCallback write_data_callback_;
 
-  // Watcher objects monitoring read/write operations on the file descriptor.
-  base::MessageLoopForIO::FileDescriptorWatcher read_watcher_;
-  base::MessageLoopForIO::FileDescriptorWatcher write_watcher_;
+  // MessageLoop tasks monitoring read/write operations on the file descriptor.
+  MessageLoop::TaskId read_watcher_{MessageLoop::kTaskIdNull};
+  MessageLoop::TaskId write_watcher_{MessageLoop::kTaskIdNull};
 
   DISALLOW_COPY_AND_ASSIGN(FileDescriptor);
 };
@@ -493,8 +518,7 @@ bool FileStream::WaitForData(
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
-  fd_interface_->WaitForData(mode, callback);
-  return true;
+  return fd_interface_->WaitForData(mode, callback, error);
 }
 
 bool FileStream::WaitForDataBlocking(AccessMode in_mode,

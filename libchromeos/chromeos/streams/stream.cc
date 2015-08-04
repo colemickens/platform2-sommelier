@@ -7,7 +7,7 @@
 #include <algorithm>
 
 #include <base/bind.h>
-#include <base/message_loop/message_loop.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <chromeos/pointer_utils.h>
 #include <chromeos/streams/stream_errors.h>
 #include <chromeos/streams/stream_utils.h>
@@ -169,9 +169,7 @@ bool Stream::FlushAsync(const base::Closure& success_callback,
   auto callback = base::Bind(&Stream::FlushAsyncCallback,
                              weak_ptr_factory_.GetWeakPtr(),
                              success_callback, error_callback);
-  CHECK(base::MessageLoop::current())
-      << "Message loop is required for asynchronous operations";
-  base::MessageLoop::current()->PostTask(FROM_HERE, callback);
+  MessageLoop::current()->PostTask(FROM_HERE, callback);
   return true;
 }
 

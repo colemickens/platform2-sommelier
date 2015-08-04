@@ -14,7 +14,7 @@
 
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/streams/openssl_stream_bio.h>
 #include <chromeos/streams/stream_utils.h>
@@ -380,8 +380,8 @@ bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
   SSL_set_connect_state(ssl_.get());
 
   // We might have no message loop (e.g. we are in unit tests).
-  if (base::MessageLoop::current()) {
-    base::MessageLoop::current()->PostTask(
+  if (MessageLoop::ThreadHasCurrent()) {
+    MessageLoop::current()->PostTask(
         FROM_HERE,
         base::Bind(&TlsStreamImpl::DoHandshake,
                    weak_ptr_factory_.GetWeakPtr(),

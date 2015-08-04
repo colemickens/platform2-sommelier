@@ -25,8 +25,14 @@ class CHROMEOS_EXPORT MessageLoop {
   // to refer to a real task.
   static const TaskId kTaskIdNull;
 
-  // Return the MessageLoop for the current thread.
+  // Return the MessageLoop for the current thread. It is a fatal error to
+  // request the current MessageLoop if SetAsCurrent() was not called on the
+  // current thread. If you really need to, use ThreadHasCurrent() to check if
+  // there is a current thread.
   static MessageLoop* current();
+
+  // Return whether there is a MessageLoop in the current thread.
+  static bool ThreadHasCurrent();
 
   // Set this message loop as the current thread main loop. Only one message
   // loop can be set at a time. Use ReleaseFromCurrent() to release it.

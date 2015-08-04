@@ -35,10 +35,10 @@ namespace chromeos {
 //      output_stream->WriteAllBlocking(buf, read, nullptr);
 //    }
 //
-// NOTE ABOUT ASYNCHRONOUS OPERATIONS: Asynchronous I/O relies on a message loop
-// to be present on the current thread. Using Stream::ReadAsync(),
-// Stream::WriteAsync() and similar will abort if base::MessageLoop::current()
-// returns nullptr.
+// NOTE ABOUT ASYNCHRONOUS OPERATIONS: Asynchronous I/O relies on a MessageLoop
+// instance to be present on the current thread. Using Stream::ReadAsync(),
+// Stream::WriteAsync() and similar will call MessageLoop::current() to access
+// the current message loop and abort if there isn't one for the current thread.
 // Also, only one outstanding asynchronous operation of particular kind (reading
 // or writing) at a time is supported. Trying to call ReadAsync() while another
 // asynchronous read operation is pending will fail with an error

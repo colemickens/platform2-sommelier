@@ -28,6 +28,10 @@ MessageLoop* MessageLoop::current() {
   return lazy_tls_ptr.Pointer()->Get();
 }
 
+bool MessageLoop::ThreadHasCurrent() {
+  return lazy_tls_ptr.Pointer()->Get() != nullptr;
+}
+
 void MessageLoop::SetAsCurrent() {
   DCHECK(lazy_tls_ptr.Pointer()->Get() == nullptr) <<
       "There's already a MessageLoop for this thread.";
