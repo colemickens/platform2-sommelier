@@ -31,6 +31,7 @@ static const char kMethodNames[] = "method-names";
 static const char kAdaptor[] = "adaptor";
 static const char kProxy[] = "proxy";
 static const char kMock[] = "mock";
+static const char kProxyPathForMocks[] = "proxy-path-in-mocks";
 static const char kServiceConfig[] = "service-config";
 static const char kHelpMessage[] = "\n"
     "generate-chromeos-dbus-bindings itf1.xml [itf2.xml...] [switches]\n"
@@ -199,13 +200,23 @@ int main(int argc, char** argv) {
      }
   }
 
+  base::FilePath proxy_include_path = proxy_path;
+  bool use_literal_include_path = false;
+  if (cl->HasSwitch(switches::kProxyPathForMocks)) {
+    std::string proxy_file_in_mocks =
+        cl->GetSwitchValueASCII(switches::kProxyPathForMocks);
+    proxy_include_path = RemoveQuotes(proxy_file_in_mocks);
+    use_literal_include_path = true;
+  }
+
   if (cl->HasSwitch(switches::kMock)) {
     std::string mock_file = cl->GetSwitchValueASCII(switches::kMock);
     base::FilePath mock_path = RemoveQuotes(mock_file);
     base::NormalizeFilePath(mock_path, &mock_path);
     VLOG(1) << "Outputting mock to " << mock_path.value();
     if (!ProxyGenerator::GenerateMocks(config, parser.interfaces(), mock_path,
-                                       proxy_path)) {
+                                       proxy_include_path,
+                                       use_literal_include_path)) {
       LOG(ERROR) << "Failed to output mock.";
       return 1;
      }

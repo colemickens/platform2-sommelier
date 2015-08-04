@@ -34,7 +34,8 @@ class ProxyGenerator : public HeaderGenerator {
   static bool GenerateMocks(const ServiceConfig& config,
                             const std::vector<Interface>& interfaces,
                             const base::FilePath& mock_file,
-                            const base::FilePath& proxy_file);
+                            const base::FilePath& proxy_file,
+                            bool use_literal_proxy_file);
 
  private:
   friend class ProxyGeneratorTest;

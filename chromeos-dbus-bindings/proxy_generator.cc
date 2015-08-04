@@ -102,7 +102,8 @@ bool ProxyGenerator::GenerateProxies(
 bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
                                    const std::vector<Interface>& interfaces,
                                    const base::FilePath& mock_file,
-                                   const base::FilePath& proxy_file) {
+                                   const base::FilePath& proxy_file,
+                                   bool use_literal_proxy_file) {
   IndentedText text;
 
   text.AddLine("// Automatic generation of D-Bus interface mock proxies for:");
@@ -127,38 +128,44 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
   if (!proxy_file.empty()) {
     // If we have a proxy header file, it would have the proxy interfaces we
     // need to base our mocks on, so we need to include that header file.
-    // Generate a relative path from |mock_file| to |proxy_file|.
+    base::FilePath relative_path;
+    if (use_literal_proxy_file) {
+      relative_path = proxy_file;
+    } else {
+      // Generate a relative path from |mock_file| to |proxy_file|.
 
-    // First, get the path components for both source and destination paths.
-    std::vector<base::FilePath::StringType> src_components;
-    mock_file.DirName().GetComponents(&src_components);
-    std::vector<base::FilePath::StringType> dest_components;
-    proxy_file.DirName().GetComponents(&dest_components);
+      // First, get the path components for both source and destination paths.
+      std::vector<base::FilePath::StringType> src_components;
+      mock_file.DirName().GetComponents(&src_components);
+      std::vector<base::FilePath::StringType> dest_components;
+      proxy_file.DirName().GetComponents(&dest_components);
 
-    // Find the common root.
+      // Find the common root.
 
-    // I wish we had C++14 and its 4-parameter version of std::mismatch()...
-    auto src_end = src_components.end();
-    if (src_components.size() > dest_components.size())
-      src_end = src_components.begin() + dest_components.size();
+      // I wish we had C++14 and its 4-parameter version of std::mismatch()...
+      auto src_end = src_components.end();
+      if (src_components.size() > dest_components.size())
+        src_end = src_components.begin() + dest_components.size();
 
-    auto mismatch_pair =
-        std::mismatch(src_components.begin(), src_end, dest_components.begin());
+      auto mismatch_pair = std::mismatch(src_components.begin(), src_end,
+                                         dest_components.begin());
 
-    // For each remaining components in the |src_components|, generate the
-    // parent directory references ("..").
-    size_t src_count = std::distance(mismatch_pair.first, src_components.end());
-    std::vector<base::FilePath::StringType> components{
-        src_count, base::FilePath::kParentDirectory};
-    // Append the remaining components from |dest_components|.
-    components.insert(components.end(),
-                      mismatch_pair.second, dest_components.end());
-    // Finally, add the base name of the target file name.
-    components.push_back(proxy_file.BaseName().value());
-    // Now reconstruct the relative path.
-    base::FilePath relative_path{base::FilePath::kCurrentDirectory};
-    for (const auto& component : components)
-      relative_path = relative_path.Append(component);
+      // For each remaining components in the |src_components|, generate the
+      // parent directory references ("..").
+      size_t src_count = std::distance(mismatch_pair.first,
+                                       src_components.end());
+      std::vector<base::FilePath::StringType> components{
+          src_count, base::FilePath::kParentDirectory};
+      // Append the remaining components from |dest_components|.
+      components.insert(components.end(),
+                        mismatch_pair.second, dest_components.end());
+      // Finally, add the base name of the target file name.
+      components.push_back(proxy_file.BaseName().value());
+      // Now reconstruct the relative path.
+      relative_path = base::FilePath{base::FilePath::kCurrentDirectory};
+      for (const auto& component : components)
+        relative_path = relative_path.Append(component);
+    }
     text.AddLine(StringPrintf("#include \"%s\"",
                               relative_path.value().c_str()));
     text.AddBlankLine();
