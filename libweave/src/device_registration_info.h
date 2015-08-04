@@ -24,6 +24,7 @@
 #include <chromeos/http/http_transport.h>
 #include <weave/cloud.h>
 #include <weave/config.h>
+#include <weave/http_client.h>
 
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
@@ -42,10 +43,14 @@ namespace chromeos {
 class KeyValueStore;
 }  // namespace chromeos
 
+namespace buffet {
+class HttpTransportClient;
+}  // namespace buffet
+
 namespace weave {
 
-class StateManager;
 class Network;
+class StateManager;
 
 extern const char kErrorDomainOAuth2[];
 extern const char kErrorDomainGCD[];
@@ -97,11 +102,6 @@ class DeviceRegistrationInfo : public Cloud,
 
   // Add callback to listen for changes in config.
   void AddOnConfigChangedCallback(const Config::OnChangedCallback& callback);
-
-  // Returns the authorization HTTP header that can be used to talk
-  // to GCD server for authenticated device communication.
-  // Make sure ValidateAndRefreshAccessToken() is called before this call.
-  std::pair<std::string, std::string> GetAuthorizationHeader() const;
 
   // Returns the GCD service request URL. If |subpath| is specified, it is
   // appended to the base URL which is normally
@@ -175,18 +175,18 @@ class DeviceRegistrationInfo : public Cloud,
   void OnRefreshAccessTokenSuccess(
       const std::shared_ptr<base::Closure>& success_callback,
       const std::shared_ptr<CloudRequestErrorCallback>& error_callback,
-      chromeos::http::RequestID id,
-      std::unique_ptr<chromeos::http::Response> response);
+      int id,
+      const HttpClient::Response& response);
   void OnRefreshAccessTokenError(
       const std::shared_ptr<base::Closure>& success_callback,
       const std::shared_ptr<CloudRequestErrorCallback>& error_callback,
-      chromeos::http::RequestID id,
+      int id,
       const chromeos::Error* error);
 
   // Parse the OAuth response, and sets registration status to
   // kInvalidCredentials if our registration is no longer valid.
   std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
-      chromeos::http::Response* response,
+      const HttpClient::Response& response,
       chromeos::ErrorPtr* error);
 
   // This attempts to open a notification channel. The channel needs to be
@@ -215,10 +215,10 @@ class DeviceRegistrationInfo : public Cloud,
   void SendCloudRequest(const std::shared_ptr<const CloudRequestData>& data);
   void OnCloudRequestSuccess(
       const std::shared_ptr<const CloudRequestData>& data,
-      chromeos::http::RequestID request_id,
-      std::unique_ptr<chromeos::http::Response> response);
+      int request_id,
+      const HttpClient::Response& response);
   void OnCloudRequestError(const std::shared_ptr<const CloudRequestData>& data,
-                           chromeos::http::RequestID request_id,
+                           int request_id,
                            const chromeos::Error* error);
   void RetryCloudRequest(const std::shared_ptr<const CloudRequestData>& data);
   void OnAccessTokenRefreshed(
@@ -305,7 +305,10 @@ class DeviceRegistrationInfo : public Cloud,
   bool connected_to_cloud_{false};
 
   // HTTP transport used for communications.
-  std::shared_ptr<chromeos::http::Transport> transport_;
+  // TODO(vitalybuka): Move to buffet.
+  std::unique_ptr<buffet::HttpTransportClient> http_client_owner_;
+  HttpClient* http_client_;
+
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   // Global command manager.
   std::shared_ptr<CommandManager> command_manager_;

@@ -11,23 +11,25 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error_codes.h>
-#include <chromeos/http/http_utils.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
+#include <weave/http_client.h>
 #include <weave/network.h>
 
 #include "libweave/src/commands/cloud_command_proxy.h"
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/http_transport_client.h"
 #include "libweave/src/notification/xmpp_channel.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
@@ -40,12 +42,23 @@ const char kErrorDomainGCDServer[] = "gcd_server";
 
 namespace {
 
+const int kHttpStatusContinue = 100;
+const int kHttpStatusBadRequest = 400;
+const int kHttpStatusDenied = 401;
+const int kHttpStatusForbidden = 403;
+const int kHttpStatusInternalServerError = 500;
+
+const char kGet[] = "GET";
+const char kPatch[] = "PATCH";
+const char kPost[] = "POST";
+const char kPut[] = "PUT";
+
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
     const std::string& access_token) {
   std::string authorization =
       chromeos::string_utils::Join(" ", access_token_type, access_token);
-  return {chromeos::http::request_header::kAuthorization, authorization};
+  return {"Authorization", authorization};
 }
 
 inline void SetUnexpectedError(chromeos::ErrorPtr* error) {
@@ -105,6 +118,105 @@ void IgnoreCloudResultWithCallback(const base::Closure& cb,
   cb.Run();
 }
 
+class RequestSender final {
+ public:
+  RequestSender(const std::string& method,
+                const std::string& url,
+                HttpClient* transport)
+      : method_{method}, url_{url}, transport_{transport} {}
+
+  std::unique_ptr<HttpClient::Response> SendAndBlock(
+      chromeos::ErrorPtr* error) {
+    return transport_->SendRequestAndBlock(method_, url_, data_, mime_type_,
+                                           headers_, error);
+  }
+
+  int Send(const HttpClient::SuccessCallback& success_callback,
+           const HttpClient::ErrorCallback& error_callback) {
+    return transport_->SendRequest(method_, url_, data_, mime_type_, headers_,
+                                   success_callback, error_callback);
+  }
+
+  void AddAuthHeader(const std::string& access_token) {
+    headers_.emplace_back(BuildAuthHeader("Bearer", access_token));
+  }
+
+  void SetData(const std::string& data, const std::string& mime_type) {
+    data_ = data;
+    mime_type_ = mime_type;
+  }
+
+  void SetFormData(
+      const std::vector<std::pair<std::string, std::string>>& data) {
+    data_ = chromeos::data_encoding::WebParamsEncode(data);
+    mime_type_ = chromeos::mime::application::kWwwFormUrlEncoded;
+  }
+
+  void SetJsonData(const base::Value& json) {
+    std::string data;
+    CHECK(base::JSONWriter::Write(json, &data_));
+    mime_type_ = chromeos::mime::AppendParameter(
+        chromeos::mime::application::kJson,
+        chromeos::mime::parameters::kCharset, "utf-8");
+  }
+
+ private:
+  std::string method_;
+  std::string url_;
+  std::string data_;
+  std::string mime_type_;
+  std::vector<std::pair<std::string, std::string>> headers_;
+  HttpClient* transport_{nullptr};
+
+  DISALLOW_COPY_AND_ASSIGN(RequestSender);
+};
+
+std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
+    const HttpClient::Response& response,
+    chromeos::ErrorPtr* error) {
+  // Make sure we have a correct content type. Do not try to parse
+  // binary files, or HTML output. Limit to application/json and text/plain.
+  auto content_type =
+      chromeos::mime::RemoveParameters(response.GetContentType());
+  if (content_type != chromeos::mime::application::kJson &&
+      content_type != chromeos::mime::text::kPlain) {
+    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
+                           "non_json_content_type",
+                           "Unexpected response content type: " + content_type);
+    return std::unique_ptr<base::DictionaryValue>();
+  }
+
+  const std::string& json = response.GetData();
+  std::string error_message;
+  auto value = base::JSONReader::ReadAndReturnError(json, base::JSON_PARSE_RFC,
+                                                    nullptr, &error_message);
+  if (!value) {
+    chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                 chromeos::errors::json::kDomain,
+                                 chromeos::errors::json::kParseError,
+                                 "Error '%s' occurred parsing JSON string '%s'",
+                                 error_message.c_str(), json.c_str());
+    return std::unique_ptr<base::DictionaryValue>();
+  }
+  base::DictionaryValue* dict_value = nullptr;
+  if (!value->GetAsDictionary(&dict_value)) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::json::kDomain,
+        chromeos::errors::json::kObjectExpected,
+        "Response is not a valid JSON object: '%s'", json.c_str());
+    return std::unique_ptr<base::DictionaryValue>();
+  } else {
+    // |value| is now owned by |dict_value|, so release the scoped_ptr now.
+    base::IgnoreResult(value.release());
+  }
+  return std::unique_ptr<base::DictionaryValue>(dict_value);
+}
+
+bool IsSuccessful(const HttpClient::Response& response) {
+  int code = response.GetStatusCode();
+  return code >= kHttpStatusContinue && code < kHttpStatusBadRequest;
+}
+
 }  // anonymous namespace
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
@@ -114,8 +226,9 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
     bool notifications_enabled,
-    weave::Network* network)
-    : transport_{transport},
+    Network* network)
+    : http_client_owner_{new buffet::HttpTransportClient{transport}},
+      http_client_{http_client_owner_.get()},
       task_runner_{task_runner},
       command_manager_{command_manager},
       state_manager_{state_manager},
@@ -143,11 +256,6 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
 }
 
 DeviceRegistrationInfo::~DeviceRegistrationInfo() = default;
-
-std::pair<std::string, std::string>
-DeviceRegistrationInfo::GetAuthorizationHeader() const {
-  return BuildAuthHeader("Bearer", access_token_);
-}
 
 std::string DeviceRegistrationInfo::GetServiceURL(
     const std::string& subpath,
@@ -212,11 +320,11 @@ bool DeviceRegistrationInfo::VerifyRegistrationCredentials(
 }
 
 std::unique_ptr<base::DictionaryValue>
-DeviceRegistrationInfo::ParseOAuthResponse(chromeos::http::Response* response,
+DeviceRegistrationInfo::ParseOAuthResponse(const HttpClient::Response& response,
                                            chromeos::ErrorPtr* error) {
-  int code = 0;
-  auto resp = chromeos::http::ParseJsonResponse(response, &code, error);
-  if (resp && code >= chromeos::http::status_code::BadRequest) {
+  int code = response.GetStatusCode();
+  auto resp = ParseJsonResponse(response, error);
+  if (resp && code >= kHttpStatusBadRequest) {
     std::string error_code, error_message;
     if (!resp->GetString("error", &error_code)) {
       error_code = "unexpected_response";
@@ -267,15 +375,14 @@ void DeviceRegistrationInfo::RefreshAccessToken(
   auto shared_error_callback =
       std::make_shared<CloudRequestErrorCallback>(error_callback);
 
-  chromeos::http::FormFieldList form_data{
+  RequestSender sender{kPost, GetOAuthURL("token"), http_client_};
+  sender.SetFormData({
       {"refresh_token", config_->refresh_token()},
       {"client_id", config_->client_id()},
       {"client_secret", config_->client_secret()},
       {"grant_type", "refresh_token"},
-  };
-
-  chromeos::http::RequestID request_id = chromeos::http::PostFormData(
-      GetOAuthURL("token"), form_data, {}, transport_,
+  });
+  int request_id = sender.Send(
       base::Bind(&DeviceRegistrationInfo::OnRefreshAccessTokenSuccess,
                  weak_factory_.GetWeakPtr(), shared_success_callback,
                  shared_error_callback),
@@ -289,12 +396,12 @@ void DeviceRegistrationInfo::RefreshAccessToken(
 void DeviceRegistrationInfo::OnRefreshAccessTokenSuccess(
     const std::shared_ptr<base::Closure>& success_callback,
     const std::shared_ptr<CloudRequestErrorCallback>& error_callback,
-    chromeos::http::RequestID id,
-    std::unique_ptr<chromeos::http::Response> response) {
+    int id,
+    const HttpClient::Response& response) {
   VLOG(1) << "Refresh access token request with ID " << id << " completed";
   oauth2_backoff_entry_->InformOfRequest(true);
   chromeos::ErrorPtr error;
-  auto json = ParseOAuthResponse(response.get(), &error);
+  auto json = ParseOAuthResponse(response, &error);
   if (!json) {
     error_callback->Run(error.get());
     return;
@@ -328,7 +435,7 @@ void DeviceRegistrationInfo::OnRefreshAccessTokenSuccess(
 void DeviceRegistrationInfo::OnRefreshAccessTokenError(
     const std::shared_ptr<base::Closure>& success_callback,
     const std::shared_ptr<CloudRequestErrorCallback>& error_callback,
-    chromeos::http::RequestID id,
+    int id,
     const chromeos::Error* error) {
   VLOG(1) << "Refresh access token request with ID " << id << " failed";
   oauth2_backoff_entry_->InformOfRequest(false);
@@ -430,8 +537,8 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
 void DeviceRegistrationInfo::GetDeviceInfo(
     const CloudRequestCallback& success_callback,
     const CloudRequestErrorCallback& error_callback) {
-  DoCloudRequest(chromeos::http::request_type::kGet, GetDeviceURL(), nullptr,
-                 success_callback, error_callback);
+  DoCloudRequest(weave::kGet, GetDeviceURL(), nullptr, success_callback,
+                 error_callback);
 }
 
 std::string DeviceRegistrationInfo::RegisterDevice(const std::string& ticket_id,
@@ -448,27 +555,30 @@ std::string DeviceRegistrationInfo::RegisterDevice(const std::string& ticket_id,
 
   auto url = GetServiceURL("registrationTickets/" + ticket_id,
                            {{"key", config_->api_key()}});
-  std::unique_ptr<chromeos::http::Response> response =
-      chromeos::http::PatchJsonAndBlock(url, &req_json, {}, transport_, error);
-  auto json_resp =
-      chromeos::http::ParseJsonResponse(response.get(), nullptr, error);
+
+  RequestSender sender{kPatch, url, http_client_};
+  sender.SetJsonData(req_json);
+  auto response = sender.SendAndBlock(error);
+
+  if (!response)
+    return std::string();
+  auto json_resp = ParseJsonResponse(*response, error);
   if (!json_resp)
     return std::string();
-  if (!response->IsSuccessful()) {
+  if (!IsSuccessful(*response)) {
     ParseGCDError(json_resp.get(), error);
     return std::string();
   }
 
   url = GetServiceURL("registrationTickets/" + ticket_id + "/finalize",
                       {{"key", config_->api_key()}});
-  response = chromeos::http::SendRequestWithNoDataAndBlock(
-      chromeos::http::request_type::kPost, url, {}, transport_, error);
+  response = RequestSender{kPost, url, http_client_}.SendAndBlock(error);
   if (!response)
     return std::string();
-  json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr, error);
+  json_resp = ParseJsonResponse(*response, error);
   if (!json_resp)
     return std::string();
-  if (!response->IsSuccessful()) {
+  if (!IsSuccessful(*response)) {
     ParseGCDError(json_resp.get(), error);
     return std::string();
   }
@@ -490,19 +600,20 @@ std::string DeviceRegistrationInfo::RegisterDevice(const std::string& ticket_id,
   UpdateDeviceInfoTimestamp(*device_draft_response);
 
   // Now get access_token and refresh_token
-  response = chromeos::http::PostFormDataAndBlock(
-      GetOAuthURL("token"),
+  RequestSender sender2{kPost, GetOAuthURL("token"), http_client_};
+  sender2.SetFormData(
       {{"code", auth_code},
        {"client_id", config_->client_id()},
        {"client_secret", config_->client_secret()},
        {"redirect_uri", "oob"},
        {"scope", "https://www.googleapis.com/auth/clouddevices"},
-       {"grant_type", "authorization_code"}},
-      {}, transport_, error);
+       {"grant_type", "authorization_code"}});
+  response = sender2.SendAndBlock(error);
+
   if (!response)
     return std::string();
 
-  json_resp = ParseOAuthResponse(response.get(), error);
+  json_resp = ParseOAuthResponse(*response, error);
   int expires_in = 0;
   std::string refresh_token;
   if (!json_resp || !json_resp->GetString("access_token", &access_token_) ||
@@ -582,24 +693,25 @@ void DeviceRegistrationInfo::SendCloudRequest(
   const std::string mime_type =
       chromeos::mime::AppendParameter(kJson, kCharset, "utf-8");
 
-  chromeos::http::RequestID request_id = chromeos::http::SendRequest(
-      data->method, data->url, data->body.c_str(), data->body.size(), mime_type,
-      {GetAuthorizationHeader()}, transport_,
-      base::Bind(&DeviceRegistrationInfo::OnCloudRequestSuccess, AsWeakPtr(),
-                 data),
-      base::Bind(&DeviceRegistrationInfo::OnCloudRequestError, AsWeakPtr(),
-                 data));
+  RequestSender sender{data->method, data->url, http_client_};
+  sender.SetData(data->body, mime_type);
+  sender.AddAuthHeader(access_token_);
+  int request_id =
+      sender.Send(base::Bind(&DeviceRegistrationInfo::OnCloudRequestSuccess,
+                             AsWeakPtr(), data),
+                  base::Bind(&DeviceRegistrationInfo::OnCloudRequestError,
+                             AsWeakPtr(), data));
   VLOG(1) << "Cloud request with ID " << request_id << " successfully sent";
 }
 
 void DeviceRegistrationInfo::OnCloudRequestSuccess(
     const std::shared_ptr<const CloudRequestData>& data,
-    chromeos::http::RequestID request_id,
-    std::unique_ptr<chromeos::http::Response> response) {
-  int status_code = response->GetStatusCode();
+    int request_id,
+    const HttpClient::Response& response) {
+  int status_code = response.GetStatusCode();
   VLOG(1) << "Response for cloud request with ID " << request_id
           << " received with status code " << status_code;
-  if (status_code == chromeos::http::status_code::Denied) {
+  if (status_code == kHttpStatusDenied) {
     cloud_backoff_entry_->InformOfRequest(true);
     RefreshAccessToken(
         base::Bind(&DeviceRegistrationInfo::OnAccessTokenRefreshed, AsWeakPtr(),
@@ -609,7 +721,7 @@ void DeviceRegistrationInfo::OnCloudRequestSuccess(
     return;
   }
 
-  if (status_code >= chromeos::http::status_code::InternalServerError) {
+  if (status_code >= kHttpStatusInternalServerError) {
     // Request was valid, but server failed, retry.
     // TODO(antonm): Reconsider status codes, maybe only some require
     // retry.
@@ -619,17 +731,16 @@ void DeviceRegistrationInfo::OnCloudRequestSuccess(
   }
 
   chromeos::ErrorPtr error;
-  auto json_resp =
-      chromeos::http::ParseJsonResponse(response.get(), nullptr, &error);
+  auto json_resp = ParseJsonResponse(response, &error);
   if (!json_resp) {
     data->error_callback.Run(error.get());
     cloud_backoff_entry_->InformOfRequest(true);
     return;
   }
 
-  if (!response->IsSuccessful()) {
+  if (!IsSuccessful(response)) {
     ParseGCDError(json_resp.get(), &error);
-    if (status_code == chromeos::http::status_code::Forbidden &&
+    if (status_code == kHttpStatusForbidden &&
         error->HasError(kErrorDomainGCDServer, "rateLimitExceeded")) {
       // If we exceeded server quota, retry the request later.
       RetryCloudRequest(data);
@@ -647,7 +758,7 @@ void DeviceRegistrationInfo::OnCloudRequestSuccess(
 
 void DeviceRegistrationInfo::OnCloudRequestError(
     const std::shared_ptr<const CloudRequestData>& data,
-    chromeos::http::RequestID request_id,
+    int request_id,
     const chromeos::Error* error) {
   VLOG(1) << "Cloud request with ID " << request_id << " failed";
   RetryCloudRequest(data);
@@ -776,8 +887,8 @@ void DeviceRegistrationInfo::UpdateCommand(
     const base::DictionaryValue& command_patch,
     const base::Closure& on_success,
     const base::Closure& on_error) {
-  DoCloudRequest(chromeos::http::request_type::kPatch,
-                 GetServiceURL("commands/" + command_id), &command_patch,
+  DoCloudRequest(weave::kPatch, GetServiceURL("commands/" + command_id),
+                 &command_patch,
                  base::Bind(&IgnoreCloudResultWithCallback, on_success),
                  base::Bind(&IgnoreCloudErrorWithCallback, on_error));
 }
@@ -853,7 +964,7 @@ void DeviceRegistrationInfo::StartQueuedUpdateDeviceResource() {
       {}, {{"lastUpdateTimeMs", last_device_resource_updated_timestamp_}});
 
   DoCloudRequest(
-      chromeos::http::request_type::kPut, url, device_resource.get(),
+      weave::kPut, url, device_resource.get(),
       base::Bind(&DeviceRegistrationInfo::OnUpdateDeviceResourceSuccess,
                  AsWeakPtr()),
       base::Bind(&DeviceRegistrationInfo::OnUpdateDeviceResourceError,
@@ -934,7 +1045,7 @@ void DeviceRegistrationInfo::FetchCommands(
     const base::Callback<void(const base::ListValue&)>& on_success,
     const CloudRequestErrorCallback& on_failure) {
   DoCloudRequest(
-      chromeos::http::request_type::kGet,
+      weave::kGet,
       GetServiceURL("commands/queue", {{"deviceId", config_->device_id()}}),
       nullptr, base::Bind(&HandleFetchCommandsResult, on_success), on_failure);
 }
@@ -970,9 +1081,8 @@ void DeviceRegistrationInfo::ProcessInitialCommandList(
       std::unique_ptr<base::DictionaryValue> cmd_copy{command_dict->DeepCopy()};
       cmd_copy->SetString("state", "aborted");
       // TODO(wiley) We could consider handling this error case more gracefully.
-      DoCloudRequest(chromeos::http::request_type::kPut,
-                     GetServiceURL("commands/" + command_id), cmd_copy.get(),
-                     base::Bind(&IgnoreCloudResult),
+      DoCloudRequest(weave::kPut, GetServiceURL("commands/" + command_id),
+                     cmd_copy.get(), base::Bind(&IgnoreCloudResult),
                      base::Bind(&IgnoreCloudError));
     } else {
       // Normal command, publish it to local clients.
@@ -1015,8 +1125,8 @@ void DeviceRegistrationInfo::PublishCommand(
     std::unique_ptr<CloudCommandProxy> cloud_proxy{new CloudCommandProxy{
         command_instance.get(), this, state_manager_->GetStateChangeQueue(),
         std::move(backoff_entry), task_runner_}};
-    // CloudCommandProxy::CloudCommandProxy() subscribe itself to weave::Command
-    // notifications. When weave::Command is being destroyed it sends
+    // CloudCommandProxy::CloudCommandProxy() subscribe itself to Command
+    // notifications. When Command is being destroyed it sends
     // ::OnCommandDestroyed() and CloudCommandProxy deletes itself.
     cloud_proxy.release();
     command_manager_->AddCommand(std::move(command_instance));
@@ -1063,7 +1173,7 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
 
   device_state_update_pending_ = true;
   DoCloudRequest(
-      chromeos::http::request_type::kPost, GetDeviceURL("patchState"), &body,
+      weave::kPost, GetDeviceURL("patchState"), &body,
       base::Bind(&DeviceRegistrationInfo::OnPublishStateSuccess, AsWeakPtr(),
                  update_id),
       base::Bind(&DeviceRegistrationInfo::OnPublishStateError, AsWeakPtr()));
