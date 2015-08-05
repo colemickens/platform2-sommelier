@@ -43,10 +43,6 @@ namespace chromeos {
 class KeyValueStore;
 }  // namespace chromeos
 
-namespace buffet {
-class HttpTransportClient;
-}  // namespace buffet
-
 namespace weave {
 
 class Network;
@@ -70,7 +66,7 @@ class DeviceRegistrationInfo : public Cloud,
       const std::shared_ptr<CommandManager>& command_manager,
       const std::shared_ptr<StateManager>& state_manager,
       std::unique_ptr<BuffetConfig> config,
-      const std::shared_ptr<chromeos::http::Transport>& transport,
+      HttpClient* http_client,
       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
       bool notifications_enabled,
       weave::Network* network);
@@ -305,9 +301,7 @@ class DeviceRegistrationInfo : public Cloud,
   bool connected_to_cloud_{false};
 
   // HTTP transport used for communications.
-  // TODO(vitalybuka): Move to buffet.
-  std::unique_ptr<buffet::HttpTransportClient> http_client_owner_;
-  HttpClient* http_client_;
+  HttpClient* http_client_{nullptr};
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   // Global command manager.

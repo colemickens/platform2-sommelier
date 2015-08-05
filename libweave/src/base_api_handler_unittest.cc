@@ -6,8 +6,8 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <chromeos/http/http_transport_fake.h>
 #include <gtest/gtest.h>
+#include <weave/mock_http_client.h>
 
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
@@ -59,7 +59,7 @@ class BaseApiHandlerTest : public ::testing::Test {
         command_manager_, state_manager_,
         std::unique_ptr<BuffetConfig>{new BuffetConfig{
             std::unique_ptr<StorageInterface>{new MemStorage}}},
-        transport_, nullptr, true, nullptr));
+        &http_client_, nullptr, true, nullptr));
     handler_.reset(
         new BaseApiHandler{dev_reg_.get(), state_manager_, command_manager_});
   }
@@ -84,7 +84,7 @@ class BaseApiHandlerTest : public ::testing::Test {
               command_manager_->FindCommand(id)->GetStatus());
   }
 
-  std::shared_ptr<chromeos::http::fake::Transport> transport_;
+  StrictMock<unittests::MockHttpClient> http_client_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
   testing::StrictMock<MockStateChangeQueueInterface> mock_state_change_queue_;

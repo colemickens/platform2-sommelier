@@ -91,6 +91,7 @@
       'sources': [
         'src/commands/mock_command.cc',
         'src/commands/unittest_utils.cc',
+        'src/mock_http_client.cc',
       ],
       'includes': ['../common-mk/deps.gypi'],
     },

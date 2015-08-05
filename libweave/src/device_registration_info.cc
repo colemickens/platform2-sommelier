@@ -29,7 +29,6 @@
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/schema_constants.h"
-#include "libweave/src/http_transport_client.h"
 #include "libweave/src/notification/xmpp_channel.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
@@ -223,12 +222,11 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
     std::unique_ptr<BuffetConfig> config,
-    const std::shared_ptr<chromeos::http::Transport>& transport,
+    HttpClient* http_client,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
     bool notifications_enabled,
     Network* network)
-    : http_client_owner_{new buffet::HttpTransportClient{transport}},
-      http_client_{http_client_owner_.get()},
+    : http_client_{http_client},
       task_runner_{task_runner},
       command_manager_{command_manager},
       state_manager_{state_manager},

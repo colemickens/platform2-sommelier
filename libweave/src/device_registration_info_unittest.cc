@@ -10,11 +10,10 @@
 #include <base/run_loop.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
-#include <chromeos/http/http_request.h>
-#include <chromeos/http/http_transport_fake.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/mime_utils.h>
 #include <gtest/gtest.h>
+#include <weave/mock_http_client.h>
 
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/unittest_utils.h"
@@ -23,15 +22,22 @@
 #include "libweave/src/storage_impls.h"
 
 using testing::_;
+using testing::AtLeast;
+using testing::Invoke;
+using testing::InvokeWithoutArgs;
+using testing::Mock;
 using testing::Return;
+using testing::ReturnRef;
+using testing::ReturnRefOfCopy;
 using testing::StrictMock;
+using testing::WithArgs;
 
 namespace weave {
 
-using chromeos::http::fake::ServerRequest;
-using chromeos::http::fake::ServerResponse;
-using chromeos::http::request_header::kAuthorization;
 using unittests::CreateDictionaryValue;
+using unittests::CreateValue;
+using unittests::MockHttpClient;
+using unittests::MockHttpClientResponse;
 
 namespace {
 
@@ -59,16 +65,7 @@ const char kRobotAccountAuthCode[] =
 const char kRobotAccountEmail[] =
     "6ed0b3f54f9bd619b942f4ad2441c252@"
     "clouddevices.gserviceaccount.com";
-const char kUserAccountAuthCode[] =
-    "2/sd_GD1TGFKpJOLJ34-0g5fK0fflp.GlT"
-    "I0F5g7hNtFgj5HFGOf8FlGK9eflO";
-const char kUserAccessToken[] =
-    "sd56.4.FGDjG_F-gFGF-dFG6gGOG9Dxm5NgdS9"
-    "JMx_JLUqhC9bED_YFjLKjlkjLKJlkjLKjlKJea"
-    "VZDei530-w0yE2urpQ";
-const char kUserRefreshToken[] =
-    "1/zQLKjlKJlkLkLKjLkjLKjLkjLjLkjl0ftc6"
-    "cp1nI-GQ";
+
 }  // namespace test_data
 
 // Add the test device registration information.
@@ -78,101 +75,36 @@ void SetDefaultDeviceRegistration(base::DictionaryValue* data) {
   data->SetString("robot_account", test_data::kRobotAccountEmail);
 }
 
-void OAuth2Handler(const ServerRequest& request, ServerResponse* response) {
-  base::DictionaryValue json;
-  if (request.GetFormField("grant_type") == "refresh_token") {
-    // Refresh device access token.
-    EXPECT_EQ(test_data::kRefreshToken, request.GetFormField("refresh_token"));
-    EXPECT_EQ(test_data::kClientId, request.GetFormField("client_id"));
-    EXPECT_EQ(test_data::kClientSecret, request.GetFormField("client_secret"));
-    json.SetString("access_token", test_data::kAccessToken);
-  } else if (request.GetFormField("grant_type") == "authorization_code") {
-    // Obtain access token.
-    std::string code = request.GetFormField("code");
-    if (code == test_data::kUserAccountAuthCode) {
-      // Get user access token.
-      EXPECT_EQ(test_data::kClientId, request.GetFormField("client_id"));
-      EXPECT_EQ(test_data::kClientSecret,
-                request.GetFormField("client_secret"));
-      EXPECT_EQ("urn:ietf:wg:oauth:2.0:oob",
-                request.GetFormField("redirect_uri"));
-      json.SetString("access_token", test_data::kUserAccessToken);
-      json.SetString("token_type", "Bearer");
-      json.SetString("refresh_token", test_data::kUserRefreshToken);
-    } else if (code == test_data::kRobotAccountAuthCode) {
-      // Get device access token.
-      EXPECT_EQ(test_data::kClientId, request.GetFormField("client_id"));
-      EXPECT_EQ(test_data::kClientSecret,
-                request.GetFormField("client_secret"));
-      EXPECT_EQ("oob", request.GetFormField("redirect_uri"));
-      EXPECT_EQ("https://www.googleapis.com/auth/clouddevices",
-                request.GetFormField("scope"));
-      json.SetString("access_token", test_data::kAccessToken);
-      json.SetString("token_type", "Bearer");
-      json.SetString("refresh_token", test_data::kRefreshToken);
-    } else {
-      FAIL() << "Unexpected authorization code";
-    }
-  } else {
-    FAIL() << "Unexpected grant type";
+std::string GetFormField(const std::string& data, const std::string& name) {
+  EXPECT_FALSE(data.empty());
+  for (const auto& i : chromeos::data_encoding::WebParamsDecode(data)) {
+    if (i.first == name)
+      return i.second;
   }
-  json.SetInteger("expires_in", 3600);
-  response->ReplyJson(chromeos::http::status_code::Ok, &json);
+  return {};
 }
 
-void OAuth2HandlerFail(const ServerRequest& request, ServerResponse* response) {
-  base::DictionaryValue json;
-  EXPECT_EQ("refresh_token", request.GetFormField("grant_type"));
-  EXPECT_EQ(test_data::kRefreshToken, request.GetFormField("refresh_token"));
-  EXPECT_EQ(test_data::kClientId, request.GetFormField("client_id"));
-  EXPECT_EQ(test_data::kClientSecret, request.GetFormField("client_secret"));
-  json.SetString("error", "unable_to_authenticate");
-  response->ReplyJson(chromeos::http::status_code::BadRequest, &json);
+HttpClient::Response* ReplyWithJson(int status_code, const base::Value& json) {
+  std::string text;
+  base::JSONWriter::WriteWithOptions(
+      json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
+
+  MockHttpClientResponse* response = new StrictMock<MockHttpClientResponse>;
+  EXPECT_CALL(*response, GetStatusCode())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(status_code));
+  EXPECT_CALL(*response, GetContentType())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return("application/json"));
+  EXPECT_CALL(*response, GetData())
+      .Times(AtLeast(1))
+      .WillRepeatedly(ReturnRefOfCopy(text));
+  return response;
 }
 
-void OAuth2HandlerDeregister(const ServerRequest& request,
-                             ServerResponse* response) {
-  base::DictionaryValue json;
-  EXPECT_EQ("refresh_token", request.GetFormField("grant_type"));
-  EXPECT_EQ(test_data::kRefreshToken, request.GetFormField("refresh_token"));
-  EXPECT_EQ(test_data::kClientId, request.GetFormField("client_id"));
-  EXPECT_EQ(test_data::kClientSecret, request.GetFormField("client_secret"));
-  json.SetString("error", "invalid_grant");
-  response->ReplyJson(chromeos::http::status_code::BadRequest, &json);
-}
-
-void DeviceInfoHandler(const ServerRequest& request, ServerResponse* response) {
-  std::string auth = "Bearer ";
-  auth += test_data::kAccessToken;
-  EXPECT_EQ(auth,
-            request.GetHeader(chromeos::http::request_header::kAuthorization));
-  response->ReplyJson(chromeos::http::status_code::Ok,
-                      {
-                          {"channel.supportedType", "xmpp"},
-                          {"deviceKind", "vendor"},
-                          {"id", test_data::kDeviceId},
-                          {"kind", "clouddevices#device"},
-                      });
-}
-
-void FinalizeTicketHandler(const ServerRequest& request,
-                           ServerResponse* response) {
-  EXPECT_EQ(test_data::kApiKey, request.GetFormField("key"));
-  EXPECT_TRUE(request.GetData().empty());
-
-  response->ReplyJson(
-      chromeos::http::status_code::Ok,
-      {
-          {"id", test_data::kClaimTicketId},
-          {"kind", "clouddevices#registrationTicket"},
-          {"oauthClientId", test_data::kClientId},
-          {"userEmail", "user@email.com"},
-          {"deviceDraft.id", test_data::kDeviceId},
-          {"deviceDraft.kind", "clouddevices#device"},
-          {"deviceDraft.channel.supportedType", "xmpp"},
-          {"robotAccountEmail", test_data::kRobotAccountEmail},
-          {"robotAccountAuthorizationCode", test_data::kRobotAccountAuthCode},
-      });
+std::pair<std::string, std::string> GetAuthHeader() {
+  return {std::string{"Authorization"},
+          std::string{"Bearer "} + test_data::kAccessToken};
 }
 
 }  // anonymous namespace
@@ -188,19 +120,14 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     std::unique_ptr<StorageInterface> storage{new MemStorage};
     storage_ = storage.get();
     storage->Save(data_);
-    transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
 
     std::unique_ptr<BuffetConfig> config{new BuffetConfig{std::move(storage)}};
     config_ = config.get();
-    dev_reg_.reset(new DeviceRegistrationInfo{command_manager_,
-                                              state_manager_,
-                                              std::move(config),
-                                              transport_,
-                                              nullptr,
-                                              true,
-                                              nullptr});
+    dev_reg_.reset(new DeviceRegistrationInfo{command_manager_, state_manager_,
+                                              std::move(config), &http_client_,
+                                              nullptr, true, nullptr});
 
     ReloadConfig();
   }
@@ -252,10 +179,10 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     return dev_reg_->registration_status_;
   }
 
+  StrictMock<MockHttpClient> http_client_;
   base::DictionaryValue data_;
   StorageInterface* storage_{nullptr};
   BuffetConfig* config_{nullptr};
-  std::shared_ptr<chromeos::http::fake::Transport> transport_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
   StrictMock<MockStateChangeQueueInterface> mock_state_change_queue_;
@@ -298,18 +225,30 @@ TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
 
 TEST_F(DeviceRegistrationInfoTest, HaveRegistrationCredentials) {
   EXPECT_FALSE(dev_reg_->HaveRegistrationCredentials());
-  EXPECT_EQ(0, transport_->GetRequestCount());
-
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(data_);
   ReloadConfig();
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
-                         chromeos::http::request_type::kPost,
-                         base::Bind(OAuth2Handler));
-  transport_->ResetRequestCount();
+  EXPECT_CALL(http_client_,
+              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
+                              "application/x-www-form-urlencoded",
+                              HttpClient::Headers{}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_EQ("refresh_token", GetFormField(data, "grant_type"));
+        EXPECT_EQ(test_data::kRefreshToken,
+                  GetFormField(data, "refresh_token"));
+        EXPECT_EQ(test_data::kClientId, GetFormField(data, "client_id"));
+        EXPECT_EQ(test_data::kClientSecret,
+                  GetFormField(data, "client_secret"));
+
+        base::DictionaryValue json;
+        json.SetString("access_token", test_data::kAccessToken);
+        json.SetInteger("expires_in", 3600);
+
+        return ReplyWithJson(200, json);
+      })));
+
   EXPECT_TRUE(RefreshAccessToken(nullptr));
-  EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(dev_reg_->HaveRegistrationCredentials());
 }
 
@@ -319,13 +258,25 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
   ReloadConfig();
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
-                         chromeos::http::request_type::kPost,
-                         base::Bind(OAuth2HandlerFail));
-  transport_->ResetRequestCount();
+  EXPECT_CALL(http_client_,
+              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
+                              "application/x-www-form-urlencoded",
+                              HttpClient::Headers{}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_EQ("refresh_token", GetFormField(data, "grant_type"));
+        EXPECT_EQ(test_data::kRefreshToken,
+                  GetFormField(data, "refresh_token"));
+        EXPECT_EQ(test_data::kClientId, GetFormField(data, "client_id"));
+        EXPECT_EQ(test_data::kClientSecret,
+                  GetFormField(data, "client_secret"));
+
+        base::DictionaryValue json;
+        json.SetString("error", "unable_to_authenticate");
+        return ReplyWithJson(400, json);
+      })));
+
   chromeos::ErrorPtr error;
   EXPECT_FALSE(RefreshAccessToken(&error));
-  EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "unable_to_authenticate"));
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 }
@@ -336,13 +287,25 @@ TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
   ReloadConfig();
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
-                         chromeos::http::request_type::kPost,
-                         base::Bind(OAuth2HandlerDeregister));
-  transport_->ResetRequestCount();
+  EXPECT_CALL(http_client_,
+              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
+                              "application/x-www-form-urlencoded",
+                              HttpClient::Headers{}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_EQ("refresh_token", GetFormField(data, "grant_type"));
+        EXPECT_EQ(test_data::kRefreshToken,
+                  GetFormField(data, "refresh_token"));
+        EXPECT_EQ(test_data::kClientId, GetFormField(data, "client_id"));
+        EXPECT_EQ(test_data::kClientSecret,
+                  GetFormField(data, "client_secret"));
+
+        base::DictionaryValue json;
+        json.SetString("error", "invalid_grant");
+        return ReplyWithJson(400, json);
+      })));
+
   chromeos::ErrorPtr error;
   EXPECT_FALSE(RefreshAccessToken(&error));
-  EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "invalid_grant"));
   EXPECT_EQ(RegistrationStatus::kInvalidCredentials, GetRegistrationStatus());
 }
@@ -353,17 +316,25 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
   ReloadConfig();
   SetAccessToken();
 
-  transport_->AddHandler(dev_reg_->GetDeviceURL(),
-                         chromeos::http::request_type::kGet,
-                         base::Bind(DeviceInfoHandler));
-  transport_->ResetRequestCount();
+  EXPECT_CALL(http_client_,
+              MockSendRequest("GET", dev_reg_->GetDeviceURL(), _,
+                              "application/json; charset=utf-8",
+                              HttpClient::Headers{GetAuthHeader()}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        base::DictionaryValue json;
+        json.SetString("channel.supportedType", "xmpp");
+        json.SetString("deviceKind", "vendor");
+        json.SetString("id", test_data::kDeviceId);
+        json.SetString("kind", "clouddevices#device");
+        return ReplyWithJson(200, json);
+      })));
+
   base::MessageLoopForIO message_loop;
   base::RunLoop run_loop;
 
   bool succeeded = false;
-  auto on_success = [&run_loop, &succeeded, this](
-      const base::DictionaryValue& info) {
-    EXPECT_EQ(1, transport_->GetRequestCount());
+  auto on_success = [&run_loop, &succeeded,
+                     this](const base::DictionaryValue& info) {
     std::string id;
     EXPECT_TRUE(info.GetString("id", &id));
     EXPECT_EQ(test_data::kDeviceId, id);
@@ -380,72 +351,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
-  auto update_ticket = [](const ServerRequest& request,
-                          ServerResponse* response) {
-    EXPECT_EQ(test_data::kApiKey, request.GetFormField("key"));
-    auto json = request.GetDataAsJson();
-    EXPECT_NE(nullptr, json.get());
-    std::string value;
-    EXPECT_TRUE(json->GetString("id", &value));
-    EXPECT_EQ(test_data::kClaimTicketId, value);
-    EXPECT_TRUE(json->GetString("deviceDraft.channel.supportedType", &value));
-    EXPECT_EQ("pull", value);
-    EXPECT_TRUE(json->GetString("oauthClientId", &value));
-    EXPECT_EQ(test_data::kClientId, value);
-    EXPECT_TRUE(json->GetString("deviceDraft.deviceKind", &value));
-    EXPECT_EQ("vendor", value);
-    EXPECT_TRUE(json->GetString("deviceDraft.description", &value));
-    EXPECT_EQ("Easy to clean", value);
-    EXPECT_TRUE(json->GetString("deviceDraft.location", &value));
-    EXPECT_EQ("Kitchen", value);
-    EXPECT_TRUE(json->GetString("deviceDraft.modelManifestId", &value));
-    EXPECT_EQ("AAAAA", value);
-    EXPECT_TRUE(json->GetString("deviceDraft.name", &value));
-    EXPECT_EQ("Coffee Pot", value);
-    base::DictionaryValue* commandDefs = nullptr;
-    EXPECT_TRUE(json->GetDictionary("deviceDraft.commandDefs", &commandDefs));
-    EXPECT_FALSE(commandDefs->empty());
-
-    auto expected = R"({
-      'base': {
-        'reboot': {
-          'parameters': {
-            'delay': {
-              'minimum': 10,
-              'type': 'integer'
-            }
-          },
-          'minimalRole': 'user'
-        }
-      },
-      'robot': {
-        '_jump': {
-          'parameters': {
-            '_height': {
-              'type': 'integer'
-            }
-          },
-          'minimalRole': 'user'
-        }
-      }
-    })";
-    EXPECT_JSON_EQ(expected, *commandDefs);
-
-    base::DictionaryValue json_resp;
-    json_resp.SetString("id", test_data::kClaimTicketId);
-    json_resp.SetString("kind", "clouddevices#registrationTicket");
-    json_resp.SetString("oauthClientId", test_data::kClientId);
-    base::DictionaryValue* device_draft = nullptr;
-    EXPECT_TRUE(json->GetDictionary("deviceDraft", &device_draft));
-    device_draft = device_draft->DeepCopy();
-    device_draft->SetString("id", test_data::kDeviceId);
-    device_draft->SetString("kind", "clouddevices#device");
-    json_resp.Set("deviceDraft", device_draft);
-
-    response->ReplyJson(chromeos::http::status_code::Ok, &json_resp);
-  };
-
-  auto json_base = unittests::CreateDictionaryValue(R"({
+  auto json_base = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
         'parameters': {'delay': 'integer'},
@@ -460,7 +366,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     }
   })");
   EXPECT_TRUE(command_manager_->LoadBaseCommands(*json_base, nullptr));
-  auto json_cmds = unittests::CreateDictionaryValue(R"({
+  auto json_cmds = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
         'parameters': {'delay': {'minimum': 10}},
@@ -478,24 +384,124 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   })");
   EXPECT_TRUE(command_manager_->LoadCommands(*json_cmds, "", nullptr));
 
-  transport_->AddHandler(
-      dev_reg_->GetServiceURL(std::string("registrationTickets/") +
-                              test_data::kClaimTicketId),
-      chromeos::http::request_type::kPatch, base::Bind(update_ticket));
-  std::string ticket_url = dev_reg_->GetServiceURL(
-      "registrationTickets/" + std::string(test_data::kClaimTicketId));
-  transport_->AddHandler(ticket_url + "/finalize",
-                         chromeos::http::request_type::kPost,
-                         base::Bind(FinalizeTicketHandler));
+  std::string ticket_url = dev_reg_->GetServiceURL("registrationTickets/") +
+                           test_data::kClaimTicketId;
+  EXPECT_CALL(http_client_,
+              MockSendRequest(
+                  "PATCH", ticket_url + "?key=" + test_data::kApiKey, _,
+                  "application/json; charset=utf-8", HttpClient::Headers{}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        auto json = unittests::CreateDictionaryValue(data);
+        EXPECT_NE(nullptr, json.get());
+        std::string value;
+        EXPECT_TRUE(json->GetString("id", &value));
+        EXPECT_EQ(test_data::kClaimTicketId, value);
+        EXPECT_TRUE(
+            json->GetString("deviceDraft.channel.supportedType", &value));
+        EXPECT_EQ("pull", value);
+        EXPECT_TRUE(json->GetString("oauthClientId", &value));
+        EXPECT_EQ(test_data::kClientId, value);
+        EXPECT_TRUE(json->GetString("deviceDraft.deviceKind", &value));
+        EXPECT_EQ("vendor", value);
+        EXPECT_TRUE(json->GetString("deviceDraft.description", &value));
+        EXPECT_EQ("Easy to clean", value);
+        EXPECT_TRUE(json->GetString("deviceDraft.location", &value));
+        EXPECT_EQ("Kitchen", value);
+        EXPECT_TRUE(json->GetString("deviceDraft.modelManifestId", &value));
+        EXPECT_EQ("AAAAA", value);
+        EXPECT_TRUE(json->GetString("deviceDraft.name", &value));
+        EXPECT_EQ("Coffee Pot", value);
+        base::DictionaryValue* commandDefs = nullptr;
+        EXPECT_TRUE(
+            json->GetDictionary("deviceDraft.commandDefs", &commandDefs));
+        EXPECT_FALSE(commandDefs->empty());
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
-                         chromeos::http::request_type::kPost,
-                         base::Bind(OAuth2Handler));
+        auto expected = R"({
+            'base': {
+              'reboot': {
+                'parameters': {
+                  'delay': {
+                    'minimum': 10,
+                    'type': 'integer'
+                  }
+                },
+                'minimalRole': 'user'
+              }
+            },
+            'robot': {
+              '_jump': {
+                'parameters': {
+                  '_height': {
+                    'type': 'integer'
+                  }
+                },
+                'minimalRole': 'user'
+              }
+            }
+          })";
+        EXPECT_JSON_EQ(expected, *commandDefs);
+
+        base::DictionaryValue json_resp;
+        json_resp.SetString("id", test_data::kClaimTicketId);
+        json_resp.SetString("kind", "clouddevices#registrationTicket");
+        json_resp.SetString("oauthClientId", test_data::kClientId);
+        base::DictionaryValue* device_draft = nullptr;
+        EXPECT_TRUE(json->GetDictionary("deviceDraft", &device_draft));
+        device_draft = device_draft->DeepCopy();
+        device_draft->SetString("id", test_data::kDeviceId);
+        device_draft->SetString("kind", "clouddevices#device");
+        json_resp.Set("deviceDraft", device_draft);
+
+        return ReplyWithJson(200, json_resp);
+      })));
+
+  EXPECT_CALL(http_client_,
+              MockSendRequest(
+                  "POST", ticket_url + "/finalize?key=" + test_data::kApiKey,
+                  "", _, HttpClient::Headers{}, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        base::DictionaryValue json;
+        json.SetString("id", test_data::kClaimTicketId);
+        json.SetString("kind", "clouddevices#registrationTicket");
+        json.SetString("oauthClientId", test_data::kClientId);
+        json.SetString("userEmail", "user@email.com");
+        json.SetString("deviceDraft.id", test_data::kDeviceId);
+        json.SetString("deviceDraft.kind", "clouddevices#device");
+        json.SetString("deviceDraft.channel.supportedType", "xmpp");
+        json.SetString("robotAccountEmail", test_data::kRobotAccountEmail);
+        json.SetString("robotAccountAuthorizationCode",
+                       test_data::kRobotAccountAuthCode);
+        return ReplyWithJson(200, json);
+      }));
+
+  EXPECT_CALL(http_client_,
+              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
+                              "application/x-www-form-urlencoded",
+                              HttpClient::Headers{}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_EQ("authorization_code", GetFormField(data, "grant_type"));
+        EXPECT_EQ(test_data::kRobotAccountAuthCode, GetFormField(data, "code"));
+        EXPECT_EQ(test_data::kClientId, GetFormField(data, "client_id"));
+        EXPECT_EQ(test_data::kClientSecret,
+                  GetFormField(data, "client_secret"));
+
+        EXPECT_EQ("oob", GetFormField(data, "redirect_uri"));
+        EXPECT_EQ("https://www.googleapis.com/auth/clouddevices",
+                  GetFormField(data, "scope"));
+
+        base::DictionaryValue json;
+        json.SetString("access_token", test_data::kAccessToken);
+        json.SetString("token_type", "Bearer");
+        json.SetString("refresh_token", test_data::kRefreshToken);
+        json.SetInteger("expires_in", 3600);
+
+        return ReplyWithJson(200, json);
+      })));
+
   std::string device_id =
       dev_reg_->RegisterDevice(test_data::kClaimTicketId, nullptr);
 
   EXPECT_EQ(test_data::kDeviceId, device_id);
-  EXPECT_EQ(3, transport_->GetRequestCount());
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   // Validate the device info saved to storage...
@@ -512,8 +518,8 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
-  // After we've been initialized, we should be either offline or unregistered,
-  // depending on whether or not we've found credentials.
+  // After we've been initialized, we should be either offline or
+  // unregistered, depending on whether or not we've found credentials.
   EXPECT_EQ(RegistrationStatus::kUnconfigured, GetRegistrationStatus());
   // Put some credentials into our state, make sure we call that offline.
   SetDefaultDeviceRegistration(&data_);
@@ -528,7 +534,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   ReloadConfig();
   SetAccessToken();
 
-  auto json_cmds = unittests::CreateDictionaryValue(R"({
+  auto json_cmds = CreateDictionaryValue(R"({
     'robot': {
       '_jump': {
         'parameters': {'_height': 'integer'},
@@ -542,7 +548,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
 
   const std::string command_url = dev_reg_->GetServiceURL("commands/1234");
 
-  auto commands_json = unittests::CreateValue(R"([{
+  auto commands_json = CreateValue(R"([{
     'name':'robot._jump',
     'id':'1234',
     'parameters': {'_height': 100},
@@ -555,55 +561,52 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   auto command = command_manager_->FindCommand("1234");
   ASSERT_NE(nullptr, command);
 
-  // UpdateCommand when setting command results.
-  auto update_command_results = [](const ServerRequest& request,
-                                   ServerResponse* response) {
-    EXPECT_EQ(R"({"results":{"status":"Ok"}})",
-              request.GetDataAsNormalizedJsonString());
-    response->ReplyJson(chromeos::http::status_code::Ok,
-                        chromeos::http::FormFieldList{});
-  };
-
-  transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
-                         base::Bind(update_command_results));
-
+  EXPECT_CALL(http_client_,
+              MockSendRequest("PATCH", command_url, _,
+                              "application/json; charset=utf-8",
+                              HttpClient::Headers{GetAuthHeader()}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_JSON_EQ(R"({"results":{"status":"Ok"}})",
+                       *CreateDictionaryValue(data));
+        base::DictionaryValue json;
+        return ReplyWithJson(200, json);
+      })));
   EXPECT_TRUE(
       command->SetResults(*CreateDictionaryValue("{'status': 'Ok'}"), nullptr));
+  Mock::VerifyAndClearExpectations(&http_client_);
 
-  // UpdateCommand when setting command progress.
-  int count = 0;  // This will be called twice...
-  auto update_command_progress = [&count](const ServerRequest& request,
-                                          ServerResponse* response) {
-    if (count++ == 0) {
-      EXPECT_EQ(R"({"state":"inProgress"})",
-                request.GetDataAsNormalizedJsonString());
-    } else {
-      EXPECT_EQ(R"({"progress":{"progress":18}})",
-                request.GetDataAsNormalizedJsonString());
-    }
-    response->ReplyJson(chromeos::http::status_code::Ok,
-                        chromeos::http::FormFieldList{});
-  };
+  EXPECT_CALL(http_client_,
+              MockSendRequest("PATCH", command_url, _,
+                              "application/json; charset=utf-8",
+                              HttpClient::Headers{GetAuthHeader()}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_JSON_EQ(R"({"state":"inProgress"})",
+                       *CreateDictionaryValue(data));
+        base::DictionaryValue json;
+        return ReplyWithJson(200, json);
+      })))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_JSON_EQ(R"({"progress":{"progress":18}})",
+                       *CreateDictionaryValue(data));
+        base::DictionaryValue json;
+        return ReplyWithJson(200, json);
+      })));
+  EXPECT_TRUE(
+      command->SetProgress(*CreateDictionaryValue("{'progress':18}"), nullptr));
+  Mock::VerifyAndClearExpectations(&http_client_);
 
-  transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
-                         base::Bind(update_command_progress));
-
-  EXPECT_TRUE(command->SetProgress(*CreateDictionaryValue("{'progress': 18}"),
-                                   nullptr));
-
-  // UpdateCommand when changing command status.
-  auto update_command_state = [](const ServerRequest& request,
-                                 ServerResponse* response) {
-    EXPECT_EQ(R"({"state":"cancelled"})",
-              request.GetDataAsNormalizedJsonString());
-    response->ReplyJson(chromeos::http::status_code::Ok,
-                        chromeos::http::FormFieldList{});
-  };
-
-  transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
-                         base::Bind(update_command_state));
-
+  EXPECT_CALL(http_client_,
+              MockSendRequest("PATCH", command_url, _,
+                              "application/json; charset=utf-8",
+                              HttpClient::Headers{GetAuthHeader()}, _))
+      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+        EXPECT_JSON_EQ(R"({"state":"cancelled"})",
+                       *CreateDictionaryValue(data));
+        base::DictionaryValue json;
+        return ReplyWithJson(200, json);
+      })));
   command->Cancel();
+  Mock::VerifyAndClearExpectations(&http_client_);
 }
 
 }  // namespace weave

@@ -13,6 +13,7 @@
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/device_registration_info.h"
+#include "libweave/src/http_transport_client.h"
 #include "libweave/src/privet/privet_manager.h"
 #include "libweave/src/states/state_change_queue.h"
 #include "libweave/src/states/state_manager.h"
@@ -50,10 +51,11 @@ void DeviceManager::Start(const Options& options,
   std::unique_ptr<BuffetConfig> config{new BuffetConfig{options.state_path}};
   config->Load(options.config_path);
 
+  http_client_.reset(new buffet::HttpTransportClient{transport});
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
   device_info_.reset(new DeviceRegistrationInfo(
-      command_manager_, state_manager_, std::move(config), transport,
+      command_manager_, state_manager_, std::move(config), http_client_.get(),
       base::MessageLoop::current()->task_runner(), options.xmpp_enabled,
       network));
   base_api_handler_.reset(
