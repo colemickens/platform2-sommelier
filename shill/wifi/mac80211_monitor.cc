@@ -51,6 +51,7 @@ Mac80211Monitor::Mac80211Monitor(
       phy_name_("phy-unknown"),
       last_woke_queues_monotonic_seconds_(0),
       is_running_(false),
+      have_ever_read_queue_state_file_(false),
       is_device_connected_(false),
       weak_ptr_factory_(this) {
   CHECK(time_);
@@ -115,9 +116,13 @@ void Mac80211Monitor::WakeQueuesIfNeeded() {
   string queue_state_string;
   if (!base::ReadFileToString(queue_state_file_path_, &queue_state_string,
                               kMaxQueueStateSizeBytes)) {
-    LOG(WARNING) << __func__ << ": incomplete read on "
-                 << queue_state_file_path_.value();
+    if (have_ever_read_queue_state_file_) {
+      LOG(WARNING) << __func__ << ": incomplete read on "
+                   << queue_state_file_path_.value();
+    }
+    return;
   }
+  have_ever_read_queue_state_file_ = true;
 
   uint32_t stuck_flags =
       CheckAreQueuesStuck(ParseQueueState(queue_state_string));

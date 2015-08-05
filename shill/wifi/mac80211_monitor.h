@@ -117,6 +117,7 @@ class Mac80211Monitor {
   std::string phy_name_;
   time_t last_woke_queues_monotonic_seconds_;
   bool is_running_;
+  bool have_ever_read_queue_state_file_;
   base::FilePath queue_state_file_path_;
   base::FilePath wake_queues_file_path_;
   base::CancelableClosure check_queues_callback_;

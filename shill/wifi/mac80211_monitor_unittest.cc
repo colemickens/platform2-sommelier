@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_time.h"
 
@@ -21,6 +22,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
+using ::testing::HasSubstr;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
@@ -89,6 +91,10 @@ class Mac80211MonitorTest : public testing::Test {
         fake_sysfs_tree_.path(), &fake_queue_state_file_path_));
     CHECK(base::CreateTemporaryFileInDir(
         fake_sysfs_tree_.path(), &fake_wake_queues_file_path_));
+    PlumbFakeSysfs();
+  }
+  void DeleteQueueStateFile() {
+    fake_queue_state_file_path_.clear();
     PlumbFakeSysfs();
   }
   bool IsRunning() const {
@@ -219,11 +225,39 @@ TEST_F(Mac80211MonitorTest, UpdateConnectedState) {
   EXPECT_FALSE(GetIsDeviceConnected());
 }
 
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededFullMacDevice) {
+  FakeUpSysfs();
+  StartMonitor("dont-care-phy");
+  UpdateConnectedState(false);
+  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _));
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, HasSubstr(": incomplete read on "))).Times(0);
+
+  // In case of using device with Full-Mac support,
+  // there is no queue state file in debugfs.
+  DeleteQueueStateFile();
+  WakeQueuesIfNeeded();
+}
+
 TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRearmsTimerWhenDisconnected) {
   FakeUpSysfs();
   StartMonitor("dont-care-phy");
   UpdateConnectedState(false);
   EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _));
+  WakeQueuesIfNeeded();
+}
+
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededFailToReadQueueState) {
+  FakeUpSysfs();
+  StartMonitor("dont-care-phy");
+  UpdateConnectedState(false);
+  AllowWakeQueuesIfNeededCommonCalls();
+  WakeQueuesIfNeeded();
+
+  // In case we succeeded reading queue state before, but fail this time.
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, HasSubstr(": incomplete read on "))).Times(1);
+  DeleteQueueStateFile();
   WakeQueuesIfNeeded();
 }
 
