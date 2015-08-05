@@ -52,11 +52,13 @@ class PerfTool {
   PerfTool(const CPUInfoReader& cpu_info, RandomSelector* random_selector);
   ~PerfTool() = default;
 
-  // Randomly runs the perf tool in various modes and collects various events
-  // for |duration_secs| seconds and returns a protobuf containing the collected
-  // data.
-  std::vector<uint8_t> GetRichPerfData(const uint32_t& duration_secs,
-                                       DBus::Error* error);
+  // Runs the perf tool with the request command for |duration_secs| seconds
+  // and returns either a perf_data or perf_stat protobuf in serialized form.
+  int GetPerfOutput(const uint32_t& duration_secs,
+                    const std::vector<std::string>& perf_args,
+                    std::vector<uint8_t>* perf_data,
+                    std::vector<uint8_t>* perf_stat,
+                    DBus::Error* error);
 
   // Randomly runs the perf tool in various modes and collects various events
   // for |duration_secs| seconds and returns either a perf_data or perf_stat
@@ -66,11 +68,11 @@ class PerfTool {
                           std::vector<uint8_t>* perf_stat,
                           DBus::Error* error);
 
-  int GetPerfOutput(const uint32_t& duration_secs,
-                    const std::vector<std::string>& perf_args,
-                    std::vector<uint8_t>* perf_data,
-                    std::vector<uint8_t>* perf_stat,
-                    DBus::Error* error);
+  // Randomly runs the perf tool in various modes and collects various events
+  // for |duration_secs| seconds and returns a protobuf containing the collected
+  // data.
+  std::vector<uint8_t> GetRichPerfData(const uint32_t& duration_secs,
+                                       DBus::Error* error);
 
  private:
   // Helper function that runs perf for a given |duration_secs| returning the

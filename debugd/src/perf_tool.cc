@@ -169,31 +169,6 @@ PerfTool::PerfTool(const CPUInfoReader& cpu_info,
       kCPUOddsFilePrefix + odds_filename + kCPUOddsFileSuffix);
 }
 
-std::vector<uint8_t> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
-                                               DBus::Error* error) {
-  const std::vector<std::string>& perf_args = random_selector_->GetNext();
-  if (perf_args[1] != "record")
-    return std::vector<uint8_t>();
-
-  std::string output_string;
-  int result =
-      GetPerfOutputHelper(duration_secs, perf_args, error, &output_string);
-
-  if (result > 0)
-    return std::vector<uint8_t>();
-
-  return std::vector<uint8_t>(output_string.begin(), output_string.end());
-}
-
-int PerfTool::GetRandomPerfOutput(const uint32_t& duration_secs,
-                                  std::vector<uint8_t>* perf_data,
-                                  std::vector<uint8_t>* perf_stat,
-                                  DBus::Error* error) {
-  const std::vector<std::string>& perf_args = random_selector_->GetNext();
-  return GetPerfOutput(
-      duration_secs, perf_args, perf_data, perf_stat, error);
-}
-
 int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
                             const std::vector<std::string>& perf_args,
                             std::vector<uint8_t>* perf_data,
@@ -219,6 +194,31 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
     perf_stat->assign(output_string.begin(), output_string.end());
 
   return result;
+}
+
+int PerfTool::GetRandomPerfOutput(const uint32_t& duration_secs,
+                                  std::vector<uint8_t>* perf_data,
+                                  std::vector<uint8_t>* perf_stat,
+                                  DBus::Error* error) {
+  const std::vector<std::string>& perf_args = random_selector_->GetNext();
+  return GetPerfOutput(
+      duration_secs, perf_args, perf_data, perf_stat, error);
+}
+
+std::vector<uint8_t> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
+                                               DBus::Error* error) {
+  const std::vector<std::string>& perf_args = random_selector_->GetNext();
+  if (perf_args[1] != "record")
+    return std::vector<uint8_t>();
+
+  std::string output_string;
+  int result =
+      GetPerfOutputHelper(duration_secs, perf_args, error, &output_string);
+
+  if (result > 0)
+    return std::vector<uint8_t>();
+
+  return std::vector<uint8_t>(output_string.begin(), output_string.end());
 }
 
 PerfTool::CPUInfoReader::CPUInfoReader() {

@@ -135,9 +135,15 @@ std::string DebugDaemon::GetWiMaxStatus(DBus::Error& error) { // NOLINT
   return wimax_status_tool_->GetWiMaxStatus(&error);
 }
 
-std::vector<uint8_t> DebugDaemon::GetRichPerfData(
-    const uint32_t& duration_sec, DBus::Error& error) {  // NOLINT
-  return perf_tool_->GetRichPerfData(duration_sec, &error);
+void DebugDaemon::GetPerfOutput(
+    const uint32_t& duration_sec,
+    const std::vector<std::string>& perf_args,
+    int32_t& status,
+    std::vector<uint8_t>& perf_data,
+    std::vector<uint8_t>& perf_stat,
+    DBus::Error& error) {  // NOLINT
+  status = perf_tool_->GetPerfOutput(
+      duration_sec, perf_args, &perf_data, &perf_stat, &error);
 }
 
 void DebugDaemon::GetRandomPerfOutput(
@@ -150,15 +156,9 @@ void DebugDaemon::GetRandomPerfOutput(
       duration_sec, &perf_data, &perf_stat, &error);
 }
 
-void DebugDaemon::GetPerfOutput(
-    const uint32_t& duration_sec,
-    const std::vector<std::string>& perf_args,
-    int32_t& status,
-    std::vector<uint8_t>& perf_data,
-    std::vector<uint8_t>& perf_stat,
-    DBus::Error& error) {  // NOLINT
-  status = perf_tool_->GetPerfOutput(
-      duration_sec, perf_args, &perf_data, &perf_stat, &error);
+std::vector<uint8_t> DebugDaemon::GetRichPerfData(
+    const uint32_t& duration_sec, DBus::Error& error) {  // NOLINT
+  return perf_tool_->GetRichPerfData(duration_sec, &error);
 }
 
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
