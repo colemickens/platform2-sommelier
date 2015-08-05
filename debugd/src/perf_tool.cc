@@ -22,6 +22,9 @@ namespace debugd {
 
 namespace {
 
+const char kUnsupportedPerfToolErrorName[] =
+    "org.chromium.debugd.error.UnsupportedPerfTool";
+
 // Location of quipper on ChromeOS.
 const char kQuipperLocation[] = "/usr/bin/quipper";
 
@@ -187,6 +190,25 @@ int PerfTool::GetRandomPerfOutput(const uint32_t& duration_secs,
                                   std::vector<uint8_t>* perf_stat,
                                   DBus::Error* error) {
   const std::vector<std::string>& perf_args = random_selector_->GetNext();
+  return GetPerfOutput(
+      duration_secs, perf_args, perf_data, perf_stat, error);
+}
+
+int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
+                            const std::vector<std::string>& perf_args,
+                            std::vector<uint8_t>* perf_data,
+                            std::vector<uint8_t>* perf_stat,
+                            DBus::Error* error) {
+  const bool is_supported_perf_subcommand =
+      perf_args[0] == "perf" &&
+      (perf_args[1] == "record" || perf_args[1] == "stat");
+  if (!is_supported_perf_subcommand) {
+    error->set(kUnsupportedPerfToolErrorName,
+               "perf_args must begin with {\"perf\", \"record\"} "
+               "or {\"perf\", \"stat\"}");
+    return -1;
+  }
+
   std::string output_string;
   int result =
       GetPerfOutputHelper(duration_secs, perf_args, error, &output_string);
