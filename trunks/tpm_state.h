@@ -59,6 +59,20 @@ class TRUNKS_EXPORT TpmState {
   // Returns true iff the TPM supports the ECC NIST P-256 curve.
   virtual bool IsECCSupported() = 0;
 
+  // Returns the current value of the Lockout counter.
+  virtual uint32_t GetLockoutCounter() = 0;
+
+  // Returns the maximum lockout failures allowed before the TPM goes into
+  // lockout.
+  virtual uint32_t GetLockoutThreshold() = 0;
+
+  // Returns the number of seconds before the lockout counter will decrement.
+  virtual uint32_t GetLockoutInterval() = 0;
+
+  // Returns the number of seconds after a LockoutAuth failure before
+  // LockoutAuth can be used again.
+  virtual uint32_t GetLockoutRecovery() = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmState);
 };

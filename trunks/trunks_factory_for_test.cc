@@ -84,6 +84,22 @@ class TpmStateForwarder : public TpmState {
     return target_->IsECCSupported();
   }
 
+  uint32_t GetLockoutCounter() override {
+    return target_->GetLockoutCounter();
+  }
+
+  uint32_t GetLockoutThreshold() override {
+    return target_->GetLockoutThreshold();
+  }
+
+  uint32_t GetLockoutInterval() override {
+    return target_->GetLockoutInterval();
+  }
+
+  uint32_t GetLockoutRecovery() override {
+    return target_->GetLockoutRecovery();
+  }
+
  private:
   TpmState* target_;
 };

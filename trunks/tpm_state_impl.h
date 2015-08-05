@@ -36,12 +36,25 @@ class TRUNKS_EXPORT TpmStateImpl : public TpmState {
   bool WasShutdownOrderly() override;
   bool IsRSASupported() override;
   bool IsECCSupported() override;
+  uint32_t GetLockoutCounter() override;
+  uint32_t GetLockoutThreshold() override;
+  uint32_t GetLockoutInterval() override;
+  uint32_t GetLockoutRecovery() override;
 
  private:
+  // This helped method calls Tpm2_GetCapability with TPM_CAP_TPM_PROPERTIES
+  // and |property|. The returned structure is validated, and the value returned
+  // is stored in the out argument |value|. Returns TPM_RC_SUCCESS on success.
+  TPM_RC GetTpmProperty(uint32_t property, uint32_t* value);
+
   const TrunksFactory& factory_;
   bool initialized_;
   TPMA_PERMANENT permanent_flags_;
   TPMA_STARTUP_CLEAR startup_clear_flags_;
+  uint32_t lockout_counter_;
+  uint32_t lockout_threshold_;
+  uint32_t lockout_interval_;
+  uint32_t lockout_recovery_;
   TPMA_ALGORITHM rsa_flags_;
   TPMA_ALGORITHM ecc_flags_;
 

@@ -43,54 +43,45 @@ TpmStateImpl::TpmStateImpl(const TrunksFactory& factory)
 TpmStateImpl::~TpmStateImpl() {}
 
 TPM_RC TpmStateImpl::Initialize() {
-  Tpm* tpm = factory_.GetTpm();
+  TPM_RC result = GetTpmProperty(TPM_PT_PERMANENT, &permanent_flags_);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting permanent flags: " << GetErrorString(result);
+    return result;
+  }
+  result = GetTpmProperty(TPM_PT_STARTUP_CLEAR, &startup_clear_flags_);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting startup flags: " << GetErrorString(result);
+    return result;
+  }
+  result = GetTpmProperty(TPM_PT_LOCKOUT_COUNTER, &lockout_counter_);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting lockout counter: " << GetErrorString(result);
+    return result;
+  }
+  result = GetTpmProperty(TPM_PT_MAX_AUTH_FAIL, &lockout_threshold_);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting lockout threshold: " << GetErrorString(result);
+    return result;
+  }
+  result = GetTpmProperty(TPM_PT_LOCKOUT_INTERVAL, &lockout_interval_);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting lockout interval: " << GetErrorString(result);
+    return result;
+  }
+  result = GetTpmProperty(TPM_PT_LOCKOUT_RECOVERY, &lockout_recovery_);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting lockout recovery: " << GetErrorString(result);
+    return result;
+  }
+
   TPMI_YES_NO more_data;
   TPMS_CAPABILITY_DATA capability_data;
-  TPM_RC result = tpm->GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
-                                         TPM_PT_PERMANENT,
-                                         1,  // There is only one value.
-                                         &more_data,
-                                         &capability_data,
-                                         nullptr);
-  if (result) {
-    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
-    return result;
-  }
-  if (capability_data.capability != TPM_CAP_TPM_PROPERTIES ||
-      capability_data.data.tpm_properties.count != 1 ||
-      capability_data.data.tpm_properties.tpm_property[0].property !=
-            TPM_PT_PERMANENT) {
-    LOG(ERROR) << __func__ << ": Unexpected capability data.";
-    return SAPI_RC_MALFORMED_RESPONSE;
-  }
-  permanent_flags_ = capability_data.data.tpm_properties.tpm_property[0].value;
-
-  result = tpm->GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
-                                  TPM_PT_STARTUP_CLEAR,
-                                  1,  // There is only one value.
-                                  &more_data,
-                                  &capability_data,
-                                  nullptr);
-  if (result) {
-    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
-    return result;
-  }
-  if (capability_data.capability != TPM_CAP_TPM_PROPERTIES ||
-      capability_data.data.tpm_properties.count != 1 ||
-      capability_data.data.tpm_properties.tpm_property[0].property !=
-            TPM_PT_STARTUP_CLEAR) {
-    LOG(ERROR) << __func__ << ": Unexpected capability data.";
-    return SAPI_RC_MALFORMED_RESPONSE;
-  }
-  startup_clear_flags_ =
-      capability_data.data.tpm_properties.tpm_property[0].value;
-
-  result = tpm->GetCapabilitySync(TPM_CAP_ALGS,
-                                  TPM_ALG_RSA,
-                                  1,  // There is only one value.
-                                  &more_data,
-                                  &capability_data,
-                                  nullptr);
+  result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_ALGS,
+                                                TPM_ALG_RSA,
+                                                1,  // There is only one value.
+                                                &more_data,
+                                                &capability_data,
+                                                nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -104,13 +95,12 @@ TPM_RC TpmStateImpl::Initialize() {
     rsa_flags_ =
         capability_data.data.algorithms.alg_properties[0].alg_properties;
   }
-
-  result = tpm->GetCapabilitySync(TPM_CAP_ALGS,
-                                  TPM_ALG_ECC,
-                                  1,  // There is only one value.
-                                  &more_data,
-                                  &capability_data,
-                                  nullptr);
+  result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_ALGS,
+                                                TPM_ALG_ECC,
+                                                1,  // There is only one value.
+                                                &more_data,
+                                                &capability_data,
+                                                nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -193,6 +183,52 @@ bool TpmStateImpl::IsRSASupported() {
 bool TpmStateImpl::IsECCSupported() {
   CHECK(initialized_);
   return ((ecc_flags_ & kAsymmetricAlgMask) == kAsymmetricAlgMask);
+}
+
+uint32_t TpmStateImpl::GetLockoutCounter() {
+  CHECK(initialized_);
+  return lockout_counter_;
+}
+
+uint32_t TpmStateImpl::GetLockoutThreshold() {
+  CHECK(initialized_);
+  return lockout_threshold_;
+}
+
+uint32_t TpmStateImpl::GetLockoutInterval() {
+  CHECK(initialized_);
+  return lockout_interval_;
+}
+
+uint32_t TpmStateImpl::GetLockoutRecovery() {
+  CHECK(initialized_);
+  return lockout_recovery_;
+}
+
+TPM_RC TpmStateImpl::GetTpmProperty(uint32_t property,
+                                    uint32_t* value) {
+  CHECK(value);
+  TPMI_YES_NO more_data;
+  TPMS_CAPABILITY_DATA capability_data;
+  TPM_RC result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
+                                                       property,
+                                                       1,  // Only one property.
+                                                       &more_data,
+                                                       &capability_data,
+                                                       nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  if (capability_data.capability != TPM_CAP_TPM_PROPERTIES ||
+      capability_data.data.tpm_properties.count != 1 ||
+      capability_data.data.tpm_properties.tpm_property[0].property !=
+      property) {
+    LOG(ERROR) << __func__ << ": Unexpected capability data.";
+    return SAPI_RC_MALFORMED_RESPONSE;
+  }
+  *value = capability_data.data.tpm_properties.tpm_property[0].value;
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks

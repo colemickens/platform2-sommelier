@@ -112,6 +112,10 @@ int DumpStatus(TrunksFactory* factory) {
          state->IsRSASupported() ? "true" : "false");
   printf("Is ECC supported: %s\n",
          state->IsECCSupported() ? "true" : "false");
+  printf("Lockout Counter: %u\n", state->GetLockoutCounter());
+  printf("Lockout Threshold: %u\n", state->GetLockoutThreshold());
+  printf("Lockout Interval: %u\n", state->GetLockoutInterval());
+  printf("Lockout Recovery: %u\n", state->GetLockoutRecovery());
   return 0;
 }
 

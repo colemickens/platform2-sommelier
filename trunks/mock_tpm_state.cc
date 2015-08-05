@@ -22,6 +22,10 @@ MockTpmState::MockTpmState() {
   ON_CALL(*this, WasShutdownOrderly()).WillByDefault(Return(true));
   ON_CALL(*this, IsRSASupported()).WillByDefault(Return(true));
   ON_CALL(*this, IsECCSupported()).WillByDefault(Return(true));
+  ON_CALL(*this, GetLockoutCounter()).WillByDefault(Return(0));
+  ON_CALL(*this, GetLockoutThreshold()).WillByDefault(Return(0));
+  ON_CALL(*this, GetLockoutInterval()).WillByDefault(Return(0));
+  ON_CALL(*this, GetLockoutRecovery()).WillByDefault(Return(0));
 }
 
 MockTpmState::~MockTpmState() {}
