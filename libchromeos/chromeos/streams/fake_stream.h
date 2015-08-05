@@ -10,7 +10,6 @@
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
-#include <base/task_runner.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <chromeos/secure_blob.h>
@@ -37,10 +36,8 @@ class FakeStream : public Stream {
  public:
   // Construct a new instance of the fake stream.
   //   mode        - expected read/write mode supported by the stream.
-  //   task_runner - the task runner to use to post async tasks to.
   //   clock       - the clock to use to get the current time.
   FakeStream(Stream::AccessMode mode,
-             const scoped_refptr<base::TaskRunner>& task_runner,
              base::Clock* clock);
 
   // Add data packets to the read queue of the stream.
@@ -148,7 +145,6 @@ class FakeStream : public Stream {
 
   bool is_open_{true};
   Stream::AccessMode mode_;
-  scoped_refptr<base::TaskRunner> task_runner_;
   base::Clock* clock_;
 
   // Internal data for read operations.

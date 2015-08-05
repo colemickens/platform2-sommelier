@@ -374,7 +374,7 @@ void DeviceRegistrationInfo::StartNotificationChannel() {
 
   notification_channel_starting_ = true;
   primary_notification_channel_.reset(new XmppChannel{
-      config_->robot_account(), access_token_, task_runner_, network_});
+      config_->robot_account(), access_token_, network_});
   primary_notification_channel_->Start(this);
 }
 

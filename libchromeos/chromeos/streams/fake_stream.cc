@@ -7,7 +7,7 @@
 #include <algorithm>
 
 #include <base/bind.h>
-#include <base/message_loop/message_loop.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <chromeos/streams/stream_utils.h>
 
 namespace chromeos {
@@ -55,9 +55,8 @@ void GetMinDelayAndMode(const base::Time& now,
 }  // anonymous namespace
 
 FakeStream::FakeStream(Stream::AccessMode mode,
-                       const scoped_refptr<base::TaskRunner>& task_runner,
                        base::Clock* clock)
-    : mode_{mode}, task_runner_{task_runner}, clock_{clock} {}
+    : mode_{mode}, clock_{clock} {}
 
 void FakeStream::AddReadPacketData(base::TimeDelta delay,
                                    const void* data,
@@ -373,7 +372,8 @@ bool FakeStream::WaitForData(AccessMode mode,
   base::TimeDelta delay;
   GetMinDelayAndMode(clock_->Now(), read_requested, delay_input_until_,
                      write_requested, delay_output_until_, &mode, &delay);
-  task_runner_->PostDelayedTask(FROM_HERE, base::Bind(callback, mode), delay);
+  MessageLoop::current()->PostDelayedTask(
+      FROM_HERE, base::Bind(callback, mode), delay);
   return true;
 }
 

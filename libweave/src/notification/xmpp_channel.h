@@ -13,7 +13,6 @@
 #include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/single_thread_task_runner.h>
 #include <chromeos/backoff_entry.h>
 #include <chromeos/streams/stream.h>
 
@@ -43,7 +42,6 @@ class XmppChannel : public NotificationChannel,
   // so you will need to reset the XmppClient every time this happens.
   XmppChannel(const std::string& account,
               const std::string& access_token,
-              const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
               Network* network);
   ~XmppChannel() override = default;
 
@@ -154,7 +152,6 @@ class XmppChannel : public NotificationChannel,
 
   chromeos::BackoffEntry backoff_entry_;
   NotificationDelegate* delegate_{nullptr};
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   XmppStreamParser stream_parser_{this};
   bool read_pending_{false};
   bool write_pending_{false};

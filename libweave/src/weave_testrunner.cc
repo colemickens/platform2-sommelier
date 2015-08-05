@@ -3,10 +3,11 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
+#include <chromeos/test_helpers.h>
 #include <gtest/gtest.h>
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
-  ::testing::InitGoogleTest(&argc, argv);
+  SetUpTests(&argc, argv, true);
   return RUN_ALL_TESTS();
 }

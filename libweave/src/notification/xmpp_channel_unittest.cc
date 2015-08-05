@@ -8,16 +8,13 @@
 
 #include <base/test/simple_test_clock.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <chromeos/streams/fake_stream.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace weave {
 
-using ::testing::DoAll;
-using ::testing::Return;
-using ::testing::SetArgPointee;
-using ::testing::_;
 
 namespace {
 
@@ -82,31 +79,11 @@ constexpr char kSubscribeMessage[] =
     "</subscribe></iq>";
 }  // namespace
 
-// Mock-like task runner that allow the tests to inspect the calls to
-// TaskRunner::PostDelayedTask and verify the delays.
-class TestTaskRunner : public base::SingleThreadTaskRunner {
- public:
-  MOCK_METHOD3(PostDelayedTask,
-               bool(const tracked_objects::Location&,
-                    const base::Closure&,
-                    base::TimeDelta));
-  MOCK_METHOD3(PostNonNestableDelayedTask,
-               bool(const tracked_objects::Location&,
-                    const base::Closure&,
-                    base::TimeDelta));
-
-  bool RunsTasksOnCurrentThread() const { return true; }
-};
-
 class FakeXmppChannel : public XmppChannel {
  public:
-  FakeXmppChannel(
-      const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-      base::Clock* clock)
-      : XmppChannel{kAccountName, kAccessToken, task_runner, nullptr},
-        fake_stream_{chromeos::Stream::AccessMode::READ_WRITE,
-                     task_runner,
-                     clock} {}
+  explicit FakeXmppChannel(base::Clock* clock)
+      : XmppChannel{kAccountName, kAccessToken, nullptr},
+        fake_stream_{chromeos::Stream::AccessMode::READ_WRITE, clock} {}
 
   XmppState state() const { return state_; }
   void set_state(XmppState state) { state_ = state; }
@@ -128,22 +105,9 @@ class FakeXmppChannel : public XmppChannel {
 class XmppChannelTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    task_runner_ = new TestTaskRunner;
+    fake_loop_.SetAsCurrent();
 
-    auto callback = [this](const tracked_objects::Location& from_here,
-                           const base::Closure& task,
-                           base::TimeDelta delay) -> bool {
-      if (ignore_delayed_tasks_ && delay > base::TimeDelta::FromMilliseconds(0))
-        return true;
-      clock_.Advance(delay);
-      message_queue_.push(task);
-      return true;
-    };
-
-    EXPECT_CALL(*task_runner_, PostDelayedTask(_, _, _))
-        .WillRepeatedly(testing::Invoke(callback));
-
-    xmpp_client_.reset(new FakeXmppChannel{task_runner_, &clock_});
+    xmpp_client_.reset(new FakeXmppChannel{&clock_});
     clock_.SetNow(base::Time::Now());
   }
 
@@ -162,21 +126,18 @@ class XmppChannelTest : public ::testing::Test {
 
   void RunTasks(size_t count) {
     while (count > 0) {
-      ASSERT_FALSE(message_queue_.empty());
-      base::Closure task = message_queue_.front();
-      message_queue_.pop();
-      task.Run();
+      EXPECT_TRUE(fake_loop_.RunOnce(true /* may_block */));
       count--;
     }
   }
 
-  void SetIgnoreDelayedTasks(bool ignore) { ignore_delayed_tasks_ = true; }
+  void RunLoopUntilIdle() {
+    while (fake_loop_.RunOnce(false /* may_block */)) {}
+  }
 
   std::unique_ptr<FakeXmppChannel> xmpp_client_;
   base::SimpleTestClock clock_;
-  scoped_refptr<TestTaskRunner> task_runner_;
-  std::queue<base::Closure> message_queue_;
-  bool ignore_delayed_tasks_{false};
+  chromeos::FakeMessageLoop fake_loop_{&clock_};
 };
 
 TEST_F(XmppChannelTest, StartStream) {
@@ -222,7 +183,6 @@ TEST_F(XmppChannelTest, HandleAuthenticationFailedResponse) {
 }
 
 TEST_F(XmppChannelTest, HandleStreamRestartedResponse) {
-  SetIgnoreDelayedTasks(true);
   StartWithState(XmppChannel::XmppState::kStreamRestartedPostAuthentication);
   xmpp_client_->fake_stream_.AddReadPacketString({}, kRestartStreamResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kBindMessage);
