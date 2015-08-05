@@ -13,8 +13,6 @@
       'target_name': 'libeasyunlock',
       'type': 'static_library',
       'sources': [
-        'daemon.cc',
-        'daemon.h',
         'dbus_adaptor.cc',
         'dbus_adaptor.h',
         'easy_unlock_service.cc',

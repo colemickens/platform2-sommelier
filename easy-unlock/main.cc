@@ -4,20 +4,17 @@
 
 // A daemon for performing crypto operations for Easy Unlock.
 
-#include <base/at_exit.h>
+#include <memory>
+
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
+#include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/message_loops/base_message_loop.h>
 #include <chromeos/syslog_logging.h>
-#include <dbus/bus.h>
 
-#include "easy-unlock/daemon.h"
+#include "easy-unlock/dbus_adaptor.h"
 #include "easy-unlock/easy_unlock_service.h"
 
 namespace {
@@ -73,9 +70,33 @@ void SetupLogging(bool foreground, int log_level) {
 
 }  // namespace
 
-int main(int argc, char** argv) {
-  base::AtExitManager exit_manager;
+namespace easy_unlock {
 
+class Daemon : public chromeos::DBusServiceDaemon {
+ public:
+  explicit Daemon(std::unique_ptr<easy_unlock::Service> service_impl)
+      : chromeos::DBusServiceDaemon(kEasyUnlockServiceName),
+        service_impl_(std::move(service_impl)) {
+  }
+  ~Daemon() override {}
+
+ protected:
+  void RegisterDBusObjectsAsync(
+       chromeos::dbus_utils::AsyncEventSequencer* sequencer) override {
+    adaptor_.reset(new DBusAdaptor(bus_, service_impl_.get()));
+    adaptor_->Register(sequencer->GetHandler("Register dbus methods", true));
+  }
+
+ private:
+  std::unique_ptr<easy_unlock::Service> service_impl_;
+  std::unique_ptr<easy_unlock::DBusAdaptor> adaptor_;
+
+  DISALLOW_COPY_AND_ASSIGN(Daemon);
+};
+
+}  // namespace easy_unlock
+
+int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
@@ -93,27 +114,7 @@ int main(int argc, char** argv) {
   if (!foreground)
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
 
-  base::MessageLoopForIO message_loop;
-  chromeos::BaseMessageLoop chromeos_message_loop(&message_loop);
-  chromeos_message_loop.SetAsCurrent();
-
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
-
-  scoped_ptr<easy_unlock::Service> service(easy_unlock::Service::Create());
-  scoped_ptr<easy_unlock::Daemon> daemon(
-      new easy_unlock::Daemon(service.Pass(),
-      bus,
-      true /* install signal handler */));
-  LOG_IF(FATAL, !daemon->Initialize());
-
-  LOG(INFO) << "EasyUnlock dbus service started.";
-
-  chromeos_message_loop.Run();
-
-  LOG(INFO) << "Cleaning up and exiting.";
-  daemon->Finalize();
-
-  return 0;
+  easy_unlock::Daemon daemon(easy_unlock::Service::Create());
+  LOG(INFO) << "Starting EasyUnlock dbus service.";
+  return daemon.Run();
 }

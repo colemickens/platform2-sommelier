@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <vector>
 
 #include <easy-unlock-crypto/service_impl.h>
@@ -20,7 +21,7 @@ class Service {
  public:
   // Creates the service implementation to be used in production code.
   // Caller should take ownership.
-  static Service* Create();
+  static std::unique_ptr<Service> Create();
 
   virtual ~Service() {}
 

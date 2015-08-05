@@ -4,7 +4,6 @@
 
 #include "easy-unlock/easy_unlock_service.h"
 
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <easy-unlock-crypto/service_impl.h>
 
@@ -66,7 +65,7 @@ class ServiceImpl : public easy_unlock::Service {
   }
 
  private:
-  scoped_ptr<easy_unlock_crypto::ServiceImpl> crypto_service_;
+  std::unique_ptr<easy_unlock_crypto::ServiceImpl> crypto_service_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };
@@ -76,8 +75,8 @@ class ServiceImpl : public easy_unlock::Service {
 namespace easy_unlock {
 
 // static
-Service* Service::Create() {
-  return new ServiceImpl();
+std::unique_ptr<Service> Service::Create() {
+  return std::unique_ptr<Service>(new ServiceImpl());
 }
 
 }  // namespace easy_unlock

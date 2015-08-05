@@ -5,15 +5,17 @@
 #ifndef EASY_UNLOCK_DBUS_ADAPTOR_H_
 #define EASY_UNLOCK_DBUS_ADAPTOR_H_
 
+#include <stdint.h>
+
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
+#include <chromeos/dbus/dbus_object.h>
+#include <chromeos/dbus/async_event_sequencer.h>
 
 namespace dbus {
-class ExportedObject;
 class MethodCall;
-class Response;
 }  // namespace dbus
 
 namespace easy_unlock {
@@ -25,34 +27,48 @@ namespace easy_unlock {
 // DBus adaptor for EasyUnlock dbus service.
 class DBusAdaptor {
  public:
-  explicit DBusAdaptor(easy_unlock::Service* service);
+  using CompletionAction =
+      chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+
+  DBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+              easy_unlock::Service* service);
   ~DBusAdaptor();
 
   // Registers handlers for EasyUnlock service method calls.
-  void ExportDBusMethods(dbus::ExportedObject* object);
+  void Register(const CompletionAction& callback);
 
  private:
-  // Handlere for Introspect DBus method.
-  scoped_ptr<dbus::Response> Introspect(dbus::MethodCall* call);
   // Handlers for DBus method calls exported in |ExportDBusMethods|.
   // See service_impl.h in easy-unlock-crypto repo for more info on specific
   // methods.
-  scoped_ptr<dbus::Response> GenerateEcP256KeyPair(dbus::MethodCall* call);
-  scoped_ptr<dbus::Response> WrapPublicKey(dbus::MethodCall* call);
-  scoped_ptr<dbus::Response> PerformECDHKeyAgreement(dbus::MethodCall* call);
-  scoped_ptr<dbus::Response> CreateSecureMessage(dbus::MethodCall* call);
-  scoped_ptr<dbus::Response> UnwrapSecureMessage(dbus::MethodCall* call);
-
-  typedef scoped_ptr<dbus::Response> (
-      DBusAdaptor::*SyncDBusMethodCallMemberFunction)(
-          dbus::MethodCall*);
-  void ExportSyncDBusMethod(dbus::ExportedObject* object,
-                            const std::string& method_name,
-                            SyncDBusMethodCallMemberFunction member);
+  void GenerateEcP256KeyPair(
+      std::vector<uint8_t>* private_key, std::vector<uint8_t>* public_key);
+  std::vector<uint8_t> WrapPublicKey(
+      const std::string& algorithm_str,
+      const std::vector<uint8_t>& public_key);
+  std::vector<uint8_t> PerformECDHKeyAgreement(
+      const std::vector<uint8_t>& private_key,
+      const std::vector<uint8_t>& public_key);
+  std::vector<uint8_t> CreateSecureMessage(
+      const std::vector<uint8_t>& payload,
+      const std::vector<uint8_t>& key,
+      const std::vector<uint8_t>& associated_data,
+      const std::vector<uint8_t>& public_metadata,
+      const std::vector<uint8_t>& verification_key_id,
+      const std::vector<uint8_t>& decryption_key_id,
+      const std::string& encryption_type_str,
+      const std::string& signature_type_str);
+  std::vector<uint8_t> UnwrapSecureMessage(
+      const std::vector<uint8_t>& message,
+      const std::vector<uint8_t>& key,
+      const std::vector<uint8_t>& associated_data,
+      const std::string& encryption_type_str,
+      const std::string& signature_type_str);
 
   // The EasyUnlock service implementation to which DBus method calls
   // are forwarded.
   easy_unlock::Service* const service_impl_;
+  chromeos::dbus_utils::DBusObject dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };

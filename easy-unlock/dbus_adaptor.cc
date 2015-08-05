@@ -4,16 +4,7 @@
 
 #include "easy-unlock/dbus_adaptor.h"
 
-#include <stdint.h>
-
-#include <vector>
-
-#include <base/bind.h>
-#include <base/callback.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/exported_object.h>
 #include <dbus/message.h>
 
 #include "easy-unlock/easy_unlock_service.h"
@@ -22,39 +13,10 @@ namespace easy_unlock {
 
 namespace {
 
-const char kBindingsPath[] =
-    "/usr/share/dbus-1/interfaces/org.chromium.EasyUnlockInterface.xml";
-const char kDBusIntrospectableInterface[] =
-    "org.freedesktop.DBus.Introspectable";
-const char kDBusIntrospectMethod[] = "Introspect";
-
-// Utility method for extracting byte vector arguments from DBus method calls.
-// |reader|: MessageReader for the method call.
-// |bytes|: Byte vector extracted from message reader.
-// Returns whether the bytes were successfully extracted.
-bool ReadArrayOfBytes(dbus::MessageReader* reader,
-                      std::vector<uint8_t>* bytes) {
-  DCHECK(bytes);
-  DCHECK(reader);
-
-  const uint8_t* raw_bytes;
-  size_t raw_bytes_size;
-  if (!reader->PopArrayOfBytes(&raw_bytes, &raw_bytes_size))
-    return false;
-  bytes->assign(raw_bytes, raw_bytes + raw_bytes_size);
-  return true;
-}
-
-// Reads encryption type string passed in DBus method call and converts it to
-// ServiceImpl::EncryptionType enum. Returns whether the parameter
-// was successfully read and converted.
-bool ReadAndConvertEncryptionType(
-    dbus::MessageReader* reader,
+// Converts encryption type string to ServiceImpl::EncryptionType enum.
+bool ConvertEncryptionType(
+    const std::string& encryption_type_str,
     easy_unlock_crypto::ServiceImpl::EncryptionType* type) {
-  std::string encryption_type_str;
-  if (!reader->PopString(&encryption_type_str))
-    return false;
-
   if (encryption_type_str == kEncryptionTypeNone) {
     *type = easy_unlock_crypto::ServiceImpl::ENCRYPTION_TYPE_NONE;
     return true;
@@ -68,16 +30,10 @@ bool ReadAndConvertEncryptionType(
   return false;
 }
 
-// Reads signature type string passed in DBus method call and converts it to
-// ServiceImpl::SignatureType enum. Returns whether the parameter
-// was successfully read and converted.
-bool ReadAndConvertSignatureType(
-    dbus::MessageReader* reader,
+// Converts signature type string to ServiceImpl::SignatureType enum.
+bool ConvertSignatureType(
+    const std::string& signature_type_str,
     easy_unlock_crypto::ServiceImpl::SignatureType* type) {
-  std::string signature_type_str;
-  if (!reader->PopString(&signature_type_str))
-    return false;
-
   if (signature_type_str == kSignatureTypeECDSAP256SHA256) {
     *type = easy_unlock_crypto::ServiceImpl::SIGNATURE_TYPE_ECDSA_P256_SHA256;
     return true;
@@ -94,19 +50,15 @@ bool ReadAndConvertSignatureType(
 // Reads public key algorithm string passed to DBus method call and converts
 // it to ServiceImpl::KeyAlgorithm enum. Returns whether the parameter
 // was successfully read and converted.
-bool ReadAndConvertKeyAlgorithm(
-    dbus::MessageReader* reader,
+bool ConvertKeyAlgorithm(
+    const std::string& algorithm_str,
     easy_unlock_crypto::ServiceImpl::KeyAlgorithm* algorithm) {
-  std::string key_algorithm_str;
-  if (!reader->PopString(&key_algorithm_str))
-    return false;
-
-  if (key_algorithm_str == kKeyAlgorithmRSA) {
+  if (algorithm_str == kKeyAlgorithmRSA) {
     *algorithm = easy_unlock_crypto::ServiceImpl::KEY_ALGORITHM_RSA;
     return true;
   }
 
-  if (key_algorithm_str == kKeyAlgorithmECDSA) {
+  if (algorithm_str == kKeyAlgorithmECDSA) {
     *algorithm = easy_unlock_crypto::ServiceImpl::KEY_ALGORITHM_ECDSA;
     return true;
   }
@@ -114,203 +66,114 @@ bool ReadAndConvertKeyAlgorithm(
   return false;
 }
 
-// Utility method for running handlers for DBus method calls.
-void HandleSynchronousDBusMethodCall(
-    const base::Callback<
-        scoped_ptr<dbus::Response>(dbus::MethodCall*)>& handler,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  scoped_ptr<dbus::Response> response = handler.Run(method_call);
-  if (!response)
-    response = dbus::Response::FromMethodCall(method_call);
-  response_sender.Run(response.Pass());
-}
-
 }  // namespace
 
-DBusAdaptor::DBusAdaptor(easy_unlock::Service* service)
-    : service_impl_(service) {
+DBusAdaptor::DBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                         easy_unlock::Service* service)
+    : service_impl_(service),
+      dbus_object_(nullptr, bus,
+                   dbus::ObjectPath(easy_unlock::kEasyUnlockServicePath)) {
   CHECK(service_impl_) << "Service implementation not passed to DBus adaptor";
 }
 
 DBusAdaptor::~DBusAdaptor() {}
 
-void DBusAdaptor::ExportDBusMethods(dbus::ExportedObject* object) {
-  ExportSyncDBusMethod(object, kGenerateEcP256KeyPairMethod,
-                       &DBusAdaptor::GenerateEcP256KeyPair);
-  ExportSyncDBusMethod(object, kWrapPublicKeyMethod,
-                       &DBusAdaptor::WrapPublicKey);
-  ExportSyncDBusMethod(object, kPerformECDHKeyAgreementMethod,
-                       &DBusAdaptor::PerformECDHKeyAgreement);
-  ExportSyncDBusMethod(object, kCreateSecureMessageMethod,
-                       &DBusAdaptor::CreateSecureMessage);
-  ExportSyncDBusMethod(object, kUnwrapSecureMessageMethod,
-                       &DBusAdaptor::UnwrapSecureMessage);
+void DBusAdaptor::Register(const CompletionAction& callback) {
+  chromeos::dbus_utils::DBusInterface* interface =
+      dbus_object_.AddOrGetInterface(kEasyUnlockServiceInterface);
 
-  CHECK(object->ExportMethodAndBlock(
-      kDBusIntrospectableInterface,
-      kDBusIntrospectMethod,
-      base::Bind(&HandleSynchronousDBusMethodCall,
-                 base::Bind(&DBusAdaptor::Introspect,
-                            base::Unretained(this)))));
+  interface->AddSimpleMethodHandler(kGenerateEcP256KeyPairMethod,
+                                    base::Unretained(this),
+                                    &DBusAdaptor::GenerateEcP256KeyPair);
+  interface->AddSimpleMethodHandler(kWrapPublicKeyMethod,
+                                    base::Unretained(this),
+                                    &DBusAdaptor::WrapPublicKey);
+  interface->AddSimpleMethodHandler(kPerformECDHKeyAgreementMethod,
+                                    base::Unretained(this),
+                                    &DBusAdaptor::PerformECDHKeyAgreement);
+  interface->AddSimpleMethodHandler(kCreateSecureMessageMethod,
+                                    base::Unretained(this),
+                                    &DBusAdaptor::CreateSecureMessage);
+  interface->AddSimpleMethodHandler(kUnwrapSecureMessageMethod,
+                                    base::Unretained(this),
+                                    &DBusAdaptor::UnwrapSecureMessage);
+  dbus_object_.RegisterAsync(callback);
 }
 
-scoped_ptr<dbus::Response> DBusAdaptor::Introspect(dbus::MethodCall* call) {
-  std::string output;
-  if (!base::ReadFileToString(base::FilePath(kBindingsPath), &output)) {
-    PLOG(ERROR) << "Cannot read XML bindings from disk";
-    return dbus::ErrorResponse::FromMethodCall(
-        call, "Cannot read XML bindings from disk.", "").Pass();
-  }
-
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendString(output);
-  return response.Pass();
+void DBusAdaptor::GenerateEcP256KeyPair(
+    std::vector<uint8_t>* private_key, std::vector<uint8_t>* public_key) {
+  service_impl_->GenerateEcP256KeyPair(private_key, public_key);
 }
 
-scoped_ptr<dbus::Response> DBusAdaptor::GenerateEcP256KeyPair(
-    dbus::MethodCall* method_call) {
-  std::vector<uint8_t> private_key;
-  std::vector<uint8_t> public_key;
-  service_impl_->GenerateEcP256KeyPair(&private_key, &public_key);
-
-  scoped_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendArrayOfBytes(private_key.data(), private_key.size());
-  writer.AppendArrayOfBytes(public_key.data(), public_key.size());
-  return response.Pass();
-}
-
-scoped_ptr<dbus::Response> DBusAdaptor::WrapPublicKey(
-    dbus::MethodCall* method_call) {
-  dbus::MessageReader reader(method_call);
-
+std::vector<uint8_t> DBusAdaptor::WrapPublicKey(
+    const std::string& algorithm_str,
+    const std::vector<uint8_t>& public_key) {
   easy_unlock_crypto::ServiceImpl::KeyAlgorithm algorithm;
-  std::vector<uint8_t> public_key;
-
-  std::vector<uint8_t> wrapped_key;
-  if (ReadAndConvertKeyAlgorithm(&reader, &algorithm) &&
-      ReadArrayOfBytes(&reader, &public_key)) {
-    wrapped_key = service_impl_->WrapPublicKey(algorithm, public_key);
+  if (!ConvertKeyAlgorithm(algorithm_str, &algorithm)) {
+    LOG(ERROR) << "Invalid key algorithm";
+    // TODO(tbarzic): Return error instead.
+    return std::vector<uint8_t>();
   }
 
-  scoped_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendArrayOfBytes(wrapped_key.data(), wrapped_key.size());
-  return response.Pass();
+  return service_impl_->WrapPublicKey(algorithm, public_key);
 }
 
-scoped_ptr<dbus::Response> DBusAdaptor::PerformECDHKeyAgreement(
-    dbus::MethodCall* method_call) {
-  dbus::MessageReader reader(method_call);
-  std::vector<uint8_t> private_key;
-  std::vector<uint8_t> public_key;
-  std::vector<uint8_t> secret_key;
-  if (ReadArrayOfBytes(&reader, &private_key) &&
-      ReadArrayOfBytes(&reader, &public_key)) {
-    secret_key =
-        service_impl_->PerformECDHKeyAgreement(private_key, public_key);
-  } else {
-    LOG(ERROR) << "Invalid arguments for PerformECDHKeyAgreement method";
-  }
-
-  scoped_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendArrayOfBytes(secret_key.data(), secret_key.size());
-  return response.Pass();
+std::vector<uint8_t> DBusAdaptor::PerformECDHKeyAgreement(
+    const std::vector<uint8_t>& private_key,
+    const std::vector<uint8_t>& public_key) {
+  return service_impl_->PerformECDHKeyAgreement(private_key, public_key);
 }
 
-scoped_ptr<dbus::Response> DBusAdaptor::CreateSecureMessage(
-    dbus::MethodCall* method_call) {
-  dbus::MessageReader reader(method_call);
-
-  std::vector<uint8_t> payload;
-  std::vector<uint8_t> key;
-  std::vector<uint8_t> associated_data;
-  std::vector<uint8_t> public_metadata;
-  std::vector<uint8_t> verification_key_id;
-  std::vector<uint8_t> decryption_key_id;
+std::vector<uint8_t> DBusAdaptor::CreateSecureMessage(
+    const std::vector<uint8_t>& payload,
+    const std::vector<uint8_t>& key,
+    const std::vector<uint8_t>& associated_data,
+    const std::vector<uint8_t>& public_metadata,
+    const std::vector<uint8_t>& verification_key_id,
+    const std::vector<uint8_t>& decryption_key_id,
+    const std::string& encryption_type_str,
+    const std::string& signature_type_str) {
   easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type;
   easy_unlock_crypto::ServiceImpl::SignatureType signature_type;
 
-  std::vector<uint8_t> message;
-
-  if (ReadArrayOfBytes(&reader, &payload) &&
-      ReadArrayOfBytes(&reader, &key) &&
-      ReadArrayOfBytes(&reader, &associated_data) &&
-      ReadArrayOfBytes(&reader, &public_metadata) &&
-      ReadArrayOfBytes(&reader, &verification_key_id) &&
-      // TODO(tbarzic): Require to be present decryption_key_id when Chrome
-      // gets updated to a newer version, which supports passing
-      // decryption_key_id.
-      (ReadArrayOfBytes(&reader, &decryption_key_id) || true) &&
-      ReadAndConvertEncryptionType(&reader, &encryption_type) &&
-      ReadAndConvertSignatureType(&reader, &signature_type)) {
-    message = service_impl_->CreateSecureMessage(payload,
-                                                 key,
-                                                 associated_data,
-                                                 public_metadata,
-                                                 verification_key_id,
-                                                 decryption_key_id,
-                                                 encryption_type,
-                                                 signature_type);
-  } else {
-    LOG(ERROR) << "Invalid arguments for CreateSecureMessage method";
+  if (!ConvertEncryptionType(encryption_type_str, &encryption_type) ||
+      !ConvertSignatureType(signature_type_str, &signature_type)) {
+    LOG(ERROR) << "Invalid encryption or signature type";
+    // TODO(tbarzic): Return error here.
+    return std::vector<uint8_t>();
   }
 
-  scoped_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendArrayOfBytes(message.data(), message.size());
-  return response.Pass();
+  return service_impl_->CreateSecureMessage(payload,
+                                            key,
+                                            associated_data,
+                                            public_metadata,
+                                            verification_key_id,
+                                            decryption_key_id,
+                                            encryption_type,
+                                            signature_type);
 }
 
-scoped_ptr<dbus::Response> DBusAdaptor::UnwrapSecureMessage(
-    dbus::MethodCall* method_call) {
-  dbus::MessageReader reader(method_call);
-
-  std::vector<uint8_t> message;
-  std::vector<uint8_t> key;
-  std::vector<uint8_t> associated_data;
+std::vector<uint8_t> DBusAdaptor::UnwrapSecureMessage(
+    const std::vector<uint8_t>& message,
+    const std::vector<uint8_t>& key,
+    const std::vector<uint8_t>& associated_data,
+    const std::string& encryption_type_str,
+    const std::string& signature_type_str) {
   easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type;
   easy_unlock_crypto::ServiceImpl::SignatureType signature_type;
 
-  std::vector<uint8_t> unwrapped_message;
-
-  if (ReadArrayOfBytes(&reader, &message) &&
-      ReadArrayOfBytes(&reader, &key) &&
-      ReadArrayOfBytes(&reader, &associated_data) &&
-      ReadAndConvertEncryptionType(&reader, &encryption_type) &&
-      ReadAndConvertSignatureType(&reader, &signature_type)) {
-    unwrapped_message = service_impl_->UnwrapSecureMessage(message,
-                                                           key,
-                                                           associated_data,
-                                                           encryption_type,
-                                                           signature_type);
-  } else {
-    LOG(ERROR) << "Invalid arguments for UnwrapSecureMessage method";
+  if (!ConvertEncryptionType(encryption_type_str, &encryption_type) ||
+      !ConvertSignatureType(signature_type_str, &signature_type)) {
+    LOG(ERROR) << "Invalid encryption or signature type";
+    // TODO(tbarzic): Return error here.
+    return std::vector<uint8_t>();
   }
 
-  scoped_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendArrayOfBytes(unwrapped_message.data(), unwrapped_message.size());
-  return response.Pass();
-}
-
-void DBusAdaptor::ExportSyncDBusMethod(
-    dbus::ExportedObject* object,
-    const std::string& method_name,
-    SyncDBusMethodCallMemberFunction member) {
-  DCHECK(object);
-  CHECK(object->ExportMethodAndBlock(
-      kEasyUnlockServiceInterface, method_name,
-      base::Bind(&HandleSynchronousDBusMethodCall,
-                 base::Bind(member, base::Unretained(this)))));
+  return service_impl_->UnwrapSecureMessage(message,
+                                            key,
+                                            associated_data,
+                                            encryption_type,
+                                            signature_type);
 }
 
 }  // namespace easy_unlock

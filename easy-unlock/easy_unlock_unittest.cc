@@ -4,21 +4,21 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/message_loops/base_message_loop.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "easy-unlock/daemon.h"
+#include "easy-unlock/dbus_adaptor.h"
 #include "easy-unlock/fake_easy_unlock_service.h"
 
 using ::testing::_;
@@ -38,39 +38,49 @@ class MethodCallHandlers {
 
   ~MethodCallHandlers() {}
 
-  bool SetGenerateEcP256KeyPairHandler(const std::string& interface,
-                                       const std::string& method,
-                                       Handler handler) {
+  void SetGenerateEcP256KeyPairHandler(
+      const std::string& interface,
+      const std::string& method,
+      Handler handler,
+      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     generate_ec_p256_key_pair_handler_ = handler;
-    return true;
+    export_handler.Run(interface, method, true);
   }
 
-  bool SetWrapPublicKeyHandler(const std::string& interface,
-                               const std::string& method,
-                               Handler handler) {
+  void SetWrapPublicKeyHandler(
+      const std::string& interface,
+      const std::string& method,
+      Handler handler,
+      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     wrap_public_key_handler_ = handler;
-    return true;
+    export_handler.Run(interface, method, true);
   }
 
-  bool SetPerformECDHKeyAgreementHandler(const std::string& interface,
-                                         const std::string& method,
-                                         Handler handler) {
+  void SetPerformECDHKeyAgreementHandler(
+      const std::string& interface,
+      const std::string& method,
+      Handler handler,
+      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     perform_ecdh_key_agreement_handler_ = handler;
-    return true;
+    export_handler.Run(interface, method, true);
   }
 
-  bool SetCreateSecureMessageHandler(const std::string& interface,
-                                     const std::string& method,
-                                     Handler handler) {
+  void SetCreateSecureMessageHandler(
+      const std::string& interface,
+      const std::string& method,
+      Handler handler,
+      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     create_secure_message_handler_ = handler;
-    return true;
+    export_handler.Run(interface, method, true);
   }
 
-  bool SetUnwrapSecureMessageHandler(const std::string& interface,
-                                     const std::string& method,
-                                     Handler handler) {
+  void SetUnwrapSecureMessageHandler(
+      const std::string& interface,
+      const std::string& method,
+      Handler handler,
+      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     unwrap_secure_message_handler_ = handler;
-    return true;
+    export_handler.Run(interface, method, true);
   }
 
   void CallGenerateEcP256KeyPair(
@@ -120,28 +130,26 @@ class MethodCallHandlers {
 
 class EasyUnlockTest : public ::testing::Test {
  public:
-  EasyUnlockTest() : method_call_handlers_(new MethodCallHandlers()) {}
+  EasyUnlockTest() : method_call_handlers_(new MethodCallHandlers()),
+                     service_path_(easy_unlock::kEasyUnlockServicePath) {}
   virtual ~EasyUnlockTest() {}
 
   virtual void SetUp() {
-    chromeos_message_loop_.SetAsCurrent();
-
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
 
-    // Create a mock exported object that behaves as
-    // org.chromium.EasyUnlock DBus service.
-    exported_object_ =
-        new dbus::MockExportedObject(
-            bus_.get(),
-            dbus::ObjectPath(easy_unlock::kEasyUnlockServicePath));
-    ASSERT_TRUE(InitializeDaemon());
+    SetUpExportedObject();
+
+    service_impl_.reset(new easy_unlock::FakeService());
+
+    adaptor_.reset(new easy_unlock::DBusAdaptor(bus_, service_impl_.get()));
+    adaptor_->Register(
+        chromeos::dbus_utils::AsyncEventSequencer::
+            GetDefaultCompletionAction());
   }
 
   virtual void TearDown() {
-    if (daemon_)
-      daemon_->Finalize();
   }
 
   void VerifyGenerateEcP256KeyPairResponse(
@@ -176,95 +184,87 @@ class EasyUnlockTest : public ::testing::Test {
               std::string(reinterpret_cast<const char*>(bytes), length));
   }
 
+  void VerifyNoDataResponse(scoped_ptr<dbus::Response> response) {
+    ASSERT_TRUE(response);
+    dbus::MessageReader reader(response.get());
+    const uint8_t* bytes = nullptr;
+    size_t length = 0;
+
+    // Client handles both of these cases the same (response not being set to
+    // a byte array, and response being empty byte array).
+    bool hasData = reader.PopArrayOfBytes(&bytes, &length);
+    if (hasData)
+      EXPECT_EQ(0u, length);
+  }
+
  protected:
-  scoped_ptr<MethodCallHandlers> method_call_handlers_;
+  std::unique_ptr<MethodCallHandlers> method_call_handlers_;
 
  private:
   void SetUpExportedObject() {
+    ASSERT_TRUE(bus_.get());
+
+    // Create a mock exported object that behaves as
+    // org.chromium.EasyUnlock DBus service.
+    exported_object_ = new dbus::MockExportedObject(bus_.get(), service_path_);
+
+    EXPECT_CALL(*bus_, GetExportedObject(service_path_))
+        .Times(AnyNumber())
+        .WillRepeatedly(Return(exported_object_.get()));
+
+    EXPECT_CALL(*exported_object_, ExportMethod(_, _, _, _))
+        .Times(AnyNumber());
+
     EXPECT_CALL(*exported_object_,
-                ExportMethodAndBlock(
+                ExportMethod(
                     easy_unlock::kEasyUnlockServiceInterface,
                     easy_unlock::kGenerateEcP256KeyPairMethod,
-                    _))
+                    _, _))
         .WillOnce(
              Invoke(method_call_handlers_.get(),
                     &MethodCallHandlers::SetGenerateEcP256KeyPairHandler));
     EXPECT_CALL(*exported_object_,
-                ExportMethodAndBlock(
+                ExportMethod(
                     easy_unlock::kEasyUnlockServiceInterface,
                     easy_unlock::kWrapPublicKeyMethod,
-                    _))
+                    _, _))
         .WillOnce(
              Invoke(method_call_handlers_.get(),
                     &MethodCallHandlers::SetWrapPublicKeyHandler));
     EXPECT_CALL(*exported_object_,
-                ExportMethodAndBlock(
+                ExportMethod(
                     easy_unlock::kEasyUnlockServiceInterface,
                     easy_unlock::kPerformECDHKeyAgreementMethod,
-                    _))
+                    _, _))
         .WillOnce(
              Invoke(method_call_handlers_.get(),
                     &MethodCallHandlers::SetPerformECDHKeyAgreementHandler));
     EXPECT_CALL(*exported_object_,
-                ExportMethodAndBlock(
+                ExportMethod(
                     easy_unlock::kEasyUnlockServiceInterface,
                     easy_unlock::kCreateSecureMessageMethod,
-                    _))
+                    _, _))
         .WillOnce(
              Invoke(method_call_handlers_.get(),
                     &MethodCallHandlers::SetCreateSecureMessageHandler));
     EXPECT_CALL(*exported_object_,
-                ExportMethodAndBlock(
+                ExportMethod(
                     easy_unlock::kEasyUnlockServiceInterface,
                     easy_unlock::kUnwrapSecureMessageMethod,
-                    _))
+                    _, _))
         .WillOnce(
              Invoke(method_call_handlers_.get(),
                     &MethodCallHandlers::SetUnwrapSecureMessageHandler));
-
-    EXPECT_CALL(*exported_object_,
-                ExportMethodAndBlock(
-                    "org.freedesktop.DBus.Introspectable",
-                    "Introspect",
-                    _)).WillOnce(Return(true));
   }
 
-  bool InitializeDaemon() {
-    EXPECT_CALL(*bus_, Connect()).WillOnce(Return(true));
-    EXPECT_CALL(*bus_, SetUpAsyncOperations()).WillOnce(Return(true));
-    EXPECT_CALL(*bus_,
-        RequestOwnershipAndBlock(easy_unlock::kEasyUnlockServiceName,
-                                 dbus::Bus::REQUIRE_PRIMARY))
-            .WillOnce(Return(true));
-    // Should get called on during daemon shutdown.
-    EXPECT_CALL(*bus_.get(), ShutdownAndBlock()).WillOnce(Return());
-
-    // |bus_|'s GetExportedObject() will return |exported_object_|
-    // for the given service name and the object path.
-    EXPECT_CALL(*bus_.get(),
-                GetExportedObject(dbus::ObjectPath(
-                    easy_unlock::kEasyUnlockServicePath)))
-        .WillOnce(Return(exported_object_.get()));
-
-    SetUpExportedObject();
-
-    scoped_ptr<easy_unlock::FakeService> fake_service(
-        new easy_unlock::FakeService());
-    daemon_.reset(
-        new easy_unlock::Daemon(
-            scoped_ptr<easy_unlock::Service>(new easy_unlock::FakeService()),
-            bus_,
-            false));
-    return daemon_->Initialize();
-  }
-
-  base::MessageLoopForIO message_loop_;
-  chromeos::BaseMessageLoop chromeos_message_loop_{&message_loop_};
+  const dbus::ObjectPath service_path_;
 
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> exported_object_;
 
-  scoped_ptr<easy_unlock::Daemon> daemon_;
+  std::unique_ptr<easy_unlock::Service> service_impl_;
+  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<easy_unlock::DBusAdaptor> adaptor_;
 };
 
 TEST_F(EasyUnlockTest, GenerateEcP256KeyPair) {
@@ -297,6 +297,26 @@ TEST_F(EasyUnlockTest, WrapPublicKeyRSA) {
           &EasyUnlockTest::VerifyDataResponse,
           base::Unretained(this),
           "public_key_RSA_key"));
+}
+
+TEST_F(EasyUnlockTest, WrapPublicKeyRSA_IUnvalid_UnknownAlgorithm) {
+  dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
+                               easy_unlock::kWrapPublicKeyMethod);
+  // Set serial to an arbitrary value.
+  method_call.SetSerial(231);
+
+  const std::string public_key = "key";
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString("UNKNOWN");
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(public_key.data()),
+      public_key.length());
+  method_call_handlers_->CallWrapPublicKey(
+      &method_call,
+      base::Bind(
+          &EasyUnlockTest::VerifyNoDataResponse,
+          base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, PerformECDHKeyAgreement) {
@@ -375,54 +395,6 @@ TEST_F(EasyUnlockTest, CreateSecureMessage) {
                  expected_response));
 }
 
-TEST_F(EasyUnlockTest, CreateSecureMessage_NoDecryptionKeyId) {
-  dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
-                               easy_unlock::kCreateSecureMessageMethod);
-  // Set serial to an arbitrary value.
-  method_call.SetSerial(231);
-
-  const std::string payload = "cleartext message";
-  const std::string key = "secret key";
-  const std::string associated_data = "ad";
-  const std::string public_metadata = "pm";
-  const std::string verification_key_id = "key";
-
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
-                            payload.length());
-  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
-                            key.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(associated_data.data()),
-      associated_data.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(public_metadata.data()),
-      public_metadata.length());
-  writer.AppendArrayOfBytes(
-      reinterpret_cast<const uint8_t*>(verification_key_id.data()),
-      verification_key_id.length());
-  writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
-  writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
-
-  const std::string expected_response =
-    "securemessage:{"
-      "payload:cleartext message,"
-      "key:secret key,"
-      "associated_data:ad,"
-      "public_metadata:pm,"
-      "verification_key_id:key,"
-      "decryption_key_id:,"
-      "encryption:AES,"
-      "signature:HMAC"
-    "}";
-
-  method_call_handlers_->CallCreateSecureMessage(
-      &method_call,
-      base::Bind(&EasyUnlockTest::VerifyDataResponse,
-                 base::Unretained(this),
-                 expected_response));
-}
-
 TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_MissingParameter) {
   dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
                                easy_unlock::kCreateSecureMessageMethod);
@@ -433,6 +405,7 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_MissingParameter) {
   const std::string key = "secret key";
   const std::string associated_data = "ad";
   const std::string verification_key_id = "key";
+  const std::string decryption_key_id = "key1";
 
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
@@ -445,14 +418,16 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_MissingParameter) {
   writer.AppendArrayOfBytes(
       reinterpret_cast<const uint8_t*>(verification_key_id.data()),
       verification_key_id.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
+      decryption_key_id.length());
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
   method_call_handlers_->CallCreateSecureMessage(
       &method_call,
-      base::Bind(&EasyUnlockTest::VerifyDataResponse,
-                 base::Unretained(this),
-                 ""));
+      base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
+                 base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownEncryptionType) {
@@ -466,6 +441,7 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownEncryptionType) {
   const std::string associated_data = "ad";
   const std::string public_metadata = "pm";
   const std::string verification_key_id = "key";
+  const std::string decryption_key_id = "key1";
 
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
@@ -481,14 +457,16 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownEncryptionType) {
   writer.AppendArrayOfBytes(
       reinterpret_cast<const uint8_t*>(verification_key_id.data()),
       verification_key_id.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
+      decryption_key_id.length());
   writer.AppendString("UNKNOWN");
   writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
 
   method_call_handlers_->CallCreateSecureMessage(
       &method_call,
-      base::Bind(&EasyUnlockTest::VerifyDataResponse,
-                 base::Unretained(this),
-                 ""));
+      base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
+                 base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownSignatureType) {
@@ -502,6 +480,7 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownSignatureType) {
   const std::string associated_data = "ad";
   const std::string public_metadata = "pm";
   const std::string verification_key_id = "key";
+  const std::string decryption_key_id = "key1";
 
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
@@ -517,14 +496,16 @@ TEST_F(EasyUnlockTest, CreateSecureMessage_Invalid_UnknownSignatureType) {
   writer.AppendArrayOfBytes(
       reinterpret_cast<const uint8_t*>(verification_key_id.data()),
       verification_key_id.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
+      decryption_key_id.length());
   writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
   writer.AppendString("UNKOWN");
 
   method_call_handlers_->CallCreateSecureMessage(
       &method_call,
-      base::Bind(&EasyUnlockTest::VerifyDataResponse,
-                 base::Unretained(this),
-                 ""));
+      base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
+                 base::Unretained(this)));
 }
 
 TEST_F(EasyUnlockTest, UnwrapSecureMessage) {
@@ -562,6 +543,83 @@ TEST_F(EasyUnlockTest, UnwrapSecureMessage) {
       base::Bind(&EasyUnlockTest::VerifyDataResponse,
                  base::Unretained(this),
                  expected_response));
+}
+
+TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownEncryptionType) {
+  dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
+                               easy_unlock::kUnwrapSecureMessageMethod);
+  // Set serial to an arbitrary value.
+  method_call.SetSerial(231);
+
+  const std::string message = "secure message";
+  const std::string key = "secret key";
+  const std::string associated_data = "ad";
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(message.data()),
+                            message.length());
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
+                            key.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(associated_data.data()),
+      associated_data.length());
+  writer.AppendString("UNKNOWN");
+  writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
+
+  method_call_handlers_->CallUnwrapSecureMessage(
+      &method_call,
+      base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
+                 base::Unretained(this)));
+}
+
+TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_UnknownSignatureType) {
+  dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
+                               easy_unlock::kUnwrapSecureMessageMethod);
+  // Set serial to an arbitrary value.
+  method_call.SetSerial(231);
+
+  const std::string message = "secure message";
+  const std::string key = "secret key";
+  const std::string associated_data = "ad";
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(message.data()),
+                            message.length());
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
+                            key.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(associated_data.data()),
+      associated_data.length());
+  writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
+  writer.AppendString("UNKNOWN");
+
+  method_call_handlers_->CallUnwrapSecureMessage(
+      &method_call,
+      base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
+                 base::Unretained(this)));
+}
+
+TEST_F(EasyUnlockTest, UnwrapSecureMessage_Invalid_MissingParam) {
+  dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
+                               easy_unlock::kUnwrapSecureMessageMethod);
+  // Set serial to an arbitrary value.
+  method_call.SetSerial(231);
+
+  const std::string message = "secure message";
+  const std::string key = "secret key";
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(message.data()),
+                            message.length());
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
+                            key.length());
+  writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
+  writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
+
+  method_call_handlers_->CallUnwrapSecureMessage(
+      &method_call,
+      base::Bind(&EasyUnlockTest::VerifyNoDataResponse,
+                 base::Unretained(this)));
 }
 
 }  // namespace
