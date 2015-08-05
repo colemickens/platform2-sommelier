@@ -21,6 +21,9 @@
 #include "shill/icmp_session_factory.h"
 #include "shill/logging.h"
 #include "shill/net/byte_string.h"
+#include "shill/net/rtnl_handler.h"
+#include "shill/net/rtnl_listener.h"
+#include "shill/net/rtnl_message.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 
@@ -40,7 +43,8 @@ const char* kEventNames[] = {
     "Ping (gateway)",
     "Find route",
     "ARP table lookup",
-    "IP collision check",
+    "Neighbor table lookup",
+    "IP collision check"
 };
 // These strings are dependent on ConnectionDiagnostics::Phase. Any changes to
 // this array should be synced with ConnectionDiagnostics::Phase.
@@ -102,11 +106,11 @@ const char ConnectionDiagnostics::kIssueGatewayUpstream[] =
     "and the local gateway is pingable. Gatway issue or upstream "
     "connectivity problem detected.";
 const char ConnectionDiagnostics::kIssueGatewayNotResponding[] =
-    "This gateway appears to be on the local network (ARP entry exists), but "
-    "is not responding to pings.";
+    "This gateway appears to be on the local network, but is not responding to "
+    "pings.";
 const char ConnectionDiagnostics::kIssueServerNotResponding[] =
-    "This web server appears to be on the local network (ARP entry exists), "
-    "but is not responding to pings.";
+    "This web server appears to be on the local network, but is not responding "
+    "to pings.";
 const char ConnectionDiagnostics::kIssueGatewayArpFailed[] =
     "No ARP entry for the gateway. Either the gateway does not exist on the "
     "local network, or there are link layer issues.";
@@ -115,9 +119,24 @@ const char ConnectionDiagnostics::kIssueServerArpFailed[] =
     "the local network, or there are link layer issues.";
 const char ConnectionDiagnostics::kIssueInternalError[] =
     "The connection diagnostics encountered an internal failure.";
+const char ConnectionDiagnostics::kIssueGatewayNoNeighborEntry[] =
+    "No neighbor table entry for the gateway. Either the gateway does not "
+    "exist on the local network, or there are link layer issues";
+const char ConnectionDiagnostics::kIssueServerNoNeighborEntry[] =
+    "No neighbor table entry for the web server. Either the web server does "
+    "not exist on the local network, or there are link layer issues";
+const char ConnectionDiagnostics::kIssueGatewayNeighborEntryNotConnected[] =
+    "Neighbor table entry for the gateway is not in a connected state. Either "
+    "the web server does not exist on the local network, or there are link "
+    "layer issues";
+const char ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected[] =
+    "Neighbor table entry for the web server is not in a connected state. "
+    "Either the web server does not exist on the local network, or there are "
+    "link layer issues";
 const int ConnectionDiagnostics::kMaxDNSRetries = 2;
 const int ConnectionDiagnostics::kRouteQueryTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kArpReplyTimeoutSeconds = 1;
+const int ConnectionDiagnostics::kNeighborTableRequestTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kDNSTimeoutSeconds = 3;
 
 ConnectionDiagnostics::ConnectionDiagnostics(
@@ -126,6 +145,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     : weak_ptr_factory_(this),
       dispatcher_(dispatcher),
       routing_table_(RoutingTable::GetInstance()),
+      rtnl_handler_(RTNLHandler::GetInstance()),
       connection_(connection),
       device_info_(device_info),
       dns_client_factory_(DNSClientFactory::GetInstance()),
@@ -203,11 +223,13 @@ void ConnectionDiagnostics::Stop() {
   icmp_session_->Stop();
   portal_detector_.reset();
   receive_response_handler_.reset();
+  neighbor_msg_listener_.reset();
   id_to_pending_dns_server_icmp_session_.clear();
   target_url_.reset();
   route_query_callback_.Cancel();
   route_query_timeout_callback_.Cancel();
   arp_reply_timeout_callback_.Cancel();
+  neighbor_request_timeout_callback_.Cancel();
 }
 
 // static
@@ -439,7 +461,20 @@ void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
 void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
   SLOG(this, 3) << __func__;
 
-  AddEvent(kTypeArpTableLookup, kPhaseStart, kResultSuccess);
+  if (address.family() != IPAddress::kFamilyIPv4) {
+    // We only perform ARP table lookups for IPv4 addresses.
+    LOG(ERROR) << __func__ << ": " << address.ToString()
+               << " is not an IPv4 address";
+    AddEventWithMessage(
+        kTypeArpTableLookup, kPhaseStart, kResultFailure,
+        StringPrintf("%s is not an IPv4 address", address.ToString().c_str()));
+    ReportResultAndStop(kIssueInternalError);
+    return;
+  }
+
+  AddEventWithMessage(kTypeArpTableLookup, kPhaseStart, kResultSuccess,
+                      StringPrintf("Finding ARP table entry for %s",
+                                   address.ToString().c_str()));
   ByteString target_mac_address;
   if (device_info_->GetMACAddressOfPeer(connection_->interface_index(), address,
                                         &target_mac_address)) {
@@ -450,9 +485,41 @@ void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
     return;
   }
 
-  AddEvent(kTypeArpTableLookup, kPhaseEnd, kResultFailure);
+  AddEventWithMessage(
+      kTypeArpTableLookup, kPhaseEnd, kResultFailure,
+      StringPrintf("Found ARP table entry for %s", address.ToString().c_str()));
   dispatcher_->PostTask(Bind(&ConnectionDiagnostics::CheckIpCollision,
                              weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
+  SLOG(this, 3) << __func__;
+
+  if (address.family() != IPAddress::kFamilyIPv6) {
+    // We only perform neighbor table lookups for IPv6 addresses.
+    LOG(ERROR) << __func__ << ": " << address.ToString()
+               << " is not an IPv6 address";
+    AddEventWithMessage(
+        kTypeNeighborTableLookup, kPhaseStart, kResultFailure,
+        StringPrintf("%s is not an IPv6 address", address.ToString().c_str()));
+    ReportResultAndStop(kIssueInternalError);
+    return;
+  }
+
+  neighbor_msg_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestNeighbor,
+                       Bind(&ConnectionDiagnostics::OnNeighborMsgReceived,
+                            weak_ptr_factory_.GetWeakPtr(), address)));
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestNeighbor);
+
+  neighbor_request_timeout_callback_.Reset(
+      Bind(&ConnectionDiagnostics::OnNeighborTableRequestTimeout,
+           weak_ptr_factory_.GetWeakPtr(), address));
+  dispatcher_->PostDelayedTask(route_query_timeout_callback_.callback(),
+                               kNeighborTableRequestTimeoutSeconds * 1000);
+  AddEventWithMessage(kTypeNeighborTableLookup, kPhaseStart, kResultSuccess,
+                      StringPrintf("Finding neighbor table entry for %s",
+                                   address.ToString().c_str()));
 }
 
 void ConnectionDiagnostics::CheckIpCollision() {
@@ -653,10 +720,10 @@ void ConnectionDiagnostics::OnPingHostComplete(
     dispatcher_->PostTask(Bind(&ConnectionDiagnostics::FindArpTableEntry,
                                weak_ptr_factory_.GetWeakPtr(), address_pinged));
   } else {
-    // We failed to ping an IPv6 gateway. Cannot perform ARP diagnostics on IPv6
-    // destinations, so end diagnostics here.
-    // TODO(samueltan): diagnose IPv6.
-    ReportResultAndStop(kIssueNoneIPv6);
+    // We failed to ping an IPv6 gateway. Check for neighbor table entry for
+    // this gateway.
+    dispatcher_->PostTask(Bind(&ConnectionDiagnostics::FindNeighborTableEntry,
+                               weak_ptr_factory_.GetWeakPtr(), address_pinged));
   }
 }
 
@@ -670,18 +737,18 @@ void ConnectionDiagnostics::OnArpReplyReceived(int fd) {
   }
 
   if (!packet.IsReply()) {
-    SLOG(this, 4) << "This is not a reply packet. Ignoring.";
+    SLOG(this, 4) << __func__ << ": this is not a reply packet. Ignoring.";
     return;
   }
 
   if (!connection_->local().address().Equals(
           packet.remote_ip_address().address())) {
-    SLOG(this, 4) << "Response is not for our IP address.";
+    SLOG(this, 4) << __func__ << ": response is not for our IP address.";
     return;
   }
 
   if (!local_mac_address_.Equals(packet.remote_mac_address())) {
-    SLOG(this, 4) << "Response is not for our MAC address.";
+    SLOG(this, 4) << __func__ << ": response is not for our MAC address.";
     return;
   }
 
@@ -712,6 +779,59 @@ void ConnectionDiagnostics::OnArpRequestTimeout() {
   }
 }
 
+void ConnectionDiagnostics::OnNeighborMsgReceived(
+    const IPAddress& address_queried, const RTNLMessage& msg) {
+  SLOG(this, 3) << __func__;
+
+  DCHECK(msg.type() == RTNLMessage::kTypeNeighbor);
+  const RTNLMessage::NeighborStatus& neighbor = msg.neighbor_status();
+
+  if (neighbor.type != NDA_DST || !msg.HasAttribute(NDA_DST)) {
+    SLOG(this, 4) << __func__ << ": neighbor message has no destination";
+    return;
+  }
+
+  IPAddress address(msg.family(), msg.GetAttribute(NDA_DST));
+  if (!address.Equals(address_queried)) {
+    SLOG(this, 4) << __func__ << ": destination address (" << address.ToString()
+                  << ") does not match address queried ("
+                  << address_queried.ToString() << ")";
+    return;
+  }
+
+  neighbor_request_timeout_callback_.Cancel();
+  if (!(neighbor.state & (NUD_PERMANENT | NUD_NOARP | NUD_REACHABLE))) {
+    AddEventWithMessage(
+        kTypeNeighborTableLookup, kPhaseEnd, kResultFailure,
+        StringPrintf("Neighbor table entry for %s is not in a connected state "
+                     "(actual state = 0x%2x)",
+                     address_queried.ToString().c_str(), neighbor.state));
+    ReportResultAndStop(address_queried.Equals(connection_->gateway())
+                            ? kIssueGatewayNeighborEntryNotConnected
+                            : kIssueServerNeighborEntryNotConnected);
+    return;
+  }
+
+  AddEventWithMessage(kTypeNeighborTableLookup, kPhaseEnd, kResultSuccess,
+                      StringPrintf("Neighbor table entry found for %s",
+                                   address_queried.ToString().c_str()));
+  ReportResultAndStop(address_queried.Equals(connection_->gateway())
+                          ? kIssueGatewayNotResponding
+                          : kIssueServerNotResponding);
+}
+
+void ConnectionDiagnostics::OnNeighborTableRequestTimeout(
+    const IPAddress& address_queried) {
+  SLOG(this, 3) << __func__;
+
+  AddEventWithMessage(kTypeNeighborTableLookup, kPhaseEnd, kResultFailure,
+                      StringPrintf("Failed to find neighbor table entry for %s",
+                                   address_queried.ToString().c_str()));
+  ReportResultAndStop(address_queried.Equals(connection_->gateway())
+                          ? kIssueGatewayNoNeighborEntry
+                          : kIssueServerNoNeighborEntry);
+}
+
 void ConnectionDiagnostics::OnRouteQueryResponse(
     int interface_index, const RoutingTableEntry& entry) {
   SLOG(this, 3) << __func__ << "(interface " << interface_index << ")";
@@ -738,9 +858,10 @@ void ConnectionDiagnostics::OnRouteQueryResponse(
     dispatcher_->PostTask(Bind(&ConnectionDiagnostics::FindArpTableEntry,
                                weak_ptr_factory_.GetWeakPtr(), entry.dst));
   } else {
-    // Cannot perform ARP diagnostics for a local IPv6 destination.
-    // TODO(samueltan): diagnose IPv6.
-    ReportResultAndStop(kIssueNoneIPv6);
+    // We have a route to a local IPv6 destination, so check for a neighbor
+    // table entry.
+    dispatcher_->PostTask(Bind(&ConnectionDiagnostics::FindNeighborTableEntry,
+                               weak_ptr_factory_.GetWeakPtr(), entry.dst));
   }
 }
 

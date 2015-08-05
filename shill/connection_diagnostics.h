@@ -29,9 +29,11 @@ class EventDispatcher;
 class HTTPURL;
 class IcmpSession;
 class IcmpSessionFactory;
-class PortalDetectorFactory;
 class RoutingTable;
 struct RoutingTableEntry;
+class RTNLHandler;
+class RTNLListener;
+class RTNLMessage;
 
 // The ConnectionDiagnostics class implements facilities to diagnose problems
 // that a connection encounters reaching a specific URL.
@@ -67,30 +69,36 @@ struct RoutingTableEntry;
 //                 (N) If no route is found, a routing issue has been found.
 //                     END.
 //                 (O) If a route is found, and the destination is a local IPv6
-//                     address, there is nothing more to do. END.
-//                 (P) If a route is found and the destination is a remote
+//                     address, look for a neighbor table entry.
+//                     (P) If a neighbor table entry is found, then this
+//                         gateway/web server appears to be on the local
+//                         network, but is not responding to pings. END.
+//                     (Q) If a neighbor table entry is not found, then either
+//                         this gateway/web server does not exist on the local
+//                         network, or there are link layer issues.
+//                 (R) If a route is found and the destination is a remote
 //                     address, ping the local gateway.
-//                     (Q) If the local gateway respond to pings, then we have
+//                     (S) If the local gateway respond to pings, then we have
 //                         found an upstream connectivity problem or gateway
 //                         problem. END.
-//                     (R) If the local gateway is at an IPv6 address and does
-//                         not respond to pings, there is nothing more to do.
-//                         END.
-//                     (S) If the local gateway is at an IPv4 address and does
+//                     (T) If the local gateway is at an IPv6 address and does
+//                         not respond to pings, look for a neighbor table
+//                         entry (step O).
+//                     (U) If the local gateway is at an IPv4 address and does
 //                         not respond to pings, check for an ARP table entry
-//                         for its address (step T).
-//                 (T) Otherwise, if a route is found and the destination is a
+//                         for its address (step V).
+//                 (V) Otherwise, if a route is found and the destination is a
 //                     local IPv4 address, look for an ARP table entry for it.
-//                     (U) If an ARP table entry is found, then this gateway/
-//                         webserver appears to be on the local network, but is
+//                     (W) If an ARP table entry is found, then this gateway/
+//                         web server appears to be on the local network, but is
 //                         not responding to pings. END.
-//                     (V) If an ARP table entry is not found, check for IP
+//                     (X) If an ARP table entry is not found, check for IP
 //                         address collision in the local network by sending out
 //                         an ARP request for the local IP address of this
 //                         connection.
-//                         (W) If a reply is received, an IP collision has been
+//                         (Y) If a reply is received, an IP collision has been
 //                             detected. END.
-//                         (X) If no reply was received, no IP address collision
+//                         (Z) If no reply was received, no IP address collision
 //                             was detected. Since we are here because ARP and
 //                             ping failed, either the web server or gateway
 //                             does not actually exist on the local network, or
@@ -98,8 +106,6 @@ struct RoutingTableEntry;
 //
 // TODO(samueltan): Step F: if retry succeeds, remove the unresponsive DNS
 // servers so Chrome does not try to use them.
-// TODO(samueltan): Step O and R: query IPv6 neighbor table using
-// RTNLHandler::RequestDump(RTNLHandler::kRequestNeighbor).
 // TODO(samueltan): Step X: find ways to disambiguate the cause (e.g. can we see
 // packets from other hosts?).
 class ConnectionDiagnostics {
@@ -114,7 +120,8 @@ class ConnectionDiagnostics {
     kTypePingGateway = 4,
     kTypeFindRoute = 5,
     kTypeArpTableLookup = 6,
-    kTypeIPCollisionCheck = 7
+    kTypeNeighborTableLookup = 7,
+    kTypeIPCollisionCheck = 8
   };
 
   // The ConnectionDiagnostics::kPhaseNames string array depends on this enum.
@@ -201,9 +208,14 @@ class ConnectionDiagnostics {
   static const char kIssueGatewayArpFailed[];
   static const char kIssueServerArpFailed[];
   static const char kIssueInternalError[];
+  static const char kIssueGatewayNoNeighborEntry[];
+  static const char kIssueServerNoNeighborEntry[];
+  static const char kIssueGatewayNeighborEntryNotConnected[];
+  static const char kIssueServerNeighborEntryNotConnected[];
   static const int kMaxDNSRetries;
   static const int kRouteQueryTimeoutSeconds;
   static const int kArpReplyTimeoutSeconds;
+  static const int kNeighborTableRequestTimeoutSeconds;
   static const int kDNSTimeoutSeconds;
 
   // Create a new Event with |type|, |phase|, |result|, and an empty message,
@@ -235,6 +247,11 @@ class ConnectionDiagnostics {
 
   // Finds an ARP table entry for |address| by querying the kernel's ARP table.
   void FindArpTableEntry(const IPAddress& address);
+
+  // Finds a neighbor table entry for |address| by requesting an RTNL neighbor
+  // table dump, and looking for a matching neighbor table entry for |address|
+  // in ConnectionDiagnostics::OnNeighborMsgReceived.
+  void FindNeighborTableEntry(const IPAddress& address);
 
   // Checks for an IP collision by sending out an ARP request for the local IP
   // address assigned to |connection_|.
@@ -273,6 +290,16 @@ class ConnectionDiagnostics {
   // |kArpReplyTimeoutSeconds| seconds.
   void OnArpRequestTimeout();
 
+  // Called when replies are received to the neighbor table dump request issued
+  // in ConnectionDiagnostics::FindNeighborTableEntry.
+  void OnNeighborMsgReceived(const IPAddress& address_queried,
+                             const RTNLMessage& msg);
+
+  // Called if no neighbor table entry for |address_queried| is received within
+  // |kNeighborTableRequestTimeoutSeconds| of issuing a dump request in
+  // ConnectionDiagnostics::FindNeighborTableEntry.
+  void OnNeighborTableRequestTimeout(const IPAddress& address_queried);
+
   // Called upon receiving a reply to the routing table query issued in
   // ConnectionDiagnostics::FindRoute.
   void OnRouteQueryResponse(int interface_index,
@@ -292,6 +319,7 @@ class ConnectionDiagnostics {
   base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
   RoutingTable* routing_table_;
+  RTNLHandler* rtnl_handler_;
 
   // The connection being diagnosed.
   ConnectionRefPtr connection_;
@@ -326,10 +354,13 @@ class ConnectionDiagnostics {
       route_query_callback_;
   base::CancelableClosure route_query_timeout_callback_;
   base::CancelableClosure arp_reply_timeout_callback_;
+  base::CancelableClosure neighbor_request_timeout_callback_;
 
   // IOCallback that fires when the socket associated with |arp_client_| has a
   // packet to be received.  Calls ConnectionDiagnostics::OnArpReplyReceived.
   std::unique_ptr<IOHandler> receive_response_handler_;
+
+  std::unique_ptr<RTNLListener> neighbor_msg_listener_;
 
   // Record of all diagnostic events that occurred, sorted in order of
   // occurrence.
