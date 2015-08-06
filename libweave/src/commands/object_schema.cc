@@ -9,7 +9,7 @@
 
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/map_utils.h>
+#include <weave/enum_to_string.h>
 
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
@@ -260,7 +260,22 @@ std::unique_ptr<PropType> PropFromJsonObject(const base::Value& value,
   return prop;
 }
 
+const EnumToStringMap<base::Value::Type>::Map kMap[] = {
+    {base::Value::TYPE_NULL, "Null"},
+    {base::Value::TYPE_BOOLEAN, "Boolean"},
+    {base::Value::TYPE_INTEGER, "Integer"},
+    {base::Value::TYPE_DOUBLE, "Double"},
+    {base::Value::TYPE_STRING, "String"},
+    {base::Value::TYPE_BINARY, "Binary"},
+    {base::Value::TYPE_DICTIONARY, "Object"},
+    {base::Value::TYPE_LIST, "Array"},
+};
+
 }  // anonymous namespace
+
+template <>
+EnumToStringMap<base::Value::Type>::EnumToStringMap()
+    : EnumToStringMap(kMap) {}
 
 ObjectSchema::ObjectSchema() {
 }
@@ -352,21 +367,10 @@ std::unique_ptr<PropType> ObjectSchema::PropFromJson(
     // Full parameter definition.
     return PropFromJsonObject(value, base_schema, error);
   }
-  static const std::map<base::Value::Type, const char*> type_names = {
-      {base::Value::TYPE_NULL, "Null"},
-      {base::Value::TYPE_BOOLEAN, "Boolean"},
-      {base::Value::TYPE_INTEGER, "Integer"},
-      {base::Value::TYPE_DOUBLE, "Double"},
-      {base::Value::TYPE_STRING, "String"},
-      {base::Value::TYPE_BINARY, "Binary"},
-      {base::Value::TYPE_DICTIONARY, "Object"},
-      {base::Value::TYPE_LIST, "Array"},
-  };
-  const char* type_name =
-      chromeos::GetOrDefault(type_names, value.GetType(), "<unknown>");
   chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kUnknownType,
-                               "Unexpected JSON value type: %s", type_name);
+                               "Unexpected JSON value type: %s",
+                               EnumToString(value.GetType()).c_str());
   return nullptr;
 }
 
