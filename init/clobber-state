@@ -365,22 +365,36 @@ fi
 # Make sure the stateful partition has been unmounted.
 umount -n "${STATE_PATH}"
 
+# Order constraints:
+# 1. The crossystem call must happen immediately before the destruction of the
+# stateful partition to minimize the probability of inconsistency between TPM
+# state and presence/absence of install attributes in case of power loss.
+# 2. The destruction of stateful must be last in the sequence in order to
+# minimize the probability of losing the preserved files.
 if [ "$FAST_WIPE" = "fast" ] && [ "${IS_MTD}" = "0" ]; then
-  # Just wipe the start of the partition and remake the fs on
-  # the stateful partition.
-  dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
   if [ -z "${KEEPIMG}" ]; then
     ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
     dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
     dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
   fi
-else
 
+  # Clear TPM at next boot to make the TPM state consistent with (the soon to be
+  # induced) absence of install_attributes.pb.
+  crossystem clear_tpm_owner_request=1
+
+  # Just wipe the start of the partition and remake the fs on
+  # the stateful partition.
+  dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
+else
   if [ -z "${KEEPIMG}" ]; then
     ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
     wipedev ${OTHER_ROOT_DEV}
     wipedev ${OTHER_KERNEL_DEV}
   fi
+
+  # Clear TPM at next boot to make the TPM state consistent with (the soon to be
+  # induced) absence of install_attributes.pb.
+  crossystem clear_tpm_owner_request=1
 
   # Wipe everything on the stateful partition.
   wipedev ${STATE_DEV}
