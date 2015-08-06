@@ -13,24 +13,22 @@ namespace unittests {
 std::unique_ptr<HttpClient::Response> MockHttpClient::SendRequestAndBlock(
     const std::string& method,
     const std::string& url,
-    const std::string& data,
-    const std::string& mime_type,
     const Headers& headers,
+    const std::string& data,
     chromeos::ErrorPtr* error) {
   return std::unique_ptr<Response>{
-      MockSendRequest(method, url, data, mime_type, headers, error)};
+      MockSendRequest(method, url, headers, data, error)};
 }
 
 int MockHttpClient::SendRequest(const std::string& method,
                                 const std::string& url,
-                                const std::string& data,
-                                const std::string& mime_type,
                                 const Headers& headers,
+                                const std::string& data,
                                 const SuccessCallback& success_callback,
                                 const ErrorCallback& error_callback) {
   chromeos::ErrorPtr error;
   std::unique_ptr<Response> response{
-      MockSendRequest(method, url, data, mime_type, headers, &error)};
+      MockSendRequest(method, url, headers, data, &error)};
   if (response) {
     success_callback.Run(0, *response);
   } else {

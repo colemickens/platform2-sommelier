@@ -16,6 +16,7 @@
 
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/unittest_utils.h"
+#include "libweave/src/http_constants.h"
 #include "libweave/src/states/mock_state_change_queue_interface.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/storage_impls.h"
@@ -94,7 +95,7 @@ HttpClient::Response* ReplyWithJson(int status_code, const base::Value& json) {
       .WillRepeatedly(Return(status_code));
   EXPECT_CALL(*response, GetContentType())
       .Times(AtLeast(1))
-      .WillRepeatedly(Return("application/json"));
+      .WillRepeatedly(Return(http::kJsonUtf8));
   EXPECT_CALL(*response, GetData())
       .Times(AtLeast(1))
       .WillRepeatedly(ReturnRefOfCopy(text));
@@ -102,8 +103,16 @@ HttpClient::Response* ReplyWithJson(int status_code, const base::Value& json) {
 }
 
 std::pair<std::string, std::string> GetAuthHeader() {
-  return {std::string{"Authorization"},
-          std::string{"Bearer "} + test_data::kAccessToken};
+  return {http::kAuthorization,
+          std::string("Bearer ") + test_data::kAccessToken};
+}
+
+std::pair<std::string, std::string> GetJsonHeader() {
+  return {http::kContentType, http::kJsonUtf8};
+}
+
+std::pair<std::string, std::string> GetFormHeader() {
+  return {http::kContentType, http::kWwwFormUrlEncoded};
 }
 
 }  // anonymous namespace
@@ -229,10 +238,9 @@ TEST_F(DeviceRegistrationInfoTest, HaveRegistrationCredentials) {
   ReloadConfig();
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
-                              "application/x-www-form-urlencoded",
-                              HttpClient::Headers{}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(http::kPost, dev_reg_->GetOAuthURL("token"),
+                              HttpClient::Headers{GetFormHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_EQ("refresh_token", GetFormField(data, "grant_type"));
         EXPECT_EQ(test_data::kRefreshToken,
                   GetFormField(data, "refresh_token"));
@@ -258,10 +266,9 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
-                              "application/x-www-form-urlencoded",
-                              HttpClient::Headers{}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(http::kPost, dev_reg_->GetOAuthURL("token"),
+                              HttpClient::Headers{GetFormHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_EQ("refresh_token", GetFormField(data, "grant_type"));
         EXPECT_EQ(test_data::kRefreshToken,
                   GetFormField(data, "refresh_token"));
@@ -287,10 +294,9 @@ TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
-                              "application/x-www-form-urlencoded",
-                              HttpClient::Headers{}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(http::kPost, dev_reg_->GetOAuthURL("token"),
+                              HttpClient::Headers{GetFormHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_EQ("refresh_token", GetFormField(data, "grant_type"));
         EXPECT_EQ(test_data::kRefreshToken,
                   GetFormField(data, "refresh_token"));
@@ -316,10 +322,10 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
   SetAccessToken();
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("GET", dev_reg_->GetDeviceURL(), _,
-                              "application/json; charset=utf-8",
-                              HttpClient::Headers{GetAuthHeader()}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(
+                  http::kGet, dev_reg_->GetDeviceURL(),
+                  HttpClient::Headers{GetAuthHeader(), GetJsonHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         base::DictionaryValue json;
         json.SetString("channel.supportedType", "xmpp");
         json.SetString("deviceKind", "vendor");
@@ -385,11 +391,11 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
 
   std::string ticket_url = dev_reg_->GetServiceURL("registrationTickets/") +
                            test_data::kClaimTicketId;
-  EXPECT_CALL(http_client_,
-              MockSendRequest(
-                  "PATCH", ticket_url + "?key=" + test_data::kApiKey, _,
-                  "application/json; charset=utf-8", HttpClient::Headers{}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+  EXPECT_CALL(
+      http_client_,
+      MockSendRequest(http::kPatch, ticket_url + "?key=" + test_data::kApiKey,
+                      HttpClient::Headers{GetJsonHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         auto json = unittests::CreateDictionaryValue(data);
         EXPECT_NE(nullptr, json.get());
         std::string value;
@@ -455,9 +461,9 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
       })));
 
   EXPECT_CALL(http_client_,
-              MockSendRequest(
-                  "POST", ticket_url + "/finalize?key=" + test_data::kApiKey,
-                  "", _, HttpClient::Headers{}, _))
+              MockSendRequest(http::kPost, ticket_url + "/finalize?key=" +
+                                               test_data::kApiKey,
+                              HttpClient::Headers{}, _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         base::DictionaryValue json;
         json.SetString("id", test_data::kClaimTicketId);
@@ -474,10 +480,9 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
       }));
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("POST", dev_reg_->GetOAuthURL("token"), _,
-                              "application/x-www-form-urlencoded",
-                              HttpClient::Headers{}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(http::kPost, dev_reg_->GetOAuthURL("token"),
+                              HttpClient::Headers{GetFormHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_EQ("authorization_code", GetFormField(data, "grant_type"));
         EXPECT_EQ(test_data::kRobotAccountAuthCode, GetFormField(data, "code"));
         EXPECT_EQ(test_data::kClientId, GetFormField(data, "client_id"));
@@ -561,10 +566,10 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   ASSERT_NE(nullptr, command);
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("PATCH", command_url, _,
-                              "application/json; charset=utf-8",
-                              HttpClient::Headers{GetAuthHeader()}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(
+                  http::kPatch, command_url,
+                  HttpClient::Headers{GetAuthHeader(), GetJsonHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_JSON_EQ(R"({"results":{"status":"Ok"}})",
                        *CreateDictionaryValue(data));
         base::DictionaryValue json;
@@ -575,16 +580,16 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   Mock::VerifyAndClearExpectations(&http_client_);
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("PATCH", command_url, _,
-                              "application/json; charset=utf-8",
-                              HttpClient::Headers{GetAuthHeader()}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(
+                  http::kPatch, command_url,
+                  HttpClient::Headers{GetAuthHeader(), GetJsonHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_JSON_EQ(R"({"state":"inProgress"})",
                        *CreateDictionaryValue(data));
         base::DictionaryValue json;
         return ReplyWithJson(200, json);
       })))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_JSON_EQ(R"({"progress":{"progress":18}})",
                        *CreateDictionaryValue(data));
         base::DictionaryValue json;
@@ -595,10 +600,10 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   Mock::VerifyAndClearExpectations(&http_client_);
 
   EXPECT_CALL(http_client_,
-              MockSendRequest("PATCH", command_url, _,
-                              "application/json; charset=utf-8",
-                              HttpClient::Headers{GetAuthHeader()}, _))
-      .WillOnce(WithArgs<2>(Invoke([](const std::string& data) {
+              MockSendRequest(
+                  http::kPatch, command_url,
+                  HttpClient::Headers{GetAuthHeader(), GetJsonHeader()}, _, _))
+      .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
         EXPECT_JSON_EQ(R"({"state":"cancelled"})",
                        *CreateDictionaryValue(data));
         base::DictionaryValue json;

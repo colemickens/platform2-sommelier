@@ -34,16 +34,14 @@ class HttpClient {
   virtual std::unique_ptr<Response> SendRequestAndBlock(
       const std::string& method,
       const std::string& url,
-      const std::string& data,
-      const std::string& mime_type,
       const Headers& headers,
+      const std::string& data,
       chromeos::ErrorPtr* error) = 0;
 
   virtual int SendRequest(const std::string& method,
                           const std::string& url,
-                          const std::string& data,
-                          const std::string& mime_type,
                           const Headers& headers,
+                          const std::string& data,
                           const SuccessCallback& success_callback,
                           const ErrorCallback& error_callback) = 0;
 

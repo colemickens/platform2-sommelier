@@ -40,14 +40,6 @@ const char kErrorDomainGCDServer[] = "gcd_server";
 
 namespace {
 
-std::pair<std::string, std::string> BuildAuthHeader(
-    const std::string& access_token_type,
-    const std::string& access_token) {
-  std::string authorization =
-      chromeos::string_utils::Join(" ", access_token_type, access_token);
-  return {"Authorization", authorization};
-}
-
 inline void SetUnexpectedError(chromeos::ErrorPtr* error) {
   chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainGCD,
                          "unexpected_response", "Unexpected GCD error");
@@ -114,18 +106,18 @@ class RequestSender final {
 
   std::unique_ptr<HttpClient::Response> SendAndBlock(
       chromeos::ErrorPtr* error) {
-    return transport_->SendRequestAndBlock(method_, url_, data_, mime_type_,
-                                           headers_, error);
+    return transport_->SendRequestAndBlock(method_, url_, GetFullHeaders(),
+                                           data_, error);
   }
 
   int Send(const HttpClient::SuccessCallback& success_callback,
            const HttpClient::ErrorCallback& error_callback) {
-    return transport_->SendRequest(method_, url_, data_, mime_type_, headers_,
+    return transport_->SendRequest(method_, url_, GetFullHeaders(), data_,
                                    success_callback, error_callback);
   }
 
-  void AddAuthHeader(const std::string& access_token) {
-    headers_.emplace_back(BuildAuthHeader("Bearer", access_token));
+  void SetAccessToken(const std::string& access_token) {
+    access_token_ = access_token;
   }
 
   void SetData(const std::string& data, const std::string& mime_type) {
@@ -135,22 +127,31 @@ class RequestSender final {
 
   void SetFormData(
       const std::vector<std::pair<std::string, std::string>>& data) {
-    data_ = chromeos::data_encoding::WebParamsEncode(data);
-    mime_type_ = http::kWwwFormUrlEncoded;
+    SetData(chromeos::data_encoding::WebParamsEncode(data),
+            http::kWwwFormUrlEncoded);
   }
 
   void SetJsonData(const base::Value& json) {
     std::string data;
-    CHECK(base::JSONWriter::Write(json, &data_));
-    mime_type_ = http::kJsonUtf8;
+    CHECK(base::JSONWriter::Write(json, &data));
+    SetData(data, http::kJsonUtf8);
   }
 
  private:
+  HttpClient::Headers GetFullHeaders() const {
+    HttpClient::Headers headers;
+    if (!access_token_.empty())
+      headers.emplace_back(http::kAuthorization, "Bearer " + access_token_);
+    if (!mime_type_.empty())
+      headers.emplace_back(http::kContentType, mime_type_);
+    return headers;
+  }
+
   std::string method_;
   std::string url_;
   std::string data_;
   std::string mime_type_;
-  std::vector<std::pair<std::string, std::string>> headers_;
+  std::string access_token_;
   HttpClient* transport_{nullptr};
 
   DISALLOW_COPY_AND_ASSIGN(RequestSender);
@@ -675,7 +676,7 @@ void DeviceRegistrationInfo::SendCloudRequest(
 
   RequestSender sender{data->method, data->url, http_client_};
   sender.SetData(data->body, http::kJsonUtf8);
-  sender.AddAuthHeader(access_token_);
+  sender.SetAccessToken(access_token_);
   int request_id =
       sender.Send(base::Bind(&DeviceRegistrationInfo::OnCloudRequestSuccess,
                              AsWeakPtr(), data),

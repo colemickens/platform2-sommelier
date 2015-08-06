@@ -28,16 +28,14 @@ class HttpTransportClient : public weave::HttpClient {
   std::unique_ptr<Response> SendRequestAndBlock(
       const std::string& method,
       const std::string& url,
-      const std::string& data,
-      const std::string& mime_type,
       const Headers& headers,
+      const std::string& data,
       chromeos::ErrorPtr* error) override;
 
   int SendRequest(const std::string& method,
                   const std::string& url,
-                  const std::string& data,
-                  const std::string& mime_type,
                   const Headers& headers,
+                  const std::string& data,
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override;
 
