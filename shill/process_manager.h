@@ -15,6 +15,7 @@
 #include <base/lazy_instance.h>
 #include <base/memory/weak_ptr.h>
 #include <base/tracked_objects.h>
+#include <chromeos/minijail/minijail.h>
 #include <chromeos/process.h>
 #include <chromeos/process_reaper.h>
 
@@ -48,6 +49,16 @@ class ProcessManager {
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
       bool terminate_with_parent,
+      const base::Callback<void(int)>& exit_callback);
+
+  // Same as above, except the spawned process will be started in a minijail.
+  virtual pid_t StartProcessInMinijail(
+      const tracked_objects::Location& from_here,
+      const base::FilePath& program,
+      const std::vector<std::string>& arguments,
+      const std::string& user,
+      const std::string& group,
+      uint64_t capmask,
       const base::Callback<void(int)>& exit_callback);
 
   // Stop the given |pid|.  Previously registered |exit_callback| will be
@@ -89,6 +100,8 @@ class ProcessManager {
   chromeos::ProcessReaper process_reaper_;
 
   EventDispatcher* dispatcher_;
+  chromeos::Minijail* minijail_;
+
   // Processes to watch for the caller.
   std::map<pid_t, base::Callback<void(int)>> watched_processes_;
   // Processes being terminated by us.  Use a timer to make sure process

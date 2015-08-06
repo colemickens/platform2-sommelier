@@ -4,7 +4,11 @@
 
 #include "shill/process_manager.h"
 
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
+#include <chromeos/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -15,6 +19,13 @@ using base::Callback;
 using base::CancelableClosure;
 using base::Closure;
 using base::Unretained;
+using std::string;
+using std::vector;
+using testing::_;
+using testing::DoAll;
+using testing::Return;
+using testing::SetArgumentPointee;
+using testing::StrEq;
 
 namespace shill {
 
@@ -24,6 +35,7 @@ class ProcessManagerTest : public testing::Test {
 
   virtual void SetUp() {
     process_manager_->dispatcher_ = &dispatcher_;
+    process_manager_->minijail_ = &minijail_;
   }
 
   virtual void TearDown() {
@@ -43,6 +55,10 @@ class ProcessManagerTest : public testing::Test {
 
   void AssertEmptyWatchedProcesses() {
     EXPECT_TRUE(process_manager_->watched_processes_.empty());
+  }
+
+  void AssertNonEmptyWatchedProcesses() {
+    EXPECT_FALSE(process_manager_->watched_processes_.empty());
   }
 
   void AssertEmptyTerminateProcesses() {
@@ -78,8 +94,22 @@ class ProcessManagerTest : public testing::Test {
   };
 
   MockEventDispatcher dispatcher_;
+  chromeos::MockMinijail minijail_;
   ProcessManager* process_manager_;
 };
+
+MATCHER_P2(IsProcessArgs, program, args, "") {
+  if (string(arg[0]) != program) {
+    return false;
+  }
+  int index = 1;
+  for (const auto& option : args) {
+    if (string(arg[index++]) != option) {
+      return false;
+    }
+  }
+  return arg[index] == nullptr;
+}
 
 TEST_F(ProcessManagerTest, WatchedProcessExited) {
   const pid_t kPid = 123;
@@ -102,6 +132,53 @@ TEST_F(ProcessManagerTest, TerminateProcessExited) {
   EXPECT_CALL(observer, OnTerminationTimeout()).Times(0);
   OnProcessExited(kPid, 1);
   AssertEmptyTerminateProcesses();
+}
+
+TEST_F(ProcessManagerTest, StartProcessInMinijail) {
+  const string kProgram = "/usr/bin/dump";
+  const vector<string> kArgs = { "-b", "-g" };
+  const string kUser = "user";
+  const string kGroup = "group";
+  const uint64_t kCapMask = 1;
+  const pid_t kPid = 123;
+
+  EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup))).Times(1);
+  EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
+  EXPECT_CALL(minijail_, RunAndDestroy(_, IsProcessArgs(kProgram, kArgs), _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(kPid), Return(true)));
+  pid_t actual_pid =
+      process_manager_->StartProcessInMinijail(FROM_HERE,
+                                               base::FilePath(kProgram),
+                                               kArgs,
+                                               kUser,
+                                               kGroup,
+                                               kCapMask,
+                                               Callback<void(int)>());
+  EXPECT_EQ(kPid, actual_pid);
+  AssertNonEmptyWatchedProcesses();
+}
+
+TEST_F(ProcessManagerTest, StartProcessInMinijailFailed) {
+  const string kProgram = "/usr/bin/dump";
+  const vector<string> kArgs = { "-b", "-g" };
+  const string kUser = "user";
+  const string kGroup = "group";
+  const uint64_t kCapMask = 1;
+
+  EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup))).Times(1);
+  EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
+  EXPECT_CALL(minijail_, RunAndDestroy(_, IsProcessArgs(kProgram, kArgs), _))
+      .WillOnce(Return(false));
+  pid_t actual_pid =
+      process_manager_->StartProcessInMinijail(FROM_HERE,
+                                               base::FilePath(kProgram),
+                                               kArgs,
+                                               kUser,
+                                               kGroup,
+                                               kCapMask,
+                                               Callback<void(int)>());
+  EXPECT_EQ(-1, actual_pid);
+  AssertEmptyWatchedProcesses();
 }
 
 }  // namespace shill

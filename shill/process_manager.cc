@@ -51,6 +51,7 @@ void ProcessManager::Init(EventDispatcher* dispatcher) {
   async_signal_handler_.Init();
   process_reaper_.Register(&async_signal_handler_);
   dispatcher_ = dispatcher;
+  minijail_ = chromeos::Minijail::GetInstance();
 }
 
 pid_t ProcessManager::StartProcess(
@@ -86,6 +87,34 @@ pid_t ProcessManager::StartProcess(
   // child process will not get killed on destruction of |process| object.
   process->Release();
 
+  watched_processes_.emplace(pid, exit_callback);
+  return pid;
+}
+
+pid_t ProcessManager::StartProcessInMinijail(
+    const tracked_objects::Location& from_here,
+    const base::FilePath& program,
+    const std::vector<std::string>& arguments,
+    const std::string& user,
+    const std::string& group,
+    uint64_t capmask,
+    const base::Callback<void(int)>& exit_callback) {
+  vector<char*> args;
+  args.push_back(const_cast<char*>(program.value().c_str()));
+  for (const auto& arg : arguments) {
+    args.push_back(const_cast<char*>(arg.c_str()));
+  }
+  args.push_back(nullptr);
+
+  struct minijail* jail = minijail_->New();
+  minijail_->DropRoot(jail, user.c_str(), group.c_str());
+  minijail_->UseCapabilities(jail, capmask);
+
+  pid_t pid;
+  if (!minijail_->RunAndDestroy(jail, args, &pid)) {
+    LOG(ERROR) << "Unable to spawn " << program.value() << " in a jail.";
+    return -1;
+  }
   watched_processes_.emplace(pid, exit_callback);
   return pid;
 }
