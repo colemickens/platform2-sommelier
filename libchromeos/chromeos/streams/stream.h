@@ -12,8 +12,8 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
-#include <chromeos/errors/error.h>
 #include <chromeos/chromeos_export.h>
+#include <chromeos/errors/error.h>
 
 namespace chromeos {
 
@@ -394,21 +394,79 @@ class CHROMEOS_EXPORT Stream {
   Stream() = default;
 
  private:
+  // Simple wrapper to call the externally exposed |success_callback| that only
+  // receives a size_t.
+  CHROMEOS_PRIVATE static void IgnoreEOSCallback(
+      const base::Callback<void(size_t)>& success_callback,
+      size_t read,
+      bool eos);
+
+  // The internal implementation of ReadAsync() and ReadAllAsync().
+  // Calls ReadNonBlocking and if there's no data available waits for it calling
+  // WaitForData(). The extra |force_async_callback| tell whether the success
+  // callback should be called from the main loop instead of directly from this
+  // method. This method only calls WaitForData() if ReadNonBlocking() returns a
+  // situation in which it would block (bytes_read = 0 and eos = false),
+  // preventing us from calling WaitForData() on streams that don't support such
+  // feature.
+  CHROMEOS_PRIVATE bool ReadAsyncImpl(
+      void* buffer,
+      size_t size_to_read,
+      const base::Callback<void(size_t, bool)>& success_callback,
+      const ErrorCallback& error_callback,
+      ErrorPtr* error,
+      bool force_async_callback);
+
+  // Called from the main loop when the ReadAsyncImpl finished right away
+  // without waiting for data. We use this callback to call the
+  // |sucess_callback| but invalidate the callback if the Stream is destroyed
+  // while this call is waiting in the main loop.
+  CHROMEOS_PRIVATE void OnReadAsyncDone(
+      const base::Callback<void(size_t, bool)>& success_callback,
+      size_t bytes_read,
+      bool eos);
+
   // Called from WaitForData() when read operations can be performed
   // without blocking (the type of operation is provided in |mode|).
-  void OnReadAvailable(void* buffer,
-                       size_t size,
-                       const base::Callback<void(size_t)>& success_callback,
-                       const ErrorCallback& error_callback,
-                       AccessMode mode);
+  CHROMEOS_PRIVATE void OnReadAvailable(
+      void* buffer,
+      size_t size_to_read,
+      const base::Callback<void(size_t, bool)>& success_callback,
+      const ErrorCallback& error_callback,
+      AccessMode mode);
+
+  // The internal implementation of WriteAsync() and WriteAllAsync().
+  // Calls WriteNonBlocking and if the write would block for it to not block
+  // calling WaitForData(). The extra |force_async_callback| tell whether the
+  // success callback should be called from the main loop instead of directly
+  // from this method. This method only calls WaitForData() if
+  // WriteNonBlocking() returns a situation in which it would block
+  // (size_written = 0 and eos = false), preventing us from calling
+  // WaitForData() on streams that don't support such feature.
+  CHROMEOS_PRIVATE bool WriteAsyncImpl(
+      const void* buffer,
+      size_t size_to_write,
+      const base::Callback<void(size_t)>& success_callback,
+      const ErrorCallback& error_callback,
+      ErrorPtr* error,
+      bool force_async_callback);
+
+  // Called from the main loop when the WriteAsyncImpl finished right away
+  // without waiting for data. We use this callback to call the
+  // |sucess_callback| but invalidate the callback if the Stream is destroyed
+  // while this call is waiting in the main loop.
+  CHROMEOS_PRIVATE void OnWriteAsyncDone(
+      const base::Callback<void(size_t)>& success_callback,
+      size_t size_written);
 
   // Called from WaitForData() when write operations can be performed
   // without blocking (the type of operation is provided in |mode|).
-  void OnWriteAvailable(const void* buffer,
-                        size_t size,
-                        const base::Callback<void(size_t)>& success_callback,
-                        const ErrorCallback& error_callback,
-                        AccessMode mode);
+  CHROMEOS_PRIVATE void OnWriteAvailable(
+      const void* buffer,
+      size_t size,
+      const base::Callback<void(size_t)>& success_callback,
+      const ErrorCallback& error_callback,
+      AccessMode mode);
 
   // Helper callbacks to implement ReadAllAsync/WriteAllAsync.
   CHROMEOS_PRIVATE void ReadAllAsyncCallback(
@@ -416,7 +474,8 @@ class CHROMEOS_EXPORT Stream {
       size_t size_to_read,
       const base::Closure& success_callback,
       const ErrorCallback& error_callback,
-      size_t size_read);
+      size_t size_read,
+      bool eos);
   CHROMEOS_PRIVATE void WriteAllAsyncCallback(
       const void* buffer,
       size_t size_to_write,

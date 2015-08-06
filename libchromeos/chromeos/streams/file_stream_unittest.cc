@@ -34,6 +34,12 @@ namespace chromeos {
 
 namespace {
 
+// gmock action that would return a blocking situation from a read() or write().
+ACTION(ReturnWouldBlock) {
+  errno = EWOULDBLOCK;
+  return -1;
+}
+
 // Helper function to read one byte from the stream.
 inline int ReadByte(Stream* stream) {
   uint8_t byte = 0;
@@ -369,6 +375,8 @@ TEST_F(FileStreamTest, ReadAsync) {
   auto error_callback = [&failed](const Error* error) { failed = true; };
   FileStream::FileDescriptorInterface::DataCallback data_callback;
 
+  EXPECT_CALL(fd_mock(), Read(test_read_buffer_, 100))
+      .WillOnce(ReturnWouldBlock());
   EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::READ, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_->ReadAsync(test_read_buffer_, 100,
@@ -506,6 +514,8 @@ TEST_F(FileStreamTest, WriteAsync) {
   auto error_callback = [&failed](const Error* error) { failed = true; };
   FileStream::FileDescriptorInterface::DataCallback data_callback;
 
+  EXPECT_CALL(fd_mock(), Write(test_write_buffer_, 100))
+      .WillOnce(ReturnWouldBlock());
   EXPECT_CALL(fd_mock(), WaitForData(Stream::AccessMode::WRITE, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_->WriteAsync(test_write_buffer_, 100,

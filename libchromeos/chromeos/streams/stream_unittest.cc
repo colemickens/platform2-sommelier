@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include <chromeos/bind_lambda.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <chromeos/streams/stream_errors.h>
 
 using testing::DoAll;
@@ -22,8 +23,8 @@ using testing::_;
 
 namespace chromeos {
 
-using Whence = Stream::Whence;
 using AccessMode = Stream::AccessMode;
+using Whence = Stream::Whence;
 
 // To verify "non-trivial" methods implemented in Stream, mock out the
 // "trivial" methods to make sure the ones we are interested in testing
@@ -97,22 +98,34 @@ TEST(Stream, SetPosition) {
 
 TEST(Stream, ReadAsync) {
   size_t read_size = 0;
+  bool succeeded = false;
   bool failed = false;
-  auto success_callback = [&read_size](size_t size) { read_size = size; };
+  auto success_callback = [&read_size, &succeeded](size_t size) {
+    read_size = size;
+    succeeded = true;
+  };
   auto error_callback = [&failed](const Error* error) { failed = true; };
 
   MockStreamImpl stream_mock;
   base::Callback<void(AccessMode)> data_callback;
   char buf[10];
 
+  // This sets up an initial non blocking read that would block, so ReadAsync()
+  // should wait for more data.
+  EXPECT_CALL(stream_mock, ReadNonBlocking(buf, 10, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(0), SetArgPointee<3>(false), Return(true)));
   EXPECT_CALL(stream_mock, WaitForData(AccessMode::READ, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_mock.ReadAsync(buf, sizeof(buf),
                                     base::Bind(success_callback),
                                     base::Bind(error_callback), nullptr));
   EXPECT_EQ(0u, read_size);
+  EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);
 
+  // Since the previous call is waiting for the data to be available, we can't
+  // schedule another read.
   ErrorPtr error;
   EXPECT_FALSE(stream_mock.ReadAsync(buf, sizeof(buf),
                                      base::Bind(success_callback),
@@ -122,12 +135,54 @@ TEST(Stream, ReadAsync) {
   EXPECT_EQ("Another asynchronous operation is still pending",
             error->GetMessage());
 
+  // Making the data available via data_callback should not schedule the
+  // success callback from the main loop and run it directly instead.
   EXPECT_CALL(stream_mock, ReadNonBlocking(buf, 10, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(7),
                       SetArgPointee<3>(false),
                       Return(true)));
   data_callback.Run(AccessMode::READ);
   EXPECT_EQ(7u, read_size);
+  EXPECT_FALSE(failed);
+}
+
+TEST(Stream, ReadAsync_DontWaitForData) {
+  bool succeeded = false;
+  bool failed = false;
+  auto success_callback = [&succeeded](size_t size) { succeeded = true; };
+  auto error_callback = [&failed](const Error* error) { failed = true; };
+
+  MockStreamImpl stream_mock;
+  char buf[10];
+  FakeMessageLoop fake_loop_{nullptr};
+  fake_loop_.SetAsCurrent();
+
+  EXPECT_CALL(stream_mock, ReadNonBlocking(buf, 10, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(5), SetArgPointee<3>(false), Return(true)));
+  EXPECT_CALL(stream_mock, WaitForData(_, _, _)).Times(0);
+  EXPECT_TRUE(stream_mock.ReadAsync(buf, sizeof(buf),
+                                    base::Bind(success_callback),
+                                    base::Bind(error_callback), nullptr));
+  // Even if ReadNonBlocking() returned some data without waiting, the
+  // |success_callback| should not run yet.
+  EXPECT_TRUE(fake_loop_.PendingTasks());
+  EXPECT_FALSE(succeeded);
+  EXPECT_FALSE(failed);
+
+  // Since the previous callback is still waiting in the main loop, we can't
+  // schedule another read yet.
+  ErrorPtr error;
+  EXPECT_FALSE(stream_mock.ReadAsync(buf, sizeof(buf),
+                                     base::Bind(success_callback),
+                                     base::Bind(error_callback), &error));
+  EXPECT_EQ(errors::stream::kDomain, error->GetDomain());
+  EXPECT_EQ(errors::stream::kOperationNotSupported, error->GetCode());
+  EXPECT_EQ("Another asynchronous operation is still pending",
+            error->GetMessage());
+
+  fake_loop_.Run();
+  EXPECT_TRUE(succeeded);
   EXPECT_FALSE(failed);
 }
 
@@ -141,6 +196,11 @@ TEST(Stream, ReadAllAsync) {
   base::Callback<void(AccessMode)> data_callback;
   char buf[10];
 
+  // This sets up an initial non blocking read that would block, so
+  // ReadAllAsync() should wait for more data.
+  EXPECT_CALL(stream_mock, ReadNonBlocking(buf, 10, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(0), SetArgPointee<3>(false), Return(true)));
   EXPECT_CALL(stream_mock, WaitForData(AccessMode::READ, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_mock.ReadAllAsync(buf, sizeof(buf),
@@ -149,16 +209,23 @@ TEST(Stream, ReadAllAsync) {
                                        nullptr));
   EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);
+  testing::Mock::VerifyAndClearExpectations(&stream_mock);
 
+  // ReadAllAsync() will try to read non blocking until the read would block
+  // before it waits for the data to be available again.
   EXPECT_CALL(stream_mock, ReadNonBlocking(buf, 10, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(7),
                       SetArgPointee<3>(false),
                       Return(true)));
+  EXPECT_CALL(stream_mock, ReadNonBlocking(buf + 7, 3, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(0), SetArgPointee<3>(false), Return(true)));
   EXPECT_CALL(stream_mock, WaitForData(AccessMode::READ, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   data_callback.Run(AccessMode::READ);
   EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);
+  testing::Mock::VerifyAndClearExpectations(&stream_mock);
 
   EXPECT_CALL(stream_mock, ReadNonBlocking(buf + 7, 3, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(3),
@@ -183,24 +250,20 @@ TEST(Stream, ReadAllAsync_EOS) {
   base::Callback<void(AccessMode)> data_callback;
   char buf[10];
 
+  EXPECT_CALL(stream_mock, ReadNonBlocking(buf, 10, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(0), SetArgPointee<3>(false), Return(true)));
   EXPECT_CALL(stream_mock, WaitForData(AccessMode::READ, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_mock.ReadAllAsync(buf, sizeof(buf),
                                        base::Bind(success_callback),
                                        base::Bind(error_callback),
                                        nullptr));
+
+  // ReadAsyncAll() should finish and fail once ReadNonBlocking() returns an
+  // end-of-stream condition.
   EXPECT_CALL(stream_mock, ReadNonBlocking(buf, 10, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(7),
-                      SetArgPointee<3>(true),
-                      Return(true)));
-  EXPECT_CALL(stream_mock, WaitForData(AccessMode::READ, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
-  data_callback.Run(AccessMode::READ);
-  EXPECT_FALSE(succeeded);
-  EXPECT_FALSE(failed);
-
-  EXPECT_CALL(stream_mock, ReadNonBlocking(buf + 7, 3, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(0),
                       SetArgPointee<3>(true),
                       Return(true)));
   data_callback.Run(AccessMode::READ);
@@ -292,9 +355,14 @@ TEST(Stream, WriteAsync) {
   auto error_callback = [&failed](const Error* error) { failed = true; };
 
   MockStreamImpl stream_mock;
+  InSequence s;
   base::Callback<void(AccessMode)> data_callback;
   char buf[10] = {};
 
+  // WriteNonBlocking returns a blocking situation (size_written = 0) so the
+  // WaitForData() is run.
+  EXPECT_CALL(stream_mock, WriteNonBlocking(buf, 10, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
   EXPECT_CALL(stream_mock, WaitForData(AccessMode::WRITE, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_mock.WriteAsync(buf, sizeof(buf),
@@ -329,20 +397,26 @@ TEST(Stream, WriteAllAsync) {
   base::Callback<void(AccessMode)> data_callback;
   char buf[10] = {};
 
+  EXPECT_CALL(stream_mock, WriteNonBlocking(buf, 10, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
   EXPECT_CALL(stream_mock, WaitForData(AccessMode::WRITE, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   EXPECT_TRUE(stream_mock.WriteAllAsync(buf, sizeof(buf),
                                         base::Bind(success_callback),
                                         base::Bind(error_callback),
                                         nullptr));
+  testing::Mock::VerifyAndClearExpectations(&stream_mock);
   EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);
 
   EXPECT_CALL(stream_mock, WriteNonBlocking(buf, 10, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(7), Return(true)));
+  EXPECT_CALL(stream_mock, WriteNonBlocking(buf + 7, 3, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
   EXPECT_CALL(stream_mock, WaitForData(AccessMode::WRITE, _, _))
       .WillOnce(DoAll(SaveArg<1>(&data_callback), Return(true)));
   data_callback.Run(AccessMode::WRITE);
+  testing::Mock::VerifyAndClearExpectations(&stream_mock);
   EXPECT_FALSE(succeeded);
   EXPECT_FALSE(failed);
 
