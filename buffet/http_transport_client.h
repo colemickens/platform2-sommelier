@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_SRC_HTTP_TRANSPORT_CLIENT_H_
-#define LIBWEAVE_SRC_HTTP_TRANSPORT_CLIENT_H_
+#ifndef BUFFET_HTTP_TRANSPORT_CLIENT_H_
+#define BUFFET_HTTP_TRANSPORT_CLIENT_H_
 
 #include <memory>
 #include <string>
@@ -20,8 +20,7 @@ namespace buffet {
 
 class HttpTransportClient : public weave::HttpClient {
  public:
-  explicit HttpTransportClient(
-      const std::shared_ptr<chromeos::http::Transport>& transport);
+  HttpTransportClient();
 
   ~HttpTransportClient() override;
 
@@ -49,4 +48,4 @@ class HttpTransportClient : public weave::HttpClient {
 
 }  // namespace buffet
 
-#endif  // LIBWEAVE_SRC_HTTP_TRANSPORT_CLIENT_H_
+#endif  // BUFFET_HTTP_TRANSPORT_CLIENT_H_

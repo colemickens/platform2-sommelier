@@ -14,6 +14,7 @@
 #include <weave/commands.h>
 #include <weave/config.h>
 #include <weave/export.h>
+#include <weave/http_client.h>
 #include <weave/http_server.h>
 #include <weave/mdns.h>
 #include <weave/network.h>
@@ -39,6 +40,7 @@ class Device {
   virtual ~Device() = default;
 
   virtual void Start(const Options& options,
+                     HttpClient* http_client,
                      Network* network,
                      Mdns* mdns,
                      HttpServer* http_server) = 0;

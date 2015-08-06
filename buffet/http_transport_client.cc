@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/http_transport_client.h"
+#include "buffet/http_transport_client.h"
 
 #include <base/bind.h>
 #include <chromeos/errors/error.h>
@@ -12,6 +12,9 @@
 namespace buffet {
 
 namespace {
+
+// The number of seconds each HTTP request will be allowed before timing out.
+const int kRequestTimeoutSeconds = 30;
 
 class ResponseImpl : public weave::HttpClient::Response {
  public:
@@ -50,9 +53,11 @@ void OnErrorCallback(const weave::HttpClient::ErrorCallback& error_callback,
 
 }  // anonymous namespace
 
-HttpTransportClient::HttpTransportClient(
-    const std::shared_ptr<chromeos::http::Transport>& transport)
-    : transport_{transport} {}
+HttpTransportClient::HttpTransportClient()
+    : transport_{chromeos::http::Transport::CreateDefault()} {
+  transport_->SetDefaultTimeout(
+      base::TimeDelta::FromSeconds(kRequestTimeoutSeconds));
+}
 
 HttpTransportClient::~HttpTransportClient() {}
 

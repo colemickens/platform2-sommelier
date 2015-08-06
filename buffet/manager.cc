@@ -26,6 +26,7 @@
 
 #include "buffet/dbus_command_dispatcher.h"
 #include "buffet/dbus_conversion.h"
+#include "buffet/http_transport_client.h"
 #include "buffet/peerd_client.h"
 #include "buffet/shill_client.h"
 #include "buffet/webserv_client.h"
@@ -58,6 +59,7 @@ Manager::~Manager() {
 void Manager::Start(const weave::Device::Options& options,
                     const std::set<std::string>& device_whitelist,
                     AsyncEventSequencer* sequencer) {
+  http_client_.reset(new HttpTransportClient);
   shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
   if (!options.disable_privet) {
     peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
@@ -65,8 +67,8 @@ void Manager::Start(const weave::Device::Options& options,
   }
 
   device_ = weave::Device::Create();
-  device_->Start(options, shill_client_.get(), peerd_client_.get(),
-                 web_serv_client_.get());
+  device_->Start(options, http_client_.get(), shill_client_.get(),
+                 peerd_client_.get(), web_serv_client_.get());
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});

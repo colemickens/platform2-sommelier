@@ -7,13 +7,11 @@
 #include <string>
 
 #include <base/message_loop/message_loop.h>
-#include <chromeos/http/http_transport.h>
 
 #include "libweave/src/base_api_handler.h"
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/device_registration_info.h"
-#include "libweave/src/http_transport_client.h"
 #include "libweave/src/privet/privet_manager.h"
 #include "libweave/src/states/state_change_queue.h"
 #include "libweave/src/states/state_manager.h"
@@ -24,8 +22,6 @@ namespace {
 
 // Max of 100 state update events should be enough in the queue.
 const size_t kMaxStateChangeQueueSize = 100;
-// The number of seconds each HTTP request will be allowed before timing out.
-const int kRequestTimeoutSeconds = 30;
 
 }  // namespace
 
@@ -34,6 +30,7 @@ DeviceManager::DeviceManager() {}
 DeviceManager::~DeviceManager() {}
 
 void DeviceManager::Start(const Options& options,
+                          HttpClient* http_client,
                           Network* network,
                           Mdns* mdns,
                           HttpServer* http_server) {
@@ -44,18 +41,13 @@ void DeviceManager::Start(const Options& options,
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
 
-  auto transport = chromeos::http::Transport::CreateDefault();
-  transport->SetDefaultTimeout(
-      base::TimeDelta::FromSeconds(kRequestTimeoutSeconds));
-
   std::unique_ptr<BuffetConfig> config{new BuffetConfig{options.state_path}};
   config->Load(options.config_path);
 
-  http_client_.reset(new buffet::HttpTransportClient{transport});
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
   device_info_.reset(new DeviceRegistrationInfo(
-      command_manager_, state_manager_, std::move(config), http_client_.get(),
+      command_manager_, state_manager_, std::move(config), http_client,
       base::MessageLoop::current()->task_runner(), options.xmpp_enabled,
       network));
   base_api_handler_.reset(

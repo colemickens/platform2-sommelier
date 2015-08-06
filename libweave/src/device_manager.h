@@ -8,10 +8,6 @@
 #include <base/memory/weak_ptr.h>
 #include <weave/device.h>
 
-namespace buffet {
-class HttpTransportClient;
-}  // namespace buffet
-
 namespace weave {
 
 class BaseApiHandler;
@@ -31,6 +27,7 @@ class DeviceManager final : public Device {
   ~DeviceManager() override;
 
   void Start(const Options& options,
+             HttpClient* http_client,
              Network* network,
              Mdns* mdns,
              HttpServer* http_server) override;
@@ -49,8 +46,6 @@ class DeviceManager final : public Device {
 
   void OnWiFiBootstrapStateChanged(weave::WifiSetupState state);
 
-  // TODO(vitalybuka): Move to buffet.
-  std::unique_ptr<buffet::HttpTransportClient> http_client_;
   std::shared_ptr<CommandManager> command_manager_;
   std::unique_ptr<StateChangeQueue> state_change_queue_;
   std::shared_ptr<StateManager> state_manager_;

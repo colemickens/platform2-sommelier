@@ -21,7 +21,6 @@
 #include <chromeos/backoff_entry.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/http/http_transport.h>
 #include <weave/cloud.h>
 #include <weave/config.h>
 #include <weave/http_client.h>

@@ -39,6 +39,7 @@
         'dbus_command_proxy.cc',
         'dbus_conversion.cc',
         'dbus_constants.cc',
+        'http_transport_client.cc',
         'manager.cc',
         'peerd_client.cc',
         'shill_client.cc',
