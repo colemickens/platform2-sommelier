@@ -101,20 +101,6 @@ class SettingsDocumentManager : public SettingsService {
  private:
   friend class SettingsDocumentManagerTest;
 
-  // Keeps track of all documents and their corresponding BlobStore handles for
-  // a source.
-  struct DocumentEntry {
-    DocumentEntry(std::unique_ptr<const SettingsDocument> document,
-                  BlobStore::Handle handle);
-
-    // A SettingsDocument.
-    std::unique_ptr<const SettingsDocument> document_;
-
-    // The BlobStore handle that the Blob the above document was parsed from can
-    // be retrieved with.
-    BlobStore::Handle handle_;
-  };
-
   // Keeps track of all known sources and their associated document entries.
   struct SourceMapEntry {
     explicit SourceMapEntry(const std::string& source_id);
@@ -128,26 +114,25 @@ class SettingsDocumentManager : public SettingsService {
     // All documents owned by the source and their respective handles, sorted
     // according to |source_|'s version component in the document's version
     // stamp.
-    std::vector<DocumentEntry> document_entries_;
+    std::vector<std::unique_ptr<const SettingsDocument>> documents_;
   };
 
-  // Install a new settings document. The |document| is assumed to be fully
-  // validated against the source identified with |source_id|. Inserts the
-  // document into |settings_map_|, handles any trust configuration changes and
-  // notifies observers.
+  // Install a new settings document. The |document| must have
+  // |document->source_id_| and |document->handle_| filled in and is assumed to
+  // be fully validated against its source. The document gets inserted into
+  // |settings_map_|, and any trust configuration changes are processed and
+  // observers notified.
   //
   // The return value indicates whether the insertion succeeded or ran into an
   // error. For return values other than kInsertionStatusSuccess no settings
   // will be changed.
   InsertionStatus InsertDocument(
-      std::unique_ptr<const SettingsDocument> document,
-      BlobStore::Handle,
-      const std::string& source_id);
+      std::unique_ptr<const SettingsDocument> document);
 
-  // Finds the DocumentEntry, deletes the Blob associated with the entry's
-  // handle in BlobStore and deletes the DocumentEntry from the source map.
-  // Returns true on success. Otherwise, returns false.
-  bool PurgeBlobAndDocumentEntry(const SettingsDocument* document);
+  // Finds the document in the corresponding SourceMapEntry, deletes the Blob
+  // associated with the document's handle in BlobStore and deletes the document
+  // from the SourceMapEntry. Returns true on success. Otherwise, returns false.
+  bool PurgeBlobAndDocument(const SettingsDocument* document);
 
   // Attempts to parse and validate a settings blob. On success, returns success
   // status and populates |container| with the parsed and validated
@@ -162,7 +147,7 @@ class SettingsDocumentManager : public SettingsService {
   // Returns true if the document is still valid against current trust
   // configuration.
   bool RevalidateDocument(const Source* source,
-                          const DocumentEntry& doc_entry) const;
+                          const SettingsDocument* doc) const;
 
   // Re-validate all documents belonging to a source. Documents that fail
   // validation are removed from the SettingsMap, the SettingsDocument is

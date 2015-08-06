@@ -18,7 +18,7 @@ LockedSettingsContainer::GetVersionComponents() const {
 }
 
 // static
-std::unique_ptr<const SettingsDocument> LockedSettingsContainer::DecodePayload(
+std::unique_ptr<SettingsDocument> LockedSettingsContainer::DecodePayload(
     std::unique_ptr<LockedSettingsContainer> container) {
   return container->DecodePayloadInternal();
 }

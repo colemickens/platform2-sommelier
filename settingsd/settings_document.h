@@ -11,10 +11,13 @@
 #include <base/macros.h>
 #include <base/values.h>
 
+#include "settingsd/blob_store.h"
 #include "settingsd/key.h"
 #include "settingsd/version_stamp.h"
 
 namespace settingsd {
+
+class SettingsDocumentManager;
 
 // Interface for a collection of settings residing in the same serialized
 // container.
@@ -35,9 +38,6 @@ class SettingsDocument {
   // document and that are either equal to or have |prefix| as an ancestor.
   virtual std::set<Key> GetDeletions(const Key& prefix) const = 0;
 
-  // Returns the source identifier this settings document belongs to.
-  virtual const std::string& GetSourceId() const = 0;
-
   // Returns the version stamp for this settings document.
   virtual const VersionStamp& GetVersionStamp() const = 0;
 
@@ -53,6 +53,13 @@ class SettingsDocument {
   static bool HasOverlap(const SettingsDocument& A, const SettingsDocument& B);
 
  private:
+  // SettingsDocumentManager needs tracking data for each document it manages.
+  friend class SettingsDocumentManager;
+
+  // Tracking data maintained by SettingsDocumentManager.
+  std::string source_id_;
+  BlobStore::Handle handle_;
+
   DISALLOW_ASSIGN(SettingsDocument);
 };
 

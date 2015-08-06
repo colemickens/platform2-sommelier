@@ -8,15 +8,14 @@
 
 namespace settingsd {
 
-MockSettingsDocument::MockSettingsDocument(const std::string& source_id,
-                                           const VersionStamp& version_stamp)
-    : source_id_(source_id), version_stamp_(version_stamp) {}
+MockSettingsDocument::MockSettingsDocument(const VersionStamp& version_stamp)
+    : version_stamp_(version_stamp) {}
 
 MockSettingsDocument::~MockSettingsDocument() {}
 
 std::unique_ptr<MockSettingsDocument> MockSettingsDocument::Clone() const {
   std::unique_ptr<MockSettingsDocument> copy(
-      new MockSettingsDocument(source_id_, version_stamp_));
+      new MockSettingsDocument(version_stamp_));
   copy->deletions_ = deletions_;
   for (const auto& entry : key_value_map_) {
     copy->key_value_map_.insert(std::make_pair(
@@ -42,10 +41,6 @@ std::set<Key> MockSettingsDocument::GetDeletions(const Key& prefix) const {
   for (const auto& entry : utils::GetRange(prefix, deletions_))
     result.insert(entry);
   return result;
-}
-
-const std::string& MockSettingsDocument::GetSourceId() const {
-  return source_id_;
 }
 
 const VersionStamp& MockSettingsDocument::GetVersionStamp() const {

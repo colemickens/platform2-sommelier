@@ -15,12 +15,6 @@
 
 namespace settingsd {
 
-namespace {
-
-const std::string kSourceId = "source";
-
-}  // namespace
-
 class SimpleSettingsMapTest : public testing::Test {
  public:
   SimpleSettingsMapTest() {
@@ -28,22 +22,22 @@ class SimpleSettingsMapTest : public testing::Test {
     VersionStamp version_stamp_A;
     version_stamp_A.Set("A", 1);
     version_stamp_A.Set("B", 1);
-    document_A_.reset(new MockSettingsDocument(kSourceId, version_stamp_A));
+    document_A_.reset(new MockSettingsDocument(version_stamp_A));
 
     // Prepare Document for writer B.
     VersionStamp version_stamp_B;
     version_stamp_B.Set("A", 2);
     version_stamp_B.Set("B", 1);
-    document_B_.reset(new MockSettingsDocument(kSourceId, version_stamp_B));
+    document_B_.reset(new MockSettingsDocument(version_stamp_B));
 
     // Prepare Document for writer C.
     VersionStamp version_stamp_C;
     version_stamp_C.Set("A", 3);
     version_stamp_C.Set("B", 1);
-    document_C_.reset(new MockSettingsDocument(kSourceId, version_stamp_C));
+    document_C_.reset(new MockSettingsDocument(version_stamp_C));
 
     // Prepare Document for writer D (concurrent to C).
-    document_D_.reset(new MockSettingsDocument(kSourceId, version_stamp_C));
+    document_D_.reset(new MockSettingsDocument(version_stamp_C));
   }
 
   void CheckSettingsMapContents(

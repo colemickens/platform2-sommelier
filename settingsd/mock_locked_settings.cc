@@ -29,7 +29,7 @@ void MockLockedVersionComponent::SetSourceId(const std::string& source_id) {
 }
 
 MockLockedSettingsContainer::MockLockedSettingsContainer(
-    std::unique_ptr<const MockSettingsDocument> payload)
+    std::unique_ptr<MockSettingsDocument> payload)
     : payload_(std::move(payload)) {}
 
 MockLockedSettingsContainer::~MockLockedSettingsContainer() {}
@@ -53,9 +53,9 @@ MockLockedSettingsContainer::GetVersionComponents() const {
   return result;
 }
 
-std::unique_ptr<const SettingsDocument>
+std::unique_ptr<SettingsDocument>
 MockLockedSettingsContainer::DecodePayloadInternal() {
-  return std::unique_ptr<const SettingsDocument>(std::move(payload_));
+  return std::unique_ptr<SettingsDocument>(std::move(payload_));
 }
 
 MockLockedVersionComponent* MockLockedSettingsContainer::GetVersionComponent(

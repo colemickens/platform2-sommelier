@@ -170,7 +170,7 @@ std::unique_ptr<const SettingsDocument> CreateInitialTrustedSettingsDocument() {
   // anything and doesn't have an associated source for which it'd need to
   // supply a unique version component.
   std::unique_ptr<MockSettingsDocument> document(
-      new MockSettingsDocument(kTestSource0, VersionStamp()));
+      new MockSettingsDocument(VersionStamp()));
   ConfigureSource(document.get(), kTestSource0, kSettingStatusActive,
                   {{Key(kTestSource0), kSettingStatusActive},
                    {MakeSourceKey(kTestSource1), kSettingStatusActive},
@@ -206,7 +206,7 @@ class SettingsDocumentManagerTest : public testing::Test {
 
   // Creates a container and moves |payload| inside.
   std::unique_ptr<MockLockedSettingsContainer> MakeContainer(
-      std::unique_ptr<const MockSettingsDocument> payload) {
+      std::unique_ptr<MockSettingsDocument> payload) {
     std::unique_ptr<MockLockedSettingsContainer> container(
         new MockLockedSettingsContainer(std::move(payload)));
     return container;
@@ -225,7 +225,7 @@ class SettingsDocumentManagerTest : public testing::Test {
       const std::string& source_id) {
     current_version_.Set(source_id, current_version_.Get(source_id) + 1);
     return std::unique_ptr<MockSettingsDocument>(
-        new MockSettingsDocument(source_id, current_version_));
+        new MockSettingsDocument(current_version_));
   }
 
   // Convenience wrapper for SettingsDocumentManager::InsertBlob, which wraps
@@ -235,7 +235,7 @@ class SettingsDocumentManagerTest : public testing::Test {
   // function is useful for test cases that just want to insert a document -
   // call InsertBlob directly for test cases that exercise blob insertion logic.
   SettingsDocumentManager::InsertionStatus InsertDocument(
-      std::unique_ptr<const MockSettingsDocument> document,
+      std::unique_ptr<MockSettingsDocument> document,
       const std::string& source_id,
       const std::deque<std::set<Key>>& expected_changes) {
     SettingsChangeVerifier verifier(manager_.get(), expected_changes);
@@ -473,7 +473,7 @@ TEST_F(SettingsDocumentManagerTest, InsertionFailureVersionClash) {
   version_stamp.Set(kTestSource2, current_version_.Get(kTestSource2) + 1);
   EXPECT_TRUE(version_stamp.IsAfter(current_version_));
   std::unique_ptr<MockSettingsDocument> document(
-      new MockSettingsDocument(kTestSource1, version_stamp));
+      new MockSettingsDocument(version_stamp));
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusVersionClash,
             InsertDocument(std::move(document), kTestSource1, {}));
 }

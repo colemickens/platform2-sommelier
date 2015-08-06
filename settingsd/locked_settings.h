@@ -62,14 +62,14 @@ class LockedSettingsContainer {
       const;
 
   // Extract the enclosed SettingsDocument payload from the passed container.
-  static std::unique_ptr<const SettingsDocument> DecodePayload(
+  static std::unique_ptr<SettingsDocument> DecodePayload(
       std::unique_ptr<LockedSettingsContainer> container);
 
  private:
   // Decodes the payload, i.e. extracts the enclosed SettingsDocument. It is
   // guaranteed that this function only gets called exactly once and the |this|
   // object will get destroyed immediately afterwards.
-  virtual std::unique_ptr<const SettingsDocument> DecodePayloadInternal() = 0;
+  virtual std::unique_ptr<SettingsDocument> DecodePayloadInternal() = 0;
 
   DISALLOW_ASSIGN(LockedSettingsContainer);
 };

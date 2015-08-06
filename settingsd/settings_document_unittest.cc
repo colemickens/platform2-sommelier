@@ -20,7 +20,7 @@ const std::string kSourceId = "source";
 class SettingsDocumentTestBase : public testing::Test {
  public:
   SettingsDocumentTestBase()
-      : A(kSourceId, version_stamp), B(kSourceId, version_stamp) {}
+      : A(version_stamp), B(version_stamp) {}
 
  protected:
   VersionStamp version_stamp;

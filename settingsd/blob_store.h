@@ -20,10 +20,10 @@ class BlobStore {
  public:
   class Handle {
    public:
+    Handle();
     bool IsValid() const;
 
    private:
-    Handle();
     Handle(unsigned int blob_id, const std::string& source_id);
 
     // 0 is considered to be an invalid blob id.

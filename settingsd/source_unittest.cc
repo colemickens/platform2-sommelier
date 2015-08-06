@@ -123,7 +123,7 @@ TEST_F(SourceTest, Update) {
 
 TEST_F(SourceTest, CheckAccess) {
   Source source(kSource1);
-  MockSettingsDocument doc(kSource1, (VersionStamp()));
+  MockSettingsDocument doc((VersionStamp()));
 
   // No access - the source isn't marked as active.
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
@@ -198,7 +198,7 @@ TEST_F(SourceTest, CheckAccessTrustConfig) {
   Source source(kSource1);
   source.Update(GetSourceDelegateFactoryFunction(), settings_);
 
-  MockSettingsDocument doc(kSource1, (VersionStamp()));
+  MockSettingsDocument doc((VersionStamp()));
 
   // Access to higher-precedence sources is denied even though there's an
   // explicit access rule.
