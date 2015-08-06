@@ -24,10 +24,11 @@
 
 namespace buffet {
 
+using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Return;
 using ::testing::ReturnRefOfCopy;
-using ::testing::_;
+using ::testing::StrictMock;
 
 using chromeos::VariantDictionary;
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -49,6 +50,8 @@ MATCHER_P(EqualToJson, json, "") {
 class DBusCommandProxyTest : public ::testing::Test {
  public:
   void SetUp() override {
+    EXPECT_CALL(command_, AddObserver(_)).Times(1);
+    EXPECT_CALL(command_, RemoveObserver(_)).Times(1);
     // Set up a mock DBus bus object.
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
@@ -121,7 +124,7 @@ class DBusCommandProxyTest : public ::testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
   scoped_refptr<dbus::MockBus> bus_;
 
-  weave::unittests::MockCommand command_;
+  StrictMock<weave::unittests::MockCommand> command_;
   std::unique_ptr<DBusCommandProxy> proxy_;
 };
 

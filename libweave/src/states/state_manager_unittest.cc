@@ -83,11 +83,11 @@ class StateManagerTest : public ::testing::Test {
 
   base::Time timestamp_{base::Time::Now()};
   std::unique_ptr<StateManager> mgr_;
-  MockStateChangeQueueInterface mock_state_change_queue_;
+  testing::StrictMock<MockStateChangeQueueInterface> mock_state_change_queue_;
 };
 
 TEST(StateManager, Empty) {
-  MockStateChangeQueueInterface mock_state_change_queue;
+  testing::StrictMock<MockStateChangeQueueInterface> mock_state_change_queue;
   StateManager manager(&mock_state_change_queue);
   EXPECT_TRUE(manager.GetCategories().empty());
 }
@@ -195,6 +195,8 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
                             unittests::make_string_prop_value("Test Value")}});
   EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
       .WillOnce(Return(expected_val));
+  EXPECT_CALL(mock_state_change_queue_, GetLastStateChangeId())
+      .WillOnce(Return(0));
   auto changes = mgr_->GetAndClearRecordedStateChanges();
   ASSERT_EQ(1, changes.second.size());
   EXPECT_EQ(expected_val.back().timestamp, changes.second.back().timestamp);

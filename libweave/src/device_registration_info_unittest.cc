@@ -22,6 +22,10 @@
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/storage_impls.h"
 
+using testing::_;
+using testing::Return;
+using testing::StrictMock;
+
 namespace weave {
 
 using chromeos::http::fake::ServerRequest;
@@ -176,6 +180,11 @@ void FinalizeTicketHandler(const ServerRequest& request,
 class DeviceRegistrationInfoTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    EXPECT_CALL(mock_state_change_queue_, GetLastStateChangeId())
+        .WillRepeatedly(Return(0));
+    EXPECT_CALL(mock_state_change_queue_, MockAddOnStateUpdatedCallback(_))
+        .WillRepeatedly(Return(nullptr));
+
     std::unique_ptr<StorageInterface> storage{new MemStorage};
     storage_ = storage.get();
     storage->Save(data_);
@@ -249,7 +258,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
   std::shared_ptr<chromeos::http::fake::Transport> transport_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
-  testing::NiceMock<MockStateChangeQueueInterface> mock_state_change_queue_;
+  StrictMock<MockStateChangeQueueInterface> mock_state_change_queue_;
   std::shared_ptr<StateManager> state_manager_;
 };
 

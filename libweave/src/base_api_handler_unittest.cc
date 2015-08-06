@@ -17,12 +17,18 @@
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/storage_impls.h"
 
+using testing::_;
+using testing::StrictMock;
+using testing::Return;
+
 namespace weave {
 
 class BaseApiHandlerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    transport_ = std::make_shared<chromeos::http::fake::Transport>();
+    EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(_, _))
+        .WillRepeatedly(Return(true));
+
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
     auto state_definition = unittests::CreateDictionaryValue(R"({
@@ -81,7 +87,7 @@ class BaseApiHandlerTest : public ::testing::Test {
   std::shared_ptr<chromeos::http::fake::Transport> transport_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
-  testing::NiceMock<MockStateChangeQueueInterface> mock_state_change_queue_;
+  testing::StrictMock<MockStateChangeQueueInterface> mock_state_change_queue_;
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<BaseApiHandler> handler_;
   int command_id_{0};
