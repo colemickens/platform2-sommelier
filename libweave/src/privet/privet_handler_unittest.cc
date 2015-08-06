@@ -14,7 +14,6 @@
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <chromeos/http/http_request.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -182,15 +181,15 @@ class PrivetHandlerTest : public testing::Test {
   void HandlerCallback(int status, const base::DictionaryValue& output) {
     output_.MergeDictionary(&output);
     if (!output_.HasKey("error")) {
-      EXPECT_EQ(chromeos::http::status_code::Ok, status);
+      EXPECT_EQ(200, status);
       return;
     }
-    EXPECT_NE(chromeos::http::status_code::Ok, status);
+    EXPECT_NE(200, status);
     output_.SetInteger("error.http_status", status);
   }
 
   static void HandlerNoFound(int status, const base::DictionaryValue&) {
-    EXPECT_EQ(status, 404);
+    EXPECT_EQ(404, status);
   }
 
   base::MessageLoop message_loop_;

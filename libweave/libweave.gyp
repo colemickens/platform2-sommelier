@@ -43,6 +43,7 @@
         'src/commands/user_role.cc',
         'src/device_manager.cc',
         'src/device_registration_info.cc',
+        'src/http_constants.cc',
         'src/notification/notification_parser.cc',
         'src/notification/pull_channel.cc',
         'src/notification/xml_node.cc',

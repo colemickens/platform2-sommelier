@@ -19,7 +19,6 @@
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error_codes.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
 #include <weave/http_client.h>
@@ -29,6 +28,7 @@
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/http_constants.h"
 #include "libweave/src/notification/xmpp_channel.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
@@ -40,17 +40,6 @@ const char kErrorDomainGCD[] = "gcd";
 const char kErrorDomainGCDServer[] = "gcd_server";
 
 namespace {
-
-const int kHttpStatusContinue = 100;
-const int kHttpStatusBadRequest = 400;
-const int kHttpStatusDenied = 401;
-const int kHttpStatusForbidden = 403;
-const int kHttpStatusInternalServerError = 500;
-
-const char kGet[] = "GET";
-const char kPatch[] = "PATCH";
-const char kPost[] = "POST";
-const char kPut[] = "PUT";
 
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
@@ -148,15 +137,13 @@ class RequestSender final {
   void SetFormData(
       const std::vector<std::pair<std::string, std::string>>& data) {
     data_ = chromeos::data_encoding::WebParamsEncode(data);
-    mime_type_ = chromeos::mime::application::kWwwFormUrlEncoded;
+    mime_type_ = http::kWwwFormUrlEncoded;
   }
 
   void SetJsonData(const base::Value& json) {
     std::string data;
     CHECK(base::JSONWriter::Write(json, &data_));
-    mime_type_ = chromeos::mime::AppendParameter(
-        chromeos::mime::application::kJson,
-        chromeos::mime::parameters::kCharset, "utf-8");
+    mime_type_ = http::kJsonUtf8;
   }
 
  private:
@@ -176,9 +163,10 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   // Make sure we have a correct content type. Do not try to parse
   // binary files, or HTML output. Limit to application/json and text/plain.
   auto content_type =
-      chromeos::mime::RemoveParameters(response.GetContentType());
-  if (content_type != chromeos::mime::application::kJson &&
-      content_type != chromeos::mime::text::kPlain) {
+      chromeos::string_utils::SplitAtFirst(response.GetContentType(), ";")
+          .first;
+
+  if (content_type != http::kJson && content_type != http::kPlain) {
     chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
                            "non_json_content_type",
                            "Unexpected response content type: " + content_type);
@@ -213,7 +201,7 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
 
 bool IsSuccessful(const HttpClient::Response& response) {
   int code = response.GetStatusCode();
-  return code >= kHttpStatusContinue && code < kHttpStatusBadRequest;
+  return code >= http::kContinue && code < http::kBadRequest;
 }
 
 }  // anonymous namespace
@@ -322,7 +310,7 @@ DeviceRegistrationInfo::ParseOAuthResponse(const HttpClient::Response& response,
                                            chromeos::ErrorPtr* error) {
   int code = response.GetStatusCode();
   auto resp = ParseJsonResponse(response, error);
-  if (resp && code >= kHttpStatusBadRequest) {
+  if (resp && code >= http::kBadRequest) {
     std::string error_code, error_message;
     if (!resp->GetString("error", &error_code)) {
       error_code = "unexpected_response";
@@ -373,7 +361,7 @@ void DeviceRegistrationInfo::RefreshAccessToken(
   auto shared_error_callback =
       std::make_shared<CloudRequestErrorCallback>(error_callback);
 
-  RequestSender sender{kPost, GetOAuthURL("token"), http_client_};
+  RequestSender sender{http::kPost, GetOAuthURL("token"), http_client_};
   sender.SetFormData({
       {"refresh_token", config_->refresh_token()},
       {"client_id", config_->client_id()},
@@ -535,7 +523,7 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
 void DeviceRegistrationInfo::GetDeviceInfo(
     const CloudRequestCallback& success_callback,
     const CloudRequestErrorCallback& error_callback) {
-  DoCloudRequest(weave::kGet, GetDeviceURL(), nullptr, success_callback,
+  DoCloudRequest(http::kGet, GetDeviceURL(), nullptr, success_callback,
                  error_callback);
 }
 
@@ -554,7 +542,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(const std::string& ticket_id,
   auto url = GetServiceURL("registrationTickets/" + ticket_id,
                            {{"key", config_->api_key()}});
 
-  RequestSender sender{kPatch, url, http_client_};
+  RequestSender sender{http::kPatch, url, http_client_};
   sender.SetJsonData(req_json);
   auto response = sender.SendAndBlock(error);
 
@@ -570,7 +558,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(const std::string& ticket_id,
 
   url = GetServiceURL("registrationTickets/" + ticket_id + "/finalize",
                       {{"key", config_->api_key()}});
-  response = RequestSender{kPost, url, http_client_}.SendAndBlock(error);
+  response = RequestSender{http::kPost, url, http_client_}.SendAndBlock(error);
   if (!response)
     return std::string();
   json_resp = ParseJsonResponse(*response, error);
@@ -598,7 +586,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(const std::string& ticket_id,
   UpdateDeviceInfoTimestamp(*device_draft_response);
 
   // Now get access_token and refresh_token
-  RequestSender sender2{kPost, GetOAuthURL("token"), http_client_};
+  RequestSender sender2{http::kPost, GetOAuthURL("token"), http_client_};
   sender2.SetFormData(
       {{"code", auth_code},
        {"client_id", config_->client_id()},
@@ -686,13 +674,8 @@ void DeviceRegistrationInfo::SendCloudRequest(
     return;
   }
 
-  using chromeos::mime::application::kJson;
-  using chromeos::mime::parameters::kCharset;
-  const std::string mime_type =
-      chromeos::mime::AppendParameter(kJson, kCharset, "utf-8");
-
   RequestSender sender{data->method, data->url, http_client_};
-  sender.SetData(data->body, mime_type);
+  sender.SetData(data->body, http::kJsonUtf8);
   sender.AddAuthHeader(access_token_);
   int request_id =
       sender.Send(base::Bind(&DeviceRegistrationInfo::OnCloudRequestSuccess,
@@ -709,7 +692,7 @@ void DeviceRegistrationInfo::OnCloudRequestSuccess(
   int status_code = response.GetStatusCode();
   VLOG(1) << "Response for cloud request with ID " << request_id
           << " received with status code " << status_code;
-  if (status_code == kHttpStatusDenied) {
+  if (status_code == http::kDenied) {
     cloud_backoff_entry_->InformOfRequest(true);
     RefreshAccessToken(
         base::Bind(&DeviceRegistrationInfo::OnAccessTokenRefreshed, AsWeakPtr(),
@@ -719,7 +702,7 @@ void DeviceRegistrationInfo::OnCloudRequestSuccess(
     return;
   }
 
-  if (status_code >= kHttpStatusInternalServerError) {
+  if (status_code >= http::kInternalServerError) {
     // Request was valid, but server failed, retry.
     // TODO(antonm): Reconsider status codes, maybe only some require
     // retry.
@@ -738,7 +721,7 @@ void DeviceRegistrationInfo::OnCloudRequestSuccess(
 
   if (!IsSuccessful(response)) {
     ParseGCDError(json_resp.get(), &error);
-    if (status_code == kHttpStatusForbidden &&
+    if (status_code == http::kForbidden &&
         error->HasError(kErrorDomainGCDServer, "rateLimitExceeded")) {
       // If we exceeded server quota, retry the request later.
       RetryCloudRequest(data);
@@ -885,7 +868,7 @@ void DeviceRegistrationInfo::UpdateCommand(
     const base::DictionaryValue& command_patch,
     const base::Closure& on_success,
     const base::Closure& on_error) {
-  DoCloudRequest(weave::kPatch, GetServiceURL("commands/" + command_id),
+  DoCloudRequest(http::kPatch, GetServiceURL("commands/" + command_id),
                  &command_patch,
                  base::Bind(&IgnoreCloudResultWithCallback, on_success),
                  base::Bind(&IgnoreCloudErrorWithCallback, on_error));
@@ -962,7 +945,7 @@ void DeviceRegistrationInfo::StartQueuedUpdateDeviceResource() {
       {}, {{"lastUpdateTimeMs", last_device_resource_updated_timestamp_}});
 
   DoCloudRequest(
-      weave::kPut, url, device_resource.get(),
+      http::kPut, url, device_resource.get(),
       base::Bind(&DeviceRegistrationInfo::OnUpdateDeviceResourceSuccess,
                  AsWeakPtr()),
       base::Bind(&DeviceRegistrationInfo::OnUpdateDeviceResourceError,
@@ -1043,7 +1026,7 @@ void DeviceRegistrationInfo::FetchCommands(
     const base::Callback<void(const base::ListValue&)>& on_success,
     const CloudRequestErrorCallback& on_failure) {
   DoCloudRequest(
-      weave::kGet,
+      http::kGet,
       GetServiceURL("commands/queue", {{"deviceId", config_->device_id()}}),
       nullptr, base::Bind(&HandleFetchCommandsResult, on_success), on_failure);
 }
@@ -1079,7 +1062,7 @@ void DeviceRegistrationInfo::ProcessInitialCommandList(
       std::unique_ptr<base::DictionaryValue> cmd_copy{command_dict->DeepCopy()};
       cmd_copy->SetString("state", "aborted");
       // TODO(wiley) We could consider handling this error case more gracefully.
-      DoCloudRequest(weave::kPut, GetServiceURL("commands/" + command_id),
+      DoCloudRequest(http::kPut, GetServiceURL("commands/" + command_id),
                      cmd_copy.get(), base::Bind(&IgnoreCloudResult),
                      base::Bind(&IgnoreCloudError));
     } else {
@@ -1171,7 +1154,7 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
 
   device_state_update_pending_ = true;
   DoCloudRequest(
-      weave::kPost, GetDeviceURL("patchState"), &body,
+      http::kPost, GetDeviceURL("patchState"), &body,
       base::Bind(&DeviceRegistrationInfo::OnPublishStateSuccess, AsWeakPtr(),
                  update_id),
       base::Bind(&DeviceRegistrationInfo::OnPublishStateError, AsWeakPtr()));

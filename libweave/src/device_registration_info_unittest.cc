@@ -11,7 +11,6 @@
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/mime_utils.h>
 #include <gtest/gtest.h>
 #include <weave/mock_http_client.h>
 

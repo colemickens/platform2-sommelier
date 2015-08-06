@@ -17,14 +17,13 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/flag_helper.h>
-#include <chromeos/http/http_request.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
 #include <weave/network.h>
 
 #include "libweave/src/device_registration_info.h"
+#include "libweave/src/http_constants.h"
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/device_delegate.h"
@@ -112,8 +111,7 @@ void Manager::OnDeviceInfoChanged() {
 void Manager::PrivetRequestHandler(
     const HttpServer::Request& request,
     const HttpServer::OnReplyCallback& callback) {
-  std::string auth_header =
-      request.GetFirstHeader(chromeos::http::request_header::kAuthorization);
+  std::string auth_header = request.GetFirstHeader(http::kAuthorization);
   if (auth_header.empty() && disable_security_)
     auth_header = "Privet anonymous";
   std::string data(request.GetData().begin(), request.GetData().end());
@@ -123,9 +121,11 @@ void Manager::PrivetRequestHandler(
   std::unique_ptr<base::Value> value;
   const base::DictionaryValue* dictionary = &empty;
 
-  std::string content_type = chromeos::mime::RemoveParameters(
-      request.GetFirstHeader(chromeos::http::request_header::kContentType));
-  if (content_type == chromeos::mime::application::kJson) {
+  std::string content_type =
+      chromeos::string_utils::SplitAtFirst(
+          request.GetFirstHeader(http::kContentType), ";")
+          .first;
+  if (content_type == http::kJson) {
     value.reset(base::JSONReader::Read(data).release());
     if (value)
       value->GetAsDictionary(&dictionary);
@@ -144,13 +144,12 @@ void Manager::PrivetResponseHandler(const HttpServer::OnReplyCallback& callback,
   std::string data;
   base::JSONWriter::WriteWithOptions(
       output, base::JSONWriter::OPTIONS_PRETTY_PRINT, &data);
-  callback.Run(status, data, chromeos::mime::application::kJson);
+  callback.Run(status, data, http::kJson);
 }
 
 void Manager::HelloWorldHandler(const HttpServer::Request& request,
                                 const HttpServer::OnReplyCallback& callback) {
-  callback.Run(chromeos::http::status_code::Ok, "Hello, world!",
-               chromeos::mime::text::kPlain);
+  callback.Run(http::kOk, "Hello, world!", http::kPlain);
 }
 
 void Manager::OnChanged() {

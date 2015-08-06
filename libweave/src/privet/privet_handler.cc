@@ -15,10 +15,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
-#include <chromeos/http/http_request.h>
 #include <chromeos/strings/string_utils.h>
 #include <weave/enum_to_string.h>
 
+#include "libweave/src/http_constants.h"
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/device_delegate.h"
@@ -126,25 +126,24 @@ struct {
   const char* const reason;
   int code;
 } kReasonToCode[] = {
-    {errors::kInvalidClientCommitment, chromeos::http::status_code::Forbidden},
-    {errors::kInvalidFormat, chromeos::http::status_code::BadRequest},
-    {errors::kMissingAuthorization, chromeos::http::status_code::Denied},
-    {errors::kInvalidAuthorization, chromeos::http::status_code::Denied},
-    {errors::kInvalidAuthorizationScope,
-     chromeos::http::status_code::Forbidden},
-    {errors::kAuthorizationExpired, chromeos::http::status_code::Forbidden},
-    {errors::kCommitmentMismatch, chromeos::http::status_code::Forbidden},
-    {errors::kUnknownSession, chromeos::http::status_code::NotFound},
-    {errors::kInvalidAuthCode, chromeos::http::status_code::Forbidden},
-    {errors::kInvalidAuthMode, chromeos::http::status_code::BadRequest},
-    {errors::kInvalidRequestedScope, chromeos::http::status_code::BadRequest},
-    {errors::kAccessDenied, chromeos::http::status_code::Forbidden},
-    {errors::kInvalidParams, chromeos::http::status_code::BadRequest},
-    {errors::kSetupUnavailable, chromeos::http::status_code::BadRequest},
-    {errors::kDeviceBusy, chromeos::http::status_code::ServiceUnavailable},
-    {errors::kInvalidState, chromeos::http::status_code::InternalServerError},
-    {errors::kNotFound, chromeos::http::status_code::NotFound},
-    {errors::kNotImplemented, chromeos::http::status_code::NotSupported},
+    {errors::kInvalidClientCommitment, http::kForbidden},
+    {errors::kInvalidFormat, http::kBadRequest},
+    {errors::kMissingAuthorization, http::kDenied},
+    {errors::kInvalidAuthorization, http::kDenied},
+    {errors::kInvalidAuthorizationScope, http::kForbidden},
+    {errors::kAuthorizationExpired, http::kForbidden},
+    {errors::kCommitmentMismatch, http::kForbidden},
+    {errors::kUnknownSession, http::kNotFound},
+    {errors::kInvalidAuthCode, http::kForbidden},
+    {errors::kInvalidAuthMode, http::kBadRequest},
+    {errors::kInvalidRequestedScope, http::kBadRequest},
+    {errors::kAccessDenied, http::kForbidden},
+    {errors::kInvalidParams, http::kBadRequest},
+    {errors::kSetupUnavailable, http::kBadRequest},
+    {errors::kDeviceBusy, http::kServiceUnavailable},
+    {errors::kInvalidState, http::kInternalServerError},
+    {errors::kNotFound, http::kNotFound},
+    {errors::kNotImplemented, http::kNotSupported},
 };
 
 AuthScope AuthScopeFromString(const std::string& scope, AuthScope auto_scope) {
@@ -202,7 +201,7 @@ void SetState(const T& state, base::DictionaryValue* parent) {
 
 void ReturnError(const chromeos::Error& error,
                  const PrivetHandler::RequestCallback& callback) {
-  int code = chromeos::http::status_code::InternalServerError;
+  int code = http::kInternalServerError;
   for (const auto& it : kReasonToCode) {
     if (error.HasError(errors::kDomain, it.reason)) {
       code = it.code;
@@ -216,7 +215,7 @@ void ReturnError(const chromeos::Error& error,
 
 void OnCommandRequestSucceeded(const PrivetHandler::RequestCallback& callback,
                                const base::DictionaryValue& output) {
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void OnCommandRequestFailed(const PrivetHandler::RequestCallback& callback,
@@ -523,7 +522,7 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
 
   output.SetInteger(kInfoUptimeKey, device_->GetUptime().InSeconds());
 
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
@@ -563,7 +562,7 @@ void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
   base::DictionaryValue output;
   output.SetString(kPairingSessionIdKey, id);
   output.SetString(kPairingDeviceCommitmentKey, commitment);
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandlePairingConfirm(const base::DictionaryValue& input,
@@ -586,7 +585,7 @@ void PrivetHandler::HandlePairingConfirm(const base::DictionaryValue& input,
   base::DictionaryValue output;
   output.SetString(kPairingFingerprintKey, fingerprint);
   output.SetString(kPairingSignatureKey, signature);
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandlePairingCancel(const base::DictionaryValue& input,
@@ -600,7 +599,7 @@ void PrivetHandler::HandlePairingCancel(const base::DictionaryValue& input,
     return ReturnError(*error, callback);
 
   base::DictionaryValue output;
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
@@ -661,7 +660,7 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
   output.SetString(kAuthTokenTypeKey, kAuthorizationHeaderPrefix);
   output.SetInteger(kAuthExpiresInKey, kAccessTokenExpirationSeconds);
   output.SetString(kAuthScopeKey, EnumToString(requested_auth_scope));
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
@@ -768,7 +767,7 @@ void PrivetHandler::ReplyWithSetupStatus(
     }
   }
 
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandleState(const base::DictionaryValue& input,
@@ -779,7 +778,7 @@ void PrivetHandler::HandleState(const base::DictionaryValue& input,
   output.Set(kStateKey, defs);
   output.SetString(kFingerprintKey, base::IntToString(state_fingerprint_));
 
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
@@ -791,7 +790,7 @@ void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
   output.SetString(kFingerprintKey,
                    base::IntToString(command_defs_fingerprint_));
 
-  callback.Run(chromeos::http::status_code::Ok, output);
+  callback.Run(http::kOk, output);
 }
 
 void PrivetHandler::HandleCommandsExecute(const base::DictionaryValue& input,
