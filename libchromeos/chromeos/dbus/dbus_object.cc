@@ -251,6 +251,21 @@ void DBusObject::RegisterAndBlock() {
   }
 }
 
+void DBusObject::UnregisterAsync() {
+  VLOG(1) << "Unregistering D-Bus object '" << object_path_.value() << "'.";
+  CHECK(exported_object_ != nullptr) << "Object not registered.";
+
+  // This will unregister the object path from the bus.
+  exported_object_->Unregister();
+  // This will remove |exported_object_| from bus's object table. This function
+  // will also post a task to unregister |exported_object_| (same as the call
+  // above), which will be a no-op since it is already done by then.
+  // By doing both in here, the object path is guarantee to be reusable upon
+  // return from this function.
+  bus_->UnregisterExportedObject(object_path_);
+  exported_object_ = nullptr;
+}
+
 bool DBusObject::SendSignal(dbus::Signal* signal) {
   if (exported_object_) {
     exported_object_->SendSignal(signal);

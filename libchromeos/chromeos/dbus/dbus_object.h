@@ -534,6 +534,13 @@ class CHROMEOS_EXPORT DBusObject {
   // will block until the object and all of its interfaces are registered.
   virtual void RegisterAndBlock();
 
+  // Unregister the object instance with D-Bus.  This will unregister the
+  // |exported_object_| and its path from the bus.  The destruction of
+  // |exported_object_| will be deferred in an async task posted by the bus.
+  // It is guarantee that upon return from this call a new DBusObject with the
+  // same object path can be created/registered.
+  virtual void UnregisterAsync();
+
   // Returns the ExportedObjectManager proxy, if any. If DBusObject has been
   // constructed without an object manager, this method returns an empty
   // smart pointer (containing nullptr).
