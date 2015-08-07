@@ -14,6 +14,15 @@
   },
   'targets': [
     {
+      'target_name': 'libweave_external',
+      'type': 'static_library',
+      'sources': [
+        'external/crypto/p224.cc',
+        'external/crypto/p224_spake.cc',
+        'external/crypto/sha2.cc',
+      ],
+    },
+    {
       'target_name': 'libweave_common',
       'type': 'static_library',
       'sources': [
@@ -69,6 +78,7 @@
       ],
       'dependencies': [
         'libweave_common',
+        'libweave_external',
       ],
       'sources': [
         'src/empty.cc',
@@ -99,10 +109,14 @@
           },
           'dependencies': [
             'libweave_common',
+            'libweave_external',
             'libweave-test-<(libbase_ver)',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'external/crypto/p224_spake_unittest.cc',
+            'external/crypto/p224_unittest.cc',
+            'external/crypto/sha2_unittest.cc',
             'src/base_api_handler_unittest.cc',
             'src/buffet_config_unittest.cc',
             'src/commands/cloud_command_proxy_unittest.cc',

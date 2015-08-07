@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,11 +7,15 @@
 //
 // See http://www.imperialviolet.org/2010/12/04/ecc.html ([1]) for background.
 
-#include "crypto/p224.h"
+#include "libweave/external/crypto/p224.h"
 
 #include <string.h>
 
-#include "base/sys_byteorder.h"
+#include <base/sys_byteorder.h>
+
+namespace weave {
+namespace crypto {
+namespace p224 {
 
 namespace {
 
@@ -29,8 +33,6 @@ using base::NetToHost32;
 // Using 28-bit limbs means that there's only 4 bits of headroom, which is less
 // than we would really like. But it has the useful feature that we hit 2**224
 // exactly, making the reflections during a reduce much nicer.
-
-using crypto::p224::FieldElement;
 
 // kP is the P224 prime.
 const FieldElement kP = {
@@ -81,9 +83,9 @@ void Add(FieldElement* out, const FieldElement& a, const FieldElement& b) {
   }
 }
 
-static const uint32 kTwo31p3 = (1u<<31) + (1u<<3);
-static const uint32 kTwo31m3 = (1u<<31) - (1u<<3);
-static const uint32 kTwo31m15m3 = (1u<<31) - (1u<<15) - (1u<<3);
+static const uint32 kTwo31p3 = (1u << 31) + (1u << 3);
+static const uint32 kTwo31m3 = (1u << 31) - (1u << 3);
+static const uint32 kTwo31m15m3 = (1u << 31) - (1u << 15) - (1u << 3);
 // kZero31ModP is 0 mod p where bit 31 is set in all limbs so that we can
 // subtract smaller amounts without underflow. See the section "Subtraction" in
 // [1] for why.
@@ -428,8 +430,6 @@ void Contract(FieldElement* inout) {
 // These functions deal with group elements. The group is an elliptic curve
 // group with a = -3 defined in FIPS 186-3, section D.2.2.
 
-using crypto::p224::Point;
-
 // kB is parameter of the elliptic curve.
 const FieldElement kB = {
   55967668, 11768882, 265861671, 185302395,
@@ -655,10 +655,6 @@ void Put224Bits(uint32* out, const uint32* in) {
 
 }  // anonymous namespace
 
-namespace crypto {
-
-namespace p224 {
-
 bool Point::SetFromString(const base::StringPiece& in) {
   if (in.size() != 2*28)
     return false;
@@ -685,7 +681,7 @@ bool Point::SetFromString(const base::StringPiece& in) {
   Subtract(&rhs, rhs, three_x);
   Reduce(&rhs);
 
-  ::Add(&rhs, rhs, kB);
+  Add(&rhs, rhs, kB);
   Contract(&rhs);
   return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
 }
@@ -715,20 +711,20 @@ std::string Point::ToString() const {
 }
 
 void ScalarMult(const Point& in, const uint8* scalar, Point* out) {
-  ::ScalarMult(out, in, scalar, 28);
+  ScalarMult(out, in, scalar, 28);
 }
 
 // kBasePoint is the base point (generator) of the elliptic curve group.
 static const Point kBasePoint = {
   {22813985, 52956513, 34677300, 203240812,
-   12143107, 133374265, 225162431, 191946955},
+    12143107, 133374265, 225162431, 191946955},
   {83918388, 223877528, 122119236, 123340192,
-   266784067, 263504429, 146143011, 198407736},
+    266784067, 263504429, 146143011, 198407736},
   {1, 0, 0, 0, 0, 0, 0, 0},
 };
 
 void ScalarBaseMult(const uint8* scalar, Point* out) {
-  ::ScalarMult(out, kBasePoint, scalar, 28);
+  ScalarMult(out, kBasePoint, scalar, 28);
 }
 
 void Add(const Point& a, const Point& b, Point* out) {
@@ -754,5 +750,5 @@ void Negate(const Point& in, Point* out) {
 }
 
 }  // namespace p224
-
 }  // namespace crypto
+}  // namespace weave

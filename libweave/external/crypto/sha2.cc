@@ -1,25 +1,33 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crypto/sha2.h"
+#include "libweave/external/crypto/sha2.h"
 
-#include "base/memory/scoped_ptr.h"
-#include "base/stl_util.h"
-#include "crypto/secure_hash.h"
+#include <algorithm>
+#include <openssl/sha.h>
 
+#include <base/memory/scoped_ptr.h>
+
+namespace weave {
 namespace crypto {
 
-void SHA256HashString(const base::StringPiece& str, void* output, size_t len) {
-  scoped_ptr<SecureHash> ctx(SecureHash::Create(SecureHash::SHA256));
-  ctx->Update(str.data(), str.length());
-  ctx->Finish(output, len);
+void SHA256HashString(const base::StringPiece& str, uint8_t* output,
+                      size_t len) {
+  std::string hash = SHA256HashString(str);
+  len = std::min(hash.size(), len);
+  std::copy(hash.begin(), hash.begin() + len, output);
 }
 
 std::string SHA256HashString(const base::StringPiece& str) {
-  std::string output(kSHA256Length, 0);
-  SHA256HashString(str, string_as_array(&output), output.size());
-  return output;
+  SHA256_CTX sha_context;
+  SHA256_Init(&sha_context);
+  SHA256_Update(&sha_context, str.data(), str.size());
+
+  std::string hash(kSHA256Length, 0);
+  SHA256_Final(reinterpret_cast<uint8_t*>(&hash[0]), &sha_context);
+  return hash;
 }
 
 }  // namespace crypto
+}  // namespace weave

@@ -1,15 +1,19 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTO_P224_SPAKE_H_
-#define CRYPTO_P224_SPAKE_H_
+#ifndef LIBWEAVE_EXTERNAL_CRYPTO_P224_SPAKE_H_
+#define LIBWEAVE_EXTERNAL_CRYPTO_P224_SPAKE_H_
+
+#include <string>
 
 #include <base/gtest_prod_util.h>
 #include <base/strings/string_piece.h>
-#include <crypto/p224.h>
-#include <crypto/sha2.h>
 
+#include "libweave/external/crypto/p224.h"
+#include "libweave/external/crypto/sha2.h"
+
+namespace weave {
 namespace crypto {
 
 // P224EncryptedKeyExchange implements SPAKE2, a variant of Encrypted
@@ -32,7 +36,7 @@ namespace crypto {
 //   kResultSuccess: The authentication was successful.
 //
 // In each exchange, each peer always sends a message.
-class CRYPTO_EXPORT P224EncryptedKeyExchange {
+class P224EncryptedKeyExchange {
  public:
   enum Result {
     kResultPending,
@@ -122,5 +126,6 @@ class CRYPTO_EXPORT P224EncryptedKeyExchange {
 };
 
 }  // namespace crypto
+}  // namespace weave
 
-#endif  // CRYPTO_P224_SPAKE_H_
+#endif  // LIBWEAVE_EXTERNAL_CRYPTO_P224_SPAKE_H_

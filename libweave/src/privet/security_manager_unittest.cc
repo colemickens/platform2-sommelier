@@ -22,7 +22,7 @@
 #include <chromeos/data_encoding.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
-#include <crypto/p224_spake.h>
+#include "libweave/external/crypto/p224_spake.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

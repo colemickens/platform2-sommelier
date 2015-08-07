@@ -1,16 +1,16 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTO_P224_H_
-#define CRYPTO_P224_H_
+#ifndef LIBWEAVE_EXTERNAL_CRYPTO_P224_H_
+#define LIBWEAVE_EXTERNAL_CRYPTO_P224_H_
 
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/strings/string_piece.h"
-#include "crypto/crypto_export.h"
+#include <base/basictypes.h>
+#include <base/strings/string_piece.h>
 
+namespace weave {
 namespace crypto {
 
 // P224 implements an elliptic curve group, commonly known as P224 and defined
@@ -21,7 +21,7 @@ namespace p224 {
 // little endian order.
 typedef uint32 FieldElement[8];
 
-struct CRYPTO_EXPORT Point {
+struct Point {
   // SetFromString the value of the point from the 56 byte, external
   // representation. The external point representation is an (x, y) pair of a
   // point on the curve. Each field element is represented as a big-endian
@@ -41,20 +41,20 @@ static const size_t kScalarBytes = 28;
 
 // ScalarMult computes *out = in*scalar where scalar is a 28-byte, big-endian
 // number.
-void CRYPTO_EXPORT ScalarMult(const Point& in, const uint8* scalar, Point* out);
+void ScalarMult(const Point& in, const uint8* scalar, Point* out);
 
 // ScalarBaseMult computes *out = g*scalar where g is the base point of the
 // curve and scalar is a 28-byte, big-endian number.
-void CRYPTO_EXPORT ScalarBaseMult(const uint8* scalar, Point* out);
+void ScalarBaseMult(const uint8* scalar, Point* out);
 
 // Add computes *out = a+b.
-void CRYPTO_EXPORT Add(const Point& a, const Point& b, Point* out);
+void Add(const Point& a, const Point& b, Point* out);
 
 // Negate calculates out = -a;
-void CRYPTO_EXPORT Negate(const Point& a, Point* out);
+void Negate(const Point& a, Point* out);
 
 }  // namespace p224
-
 }  // namespace crypto
+}  // namespace weave
 
-#endif  // CRYPTO_P224_H_
+#endif  // LIBWEAVE_EXTERNAL_CRYPTO_P224_H_

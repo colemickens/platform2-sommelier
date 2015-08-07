@@ -1,18 +1,21 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // This code implements SPAKE2, a variant of EKE:
 //  http://www.di.ens.fr/~pointche/pub.php?reference=AbPo04
 
-#include <crypto/p224_spake.h>
+#include "libweave/external/crypto/p224_spake.h"
 
 #include <algorithm>
 
 #include <base/logging.h>
-#include <crypto/p224.h>
-#include <crypto/random.h>
-#include <crypto/secure_util.h>
+#include <base/rand_util.h>
+
+#include "libweave/external/crypto/p224.h"
+
+namespace weave {
+namespace crypto {
 
 namespace {
 
@@ -77,25 +80,40 @@ namespace {
 //   return 0;
 // }
 
-const crypto::p224::Point kM = {
+const p224::Point kM = {
   {174237515, 77186811, 235213682, 33849492,
-   33188520, 48266885, 177021753, 81038478},
+    33188520, 48266885, 177021753, 81038478},
   {104523827, 245682244, 266509668, 236196369,
-   28372046, 145351378, 198520366, 113345994},
+    28372046, 145351378, 198520366, 113345994},
   {1, 0, 0, 0, 0, 0, 0, 0},
 };
 
-const crypto::p224::Point kN = {
+const p224::Point kN = {
   {136176322, 263523628, 251628795, 229292285,
-   5034302, 185981975, 171998428, 11653062},
+    5034302, 185981975, 171998428, 11653062},
   {197567436, 51226044, 60372156, 175772188,
-   42075930, 8083165, 160827401, 65097570},
+    42075930, 8083165, 160827401, 65097570},
   {1, 0, 0, 0, 0, 0, 0, 0},
 };
+
+// Performs a constant-time comparison of two strings, returning true if the
+// strings are equal.
+//
+// For cryptographic operations, comparison functions such as memcmp() may
+// expose side-channel information about input, allowing an attacker to
+// perform timing analysis to determine what the expected bits should be. In
+// order to avoid such attacks, the comparison must execute in constant time,
+// so as to not to reveal to the attacker where the difference(s) are.
+// For an example attack, see
+// http://groups.google.com/group/keyczar-discuss/browse_thread/thread/5571eca0948b2a13
+bool SecureMemEqual(const uint8_t* s1_ptr, const uint8_t* s2_ptr, size_t n) {
+  uint8_t tmp = 0;
+  for (size_t i = 0; i < n; ++i, ++s1_ptr, ++s2_ptr)
+    tmp |= *s1_ptr ^ *s2_ptr;
+  return (tmp == 0);
+}
 
 }  // anonymous namespace
-
-namespace crypto {
 
 P224EncryptedKeyExchange::P224EncryptedKeyExchange(
     PeerType peer_type, const base::StringPiece& password)
@@ -105,7 +123,7 @@ P224EncryptedKeyExchange::P224EncryptedKeyExchange(
   memset(&expected_authenticator_, 0, sizeof(expected_authenticator_));
 
   // x_ is a random scalar.
-  RandBytes(x_, sizeof(x_));
+  base::RandBytes(x_, sizeof(x_));
 
   // Calculate |password| hash to get SPAKE password value.
   SHA256HashString(std::string(password.data(), password.length()),
@@ -155,8 +173,8 @@ P224EncryptedKeyExchange::Result P224EncryptedKeyExchange::ProcessMessage(
       error_ = "peer's hash had an incorrect size";
       return kResultFailed;
     }
-    if (!SecureMemEqual(message.data(), expected_authenticator_,
-                        message.size())) {
+    if (!SecureMemEqual(reinterpret_cast<const uint8_t*>(message.data()),
+                        expected_authenticator_, message.size())) {
       error_ = "peer's hash had incorrect value";
       return kResultFailed;
     }
@@ -266,3 +284,4 @@ void P224EncryptedKeyExchange::SetXForTesting(const std::string& x) {
 }
 
 }  // namespace crypto
+}  // namespace weave

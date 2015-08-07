@@ -1,11 +1,13 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crypto/sha2.h"
+#include "libweave/external/crypto/sha2.h"
 
-#include "base/basictypes.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include <base/basictypes.h>
+#include <gtest/gtest.h>
+
+namespace weave {
 
 TEST(Sha256Test, Test1) {
   // Example B.1 from FIPS 180-2: one-block message.
@@ -98,3 +100,5 @@ TEST(Sha256Test, Test3) {
   for (size_t i = 0; i < sizeof(output_truncated3); i++)
     EXPECT_EQ(expected3[i], static_cast<int>(output_truncated3[i]));
 }
+
+}  // namespace weave

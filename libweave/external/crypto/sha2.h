@@ -1,15 +1,15 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTO_SHA2_H_
-#define CRYPTO_SHA2_H_
+#ifndef LIBWEAVE_EXTERNAL_CRYPTO_SHA2_H_
+#define LIBWEAVE_EXTERNAL_CRYPTO_SHA2_H_
 
 #include <string>
 
-#include "base/strings/string_piece.h"
-#include "crypto/crypto_export.h"
+#include <base/strings/string_piece.h>
 
+namespace weave {
 namespace crypto {
 
 // These functions perform SHA-256 operations.
@@ -21,13 +21,14 @@ static const size_t kSHA256Length = 32;  // Length in bytes of a SHA-256 hash.
 // Computes the SHA-256 hash of the input string 'str' and stores the first
 // 'len' bytes of the hash in the output buffer 'output'.  If 'len' > 32,
 // only 32 bytes (the full hash) are stored in the 'output' buffer.
-CRYPTO_EXPORT void SHA256HashString(const base::StringPiece& str,
-                                    void* output, size_t len);
+void SHA256HashString(const base::StringPiece& str, uint8_t* output,
+                      size_t len);
 
 // Convenience version of the above that returns the result in a 32-byte
 // string.
-CRYPTO_EXPORT std::string SHA256HashString(const base::StringPiece& str);
+std::string SHA256HashString(const base::StringPiece& str);
 
 }  // namespace crypto
+}  // namespace weave
 
-#endif  // CRYPTO_SHA2_H_
+#endif  // LIBWEAVE_EXTERNAL_CRYPTO_SHA2_H_
