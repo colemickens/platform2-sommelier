@@ -468,6 +468,18 @@ class CHROMEOS_EXPORT DBusInterface final {
       dbus::ExportedObject* exported_object,
       const dbus::ObjectPath& object_path,
       const AsyncEventSequencer::CompletionAction& completion_callback);
+  // Exports all the methods and properties of this interface and claims the
+  // D-Bus interface synchronously.
+  // object_manager - ExportedObjectManager instance that notifies D-Bus
+  //                  listeners of a new interface being claimed.
+  // exported_object - instance of D-Bus object the interface is being added to.
+  // object_path - D-Bus object path for the object instance.
+  // interface_name - name of interface being registered.
+  CHROMEOS_PRIVATE void ExportAndBlock(
+      ExportedObjectManager* object_manager,
+      dbus::Bus* bus,
+      dbus::ExportedObject* exported_object,
+      const dbus::ObjectPath& object_path);
 
   CHROMEOS_PRIVATE void ClaimInterface(
       base::WeakPtr<ExportedObjectManager> object_manager,
@@ -517,6 +529,10 @@ class CHROMEOS_EXPORT DBusObject {
   // interfaces are registered.
   virtual void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
+
+  // Registers the object instance with D-Bus. This is call is synchronous and
+  // will block until the object and all of its interfaces are registered.
+  virtual void RegisterAndBlock();
 
   // Returns the ExportedObjectManager proxy, if any. If DBusObject has been
   // constructed without an object manager, this method returns an empty
