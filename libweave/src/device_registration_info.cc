@@ -16,7 +16,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
-#include <chromeos/data_encoding.h>
 #include <chromeos/errors/error_codes.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>

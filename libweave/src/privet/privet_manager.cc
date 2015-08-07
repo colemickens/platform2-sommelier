@@ -16,10 +16,8 @@
 #include <base/scoped_observer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <chromeos/flag_helper.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
-#include <chromeos/syslog_logging.h>
 #include <weave/network.h>
 
 #include "libweave/src/device_registration_info.h"
