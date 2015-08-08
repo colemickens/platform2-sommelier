@@ -13,7 +13,7 @@ AWK_PROG='
   {
     sub(",.*", "", $2); # remove style translations (eg, Fett is Bold in German)
     sub(".*=", "", $3); # strip version to just the number
-    printf("%s, %s, version=%.2f\n", $1, $2, $3/65536.0);
+    printf("%s, %s, version=%.3f\n", $1, $2, $3/65536.0);
   } 
 '
 
