@@ -560,6 +560,10 @@ void Connection::OnRouteQueryResponse(int interface_index,
     LOG(ERROR) << "Device " << interface_index << " has no connection.";
     return;
   }
+  if (connection == this) {
+    LOG(ERROR) << "Avoiding a connection bind loop for " << interface_name();
+    return;
+  }
   lower_binder_.Attach(connection);
   connection->CreateGatewayRoute();
   device->OnConnectionUpdated();

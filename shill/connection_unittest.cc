@@ -1016,6 +1016,15 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
       kTestDeviceInterfaceIndex1, RoutingTableEntry());
   EXPECT_FALSE(binder->IsBound());
 
+  // Check for graceful handling of a connection loop.
+  EXPECT_CALL(*device, connection())
+      .WillRepeatedly(testing::ReturnRef(connection_));
+  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
+      .WillOnce(Return(device));
+  connection_->OnRouteQueryResponse(
+      kTestDeviceInterfaceIndex1, RoutingTableEntry());
+  EXPECT_FALSE(binder->IsBound());
+
   // Check for graceful handling of a device with no connection.
   ConnectionRefPtr device_connection;
   EXPECT_CALL(*device, connection())
