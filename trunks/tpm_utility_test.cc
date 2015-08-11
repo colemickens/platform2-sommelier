@@ -1471,15 +1471,27 @@ TEST_F(TpmUtilityTest, SealDataParserFail) {
 
 TEST_F(TpmUtilityTest, UnsealDataSuccess) {
   std::string sealed_data;
+  std::string tpm_unsealed_data("password");
   std::string unsealed_data;
   TPM_HANDLE object_handle = 42;
+  TPM2B_PUBLIC public_data;
+  public_data.public_area.auth_policy.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_data),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(object_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_data),
+                            Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(object_handle),
                       Return(TPM_RC_SUCCESS)));
+  TPM2B_SENSITIVE_DATA out_data = Make_TPM2B_SENSITIVE_DATA(tpm_unsealed_data);
   EXPECT_CALL(mock_tpm_, UnsealSync(object_handle, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
+      .WillOnce(DoAll(SetArgPointee<2>(out_data),
+                      Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.UnsealData(
       sealed_data, &mock_authorization_delegate_, &unsealed_data));
+  EXPECT_EQ(unsealed_data, tpm_unsealed_data);
 }
 
 TEST_F(TpmUtilityTest, UnsealDataBadDelegate) {
