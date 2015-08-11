@@ -19,9 +19,7 @@ using base::Closure;
 namespace shill {
 
 EventDispatcher::EventDispatcher()
-    : dont_use_directly_(new base::MessageLoopForUI),
-      message_loop_proxy_(base::MessageLoopProxy::current()),
-      io_handler_factory_(
+    : io_handler_factory_(
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
 }
 
@@ -36,11 +34,11 @@ void EventDispatcher::DispatchPendingEvents() {
 }
 
 bool EventDispatcher::PostTask(const Closure& task) {
-  return message_loop_proxy_->PostTask(FROM_HERE, task);
+  return base::MessageLoopProxy::current()->PostTask(FROM_HERE, task);
 }
 
 bool EventDispatcher::PostDelayedTask(const Closure& task, int64_t delay_ms) {
-  return message_loop_proxy_->PostDelayedTask(
+  return base::MessageLoopProxy::current()->PostDelayedTask(
       FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }
 
