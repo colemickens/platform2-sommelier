@@ -1638,9 +1638,7 @@ TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
   } else if (key_alg == TPM_ALG_ECC) {
     public_area.type = TPM_ALG_ECC;
     public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
-    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
-    public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg =
-        TPM_ALG_SHA256;
+    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_NULL;
     public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
     public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
   } else if (key_alg == TPM_ALG_KEYEDHASH) {
