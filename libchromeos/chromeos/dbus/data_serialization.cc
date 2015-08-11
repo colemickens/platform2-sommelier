@@ -249,39 +249,37 @@ bool PopStructValueFromReader(dbus::MessageReader* reader,
 }  // anonymous namespace
 
 bool PopValueFromReader(dbus::MessageReader* reader, chromeos::Any* value) {
-  if (reader->GetDataType() != dbus::Message::VARIANT)
-    return false;
   dbus::MessageReader variant_reader(nullptr);
-  if (!reader->PopVariant(&variant_reader))
+  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader))
     return false;
 
-  switch (variant_reader.GetDataType()) {
+  switch (reader->GetDataType()) {
     case dbus::Message::BYTE:
-      return PopTypedValueFromReader<uint8_t>(&variant_reader, value);
+      return PopTypedValueFromReader<uint8_t>(reader, value);
     case dbus::Message::BOOL:
-      return PopTypedValueFromReader<bool>(&variant_reader, value);
+      return PopTypedValueFromReader<bool>(reader, value);
     case dbus::Message::INT16:
-      return PopTypedValueFromReader<int16_t>(&variant_reader, value);
+      return PopTypedValueFromReader<int16_t>(reader, value);
     case dbus::Message::UINT16:
-      return PopTypedValueFromReader<uint16_t>(&variant_reader, value);
+      return PopTypedValueFromReader<uint16_t>(reader, value);
     case dbus::Message::INT32:
-      return PopTypedValueFromReader<int32_t>(&variant_reader, value);
+      return PopTypedValueFromReader<int32_t>(reader, value);
     case dbus::Message::UINT32:
-      return PopTypedValueFromReader<uint32_t>(&variant_reader, value);
+      return PopTypedValueFromReader<uint32_t>(reader, value);
     case dbus::Message::INT64:
-      return PopTypedValueFromReader<int64_t>(&variant_reader, value);
+      return PopTypedValueFromReader<int64_t>(reader, value);
     case dbus::Message::UINT64:
-      return PopTypedValueFromReader<uint64_t>(&variant_reader, value);
+      return PopTypedValueFromReader<uint64_t>(reader, value);
     case dbus::Message::DOUBLE:
-      return PopTypedValueFromReader<double>(&variant_reader, value);
+      return PopTypedValueFromReader<double>(reader, value);
     case dbus::Message::STRING:
-      return PopTypedValueFromReader<std::string>(&variant_reader, value);
+      return PopTypedValueFromReader<std::string>(reader, value);
     case dbus::Message::OBJECT_PATH:
-      return PopTypedValueFromReader<dbus::ObjectPath>(&variant_reader, value);
+      return PopTypedValueFromReader<dbus::ObjectPath>(reader, value);
     case dbus::Message::ARRAY:
-      return PopArrayValueFromReader(&variant_reader, value);
+      return PopArrayValueFromReader(reader, value);
     case dbus::Message::STRUCT:
-      return PopStructValueFromReader(&variant_reader, value);
+      return PopStructValueFromReader(reader, value);
     case dbus::Message::DICT_ENTRY:
       LOG(ERROR) << "Variant of DICT_ENTRY is invalid";
       return false;
