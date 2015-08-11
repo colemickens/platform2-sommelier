@@ -4,6 +4,7 @@
 
 #include "shill/device_claimer.h"
 
+#include "shill/control_interface.h"
 #include "shill/device_info.h"
 
 using std::string;
@@ -11,10 +12,10 @@ using std::string;
 namespace shill {
 
 DeviceClaimer::DeviceClaimer(
-    const std::string& dbus_service_name,
+    const std::string& service_name,
     DeviceInfo* device_info,
     bool default_claimer)
-    : dbus_service_name_(dbus_service_name),
+    : service_name_(service_name),
       device_info_(device_info),
       default_claimer_(default_claimer) {}
 
@@ -27,22 +28,18 @@ DeviceClaimer::~DeviceClaimer() {
     // Clear claimed device list.
     claimed_device_names_.clear();
   }
-  // Reset DBus name watcher.
-  dbus_name_watcher_.reset();
 }
 
-bool DeviceClaimer::StartDBusNameWatcher(
-    DBusManager* dbus_manager,
-    const DBusNameWatcher::NameAppearedCallback& name_appeared_callback,
-    const DBusNameWatcher::NameVanishedCallback& name_vanished_callback) {
-  if (dbus_name_watcher_) {
-    LOG(ERROR) << "DBus name watcher already started";
+bool DeviceClaimer::StartServiceWatcher(
+    ControlInterface* control_interface,
+    const base::Closure& connection_vanished_callback) {
+  if (service_watcher_) {
+    LOG(ERROR) << "Service watcher already started";
     return false;
   }
-  dbus_name_watcher_.reset(
-      dbus_manager->CreateNameWatcher(dbus_service_name_,
-                                      name_appeared_callback,
-                                      name_vanished_callback));
+  service_watcher_.reset(
+      control_interface->CreateRPCServiceWatcher(service_name_,
+                                                 connection_vanished_callback));
   return true;
 }
 

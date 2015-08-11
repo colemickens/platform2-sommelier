@@ -8,30 +8,31 @@
 #include <set>
 #include <string>
 
-#include "shill/dbus_manager.h"
+#include <base/callback.h>
+
 #include "shill/error.h"
+#include "shill/rpc_service_watcher_interface.h"
 
 namespace shill {
 
+class ControlInterface;
 class DeviceInfo;
 
 // Provide an abstraction for remote service to claim/release devices
-// from/to shill. When the DBus service name is provided, which means that
-// the remote service is a DBus endpoint, Shill will perform DBus monitoring
+// from/to shill. When the service name is provided, which means that
+// the remote service is a RPC endpoint, Shill will perform RPC monitoring
 // on that service, and revert all operations performed by that service when
 // it disappears.
 class DeviceClaimer {
  public:
-  DeviceClaimer(
-      const std::string& dbus_service_name,
-      DeviceInfo* device_info,
-      bool default_claimer);
+  DeviceClaimer(const std::string& service_name,
+                DeviceInfo* device_info,
+                bool default_claimer);
   virtual ~DeviceClaimer();
 
-  virtual bool StartDBusNameWatcher(
-      DBusManager* dbus_manager,
-      const DBusNameWatcher::NameAppearedCallback& name_appeared_callback,
-      const DBusNameWatcher::NameVanishedCallback& name_vanished_callback);
+  virtual bool StartServiceWatcher(
+      ControlInterface* control_interface,
+      const base::Closure& connection_vanished_callback);
 
   virtual bool Claim(const std::string& device_name, Error* error);
   virtual bool Release(const std::string& device_name, Error* error);
@@ -44,11 +45,7 @@ class DeviceClaimer {
   // otherwise.
   virtual bool IsDeviceReleased(const std::string& device_name);
 
-  const std::string& name() const { return dbus_service_name_; }
-  const std::string& owner() const { return dbus_service_owner_; }
-  void set_owner(const std::string& dbus_service_owner) {
-    dbus_service_owner_ = dbus_service_owner;
-  }
+  const std::string& name() const { return service_name_; }
 
   virtual bool default_claimer() const { return default_claimer_; }
 
@@ -57,16 +54,14 @@ class DeviceClaimer {
   }
 
  private:
-  // DBus name watcher for monitoring the DBus service of the claimer.
-  std::unique_ptr<DBusNameWatcher> dbus_name_watcher_;
+  // Watcher for monitoring the remote RPC service of the claimer.
+  std::unique_ptr<RPCServiceWatcherInterface> service_watcher_;
   // The name of devices that have been claimed by this claimer.
   std::set<std::string> claimed_device_names_;
   // The name of devices that have been released by this claimer.
   std::set<std::string> released_device_names_;
-  // DBus service name of the claimer.
-  std::string dbus_service_name_;
-  // DBus service owner name of the claimer.
-  std::string dbus_service_owner_;
+  // Service name of the claimer.
+  std::string service_name_;
 
   DeviceInfo* device_info_;
 

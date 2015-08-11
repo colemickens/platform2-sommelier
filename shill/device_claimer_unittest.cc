@@ -9,8 +9,9 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/mock_dbus_manager.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_service_watcher.h"
 
 using std::string;
 using ::testing::_;
@@ -19,7 +20,7 @@ using ::testing::Return;
 
 namespace shill {
 
-const char kDBusServiceName[] = "org.chromium.TestService";
+const char kServiceName[] = "org.chromium.TestService";
 const char kTestDevice1Name[] = "test_device1";
 const char kTestDevice2Name[] = "test_device2";
 
@@ -27,39 +28,26 @@ class DeviceClaimerTest : public testing::Test {
  public:
   DeviceClaimerTest()
      : device_info_(nullptr, nullptr, nullptr, nullptr),
-       device_claimer_(kDBusServiceName, &device_info_, false) {}
+       device_claimer_(kServiceName, &device_info_, false) {}
 
  protected:
   MockDeviceInfo device_info_;
   DeviceClaimer device_claimer_;
 };
 
-TEST_F(DeviceClaimerTest, StartDBusNameWatcher) {
-  // Setup DBus name watcher.
-  MockDBusManager dbus_manager;
-  DBusNameWatcher* name_watcher =
-      new DBusNameWatcher(&dbus_manager,
-                          kDBusServiceName,
-                          DBusNameWatcher::NameAppearedCallback(),
-                          DBusNameWatcher::NameVanishedCallback());
+TEST_F(DeviceClaimerTest, StartServiceWatcher) {
+  // Start service watcher.
+  MockControl control;
+  EXPECT_CALL(control, CreateRPCServiceWatcher(_, _))
+      .WillOnce(Return(new MockServiceWatcher()));
+  EXPECT_TRUE(device_claimer_.StartServiceWatcher(&control, base::Closure()));
+  Mock::VerifyAndClearExpectations(&control);
 
-  // Start DBus name watcher.
-  EXPECT_CALL(dbus_manager, CreateNameWatcher(kDBusServiceName, _, _))
-      .WillOnce(Return(name_watcher));
-  EXPECT_TRUE(device_claimer_.StartDBusNameWatcher(
-      &dbus_manager,
-      DBusNameWatcher::NameAppearedCallback(),
-      DBusNameWatcher::NameVanishedCallback()));
-  Mock::VerifyAndClearExpectations(&dbus_manager);
-
-  // Start DBus name watcher again, should fail since name watcher already
+  // Start service watcher again, should fail since name watcher already
   // started.
-  EXPECT_CALL(dbus_manager, CreateNameWatcher(_, _, _)).Times(0);
-  EXPECT_FALSE(device_claimer_.StartDBusNameWatcher(
-      &dbus_manager,
-      DBusNameWatcher::NameAppearedCallback(),
-      DBusNameWatcher::NameVanishedCallback()));
-  Mock::VerifyAndClearExpectations(&dbus_manager);
+  EXPECT_CALL(control, CreateRPCServiceWatcher(_, _)).Times(0);
+  EXPECT_FALSE(device_claimer_.StartServiceWatcher(&control, base::Closure()));
+  Mock::VerifyAndClearExpectations(&control);
 }
 
 TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
