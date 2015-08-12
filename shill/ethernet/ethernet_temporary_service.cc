@@ -7,7 +7,6 @@
 #include <string>
 
 #include "shill/control_interface.h"
-#include "shill/dbus_adaptor.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -33,7 +32,7 @@ EthernetTemporaryService::EthernetTemporaryService(
 EthernetTemporaryService::~EthernetTemporaryService() {}
 
 std::string EthernetTemporaryService::GetDeviceRpcId(Error* /*error*/) const {
-  return DBusAdaptor::kNullPath;
+  return control_interface()->NullRPCIdentifier();
 }
 
 string EthernetTemporaryService::GetStorageIdentifier() const {

@@ -21,7 +21,6 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/dbus_adaptor.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
@@ -32,7 +31,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_eap_credentials.h"
@@ -62,6 +60,7 @@
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 #include "shill/wifi/mock_mac80211_monitor.h"
 #include "shill/wifi/mock_scan_session.h"
@@ -119,7 +118,6 @@ const uint16_t kRandomScanFrequency1 = 5600;
 const uint16_t kRandomScanFrequency2 = 5560;
 const uint16_t kRandomScanFrequency3 = 2422;
 const int kInterfaceIndex = 1234;
-const char kSupplicantNameOwner[] = "9999";
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
 // capabilities of a NIC with wiphy index |kNewWiphyNlMsg_WiphyIndex| which
@@ -480,57 +478,43 @@ TEST_F(WiFiPropertyTest, Contains) {
   EXPECT_FALSE(device_->store().Contains(""));
 }
 
-// TODO(zqiu): update this test after dbus-c++ dependencies is removed from
-// PropertyStoreTest.
 TEST_F(WiFiPropertyTest, SetProperty) {
   {
-    ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::SetProperty(
-        device_->mutable_store(),
-        kBgscanSignalThresholdProperty,
-        PropertyStoreTest::kInt32V,
-        &error));
+    Error error;
+    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
+        kBgscanSignalThresholdProperty, PropertyStoreTest::kInt32V, &error));
   }
   {
-    ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                         kScanIntervalProperty,
-                                         PropertyStoreTest::kUint16V,
-                                         &error));
+    Error error;
+    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
+        kScanIntervalProperty, PropertyStoreTest::kUint16V, &error));
   }
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                          kScanningProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          &error));
-    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
+        kScanningProperty, PropertyStoreTest::kBoolV, &error));
+    ASSERT_TRUE(error.IsFailure());
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 
   {
-    ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::SetProperty(
-        device_->mutable_store(),
+    Error error;
+    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
         kBgscanMethodProperty,
-        DBusAdaptor::StringToVariant(
-            WPASupplicant::kNetworkBgscanMethodSimple),
+        chromeos::Any(string(WPASupplicant::kNetworkBgscanMethodSimple)),
         &error));
   }
 
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(
-        device_->mutable_store(),
+    Error error;
+    EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
         kBgscanMethodProperty,
-        DBusAdaptor::StringToVariant("not a real scan method"),
+        chromeos::Any(string("not a real scan method")),
         &error));
   }
 }
 
-// TODO(zqiu): update this test after dbus-c++ dependencies is removed from
-// PropertyStoreTest.
 TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_NE(WPASupplicant::kNetworkBgscanMethodLearn,
             WiFi::kDefaultBgscanMethod);
@@ -543,19 +527,18 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_EQ(WiFi::kDefaultBgscanMethod, method);
   EXPECT_EQ(WPASupplicant::kNetworkBgscanMethodSimple, method);
 
-  ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::SetProperty(
-      device_->mutable_store(),
+  Error error;
+  EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
       kBgscanMethodProperty,
-      DBusAdaptor::StringToVariant(WPASupplicant::kNetworkBgscanMethodLearn),
+      chromeos::Any(string(WPASupplicant::kNetworkBgscanMethodLearn)),
       &error));
   EXPECT_EQ(WPASupplicant::kNetworkBgscanMethodLearn, device_->bgscan_method_);
   EXPECT_TRUE(device_->store().GetStringProperty(
       kBgscanMethodProperty, &method, &unused_error));
   EXPECT_EQ(WPASupplicant::kNetworkBgscanMethodLearn, method);
 
-  EXPECT_TRUE(DBusAdaptor::ClearProperty(
-      device_->mutable_store(), kBgscanMethodProperty, &error));
+  EXPECT_TRUE(device_->mutable_store()->ClearProperty(
+      kBgscanMethodProperty, &error));
   EXPECT_TRUE(device_->store().GetStringProperty(
       kBgscanMethodProperty, &method, &unused_error));
   EXPECT_EQ(WiFi::kDefaultBgscanMethod, method);
@@ -589,22 +572,21 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         mac80211_monitor_(new StrictMock<MockMac80211Monitor>(
             dispatcher, kDeviceName, WiFi::kStuckQueueLengthThreshold,
             base::Closure(), &metrics_)),
-        dbus_service_proxy_(new MockDBusServiceProxy()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),
         dhcp_config_(new MockDHCPConfig(&control_interface_, kDeviceName)),
-        dbus_manager_(new DBusManager(&control_interface_)),
         adaptor_(new DeviceMockAdaptor()),
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_network_proxy_(new NiceMock<MockSupplicantNetworkProxy>()) {
     wifi_->mac80211_monitor_.reset(mac80211_monitor_);
+    wifi_->supplicant_process_proxy_.reset(supplicant_process_proxy_);
     InstallMockScanSession();
-    ON_CALL(*supplicant_process_proxy_.get(), CreateInterface(_, _))
+    ON_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
         .WillByDefault(DoAll(SetArgumentPointee<1>(string("/default/path")),
                              Return(true)));
-    ON_CALL(*supplicant_process_proxy_.get(), GetInterface(_, _))
+    ON_CALL(*supplicant_process_proxy_, GetInterface(_, _))
         .WillByDefault(DoAll(SetArgumentPointee<1>(string("/default/path")),
                              Return(true)));
     ON_CALL(*supplicant_interface_proxy_.get(), AddNetwork(_, _))
@@ -627,20 +609,15 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(*dhcp_config_.get(), RequestIP()).WillByDefault(Return(true));
     ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
 
-    ON_CALL(control_interface_, CreateDBusServiceProxy())
-        .WillByDefault(ReturnAndReleasePointee(&dbus_service_proxy_));
-    ON_CALL(control_interface_, CreateSupplicantProcessProxy(_, _))
-        .WillByDefault(ReturnAndReleasePointee(&supplicant_process_proxy_));
-    ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _, _))
+    ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_interface_proxy_));
-    ON_CALL(control_interface_, CreateSupplicantBSSProxy(_, _, _))
+    ON_CALL(control_interface_, CreateSupplicantBSSProxy(_, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_bss_proxy_));
-    ON_CALL(control_interface_, CreateSupplicantNetworkProxy(_, _))
+    ON_CALL(control_interface_, CreateSupplicantNetworkProxy(_))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_network_proxy_));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
 
     // Transfers ownership.
-    manager_.dbus_manager_.reset(dbus_manager_);
     wifi_->eap_state_handler_.reset(eap_state_handler_);
 
     wifi_->provider_ = &wifi_provider_;
@@ -684,7 +661,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop(nullptr, ResultCallback());
     wifi_->set_dhcp_provider(nullptr);
-    dbus_manager_->Stop();
     // Reset scope logging, to avoid interfering with other tests.
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
     ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -1146,19 +1122,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(netlink_manager_, SendNl80211Message(
         IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
 
-    StringCallback supplicant_name_owner_callback;
-    if (supplicant_present)
-      EXPECT_CALL(*dbus_service_proxy_.get(),
-                  GetNameOwner(WPASupplicant::kDBusAddr, _, _, _))
-          .WillOnce(DoAll(SetErrorTypeInArgument<1>(Error::kOperationInitiated),
-                          SaveArg<2>(&supplicant_name_owner_callback)));
-
-    dbus_manager_->Start();
     wifi_->supplicant_present_ = supplicant_present;
     wifi_->SetEnabled(true);  // Start(nullptr, ResultCallback());
     if (supplicant_present)
-      // Mimic the callback from |dbus_service_proxy_->GetNameOwner|.
-      supplicant_name_owner_callback.Run(kSupplicantNameOwner, Error());
+      // Mimic the callback from |supplicant_process_proxy_|.
+      wifi_->OnSupplicantAppear();
   }
   void StartWiFi() {
     StartWiFi(true);
@@ -1190,11 +1158,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->TriggerPassiveScan(freqs);
   }
   void OnSupplicantAppear() {
-    wifi_->OnSupplicantAppear(WPASupplicant::kDBusAddr, ":1.7");
+    wifi_->OnSupplicantAppear();
     EXPECT_TRUE(wifi_->supplicant_present_);
   }
   void OnSupplicantVanish() {
-    wifi_->OnSupplicantVanish(WPASupplicant::kDBusAddr);
+    wifi_->OnSupplicantVanish();
     EXPECT_FALSE(wifi_->supplicant_present_);
   }
   bool GetSupplicantPresent() {
@@ -1386,12 +1354,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   static const char kSSIDName[];
   static const uint16_t kRoamThreshold;
 
-  unique_ptr<MockDBusServiceProxy> dbus_service_proxy_;
-  unique_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
+  MockSupplicantProcessProxy* supplicant_process_proxy_;
   unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
-  DBusManager* dbus_manager_;
 
   // These pointers track mock objects owned by the WiFi device instance
   // and manager so we can perform expectations against them.
@@ -1542,15 +1508,13 @@ class WiFiMainTest : public WiFiObjectTest {
     EXPECT_CALL(*metrics(), ResetConnectTimer(_)).RetiresOnSaturation();
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
 };
 
 TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());;
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
 
   StartWiFi();
-  EXPECT_NE(nullptr, GetSupplicantProcessProxy());
   EXPECT_NE(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 }
 
@@ -1587,10 +1551,10 @@ TEST_F(WiFiMainTest, RoamThresholdProperty) {
 }
 
 TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
 
   StartWiFi(false);  // No supplicant present.
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
 
   SetRoamThresholdMember(kRoamThreshold);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllNetworks());
@@ -1601,7 +1565,7 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetDisableHighBitrates(true));
 
   OnSupplicantAppear();
-  EXPECT_NE(nullptr, GetSupplicantProcessProxy());
+  EXPECT_NE(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   // If supplicant reappears while the device is started, the device should be
   // restarted.
@@ -1611,10 +1575,10 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
 }
 
 TEST_F(WiFiMainTest, OnSupplicantAppearStopped) {
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   OnSupplicantAppear();
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
 
   // If supplicant reappears while the device is stopped, the device should not
   // be restarted.
@@ -1623,10 +1587,10 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStopped) {
 }
 
 TEST_F(WiFiMainTest, OnSupplicantVanishStarted) {
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());;
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());;
 
   StartWiFi();
-  EXPECT_NE(nullptr, GetSupplicantProcessProxy());
+  EXPECT_NE(nullptr, GetSupplicantInterfaceProxyFromWiFi());
   EXPECT_TRUE(GetSupplicantPresent());
 
   EXPECT_CALL(*manager(), DeregisterDevice(_));
@@ -2182,7 +2146,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   unique_ptr<MockSupplicantNetworkProxy> network_proxy(
       new MockSupplicantNetworkProxy());
   EXPECT_CALL(*control_interface(),
-              CreateSupplicantNetworkProxy(kPath, WPASupplicant::kDBusAddr))
+              CreateSupplicantNetworkProxy(kPath))
       .WillOnce(ReturnAndReleasePointee(&network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
   EXPECT_CALL(*eap_state_handler_, Reset());
@@ -2209,7 +2173,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
   unique_ptr<MockSupplicantNetworkProxy> network_proxy(
       new MockSupplicantNetworkProxy());
   EXPECT_CALL(*control_interface(),
-              CreateSupplicantNetworkProxy(kPath, WPASupplicant::kDBusAddr))
+              CreateSupplicantNetworkProxy(kPath))
       .WillOnce(ReturnAndReleasePointee(&network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
   EXPECT_CALL(*eap_state_handler_, Reset());
@@ -2720,7 +2684,7 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
 }
 
 TEST_F(WiFiMainTest, ConnectToServiceWithoutRecentIssues) {
-  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
@@ -2736,7 +2700,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   // debugging will be to debug a problematic connection.
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
 
-  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
@@ -3025,7 +2989,7 @@ TEST_F(WiFiMainTest, BSSAddedCreatesBSSProxy) {
   // we can test the interaction between WiFi and WiFiEndpoint. (Right
   // now, we're testing across multiple layers.)
   EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
-  EXPECT_CALL(*control_interface(), CreateSupplicantBSSProxy(_, _, _));
+  EXPECT_CALL(*control_interface(), CreateSupplicantBSSProxy(_, _));
   StartWiFi();
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
 }
@@ -3925,7 +3889,7 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
 }
 
 TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
-  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
 
   // With WiFi not yet started, nothing interesting (including a crash) should
   // happen.

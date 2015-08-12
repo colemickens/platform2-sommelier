@@ -83,8 +83,7 @@ WiFiEndpoint::~WiFiEndpoint() {}
 
 void WiFiEndpoint::Start() {
   supplicant_bss_proxy_.reset(
-      control_interface_->CreateSupplicantBSSProxy(
-          this, rpc_id_, WPASupplicant::kDBusAddr));
+      control_interface_->CreateSupplicantBSSProxy(this, rpc_id_));
 }
 
 void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {

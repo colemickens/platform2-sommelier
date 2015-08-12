@@ -88,7 +88,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
 
-#include "shill/dbus_manager.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
@@ -526,8 +525,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // to "Associating", otherwise it is stopped.
   void SetPendingService(const WiFiServiceRefPtr& service);
 
-  void OnSupplicantAppear(const std::string& name, const std::string& owner);
-  void OnSupplicantVanish(const std::string& name);
+  void OnSupplicantAppear();
+  void OnSupplicantVanish();
   // Called by ScopeLogger when WiFi debug scope is enabled/disabled.
   void OnWiFiDebugScopeChanged(bool enabled);
   // Enable or disable debugging for the current connection attempt.
@@ -604,7 +603,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Store cached copies of singletons for speed/ease of testing.
   Time* time_;
 
-  std::unique_ptr<DBusNameWatcher> supplicant_name_watcher_;
   bool supplicant_present_;
 
   std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;

@@ -24,7 +24,6 @@
 #include <glib.h>
 
 #include "shill/control_interface.h"
-#include "shill/dbus_adaptor.h"
 #include "shill/device.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
@@ -44,7 +43,6 @@
 #include "shill/property_accessor.h"
 #include "shill/scope_logger.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
-#include "shill/supplicant/supplicant_interface_proxy.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_network_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
@@ -124,6 +122,10 @@ WiFi::WiFi(ControlInterface* control_interface,
       weak_ptr_factory_(this),
       time_(Time::GetInstance()),
       supplicant_present_(false),
+      supplicant_process_proxy_(
+          control_interface->CreateSupplicantProcessProxy(
+              Bind(&WiFi::OnSupplicantAppear, Unretained(this)),
+              Bind(&WiFi::OnSupplicantVanish, Unretained(this)))),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       supplicant_disconnect_reason_(kDefaultDisconnectReason),
@@ -226,14 +228,7 @@ void WiFi::Start(Error* error,
   if (error) {
     error->Reset();       // indicate immediate completion
   }
-  if (!supplicant_name_watcher_) {
-    // Registers the WPA supplicant appear/vanish callbacks only once per WiFi
-    // device instance.
-    supplicant_name_watcher_.reset(manager()->dbus_manager()->CreateNameWatcher(
-        WPASupplicant::kDBusAddr,
-        Bind(&WiFi::OnSupplicantAppear, Unretained(this)),
-        Bind(&WiFi::OnSupplicantVanish, Unretained(this))));
-  }
+
   // Subscribe to multicast events.
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
                                       NetlinkManager::kEventTypeConfig);
@@ -266,13 +261,11 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   rpcid_by_service_.clear();
   // Remove interface from supplicant.
   if (supplicant_present_ &&
-      supplicant_process_proxy_ &&
       supplicant_interface_proxy_) {
       supplicant_process_proxy_->RemoveInterface(supplicant_interface_path_);
   }
   supplicant_interface_path_ = "";
   SetSupplicantInterfaceProxy(nullptr);
-  supplicant_process_proxy_.reset();
   pending_scan_results_.reset();
   tdls_manager_.reset();
   current_service_ = nullptr;            // breaks a reference cycle
@@ -602,8 +595,7 @@ void WiFi::DisconnectFrom(WiFiService* service) {
 
 bool WiFi::DisableNetwork(const string& network) {
   std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
-      control_interface()->CreateSupplicantNetworkProxy(
-          network, WPASupplicant::kDBusAddr));
+      control_interface()->CreateSupplicantNetworkProxy(network));
   if (!supplicant_network_proxy->SetEnabled(false)) {
     LOG(ERROR) << "DisableNetwork for " << network << " failed.";
     return false;
@@ -2176,7 +2168,7 @@ void WiFi::ReconnectTimeoutHandler() {
   DisconnectFrom(current_service_.get());
 }
 
-void WiFi::OnSupplicantAppear(const string& /*name*/, const string& /*owner*/) {
+void WiFi::OnSupplicantAppear() {
   LOG(INFO) << "WPA supplicant appeared.";
   if (supplicant_present_) {
     // Restart the WiFi device if it's started already. This will reset the
@@ -2190,7 +2182,7 @@ void WiFi::OnSupplicantAppear(const string& /*name*/, const string& /*owner*/) {
   ConnectToSupplicant();
 }
 
-void WiFi::OnSupplicantVanish(const string& /*name*/) {
+void WiFi::OnSupplicantVanish() {
   LOG(INFO) << "WPA supplicant vanished.";
   if (!supplicant_present_) {
     return;
@@ -2205,8 +2197,8 @@ void WiFi::OnSupplicantVanish(const string& /*name*/) {
 
 void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
   SLOG(this, 2) << "WiFi debug scope changed; enable is now " << enabled;
-  if (!supplicant_process_proxy_.get()) {
-    SLOG(this, 2) << "Supplicant process proxy not present.";
+  if (!Device::enabled() || !supplicant_present_) {
+    SLOG(this, 2) << "Supplicant process proxy not connected.";
     return;
   }
   string current_level;
@@ -2264,13 +2256,12 @@ void WiFi::ConnectToSupplicant() {
             << " supplicant: "
             << (supplicant_present_ ? "present" : "absent")
             << " proxy: "
-            << (supplicant_process_proxy_.get() ? "non-null" : "null");
-  if (!enabled() || !supplicant_present_ || supplicant_process_proxy_.get()) {
+            << (supplicant_interface_proxy_.get() ? "non-null" : "null");
+  // The check for |supplicant_interface_proxy_| is mainly for testing,
+  // to avoid recreation of supplicant interface proxy.
+  if (!enabled() || !supplicant_present_ || supplicant_interface_proxy_) {
     return;
   }
-  supplicant_process_proxy_.reset(
-      control_interface()->CreateSupplicantProcessProxy(
-          WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
   OnWiFiDebugScopeChanged(
       ScopeLogger::GetInstance()->IsScopeEnabled(ScopeLogger::kWiFi));
 
@@ -2294,7 +2285,7 @@ void WiFi::ConnectToSupplicant() {
 
   SetSupplicantInterfaceProxy(
       control_interface()->CreateSupplicantInterfaceProxy(
-          this, supplicant_interface_path_, WPASupplicant::kDBusAddr));
+          this, supplicant_interface_path_));
 
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);

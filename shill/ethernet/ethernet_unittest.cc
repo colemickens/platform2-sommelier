@@ -101,6 +101,8 @@ class EthernetTest : public testing::Test {
     EXPECT_CALL(manager_, ethernet_eap_provider())
         .WillRepeatedly(Return(&ethernet_eap_provider_));
     ethernet_eap_provider_.set_service(mock_eap_service_);
+    // Transfers ownership.
+    ethernet_->supplicant_process_proxy_.reset(supplicant_process_proxy_);
 #endif  // DISABLE_WIRED_8021X
 
     ON_CALL(*mock_service_, technology())
@@ -152,9 +154,6 @@ class EthernetTest : public testing::Test {
   const SupplicantInterfaceProxyInterface* GetSupplicantInterfaceProxy() {
     return ethernet_->supplicant_interface_proxy_.get();
   }
-  const SupplicantProcessProxyInterface* GetSupplicantProcessProxy() {
-    return ethernet_->supplicant_process_proxy_.get();
-  }
   const string& GetSupplicantInterfacePath() {
     return ethernet_->supplicant_interface_path_;
   }
@@ -176,14 +175,11 @@ class EthernetTest : public testing::Test {
   void StartSupplicant() {
     MockSupplicantInterfaceProxy* interface_proxy =
         ExpectCreateSupplicantInterfaceProxy();
-    MockSupplicantProcessProxy* process_proxy =
-        ExpectCreateSupplicantProcessProxy();
-    EXPECT_CALL(*process_proxy, CreateInterface(_, _))
+    EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
         .WillOnce(DoAll(SetArgumentPointee<1>(string(kInterfacePath)),
                         Return(true)));
     EXPECT_TRUE(InvokeStartSupplicant());
     EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
-    EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
     EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
   }
   void TriggerOnEapDetected() { ethernet_->OnEapDetected(); }
@@ -196,17 +192,9 @@ class EthernetTest : public testing::Test {
 
   MockSupplicantInterfaceProxy* ExpectCreateSupplicantInterfaceProxy() {
     EXPECT_CALL(control_interface_,
-                CreateSupplicantInterfaceProxy(_, kInterfacePath,
-                                               StrEq(WPASupplicant::kDBusAddr)))
+                CreateSupplicantInterfaceProxy(_, kInterfacePath))
         .WillOnce(ReturnAndReleasePointee(&supplicant_interface_proxy_));
     return supplicant_interface_proxy_.get();
-  }
-  MockSupplicantProcessProxy* ExpectCreateSupplicantProcessProxy() {
-    EXPECT_CALL(control_interface_,
-                CreateSupplicantProcessProxy(StrEq(WPASupplicant::kDBusPath),
-                                             StrEq(WPASupplicant::kDBusAddr)))
-        .WillOnce(ReturnAndReleasePointee(&supplicant_process_proxy_));
-    return supplicant_process_proxy_.get();
   }
 #endif  // DISABLE_WIRED_8021X
 
@@ -228,7 +216,7 @@ class EthernetTest : public testing::Test {
 
   scoped_refptr<MockService> mock_eap_service_;
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
-  std::unique_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
+  MockSupplicantProcessProxy* supplicant_process_proxy_;
 #endif  // DISABLE_WIRED_8021X
 
   // Owned by Ethernet instance, but tracked here for expectations.
@@ -433,7 +421,7 @@ TEST_F(EthernetTest, StartSupplicant) {
   // Save the mock proxy pointers before the Ethernet instance accepts it.
   MockSupplicantInterfaceProxy* interface_proxy =
       supplicant_interface_proxy_.get();
-  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
 
   StartSupplicant();
 
@@ -445,13 +433,11 @@ TEST_F(EthernetTest, StartSupplicant) {
   // Also, the mock pointers should remain; if the MockProxyFactory was
   // invoked again, they would be nullptr.
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
   EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
 }
 
 TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
-  MockSupplicantProcessProxy* process_proxy =
-      ExpectCreateSupplicantProcessProxy();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   MockSupplicantInterfaceProxy* interface_proxy =
       ExpectCreateSupplicantInterfaceProxy();
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
@@ -460,19 +446,16 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
           DoAll(SetArgumentPointee<1>(string(kInterfacePath)), Return(true)));
   EXPECT_TRUE(InvokeStartSupplicant());
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
   EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
 }
 
 TEST_F(EthernetTest, StartSupplicantWithUnknownException) {
-  MockSupplicantProcessProxy* process_proxy =
-      ExpectCreateSupplicantProcessProxy();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(InvokeStartSupplicant());
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());
   EXPECT_EQ("", GetSupplicantInterfacePath());
 }
 
@@ -536,7 +519,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
 }
 
 TEST_F(EthernetTest, StopSupplicant) {
-  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   MockSupplicantInterfaceProxy* interface_proxy =
       supplicant_interface_proxy_.get();
   StartSupplicant();
@@ -547,7 +530,6 @@ TEST_F(EthernetTest, StopSupplicant) {
       .WillOnce(Return(true));
   InvokeStopSupplicant();
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());
   EXPECT_EQ("", GetSupplicantInterfacePath());
   EXPECT_EQ("", GetSupplicantNetworkPath());
   EXPECT_FALSE(GetIsEapAuthenticated());

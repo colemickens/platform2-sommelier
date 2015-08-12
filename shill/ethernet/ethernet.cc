@@ -75,6 +75,9 @@ Ethernet::Ethernet(ControlInterface* control_interface,
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(new EapListener(dispatcher, interface_index)),
+      supplicant_process_proxy_(
+          control_interface_->CreateSupplicantProcessProxy(
+              base::Closure(), base::Closure())),
 #endif  // DISABLE_WIRED_8021X
       sockets_(new Sockets()),
       weak_ptr_factory_(this) {
@@ -279,13 +282,10 @@ void Ethernet::OnEapDetected() {
 }
 
 bool Ethernet::StartSupplicant() {
-  if (supplicant_process_proxy_.get()) {
+  if (supplicant_interface_proxy_.get()) {
     return true;
   }
 
-  supplicant_process_proxy_.reset(
-      control_interface_->CreateSupplicantProcessProxy(
-          WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
   string interface_path;
   KeyValueStore create_interface_args;
   create_interface_args.SetString(WPASupplicant::kInterfacePropertyName,
@@ -306,8 +306,7 @@ bool Ethernet::StartSupplicant() {
   }
 
   supplicant_interface_proxy_.reset(
-      control_interface_->CreateSupplicantInterfaceProxy(
-          this, interface_path, WPASupplicant::kDBusAddr));
+      control_interface_->CreateSupplicantInterfaceProxy(this, interface_path));
   supplicant_interface_path_ = interface_path;
   return true;
 }
@@ -347,7 +346,7 @@ void Ethernet::StopSupplicant() {
     supplicant_interface_proxy_->EAPLogoff();
   }
   supplicant_interface_proxy_.reset();
-  if (!supplicant_interface_path_.empty() && supplicant_process_proxy_.get()) {
+  if (!supplicant_interface_path_.empty()) {
     if (!supplicant_process_proxy_->RemoveInterface(
         supplicant_interface_path_)) {
       LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";
@@ -355,7 +354,6 @@ void Ethernet::StopSupplicant() {
   }
   supplicant_network_path_ = "";
   supplicant_interface_path_ = "";
-  supplicant_process_proxy_.reset();
   SetIsEapAuthenticated(false);
 }
 
