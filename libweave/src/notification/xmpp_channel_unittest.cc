@@ -116,7 +116,7 @@ class XmppChannelTest : public ::testing::Test {
     xmpp_client_->fake_stream_.AddReadPacketString({}, kStartStreamResponse);
     xmpp_client_->fake_stream_.ExpectWritePacketString({}, kStartTlsMessage);
     xmpp_client_->Start(nullptr);
-    RunTasks(4);
+    RunUntil(XmppChannel::XmppState::kTlsStarted);
   }
 
   void StartWithState(XmppChannel::XmppState state) {
@@ -124,15 +124,11 @@ class XmppChannelTest : public ::testing::Test {
     xmpp_client_->set_state(state);
   }
 
-  void RunTasks(size_t count) {
-    while (count > 0) {
-      EXPECT_TRUE(fake_loop_.RunOnce(true /* may_block */));
-      count--;
+  void RunUntil(XmppChannel::XmppState st) {
+    for (size_t n = 15; n && xmpp_client_->state() != st; --n) {
+      fake_loop_.RunOnce(true);
     }
-  }
-
-  void RunLoopUntilIdle() {
-    while (fake_loop_.RunOnce(false /* may_block */)) {}
+    EXPECT_EQ(st, xmpp_client_->state());
   }
 
   std::unique_ptr<FakeXmppChannel> xmpp_client_;
@@ -144,13 +140,11 @@ TEST_F(XmppChannelTest, StartStream) {
   EXPECT_EQ(XmppChannel::XmppState::kNotStarted, xmpp_client_->state());
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kStartStreamMessage);
   xmpp_client_->Start(nullptr);
-  RunTasks(1);
-  EXPECT_EQ(XmppChannel::XmppState::kConnected, xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kConnected);
 }
 
 TEST_F(XmppChannelTest, HandleStartedResponse) {
   StartStream();
-  EXPECT_EQ(XmppChannel::XmppState::kTlsStarted, xmpp_client_->state());
 }
 
 TEST_F(XmppChannelTest, HandleTLSCompleted) {
@@ -158,9 +152,7 @@ TEST_F(XmppChannelTest, HandleTLSCompleted) {
   xmpp_client_->fake_stream_.AddReadPacketString({}, kTlsStreamResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({},
                                                      kAuthenticationMessage);
-  RunTasks(4);
-  EXPECT_EQ(XmppChannel::XmppState::kAuthenticationStarted,
-            xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kAuthenticationStarted);
 }
 
 TEST_F(XmppChannelTest, HandleAuthenticationSucceededResponse) {
@@ -168,32 +160,26 @@ TEST_F(XmppChannelTest, HandleAuthenticationSucceededResponse) {
   xmpp_client_->fake_stream_.AddReadPacketString(
       {}, kAuthenticationSucceededResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kStartStreamMessage);
-  RunTasks(4);
-  EXPECT_EQ(XmppChannel::XmppState::kStreamRestartedPostAuthentication,
-            xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kStreamRestartedPostAuthentication);
 }
 
 TEST_F(XmppChannelTest, HandleAuthenticationFailedResponse) {
   StartWithState(XmppChannel::XmppState::kAuthenticationStarted);
   xmpp_client_->fake_stream_.AddReadPacketString({},
                                                  kAuthenticationFailedResponse);
-  RunTasks(4);
-  EXPECT_EQ(XmppChannel::XmppState::kAuthenticationFailed,
-            xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kAuthenticationFailed);
 }
 
 TEST_F(XmppChannelTest, HandleStreamRestartedResponse) {
   StartWithState(XmppChannel::XmppState::kStreamRestartedPostAuthentication);
   xmpp_client_->fake_stream_.AddReadPacketString({}, kRestartStreamResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kBindMessage);
-  RunTasks(4);
-  EXPECT_EQ(XmppChannel::XmppState::kBindSent, xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kBindSent);
   EXPECT_TRUE(xmpp_client_->jid().empty());
 
   xmpp_client_->fake_stream_.AddReadPacketString({}, kBindResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kSessionMessage);
-  RunTasks(9);
-  EXPECT_EQ(XmppChannel::XmppState::kSessionStarted, xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kSessionStarted);
   EXPECT_EQ(
       "110cc78f78d7032cc7bf2c6e14c1fa7d@clouddevices.gserviceaccount.com"
       "/19853128",
@@ -201,12 +187,10 @@ TEST_F(XmppChannelTest, HandleStreamRestartedResponse) {
 
   xmpp_client_->fake_stream_.AddReadPacketString({}, kSessionResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kSubscribeMessage);
-  RunTasks(5);
-  EXPECT_EQ(XmppChannel::XmppState::kSubscribeStarted, xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kSubscribeStarted);
 
   xmpp_client_->fake_stream_.AddReadPacketString({}, kSubscribedResponse);
-  RunTasks(6);
-  EXPECT_EQ(XmppChannel::XmppState::kSubscribed, xmpp_client_->state());
+  RunUntil(XmppChannel::XmppState::kSubscribed);
 }
 
 }  // namespace weave
