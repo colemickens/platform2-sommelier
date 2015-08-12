@@ -17,14 +17,6 @@ set -x
 CLOBBER_STATE_LOG="/tmp/clobber-state.log"
 : ${TTY=/dev/tty1}
 
-# Redirect stdout to our log.
-exec > "$CLOBBER_STATE_LOG" 2>&1
-
-if [ $(id -u) -ne 0 ]; then
-  echo 'You must run this as root'
-  exit 1
-fi
-
 # Run "clobber-state fast" to clobber the state quickly but unsecurely.
 FACTORY_WIPE=$(echo "$@" | grep -sqw factory && echo "factory")
 FAST_WIPE=$(echo "$@" | grep -sqw fast && echo "fast")
@@ -38,67 +30,87 @@ POWERWASH_COUNT="${STATE_PATH}/unencrypted/preserve/powerwash_count"
 
 # List of files to preserve relative to /mnt/stateful_partition/
 PRESERVED_FILES=""
-
-# Preserve these files in safe mode.
-if [ "$SAFE_WIPE" = "safe" ]; then
-  PRESERVED_FILES="
-    unencrypted/preserve/attestation.epb
-    unencrypted/preserve/powerwash_count
-    unencrypted/preserve/enrollment_state.epb
-    unencrypted/preserve/update_engine/prefs/rollback-version
-    home/.shadow/install_attributes.pb
-  "
-
-  # Powerwash count is only preserved for "safe" powerwashes.
-  COUNT=1
-  if [ -f $POWERWASH_COUNT ]; then
-    COUNT_UNSANITIZED=$(head -1 $POWERWASH_COUNT | cut -c1-4)
-    if [ $(expr "$COUNT_UNSANITIZED" : "^[0-9][0-9]*$") -ne 0 ]; then
-      COUNT=$(( COUNT_UNSANITIZED + 1 ))
-    fi
-  fi
-  echo $COUNT > $POWERWASH_COUNT
-fi
-
-# For a factory wipe (and only factory) preserve seed for CRX cache.
-if [ "$FACTORY_WIPE" = "factory" ]; then
-  IMPORT_FILES="$(cd ${STATE_PATH};
-                  echo unencrypted/import_extensions/extensions/*.crx)"
-  if [ "$IMPORT_FILES" != \
-       "unencrypted/import_extensions/extensions/*.crx" ]; then
-    PRESERVED_FILES="${PRESERVED_FILES} ${IMPORT_FILES}"
-  fi
-fi
-
-# Test images in the lab enable certain extra behaviors if the
-# .labmachine flag file is present.  Those behaviors include some
-# important recovery behaviors (cf. the recover_duts upstart job).
-# We need those behaviors to survive across power wash, otherwise,
-# the current boot could wind up as a black hole.
-if [ -f "${STATE_PATH}/${LABMACHINE}" ] &&
-    crossystem 'debug_build?1'; then
-  PRESERVED_FILES="${PRESERVED_FILES} ${LABMACHINE}"
-fi
-
 PRESERVED_LIST=""
-if [ -n "$PRESERVED_FILES" ]; then
-  # We want to preserve permissions and recreate the directory structure
-  # for all of the files in the PRESERVED_FILES variable. In order to do
-  # so we run tar --no-recurison and specify the names of each of the
-  # parent directories. For example for home/.shadow/install_attributes.pb
-  # we pass to tar home home/.shadow home/.shadow/install_attributes.pb
-  for file in $PRESERVED_FILES; do
-    if [ ! -e "$STATE_PATH/$file" ]; then
-      continue
+
+ensure_root_account() {
+  if [ $(id -u) -ne 0 ]; then
+    echo 'You must run this as root'
+    exit 1
+  fi
+}
+
+redirect_log_start() {
+  # Redirect stdout to our log.
+  exec >"${CLOBBER_STATE_LOG}" 2>&1
+}
+
+redirect_log_stop() {
+  # Stop appending to the log and preserve it.
+  exec >/dev/null 2>&1
+  mv -f "${CLOBBER_STATE_LOG}" "${STATE_PATH}/unencrypted/clobber-state.log"
+}
+
+preserve_files() {
+  # Preserve these files in safe mode.
+  if [ "$SAFE_WIPE" = "safe" ]; then
+    PRESERVED_FILES="
+      unencrypted/preserve/attestation.epb
+      unencrypted/preserve/powerwash_count
+      unencrypted/preserve/enrollment_state.epb
+      unencrypted/preserve/update_engine/prefs/rollback-version
+      home/.shadow/install_attributes.pb
+    "
+
+    # Powerwash count is only preserved for "safe" powerwashes.
+    COUNT=1
+    if [ -f $POWERWASH_COUNT ]; then
+      COUNT_UNSANITIZED=$(head -1 $POWERWASH_COUNT | cut -c1-4)
+      if [ $(expr "$COUNT_UNSANITIZED" : "^[0-9][0-9]*$") -ne 0 ]; then
+        COUNT=$(( COUNT_UNSANITIZED + 1 ))
+      fi
     fi
-    path=$file
-    while [ "$path" != '.' ]; do
-      PRESERVED_LIST="$path $PRESERVED_LIST"
-      path=$(dirname $path)
+    echo $COUNT > $POWERWASH_COUNT
+  fi
+
+  # For a factory wipe (and only factory) preserve seed for CRX cache.
+  if [ "$FACTORY_WIPE" = "factory" ]; then
+    IMPORT_FILES="$(cd ${STATE_PATH};
+                    echo unencrypted/import_extensions/extensions/*.crx)"
+    if [ "$IMPORT_FILES" != \
+         "unencrypted/import_extensions/extensions/*.crx" ]; then
+      PRESERVED_FILES="${PRESERVED_FILES} ${IMPORT_FILES}"
+    fi
+  fi
+
+  # Test images in the lab enable certain extra behaviors if the
+  # .labmachine flag file is present.  Those behaviors include some
+  # important recovery behaviors (cf. the recover_duts upstart job).
+  # We need those behaviors to survive across power wash, otherwise,
+  # the current boot could wind up as a black hole.
+  if [ -f "${STATE_PATH}/${LABMACHINE}" ] &&
+      crossystem 'debug_build?1'; then
+    PRESERVED_FILES="${PRESERVED_FILES} ${LABMACHINE}"
+  fi
+
+  if [ -n "$PRESERVED_FILES" ]; then
+    # We want to preserve permissions and recreate the directory structure
+    # for all of the files in the PRESERVED_FILES variable. In order to do
+    # so we run tar --no-recurison and specify the names of each of the
+    # parent directories. For example for home/.shadow/install_attributes.pb
+    # we pass to tar home home/.shadow home/.shadow/install_attributes.pb
+    for file in $PRESERVED_FILES; do
+      if [ ! -e "$STATE_PATH/$file" ]; then
+        continue
+      fi
+      path=$file
+      while [ "$path" != '.' ]; do
+        PRESERVED_LIST="$path $PRESERVED_LIST"
+        path=$(dirname $path)
+      done
     done
-  done
-  tar cf $PRESERVED_TAR -C $STATE_PATH --no-recursion -- $PRESERVED_LIST
-fi
+    tar cf $PRESERVED_TAR -C $STATE_PATH --no-recursion -- $PRESERVED_LIST
+  fi
+}
 
 wipe_block_dev() {
   DEV="$1"
@@ -254,79 +266,76 @@ ensure_bootable_kernel() {
   sync
 }
 
-# Root devs are /dev/sda3, /dev/ubiblock5_0.
-# Kernel devs to go along with these are /dev/sda2, /dev/mtd4 respectively.
+detect_system_config() {
+  # Root devs are /dev/sda3, /dev/ubiblock5_0.
+  # Kernel devs to go along with these are /dev/sda2, /dev/mtd4 respectively.
 
-# As we move factory wiping from release image to factory test image,
-# clobber-state will be invoked directly under a tmpfs. 'rootdev' cannot
-# report correct output under such a situation. Therefore, the output of
-# 'rootdev' is preserved then assigned to environment variables
-# ${ROOT_DEV}/${ROOT_DISK} for clobber-state. For other cases, the
-# environment variables will be empty and it fallbacks to use 'rootdev'.
-if [ -z "${ROOT_DEV}" ]; then
-  ROOT_DEV=$(rootdev -s)
-fi
-if [ -z "${ROOT_DISK}" ]; then
-  ROOT_DISK=$(rootdev -d -s)
-fi
-IS_MTD=0
-case "${ROOT_DISK}" in
-  "/dev/ubi"*)
-    # Special casing for NAND devices.
-    IS_MTD=1
-    ROOT_DISK="/dev/mtd0"
-    STATE_DEV="/dev/ubi1_0"
-    # On NAND, kernel is stored on /dev/mtdX.
-    KERNEL_DEV=$(echo "${ROOT_DEV}" | tr '35' '24' | \
-                 sed -e 's/ubiblock\([0-9]*\)_0/mtd\1/')
-    ;;
-  *)
-    STATE_DEV=${ROOT_DEV%[0-9]*}1
-    KERNEL_DEV=$(echo "${ROOT_DEV}" | tr '35' '24')
-    ;;
-esac
-OTHER_ROOT_DEV=$(echo "${ROOT_DEV}" | tr '35' '53')
-OTHER_KERNEL_DEV=$(echo "${KERNEL_DEV}" | tr '24' '42')
-KERNEL_PART_NUM=${KERNEL_DEV##[/a-z]*[/a-z]}
-WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
-WIPE_PART_NUM=${WIPE_PART_NUM%_0}
-# Save the option before wipe-out
-WIPE_OPTION_FILE="${STATE_PATH}/factory_wipe_option"
-if [ -O ${WIPE_OPTION_FILE} ]; then
-  WIPE_OPTION=$(cat ${WIPE_OPTION_FILE})
-else
-  WIPE_OPTION=
-fi
-# Discover type of device holding the stateful partition; assume SSD.
-# Since there doesn't seem to be a good way to get from a partition name
-# to the base device name beyond simple heuristics, just find the device
-# with the same major number but with minor 0.
-ROTATIONAL=0
-MAJOR=$(stat -c %t ${STATE_DEV})
-for i in $(find /dev -type b); do
-  if [ "$(stat -c %t:%T $i)" = "${MAJOR}:0" ]; then
-    ROTATIONAL_PATH="/sys/block/$(basename ${i})/queue/rotational"
-    if [ -r "${ROTATIONAL_PATH}" ]; then
-      ROTATIONAL=$(cat "${ROTATIONAL_PATH}")
-      break
-    fi
+  # As we move factory wiping from release image to factory test image,
+  # clobber-state will be invoked directly under a tmpfs. 'rootdev' cannot
+  # report correct output under such a situation. Therefore, the output of
+  # 'rootdev' is preserved then assigned to environment variables
+  # ${ROOT_DEV}/${ROOT_DISK} for clobber-state. For other cases, the
+  # environment variables will be empty and it fallbacks to use 'rootdev'.
+  if [ -z "${ROOT_DEV}" ]; then
+    ROOT_DEV=$(rootdev -s)
   fi
-done
+  if [ -z "${ROOT_DISK}" ]; then
+    ROOT_DISK=$(rootdev -d -s)
+  fi
+  IS_MTD=0
+  case "${ROOT_DISK}" in
+    "/dev/ubi"*)
+      # Special casing for NAND devices.
+      IS_MTD=1
+      ROOT_DISK="/dev/mtd0"
+      STATE_DEV="/dev/ubi1_0"
+      # On NAND, kernel is stored on /dev/mtdX.
+      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr '35' '24' | \
+                   sed -e 's/ubiblock\([0-9]*\)_0/mtd\1/')
+      ;;
+    *)
+      STATE_DEV=${ROOT_DEV%[0-9]*}1
+      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr '35' '24')
+      ;;
+  esac
+  OTHER_ROOT_DEV=$(echo "${ROOT_DEV}" | tr '35' '53')
+  OTHER_KERNEL_DEV=$(echo "${KERNEL_DEV}" | tr '24' '42')
+  KERNEL_PART_NUM=${KERNEL_DEV##[/a-z]*[/a-z]}
+  WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
+  WIPE_PART_NUM=${WIPE_PART_NUM%_0}
+  # Save the option before wipe-out
+  WIPE_OPTION_FILE="${STATE_PATH}/factory_wipe_option"
+  if [ -O ${WIPE_OPTION_FILE} ]; then
+    WIPE_OPTION=$(cat ${WIPE_OPTION_FILE})
+  else
+    WIPE_OPTION=
+  fi
 
-# Sanity check root device partition number.
-if [ "$WIPE_PART_NUM" != "3" ] && [ "$WIPE_PART_NUM" != "5" ]
-then
-  echo "Invalid partition to wipe, $WIPE_PART_NUM (${OTHER_ROOT_DEV})"
-  exit 1
-fi
+  # Discover type of device holding the stateful partition; assume SSD.
+  # Since there doesn't seem to be a good way to get from a partition name
+  # to the base device name beyond simple heuristics, just find the device
+  # with the same major number but with minor 0.
+  ROTATIONAL=0
+  MAJOR=$(stat -c %t ${STATE_DEV})
+  for i in $(find /dev -type b); do
+    if [ "$(stat -c %t:%T $i)" = "${MAJOR}:0" ]; then
+      ROTATIONAL_PATH="/sys/block/$(basename ${i})/queue/rotational"
+      if [ -r "${ROTATIONAL_PATH}" ]; then
+        ROTATIONAL=$(cat "${ROTATIONAL_PATH}")
+        break
+      fi
+    fi
+  done
 
-# Preserve the log file
-clobber-log --preserve "$SCRIPT" "$@"
+  # Sanity check root device partition number.
+  if [ "$WIPE_PART_NUM" != "3" ] && [ "$WIPE_PART_NUM" != "5" ]
+  then
+    echo "Invalid partition to wipe, $WIPE_PART_NUM (${OTHER_ROOT_DEV})"
+    exit 1
+  fi
+}
 
-# On a non-fast wipe, rotational drives take too long. Override to run them
-# through "fast" mode, with a forced delay. Sensitive contents should already
-# be encrypted.
-if [ "$FAST_WIPE" != "fast" ] && [ "$ROTATIONAL" = "1" ]; then
+wipe_rotational_drive() {
   # If the stateful filesystem is available, do some best-effort content
   # shredding. Since the filesystem is not mounted with "data=journal", the
   # writes really are overwriting the block contents (unlike on an SSD).
@@ -360,87 +369,122 @@ if [ "$FAST_WIPE" != "fast" ] && [ "$ROTATIONAL" = "1" ]; then
     echo
   ) >"${TTY}"
   wait
-  FAST_WIPE="fast"
-fi
-# Make sure the stateful partition has been unmounted.
-umount -n "${STATE_PATH}"
+}
 
-# Order constraints:
-# 1. The crossystem call must happen immediately before the destruction of the
-# stateful partition to minimize the probability of inconsistency between TPM
-# state and presence/absence of install attributes in case of power loss.
-# 2. The destruction of stateful must be last in the sequence in order to
-# minimize the probability of losing the preserved files.
-if [ "$FAST_WIPE" = "fast" ] && [ "${IS_MTD}" = "0" ]; then
-  if [ -z "${KEEPIMG}" ]; then
-    ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
-    dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
-    dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
+wipe_stateful_partition() {
+  # Order constraints:
+  # 1. The crossystem call must happen immediately before the destruction of the
+  # stateful partition to minimize the probability of inconsistency between TPM
+  # state and presence/absence of install attributes in case of power loss.
+  # 2. The destruction of stateful must be last in the sequence in order to
+  # minimize the probability of losing the preserved files.
+  if [ "$FAST_WIPE" = "fast" ] && [ "${IS_MTD}" = "0" ]; then
+    if [ -z "${KEEPIMG}" ]; then
+      ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
+      dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
+      dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
+    fi
+
+    # Clear TPM at next boot to make the TPM state consistent with (the soon to be
+    # induced) absence of install_attributes.pb.
+    crossystem clear_tpm_owner_request=1
+
+    # Just wipe the start of the partition and remake the fs on
+    # the stateful partition.
+    dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
+  else
+    if [ -z "${KEEPIMG}" ]; then
+      ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
+      wipedev ${OTHER_ROOT_DEV}
+      wipedev ${OTHER_KERNEL_DEV}
+    fi
+
+    # Clear TPM at next boot to make the TPM state consistent with (the soon to be
+    # induced) absence of install_attributes.pb.
+    crossystem clear_tpm_owner_request=1
+
+    # Wipe everything on the stateful partition.
+    wipedev ${STATE_DEV}
+  fi
+}
+
+create_stateful_file_system() {
+  if [ "${IS_MTD}" = "1" ]; then
+    mkfs.ubifs -y -x none -R 0 "${STATE_DEV}"
+  else
+    mkfs.ext4 "${STATE_DEV}"
+    # TODO(wad) tune2fs.
+  fi
+}
+
+restore_preserved_files() {
+  # If there were preserved files, restore them.
+  if [ -n "${PRESERVED_LIST}" ]; then
+    tar xfp ${PRESERVED_TAR} -C ${STATE_PATH}
+    touch /mnt/stateful_partition/unencrypted/.powerwash_completed
   fi
 
-  # Clear TPM at next boot to make the TPM state consistent with (the soon to be
-  # induced) absence of install_attributes.pb.
-  crossystem clear_tpm_owner_request=1
+  # Restore the log file
+  clobber-log --restore "${SCRIPT}" "$@"
+}
 
-  # Just wipe the start of the partition and remake the fs on
-  # the stateful partition.
-  dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
-else
-  if [ -z "${KEEPIMG}" ]; then
-    ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
-    wipedev ${OTHER_ROOT_DEV}
-    wipedev ${OTHER_KERNEL_DEV}
+tag_developer_mode_flags() {
+  # Tag that we're in developer mode otherwise we may get wiped again.
+  if crossystem "devsw_boot?1" && ! crossystem "mainfw_act?recovery"; then
+    touch /mnt/stateful_partition/.developer_mode
+  fi
+}
+
+board_specific_wiping() {
+  # Do any board specific wiping here.
+  # board_factory_wipe.sh will be installed by the board overlay if necessary.
+  if [ "$FACTORY_WIPE" = "factory" ]; then
+    [ -n "${FACTORY_RETURN_AFTER_WIPING}" ] && exit
+    BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
+    if [ -x "${BOARD_WIPE}" ]; then
+      ${BOARD_WIPE} ${WIPE_OPTION}
+    fi
+  fi
+}
+
+main() {
+  ensure_root_account
+  redirect_log_start
+
+  preserve_files
+  detect_system_config
+
+  # Preserve the log file
+  clobber-log --preserve "${SCRIPT}" "$@"
+
+  # On a non-fast wipe, rotational drives take too long. Override to run them
+  # through "fast" mode, with a forced delay. Sensitive contents should already
+  # be encrypted.
+  if [ "${FAST_WIPE}" != "fast" ] && [ "${ROTATIONAL}" = "1" ]; then
+    wipe_rotational_drive
+    FAST_WIPE="fast"
   fi
 
-  # Clear TPM at next boot to make the TPM state consistent with (the soon to be
-  # induced) absence of install_attributes.pb.
-  crossystem clear_tpm_owner_request=1
+  # Make sure the stateful partition has been unmounted.
+  umount -n "${STATE_PATH}"
 
-  # Wipe everything on the stateful partition.
-  wipedev ${STATE_DEV}
-fi
+  wipe_stateful_partition
+  create_stateful_file_system
 
-if [ "${IS_MTD}" = "1" ]; then
-  mkfs.ubifs -y -x none -R 0 "${STATE_DEV}"
-else
-  mkfs.ext4 "${STATE_DEV}"
-  # TODO(wad) tune2fs.
-fi
+  # Mount the fresh image for last minute additions.
+  mount -n "${STATE_DEV}" "${STATE_PATH}"
 
-# Mount the fresh image for last minute additions.
-mount -n "${STATE_DEV}" "${STATE_PATH}"
+  restore_preserved_files
+  tag_developer_mode_flags
 
+  # Flush linux caches.
+  sync
 
-# If there were preserved files, restore them.
-if [ -n "$PRESERVED_LIST" ]; then
-  tar xfp $PRESERVED_TAR -C $STATE_PATH
-  touch /mnt/stateful_partition/unencrypted/.powerwash_completed
-fi
+  board_specific_wiping
+  redirect_log_stop
 
-# Restore the log file
-clobber-log --restore "$SCRIPT" "$@"
+  /sbin/shutdown -r now
+  sleep 1d  # Wait for shutdown
+}
 
-# Tag that we're in developer mode otherwise we may get wiped again.
-if crossystem "devsw_boot?1" && ! crossystem "mainfw_act?recovery"; then
-  touch /mnt/stateful_partition/.developer_mode
-fi
-
-# Flush linux caches.
-sync
-
-# Do any board specific wiping here.
-# board_factory_wipe.sh will be installed by the board overlay if necessary.
-if [ "$FACTORY_WIPE" = "factory" ]; then
-  [ -n "${FACTORY_RETURN_AFTER_WIPING}" ] && exit
-  BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
-  if [ -x "${BOARD_WIPE}" ]; then
-    ${BOARD_WIPE} ${WIPE_OPTION}
-  fi
-fi
-
-# Stop appending to the log and preserve it.
-exec > /dev/null 2>&1
-mv -f "$CLOBBER_STATE_LOG" "$STATE_PATH/unencrypted/clobber-state.log"
-
-/sbin/shutdown -r now
-sleep 1d  # Wait for shutdown
+main "$@"
