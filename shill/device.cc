@@ -155,7 +155,10 @@ Device::Device(ControlInterface* control_interface,
       connection_tester_callback_(Bind(&Device::ConnectionTesterCallback,
                                        weak_ptr_factory_.GetWeakPtr())),
       is_loose_routing_(false),
-      is_multi_homed_(false) {
+      is_multi_homed_(false),
+      connection_diagnostics_callback_(
+          Bind(&Device::ConnectionDiagnosticsCallback,
+               weak_ptr_factory_.GetWeakPtr())) {
   store_.RegisterConstString(kAddressProperty, &hardware_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
@@ -631,6 +634,7 @@ void Device::StopAllActivities() {
   StopTrafficMonitor();
   StopPortalDetection();
   StopConnectivityTest();
+  StopConnectionDiagnostics();
   StopLinkMonitor();
   StopDNSTest();
   StopIPv6DNSServerTimer();
@@ -925,6 +929,14 @@ void Device::PrependDNSServers(const IPAddress::Family family,
     }
   }
   servers->swap(output_servers);
+}
+
+void Device::ConnectionDiagnosticsCallback(
+      const std::string& connection_issue,
+      const std::vector<ConnectionDiagnostics::Event>& diagnostic_events) {
+  SLOG(this, 2) << "Device " << FriendlyName()
+                << ": Completed Connection diagnostics";
+  // TODO(samueltan): add connection diagnostics metrics.
 }
 
 void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
@@ -1275,6 +1287,31 @@ void Device::StopPortalDetection() {
   portal_detector_.reset();
 }
 
+bool Device::StartConnectionDiagnosticsAfterPortalDetection(
+    const PortalDetector::Result& result) {
+  connection_diagnostics_.reset(new ConnectionDiagnostics(
+      connection_, dispatcher_, manager_->device_info(),
+      connection_diagnostics_callback_));
+  if (!connection_diagnostics_->StartAfterPortalDetection(
+      manager_->GetPortalCheckURL(), result)) {
+    LOG(ERROR) << "Device " << FriendlyName()
+               << ": Connection diagnostics failed to start: likely bad URL: "
+               << manager_->GetPortalCheckURL();
+    connection_diagnostics_.reset();
+    return false;
+  }
+
+  SLOG(this, 2) << "Device " << FriendlyName()
+                << ": Connection diagnostics has started.";
+  return true;
+}
+
+void Device::StopConnectionDiagnostics() {
+  SLOG(this, 2) << "Device " << FriendlyName()
+                << ": Connection diagnostics stopping.";
+  connection_diagnostics_.reset();
+}
+
 bool Device::StartConnectivityTest() {
   LOG(INFO) << "Device " << FriendlyName() << " starting connectivity test.";
 
@@ -1613,6 +1650,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
         Metrics::kMetricPortalAttemptsMin,
         Metrics::kMetricPortalAttemptsMax,
         Metrics::kMetricPortalAttemptsNumBuckets);
+
+    StartConnectionDiagnosticsAfterPortalDetection(result);
 
     // TODO(zqiu): Only support fallback DNS server for IPv4 for now.
     if (connection_->IsIPv6()) {

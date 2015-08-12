@@ -272,7 +272,8 @@ void ConnectionDiagnostics::ReportResultAndStop(const string& issue) {
 
   if (!result_callback_.is_null()) {
     SLOG(this, 4) << EventsToString(diagnostic_events_);
-    SLOG(this, 4) << __func__ << ": " << issue;
+    LOG(INFO) << "Connection diagnostics completed. Connection issue: "
+              << issue;
     result_callback_.Run(issue, diagnostic_events_);
   }
   Stop();

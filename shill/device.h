@@ -17,6 +17,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/connection_diagnostics.h"
 #include "shill/connection_tester.h"
 #include "shill/connectivity_trial.h"
 #include "shill/dns_server_tester.h"
@@ -528,6 +529,14 @@ class Device : public base::RefCounted<Device> {
   // Stop portal detection if it is running.
   void StopPortalDetection();
 
+  // Initiate connection diagnostics with the |result| from a completed portal
+  // detection attempt.
+  virtual bool StartConnectionDiagnosticsAfterPortalDetection(
+      const PortalDetector::Result& result);
+
+  // Stop connection diagnostics if it is running.
+  void StopConnectionDiagnostics();
+
   // Stop connectivity tester if it exists.
   void StopConnectivityTest();
 
@@ -756,6 +765,11 @@ class Device : public base::RefCounted<Device> {
   void PrependDNSServers(const IPAddress::Family family,
                          std::vector<std::string>* servers);
 
+  // Called by |connection_diagnostics| after diagnostics have finished.
+  void ConnectionDiagnosticsCallback(
+      const std::string& connection_issue,
+      const std::vector<ConnectionDiagnostics::Event>& diagnostic_events);
+
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
   // defaults to true. |enabled_| reflects the real-time state of
@@ -852,6 +866,11 @@ class Device : public base::RefCounted<Device> {
 
   // Remember which flag files were previously successfully written.
   std::set<std::string> written_flags_;
+
+  std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
+  base::Callback<void(const std::string&,
+                      const std::vector<ConnectionDiagnostics::Event>&)>
+      connection_diagnostics_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

@@ -129,6 +129,9 @@ class TestDevice : public Device {
       const bool retry_until_success,
       const base::Callback<void(const DNSServerTester::Status)>& callback));
 
+  MOCK_METHOD1(StartConnectionDiagnosticsAfterPortalDetection,
+               bool(const PortalDetector::Result& result));
+
   virtual bool DeviceIsIPv6Allowed() const {
     return Device::IsIPv6Allowed();
   }
@@ -2008,7 +2011,18 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNonFinal) {
           false));
 }
 
+MATCHER_P(IsPortalDetectorResult, result, "") {
+  return (result.num_attempts == arg.num_attempts &&
+          result.final == arg.final &&
+          result.trial_result.phase == arg.trial_result.phase &&
+          result.trial_result.status == arg.trial_result.status);
+}
+
 TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
+  PortalDetector::Result result(
+      ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
+                                ConnectivityTrial::kStatusFailure),
+      kPortalAttempts, true);
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(),
@@ -2032,13 +2046,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
-  PortalDetectorCallback(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseConnection,
-              ConnectivityTrial::kStatusFailure),
-          kPortalAttempts,
-          true));
+  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
+                            IsPortalDetectorResult(result)));
+  PortalDetectorCallback(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
@@ -2259,6 +2269,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
   // DNS Failure, start DNS test for fallback DNS servers.
+  PortalDetector::Result result_dns_failure(
+      ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
+                                ConnectivityTrial::kStatusFailure),
+      kPortalAttempts, true);
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(),
@@ -2269,16 +2283,17 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
+  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
+                            IsPortalDetectorResult(result_dns_failure)));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
-  PortalDetectorCallback(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseDNS,
-              ConnectivityTrial::kStatusFailure),
-          kPortalAttempts, true));
+  PortalDetectorCallback(result_dns_failure);
   Mock::VerifyAndClearExpectations(device_.get());
 
   // DNS Timeout, start DNS test for fallback DNS servers.
+  PortalDetector::Result result_dns_timeout(
+      ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
+                                ConnectivityTrial::kStatusTimeout),
+      kPortalAttempts, true);
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(),
@@ -2287,19 +2302,18 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*connection_.get(), IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
+                            IsPortalDetectorResult(result_dns_timeout)));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
-  PortalDetectorCallback(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseDNS,
-              ConnectivityTrial::kStatusTimeout),
-      kPortalAttempts,
-      true));
+  PortalDetectorCallback(result_dns_timeout);
   Mock::VerifyAndClearExpectations(device_.get());
 
   // Other Failure, DNS server tester not started.
+  PortalDetector::Result result_connection_failure(
+      ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
+                                ConnectivityTrial::kStatusFailure),
+      kPortalAttempts, true);
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(),
@@ -2310,14 +2324,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
+  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
+                            IsPortalDetectorResult(result_connection_failure)));
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
-  PortalDetectorCallback(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseConnection,
-              ConnectivityTrial::kStatusFailure),
-      kPortalAttempts,
-      true));
+  PortalDetectorCallback(result_connection_failure);
   Mock::VerifyAndClearExpectations(device_.get());
 }
 
