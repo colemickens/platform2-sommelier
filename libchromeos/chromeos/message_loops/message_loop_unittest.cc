@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/location.h>
@@ -34,6 +35,9 @@ namespace {
 // file descriptors when testing watching for a file descriptor.
 class ScopedPipe {
  public:
+  // The internal pipe size.
+  static const int kPipeSize;
+
   ScopedPipe() {
     int fds[2];
     if (pipe(fds) != 0) {
@@ -41,6 +45,7 @@ class ScopedPipe {
     }
     reader = fds[0];
     writer = fds[1];
+    EXPECT_EQ(kPipeSize, fcntl(writer, F_SETPIPE_SZ, kPipeSize));
   }
   ~ScopedPipe() {
     if (reader != -1)
@@ -53,6 +58,8 @@ class ScopedPipe {
   int reader{-1};
   int writer{-1};
 };
+
+const int ScopedPipe::kPipeSize = 4096;
 
 class ScopedSocketPair {
  public:
@@ -320,6 +327,96 @@ TYPED_TEST(MessageLoopTest, DeletePersistenIOTaskFromSelf) {
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
   EXPECT_EQ(1, MessageLoopRunMaxIterations(this->loop_.get(), 100));
   EXPECT_EQ(MessageLoop::kTaskIdNull, task_id);
+}
+
+// Test that we can cancel several persistent file descriptor watching callbacks
+// from a scheduled callback. In the BaseMessageLoop implementation, this code
+// will cause us to cancel an IOTask that has a pending delayed task, but
+// otherwise is a valid test case on all implementations.
+TYPED_TEST(MessageLoopTest, DeleteAllPersistenIOTaskFromSelf) {
+  const int kNumTasks = 5;
+  ScopedPipe pipes[kNumTasks];
+  TaskId task_ids[kNumTasks];
+
+  for (int i = 0; i < kNumTasks; ++i) {
+    task_ids[i] = this->loop_->WatchFileDescriptor(
+        FROM_HERE, pipes[i].writer, MessageLoop::kWatchWrite,
+        true /* persistent */,
+        Bind([this, kNumTasks, &task_ids] {
+          for (int j = 0; j < kNumTasks; ++j) {
+            // Once we cancel all the tasks, none should run, so this code runs
+            // only once from one callback.
+            EXPECT_TRUE(this->loop_->CancelTask(task_ids[j]));
+            task_ids[j] = MessageLoop::kTaskIdNull;
+          }
+        }));
+  }
+  MessageLoopRunMaxIterations(this->loop_.get(), 100);
+  for (int i = 0; i < kNumTasks; ++i) {
+    EXPECT_EQ(MessageLoop::kTaskIdNull, task_ids[i]);
+  }
+}
+
+// Test that if there are several tasks watching for file descriptors to be
+// available or simply waiting in the message loop are fairly scheduled to run.
+// In other words, this test ensures that having a file descriptor always
+// available doesn't prevent other file descriptors watching tasks or delayed
+// tasks to be dispatched, causing starvation.
+TYPED_TEST(MessageLoopTest, AllTasksAreEqual) {
+  int total_calls = 0;
+
+  // First, schedule a repeating timeout callback to run from the main loop.
+  int timeout_called = 0;
+  base::Closure timeout_callback;
+  MessageLoop::TaskId timeout_task;
+  timeout_callback = base::Bind(
+      [this, &timeout_called, &total_calls, &timeout_callback, &timeout_task] {
+        timeout_called++;
+        total_calls++;
+        timeout_task = this->loop_->PostTask(FROM_HERE, Bind(timeout_callback));
+        if (total_calls > 100)
+          this->loop_->BreakLoop();
+      });
+  timeout_task = this->loop_->PostTask(FROM_HERE, timeout_callback);
+
+  // Second, schedule several file descriptor watchers.
+  const int kNumTasks = 3;
+  ScopedPipe pipes[kNumTasks];
+  MessageLoop::TaskId tasks[kNumTasks];
+
+  int reads[kNumTasks] = {};
+  auto fd_callback = [this, &pipes, &reads, &total_calls](int i) {
+    reads[i]++;
+    total_calls++;
+    char c;
+    EXPECT_EQ(1, HANDLE_EINTR(read(pipes[i].reader, &c, 1)));
+    if (total_calls > 100)
+      this->loop_->BreakLoop();
+  };
+
+  for (int i = 0; i < kNumTasks; ++i) {
+    tasks[i] = this->loop_->WatchFileDescriptor(
+        FROM_HERE, pipes[i].reader, MessageLoop::kWatchRead,
+        true /* persistent */,
+        Bind(fd_callback, i));
+    // Make enough bytes available on each file descriptor. This should not
+    // block because we set the size of the file descriptor buffer when
+    // creating it.
+    std::vector<char> blob(1000, 'a');
+    EXPECT_EQ(blob.size(),
+              HANDLE_EINTR(write(pipes[i].writer, blob.data(), blob.size())));
+  }
+  this->loop_->Run();
+  EXPECT_GT(total_calls, 100);
+  // We run the loop up 100 times and expect each callback to run at least 10
+  // times. A good scheduler should balance these callbacks.
+  EXPECT_GE(timeout_called, 10);
+  EXPECT_TRUE(this->loop_->CancelTask(timeout_task));
+  for (int i = 0; i < kNumTasks; ++i) {
+    EXPECT_GE(reads[i], 10) << "Reading from pipes[" << i << "], fd "
+                           << pipes[i].reader;
+    EXPECT_TRUE(this->loop_->CancelTask(tasks[i]));
+  }
 }
 
 }  // namespace chromeos

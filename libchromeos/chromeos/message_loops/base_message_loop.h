@@ -55,6 +55,12 @@ class CHROMEOS_EXPORT BaseMessageLoop : public MessageLoop {
   // scheduled with Post*Task() of id |task_id|, even if it was canceled.
   void OnRanPostedTask(MessageLoop::TaskId task_id);
 
+  // Called from the message loop when the IOTask should run the scheduled
+  // callback. This is a simple wrapper of IOTask::OnFileReadyPostedTask()
+  // posted from the BaseMessageLoop so it is deleted when the BaseMessageLoop
+  // goes out of scope since we can't cancel the callback otherwise.
+  void OnFileReadyPostedTask(MessageLoop::TaskId task_id);
+
   // Return a new unused task_id.
   TaskId NextTaskId();
 
@@ -72,30 +78,50 @@ class CHROMEOS_EXPORT BaseMessageLoop : public MessageLoop {
     IOTask(const tracked_objects::Location& location,
            BaseMessageLoop* loop,
            MessageLoop::TaskId task_id,
+           int fd,
+           base::MessageLoopForIO::Mode base_mode,
            bool persistent,
            const base::Closure& task);
 
     const tracked_objects::Location& location() const { return location_; }
-    base::MessageLoopForIO::FileDescriptorWatcher* fd_watcher() {
-      return &fd_watcher_;
-    }
+
+    // Used to start/stop watching the file descriptor while keeping the
+    // IOTask entry available.
+    bool StartWatching();
+    void StopWatching();
+
+    // Called from the message loop as a PostTask() when the file descriptor is
+    // available, scheduled to run from OnFileReady().
+    void OnFileReadyPostedTask();
+
+    // Cancel the IOTask and returns whether it was actually canceled, with the
+    // same semantics as MessageLoop::CancelTask().
+    bool CancelTask();
 
    private:
     tracked_objects::Location location_;
     BaseMessageLoop* loop_;
 
+    // These are the arguments passed in the constructor, basically forwarding
+    // all the arguments passed to WatchFileDescriptor() plus the assigned
+    // TaskId for this task.
     MessageLoop::TaskId task_id_;
+    int fd_;
+    base::MessageLoopForIO::Mode base_mode_;
     bool persistent_;
     base::Closure closure_;
 
     base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
+
+    // Tells whether there is a pending call to OnFileReadPostedTask().
+    bool posted_task_pending_{false};
 
     // base::MessageLoopForIO::Watcher overrides:
     void OnFileCanReadWithoutBlocking(int fd) override;
     void OnFileCanWriteWithoutBlocking(int fd) override;
 
     // Common implementation for both the read and write case.
-    void OnFileReady(int fd);
+    void OnFileReady();
 
     DISALLOW_COPY_AND_ASSIGN(IOTask);
   };

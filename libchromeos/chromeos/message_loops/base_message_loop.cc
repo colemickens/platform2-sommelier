@@ -25,7 +25,7 @@ BaseMessageLoop::~BaseMessageLoop() {
     DVLOG_LOC(io_task.second.location(), 1)
         << "Removing file descriptor watcher task_id " << io_task.first
         << " leaked on BaseMessageLoop, scheduled from this location.";
-    io_task.second.fd_watcher()->StopWatchingFileDescriptor();
+    io_task.second.StopWatching();
   }
 
   // Note all pending canceled delayed tasks when destroying the message loop.
@@ -91,14 +91,11 @@ MessageLoop::TaskId BaseMessageLoop::WatchFileDescriptor(
   auto it_bool = io_tasks_.emplace(
       std::piecewise_construct,
       std::forward_as_tuple(task_id),
-      std::forward_as_tuple(from_here, this, task_id, persistent, task));
+      std::forward_as_tuple(
+          from_here, this, task_id, fd, base_mode, persistent, task));
   // This should always insert a new element.
   DCHECK(it_bool.second);
-  IOTask* new_io_task = &it_bool.first->second;
-
-  bool scheduled = base_loop_->WatchFileDescriptor(
-      fd, persistent, base_mode, new_io_task->fd_watcher(), new_io_task);
-
+  bool scheduled = it_bool.first->second.StartWatching();
   DVLOG_LOC(from_here, 1)
       << "Watching fd " << fd << " for "
       << (mode == MessageLoop::kWatchRead ? "reading" : "writing")
@@ -122,13 +119,7 @@ bool BaseMessageLoop::CancelTask(TaskId task_id) {
     auto io_task_it = io_tasks_.find(task_id);
     if (io_task_it == io_tasks_.end())
       return false;
-
-    DVLOG_LOC(io_task_it->second.location(), 1)
-        << "Removing task_id " << task_id << " scheduled from this location.";
-    // Destroying the FileDescriptorWatcher implicitly stops watching the file
-    // descriptor.
-    io_tasks_.erase(io_task_it);
-    return true;
+    return io_task_it->second.CancelTask();
   }
   // A DelayedTask was found for this task_id at this point.
 
@@ -219,35 +210,98 @@ void BaseMessageLoop::OnRanPostedTask(MessageLoop::TaskId task_id) {
   delayed_tasks_.erase(task_it);
 }
 
+void BaseMessageLoop::OnFileReadyPostedTask(MessageLoop::TaskId task_id) {
+  auto task_it = io_tasks_.find(task_id);
+  // Even if this task was canceled while we were waiting in the message loop
+  // for this method to run, the entry in io_tasks_ should still be present, but
+  // won't do anything.
+  DCHECK(task_it != io_tasks_.end());
+  task_it->second.OnFileReadyPostedTask();
+}
+
 BaseMessageLoop::IOTask::IOTask(const tracked_objects::Location& location,
                                 BaseMessageLoop* loop,
                                 MessageLoop::TaskId task_id,
+                                int fd,
+                                base::MessageLoopForIO::Mode base_mode,
                                 bool persistent,
                                 const Closure& task)
     : location_(location), loop_(loop), task_id_(task_id),
-      persistent_(persistent), closure_(task) {}
+      fd_(fd), base_mode_(base_mode), persistent_(persistent), closure_(task) {}
 
-void BaseMessageLoop::IOTask::OnFileCanReadWithoutBlocking(int fd) {
-  OnFileReady(fd);
+bool BaseMessageLoop::IOTask::StartWatching() {
+  return loop_->base_loop_->WatchFileDescriptor(
+      fd_, persistent_, base_mode_, &fd_watcher_, this);
 }
 
-void BaseMessageLoop::IOTask::OnFileCanWriteWithoutBlocking(int fd) {
-  OnFileReady(fd);
+void BaseMessageLoop::IOTask::StopWatching() {
+  // This is safe to call even if we are not watching for it.
+  fd_watcher_.StopWatchingFileDescriptor();
 }
 
-void BaseMessageLoop::IOTask::OnFileReady(int fd) {
+void BaseMessageLoop::IOTask::OnFileCanReadWithoutBlocking(int /* fd */) {
+  OnFileReady();
+}
+
+void BaseMessageLoop::IOTask::OnFileCanWriteWithoutBlocking(int /* fd */) {
+  OnFileReady();
+}
+
+void BaseMessageLoop::IOTask::OnFileReady() {
+  // When the file descriptor becomes available we stop watching for it and
+  // schedule a task to run the callback from the main loop. The callback will
+  // run using the same scheduler use to run other delayed tasks, avoiding
+  // starvation of the available posted tasks if there are file descriptors
+  // always available. The new posted task will use the same TaskId as the
+  // current file descriptor watching task an could be canceled in either state,
+  // when waiting for the file descriptor or waiting in the main loop.
+  StopWatching();
+  bool base_scheduled = loop_->base_loop_->task_runner()->PostTask(
+      location_,
+      base::Bind(&BaseMessageLoop::OnFileReadyPostedTask,
+                 loop_->weak_ptr_factory_.GetWeakPtr(),
+                 task_id_));
+  posted_task_pending_ = true;
+  if (base_scheduled) {
+    DVLOG_LOC(location_, 1)
+        << "Dispatching task_id " << task_id_ << " for "
+        << (base_mode_ == base::MessageLoopForIO::WATCH_READ ?
+            "reading" : "writing")
+        << " file descriptor " << fd_ << ", scheduled from this location.";
+  } else {
+    // In the rare case that PostTask() fails, we fall back to run it directly.
+    // This would indicate a bigger problem with the message loop setup.
+    LOG(ERROR) << "Error on base::MessageLoopForIO::PostTask().";
+    OnFileReadyPostedTask();
+  }
+}
+
+void BaseMessageLoop::IOTask::OnFileReadyPostedTask() {
   // We can't access |this| after running the |closure_| since it could call
   // CancelTask on its own task_id, so we copy the members we need now.
   BaseMessageLoop* loop_ptr = loop_;
+  DCHECK(posted_task_pending_ = true);
+  posted_task_pending_ = false;
+
+  // If this task was already canceled, the closure will be null and there is
+  // nothing else to do here. This execution doesn't count a step for RunOnce()
+  // unless we have a callback to run.
+  if (closure_.is_null()) {
+    loop_->io_tasks_.erase(task_id_);
+    return;
+  }
 
   DVLOG_LOC(location_, 1)
-      << "Running task_id " << task_id_
-      << " for watching file descriptor " << fd
-      << ", scheduled from this location.";
+      << "Running task_id " << task_id_ << " for "
+      << (base_mode_ == base::MessageLoopForIO::WATCH_READ ?
+          "reading" : "writing")
+      << " file descriptor " << fd_ << ", scheduled from this location.";
 
   if (persistent_) {
     // In the persistent case we just run the callback. If this callback cancels
-    // the task id, we can't access |this| anymore.
+    // the task id, we can't access |this| anymore, so we re-start watching the
+    // file descriptor before running the callback.
+    StartWatching();
     closure_.Run();
   } else {
     // This will destroy |this|, the fd_watcher and therefore stop watching this
@@ -262,6 +316,27 @@ void BaseMessageLoop::IOTask::OnFileReady(int fd) {
     loop_ptr->run_once_ = false;
     loop_ptr->BreakLoop();
   }
+}
+
+bool BaseMessageLoop::IOTask::CancelTask() {
+  if (closure_.is_null())
+    return false;
+
+  DVLOG_LOC(location_, 1)
+      << "Removing task_id " << task_id_ << " scheduled from this location.";
+
+  if (!posted_task_pending_) {
+    // Destroying the FileDescriptorWatcher implicitly stops watching the file
+    // descriptor. This will delete our instance.
+    loop_->io_tasks_.erase(task_id_);
+    return true;
+  }
+  // The IOTask is waiting for the message loop to run its delayed task, so
+  // it is not watching for the file descriptor. We release the closure
+  // resources now but keep the IOTask instance alive while we wait for the
+  // callback to run and delete the IOTask.
+  closure_ = Closure();
+  return true;
 }
 
 }  // namespace chromeos
