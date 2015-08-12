@@ -232,7 +232,7 @@ void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
   VLOG(3) << "ConnectivityChanged: " << is_connected;
   UpdateConnectionState();
 
-  if (state_ == State::kBootstrapping) {
+  if (state_ == State::kBootstrapping && is_connected) {
     StartMonitoring();
     return;
   }
