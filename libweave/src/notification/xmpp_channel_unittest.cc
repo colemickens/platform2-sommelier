@@ -4,17 +4,15 @@
 
 #include "libweave/src/notification/xmpp_channel.h"
 
+#include <algorithm>
 #include <queue>
 
 #include <base/test/simple_test_clock.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/message_loops/fake_message_loop.h>
-#include <chromeos/streams/fake_stream.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace weave {
-
 
 namespace {
 
@@ -77,13 +75,64 @@ constexpr char kSubscribeMessage[] =
     "<iq id='3' type='set' to='Account@Name'>"
     "<subscribe xmlns='google:push'><item channel='cloud_devices' from=''/>"
     "</subscribe></iq>";
+
 }  // namespace
+
+class FakeStream : public Stream {
+ public:
+  bool FlushBlocking(chromeos::ErrorPtr* error) override { return true; }
+
+  bool CloseBlocking(chromeos::ErrorPtr* error) override { return true; }
+
+  void CancelPendingAsyncOperations() override {}
+
+  void ExpectWritePacketString(base::TimeDelta, const std::string& data) {
+    write_data_ += data;
+  }
+
+  void AddReadPacketString(base::TimeDelta, const std::string& data) {
+    read_data_ += data;
+  }
+
+  bool ReadAsync(
+      void* buffer,
+      size_t size_to_read,
+      const base::Callback<void(size_t)>& success_callback,
+      const base::Callback<void(const chromeos::Error*)>& error_callback,
+      chromeos::ErrorPtr* error) override {
+    size_t size = std::min(size_to_read, read_data_.size());
+    memcpy(buffer, read_data_.data(), size);
+    read_data_ = read_data_.substr(size);
+    chromeos::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE, base::Bind(success_callback, size),
+        base::TimeDelta::FromSeconds(0));
+    return true;
+  }
+
+  bool WriteAllAsync(
+      const void* buffer,
+      size_t size_to_write,
+      const base::Closure& success_callback,
+      const base::Callback<void(const chromeos::Error*)>& error_callback,
+      chromeos::ErrorPtr* error) override {
+    size_t size = std::min(size_to_write, write_data_.size());
+    EXPECT_EQ(
+        write_data_.substr(0, size),
+        std::string(reinterpret_cast<const char*>(buffer), size_to_write));
+    write_data_ = write_data_.substr(size);
+    chromeos::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE, success_callback, base::TimeDelta::FromSeconds(0));
+    return true;
+  }
+
+ private:
+  std::string write_data_;
+  std::string read_data_;
+};
 
 class FakeXmppChannel : public XmppChannel {
  public:
-  explicit FakeXmppChannel(base::Clock* clock)
-      : XmppChannel{kAccountName, kAccessToken, nullptr},
-        fake_stream_{chromeos::Stream::AccessMode::READ_WRITE, clock} {}
+  FakeXmppChannel() : XmppChannel{kAccountName, kAccessToken, nullptr} {}
 
   XmppState state() const { return state_; }
   void set_state(XmppState state) { state_ = state; }
@@ -99,7 +148,7 @@ class FakeXmppChannel : public XmppChannel {
   void SchedulePing(base::TimeDelta interval,
                     base::TimeDelta timeout) override {}
 
-  chromeos::FakeStream fake_stream_;
+  FakeStream fake_stream_;
 };
 
 class XmppChannelTest : public ::testing::Test {
@@ -107,7 +156,7 @@ class XmppChannelTest : public ::testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
 
-    xmpp_client_.reset(new FakeXmppChannel{&clock_});
+    xmpp_client_.reset(new FakeXmppChannel{});
     clock_.SetNow(base::Time::Now());
   }
 
@@ -125,9 +174,8 @@ class XmppChannelTest : public ::testing::Test {
   }
 
   void RunUntil(XmppChannel::XmppState st) {
-    for (size_t n = 15; n && xmpp_client_->state() != st; --n) {
+    for (size_t n = 15; n && xmpp_client_->state() != st; --n)
       fake_loop_.RunOnce(true);
-    }
     EXPECT_EQ(st, xmpp_client_->state());
   }
 

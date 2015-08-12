@@ -10,6 +10,7 @@
 
 #include <base/callback.h>
 #include <chromeos/errors/error.h>
+#include <weave/stream.h>
 
 namespace weave {
 
@@ -45,6 +46,18 @@ class Network {
 
   // Stops WiFi access point.
   virtual void DisableAccessPoint() = 0;
+
+  // Opens bidirectional sockets and returns attached stream.
+  // TODO(vitalybuka): Make async.
+  virtual std::unique_ptr<Stream> OpenSocketBlocking(const std::string& host,
+                                                     uint16_t port) = 0;
+
+  // Replaces stream with version with TLS support.
+  virtual void CreateTlsStream(
+      std::unique_ptr<Stream> socket,
+      const std::string& host,
+      const base::Callback<void(std::unique_ptr<Stream>)>& success_callback,
+      const base::Callback<void(const chromeos::Error*)>& error_callback) = 0;
 
  protected:
   virtual ~Network() = default;

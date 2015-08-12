@@ -41,6 +41,7 @@
         'http_transport_client.cc',
         'manager.cc',
         'shill_client.cc',
+        'socket_stream.cc',
       ],
       'conditions': [
         ['USE_wifi_bootstrapping == 1', {

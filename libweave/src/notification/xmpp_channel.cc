@@ -10,8 +10,6 @@
 #include <chromeos/backoff_entry.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/message_loops/message_loop.h>
-#include <chromeos/streams/file_stream.h>
-#include <chromeos/streams/tls_stream.h>
 #include <weave/network.h>
 
 #include "libweave/src/notification/notification_delegate.h"
@@ -90,12 +88,12 @@ const int kConnectingTimeoutAfterNetChangeSeconds = 30;
 
 }  // namespace
 
-XmppChannel::XmppChannel(
-    const std::string& account,
-    const std::string& access_token,
-    Network* network)
+XmppChannel::XmppChannel(const std::string& account,
+                         const std::string& access_token,
+                         Network* network)
     : account_{account},
       access_token_{access_token},
+      network_{network},
       backoff_entry_{&kDefaultBackoffPolicy},
       iq_stanza_handler_{new IqStanzaHandler{this}} {
   read_socket_data_.resize(4096);
@@ -289,15 +287,15 @@ void XmppChannel::HandleMessageStanza(std::unique_ptr<XmlNode> stanza) {
 }
 
 void XmppChannel::StartTlsHandshake() {
-  stream_->CancelPendingAsyncOperations();
-  chromeos::TlsStream::Connect(
+  raw_socket_->CancelPendingAsyncOperations();
+  network_->CreateTlsStream(
       std::move(raw_socket_), host_,
       base::Bind(&XmppChannel::OnTlsHandshakeComplete,
                  task_ptr_factory_.GetWeakPtr()),
       base::Bind(&XmppChannel::OnTlsError, task_ptr_factory_.GetWeakPtr()));
 }
 
-void XmppChannel::OnTlsHandshakeComplete(chromeos::StreamPtr tls_stream) {
+void XmppChannel::OnTlsHandshakeComplete(std::unique_ptr<Stream> tls_stream) {
   tls_stream_ = std::move(tls_stream);
   stream_ = tls_stream_.get();
   state_ = XmppState::kTlsCompleted;
@@ -376,15 +374,7 @@ void XmppChannel::Connect(const std::string& host,
                           const base::Closure& callback) {
   state_ = XmppState::kConnecting;
   LOG(INFO) << "Starting XMPP connection to " << host << ":" << port;
-  int socket_fd = ConnectSocket(host, port);
-  if (socket_fd >= 0) {
-    raw_socket_ =
-        chromeos::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
-    if (!raw_socket_) {
-      close(socket_fd);
-      socket_fd = -1;
-    }
-  }
+  raw_socket_ = network_->OpenSocketBlocking(host, port);
 
   backoff_entry_.InformOfRequest(raw_socket_ != nullptr);
   if (raw_socket_) {

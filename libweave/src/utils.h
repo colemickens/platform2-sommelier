@@ -38,11 +38,6 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
     const std::string& json_string,
     chromeos::ErrorPtr* error);
 
-// Synchronously resolves the |host| and connects a socket to the resolved
-// address/port.
-// Returns the connected socket file descriptor or -1 if failed.
-int ConnectSocket(const std::string& host, uint16_t port);
-
 }  // namespace weave
 
 #endif  // LIBWEAVE_SRC_UTILS_H_

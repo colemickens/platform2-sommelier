@@ -15,6 +15,7 @@
 #include <weave/enum_to_string.h>
 
 #include "buffet/ap_manager_client.h"
+#include "buffet/socket_stream.h"
 
 using chromeos::Any;
 using chromeos::VariantDictionary;
@@ -494,6 +495,22 @@ void ShillClient::CleanupConnectingService(bool check_for_reset_pending) {
   on_connect_success_.Cancel();
   have_called_connect_ = false;
   connecting_service_reset_pending_ = false;
+}
+
+std::unique_ptr<weave::Stream> ShillClient::OpenSocketBlocking(
+    const std::string& host,
+    uint16_t port) {
+  return SocketStream::ConnectBlocking(host, port);
+}
+
+void ShillClient::CreateTlsStream(
+    std::unique_ptr<weave::Stream> socket,
+    const std::string& host,
+    const base::Callback<void(std::unique_ptr<weave::Stream>)>&
+        success_callback,
+    const base::Callback<void(const chromeos::Error*)>& error_callback) {
+  SocketStream::TlsConnect(std::move(socket), host, success_callback,
+                           error_callback);
 }
 
 }  // namespace buffet

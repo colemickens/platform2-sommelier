@@ -5,6 +5,7 @@
         'expat',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libcrypto',
       ],
     },
     'include_dirs': [

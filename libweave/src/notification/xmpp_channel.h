@@ -14,7 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/backoff_entry.h>
-#include <chromeos/streams/stream.h>
+#include <weave/stream.h>
 
 #include "libweave/src/notification/notification_channel.h"
 #include "libweave/src/notification/xmpp_iq_stanza_handler.h"
@@ -83,7 +83,7 @@ class XmppChannel : public NotificationChannel,
   XmppState state_{XmppState::kNotStarted};
 
   // The connection socket stream to the XMPP server.
-  chromeos::Stream* stream_{nullptr};
+  Stream* stream_{nullptr};
 
  private:
   friend class IqStanzaHandler;
@@ -102,7 +102,7 @@ class XmppChannel : public NotificationChannel,
   void RestartXmppStream();
 
   void StartTlsHandshake();
-  void OnTlsHandshakeComplete(chromeos::StreamPtr tls_stream);
+  void OnTlsHandshakeComplete(std::unique_ptr<Stream> tls_stream);
   void OnTlsError(const chromeos::Error* error);
 
   void WaitForMessage();
@@ -137,8 +137,9 @@ class XmppChannel : public NotificationChannel,
   // OAuth access token for the account. Expires fairly frequently.
   std::string access_token_;
 
-  chromeos::StreamPtr raw_socket_;
-  chromeos::StreamPtr tls_stream_;  // Must follow |raw_socket_|.
+  Network* network_{nullptr};
+  std::unique_ptr<Stream> raw_socket_;
+  std::unique_ptr<Stream> tls_stream_;  // Must follow |raw_socket_|.
 
   // Read buffer for incoming message packets.
   std::vector<char> read_socket_data_;
