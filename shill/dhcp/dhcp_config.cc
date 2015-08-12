@@ -20,10 +20,10 @@
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/dhcp/dhcpcd_proxy.h"
 #include "shill/event_dispatcher.h"
-#include "shill/glib.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
+#include "shill/process_manager.h"
 
 using std::string;
 using std::vector;
@@ -52,22 +52,19 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        DHCPProvider* provider,
                        const string& device_name,
                        const string& type,
-                       const string& lease_file_suffix,
-                       GLib* glib)
+                       const string& lease_file_suffix)
     : IPConfig(control_interface, device_name, type),
       control_interface_(control_interface),
       provider_(provider),
       lease_file_suffix_(lease_file_suffix),
       pid_(0),
-      child_watch_tag_(0),
       is_lease_active_(false),
       lease_acquisition_timeout_seconds_(kAcquisitionTimeoutSeconds),
       minimum_mtu_(kMinIPv4MTU),
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
-      glib_(glib),
-      minijail_(chromeos::Minijail::GetInstance()) {
+      process_manager_(ProcessManager::GetInstance()) {
   SLOG(this, 2) << __func__ << ": " << device_name;
   if (lease_file_suffix_.empty()) {
     lease_file_suffix_ = device_name;
@@ -167,42 +164,34 @@ bool DHCPConfig::IsEphemeralLease() const {
 bool DHCPConfig::Start() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 
-  // TODO(quiche): This should be migrated to use ExternalTask.
-  // (crbug.com/246263).
-  vector<char*> args;
-  args.push_back(const_cast<char*>(kDHCPCDPath));
-
-  // Append flags.
-  vector<string> flags = GetFlags();
-  for (const auto& flag : flags) {
-    args.push_back(const_cast<char*>(flag.c_str()));
-  }
-
+  // Setup program arguments.
+  vector<string> args = GetFlags();
   string interface_arg(device_name());
   if (lease_file_suffix_ != device_name()) {
     interface_arg = base::StringPrintf("%s=%s", device_name().c_str(),
                                        lease_file_suffix_.c_str());
   }
-  args.push_back(const_cast<char*>(interface_arg.c_str()));
-  args.push_back(nullptr);
+  args.push_back(interface_arg);
 
-  struct minijail* jail = minijail_->New();
-  minijail_->DropRoot(jail, kDHCPCDUser, kDHCPCDUser);
-  minijail_->UseCapabilities(jail,
-                             CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
-                             CAP_TO_MASK(CAP_NET_BROADCAST) |
-                             CAP_TO_MASK(CAP_NET_ADMIN) |
-                             CAP_TO_MASK(CAP_NET_RAW));
-
-  CHECK(!pid_);
-  if (!minijail_->RunAndDestroy(jail, args, &pid_)) {
-    LOG(ERROR) << "Unable to spawn " << kDHCPCDPath << " in a jail.";
+  uint64_t capmask = CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
+                     CAP_TO_MASK(CAP_NET_BROADCAST) |
+                     CAP_TO_MASK(CAP_NET_ADMIN) |
+                     CAP_TO_MASK(CAP_NET_RAW);
+  pid_t pid = process_manager_->StartProcessInMinijail(
+      FROM_HERE,
+      base::FilePath(kDHCPCDPath),
+      args,
+      kDHCPCDUser,
+      kDHCPCDUser,
+      capmask,
+      base::Bind(&DHCPConfig::OnProcessExited,
+                 weak_ptr_factory_.GetWeakPtr()));
+  if (pid < 0) {
     return false;
   }
+  pid_ = pid;
   LOG(INFO) << "Spawned " << kDHCPCDPath << " with pid: " << pid_;
   provider_->BindPID(pid_, this);
-  CHECK(!child_watch_tag_);
-  child_watch_tag_ = glib_->ChildWatchAdd(pid_, ChildWatchCallback, this);
   StartAcquisitionTimeout();
   return true;
 }
@@ -219,28 +208,12 @@ void DHCPConfig::KillClient() {
   if (!pid_) {
     return;
   }
-  if (kill(pid_, SIGTERM) < 0) {
-    if (errno != ESRCH) {
-      PLOG(ERROR);
-    }
-    return;
-  }
-  pid_t ret;
-  int num_iterations =
-      kDHCPCDExitWaitMilliseconds / kDHCPCDExitPollMilliseconds;
-  for (int count = 0; count < num_iterations; ++count) {
-    ret = waitpid(pid_, nullptr, WNOHANG);
-    if (ret == pid_ || ret == -1)
-      break;
-    usleep(kDHCPCDExitPollMilliseconds * 1000);
-    if (count == num_iterations / 2) {
-      // Make one last attempt to kill dhcpcd.
-      LOG(WARNING) << "Terminating " << pid_ << " with SIGKILL.";
-      kill(pid_, SIGKILL);
-    }
-  }
-  if (ret != pid_)
-    PLOG(ERROR);
+
+  // Pass the termination responsibility to ProcessManager.
+  // ProcessManager will try to terminate the process using SIGTERM, then
+  // SIGKill signals.  It will log an error message if it is not able to
+  // terminate the process in a timely manner.
+  process_manager_->StopProcess(pid_);
 }
 
 bool DHCPConfig::Restart() {
@@ -251,27 +224,21 @@ bool DHCPConfig::Restart() {
   return me->Start();
 }
 
-void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
-  if (status == EXIT_SUCCESS) {
-    SLOG(nullptr, 2) << "pid " << pid << " exit status " << status;
+void DHCPConfig::OnProcessExited(int exit_status) {
+  CHECK(pid_);
+  if (exit_status == EXIT_SUCCESS) {
+    SLOG(nullptr, 2) << "pid " << pid_ << " exit status " << exit_status;
   } else {
-    LOG(WARNING) << "pid " << pid << " exit status " << status;
+    LOG(WARNING) << "pid " << pid_ << " exit status " << exit_status;
   }
-  DHCPConfig* config = reinterpret_cast<DHCPConfig*>(data);
-  config->child_watch_tag_ = 0;
-  CHECK_EQ(pid, config->pid_);
-  // |config| instance may be destroyed after this call.
-  config->CleanupClientState();
+  CleanupClientState();
 }
 
 void DHCPConfig::CleanupClientState() {
   SLOG(this, 2) << __func__ << ": " << device_name();
   StopAcquisitionTimeout();
   StopExpirationTimeout();
-  if (child_watch_tag_) {
-    glib_->SourceRemove(child_watch_tag_);
-    child_watch_tag_ = 0;
-  }
+
   proxy_.reset();
   if (pid_) {
     int pid = pid_;

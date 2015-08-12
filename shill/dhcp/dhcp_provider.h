@@ -21,7 +21,6 @@ namespace shill {
 class ControlInterface;
 class DHCPCDListenerInterface;
 class EventDispatcher;
-class GLib;
 class Metrics;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
@@ -52,7 +51,6 @@ class DHCPProvider {
   // to the appropriate DHCP configuration instance.
   virtual void Init(ControlInterface* control_interface,
                     EventDispatcher* dispatcher,
-                    GLib* glib,
                     Metrics* metrics);
 
   // Called on shutdown to release |listener_|.
@@ -125,7 +123,6 @@ class DHCPProvider {
   base::FilePath root_;
   ControlInterface* control_interface_;
   EventDispatcher* dispatcher_;
-  GLib* glib_;
   Metrics* metrics_;
 
   // Track the set of PIDs recently unbound from the provider in case messages

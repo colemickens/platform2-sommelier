@@ -126,7 +126,7 @@ bool ProcessManager::StopProcess(pid_t pid) {
     return false;
   }
 
-  if (watched_processes_.find(pid) != watched_processes_.end()) {
+  if (watched_processes_.find(pid) == watched_processes_.end()) {
     LOG(ERROR) << "Process " << pid << " not being watched";
     return false;
   }

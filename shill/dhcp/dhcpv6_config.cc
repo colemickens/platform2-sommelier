@@ -57,15 +57,13 @@ DHCPv6Config::DHCPv6Config(ControlInterface* control_interface,
                            EventDispatcher* dispatcher,
                            DHCPProvider* provider,
                            const string& device_name,
-                           const string& lease_file_suffix,
-                           GLib* glib)
+                           const string& lease_file_suffix)
     : DHCPConfig(control_interface,
                  dispatcher,
                  provider,
                  device_name,
                  kType,
-                 lease_file_suffix,
-                 glib) {
+                 lease_file_suffix) {
   SLOG(this, 2) << __func__ << ": " << device_name;
 }
 

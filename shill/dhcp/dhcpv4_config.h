@@ -30,7 +30,6 @@ class DHCPv4Config : public DHCPConfig {
                const std::string& request_hostname,
                const std::string& lease_file_suffix,
                bool arp_gateway,
-               GLib* glib,
                Metrics* metrics);
   ~DHCPv4Config() override;
 

@@ -11,16 +11,14 @@
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/minijail/mock_minijail.h>
 
-#include "shill/dbus_adaptor.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_process_manager.h"
 #include "shill/property_store_unittest.h"
 #include "shill/testing.h"
 
@@ -28,7 +26,6 @@ using base::Bind;
 using base::FilePath;
 using base::ScopedTempDir;
 using base::Unretained;
-using chromeos::MockMinijail;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -57,15 +54,13 @@ class TestDHCPConfig : public DHCPConfig {
                  DHCPProvider* provider,
                  const std::string& device_name,
                  const std::string& type,
-                 const std::string& lease_file_suffix,
-                 GLib* glib)
+                 const std::string& lease_file_suffix)
      : DHCPConfig(control_interface,
                   dispatcher,
                   provider,
                   device_name,
                   type,
-                  lease_file_suffix,
-                  glib) {}
+                  lease_file_suffix) {}
 
   ~TestDHCPConfig() {}
 
@@ -83,21 +78,15 @@ class DHCPConfigTest : public PropertyStoreTest {
  public:
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
-        minijail_(new MockMinijail()),
         config_(new TestDHCPConfig(&control_,
                                    dispatcher(),
                                    &provider_,
                                    kDeviceName,
                                    kDhcpMethod,
-                                   kLeaseFileSuffix,
-                                   glib())) {}
+                                   kLeaseFileSuffix)) {}
 
   virtual void SetUp() {
-    config_->minijail_ = minijail_.get();
-  }
-
-  virtual void TearDown() {
-    config_->minijail_ = nullptr;
+    config_->process_manager_ = &process_manager_;
   }
 
   void StopInstance() {
@@ -108,17 +97,15 @@ class DHCPConfigTest : public PropertyStoreTest {
 
  protected:
   static const int kPID;
-  static const unsigned int kTag;
 
   unique_ptr<MockDHCPProxy> proxy_;
   MockControl control_;
-  unique_ptr<MockMinijail> minijail_;
+  MockProcessManager process_manager_;
   TestDHCPConfigRefPtr config_;
   MockDHCPProvider provider_;
 };
 
 const int DHCPConfigTest::kPID = 123456;
-const unsigned int DHCPConfigTest::kTag = 77;
 
 TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
     const string& lease_suffix) {
@@ -127,9 +114,8 @@ TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
                                                  &provider_,
                                                  kDeviceName,
                                                  kDhcpMethod,
-                                                 lease_suffix,
-                                                 glib()));
-  config->minijail_ = minijail_.get();
+                                                 lease_suffix));
+  config->process_manager_ = &process_manager_;
 
   return config;
 }
@@ -148,31 +134,32 @@ TEST_F(DHCPConfigTest, InitProxy) {
 }
 
 TEST_F(DHCPConfigTest, StartFail) {
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(false));
-  EXPECT_CALL(*glib(), ChildWatchAdd(_, _, _)).Times(0);
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _, _, _, _, _, _))
+      .WillOnce(Return(-1));
   EXPECT_FALSE(config_->Start());
   EXPECT_EQ(0, config_->pid_);
 }
 
 MATCHER_P(IsDHCPCDArgs, has_lease_suffix, "") {
-  if (string(arg[0]) != "/sbin/dhcpcd" ||
-      string(arg[1]) != "-B" ||
-      string(arg[2]) != "-q") {
+  if (arg[0] != "-B" ||
+      arg[1] != "-q") {
     return false;
   }
 
-  int end_offset = 3;
+  int end_offset = 2;
 
   string device_arg = has_lease_suffix ?
       string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
-  return string(arg[end_offset]) == device_arg &&
-         arg[end_offset + 1] == nullptr;
+  return arg[end_offset] == device_arg;
 }
 
 TEST_F(DHCPConfigTest, StartWithoutLeaseSuffix) {
   TestDHCPConfigRefPtr config = CreateMockMinijailConfig(kDeviceName);
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, IsDHCPCDArgs(!kHasLeaseSuffix), _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _, IsDHCPCDArgs(!kHasLeaseSuffix),
+                                     _, _, _, _))
+      .WillOnce(Return(-1));
   EXPECT_FALSE(config->Start());
 }
 
@@ -320,11 +307,13 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithoutLease) {
 }
 
 TEST_F(DHCPConfigTest, RenewIP) {
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(false));
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
+      .WillOnce(Return(-1));
   config_->pid_ = 0;
   EXPECT_FALSE(config_->RenewIP());  // Expect a call to Start() if pid_ is 0.
-  Mock::VerifyAndClearExpectations(minijail_.get());
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).Times(0);
+  Mock::VerifyAndClearExpectations(&process_manager_);
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
+      .Times(0);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
   config_->pid_ = 456;
@@ -366,36 +355,26 @@ TEST_F(DHCPConfigCallbackTest, RequestIPTimeout) {
 TEST_F(DHCPConfigTest, Restart) {
   const int kPID1 = 1 << 17;  // Ensure unknown positive PID.
   const int kPID2 = 987;
-  const unsigned int kTag1 = 11;
-  const unsigned int kTag2 = 22;
   config_->pid_ = kPID1;
-  config_->child_watch_tag_ = kTag1;
   EXPECT_CALL(provider_, UnbindPID(kPID1));
-  EXPECT_CALL(*glib(), SourceRemove(kTag1)).WillOnce(Return(true));
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(
-      DoAll(SetArgumentPointee<2>(kPID2), Return(true)));
-  EXPECT_CALL(*glib(), ChildWatchAdd(kPID2, _, _)).WillOnce(Return(kTag2));
+  EXPECT_CALL(process_manager_, StopProcess(kPID1)).WillOnce(Return(true));
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
+      .WillOnce(Return(kPID2));
   EXPECT_CALL(provider_, BindPID(kPID2, IsRefPtrTo(config_)));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID2, config_->pid_);
-  EXPECT_EQ(kTag2, config_->child_watch_tag_);
   config_->pid_ = 0;
-  config_->child_watch_tag_ = 0;
 }
 
 TEST_F(DHCPConfigTest, RestartNoClient) {
   const int kPID = 777;
-  const unsigned int kTag = 66;
-  EXPECT_CALL(*glib(), SourceRemove(_)).Times(0);
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(
-      DoAll(SetArgumentPointee<2>(kPID), Return(true)));
-  EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+  EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
+      .WillOnce(Return(kPID));
   EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config_)));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID, config_->pid_);
-  EXPECT_EQ(kTag, config_->child_watch_tag_);
   config_->pid_ = 0;
-  config_->child_watch_tag_ = 0;
 }
 
 TEST_F(DHCPConfigCallbackTest, StartTimeout) {
@@ -405,7 +384,8 @@ TEST_F(DHCPConfigCallbackTest, StartTimeout) {
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_seconds_ = 0;
   config_->proxy_.reset(proxy_.release());
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
+      .WillOnce(Return(0));
   config_->Start();
   config_->dispatcher_->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(this);
@@ -440,14 +420,12 @@ TEST_F(DHCPConfigTest, StopDuringRequestIP) {
 }
 
 TEST_F(DHCPConfigTest, SetProperty) {
-  ::DBus::Error error;
+  Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::SetProperty(config_->mutable_store(),
-                                        kAddressProperty,
-                                        PropertyStoreTest::kStringV,
-                                        &error));
-  ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
-  EXPECT_EQ(invalid_args(), error.name());
+  EXPECT_FALSE(config_->mutable_store()->SetAnyProperty(
+      kAddressProperty, PropertyStoreTest::kStringV, &error));
+  EXPECT_TRUE(error.IsFailure());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 }  // namespace shill

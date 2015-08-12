@@ -13,8 +13,6 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/minijail/minijail.h>
-#include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
@@ -26,8 +24,8 @@ class ControlInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
 class EventDispatcher;
-class GLib;
 class Metrics;
+class ProcessManager;
 
 // This class provides a DHCP client instance for the device |device_name|.
 //
@@ -43,8 +41,7 @@ class DHCPConfig : public IPConfig {
              DHCPProvider* provider,
              const std::string& device_name,
              const std::string& type,
-             const std::string& lease_file_suffix,
-             GLib* glib);
+             const std::string& lease_file_suffix);
   ~DHCPConfig() override;
 
   // Inherited from IPConfig.
@@ -144,7 +141,7 @@ class DHCPConfig : public IPConfig {
   bool Restart();
 
   // Called when the dhcpcd client process exits.
-  static void ChildWatchCallback(GPid pid, gint status, gpointer data);
+  void OnProcessExited(int exit_status);
 
   // Initialize a callback that will invoke ProcessAcquisitionTimeout if we
   // do not get a lease in a reasonable amount of time.
@@ -181,9 +178,6 @@ class DHCPConfig : public IPConfig {
   // yet or the client has died.
   int pid_;
 
-  // Child exit watch callback source tag.
-  unsigned int child_watch_tag_;
-
   // Whether a lease has been acquired from the DHCP server or gateway ARP.
   bool is_lease_active_;
 
@@ -208,10 +202,8 @@ class DHCPConfig : public IPConfig {
 
   base::WeakPtrFactory<DHCPConfig> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
-  GLib* glib_;
+  ProcessManager* process_manager_;
   Metrics* metrics_;
-
-  chromeos::Minijail* minijail_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPConfig);
 };

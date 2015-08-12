@@ -25,8 +25,7 @@ class DHCPv6Config : public DHCPConfig {
                EventDispatcher* dispatcher,
                DHCPProvider* provider,
                const std::string& device_name,
-               const std::string& lease_file_suffix,
-               GLib* glib);
+               const std::string& lease_file_suffix);
   ~DHCPv6Config() override;
 
   // Inherited from DHCPConfig.

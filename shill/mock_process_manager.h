@@ -29,6 +29,14 @@ class MockProcessManager : public ProcessManager {
                      const std::map<std::string, std::string>& env,
                      bool terminate_with_parent,
                      const base::Callback<void(int)>& exit_callback));
+  MOCK_METHOD7(StartProcessInMinijail,
+               pid_t(const tracked_objects::Location& from_here,
+                     const base::FilePath& program,
+                     const std::vector<std::string>& arguments,
+                     const std::string& user,
+                     const std::string& group,
+                     uint64_t capmask,
+                     const base::Callback<void(int)>& exit_callback));
   MOCK_METHOD1(StopProcess, bool(pid_t pid));
 
  private:

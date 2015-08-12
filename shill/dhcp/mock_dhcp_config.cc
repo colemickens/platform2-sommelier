@@ -15,8 +15,7 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
                  nullptr,
                  device_name,
                  string(),
-                 string(),
-                 nullptr) {}
+                 string()) {}
 
 MockDHCPConfig::~MockDHCPConfig() {}
 

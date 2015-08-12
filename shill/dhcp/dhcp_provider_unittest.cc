@@ -11,7 +11,6 @@
 #include "shill/dhcp/dhcp_config.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 
 using base::FilePath;
 using base::ScopedTempDir;
@@ -32,7 +31,6 @@ const bool kArpGateway = false;
 class DHCPProviderTest : public Test {
  public:
   DHCPProviderTest() : provider_(DHCPProvider::GetInstance()) {
-    provider_->glib_ = &glib_;
     provider_->control_interface_ = &control_;
     provider_->dispatcher_ = &dispatcher_;
   }
@@ -49,7 +47,6 @@ class DHCPProviderTest : public Test {
   void RetireUnboundPID(int pid) { provider_->RetireUnboundPID(pid); }
 
   MockControl control_;
-  MockGLib glib_;
   DHCPProvider* provider_;
   StrictMock<MockEventDispatcher> dispatcher_;
 };
@@ -60,7 +57,6 @@ TEST_F(DHCPProviderTest, CreateIPv4Config) {
                                                         kStorageIdentifier,
                                                         kArpGateway);
   EXPECT_TRUE(config.get());
-  EXPECT_EQ(&glib_, config->glib_);
   EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->configs_.empty());
 }

@@ -42,7 +42,6 @@ DHCPProvider::DHCPProvider()
     : root_("/"),
       control_interface_(nullptr),
       dispatcher_(nullptr),
-      glib_(nullptr),
       metrics_(nullptr) {
   SLOG(this, 2) << __func__;
 }
@@ -57,11 +56,9 @@ DHCPProvider* DHCPProvider::GetInstance() {
 
 void DHCPProvider::Init(ControlInterface* control_interface,
                         EventDispatcher* dispatcher,
-                        GLib* glib,
                         Metrics* metrics) {
   SLOG(this, 2) << __func__;
   listener_.reset(control_interface->CreateDHCPCDListener(this));
-  glib_ = glib;
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;
   metrics_ = metrics;
@@ -84,7 +81,6 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
                           host_name,
                           lease_file_suffix,
                           arp_gateway,
-                          glib_,
                           metrics_);
 }
 
@@ -96,8 +92,7 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv6Config(
                           dispatcher_,
                           this,
                           device_name,
-                          lease_file_suffix,
-                          glib_);
+                          lease_file_suffix);
 }
 #endif
 

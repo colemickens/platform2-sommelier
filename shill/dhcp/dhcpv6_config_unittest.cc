@@ -13,16 +13,14 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/minijail/mock_minijail.h>
 
-#include "shill/dbus_adaptor.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_process_manager.h"
 #include "shill/property_store_unittest.h"
 #include "shill/testing.h"
 
@@ -30,7 +28,6 @@ using base::Bind;
 using base::FilePath;
 using base::ScopedTempDir;
 using base::Unretained;
-using chromeos::MockMinijail;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -59,20 +56,14 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
  public:
   DHCPv6ConfigTest()
       : proxy_(new MockDHCPProxy()),
-        minijail_(new MockMinijail()),
         config_(new DHCPv6Config(&control_,
                                  dispatcher(),
                                  &provider_,
                                  kDeviceName,
-                                 kLeaseFileSuffix,
-                                 glib())) {}
+                                 kLeaseFileSuffix)) {}
 
   virtual void SetUp() {
-    config_->minijail_ = minijail_.get();
-  }
-
-  virtual void TearDown() {
-    config_->minijail_ = nullptr;
+    config_->process_manager_ = &process_manager_;
   }
 
   bool StartInstance(DHCPv6ConfigRefPtr config) {
@@ -97,7 +88,7 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
   ScopedTempDir temp_dir_;
   unique_ptr<MockDHCPProxy> proxy_;
   MockControl control_;
-  unique_ptr<MockMinijail> minijail_;
+  MockProcessManager process_manager_;
   MockDHCPProvider provider_;
   DHCPv6ConfigRefPtr config_;
 };
@@ -111,9 +102,8 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,
-                                             lease_suffix,
-                                             glib()));
-  config->minijail_ = minijail_.get();
+                                             lease_suffix));
+  config->process_manager_ = &process_manager_;
 
   return config;
 }
@@ -124,16 +114,13 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateRunningConfig(
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,
-                                             lease_suffix,
-                                             glib()));
-  config->minijail_ = minijail_.get();
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kPID), Return(true)));
-  EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+                                             lease_suffix));
+  config->process_manager_ = &process_manager_;
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
+      .WillOnce(Return(kPID));
   EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config)));
   EXPECT_TRUE(config->Start());
   EXPECT_EQ(kPID, config->pid_);
-  EXPECT_EQ(kTag, config->child_watch_tag_);
 
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
   config->root_ = temp_dir_.path();
@@ -158,7 +145,7 @@ void DHCPv6ConfigTest::StopRunningConfigAndExpect(DHCPv6ConfigRefPtr config,
   // We use a non-zero exit status so that we get the log message.
   EXPECT_CALL(log, Log(_, _, ::testing::EndsWith("status 10")));
   EXPECT_CALL(provider_, UnbindPID(kPID));
-  DHCPConfig::ChildWatchCallback(kPID, 10, config.get());
+  config->OnProcessExited(10);
 
   EXPECT_FALSE(base::PathExists(pid_file_));
   EXPECT_EQ(lease_file_exists, base::PathExists(lease_file_));
@@ -210,25 +197,25 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
 }
 
 MATCHER_P(IsDHCPCDv6Args, has_lease_suffix, "") {
-  if (string(arg[0]) != "/sbin/dhcpcd" ||
-      string(arg[1]) != "-B" ||
-      string(arg[2]) != "-q" ||
-      string(arg[3]) != "-6" ||
-      string(arg[4]) != "-a") {
+  if (arg[0] != "-B" ||
+      arg[1] != "-q" ||
+      arg[2] != "-6" ||
+      arg[3] != "-a") {
     return false;
   }
 
-  int end_offset = 5;
+  int end_offset = 4;
 
   string device_arg = has_lease_suffix ?
       string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
-  return string(arg[end_offset]) == device_arg &&
-         arg[end_offset + 1] == nullptr;
+  return arg[end_offset] == device_arg;
 }
 
 TEST_F(DHCPv6ConfigTest, StartDhcpcd) {
-  EXPECT_CALL(*minijail_, RunAndDestroy(_, IsDHCPCDv6Args(kHasLeaseSuffix), _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _, IsDHCPCDv6Args(kHasLeaseSuffix),
+                                     _, _, _, _))
+      .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config_));
 }
 
