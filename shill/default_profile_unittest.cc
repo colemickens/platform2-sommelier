@@ -87,19 +87,21 @@ TEST_F(DefaultProfileTest, GetProperties) {
 
   Error error(Error::kInvalidProperty, "");
   {
-    map<string, ::DBus::Variant> props;
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(profile_->store(), &props, &dbus_error);
+    chromeos::VariantDictionary props;
+    Error error;
+    profile_->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
-    EXPECT_FALSE(props[kOfflineModeProperty].reader().get_bool());
+    EXPECT_TRUE(props[kOfflineModeProperty].IsTypeCompatible<bool>());
+    EXPECT_FALSE(props[kOfflineModeProperty].Get<bool>());
   }
   properties_.offline_mode = true;
   {
-    map<string, ::DBus::Variant> props;
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(profile_->store(), &props, &dbus_error);
+    chromeos::VariantDictionary props;
+    Error error;
+    profile_->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
-    EXPECT_TRUE(props[kOfflineModeProperty].reader().get_bool());
+    EXPECT_TRUE(props[kOfflineModeProperty].IsTypeCompatible<bool>());
+    EXPECT_TRUE(props[kOfflineModeProperty].Get<bool>());
   }
   {
     Error error(Error::kInvalidProperty, "");

@@ -13,11 +13,9 @@
 
 #include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
@@ -36,42 +34,34 @@ using ::testing::Values;
 namespace shill {
 
 // static
-const ::DBus::Variant PropertyStoreTest::kBoolV = DBusAdaptor::BoolToVariant(0);
+const chromeos::Any PropertyStoreTest::kBoolV = chromeos::Any(false);
 // static
-const ::DBus::Variant PropertyStoreTest::kByteV = DBusAdaptor::ByteToVariant(0);
+const chromeos::Any PropertyStoreTest::kByteV =
+    chromeos::Any(uint8_t(0));
 // static
-const ::DBus::Variant PropertyStoreTest::kInt16V =
-    DBusAdaptor::Int16ToVariant(0);
+const chromeos::Any PropertyStoreTest::kInt16V = chromeos::Any(int16_t(0));
 // static
-const ::DBus::Variant PropertyStoreTest::kInt32V =
-    DBusAdaptor::Int32ToVariant(0);
+const chromeos::Any PropertyStoreTest::kInt32V = chromeos::Any(int32_t(0));
 // static
-const ::DBus::Variant PropertyStoreTest::kKeyValueStoreV =
-    DBusAdaptor::KeyValueStoreToVariant(KeyValueStore());
+const chromeos::Any PropertyStoreTest::kKeyValueStoreV =
+    chromeos::Any(chromeos::VariantDictionary());
 // static
-const ::DBus::Variant PropertyStoreTest::kStringV =
-    DBusAdaptor::StringToVariant("");
+const chromeos::Any PropertyStoreTest::kStringV = chromeos::Any(string());
 // static
-const ::DBus::Variant PropertyStoreTest::kStringmapV =
-    DBusAdaptor::StringmapToVariant(Stringmap());
+const chromeos::Any PropertyStoreTest::kStringmapV = chromeos::Any(Stringmap());
 // static
-const ::DBus::Variant PropertyStoreTest::kStringmapsV =
-    DBusAdaptor::StringmapsToVariant(Stringmaps());
+const chromeos::Any PropertyStoreTest::kStringmapsV =
+    chromeos::Any(Stringmaps());
 // static
-const ::DBus::Variant PropertyStoreTest::kStringsV =
-    DBusAdaptor::StringsToVariant(Strings(1, ""));
+const chromeos::Any PropertyStoreTest::kStringsV = chromeos::Any(Strings());
 // static
-const ::DBus::Variant PropertyStoreTest::kUint16V =
-    DBusAdaptor::Uint16ToVariant(0);
+const chromeos::Any PropertyStoreTest::kUint16V = chromeos::Any(uint16_t(0));
 // static
-const ::DBus::Variant PropertyStoreTest::kUint16sV =
-    DBusAdaptor::Uint16sToVariant(Uint16s{0});
+const chromeos::Any PropertyStoreTest::kUint16sV = chromeos::Any(Uint16s());
 // static
-const ::DBus::Variant PropertyStoreTest::kUint32V =
-    DBusAdaptor::Uint32ToVariant(0);
+const chromeos::Any PropertyStoreTest::kUint32V = chromeos::Any(uint32_t(0));
 // static
-const ::DBus::Variant PropertyStoreTest::kUint64V =
-    DBusAdaptor::Uint64ToVariant(0);
+const chromeos::Any PropertyStoreTest::kUint64V = chromeos::Any(uint64_t(0));
 
 PropertyStoreTest::PropertyStoreTest()
     : internal_error_(kErrorResultInternalError),
@@ -105,10 +95,10 @@ TEST_P(PropertyStoreTest, SetPropertyNonexistent) {
   // InvalidProperty, and does not yield a PropertyChange callback.
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
-  ::DBus::Error error;
+  Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", GetParam(), &error));
-  EXPECT_EQ(invalid_prop(), error.name());
+  EXPECT_FALSE(store.SetAnyProperty("", GetParam(), &error));
+  EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -282,15 +272,16 @@ TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
 }
 
 // Separate from SetPropertyNonexistent, because
-// DBusAdaptor::SetProperty doesn't support Stringmaps.
+// SetAnyProperty doesn't support Stringmaps.
 TEST_F(PropertyStoreTest, SetStringmapsProperty) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
-  ::DBus::Error error;
+
+  Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  EXPECT_FALSE(DBusAdaptor::SetProperty(
-      &store, "", PropertyStoreTest::kStringmapsV, &error));
-  EXPECT_EQ(internal_error(), error.name());
+  EXPECT_FALSE(store.SetAnyProperty(
+      "", PropertyStoreTest::kStringmapsV, &error));
+  EXPECT_EQ(Error::kInternalError, error.type());
 }
 
 // KeyValueStoreProperty is only defined for derived types so handle
@@ -298,11 +289,11 @@ TEST_F(PropertyStoreTest, SetStringmapsProperty) {
 TEST_F(PropertyStoreTest, KeyValueStorePropertyNonExistent) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
-  ::DBus::Error error;
+  Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  EXPECT_FALSE(DBusAdaptor::SetProperty(
-      &store, "", PropertyStoreTest::kKeyValueStoreV, &error));
-  EXPECT_EQ(invalid_prop(), error.name());
+  EXPECT_FALSE(store.SetAnyProperty(
+      "", PropertyStoreTest::kKeyValueStoreV, &error));
+  EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
 
 TEST_F(PropertyStoreTest, KeyValueStoreProperty) {
@@ -319,8 +310,8 @@ TEST_F(PropertyStoreTest, KeyValueStoreProperty) {
               &PropertyStoreTest::SetKeyValueStoreCallback)));
   EXPECT_CALL(*this, TestCallback(_));
   EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
-  ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, kKey, kKeyValueStoreV, &error));
+  Error error;
+  EXPECT_TRUE(store.SetAnyProperty(kKey, kKeyValueStoreV, &error));
 }
 
 TEST_F(PropertyStoreTest, WriteOnlyProperties) {

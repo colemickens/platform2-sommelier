@@ -11,23 +11,22 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
-#include <dbus-c++/dbus.h>
+#include <chromeos/any.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/dbus_adaptor.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_metrics.h"
 #include "shill/property_store.h"
+#include "shill/test_event_dispatcher.h"
 
 namespace shill {
 
-class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
+class PropertyStoreTest : public testing::TestWithParam<chromeos::Any> {
  public:
   typedef ::testing::Types<bool, int16_t, int32_t, std::string, Stringmap,
                            Stringmaps, Strings, uint8_t, uint16_t, Uint16s,
@@ -38,19 +37,19 @@ class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
   // These constructors don't, and declaring these as static lets me
   // autogenerate a bunch of unit test code that I would otherwise need to
   // copypaste.  So I think it's safe and worth it.
-  static const ::DBus::Variant kBoolV;
-  static const ::DBus::Variant kByteV;
-  static const ::DBus::Variant kInt16V;
-  static const ::DBus::Variant kInt32V;
-  static const ::DBus::Variant kKeyValueStoreV;
-  static const ::DBus::Variant kStringV;
-  static const ::DBus::Variant kStringmapV;
-  static const ::DBus::Variant kStringmapsV;
-  static const ::DBus::Variant kStringsV;
-  static const ::DBus::Variant kUint16V;
-  static const ::DBus::Variant kUint16sV;
-  static const ::DBus::Variant kUint32V;
-  static const ::DBus::Variant kUint64V;
+  static const chromeos::Any kBoolV;
+  static const chromeos::Any kByteV;
+  static const chromeos::Any kInt16V;
+  static const chromeos::Any kInt32V;
+  static const chromeos::Any kKeyValueStoreV;
+  static const chromeos::Any kStringV;
+  static const chromeos::Any kStringmapV;
+  static const chromeos::Any kStringmapsV;
+  static const chromeos::Any kStringsV;
+  static const chromeos::Any kUint16V;
+  static const chromeos::Any kUint16sV;
+  static const chromeos::Any kUint32V;
+  static const chromeos::Any kUint64V;
 
   PropertyStoreTest();
   ~PropertyStoreTest() override;
@@ -198,8 +197,9 @@ class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
   const std::string invalid_prop_;
   base::ScopedTempDir dir_;
   const std::string path_;
+
   MockControl control_interface_;
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   testing::NiceMock<MockMetrics> metrics_;
   MockGLib glib_;
   const std::vector<Technology::Identifier> default_technology_order_;

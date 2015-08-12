@@ -12,11 +12,9 @@
 
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "shill/dbus_adaptor.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
@@ -84,7 +82,7 @@ class ServiceTest : public PropertyStoreTest {
         eap_(new MockEapCredentials()),
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
         power_manager_(new MockPowerManager(nullptr, &control_)) {
-    ON_CALL(control_, CreatePowerManagerProxy(_))
+    ON_CALL(control_, CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
 
     service_->time_ = &time_;
@@ -272,143 +270,125 @@ TEST_F(ServiceTest, CalculateTechnology) {
 }
 
 TEST_F(ServiceTest, GetProperties) {
-  map<string, ::DBus::Variant> props;
-  Error error(Error::kInvalidProperty, "");
   {
-    ::DBus::Error dbus_error;
+    chromeos::VariantDictionary props;
+    Error error;
     string expected("true");
     service_->mutable_store()->SetStringProperty(kCheckPortalProperty,
                                                  expected,
                                                  &error);
-    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
+    EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kCheckPortalProperty) == props.end());
-    EXPECT_EQ(props[kCheckPortalProperty].reader().get_string(),
-              expected);
+    EXPECT_TRUE(props[kCheckPortalProperty].IsTypeCompatible<string>());
+    EXPECT_EQ(props[kCheckPortalProperty].Get<string>(), expected);
   }
   {
-    ::DBus::Error dbus_error;
+    chromeos::VariantDictionary props;
+    Error error;
     bool expected = true;
     service_->mutable_store()->SetBoolProperty(kAutoConnectProperty,
                                                expected,
                                                &error);
-    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
+    EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kAutoConnectProperty) == props.end());
-    EXPECT_EQ(props[kAutoConnectProperty].reader().get_bool(),
-              expected);
+    EXPECT_TRUE(props[kAutoConnectProperty].IsTypeCompatible<bool>());
+    EXPECT_EQ(props[kAutoConnectProperty].Get<bool>(), expected);
   }
   {
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
+    chromeos::VariantDictionary props;
+    Error error;
+    EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kConnectableProperty) == props.end());
-    EXPECT_EQ(props[kConnectableProperty].reader().get_bool(), false);
+    EXPECT_TRUE(props[kConnectableProperty].IsTypeCompatible<bool>());
+    EXPECT_EQ(props[kConnectableProperty].Get<bool>(), false);
   }
   {
-    ::DBus::Error dbus_error;
+    chromeos::VariantDictionary props;
+    Error error;
     int32_t expected = 127;
     service_->mutable_store()->SetInt32Property(kPriorityProperty,
                                                 expected,
                                                 &error);
-    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
+    EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kPriorityProperty) == props.end());
-    EXPECT_EQ(props[kPriorityProperty].reader().get_int32(),
-              expected);
+    EXPECT_TRUE(props[kPriorityProperty].IsTypeCompatible<int32_t>());
+    EXPECT_EQ(props[kPriorityProperty].Get<int32_t>(), expected);
   }
   {
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
+    chromeos::VariantDictionary props;
+    Error error;
+    service_->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kDeviceProperty) == props.end());
-    EXPECT_EQ(props[kDeviceProperty].reader().get_path(),
+    EXPECT_TRUE(props[kDeviceProperty].IsTypeCompatible<dbus::ObjectPath>());
+    EXPECT_EQ(props[kDeviceProperty].Get<dbus::ObjectPath>().value(),
               string(ServiceUnderTest::kRpcId));
   }
 }
 
 TEST_F(ServiceTest, SetProperty) {
   {
-    ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         kSaveCredentialsProperty,
-                                         PropertyStoreTest::kBoolV,
-                                         &error));
+    Error error;
+    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
+        kSaveCredentialsProperty, PropertyStoreTest::kBoolV, &error));
   }
   {
-    ::DBus::Error error;
-    ::DBus::Variant priority;
-    priority.writer().append_int32(1);
-    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         kPriorityProperty,
-                                         priority,
-                                         &error));
+    Error error;
+    const int32_t priority = 1;
+    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
+        kPriorityProperty, chromeos::Any(priority), &error));
   }
   {
-    ::DBus::Error error;
-    ::DBus::Variant guid;
-    guid.writer().append_string("not default");
-    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         kGuidProperty,
-                                         guid,
-                                         &error));
+    Error error;
+    const string guid("not default");
+    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
+        kGuidProperty, chromeos::Any(guid), &error));
   }
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Ensure that EAP properties cannot be set on services with no EAP
   // credentials.  Use service2_ here since we're have some code in
   // ServiceTest::SetUp() that fiddles with service_->eap_.
   {
-    ::DBus::Error error;
-    ::DBus::Variant eap;
-    eap.writer().append_string("eap eep eip!");
-    EXPECT_FALSE(DBusAdaptor::SetProperty(service2_->mutable_store(),
-                                          kEapMethodProperty,
-                                          eap,
-                                          &error));
-    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
-    EXPECT_EQ(invalid_prop(), error.name());
+    Error error;
+    string eap("eap eep eip!");
+    EXPECT_FALSE(service2_->mutable_store()->SetAnyProperty(
+        kEapMethodProperty, chromeos::Any(eap), &error));
+    ASSERT_TRUE(error.IsFailure());
+    EXPECT_EQ(Error::kInvalidProperty, error.type());
     // Now plumb in eap credentials, and try again.
     service2_->SetEapCredentials(new EapCredentials());
-    EXPECT_TRUE(DBusAdaptor::SetProperty(service2_->mutable_store(),
-                                         kEapMethodProperty,
-                                         eap,
-                                         &error));
+    EXPECT_TRUE(service2_->mutable_store()->SetAnyProperty(
+        kEapMethodProperty, chromeos::Any(eap), &error));
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          kConnectableProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          &error));
-    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
+        kConnectableProperty, PropertyStoreTest::kBoolV,  &error));
+    ASSERT_TRUE(error.IsFailure());
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {
-    ::DBus::Error error;
-    ::DBus::Variant auto_connect;
-    auto_connect.writer().append_bool(true);
-    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         kAutoConnectProperty,
-                                         auto_connect,
-                                         &error));
+    bool auto_connect = true;
+    Error error;
+    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
+        kAutoConnectProperty, chromeos::Any(auto_connect), &error));
   }
   // Ensure that we can perform a trivial set of the Name property (to its
   // current value) but an attempt to set the property to a different value
   // fails.
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          kNameProperty,
-                                          DBusAdaptor::StringToVariant(
-                                              GetFriendlyName()),
-                                          &error));
-    EXPECT_FALSE(error.is_set());
+    Error error;
+    EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
+        kNameProperty, chromeos::Any(GetFriendlyName()), &error));
+    EXPECT_FALSE(error.IsFailure());
   }
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          kNameProperty,
-                                          PropertyStoreTest::kStringV,
-                                          &error));
-    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
+        kNameProperty, PropertyStoreTest::kStringV, &error));
+    ASSERT_TRUE(error.IsFailure());
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }
 
@@ -1540,7 +1520,7 @@ TEST_P(WriteOnlyServicePropertyTest, PropertyWriteOnly) {
   EapCredentials eap;
   eap.InitPropertyStore(service_->mutable_store());
 
-  string property(GetParam().reader().get_string());
+  string property(GetParam().Get<string>());
   Error error;
   EXPECT_FALSE(service_->store().GetStringProperty(property, nullptr, &error));
   EXPECT_EQ(Error::kPermissionDenied, error.type());
@@ -1550,14 +1530,15 @@ INSTANTIATE_TEST_CASE_P(
     WriteOnlyServicePropertyTestInstance,
     WriteOnlyServicePropertyTest,
     Values(
-        DBusAdaptor::StringToVariant(kEapPrivateKeyPasswordProperty),
-        DBusAdaptor::StringToVariant(kEapPasswordProperty)));
+        chromeos::Any(string(kEapPrivateKeyPasswordProperty)),
+        chromeos::Any(string(kEapPasswordProperty))));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   {
     Error error;
-    EXPECT_EQ("/", service_->GetIPConfigRpcIdentifier(&error));
+    EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+              service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
@@ -1574,7 +1555,8 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     const string empty_string;
     EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
         .WillOnce(ReturnRef(empty_string));
-    EXPECT_EQ("/", service_->GetIPConfigRpcIdentifier(&error));
+    EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+              service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 

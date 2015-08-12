@@ -9,7 +9,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
@@ -301,31 +300,26 @@ TEST_F(VPNServiceTest, IsAutoConnectable) {
 }
 
 TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
-  DBus::Error error;
+  Error error;
   // A null change returns false, but with error set to success.
-  EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                        kNameProperty,
-                                        DBusAdaptor::StringToVariant(
-                                            service_->friendly_name()),
-                                        &error));
-  EXPECT_FALSE(error.is_set());
+  EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
+      kNameProperty, chromeos::Any(service_->friendly_name()), &error));
+  EXPECT_FALSE(error.IsFailure());
 }
 
 TEST_F(VPNServiceTest, SetNameProperty) {
   const string kHost = "1.2.3.4";
   driver_->args()->SetString(kProviderHostProperty, kHost);
   string kOldId = service_->GetStorageIdentifier();
-  DBus::Error error;
+  Error error;
   const string kName = "New Name";
   scoped_refptr<MockProfile> profile(
       new MockProfile(&control_, &metrics_, &manager_));
   EXPECT_CALL(*profile, DeleteEntry(kOldId, _));
   EXPECT_CALL(*profile, UpdateService(_));
   service_->set_profile(profile);
-  EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                       kNameProperty,
-                                       DBusAdaptor::StringToVariant(kName),
-                                       &error));
+  EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
+      kNameProperty, chromeos::Any(kName), &error));
   EXPECT_NE(service_->GetStorageIdentifier(), kOldId);
   EXPECT_EQ(kName, service_->friendly_name());
 }

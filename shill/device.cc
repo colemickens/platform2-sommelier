@@ -30,7 +30,6 @@
 #include "shill/connection.h"
 #include "shill/connection_tester.h"
 #include "shill/control_interface.h"
-#include "shill/device_dbus_adaptor.h"
 #include "shill/dhcp/dhcp_config.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"

@@ -18,12 +18,10 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/connectivity_trial.h"
-#include "shill/dbus_adaptor.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
@@ -167,7 +165,6 @@ class DeviceTest : public PropertyStoreTest {
                                Technology::kUnknown)),
         device_info_(control_interface(), nullptr, nullptr, nullptr),
         metrics_(dispatcher()) {
-    DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
     DHCPProvider::GetInstance()->dispatcher_ = dispatcher();
     device_->time_ = &time_;
@@ -293,40 +290,34 @@ TEST_F(DeviceTest, Contains) {
 }
 
 TEST_F(DeviceTest, GetProperties) {
-  map<string, ::DBus::Variant> props;
-  Error error(Error::kInvalidProperty, "");
-  ::DBus::Error dbus_error;
-  DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
+  chromeos::VariantDictionary props;
+  Error error;
+  device_->store().GetProperties(&props, &error);
   ASSERT_FALSE(props.find(kNameProperty) == props.end());
-  EXPECT_EQ(props[kNameProperty].reader().get_string(), string(kDeviceName));
+  EXPECT_TRUE(props[kNameProperty].IsTypeCompatible<string>());
+  EXPECT_EQ(props[kNameProperty].Get<string>(), string(kDeviceName));
 }
 
 // Note: there are currently no writeable Device properties that
 // aren't registered in a subclass.
 TEST_F(DeviceTest, SetReadOnlyProperty) {
-  ::DBus::Error error;
+  Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                        kAddressProperty,
-                                        PropertyStoreTest::kStringV,
-                                        &error));
-  EXPECT_EQ(invalid_args(), error.name());
+  EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
+      kAddressProperty, PropertyStoreTest::kStringV, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(DeviceTest, ClearReadOnlyProperty) {
-  ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                        kAddressProperty,
-                                        PropertyStoreTest::kStringV,
-                                        &error));
+  Error error;
+  EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
+      kAddressProperty, PropertyStoreTest::kStringV, &error));
 }
 
 TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
-  ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                        kIPConfigsProperty,
-                                        PropertyStoreTest::kStringsV,
-                                        &error));
+  Error error;
+  EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
+      kIPConfigsProperty, PropertyStoreTest::kStringsV, &error));
 }
 
 TEST_F(DeviceTest, DestroyIPConfig) {
