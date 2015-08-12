@@ -74,8 +74,13 @@ HttpTransportClient::SendRequestAndBlock(const std::string& method,
     if (!request.AddRequestBody(data.data(), data.size(), error))
       return nullptr;
   }
+
+  auto response = request.GetResponseAndBlock(error);
+  if (!response)
+    return nullptr;
+
   return std::unique_ptr<weave::HttpClient::Response>{
-      new ResponseImpl{request.GetResponseAndBlock(error)}};
+      new ResponseImpl{std::move(response)}};
 }
 
 int HttpTransportClient::SendRequest(const std::string& method,
