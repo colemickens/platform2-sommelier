@@ -18,6 +18,9 @@ class FlagHelperTest : public ::testing::Test {
  public:
   FlagHelperTest() {}
   ~FlagHelperTest() override { chromeos::FlagHelper::ResetForTesting(); }
+  static void SetUpTestCase() {
+      base::CommandLine::Init(0, nullptr);
+  }
 };
 
 // Test that the DEFINE_xxxx macros can create the respective variables

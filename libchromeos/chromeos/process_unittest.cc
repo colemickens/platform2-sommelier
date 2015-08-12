@@ -85,6 +85,12 @@ class ProcessTest : public ::testing::Test {
     ClearLog();
   }
 
+  static void SetUpTestCase() {
+    base::CommandLine::Init(0, nullptr);
+    ::chromeos::InitLog(chromeos::kLogToStderr);
+    ::chromeos::LogToString(true);
+  }
+
  protected:
   void CheckStderrCaptured();
   FilePath GetFdPath(int fd);
@@ -260,6 +266,7 @@ TEST_F(ProcessTest, NoParams) {
   EXPECT_EQ(-1, process_.Run());
 }
 
+#if !defined(__BRILLO__) // Bionic intercepts the segfault in brillo
 TEST_F(ProcessTest, SegFaultHandling) {
   process_.AddArg(kBinSh);
   process_.AddArg("-c");
@@ -267,6 +274,16 @@ TEST_F(ProcessTest, SegFaultHandling) {
   EXPECT_EQ(-1, process_.Run());
   EXPECT_TRUE(FindLog("did not exit normally: 11"));
 }
+#endif
+
+TEST_F(ProcessTest, KillHandling) {
+  process_.AddArg(kBinSh);
+  process_.AddArg("-c");
+  process_.AddArg("kill -KILL $$");
+  EXPECT_EQ(-1, process_.Run());
+  EXPECT_TRUE(FindLog("did not exit normally: 9"));
+}
+
 
 TEST_F(ProcessTest, KillNoPid) {
   process_.Kill(SIGTERM, 0);
