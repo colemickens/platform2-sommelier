@@ -47,8 +47,8 @@ const char kLocalMacAddressASCIIString[] = "123456";
 const char kArpReplySenderMacAddressASCIIString[] = "345678";
 const char* kDNSServers[] = {kDNSServer0, kDNSServer1};
 const shill::IPAddress kIPv4LocalAddress("100.200.43.22");
-const shill::IPAddress kIPv4URLAddress("8.8.8.8");
-const shill::IPAddress kIPv6URLAddress("fe80::1aa9:5ff:7ebf:14c5");
+const shill::IPAddress kIPv4ServerAddress("8.8.8.8");
+const shill::IPAddress kIPv6ServerAddress("fe80::1aa9:5ff:7ebf:14c5");
 const shill::IPAddress kIPv4GatewayAddress("192.168.1.1");
 const shill::IPAddress kIPv6GatewayAddress("fee2::11b2:53f:13be:125e");
 const vector<base::TimeDelta> kEmptyResult;
@@ -140,9 +140,9 @@ class ConnectionDiagnosticsTest : public Test {
 
   virtual void SetUp() {
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4LocalAddress.family());
-    ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4URLAddress.family());
+    ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4ServerAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv4, kIPv4GatewayAddress.family());
-    ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6URLAddress.family());
+    ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6ServerAddress.family());
     ASSERT_EQ(IPAddress::kFamilyIPv6, kIPv6GatewayAddress.family());
 
     arp_client_ = new NiceMock<MockArpClient>();
@@ -872,9 +872,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   VerifyStopped();
 }
 
@@ -973,11 +973,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_1) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
+                           kIPv4ServerAddress);
   VerifyStopped();
 }
 
@@ -990,11 +990,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_2) {
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
+                           kIPv4ServerAddress);
   VerifyStopped();
 }
 
@@ -1009,11 +1009,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
+                           kIPv4ServerAddress);
   VerifyStopped();
 }
 
@@ -1024,12 +1024,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_1) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndFailure();
   VerifyStopped();
 }
@@ -1043,10 +1043,10 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRoute_Failure_2) {
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndFailure();
   VerifyStopped();
 }
@@ -1063,12 +1063,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_3) {
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
   ExpectFindRouteToHostEndFailure();
   VerifyStopped();
 }
@@ -1093,13 +1093,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv4GatewayAddress);
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
@@ -1115,13 +1115,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6URLAddress);
+                             kIPv6ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6URLAddress, false);
+                           kIPv6ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv6GatewayAddress);
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
@@ -1139,11 +1139,11 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv4GatewayAddress);
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
@@ -1164,13 +1164,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
   ExpectPingDNSServersStartSuccess();
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv4GatewayAddress);
   ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway,
@@ -1191,13 +1191,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_1) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv4GatewayAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
@@ -1214,14 +1214,14 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_2) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, true);
-  ExpectArpTableLookupStartSuccessEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, true);
+  ExpectArpTableLookupStartSuccessEndSuccess(kIPv4ServerAddress, false);
   VerifyStopped();
 }
 
@@ -1234,13 +1234,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_1) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv4GatewayAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
@@ -1259,14 +1259,14 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_2) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, true);
-  ExpectArpTableLookupStartSuccessEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, true);
+  ExpectArpTableLookupStartSuccessEndSuccess(kIPv4ServerAddress, false);
   VerifyStopped();
 }
 
@@ -1279,13 +1279,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_1) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, false);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv4GatewayAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
@@ -1304,14 +1304,14 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_2) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv4URLAddress);
+                             kIPv4ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv4URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv4URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv4URLAddress, true);
-  ExpectArpTableLookupStartSuccessEndFailure(kIPv4URLAddress);
+                           kIPv4ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv4ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv4ServerAddress, true);
+  ExpectArpTableLookupStartSuccessEndFailure(kIPv4ServerAddress);
   ExpectCheckIPCollisionStartSuccess();
   ExpectCheckIPCollisionEndFailureServerArpFailed();
   VerifyStopped();
@@ -1327,13 +1327,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_1) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6URLAddress);
+                             kIPv6ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6URLAddress, false);
+                           kIPv6ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv6GatewayAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
@@ -1353,15 +1353,15 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_2) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6URLAddress);
+                             kIPv6ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6URLAddress, true);
-  ExpectNeighborTableLookupStartSuccess(kIPv6URLAddress);
-  ExpectNeighborTableLookupEndSuccess(kIPv6URLAddress, false);
+                           kIPv6ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, true);
+  ExpectNeighborTableLookupStartSuccess(kIPv6ServerAddress);
+  ExpectNeighborTableLookupEndSuccess(kIPv6ServerAddress, false);
   VerifyStopped();
 }
 
@@ -1376,13 +1376,13 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_1) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6URLAddress);
+                             kIPv6ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6URLAddress, false);
+                           kIPv6ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, false);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
                              kIPv6GatewayAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway,
@@ -1402,15 +1402,15 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_2) {
   ExpectPortalDetectionStartSuccess(kURL);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
-  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6URLAddress);
+  ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
   ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
-                             kIPv6URLAddress);
+                             kIPv6ServerAddress);
   ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
-                           kIPv6URLAddress);
-  ExpectFindRouteToHostStartSuccess(kIPv6URLAddress);
-  ExpectFindRouteToHostEndSuccess(kIPv6URLAddress, true);
-  ExpectNeighborTableLookupStartSuccess(kIPv6URLAddress);
-  ExpectNeighborTableLookupEndFailureNoEntry(kIPv6URLAddress, false);
+                           kIPv6ServerAddress);
+  ExpectFindRouteToHostStartSuccess(kIPv6ServerAddress);
+  ExpectFindRouteToHostEndSuccess(kIPv6ServerAddress, true);
+  ExpectNeighborTableLookupStartSuccess(kIPv6ServerAddress);
+  ExpectNeighborTableLookupEndFailureNoEntry(kIPv6ServerAddress, false);
   VerifyStopped();
 }
 
