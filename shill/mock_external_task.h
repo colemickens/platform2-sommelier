@@ -18,7 +18,7 @@ namespace shill {
 class MockExternalTask : public ExternalTask {
  public:
   MockExternalTask(ControlInterface* control,
-                   GLib* glib,
+                   ProcessManager* process_manager,
                    const base::WeakPtr<RPCTaskDelegate>& task_delegate,
                    const base::Callback<void(pid_t, int)>& death_callback);
   ~MockExternalTask() override;

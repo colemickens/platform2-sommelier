@@ -24,6 +24,7 @@ class ExternalTask;
 class Manager;
 class Metrics;
 class PPPDeviceFactory;
+class ProcessManager;
 class StoreInterface;
 
 // PPPoEService is an EthernetService that manages PPPoE connectivity on a
@@ -56,6 +57,7 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
               const std::map<std::string, std::string>& dict) override;
 
  private:
+  friend class PPPoEServiceTest;
   FRIEND_TEST(PPPoEServiceTest, Disconnect);
   FRIEND_TEST(PPPoEServiceTest, OnPPPConnected);
 
@@ -71,6 +73,7 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
 
   ControlInterface* control_interface_;
   PPPDeviceFactory* ppp_device_factory_;
+  ProcessManager* process_manager_;
 
   std::string username_;
   std::string password_;

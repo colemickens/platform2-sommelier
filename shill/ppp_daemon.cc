@@ -17,7 +17,6 @@
 #include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/external_task.h"
-#include "shill/glib.h"
 #include "shill/ppp_device.h"
 
 namespace shill {
@@ -29,7 +28,7 @@ const uint32_t PPPDaemon::kUnspecifiedValue = UINT32_MAX;
 
 std::unique_ptr<ExternalTask> PPPDaemon::Start(
     ControlInterface* control_interface,
-    GLib* glib,
+    ProcessManager* process_manager,
     const base::WeakPtr<RPCTaskDelegate>& task_delegate,
     const PPPDaemon::Options& options,
     const std::string& device,
@@ -72,7 +71,7 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
   arguments.push_back(device);
 
   std::unique_ptr<ExternalTask> task(new ExternalTask(
-      control_interface, glib, task_delegate, death_callback));
+      control_interface, process_manager, task_delegate, death_callback));
 
   std::map<std::string, std::string> environment;
   if (task->Start(base::FilePath(kDaemonPath), arguments, environment, true,

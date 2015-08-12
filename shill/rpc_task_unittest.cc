@@ -52,13 +52,10 @@ void RPCTaskTest::Notify(const string& reason,
 }
 
 TEST_F(RPCTaskTest, GetEnvironment) {
-  vector<string> env = task_.GetEnvironment();
+  map<string, string> env = task_.GetEnvironment();
   ASSERT_EQ(2, env.size());
-  EXPECT_EQ(
-      string(kRPCTaskServiceVariable) + "=" + RPCTaskMockAdaptor::kRpcConnId,
-      env[0]);
-  EXPECT_EQ(string(kRPCTaskPathVariable) + "=" + RPCTaskMockAdaptor::kRpcId,
-            env[1]);
+  EXPECT_EQ(env[kRPCTaskServiceVariable], RPCTaskMockAdaptor::kRpcConnId);
+  EXPECT_EQ(env[kRPCTaskPathVariable], RPCTaskMockAdaptor::kRpcId);
 }
 
 TEST_F(RPCTaskTest, GetRpcIdentifiers) {

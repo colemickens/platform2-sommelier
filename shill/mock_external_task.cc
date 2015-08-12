@@ -8,10 +8,10 @@ namespace shill {
 
 MockExternalTask::MockExternalTask(
     ControlInterface* control,
-    GLib* glib,
+    ProcessManager* process_manager,
     const base::WeakPtr<RPCTaskDelegate>& task_delegate,
     const base::Callback<void(pid_t, int)>& death_callback)
-    : ExternalTask(control, glib, task_delegate, death_callback) {}
+    : ExternalTask(control, process_manager, task_delegate, death_callback) {}
 
 MockExternalTask::~MockExternalTask() {
   OnDelete();

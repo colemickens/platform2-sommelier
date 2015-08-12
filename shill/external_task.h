@@ -17,7 +17,6 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/glib.h"
 #include "shill/rpc_task.h"
 
 namespace shill {
@@ -25,12 +24,12 @@ namespace shill {
 class ControlInterface;
 class Error;
 class EventDispatcher;
-class ProcessKiller;
+class ProcessManager;
 
 class ExternalTask : public RPCTaskDelegate {
  public:
   ExternalTask(ControlInterface* control,
-               GLib* glib,
+               ProcessManager* process_manager,
                const base::WeakPtr<RPCTaskDelegate>& task_delegate,
                const base::Callback<void(pid_t, int)>& death_callback);
   ~ExternalTask() override;  // But consider DestroyLater...
@@ -90,19 +89,14 @@ class ExternalTask : public RPCTaskDelegate {
   void Notify(
       const std::string& event,
       const std::map<std::string, std::string>& details) override;
+
   // Called when the external process exits.
-  static void OnTaskDied(GPid pid, gint status, gpointer data);
+  void OnTaskDied(int exit_status);
 
   static void Destroy(ExternalTask* task);
 
-  // This method is run in the child process (i.e. after fork(), but
-  // before exec()). It configures the child to receive a SIGTERM when
-  // the parent exits.
-  static void SetupTermination(gpointer glib_user_data);
-
   ControlInterface* control_;
-  GLib* glib_;
-  ProcessKiller* process_killer_;  // Field permits mocking.
+  ProcessManager* process_manager_;
 
   std::unique_ptr<RPCTask> rpc_task_;
   base::WeakPtr<RPCTaskDelegate> task_delegate_;
@@ -111,9 +105,6 @@ class ExternalTask : public RPCTaskDelegate {
   // The PID of the spawned process. May be 0 if no process has been
   // spawned yet or the process has died.
   pid_t pid_;
-
-  // Child exit watch callback source tag.
-  unsigned int child_watch_tag_;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalTask);
 };

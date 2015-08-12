@@ -12,7 +12,6 @@
 #include <gtest/gtest.h>
 #include <vpn-manager/service_error.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
@@ -23,7 +22,9 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_ppp_device_factory.h"
+#include "shill/mock_process_manager.h"
 #include "shill/nice_mock_control.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_service.h"
 
 using base::FilePath;
@@ -50,7 +51,8 @@ class L2TPIPSecDriverTest : public testing::Test,
         metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
         driver_(new L2TPIPSecDriver(&control_, &dispatcher_, &metrics_,
-                                    &manager_, &device_info_, &glib_)),
+                                    &manager_, &device_info_,
+                                    &process_manager_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
         device_(new MockPPPDevice(&control_, &dispatcher_, &metrics_, &manager_,
@@ -183,9 +185,10 @@ class L2TPIPSecDriverTest : public testing::Test,
   base::ScopedTempDir temp_dir_;
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
+  MockProcessManager process_manager_;
   MockManager manager_;
   L2TPIPSecDriver* driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
@@ -243,7 +246,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->device_ = device_;
   driver_->external_task_.reset(
       new MockExternalTask(&control_,
-                           &glib_,
+                           &process_manager_,
                            weak_ptr_factory_.GetWeakPtr(),
                            base::Callback<void(pid_t, int)>()));
   EXPECT_CALL(*device_, DropConnection());
@@ -526,10 +529,9 @@ TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
   // ExternalTask will call, mock out ExternalTask. Non-trivial,
   // though, because ExternalTask is constructed during the
   // call to driver_->Connect.
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).
-      WillOnce(Return(false)).
-      WillOnce(Return(true));
-  EXPECT_CALL(glib_, ChildWatchAdd(_, _, _));
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+      .WillOnce(Return(-1))
+      .WillOnce(Return(1));
 
   EXPECT_FALSE(driver_->SpawnL2TPIPSecVPN(&error));
   EXPECT_FALSE(driver_->external_task_);
@@ -546,8 +548,8 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
   // ExternalTask will call, mock out ExternalTask. Non-trivial,
   // though, because ExternalTask is constructed during the
   // call to driver_->Connect.
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+      .WillOnce(Return(1));
 
   Error error;
   driver_->Connect(service_, &error);
@@ -694,7 +696,8 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   map<string, string> dict;
   base::Callback<void(pid_t, int)> death_callback;
   MockExternalTask* local_external_task =
-      new MockExternalTask(&control_, &glib_, weak_ptr_factory_.GetWeakPtr(),
+      new MockExternalTask(&control_, &process_manager_,
+                           weak_ptr_factory_.GetWeakPtr(),
                            death_callback);
   driver_->device_ = device_;
   driver_->external_task_.reset(local_external_task);  // passes ownership

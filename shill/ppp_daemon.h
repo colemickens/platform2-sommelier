@@ -16,8 +16,8 @@
 namespace shill {
 
 class ControlInterface;
-class GLib;
 class Error;
+class ProcessManager;
 
 // PPPDaemon provides control over the configuration and instantiation of pppd
 // processes.  All pppd instances created through PPPDaemon will use shill's
@@ -87,7 +87,7 @@ class PPPDaemon {
   // started, and nullptr is returned.
   static std::unique_ptr<ExternalTask> Start(
       ControlInterface* control_interface,
-      GLib* glib,
+      ProcessManager* process_manager,
       const base::WeakPtr<RPCTaskDelegate>& task_delegate,
       const Options& options,
       const std::string& device,

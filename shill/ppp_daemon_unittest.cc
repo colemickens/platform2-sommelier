@@ -15,14 +15,15 @@
 
 #include "shill/error.h"
 #include "shill/external_task.h"
-#include "shill/glib.h"
 #include "shill/mock_control.h"
-#include "shill/mock_glib.h"
+#include "shill/mock_process_manager.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
 
 namespace shill {
 
+using std::string;
+using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::Return;
@@ -39,15 +40,14 @@ class PPPDaemonTest : public Test, public RPCTaskDelegate {
                                       Error* error) {
     PPPDaemon::DeathCallback callback(base::Bind(&PPPDaemonTest::DeathCallback,
                                                  base::Unretained(this)));
-    return PPPDaemon::Start(&control_, &glib_, weak_ptr_factory_.GetWeakPtr(),
+    return PPPDaemon::Start(&control_, &process_manager_,
+                            weak_ptr_factory_.GetWeakPtr(),
                             options, device, callback, error);
   }
 
-  gboolean CaptureArgv(gchar** argv) {
-    for (gchar** i = argv; *i != nullptr; ++i) {
-      argv_.push_back(*i);
-    }
-    return TRUE;
+  bool CaptureArgv(const vector<string>& argv) {
+    argv_ = argv;
+    return true;
   }
 
   MOCK_METHOD2(GetLogin, void(std::string* user, std::string* password));
@@ -56,7 +56,7 @@ class PPPDaemonTest : public Test, public RPCTaskDelegate {
 
  protected:
   MockControl control_;
-  MockGLib glib_;
+  MockProcessManager process_manager_;
 
   std::vector<std::string> argv_;
   base::WeakPtrFactory<PPPDaemonTest> weak_ptr_factory_;
@@ -68,8 +68,8 @@ class PPPDaemonTest : public Test, public RPCTaskDelegate {
 };
 
 TEST_F(PPPDaemonTest, PluginUsed) {
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(WithArg<1>(Invoke(this, &PPPDaemonTest::CaptureArgv)));
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+      .WillOnce(WithArg<2>(Invoke(this, &PPPDaemonTest::CaptureArgv)));
 
   Error error;
   PPPDaemon::Options options;
@@ -83,8 +83,8 @@ TEST_F(PPPDaemonTest, PluginUsed) {
 }
 
 TEST_F(PPPDaemonTest, OptionsConverted) {
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(WithArg<1>(Invoke(this, &PPPDaemonTest::CaptureArgv)));
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+      .WillOnce(WithArg<2>(Invoke(this, &PPPDaemonTest::CaptureArgv)));
 
   PPPDaemon::Options options;
   options.no_detach = true;
@@ -108,8 +108,8 @@ TEST_F(PPPDaemonTest, OptionsConverted) {
 }
 
 TEST_F(PPPDaemonTest, ErrorPropagated) {
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+      .WillOnce(Return(-1));
 
   PPPDaemon::Options options;
   Error error;

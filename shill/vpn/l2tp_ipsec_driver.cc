@@ -40,6 +40,7 @@
 #include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
+#include "shill/process_manager.h"
 #include "shill/vpn/vpn_service.h"
 
 using base::Bind;
@@ -107,12 +108,12 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface* control,
                                  Metrics* metrics,
                                  Manager* manager,
                                  DeviceInfo* device_info,
-                                 GLib* glib)
+                                 ProcessManager* process_manager)
     : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
       control_(control),
       metrics_(metrics),
       device_info_(device_info),
-      glib_(glib),
+      process_manager_(process_manager),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       certificate_file_(new CertificateFile()),
       weak_ptr_factory_(this) {}
@@ -208,7 +209,8 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   std::unique_ptr<ExternalTask> external_task_local(
-      new ExternalTask(control_, glib_,
+      new ExternalTask(control_,
+                       process_manager_,
                        weak_ptr_factory_.GetWeakPtr(),
                        Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
                             weak_ptr_factory_.GetWeakPtr())));

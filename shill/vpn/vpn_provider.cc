@@ -13,6 +13,7 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/process_manager.h"
 #include "shill/profile.h"
 #include "shill/store_interface.h"
 #include "shill/vpn/l2tp_ipsec_driver.h"
@@ -234,7 +235,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
   } else if (type == kProviderL2tpIpsec) {
     driver.reset(new L2TPIPSecDriver(
         control_interface_, dispatcher_, metrics_, manager_,
-        manager_->device_info(), manager_->glib()));
+        manager_->device_info(), ProcessManager::GetInstance()));
   } else if (type == kProviderThirdPartyVpn) {
     // For third party VPN host contains extension ID
     driver.reset(new ThirdPartyVpnDriver(

@@ -39,12 +39,11 @@ void RPCTask::Notify(const string& reason, const map<string, string>& dict) {
   delegate_->Notify(reason, dict);
 }
 
-vector<string> RPCTask::GetEnvironment() const {
-  return vector<string>{
-    string(kRPCTaskServiceVariable) + "=" +
-        adaptor_->GetRpcConnectionIdentifier(),
-    string(kRPCTaskPathVariable) + "=" +
-        adaptor_->GetRpcIdentifier()};
+map<string, string> RPCTask::GetEnvironment() const {
+  map<string, string> env;
+  env.emplace(kRPCTaskServiceVariable, adaptor_->GetRpcConnectionIdentifier());
+  env.emplace(kRPCTaskPathVariable, adaptor_->GetRpcIdentifier());
+  return env;
 }
 
 // TODO(quiche): remove after moving OpenVPNDriver over to ExternalTask.

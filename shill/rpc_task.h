@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <base/macros.h>
 
@@ -51,7 +50,7 @@ class RPCTask {
 
   // Generates environment variable strings for a child process to
   // communicate back to us over RPC.
-  virtual std::vector<std::string> GetEnvironment() const;
+  virtual std::map<std::string, std::string> GetEnvironment() const;
   std::string GetRpcIdentifier() const;
   std::string GetRpcConnectionIdentifier() const;
 

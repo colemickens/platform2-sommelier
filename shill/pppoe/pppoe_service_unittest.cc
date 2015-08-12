@@ -13,7 +13,6 @@
 #include <base/memory/ref_counted.h>
 
 #include "shill/ethernet/mock_ethernet.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_external_task.h"
@@ -22,7 +21,9 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_ppp_device_factory.h"
+#include "shill/mock_process_manager.h"
 #include "shill/service.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using std::map;
@@ -56,6 +57,7 @@ class PPPoEServiceTest : public testing::Test {
                                   &manager_,
                                   ethernet_->weak_ptr_factory_.GetWeakPtr())) {
     manager_.set_mock_device_info(&device_info_);
+    service_->process_manager_ = &process_manager_;
   }
 
   ~PPPoEServiceTest() override {
@@ -68,17 +70,18 @@ class PPPoEServiceTest : public testing::Test {
   void FakeConnectionSuccess() {
     EXPECT_CALL(*ethernet_, link_up())
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
-        .WillOnce(Return(true));
+    EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+        .WillOnce(Return(0));
     Error error;
     service_->Connect(&error, "in test");
     EXPECT_TRUE(error.IsSuccess());
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
   MockControl control_interface_;
+  MockProcessManager process_manager_;
   MockManager manager_;
   scoped_refptr<MockEthernet> ethernet_;
   MockDeviceInfo device_info_;
@@ -171,7 +174,7 @@ TEST_F(PPPoEServiceTest, Disconnect) {
 
   auto weak_ptr = service_->weak_ptr_factory_.GetWeakPtr();
   MockExternalTask* pppd = new MockExternalTask(
-      &control_interface_, &glib_, weak_ptr,
+      &control_interface_, &process_manager_, weak_ptr,
       base::Bind(&PPPoEService::OnPPPDied, weak_ptr));
   service_->pppd_.reset(pppd);
 

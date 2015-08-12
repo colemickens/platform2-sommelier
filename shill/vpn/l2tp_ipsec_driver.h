@@ -26,9 +26,9 @@ class CertificateFile;
 class ControlInterface;
 class DeviceInfo;
 class ExternalTask;
-class GLib;
 class Metrics;
 class PPPDeviceFactory;
+class ProcessManager;
 
 class L2TPIPSecDriver : public VPNDriver,
                         public RPCTaskDelegate {
@@ -38,7 +38,7 @@ class L2TPIPSecDriver : public VPNDriver,
                   Metrics* metrics,
                   Manager* manager,
                   DeviceInfo* device_info,
-                  GLib* glib);
+                  ProcessManager* process_manager);
   ~L2TPIPSecDriver() override;
 
   // Method to return service RPC identifier.
@@ -138,7 +138,7 @@ class L2TPIPSecDriver : public VPNDriver,
   ControlInterface* control_;
   Metrics* metrics_;
   DeviceInfo* device_info_;
-  GLib* glib_;
+  ProcessManager* process_manager_;
   PPPDeviceFactory* ppp_device_factory_;
 
   VPNServiceRefPtr service_;

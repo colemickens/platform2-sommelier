@@ -21,6 +21,7 @@
 #include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
+#include "shill/process_manager.h"
 #include "shill/store_interface.h"
 
 using base::StringPrintf;
@@ -43,6 +44,7 @@ PPPoEService::PPPoEService(ControlInterface* control_interface,
                       Technology::kPPPoE, ethernet),
       control_interface_(control_interface),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
+      process_manager_(ProcessManager::GetInstance()),
       lcp_echo_interval_(kDefaultLCPEchoInterval),
       lcp_echo_failure_(kDefaultLCPEchoFailure),
       max_auth_failure_(kDefaultMaxAuthFailure),
@@ -103,7 +105,7 @@ void PPPoEService::Connect(Error* error, const char* reason) {
   options.max_fail = max_auth_failure_;
 
   pppd_ = PPPDaemon::Start(
-      control_interface_, manager()->glib(), weak_ptr_factory_.GetWeakPtr(),
+      control_interface_, process_manager_, weak_ptr_factory_.GetWeakPtr(),
       options, ethernet()->link_name(), callback, error);
   if (pppd_ == nullptr) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,

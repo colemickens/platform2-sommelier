@@ -17,11 +17,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_glib.h"
-#include "shill/mock_process_killer.h"
+#include "shill/mock_process_manager.h"
 #include "shill/nice_mock_control.h"
+#include "shill/test_event_dispatcher.h"
 
 using std::map;
 using std::set;
@@ -47,11 +46,10 @@ class ExternalTaskTest : public testing::Test,
           base::Bind(&ExternalTaskTest::TaskDiedCallback,
                      weak_ptr_factory_.GetWeakPtr())),
         external_task_(
-            new ExternalTask(&control_, &glib_, weak_ptr_factory_.GetWeakPtr(),
+            new ExternalTask(&control_, &process_manager_,
+                             weak_ptr_factory_.GetWeakPtr(),
                              death_callback_)),
-        test_rpc_task_destroyed_(false) {
-    external_task_->process_killer_ = &process_killer_;
-  }
+        test_rpc_task_destroyed_(false) {}
 
   virtual ~ExternalTaskTest() {}
 
@@ -60,12 +58,8 @@ class ExternalTaskTest : public testing::Test,
       return;
     }
 
-    if (external_task_->child_watch_tag_) {
-      EXPECT_CALL(glib_, SourceRemove(external_task_->child_watch_tag_));
-    }
-
     if (external_task_->pid_) {
-      EXPECT_CALL(process_killer_, Kill(external_task_->pid_, _));
+      EXPECT_CALL(process_manager_, StopProcess(external_task_->pid_));
     }
   }
 
@@ -77,20 +71,17 @@ class ExternalTaskTest : public testing::Test,
   void FakeUpRunningProcess(unsigned int tag, int pid);
 
   void ExpectStop(unsigned int tag, int pid) {
-    EXPECT_CALL(glib_, SourceRemove(tag));
-    EXPECT_CALL(process_killer_, Kill(pid, _));
+    EXPECT_CALL(process_manager_, StopProcess(pid));
   }
 
   void VerifyStop() {
     if (external_task_) {
-      EXPECT_EQ(0, external_task_->child_watch_tag_);
       EXPECT_EQ(0, external_task_->pid_);
       EXPECT_FALSE(external_task_->rpc_task_);
     }
     EXPECT_TRUE(test_rpc_task_destroyed_);
     // Make sure EXPECTations were met before the fixture's dtor.
-    Mock::VerifyAndClearExpectations(&glib_);
-    Mock::VerifyAndClearExpectations(&process_killer_);
+    Mock::VerifyAndClearExpectations(&process_manager_);
   }
 
  protected:
@@ -99,12 +90,11 @@ class ExternalTaskTest : public testing::Test,
   MOCK_METHOD2(Notify, void(const string& reason,
                             const map<string, string>& dict));
 
-  MOCK_METHOD2(TaskDiedCallback, void(pid_t dead_process, int exit_status));
+  MOCK_METHOD2(TaskDiedCallback, void(pid_t pid, int exit_status));
 
   NiceMockControl control_;
-  EventDispatcher dispatcher_;
-  MockGLib glib_;
-  MockProcessKiller process_killer_;
+  EventDispatcherForTest dispatcher_;
+  MockProcessManager process_manager_;
   base::WeakPtrFactory<ExternalTaskTest> weak_ptr_factory_;
   base::Callback<void(pid_t, int)> death_callback_;
   std::unique_ptr<ExternalTask> external_task_;
@@ -136,7 +126,6 @@ TestRPCTask::~TestRPCTask() {
 }  // namespace
 
 void ExternalTaskTest::FakeUpRunningProcess(unsigned int tag, int pid) {
-  external_task_->child_watch_tag_ = tag;
   external_task_->pid_ = pid;
   external_task_->rpc_task_.reset(new TestRPCTask(&control_, this));
 }
@@ -196,22 +185,17 @@ TEST_F(ExternalTaskTest, Start) {
   const string kCommand = "/run/me";
   const vector<string> kCommandOptions{"arg1", "arg2"};
   const map<string, string> kCommandEnv{{"env1", "val1"}, {"env2", "val2"}};
-  const vector<string> kExpectedEnv{"SHILL_TASK_SERVICE=.+",
-                                    "SHILL_TASK_PATH=.+", "env1=val1",
-                                    "env2=val2"};
+  map<string, string> expected_env;
+  expected_env.emplace(kRPCTaskServiceVariable, RPCTaskMockAdaptor::kRpcConnId);
+  expected_env.emplace(kRPCTaskPathVariable, RPCTaskMockAdaptor::kRpcId);
+  expected_env.insert(kCommandEnv.begin(), kCommandEnv.end());
   const int kPID = 234678;
-  EXPECT_CALL(glib_, SpawnAsync(_,
-                                HasElementsMatching(kCommandOptions),
-                                HasElementsMatching(kExpectedEnv),
-                                _, _, _, _, _))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
-  const int kTag = 6;
+  EXPECT_CALL(process_manager_,
+              StartProcess(_, base::FilePath(kCommand), kCommandOptions,
+                           expected_env, false, _))
+      .WillOnce(Return(-1))
+      .WillOnce(Return(kPID));
   Error error;
-  EXPECT_CALL(glib_,
-              ChildWatchAdd(
-                  kPID, &external_task_->OnTaskDied, external_task_.get()))
-      .WillOnce(Return(kTag));
   EXPECT_FALSE(external_task_->Start(
       base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
   EXPECT_EQ(Error::kInternalError, error.type());
@@ -222,7 +206,6 @@ TEST_F(ExternalTaskTest, Start) {
       base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kPID, external_task_->pid_);
-  EXPECT_EQ(kTag, external_task_->child_watch_tag_);
   EXPECT_NE(nullptr, external_task_->rpc_task_);
 }
 
@@ -237,8 +220,7 @@ TEST_F(ExternalTaskTest, Stop) {
 }
 
 TEST_F(ExternalTaskTest, StopNotStarted) {
-  EXPECT_CALL(glib_, SourceRemove(_)).Times(0);
-  EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
+  EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
   external_task_->Stop();
   EXPECT_FALSE(test_rpc_task_destroyed_);
 }
@@ -264,12 +246,10 @@ TEST_F(ExternalTaskTest, Notify) {
 TEST_F(ExternalTaskTest, OnTaskDied) {
   const int kPID = 99999;
   const int kExitStatus = 1;
-  external_task_->child_watch_tag_ = 333;
   external_task_->pid_ = kPID;
-  EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
+  EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
   EXPECT_CALL(*this, TaskDiedCallback(kPID, kExitStatus));
-  ExternalTask::OnTaskDied(kPID, kExitStatus, external_task_.get());
-  EXPECT_EQ(0, external_task_->child_watch_tag_);
+  external_task_->OnTaskDied(kExitStatus);
   EXPECT_EQ(0, external_task_->pid_);
 }
 
