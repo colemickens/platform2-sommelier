@@ -23,56 +23,28 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 
 const char ChromeosSupplicantInterfaceProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1.Interface";
-const char ChromeosSupplicantInterfaceProxy::kPropertyApScan[] = "ApScan";
-const char ChromeosSupplicantInterfaceProxy::kPropertyBlobs[] = "Blobs";
-const char ChromeosSupplicantInterfaceProxy::kPropertyBridgeIfname[] =
-    "BridgeIfname";
-const char ChromeosSupplicantInterfaceProxy::kPropertyBSSs[] = "BSSs";
-const char ChromeosSupplicantInterfaceProxy::kPropertyCapabilities[] =
-    "Capabilities";
-const char ChromeosSupplicantInterfaceProxy::kPropertyCurrentBss[] =
-    "CurrentBss";
-const char ChromeosSupplicantInterfaceProxy::kPropertyCurrentNetwork[] =
-    "CurrentNetwork";
 const char ChromeosSupplicantInterfaceProxy::kPropertyDisableHighBitrates[] =
     "DisableHighBitrates";
-const char ChromeosSupplicantInterfaceProxy::kPropertyDriver[] = "Driver";
 const char ChromeosSupplicantInterfaceProxy::kPropertyFastReauth[] =
     "FastReauth";
-const char ChromeosSupplicantInterfaceProxy::kPropertyIfname[] = "Ifname";
-const char ChromeosSupplicantInterfaceProxy::kPropertyNetworks[] = "Networks";
 const char ChromeosSupplicantInterfaceProxy::kPropertyRoamThreshold[] =
     "RoamThreshold";
 const char ChromeosSupplicantInterfaceProxy::kPropertyScan[] = "Scan";
 const char ChromeosSupplicantInterfaceProxy::kPropertyScanInterval[] =
     "ScanInterval";
-const char ChromeosSupplicantInterfaceProxy::kPropertyScanning[] = "Scanning";
 const char ChromeosSupplicantInterfaceProxy::kPropertySchedScan[] = "SchedScan";
-const char ChromeosSupplicantInterfaceProxy::kPropertyState[] = "State";
 
 ChromeosSupplicantInterfaceProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
     const std::string& interface_name,
     const PropertyChangedCallback& callback)
     : dbus::PropertySet(object_proxy, interface_name, callback) {
-  RegisterProperty(kPropertyApScan, &ap_scan);
-  RegisterProperty(kPropertyBlobs, &blobs);
-  RegisterProperty(kPropertyBridgeIfname, &bridge_ifname);
-  RegisterProperty(kPropertyBSSs, &bsss);
-  RegisterProperty(kPropertyCapabilities, &capabilities);
-  RegisterProperty(kPropertyCurrentBss, &current_bss);
-  RegisterProperty(kPropertyCurrentNetwork, &current_network);
   RegisterProperty(kPropertyDisableHighBitrates, &disable_high_bitrates);
-  RegisterProperty(kPropertyDriver, &driver);
   RegisterProperty(kPropertyFastReauth, &fast_reauth);
-  RegisterProperty(kPropertyIfname, &ifname);
-  RegisterProperty(kPropertyNetworks, &networks);
   RegisterProperty(kPropertyRoamThreshold, &roam_threshold);
   RegisterProperty(kPropertyScan, &scan);
   RegisterProperty(kPropertyScanInterval, &scan_interval);
-  RegisterProperty(kPropertyScanning, &scanning);
   RegisterProperty(kPropertySchedScan, &sched_scan);
-  RegisterProperty(kPropertyState, &state);
 }
 
 ChromeosSupplicantInterfaceProxy::ChromeosSupplicantInterfaceProxy(
@@ -166,6 +138,7 @@ bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
                << error->GetCode() << " " << error->GetMessage();
     return false;
   }
+  *network = path.value();
   return true;
 }
 
@@ -434,7 +407,7 @@ bool ChromeosSupplicantInterfaceProxy::SetSchedScan(bool enable) {
 
 bool ChromeosSupplicantInterfaceProxy::SetScan(bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
-  properties_->scan_interval.Set(
+  properties_->scan.Set(
       enable, base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertySet,
                          weak_factory_.GetWeakPtr(),
                          kPropertyScan));

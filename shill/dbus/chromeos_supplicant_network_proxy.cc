@@ -33,7 +33,6 @@ ChromeosSupplicantNetworkProxy::PropertySet::PropertySet(
     const PropertyChangedCallback& callback)
     : dbus::PropertySet(object_proxy, interface_name, callback) {
   RegisterProperty(kPropertyEnabled, &enabled);
-  RegisterProperty(kPropertyProperties, &properties);
 }
 
 ChromeosSupplicantNetworkProxy::ChromeosSupplicantNetworkProxy(

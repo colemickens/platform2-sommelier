@@ -36,8 +36,7 @@ class ChromeosSupplicantNetworkProxy
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    dbus::Property<bool> enabled;
-    dbus::Property<chromeos::VariantDictionary> properties;
+    chromeos::dbus_utils::Property<bool> enabled;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);

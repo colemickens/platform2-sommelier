@@ -46,11 +46,11 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    dbus::Property<std::string> debug_level;
-    dbus::Property<bool> debug_timestamp;
-    dbus::Property<bool> debug_show_keys;
-    dbus::Property<std::vector<dbus::ObjectPath>> interfaces;
-    dbus::Property<std::vector<std::string>> eap_methods;
+    chromeos::dbus_utils::Property<std::string> debug_level;
+    chromeos::dbus_utils::Property<bool> debug_timestamp;
+    chromeos::dbus_utils::Property<bool> debug_show_keys;
+    chromeos::dbus_utils::Property<std::vector<dbus::ObjectPath>> interfaces;
+    chromeos::dbus_utils::Property<std::vector<std::string>> eap_methods;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);

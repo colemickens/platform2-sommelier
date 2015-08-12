@@ -32,32 +32,40 @@ class MockControl : public ControlInterface {
   ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) override;
 #endif
+  const std::string& NullRPCIdentifier() override;
+
+  MOCK_METHOD2(CreateRPCServiceWatcher,
+               RPCServiceWatcherInterface*(
+                   const std::string& connection_name,
+                   const base::Closure& on_connection_vanished));
 
   MOCK_METHOD2(CreateDBusPropertiesProxy,
                DBusPropertiesProxyInterface*(const std::string& path,
                                              const std::string& service));
   MOCK_METHOD0(CreateDBusServiceProxy, DBusServiceProxyInterface*());
-  MOCK_METHOD1(
+  MOCK_METHOD3(
       CreatePowerManagerProxy,
-      PowerManagerProxyInterface*(PowerManagerProxyDelegate* delegate));
+      PowerManagerProxyInterface*(
+          PowerManagerProxyDelegate* delegate,
+          const base::Closure& service_appeared_callback,
+          const base::Closure& service_vanished_callback));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD2(CreateSupplicantProcessProxy,
-               SupplicantProcessProxyInterface*(const char* dbus_path,
-                                                const char* dbus_addr));
-  MOCK_METHOD3(CreateSupplicantInterfaceProxy,
+               SupplicantProcessProxyInterface*(
+                   const base::Closure& service_appeared_callback,
+                   const base::Closure& service_vanished_callback));
+  MOCK_METHOD2(CreateSupplicantInterfaceProxy,
                SupplicantInterfaceProxyInterface*(
                    SupplicantEventDelegateInterface* delegate,
-                   const std::string& object_path,
-                   const char* dbus_addr));
-  MOCK_METHOD2(CreateSupplicantNetworkProxy,
-               SupplicantNetworkProxyInterface*(const std::string& object_path,
-                                                const char* dbus_addr));
+                   const std::string& object_path));
+  MOCK_METHOD1(CreateSupplicantNetworkProxy,
+               SupplicantNetworkProxyInterface*(
+                   const std::string& object_path));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
-  MOCK_METHOD3(CreateSupplicantBSSProxy,
+  MOCK_METHOD2(CreateSupplicantBSSProxy,
                SupplicantBSSProxyInterface*(WiFiEndpoint* wifi_endpoint,
-                                            const std::string& object_path,
-                                            const char* dbus_addr));
+                                            const std::string& object_path));
 #endif  // DISABLE_WIFI
   MOCK_METHOD1(CreateDHCPCDListener,
                DHCPCDListenerInterface*(DHCPProvider* provider));
@@ -118,13 +126,18 @@ class MockControl : public ControlInterface {
 
   MOCK_METHOD1(CreateWiMaxDeviceProxy,
                WiMaxDeviceProxyInterface*(const std::string& path));
-  MOCK_METHOD0(CreateWiMaxManagerProxy, WiMaxManagerProxyInterface*());
+  MOCK_METHOD2(CreateWiMaxManagerProxy,
+               WiMaxManagerProxyInterface*(
+                   const base::Closure& service_appeared_callback,
+                   const base::Closure& service_vanished_callback));
   MOCK_METHOD1(CreateWiMaxNetworkProxy,
                WiMaxNetworkProxyInterface*(const std::string& path));
 
 #endif  // DISABLE_WIMAX
 
  private:
+  std::string null_identifier_;
+
   DISALLOW_COPY_AND_ASSIGN(MockControl);
 };
 

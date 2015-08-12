@@ -53,4 +53,8 @@ ThirdPartyVpnAdaptorInterface* NiceMockControl::CreateThirdPartyVpnAdaptor(
 }
 #endif
 
+const std::string& NiceMockControl::NullRPCIdentifier() {
+  return null_identifier_;
+}
+
 }  // namespace shill

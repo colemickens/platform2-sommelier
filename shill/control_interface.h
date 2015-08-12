@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <string>
 
+#include <base/callback.h>
+
 #include "shill/logging.h"
 
 namespace shill {
@@ -71,6 +73,8 @@ class SimProxyInterface;
 
 }  // namespace mm1
 
+class RPCServiceWatcherInterface;
+
 // This is the Interface for an object factory that creates adaptor/proxy
 // objects
 class ControlInterface {
@@ -88,6 +92,12 @@ class ControlInterface {
       ThirdPartyVpnDriver* driver) = 0;
 #endif
 
+  virtual const std::string& NullRPCIdentifier() = 0;
+
+  virtual RPCServiceWatcherInterface* CreateRPCServiceWatcher(
+      const std::string& connection_name,
+      const base::Closure& on_connection_vanished) = 0;
+
   virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
       const std::string& path,
       const std::string& service) = 0;
@@ -97,29 +107,28 @@ class ControlInterface {
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
   virtual PowerManagerProxyInterface* CreatePowerManagerProxy(
-      PowerManagerProxyDelegate* delegate) = 0;
+      PowerManagerProxyDelegate* delegate,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) = 0;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   virtual SupplicantProcessProxyInterface* CreateSupplicantProcessProxy(
-      const char* dbus_path,
-      const char* dbus_addr) = 0;
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) = 0;
 
   virtual SupplicantInterfaceProxyInterface* CreateSupplicantInterfaceProxy(
       SupplicantEventDelegateInterface* delegate,
-      const std::string& object_path,
-      const char* dbus_addr) = 0;
+      const std::string& object_path) = 0;
 
   virtual SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
-      const std::string& object_path,
-      const char* dbus_addr) = 0;
+      const std::string& object_path) = 0;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   virtual SupplicantBSSProxyInterface* CreateSupplicantBSSProxy(
       WiFiEndpoint* wifi_endpoint,
-      const std::string& object_path,
-      const char* dbus_addr) = 0;
+      const std::string& object_path) = 0;
 #endif  // DISABLE_WIFI
 
   virtual UpstartProxyInterface* CreateUpstartProxy() = 0;
@@ -132,7 +141,6 @@ class ControlInterface {
   virtual PermissionBrokerProxyInterface* CreatePermissionBrokerProxy() = 0;
 
 #if !defined(DISABLE_CELLULAR)
-
   virtual DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
       const std::string& path,
       const std::string& service) = 0;
@@ -185,17 +193,16 @@ class ControlInterface {
   virtual mm1::SimProxyInterface* CreateSimProxy(
       const std::string& path,
       const std::string& service) = 0;
-
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
-
   virtual WiMaxDeviceProxyInterface* CreateWiMaxDeviceProxy(
       const std::string& path) = 0;
-  virtual WiMaxManagerProxyInterface* CreateWiMaxManagerProxy() = 0;
+  virtual WiMaxManagerProxyInterface* CreateWiMaxManagerProxy(
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) = 0;
   virtual WiMaxNetworkProxyInterface* CreateWiMaxNetworkProxy(
       const std::string& path) = 0;
-
 #endif  // DISABLE_WIMAX
 
   static void RpcIdToStorageId(std::string* rpc_id) {

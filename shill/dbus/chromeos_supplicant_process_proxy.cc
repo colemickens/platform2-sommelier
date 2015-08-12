@@ -114,9 +114,10 @@ bool ChromeosSupplicantProcessProxy::CreateInterface(
   dbus::ObjectPath path;
   chromeos::ErrorPtr error;
   if (!supplicant_proxy_->CreateInterface(dict, &path, &error)) {
-    LOG(FATAL) << "Failed to create interface: "
+    // Interface might already been created by wpasupplicant.
+    LOG(ERROR) << "Failed to create interface: "
                << error->GetCode() << " " << error->GetMessage();
-    return false;  // Make the compiler happy.
+    return false;
   }
   *rpc_identifier = path.value();
   return true;

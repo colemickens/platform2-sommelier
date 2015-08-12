@@ -68,48 +68,24 @@ class ChromeosSupplicantInterfaceProxy
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    dbus::Property<uint32_t> ap_scan;
-    dbus::Property<std::vector<std::string>> blobs;
-    dbus::Property<std::string> bridge_ifname;
-    dbus::Property<std::vector<dbus::ObjectPath>> bsss;
-    dbus::Property<chromeos::VariantDictionary> capabilities;
-    dbus::Property<dbus::ObjectPath> current_bss;
-    dbus::Property<dbus::ObjectPath> current_network;
-    dbus::Property<bool> disable_high_bitrates;
-    dbus::Property<std::string> driver;
-    dbus::Property<bool> fast_reauth;
-    dbus::Property<std::string> ifname;
-    dbus::Property<std::vector<dbus::ObjectPath>> networks;
-    dbus::Property<uint16_t> roam_threshold;
-    dbus::Property<bool> scan;
-    dbus::Property<uint32_t> scan_interval;
-    dbus::Property<bool> scanning;
-    dbus::Property<bool> sched_scan;
-    dbus::Property<std::string> state;
+    chromeos::dbus_utils::Property<bool> disable_high_bitrates;
+    chromeos::dbus_utils::Property<bool> fast_reauth;
+    chromeos::dbus_utils::Property<uint16_t> roam_threshold;
+    chromeos::dbus_utils::Property<bool> scan;
+    chromeos::dbus_utils::Property<int32_t> scan_interval;
+    chromeos::dbus_utils::Property<bool> sched_scan;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
   };
 
   static const char kInterfaceName[];
-  static const char kPropertyApScan[];
-  static const char kPropertyBlobs[];
-  static const char kPropertyBridgeIfname[];
-  static const char kPropertyBSSs[];
-  static const char kPropertyCapabilities[];
-  static const char kPropertyCurrentBss[];
-  static const char kPropertyCurrentNetwork[];
   static const char kPropertyDisableHighBitrates[];
-  static const char kPropertyDriver[];
   static const char kPropertyFastReauth[];
-  static const char kPropertyIfname[];
-  static const char kPropertyNetworks[];
   static const char kPropertyRoamThreshold[];
   static const char kPropertyScan[];
   static const char kPropertyScanInterval[];
-  static const char kPropertyScanning[];
   static const char kPropertySchedScan[];
-  static const char kPropertyState[];
 
   // Signal handlers.
   void BlobAdded(const std::string& blobname);
