@@ -18,6 +18,7 @@
 #include "trunks/dbus_interface.h"
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
+#include "trunks/tpm_simulator_handle.h"
 #include "trunks/trunks_factory_impl.h"
 #include "trunks/trunks_ftdi_spi.h"
 #include "trunks/trunks_service.h"
@@ -107,6 +108,8 @@ int main(int argc, char **argv) {
   trunks::CommandTransceiver *transceiver;
   if (cl->HasSwitch("ftdi")) {
     transceiver = new trunks::TrunksFtdiSpi();
+  } else if (cl->HasSwitch("simulator")) {
+    transceiver = new trunks::TpmSimulatorHandle();
   } else {
     transceiver = new trunks::TpmHandle();
   }

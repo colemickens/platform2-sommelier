@@ -83,6 +83,7 @@
         'background_command_transceiver.cc',
         'resource_manager.cc',
         'tpm_handle.cc',
+        'tpm_simulator_handle.cc',
         'trunks_service.cc',
       ],
       'dependencies': [
