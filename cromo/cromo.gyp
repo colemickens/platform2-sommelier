@@ -8,6 +8,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
+        'libminijail',
       ],
       # cromo uses try/catch to interact with dbus-c++.
       'enable_exceptions': 1,
@@ -15,7 +16,6 @@
     'link_settings': {
       'libraries': [
         '-ldl',
-        '-lminijail',
       ],
     },
   },

@@ -8,6 +8,7 @@
         'libpcrecpp',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libminijail',
       ],
       # debugd uses try/catch to interact with dbus-c++.
       'enable_exceptions': 1,
@@ -70,11 +71,6 @@
         'debugd-adaptors',
         'external-proto',
       ],
-      'link_settings': {
-        'libraries': [
-          '-lminijail',
-        ],
-      },
       'sources': [
         'src/anonymizer_tool.cc',
         'src/battery_tool.cc',
@@ -136,7 +132,6 @@
       'target_name': 'capture_packets',
       'type': 'executable',
       'libraries': [
-        '-lminijail',
         '-lpcap',
       ],
       'sources': [

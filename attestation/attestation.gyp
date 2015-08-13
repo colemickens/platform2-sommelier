@@ -127,9 +127,11 @@
       'sources': [
         'server/main.cc',
       ],
-      'libraries': [
-        '-lminijail',
-      ],
+      'variables': {
+        'deps': [
+          'libminijail',
+        ],
+      },
       'dependencies': [
         'common_library',
         'proto_library',

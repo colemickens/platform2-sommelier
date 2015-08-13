@@ -70,9 +70,11 @@
       'sources': [
         'server/main.cc',
       ],
-      'libraries': [
-        '-lminijail',
-      ],
+      'variables': {
+        'deps': [
+          'libminijail',
+        ],
+      },
       'dependencies': [
         'proto_library',
         'server_library',

@@ -92,12 +92,14 @@
     {
       'target_name': 'trunksd',
       'type': 'executable',
-      'libraries': [
-        '-lminijail',
-      ],
       'sources': [
         'trunksd.cc',
       ],
+      'variables': {
+        'deps': [
+          'libminijail',
+        ],
+      },
       'dependencies': [
         'dbus_interface_proto',
         'trunks',

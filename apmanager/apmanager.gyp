@@ -91,9 +91,9 @@
       'target_name': 'apmanager',
       'type': 'executable',
       'dependencies': ['libapmanager'],
-      'link_settings': {
-        'libraries': [
-          '-lminijail',
+      'variables': {
+        'deps': [
+          'libminijail',
         ],
       },
       'sources': [

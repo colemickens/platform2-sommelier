@@ -138,9 +138,9 @@
       'dependencies': [
         'webservd_common',
       ],
-      'link_settings': {
-        'libraries': [
-          '-lminijail',
+      'variables': {
+        'deps': [
+          'libminijail',
         ],
       },
       'sources': [

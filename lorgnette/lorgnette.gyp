@@ -5,6 +5,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
+        'libminijail',
       ],
     },
     'cflags': [
@@ -33,11 +34,6 @@
       'dependencies': [
         'lorgnette-adaptors',
       ],
-      'link_settings': {
-        'libraries': [
-          '-lminijail',
-        ],
-      },
       'sources': [
         'daemon.cc',
         'epson_probe.cc',

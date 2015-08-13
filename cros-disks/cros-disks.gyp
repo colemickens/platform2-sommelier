@@ -1,7 +1,6 @@
 {
   'target_defaults': {
     'libraries': [
-      '-lminijail',
       '-lrootdev',
     ],
     'variables': {
@@ -14,6 +13,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
+        'libminijail',
         'libudev',
       ],
       # cros-disks uses try/catch to interact with dbus-c++.
