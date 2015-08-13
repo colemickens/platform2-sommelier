@@ -16,7 +16,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
-#include <chromeos/errors/error_codes.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
@@ -29,6 +28,7 @@
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/http_constants.h"
+#include "libweave/src/json_error_codes.h"
 #include "libweave/src/notification/xmpp_channel.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
@@ -168,7 +168,7 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
           .first;
 
   if (content_type != http::kJson && content_type != http::kPlain) {
-    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::json::kDomain,
                            "non_json_content_type",
                            "Unexpected response content type: " + content_type);
     return std::unique_ptr<base::DictionaryValue>();
@@ -179,9 +179,8 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   auto value = base::JSONReader::ReadAndReturnError(json, base::JSON_PARSE_RFC,
                                                     nullptr, &error_message);
   if (!value) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 chromeos::errors::json::kDomain,
-                                 chromeos::errors::json::kParseError,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
+                                 errors::json::kParseError,
                                  "Error '%s' occurred parsing JSON string '%s'",
                                  error_message.c_str(), json.c_str());
     return std::unique_ptr<base::DictionaryValue>();
@@ -189,8 +188,7 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::json::kDomain,
-        chromeos::errors::json::kObjectExpected,
+        error, FROM_HERE, errors::json::kDomain, errors::json::kObjectExpected,
         "Response is not a valid JSON object: '%s'", json.c_str());
     return std::unique_ptr<base::DictionaryValue>();
   } else {

@@ -6,7 +6,6 @@
 
 #include <base/values.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/errors/error_codes.h>
 #include <weave/enum_to_string.h>
 #include <weave/export.h>
 
@@ -16,6 +15,7 @@
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/schema_utils.h"
+#include "libweave/src/json_error_codes.h"
 
 namespace weave {
 
@@ -147,9 +147,8 @@ bool GetCommandParameters(const base::DictionaryValue* json,
   if (json->Get(commands::attributes::kCommand_Parameters, &params_value)) {
     // Make sure the "parameters" property is actually an object.
     if (!params_value->GetAsDictionary(&params)) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                   chromeos::errors::json::kDomain,
-                                   chromeos::errors::json::kObjectExpected,
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
+                                   errors::json::kObjectExpected,
                                    "Property '%s' must be a JSON object",
                                    commands::attributes::kCommand_Parameters);
       return false;
@@ -185,8 +184,8 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   // Get the command JSON object from the value.
   const base::DictionaryValue* json = nullptr;
   if (!value->GetAsDictionary(&json)) {
-    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
-                           chromeos::errors::json::kObjectExpected,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::json::kDomain,
+                           errors::json::kObjectExpected,
                            "Command instance is not a JSON object");
     command_id->clear();
     return instance;

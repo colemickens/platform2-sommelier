@@ -11,7 +11,6 @@
 #include <chromeos/any.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/errors/error_codes.h>
 #include <weave/enum_to_string.h>
 
 #include "buffet/ap_manager_client.h"

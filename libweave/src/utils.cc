@@ -7,7 +7,8 @@
 #include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
-#include <chromeos/errors/error_codes.h>
+
+#include "libweave/src/json_error_codes.h"
 
 namespace weave {
 
@@ -35,7 +36,6 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
     chromeos::ErrorPtr* error) {
   std::string json_string;
   if (!base::ReadFileToString(json_file_path, &json_string)) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
     chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
                                  "Failed to read file '%s'",
                                  json_file_path.value().c_str());
@@ -52,19 +52,17 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
   auto value = base::JSONReader::ReadAndReturnError(
       json_string, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::json::kDomain,
-        chromeos::errors::json::kParseError,
-        "Error parsing JSON string '%s' (%zu): %s",
-        LimitString(json_string, kMaxStrLen).c_str(), json_string.size(),
-        error_message.c_str());
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
+                                 errors::json::kParseError,
+                                 "Error parsing JSON string '%s' (%zu): %s",
+                                 LimitString(json_string, kMaxStrLen).c_str(),
+                                 json_string.size(), error_message.c_str());
     return result;
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 chromeos::errors::json::kDomain,
-                                 chromeos::errors::json::kObjectExpected,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
+                                 errors::json::kObjectExpected,
                                  "JSON string '%s' is not a JSON object",
                                  LimitString(json_string, kMaxStrLen).c_str());
     return result;

@@ -8,10 +8,10 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/errors/error_codes.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 
+#include "libweave/src/json_error_codes.h"
 #include "libweave/src/states/error_codes.h"
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/utils.h"
@@ -165,10 +165,10 @@ bool StateManager::LoadStateDefinition(const base::DictionaryValue& json,
     }
     const base::DictionaryValue* package_dict = nullptr;
     if (!iter.value().GetAsDictionary(&package_dict)) {
-      chromeos::Error::AddToPrintf(
-          error, FROM_HERE, chromeos::errors::json::kDomain,
-          chromeos::errors::json::kObjectExpected,
-          "State package '%s' must be an object", package_name.c_str());
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
+                                   errors::json::kObjectExpected,
+                                   "State package '%s' must be an object",
+                                   package_name.c_str());
       return false;
     }
     StatePackage* package = FindOrCreatePackage(package_name);
@@ -235,17 +235,17 @@ bool StateManager::LoadStateDefaults(const base::DictionaryValue& json,
     }
     const base::DictionaryValue* package_dict = nullptr;
     if (!iter.value().GetAsDictionary(&package_dict)) {
-      chromeos::Error::AddToPrintf(
-          error, FROM_HERE, chromeos::errors::json::kDomain,
-          chromeos::errors::json::kObjectExpected,
-          "State package '%s' must be an object", package_name.c_str());
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
+                                   errors::json::kObjectExpected,
+                                   "State package '%s' must be an object",
+                                   package_name.c_str());
       return false;
     }
     StatePackage* package = FindPackage(package_name);
     if (package == nullptr) {
       chromeos::Error::AddToPrintf(
-          error, FROM_HERE, chromeos::errors::json::kDomain,
-          chromeos::errors::json::kObjectExpected,
+          error, FROM_HERE, errors::json::kDomain,
+          errors::json::kObjectExpected,
           "Providing values for undefined state package '%s'",
           package_name.c_str());
       return false;
