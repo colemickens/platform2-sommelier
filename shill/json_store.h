@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <chromeos/variant_dictionary.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/store_interface.h"
 
@@ -89,6 +90,16 @@ class JsonStore : public StoreInterface {
                         const std::string& value) override;
 
  private:
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreHeader);  // file_description_
+  // Tests which use |group_name_to_settings_|.
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreAllTypes);
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreNonUtf8Strings);
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreNonUtf8StringList);
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreMultipleGroups);
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreMultipleGroupsWithSameKeys);
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreStringsWithEmbeddedNulls);
+  FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreStringListWithEmbeddedNulls);
+
   template<typename T> bool ReadSetting(
       const std::string& group, const std::string& key, T* out) const;
   template<typename T> bool WriteSetting(

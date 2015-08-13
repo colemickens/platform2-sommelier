@@ -20,6 +20,8 @@
 #include <base/json/json_string_value_serializer.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 
 #include "shill/crypto_rot47.h"
@@ -253,6 +255,67 @@ ConvertDictionaryValueToVariantDictionary(
   return variant_dictionary;
 }
 
+// Serialization helpers.
+
+scoped_ptr<base::DictionaryValue> MakeCoercedValue(
+    const string& native_type, const string& encoded_value) {
+  auto coerced_value(make_scoped_ptr(new base::DictionaryValue()));
+  coerced_value->SetStringWithoutPathExpansion(
+      kCoercedValuePropertyNativeType, native_type);
+  coerced_value->SetStringWithoutPathExpansion(
+      kCoercedValuePropertyEncodedValue, encoded_value);
+  return coerced_value.Pass();
+}
+
+scoped_ptr<base::Value> MakeValueForString(const string& native_string) {
+  // Strictly speaking, we don't need to escape non-ASCII text, if
+  // that text is UTF-8.  Practically speaking, however, it'll be
+  // easier to inspect config files if all non-ASCII strings are
+  // presented as byte sequences. (Unicode has many code points with
+  // similar-looking glyphs.)
+  if (base::IsStringASCII(native_string) &&
+      native_string.find('\0') == string::npos) {
+    return make_scoped_ptr(new base::StringValue(native_string));
+  } else {
+    const string hex_encoded_string(
+        base::HexEncode(native_string.data(), native_string.size()));
+    return MakeCoercedValue(
+        kNativeTypeNonAsciiString, hex_encoded_string).Pass();
+  }
+}
+
+scoped_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
+    const chromeos::VariantDictionary& variant_dictionary) {
+  auto dictionary_value(make_scoped_ptr(new base::DictionaryValue()));
+  for (const auto& key_and_value : variant_dictionary) {
+    const auto& key = key_and_value.first;
+    const auto& value = key_and_value.second;
+    if (value.GetType() == typeid(bool)) {    // NOLINT
+      dictionary_value->SetBooleanWithoutPathExpansion(key, value.Get<bool>());
+    } else if (value.GetType() == typeid(int32_t)) {
+      dictionary_value->SetIntegerWithoutPathExpansion(key, value.Get<int>());
+    } else if (value.GetType() == typeid(string)) {
+      dictionary_value->SetWithoutPathExpansion(
+          key, MakeValueForString(value.Get<string>()));
+    } else if (value.GetType() == typeid(uint64_t)) {
+      const string encoded_value(
+          base::StringPrintf("%" PRIu64, value.Get<uint64>()));
+      dictionary_value->SetWithoutPathExpansion(
+          key, MakeCoercedValue(kNativeTypeUint64, encoded_value).Pass());
+    } else if (value.GetType() == typeid(vector<string>)) {
+      auto list_value(make_scoped_ptr(new base::ListValue()));
+      for (const auto& string_list_item : value.Get<vector<string>>()) {
+        list_value->Append(MakeValueForString(string_list_item).Pass());
+      }
+      dictionary_value->SetWithoutPathExpansion(key, list_value.Pass());
+    } else {
+      LOG(ERROR) << "Failed to convert element with key |" << key << "|.";
+      return nullptr;
+    }
+  }
+  return dictionary_value.Pass();
+}
+
 }  // namespace
 
 JsonStore::JsonStore() {}
@@ -350,7 +413,19 @@ bool JsonStore::Flush() {
   }
 
   auto groups(make_scoped_ptr(new base::DictionaryValue()));
-  // TODO(quiche): Copy |group_name_and_settings_| into |groups|.
+  for (const auto& group_name_and_settings : group_name_to_settings_) {
+    const auto& group_name = group_name_and_settings.first;
+    scoped_ptr<base::DictionaryValue> group_settings(
+        ConvertVariantDictionaryToDictionaryValue(
+            group_name_and_settings.second));
+    if (!group_settings) {
+      // This class maintains the invariant that anything placed in
+      // |group_settings| is convertible. So abort if conversion fails.
+      LOG(FATAL) << "Failed to convert group |" << group_name << "|.";
+      return false;
+    }
+    groups->SetWithoutPathExpansion(group_name, group_settings.Pass());
+  }
 
   base::DictionaryValue root;
   root.SetStringWithoutPathExpansion(
@@ -441,8 +516,8 @@ bool JsonStore::DeleteGroup(const string& group) {
 }
 
 bool JsonStore::SetHeader(const string& header) {
-  NOTIMPLEMENTED();
-  return false;
+  file_description_ = header;
+  return true;
 }
 
 bool JsonStore::GetString(const string& group,
