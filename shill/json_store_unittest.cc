@@ -11,11 +11,16 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_log.h"
 
+using base::FileEnumerator;
+using base::FilePath;
+using base::ScopedTempDir;
 using std::array;
 using std::pair;
 using std::set;
@@ -25,6 +30,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::ContainsRegex;
 using testing::HasSubstr;
+using testing::StartsWith;
 using testing::Test;
 
 namespace shill {
@@ -38,6 +44,9 @@ class JsonStoreTest : public Test {
   virtual void SetUp() {
     ScopeLogger::GetInstance()->EnableScopesByName("+storage");
     ASSERT_FALSE(base::IsStringUTF8(kNonUtf8String));
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    test_file_ = temp_dir_.path().Append("test-json-store");
+    store_.set_path(test_file_);
     EXPECT_CALL(log_, Log(_, _, _)).Times(AnyNumber());
   }
 
@@ -51,6 +60,8 @@ class JsonStoreTest : public Test {
 
   const string kStringWithEmbeddedNulls;
   const string kNonUtf8String;
+  ScopedTempDir temp_dir_;
+  FilePath test_file_;
   JsonStore store_;
   ScopedMockLog log_;
 };
@@ -491,6 +502,38 @@ TEST_F(JsonStoreTest, DeleteGroupSucceedsOnMissingGroup) {
   store_.SetBool("group_a", "knob_1", bool());
   EXPECT_TRUE(store_.DeleteGroup("group_b"));
   EXPECT_TRUE(store_.GetBool("group_a", "knob_1", nullptr));
+}
+
+// File operations: Flush() basics.
+TEST_F(JsonStoreTest, FlushCreatesPersistentStore) {
+  ASSERT_FALSE(store_.IsNonEmpty());
+  ASSERT_TRUE(store_.Flush());
+
+  // Verify that the file actually got written with the right name.
+  FileEnumerator file_enumerator(temp_dir_.path(),
+                                 false /* not recursive */,
+                                 FileEnumerator::FILES);
+  EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
+
+  // Verify that the profile is a regular file, readable and writeable by the
+  // owner only.
+  FileEnumerator::FileInfo file_info = file_enumerator.GetInfo();
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, file_info.stat().st_mode);
+}
+
+TEST_F(JsonStoreTest, FlushFailsWhenPathIsEmpty) {
+  store_.set_path(FilePath());
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Empty key file path")));
+  EXPECT_FALSE(store_.Flush());
+}
+
+TEST_F(JsonStoreTest, FlushFailsWhenPathComponentDoesNotExist) {
+  store_.set_path(
+      temp_dir_.path().Append("non-existent-dir").Append("test-store"));
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Failed to write")));
+  EXPECT_FALSE(store_.Flush());
 }
 
 }  // namespace shill

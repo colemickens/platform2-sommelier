@@ -4,14 +4,25 @@
 
 #include "shill/json_store.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <cinttypes>
 #include <map>
 #include <memory>
 #include <typeinfo>
 #include <vector>
 
+#include <base/files/important_file_writer.h>
+#include <base/files/file_util.h>
+#include <base/json/json_string_value_serializer.h>
+#include <base/values.h>
+
 #include "shill/crypto_rot47.h"
 #include "shill/logging.h"
+#include "shill/scoped_umask.h"
 
 using std::map;
 using std::set;
@@ -31,6 +42,9 @@ static string ObjectID(const JsonStore* j) {
 
 namespace {
 
+static const char kRootPropertyDescription[] = "description";
+static const char kRootPropertySettings[] = "settings";
+
 bool DoesGroupContainProperties(
     const chromeos::VariantDictionary& group,
     const chromeos::VariantDictionary& required_properties) {
@@ -49,9 +63,40 @@ bool DoesGroupContainProperties(
 
 JsonStore::JsonStore() {}
 
+bool JsonStore::IsNonEmpty() const {
+  int64_t file_size = 0;
+  return base::GetFileSize(path_, &file_size) && file_size != 0;
+}
+
 bool JsonStore::Flush() {
-  NOTIMPLEMENTED();
-  return false;
+  if (path_.empty()) {
+    LOG(ERROR) << "Empty key file path.";
+    return false;
+  }
+
+  auto groups(make_scoped_ptr(new base::DictionaryValue()));
+  // TODO(quiche): Copy |group_name_and_settings_| into |groups|.
+
+  base::DictionaryValue root;
+  root.SetStringWithoutPathExpansion(
+      kRootPropertyDescription, file_description_);
+  root.SetWithoutPathExpansion(kRootPropertySettings, groups.Pass());
+
+  string json_string;
+  JSONStringValueSerializer json_serializer(&json_string);
+  json_serializer.set_pretty_print(true);
+  if (!json_serializer.Serialize(root)) {
+    LOG(ERROR) << "Failed to serialize to JSON.";
+    return false;
+  }
+
+  ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR));
+  if (!base::ImportantFileWriter::WriteFileAtomically(path_, json_string)) {
+    LOG(ERROR) << "Failed to write JSON file: |" << path_.value() << "|.";
+    return false;
+  }
+
+  return true;
 }
 
 set<string> JsonStore::GetGroups() const {

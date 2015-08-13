@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <chromeos/variant_dictionary.h>
 
 #include "shill/store_interface.h"
@@ -23,6 +24,15 @@ class JsonStore : public StoreInterface {
   // TODO(quiche): Determine if we need a dtor. In particular, we'll
   // need one of StoreInterface implementations are expected to
   // automatically Flush() before destruction.
+
+  // Configure the filesystem path to which this store will be
+  // persisted. This method must be called before any calls to Open(),
+  // Close(), or Flush().
+  void set_path(const base::FilePath& path) { path_ = path; }
+  const base::FilePath& path() const { return path_; }
+
+  // Returns true if the store exists and is non-empty.
+  bool IsNonEmpty() const;
 
   // Inherited from StoreInterface.
   bool Flush() override;
@@ -79,6 +89,8 @@ class JsonStore : public StoreInterface {
   template<typename T> bool WriteSetting(
       const std::string& group, const std::string& key, const T& new_value);
 
+  base::FilePath path_;
+  std::string file_description_;
   std::map<std::string, chromeos::VariantDictionary> group_name_to_settings_;
 
   DISALLOW_COPY_AND_ASSIGN(JsonStore);
