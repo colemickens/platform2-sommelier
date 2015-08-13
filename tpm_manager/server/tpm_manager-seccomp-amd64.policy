@@ -25,12 +25,14 @@ pipe: 1
 sendmsg: 1
 sendto: 1
 recvmsg: 1
+recvfrom: 1
 
 epoll_create: 1
 epoll_wait: 1
 epoll_ctl: 1
 poll: 1
 
+open: 1
 read: 1
 write: 1
 close: 1

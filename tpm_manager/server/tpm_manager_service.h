@@ -43,9 +43,10 @@ class TpmManagerService : public TpmManagerInterface {
  public:
   // If |wait_for_ownership| is set, TPM initialization will be postponed until
   // an explicit TakeOwnership request is received. Does not take ownership of
-  // |local_data_store|.
+  // |local_data_store| or |tpm_status|.
   explicit TpmManagerService(bool wait_for_ownership,
-                             LocalDataStore* local_data_store);
+                             LocalDataStore* local_data_store,
+                             TpmStatus* tpm_status);
   ~TpmManagerService() override = default;
 
   // TpmManagerInterface methods.
@@ -58,10 +59,6 @@ class TpmManagerService : public TpmManagerInterface {
   // Mutators useful for injecting dependencies for testing.
   void set_tpm_initializer(TpmInitializer* initializer) {
     tpm_initializer_ = initializer;
-  }
-
-  void set_tpm_status(TpmStatus* status) {
-    tpm_status_ = status;
   }
 
  private:
@@ -92,14 +89,13 @@ class TpmManagerService : public TpmManagerInterface {
 
   LocalDataStore* local_data_store_;
   TpmInitializer* tpm_initializer_{nullptr};
-  TpmStatus* tpm_status_{nullptr};
+  TpmStatus* tpm_status_;
   // Whether to wait for an explicit call to 'TakeOwnership' before initializing
   // the TPM. Normally tracks the --wait_for_ownership command line option.
   bool wait_for_ownership_;
   // Background thread to allow processing of potentially lengthy TPM requests
   // in the background.
   std::unique_ptr<base::Thread> worker_thread_;
-
   // Declared last so any weak pointers are destroyed first.
   base::WeakPtrFactory<TpmManagerService> weak_factory_;
 

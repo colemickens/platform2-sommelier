@@ -17,7 +17,7 @@ using base::FilePath;
 namespace tpm_manager {
 
 const char kTpmLocalDataFile[] =
-    "/mnt/stateful/unencrypted/preserve/local_tpm_data";
+    "/mnt/stateful_partition/unencrypted/preserve/local_tpm_data";
 const mode_t kLocalDataPermissions = 0600;
 
 bool LocalDataStoreImpl::Read(LocalData* data) {

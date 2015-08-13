@@ -11,8 +11,10 @@
 namespace tpm_manager {
 
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
-                                     LocalDataStore* local_data_store)
+                                     LocalDataStore* local_data_store,
+                                     TpmStatus* tpm_status)
     : local_data_store_(local_data_store),
+      tpm_status_(tpm_status),
       wait_for_ownership_(wait_for_ownership),
       weak_factory_(this) {
 }
@@ -62,7 +64,7 @@ void TpmManagerService::GetTpmStatusTask(
   result->set_enabled(tpm_status_->IsTpmEnabled());
   result->set_owned(tpm_status_->IsTpmOwned());
   LocalData local_data;
-  if (local_data_store_->Read(&local_data)) {
+  if (local_data_store_ && local_data_store_->Read(&local_data)) {
     *result->mutable_local_data() = local_data;
   }
   int counter;

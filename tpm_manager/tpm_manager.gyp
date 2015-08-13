@@ -12,6 +12,7 @@
         'protobuf-lite',
       ],
     },
+    'defines': [ 'USE_TPM2=<(USE_tpm2)' ],
   },
   'targets': [
     # A library for just the protobufs.
@@ -25,6 +26,8 @@
       'sources': [
         '<(proto_in_dir)/dbus_interface.proto',
         '<(proto_in_dir)/local_data.proto',
+        'common/print_dbus_interface_proto.cc',
+        'common/print_local_data_proto.cc',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -59,6 +62,28 @@
         'server/dbus_service.cc',
         'server/local_data_store_impl.cc',
         'server/tpm_manager_service.cc',
+      ],
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'sources': [
+            'server/tpm2_status_impl.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltrunks',
+            ],
+          },
+        }],
+        ['USE_tpm2 == 0', {
+          'sources': [
+            'server/tpm_status_impl.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltspi',
+            ],
+          },
+        }],
       ],
       'dependencies': [
         'proto_library',
@@ -104,6 +129,21 @@
             'server/mock_tpm_status.cc',
             'server/tpm_manager_service_test.cc',
             'tpm_manager_testrunner.cc',
+          ],
+          'conditions': [
+            ['USE_tpm2 == 1', {
+              'sources': [
+                '../trunks/mock_blob_parser.cc',
+                '../trunks/mock_hmac_session.cc',
+                '../trunks/mock_policy_session.cc',
+                '../trunks/mock_session_manager.cc',
+                '../trunks/mock_tpm.cc',
+                '../trunks/mock_tpm_state.cc',
+                '../trunks/mock_tpm_utility.cc',
+                '../trunks/trunks_factory_for_test.cc',
+                'server/tpm2_status_test.cc',
+              ],
+            }],
           ],
           'dependencies': [
             'libtpm_manager',

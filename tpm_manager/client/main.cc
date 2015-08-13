@@ -17,6 +17,7 @@
 
 #include "tpm_manager/client/dbus_proxy.h"
 #include "tpm_manager/common/dbus_interface.pb.h"
+#include "tpm_manager/common/print_dbus_interface_proto.h"
 
 namespace tpm_manager {
 
@@ -78,9 +79,10 @@ class ClientLoop : public ClientLoopBase {
   }
 
   void PrintGetTpmStatusReply(const GetTpmStatusReply& reply) {
-    LOG(INFO) << "Received reply from tpm_managerd";
     if (reply.has_status() && reply.status() == STATUS_NOT_AVAILABLE) {
       LOG(INFO) << "tpm_managerd is not available.";
+    } else {
+      LOG(INFO) << "TpmStatusReply: " << GetProtoDebugString(reply);
     }
     Quit();
   }

@@ -17,6 +17,12 @@
 #include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_manager_service.h"
 
+#if USE_TPM2
+#include "tpm_manager/server/tpm2_status_impl.h"
+#else
+#include "tpm_manager/server/tpm_status_impl.h"
+#endif
+
 using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace {
@@ -29,9 +35,15 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
       : chromeos::DBusServiceDaemon(tpm_manager::kTpmManagerServiceName) {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     local_data_store_.reset(new tpm_manager::LocalDataStoreImpl());
+#if USE_TPM2
+    tpm_status_.reset(new tpm_manager::Tpm2StatusImpl);
+#else
+    tpm_status_.reset(new tpm_manager::TpmStatusImpl);
+#endif
     tpm_manager_service_.reset(new tpm_manager::TpmManagerService(
         command_line->HasSwitch(kWaitForOwnershipTriggerSwitch),
-        local_data_store_.get()));
+        local_data_store_.get(),
+        tpm_status_.get()));
   }
 
  protected:
@@ -53,6 +65,7 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
 
  private:
   std::unique_ptr<tpm_manager::LocalDataStore> local_data_store_;
+  std::unique_ptr<tpm_manager::TpmStatus> tpm_status_;
   std::unique_ptr<tpm_manager::TpmManagerInterface> tpm_manager_service_;
   std::unique_ptr<tpm_manager::DBusService> dbus_service_;
 
