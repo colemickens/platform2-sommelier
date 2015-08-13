@@ -18,6 +18,8 @@
 #include <base/files/important_file_writer.h>
 #include <base/files/file_util.h>
 #include <base/json/json_string_value_serializer.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 
 #include "shill/crypto_rot47.h"
@@ -43,6 +45,10 @@ static string ObjectID(const JsonStore* j) {
 
 namespace {
 
+static const char kCoercedValuePropertyEncodedValue[] = "_encoded_value";
+static const char kCoercedValuePropertyNativeType[] = "_native_type";
+static const char kNativeTypeNonAsciiString[] = "non_ascii_string";
+static const char kNativeTypeUint64[] = "uint64";
 static const char kRootPropertyDescription[] = "description";
 static const char kRootPropertySettings[] = "settings";
 
@@ -58,6 +64,193 @@ bool DoesGroupContainProperties(
     }
   }
   return true;
+}
+
+// Deserialization helpers.
+
+// A coerced value is used to represent values that base::Value does
+// not directly support.  A coerced value has the form
+//   {'_native_type': <type-as-string>, '_encoded_value': <value-as-string>}
+bool IsCoercedValue(const base::DictionaryValue& value) {
+  return value.HasKey(kCoercedValuePropertyNativeType) &&
+      value.HasKey(kCoercedValuePropertyEncodedValue);
+}
+
+unique_ptr<chromeos::Any> DecodeCoercedValue(
+    const base::DictionaryValue& coerced_value) {
+  string native_type;
+  if (!coerced_value.GetStringWithoutPathExpansion(
+          kCoercedValuePropertyNativeType, &native_type)) {
+    LOG(ERROR) << "Property |" << kCoercedValuePropertyNativeType
+               << "| is not a string.";
+    return nullptr;
+  }
+
+  string encoded_value;
+  if (!coerced_value.GetStringWithoutPathExpansion(
+          kCoercedValuePropertyEncodedValue, &encoded_value)) {
+    LOG(ERROR) << "Property |" << kCoercedValuePropertyEncodedValue
+               << "| is not a string.";
+    return nullptr;
+  }
+
+  if (native_type == kNativeTypeNonAsciiString) {
+    vector<uint8_t> native_value;
+    if (base::HexStringToBytes(encoded_value, &native_value)) {
+      return unique_ptr<chromeos::Any>(
+          new chromeos::Any(string(native_value.begin(), native_value.end())));
+    } else {
+      LOG(ERROR) << "Failed to decode hex data from |" << encoded_value << "|.";
+      return nullptr;
+    }
+  } else if (native_type == kNativeTypeUint64) {
+    uint64_t native_value;
+    if (base::StringToUint64(encoded_value, &native_value)) {
+      return unique_ptr<chromeos::Any>(new chromeos::Any(native_value));
+    } else {
+      LOG(ERROR) << "Failed to parse uint64 from |" << encoded_value << "|.";
+      return nullptr;
+    }
+  } else {
+    LOG(ERROR) << "Unsupported native type |" << native_type << "|.";
+    return nullptr;
+  }
+}
+
+unique_ptr<string> MakeStringFromValue(const base::Value& value) {
+  const auto value_type = value.GetType();
+
+  if (value_type == base::Value::TYPE_STRING) {
+    unique_ptr<string> unwrapped_string(new string());
+    value.GetAsString(unwrapped_string.get());
+    return unwrapped_string;
+  } else if (value_type == base::Value::TYPE_DICTIONARY) {
+    const base::DictionaryValue* dictionary_value;
+    value.GetAsDictionary(&dictionary_value);
+    unique_ptr<chromeos::Any> decoded_value(
+        DecodeCoercedValue(*dictionary_value));
+    if (!decoded_value) {
+      LOG(ERROR) << "Failed to decode coerced value.";
+      return nullptr;
+    }
+
+    const auto& desired_type = typeid(string);
+    const auto& available_type = decoded_value->GetType();
+    if (available_type != desired_type) {
+      LOG(ERROR) << "Can not read |" << desired_type.name() << "| from |"
+                 << available_type.name() << ".";
+      return nullptr;
+    }
+    return unique_ptr<string>(new string(decoded_value->Get<string>()));
+  } else {
+    LOG(ERROR) << "Got unexpected type |" << value_type << "|.";
+    return nullptr;
+  }
+}
+
+unique_ptr<vector<string>> ConvertListValueToStringVector(
+    const base::ListValue& list_value) {
+  const size_t list_len = list_value.GetSize();
+  for (size_t i = 0; i < list_len; ++i) {
+    const base::Value* list_item;
+    list_value.Get(i, &list_item);
+    const auto item_type = list_item->GetType();
+    if (item_type != base::Value::TYPE_STRING &&
+        item_type != base::Value::TYPE_DICTIONARY) {
+      LOG(ERROR) << "Element " << i << " has type " << item_type << ", "
+                 << "instead of expected types "
+                 << base::Value::TYPE_STRING << "  or "
+                 << base::Value::TYPE_DICTIONARY << ".";
+      return nullptr;
+    }
+  }
+
+  unique_ptr<vector<string>> result(new vector<string>);
+  for (size_t i = 0; i < list_len; ++i) {
+    const base::Value* list_item;
+    unique_ptr<string> native_string;
+    list_value.Get(i, &list_item);
+    native_string = MakeStringFromValue(*list_item);
+    if (!native_string) {
+      LOG(ERROR) << "Failed to parse string from element " << i << ".";
+      return nullptr;
+    }
+    result->push_back(*native_string);
+  }
+  return result;
+}
+
+unique_ptr<chromeos::VariantDictionary>
+ConvertDictionaryValueToVariantDictionary(
+    const base::DictionaryValue& dictionary_value) {
+  base::DictionaryValue::Iterator it(dictionary_value);
+  unique_ptr<chromeos::VariantDictionary> variant_dictionary(
+      new chromeos::VariantDictionary());
+  while (!it.IsAtEnd()) {
+    const string& key = it.key();
+    const base::Value& value = it.value();
+    switch (value.GetType()) {
+      case base::Value::TYPE_NULL:
+        LOG(ERROR) << "Key |" << key << "| has unsupported TYPE_NULL.";
+        return nullptr;
+      case base::Value::TYPE_BOOLEAN: {
+        bool native_bool;
+        value.GetAsBoolean(&native_bool);
+        (*variant_dictionary)[key] = native_bool;
+        break;
+      }
+      case base::Value::TYPE_INTEGER: {
+        int native_int;
+        value.GetAsInteger(&native_int);
+        (*variant_dictionary)[key] = native_int;
+        break;
+      }
+      case base::Value::TYPE_DOUBLE:
+        LOG(ERROR) << "Key |" << key << "| has unsupported TYPE_DOUBLE.";
+        return nullptr;
+      case base::Value::TYPE_STRING: {
+        string native_string;
+        value.GetAsString(&native_string);
+        (*variant_dictionary)[key] = native_string;
+        break;
+      }
+      case base::Value::TYPE_BINARY:
+        /* The JSON parser should never create Values of this type. */
+        LOG(ERROR) << "Key |" << key << "| has unexpected TYPE_BINARY.";
+        return nullptr;
+      case base::Value::TYPE_DICTIONARY: {
+        const base::DictionaryValue* dictionary_value;
+        value.GetAsDictionary(&dictionary_value);
+        if (!IsCoercedValue(*dictionary_value)) {
+          LOG(ERROR) << "Key |" << key << "| has unsupported TYPE_DICTIONARY.";
+          return nullptr;
+        }
+        unique_ptr<chromeos::Any> decoded_coerced_value(
+            DecodeCoercedValue(*dictionary_value));
+        if (!decoded_coerced_value) {
+          LOG(ERROR) << "Key |" << key << "| could not be decoded.";
+          return nullptr;
+        }
+        (*variant_dictionary)[key] = *decoded_coerced_value;
+        break;
+      }
+      case base::Value::TYPE_LIST: {  // Only string lists, for now.
+        const base::ListValue* list_value;
+        value.GetAsList(&list_value);
+
+        unique_ptr<vector<string>> string_list(
+            ConvertListValueToStringVector(*list_value));
+        if (!string_list) {
+          LOG(ERROR) << "Key |" << key << "| could not be decoded.";
+          return nullptr;
+        }
+        (*variant_dictionary)[key] = *string_list;
+        break;
+      }
+    }
+    it.Advance();
+  }
+  return variant_dictionary;
 }
 
 }  // namespace
@@ -121,8 +314,31 @@ bool JsonStore::Open() {
     return false;
   }
 
-  // TODO(quiche): copy data from |settings_dictionary| to
-  // |group_name_to_settings_|.
+  if (!group_name_to_settings_.empty()) {
+    LOG(INFO) << "Clearing existing settings on open.";
+    group_name_to_settings_.clear();
+  }
+
+  base::DictionaryValue::Iterator it(*settings_dictionary);
+  while (!it.IsAtEnd()) {
+    const string& group_name = it.key();
+    const base::DictionaryValue* group_settings_as_values;
+    if (!it.value().GetAsDictionary(&group_settings_as_values)) {
+      LOG(ERROR) << "Group |" << group_name << "| is not a dictionary.";
+      return false;
+    }
+
+    unique_ptr<chromeos::VariantDictionary> group_settings_as_variants =
+        ConvertDictionaryValueToVariantDictionary(*group_settings_as_values);
+    if (!group_settings_as_variants) {
+      LOG(ERROR) << "Failed to convert group |" << group_name
+                 << "| to variants.";
+      return false;
+    }
+
+    group_name_to_settings_[group_name] = *group_settings_as_variants;
+    it.Advance();
+  }
 
   return true;
 }

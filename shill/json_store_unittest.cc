@@ -565,6 +565,344 @@ TEST_F(JsonStoreTest, OpenFailsWhenSettingsIsNonDictionary) {
   EXPECT_FALSE(store_.Open());
 }
 
+// File open: group structure.
+TEST_F(JsonStoreTest, OpenSucceedsOnEmptyGroup) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {}"
+      "}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsWhenGroupIsNonDictionary) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": 1"
+      "}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  StartsWith("Group |group_a| is not a dictionary")));
+  EXPECT_FALSE(store_.Open());
+}
+
+// File open: each supported property type (with selected valid
+// values for each type), ordered by base::Value::Type enum.  Types
+// which are not supported by base::Value are ordered as
+// TYPE_DICTIONARY.
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithBooleanValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": true"
+      "}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithMinIntegerValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": -2147483648"  // -2^31
+      "}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithMaxIntegerValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": 2147483647"  // 2^31-1
+      "}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithStringValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": \"this is \\\"a\\\" string\\n\""
+      "}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithEscapedStringValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": \"non_ascii_string\","
+      "            \"_encoded_value\": \"0001020304\""
+      "}}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithMinUint64Value) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": \"uint64\","
+      "            \"_encoded_value\": \"0\""  // 2^64-1
+      "}}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithMaxUint64Value) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": \"uint64\","
+      "            \"_encoded_value\": \"18446744073709551615\""  // 2^64-1
+      "}}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithEmptyListValue) {
+  // Empty list is presumed to be an empty string list.
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": []"
+      "}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWithStringListValueWithSingleItem) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": [ \"a string\" ]"
+      "}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(
+    JsonStoreTest, OpenSucceedsOnSettingWithStringListValueWithMultipleItems) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": [ \"string 1\", \"string 2\\n\" ]"
+      "}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenSucceedsOnSettingWhenStringListHasEscapedItem) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": [{"
+      "            \"_native_type\": \"non_ascii_string\","
+      "            \"_encoded_value\": \"0001020304\""
+      "}]}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest,
+       OpenSucceedsOnSettingWhenStringListHasEscapedAndUnescapedItems) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": ["
+      "            {\"_native_type\": \"non_ascii_string\","
+      "             \"_encoded_value\": \"0001020304\"},"
+      "            \"normal string\""
+      "]}}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+// File open: unsupported types, and invalid values. Ordered by
+// base::Value::Type enum.  Types which are supported by JsonStore,
+// but not directly supported by base::Value, are ordered as
+// TYPE_DICTIONARY.
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithNullValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": null"
+      "}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  HasSubstr("has unsupported TYPE_NULL")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithBadBooleanValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": truthy"
+      "}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Failed to parse JSON")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithOverlySmallInteger) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": -2147483649"  // -2^31-1
+      "}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, HasSubstr("unsupported TYPE_DOUBLE")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithOverlyLargeInteger) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": 2147483648"  // 2^31
+      "}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, HasSubstr("unsupported TYPE_DOUBLE")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithDoubleValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": 1.234"
+      "}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, HasSubstr("unsupported TYPE_DOUBLE")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithDictionaryValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {}"
+      "}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  HasSubstr("unsupported TYPE_DICTIONARY")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithOverlayLargeUint64Value) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": \"uint64\","
+      "            \"_encoded_value\": \"18446744073709551616\""  // 2^64
+      "}}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Failed to parse uint64")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithOverlaySmallUint64Value) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": \"uint64\","
+      "            \"_encoded_value\": \"-1\""
+      "}}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Failed to parse uint64")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsWhenSettingHasEscapedStringWithInvalidHex) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": \"non_ascii_string\","
+      "            \"_encoded_value\": \"-1\""
+      "}}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Failed to decode hex")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest,
+       OpenFailsWhenSettingHasEscapedStringListItemWithInvalidHex) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": [{"
+      "            \"_native_type\": \"non_ascii_string\","
+      "            \"_encoded_value\": \"-1\""
+      "}]}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Failed to decode hex")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnCoercedSettingWithBadNativeType) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": true,"
+      "            \"_encoded_value\": \"1234\""
+      "}}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  StartsWith("Property |_native_type| is not a string")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnCoercedSettingWhenEncodedValueIsNotAString) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": {"
+      "            \"_native_type\": \"uint64\","
+      "            \"_encoded_value\": 1234"
+      "}}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  StartsWith("Property |_encoded_value| is not a string")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnSettingWithIntListValue) {
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_1\": [ 1 ]"
+      "}}}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  HasSubstr("instead of expected type")));
+  EXPECT_FALSE(store_.Open());
+}
+
+// File open: miscellaneous.
+TEST_F(JsonStoreTest, OpenClearsExistingInMemoryData) {
+  store_.SetString("group_a", "knob_1", "watch me disappear");
+  ASSERT_TRUE(store_.GetString("group_a", "knob_1", nullptr));
+
+  SetJsonFileContents(
+      "{\"settings\": {"
+      "    \"group_a\": {"
+      "        \"knob_2\": \"new stuff\""
+      "}}}");
+  ASSERT_TRUE(store_.Open());
+  EXPECT_FALSE(store_.GetString("group_a", "knob_1", nullptr));
+  EXPECT_TRUE(store_.GetString("group_a", "knob_2", nullptr));
+}
+
+TEST_F(JsonStoreTest, OpenClearsExistingInMemoryGroups) {
+  store_.SetString("group_a", "knob_1", "watch me disappear");
+  ASSERT_FALSE(store_.GetGroups().empty());
+
+  // In the delete case, we're non-comittal about whether empty groups
+  // are garbage collected. But, in the Open() case, we commit to
+  // fully clearing in-memory data.
+  SetJsonFileContents("{\"settings\": {}}");
+  ASSERT_TRUE(store_.Open());
+  EXPECT_TRUE(store_.GetGroups().empty());
+}
+
 // File operations: Flush() basics.
 TEST_F(JsonStoreTest, FlushCreatesPersistentStore) {
   ASSERT_FALSE(store_.IsNonEmpty());
