@@ -26,7 +26,7 @@ class JsonStore : public StoreInterface {
   // need one of StoreInterface implementations are expected to
   // automatically Flush() before destruction.
 
-  // Configure the filesystem path to which this store will be
+  // Configures the filesystem path to which this store will be
   // persisted. This method must be called before any calls to Open(),
   // Close(), or Flush().
   void set_path(const base::FilePath& path) { path_ = path; }
@@ -40,7 +40,12 @@ class JsonStore : public StoreInterface {
   // not be called a second time, without first calling Close().
   bool Open();
 
-  // Mark the underlying file store as corrupted, moving the data file
+  // Saves in-memory data to disk (overwriting any existing on-disk
+  // data), and closes the store. The effect of reading from or writing
+  // to a closed store is undefined.
+  bool Close();
+
+  // Marks the underlying file store as corrupted, moving the data file
   // to a new filename.  This will prevent the file from being re-opened
   // the next time Open() is called.
   bool MarkAsCorrupted();

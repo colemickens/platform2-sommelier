@@ -407,6 +407,10 @@ bool JsonStore::Open() {
   return true;
 }
 
+bool JsonStore::Close() {
+  return Flush();
+}
+
 bool JsonStore::Flush() {
   if (path_.empty()) {
     LOG(ERROR) << "Empty key file path.";

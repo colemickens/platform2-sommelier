@@ -903,6 +903,23 @@ TEST_F(JsonStoreTest, OpenClearsExistingInMemoryGroups) {
   EXPECT_TRUE(store_.GetGroups().empty());
 }
 
+// File operations: Close() basic functionality.
+TEST_F(JsonStoreTest, ClosePersistsData) {
+  ASSERT_FALSE(store_.IsNonEmpty());
+  ASSERT_TRUE(store_.Close());
+
+  // Verify that the file actually got written with the right name.
+  FileEnumerator file_enumerator(temp_dir_.path(),
+                                 false /* not recursive */,
+                                 FileEnumerator::FILES);
+  EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
+
+  // Verify that the profile is a regular file, readable and writeable by the
+  // owner only.
+  FileEnumerator::FileInfo file_info = file_enumerator.GetInfo();
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, file_info.stat().st_mode);
+}
+
 // File operations: Flush() basics.
 TEST_F(JsonStoreTest, FlushCreatesPersistentStore) {
   ASSERT_FALSE(store_.IsNonEmpty());
