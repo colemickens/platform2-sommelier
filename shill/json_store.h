@@ -34,6 +34,11 @@ class JsonStore : public StoreInterface {
   // Returns true if the store exists and is non-empty.
   bool IsNonEmpty() const;
 
+  // Opens the store. Returns true on success. This method should be
+  // invoked before adding any data to the store. This method should
+  // not be called a second time, without first calling Close().
+  bool Open();
+
   // Inherited from StoreInterface.
   bool Flush() override;
   std::set<std::string> GetGroups() const override;

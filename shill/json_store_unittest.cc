@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
@@ -57,6 +58,7 @@ class JsonStoreTest : public Test {
 
  protected:
   void SetVerboseLevel(int new_level);
+  void SetJsonFileContents(const string& data);
 
   const string kStringWithEmbeddedNulls;
   const string kNonUtf8String;
@@ -68,6 +70,11 @@ class JsonStoreTest : public Test {
 
 void JsonStoreTest::SetVerboseLevel(int new_level) {
   ScopeLogger::GetInstance()->set_verbose_level(new_level);
+}
+
+void JsonStoreTest::SetJsonFileContents(const string& data) {
+  EXPECT_EQ(data.size(),
+            base::WriteFile(store_.path(), data.data(), data.size()));
 }
 
 // In memory operations: basic storage and retrieval.
@@ -502,6 +509,60 @@ TEST_F(JsonStoreTest, DeleteGroupSucceedsOnMissingGroup) {
   store_.SetBool("group_a", "knob_1", bool());
   EXPECT_TRUE(store_.DeleteGroup("group_b"));
   EXPECT_TRUE(store_.GetBool("group_a", "knob_1", nullptr));
+}
+
+// File open: basic file structure.
+TEST_F(JsonStoreTest, OpenSucceedsOnNonExistentFile) {
+  // If the file does not already exist, we assume the caller will
+  // give us data later.
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnNonJsonData) {
+  SetJsonFileContents("some random junk");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  StartsWith("Failed to parse JSON data")));
+  EXPECT_FALSE(store_.Open());
+}
+
+// File open: root element handling.
+TEST_F(JsonStoreTest, OpenFailsWhenRootIsNonDictionary) {
+  SetJsonFileContents("\"a string\"");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  StartsWith("JSON value is not a dictionary")));
+  EXPECT_FALSE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenWarnsOnRootDictionaryWithNonStringDescription) {
+  SetJsonFileContents("{\"description\": 1}");
+  EXPECT_CALL(
+      log_,
+      Log(logging::LOG_WARNING, _, HasSubstr("|description| is not a string")));
+  store_.Open();
+}
+
+TEST_F(JsonStoreTest, OpenFailsOnRootDictionaryWithoutSettings) {
+  SetJsonFileContents("{}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  StartsWith("Property |settings| is missing")));
+  EXPECT_FALSE(store_.Open());
+}
+
+// File open: settings element handling.
+TEST_F(JsonStoreTest, OpenSucceedsOnEmptySettings) {
+  SetJsonFileContents("{\"settings\": {}}");
+  EXPECT_TRUE(store_.Open());
+}
+
+TEST_F(JsonStoreTest, OpenFailsWhenSettingsIsNonDictionary) {
+  SetJsonFileContents("{\"settings\": 1}");
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _,
+                  StartsWith("Property |settings| is not a dictionary")));
+  EXPECT_FALSE(store_.Open());
 }
 
 // File operations: Flush() basics.

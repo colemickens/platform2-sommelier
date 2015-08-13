@@ -27,6 +27,7 @@
 using std::map;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace shill {
@@ -66,6 +67,64 @@ JsonStore::JsonStore() {}
 bool JsonStore::IsNonEmpty() const {
   int64_t file_size = 0;
   return base::GetFileSize(path_, &file_size) && file_size != 0;
+}
+
+bool JsonStore::Open() {
+  CHECK(!path_.empty());
+  if (!IsNonEmpty()) {
+    LOG(INFO) << "Creating a new key file at |" << path_.value() << "|.";
+    return true;
+  }
+
+  string json_string;
+  if (!base::ReadFileToString(path_, &json_string)) {
+    LOG(ERROR) << "Failed to read data from |" << path_.value() << "|.";
+    return false;
+  }
+
+  JSONStringValueDeserializer json_deserializer(json_string);
+  unique_ptr<base::Value> json_value;
+  string json_error;
+  json_deserializer.set_allow_trailing_comma(true);
+  json_value.reset(json_deserializer.Deserialize(nullptr, &json_error));
+  if (!json_value) {
+    LOG(ERROR) << "Failed to parse JSON data from |" << path_.value() <<"|.";
+    SLOG(this, 5) << json_error;
+    return false;
+  }
+
+  const base::DictionaryValue* root_dictionary;
+  if (!json_value->GetAsDictionary(&root_dictionary)) {
+    LOG(ERROR) << "JSON value is not a dictionary.";
+    return false;
+  }
+
+  CHECK(root_dictionary);
+  if (root_dictionary->HasKey(kRootPropertyDescription) &&
+      !root_dictionary->GetStringWithoutPathExpansion(
+          kRootPropertyDescription, &file_description_)) {
+    LOG(WARNING) << "Property |" << kRootPropertyDescription
+                 << "| is not a string.";
+    // Description is non-critical, so continue processing.
+  }
+
+  if (!root_dictionary->HasKey(kRootPropertySettings)) {
+    LOG(ERROR) << "Property |" << kRootPropertySettings << "| is missing.";
+    return false;
+  }
+
+  const base::DictionaryValue* settings_dictionary;
+  if (!root_dictionary->GetDictionaryWithoutPathExpansion(
+          kRootPropertySettings, &settings_dictionary)) {
+    LOG(ERROR) << "Property |" << kRootPropertySettings
+               << "| is not a dictionary.";
+    return false;
+  }
+
+  // TODO(quiche): copy data from |settings_dictionary| to
+  // |group_name_to_settings_|.
+
+  return true;
 }
 
 bool JsonStore::Flush() {
