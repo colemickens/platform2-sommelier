@@ -23,6 +23,7 @@ extern void convert_fourcc_to_str(uint32_t fourcc, char* str);
 extern bool is_v4l2_support_format(int fd, enum v4l2_buf_type buf_type,
     uint32_t fourcc);
 extern bool is_hw_video_acc_device(int fd);
+extern bool is_hw_jpeg_acc_device(int fd);
 
 /* util_vaapi */
 #ifdef HAS_VAAPI
@@ -37,5 +38,6 @@ extern bool detect_video_acc_vp8(void);
 extern bool detect_video_acc_vp9(void);
 extern bool detect_video_acc_enc_h264(void);
 extern bool detect_video_acc_enc_vp8(void);
+extern bool detect_jpeg_acc_dec(void);
 
 #endif  // AVTEST_LABEL_DETECT_LABEL_DETECT_H_

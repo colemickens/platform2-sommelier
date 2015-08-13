@@ -38,7 +38,7 @@ bool is_v4l2_support_format(int fd, enum v4l2_buf_type buf_type,
   return found;
 }
 
-/* Returns true if device fd is V4L2 encode/decode device. */
+/* Returns true if device fd is V4L2 video encode/decode device. */
 bool is_hw_video_acc_device(int fd) {
   struct v4l2_capability cap;
   int ret = do_ioctl(fd, VIDIOC_QUERYCAP, &cap);
@@ -51,5 +51,21 @@ bool is_hw_video_acc_device(int fd) {
     }
   }
   TRACE("is_hw_video_acc_device: false\n");
+  return false;
+}
+
+/* Returns true if device fd is V4L2 jpeg encode/decode device. */
+bool is_hw_jpeg_acc_device(int fd) {
+  struct v4l2_capability cap;
+  int ret = do_ioctl(fd, VIDIOC_QUERYCAP, &cap);
+  if (ret == 0) {
+    if ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) &&
+        (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT) &&
+        (cap.capabilities & V4L2_CAP_STREAMING)) {
+      TRACE("is_hw_jpeg_acc_device: true\n");
+      return true;
+    }
+  }
+  TRACE("is_hw_jpeg_acc_device: false\n");
   return false;
 }
