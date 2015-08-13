@@ -1086,4 +1086,30 @@ TEST_F(JsonStoreTest, CanDeleteGroupFromPersistedData) {
   EXPECT_FALSE(persisted_data_v2.GetString("group_a", "knob_1", nullptr));
 }
 
+// File operations: file management.
+TEST_F(JsonStoreTest, MarkAsCorruptedFailsWhenPathIsNotSet) {
+  store_.set_path(FilePath());
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, StartsWith("Empty key file path")));
+  EXPECT_FALSE(store_.MarkAsCorrupted());
+}
+
+TEST_F(JsonStoreTest, MarkAsCorruptedFailsWhenStoreHasNotBeenPersisted) {
+  ASSERT_FALSE(store_.path().empty());
+  EXPECT_CALL(log_,
+              Log(logging::LOG_ERROR, _, HasSubstr("rename failed")));
+  EXPECT_FALSE(store_.MarkAsCorrupted());
+}
+
+TEST_F(JsonStoreTest, MarkAsCorruptedMovesCorruptStore) {
+  store_.Flush();
+  ASSERT_TRUE(store_.IsNonEmpty());
+  ASSERT_TRUE(base::PathExists(store_.path()));
+
+  EXPECT_TRUE(store_.MarkAsCorrupted());
+  EXPECT_FALSE(store_.IsNonEmpty());
+  EXPECT_FALSE(base::PathExists(store_.path()));
+  EXPECT_TRUE(base::PathExists(FilePath(store_.path().value() + ".corrupted")));
+}
+
 }  // namespace shill

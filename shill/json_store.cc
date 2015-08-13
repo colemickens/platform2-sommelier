@@ -47,6 +47,7 @@ static string ObjectID(const JsonStore* j) {
 
 namespace {
 
+static const char kCorruptSuffix[] = ".corrupted";
 static const char kCoercedValuePropertyEncodedValue[] = "_encoded_value";
 static const char kCoercedValuePropertyNativeType[] = "_native_type";
 static const char kNativeTypeNonAsciiString[] = "non_ascii_string";
@@ -446,6 +447,21 @@ bool JsonStore::Flush() {
     return false;
   }
 
+  return true;
+}
+
+bool JsonStore::MarkAsCorrupted() {
+  LOG(INFO) << "In " << __func__ << " for " << path_.value();
+  if (path_.empty()) {
+    LOG(ERROR) << "Empty key file path.";
+    return false;
+  }
+  string corrupted_path = path_.value() + kCorruptSuffix;
+  int ret = rename(path_.value().c_str(), corrupted_path.c_str());
+  if (ret != 0) {
+    PLOG(ERROR) << "File rename failed.";
+    return false;
+  }
   return true;
 }
 

@@ -40,6 +40,11 @@ class JsonStore : public StoreInterface {
   // not be called a second time, without first calling Close().
   bool Open();
 
+  // Mark the underlying file store as corrupted, moving the data file
+  // to a new filename.  This will prevent the file from being re-opened
+  // the next time Open() is called.
+  bool MarkAsCorrupted();
+
   // Inherited from StoreInterface.
   bool Flush() override;
   std::set<std::string> GetGroups() const override;
