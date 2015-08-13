@@ -14,7 +14,6 @@
 #include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
 #include <weave/command.h>
-#include <weave/task_runner.h>
 
 #include "libweave/src/backoff_entry.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
@@ -23,6 +22,7 @@
 namespace weave {
 
 class CommandInstance;
+class TaskRunner;
 
 // Command proxy which publishes command updates to the cloud.
 class CloudCommandProxy final : public Command::Observer {

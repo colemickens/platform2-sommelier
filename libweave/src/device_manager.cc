@@ -6,8 +6,6 @@
 
 #include <string>
 
-#include <base/message_loop/message_loop.h>
-
 #include "libweave/src/base_api_handler.h"
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"

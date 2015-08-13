@@ -6,11 +6,11 @@
 
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 #include <weave/enum_to_string.h>
 #include <weave/network.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/privet/constants.h"
 
@@ -148,9 +148,10 @@ void WifiBootstrapManager::UpdateState(State new_state) {
   if (new_state != state_) {
     state_ = new_state;
     // Post with weak ptr to avoid notification after this object destroyed.
-    task_runner_->PostTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE, base::Bind(&WifiBootstrapManager::NotifyStateListeners,
-                              lifetime_weak_factory_.GetWeakPtr(), new_state));
+                              lifetime_weak_factory_.GetWeakPtr(), new_state),
+        {});
   } else {
     VLOG(3) << "Not notifying listeners of state change, "
             << "because the states are the same.";

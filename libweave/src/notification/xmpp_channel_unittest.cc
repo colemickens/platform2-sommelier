@@ -9,8 +9,10 @@
 
 #include <base/test/simple_test_clock.h>
 #include <chromeos/bind_lambda.h>
-#include <chromeos/message_loops/fake_message_loop.h>
 #include <gtest/gtest.h>
+#include <weave/mock_task_runner.h>
+
+using testing::StrictMock;
 
 namespace weave {
 
@@ -157,11 +159,6 @@ class FakeXmppChannel : public XmppChannel {
 
 class XmppChannelTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    fake_loop_.SetAsCurrent();
-    clock_.SetNow(base::Time::Now());
-  }
-
   void StartStream() {
     xmpp_client_.fake_stream_.ExpectWritePacketString({}, kStartStreamMessage);
     xmpp_client_.fake_stream_.AddReadPacketString({}, kStartStreamResponse);
@@ -177,13 +174,12 @@ class XmppChannelTest : public ::testing::Test {
 
   void RunUntil(XmppChannel::XmppState st) {
     for (size_t n = 15; n && xmpp_client_.state() != st; --n)
-      fake_loop_.RunOnce(true);
+      task_runner_.RunOnce();
     EXPECT_EQ(st, xmpp_client_.state());
   }
 
-  base::SimpleTestClock clock_;
-  chromeos::FakeMessageLoop fake_loop_{&clock_};
-  FakeXmppChannel xmpp_client_{&fake_loop_};
+  StrictMock<unittests::MockTaskRunner> task_runner_;
+  FakeXmppChannel xmpp_client_{&task_runner_};
 };
 
 TEST_F(XmppChannelTest, StartStream) {

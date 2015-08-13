@@ -19,6 +19,7 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
 #include <chromeos/key_value_store.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -50,6 +51,15 @@ const char kNotImplemented[] = "notImplemented";
 
 }  // anonymous namespace
 
+class Manager::TaskRunner : public weave::TaskRunner {
+ public:
+  void PostDelayedTask(const tracked_objects::Location& from_here,
+                       const base::Closure& task,
+                       base::TimeDelta delay) override {
+    chromeos::MessageLoop::current()->PostDelayedTask(from_here, task, delay);
+  }
+};
+
 Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
     : dbus_object_(object_manager.get(),
                    object_manager->GetBus(),
@@ -62,6 +72,7 @@ Manager::~Manager() {
 void Manager::Start(const weave::Device::Options& options,
                     const std::set<std::string>& device_whitelist,
                     AsyncEventSequencer* sequencer) {
+  task_runner_.reset(new TaskRunner{});
   http_client_.reset(new HttpTransportClient);
   shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
   weave::Mdns* mdns{nullptr};
@@ -76,7 +87,7 @@ void Manager::Start(const weave::Device::Options& options,
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   device_ = weave::Device::Create();
-  device_->Start(options, chromeos::MessageLoop::current(), http_client_.get(),
+  device_->Start(options, task_runner_.get(), http_client_.get(),
                  shill_client_.get(), mdns, http_server);
 
   command_dispatcher_.reset(new DBusCommandDispacher{

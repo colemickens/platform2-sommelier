@@ -10,13 +10,12 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/single_thread_task_runner.h>
-#include <base/timer/timer.h>
-#include <weave/task_runner.h>
 
 #include "libweave/src/notification/notification_channel.h"
 
 namespace weave {
+
+class TaskRunner;
 
 class PullChannel : public NotificationChannel {
  public:

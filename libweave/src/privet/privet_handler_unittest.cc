@@ -11,7 +11,6 @@
 #include <base/bind.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
-#include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
@@ -136,7 +135,6 @@ class PrivetHandlerTest : public testing::Test {
     handler_->HandleRequest(api, auth_header_, input,
                             base::Bind(&PrivetHandlerTest::HandlerCallback,
                                        base::Unretained(this)));
-    base::RunLoop().RunUntilIdle();
     return output_;
   }
 
@@ -152,7 +150,6 @@ class PrivetHandlerTest : public testing::Test {
     base::DictionaryValue dictionary;
     handler_->HandleRequest(api, auth_header_, &dictionary,
                             base::Bind(&PrivetHandlerTest::HandlerNoFound));
-    base::RunLoop().RunUntilIdle();
   }
 
   void SetNoWifiAndGcd() {
@@ -192,7 +189,6 @@ class PrivetHandlerTest : public testing::Test {
     EXPECT_EQ(404, status);
   }
 
-  base::MessageLoop message_loop_;
   std::unique_ptr<PrivetHandler> handler_;
   base::DictionaryValue output_;
   ConnectionState gcd_disabled_state_{ConnectionState::kDisabled};

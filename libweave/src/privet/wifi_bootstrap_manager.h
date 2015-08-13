@@ -14,7 +14,6 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
-#include <weave/task_runner.h>
 
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/privet_types.h"

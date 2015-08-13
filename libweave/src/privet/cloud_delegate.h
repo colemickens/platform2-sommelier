@@ -12,7 +12,6 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/observer_list.h>
-#include <weave/task_runner.h>
 
 #include "libweave/src/privet/privet_types.h"
 #include "libweave/src/privet/security_delegate.h"
@@ -26,6 +25,7 @@ namespace weave {
 class CommandManager;
 class DeviceRegistrationInfo;
 class StateManager;
+class TaskRunner;
 
 namespace privet {
 

@@ -10,7 +10,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <base/values.h>
 #include <chromeos/errors/error.h>
 #include <weave/task_runner.h>

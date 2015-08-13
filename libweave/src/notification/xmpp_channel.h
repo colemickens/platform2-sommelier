@@ -23,6 +23,7 @@
 namespace weave {
 
 class Network;
+class TaskRunner;
 
 // Simple interface to abstract XmppChannel's SendMessage() method.
 class XmppChannelInterface {

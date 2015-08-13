@@ -8,9 +8,9 @@
 #include <memory>
 
 #include <chromeos/bind_lambda.h>
-#include <chromeos/message_loops/mock_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <weave/mock_task_runner.h>
 
 #include "libweave/src/notification/xml_node.h"
 #include "libweave/src/notification/xmpp_channel.h"
@@ -75,14 +75,9 @@ class MockResponseReceiver {
 
 class IqStanzaHandlerTest : public testing::Test {
  public:
-  void SetUp() override {
-    mock_loop_.SetAsCurrent();
-  }
-
   testing::StrictMock<MockXmppChannelInterface> mock_xmpp_channel_;
-  base::SimpleTestClock clock_;
-  testing::NiceMock<chromeos::MockMessageLoop> mock_loop_{&clock_};
-  IqStanzaHandler iq_stanza_handler_{&mock_xmpp_channel_, &mock_loop_};
+  unittests::MockTaskRunner task_runner_;
+  IqStanzaHandler iq_stanza_handler_{&mock_xmpp_channel_, &task_runner_};
   MockResponseReceiver receiver_;
 };
 
@@ -106,7 +101,6 @@ TEST_F(IqStanzaHandlerTest, SendRequest) {
   expected_msg = "<iq id='5' type='query' from='foo@bar' to='baz'><body/></iq>";
   EXPECT_CALL(mock_xmpp_channel_, SendMessage(expected_msg)).Times(1);
   iq_stanza_handler_.SendRequest("query", "foo@bar", "baz", "<body/>", {}, {});
-
   // This test ignores all the posted callbacks.
 }
 
@@ -128,8 +122,7 @@ TEST_F(IqStanzaHandlerTest, UnknownResponseId) {
 }
 
 TEST_F(IqStanzaHandlerTest, SequentialResponses) {
-  EXPECT_CALL(mock_loop_, PostDelayedTask(_, _, _))
-      .Times(2);
+  EXPECT_CALL(task_runner_, PostDelayedTask(_, _, _)).Times(2);
 
   EXPECT_CALL(mock_xmpp_channel_, SendMessage(_)).Times(2);
   iq_stanza_handler_.SendRequest("set", "", "", "<body/>",
@@ -137,8 +130,7 @@ TEST_F(IqStanzaHandlerTest, SequentialResponses) {
   iq_stanza_handler_.SendRequest("get", "", "", "<body/>",
                                  receiver_.callback(2), {});
 
-  EXPECT_CALL(mock_loop_, PostDelayedTask(_, _, _))
-      .Times(2);
+  EXPECT_CALL(task_runner_, PostDelayedTask(_, _, _)).Times(2);
 
   EXPECT_CALL(receiver_, OnResponse(1, "foo"));
   auto request = XmlParser{}.Parse("<iq id='1' type='result'><foo/></iq>");
@@ -148,12 +140,11 @@ TEST_F(IqStanzaHandlerTest, SequentialResponses) {
   request = XmlParser{}.Parse("<iq id='2' type='result'><bar/></iq>");
   EXPECT_TRUE(iq_stanza_handler_.HandleIqStanza(std::move(request)));
 
-  mock_loop_.Run();
+  task_runner_.Run();
 }
 
 TEST_F(IqStanzaHandlerTest, OutOfOrderResponses) {
-  EXPECT_CALL(mock_loop_, PostDelayedTask(_, _, _))
-      .Times(2);
+  EXPECT_CALL(task_runner_, PostDelayedTask(_, _, _)).Times(2);
 
   EXPECT_CALL(mock_xmpp_channel_, SendMessage(_)).Times(2);
   iq_stanza_handler_.SendRequest("set", "", "", "<body/>",
@@ -161,8 +152,7 @@ TEST_F(IqStanzaHandlerTest, OutOfOrderResponses) {
   iq_stanza_handler_.SendRequest("get", "", "", "<body/>",
                                  receiver_.callback(2), {});
 
-  EXPECT_CALL(mock_loop_, PostDelayedTask(_, _, _))
-      .Times(2);
+  EXPECT_CALL(task_runner_, PostDelayedTask(_, _, _)).Times(2);
 
   EXPECT_CALL(receiver_, OnResponse(2, "bar"));
   auto request = XmlParser{}.Parse("<iq id='2' type='result'><bar/></iq>");
@@ -172,12 +162,11 @@ TEST_F(IqStanzaHandlerTest, OutOfOrderResponses) {
   request = XmlParser{}.Parse("<iq id='1' type='result'><foo/></iq>");
   EXPECT_TRUE(iq_stanza_handler_.HandleIqStanza(std::move(request)));
 
-  mock_loop_.Run();
+  task_runner_.Run();
 }
 
 TEST_F(IqStanzaHandlerTest, RequestTimeout) {
-  EXPECT_CALL(mock_loop_, PostDelayedTask(_, _, _))
-      .Times(1);
+  EXPECT_CALL(task_runner_, PostDelayedTask(_, _, _)).Times(1);
 
   bool called = false;
   auto on_timeout = [&called]() { called = true; };
@@ -186,7 +175,7 @@ TEST_F(IqStanzaHandlerTest, RequestTimeout) {
   EXPECT_FALSE(called);
   iq_stanza_handler_.SendRequest("set", "", "", "<body/>", {},
                                  base::Bind(on_timeout));
-  mock_loop_.Run();
+  task_runner_.Run();
   EXPECT_TRUE(called);
 }
 

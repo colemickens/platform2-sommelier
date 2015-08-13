@@ -110,8 +110,9 @@ bool IqStanzaHandler::HandleIqStanza(std::unique_ptr<XmlNode> stanza) {
     }
     auto p = requests_.find(id);
     if (p != requests_.end()) {
-      task_runner_->PostTask(
-          FROM_HERE, base::Bind(p->second, base::Passed(std::move(stanza))));
+      task_runner_->PostDelayedTask(
+          FROM_HERE, base::Bind(p->second, base::Passed(std::move(stanza))),
+          {});
       requests_.erase(p);
     }
   } else {

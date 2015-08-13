@@ -15,18 +15,17 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/message_loops/fake_message_loop.h>
 #include <chromeos/strings/string_utils.h>
+#include "libweave/external/crypto/p224_spake.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <weave/mock_task_runner.h>
 
-#include "libweave/external/crypto/p224_spake.h"
 #include "libweave/src/privet/openssl_utils.h"
 
 using testing::Eq;
@@ -119,8 +118,7 @@ class SecurityManagerTest : public testing::Test {
 
   const base::Time time_ = base::Time::FromTimeT(1410000000);
   base::FilePath embedded_code_path_{GetTempFilePath()};
-  base::SimpleTestClock clock_;
-  chromeos::FakeMessageLoop task_runner_{&clock_};
+  unittests::MockTaskRunner task_runner_;
   SecurityManager security_{{PairingType::kEmbeddedCode},
                             embedded_code_path_,
                             &task_runner_,

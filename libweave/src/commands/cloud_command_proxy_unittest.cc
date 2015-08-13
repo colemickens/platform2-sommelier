@@ -7,11 +7,9 @@
 #include <memory>
 #include <queue>
 
-#include <base/test/simple_test_clock.h>
-#include <chromeos/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <chromeos/message_loops/fake_message_loop.h>
+#include <weave/mock_task_runner.h>
 
 #include "libweave/src/commands/command_dictionary.h"
 #include "libweave/src/commands/command_instance.h"
@@ -46,17 +44,6 @@ class MockCloudCommandUpdateInterface : public CloudCommandUpdateInterface {
                     const base::Closure&));
 };
 
-// Mock-like task runner that allow the tests to inspect the calls to
-// TaskRunner::PostDelayedTask and verify the delays.
-class TestTaskRunner : public chromeos::FakeMessageLoop {
- public:
-  using FakeMessageLoop::FakeMessageLoop;
-  MOCK_METHOD3(PostDelayedTask,
-               TaskId(const tracked_objects::Location&,
-                      const base::Closure&,
-                      base::TimeDelta));
-};
-
 // Test back-off entry that uses the test clock.
 class TestBackoffEntry : public BackoffEntry {
  public:
@@ -88,19 +75,6 @@ class CloudCommandProxyTest : public ::testing::Test {
         .WillRepeatedly(Invoke(callback));
     EXPECT_CALL(state_change_queue_, GetLastStateChangeId())
         .WillRepeatedly(testing::ReturnPointee(&current_state_update_id_));
-
-    auto on_post_task = [this](const tracked_objects::Location& from_here,
-                               const base::Closure& task,
-                               base::TimeDelta delay) -> bool {
-      clock_.Advance(delay);
-      task_queue_.push(task);
-      return true;
-    };
-
-    ON_CALL(task_runner_, PostDelayedTask(_, _, _))
-        .WillByDefault(testing::Invoke(on_post_task));
-
-    clock_.SetNow(base::Time::Now());
 
     // Set up the command schema.
     auto json = CreateDictionaryValue(R"({
@@ -146,7 +120,7 @@ class CloudCommandProxyTest : public ::testing::Test {
     static const BackoffEntry::Policy policy{0,     1000, 2.0,  0.0,
                                              20000, -1,   false};
     std::unique_ptr<TestBackoffEntry> backoff{
-        new TestBackoffEntry{&policy, &clock_}};
+        new TestBackoffEntry{&policy, task_runner_.GetClock()}};
 
     // Finally construct the CloudCommandProxy we are going to test here.
     std::unique_ptr<CloudCommandProxy> proxy{new CloudCommandProxy{
@@ -162,8 +136,7 @@ class CloudCommandProxyTest : public ::testing::Test {
   base::CallbackList<void(StateChangeQueueInterface::UpdateID)> callbacks_;
   testing::StrictMock<MockCloudCommandUpdateInterface> cloud_updater_;
   testing::StrictMock<MockStateChangeQueueInterface> state_change_queue_;
-  base::SimpleTestClock clock_;
-  TestTaskRunner task_runner_{&clock_};
+  testing::StrictMock<unittests::MockTaskRunner> task_runner_;
   std::queue<base::Closure> task_queue_;
   CommandDictionary command_dictionary_;
   std::unique_ptr<CommandInstance> command_instance_;
@@ -251,8 +224,7 @@ TEST_F(CloudCommandProxyTest, RetryFailed) {
   })";
   EXPECT_CALL(cloud_updater_, UpdateCommand(kCmdID, MatchJson(expect2), _, _))
       .WillOnce(SaveArg<3>(&on_error));
-  task_queue_.back().Run();
-  task_queue_.pop();
+  task_runner_.RunOnce();
 
   // Now backoff should be 2 seconds.
   expected_delay = base::TimeDelta::FromSeconds(2);
@@ -263,8 +235,7 @@ TEST_F(CloudCommandProxyTest, RetryFailed) {
   base::Closure on_success;
   EXPECT_CALL(cloud_updater_, UpdateCommand(kCmdID, MatchJson(expect2), _, _))
       .WillOnce(SaveArg<2>(&on_success));
-  task_queue_.back().Run();
-  task_queue_.pop();
+  task_runner_.RunOnce();
 
   // Pretend it succeeds this time.
   on_success.Run();

@@ -126,9 +126,9 @@ void XmppChannel::OnStreamEnd(const std::string& node_name) {
     // However, if the connection has never been established yet (e.g.
     // authorization failed), do not restart right now. Wait till we get
     // new credentials.
-    task_runner_->PostTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&XmppChannel::Restart, task_ptr_factory_.GetWeakPtr()));
+        base::Bind(&XmppChannel::Restart, task_ptr_factory_.GetWeakPtr()), {});
   } else if (delegate_) {
     delegate_->OnPermanentFailure();
   }
@@ -139,10 +139,11 @@ void XmppChannel::OnStanza(std::unique_ptr<XmlNode> stanza) {
   // from expat XML parser and some stanza could cause the XMPP stream to be
   // reset and the parser to be re-initialized. We don't want to destroy the
   // parser while it is performing a callback invocation.
-  task_runner_->PostTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE,
       base::Bind(&XmppChannel::HandleStanza, task_ptr_factory_.GetWeakPtr(),
-                 base::Passed(std::move(stanza))));
+                 base::Passed(std::move(stanza))),
+      {});
 }
 
 void XmppChannel::HandleStanza(std::unique_ptr<XmlNode> stanza) {

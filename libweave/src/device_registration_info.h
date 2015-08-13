@@ -23,7 +23,6 @@
 #include <weave/cloud.h>
 #include <weave/config.h>
 #include <weave/http_client.h>
-#include <weave/task_runner.h>
 
 #include "libweave/src/backoff_entry.h"
 #include "libweave/src/buffet_config.h"
@@ -47,6 +46,7 @@ namespace weave {
 
 class Network;
 class StateManager;
+class TaskRunner;
 
 extern const char kErrorDomainOAuth2[];
 extern const char kErrorDomainGCD[];

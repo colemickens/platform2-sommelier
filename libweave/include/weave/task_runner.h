@@ -5,12 +5,24 @@
 #ifndef LIBWEAVE_INCLUDE_WEAVE_TASK_RUNNER_H_
 #define LIBWEAVE_INCLUDE_WEAVE_TASK_RUNNER_H_
 
-#include <base/message_loop/message_loop.h>
-#include <chromeos/message_loops/message_loop.h>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/callback.h>
+#include <chromeos/errors/error.h>
 
 namespace weave {
 
-using TaskRunner = chromeos::MessageLoop;
+class TaskRunner {
+ public:
+  virtual void PostDelayedTask(const tracked_objects::Location& from_here,
+                               const base::Closure& task,
+                               base::TimeDelta delay) = 0;
+
+ protected:
+  virtual ~TaskRunner() = default;
+};
 
 }  // namespace weave
 

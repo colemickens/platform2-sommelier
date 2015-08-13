@@ -16,7 +16,6 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/secure_blob.h>
-#include <weave/task_runner.h>
 
 #include "libweave/src/privet/security_delegate.h"
 
@@ -25,6 +24,9 @@ class P224EncryptedKeyExchange;
 }  // namespace crypto
 
 namespace weave {
+
+class TaskRunner;
+
 namespace privet {
 
 class SecurityManager : public SecurityDelegate {

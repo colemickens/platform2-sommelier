@@ -119,6 +119,8 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
+  class TaskRunner;
+  std::unique_ptr<TaskRunner> task_runner_;
   std::unique_ptr<HttpTransportClient> http_client_;
   std::unique_ptr<ShillClient> shill_client_;
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING

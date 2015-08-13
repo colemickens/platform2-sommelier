@@ -6,8 +6,6 @@
 
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
-#include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
@@ -162,22 +160,14 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
   }
 
   bool RefreshAccessToken(chromeos::ErrorPtr* error) const {
-    base::MessageLoopForIO message_loop;
-    base::RunLoop run_loop;
-
     bool succeeded = false;
-    auto on_success = [&run_loop, &succeeded]() {
-      succeeded = true;
-      run_loop.Quit();
-    };
-    auto on_failure = [&run_loop, &error](const chromeos::Error* in_error) {
+    auto on_success = [&succeeded]() { succeeded = true; };
+    auto on_failure = [&error](const chromeos::Error* in_error) {
       if (error)
         *error = in_error->Clone();
-      run_loop.Quit();
     };
     dev_reg_->RefreshAccessToken(base::Bind(on_success),
                                  base::Bind(on_failure));
-    run_loop.Run();
     return succeeded;
   }
 
@@ -334,24 +324,17 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
         return ReplyWithJson(200, json);
       })));
 
-  base::MessageLoopForIO message_loop;
-  base::RunLoop run_loop;
-
   bool succeeded = false;
-  auto on_success = [&run_loop, &succeeded,
-                     this](const base::DictionaryValue& info) {
+  auto on_success = [&succeeded, this](const base::DictionaryValue& info) {
     std::string id;
     EXPECT_TRUE(info.GetString("id", &id));
     EXPECT_EQ(test_data::kDeviceId, id);
     succeeded = true;
-    run_loop.Quit();
   };
-  auto on_failure = [&run_loop](const chromeos::Error* error) {
-    run_loop.Quit();
+  auto on_failure = [](const chromeos::Error* error) {
     FAIL() << "Should not be called";
   };
   dev_reg_->GetDeviceInfo(base::Bind(on_success), base::Bind(on_failure));
-  run_loop.Run();
   EXPECT_TRUE(succeeded);
 }
 

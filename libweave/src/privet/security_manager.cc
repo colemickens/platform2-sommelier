@@ -12,7 +12,6 @@
 #include <base/bind.h>
 #include <base/guid.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -21,8 +20,9 @@
 #include <chromeos/data_encoding.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
-#include "libweave/external/crypto/p224_spake.h"
+#include <weave/task_runner.h>
 
+#include "libweave/external/crypto/p224_spake.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/openssl_utils.h"
 
