@@ -22,10 +22,10 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_dns_client_factory.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ip_address_store.h"
 #include "shill/mock_socket_info_reader.h"
 #include "shill/net/mock_sockets.h"
+#include "shill/test_event_dispatcher.h"
 
 using base::Bind;
 using base::Callback;
@@ -303,7 +303,7 @@ class ConnectionHealthCheckerTest : public Test {
   vector<string> dns_servers_;
 
   scoped_refptr<NiceMock<MockConnection>> connection_;
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockIPAddressStore remote_ips_;
   StrictMock<MockSockets>* socket_;
   StrictMock<MockSocketInfoReader>* socket_info_reader_;

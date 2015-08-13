@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/message_loop/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -31,6 +32,7 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/net/shill_time.h"
 #include "shill/nice_mock_control.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -1046,7 +1048,7 @@ class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
   virtual ~WakeOnWiFiTestWithDispatcher() {}
 
  protected:
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
 };
 
 class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
@@ -1060,6 +1062,9 @@ class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
   virtual ~WakeOnWiFiTestWithMockDispatcher() {}
 
  protected:
+  // TODO(zqiu): message loop is needed by AlarmTimer, should restructure the
+  // code so that it can be mocked out.
+  base::MessageLoopForIO message_loop_;
   MockEventDispatcher mock_dispatcher_;
 };
 

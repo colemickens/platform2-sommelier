@@ -12,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
@@ -23,6 +22,7 @@
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
 #include "shill/property_store.h"
+#include "shill/test_event_dispatcher.h"
 
 using std::string;
 using std::vector;
@@ -137,7 +137,7 @@ class VPNDriverTest : public Test {
 
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;

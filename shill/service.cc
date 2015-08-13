@@ -30,7 +30,6 @@
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
-#include "shill/service_dbus_adaptor.h"
 #include "shill/service_property_change_notifier.h"
 #include "shill/store_interface.h"
 
@@ -162,6 +161,7 @@ Service::Service(ControlInterface* control_interface,
           base::Bind(&Service::OnPropertyChanged,
                      weak_ptr_factory_.GetWeakPtr()))),
       dispatcher_(dispatcher),
+      control_interface_(control_interface),
       serial_number_(next_serial_number_++),
       unique_name_(base::UintToString(serial_number_)),
       friendly_name_(unique_name_),
@@ -1220,7 +1220,7 @@ void Service::OnDarkResume() {
 string Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);
-    return DBusAdaptor::kNullPath;
+    return control_interface_->NullRPCIdentifier();
   }
 
   string id = connection_->ipconfig_rpc_identifier();
@@ -1228,7 +1228,7 @@ string Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (id.empty()) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
-    return DBusAdaptor::kNullPath;
+    return control_interface_->NullRPCIdentifier();
   }
 
   return id;

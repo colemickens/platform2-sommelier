@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_event_dispatcher.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 namespace shill {
@@ -54,7 +55,7 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
   }
 
  protected:
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
 };
 
 class ResultAggregatorTestWithMockDispatcher : public ResultAggregatorTest {

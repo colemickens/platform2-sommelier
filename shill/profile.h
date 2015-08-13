@@ -229,6 +229,7 @@ class Profile : public base::RefCounted<Profile> {
   // protected: section
   Metrics* metrics_;
   Manager* manager_;
+  ControlInterface* control_interface_;
 
   // Shared with |adaptor_| via public getter.
   PropertyStore store_;

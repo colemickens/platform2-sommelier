@@ -610,6 +610,7 @@ class Service : public base::RefCounted<Service> {
 
   // Property accessors reserved for subclasses
   EventDispatcher* dispatcher() const { return dispatcher_; }
+  ControlInterface* control_interface() const { return control_interface_; }
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   const std::string& GetEAPKeyManagement() const;
   virtual void SetEAPKeyManagement(const std::string& key_management);
@@ -853,6 +854,7 @@ class Service : public base::RefCounted<Service> {
   std::set<std::string> parameters_ignored_for_configure_;
 
   EventDispatcher* dispatcher_;
+  ControlInterface* control_interface_;
   unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst service instances
 

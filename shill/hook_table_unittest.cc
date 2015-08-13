@@ -11,7 +11,7 @@
 #include <base/message_loop/message_loop.h>
 
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -46,7 +46,7 @@ class HookTableTest : public testing::Test {
 
   ResultCallback* GetDoneCallback() { return &hook_table_.done_callback_; }
 
-  EventDispatcher event_dispatcher_;
+  EventDispatcherForTest event_dispatcher_;
   HookTable hook_table_;
 };
 

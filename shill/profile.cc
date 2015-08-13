@@ -44,6 +44,7 @@ Profile::Profile(ControlInterface* control_interface,
                  bool connect_to_rpc)
     : metrics_(metrics),
       manager_(manager),
+      control_interface_(control_interface),
       name_(name),
       storage_path_(user_storage_directory) {
   if (connect_to_rpc)
@@ -152,8 +153,7 @@ string Profile::GetFriendlyName() {
 
 string Profile::GetRpcIdentifier() {
   if (!adaptor_.get()) {
-    // NB: This condition happens in unit tests.
-    return string();
+    return control_interface_->NullRPCIdentifier();
   }
   return adaptor_->GetRpcIdentifier();
 }
