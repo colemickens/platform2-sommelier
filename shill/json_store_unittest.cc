@@ -6,7 +6,9 @@
 
 #include <array>
 #include <limits>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/strings/string_util.h>
@@ -15,6 +17,7 @@
 #include "shill/mock_log.h"
 
 using std::array;
+using std::pair;
 using std::set;
 using std::string;
 using std::vector;
@@ -346,6 +349,147 @@ TEST_F(JsonStoreTest, DeleteKeyFailsWhenGivenWrongGroup) {
   store_.SetBool("group_a", "knob_1", bool());
   EXPECT_CALL(log_, Log(_, _, HasSubstr("Could not find group")));
   EXPECT_FALSE(store_.DeleteKey("group_b", "knob_1"));
+  EXPECT_TRUE(store_.GetBool("group_a", "knob_1", nullptr));
+}
+
+// In memory operations: group operations.
+TEST_F(JsonStoreTest, EmptyStoreReturnsNoGroups) {
+  EXPECT_EQ(set<string>(), store_.GetGroups());
+  EXPECT_EQ(set<string>(), store_.GetGroupsWithKey("knob_1"));
+  EXPECT_EQ(set<string>(), store_.GetGroupsWithProperties(KeyValueStore()));
+}
+
+TEST_F(JsonStoreTest, GetGroupsReturnsAllGroups) {
+  store_.SetBool("group_a", "knob_1", bool());
+  store_.SetBool("group_b", "knob_1", bool());
+  EXPECT_EQ(set<string>({"group_a", "group_b"}), store_.GetGroups());
+}
+
+TEST_F(JsonStoreTest, GetGroupsWithKeyReturnsAllMatchingGroups) {
+  store_.SetBool("group_a", "knob_1", bool());
+  store_.SetBool("group_b", "knob_1", bool());
+  EXPECT_EQ(set<string>({"group_a", "group_b"}),
+            store_.GetGroupsWithKey("knob_1"));
+}
+
+TEST_F(JsonStoreTest, GetGroupsWithKeyReturnsOnlyMatchingGroups) {
+  store_.SetBool("group_a", "knob_1", bool());
+  store_.SetBool("group_b", "knob_2", bool());
+  EXPECT_EQ(set<string>({"group_a"}), store_.GetGroupsWithKey("knob_1"));
+}
+
+TEST_F(JsonStoreTest, GetGroupsWithPropertiesReturnsAllMatchingGroups) {
+  store_.SetBool("group_a", "knob_1", true);
+  store_.SetBool("group_b", "knob_1", true);
+
+  KeyValueStore required_properties;
+  required_properties.SetBool("knob_1", true);
+  EXPECT_EQ(set<string>({"group_a", "group_b"}),
+            store_.GetGroupsWithProperties(required_properties));
+}
+
+TEST_F(JsonStoreTest, GetGroupsWithPropertiesReturnsOnlyMatchingGroups) {
+  store_.SetBool("group_a", "knob_1", true);
+  store_.SetBool("group_b", "knob_1", false);
+
+  KeyValueStore required_properties;
+  required_properties.SetBool("knob_1", true);
+  EXPECT_EQ(set<string>({"group_a"}),
+            store_.GetGroupsWithProperties(required_properties));
+}
+
+TEST_F(JsonStoreTest, GetGroupsWithPropertiesCanMatchOnMultipleProperties) {
+  store_.SetBool("group_a", "knob_1", true);
+  store_.SetBool("group_a", "knob_2", true);
+  store_.SetBool("group_b", "knob_1", true);
+  store_.SetBool("group_b", "knob_2", false);
+
+  KeyValueStore required_properties;
+  required_properties.SetBool("knob_1", true);
+  required_properties.SetBool("knob_2", true);
+  EXPECT_EQ(set<string>({"group_a"}),
+            store_.GetGroupsWithProperties(required_properties));
+}
+
+TEST_F(JsonStoreTest, GetGroupsWithPropertiesChecksValuesForBoolIntAndString) {
+  // Documentation in StoreInterface says GetGroupsWithProperties
+  // checks only Bool, Int, and String properties. For now, we interpret
+  // that permissively. i.e., checking other types is not guaranteed one
+  // way or the other.
+  //
+  // Said differently: we test that that Bool, Int, and String are
+  // supported. But we don't test that other types are ignored. (In
+  // fact, JsonStore supports filtering on uint64 and StringList as
+  // well. JsonStore does not, however, support filtering on
+  // CryptedStrings.)
+  //
+  // This should be fine, as StoreInterface clients currently only use
+  // String value filtering.
+  const chromeos::VariantDictionary exact_matcher({
+      {"knob_1", string("good-string")},
+      {"knob_2", bool{true}},
+      {"knob_3", int{1}},
+    });
+  store_.SetString("group_a", "knob_1", "good-string");
+  store_.SetBool("group_a", "knob_2", true);
+  store_.SetInt("group_a", "knob_3", 1);
+
+  {
+    KeyValueStore correct_properties;
+    KeyValueStore::ConvertFromVariantDictionary(
+        exact_matcher, &correct_properties);
+    EXPECT_EQ(set<string>({"group_a"}),
+              store_.GetGroupsWithProperties(correct_properties));
+  }
+
+  const vector<pair<string, chromeos::Any>> bad_matchers({
+      {"knob_1", string("bad-string")},
+      {"knob_2", bool{false}},
+      {"knob_3", int{2}},
+    });
+  for (const auto& match_key_and_value : bad_matchers) {
+    const auto& match_key = match_key_and_value.first;
+    const auto& match_value = match_key_and_value.second;
+    chromeos::VariantDictionary bad_matcher_dict(exact_matcher);
+    KeyValueStore bad_properties;
+    bad_matcher_dict[match_key] = match_value;
+    KeyValueStore::ConvertFromVariantDictionary(
+        bad_matcher_dict, &bad_properties);
+    EXPECT_EQ(set<string>(), store_.GetGroupsWithProperties(bad_properties))
+        << "Failing match key: " << match_key;
+  }
+}
+
+TEST_F(JsonStoreTest, ContainsGroupFindsExistingGroup) {
+  store_.SetBool("group_a", "knob_1", bool());
+  EXPECT_TRUE(store_.ContainsGroup("group_a"));
+}
+
+TEST_F(JsonStoreTest, ContainsGroupDoesNotFabricateGroups) {
+  EXPECT_FALSE(store_.ContainsGroup("group_a"));
+}
+
+TEST_F(JsonStoreTest, DeleteGroupDeletesExistingGroup) {
+  SetVerboseLevel(10);
+  store_.SetBool("group_a", "knob_1", bool());
+  store_.SetBool("group_a", "knob_2", bool());
+  EXPECT_TRUE(store_.DeleteGroup("group_a"));
+  EXPECT_CALL(log_, Log(_, _, HasSubstr("Could not find group"))).Times(2);
+  EXPECT_FALSE(store_.GetBool("group_a", "knob_1", nullptr));
+  EXPECT_FALSE(store_.GetBool("group_a", "knob_2", nullptr));
+}
+
+TEST_F(JsonStoreTest, DeleteGroupDeletesOnlySpecifiedGroup) {
+  store_.SetBool("group_a", "knob_1", bool());
+  store_.SetBool("group_b", "knob_1", bool());
+  EXPECT_TRUE(store_.DeleteGroup("group_a"));
+  EXPECT_FALSE(store_.GetBool("group_a", "knob_1", nullptr));
+  EXPECT_TRUE(store_.GetBool("group_b", "knob_1", nullptr));
+}
+
+TEST_F(JsonStoreTest, DeleteGroupSucceedsOnMissingGroup) {
+  store_.SetBool("group_a", "knob_1", bool());
+  EXPECT_TRUE(store_.DeleteGroup("group_b"));
   EXPECT_TRUE(store_.GetBool("group_a", "knob_1", nullptr));
 }
 
