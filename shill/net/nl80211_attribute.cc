@@ -55,8 +55,8 @@ const int Nl80211AttributeBss::kSsidAttributeId =
     IEEE_80211::kElemIdSsid;
 const int Nl80211AttributeBss::kSupportedRatesAttributeId =
     IEEE_80211::kElemIdSupportedRates;
-const int Nl80211AttributeBss::kTcpReportAttributeId =
-    IEEE_80211::kElemIdTcpReport;
+const int Nl80211AttributeBss::kTpcReportAttributeId =
+    IEEE_80211::kElemIdTpcReport;
 const int Nl80211AttributeBss::kVendorSpecificAttributeId =
     IEEE_80211::kElemIdVendor;
 const int Nl80211AttributeBss::kVhtCapAttributeId =
@@ -205,7 +205,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
       case kChallengeTextAttributeId:
       case kPowerConstraintAttributeId:
       case kPowerCapabilityAttributeId:
-      case kTcpReportAttributeId:
+      case kTpcReportAttributeId:
       case kChannelsAttributeId:
       case kErpAttributeId:
       case kRsnAttributeId:

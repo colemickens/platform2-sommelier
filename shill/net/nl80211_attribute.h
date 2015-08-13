@@ -545,7 +545,7 @@ class Nl80211AttributeBss : public NetlinkNestedAttribute {
   static const int kRsnAttributeId;
   static const int kSsidAttributeId;
   static const int kSupportedRatesAttributeId;
-  static const int kTcpReportAttributeId;
+  static const int kTpcReportAttributeId;
   static const int kVendorSpecificAttributeId;
   static const int kVhtCapAttributeId;
   static const int kVhtInfoAttributeId;
