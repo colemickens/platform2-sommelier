@@ -20,6 +20,7 @@
 #include <weave/network.h>
 #include <weave/privet.h>
 #include <weave/state.h>
+#include <weave/task_runner.h>
 
 namespace weave {
 
@@ -40,6 +41,7 @@ class Device {
   virtual ~Device() = default;
 
   virtual void Start(const Options& options,
+                     TaskRunner* task_runner,
                      HttpClient* http_client,
                      Network* network,
                      Mdns* mdns,

@@ -13,6 +13,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/values.h>
 #include <chromeos/errors/error.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
@@ -40,10 +41,12 @@ Command* ReturnNotFound(const std::string& command_id,
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl(DeviceRegistrationInfo* device,
+  CloudDelegateImpl(TaskRunner* task_runner,
+                    DeviceRegistrationInfo* device,
                     CommandManager* command_manager,
                     StateManager* state_manager)
-      : device_{device},
+      : task_runner_{task_runner},
+        device_{device},
         command_manager_{command_manager},
         state_manager_{state_manager} {
     device_->AddOnConfigChangedCallback(base::Bind(
@@ -143,7 +146,7 @@ class CloudDelegateImpl : public CloudDelegate {
             << ", user:" << user;
     setup_state_ = SetupState(SetupState::kInProgress);
     setup_weak_factory_.InvalidateWeakPtrs();
-    base::MessageLoop::current()->PostDelayedTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE, base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
                               setup_weak_factory_.GetWeakPtr(), ticket_id, 0),
         base::TimeDelta::FromSeconds(kSetupDelaySeconds));
@@ -291,7 +294,7 @@ class CloudDelegateImpl : public CloudDelegate {
       setup_state_ = SetupState{std::move(new_error)};
       return;
     }
-    base::MessageLoop::current()->PostDelayedTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE,
         base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
                    setup_weak_factory_.GetWeakPtr(), ticket_id, retries + 1),
@@ -345,6 +348,7 @@ class CloudDelegateImpl : public CloudDelegate {
     return false;
   }
 
+  TaskRunner* task_runner_{nullptr};
   DeviceRegistrationInfo* device_{nullptr};
   CommandManager* command_manager_{nullptr};
   StateManager* state_manager_{nullptr};
@@ -381,11 +385,12 @@ CloudDelegate::~CloudDelegate() {
 
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
+    TaskRunner* task_runner,
     DeviceRegistrationInfo* device,
     CommandManager* command_manager,
     StateManager* state_manager) {
-  return std::unique_ptr<CloudDelegateImpl>{
-      new CloudDelegateImpl{device, command_manager, state_manager}};
+  return std::unique_ptr<CloudDelegateImpl>{new CloudDelegateImpl{
+      task_runner, device, command_manager, state_manager}};
 }
 
 void CloudDelegate::NotifyOnDeviceInfoChanged() {

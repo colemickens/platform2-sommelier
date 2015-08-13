@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/secure_blob.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/privet/security_delegate.h"
 
@@ -47,7 +48,8 @@ class SecurityManager : public SecurityDelegate {
 
   SecurityManager(const std::set<PairingType>& pairing_modes,
                   const base::FilePath& embedded_code_path,
-                  bool disable_security = false);
+                  TaskRunner* task_runner,
+                  bool disable_security);
   ~SecurityManager() override;
 
   // SecurityDelegate methods
@@ -92,6 +94,8 @@ class SecurityManager : public SecurityDelegate {
   std::set<PairingType> pairing_modes_;
   const base::FilePath embedded_code_path_;
   std::string embedded_code_;
+  // TODO(vitalybuka): Session cleanup can be done without posting tasks.
+  TaskRunner* task_runner_{nullptr};
   std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> confirmed_sessions_;
   mutable int pairing_attemts_{0};

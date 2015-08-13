@@ -42,6 +42,7 @@ class XmppChannel : public NotificationChannel,
   // so you will need to reset the XmppClient every time this happens.
   XmppChannel(const std::string& account,
               const std::string& access_token,
+              TaskRunner* task_runner,
               Network* network);
   ~XmppChannel() override = default;
 
@@ -153,6 +154,7 @@ class XmppChannel : public NotificationChannel,
 
   chromeos::BackoffEntry backoff_entry_;
   NotificationDelegate* delegate_{nullptr};
+  TaskRunner* task_runner_{nullptr};
   XmppStreamParser stream_parser_{this};
   bool read_pending_{false};
   bool write_pending_{false};

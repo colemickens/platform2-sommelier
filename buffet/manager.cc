@@ -76,8 +76,8 @@ void Manager::Start(const weave::Device::Options& options,
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   device_ = weave::Device::Create();
-  device_->Start(options, http_client_.get(), shill_client_.get(),
-                 mdns, http_server);
+  device_->Start(options, chromeos::MessageLoop::current(), http_client_.get(),
+                 shill_client_.get(), mdns, http_server);
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});

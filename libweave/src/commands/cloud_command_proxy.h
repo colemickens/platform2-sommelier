@@ -11,12 +11,11 @@
 #include <utility>
 
 #include <base/macros.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
-#include <base/task_runner.h>
 #include <chromeos/backoff_entry.h>
 #include <weave/command.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/commands/cloud_command_update_interface.h"
 #include "libweave/src/states/state_change_queue_interface.h"
@@ -32,7 +31,7 @@ class CloudCommandProxy final : public Command::Observer {
                     CloudCommandUpdateInterface* cloud_command_updater,
                     StateChangeQueueInterface* state_change_queue,
                     std::unique_ptr<chromeos::BackoffEntry> backoff_entry,
-                    const scoped_refptr<base::TaskRunner>& task_runner);
+                    TaskRunner* task_runner);
   ~CloudCommandProxy() override = default;
 
   // CommandProxyInterface implementation/overloads.
@@ -71,7 +70,7 @@ class CloudCommandProxy final : public Command::Observer {
   CommandInstance* command_instance_;
   CloudCommandUpdateInterface* cloud_command_updater_;
   StateChangeQueueInterface* state_change_queue_;
-  scoped_refptr<base::TaskRunner> task_runner_;
+  TaskRunner* task_runner_{nullptr};
 
   // Backoff for SendCommandUpdate() method.
   std::unique_ptr<chromeos::BackoffEntry> cloud_backoff_entry_;

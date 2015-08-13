@@ -9,8 +9,8 @@
 #include <base/bind.h>
 #include <chromeos/backoff_entry.h>
 #include <chromeos/data_encoding.h>
-#include <chromeos/message_loops/message_loop.h>
 #include <weave/network.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/notification_parser.h"
@@ -90,12 +90,14 @@ const int kConnectingTimeoutAfterNetChangeSeconds = 30;
 
 XmppChannel::XmppChannel(const std::string& account,
                          const std::string& access_token,
+                         TaskRunner* task_runner,
                          Network* network)
     : account_{account},
       access_token_{access_token},
       network_{network},
       backoff_entry_{&kDefaultBackoffPolicy},
-      iq_stanza_handler_{new IqStanzaHandler{this}} {
+      task_runner_{task_runner},
+      iq_stanza_handler_{new IqStanzaHandler{this, task_runner}} {
   read_socket_data_.resize(4096);
   if (network) {
     network->AddOnConnectionChangedCallback(base::Bind(
@@ -124,7 +126,7 @@ void XmppChannel::OnStreamEnd(const std::string& node_name) {
     // However, if the connection has never been established yet (e.g.
     // authorization failed), do not restart right now. Wait till we get
     // new credentials.
-    chromeos::MessageLoop::current()->PostTask(
+    task_runner_->PostTask(
         FROM_HERE,
         base::Bind(&XmppChannel::Restart, task_ptr_factory_.GetWeakPtr()));
   } else if (delegate_) {
@@ -137,7 +139,7 @@ void XmppChannel::OnStanza(std::unique_ptr<XmlNode> stanza) {
   // from expat XML parser and some stanza could cause the XMPP stream to be
   // reset and the parser to be re-initialized. We don't want to destroy the
   // parser while it is performing a callback invocation.
-  chromeos::MessageLoop::current()->PostTask(
+  task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&XmppChannel::HandleStanza, task_ptr_factory_.GetWeakPtr(),
                  base::Passed(std::move(stanza))));
@@ -385,7 +387,7 @@ void XmppChannel::Connect(const std::string& host,
   } else {
     VLOG(1) << "Delaying connection to XMPP server " << host << " for "
             << backoff_entry_.GetTimeUntilRelease();
-    chromeos::MessageLoop::current()->PostDelayedTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE,
         base::Bind(&XmppChannel::Connect, task_ptr_factory_.GetWeakPtr(), host,
                    port, callback),
@@ -458,7 +460,7 @@ void XmppChannel::SchedulePing(base::TimeDelta interval,
                                base::TimeDelta timeout) {
   VLOG(1) << "Next XMPP ping in " << interval << " with timeout " << timeout;
   ping_ptr_factory_.InvalidateWeakPtrs();
-  chromeos::MessageLoop::current()->PostDelayedTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE, base::Bind(&XmppChannel::PingServer,
                             ping_ptr_factory_.GetWeakPtr(), timeout),
       interval);

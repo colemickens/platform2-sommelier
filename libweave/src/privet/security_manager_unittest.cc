@@ -21,11 +21,12 @@
 #include <base/strings/string_util.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/key_value_store.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <chromeos/strings/string_utils.h>
-#include "libweave/external/crypto/p224_spake.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "libweave/external/crypto/p224_spake.h"
 #include "libweave/src/privet/openssl_utils.h"
 
 using testing::Eq;
@@ -117,9 +118,13 @@ class SecurityManagerTest : public testing::Test {
   }
 
   const base::Time time_ = base::Time::FromTimeT(1410000000);
-  base::MessageLoop message_loop_;
   base::FilePath embedded_code_path_{GetTempFilePath()};
-  SecurityManager security_{{PairingType::kEmbeddedCode}, embedded_code_path_};
+  base::SimpleTestClock clock_;
+  chromeos::FakeMessageLoop task_runner_{&clock_};
+  SecurityManager security_{{PairingType::kEmbeddedCode},
+                            embedded_code_path_,
+                            &task_runner_,
+                            false};
 };
 
 TEST_F(SecurityManagerTest, IsBase64) {
@@ -154,14 +159,14 @@ TEST_F(SecurityManagerTest, CreateTokenDifferentTime) {
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentInstance) {
   EXPECT_NE(security_.CreateAccessToken(UserInfo{AuthScope::kUser, 123}, time_),
-            SecurityManager({}, base::FilePath{})
+            SecurityManager({}, base::FilePath{}, &task_runner_, false)
                 .CreateAccessToken(UserInfo{AuthScope::kUser, 123}, time_));
 }
 
 TEST_F(SecurityManagerTest, ParseAccessToken) {
   // Multiple attempts with random secrets.
   for (size_t i = 0; i < 1000; ++i) {
-    SecurityManager security{{}, base::FilePath{}};
+    SecurityManager security{{}, base::FilePath{}, &task_runner_, false};
 
     std::string token =
         security.CreateAccessToken(UserInfo{AuthScope::kUser, 5}, time_);

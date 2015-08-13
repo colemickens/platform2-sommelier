@@ -48,6 +48,7 @@ class Manager : public Privet, public CloudDelegate::Observer {
   ~Manager() override;
 
   void Start(const weave::Device::Options& options,
+             TaskRunner* task_runner,
              Network* network,
              Mdns* mdns,
              HttpServer* http_server,

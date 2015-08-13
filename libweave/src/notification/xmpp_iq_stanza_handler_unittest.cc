@@ -82,7 +82,7 @@ class IqStanzaHandlerTest : public testing::Test {
   testing::StrictMock<MockXmppChannelInterface> mock_xmpp_channel_;
   base::SimpleTestClock clock_;
   testing::NiceMock<chromeos::MockMessageLoop> mock_loop_{&clock_};
-  IqStanzaHandler iq_stanza_handler_{&mock_xmpp_channel_};
+  IqStanzaHandler iq_stanza_handler_{&mock_xmpp_channel_, &mock_loop_};
   MockResponseReceiver receiver_;
 };
 

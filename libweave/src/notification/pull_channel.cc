@@ -10,9 +10,7 @@
 
 namespace weave {
 
-PullChannel::PullChannel(
-    base::TimeDelta pull_interval,
-    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
+PullChannel::PullChannel(base::TimeDelta pull_interval, TaskRunner* task_runner)
     : pull_interval_{pull_interval}, task_runner_{task_runner} {}
 
 std::string PullChannel::GetName() const {

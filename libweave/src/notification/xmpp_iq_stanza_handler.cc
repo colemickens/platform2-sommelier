@@ -7,7 +7,7 @@
 #include <base/bind.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/message_loops/message_loop.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/notification/xml_node.h"
 #include "libweave/src/notification/xmpp_channel.h"
@@ -47,9 +47,9 @@ std::string BuildIqStanza(const std::string& id,
 
 }  // anonymous namespace
 
-IqStanzaHandler::IqStanzaHandler(XmppChannelInterface* xmpp_channel)
-    : xmpp_channel_{xmpp_channel} {
-}
+IqStanzaHandler::IqStanzaHandler(XmppChannelInterface* xmpp_channel,
+                                 TaskRunner* task_runner)
+    : xmpp_channel_{xmpp_channel}, task_runner_{task_runner} {}
 
 void IqStanzaHandler::SendRequest(const std::string& type,
                                   const std::string& from,
@@ -75,7 +75,7 @@ void IqStanzaHandler::SendRequestWithCustomTimeout(
   requests_.emplace(++last_request_id_, response_callback);
   // Schedule a time-out callback for this request.
   if (timeout < base::TimeDelta::Max()) {
-    chromeos::MessageLoop::current()->PostDelayedTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE,
         base::Bind(&IqStanzaHandler::OnTimeOut, weak_ptr_factory_.GetWeakPtr(),
                    last_request_id_, timeout_callback),
@@ -110,7 +110,7 @@ bool IqStanzaHandler::HandleIqStanza(std::unique_ptr<XmlNode> stanza) {
     }
     auto p = requests_.find(id);
     if (p != requests_.end()) {
-      chromeos::MessageLoop::current()->PostTask(
+      task_runner_->PostTask(
           FROM_HERE, base::Bind(p->second, base::Passed(std::move(stanza))));
       requests_.erase(p);
     }

@@ -135,10 +135,12 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
 
 SecurityManager::SecurityManager(const std::set<PairingType>& pairing_modes,
                                  const base::FilePath& embedded_code_path,
+                                 TaskRunner* task_runner,
                                  bool disable_security)
     : is_security_disabled_(disable_security),
       pairing_modes_(pairing_modes),
       embedded_code_path_(embedded_code_path),
+      task_runner_{task_runner},
       secret_(kSha256OutputSize) {
   base::RandBytes(secret_.data(), kSha256OutputSize);
 
@@ -283,7 +285,7 @@ bool SecurityManager::StartPairing(PairingType mode,
   std::string commitment = spake->GetMessage();
   pending_sessions_.emplace(session, std::move(spake));
 
-  base::MessageLoop::current()->PostDelayedTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE,
       base::Bind(base::IgnoreResult(&SecurityManager::ClosePendingSession),
                  weak_ptr_factory_.GetWeakPtr(), session),
@@ -344,7 +346,7 @@ bool SecurityManager::ConfirmPairing(const std::string& session_id,
                  certificate_fingerprint_);
   *signature = chromeos::data_encoding::Base64Encode(cert_hmac);
   confirmed_sessions_.emplace(session->first, std::move(session->second));
-  base::MessageLoop::current()->PostDelayedTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE,
       base::Bind(base::IgnoreResult(&SecurityManager::CloseConfirmedSession),
                  weak_ptr_factory_.GetWeakPtr(), session_id),

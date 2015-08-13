@@ -24,6 +24,7 @@
 #include <weave/cloud.h>
 #include <weave/config.h>
 #include <weave/http_client.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
@@ -61,14 +62,13 @@ class DeviceRegistrationInfo : public Cloud,
   using CloudRequestErrorCallback =
       base::Callback<void(const chromeos::Error* error)>;
 
-  DeviceRegistrationInfo(
-      const std::shared_ptr<CommandManager>& command_manager,
-      const std::shared_ptr<StateManager>& state_manager,
-      std::unique_ptr<BuffetConfig> config,
-      HttpClient* http_client,
-      const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-      bool notifications_enabled,
-      weave::Network* network);
+  DeviceRegistrationInfo(const std::shared_ptr<CommandManager>& command_manager,
+                         const std::shared_ptr<StateManager>& state_manager,
+                         std::unique_ptr<BuffetConfig> config,
+                         TaskRunner* task_runner,
+                         HttpClient* http_client,
+                         bool notifications_enabled,
+                         weave::Network* network);
 
   ~DeviceRegistrationInfo() override;
 
@@ -302,7 +302,7 @@ class DeviceRegistrationInfo : public Cloud,
   // HTTP transport used for communications.
   HttpClient* http_client_{nullptr};
 
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  TaskRunner* task_runner_{nullptr};
   // Global command manager.
   std::shared_ptr<CommandManager> command_manager_;
   // Device state manager.

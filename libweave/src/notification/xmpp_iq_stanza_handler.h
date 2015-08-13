@@ -13,6 +13,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/single_thread_task_runner.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/notification/xmpp_stream_parser.h"
 
@@ -25,7 +26,7 @@ class IqStanzaHandler {
   using ResponseCallback = base::Callback<void(std::unique_ptr<XmlNode>)>;
   using TimeoutCallback = base::Closure;
 
-  explicit IqStanzaHandler(XmppChannelInterface* xmpp_channel);
+  IqStanzaHandler(XmppChannelInterface* xmpp_channel, TaskRunner* task_runner);
 
   // Sends <iq> request to the server.
   // |type| is the IQ stanza type, one of "get", "set", "query".
@@ -65,6 +66,7 @@ class IqStanzaHandler {
   void OnTimeOut(RequestId id, const TimeoutCallback& timeout_callback);
 
   XmppChannelInterface* xmpp_channel_;
+  TaskRunner* task_runner_{nullptr};
   std::map<RequestId, ResponseCallback> requests_;
   RequestId last_request_id_{0};
 

@@ -22,6 +22,7 @@
 #include <chromeos/url_utils.h>
 #include <weave/http_client.h>
 #include <weave/network.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/commands/cloud_command_proxy.h"
 #include "libweave/src/commands/command_definition.h"
@@ -210,8 +211,8 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
     std::unique_ptr<BuffetConfig> config,
+    TaskRunner* task_runner,
     HttpClient* http_client,
-    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
     bool notifications_enabled,
     Network* network)
     : http_client_{http_client},
@@ -467,7 +468,7 @@ void DeviceRegistrationInfo::StartNotificationChannel() {
 
   notification_channel_starting_ = true;
   primary_notification_channel_.reset(new XmppChannel{
-      config_->robot_account(), access_token_, network_});
+      config_->robot_account(), access_token_, task_runner_, network_});
   primary_notification_channel_->Start(this);
 }
 

@@ -27,6 +27,7 @@ class DeviceManager final : public Device {
   ~DeviceManager() override;
 
   void Start(const Options& options,
+             TaskRunner* task_runner,
              HttpClient* http_client,
              Network* network,
              Mdns* mdns,
@@ -40,6 +41,7 @@ class DeviceManager final : public Device {
 
  private:
   void StartPrivet(const Options& options,
+                   TaskRunner* task_runner,
                    Network* network,
                    Mdns* mdns,
                    HttpServer* http_server);

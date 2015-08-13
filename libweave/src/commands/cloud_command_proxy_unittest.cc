@@ -8,8 +8,10 @@
 #include <queue>
 
 #include <base/test/simple_test_clock.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 
 #include "libweave/src/commands/command_dictionary.h"
 #include "libweave/src/commands/command_instance.h"
@@ -46,14 +48,13 @@ class MockCloudCommandUpdateInterface : public CloudCommandUpdateInterface {
 
 // Mock-like task runner that allow the tests to inspect the calls to
 // TaskRunner::PostDelayedTask and verify the delays.
-class TestTaskRunner : public base::TaskRunner {
+class TestTaskRunner : public chromeos::FakeMessageLoop {
  public:
+  using FakeMessageLoop::FakeMessageLoop;
   MOCK_METHOD3(PostDelayedTask,
-               bool(const tracked_objects::Location&,
-                    const base::Closure&,
-                    base::TimeDelta));
-
-  bool RunsTasksOnCurrentThread() const override { return true; }
+               TaskId(const tracked_objects::Location&,
+                      const base::Closure&,
+                      base::TimeDelta));
 };
 
 // Test back-off entry that uses the test clock.
@@ -88,9 +89,6 @@ class CloudCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(state_change_queue_, GetLastStateChangeId())
         .WillRepeatedly(testing::ReturnPointee(&current_state_update_id_));
 
-    // Set up the task runner.
-    task_runner_ = new TestTaskRunner();
-
     auto on_post_task = [this](const tracked_objects::Location& from_here,
                                const base::Closure& task,
                                base::TimeDelta delay) -> bool {
@@ -99,7 +97,7 @@ class CloudCommandProxyTest : public ::testing::Test {
       return true;
     };
 
-    ON_CALL(*task_runner_, PostDelayedTask(_, _, _))
+    ON_CALL(task_runner_, PostDelayedTask(_, _, _))
         .WillByDefault(testing::Invoke(on_post_task));
 
     clock_.SetNow(base::Time::Now());
@@ -151,12 +149,9 @@ class CloudCommandProxyTest : public ::testing::Test {
         new TestBackoffEntry{&policy, &clock_}};
 
     // Finally construct the CloudCommandProxy we are going to test here.
-    std::unique_ptr<CloudCommandProxy> proxy{
-        new CloudCommandProxy{command_instance_.get(),
-                              &cloud_updater_,
-                              &state_change_queue_,
-                              std::move(backoff),
-                              task_runner_}};
+    std::unique_ptr<CloudCommandProxy> proxy{new CloudCommandProxy{
+        command_instance_.get(), &cloud_updater_, &state_change_queue_,
+        std::move(backoff), &task_runner_}};
     // CloudCommandProxy::CloudCommandProxy() subscribe itself to weave::Command
     // notifications. When weave::Command is being destroyed it sends
     // ::OnCommandDestroyed() and CloudCommandProxy deletes itself.
@@ -168,7 +163,7 @@ class CloudCommandProxyTest : public ::testing::Test {
   testing::StrictMock<MockCloudCommandUpdateInterface> cloud_updater_;
   testing::StrictMock<MockStateChangeQueueInterface> state_change_queue_;
   base::SimpleTestClock clock_;
-  scoped_refptr<TestTaskRunner> task_runner_;
+  TestTaskRunner task_runner_{&clock_};
   std::queue<base::Closure> task_queue_;
   CommandDictionary command_dictionary_;
   std::unique_ptr<CommandInstance> command_instance_;
@@ -246,7 +241,7 @@ TEST_F(CloudCommandProxyTest, RetryFailed) {
   // We should retry with both state and progress fields updated this time,
   // after the initial backoff (which should be 1s in our case).
   base::TimeDelta expected_delay = base::TimeDelta::FromSeconds(1);
-  EXPECT_CALL(*task_runner_, PostDelayedTask(_, _, expected_delay));
+  EXPECT_CALL(task_runner_, PostDelayedTask(_, _, expected_delay));
   on_error.Run();
 
   // Execute the delayed request. But pretend that it failed too.
@@ -261,7 +256,7 @@ TEST_F(CloudCommandProxyTest, RetryFailed) {
 
   // Now backoff should be 2 seconds.
   expected_delay = base::TimeDelta::FromSeconds(2);
-  EXPECT_CALL(*task_runner_, PostDelayedTask(_, _, expected_delay));
+  EXPECT_CALL(task_runner_, PostDelayedTask(_, _, expected_delay));
   on_error.Run();
 
   // Retry the task.

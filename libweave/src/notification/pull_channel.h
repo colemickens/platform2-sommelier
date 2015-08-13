@@ -12,6 +12,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/single_thread_task_runner.h>
 #include <base/timer/timer.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/notification/notification_channel.h"
 
@@ -19,8 +20,7 @@ namespace weave {
 
 class PullChannel : public NotificationChannel {
  public:
-  PullChannel(base::TimeDelta pull_interval,
-              const scoped_refptr<base::SingleThreadTaskRunner>& task_runner);
+  PullChannel(base::TimeDelta pull_interval, TaskRunner* task_runner);
   ~PullChannel() override = default;
 
   // Overrides from NotificationChannel.
@@ -37,7 +37,7 @@ class PullChannel : public NotificationChannel {
   void RePost();
 
   base::TimeDelta pull_interval_;
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  TaskRunner* task_runner_{nullptr};
   NotificationDelegate* delegate_{nullptr};
 
   base::WeakPtrFactory<PullChannel> weak_ptr_factory_{this};

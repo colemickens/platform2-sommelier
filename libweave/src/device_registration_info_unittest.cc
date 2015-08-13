@@ -134,8 +134,8 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     std::unique_ptr<BuffetConfig> config{new BuffetConfig{std::move(storage)}};
     config_ = config.get();
     dev_reg_.reset(new DeviceRegistrationInfo{command_manager_, state_manager_,
-                                              std::move(config), &http_client_,
-                                              nullptr, true, nullptr});
+                                              std::move(config), nullptr,
+                                              &http_client_, true, nullptr});
 
     ReloadConfig();
   }

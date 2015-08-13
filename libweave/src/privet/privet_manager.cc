@@ -38,6 +38,7 @@ Manager::~Manager() {
 }
 
 void Manager::Start(const Device::Options& options,
+                    TaskRunner* task_runner,
                     Network* network,
                     Mdns* mdns,
                     HttpServer* http_server,
@@ -47,11 +48,12 @@ void Manager::Start(const Device::Options& options,
   disable_security_ = options.disable_security;
 
   device_ = DeviceDelegate::CreateDefault();
-  cloud_ = CloudDelegate::CreateDefault(device, command_manager, state_manager);
+  cloud_ = CloudDelegate::CreateDefault(task_runner, device, command_manager,
+                                        state_manager);
   cloud_observer_.Add(cloud_.get());
   security_.reset(new SecurityManager(device->GetConfig().pairing_modes(),
                                       device->GetConfig().embedded_code_path(),
-                                      disable_security_));
+                                      task_runner, disable_security_));
   network->AddOnConnectionChangedCallback(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
 
@@ -59,7 +61,8 @@ void Manager::Start(const Device::Options& options,
     VLOG(1) << "Enabling WiFi bootstrapping.";
     wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
         device->GetConfig().last_configured_ssid(), options.test_privet_ssid,
-        device->GetConfig().ble_setup_enabled(), network, cloud_.get()));
+        device->GetConfig().ble_setup_enabled(), task_runner, network,
+        cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }
 

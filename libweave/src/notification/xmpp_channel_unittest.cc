@@ -80,6 +80,8 @@ constexpr char kSubscribeMessage[] =
 
 class FakeStream : public Stream {
  public:
+  explicit FakeStream(TaskRunner* task_runner) : task_runner_{task_runner} {}
+
   bool FlushBlocking(chromeos::ErrorPtr* error) override { return true; }
 
   bool CloseBlocking(chromeos::ErrorPtr* error) override { return true; }
@@ -103,9 +105,8 @@ class FakeStream : public Stream {
     size_t size = std::min(size_to_read, read_data_.size());
     memcpy(buffer, read_data_.data(), size);
     read_data_ = read_data_.substr(size);
-    chromeos::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, base::Bind(success_callback, size),
-        base::TimeDelta::FromSeconds(0));
+    task_runner_->PostDelayedTask(FROM_HERE, base::Bind(success_callback, size),
+                                  base::TimeDelta::FromSeconds(0));
     return true;
   }
 
@@ -120,19 +121,22 @@ class FakeStream : public Stream {
         write_data_.substr(0, size),
         std::string(reinterpret_cast<const char*>(buffer), size_to_write));
     write_data_ = write_data_.substr(size);
-    chromeos::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, success_callback, base::TimeDelta::FromSeconds(0));
+    task_runner_->PostDelayedTask(FROM_HERE, success_callback,
+                                  base::TimeDelta::FromSeconds(0));
     return true;
   }
 
  private:
+  TaskRunner* task_runner_{nullptr};
   std::string write_data_;
   std::string read_data_;
 };
 
 class FakeXmppChannel : public XmppChannel {
  public:
-  FakeXmppChannel() : XmppChannel{kAccountName, kAccessToken, nullptr} {}
+  explicit FakeXmppChannel(TaskRunner* task_runner)
+      : XmppChannel{kAccountName, kAccessToken, task_runner, nullptr},
+        fake_stream_{task_runner} {}
 
   XmppState state() const { return state_; }
   void set_state(XmppState state) { state_ = state; }
@@ -179,7 +183,7 @@ class XmppChannelTest : public ::testing::Test {
 
   base::SimpleTestClock clock_;
   chromeos::FakeMessageLoop fake_loop_{&clock_};
-  FakeXmppChannel xmpp_client_;
+  FakeXmppChannel xmpp_client_{&fake_loop_};
 };
 
 TEST_F(XmppChannelTest, StartStream) {

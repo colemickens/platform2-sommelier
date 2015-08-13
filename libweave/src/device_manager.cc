@@ -30,6 +30,7 @@ DeviceManager::DeviceManager() {}
 DeviceManager::~DeviceManager() {}
 
 void DeviceManager::Start(const Options& options,
+                          TaskRunner* task_runner,
                           HttpClient* http_client,
                           Network* network,
                           Mdns* mdns,
@@ -47,16 +48,15 @@ void DeviceManager::Start(const Options& options,
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
   device_info_.reset(new DeviceRegistrationInfo(
-      command_manager_, state_manager_, std::move(config), http_client,
-      base::MessageLoop::current()->task_runner(), options.xmpp_enabled,
-      network));
+      command_manager_, state_manager_, std::move(config), task_runner,
+      http_client, options.xmpp_enabled, network));
   base_api_handler_.reset(
       new BaseApiHandler{device_info_.get(), state_manager_, command_manager_});
 
   device_info_->Start();
 
   if (!options.disable_privet) {
-    StartPrivet(options, network, mdns, http_server);
+    StartPrivet(options, task_runner, network, mdns, http_server);
   } else {
     CHECK(!http_server);
     CHECK(!mdns);
@@ -84,12 +84,14 @@ Privet* DeviceManager::GetPrivet() {
 }
 
 void DeviceManager::StartPrivet(const Options& options,
+                                TaskRunner* task_runner,
                                 Network* network,
                                 Mdns* mdns,
                                 HttpServer* http_server) {
   privet_.reset(new privet::Manager{});
-  privet_->Start(options, network, mdns, http_server, device_info_.get(),
-                 command_manager_.get(), state_manager_.get());
+  privet_->Start(options, task_runner, network, mdns, http_server,
+                 device_info_.get(), command_manager_.get(),
+                 state_manager_.get());
 
   privet_->AddOnWifiSetupChangedCallback(
       base::Bind(&DeviceManager::OnWiFiBootstrapStateChanged,

@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/privet_types.h"
@@ -39,6 +40,7 @@ class WifiBootstrapManager : public WifiDelegate,
   WifiBootstrapManager(const std::string& last_configured_ssid,
                        const std::string& test_privet_ssid,
                        bool wifi_setup_enabled,
+                       TaskRunner* task_runner,
                        Network* shill_client,
                        CloudDelegate* gcd);
   ~WifiBootstrapManager() override = default;
@@ -98,7 +100,8 @@ class WifiBootstrapManager : public WifiDelegate,
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};
   ConnectionState connection_state_{ConnectionState::kDisabled};
-  Network* network_;
+  TaskRunner* task_runner_{nullptr};
+  Network* network_{nullptr};
   WifiSsidGenerator ssid_generator_;
 
   std::vector<StateListener> state_listeners_;

@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <weave/enum_to_string.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/commands/command_instance.h"
 #include "libweave/src/commands/prop_constraints.h"
@@ -19,7 +20,7 @@ CloudCommandProxy::CloudCommandProxy(
     CloudCommandUpdateInterface* cloud_command_updater,
     StateChangeQueueInterface* state_change_queue,
     std::unique_ptr<chromeos::BackoffEntry> backoff_entry,
-    const scoped_refptr<base::TaskRunner>& task_runner)
+    TaskRunner* task_runner)
     : command_instance_{command_instance},
       cloud_command_updater_{cloud_command_updater},
       state_change_queue_{state_change_queue},

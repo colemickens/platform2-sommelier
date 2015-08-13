@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/observer_list.h>
+#include <weave/task_runner.h>
 
 #include "libweave/src/privet/privet_types.h"
 #include "libweave/src/privet/security_delegate.h"
@@ -133,6 +134,7 @@ class CloudDelegate {
 
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
+      TaskRunner* task_runner,
       DeviceRegistrationInfo* device,
       CommandManager* command_manager,
       StateManager* state_manager);

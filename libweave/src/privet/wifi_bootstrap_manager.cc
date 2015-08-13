@@ -27,9 +27,11 @@ WifiBootstrapManager::WifiBootstrapManager(
     const std::string& last_configured_ssid,
     const std::string& test_privet_ssid,
     bool ble_setup_enabled,
+    TaskRunner* task_runner,
     Network* network,
     CloudDelegate* gcd)
-    : network_{network},
+    : task_runner_{task_runner},
+      network_{network},
       ssid_generator_{gcd, this},
       last_configured_ssid_{last_configured_ssid},
       test_privet_ssid_{test_privet_ssid},
@@ -77,7 +79,7 @@ void WifiBootstrapManager::StartBootstrapping() {
     // If we have been configured before, we'd like to periodically take down
     // our AP and find out if we can connect again.  Many kinds of failures are
     // transient, and having an AP up prohibits us from connecting as a client.
-    base::MessageLoop::current()->PostDelayedTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE, base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
                               tasks_weak_factory_.GetWeakPtr()),
         base::TimeDelta::FromSeconds(kBootstrapTimeoutSeconds));
@@ -100,7 +102,7 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
   VLOG(1) << "WiFi is attempting to connect. (ssid=" << ssid
           << ", pass=" << passphrase << ").";
   UpdateState(State::kConnecting);
-  base::MessageLoop::current()->PostDelayedTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectTimeout,
                             tasks_weak_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(kConnectTimeoutSeconds));
@@ -146,7 +148,7 @@ void WifiBootstrapManager::UpdateState(State new_state) {
   if (new_state != state_) {
     state_ = new_state;
     // Post with weak ptr to avoid notification after this object destroyed.
-    base::MessageLoop::current()->PostTask(
+    task_runner_->PostTask(
         FROM_HERE, base::Bind(&WifiBootstrapManager::NotifyStateListeners,
                               lifetime_weak_factory_.GetWeakPtr(), new_state));
   } else {
@@ -179,7 +181,7 @@ bool WifiBootstrapManager::ConfigureCredentials(const std::string& ssid,
   setup_state_ = SetupState{SetupState::kInProgress};
   // TODO(vitalybuka): Find more reliable way to finish request or move delay
   // into PrivetHandler as it's very HTTP specific.
-  base::MessageLoop::current()->PostDelayedTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE, base::Bind(&WifiBootstrapManager::StartConnecting,
                             tasks_weak_factory_.GetWeakPtr(), ssid, passphrase),
       base::TimeDelta::FromSeconds(kSetupDelaySeconds));
@@ -243,7 +245,7 @@ void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
       // Tasks queue may have more than one OnMonitorTimeout enqueued. The
       // first one could be executed as it would change the state and abort the
       // rest.
-      base::MessageLoop::current()->PostDelayedTask(
+      task_runner_->PostDelayedTask(
           FROM_HERE, base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
                                 tasks_weak_factory_.GetWeakPtr()),
           base::TimeDelta::FromSeconds(kMonitorTimeoutSeconds));
