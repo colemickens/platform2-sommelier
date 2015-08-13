@@ -318,4 +318,35 @@ TEST_F(JsonStoreTest, ConversionFromCryptedStringIsProhibited) {
   EXPECT_FALSE(store_.GetStringList("group_a", "knob_1", nullptr));
 }
 
+// In memory operations: key deletion.
+TEST_F(JsonStoreTest, DeleteKeyDeletesExistingKey) {
+  SetVerboseLevel(10);
+  store_.SetBool("group_a", "knob_1", bool());
+  EXPECT_TRUE(store_.DeleteKey("group_a", "knob_1"));
+  EXPECT_CALL(log_, Log(_, _, HasSubstr("Could not find property")));
+  EXPECT_FALSE(store_.GetBool("group_a", "knob_1", nullptr));
+}
+
+TEST_F(JsonStoreTest, DeleteKeyDeletesOnlySpecifiedKey) {
+  store_.SetBool("group_a", "knob_1", bool());
+  store_.SetBool("group_a", "knob_2", bool());
+  EXPECT_TRUE(store_.DeleteKey("group_a", "knob_1"));
+  EXPECT_FALSE(store_.GetBool("group_a", "knob_1", nullptr));
+  EXPECT_TRUE(store_.GetBool("group_a", "knob_2", nullptr));
+}
+
+TEST_F(JsonStoreTest, DeleteKeySucceedsOnMissingKey) {
+  store_.SetBool("group_a", "knob_1", bool());
+  EXPECT_TRUE(store_.DeleteKey("group_a", "knob_2"));
+  EXPECT_TRUE(store_.GetBool("group_a", "knob_1", nullptr));
+}
+
+TEST_F(JsonStoreTest, DeleteKeyFailsWhenGivenWrongGroup) {
+  SetVerboseLevel(10);
+  store_.SetBool("group_a", "knob_1", bool());
+  EXPECT_CALL(log_, Log(_, _, HasSubstr("Could not find group")));
+  EXPECT_FALSE(store_.DeleteKey("group_b", "knob_1"));
+  EXPECT_TRUE(store_.GetBool("group_a", "knob_1", nullptr));
+}
+
 }  // namespace shill

@@ -60,8 +60,19 @@ bool JsonStore::ContainsGroup(const string& group) const {
 }
 
 bool JsonStore::DeleteKey(const string& group, const string& key) {
-  NOTIMPLEMENTED();
-  return false;
+  const auto& group_name_and_settings = group_name_to_settings_.find(group);
+  if (group_name_and_settings == group_name_to_settings_.end()) {
+    LOG(ERROR) << "Could not find group |" << group << "|.";
+    return false;
+  }
+
+  auto& group_settings = group_name_and_settings->second;
+  auto property_it = group_settings.find(key);
+  if (property_it != group_settings.end()) {
+    group_settings.erase(property_it);
+  }
+
+  return true;
 }
 
 bool JsonStore::DeleteGroup(const string& group) {
