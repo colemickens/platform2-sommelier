@@ -19,6 +19,14 @@
 #include "webserver/webservd/server.h"
 #include "webserver/webservd/utils.h"
 
+#if defined(__BRILLO__)
+#include "webserver/webservd/firewalld_firewall.h"
+using FirewallImpl = webservd::FirewalldFirewall;
+#else
+#include "webserver/webservd/permission_broker_firewall.h"
+using FirewallImpl = webservd::PermissionBrokerFirewall;
+#endif  // __BRILLO__
+
 using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace {
@@ -38,7 +46,9 @@ class Daemon final : public chromeos::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     webservd::LogManager::Init(base::FilePath{config_.log_directory});
-    server_.reset(new webservd::Server{object_manager_.get(), config_});
+    server_.reset(new webservd::Server{
+        object_manager_.get(), config_,
+        std::unique_ptr<webservd::FirewallInterface>{new FirewallImpl()}});
     server_->RegisterAsync(
         sequencer->GetHandler("Server.RegisterAsync() failed.", true));
   }

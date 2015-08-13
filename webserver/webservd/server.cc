@@ -42,21 +42,15 @@ void IgnoreFirewallDBusMethodError(chromeos::Error* error) {
 
 namespace webservd {
 
-Server::Server(ExportedObjectManager* object_manager, const Config& config)
+Server::Server(ExportedObjectManager* object_manager, const Config& config,
+               std::unique_ptr<FirewallInterface> firewall)
     : dbus_object_{new DBusObject{
           object_manager, object_manager->GetBus(),
           org::chromium::WebServer::ServerAdaptor::GetObjectPath()}},
-      config_{config} {
-  int fds[2];
-  PCHECK(pipe(fds) == 0) << "Failed to create firewall lifeline pipe";
-  lifeline_read_fd_ = fds[0];
-  lifeline_write_fd_ = fds[1];
-}
+      config_{config},
+      firewall_{std::move(firewall)} {}
 
-Server::~Server() {
-  close(lifeline_read_fd_);
-  close(lifeline_write_fd_);
-}
+Server::~Server() {}
 
 void Server::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
@@ -68,12 +62,9 @@ void Server::RegisterAsync(
   for (auto& handler_config : config_.protocol_handlers)
     CreateProtocolHandler(&handler_config);
 
-  permission_broker_object_manager_.reset(
-      new org::chromium::PermissionBroker::ObjectManagerProxy{
-          dbus_object_->GetBus()});
-  permission_broker_object_manager_->SetPermissionBrokerAddedCallback(
-      base::Bind(&Server::OnPermissionBrokerOnline,
-                 weak_ptr_factory_.GetWeakPtr()));
+  firewall_->WaitForServiceAsync(dbus_object_->GetBus().get(),
+                                 base::Bind(&Server::OnFirewallServiceOnline,
+                                            weak_ptr_factory_.GetWeakPtr()));
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting Server.", true));
@@ -85,20 +76,16 @@ void Server::RegisterAsync(
   sequencer->OnAllTasksCompletedCall({completion_callback});
 }
 
-void Server::OnPermissionBrokerOnline(
-    org::chromium::PermissionBrokerProxy* proxy) {
-  LOG(INFO) << "Permission broker is on-line. "
+void Server::OnFirewallServiceOnline() {
+  LOG(INFO) << "Firewall service is on-line. "
             << "Opening firewall for protocol handlers";
-  dbus::FileDescriptor dbus_fd{lifeline_read_fd_};
-  dbus_fd.CheckValidity();
   for (auto& handler_config : config_.protocol_handlers) {
     VLOG(1) << "Firewall request: Protocol Handler = " << handler_config.name
             << ", Port = " << handler_config.port << ", Interface = "
             << handler_config.interface_name;
-    proxy->RequestTcpPortAccessAsync(
+    firewall_->PunchTcpHoleAsync(
         handler_config.port,
         handler_config.interface_name,
-        dbus_fd,
         base::Bind(&OnFirewallSuccess, handler_config.interface_name,
                    handler_config.port),
         base::Bind(&IgnoreFirewallDBusMethodError));

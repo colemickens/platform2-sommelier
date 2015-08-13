@@ -16,7 +16,7 @@
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/secure_blob.h>
 
-#include "permission_broker/dbus-proxies.h"
+#include "webservd/firewall_interface.h"
 #include "webservd/org.chromium.WebServer.Server.h"
 #include "webserver/webservd/server_interface.h"
 
@@ -30,7 +30,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
                      public ServerInterface {
  public:
   Server(chromeos::dbus_utils::ExportedObjectManager* object_manager,
-         const Config& config);
+         const Config& config, std::unique_ptr<FirewallInterface> firewall);
   // Need to off-line the destructor to allow |protocol_handler_map_| to contain
   // a forward-declared pointer to DBusProtocolHandler.
   ~Server();
@@ -51,12 +51,10 @@ class Server final : public org::chromium::WebServer::ServerInterface,
  private:
   void CreateProtocolHandler(Config::ProtocolHandler* handler_config);
   void InitTlsData();
-  void OnPermissionBrokerOnline(org::chromium::PermissionBrokerProxy* proxy);
+  void OnFirewallServiceOnline();
 
   org::chromium::WebServer::ServerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
-  std::unique_ptr<org::chromium::PermissionBroker::ObjectManagerProxy>
-      permission_broker_object_manager_;
 
   Config config_;
   int last_protocol_handler_index_{0};
@@ -72,11 +70,8 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   // existing handlers so they can be removed.
   std::vector<std::unique_ptr<ProtocolHandler>> protocol_handlers_;
 
-  // File descriptors for the two ends of the pipe used for communicating with
-  // remote firewall server (permission_broker), where the remote firewall
-  // server will use the read end of the pipe to detect when this process exits.
-  int lifeline_read_fd_{-1};
-  int lifeline_write_fd_{-1};
+  // The firewall service handler.
+  const std::unique_ptr<FirewallInterface> firewall_;
 
   base::WeakPtrFactory<Server> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Server);
