@@ -49,53 +49,44 @@ WiMaxProvider::~WiMaxProvider() {}
 
 void WiMaxProvider::Start() {
   SLOG(this, 2) << __func__;
-  if (wimax_manager_name_watcher_) {
-    return;
-  }
-  // Registers a watcher for the WiMaxManager service. This provider will
-  // connect to it if/when the OnWiMaxManagerAppear callback is invoked.
-  wimax_manager_name_watcher_.reset(manager_->dbus_manager()->CreateNameWatcher(
-      wimax_manager::kWiMaxManagerServiceName,
-      Bind(&WiMaxProvider::OnWiMaxManagerAppear, Unretained(this)),
-      Bind(&WiMaxProvider::OnWiMaxManagerVanish, Unretained(this))));
+
+  // Create a proxy for WiMaxManager service. This provider will connect to it
+  // if/when the OnWiMaxManagerAppear callback is invoked.
+  wimax_manager_proxy_.reset(
+      control_->CreateWiMaxManagerProxy(
+          Bind(&WiMaxProvider::OnWiMaxManagerAppeared, Unretained(this)),
+          Bind(&WiMaxProvider::OnWiMaxManagerVanished, Unretained(this))));
+  wimax_manager_proxy_->set_devices_changed_callback(
+      Bind(&WiMaxProvider::OnDevicesChanged, Unretained(this)));
 }
 
 void WiMaxProvider::Stop() {
   SLOG(this, 2) << __func__;
-  wimax_manager_name_watcher_.reset();
+  wimax_manager_proxy_.reset();
   DisconnectFromWiMaxManager();
   DestroyAllServices();
 }
 
 void WiMaxProvider::ConnectToWiMaxManager() {
-  DCHECK(!wimax_manager_proxy_.get());
-  LOG(INFO) << "Connecting to WiMaxManager.";
-  wimax_manager_proxy_.reset(control_->CreateWiMaxManagerProxy());
-  wimax_manager_proxy_->set_devices_changed_callback(
-      Bind(&WiMaxProvider::OnDevicesChanged, Unretained(this)));
+  LOG(INFO) << "Connected to WiMaxManager.";
   Error error;
   OnDevicesChanged(wimax_manager_proxy_->Devices(&error));
 }
 
 void WiMaxProvider::DisconnectFromWiMaxManager() {
   SLOG(this, 2) << __func__;
-  if (!wimax_manager_proxy_.get()) {
-    return;
-  }
-  LOG(INFO) << "Disconnecting from WiMaxManager.";
-  wimax_manager_proxy_.reset();
+  LOG(INFO) << "Disconnected from WiMaxManager.";
   OnDevicesChanged(RpcIdentifiers());
 }
 
-void WiMaxProvider::OnWiMaxManagerAppear(const string& name,
-                                         const string& owner) {
-  SLOG(this, 2) << __func__ << "(" << name << ", " << owner << ")";
+void WiMaxProvider::OnWiMaxManagerAppeared() {
+  SLOG(this, 2) << __func__;
   DisconnectFromWiMaxManager();
   ConnectToWiMaxManager();
 }
 
-void WiMaxProvider::OnWiMaxManagerVanish(const string& name) {
-  SLOG(this, 2) << __func__ << "(" << name << ")";
+void WiMaxProvider::OnWiMaxManagerVanished() {
+  SLOG(this, 2) << __func__;
   DisconnectFromWiMaxManager();
 }
 

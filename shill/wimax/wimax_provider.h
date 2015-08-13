@@ -13,7 +13,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
-#include "shill/dbus_manager.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/wimax/wimax_network_proxy_interface.h"
@@ -92,8 +91,8 @@ class WiMaxProvider : public ProviderInterface {
 
   void ConnectToWiMaxManager();
   void DisconnectFromWiMaxManager();
-  void OnWiMaxManagerAppear(const std::string& name, const std::string& owner);
-  void OnWiMaxManagerVanish(const std::string& name);
+  void OnWiMaxManagerAppeared();
+  void OnWiMaxManagerVanished();
 
   void OnDevicesChanged(const RpcIdentifiers& devices);
 
@@ -150,9 +149,6 @@ class WiMaxProvider : public ProviderInterface {
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   Manager* manager_;
-
-  // Monitor WiMaxManager DBus name ownership to detect daemon presence.
-  std::unique_ptr<DBusNameWatcher> wimax_manager_name_watcher_;
 
   std::unique_ptr<WiMaxManagerProxyInterface> wimax_manager_proxy_;
 

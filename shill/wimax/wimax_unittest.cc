@@ -9,10 +9,10 @@
 
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/nice_mock_control.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 #include "shill/wimax/mock_wimax_device_proxy.h"
 #include "shill/wimax/mock_wimax_provider.h"
@@ -69,7 +69,7 @@ class WiMaxTest : public testing::Test {
 
   std::unique_ptr<MockWiMaxDeviceProxy> proxy_;
   NiceMockControl control_;
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   MockDHCPProvider dhcp_provider_;

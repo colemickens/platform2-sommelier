@@ -20,8 +20,6 @@
 
 namespace shill {
 
-class DBusManager;
-class DBusNameWatcher;
 class EventDispatcher;
 class ControlInterface;
 
@@ -63,9 +61,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   //   false on failure.
   // - This object guarantees that a call to |imminent_callback| is followed by
   //   a call to |done_callback| (before any more calls to |imminent_callback|).
-  // Requires a |DBusManager| that has been |Start|'ed.
   virtual void Start(
-      DBusManager* dbus_manager,
       base::TimeDelta suspend_delay,
       const SuspendImminentCallback& suspend_imminent_callback,
       const SuspendDoneCallback& suspend_done_callback,
@@ -102,16 +98,15 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // These functions track the power_manager daemon appearing/vanishing from the
   // DBus connection.
-  void OnPowerManagerAppeared(const std::string& name,
-                              const std::string& owner);
-  void OnPowerManagerVanished(const std::string& name);
+  void OnPowerManagerAppeared();
+  void OnPowerManagerVanished();
 
   EventDispatcher* dispatcher_;
+  ControlInterface* control_interface_;
 
   // The power manager proxy created by this class.  It dispatches the inherited
   // delegate methods of this object when changes in the power state occur.
-  const std::unique_ptr<PowerManagerProxyInterface> power_manager_proxy_;
-  std::unique_ptr<DBusNameWatcher> power_manager_name_watcher_;
+  std::unique_ptr<PowerManagerProxyInterface> power_manager_proxy_;
   // The delay (in milliseconds) to request powerd to wait after a suspend
   // notification is received. powerd will actually suspend the system at least
   // |suspend_delay_| after the notification, if we do not

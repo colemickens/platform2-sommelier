@@ -11,7 +11,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/dbus_adaptor.h"
+#include "shill/control_interface.h"
 #include "shill/eap_credentials.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
@@ -183,7 +183,7 @@ string WiMaxService::GetStorageIdentifier() const {
 string WiMaxService::GetDeviceRpcId(Error* error) const {
   if (!device_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
-    return DBusAdaptor::kNullPath;
+    return control_interface()->NullRPCIdentifier();
   }
   return device_->GetRpcIdentifier();
 }
@@ -237,8 +237,8 @@ void WiMaxService::SetDevice(WiMaxRefPtr new_device) {
     adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
                                         new_device->GetRpcIdentifier());
   } else {
-    adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
-                                        DBusAdaptor::kNullPath);
+    adaptor()->EmitRpcIdentifierChanged(
+        kDeviceProperty, control_interface()->NullRPCIdentifier());
   }
   device_ = new_device;
 }

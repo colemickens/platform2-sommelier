@@ -103,7 +103,7 @@ TEST_F(WiMaxServiceTest, GetConnectParameters) {
 
 TEST_F(WiMaxServiceTest, GetDeviceRpcId) {
   Error error;
-  EXPECT_EQ("/", service_->GetDeviceRpcId(&error));
+  EXPECT_EQ(control_.NullRPCIdentifier(), service_->GetDeviceRpcId(&error));
   EXPECT_EQ(Error::kNotFound, error.type());
   service_->device_ = device_;
   error.Reset();

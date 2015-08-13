@@ -12,9 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/dbus_manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager_proxy.h"
@@ -42,22 +40,16 @@ class FakeControl : public MockControl {
   FakeControl()
       : delegate_(nullptr),
         power_manager_proxy_raw_(new MockPowerManagerProxy),
-        dbus_service_proxy_raw_(new MockDBusServiceProxy),
-        power_manager_proxy_(power_manager_proxy_raw_),
-        dbus_service_proxy_(dbus_service_proxy_raw_) {}
+        power_manager_proxy_(power_manager_proxy_raw_) {}
 
   virtual PowerManagerProxyInterface* CreatePowerManagerProxy(
-      PowerManagerProxyDelegate* delegate) {
+      PowerManagerProxyDelegate* delegate,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) {
     CHECK(power_manager_proxy_);
     delegate_ = delegate;
     // Passes ownership.
     return power_manager_proxy_.release();
-  }
-
-  virtual DBusServiceProxyInterface* CreateDBusServiceProxy() {
-    CHECK(dbus_service_proxy_);
-    // Passes ownership.
-    return dbus_service_proxy_.release();
   }
 
   PowerManagerProxyDelegate* delegate() const { return delegate_; }
@@ -65,17 +57,11 @@ class FakeControl : public MockControl {
   MockPowerManagerProxy* power_manager_proxy() const {
     return power_manager_proxy_raw_;
   }
-  // Can not guarantee that the returned object is alive.
-  MockDBusServiceProxy* dbus_service_proxy() const {
-    return dbus_service_proxy_raw_;
-  }
 
  private:
   PowerManagerProxyDelegate* delegate_;
   MockPowerManagerProxy* const power_manager_proxy_raw_;
-  MockDBusServiceProxy* const dbus_service_proxy_raw_;
   std::unique_ptr<MockPowerManagerProxy> power_manager_proxy_;
-  std::unique_ptr<MockDBusServiceProxy> dbus_service_proxy_;
 };
 
 }  // namespace
@@ -92,7 +78,6 @@ class PowerManagerTest : public Test {
 
   PowerManagerTest()
       : kTimeout(base::TimeDelta::FromSeconds(3)),
-        dbus_manager_(&control_),
         power_manager_(&dispatcher_, &control_),
         power_manager_proxy_(control_.power_manager_proxy()),
         delegate_(control_.delegate()) {
@@ -110,17 +95,14 @@ class PowerManagerTest : public Test {
 
  protected:
   virtual void SetUp() {
-    dbus_manager_.Start();
-
-    EXPECT_CALL(*control_.dbus_service_proxy(),
-                GetNameOwner(power_manager::kPowerManagerServiceName, _, _, _));
-    power_manager_.Start(&dbus_manager_, kTimeout, suspend_imminent_callback_,
+    power_manager_.Start(kTimeout, suspend_imminent_callback_,
                          suspend_done_callback_,
                          dark_suspend_imminent_callback_);
-    Mock::VerifyAndClearExpectations(control_.dbus_service_proxy());
   }
 
-  virtual void TearDown() { dbus_manager_.Stop(); }
+  virtual void TearDown() {
+    power_manager_.Stop();
+  }
 
   void AddProxyExpectationForRegisterSuspendDelay(int delay_id,
                                                   bool return_value) {
@@ -192,13 +174,11 @@ class PowerManagerTest : public Test {
   }
 
   void OnPowerManagerAppeared() {
-    power_manager_.OnPowerManagerAppeared(
-        power_manager::kPowerManagerServicePath, kPowerManagerDefaultOwner);
+    power_manager_.OnPowerManagerAppeared();
   }
 
   void OnPowerManagerVanished() {
-    power_manager_.OnPowerManagerVanished(
-        power_manager::kPowerManagerServicePath);
+    power_manager_.OnPowerManagerVanished();
   }
 
   // This is non-static since it's a non-POD type.
@@ -206,7 +186,6 @@ class PowerManagerTest : public Test {
 
   MockEventDispatcher dispatcher_;
   FakeControl control_;
-  DBusManager dbus_manager_;
   PowerManager power_manager_;
   MockPowerManagerProxy* const power_manager_proxy_;
   PowerManagerProxyDelegate* const delegate_;

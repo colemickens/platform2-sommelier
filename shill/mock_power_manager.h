@@ -24,10 +24,9 @@ class MockPowerManager : public PowerManager {
 
   MOCK_METHOD0(ReportSuspendReadiness, bool());
   MOCK_METHOD0(ReportDarkSuspendReadiness, bool());
-  MOCK_METHOD5(
+  MOCK_METHOD4(
       Start,
-      void(DBusManager* dbus_manager,
-           base::TimeDelta suspend_delay,
+      void(base::TimeDelta suspend_delay,
            const PowerManager::SuspendImminentCallback& imminent_callback,
            const PowerManager::SuspendDoneCallback& done_callback,
            const PowerManager::DarkSuspendImminentCallback& dark_imminent));

@@ -12,7 +12,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
-#include "shill/dbus_manager.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy_interface.h"
@@ -34,7 +33,7 @@ const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 PowerManager::PowerManager(EventDispatcher* dispatcher,
                            ControlInterface* control_interface)
     : dispatcher_(dispatcher),
-      power_manager_proxy_(control_interface->CreatePowerManagerProxy(this)),
+      control_interface_(control_interface),
       suspend_delay_registered_(false),
       suspend_delay_id_(0),
       dark_suspend_delay_registered_(false),
@@ -47,17 +46,15 @@ PowerManager::PowerManager(EventDispatcher* dispatcher,
 PowerManager::~PowerManager() {}
 
 void PowerManager::Start(
-    DBusManager* dbus_manager,
     TimeDelta suspend_delay,
     const SuspendImminentCallback& suspend_imminent_callback,
     const SuspendDoneCallback& suspend_done_callback,
     const DarkSuspendImminentCallback& dark_suspend_imminent_callback) {
-  power_manager_name_watcher_.reset(
-      dbus_manager->CreateNameWatcher(
-          power_manager::kPowerManagerServiceName,
+  power_manager_proxy_.reset(
+      control_interface_->CreatePowerManagerProxy(
+          this,
           Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
           Bind(&PowerManager::OnPowerManagerVanished, Unretained(this))));
-
   suspend_delay_ = suspend_delay;
   suspend_imminent_callback_ = suspend_imminent_callback;
   suspend_done_callback_ = suspend_done_callback;
@@ -66,7 +63,6 @@ void PowerManager::Start(
 
 void PowerManager::Stop() {
   LOG(INFO) << __func__;
-  power_manager_name_watcher_.reset();
   // We may attempt to unregister with a stale |suspend_delay_id_| if powerd
   // reappeared behind our back. It is safe to do so.
   if (suspend_delay_registered_)
@@ -76,6 +72,7 @@ void PowerManager::Stop() {
 
   suspend_delay_registered_ = false;
   dark_suspend_delay_registered_ = false;
+  power_manager_proxy_.reset();
 }
 
 bool PowerManager::ReportSuspendReadiness() {
@@ -142,8 +139,7 @@ void PowerManager::OnDarkSuspendImminent(int suspend_id) {
   dark_suspend_imminent_callback_.Run();
 }
 
-void PowerManager::OnPowerManagerAppeared(const string& /*name*/,
-                                          const string& /*owner*/) {
+void PowerManager::OnPowerManagerAppeared() {
   LOG(INFO) << __func__;
   CHECK(!suspend_delay_registered_);
   if (power_manager_proxy_->RegisterSuspendDelay(suspend_delay_,
@@ -158,7 +154,7 @@ void PowerManager::OnPowerManagerAppeared(const string& /*name*/,
     dark_suspend_delay_registered_ = true;
 }
 
-void PowerManager::OnPowerManagerVanished(const string& /*name*/) {
+void PowerManager::OnPowerManagerVanished() {
   LOG(INFO) << __func__;
   // If powerd vanished during a suspend, we need to wake ourselves up.
   if (suspending_)
