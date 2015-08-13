@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBCHROMEOS_CHROMEOS_BACKOFF_ENTRY_H_
-#define LIBCHROMEOS_CHROMEOS_BACKOFF_ENTRY_H_
+#ifndef LIBWEAVE_SRC_BACKOFF_ENTRY_H_
+#define LIBWEAVE_SRC_BACKOFF_ENTRY_H_
 
 #include <base/time/time.h>
-#include <chromeos/chromeos_export.h>
 
-namespace chromeos {
+namespace weave {
 
 // Provides the core logic needed for randomized exponential back-off
 // on requests to a given resource, given a back-off policy.
@@ -16,7 +15,7 @@ namespace chromeos {
 // This class is largely taken from net/base/backoff_entry.h from Chromium.
 // TODO(avakulenko): Consider packaging portions of Chrome's //net functionality
 // into the current libchrome library.
-class CHROMEOS_EXPORT BackoffEntry {
+class BackoffEntry {
  public:
   // The set of parameters that define a back-off policy.
   struct Policy {
@@ -110,6 +109,6 @@ class CHROMEOS_EXPORT BackoffEntry {
   DISALLOW_COPY_AND_ASSIGN(BackoffEntry);
 };
 
-}  // namespace chromeos
+}  // namespace weave
 
-#endif  // LIBCHROMEOS_CHROMEOS_BACKOFF_ENTRY_H_
+#endif  // LIBWEAVE_SRC_BACKOFF_ENTRY_H_

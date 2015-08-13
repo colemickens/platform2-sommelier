@@ -27,6 +27,7 @@
       'target_name': 'libweave_common',
       'type': 'static_library',
       'sources': [
+        'src/backoff_entry.cc',
         'src/base_api_handler.cc',
         'src/buffet_config.cc',
         'src/commands/cloud_command_proxy.cc',
@@ -119,6 +120,7 @@
             'external/crypto/p224_spake_unittest.cc',
             'external/crypto/p224_unittest.cc',
             'external/crypto/sha2_unittest.cc',
+            'src/backoff_entry_unittest.cc',
             'src/base_api_handler_unittest.cc',
             'src/buffet_config_unittest.cc',
             'src/commands/cloud_command_proxy_unittest.cc',

@@ -13,10 +13,10 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
-#include <chromeos/backoff_entry.h>
 #include <weave/command.h>
 #include <weave/task_runner.h>
 
+#include "libweave/src/backoff_entry.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
 #include "libweave/src/states/state_change_queue_interface.h"
 
@@ -30,7 +30,7 @@ class CloudCommandProxy final : public Command::Observer {
   CloudCommandProxy(CommandInstance* command_instance,
                     CloudCommandUpdateInterface* cloud_command_updater,
                     StateChangeQueueInterface* state_change_queue,
-                    std::unique_ptr<chromeos::BackoffEntry> backoff_entry,
+                    std::unique_ptr<BackoffEntry> backoff_entry,
                     TaskRunner* task_runner);
   ~CloudCommandProxy() override = default;
 
@@ -73,7 +73,7 @@ class CloudCommandProxy final : public Command::Observer {
   TaskRunner* task_runner_{nullptr};
 
   // Backoff for SendCommandUpdate() method.
-  std::unique_ptr<chromeos::BackoffEntry> cloud_backoff_entry_;
+  std::unique_ptr<BackoffEntry> cloud_backoff_entry_;
 
   // Set to true while a pending PATCH request is in flight to the server.
   bool command_update_in_progress_{false};

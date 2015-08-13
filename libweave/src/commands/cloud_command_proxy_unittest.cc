@@ -58,15 +58,15 @@ class TestTaskRunner : public chromeos::FakeMessageLoop {
 };
 
 // Test back-off entry that uses the test clock.
-class TestBackoffEntry : public chromeos::BackoffEntry {
+class TestBackoffEntry : public BackoffEntry {
  public:
   TestBackoffEntry(const Policy* const policy, base::Clock* clock)
-      : chromeos::BackoffEntry{policy}, clock_{clock} {
+      : BackoffEntry{policy}, clock_{clock} {
     creation_time_ = clock->Now();
   }
 
  private:
-  // Override from chromeos::BackoffEntry to use the custom test clock for
+  // Override from BackoffEntry to use the custom test clock for
   // the backoff calculations.
   base::TimeTicks ImplGetTimeNow() const override {
     return base::TimeTicks::FromInternalValue(clock_->Now().ToInternalValue());
@@ -143,8 +143,8 @@ class CloudCommandProxyTest : public ::testing::Test {
     CHECK(command_instance_.get());
 
     // Backoff - start at 1s and double with each backoff attempt and no jitter.
-    static const chromeos::BackoffEntry::Policy policy{
-        0, 1000, 2.0, 0.0, 20000, -1, false};
+    static const BackoffEntry::Policy policy{0,     1000, 2.0,  0.0,
+                                             20000, -1,   false};
     std::unique_ptr<TestBackoffEntry> backoff{
         new TestBackoffEntry{&policy, &clock_}};
 

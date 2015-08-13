@@ -222,7 +222,7 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
       config_{std::move(config)},
       notifications_enabled_{notifications_enabled},
       network_{network} {
-  cloud_backoff_policy_.reset(new chromeos::BackoffEntry::Policy{});
+  cloud_backoff_policy_.reset(new BackoffEntry::Policy{});
   cloud_backoff_policy_->num_errors_to_ignore = 0;
   cloud_backoff_policy_->initial_delay_ms = 1000;
   cloud_backoff_policy_->multiply_factor = 2.0;
@@ -230,10 +230,8 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
   cloud_backoff_policy_->maximum_backoff_ms = 30000;
   cloud_backoff_policy_->entry_lifetime_ms = -1;
   cloud_backoff_policy_->always_use_initial_delay = false;
-  cloud_backoff_entry_.reset(
-      new chromeos::BackoffEntry{cloud_backoff_policy_.get()});
-  oauth2_backoff_entry_.reset(
-      new chromeos::BackoffEntry{cloud_backoff_policy_.get()});
+  cloud_backoff_entry_.reset(new BackoffEntry{cloud_backoff_policy_.get()});
+  oauth2_backoff_entry_.reset(new BackoffEntry{cloud_backoff_policy_.get()});
 
   command_manager_->AddOnCommandDefChanged(
       base::Bind(&DeviceRegistrationInfo::OnCommandDefsChanged,
@@ -1102,8 +1100,8 @@ void DeviceRegistrationInfo::PublishCommand(
   if (!command_manager_->FindCommand(command_instance->GetID())) {
     LOG(INFO) << "New command '" << command_instance->GetName()
               << "' arrived, ID: " << command_instance->GetID();
-    std::unique_ptr<chromeos::BackoffEntry> backoff_entry{
-        new chromeos::BackoffEntry{cloud_backoff_policy_.get()}};
+    std::unique_ptr<BackoffEntry> backoff_entry{
+        new BackoffEntry{cloud_backoff_policy_.get()}};
     std::unique_ptr<CloudCommandProxy> cloud_proxy{new CloudCommandProxy{
         command_instance.get(), this, state_manager_->GetStateChangeQueue(),
         std::move(backoff_entry), task_runner_}};

@@ -18,7 +18,6 @@
 #include <base/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
-#include <chromeos/backoff_entry.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
 #include <weave/cloud.h>
@@ -26,6 +25,7 @@
 #include <weave/http_client.h>
 #include <weave/task_runner.h>
 
+#include "libweave/src/backoff_entry.h"
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
 #include "libweave/src/commands/command_manager.h"
@@ -311,9 +311,9 @@ class DeviceRegistrationInfo : public Cloud,
   std::unique_ptr<BuffetConfig> config_;
 
   // Backoff manager for DoCloudRequest() method.
-  std::unique_ptr<chromeos::BackoffEntry::Policy> cloud_backoff_policy_;
-  std::unique_ptr<chromeos::BackoffEntry> cloud_backoff_entry_;
-  std::unique_ptr<chromeos::BackoffEntry> oauth2_backoff_entry_;
+  std::unique_ptr<BackoffEntry::Policy> cloud_backoff_policy_;
+  std::unique_ptr<BackoffEntry> cloud_backoff_entry_;
+  std::unique_ptr<BackoffEntry> oauth2_backoff_entry_;
 
   // Flag set to true while a device state update patch request is in flight
   // to the cloud server.

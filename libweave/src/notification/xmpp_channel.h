@@ -13,9 +13,9 @@
 #include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/backoff_entry.h>
 #include <weave/stream.h>
 
+#include "libweave/src/backoff_entry.h"
 #include "libweave/src/notification/notification_channel.h"
 #include "libweave/src/notification/xmpp_iq_stanza_handler.h"
 #include "libweave/src/notification/xmpp_stream_parser.h"
@@ -152,7 +152,7 @@ class XmppChannel : public NotificationChannel,
   std::string host_;
   uint16_t port_{0};
 
-  chromeos::BackoffEntry backoff_entry_;
+  BackoffEntry backoff_entry_;
   NotificationDelegate* delegate_{nullptr};
   TaskRunner* task_runner_{nullptr};
   XmppStreamParser stream_parser_{this};

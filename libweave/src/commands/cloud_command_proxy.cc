@@ -19,7 +19,7 @@ CloudCommandProxy::CloudCommandProxy(
     CommandInstance* command_instance,
     CloudCommandUpdateInterface* cloud_command_updater,
     StateChangeQueueInterface* state_change_queue,
-    std::unique_ptr<chromeos::BackoffEntry> backoff_entry,
+    std::unique_ptr<BackoffEntry> backoff_entry,
     TaskRunner* task_runner)
     : command_instance_{command_instance},
       cloud_command_updater_{cloud_command_updater},

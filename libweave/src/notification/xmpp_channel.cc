@@ -7,11 +7,11 @@
 #include <string>
 
 #include <base/bind.h>
-#include <chromeos/backoff_entry.h>
 #include <chromeos/data_encoding.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
 
+#include "libweave/src/backoff_entry.h"
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/notification_parser.h"
 #include "libweave/src/notification/xml_node.h"
@@ -47,7 +47,7 @@ std::string BuildXmppAuthenticateCommand(const std::string& account,
 // Backoff policy.
 // Note: In order to ensure a minimum of 20 seconds between server errors,
 // we have a 30s +- 10s (33%) jitter initial backoff.
-const chromeos::BackoffEntry::Policy kDefaultBackoffPolicy = {
+const BackoffEntry::Policy kDefaultBackoffPolicy = {
     // Number of initial errors (in sequence) to ignore before applying
     // exponential back-off rules.
     0,
