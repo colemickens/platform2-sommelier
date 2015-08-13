@@ -13,9 +13,7 @@ namespace weave {
 PullChannel::PullChannel(
     base::TimeDelta pull_interval,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
-    : pull_interval_{pull_interval}, timer_{true, true} {
-  timer_.SetTaskRunner(task_runner);
-}
+    : pull_interval_{pull_interval}, task_runner_{task_runner} {}
 
 std::string PullChannel::GetName() const {
   return "pull";
@@ -32,23 +30,32 @@ void PullChannel::AddChannelParameters(base::DictionaryValue* channel_json) {
 void PullChannel::Start(NotificationDelegate* delegate) {
   CHECK(delegate);
   delegate_ = delegate;
-  timer_.Start(
-      FROM_HERE, pull_interval_,
-      base::Bind(&PullChannel::OnTimer, weak_ptr_factory_.GetWeakPtr()));
+  RePost();
+}
+
+void PullChannel::RePost() {
+  CHECK(delegate_);
+  weak_ptr_factory_.InvalidateWeakPtrs();
+  task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&PullChannel::OnTimer, weak_ptr_factory_.GetWeakPtr()),
+      pull_interval_);
 }
 
 void PullChannel::Stop() {
   weak_ptr_factory_.InvalidateWeakPtrs();
-  timer_.Stop();
+  delegate_ = nullptr;
 }
 
 void PullChannel::UpdatePullInterval(base::TimeDelta pull_interval) {
-  timer_.Stop();
   pull_interval_ = pull_interval;
-  Start(delegate_);
+  if (delegate_)
+    RePost();
 }
 
 void PullChannel::OnTimer() {
+  // Repost before delegate notification to give it a chance to stop channel.
+  RePost();
   base::DictionaryValue empty_dict;
   delegate_->OnCommandCreated(empty_dict);
 }

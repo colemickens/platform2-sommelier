@@ -34,10 +34,11 @@ class PullChannel : public NotificationChannel {
 
  private:
   void OnTimer();
+  void RePost();
 
-  NotificationDelegate* delegate_{nullptr};
   base::TimeDelta pull_interval_;
-  base::Timer timer_;
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  NotificationDelegate* delegate_{nullptr};
 
   base::WeakPtrFactory<PullChannel> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(PullChannel);
