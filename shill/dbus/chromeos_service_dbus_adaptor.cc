@@ -30,19 +30,18 @@ static string ObjectID(ChromeosServiceDBusAdaptor* s) {
 const char ChromeosServiceDBusAdaptor::kPath[] = "/service/";
 
 ChromeosServiceDBusAdaptor::ChromeosServiceDBusAdaptor(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     Service* service)
     : org::chromium::flimflam::ServiceAdaptor(this),
-      ChromeosDBusAdaptor(object_manager, bus, kPath + service->unique_name()),
+      ChromeosDBusAdaptor(bus, kPath + service->unique_name()),
       service_(service) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      AsyncEventSequencer::GetDefaultCompletionAction());
+  dbus_object()->RegisterAndBlock();
 }
 
 ChromeosServiceDBusAdaptor::~ChromeosServiceDBusAdaptor() {
+  dbus_object()->UnregisterAsync();
   service_ = nullptr;
 }
 

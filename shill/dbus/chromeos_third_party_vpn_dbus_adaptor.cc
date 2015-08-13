@@ -47,21 +47,20 @@ bool ConvertConnectState(
 }  // namespace
 
 ChromeosThirdPartyVpnDBusAdaptor::ChromeosThirdPartyVpnDBusAdaptor(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     ThirdPartyVpnDriver* client)
     : org::chromium::flimflam::ThirdPartyVpnAdaptor(this),
-      ChromeosDBusAdaptor(object_manager,
-                          bus,
+      ChromeosDBusAdaptor(bus,
                           kObjectPathBase + client->object_path_suffix()),
       client_(client) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      AsyncEventSequencer::GetDefaultCompletionAction());
+  dbus_object()->RegisterAndBlock();
 }
 
-ChromeosThirdPartyVpnDBusAdaptor::~ChromeosThirdPartyVpnDBusAdaptor() {}
+ChromeosThirdPartyVpnDBusAdaptor::~ChromeosThirdPartyVpnDBusAdaptor() {
+  dbus_object()->UnregisterAsync();
+}
 
 void ChromeosThirdPartyVpnDBusAdaptor::EmitPacketReceived(
     const std::vector<uint8_t>& packet) {

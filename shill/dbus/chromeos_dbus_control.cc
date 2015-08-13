@@ -12,22 +12,48 @@
 #include "shill/dbus/chromeos_service_dbus_adaptor.h"
 #include "shill/dbus/chromeos_third_party_vpn_dbus_adaptor.h"
 
+#include "shill/dbus/chromeos_dhcpcd_listener.h"
+#include "shill/dbus/chromeos_dhcpcd_proxy.h"
+#include "shill/dbus/chromeos_permission_broker_proxy.h"
+#include "shill/dbus/chromeos_power_manager_proxy.h"
+#include "shill/dbus/chromeos_supplicant_bss_proxy.h"
+#include "shill/dbus/chromeos_supplicant_interface_proxy.h"
+#include "shill/dbus/chromeos_supplicant_network_proxy.h"
+#include "shill/dbus/chromeos_supplicant_process_proxy.h"
+#include "shill/dbus/chromeos_upstart_proxy.h"
+
+#include "shill/dbus/chromeos_dbus_service_watcher.h"
+
+#if !defined(DISABLE_WIMAX)
+#include "shill/dbus/chromeos_wimax_device_proxy.h"
+#include "shill/dbus/chromeos_wimax_manager_proxy.h"
+#include "shill/dbus/chromeos_wimax_network_proxy.h"
+#endif  // DISABLE_WIMAX
+
 using chromeos::dbus_utils::ExportedObjectManager;
 using std::string;
 
 namespace shill {
 
+// static.
+const char ChromeosDBusControl::kNullPath[] = "/";
+
 ChromeosDBusControl::ChromeosDBusControl(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
-    const scoped_refptr<dbus::Bus>& bus)
-    : object_manager_(object_manager),
-      bus_(bus) {}
+    const scoped_refptr<dbus::Bus>& bus,
+    EventDispatcher* dispatcher)
+    : bus_(bus),
+      dispatcher_(dispatcher),
+      null_identifier_(kNullPath) {}
 
 ChromeosDBusControl::~ChromeosDBusControl() {}
 
+const string& ChromeosDBusControl::NullRPCIdentifier() {
+  return null_identifier_;
+}
+
 template <typename Object, typename AdaptorInterface, typename Adaptor>
 AdaptorInterface* ChromeosDBusControl::CreateAdaptor(Object* object) {
-  return new Adaptor(object_manager_, bus_, object);
+  return new Adaptor(bus_, object);
 }
 
 DeviceAdaptorInterface* ChromeosDBusControl::CreateDeviceAdaptor(
@@ -81,6 +107,14 @@ ThirdPartyVpnAdaptorInterface* ChromeosDBusControl::CreateThirdPartyVpnAdaptor(
 }
 #endif
 
+RPCServiceWatcherInterface* ChromeosDBusControl::CreateRPCServiceWatcher(
+    const std::string& connection_name,
+    const base::Closure& on_connection_vanished) {
+  return new ChromeosDBusServiceWatcher(bus_,
+                                        connection_name,
+                                        on_connection_vanished);
+}
+
 DBusPropertiesProxyInterface* ChromeosDBusControl::CreateDBusPropertiesProxy(
     const string& path,
     const string& service) {
@@ -92,60 +126,64 @@ DBusServiceProxyInterface* ChromeosDBusControl::CreateDBusServiceProxy() {
 }
 
 PowerManagerProxyInterface* ChromeosDBusControl::CreatePowerManagerProxy(
-    PowerManagerProxyDelegate* delegate) {
-  return nullptr;
+    PowerManagerProxyDelegate* delegate,
+    const base::Closure& service_appeared_callback,
+    const base::Closure& service_vanished_callback) {
+  return new ChromeosPowerManagerProxy(dispatcher_,
+                                       bus_,
+                                       delegate,
+                                       service_appeared_callback,
+                                       service_vanished_callback);
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 SupplicantProcessProxyInterface*
     ChromeosDBusControl::CreateSupplicantProcessProxy(
-        const char* dbus_path,
-        const char* dbus_addr) {
-  return nullptr;
+        const base::Closure& service_appeared_callback,
+        const base::Closure& service_vanished_callback) {
+  return new ChromeosSupplicantProcessProxy(
+      dispatcher_, bus_, service_appeared_callback, service_vanished_callback);
 }
 
 SupplicantInterfaceProxyInterface*
     ChromeosDBusControl::CreateSupplicantInterfaceProxy(
         SupplicantEventDelegateInterface* delegate,
-        const string& object_path,
-        const char* dbus_addr) {
-  return nullptr;
+        const string& object_path) {
+  return new ChromeosSupplicantInterfaceProxy(bus_, object_path, delegate);
 }
 
 SupplicantNetworkProxyInterface*
     ChromeosDBusControl::CreateSupplicantNetworkProxy(
-        const string& object_path,
-        const char* dbus_addr) {
-  return nullptr;
+        const string& object_path) {
+  return new ChromeosSupplicantNetworkProxy(bus_, object_path);
 }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIFI)
 SupplicantBSSProxyInterface* ChromeosDBusControl::CreateSupplicantBSSProxy(
     WiFiEndpoint* wifi_endpoint,
-    const string& object_path,
-    const char* dbus_addr) {
-  return nullptr;
+    const string& object_path) {
+  return new ChromeosSupplicantBSSProxy(bus_, object_path, wifi_endpoint);
 }
 #endif  // DISABLE_WIFI
 
 DHCPCDListenerInterface* ChromeosDBusControl::CreateDHCPCDListener(
     DHCPProvider* provider) {
-  return nullptr;
+  return new ChromeosDHCPCDListener(bus_, dispatcher_, provider);
 }
 
 DHCPProxyInterface* ChromeosDBusControl::CreateDHCPProxy(
     const string& service) {
-  return nullptr;
+  return new ChromeosDHCPCDProxy(bus_, service);
 }
 
 UpstartProxyInterface* ChromeosDBusControl::CreateUpstartProxy() {
-  return nullptr;
+  return new ChromeosUpstartProxy(bus_);
 }
 
 PermissionBrokerProxyInterface*
     ChromeosDBusControl::CreatePermissionBrokerProxy() {
-  return nullptr;
+  return new ChromeosPermissionBrokerProxy(bus_);
 }
 
 #if !defined(DISABLE_CELLULAR)
@@ -237,16 +275,21 @@ mm1::SimProxyInterface* ChromeosDBusControl::CreateSimProxy(
 #if !defined(DISABLE_WIMAX)
 WiMaxDeviceProxyInterface* ChromeosDBusControl::CreateWiMaxDeviceProxy(
     const string& path) {
-  return nullptr;
+  return new ChromeosWiMaxDeviceProxy(bus_, path);
 }
 
-WiMaxManagerProxyInterface* ChromeosDBusControl::CreateWiMaxManagerProxy() {
-  return nullptr;
+WiMaxManagerProxyInterface* ChromeosDBusControl::CreateWiMaxManagerProxy(
+    const base::Closure& service_appeared_callback,
+    const base::Closure& service_vanished_callback) {
+  return new ChromeosWiMaxManagerProxy(dispatcher_,
+                                       bus_,
+                                       service_appeared_callback,
+                                       service_vanished_callback);
 }
 
 WiMaxNetworkProxyInterface* ChromeosDBusControl::CreateWiMaxNetworkProxy(
     const string& path) {
-  return nullptr;
+  return new ChromeosWiMaxNetworkProxy(bus_, path);
 }
 #endif  // DISABLE_WIMAX
 

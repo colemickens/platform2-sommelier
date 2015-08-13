@@ -30,8 +30,6 @@ class ChromeosDeviceDBusAdaptor
   static const char kPath[];
 
   ChromeosDeviceDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
       const scoped_refptr<dbus::Bus>& bus,
       Device* device);
   ~ChromeosDeviceDBusAdaptor() override;

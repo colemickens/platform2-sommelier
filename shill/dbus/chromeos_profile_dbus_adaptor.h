@@ -33,8 +33,6 @@ class ChromeosProfileDBusAdaptor
   static const char kPath[];
 
   ChromeosProfileDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
       const scoped_refptr<dbus::Bus>& bus,
       Profile* profile);
   ~ChromeosProfileDBusAdaptor() override;

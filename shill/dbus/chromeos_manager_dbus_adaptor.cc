@@ -34,12 +34,10 @@ static string ObjectID(ChromeosManagerDBusAdaptor* m) {
 const char ChromeosManagerDBusAdaptor::kPath[] = "/";
 
 ChromeosManagerDBusAdaptor::ChromeosManagerDBusAdaptor(
-    const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-        object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     Manager* manager)
     : org::chromium::flimflam::ManagerAdaptor(this),
-      ChromeosDBusAdaptor(object_manager, bus, kPath),
+      ChromeosDBusAdaptor(bus, kPath),
       manager_(manager) {
 }
 
@@ -48,10 +46,9 @@ ChromeosManagerDBusAdaptor::~ChromeosManagerDBusAdaptor() {
 }
 
 void ChromeosManagerDBusAdaptor::RegisterAsync(
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+    const base::Callback<void(bool)>& completion_callback) {
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+  dbus_object()->RegisterAsync(completion_callback);
 }
 
 void ChromeosManagerDBusAdaptor::EmitBoolChanged(const string& name,
@@ -511,15 +508,21 @@ bool ChromeosManagerDBusAdaptor::CreateConnectivityReport(
   return !e.ToChromeosError(error);
 }
 
-void ChromeosManagerDBusAdaptor::ClaimInterface(
-    DBusMethodResponsePtr<> response,
+bool ChromeosManagerDBusAdaptor::ClaimInterface(
+    chromeos::ErrorPtr* error,
+    dbus::Message* message,
     const string& claimer_name,
     const string& interface_name) {
   SLOG(this, 2) << __func__;
-  Error e(Error::kOperationInitiated);
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  manager_->ClaimDevice(claimer_name, interface_name, &e, callback);
-  ReturnResultOrDefer(callback, e);
+  Error e;
+  // Empty claimer name is used to indicate default claimer.
+  // TODO(zqiu): update this API or make a new API to use a flag to indicate
+  // default claimer instead.
+  manager_->ClaimDevice(
+      claimer_name == "" ? "" : message->GetSender(),
+      interface_name,
+      &e);
+  return !e.ToChromeosError(error);
 }
 
 bool ChromeosManagerDBusAdaptor::ReleaseInterface(

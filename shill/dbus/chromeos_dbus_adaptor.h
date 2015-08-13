@@ -30,8 +30,6 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
   static const char kNullPath[];
 
   ChromeosDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& object_path);
   ~ChromeosDBusAdaptor();

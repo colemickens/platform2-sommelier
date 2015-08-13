@@ -31,11 +31,8 @@ class ChromeosThirdPartyVpnDBusAdaptor
     kStateFailure,
   };
 
-  ChromeosThirdPartyVpnDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      ThirdPartyVpnDriver* client);
+  ChromeosThirdPartyVpnDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                                   ThirdPartyVpnDriver* client);
   ~ChromeosThirdPartyVpnDBusAdaptor() override;
 
   // Implementation of ThirdPartyVpnAdaptorInterface

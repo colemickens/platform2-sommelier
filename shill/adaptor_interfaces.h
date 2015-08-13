@@ -8,15 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "shill/accessor_interface.h"
+#include <base/callback.h>
 
-#ifndef DISABLE_CHROMEOS_DBUS
-namespace chromeos {
-namespace dbus_utils {
-class AsyncEventSequencer;
-}  // namespace dbus_utils
-}  // namespace chromeos
-#endif  // DISABLE_CHROMEOS_DBUS
+#include "shill/accessor_interface.h"
 
 namespace shill {
 
@@ -78,12 +72,8 @@ class ManagerAdaptorInterface {
  public:
   virtual ~ManagerAdaptorInterface() {}
 
-#ifndef DISABLE_CHROMEOS_DBUS
-  // TODO(zqiu): switch to pure virtual when the legacy manager adaptor is
-  // removed.
   virtual void RegisterAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) {}
-#endif  // DISABLE_CHROMEOS_DBUS
+      const base::Callback<void(bool)>& completion_callback) = 0;
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
@@ -162,7 +152,7 @@ class ServiceAdaptorInterface {
 
 class ThirdPartyVpnAdaptorInterface {
  public:
-  virtual ~ThirdPartyVpnAdaptorInterface();
+  virtual ~ThirdPartyVpnAdaptorInterface() {}
 
   virtual void EmitPacketReceived(const std::vector<uint8_t>& packet) = 0;
 

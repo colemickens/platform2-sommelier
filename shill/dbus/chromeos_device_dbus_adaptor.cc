@@ -27,21 +27,20 @@ static string ObjectID(ChromeosDeviceDBusAdaptor* d) {
 const char ChromeosDeviceDBusAdaptor::kPath[] = "/device/";
 
 ChromeosDeviceDBusAdaptor::ChromeosDeviceDBusAdaptor(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     Device* device)
     : org::chromium::flimflam::DeviceAdaptor(this),
-      ChromeosDBusAdaptor(object_manager,
-                          bus,
+      ChromeosDBusAdaptor(bus,
                           kPath + SanitizePathElement(device->UniqueName())),
-      device_(device) {
+      device_(device),
+      connection_name_(bus->GetConnectionName()) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      AsyncEventSequencer::GetDefaultCompletionAction());
+  dbus_object()->RegisterAndBlock();
 }
 
 ChromeosDeviceDBusAdaptor::~ChromeosDeviceDBusAdaptor() {
+  dbus_object()->UnregisterAsync();
   device_ = nullptr;
 }
 
@@ -50,7 +49,6 @@ const string& ChromeosDeviceDBusAdaptor::GetRpcIdentifier() {
 }
 
 const string& ChromeosDeviceDBusAdaptor::GetRpcConnectionIdentifier() {
-  // TODO(zqiu): currently unintialized, should be set to service's owner name?
   return connection_name_;
 }
 

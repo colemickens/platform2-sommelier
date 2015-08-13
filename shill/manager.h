@@ -34,18 +34,9 @@
 #include "shill/upstart/upstart.h"
 #include "shill/wimax/wimax_provider.h"
 
-#ifndef DISABLE_CHROMEOS_DBUS
-namespace chromeos {
-namespace dbus_utils {
-class AsyncEventSequencer;
-}  // namespace dbus_utils
-}  // namespace chromeos
-#endif  // DISABLE_CHROMEOS_DBUS
-
 namespace shill {
 
 class ControlInterface;
-class DBusManager;
 class DeviceClaimer;
 class DefaultProfile;
 class Error;
@@ -111,9 +102,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
           const std::string& user_storage_directory);
   virtual ~Manager();
 
-#ifndef DISABLE_CHROMEOS_DBUS
-  void RegisterAsync(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
-#endif  // DISABLE_CHROMEOS_DBUS
+  void RegisterAsync(const base::Callback<void(bool)>& completion_callback);
 
   virtual void AddDeviceToBlackList(const std::string& device_name);
 
@@ -225,8 +214,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // name |claimer_name|. This will cause shill to stop managing this device.
   void ClaimDevice(const std::string& claimer_name,
                    const std::string& interface_name,
-                   Error* error,
-                   const ResultCallback& callback);
+                   Error* error);
   // Claimer |claimer_name| release the ownership of the device with
   // |interface_name| back to shill.
   void ReleaseDevice(const std::string& claimer_name,
@@ -336,7 +324,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     return props_.portal_url;
   }
 
-  DBusManager* dbus_manager() const { return dbus_manager_.get(); }
   virtual DeviceInfo* device_info() { return &device_info_; }
 #if !defined(DISABLE_CELLULAR)
   virtual ModemInfo* modem_info() { return &modem_info_; }
@@ -729,13 +716,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   DeviceRefPtr GetDeviceConnectedToService(ServiceRefPtr service);
 
-  // Called when the DBus service that claimed ownership of devices from shill
-  // appear/vanish from the DBus connection.
-  void OnDeviceClaimerAppeared(const std::string& /*name*/,
-                                    const std::string& owner);
-  void OnDeviceClaimerVanished(const std::string& /*name*/);
-  // Task for cleanup device claimer when it is vanished.
-  void DeviceClaimerVanishedTask();
+  // Invoked when remote device claimer vanished.
+  void OnDeviceClaimerVanished();
 
   void DeregisterDeviceByLinkName(const std::string& link_name);
 
@@ -749,7 +731,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   const std::string user_storage_path_;
   base::FilePath user_profile_list_path_;  // Changed in tests.
   std::unique_ptr<ManagerAdaptorInterface> adaptor_;
-  std::unique_ptr<DBusManager> dbus_manager_;
   DeviceInfo device_info_;
 #if !defined(DISABLE_CELLULAR)
   ModemInfo modem_info_;
@@ -853,7 +834,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // from/to shill. To reduce complexity, only allow one device claimer at a
   // time.
   std::unique_ptr<DeviceClaimer> device_claimer_;
-  std::vector<DeviceClaim> pending_device_claims_;
 
   // When true, suppresses autoconnects in Manager::AutoConnect.
   bool suppress_autoconnect_;

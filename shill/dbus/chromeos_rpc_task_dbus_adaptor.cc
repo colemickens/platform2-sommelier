@@ -28,19 +28,19 @@ static string ObjectID(ChromeosRPCTaskDBusAdaptor* r) {
 const char ChromeosRPCTaskDBusAdaptor::kPath[] = "/task/";
 
 ChromeosRPCTaskDBusAdaptor::ChromeosRPCTaskDBusAdaptor(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     RPCTask* task)
     : org::chromium::flimflam::TaskAdaptor(this),
-      ChromeosDBusAdaptor(object_manager, bus, kPath + task->UniqueName()),
-      task_(task) {
+      ChromeosDBusAdaptor(bus, kPath + task->UniqueName()),
+      task_(task),
+      connection_name_(bus->GetConnectionName()) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      AsyncEventSequencer::GetDefaultCompletionAction());
+  dbus_object()->RegisterAndBlock();
 }
 
 ChromeosRPCTaskDBusAdaptor::~ChromeosRPCTaskDBusAdaptor() {
+  dbus_object()->UnregisterAsync();
   task_ = nullptr;
 }
 
@@ -49,8 +49,6 @@ const string& ChromeosRPCTaskDBusAdaptor::GetRpcIdentifier() {
 }
 
 const string& ChromeosRPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {
-  // TODO(zqiu): connection name is not currently exposed through libchrome's
-  // dbus library (dbus::Bus class).
   return connection_name_;
 }
 

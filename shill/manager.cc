@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/stringprintf.h>
@@ -24,8 +25,6 @@
 #include "shill/callbacks.h"
 #include "shill/connection.h"
 #include "shill/control_interface.h"
-#include "shill/dbus_adaptor.h"
-#include "shill/dbus_manager.h"
 #include "shill/default_profile.h"
 #include "shill/device.h"
 #include "shill/device_claimer.h"
@@ -62,6 +61,7 @@
 #endif  // DISABLE_WIRED_8021X
 
 using base::Bind;
+using base::Callback;
 using base::FilePath;
 using base::StringPrintf;
 using base::Unretained;
@@ -219,12 +219,9 @@ Manager::Manager(ControlInterface* control_interface,
 
 Manager::~Manager() {}
 
-#ifndef DISABLE_CHROMEOS_DBUS
-void Manager::RegisterAsync(
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
-  adaptor_->RegisterAsync(sequencer);
+void Manager::RegisterAsync(const Callback<void(bool)>& completion_callback) {
+  adaptor_->RegisterAsync(completion_callback);
 }
-#endif  // DISABLE_CHROMEOS_DBUS
 
 void Manager::AddDeviceToBlackList(const string& device_name) {
   device_info_.AddDeviceToBlackList(device_name);
@@ -233,13 +230,9 @@ void Manager::AddDeviceToBlackList(const string& device_name) {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
-  dbus_manager_.reset(new DBusManager(control_interface_));
-  dbus_manager_->Start();
-
   power_manager_.reset(
       new PowerManager(dispatcher_, control_interface_));
-  power_manager_->Start(dbus_manager(),
-                        base::TimeDelta::FromMilliseconds(
+  power_manager_->Start(base::TimeDelta::FromMilliseconds(
                             kTerminationActionsTimeoutMilliseconds),
                         Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
                         Bind(&Manager::OnSuspendDone, AsWeakPtr()),
@@ -303,7 +296,6 @@ void Manager::Stop() {
   sort_services_task_.Cancel();
   power_manager_->Stop();
   power_manager_.reset();
-  dbus_manager_.reset();
 }
 
 void Manager::InitializeProfiles() {
@@ -648,8 +640,7 @@ void Manager::RemoveProfile(const string& name, Error* error) {
 
 void Manager::ClaimDevice(const string& claimer_name,
                           const string& device_name,
-                          Error* error,
-                          const ResultCallback& callback) {
+                          Error* error) {
   SLOG(this, 2) << __func__;
 
   // Basic check for device name.
@@ -659,22 +650,23 @@ void Manager::ClaimDevice(const string& claimer_name,
     return;
   }
 
+  // Verify default claimer.
+  if (claimer_name.empty() &&
+      (!device_claimer_ || !device_claimer_->default_claimer())) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "No default claimer");
+    return;
+  }
+
   // Create a new device claimer if one doesn't exist yet.
   if (!device_claimer_) {
-    // Start a device claimer.
+    // Start a device claimer.  No need to verify the existence of the claimer,
+    // since we are using message sender as the claimer name.
     device_claimer_.reset(
         new DeviceClaimer(claimer_name, &device_info_, false));
-    device_claimer_->StartDBusNameWatcher(
-        dbus_manager_.get(),
-        Bind(&Manager::OnDeviceClaimerAppeared, Unretained(this)),
+    device_claimer_->StartServiceWatcher(
+        control_interface_,
         Bind(&Manager::OnDeviceClaimerVanished, Unretained(this)));
-
-    // Setup pending result callback and device name.
-    pending_device_claims_.push_back(DeviceClaim(device_name, callback));
-
-    // Nothing to be done now, the result callback will be invoke when the
-    // DBus name watcher callback is invoked.
-    return;
   }
 
   // Verify claimer's name, since we only allow one claimer to exist at a time.
@@ -686,13 +678,6 @@ void Manager::ClaimDevice(const string& claimer_name,
     return;
   }
 
-  // Still waiting to verify the claimer's DBus name, add this device claim to
-  // to the pending list.
-  if (!pending_device_claims_.empty()) {
-    pending_device_claims_.push_back(DeviceClaim(device_name, callback));
-    return;
-  }
-
   // Error will be populated by the claimer if failed to claim the device.
   if (!device_claimer_->Claim(device_name, error)) {
     return;
@@ -700,9 +685,6 @@ void Manager::ClaimDevice(const string& claimer_name,
 
   // Deregister the device from manager if it is registered.
   DeregisterDeviceByLinkName(device_name);
-
-  // Done, succeed synchronously,
-  error->Populate(Error::kSuccess);
 }
 
 void Manager::ReleaseDevice(const string& claimer_name,
@@ -736,64 +718,7 @@ void Manager::ReleaseDevice(const string& claimer_name,
   }
 }
 
-void Manager::OnDeviceClaimerAppeared(const string& /*name*/,
-                                      const string& owner) {
-  SLOG(this, 2) << __func__;
-  CHECK(device_claimer_);
-
-  // Claim device for any pending claims.
-  if (!pending_device_claims_.empty()) {
-    for (const auto& device_claim : pending_device_claims_) {
-      Error error;
-      if (device_claimer_->Claim(device_claim.device_name, &error)) {
-        DeregisterDeviceByLinkName(device_claim.device_name);
-      }
-      device_claim.result_callback.Run(error);
-    }
-    pending_device_claims_.clear();
-    // Reset claimer if no device is successfully claimed.
-    if (!device_claimer_->DevicesClaimed()) {
-      device_claimer_.reset();
-      return;
-    }
-  }
-
-  // Getting the owner information for the first time.
-  if (device_claimer_->owner().empty()) {
-    device_claimer_->set_owner(owner);
-    return;
-  }
-
-  // Owner for the claimer changed
-  if (device_claimer_->owner() != owner) {
-    // Release the device claimer.
-    device_claimer_.reset();
-  }
-}
-
-void Manager::OnDeviceClaimerVanished(const string& /*name*/) {
-  SLOG(this, 2) << __func__;
-
-  // Currently, this function can be called synchronously through creation
-  // of DBusNameWatcher or asynchronously from DBus proxy. To make
-  // ClaimerVanishedTask handling consistent in both scenarios, always invoke
-  // it asynchronously.
-  dispatcher_->PostTask(Bind(&Manager::DeviceClaimerVanishedTask, AsWeakPtr()));
-}
-
-void Manager::DeviceClaimerVanishedTask() {
-  // Invoke all pending callbacks.
-  if (!pending_device_claims_.empty()) {
-    Error error;
-    Error::PopulateAndLog(FROM_HERE,
-                          &error,
-                          Error::kInvalidArguments,
-                          "Invalid DBus service name");
-    for (const auto& device_claim : pending_device_claims_) {
-      device_claim.result_callback.Run(error);
-    }
-    pending_device_claims_.clear();
-  }
+void Manager::OnDeviceClaimerVanished() {
   // Reset device claimer.
   device_claimer_.reset();
 }
@@ -931,7 +856,8 @@ ServiceRefPtr Manager::GetDefaultService() const {
 
 RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error* /*error*/) {
   ServiceRefPtr default_service = GetDefaultService();
-  return default_service ? default_service->GetRpcIdentifier() : "/";
+  return default_service ? default_service->GetRpcIdentifier() :
+      control_interface_->NullRPCIdentifier();
 }
 
 bool Manager::IsTechnologyInList(const string& technology_list,

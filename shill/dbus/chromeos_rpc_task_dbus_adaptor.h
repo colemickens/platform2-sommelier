@@ -30,11 +30,8 @@ class ChromeosRPCTaskDBusAdaptor
  public:
   static const char kPath[];
 
-  ChromeosRPCTaskDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      RPCTask* task);
+  ChromeosRPCTaskDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                             RPCTask* task);
   ~ChromeosRPCTaskDBusAdaptor() override;
 
   // Implementation of RPCTaskAdaptorInterface.

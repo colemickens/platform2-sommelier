@@ -32,12 +32,10 @@ static string ObjectID(ChromeosIPConfigDBusAdaptor* i) {
 const char ChromeosIPConfigDBusAdaptor::kPath[] = "/ipconfig/";
 
 ChromeosIPConfigDBusAdaptor::ChromeosIPConfigDBusAdaptor(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     IPConfig* config)
     : org::chromium::flimflam::IPConfigAdaptor(this),
-      ChromeosDBusAdaptor(object_manager,
-                          bus,
+      ChromeosDBusAdaptor(bus,
                           StringPrintf("%s%s_%u_%s",
                                        kPath,
                                        SanitizePathElement(
@@ -47,11 +45,11 @@ ChromeosIPConfigDBusAdaptor::ChromeosIPConfigDBusAdaptor(
       ipconfig_(config) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      AsyncEventSequencer::GetDefaultCompletionAction());
+  dbus_object()->RegisterAndBlock();
 }
 
 ChromeosIPConfigDBusAdaptor::~ChromeosIPConfigDBusAdaptor() {
+  dbus_object()->UnregisterAsync();
   ipconfig_ = nullptr;
 }
 

@@ -32,11 +32,8 @@ class ChromeosIPConfigDBusAdaptor
   static const char kInterfaceName[];
   static const char kPath[];
 
-  ChromeosIPConfigDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      IPConfig* ipconfig);
+  ChromeosIPConfigDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                              IPConfig* ipconfig);
   ~ChromeosIPConfigDBusAdaptor() override;
 
   // Implementation of IPConfigAdaptorInterface.

@@ -31,21 +31,18 @@ static string ObjectID(ChromeosProfileDBusAdaptor* p) {
 const char ChromeosProfileDBusAdaptor::kPath[] = "/profile/";
 
 ChromeosProfileDBusAdaptor::ChromeosProfileDBusAdaptor(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     Profile* profile)
     : org::chromium::flimflam::ProfileAdaptor(this),
-      ChromeosDBusAdaptor(object_manager,
-                          bus,
-                          kPath + profile->GetFriendlyName()),
+      ChromeosDBusAdaptor(bus, kPath + profile->GetFriendlyName()),
       profile_(profile) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      AsyncEventSequencer::GetDefaultCompletionAction());
+  dbus_object()->RegisterAndBlock();
 }
 
 ChromeosProfileDBusAdaptor::~ChromeosProfileDBusAdaptor() {
+  dbus_object()->UnregisterAsync();
   profile_ = nullptr;
 }
 

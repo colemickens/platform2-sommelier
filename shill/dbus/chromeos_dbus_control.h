@@ -14,13 +14,13 @@
 
 namespace shill {
 
+class EventDispatcher;
+
 // This is the Interface for the  DBus control channel for Shill.
 class ChromeosDBusControl : public ControlInterface {
  public:
-  ChromeosDBusControl(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
-      const scoped_refptr<dbus::Bus>& bus);
+  ChromeosDBusControl(const scoped_refptr<dbus::Bus>& bus,
+                      EventDispatcher* dispatcher);
   ~ChromeosDBusControl() override;
 
   DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) override;
@@ -34,6 +34,12 @@ class ChromeosDBusControl : public ControlInterface {
       ThirdPartyVpnDriver* driver) override;
 #endif
 
+  const std::string& NullRPCIdentifier() override;
+
+  RPCServiceWatcherInterface* CreateRPCServiceWatcher(
+      const std::string& connection_name,
+      const base::Closure& on_connection_vanished) override;
+
   DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
       const std::string& path,
       const std::string& service) override;
@@ -43,29 +49,28 @@ class ChromeosDBusControl : public ControlInterface {
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
   PowerManagerProxyInterface* CreatePowerManagerProxy(
-      PowerManagerProxyDelegate* delegate) override;
+      PowerManagerProxyDelegate* delegate,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) override;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   SupplicantProcessProxyInterface* CreateSupplicantProcessProxy(
-      const char* dbus_path,
-      const char* dbus_addr) override;
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) override;
 
   SupplicantInterfaceProxyInterface* CreateSupplicantInterfaceProxy(
       SupplicantEventDelegateInterface* delegate,
-      const std::string& object_path,
-      const char* dbus_addr) override;
+      const std::string& object_path) override;
 
   SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
-      const std::string& object_path,
-      const char* dbus_addr) override;
+      const std::string& object_path) override;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   SupplicantBSSProxyInterface* CreateSupplicantBSSProxy(
       WiFiEndpoint* wifi_endpoint,
-      const std::string& object_path,
-      const char* dbus_addr) override;
+      const std::string& object_path) override;
 #endif  // DISABLE_WIFI
 
   UpstartProxyInterface* CreateUpstartProxy() override;
@@ -135,7 +140,9 @@ class ChromeosDBusControl : public ControlInterface {
 #if !defined(DISABLE_WIMAX)
   WiMaxDeviceProxyInterface* CreateWiMaxDeviceProxy(
       const std::string& path) override;
-  WiMaxManagerProxyInterface* CreateWiMaxManagerProxy() override;
+  WiMaxManagerProxyInterface* CreateWiMaxManagerProxy(
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) override;
   WiMaxNetworkProxyInterface* CreateWiMaxNetworkProxy(
       const std::string& path) override;
 #endif  // DISABLE_WIMAX
@@ -144,8 +151,11 @@ class ChromeosDBusControl : public ControlInterface {
   template <typename Object, typename AdaptorInterface, typename Adaptor>
   AdaptorInterface* CreateAdaptor(Object* object);
 
-  base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
+  static const char kNullPath[];
+
   scoped_refptr<dbus::Bus> bus_;
+  EventDispatcher* dispatcher_;
+  std::string null_identifier_;
 };
 
 }  // namespace shill

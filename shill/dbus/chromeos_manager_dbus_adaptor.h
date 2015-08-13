@@ -32,16 +32,13 @@ class ChromeosManagerDBusAdaptor
  public:
   static const char kPath[];
 
-  ChromeosManagerDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      Manager* manager);
+  ChromeosManagerDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                             Manager* manager);
   ~ChromeosManagerDBusAdaptor() override;
 
   // Implementation of ManagerAdaptorInterface.
   void RegisterAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
+      const base::Callback<void(bool)>& completion_callback) override;
   const std::string& GetRpcIdentifier() override { return dbus_path().value(); }
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
@@ -145,7 +142,8 @@ class ChromeosManagerDBusAdaptor
                             const std::string& data) override;
   bool ConnectToBestServices(chromeos::ErrorPtr* error) override;
   bool CreateConnectivityReport(chromeos::ErrorPtr* error) override;
-  void ClaimInterface(DBusMethodResponsePtr<> response,
+  bool ClaimInterface(chromeos::ErrorPtr* error,
+                      dbus::Message* message,
                       const std::string& claimer_name,
                       const std::string& interface_name) override;
   bool ReleaseInterface(chromeos::ErrorPtr* error,

@@ -32,12 +32,10 @@ static string ObjectID(ChromeosDBusAdaptor* d) {
 // public static
 const char ChromeosDBusAdaptor::kNullPath[] = "/";
 
-ChromeosDBusAdaptor::ChromeosDBusAdaptor(
-    const base::WeakPtr<ExportedObjectManager>& object_manager,
-    const scoped_refptr<dbus::Bus>& bus,
-    const std::string& object_path)
+ChromeosDBusAdaptor::ChromeosDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                                         const std::string& object_path)
     : dbus_path_(object_path),
-      dbus_object_(new DBusObject(object_manager.get(), bus, dbus_path_)) {
+      dbus_object_(new DBusObject(nullptr, bus, dbus_path_)) {
   SLOG(this, 2) << "DBusAdaptor: " << object_path;
 }
 

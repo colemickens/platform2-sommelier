@@ -32,11 +32,8 @@ class ChromeosServiceDBusAdaptor
  public:
   static const char kPath[];
 
-  ChromeosServiceDBusAdaptor(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      Service* service);
+  ChromeosServiceDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                             Service* service);
   ~ChromeosServiceDBusAdaptor() override;
 
   // Implementation of ServiceAdaptorInterface.

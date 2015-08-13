@@ -82,6 +82,8 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   ~ManagerMockAdaptor() override;
   const std::string& GetRpcIdentifier() override;
 
+  MOCK_METHOD1(RegisterAsync,
+               void(const base::Callback<void(bool)>& completion_callback));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));

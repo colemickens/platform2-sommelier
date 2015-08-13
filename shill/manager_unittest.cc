@@ -28,7 +28,6 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_crypto_util_proxy.h"
-#include "shill/mock_dbus_manager.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_claimer.h"
 #include "shill/mock_device_info.h"
@@ -39,6 +38,7 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
+#include "shill/mock_service_watcher.h"
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
@@ -110,7 +110,7 @@ class ManagerTest : public PropertyStoreTest {
         crypto_util_proxy_(
             new NiceMock<MockCryptoUtilProxy>(dispatcher())),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
-    ON_CALL(*control_interface(), CreatePowerManagerProxy(_))
+    ON_CALL(*control_interface(), CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
 
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
@@ -328,10 +328,6 @@ class ManagerTest : public PropertyStoreTest {
     return temp_service;
   }
 #endif  // DISABLE_WIFI
-
-  void SetDBusManager(DBusManager* dbus_manager) {
-    manager()->dbus_manager_.reset(dbus_manager);
-  }
 
   void SetDeviceClaimer(DeviceClaimer* device_claimer) {
     manager()->device_claimer_.reset(device_claimer);
@@ -757,30 +753,30 @@ TEST_F(ManagerTest, DeregisterUnregisteredService) {
 
 TEST_F(ManagerTest, GetProperties) {
   AddMockProfileToManager(manager());
-  map<string, ::DBus::Variant> props;
-  Error error(Error::kInvalidProperty, "");
   {
-    ::DBus::Error dbus_error;
+    chromeos::VariantDictionary props;
+    Error error;
     string expected("portal_list");
     manager()->mutable_store()->SetStringProperty(
         kCheckPortalListProperty,
         expected,
         &error);
-    DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
+    manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kCheckPortalListProperty) == props.end());
-    EXPECT_EQ(props[kCheckPortalListProperty].reader().get_string(),
-              expected);
+    EXPECT_TRUE(props[kCheckPortalListProperty].IsTypeCompatible<string>());
+    EXPECT_EQ(props[kCheckPortalListProperty].Get<string>(), expected);
   }
   {
-    ::DBus::Error dbus_error;
+    chromeos::VariantDictionary props;
+    Error error;
     bool expected = true;
     manager()->mutable_store()->SetBoolProperty(kOfflineModeProperty,
                                                 expected,
                                                 &error);
-    DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
+    manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
-    EXPECT_EQ(props[kOfflineModeProperty].reader().get_bool(),
-              expected);
+    EXPECT_TRUE(props[kOfflineModeProperty].IsTypeCompatible<bool>());
+    EXPECT_EQ(props[kOfflineModeProperty].Get<bool>(), expected);
   }
 }
 
@@ -789,26 +785,26 @@ TEST_F(ManagerTest, GetDevicesProperty) {
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   {
-    map<string, ::DBus::Variant> props;
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
+    chromeos::VariantDictionary props;
+    Error error;
+    manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kDevicesProperty) == props.end());
-    vector < ::DBus::Path> devices =
-        props[kDevicesProperty].operator vector<::DBus::Path>();
+    EXPECT_TRUE(
+        props[kDevicesProperty].IsTypeCompatible<vector<dbus::ObjectPath>>());
+    vector <dbus::ObjectPath> devices =
+        props[kDevicesProperty].Get<vector<dbus::ObjectPath>>();
     EXPECT_EQ(2, devices.size());
   }
 }
 
 TEST_F(ManagerTest, GetServicesProperty) {
   AddMockProfileToManager(manager());
-  map<string, ::DBus::Variant> props;
-  ::DBus::Error dbus_error;
-  DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
-  map<string, ::DBus::Variant>::const_iterator prop =
-      props.find(kServicesProperty);
-  ASSERT_FALSE(prop == props.end());
-  const ::DBus::Variant& variant = prop->second;
-  ASSERT_TRUE(DBusAdaptor::IsPaths(variant.signature()));
+  chromeos::VariantDictionary props;
+  Error error;
+  manager()->store().GetProperties(&props, &error);
+  ASSERT_FALSE(props.find(kServicesProperty) == props.end());
+  EXPECT_TRUE(
+      props[kServicesProperty].IsTypeCompatible<vector<dbus::ObjectPath>>());
 }
 
 TEST_F(ManagerTest, MoveService) {
@@ -1569,49 +1565,36 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
 
 TEST_F(ManagerTest, SetProperty) {
   {
-    ::DBus::Error error;
-    ::DBus::Variant offline_mode;
-    offline_mode.writer().append_bool(true);
-    EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                         kOfflineModeProperty,
-                                         offline_mode,
-                                         &error));
+    Error error;
+    const bool offline_mode = true;
+    EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
+        kOfflineModeProperty, chromeos::Any(offline_mode), &error));
   }
   {
-    ::DBus::Error error;
-    ::DBus::Variant country;
-    country.writer().append_string("a_country");
-    EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                         kCountryProperty,
-                                         country,
-                                         &error));
+    Error error;
+    const string country("a_country");
+    EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
+        kCountryProperty, chromeos::Any(country), &error));
   }
   // Attempt to write with value of wrong type should return InvalidArgs.
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                          kCountryProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          &error));
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(manager()->mutable_store()->SetAnyProperty(
+        kCountryProperty, PropertyStoreTest::kBoolV, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(manager()->mutable_store(),
-                                          kOfflineModeProperty,
-                                          PropertyStoreTest::kStringV,
-                                          &error));
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(manager()->mutable_store()->SetAnyProperty(
+        kOfflineModeProperty, PropertyStoreTest::kStringV, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   // Attempt to write R/O property should return InvalidArgs.
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(
-        manager()->mutable_store(),
-        kEnabledTechnologiesProperty,
-        PropertyStoreTest::kStringsV,
-        &error));
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(manager()->mutable_store()->SetAnyProperty(
+        kEnabledTechnologiesProperty, PropertyStoreTest::kStringsV, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }
 
@@ -2513,8 +2496,9 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // generated, it should reference kNullPath.
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
-              EmitRpcIdentifierChanged(kDefaultServiceProperty,
-                                       DBusAdaptor::kNullPath))
+              EmitRpcIdentifierChanged(
+                  kDefaultServiceProperty,
+                  control_interface()->NullRPCIdentifier()))
       .Times(AnyNumber());
   manager()->RegisterService(mock_service0);
   CompleteServiceSort();
@@ -3277,7 +3261,8 @@ TEST_F(ManagerTest, RecheckPortalOnService) {
 
 TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_FALSE(manager()->GetDefaultService().get());
-  EXPECT_EQ("/", GetDefaultServiceRpcIdentifier());
+  EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+            GetDefaultServiceRpcIdentifier());
 
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
@@ -3287,7 +3272,8 @@ TEST_F(ManagerTest, GetDefaultService) {
 
   manager()->RegisterService(mock_service);
   EXPECT_FALSE(manager()->GetDefaultService().get());
-  EXPECT_EQ("/", GetDefaultServiceRpcIdentifier());
+  EXPECT_EQ(control_interface()->NullRPCIdentifier(),
+            GetDefaultServiceRpcIdentifier());
 
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));
@@ -4781,32 +4767,15 @@ TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
   const char kClaimerName[] = "test_claimer1";
   const char kDeviceName[] = "test_device";
 
-  // Setup DBus manager and name watcher.
-  MockDBusManager* dbus_manager = new MockDBusManager();
-  SetDBusManager(dbus_manager);
-  DBusNameWatcher* name_watcher =
-      new DBusNameWatcher(dbus_manager,
-                          kClaimerName,
-                          DBusNameWatcher::NameAppearedCallback(),
-                          DBusNameWatcher::NameVanishedCallback());
-
   // Claim device when device claimer doesn't exist yet.
-  ResultCallbackObserver observer;
-  Error error(Error::kOperationInitiated);
-  EXPECT_CALL(*dbus_manager, CreateNameWatcher(kClaimerName, _, _))
-      .WillOnce(Return(name_watcher));
-  manager()->ClaimDevice(
-      kClaimerName, kDeviceName, &error, observer.result_callback());
-  // Operation still in process.
-  EXPECT_TRUE(error.IsOngoing());
-  Mock::VerifyAndClearExpectations(dbus_manager);
-
+  Error error;
+  EXPECT_CALL(*control_interface(), CreateRPCServiceWatcher(_, _))
+      .WillOnce(Return(new MockServiceWatcher()));
+  manager()->ClaimDevice(kClaimerName, kDeviceName, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
   // Verify device claimer is created.
   EXPECT_NE(nullptr, manager()->device_claimer_.get());
-  // Verify pending callback and device name.
-  EXPECT_EQ(1U, manager()->pending_device_claims_.size());
-  EXPECT_EQ(string(kDeviceName),
-            manager()->pending_device_claims_[0].device_name);
 }
 
 TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
@@ -4821,13 +4790,13 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
   // Claim device with empty string name.
   const char kEmptyDeviceNameError[] = "Empty device name";
   Error error;
-  manager()->ClaimDevice(kClaimer1Name, "", &error, ResultCallback());
+  manager()->ClaimDevice(kClaimer1Name, "", &error);
   EXPECT_EQ(string(kEmptyDeviceNameError), error.message());
 
   // Device claim succeed.
   error.Reset();
   EXPECT_CALL(*device_claimer, Claim(kDeviceName, _)).WillOnce(Return(true));
-  manager()->ClaimDevice(kClaimer1Name, kDeviceName, &error, ResultCallback());
+  manager()->ClaimDevice(kClaimer1Name, kDeviceName, &error);
   EXPECT_EQ(Error::kSuccess, error.type());
   Mock::VerifyAndClearExpectations(device_claimer);
 
@@ -4836,35 +4805,8 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
       "Invalid claimer name test_claimer2. Claimer test_claimer1 already exist";
   error.Reset();
   EXPECT_CALL(*device_claimer, Claim(_, _)).Times(0);
-  manager()->ClaimDevice(kClaimer2Name, kDeviceName, &error, ResultCallback());
+  manager()->ClaimDevice(kClaimer2Name, kDeviceName, &error);
   EXPECT_EQ(string(kInvalidClaimerError), error.message());
-}
-
-TEST_F(ManagerTest, ClaimDeviceWhenClaimerNotVerified) {
-  const char kClaimerName[] = "test_claimer";
-  const char kDevice1Name[] = "test_device1";
-  const char kDevice2Name[] = "test_device2";
-
-  // Setup pending device claims.
-  ResultCallbackObserver observer1;
-  manager()->pending_device_claims_.emplace_back(kDevice1Name,
-                                                 observer1.result_callback());
-  ResultCallbackObserver observer2;
-
-  // Setup device claimer.
-  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
-  SetDeviceClaimer(device_claimer);
-
-  Error error(Error::kOperationInitiated);
-  EXPECT_CALL(*device_claimer, Claim(_, _)).Times(0);
-  manager()->ClaimDevice(
-      kClaimerName, kDevice2Name, &error, observer2.result_callback());
-  // Verify operation still ongoing.
-  EXPECT_TRUE(error.IsOngoing());
-  // Verify device claim is added to the pending list.
-  EXPECT_EQ(2U, manager()->pending_device_claims_.size());
-  EXPECT_EQ(string(kDevice2Name),
-                   manager()->pending_device_claims_[1].device_name);
 }
 
 TEST_F(ManagerTest, ClaimRegisteredDevice) {
@@ -4885,8 +4827,7 @@ TEST_F(ManagerTest, ClaimRegisteredDevice) {
   Error error;
   EXPECT_CALL(*device_claimer, Claim(mock_devices_[0]->link_name(), _))
       .WillOnce(Return(true));
-  manager()->ClaimDevice(
-      kClaimerName, mock_devices_[0]->link_name(), &error, ResultCallback());
+  manager()->ClaimDevice(kClaimerName, mock_devices_[0]->link_name(), &error);
   EXPECT_EQ(Error::kSuccess, error.type());
   Mock::VerifyAndClearExpectations(device_claimer);
 
@@ -4943,107 +4884,6 @@ TEST_F(ManagerTest, ReleaseDevice) {
   EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(false));
   manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
   Mock::VerifyAndClearExpectations(device_claimer);
-  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
-}
-
-TEST_F(ManagerTest, DeviceClaimerVanishedTask) {
-  const char kClaimerName[] = "test_claimer";
-  const char kDevice1Name[] = "test_device1";
-  const char kDevice2Name[] = "test_device2";
-  // Setup pending device claims.
-  ResultCallbackObserver observer1;
-  manager()->pending_device_claims_.emplace_back(kDevice1Name,
-                                                 observer1.result_callback());
-  ResultCallbackObserver observer2;
-  manager()->pending_device_claims_.emplace_back(kDevice2Name,
-                                                 observer2.result_callback());
-
-  // Setup device claimer.
-  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
-  SetDeviceClaimer(device_claimer);
-
-  // Invoke result callback.
-  Error error(Error::kInvalidArguments, "Invalid DBus service name");
-  EXPECT_CALL(observer1, OnResultCallback(IsError(&error))).Times(1);
-  EXPECT_CALL(observer2, OnResultCallback(IsError(&error))).Times(1);
-  manager()->DeviceClaimerVanishedTask();
-  Mock::VerifyAndClearExpectations(&observer1);
-  Mock::VerifyAndClearExpectations(&observer2);
-
-  // Device claimer should be resetted.
-  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
-
-  // Should not be any pending device claims.
-  EXPECT_TRUE(manager()->pending_device_claims_.empty());
-
-  // Result callback should not be invoke again.
-  EXPECT_CALL(observer1, OnResultCallback(_)).Times(0);
-  EXPECT_CALL(observer2, OnResultCallback(_)).Times(0);
-  manager()->DeviceClaimerVanishedTask();
-  Mock::VerifyAndClearExpectations(&observer1);
-  Mock::VerifyAndClearExpectations(&observer2);
-}
-
-TEST_F(ManagerTest, OnDeviceClaimerAppeared) {
-  const char kClaimerName[] = "test_claimer";
-  const char kDevice1Name[] = "test_device1";
-  const char kDevice2Name[] = "test_device2";
-  const char kOwnerName[] = "test_owner";
-  const char kOwner1Name[] = "test_owner1";
-
-  // Setup pending device claims.
-  ResultCallbackObserver observer1;
-  manager()->pending_device_claims_.emplace_back(kDevice1Name,
-                                                 observer1.result_callback());
-  ResultCallbackObserver observer2;
-  manager()->pending_device_claims_.emplace_back(kDevice2Name,
-                                                 observer2.result_callback());
-
-  // Setup device claimer.
-  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
-  SetDeviceClaimer(device_claimer);
-
-  // DBus service appeared for the first time.
-  EXPECT_CALL(*device_claimer, Claim(kDevice1Name, _)).WillOnce(Return(true));
-  EXPECT_CALL(*device_claimer, Claim(kDevice2Name, _)).WillOnce(Return(true));
-  EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(true));
-  Error error(Error::kSuccess);
-  EXPECT_CALL(observer1, OnResultCallback(IsError(&error))).Times(1);
-  EXPECT_CALL(observer2, OnResultCallback(IsError(&error))).Times(1);
-  manager()->OnDeviceClaimerAppeared(kClaimerName, kOwnerName);
-  Mock::VerifyAndClearExpectations(device_claimer);
-  Mock::VerifyAndClearExpectations(&observer1);
-  Mock::VerifyAndClearExpectations(&observer2);
-
-  // Claimer DBus service owner changed.
-  EXPECT_CALL(*device_claimer, Claim(_, _)).Times(0);
-  EXPECT_CALL(observer1, OnResultCallback(_)).Times(0);
-  EXPECT_CALL(observer2, OnResultCallback(_)).Times(0);
-  manager()->OnDeviceClaimerAppeared(kClaimerName, kOwner1Name);
-  Mock::VerifyAndClearExpectations(device_claimer);
-  Mock::VerifyAndClearExpectations(&observer1);
-  Mock::VerifyAndClearExpectations(&observer2);
-
-  // Claimer should be resetted.
-  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
-
-  // Setup pending claims again.
-  manager()->pending_device_claims_.emplace_back(kDevice1Name,
-                                                 observer1.result_callback());
-
-  // Setup device claimer.
-  MockDeviceClaimer* device_claimer1 = new MockDeviceClaimer(kClaimerName);
-  SetDeviceClaimer(device_claimer1);
-  EXPECT_NE(nullptr, manager()->device_claimer_.get());
-
-  // Pending claims failed, no exist device claim on the claimer, claimer should
-  // be resetted.
-  EXPECT_CALL(*device_claimer1, Claim(kDevice1Name, _)).WillOnce(Return(false));
-  EXPECT_CALL(*device_claimer1, DevicesClaimed()).WillOnce(Return(false));
-  EXPECT_CALL(observer1, OnResultCallback(_)).Times(1);
-  manager()->OnDeviceClaimerAppeared(kClaimerName, kOwnerName);
-  Mock::VerifyAndClearExpectations(device_claimer1);
-  Mock::VerifyAndClearExpectations(&observer1);
   EXPECT_EQ(nullptr, manager()->device_claimer_.get());
 }
 
