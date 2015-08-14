@@ -15,11 +15,9 @@
 
 namespace shill {
 
-class GLib;
-
 class CryptoProvider {
  public:
-  explicit CryptoProvider(GLib* glib);
+  CryptoProvider();
 
   void Init();
 
@@ -43,8 +41,6 @@ class CryptoProvider {
   typedef ScopedVector<CryptoInterface> Cryptos;
 
   static const char kKeyMatterFile[];
-
-  GLib* glib_;
 
   // Registered crypto modules in high to low priority order.
   Cryptos cryptos_;

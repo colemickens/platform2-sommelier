@@ -21,14 +21,12 @@ class FilePath;
 
 namespace shill {
 
-class GLib;
-
 // DES-CBC crypto module implementation.
 class CryptoDESCBC : public CryptoInterface {
  public:
   static const char kID[];
 
-  explicit CryptoDESCBC(GLib* glib);
+  CryptoDESCBC();
 
   // Sets the DES key to the last |kBlockSize| bytes of |key_matter_path| and
   // the DES initialization vector to the second to last |kBlockSize| bytes of
@@ -51,7 +49,6 @@ class CryptoDESCBC : public CryptoInterface {
   static const char kSentinel[];
   static const char kVersion2Prefix[];
 
-  GLib* glib_;
   std::vector<char> key_;
   std::vector<char> iv_;
 

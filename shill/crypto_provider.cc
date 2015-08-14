@@ -18,15 +18,14 @@ namespace shill {
 
 const char CryptoProvider::kKeyMatterFile[] = "/var/lib/whitelist/owner.key";
 
-CryptoProvider::CryptoProvider(GLib* glib)
-    : glib_(glib),
-      key_matter_file_(kKeyMatterFile) {}
+CryptoProvider::CryptoProvider()
+    : key_matter_file_(kKeyMatterFile) {}
 
 void CryptoProvider::Init() {
   cryptos_.clear();
 
   // Register the crypto modules in priority order -- highest priority first.
-  std::unique_ptr<CryptoDESCBC> des_cbc(new CryptoDESCBC(glib_));
+  std::unique_ptr<CryptoDESCBC> des_cbc(new CryptoDESCBC());
   if (des_cbc->LoadKeyMatter(key_matter_file_)) {
     cryptos_.push_back(des_cbc.release());
   }

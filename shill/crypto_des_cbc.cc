@@ -8,8 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
-
-#include "shill/glib.h"
+#include <chromeos/data_encoding.h>
 
 using base::FilePath;
 using std::string;
@@ -22,7 +21,7 @@ const char CryptoDESCBC::kID[] = "des-cbc";
 const char CryptoDESCBC::kSentinel[] = "[ok]";
 const char CryptoDESCBC::kVersion2Prefix[] = "02:";
 
-CryptoDESCBC::CryptoDESCBC(GLib* glib) : glib_(glib) {}
+CryptoDESCBC::CryptoDESCBC() {}
 
 string CryptoDESCBC::GetID() {
   return kID;
@@ -45,7 +44,7 @@ bool CryptoDESCBC::Decrypt(const string& ciphertext, string* plaintext) {
   }
 
   string decoded_data;
-  if (!glib_->B64Decode(b64_ciphertext, &decoded_data)) {
+  if (!chromeos::data_encoding::Base64Decode(b64_ciphertext, &decoded_data)) {
     LOG(ERROR) << "Unable to base64-decode DEC-CBC ciphertext.";
     return false;
   }

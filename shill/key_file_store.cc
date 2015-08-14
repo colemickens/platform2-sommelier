@@ -34,7 +34,7 @@ const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
 KeyFileStore::KeyFileStore(GLib* glib)
     : glib_(glib),
-      crypto_(glib),
+      crypto_(),
       key_file_(nullptr) {}
 
 KeyFileStore::~KeyFileStore() {

@@ -12,7 +12,6 @@
 
 #include "shill/crypto_des_cbc.h"
 #include "shill/crypto_rot47.h"
-#include "shill/glib.h"
 
 using base::FilePath;
 using base::ScopedTempDir;
@@ -33,12 +32,11 @@ const char kDESCBCText[] = "des-cbc:02:bKlHDISdHMFc0teQd4mAVrXgwlSj6iA+";
 
 class CryptoProviderTest : public Test {
  public:
-  CryptoProviderTest() : provider_(&glib_) {}
+  CryptoProviderTest() {}
 
  protected:
   FilePath InitKeyMatterFile(const FilePath& dir);
 
-  GLib glib_;  // Use actual GLib for testing.
   CryptoProvider provider_;
 };
 

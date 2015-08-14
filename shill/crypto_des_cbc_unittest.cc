@@ -10,8 +10,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "shill/glib.h"
-
 using base::FilePath;
 using std::string;
 using std::vector;
@@ -33,10 +31,9 @@ const char kCipherVersion1[] = "bKlHDISdHMFfmfgBTT5I0w==";
 
 class CryptoDESCBCTest : public Test {
  public:
-  CryptoDESCBCTest() : crypto_(&glib_) {}
+  CryptoDESCBCTest() {}
 
  protected:
-  GLib glib_;  // Use actual GLib for the test.
   CryptoDESCBC crypto_;
 };
 
