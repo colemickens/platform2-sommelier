@@ -235,20 +235,54 @@ std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
   if (!WaitForStatus(expected_status_bits, expected_status_bits))
       return rv;
 
-  // The response is ready, read it out byte by byte for now. Will be
-  // optimized to read the length first an then the entire remaining data in
-  // one shot.
-  do {
-    uint8_t c;
+  // The response is ready, let's read it.
+  // First we read the FIFO payload header, to see how much data to expect.
+  // The header size is fixed to six bytes, the total payload size is stored
+  // in network order in the last four bytes of the header.
+  char data_header[6];
+  uint32_t payload_size;
 
-    FtdiReadReg(TPM_DATA_FIFO_REG, sizeof(c), &c);
-    rv.push_back(c);
-    ReadTpmSts(&status);
-  } while ((status & expected_status_bits) == expected_status_bits);
+  // Let's read the header first.
+  FtdiReadReg(TPM_DATA_FIFO_REG, sizeof(data_header), data_header);
+  rv = std::string(data_header, sizeof(data_header));
+
+  // Figure out the total payload size.
+  memcpy(&payload_size, data_header + 2, sizeof(payload_size));
+  payload_size = be32toh(payload_size);
+  LOG(INFO) << "Total payload size " << payload_size;
+
+  // Calculate how much to read in the next shot and read: all but the last
+  // byte.
+  payload_size = payload_size - sizeof(data_header) - 1;
+  char *payload = new char[payload_size];
+  FtdiReadReg(TPM_DATA_FIFO_REG, payload_size, payload);
+
+  // Verify that there is still data to come.
+  ReadTpmSts(&status);
+  if ((status & expected_status_bits) != expected_status_bits) {
+    LOG(ERROR) << "unexpected status 0x" << std::hex << status;
+    delete[] payload;
+    return std::string("");
+  }
+  rv += std::string(payload, payload_size);
+
+  // Now, read the last byte of the payload.
+  uint8_t last_char;
+  FtdiReadReg(TPM_DATA_FIFO_REG, sizeof(last_char), &last_char);
+
+  // Verify that 'data available' is not asseretd any more.
+  ReadTpmSts(&status);
+  if ((status & expected_status_bits) != stsValid) {
+    LOG(ERROR) << "unexpected status 0x" << std::hex << status;
+    delete[] payload;
+    return std::string("");
+  }
+  rv.push_back(last_char);
 
   /* Move the TPM back to idle state. */
   WriteTpmSts(commandReady);
 
+  delete[] payload;
   return rv;
 }
 
