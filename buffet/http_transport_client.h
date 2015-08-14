@@ -30,7 +30,7 @@ class HttpTransportClient : public weave::HttpClient {
       const std::string& url,
       const Headers& headers,
       const std::string& data,
-      chromeos::ErrorPtr* error) override;
+      weave::ErrorPtr* error) override;
 
   int SendRequest(const std::string& method,
                   const std::string& url,

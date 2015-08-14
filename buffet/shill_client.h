@@ -38,7 +38,7 @@ class ShillClient final : public weave::Network {
   bool ConnectToService(const std::string& ssid,
                         const std::string& passphrase,
                         const base::Closure& on_success,
-                        chromeos::ErrorPtr* error) override;
+                        weave::ErrorPtr* error) override;
   weave::NetworkState GetConnectionState() const override;
   void EnableAccessPoint(const std::string& ssid) override;
   void DisableAccessPoint() override;
@@ -49,8 +49,7 @@ class ShillClient final : public weave::Network {
       const std::string& host,
       const base::Callback<void(std::unique_ptr<weave::Stream>)>&
           success_callback,
-      const base::Callback<void(const chromeos::Error*)>& error_callback)
-      override;
+      const base::Callback<void(const weave::Error*)>& error_callback) override;
 
  private:
   struct DeviceState {
@@ -100,6 +99,11 @@ class ShillClient final : public weave::Network {
   // ConnectToService() in the time since a task to call this function was
   // posted.
   void CleanupConnectingService(bool check_for_reset_pending);
+
+  bool ConnectToServiceImpl(const std::string& ssid,
+                            const std::string& passphrase,
+                            const base::Closure& on_success,
+                            chromeos::ErrorPtr* error);
 
   const scoped_refptr<dbus::Bus> bus_;
   org::chromium::flimflam::ManagerProxy manager_proxy_;

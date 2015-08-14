@@ -29,6 +29,7 @@
 #include "buffet/dbus_conversion.h"
 #include "buffet/http_transport_client.h"
 #include "buffet/shill_client.h"
+#include "buffet/weave_error_conversion.h"
 
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
 #include "buffet/peerd_client.h"
@@ -153,36 +154,42 @@ void Manager::OnGetDeviceInfoSuccess(
 
 void Manager::OnGetDeviceInfoError(
     const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-    const chromeos::Error* error) {
-  response->ReplyWithError(error);
+    const weave::Error* error) {
+  chromeos::ErrorPtr chromeos_error;
+  ConvertError(*error, &chromeos_error);
+  response->ReplyWithError(chromeos_error.get());
 }
 
 void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
                              const std::string& ticket_id) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
-  chromeos::ErrorPtr error;
+  weave::ErrorPtr error;
   std::string device_id =
       device_->GetCloud()->RegisterDevice(ticket_id, &error);
   if (!device_id.empty()) {
     response->Return(device_id);
     return;
   }
-  CHECK(error);
-  response->ReplyWithError(error.get());
+  chromeos::ErrorPtr chromeos_error;
+  ConvertError(*error, &chromeos_error);
+  response->ReplyWithError(chromeos_error.get());
 }
 
 void Manager::UpdateState(DBusMethodResponsePtr<> response,
                           const chromeos::VariantDictionary& property_set) {
-  chromeos::ErrorPtr error;
-  auto properties = DictionaryFromDBusVariantDictionary(property_set, &error);
+  chromeos::ErrorPtr chromeos_error;
+  auto properties =
+      DictionaryFromDBusVariantDictionary(property_set, &chromeos_error);
   if (!properties)
-    response->ReplyWithError(error.get());
+    response->ReplyWithError(chromeos_error.get());
 
-  if (!device_->GetState()->SetProperties(*properties, &error))
-    response->ReplyWithError(error.get());
-  else
-    response->Return();
+  weave::ErrorPtr error;
+  if (!device_->GetState()->SetProperties(*properties, &error)) {
+    ConvertError(*error, &chromeos_error);
+    response->ReplyWithError(chromeos_error.get());
+  }
+  response->Return();
 }
 
 bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
@@ -208,18 +215,21 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
                                     error_message);
   }
 
-  chromeos::ErrorPtr error;
+  chromeos::ErrorPtr chromeos_error;
   weave::UserRole role;
   if (!StringToEnum(in_user_role, &role)) {
-    chromeos::Error::AddToPrintf(&error, FROM_HERE, kErrorDomain,
+    chromeos::Error::AddToPrintf(&chromeos_error, FROM_HERE, kErrorDomain,
                                  "invalid_user_role", "Invalid role: '%s'",
                                  in_user_role.c_str());
-    return response->ReplyWithError(error.get());
+    return response->ReplyWithError(chromeos_error.get());
   }
 
   std::string id;
-  if (!device_->GetCommands()->AddCommand(*command, role, &id, &error))
-    return response->ReplyWithError(error.get());
+  weave::ErrorPtr error;
+  if (!device_->GetCommands()->AddCommand(*command, role, &id, &error)) {
+    ConvertError(*error, &chromeos_error);
+    return response->ReplyWithError(chromeos_error.get());
+  }
 
   response->Return(id);
 }
@@ -273,22 +283,32 @@ bool Manager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
   return false;
 }
 
-bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* error,
+bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
                                const std::string& name,
                                const std::string& description,
                                const std::string& location) {
-  return device_->GetCloud()->UpdateDeviceInfo(name, description, location,
-                                               error);
+  weave::ErrorPtr error;
+  if (!device_->GetCloud()->UpdateDeviceInfo(name, description, location,
+                                             &error)) {
+    ConvertError(*error, chromeos_error);
+    return false;
+  }
+  return true;
 }
 
-bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* error,
+bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* chromeos_error,
                                   const std::string& client_id,
                                   const std::string& client_secret,
                                   const std::string& api_key,
                                   const std::string& oauth_url,
                                   const std::string& service_url) {
-  return device_->GetCloud()->UpdateServiceConfig(
-      client_id, client_secret, api_key, oauth_url, service_url, error);
+  weave::ErrorPtr error;
+  if (!device_->GetCloud()->UpdateServiceConfig(
+          client_id, client_secret, api_key, oauth_url, service_url, &error)) {
+    ConvertError(*error, chromeos_error);
+    return false;
+  }
+  return true;
 }
 
 void Manager::OnStateChanged() {

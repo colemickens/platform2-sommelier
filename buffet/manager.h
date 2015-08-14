@@ -102,7 +102,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const base::DictionaryValue& device_info);
   void OnGetDeviceInfoError(
       const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-      const chromeos::Error* error);
+      const weave::Error* error);
 
   void StartPrivet(const weave::Device::Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);

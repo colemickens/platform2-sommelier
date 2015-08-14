@@ -9,6 +9,7 @@
 #include <weave/enum_to_string.h>
 
 #include "buffet/dbus_conversion.h"
+#include "buffet/weave_error_conversion.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -71,7 +72,12 @@ bool DBusCommandProxy::SetProgress(
   auto dictionary = DictionaryFromDBusVariantDictionary(progress, error);
   if (!dictionary)
     return false;
-  return command_->SetProgress(*dictionary, error);
+  weave::ErrorPtr weave_error;
+  if (!command_->SetProgress(*dictionary, &weave_error)) {
+    ConvertError(*weave_error, error);
+    return false;
+  }
+  return true;
 }
 
 bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
@@ -81,7 +87,12 @@ bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
   auto dictionary = DictionaryFromDBusVariantDictionary(results, error);
   if (!dictionary)
     return false;
-  return command_->SetResults(*dictionary, error);
+  weave::ErrorPtr weave_error;
+  if (!command_->SetResults(*dictionary, &weave_error)) {
+    ConvertError(*weave_error, error);
+    return false;
+  }
+  return true;
 }
 
 void DBusCommandProxy::Abort() {

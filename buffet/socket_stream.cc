@@ -16,6 +16,7 @@
 #include <chromeos/streams/tls_stream.h>
 
 #include "buffet/socket_stream.h"
+#include "buffet/weave_error_conversion.h"
 
 namespace buffet {
 
@@ -58,38 +59,66 @@ void OnSuccess(const base::Callback<void(std::unique_ptr<weave::Stream>)>&
       std::unique_ptr<weave::Stream>{new SocketStream{std::move(tls_stream)}});
 }
 
+void OnError(const base::Callback<void(const weave::Error*)>& error_callback,
+             const chromeos::Error* chromeos_error) {
+  weave::ErrorPtr error;
+  ConvertError(*chromeos_error, &error);
+  error_callback.Run(error.get());
+}
+
 }  // namespace
 
 bool SocketStream::ReadAsync(
     void* buffer,
     size_t size_to_read,
     const base::Callback<void(size_t)>& success_callback,
-    const base::Callback<void(const chromeos::Error*)>& error_callback,
-    chromeos::ErrorPtr* error) {
-  return ptr_->ReadAsync(buffer, size_to_read, success_callback, error_callback,
-                         error);
+    const base::Callback<void(const weave::Error*)>& error_callback,
+    weave::ErrorPtr* error) {
+  chromeos::ErrorPtr chromeos_error;
+  if (!ptr_->ReadAsync(buffer, size_to_read, success_callback,
+                       base::Bind(&OnError, error_callback), &chromeos_error)) {
+    ConvertError(*chromeos_error, error);
+    return false;
+  }
+  return true;
 }
 
 bool SocketStream::WriteAllAsync(
     const void* buffer,
     size_t size_to_write,
     const base::Closure& success_callback,
-    const base::Callback<void(const chromeos::Error*)>& error_callback,
-    chromeos::ErrorPtr* error) {
-  return ptr_->WriteAllAsync(buffer, size_to_write, success_callback,
-                             error_callback, error);
+    const base::Callback<void(const weave::Error*)>& error_callback,
+    weave::ErrorPtr* error) {
+  chromeos::ErrorPtr chromeos_error;
+  if (!ptr_->WriteAllAsync(buffer, size_to_write, success_callback,
+                           base::Bind(&OnError, error_callback),
+                           &chromeos_error)) {
+    ConvertError(*chromeos_error, error);
+    return false;
+  }
+  return true;
 }
 
-bool SocketStream::FlushBlocking(chromeos::ErrorPtr* error) {
-  return ptr_->FlushBlocking(error);
+bool SocketStream::FlushBlocking(weave::ErrorPtr* error) {
+  chromeos::ErrorPtr chromeos_error;
+  if (!ptr_->FlushBlocking(&chromeos_error)) {
+    ConvertError(*chromeos_error, error);
+    return false;
+  }
+  return true;
 }
 
-bool SocketStream::CloseBlocking(chromeos::ErrorPtr* error) {
-  return ptr_->CloseBlocking(error);
+bool SocketStream::CloseBlocking(weave::ErrorPtr* error) {
+  chromeos::ErrorPtr chromeos_error;
+  if (!ptr_->CloseBlocking(&chromeos_error)) {
+    ConvertError(*chromeos_error, error);
+    return false;
+  }
+  return true;
 }
 
 void SocketStream::CancelPendingAsyncOperations() {
-  return ptr_->CancelPendingAsyncOperations();
+  ptr_->CancelPendingAsyncOperations();
 }
 
 std::unique_ptr<weave::Stream> SocketStream::ConnectBlocking(
@@ -112,11 +141,11 @@ void SocketStream::TlsConnect(
     std::unique_ptr<Stream> socket,
     const std::string& host,
     const base::Callback<void(std::unique_ptr<Stream>)>& success_callback,
-    const base::Callback<void(const chromeos::Error*)>& error_callback) {
+    const base::Callback<void(const weave::Error*)>& error_callback) {
   SocketStream* stream = static_cast<SocketStream*>(socket.get());
   chromeos::TlsStream::Connect(std::move(stream->ptr_), host,
                                base::Bind(&OnSuccess, success_callback),
-                               error_callback);
+                               base::Bind(&OnError, error_callback));
 }
 
 }  // namespace buffet

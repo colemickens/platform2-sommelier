@@ -10,6 +10,8 @@
 #include <chromeos/http/http_utils.h>
 #include <chromeos/streams/memory_stream.h>
 
+#include "buffet/weave_error_conversion.h"
+
 namespace buffet {
 
 namespace {
@@ -48,8 +50,10 @@ void OnSuccessCallback(
 
 void OnErrorCallback(const weave::HttpClient::ErrorCallback& error_callback,
                      int id,
-                     const chromeos::Error* error) {
-  error_callback.Run(id, error);
+                     const chromeos::Error* chromeos_error) {
+  weave::ErrorPtr error;
+  ConvertError(*chromeos_error, &error);
+  error_callback.Run(id, error.get());
 }
 
 }  // anonymous namespace
@@ -67,17 +71,23 @@ HttpTransportClient::SendRequestAndBlock(const std::string& method,
                                          const std::string& url,
                                          const Headers& headers,
                                          const std::string& data,
-                                         chromeos::ErrorPtr* error) {
+                                         weave::ErrorPtr* error) {
   chromeos::http::Request request(url, method, transport_);
   request.AddHeaders(headers);
   if (!data.empty()) {
-    if (!request.AddRequestBody(data.data(), data.size(), error))
+    chromeos::ErrorPtr cromeos_error;
+    if (!request.AddRequestBody(data.data(), data.size(), &cromeos_error)) {
+      ConvertError(*cromeos_error, error);
       return nullptr;
+    }
   }
 
-  auto response = request.GetResponseAndBlock(error);
-  if (!response)
+  chromeos::ErrorPtr cromeos_error;
+  auto response = request.GetResponseAndBlock(&cromeos_error);
+  if (!response) {
+    ConvertError(*cromeos_error, error);
     return nullptr;
+  }
 
   return std::unique_ptr<weave::HttpClient::Response>{
       new ResponseImpl{std::move(response)}};
@@ -94,8 +104,10 @@ int HttpTransportClient::SendRequest(const std::string& method,
   if (!data.empty()) {
     auto stream = chromeos::MemoryStream::OpenCopyOf(data, nullptr);
     CHECK_GT(stream->GetRemainingSize(), 0);
-    chromeos::ErrorPtr error;
-    if (!request.AddRequestBody(std::move(stream), &error)) {
+    chromeos::ErrorPtr cromeos_error;
+    if (!request.AddRequestBody(std::move(stream), &cromeos_error)) {
+      weave::ErrorPtr error;
+      ConvertError(*cromeos_error, &error);
       transport_->RunCallbackAsync(
           FROM_HERE,
           base::Bind(error_callback, 0, base::Owned(error.release())));

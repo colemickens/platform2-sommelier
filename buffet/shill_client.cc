@@ -15,6 +15,7 @@
 
 #include "buffet/ap_manager_client.h"
 #include "buffet/socket_stream.h"
+#include "buffet/weave_error_conversion.h"
 
 using chromeos::Any;
 using chromeos::VariantDictionary;
@@ -120,7 +121,19 @@ void ShillClient::Init() {
 bool ShillClient::ConnectToService(const string& ssid,
                                    const string& passphrase,
                                    const base::Closure& on_success,
-                                   chromeos::ErrorPtr* error) {
+                                   weave::ErrorPtr* error) {
+  chromeos::ErrorPtr chromeos_error;
+  if (!ConnectToServiceImpl(ssid, passphrase, on_success, &chromeos_error)) {
+    ConvertError(*chromeos_error, error);
+    return false;
+  }
+  return true;
+}
+
+bool ShillClient::ConnectToServiceImpl(const string& ssid,
+                                       const string& passphrase,
+                                       const base::Closure& on_success,
+                                       chromeos::ErrorPtr* error) {
   CleanupConnectingService(false);
   VariantDictionary service_properties;
   service_properties[shill::kTypeProperty] = Any{string{shill::kTypeWifi}};
@@ -507,7 +520,7 @@ void ShillClient::CreateTlsStream(
     const std::string& host,
     const base::Callback<void(std::unique_ptr<weave::Stream>)>&
         success_callback,
-    const base::Callback<void(const chromeos::Error*)>& error_callback) {
+    const base::Callback<void(const weave::Error*)>& error_callback) {
   SocketStream::TlsConnect(std::move(socket), host, success_callback,
                            error_callback);
 }
