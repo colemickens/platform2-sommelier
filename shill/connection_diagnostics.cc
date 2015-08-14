@@ -96,9 +96,6 @@ const char ConnectionDiagnostics::kIssueDNSServersInvalid[] =
     "All configured DNS server addresses are invalid.";
 const char ConnectionDiagnostics::kIssueNone[] =
     "No connection issue detected.";
-const char ConnectionDiagnostics::kIssueNoneIPv6[] =
-    "No further diagnostic actions for IPv6. No connection issue detected."
-    "address";
 const char ConnectionDiagnostics::kIssueCaptivePortal[] =
     "Trapped in captive portal.";
 const char ConnectionDiagnostics::kIssueGatewayUpstream[] =

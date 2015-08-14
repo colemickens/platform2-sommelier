@@ -200,7 +200,6 @@ class ConnectionDiagnostics {
   static const char kIssueNoDNSServersConfigured[];
   static const char kIssueDNSServersInvalid[];
   static const char kIssueNone[];
-  static const char kIssueNoneIPv6[];
   static const char kIssueCaptivePortal[];
   static const char kIssueGatewayUpstream[];
   static const char kIssueGatewayNotResponding[];
