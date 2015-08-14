@@ -69,13 +69,13 @@ class StateManagerTest : public ::testing::Test {
 
   void LoadStateDefinition(const base::DictionaryValue* json,
                            const std::string& category,
-                           chromeos::ErrorPtr* error) {
+                           ErrorPtr* error) {
     ASSERT_TRUE(mgr_->LoadStateDefinition(*json, category, error));
   }
 
   bool SetPropertyValue(const std::string& name,
                         const base::Value& value,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
     return mgr_->SetPropertyValue(name, value, timestamp_, error);
   }
 
@@ -154,14 +154,14 @@ TEST_F(StateManagerTest, SetPropertyValue) {
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoName) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(SetPropertyValue("", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNameMissing, error->GetCode());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(
       SetPropertyValue("state_property", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
@@ -169,7 +169,7 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownPackage) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(
       SetPropertyValue("power.level", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
@@ -177,7 +177,7 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownPackage) {
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownProperty) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(
       SetPropertyValue("base.level", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());

@@ -31,14 +31,13 @@ class MockHttpClient : public HttpClient {
                          const std::string&,
                          const Headers&,
                          const std::string&,
-                         chromeos::ErrorPtr*));
+                         ErrorPtr*));
 
-  std::unique_ptr<Response> SendRequestAndBlock(
-      const std::string& method,
-      const std::string& url,
-      const Headers& headers,
-      const std::string& data,
-      chromeos::ErrorPtr* error) override;
+  std::unique_ptr<Response> SendRequestAndBlock(const std::string& method,
+                                                const std::string& url,
+                                                const Headers& headers,
+                                                const std::string& data,
+                                                ErrorPtr* error) override;
 
   int SendRequest(const std::string& method,
                   const std::string& url,

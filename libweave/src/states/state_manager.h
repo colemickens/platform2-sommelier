@@ -14,7 +14,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <weave/state.h>
 
 #include "libweave/src/states/state_change_queue_interface.h"
@@ -39,7 +39,7 @@ class StateManager final : public State {
   // State overrides.
   void AddOnChangedCallback(const base::Closure& callback) override;
   bool SetProperties(const base::DictionaryValue& property_set,
-                     chromeos::ErrorPtr* error) override;
+                     ErrorPtr* error) override;
   std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson() const override;
 
   // Initializes the state manager and load device state fragments.
@@ -73,33 +73,31 @@ class StateManager final : public State {
   bool SetPropertyValue(const std::string& full_property_name,
                         const base::Value& value,
                         const base::Time& timestamp,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 
   // Loads a device state fragment from a JSON object. |category| represents
   // a device daemon providing the state fragment or empty string for the
   // base state fragment.
   bool LoadStateDefinition(const base::DictionaryValue& json,
                            const std::string& category,
-                           chromeos::ErrorPtr* error);
+                           ErrorPtr* error);
 
   // Loads a device state fragment JSON file. The file name (without extension)
   // is used as the state fragment category.
   bool LoadStateDefinition(const base::FilePath& json_file_path,
-                           chromeos::ErrorPtr* error);
+                           ErrorPtr* error);
 
   // Loads the base device state fragment JSON file. This state fragment
   // defines the standard state properties from the 'base' package as defined
   // by GCD specification.
   bool LoadBaseStateDefinition(const base::FilePath& json_file_path,
-                               chromeos::ErrorPtr* error);
+                               ErrorPtr* error);
 
   // Loads state default values from JSON object.
-  bool LoadStateDefaults(const base::DictionaryValue& json,
-                         chromeos::ErrorPtr* error);
+  bool LoadStateDefaults(const base::DictionaryValue& json, ErrorPtr* error);
 
   // Loads state default values from JSON file.
-  bool LoadStateDefaults(const base::FilePath& json_file_path,
-                         chromeos::ErrorPtr* error);
+  bool LoadStateDefaults(const base::FilePath& json_file_path, ErrorPtr* error);
 
   // Finds a package by its name. Returns nullptr if not found.
   StatePackage* FindPackage(const std::string& package_name);

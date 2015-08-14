@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 #include "libweave/src/commands/prop_constraints.h"
 #include "libweave/src/commands/prop_values.h"
@@ -86,9 +86,8 @@ class PropType {
   virtual std::unique_ptr<PropType> Clone() const;
 
   // Creates an instance of associated value object.
-  virtual std::unique_ptr<PropValue> CreatePropValue(
-      const base::Value& value,
-      chromeos::ErrorPtr* error) const = 0;
+  virtual std::unique_ptr<PropValue> CreatePropValue(const base::Value& value,
+                                                     ErrorPtr* error) const = 0;
 
   // Saves the parameter type definition as a JSON object.
   // If |full_schema| is set to true, the full type definition is saved,
@@ -111,18 +110,18 @@ class PropType {
   // error information.
   virtual bool FromJson(const base::DictionaryValue* value,
                         const PropType* base_schema,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
   // Helper function to load object schema from JSON.
   virtual bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                                     const PropType* base_schema,
                                     std::set<std::string>* processed_keys,
-                                    chromeos::ErrorPtr* error) {
+                                    ErrorPtr* error) {
     return true;
   }
   // Helper function to load type-specific constraints from JSON.
   virtual bool ConstraintsFromJson(const base::DictionaryValue* value,
                                    std::set<std::string>* processed_keys,
-                                   chromeos::ErrorPtr* error) {
+                                   ErrorPtr* error) {
     return true;
   }
 
@@ -152,8 +151,7 @@ class PropType {
   Constraint* GetConstraint(ConstraintType constraint_type);
 
   // Validates the given value against all the constraints.
-  bool ValidateConstraints(const PropValue& value,
-                           chromeos::ErrorPtr* error) const;
+  bool ValidateConstraints(const PropValue& value, ErrorPtr* error) const;
 
  protected:
   friend class StatePackage;
@@ -185,20 +183,19 @@ class PropTypeBase : public PropType {
   // Overrides from PropType.
   ValueType GetType() const override { return GetValueType<T>(); }
 
-  std::unique_ptr<PropValue> CreatePropValue(
-      const base::Value& value,
-      chromeos::ErrorPtr* error) const override {
+  std::unique_ptr<PropValue> CreatePropValue(const base::Value& value,
+                                             ErrorPtr* error) const override {
     return CreateValue(value, error);
   }
 
   std::unique_ptr<Value> CreateValue(const base::Value& value,
-                                     chromeos::ErrorPtr* error) const {
+                                     ErrorPtr* error) const {
     return Value::CreateFromJson(value, *this, error);
   }
 
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
-                           chromeos::ErrorPtr* error) override;
+                           ErrorPtr* error) override;
 
  protected:
   std::unique_ptr<PropValue> CreateDefaultValue() const override {
@@ -215,7 +212,7 @@ class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
   using Base = PropTypeBase<Derived, Value, T>;
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
-                           chromeos::ErrorPtr* error) override;
+                           ErrorPtr* error) override;
 
   // Helper method to set and obtain a min/max constraint values.
   // Used mostly for unit testing.
@@ -267,7 +264,7 @@ class StringPropType
 
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
-                           chromeos::ErrorPtr* error) override;
+                           ErrorPtr* error) override;
 
   // Helper methods to add and inspect simple constraints.
   // Used mostly for unit testing.
@@ -305,7 +302,7 @@ class ObjectPropType
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                             const PropType* base_schema,
                             std::set<std::string>* processed_keys,
-                            chromeos::ErrorPtr* error) override;
+                            ErrorPtr* error) override;
 
   // Returns a schema for Object-type parameter.
   inline const ObjectSchema* GetObjectSchemaPtr() const {
@@ -338,7 +335,7 @@ class ArrayPropType
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                             const PropType* base_schema,
                             std::set<std::string>* processed_keys,
-                            chromeos::ErrorPtr* error) override;
+                            ErrorPtr* error) override;
 
   // Returns a type for Array elements.
   inline const PropType* GetItemTypePtr() const {

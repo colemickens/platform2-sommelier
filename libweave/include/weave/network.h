@@ -9,7 +9,7 @@
 #include <string>
 
 #include <base/callback.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <weave/stream.h>
 
 namespace weave {
@@ -37,7 +37,7 @@ class Network {
   virtual bool ConnectToService(const std::string& ssid,
                                 const std::string& passphrase,
                                 const base::Closure& on_success,
-                                chromeos::ErrorPtr* error) = 0;
+                                ErrorPtr* error) = 0;
 
   virtual NetworkState GetConnectionState() const = 0;
 
@@ -57,7 +57,7 @@ class Network {
       std::unique_ptr<Stream> socket,
       const std::string& host,
       const base::Callback<void(std::unique_ptr<Stream>)>& success_callback,
-      const base::Callback<void(const chromeos::Error*)>& error_callback) = 0;
+      const base::Callback<void(const Error*)>& error_callback) = 0;
 
  protected:
   virtual ~Network() = default;

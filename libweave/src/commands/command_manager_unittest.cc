@@ -193,7 +193,7 @@ TEST(CommandManager, UpdateCommandVisibility) {
   EXPECT_EQ("all", dict.FindCommand("foo._bar")->GetVisibility().ToString());
   EXPECT_EQ("none", dict.FindCommand("bar._quux")->GetVisibility().ToString());
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(manager.SetCommandVisibility(
       {"foo._baz", "foo._bar", "test.cmd"},
       CommandDefinition::Visibility::GetLocal(), &error));

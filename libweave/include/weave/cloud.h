@@ -9,7 +9,7 @@
 
 #include <base/callback.h>
 #include <base/values.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 namespace weave {
 
@@ -27,8 +27,7 @@ class Cloud {
       base::Callback<void(RegistrationStatus satus)>;
   using OnCloudRequestCallback =
       base::Callback<void(const base::DictionaryValue& response)>;
-  using OnCloudRequestErrorCallback =
-      base::Callback<void(const chromeos::Error* error)>;
+  using OnCloudRequestErrorCallback = base::Callback<void(const Error* error)>;
 
   // Sets callback which is called when registration state is changed.
   virtual void AddOnRegistrationChangedCallback(
@@ -44,19 +43,19 @@ class Cloud {
   // Registers the device.
   // Returns a device ID on success.
   virtual std::string RegisterDevice(const std::string& ticket_id,
-                                     chromeos::ErrorPtr* error) = 0;
+                                     ErrorPtr* error) = 0;
 
   // Updates basic device information.
   virtual bool UpdateDeviceInfo(const std::string& name,
                                 const std::string& description,
                                 const std::string& location,
-                                chromeos::ErrorPtr* error) = 0;
+                                ErrorPtr* error) = 0;
 
   // Updates base device config.
   virtual bool UpdateBaseConfig(const std::string& anonymous_access_role,
                                 bool local_discovery_enabled,
                                 bool local_pairing_enabled,
-                                chromeos::ErrorPtr* error) = 0;
+                                ErrorPtr* error) = 0;
 
   // Updates GCD service configuration. Usually for testing.
   virtual bool UpdateServiceConfig(const std::string& client_id,
@@ -64,7 +63,7 @@ class Cloud {
                                    const std::string& api_key,
                                    const std::string& oauth_url,
                                    const std::string& service_url,
-                                   chromeos::ErrorPtr* error) = 0;
+                                   ErrorPtr* error) = 0;
 
  protected:
   virtual ~Cloud() = default;

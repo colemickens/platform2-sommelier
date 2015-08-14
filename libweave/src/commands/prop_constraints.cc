@@ -30,35 +30,33 @@ std::string PropValueToString(const PropValue& value) {
 Constraint::~Constraint() {
 }
 
-bool Constraint::ReportErrorLessThan(chromeos::ErrorPtr* error,
+bool Constraint::ReportErrorLessThan(ErrorPtr* error,
                                      const std::string& val,
                                      const std::string& limit) {
-  chromeos::Error::AddToPrintf(
-      error, FROM_HERE, errors::commands::kDomain,
-      errors::commands::kOutOfRange,
-      "Value %s is out of range. It must not be less than %s", val.c_str(),
-      limit.c_str());
+  Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                     errors::commands::kOutOfRange,
+                     "Value %s is out of range. It must not be less than %s",
+                     val.c_str(), limit.c_str());
   return false;
 }
 
-bool Constraint::ReportErrorGreaterThan(chromeos::ErrorPtr* error,
+bool Constraint::ReportErrorGreaterThan(ErrorPtr* error,
                                         const std::string& val,
                                         const std::string& limit) {
-  chromeos::Error::AddToPrintf(
-      error, FROM_HERE, errors::commands::kDomain,
-      errors::commands::kOutOfRange,
-      "Value %s is out of range. It must not be greater than %s", val.c_str(),
-      limit.c_str());
+  Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                     errors::commands::kOutOfRange,
+                     "Value %s is out of range. It must not be greater than %s",
+                     val.c_str(), limit.c_str());
   return false;
 }
 
-bool Constraint::ReportErrorNotOneOf(chromeos::ErrorPtr* error,
+bool Constraint::ReportErrorNotOneOf(ErrorPtr* error,
                                      const std::string& val,
                                      const std::vector<std::string>& values) {
-  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                               errors::commands::kOutOfRange,
-                               "Value %s is invalid. Expected one of [%s]",
-                               val.c_str(), Join(",", values).c_str());
+  Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                     errors::commands::kOutOfRange,
+                     "Value %s is invalid. Expected one of [%s]", val.c_str(),
+                     Join(",", values).c_str());
   return false;
 }
 
@@ -97,21 +95,20 @@ ConstraintStringLengthMin::ConstraintStringLengthMin(int limit)
 }
 
 bool ConstraintStringLengthMin::Validate(const PropValue& value,
-                                         chromeos::ErrorPtr* error) const {
+                                         ErrorPtr* error) const {
   CHECK(value.GetString()) << "Expecting a string value for this constraint";
   const std::string& str = value.GetString()->GetValue();
   int length = static_cast<int>(str.size());
   if (length < limit_.value) {
     if (limit_.value == 1) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
-                             errors::commands::kOutOfRange,
-                             "String must not be empty");
+      Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
+                   errors::commands::kOutOfRange, "String must not be empty");
     } else {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kOutOfRange,
-                                   "String must be at least %d characters long,"
-                                   " actual length of string '%s' is %d",
-                                   limit_.value, str.c_str(), length);
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kOutOfRange,
+                         "String must be at least %d characters long,"
+                         " actual length of string '%s' is %d",
+                         limit_.value, str.c_str(), length);
     }
     return false;
   }
@@ -138,16 +135,16 @@ ConstraintStringLengthMax::ConstraintStringLengthMax(int limit)
 }
 
 bool ConstraintStringLengthMax::Validate(const PropValue& value,
-                                         chromeos::ErrorPtr* error) const {
+                                         ErrorPtr* error) const {
   CHECK(value.GetString()) << "Expecting a string value for this constraint";
   const std::string& str = value.GetString()->GetValue();
   int length = static_cast<int>(str.size());
   if (length > limit_.value) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                 errors::commands::kOutOfRange,
-                                 "String must be no more than %d character(s) "
-                                 "long, actual length of string '%s' is %d",
-                                 limit_.value, str.c_str(), length);
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kOutOfRange,
+                       "String must be no more than %d character(s) "
+                       "long, actual length of string '%s' is %d",
+                       limit_.value, str.c_str(), length);
     return false;
   }
   return true;
@@ -168,8 +165,7 @@ ConstraintOneOf::ConstraintOneOf(InheritableAttribute<ValueVector> set)
     : set_(std::move(set)) {}
 ConstraintOneOf::ConstraintOneOf(ValueVector set) : set_(std::move(set)) {}
 
-bool ConstraintOneOf::Validate(const PropValue& value,
-                               chromeos::ErrorPtr* error) const {
+bool ConstraintOneOf::Validate(const PropValue& value, ErrorPtr* error) const {
   for (const auto& item : set_.value) {
     if (value.IsEqual(item.get()))
       return true;

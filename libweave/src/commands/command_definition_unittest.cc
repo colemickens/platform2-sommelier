@@ -59,7 +59,7 @@ TEST(CommandVisibility, FromString) {
   EXPECT_FALSE(visibility.local);
   EXPECT_FALSE(visibility.cloud);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(visibility.FromString("cloud,all", &error));
   EXPECT_EQ("invalid_parameter_value", error->GetCode());
 }

@@ -68,19 +68,16 @@ class MockSecurityDelegate : public SecurityDelegate {
   MOCK_CONST_METHOD0(GetPairingTypes, std::set<PairingType>());
   MOCK_CONST_METHOD0(GetCryptoTypes, std::set<CryptoType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
-  MOCK_METHOD5(StartPairing,
-               bool(PairingType,
-                    CryptoType,
-                    std::string*,
-                    std::string*,
-                    chromeos::ErrorPtr*));
+  MOCK_METHOD5(
+      StartPairing,
+      bool(PairingType, CryptoType, std::string*, std::string*, ErrorPtr*));
   MOCK_METHOD5(ConfirmPairing,
                bool(const std::string&,
                     const std::string&,
                     std::string*,
                     std::string*,
-                    chromeos::ErrorPtr*));
-  MOCK_METHOD2(CancelPairing, bool(const std::string&, chromeos::ErrorPtr*));
+                    ErrorPtr*));
+  MOCK_METHOD2(CancelPairing, bool(const std::string&, ErrorPtr*));
 
   MockSecurityDelegate() {
     EXPECT_CALL(*this, CreateAccessToken(_, _))
@@ -120,9 +117,7 @@ class MockWifiDelegate : public WifiDelegate {
   MOCK_CONST_METHOD0(GetConnectionState, const ConnectionState&());
   MOCK_CONST_METHOD0(GetSetupState, const SetupState&());
   MOCK_METHOD3(ConfigureCredentials,
-               bool(const std::string&,
-                    const std::string&,
-                    chromeos::ErrorPtr*));
+               bool(const std::string&, const std::string&, ErrorPtr*));
   MOCK_CONST_METHOD0(GetCurrentlyConnectedSsid, std::string());
   MOCK_CONST_METHOD0(GetHostedSsid, std::string());
   MOCK_CONST_METHOD0(GetTypes, std::set<WifiType>());
@@ -144,8 +139,8 @@ class MockWifiDelegate : public WifiDelegate {
 
 class MockCloudDelegate : public CloudDelegate {
  public:
-  MOCK_CONST_METHOD2(GetModelId, bool(std::string*, chromeos::ErrorPtr*));
-  MOCK_CONST_METHOD2(GetName, bool(std::string*, chromeos::ErrorPtr*));
+  MOCK_CONST_METHOD2(GetModelId, bool(std::string*, ErrorPtr*));
+  MOCK_CONST_METHOD2(GetName, bool(std::string*, ErrorPtr*));
   MOCK_CONST_METHOD0(GetDescription, std::string());
   MOCK_CONST_METHOD0(GetLocation, std::string());
   MOCK_METHOD5(UpdateDeviceInfo,
@@ -160,10 +155,7 @@ class MockCloudDelegate : public CloudDelegate {
   MOCK_CONST_METHOD0(GetAnonymousMaxScope, AuthScope());
   MOCK_CONST_METHOD0(GetConnectionState, const ConnectionState&());
   MOCK_CONST_METHOD0(GetSetupState, const SetupState&());
-  MOCK_METHOD3(Setup,
-               bool(const std::string&,
-                    const std::string&,
-                    chromeos::ErrorPtr*));
+  MOCK_METHOD3(Setup, bool(const std::string&, const std::string&, ErrorPtr*));
   MOCK_CONST_METHOD0(GetCloudId, std::string());
   MOCK_CONST_METHOD0(GetState, const base::DictionaryValue&());
   MOCK_CONST_METHOD0(GetCommandDef, const base::DictionaryValue&());

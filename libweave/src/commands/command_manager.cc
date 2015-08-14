@@ -6,8 +6,8 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/values.h>
-#include <chromeos/errors/error.h>
 #include <weave/enum_to_string.h>
+#include <weave/error.h>
 
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/utils.h"
@@ -28,12 +28,12 @@ const CommandDictionary& CommandManager::GetCommandDictionary() const {
 }
 
 bool CommandManager::LoadBaseCommands(const base::DictionaryValue& json,
-                                      chromeos::ErrorPtr* error) {
+                                      ErrorPtr* error) {
   return base_dictionary_.LoadCommands(json, "", nullptr, error);
 }
 
 bool CommandManager::LoadBaseCommands(const base::FilePath& json_file_path,
-                                      chromeos::ErrorPtr* error) {
+                                      ErrorPtr* error) {
   std::unique_ptr<const base::DictionaryValue> json =
       LoadJsonDict(json_file_path, error);
   if (!json)
@@ -43,7 +43,7 @@ bool CommandManager::LoadBaseCommands(const base::FilePath& json_file_path,
 
 bool CommandManager::LoadCommands(const base::DictionaryValue& json,
                                   const std::string& category,
-                                  chromeos::ErrorPtr* error) {
+                                  ErrorPtr* error) {
   bool result =
       dictionary_.LoadCommands(json, category, &base_dictionary_, error);
   for (const auto& cb : on_command_changed_)
@@ -52,7 +52,7 @@ bool CommandManager::LoadCommands(const base::DictionaryValue& json,
 }
 
 bool CommandManager::LoadCommands(const base::FilePath& json_file_path,
-                                  chromeos::ErrorPtr* error) {
+                                  ErrorPtr* error) {
   std::unique_ptr<const base::DictionaryValue> json =
       LoadJsonDict(json_file_path, error);
   if (!json)
@@ -96,7 +96,7 @@ void CommandManager::AddCommand(
 bool CommandManager::AddCommand(const base::DictionaryValue& command,
                                 UserRole role,
                                 std::string* id,
-                                chromeos::ErrorPtr* error) {
+                                ErrorPtr* error) {
   auto command_instance = CommandInstance::FromJson(
       &command, CommandOrigin::kLocal, GetCommandDictionary(), nullptr, error);
   if (!command_instance)
@@ -105,7 +105,7 @@ bool CommandManager::AddCommand(const base::DictionaryValue& command,
   UserRole minimal_role =
       command_instance->GetCommandDefinition()->GetMinimalRole();
   if (role < minimal_role) {
-    chromeos::Error::AddToPrintf(
+    Error::AddToPrintf(
         error, FROM_HERE, errors::commands::kDomain, "access_denied",
         "User role '%s' less than minimal: '%s'", EnumToString(role).c_str(),
         EnumToString(minimal_role).c_str());
@@ -125,7 +125,7 @@ CommandInstance* CommandManager::FindCommand(const std::string& id) {
 bool CommandManager::SetCommandVisibility(
     const std::vector<std::string>& command_names,
     CommandDefinition::Visibility visibility,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   if (command_names.empty())
     return true;
 
@@ -136,9 +136,9 @@ bool CommandManager::SetCommandVisibility(
   for (const std::string& name : command_names) {
     CommandDefinition* def = dictionary_.FindCommand(name);
     if (!def) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kInvalidCommandName,
-                                   "Command '%s' is unknown", name.c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kInvalidCommandName,
+                         "Command '%s' is unknown", name.c_str());
       return false;
     }
     definitions.push_back(def);

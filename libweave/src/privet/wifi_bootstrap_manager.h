@@ -51,7 +51,7 @@ class WifiBootstrapManager : public WifiDelegate,
   const SetupState& GetSetupState() const override;
   bool ConfigureCredentials(const std::string& ssid,
                             const std::string& passphrase,
-                            chromeos::ErrorPtr* error) override;
+                            ErrorPtr* error) override;
   std::string GetCurrentlyConnectedSsid() const override;
   std::string GetHostedSsid() const override;
   std::set<WifiType> GetTypes() const override;

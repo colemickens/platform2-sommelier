@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 namespace weave {
 
@@ -28,7 +28,7 @@ class HttpClient {
 
   using Headers = std::vector<std::pair<std::string, std::string>>;
   using SuccessCallback = base::Callback<void(int, const Response&)>;
-  using ErrorCallback = base::Callback<void(int, const chromeos::Error*)>;
+  using ErrorCallback = base::Callback<void(int, const Error*)>;
 
   // TODO(vitalybuka): Remove blocking version.
   virtual std::unique_ptr<Response> SendRequestAndBlock(
@@ -36,7 +36,7 @@ class HttpClient {
       const std::string& url,
       const Headers& headers,
       const std::string& data,
-      chromeos::ErrorPtr* error) = 0;
+      ErrorPtr* error) = 0;
 
   virtual int SendRequest(const std::string& method,
                           const std::string& url,

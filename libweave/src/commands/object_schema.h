@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 namespace base {
 class Value;
@@ -52,7 +52,7 @@ class ObjectSchema final {
   // Marks the property with given name as "required". If |name| specifies
   // an unknown property, false is returned and |error| is set with detailed
   // error message for the failure.
-  bool MarkPropRequired(const std::string& name, chromeos::ErrorPtr* error);
+  bool MarkPropRequired(const std::string& name, ErrorPtr* error);
 
   // Specify whether extra properties are allowed on objects described by
   // this schema. When validating a value of an object type, we can
@@ -74,7 +74,7 @@ class ObjectSchema final {
   // used as a base schema to inherit omitted properties and constraints from.
   bool FromJson(const base::DictionaryValue* value,
                 const ObjectSchema* object_schema,
-                chromeos::ErrorPtr* error);
+                ErrorPtr* error);
 
   // Helper factory method to create a new instance of ObjectSchema object.
   static std::unique_ptr<ObjectSchema> Create();
@@ -82,7 +82,7 @@ class ObjectSchema final {
   // Helper method to load property type definitions from JSON.
   static std::unique_ptr<PropType> PropFromJson(const base::Value& value,
                                                 const PropType* base_schema,
-                                                chromeos::ErrorPtr* error);
+                                                ErrorPtr* error);
 
  private:
   // Internal parameter type definition map.

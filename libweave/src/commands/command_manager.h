@@ -35,7 +35,7 @@ class CommandManager final : public Commands {
   bool AddCommand(const base::DictionaryValue& command,
                   UserRole role,
                   std::string* id,
-                  chromeos::ErrorPtr* error) override;
+                  ErrorPtr* error) override;
   CommandInstance* FindCommand(const std::string& id) override;
   void AddOnCommandAddedCallback(const OnCommandCallback& callback) override;
   void AddOnCommandRemovedCallback(const OnCommandCallback& callback) override;
@@ -53,27 +53,24 @@ class CommandManager final : public Commands {
   // device kinds.
   // On success, returns true. Otherwise, |error| contains additional
   // error information.
-  bool LoadBaseCommands(const base::DictionaryValue& json,
-                        chromeos::ErrorPtr* error);
+  bool LoadBaseCommands(const base::DictionaryValue& json, ErrorPtr* error);
 
   // Same as the overload above, but takes a path to a json file to read
   // the base command definitions from.
-  bool LoadBaseCommands(const base::FilePath& json_file_path,
-                        chromeos::ErrorPtr* error);
+  bool LoadBaseCommands(const base::FilePath& json_file_path, ErrorPtr* error);
 
   // Loads device command schema for particular category.
   // See CommandDictionary::LoadCommands for detailed description of the
   // parameters.
   bool LoadCommands(const base::DictionaryValue& json,
                     const std::string& category,
-                    chromeos::ErrorPtr* error);
+                    ErrorPtr* error);
 
   // Same as the overload above, but takes a path to a json file to read
   // the base command definitions from. Also, the command category is
   // derived from file name (without extension). So, if the path points to
   // "power_manager.json", the command category used will be "power_manager".
-  bool LoadCommands(const base::FilePath& json_file_path,
-                    chromeos::ErrorPtr* error);
+  bool LoadCommands(const base::FilePath& json_file_path, ErrorPtr* error);
 
   // Startup method to be called by buffet daemon at startup.
   // Initializes the object and reads files in |definitions_path| to load
@@ -90,7 +87,7 @@ class CommandManager final : public Commands {
   // Changes the visibility of commands.
   bool SetCommandVisibility(const std::vector<std::string>& command_names,
                             CommandDefinition::Visibility visibility,
-                            chromeos::ErrorPtr* error);
+                            ErrorPtr* error);
 
  private:
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.

@@ -30,10 +30,8 @@ class MockCommand : public Command {
   MOCK_CONST_METHOD0(MockGetParameters, const std::string&());
   MOCK_CONST_METHOD0(MockGetProgress, const std::string&());
   MOCK_CONST_METHOD0(MockGetResults, const std::string&());
-  MOCK_METHOD2(SetProgress,
-               bool(const base::DictionaryValue&, chromeos::ErrorPtr*));
-  MOCK_METHOD2(SetResults,
-               bool(const base::DictionaryValue&, chromeos::ErrorPtr*));
+  MOCK_METHOD2(SetProgress, bool(const base::DictionaryValue&, ErrorPtr*));
+  MOCK_METHOD2(SetResults, bool(const base::DictionaryValue&, ErrorPtr*));
   MOCK_METHOD0(Abort, void());
   MOCK_METHOD0(Cancel, void());
   MOCK_METHOD0(Done, void());

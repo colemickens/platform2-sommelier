@@ -101,7 +101,7 @@ TEST(CommandDictionary, LoadWithInheritance) {
 
 TEST(CommandDictionary, LoadCommands_Failures) {
   CommandDictionary dict;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   // Command definition is not an object.
   auto json = CreateDictionaryValue("{'robot':{'jump':0}}");
@@ -133,7 +133,7 @@ TEST(CommandDictionary, LoadCommands_Failures) {
 TEST(CommandDictionaryDeathTest, LoadCommands_RedefineInDifferentCategory) {
   // Redefine commands in different category.
   CommandDictionary dict;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto json = CreateDictionaryValue("{'robot':{'jump':{}}}");
   dict.LoadCommands(*json, "category1", nullptr, &error);
   ASSERT_DEATH(dict.LoadCommands(*json, "category2", nullptr, &error),
@@ -145,7 +145,7 @@ TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
   // Custom command must start with '_'.
   CommandDictionary base_dict;
   CommandDictionary dict;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
@@ -172,7 +172,7 @@ TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
   // Redefine commands parameter type.
   CommandDictionary base_dict;
   CommandDictionary dict;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
@@ -527,7 +527,7 @@ TEST(CommandDictionary, LoadWithPermissions) {
 
 TEST(CommandDictionary, LoadWithPermissions_InvalidVisibility) {
   CommandDictionary dict;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   auto json = CreateDictionaryValue(R"({
     'base': {
@@ -546,7 +546,7 @@ TEST(CommandDictionary, LoadWithPermissions_InvalidVisibility) {
 
 TEST(CommandDictionary, LoadWithPermissions_InvalidRole) {
   CommandDictionary dict;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   auto json = CreateDictionaryValue(R"({
     'base': {

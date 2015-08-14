@@ -159,9 +159,8 @@ class PrivetHandlerTest : public testing::Test {
     EXPECT_CALL(cloud_, GetConnectionState())
         .WillRepeatedly(ReturnRef(gcd_disabled_state_));
     auto set_error = [](const std::string&, const std::string&,
-                        chromeos::ErrorPtr* error) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                             "setupUnavailable", "");
+                        ErrorPtr* error) {
+      Error::AddTo(error, FROM_HERE, errors::kDomain, "setupUnavailable", "");
     };
     EXPECT_CALL(cloud_, Setup(_, _, _))
         .WillRepeatedly(DoAll(Invoke(set_error), Return(false)));
@@ -479,8 +478,8 @@ TEST_F(PrivetHandlerSetupTest, StatusWifi) {
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
-  chromeos::ErrorPtr error;
-  chromeos::Error::AddTo(&error, FROM_HERE, "test", "invalidPassphrase", "");
+  ErrorPtr error;
+  Error::AddTo(&error, FROM_HERE, "test", "invalidPassphrase", "");
   wifi_.setup_state_ = SetupState{std::move(error)};
 
   const char kExpected[] = R"({
@@ -509,8 +508,8 @@ TEST_F(PrivetHandlerSetupTest, StatusGcd) {
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
-  chromeos::ErrorPtr error;
-  chromeos::Error::AddTo(&error, FROM_HERE, "test", "invalidTicket", "");
+  ErrorPtr error;
+  Error::AddTo(&error, FROM_HERE, "test", "invalidTicket", "");
   cloud_.setup_state_ = SetupState{std::move(error)};
 
   const char kExpected[] = R"({
@@ -569,9 +568,8 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'passphrase': 'testPass'
     }
   })";
-  auto set_error = [](const std::string&, const std::string&,
-                      chromeos::ErrorPtr* error) {
-    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
+  auto set_error = [](const std::string&, const std::string&, ErrorPtr* error) {
+    Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
   };
   EXPECT_CALL(wifi_, ConfigureCredentials(_, _, _))
       .WillOnce(DoAll(Invoke(set_error), Return(false)));
@@ -611,9 +609,8 @@ TEST_F(PrivetHandlerSetupTest, GcdSetup) {
     }
   })";
 
-  auto set_error = [](const std::string&, const std::string&,
-                      chromeos::ErrorPtr* error) {
-    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
+  auto set_error = [](const std::string&, const std::string&, ErrorPtr* error) {
+    Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
   };
   EXPECT_CALL(cloud_, Setup(_, _, _))
       .WillOnce(DoAll(Invoke(set_error), Return(false)));
@@ -675,8 +672,8 @@ TEST_F(PrivetHandlerSetupTest, CommandsStatus) {
   EXPECT_PRED2(IsEqualJson, "{'name':'test', 'id':'5'}",
                HandleRequest("/privet/v3/commands/status", kInput));
 
-  chromeos::ErrorPtr error;
-  chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain, "notFound", "");
+  ErrorPtr error;
+  Error::AddTo(&error, FROM_HERE, errors::kDomain, "notFound", "");
   EXPECT_CALL(cloud_, GetCommand(_, _, _, _))
       .WillOnce(RunCallback<3>(error.get()));
 
@@ -694,8 +691,8 @@ TEST_F(PrivetHandlerSetupTest, CommandsCancel) {
   EXPECT_PRED2(IsEqualJson, kExpected,
                HandleRequest("/privet/v3/commands/cancel", "{'id': '8'}"));
 
-  chromeos::ErrorPtr error;
-  chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain, "notFound", "");
+  ErrorPtr error;
+  Error::AddTo(&error, FROM_HERE, errors::kDomain, "notFound", "");
   EXPECT_CALL(cloud_, CancelCommand(_, _, _, _))
       .WillOnce(RunCallback<3>(error.get()));
 

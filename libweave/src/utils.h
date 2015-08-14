@@ -10,7 +10,7 @@
 
 #include <base/values.h>
 #include <base/files/file_path.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 namespace weave {
 
@@ -31,12 +31,12 @@ const char kDefaultCategory[] = "";
 // in error details in |error|.
 std::unique_ptr<base::DictionaryValue> LoadJsonDict(
     const base::FilePath& json_file_path,
-    chromeos::ErrorPtr* error);
+    ErrorPtr* error);
 
 // Helper function to load a JSON dictionary from a string.
 std::unique_ptr<base::DictionaryValue> LoadJsonDict(
     const std::string& json_string,
-    chromeos::ErrorPtr* error);
+    ErrorPtr* error);
 
 }  // namespace weave
 

@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <base/values.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 namespace weave {
 
@@ -81,27 +81,27 @@ std::unique_ptr<base::ListValue> TypedValueToJson(
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         bool* value_out,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         int* value_out,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         double* value_out,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         std::string* value_out,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         ValueMap* value_out,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         ValueVector* value_out,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 
 bool operator==(const ValueMap& obj1, const ValueMap& obj2);
 bool operator==(const ValueVector& arr1, const ValueVector& arr2);

@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/callback.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 namespace weave {
 
@@ -20,19 +20,19 @@ class Stream {
       void* buffer,
       size_t size_to_read,
       const base::Callback<void(size_t)>& success_callback,
-      const base::Callback<void(const chromeos::Error*)>& error_callback,
-      chromeos::ErrorPtr* error) = 0;
+      const base::Callback<void(const Error*)>& error_callback,
+      ErrorPtr* error) = 0;
 
   virtual bool WriteAllAsync(
       const void* buffer,
       size_t size_to_write,
       const base::Closure& success_callback,
-      const base::Callback<void(const chromeos::Error*)>& error_callback,
-      chromeos::ErrorPtr* error) = 0;
+      const base::Callback<void(const Error*)>& error_callback,
+      ErrorPtr* error) = 0;
 
-  virtual bool FlushBlocking(chromeos::ErrorPtr* error) = 0;
+  virtual bool FlushBlocking(ErrorPtr* error) = 0;
 
-  virtual bool CloseBlocking(chromeos::ErrorPtr* error) = 0;
+  virtual bool CloseBlocking(ErrorPtr* error) = 0;
 
   virtual void CancelPendingAsyncOperations() = 0;
 };

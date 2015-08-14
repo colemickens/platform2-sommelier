@@ -20,13 +20,13 @@ namespace {
 void ReportJsonTypeMismatch(const tracked_objects::Location& location,
                             const base::Value* value_in,
                             const std::string& expected_type,
-                            chromeos::ErrorPtr* error) {
+                            ErrorPtr* error) {
   std::string value_as_string;
   base::JSONWriter::Write(*value_in, &value_as_string);
-  chromeos::Error::AddToPrintf(error, location, errors::commands::kDomain,
-                               errors::commands::kTypeMismatch,
-                               "Unable to convert value %s into %s",
-                               value_as_string.c_str(), expected_type.c_str());
+  Error::AddToPrintf(error, location, errors::commands::kDomain,
+                     errors::commands::kTypeMismatch,
+                     "Unable to convert value %s into %s",
+                     value_as_string.c_str(), expected_type.c_str());
 }
 
 // Template version of ReportJsonTypeMismatch that deduces the type of expected
@@ -36,19 +36,19 @@ template <typename T>
 bool ReportUnexpectedJson(const tracked_objects::Location& location,
                           const base::Value* value_in,
                           T*,
-                          chromeos::ErrorPtr* error) {
+                          ErrorPtr* error) {
   ReportJsonTypeMismatch(location, value_in,
                          PropType::GetTypeStringFromType(GetValueType<T>()),
                          error);
   return false;
 }
 
-bool ErrorMissingProperty(chromeos::ErrorPtr* error,
+bool ErrorMissingProperty(ErrorPtr* error,
                           const tracked_objects::Location& location,
                           const char* param_name) {
-  chromeos::Error::AddToPrintf(error, location, errors::commands::kDomain,
-                               errors::commands::kPropertyMissing,
-                               "Required parameter missing: %s", param_name);
+  Error::AddToPrintf(error, location, errors::commands::kDomain,
+                     errors::commands::kPropertyMissing,
+                     "Required parameter missing: %s", param_name);
   return false;
 }
 
@@ -97,7 +97,7 @@ std::unique_ptr<base::ListValue> TypedValueToJson(const ValueVector& value) {
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         bool* value_out,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
   return value_in->GetAsBoolean(value_out) ||
          ReportUnexpectedJson(FROM_HERE, value_in, value_out, error);
 }
@@ -105,7 +105,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         int* value_out,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
   return value_in->GetAsInteger(value_out) ||
          ReportUnexpectedJson(FROM_HERE, value_in, value_out, error);
 }
@@ -113,7 +113,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         double* value_out,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
   return value_in->GetAsDouble(value_out) ||
          ReportUnexpectedJson(FROM_HERE, value_in, value_out, error);
 }
@@ -121,7 +121,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         std::string* value_out,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
   return value_in->GetAsString(value_out) ||
          ReportUnexpectedJson(FROM_HERE, value_in, value_out, error);
 }
@@ -129,7 +129,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         ValueMap* value_out,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
   const base::DictionaryValue* dict = nullptr;
   if (!value_in->GetAsDictionary(&dict))
     return ReportUnexpectedJson(FROM_HERE, value_in, value_out, error);
@@ -148,10 +148,10 @@ bool TypedValueFromJson(const base::Value* value_in,
           << "Unable to get parameter";
       auto value = pair.second->CreatePropValue(*param_value, error);
       if (!value) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, errors::commands::kDomain,
-            errors::commands::kInvalidPropValue,
-            "Invalid value for property '%s'", pair.first.c_str());
+        Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                           errors::commands::kInvalidPropValue,
+                           "Invalid value for property '%s'",
+                           pair.first.c_str());
         return false;
       }
       value_out->emplace_hint(value_out->end(), pair.first, std::move(value));
@@ -172,9 +172,9 @@ bool TypedValueFromJson(const base::Value* value_in,
     std::string key = iter.key();
     if (keys_processed.find(key) == keys_processed.end() &&
         !object_schema->GetExtraPropertiesAllowed()) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kUnknownProperty,
-                                   "Unrecognized parameter '%s'", key.c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kUnknownProperty,
+                         "Unrecognized parameter '%s'", key.c_str());
       return false;
     }
     iter.Advance();
@@ -185,10 +185,9 @@ bool TypedValueFromJson(const base::Value* value_in,
     const PropType* prop_type = pair.second->GetPropType();
     CHECK(prop_type) << "Value property type must be available";
     if (!prop_type->ValidateConstraints(*pair.second, error)) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kInvalidPropValue,
-                                   "Invalid value for property '%s'",
-                                   pair.first.c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kInvalidPropValue,
+                         "Invalid value for property '%s'", pair.first.c_str());
       return false;
     }
   }
@@ -198,7 +197,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         ValueVector* value_out,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
   const base::ListValue* list = nullptr;
   if (!value_in->GetAsList(&list))
     return ReportUnexpectedJson(FROM_HERE, value_in, value_out, error);

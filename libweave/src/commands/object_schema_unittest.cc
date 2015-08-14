@@ -49,7 +49,7 @@ std::vector<T> GetOneOfValues(const PropType* prop_type) {
 
 bool ValidateValue(const PropType& type,
                    const base::Value& value,
-                   chromeos::ErrorPtr* error) {
+                   ErrorPtr* error) {
   std::unique_ptr<PropValue> val = type.CreatePropValue(value, error);
   return val != nullptr;
 }
@@ -129,7 +129,7 @@ TEST(CommandSchema, IntPropType_FromJson) {
 TEST(CommandSchema, IntPropType_Validate) {
   IntPropType prop;
   prop.AddMinMaxConstraint(2, 4);
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(ValidateValue(prop, *CreateValue("-1"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -160,7 +160,7 @@ TEST(CommandSchema, IntPropType_Validate) {
 
 TEST(CommandSchema, IntPropType_CreateValue) {
   IntPropType prop;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto val = prop.CreateValue(base::FundamentalValue{2}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
@@ -231,7 +231,7 @@ TEST(CommandSchema, BoolPropType_FromJson) {
 TEST(CommandSchema, BoolPropType_Validate) {
   BooleanPropType prop;
   prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop, nullptr);
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(ValidateValue(prop, *CreateValue("false"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -249,7 +249,7 @@ TEST(CommandSchema, BoolPropType_Validate) {
 
 TEST(CommandSchema, BoolPropType_CreateValue) {
   BooleanPropType prop;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto val = prop.CreateValue(base::FundamentalValue{true}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
@@ -341,7 +341,7 @@ TEST(CommandSchema, DoublePropType_FromJson) {
 TEST(CommandSchema, DoublePropType_Validate) {
   DoublePropType prop;
   prop.AddMinMaxConstraint(-1.2, 1.3);
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(ValidateValue(prop, *CreateValue("-2"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -366,7 +366,7 @@ TEST(CommandSchema, DoublePropType_Validate) {
 
 TEST(CommandSchema, DoublePropType_CreateValue) {
   DoublePropType prop;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto val = prop.CreateValue(base::FundamentalValue{2.0}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
@@ -460,7 +460,7 @@ TEST(CommandSchema, StringPropType_FromJson) {
 TEST(CommandSchema, StringPropType_Validate) {
   StringPropType prop;
   prop.AddLengthConstraint(1, 3);
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(ValidateValue(prop, *CreateValue("''"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -491,7 +491,7 @@ TEST(CommandSchema, StringPropType_Validate) {
 
 TEST(CommandSchema, StringPropType_CreateValue) {
   StringPropType prop;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto val = prop.CreateValue(base::StringValue{"blah"}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
@@ -682,7 +682,7 @@ TEST(CommandSchema, ObjectPropType_Validate) {
                     "'password':{'maxLength':100,'minLength':6}},"
                     "'required':['expires','password']}").get(),
                 nullptr, nullptr);
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_TRUE(ValidateValue(
       prop, *CreateValue("{'expires':10,'password':'abcdef'}"), &error));
   error.reset();
@@ -720,7 +720,7 @@ TEST(CommandSchema, ObjectPropType_Validate_Enum) {
           "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}")
           .get(),
       nullptr, nullptr));
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_TRUE(
       ValidateValue(prop, *CreateValue("{'height':20,'width':10}"), &error));
   error.reset();
@@ -749,7 +749,7 @@ TEST(CommandSchema, ObjectPropType_CreateValue) {
       {"height", int_type.CreateValue(base::FundamentalValue{20}, nullptr)},
   };
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto val = prop.CreateValue(
       *CreateDictionaryValue("{'width': 10, 'height': 20}"), &error);
   ASSERT_NE(nullptr, val.get());
@@ -831,7 +831,7 @@ TEST(CommandSchema, ArrayPropType_Validate) {
       CreateDictionaryValue("{'items':{'minimum':2.3, 'maximum':10.5}}").get(),
       nullptr, nullptr);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_TRUE(ValidateValue(prop, *CreateValue("[3,4,10.5]"), &error));
   error.reset();
 
@@ -851,7 +851,7 @@ TEST(CommandSchema, ArrayPropType_Validate_Enum) {
           .get(),
       nullptr, nullptr);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_TRUE(ValidateValue(prop, *CreateValue("[2,3]"), &error));
   error.reset();
 
@@ -872,7 +872,7 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
           .get(),
       nullptr, nullptr));
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ValueVector arr;
 
   auto val = prop.CreateValue(base::ListValue{}, &error);
@@ -897,7 +897,7 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
 
 TEST(CommandSchema, ArrayPropType_NestedArrays_NotSupported) {
   ArrayPropType prop;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(prop.FromJson(
       CreateDictionaryValue("{'items':{'items':'integer'}}").get(), nullptr,
       &error));
@@ -1334,7 +1334,7 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
 
 TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   ObjectSchema schema;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   const char* schema_str =
       "{"
       "'param1':{}"
@@ -1605,7 +1605,7 @@ TEST(CommandSchema, RequiredProperties_ObjectPropType_FromJson) {
 
 TEST(CommandSchema, RequiredProperties_Failures) {
   ObjectPropType obj_type;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   auto type_str = R"({
     'properties': {
@@ -1688,7 +1688,7 @@ TEST(CommandSchema, ObjectSchema_UseRequired_Failure) {
                             nullptr));
 
   auto val_json = "{'param2':20}";
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto value =
       prop.CreatePropValue(*CreateDictionaryValue(val_json).get(), &error);
   ASSERT_EQ(nullptr, value);

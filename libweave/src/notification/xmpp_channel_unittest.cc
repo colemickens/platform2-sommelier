@@ -85,9 +85,9 @@ class FakeStream : public Stream {
  public:
   explicit FakeStream(TaskRunner* task_runner) : task_runner_{task_runner} {}
 
-  bool FlushBlocking(chromeos::ErrorPtr* error) override { return true; }
+  bool FlushBlocking(ErrorPtr* error) override { return true; }
 
-  bool CloseBlocking(chromeos::ErrorPtr* error) override { return true; }
+  bool CloseBlocking(ErrorPtr* error) override { return true; }
 
   void CancelPendingAsyncOperations() override {}
 
@@ -99,12 +99,11 @@ class FakeStream : public Stream {
     read_data_ += data;
   }
 
-  bool ReadAsync(
-      void* buffer,
-      size_t size_to_read,
-      const base::Callback<void(size_t)>& success_callback,
-      const base::Callback<void(const chromeos::Error*)>& error_callback,
-      chromeos::ErrorPtr* error) override {
+  bool ReadAsync(void* buffer,
+                 size_t size_to_read,
+                 const base::Callback<void(size_t)>& success_callback,
+                 const base::Callback<void(const Error*)>& error_callback,
+                 ErrorPtr* error) override {
     size_t size = std::min(size_to_read, read_data_.size());
     memcpy(buffer, read_data_.data(), size);
     read_data_ = read_data_.substr(size);
@@ -113,12 +112,11 @@ class FakeStream : public Stream {
     return true;
   }
 
-  bool WriteAllAsync(
-      const void* buffer,
-      size_t size_to_write,
-      const base::Closure& success_callback,
-      const base::Callback<void(const chromeos::Error*)>& error_callback,
-      chromeos::ErrorPtr* error) override {
+  bool WriteAllAsync(const void* buffer,
+                     size_t size_to_write,
+                     const base::Closure& success_callback,
+                     const base::Callback<void(const Error*)>& error_callback,
+                     ErrorPtr* error) override {
     size_t size = std::min(size_to_write, write_data_.size());
     EXPECT_EQ(
         write_data_.substr(0, size),

@@ -138,7 +138,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
 
 TEST_F(CommandInstanceTest, FromJson_NotObject) {
   auto json = CreateValue("'string'");
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
@@ -147,7 +147,7 @@ TEST_F(CommandInstanceTest, FromJson_NotObject) {
 
 TEST_F(CommandInstanceTest, FromJson_NameMissing) {
   auto json = CreateDictionaryValue("{'param': 'value'}");
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
@@ -156,7 +156,7 @@ TEST_F(CommandInstanceTest, FromJson_NameMissing) {
 
 TEST_F(CommandInstanceTest, FromJson_UnknownCommand) {
   auto json = CreateDictionaryValue("{'name': 'robot.scream'}");
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
@@ -168,7 +168,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsNotObject) {
     'name': 'robot.speak',
     'parameters': 'hello'
   })");
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
@@ -185,7 +185,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
       'volume': 20
     }
   })");
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());

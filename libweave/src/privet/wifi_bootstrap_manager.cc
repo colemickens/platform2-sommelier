@@ -178,7 +178,7 @@ const SetupState& WifiBootstrapManager::GetSetupState() const {
 
 bool WifiBootstrapManager::ConfigureCredentials(const std::string& ssid,
                                                 const std::string& passphrase,
-                                                chromeos::ErrorPtr* error) {
+                                                ErrorPtr* error) {
   setup_state_ = SetupState{SetupState::kInProgress};
   // TODO(vitalybuka): Find more reliable way to finish request or move delay
   // into PrivetHandler as it's very HTTP specific.
@@ -223,10 +223,9 @@ void WifiBootstrapManager::OnBootstrapTimeout() {
 
 void WifiBootstrapManager::OnConnectTimeout() {
   VLOG(1) << "Wifi timed out while connecting";
-  chromeos::ErrorPtr error;
-  chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                         errors::kInvalidState,
-                         "Failed to connect to provided network");
+  ErrorPtr error;
+  Error::AddTo(&error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+               "Failed to connect to provided network");
   setup_state_ = SetupState{std::move(error)};
   StartBootstrapping();
 }
@@ -271,9 +270,9 @@ void WifiBootstrapManager::UpdateConnectionState() {
       return;
     case NetworkState::kFailure: {
       // TODO(wiley) Pull error information from somewhere.
-      chromeos::ErrorPtr error;
-      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                             errors::kInvalidState, "Unknown WiFi error");
+      ErrorPtr error;
+      Error::AddTo(&error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+                   "Unknown WiFi error");
       connection_state_ = ConnectionState{std::move(error)};
       return;
     }
@@ -284,10 +283,10 @@ void WifiBootstrapManager::UpdateConnectionState() {
       connection_state_ = ConnectionState{ConnectionState::kOnline};
       return;
   }
-  chromeos::ErrorPtr error;
-  chromeos::Error::AddToPrintf(
-      &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-      "Unknown network state: %s", EnumToString(service_state).c_str());
+  ErrorPtr error;
+  Error::AddToPrintf(&error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+                     "Unknown network state: %s",
+                     EnumToString(service_state).c_str());
   connection_state_ = ConnectionState{std::move(error)};
 }
 

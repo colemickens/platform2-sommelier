@@ -31,7 +31,7 @@ class CommandDefinition final {
     // Visibility bitset (|str| is a string like "local,cloud").
     // Special string value "all" is treated as a list of every possible
     // visibility values and "none" to have all the bits cleared.
-    bool FromString(const std::string& str, chromeos::ErrorPtr* error);
+    bool FromString(const std::string& str, ErrorPtr* error);
 
     // Converts the visibility bitset to a string.
     std::string ToString() const;

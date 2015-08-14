@@ -5,6 +5,7 @@
 #include "libweave/src/notification/pull_channel.h"
 
 #include <base/bind.h>
+#include <base/location.h>
 #include <weave/task_runner.h>
 
 #include "libweave/src/notification/notification_delegate.h"

@@ -177,7 +177,7 @@ TEST_F(SecurityManagerTest, ParseAccessToken) {
 TEST_F(SecurityManagerTest, PairingNoSession) {
   std::string fingerprint;
   std::string signature;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(
       security_.ConfirmPairing("123", "345", &fingerprint, &signature, &error));
   EXPECT_EQ("unknownSession", error->GetCode());
@@ -251,7 +251,7 @@ TEST_F(SecurityManagerTest, ThrottlePairing) {
   auto pair = [this]() {
     std::string session_id;
     std::string device_commitment;
-    chromeos::ErrorPtr error;
+    ErrorPtr error;
     bool result = security_.StartPairing(PairingType::kEmbeddedCode,
                                          CryptoType::kSpake_p224, &session_id,
                                          &device_commitment, &error);
@@ -306,7 +306,7 @@ TEST_F(SecurityManagerTest, EmbeddedCodeNotReady) {
   std::string session_id;
   std::string device_commitment;
   base::DeleteFile(embedded_code_path_, false);
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   ASSERT_FALSE(security_.StartPairing(PairingType::kEmbeddedCode,
                                       CryptoType::kSpake_p224, &session_id,
                                       &device_commitment, &error));

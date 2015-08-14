@@ -15,7 +15,7 @@ std::unique_ptr<HttpClient::Response> MockHttpClient::SendRequestAndBlock(
     const std::string& url,
     const Headers& headers,
     const std::string& data,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   return std::unique_ptr<Response>{
       MockSendRequest(method, url, headers, data, error)};
 }
@@ -26,7 +26,7 @@ int MockHttpClient::SendRequest(const std::string& method,
                                 const std::string& data,
                                 const SuccessCallback& success_callback,
                                 const ErrorCallback& error_callback) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   std::unique_ptr<Response> response{
       MockSendRequest(method, url, headers, data, &error)};
   if (response) {

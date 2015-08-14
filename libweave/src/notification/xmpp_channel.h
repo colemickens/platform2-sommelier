@@ -105,15 +105,15 @@ class XmppChannel : public NotificationChannel,
 
   void StartTlsHandshake();
   void OnTlsHandshakeComplete(std::unique_ptr<Stream> tls_stream);
-  void OnTlsError(const chromeos::Error* error);
+  void OnTlsError(const Error* error);
 
   void WaitForMessage();
 
   void OnConnected();
   void OnMessageRead(size_t size);
   void OnMessageSent();
-  void OnReadError(const chromeos::Error* error);
-  void OnWriteError(const chromeos::Error* error);
+  void OnReadError(const Error* error);
+  void OnWriteError(const Error* error);
   void Restart();
   void CloseStream();
 

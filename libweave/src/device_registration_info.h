@@ -18,7 +18,7 @@
 #include <base/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <weave/cloud.h>
 #include <weave/config.h>
 #include <weave/http_client.h>
@@ -59,8 +59,7 @@ class DeviceRegistrationInfo : public Cloud,
  public:
   using CloudRequestCallback =
       base::Callback<void(const base::DictionaryValue& response)>;
-  using CloudRequestErrorCallback =
-      base::Callback<void(const chromeos::Error* error)>;
+  using CloudRequestErrorCallback = base::Callback<void(const Error* error)>;
 
   DeviceRegistrationInfo(const std::shared_ptr<CommandManager>& command_manager,
                          const std::shared_ptr<StateManager>& state_manager,
@@ -79,21 +78,21 @@ class DeviceRegistrationInfo : public Cloud,
       const OnCloudRequestCallback& success_callback,
       const OnCloudRequestErrorCallback& error_callback) override;
   std::string RegisterDevice(const std::string& ticket_id,
-                             chromeos::ErrorPtr* error) override;
+                             ErrorPtr* error) override;
   bool UpdateDeviceInfo(const std::string& name,
                         const std::string& description,
                         const std::string& location,
-                        chromeos::ErrorPtr* error) override;
+                        ErrorPtr* error) override;
   bool UpdateBaseConfig(const std::string& anonymous_access_role,
                         bool local_discovery_enabled,
                         bool local_pairing_enabled,
-                        chromeos::ErrorPtr* error) override;
+                        ErrorPtr* error) override;
   bool UpdateServiceConfig(const std::string& client_id,
                            const std::string& client_secret,
                            const std::string& api_key,
                            const std::string& oauth_url,
                            const std::string& service_url,
-                           chromeos::ErrorPtr* error) override;
+                           ErrorPtr* error) override;
 
   // Add callback to listen for changes in config.
   void AddOnConfigChangedCallback(const Config::OnChangedCallback& callback);
@@ -129,7 +128,7 @@ class DeviceRegistrationInfo : public Cloud,
   bool HaveRegistrationCredentials() const;
   // Calls HaveRegistrationCredentials() and logs an error if no credentials
   // are available.
-  bool VerifyRegistrationCredentials(chromeos::ErrorPtr* error) const;
+  bool VerifyRegistrationCredentials(ErrorPtr* error) const;
 
   // Updates a command (override from CloudCommandUpdateInterface).
   void UpdateCommand(const std::string& command_id,
@@ -173,13 +172,13 @@ class DeviceRegistrationInfo : public Cloud,
       const std::shared_ptr<base::Closure>& success_callback,
       const std::shared_ptr<CloudRequestErrorCallback>& error_callback,
       int id,
-      const chromeos::Error* error);
+      const Error* error);
 
   // Parse the OAuth response, and sets registration status to
   // kInvalidCredentials if our registration is no longer valid.
   std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
       const HttpClient::Response& response,
-      chromeos::ErrorPtr* error);
+      ErrorPtr* error);
 
   // This attempts to open a notification channel. The channel needs to be
   // restarted anytime the access_token is refreshed.
@@ -211,21 +210,20 @@ class DeviceRegistrationInfo : public Cloud,
       const HttpClient::Response& response);
   void OnCloudRequestError(const std::shared_ptr<const CloudRequestData>& data,
                            int request_id,
-                           const chromeos::Error* error);
+                           const Error* error);
   void RetryCloudRequest(const std::shared_ptr<const CloudRequestData>& data);
   void OnAccessTokenRefreshed(
       const std::shared_ptr<const CloudRequestData>& data);
-  void OnAccessTokenError(
-      const std::shared_ptr<const CloudRequestData>& data,
-      const chromeos::Error* error);
-  void CheckAccessTokenError(const chromeos::Error* error);
+  void OnAccessTokenError(const std::shared_ptr<const CloudRequestData>& data,
+                          const Error* error);
+  void CheckAccessTokenError(const Error* error);
 
   void UpdateDeviceResource(const base::Closure& on_success,
                             const CloudRequestErrorCallback& on_failure);
   void StartQueuedUpdateDeviceResource();
   // Success/failure callbacks for UpdateDeviceResource().
   void OnUpdateDeviceResourceSuccess(const base::DictionaryValue& device_info);
-  void OnUpdateDeviceResourceError(const chromeos::Error* error);
+  void OnUpdateDeviceResourceError(const Error* error);
 
   // Callback from GetDeviceInfo() to retrieve the device resource timestamp
   // and retry UpdateDeviceResource() call.
@@ -256,18 +254,16 @@ class DeviceRegistrationInfo : public Cloud,
   void PublishStateUpdates();
   void OnPublishStateSuccess(StateChangeQueueInterface::UpdateID update_id,
                              const base::DictionaryValue& reply);
-  void OnPublishStateError(const chromeos::Error* error);
+  void OnPublishStateError(const Error* error);
 
   // If unrecoverable error occurred (e.g. error parsing command instance),
   // notify the server that the command is aborted by the device.
-  void NotifyCommandAborted(const std::string& command_id,
-                            chromeos::ErrorPtr error);
+  void NotifyCommandAborted(const std::string& command_id, ErrorPtr error);
 
   // Builds Cloud API devices collection REST resource which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
-  std::unique_ptr<base::DictionaryValue> BuildDeviceResource(
-      chromeos::ErrorPtr* error);
+  std::unique_ptr<base::DictionaryValue> BuildDeviceResource(ErrorPtr* error);
 
   void SetRegistrationStatus(RegistrationStatus new_status);
   void SetDeviceId(const std::string& device_id);

@@ -26,7 +26,7 @@ std::vector<std::string> CommandDictionary::GetCommandNamesByCategory(
 bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
                                      const std::string& category,
                                      const CommandDictionary* base_commands,
-                                     chromeos::ErrorPtr* error) {
+                                     ErrorPtr* error) {
   CommandMap new_defs;
 
   // |json| contains a list of nested objects with the following structure:
@@ -37,10 +37,10 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
     std::string package_name = package_iter.key();
     const base::DictionaryValue* package_value = nullptr;
     if (!package_iter.value().GetAsDictionary(&package_value)) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kTypeMismatch,
-                                   "Expecting an object for package '%s'",
-                                   package_name.c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kTypeMismatch,
+                         "Expecting an object for package '%s'",
+                         package_name.c_str());
       return false;
     }
     // Iterate over command definitions within the current package.
@@ -48,19 +48,18 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
     while (!command_iter.IsAtEnd()) {
       std::string command_name = command_iter.key();
       if (command_name.empty()) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, errors::commands::kDomain,
-            errors::commands::kInvalidCommandName,
-            "Unnamed command encountered in package '%s'",
-            package_name.c_str());
+        Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                           errors::commands::kInvalidCommandName,
+                           "Unnamed command encountered in package '%s'",
+                           package_name.c_str());
         return false;
       }
       const base::DictionaryValue* command_def_json = nullptr;
       if (!command_iter.value().GetAsDictionary(&command_def_json)) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, errors::commands::kDomain,
-            errors::commands::kTypeMismatch,
-            "Expecting an object for command '%s'", command_name.c_str());
+        Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                           errors::commands::kTypeMismatch,
+                           "Expecting an object for command '%s'",
+                           command_name.c_str());
         return false;
       }
       // Construct the compound command name as "pkg_name.cmd_name".
@@ -88,12 +87,11 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         // this rule here.
         if (!cmd) {
           if (command_name.front() != '_') {
-            chromeos::Error::AddToPrintf(
-                error, FROM_HERE, errors::commands::kDomain,
-                errors::commands::kInvalidCommandName,
-                "The name of custom command '%s' in package '%s'"
-                " must start with '_'",
-                command_name.c_str(), package_name.c_str());
+            Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                               errors::commands::kInvalidCommandName,
+                               "The name of custom command '%s' in package '%s'"
+                               " must start with '_'",
+                               command_name.c_str(), package_name.c_str());
             return false;
           }
         }
@@ -121,10 +119,10 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       if (command_def_json->GetString(commands::attributes::kCommand_Visibility,
                                       &value)) {
         if (!visibility.FromString(value, error)) {
-          chromeos::Error::AddToPrintf(
-              error, FROM_HERE, errors::commands::kDomain,
-              errors::commands::kInvalidCommandVisibility,
-              "Error parsing command '%s'", full_command_name.c_str());
+          Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                             errors::commands::kInvalidCommandVisibility,
+                             "Error parsing command '%s'",
+                             full_command_name.c_str());
           return false;
         }
       }
@@ -132,14 +130,13 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       if (command_def_json->GetString(commands::attributes::kCommand_Role,
                                       &value)) {
         if (!StringToEnum(value, &minimal_role)) {
-          chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                       errors::commands::kDomain,
-                                       errors::commands::kInvalidPropValue,
-                                       "Invalid role: '%s'", value.c_str());
-          chromeos::Error::AddToPrintf(
-              error, FROM_HERE, errors::commands::kDomain,
-              errors::commands::kInvalidMinimalRole,
-              "Error parsing command '%s'", full_command_name.c_str());
+          Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                             errors::commands::kInvalidPropValue,
+                             "Invalid role: '%s'", value.c_str());
+          Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                             errors::commands::kInvalidMinimalRole,
+                             "Error parsing command '%s'",
+                             full_command_name.c_str());
           return false;
         }
       }
@@ -187,7 +184,7 @@ std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
     const char* property_name,
     const ObjectSchema* base_def,
     const std::string& command_name,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   auto object_schema = ObjectSchema::Create();
 
   const base::DictionaryValue* schema_def = nullptr;
@@ -199,10 +196,10 @@ std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
   }
 
   if (!object_schema->FromJson(schema_def, base_def, error)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                 errors::commands::kInvalidObjectSchema,
-                                 "Invalid definition for command '%s'",
-                                 command_name.c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kInvalidObjectSchema,
+                       "Invalid definition for command '%s'",
+                       command_name.c_str());
     return {};
   }
 
@@ -212,7 +209,7 @@ std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
 std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
     const std::function<bool(const CommandDefinition*)>& filter,
     bool full_schema,
-    chromeos::ErrorPtr* error) const {
+    ErrorPtr* error) const {
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
   for (const auto& pair : definitions_) {
     // Check if the command definition has the desired visibility.

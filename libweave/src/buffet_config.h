@@ -11,7 +11,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <chromeos/key_value_store.h>
 #include <weave/config.h>
 

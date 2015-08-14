@@ -12,7 +12,7 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 #include "libweave/src/commands/command_definition.h"
 
@@ -56,7 +56,7 @@ class CommandDictionary final {
   bool LoadCommands(const base::DictionaryValue& json,
                     const std::string& category,
                     const CommandDictionary* base_commands,
-                    chromeos::ErrorPtr* error);
+                    ErrorPtr* error);
   // Converts all the command definitions to a JSON object for CDD/Device
   // draft.
   // |filter| is a predicate used to filter out the command definitions to
@@ -69,7 +69,7 @@ class CommandDictionary final {
   std::unique_ptr<base::DictionaryValue> GetCommandsAsJson(
       const std::function<bool(const CommandDefinition*)>& filter,
       bool full_schema,
-      chromeos::ErrorPtr* error) const;
+      ErrorPtr* error) const;
   // Returns the number of command definitions in the dictionary.
   size_t GetSize() const { return definitions_.size(); }
   // Checks if the dictionary has no command definitions.
@@ -88,7 +88,7 @@ class CommandDictionary final {
       const char* property_name,
       const ObjectSchema* base_def,
       const std::string& command_name,
-      chromeos::ErrorPtr* error);
+      ErrorPtr* error);
 
   CommandMap definitions_;  // List of all available command definitions.
   DISALLOW_COPY_AND_ASSIGN(CommandDictionary);

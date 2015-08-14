@@ -14,7 +14,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 #include "libweave/src/privet/security_delegate.h"
 
@@ -43,7 +43,7 @@ class SecurityManager : public SecurityDelegate {
 
     virtual const std::string& GetMessage() = 0;
     virtual bool ProcessMessage(const std::string& message,
-                                chromeos::ErrorPtr* error) = 0;
+                                ErrorPtr* error) = 0;
     virtual const std::string& GetKey() const = 0;
   };
 
@@ -66,15 +66,14 @@ class SecurityManager : public SecurityDelegate {
                     CryptoType crypto,
                     std::string* session_id,
                     std::string* device_commitment,
-                    chromeos::ErrorPtr* error) override;
+                    ErrorPtr* error) override;
 
   bool ConfirmPairing(const std::string& session_id,
                       const std::string& client_commitment,
                       std::string* fingerprint,
                       std::string* signature,
-                      chromeos::ErrorPtr* error) override;
-  bool CancelPairing(const std::string& session_id,
-                     chromeos::ErrorPtr* error) override;
+                      ErrorPtr* error) override;
+  bool CancelPairing(const std::string& session_id, ErrorPtr* error) override;
 
   void RegisterPairingListeners(const PairingStartListener& on_start,
                                 const PairingEndListener& on_end);
@@ -86,7 +85,7 @@ class SecurityManager : public SecurityDelegate {
  private:
   FRIEND_TEST_ALL_PREFIXES(SecurityManagerTest, ThrottlePairing);
   // Allows limited number of new sessions without successful authorization.
-  bool CheckIfPairingAllowed(chromeos::ErrorPtr* error);
+  bool CheckIfPairingAllowed(ErrorPtr* error);
   bool ClosePendingSession(const std::string& session_id);
   bool CloseConfirmedSession(const std::string& session_id);
 

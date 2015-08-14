@@ -307,7 +307,7 @@ void XmppChannel::OnTlsHandshakeComplete(std::unique_ptr<Stream> tls_stream) {
   RestartXmppStream();
 }
 
-void XmppChannel::OnTlsError(const chromeos::Error* error) {
+void XmppChannel::OnTlsError(const Error* error) {
   LOG(ERROR) << "TLS handshake failed. Restarting XMPP connection";
   Restart();
 }
@@ -320,7 +320,7 @@ void XmppChannel::SendMessage(const std::string& message) {
   }
   write_socket_data_ = queued_write_data_ + message;
   queued_write_data_.clear();
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   VLOG(2) << "Sending XMPP message: " << message;
 
   write_pending_ = true;
@@ -335,7 +335,7 @@ void XmppChannel::SendMessage(const std::string& message) {
 }
 
 void XmppChannel::OnMessageSent() {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   write_pending_ = false;
   if (!stream_->FlushBlocking(&error)) {
     OnWriteError(error.get());
@@ -352,7 +352,7 @@ void XmppChannel::WaitForMessage() {
   if (read_pending_ || !stream_)
     return;
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   read_pending_ = true;
   bool ok = stream_->ReadAsync(
       read_socket_data_.data(), read_socket_data_.size(),
@@ -364,12 +364,12 @@ void XmppChannel::WaitForMessage() {
     OnReadError(error.get());
 }
 
-void XmppChannel::OnReadError(const chromeos::Error* error) {
+void XmppChannel::OnReadError(const Error* error) {
   read_pending_ = false;
   Restart();
 }
 
-void XmppChannel::OnWriteError(const chromeos::Error* error) {
+void XmppChannel::OnWriteError(const Error* error) {
   write_pending_ = false;
   Restart();
 }

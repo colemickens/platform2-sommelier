@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <weave/task_runner.h>
 
 #include "libweave/src/buffet_config.h"
@@ -19,8 +19,6 @@
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/states/state_manager.h"
-
-using chromeos::ErrorPtr;
 
 namespace weave {
 namespace privet {
@@ -30,11 +28,9 @@ namespace {
 const int kMaxSetupRetries = 5;
 const int kFirstRetryTimeoutSec = 1;
 
-Command* ReturnNotFound(const std::string& command_id,
-                        chromeos::ErrorPtr* error) {
-  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
-                               errors::kNotFound, "Command not found, ID='%s'",
-                               command_id.c_str());
+Command* ReturnNotFound(const std::string& command_id, ErrorPtr* error) {
+  Error::AddToPrintf(error, FROM_HERE, errors::kDomain, errors::kNotFound,
+                     "Command not found, ID='%s'", command_id.c_str());
   return nullptr;
 }
 
@@ -66,18 +62,18 @@ class CloudDelegateImpl : public CloudDelegate {
 
   ~CloudDelegateImpl() override = default;
 
-  bool GetModelId(std::string* id, chromeos::ErrorPtr* error) const override {
+  bool GetModelId(std::string* id, ErrorPtr* error) const override {
     if (device_->GetConfig().model_id().size() != 5) {
-      chromeos::Error::AddToPrintf(
-          error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-          "Model ID is invalid: %s", device_->GetConfig().model_id().c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
+                         errors::kInvalidState, "Model ID is invalid: %s",
+                         device_->GetConfig().model_id().c_str());
       return false;
     }
     *id = device_->GetConfig().model_id();
     return true;
   }
 
-  bool GetName(std::string* name, chromeos::ErrorPtr* error) const override {
+  bool GetName(std::string* name, ErrorPtr* error) const override {
     *name = device_->GetConfig().name();
     return true;
   }
@@ -95,7 +91,7 @@ class CloudDelegateImpl : public CloudDelegate {
                         const std::string& location,
                         const base::Closure& success_callback,
                         const ErrorCallback& error_callback) override {
-    chromeos::ErrorPtr error;
+    ErrorPtr error;
     if (!device_->UpdateDeviceInfo(name, description, location, &error))
       return error_callback.Run(error.get());
     success_callback.Run();
@@ -135,10 +131,10 @@ class CloudDelegateImpl : public CloudDelegate {
 
   bool Setup(const std::string& ticket_id,
              const std::string& user,
-             chromeos::ErrorPtr* error) override {
+             ErrorPtr* error) override {
     if (setup_state_.IsStatusEqual(SetupState::kInProgress)) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                             errors::kDeviceBusy, "Setup in progress");
+      Error::AddTo(error, FROM_HERE, errors::kDomain, errors::kDeviceBusy,
+                   "Setup in progress");
       return false;
     }
     VLOG(1) << "GCD Setup started. ticket_id: " << ticket_id
@@ -170,13 +166,13 @@ class CloudDelegateImpl : public CloudDelegate {
     CHECK(user_info.scope() != AuthScope::kNone);
     CHECK_NE(user_info.user_id(), 0u);
 
-    chromeos::ErrorPtr error;
+    ErrorPtr error;
     UserRole role;
     std::string str_scope = EnumToString(user_info.scope());
     if (!StringToEnum(str_scope, &role)) {
-      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                   errors::kInvalidParams, "Invalid role: '%s'",
-                                   str_scope.c_str());
+      Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                         errors::kInvalidParams, "Invalid role: '%s'",
+                         str_scope.c_str());
       return error_callback.Run(error.get());
     }
 
@@ -193,7 +189,7 @@ class CloudDelegateImpl : public CloudDelegate {
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
-    chromeos::ErrorPtr error;
+    ErrorPtr error;
     auto command = GetCommandInternal(id, user_info, &error);
     if (!command)
       return error_callback.Run(error.get());
@@ -205,7 +201,7 @@ class CloudDelegateImpl : public CloudDelegate {
                      const SuccessCallback& success_callback,
                      const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
-    chromeos::ErrorPtr error;
+    ErrorPtr error;
     auto command = GetCommandInternal(id, user_info, &error);
     if (!command)
       return error_callback.Run(error.get());
@@ -255,8 +251,8 @@ class CloudDelegateImpl : public CloudDelegate {
     } else if (status == RegistrationStatus::kConnected) {
       connection_state_ = ConnectionState{ConnectionState::kOnline};
     } else {
-      chromeos::ErrorPtr error;
-      chromeos::Error::AddToPrintf(
+      ErrorPtr error;
+      Error::AddToPrintf(
           &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
           "Unexpected registration status: %s", EnumToString(status).c_str());
       connection_state_ = ConnectionState{std::move(error)};
@@ -282,14 +278,11 @@ class CloudDelegateImpl : public CloudDelegate {
     NotifyOnCommandDefsChanged();
   }
 
-  void RetryRegister(const std::string& ticket_id,
-                     int retries,
-                     chromeos::Error* error) {
+  void RetryRegister(const std::string& ticket_id, int retries, Error* error) {
     if (retries >= kMaxSetupRetries) {
-      chromeos::ErrorPtr new_error{error ? error->Clone() : nullptr};
-      chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
-                             errors::kInvalidState,
-                             "Failed to register device");
+      ErrorPtr new_error{error ? error->Clone() : nullptr};
+      Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
+                   errors::kInvalidState, "Failed to register device");
       setup_state_ = SetupState{std::move(new_error)};
       return;
     }
@@ -306,7 +299,7 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   void CallManagerRegisterDevice(const std::string& ticket_id, int retries) {
-    chromeos::ErrorPtr error;
+    ErrorPtr error;
     if (device_->RegisterDevice(ticket_id, &error).empty())
       return RetryRegister(ticket_id, retries, error.get());
     setup_state_ = SetupState(SetupState::kSuccess);
@@ -314,7 +307,7 @@ class CloudDelegateImpl : public CloudDelegate {
 
   Command* GetCommandInternal(const std::string& command_id,
                               const UserInfo& user_info,
-                              chromeos::ErrorPtr* error) const {
+                              ErrorPtr* error) const {
     if (user_info.scope() != AuthScope::kOwner) {
       auto it = command_owners_.find(command_id);
       if (it == command_owners_.end())
@@ -332,7 +325,7 @@ class CloudDelegateImpl : public CloudDelegate {
 
   bool CanAccessCommand(uint64_t owner_id,
                         const UserInfo& user_info,
-                        chromeos::ErrorPtr* error) const {
+                        ErrorPtr* error) const {
     CHECK(user_info.scope() != AuthScope::kNone);
     CHECK_NE(user_info.user_id(), 0u);
 
@@ -341,9 +334,8 @@ class CloudDelegateImpl : public CloudDelegate {
       return true;
     }
 
-    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                           errors::kAccessDenied,
-                           "Need to be owner of the command.");
+    Error::AddTo(error, FROM_HERE, errors::kDomain, errors::kAccessDenied,
+                 "Need to be owner of the command.");
     return false;
   }
 

@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 #include "libweave/src/commands/schema_utils.h"
 
@@ -177,7 +177,7 @@ class TypedValueWithClone : public TypedValueBase<T> {
 
   static std::unique_ptr<Derived> CreateFromJson(const base::Value& value,
                                                  const PropType& type,
-                                                 chromeos::ErrorPtr* error) {
+                                                 ErrorPtr* error) {
     T tmp_value;
     if (!TypedValueFromJson(&value, &type, &tmp_value, error))
       return nullptr;

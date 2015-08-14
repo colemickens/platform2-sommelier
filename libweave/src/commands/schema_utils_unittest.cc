@@ -79,7 +79,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Bool) {
       TypedValueFromJson(CreateValue("false").get(), nullptr, &value, nullptr));
   EXPECT_FALSE(value);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(
       TypedValueFromJson(CreateValue("0").get(), nullptr, &value, &error));
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -101,7 +101,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Int) {
       TypedValueFromJson(CreateValue("-1234").get(), nullptr, &value, nullptr));
   EXPECT_EQ(-1234, value);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(
       TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, &error));
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -129,7 +129,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Double) {
                                  &value, nullptr));
   EXPECT_EQ(-123.0, value);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(
       TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, &error));
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -151,7 +151,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_String) {
       TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, nullptr));
   EXPECT_EQ("abc", value);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(
       TypedValueFromJson(CreateValue("12").get(), nullptr, &value, &error));
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -181,7 +181,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
       "name", name_prop.CreateValue(base::StringValue("Bob"), nullptr)));
   EXPECT_EQ(value2, value);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(
       TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, &error));
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -202,7 +202,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Array) {
   arr2.push_back(str_type.CreateValue(base::StringValue{"bar"}, nullptr));
   EXPECT_EQ(arr2, arr);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(TypedValueFromJson(CreateValue("['baz', 'ab']").get(), &type,
                                   &arr, &error));
   EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());

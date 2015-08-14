@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/string_utils.h"
@@ -14,7 +14,7 @@
 namespace weave {
 
 bool CommandDefinition::Visibility::FromString(const std::string& str,
-                                               chromeos::ErrorPtr* error) {
+                                               ErrorPtr* error) {
   // This special case is useful for places where we want to make a command
   // to ALL clients, even if new clients are added in the future.
   if (str == commands::attributes::kCommand_Visibility_All) {
@@ -35,10 +35,10 @@ bool CommandDefinition::Visibility::FromString(const std::string& str,
     } else if (value == commands::attributes::kCommand_Visibility_Cloud) {
       cloud = true;
     } else {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kInvalidPropValue,
-                                   "Invalid command visibility value '%s'",
-                                   value.c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kInvalidPropValue,
+                         "Invalid command visibility value '%s'",
+                         value.c_str());
       return false;
     }
   }

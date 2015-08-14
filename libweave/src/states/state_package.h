@@ -10,7 +10,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 #include "libweave/src/commands/object_schema.h"
 #include "libweave/src/commands/prop_values.h"
@@ -30,13 +30,11 @@ class StatePackage final {
 
   // Loads state property definitions from a JSON object and adds them
   // to the current package.
-  bool AddSchemaFromJson(const base::DictionaryValue* json,
-                         chromeos::ErrorPtr* error);
+  bool AddSchemaFromJson(const base::DictionaryValue* json, ErrorPtr* error);
   // Loads a set of state property values from a JSON object and assigns them
   // to existing properties.  A property must be defined prior to loading its
   // value.  We use this when we load default values during buffet startup.
-  bool AddValuesFromJson(const base::DictionaryValue* json,
-                         chromeos::ErrorPtr* error);
+  bool AddValuesFromJson(const base::DictionaryValue* json, ErrorPtr* error);
 
   // Returns a set of state properties and their values as a JSON object.
   // After being aggregated across multiple packages, this becomes the device
@@ -57,12 +55,12 @@ class StatePackage final {
   // include the package name as part of the property name.
   std::unique_ptr<base::Value> GetPropertyValue(
       const std::string& property_name,
-      chromeos::ErrorPtr* error) const;
+      ErrorPtr* error) const;
   // Sets the value for a specific state property. |property_name| must not
   // include the package name as part of the property name.
   bool SetPropertyValue(const std::string& property_name,
                         const base::Value& value,
-                        chromeos::ErrorPtr* error);
+                        ErrorPtr* error);
 
   std::shared_ptr<const PropValue> GetProperty(
       const std::string& property_name) const {

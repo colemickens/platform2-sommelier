@@ -9,7 +9,7 @@
 
 #include <base/callback.h>
 #include <base/values.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <weave/command.h>
 
 namespace weave {
@@ -36,7 +36,7 @@ class Commands {
   virtual bool AddCommand(const base::DictionaryValue& command,
                           UserRole role,
                           std::string* id,
-                          chromeos::ErrorPtr* error) = 0;
+                          ErrorPtr* error) = 0;
 
   // Finds a command by the command |id|. Returns nullptr if the command with
   // the given |id| is not found. The returned pointer should not be persisted

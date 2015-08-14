@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 namespace weave {
 namespace privet {
@@ -54,7 +54,7 @@ class ConnectionState final {
   };
 
   explicit ConnectionState(Status status) : status_(status) {}
-  explicit ConnectionState(chromeos::ErrorPtr error)
+  explicit ConnectionState(ErrorPtr error)
       : status_(kOffline), error_(std::move(error)) {}
 
   Status status() const {
@@ -68,11 +68,11 @@ class ConnectionState final {
     return status_ == status;
   }
 
-  const chromeos::Error* error() const { return error_.get(); }
+  const Error* error() const { return error_.get(); }
 
  private:
   Status status_;
-  chromeos::ErrorPtr error_;
+  ErrorPtr error_;
 };
 
 class SetupState final {
@@ -84,7 +84,7 @@ class SetupState final {
   };
 
   explicit SetupState(Status status) : status_(status) {}
-  explicit SetupState(chromeos::ErrorPtr error)
+  explicit SetupState(ErrorPtr error)
       : status_(kNone), error_(std::move(error)) {}
 
   Status status() const {
@@ -98,11 +98,11 @@ class SetupState final {
     return status_ == status;
   }
 
-  const chromeos::Error* error() const { return error_.get(); }
+  const Error* error() const { return error_.get(); }
 
  private:
   Status status_;
-  chromeos::ErrorPtr error_;
+  ErrorPtr error_;
 };
 
 }  // namespace privet

@@ -123,13 +123,13 @@ std::unique_ptr<PropType> PropType::Clone() const {
 
 bool PropType::FromJson(const base::DictionaryValue* value,
                         const PropType* base_schema,
-                        chromeos::ErrorPtr* error) {
+                        ErrorPtr* error) {
   if (base_schema && base_schema->GetType() != GetType()) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                 errors::commands::kPropTypeChanged,
-                                 "Redefining a property of type %s as %s",
-                                 base_schema->GetTypeAsString().c_str(),
-                                 GetTypeAsString().c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kPropTypeChanged,
+                       "Redefining a property of type %s as %s",
+                       base_schema->GetTypeAsString().c_str(),
+                       GetTypeAsString().c_str());
     return false;
   }
   based_on_schema_ = (base_schema != nullptr);
@@ -159,9 +159,9 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   while (!iter.IsAtEnd()) {
     std::string key = iter.key();
     if (processed_keys.find(key) == processed_keys.end()) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kUnknownProperty,
-                                   "Unexpected property '%s'", key.c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kUnknownProperty,
+                         "Unexpected property '%s'", key.c_str());
       return false;
     }
     iter.Advance();
@@ -186,10 +186,10 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   if (value->GetWithoutPathExpansion(commands::attributes::kDefault, &defval)) {
     std::unique_ptr<PropValue> prop_value = CreatePropValue(*defval, error);
     if (!prop_value) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kInvalidPropValue,
-                                   "Invalid value for property '%s'",
-                                   commands::attributes::kDefault);
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kInvalidPropValue,
+                         "Invalid value for property '%s'",
+                         commands::attributes::kDefault);
       return false;
     }
     default_.value = std::move(prop_value);
@@ -231,7 +231,7 @@ Constraint* PropType::GetConstraint(ConstraintType constraint_type) {
 }
 
 bool PropType::ValidateConstraints(const PropValue& value,
-                                   chromeos::ErrorPtr* error) const {
+                                   ErrorPtr* error) const {
   for (const auto& pair : constraints_) {
     if (!pair.second->Validate(value, error))
       return false;
@@ -299,7 +299,7 @@ template <typename T>
 static std::unique_ptr<Constraint> LoadOneOfConstraint(
     const base::DictionaryValue* value,
     const PropType* prop_type,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   std::unique_ptr<Constraint> constraint;
   const base::Value* list = nullptr;  // Owned by |value|
   CHECK(value->Get(commands::attributes::kOneOf_Enum, &list))
@@ -318,7 +318,7 @@ template <class ConstraintClass, typename T>
 static std::unique_ptr<Constraint> LoadMinMaxConstraint(
     const char* dict_key,
     const base::DictionaryValue* value,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   std::unique_ptr<Constraint> constraint;
   InheritableAttribute<T> limit;
 
@@ -338,7 +338,7 @@ template <class Derived, class Value, typename T>
 bool PropTypeBase<Derived, Value, T>::ConstraintsFromJson(
     const base::DictionaryValue* value,
     std::set<std::string>* processed_keys,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   if (!PropType::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
@@ -363,7 +363,7 @@ template <class Derived, class Value, typename T>
 bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
     const base::DictionaryValue* value,
     std::set<std::string>* processed_keys,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   if (!Base::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
@@ -398,7 +398,7 @@ bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
 
 bool StringPropType::ConstraintsFromJson(const base::DictionaryValue* value,
                                          std::set<std::string>* processed_keys,
-                                         chromeos::ErrorPtr* error) {
+                                         ErrorPtr* error) {
   if (!Base::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
@@ -499,7 +499,7 @@ std::unique_ptr<base::Value> ObjectPropType::ToJson(bool full_schema,
 bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
                                           const PropType* base_schema,
                                           std::set<std::string>* processed_keys,
-                                          chromeos::ErrorPtr* error) {
+                                          ErrorPtr* error) {
   if (!Base::ObjectSchemaFromJson(value, base_schema, processed_keys, error))
     return false;
 
@@ -517,20 +517,20 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
     processed_keys->insert(kObject_Properties);
     object_schema.reset(new ObjectSchema);
     if (!object_schema->FromJson(props, base_object_schema, error)) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
-                             errors::commands::kInvalidObjectSchema,
-                             "Error parsing object property schema");
+      Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
+                   errors::commands::kInvalidObjectSchema,
+                   "Error parsing object property schema");
       return false;
     }
   } else if (base_object_schema) {
     object_schema = base_object_schema->Clone();
     inherited = true;
   } else {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                 errors::commands::kInvalidObjectSchema,
-                                 "Object type definition must include the "
-                                 "object schema ('%s' field not found)",
-                                 kObject_Properties);
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kInvalidObjectSchema,
+                       "Object type definition must include the "
+                       "object schema ('%s' field not found)",
+                       kObject_Properties);
     return false;
   }
   bool extra_properties_allowed = false;
@@ -545,10 +545,10 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
     processed_keys->insert(commands::attributes::kObject_Required);
     const base::ListValue* required_list = nullptr;
     if (!required->GetAsList(&required_list)) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kInvalidObjectSchema,
-                                   "Property '%s' must be an array",
-                                   commands::attributes::kObject_Required);
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kInvalidObjectSchema,
+                         "Property '%s' must be an array",
+                         commands::attributes::kObject_Required);
       return false;
     }
     for (const base::Value* value : *required_list) {
@@ -556,7 +556,7 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
       if (!value->GetAsString(&name)) {
         std::string json_value;
         CHECK(base::JSONWriter::Write(*value, &json_value));
-        chromeos::Error::AddToPrintf(
+        Error::AddToPrintf(
             error, FROM_HERE, errors::commands::kDomain,
             errors::commands::kInvalidObjectSchema,
             "Property '%s' contains invalid element (%s). String expected",
@@ -615,7 +615,7 @@ std::unique_ptr<base::Value> ArrayPropType::ToJson(bool full_schema,
 bool ArrayPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
                                          const PropType* base_schema,
                                          std::set<std::string>* processed_keys,
-                                         chromeos::ErrorPtr* error) {
+                                         ErrorPtr* error) {
   if (!Base::ObjectSchemaFromJson(value, base_schema, processed_keys, error))
     return false;
 
@@ -632,9 +632,9 @@ bool ArrayPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
     if (!item_type)
       return false;
     if (item_type->GetType() == ValueType::Array) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
-                             errors::commands::kInvalidObjectSchema,
-                             "Arrays of arrays are not supported");
+      Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
+                   errors::commands::kInvalidObjectSchema,
+                   "Arrays of arrays are not supported");
       return false;
     }
     SetItemType(std::move(item_type));
@@ -643,11 +643,11 @@ bool ArrayPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
       item_type_.value = base_type->Clone();
       item_type_.is_inherited = true;
     } else {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kInvalidObjectSchema,
-                                   "Array type definition must include the "
-                                   "array item type ('%s' field not found)",
-                                   kItems);
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kInvalidObjectSchema,
+                         "Array type definition must include the "
+                         "array item type ('%s' field not found)",
+                         kItems);
       return false;
     }
   }

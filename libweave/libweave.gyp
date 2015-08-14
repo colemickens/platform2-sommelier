@@ -30,6 +30,8 @@
     {
       'target_name': 'libweave_common',
       'type': 'static_library',
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
       'sources': [
         'src/backoff_entry.cc',
         'src/base_api_handler.cc',
@@ -50,6 +52,7 @@
         'src/data_encoding.cc',
         'src/device_manager.cc',
         'src/device_registration_info.cc',
+        'src/error.cc',
         'src/http_constants.cc',
         'src/json_error_codes.cc',
         'src/notification/notification_parser.cc',
@@ -140,6 +143,7 @@
             'src/commands/schema_utils_unittest.cc',
             'src/data_encoding_unittest.cc',
             'src/device_registration_info_unittest.cc',
+            'src/error_unittest.cc',
             'src/notification/notification_parser_unittest.cc',
             'src/notification/xml_node_unittest.cc',
             'src/notification/xmpp_channel_unittest.cc',

@@ -159,10 +159,10 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     return dev_reg_->PublishCommands(commands);
   }
 
-  bool RefreshAccessToken(chromeos::ErrorPtr* error) const {
+  bool RefreshAccessToken(ErrorPtr* error) const {
     bool succeeded = false;
     auto on_success = [&succeeded]() { succeeded = true; };
-    auto on_failure = [&error](const chromeos::Error* in_error) {
+    auto on_failure = [&error](const Error* in_error) {
       if (error)
         *error = in_error->Clone();
     };
@@ -271,7 +271,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
         return ReplyWithJson(400, json);
       })));
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(RefreshAccessToken(&error));
   EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "unable_to_authenticate"));
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
@@ -299,7 +299,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
         return ReplyWithJson(400, json);
       })));
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   EXPECT_FALSE(RefreshAccessToken(&error));
   EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "invalid_grant"));
   EXPECT_EQ(RegistrationStatus::kInvalidCredentials, GetRegistrationStatus());
@@ -331,7 +331,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
     EXPECT_EQ(test_data::kDeviceId, id);
     succeeded = true;
   };
-  auto on_failure = [](const chromeos::Error* error) {
+  auto on_failure = [](const Error* error) {
     FAIL() << "Should not be called";
   };
   dev_reg_->GetDeviceInfo(base::Bind(on_success), base::Bind(on_failure));

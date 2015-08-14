@@ -17,7 +17,7 @@ class State {
 
   // Updates a multiple property values.
   virtual bool SetProperties(const base::DictionaryValue& property_set,
-                             chromeos::ErrorPtr* error) = 0;
+                             ErrorPtr* error) = 0;
 
   // Returns aggregated state properties across all registered packages as
   // a JSON object that can be used to send the device state to the GCD server.

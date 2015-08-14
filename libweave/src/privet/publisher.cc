@@ -6,7 +6,7 @@
 
 #include <map>
 
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <weave/mdns.h>
 
 #include "libweave/src/privet/cloud_delegate.h"

@@ -44,16 +44,16 @@ class SecurityDelegate {
                             CryptoType crypto,
                             std::string* session_id,
                             std::string* device_commitment,
-                            chromeos::ErrorPtr* error) = 0;
+                            ErrorPtr* error) = 0;
 
   virtual bool ConfirmPairing(const std::string& session_id,
                               const std::string& client_commitment,
                               std::string* fingerprint,
                               std::string* signature,
-                              chromeos::ErrorPtr* error) = 0;
+                              ErrorPtr* error) = 0;
 
   virtual bool CancelPairing(const std::string& session_id,
-                             chromeos::ErrorPtr* error) = 0;
+                             ErrorPtr* error) = 0;
 };
 
 }  // namespace privet

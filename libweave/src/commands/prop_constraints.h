@@ -11,7 +11,7 @@
 
 #include <base/macros.h>
 #include <base/values.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"
@@ -42,8 +42,7 @@ class Constraint {
   // Validates a parameter against the constraint. Returns true if parameter
   // value satisfies the constraint, otherwise fills the optional |error| with
   // the details for the failure.
-  virtual bool Validate(const PropValue& value,
-                        chromeos::ErrorPtr* error) const = 0;
+  virtual bool Validate(const PropValue& value, ErrorPtr* error) const = 0;
 
   // Makes a full copy of this Constraint instance.
   virtual std::unique_ptr<Constraint> Clone() const = 0;
@@ -77,14 +76,14 @@ class Constraint {
   // Since these functions could be used by constraint objects for various
   // data types, the values used in validation are expected to be
   // send as strings already.
-  static bool ReportErrorLessThan(chromeos::ErrorPtr* error,
+  static bool ReportErrorLessThan(ErrorPtr* error,
                                   const std::string& val,
                                   const std::string& limit);
-  static bool ReportErrorGreaterThan(chromeos::ErrorPtr* error,
+  static bool ReportErrorGreaterThan(ErrorPtr* error,
                                      const std::string& val,
                                      const std::string& limit);
 
-  static bool ReportErrorNotOneOf(chromeos::ErrorPtr* error,
+  static bool ReportErrorNotOneOf(ErrorPtr* error,
                                   const std::string& val,
                                   const std::vector<std::string>& values);
 
@@ -130,8 +129,7 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
   ConstraintType GetType() const override { return ConstraintType::Min; }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value,
-                chromeos::ErrorPtr* error) const override {
+  bool Validate(const PropValue& value, ErrorPtr* error) const override {
     const T& v = static_cast<const TypedValueBase<T>&>(value).GetValue();
     if (v < this->limit_.value) {
       return this->ReportErrorLessThan(error, std::to_string(v),
@@ -171,8 +169,7 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
   ConstraintType GetType() const override { return ConstraintType::Max; }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value,
-                chromeos::ErrorPtr* error) const override {
+  bool Validate(const PropValue& value, ErrorPtr* error) const override {
     const T& v = static_cast<const TypedValueBase<T>&>(value).GetValue();
     if (v > this->limit_.value)
       return this->ReportErrorGreaterThan(error, std::to_string(v),
@@ -232,8 +229,7 @@ class ConstraintStringLengthMin : public ConstraintStringLength {
   }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value,
-                chromeos::ErrorPtr* error) const override;
+  bool Validate(const PropValue& value, ErrorPtr* error) const override;
 
   // Implementation of Constraint::Clone().
   std::unique_ptr<Constraint> Clone() const override;
@@ -261,8 +257,7 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
   }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value,
-                chromeos::ErrorPtr* error) const override;
+  bool Validate(const PropValue& value, ErrorPtr* error) const override;
 
   // Implementation of Constraint::Clone().
   std::unique_ptr<Constraint> Clone() const override;
@@ -292,8 +287,7 @@ class ConstraintOneOf : public Constraint {
   bool HasOverriddenAttributes() const override { return !set_.is_inherited; }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value,
-                chromeos::ErrorPtr* error) const override;
+  bool Validate(const PropValue& value, ErrorPtr* error) const override;
 
   // Implementation of Constraint::Clone().
   std::unique_ptr<Constraint> Clone() const override;

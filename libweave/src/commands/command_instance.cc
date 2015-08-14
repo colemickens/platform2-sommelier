@@ -5,8 +5,8 @@
 #include "libweave/src/commands/command_instance.h"
 
 #include <base/values.h>
-#include <chromeos/errors/error.h>
 #include <weave/enum_to_string.h>
+#include <weave/error.h>
 #include <weave/export.h>
 
 #include "libweave/src/commands/command_definition.h"
@@ -95,7 +95,7 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::GetResults() const {
 }
 
 bool CommandInstance::SetProgress(const base::DictionaryValue& progress,
-                                  chromeos::ErrorPtr* error) {
+                                  ErrorPtr* error) {
   ObjectPropType obj_prop_type;
   obj_prop_type.SetObjectSchema(command_definition_->GetProgress()->Clone());
 
@@ -113,7 +113,7 @@ bool CommandInstance::SetProgress(const base::DictionaryValue& progress,
 }
 
 bool CommandInstance::SetResults(const base::DictionaryValue& results,
-                                 chromeos::ErrorPtr* error) {
+                                 ErrorPtr* error) {
   ObjectPropType obj_prop_type;
   obj_prop_type.SetObjectSchema(command_definition_->GetResults()->Clone());
 
@@ -139,7 +139,7 @@ namespace {
 bool GetCommandParameters(const base::DictionaryValue* json,
                           const CommandDefinition* command_def,
                           ValueMap* parameters,
-                          chromeos::ErrorPtr* error) {
+                          ErrorPtr* error) {
   // Get the command parameters from 'parameters' property.
   base::DictionaryValue no_params;  // Placeholder when no params are specified.
   const base::DictionaryValue* params = nullptr;
@@ -147,10 +147,10 @@ bool GetCommandParameters(const base::DictionaryValue* json,
   if (json->Get(commands::attributes::kCommand_Parameters, &params_value)) {
     // Make sure the "parameters" property is actually an object.
     if (!params_value->GetAsDictionary(&params)) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
-                                   errors::json::kObjectExpected,
-                                   "Property '%s' must be a JSON object",
-                                   commands::attributes::kCommand_Parameters);
+      Error::AddToPrintf(error, FROM_HERE, errors::json::kDomain,
+                         errors::json::kObjectExpected,
+                         "Property '%s' must be a JSON object",
+                         commands::attributes::kCommand_Parameters);
       return false;
     }
   } else {
@@ -175,7 +175,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     CommandOrigin origin,
     const CommandDictionary& dictionary,
     std::string* command_id,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   std::unique_ptr<CommandInstance> instance;
   std::string command_id_buffer;  // used if |command_id| was nullptr.
   if (!command_id)
@@ -184,9 +184,9 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   // Get the command JSON object from the value.
   const base::DictionaryValue* json = nullptr;
   if (!value->GetAsDictionary(&json)) {
-    chromeos::Error::AddTo(error, FROM_HERE, errors::json::kDomain,
-                           errors::json::kObjectExpected,
-                           "Command instance is not a JSON object");
+    Error::AddTo(error, FROM_HERE, errors::json::kDomain,
+                 errors::json::kObjectExpected,
+                 "Command instance is not a JSON object");
     command_id->clear();
     return instance;
   }
@@ -198,27 +198,24 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   // Get the command name from 'name' property.
   std::string command_name;
   if (!json->GetString(commands::attributes::kCommand_Name, &command_name)) {
-    chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
-                           errors::commands::kPropertyMissing,
-                           "Command name is missing");
+    Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
+                 errors::commands::kPropertyMissing, "Command name is missing");
     return instance;
   }
   // Make sure we know how to handle the command with this name.
   auto command_def = dictionary.FindCommand(command_name);
   if (!command_def) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                 errors::commands::kInvalidCommandName,
-                                 "Unknown command received: %s",
-                                 command_name.c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kInvalidCommandName,
+                       "Unknown command received: %s", command_name.c_str());
     return instance;
   }
 
   ValueMap parameters;
   if (!GetCommandParameters(json, command_def, &parameters, error)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                 errors::commands::kCommandFailed,
-                                 "Failed to validate command '%s'",
-                                 command_name.c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kCommandFailed,
+                       "Failed to validate command '%s'", command_name.c_str());
     return instance;
   }
 

@@ -37,7 +37,7 @@ class CloudDelegate {
   virtual ~CloudDelegate();
 
   using SuccessCallback = base::Callback<void(const base::DictionaryValue&)>;
-  using ErrorCallback = base::Callback<void(chromeos::Error*)>;
+  using ErrorCallback = base::Callback<void(Error*)>;
 
   class Observer {
    public:
@@ -49,10 +49,10 @@ class CloudDelegate {
   };
 
   // Returns the model ID of the device.
-  virtual bool GetModelId(std::string* id, chromeos::ErrorPtr* error) const = 0;
+  virtual bool GetModelId(std::string* id, ErrorPtr* error) const = 0;
 
   // Returns the name of device.
-  virtual bool GetName(std::string* name, chromeos::ErrorPtr* error) const = 0;
+  virtual bool GetName(std::string* name, ErrorPtr* error) const = 0;
 
   // Returns the description of the device.
   virtual std::string GetDescription() const = 0;
@@ -89,7 +89,7 @@ class CloudDelegate {
   // Starts GCD setup.
   virtual bool Setup(const std::string& ticket_id,
                      const std::string& user,
-                     chromeos::ErrorPtr* error) = 0;
+                     ErrorPtr* error) = 0;
 
   // Returns cloud id if the registered device or empty string if unregistered.
   virtual std::string GetCloudId() const = 0;

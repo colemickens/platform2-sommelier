@@ -32,7 +32,7 @@ class WifiDelegate {
   // Final setup state can be retrieved with GetSetupState().
   virtual bool ConfigureCredentials(const std::string& ssid,
                                     const std::string& password,
-                                    chromeos::ErrorPtr* error) = 0;
+                                    ErrorPtr* error) = 0;
 
   // Returns SSID of the currently configured WiFi network. Empty string, if
   // WiFi has not been configured yet.

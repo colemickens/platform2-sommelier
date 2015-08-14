@@ -23,7 +23,7 @@ namespace {
 // Helper function for to create a PropType based on type string.
 // Generates an error if the string identifies an unknown type.
 std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
-                                         chromeos::ErrorPtr* error) {
+                                         ErrorPtr* error) {
   auto parts = SplitAtFirst(type_name, ".", false);
   const std::string& primary_type = parts.first;
   const std::string& array_type = parts.second;
@@ -43,18 +43,18 @@ std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
     }
   }
   if (!prop) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                 errors::commands::kUnknownType,
-                                 "Unknown type %s", type_name.c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kUnknownType, "Unknown type %s",
+                       type_name.c_str());
   }
   return prop;
 }
 
 // Generates "no_type_info" error.
-void ErrorInvalidTypeInfo(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
-                         errors::commands::kNoTypeInfo,
-                         "Unable to determine parameter type");
+void ErrorInvalidTypeInfo(ErrorPtr* error) {
+  Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
+               errors::commands::kNoTypeInfo,
+               "Unable to determine parameter type");
 }
 
 // Helper function for PropFromJson to handle the case of parameter being
@@ -62,7 +62,7 @@ void ErrorInvalidTypeInfo(chromeos::ErrorPtr* error) {
 //   "prop":"..."
 std::unique_ptr<PropType> PropFromJsonString(const base::Value& value,
                                              const PropType* base_schema,
-                                             chromeos::ErrorPtr* error) {
+                                             ErrorPtr* error) {
   std::string type_name;
   CHECK(value.GetAsString(&type_name)) << "Unable to get string value";
   std::unique_ptr<PropType> prop = CreatePropType(type_name, error);
@@ -132,7 +132,7 @@ std::string DetectArrayType(const base::ListValue* list,
 //   "prop":[...]
 std::unique_ptr<PropType> PropFromJsonArray(const base::Value& value,
                                             const PropType* base_schema,
-                                            chromeos::ErrorPtr* error) {
+                                            ErrorPtr* error) {
   std::unique_ptr<PropType> prop;
   const base::ListValue* list = nullptr;
   CHECK(value.GetAsList(&list)) << "Unable to get array value";
@@ -234,7 +234,7 @@ std::string DetectObjectType(const base::DictionaryValue* dict,
 //   "prop":{...}
 std::unique_ptr<PropType> PropFromJsonObject(const base::Value& value,
                                              const PropType* base_schema,
-                                             chromeos::ErrorPtr* error) {
+                                             ErrorPtr* error) {
   std::unique_ptr<PropType> prop;
   const base::DictionaryValue* dict = nullptr;
   CHECK(value.GetAsDictionary(&dict)) << "Unable to get dictionary value";
@@ -303,13 +303,12 @@ const PropType* ObjectSchema::GetProp(const std::string& name) const {
   return p != properties_.end() ? p->second.get() : nullptr;
 }
 
-bool ObjectSchema::MarkPropRequired(const std::string& name,
-                                    chromeos::ErrorPtr* error) {
+bool ObjectSchema::MarkPropRequired(const std::string& name, ErrorPtr* error) {
   auto p = properties_.find(name);
   if (p == properties_.end()) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                  errors::commands::kUnknownProperty,
-                                  "Unknown property '%s'", name.c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                       errors::commands::kUnknownProperty,
+                       "Unknown property '%s'", name.c_str());
     return false;
   }
   p->second->MakeRequired(true);
@@ -330,7 +329,7 @@ std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
 
 bool ObjectSchema::FromJson(const base::DictionaryValue* value,
                             const ObjectSchema* object_schema,
-                            chromeos::ErrorPtr* error) {
+                            ErrorPtr* error) {
   Properties properties;
   base::DictionaryValue::Iterator iter(*value);
   while (!iter.IsAtEnd()) {
@@ -341,10 +340,10 @@ bool ObjectSchema::FromJson(const base::DictionaryValue* value,
     if (prop_type) {
       properties.emplace(iter.key(), std::move(prop_type));
     } else {
-      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                   errors::commands::kInvalidPropDef,
-                                   "Error in definition of property '%s'",
-                                   iter.key().c_str());
+      Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                         errors::commands::kInvalidPropDef,
+                         "Error in definition of property '%s'",
+                         iter.key().c_str());
       return false;
     }
     iter.Advance();
@@ -356,7 +355,7 @@ bool ObjectSchema::FromJson(const base::DictionaryValue* value,
 std::unique_ptr<PropType> ObjectSchema::PropFromJson(
     const base::Value& value,
     const PropType* base_schema,
-    chromeos::ErrorPtr* error) {
+    ErrorPtr* error) {
   if (value.IsType(base::Value::TYPE_STRING)) {
     // A string value is a short-hand object specification and provides
     // the parameter type.
@@ -368,10 +367,10 @@ std::unique_ptr<PropType> ObjectSchema::PropFromJson(
     // Full parameter definition.
     return PropFromJsonObject(value, base_schema, error);
   }
-  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                               errors::commands::kUnknownType,
-                               "Unexpected JSON value type: %s",
-                               EnumToString(value.GetType()).c_str());
+  Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                     errors::commands::kUnknownType,
+                     "Unexpected JSON value type: %s",
+                     EnumToString(value.GetType()).c_str());
   return nullptr;
 }
 

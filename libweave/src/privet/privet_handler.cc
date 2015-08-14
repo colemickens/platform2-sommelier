@@ -158,8 +158,7 @@ std::string GetAuthTokenFromAuthHeader(const std::string& auth_header) {
   return SplitAtFirst(auth_header, " ", true).second;
 }
 
-std::unique_ptr<base::DictionaryValue> ErrorInfoToJson(
-    const chromeos::Error& error) {
+std::unique_ptr<base::DictionaryValue> ErrorInfoToJson(const Error& error) {
   std::unique_ptr<base::DictionaryValue> output{new base::DictionaryValue};
   output->SetString(kErrorMessageKey, error.GetMessage());
   output->SetString(kErrorCodeKey, error.GetCode());
@@ -167,13 +166,12 @@ std::unique_ptr<base::DictionaryValue> ErrorInfoToJson(
 }
 
 // Creates JSON similar to GCD server error format.
-std::unique_ptr<base::DictionaryValue> ErrorToJson(
-    const chromeos::Error& error) {
+std::unique_ptr<base::DictionaryValue> ErrorToJson(const Error& error) {
   std::unique_ptr<base::DictionaryValue> output{ErrorInfoToJson(error)};
 
   // Optional debug information.
   std::unique_ptr<base::ListValue> errors{new base::ListValue};
-  for (const chromeos::Error* it = &error; it; it = it->GetInnerError()) {
+  for (const Error* it = &error; it; it = it->GetInnerError()) {
     std::unique_ptr<base::DictionaryValue> inner{ErrorInfoToJson(*it)};
     tracked_objects::Location location{it->GetLocation().function_name.c_str(),
                                        it->GetLocation().file_name.c_str(),
@@ -196,7 +194,7 @@ void SetState(const T& state, base::DictionaryValue* parent) {
   parent->Set(kErrorKey, ErrorToJson(*state.error()).release());
 }
 
-void ReturnError(const chromeos::Error& error,
+void ReturnError(const Error& error,
                  const PrivetHandler::RequestCallback& callback) {
   int code = http::kInternalServerError;
   for (const auto& it : kReasonToCode) {
@@ -216,17 +214,17 @@ void OnCommandRequestSucceeded(const PrivetHandler::RequestCallback& callback,
 }
 
 void OnCommandRequestFailed(const PrivetHandler::RequestCallback& callback,
-                            chromeos::Error* error) {
+                            Error* error) {
   if (error->HasError("gcd", "unknown_command")) {
-    chromeos::ErrorPtr new_error = error->Clone();
-    chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
-                           errors::kNotFound, "Unknown command ID");
+    ErrorPtr new_error = error->Clone();
+    Error::AddTo(&new_error, FROM_HERE, errors::kDomain, errors::kNotFound,
+                 "Unknown command ID");
     return ReturnError(*new_error, callback);
   }
   if (error->HasError("gcd", "access_denied")) {
-    chromeos::ErrorPtr new_error = error->Clone();
-    chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
-                           errors::kAccessDenied, error->GetMessage());
+    ErrorPtr new_error = error->Clone();
+    Error::AddTo(&new_error, FROM_HERE, errors::kDomain, errors::kAccessDenied,
+                 error->GetMessage());
     return ReturnError(*new_error, callback);
   }
   return ReturnError(*error, callback);
@@ -412,29 +410,29 @@ void PrivetHandler::HandleRequest(const std::string& api,
                                   const std::string& auth_header,
                                   const base::DictionaryValue* input,
                                   const RequestCallback& callback) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   if (!input) {
-    chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                           errors::kInvalidFormat, "Malformed JSON");
+    Error::AddTo(&error, FROM_HERE, errors::kDomain, errors::kInvalidFormat,
+                 "Malformed JSON");
     return ReturnError(*error, callback);
   }
   auto handler = handlers_.find(api);
   if (handler == handlers_.end()) {
-    chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                           errors::kNotFound, "Path not found");
+    Error::AddTo(&error, FROM_HERE, errors::kDomain, errors::kNotFound,
+                 "Path not found");
     return ReturnError(*error, callback);
   }
   if (auth_header.empty()) {
-    chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                           errors::kMissingAuthorization,
-                           "Authorization header must not be empty");
+    Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                 errors::kMissingAuthorization,
+                 "Authorization header must not be empty");
     return ReturnError(*error, callback);
   }
   std::string token = GetAuthTokenFromAuthHeader(auth_header);
   if (token.empty()) {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidAuthorization,
-        "Invalid authorization header: %s", auth_header.c_str());
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidAuthorization,
+                       "Invalid authorization header: %s", auth_header.c_str());
     return ReturnError(*error, callback);
   }
   UserInfo user_info;
@@ -442,27 +440,27 @@ void PrivetHandler::HandleRequest(const std::string& api,
     base::Time time;
     user_info = security_->ParseAccessToken(token, &time);
     if (user_info.scope() == AuthScope::kNone) {
-      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                   errors::kInvalidAuthorization,
-                                   "Invalid access token: %s", token.c_str());
+      Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                         errors::kInvalidAuthorization,
+                         "Invalid access token: %s", token.c_str());
       return ReturnError(*error, callback);
     }
     time += base::TimeDelta::FromSeconds(kAccessTokenExpirationSeconds);
     time +=
         base::TimeDelta::FromSeconds(kAccessTokenExpirationThresholdSeconds);
     if (time < base::Time::Now()) {
-      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                   errors::kAuthorizationExpired,
-                                   "Token expired: %s", token.c_str());
+      Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                         errors::kAuthorizationExpired, "Token expired: %s",
+                         token.c_str());
       return ReturnError(*error, callback);
     }
   }
 
   if (handler->second.first > user_info.scope()) {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidAuthorizationScope,
-        "Scope '%s' does not allow '%s'",
-        EnumToString(user_info.scope()).c_str(), api.c_str());
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidAuthorizationScope,
+                       "Scope '%s' does not allow '%s'",
+                       EnumToString(user_info.scope()).c_str(), api.c_str());
     return ReturnError(*error, callback);
   }
   (this->*handler->second.second)(*input, user_info, callback);
@@ -479,7 +477,7 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
                                const RequestCallback& callback) {
   base::DictionaryValue output;
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   std::string name;
   std::string model_id;
@@ -525,7 +523,7 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
 void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
                                        const UserInfo& user_info,
                                        const RequestCallback& callback) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   std::string pairing_str;
   input.GetString(kPairingKey, &pairing_str);
@@ -536,18 +534,18 @@ void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
   PairingType pairing;
   std::set<PairingType> modes = security_->GetPairingTypes();
   if (!StringToEnum(pairing_str, &pairing) || !ContainsKey(modes, pairing)) {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
-        kInvalidParamValueFormat, kPairingKey, pairing_str.c_str());
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidParams, kInvalidParamValueFormat,
+                       kPairingKey, pairing_str.c_str());
     return ReturnError(*error, callback);
   }
 
   CryptoType crypto;
   std::set<CryptoType> cryptos = security_->GetCryptoTypes();
   if (!StringToEnum(crypto_str, &crypto) || !ContainsKey(cryptos, crypto)) {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
-        kInvalidParamValueFormat, kCryptoKey, crypto_str.c_str());
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidParams, kInvalidParamValueFormat,
+                       kCryptoKey, crypto_str.c_str());
     return ReturnError(*error, callback);
   }
 
@@ -573,7 +571,7 @@ void PrivetHandler::HandlePairingConfirm(const base::DictionaryValue& input,
 
   std::string fingerprint;
   std::string signature;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   if (!security_->ConfirmPairing(id, commitment, &fingerprint, &signature,
                                  &error)) {
     return ReturnError(*error, callback);
@@ -591,7 +589,7 @@ void PrivetHandler::HandlePairingCancel(const base::DictionaryValue& input,
   std::string id;
   input.GetString(kPairingSessionIdKey, &id);
 
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   if (!security_->CancelPairing(id, &error))
     return ReturnError(*error, callback);
 
@@ -602,7 +600,7 @@ void PrivetHandler::HandlePairingCancel(const base::DictionaryValue& input,
 void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
                                const UserInfo& user_info,
                                const RequestCallback& callback) {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   std::string auth_code_type;
   input.GetString(kAuthModeKey, &auth_code_type);
@@ -615,16 +613,16 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
     max_auth_scope = GetAnonymousMaxScope(*cloud_, wifi_);
   } else if (auth_code_type == kAuthTypePairingValue) {
     if (!security_->IsValidPairingCode(auth_code)) {
-      chromeos::Error::AddToPrintf(
-          &error, FROM_HERE, errors::kDomain, errors::kInvalidAuthCode,
-          kInvalidParamValueFormat, kAuthCodeKey, auth_code.c_str());
+      Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                         errors::kInvalidAuthCode, kInvalidParamValueFormat,
+                         kAuthCodeKey, auth_code.c_str());
       return ReturnError(*error, callback);
     }
     max_auth_scope = AuthScope::kOwner;
   } else {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidAuthMode,
-        kInvalidParamValueFormat, kAuthModeKey, auth_code_type.c_str());
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidAuthMode, kInvalidParamValueFormat,
+                       kAuthModeKey, auth_code_type.c_str());
     return ReturnError(*error, callback);
   }
 
@@ -634,18 +632,16 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
   AuthScope requested_auth_scope =
       AuthScopeFromString(requested_scope, max_auth_scope);
   if (requested_auth_scope == AuthScope::kNone) {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidRequestedScope,
-        kInvalidParamValueFormat, kAuthRequestedScopeKey,
-        requested_scope.c_str());
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidRequestedScope, kInvalidParamValueFormat,
+                       kAuthRequestedScopeKey, requested_scope.c_str());
     return ReturnError(*error, callback);
   }
 
   if (requested_auth_scope > max_auth_scope) {
-    chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                 errors::kAccessDenied,
-                                 "Scope '%s' is not allowed",
-                                 EnumToString(requested_auth_scope).c_str());
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kAccessDenied, "Scope '%s' is not allowed",
+                       EnumToString(requested_auth_scope).c_str());
     return ReturnError(*error, callback);
   }
 
@@ -664,7 +660,7 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
                                      const UserInfo& user_info,
                                      const RequestCallback& callback) {
   std::string name;
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
   if (!cloud_->GetName(&name, &error))
     return ReturnError(*error, callback);
   input.GetString(kNameKey, &name);
@@ -683,16 +679,15 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
   const base::DictionaryValue* wifi = nullptr;
   if (input.GetDictionary(kWifiKey, &wifi)) {
     if (!wifi_ || wifi_->GetTypes().empty()) {
-      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                             errors::kSetupUnavailable,
-                             "WiFi setup unavailible");
+      Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                   errors::kSetupUnavailable, "WiFi setup unavailible");
       return ReturnError(*error, callback);
     }
     wifi->GetString(kSetupStartSsidKey, &ssid);
     if (ssid.empty()) {
-      chromeos::Error::AddToPrintf(
-          &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
-          kInvalidParamValueFormat, kSetupStartSsidKey, "");
+      Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                         errors::kInvalidParams, kInvalidParamValueFormat,
+                         kSetupStartSsidKey, "");
       return ReturnError(*error, callback);
     }
     wifi->GetString(kSetupStartPassKey, &passphrase);
@@ -702,9 +697,9 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
   if (input.GetDictionary(kGcdKey, &registration)) {
     registration->GetString(kSetupStartTicketIdKey, &ticket);
     if (ticket.empty()) {
-      chromeos::Error::AddToPrintf(
-          &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
-          kInvalidParamValueFormat, kSetupStartTicketIdKey, "");
+      Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                         errors::kInvalidParams, kInvalidParamValueFormat,
+                         kSetupStartTicketIdKey, "");
       return ReturnError(*error, callback);
     }
     registration->GetString(kSetupStartUserKey, &user);
@@ -723,7 +718,7 @@ void PrivetHandler::OnUpdateDeviceInfoDone(
     const std::string& ticket,
     const std::string& user,
     const RequestCallback& callback) const {
-  chromeos::ErrorPtr error;
+  ErrorPtr error;
 
   if (!ssid.empty() && !wifi_->ConfigureCredentials(ssid, passphrase, &error))
     return ReturnError(*error, callback);
@@ -803,10 +798,10 @@ void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
                                          const RequestCallback& callback) {
   std::string id;
   if (!input.GetString(kCommandsIdKey, &id)) {
-    chromeos::ErrorPtr error;
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
-        kInvalidParamValueFormat, kCommandsIdKey, id.c_str());
+    ErrorPtr error;
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidParams, kInvalidParamValueFormat,
+                       kCommandsIdKey, id.c_str());
     return ReturnError(*error, callback);
   }
   cloud_->GetCommand(id, user_info,
@@ -827,10 +822,10 @@ void PrivetHandler::HandleCommandsCancel(const base::DictionaryValue& input,
                                          const RequestCallback& callback) {
   std::string id;
   if (!input.GetString(kCommandsIdKey, &id)) {
-    chromeos::ErrorPtr error;
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
-        kInvalidParamValueFormat, kCommandsIdKey, id.c_str());
+    ErrorPtr error;
+    Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                       errors::kInvalidParams, kInvalidParamValueFormat,
+                       kCommandsIdKey, id.c_str());
     return ReturnError(*error, callback);
   }
   cloud_->CancelCommand(id, user_info,

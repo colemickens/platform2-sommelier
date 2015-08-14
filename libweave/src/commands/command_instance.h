@@ -12,7 +12,7 @@
 
 #include <base/macros.h>
 #include <base/observer_list.h>
-#include <chromeos/errors/error.h>
+#include <weave/error.h>
 #include <weave/command.h>
 
 #include "libweave/src/commands/prop_values.h"
@@ -53,9 +53,9 @@ class CommandInstance final : public Command {
   std::unique_ptr<base::DictionaryValue> GetProgress() const override;
   std::unique_ptr<base::DictionaryValue> GetResults() const override;
   bool SetProgress(const base::DictionaryValue& progress,
-                   chromeos::ErrorPtr* error) override;
+                   ErrorPtr* error) override;
   bool SetResults(const base::DictionaryValue& results,
-                  chromeos::ErrorPtr* error) override;
+                  ErrorPtr* error) override;
   void Abort() override;
   void Cancel() override;
   void Done() override;
@@ -78,7 +78,7 @@ class CommandInstance final : public Command {
       CommandOrigin origin,
       const CommandDictionary& dictionary,
       std::string* command_id,
-      chromeos::ErrorPtr* error);
+      ErrorPtr* error);
 
   // Sets the command ID (normally done by CommandQueue when the command
   // instance is added to it).
