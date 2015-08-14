@@ -1068,6 +1068,21 @@ TEST_F(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume) {
   metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
 }
 
+TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
+  const string& issue = ConnectionDiagnostics::kIssueIPCollision;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricConnectionDiagnosticsIssue,
+                            Metrics::kConnectionDiagnosticsIssueIPCollision,
+                            Metrics::kConnectionDiagnosticsIssueMax));
+  metrics_.NotifyConnectionDiagnosticsIssue(issue);
+}
+
+TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
+  const string& invalid_issue = "Invalid issue string.";
+  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(0);
+  metrics_.NotifyConnectionDiagnosticsIssue(invalid_issue);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

@@ -133,7 +133,8 @@ class ConnectionDiagnosticsTest : public Test {
         manager_(&control_, &dispatcher_, &metrics_, nullptr),
         device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         connection_(new NiceMock<MockConnection>(&device_info_)),
-        connection_diagnostics_(connection_, &dispatcher_, &device_info_,
+        connection_diagnostics_(connection_, &dispatcher_, &metrics_,
+                                &device_info_,
                                 callback_target_.result_callback()),
         portal_detector_(new NiceMock<MockPortalDetector>(connection_)) {}
   virtual ~ConnectionDiagnosticsTest() {}
@@ -393,6 +394,8 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kResultFailure);
     EXPECT_CALL(*icmp_session_, Start(IsSameIPAddress(address), _))
         .WillOnce(Return(false));
+    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
+                              ConnectionDiagnostics::kIssueInternalError));
     EXPECT_CALL(callback_target(),
                 ResultCallback(ConnectionDiagnostics::kIssueInternalError,
                                IsEventList(expected_events_)));
@@ -403,12 +406,13 @@ class ConnectionDiagnosticsTest : public Test {
                                 const IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultSuccess);
+    const string& issue =
+        ping_event_type == ConnectionDiagnostics::kTypePingGateway
+            ? ConnectionDiagnostics::kIssueGatewayUpstream
+            : ConnectionDiagnostics::kIssueHTTPBrokenPortal;
+    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
     EXPECT_CALL(callback_target(),
-                ResultCallback(
-                    ping_event_type == ConnectionDiagnostics::kTypePingGateway
-                        ? ConnectionDiagnostics::kIssueGatewayUpstream
-                        : ConnectionDiagnostics::kIssueHTTPBrokenPortal,
-                    IsEventList(expected_events_)));
+                ResultCallback(issue, IsEventList(expected_events_)));
     connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
                                                kNonEmptyResult);
   }
@@ -473,6 +477,8 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeFindRoute,
                      ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
+    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
+                              ConnectionDiagnostics::kIssueRouting));
     EXPECT_CALL(callback_target(),
                 ResultCallback(ConnectionDiagnostics::kIssueRouting,
                                IsEventList(expected_events_)));
@@ -511,12 +517,12 @@ class ConnectionDiagnosticsTest : public Test {
     msg.set_neighbor_status(
         RTNLMessage::NeighborStatus(NUD_REACHABLE, 0, NDA_DST));
     msg.SetAttribute(NDA_DST, address_queried.address());
-    EXPECT_CALL(
-        callback_target(),
-        ResultCallback(is_gateway
-                           ? ConnectionDiagnostics::kIssueGatewayNotResponding
-                           : ConnectionDiagnostics::kIssueServerNotResponding,
-                       IsEventList(expected_events_)));
+    const string& issue =
+        is_gateway ? ConnectionDiagnostics::kIssueGatewayNotResponding
+                   : ConnectionDiagnostics::kIssueServerNotResponding;
+    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
+    EXPECT_CALL(callback_target(),
+                ResultCallback(issue, IsEventList(expected_events_)));
     connection_diagnostics_.OnNeighborMsgReceived(address_queried, msg);
   }
 
@@ -559,6 +565,8 @@ class ConnectionDiagnosticsTest : public Test {
         ARPOP_REPLY, local_ip_address_,
         ByteString(string(kArpReplySenderMacAddressASCIIString), false),
         local_ip_address_, local_mac_address_);
+    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
+                              ConnectionDiagnostics::kIssueIPCollision));
     EXPECT_CALL(callback_target(),
                 ResultCallback(ConnectionDiagnostics::kIssueIPCollision,
                                IsEventList(expected_events_)));
@@ -583,16 +591,19 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypePortalDetection, diag_phase,
                      diag_result);
     if (diag_phase == ConnectionDiagnostics::kPhasePortalDetectionEndContent) {
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(diag_result == ConnectionDiagnostics::kResultSuccess
-                             ? ConnectionDiagnostics::kIssueNone
-                             : ConnectionDiagnostics::kIssueCaptivePortal,
-                         IsEventList(expected_events_)));
+      const string& issue = diag_result == ConnectionDiagnostics::kResultSuccess
+                                ? ConnectionDiagnostics::kIssueNone
+                                : ConnectionDiagnostics::kIssueCaptivePortal;
+      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
+      EXPECT_CALL(callback_target(),
+                  ResultCallback(issue, IsEventList(expected_events_)));
 
     } else if (diag_phase ==
                    ConnectionDiagnostics::kPhasePortalDetectionEndDNS &&
                diag_result == ConnectionDiagnostics::kResultFailure) {
+      EXPECT_CALL(metrics_,
+                  NotifyConnectionDiagnosticsIssue(
+                      ConnectionDiagnostics::kIssueDNSServerMisconfig));
       EXPECT_CALL(
           callback_target(),
           ResultCallback(ConnectionDiagnostics::kIssueDNSServerMisconfig,
@@ -642,8 +653,10 @@ class ConnectionDiagnosticsTest : public Test {
     }
 
     if (is_success) {
+      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(_)).Times(0);
       EXPECT_CALL(callback_target(), ResultCallback(_, _)).Times(0);
     } else {
+      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(expected_issue));
       EXPECT_CALL(
           callback_target(),
           ResultCallback(expected_issue, IsEventList(expected_events_)));
@@ -671,6 +684,9 @@ class ConnectionDiagnosticsTest : public Test {
       EXPECT_CALL(dispatcher_, PostTask(_));
     } else {
       error.Populate(Error::kOperationFailed);
+      EXPECT_CALL(metrics_,
+                  NotifyConnectionDiagnosticsIssue(
+                      ConnectionDiagnostics::kIssueDNSServerMisconfig));
       EXPECT_CALL(
           callback_target(),
           ResultCallback(ConnectionDiagnostics::kIssueDNSServerMisconfig,
@@ -694,9 +710,13 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.OnPingDNSServerComplete(0, kNonEmptyResult);
     if (retries_left) {
       EXPECT_CALL(dispatcher_, PostTask(_));
+      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(_)).Times(0);
       EXPECT_CALL(callback_target(), ResultCallback(_, _)).Times(0);
     } else {
       EXPECT_CALL(dispatcher_, PostTask(_)).Times(0);
+      EXPECT_CALL(metrics_,
+                  NotifyConnectionDiagnosticsIssue(
+                      ConnectionDiagnostics::kIssueDNSServerNoResponse));
       EXPECT_CALL(
           callback_target(),
           ResultCallback(ConnectionDiagnostics::kIssueDNSServerNoResponse,
@@ -719,12 +739,12 @@ class ConnectionDiagnosticsTest : public Test {
                                     IsSameIPAddress(address), _))
         .WillOnce(Return(success));
     if (success) {
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(is_gateway
-                             ? ConnectionDiagnostics::kIssueGatewayNotResponding
-                             : ConnectionDiagnostics::kIssueServerNotResponding,
-                         IsEventList(expected_events_)));
+      const string& issue =
+          is_gateway ? ConnectionDiagnostics::kIssueGatewayNotResponding
+                     : ConnectionDiagnostics::kIssueServerNotResponding;
+      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
+      EXPECT_CALL(callback_target(),
+                  ResultCallback(issue, IsEventList(expected_events_)));
     } else {
       // Checking for IP collision.
       EXPECT_CALL(dispatcher_, PostTask(_));
@@ -736,6 +756,7 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeIPCollisionCheck,
                      ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
+    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(expected_issue));
     EXPECT_CALL(callback_target(),
                 ResultCallback(expected_issue, IsEventList(expected_events_)));
     connection_diagnostics_.OnArpRequestTimeout();
@@ -746,21 +767,23 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeNeighborTableLookup,
                      ConnectionDiagnostics::kPhaseEnd,
                      ConnectionDiagnostics::kResultFailure);
+    string issue;
     if (is_timeout) {
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(
-              is_gateway ? ConnectionDiagnostics::kIssueGatewayNoNeighborEntry
-                         : ConnectionDiagnostics::kIssueServerNoNeighborEntry,
-              IsEventList(expected_events_)));
+      issue = is_gateway ? ConnectionDiagnostics::kIssueGatewayNoNeighborEntry
+                         : ConnectionDiagnostics::kIssueServerNoNeighborEntry;
+      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
+      EXPECT_CALL(callback_target(),
+                  ResultCallback(issue, IsEventList(expected_events_)));
       connection_diagnostics_.OnNeighborTableRequestTimeout(address_queried);
     } else {
+      issue =
+          is_gateway
+              ? ConnectionDiagnostics::kIssueGatewayNeighborEntryNotConnected
+              : ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected;
+      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
       EXPECT_CALL(
           callback_target(),
-          ResultCallback(is_gateway ? ConnectionDiagnostics::
-                                          kIssueGatewayNeighborEntryNotConnected
-                                    : ConnectionDiagnostics::
-                                          kIssueServerNeighborEntryNotConnected,
+          ResultCallback(issue,
                          IsEventList(expected_events_)));
       RTNLMessage msg(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
                       0, connection_->interface_index(),
@@ -780,7 +803,7 @@ class ConnectionDiagnosticsTest : public Test {
   ByteString local_mac_address_;
   CallbackTarget callback_target_;
   MockControl control_;
-  MockMetrics metrics_;
+  NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<NiceMock<MockConnection>> connection_;

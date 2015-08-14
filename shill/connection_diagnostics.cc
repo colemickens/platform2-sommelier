@@ -20,6 +20,7 @@
 #include "shill/icmp_session.h"
 #include "shill/icmp_session_factory.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
@@ -118,18 +119,18 @@ const char ConnectionDiagnostics::kIssueInternalError[] =
     "The connection diagnostics encountered an internal failure.";
 const char ConnectionDiagnostics::kIssueGatewayNoNeighborEntry[] =
     "No neighbor table entry for the gateway. Either the gateway does not "
-    "exist on the local network, or there are link layer issues";
+    "exist on the local network, or there are link layer issues.";
 const char ConnectionDiagnostics::kIssueServerNoNeighborEntry[] =
     "No neighbor table entry for the web server. Either the web server does "
-    "not exist on the local network, or there are link layer issues";
+    "not exist on the local network, or there are link layer issues.";
 const char ConnectionDiagnostics::kIssueGatewayNeighborEntryNotConnected[] =
     "Neighbor table entry for the gateway is not in a connected state. Either "
     "the web server does not exist on the local network, or there are link "
-    "layer issues";
+    "layer issues.";
 const char ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected[] =
     "Neighbor table entry for the web server is not in a connected state. "
     "Either the web server does not exist on the local network, or there are "
-    "link layer issues";
+    "link layer issues.";
 const int ConnectionDiagnostics::kMaxDNSRetries = 2;
 const int ConnectionDiagnostics::kRouteQueryTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kArpReplyTimeoutSeconds = 1;
@@ -137,10 +138,11 @@ const int ConnectionDiagnostics::kNeighborTableRequestTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kDNSTimeoutSeconds = 3;
 
 ConnectionDiagnostics::ConnectionDiagnostics(
-    ConnectionRefPtr connection, EventDispatcher* dispatcher,
+    ConnectionRefPtr connection, EventDispatcher* dispatcher, Metrics* metrics,
     const DeviceInfo* device_info, const ResultCallback& result_callback)
     : weak_ptr_factory_(this),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       connection_(connection),
@@ -267,6 +269,7 @@ void ConnectionDiagnostics::AddEventWithMessage(Type type, Phase phase,
 void ConnectionDiagnostics::ReportResultAndStop(const string& issue) {
   SLOG(this, 3) << __func__;
 
+  metrics_->NotifyConnectionDiagnosticsIssue(issue);
   if (!result_callback_.is_null()) {
     SLOG(this, 4) << EventsToString(diagnostic_events_);
     LOG(INFO) << "Connection diagnostics completed. Connection issue: "

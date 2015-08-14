@@ -29,6 +29,7 @@ class EventDispatcher;
 class HTTPURL;
 class IcmpSession;
 class IcmpSessionFactory;
+class Metrics;
 class RoutingTable;
 struct RoutingTableEntry;
 class RTNLHandler;
@@ -162,8 +163,31 @@ class ConnectionDiagnostics {
   using ResultCallback =
       base::Callback<void(const std::string&, const std::vector<Event>&)>;
 
+  // Metrics::NotifyConnectionDiagnosticsIssue depends on these kIssue strings.
+  // Any changes to these strings should be synced with that Metrics function.
+  static const char kIssueIPCollision[];
+  static const char kIssueRouting[];
+  static const char kIssueHTTPBrokenPortal[];
+  static const char kIssueDNSServerMisconfig[];
+  static const char kIssueDNSServerNoResponse[];
+  static const char kIssueNoDNSServersConfigured[];
+  static const char kIssueDNSServersInvalid[];
+  static const char kIssueNone[];
+  static const char kIssueCaptivePortal[];
+  static const char kIssueGatewayUpstream[];
+  static const char kIssueGatewayNotResponding[];
+  static const char kIssueServerNotResponding[];
+  static const char kIssueGatewayArpFailed[];
+  static const char kIssueServerArpFailed[];
+  static const char kIssueInternalError[];
+  static const char kIssueGatewayNoNeighborEntry[];
+  static const char kIssueServerNoNeighborEntry[];
+  static const char kIssueGatewayNeighborEntryNotConnected[];
+  static const char kIssueServerNeighborEntryNotConnected[];
+
   ConnectionDiagnostics(ConnectionRefPtr connection,
                         EventDispatcher* dispatcher,
+                        Metrics* metrics,
                         const DeviceInfo* device_info,
                         const ResultCallback& result_callback);
   ~ConnectionDiagnostics();
@@ -192,25 +216,6 @@ class ConnectionDiagnostics {
  private:
   friend class ConnectionDiagnosticsTest;
 
-  static const char kIssueIPCollision[];
-  static const char kIssueRouting[];
-  static const char kIssueHTTPBrokenPortal[];
-  static const char kIssueDNSServerMisconfig[];
-  static const char kIssueDNSServerNoResponse[];
-  static const char kIssueNoDNSServersConfigured[];
-  static const char kIssueDNSServersInvalid[];
-  static const char kIssueNone[];
-  static const char kIssueCaptivePortal[];
-  static const char kIssueGatewayUpstream[];
-  static const char kIssueGatewayNotResponding[];
-  static const char kIssueServerNotResponding[];
-  static const char kIssueGatewayArpFailed[];
-  static const char kIssueServerArpFailed[];
-  static const char kIssueInternalError[];
-  static const char kIssueGatewayNoNeighborEntry[];
-  static const char kIssueServerNoNeighborEntry[];
-  static const char kIssueGatewayNeighborEntryNotConnected[];
-  static const char kIssueServerNeighborEntryNotConnected[];
   static const int kMaxDNSRetries;
   static const int kRouteQueryTimeoutSeconds;
   static const int kArpReplyTimeoutSeconds;
@@ -317,6 +322,7 @@ class ConnectionDiagnostics {
 
   base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
+  Metrics* metrics_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 

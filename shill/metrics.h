@@ -267,6 +267,33 @@ class Metrics {
     kCorruptedProfileMax
   };
 
+  enum ConnectionDiagnosticsIssue {
+    kConnectionDiagnosticsIssueIPCollision = 0,
+    kConnectionDiagnosticsIssueRouting = 1,
+    kConnectionDiagnosticsIssueHTTPBrokenPortal = 2,
+    kConnectionDiagnosticsIssueDNSServerMisconfig = 3,
+    kConnectionDiagnosticsIssueDNSServerNoResponse = 4,
+    kConnectionDiagnosticsIssueNoDNSServersConfigured = 5,
+    kConnectionDiagnosticsIssueDNSServersInvalid = 6,
+    kConnectionDiagnosticsIssueNone = 7,
+    kConnectionDiagnosticsIssueCaptivePortal = 8,
+    kConnectionDiagnosticsIssueGatewayUpstream = 9,
+    kConnectionDiagnosticsIssueGatewayNotResponding = 10,
+    kConnectionDiagnosticsIssueServerNotResponding = 11,
+    kConnectionDiagnosticsIssueGatewayArpFailed = 12,
+    kConnectionDiagnosticsIssueServerArpFailed = 13,
+    kConnectionDiagnosticsIssueInternalError = 14,
+    kConnectionDiagnosticsIssueGatewayNoNeighborEntry = 15,
+    kConnectionDiagnosticsIssueServerNoNeighborEntry = 16,
+    kConnectionDiagnosticsIssueGatewayNeighborEntryNotConnected = 17,
+    kConnectionDiagnosticsIssueServerNeighborEntryNotConnected = 18,
+    kConnectionDiagnosticsIssuePlaceholder1 = 19,
+    kConnectionDiagnosticsIssuePlaceholder2 = 20,
+    kConnectionDiagnosticsIssuePlaceholder3 = 21,
+    kConnectionDiagnosticsIssuePlaceholder4 = 22,
+    kConnectionDiagnosticsIssueMax
+  };
+
   enum VpnDriver {
     kVpnDriverOpenVpn = 0,
     kVpnDriverL2tpIpsec = 1,
@@ -737,6 +764,9 @@ class Metrics {
   // Device removal event.
   static const char kMetricDeviceRemovedEvent[];
 
+  // Connection diagnostics issue.
+  static const char kMetricConnectionDiagnosticsIssue[];
+
   explicit Metrics(EventDispatcher* dispatcher);
   virtual ~Metrics();
 
@@ -1040,6 +1070,11 @@ class Metrics {
   // Note: this will only be called if wake on WiFi is supported and enabled.
   virtual void NotifyBeforeSuspendActions(bool is_connected,
                                           bool in_dark_resume);
+
+  // Notifies this object that connection diagnostics have been performed, and
+  // the connection issue that was diagnosed is |issue|.
+  virtual void NotifyConnectionDiagnosticsIssue(
+      const std::string& issue);
 
  private:
   friend class MetricsTest;
