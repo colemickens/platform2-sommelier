@@ -75,7 +75,7 @@ void SetDefaultDeviceRegistration(base::DictionaryValue* data) {
 
 std::string GetFormField(const std::string& data, const std::string& name) {
   EXPECT_FALSE(data.empty());
-  for (const auto& i : chromeos::data_encoding::WebParamsDecode(data)) {
+  for (const auto& i : WebParamsDecode(data)) {
     if (i.first == name)
       return i.second;
   }

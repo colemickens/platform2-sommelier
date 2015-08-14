@@ -18,7 +18,6 @@
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
-#include <chromeos/data_encoding.h>
 #include <weave/http_client.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
@@ -27,6 +26,7 @@
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/data_encoding.h"
 #include "libweave/src/http_constants.h"
 #include "libweave/src/json_error_codes.h"
 #include "libweave/src/notification/xmpp_channel.h"
@@ -75,18 +75,17 @@ void ParseGCDError(const base::DictionaryValue* json,
   }
 }
 
-std::string AppendQueryParams(
-    const std::string& url,
-    const chromeos::data_encoding::WebParamList& params) {
+std::string AppendQueryParams(const std::string& url,
+                              const WebParamList& params) {
   CHECK_EQ(std::string::npos, url.find_first_of("?#"));
   if (params.empty())
     return url;
-  return url + '?' + chromeos::data_encoding::WebParamsEncode(params);
+  return url + '?' + WebParamsEncode(params);
 }
 
 std::string BuildURL(const std::string& url,
                      const std::string& subpath,
-                     const chromeos::data_encoding::WebParamList& params) {
+                     const WebParamList& params) {
   std::string result = url;
   if (!result.empty() && result.back() != '/' && !subpath.empty()) {
     CHECK_NE('/', subpath.front());
@@ -142,8 +141,7 @@ class RequestSender final {
 
   void SetFormData(
       const std::vector<std::pair<std::string, std::string>>& data) {
-    SetData(chromeos::data_encoding::WebParamsEncode(data),
-            http::kWwwFormUrlEncoded);
+    SetData(WebParamsEncode(data), http::kWwwFormUrlEncoded);
   }
 
   void SetJsonData(const base::Value& json) {
@@ -256,13 +254,13 @@ DeviceRegistrationInfo::~DeviceRegistrationInfo() = default;
 
 std::string DeviceRegistrationInfo::GetServiceURL(
     const std::string& subpath,
-    const chromeos::data_encoding::WebParamList& params) const {
+    const WebParamList& params) const {
   return BuildURL(config_->service_url(), subpath, params);
 }
 
 std::string DeviceRegistrationInfo::GetDeviceURL(
     const std::string& subpath,
-    const chromeos::data_encoding::WebParamList& params) const {
+    const WebParamList& params) const {
   CHECK(!config_->device_id().empty()) << "Must have a valid device ID";
   return BuildURL(config_->service_url(),
                   "devices/" + config_->device_id() + "/" + subpath, params);
@@ -270,7 +268,7 @@ std::string DeviceRegistrationInfo::GetDeviceURL(
 
 std::string DeviceRegistrationInfo::GetOAuthURL(
     const std::string& subpath,
-    const chromeos::data_encoding::WebParamList& params) const {
+    const WebParamList& params) const {
   return BuildURL(config_->oauth_url(), subpath, params);
 }
 

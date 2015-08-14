@@ -17,12 +17,12 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <chromeos/data_encoding.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 #include <weave/task_runner.h>
 
 #include "libweave/external/crypto/p224_spake.h"
+#include "libweave/src/data_encoding.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/openssl_utils.h"
 
@@ -159,7 +159,7 @@ std::string SecurityManager::CreateAccessToken(const UserInfo& user_info,
                                                const base::Time& time) {
   chromeos::SecureBlob data(CreateTokenData(user_info, time));
   chromeos::Blob hash(HmacSha256(secret_, data));
-  return chromeos::data_encoding::Base64Encode(chromeos::SecureBlob::Combine(
+  return Base64Encode(chromeos::SecureBlob::Combine(
       chromeos::SecureBlob(hash.begin(), hash.end()), data));
 }
 
@@ -167,8 +167,7 @@ std::string SecurityManager::CreateAccessToken(const UserInfo& user_info,
 UserInfo SecurityManager::ParseAccessToken(const std::string& token,
                                            base::Time* time) const {
   chromeos::Blob decoded;
-  if (!chromeos::data_encoding::Base64Decode(token, &decoded) ||
-      decoded.size() <= kSha256OutputSize) {
+  if (!Base64Decode(token, &decoded) || decoded.size() <= kSha256OutputSize) {
     return UserInfo{};
   }
   chromeos::SecureBlob data(decoded.begin() + kSha256OutputSize, decoded.end());
@@ -193,7 +192,7 @@ bool SecurityManager::IsValidPairingCode(const std::string& auth_code) const {
   if (is_security_disabled_)
     return true;
   chromeos::Blob auth_decoded;
-  if (!chromeos::data_encoding::Base64Decode(auth_code, &auth_decoded))
+  if (!Base64Decode(auth_code, &auth_decoded))
     return false;
   for (const auto& session : confirmed_sessions_) {
     if (auth_decoded ==
@@ -292,7 +291,7 @@ bool SecurityManager::StartPairing(PairingType mode,
       base::TimeDelta::FromMinutes(kPairingExpirationTimeMinutes));
 
   *session_id = session;
-  *device_commitment = chromeos::data_encoding::Base64Encode(commitment);
+  *device_commitment = Base64Encode(commitment);
   LOG(INFO) << "Pairing code for session " << *session_id << " is " << code;
   // TODO(vitalybuka): Handle case when device can't start multiple pairing
   // simultaneously and implement throttling to avoid brute force attack.
@@ -319,7 +318,7 @@ bool SecurityManager::ConfirmPairing(const std::string& session_id,
   CHECK(!certificate_fingerprint_.empty());
 
   chromeos::Blob commitment;
-  if (!chromeos::data_encoding::Base64Decode(client_commitment, &commitment)) {
+  if (!Base64Decode(client_commitment, &commitment)) {
     ClosePendingSession(session_id);
     chromeos::Error::AddToPrintf(
         error, FROM_HERE, errors::kDomain, errors::kInvalidFormat,
@@ -339,12 +338,11 @@ bool SecurityManager::ConfirmPairing(const std::string& session_id,
   std::string key = session->second->GetKey();
   VLOG(3) << "KEY " << base::HexEncode(key.data(), key.size());
 
-  *fingerprint =
-      chromeos::data_encoding::Base64Encode(certificate_fingerprint_);
+  *fingerprint = Base64Encode(certificate_fingerprint_);
   chromeos::Blob cert_hmac =
       HmacSha256(chromeos::SecureBlob(session->second->GetKey()),
                  certificate_fingerprint_);
-  *signature = chromeos::data_encoding::Base64Encode(cert_hmac);
+  *signature = Base64Encode(cert_hmac);
   confirmed_sessions_.emplace(session->first, std::move(session->second));
   task_runner_->PostDelayedTask(
       FROM_HERE,

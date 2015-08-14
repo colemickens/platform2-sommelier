@@ -7,11 +7,11 @@
 #include <string>
 
 #include <base/bind.h>
-#include <chromeos/data_encoding.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
 
 #include "libweave/src/backoff_entry.h"
+#include "libweave/src/data_encoding.h"
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/notification_parser.h"
 #include "libweave/src/notification/xml_node.h"
@@ -40,7 +40,7 @@ std::string BuildXmppAuthenticateCommand(const std::string& account,
       "auth:allow-non-google-login='true' "
       "auth:client-uses-full-bind-result='true' "
       "xmlns:auth='http://www.google.com/talk/protocol/auth'>" +
-      chromeos::data_encoding::Base64Encode(credentials) + "</auth>";
+      Base64Encode(credentials) + "</auth>";
   return msg;
 }
 
@@ -278,7 +278,7 @@ void XmppChannel::HandleMessageStanza(std::unique_ptr<XmlNode> stanza) {
   }
   std::string data = node->text();
   std::string json_data;
-  if (!chromeos::data_encoding::Base64Decode(data, &json_data)) {
+  if (!Base64Decode(data, &json_data)) {
     LOG(WARNING) << "Failed to decode base64-encoded message payload: " << data;
     return;
   }

@@ -18,7 +18,6 @@
 #include <base/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
-#include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
 #include <weave/cloud.h>
 #include <weave/config.h>
@@ -28,6 +27,7 @@
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
 #include "libweave/src/commands/command_manager.h"
+#include "libweave/src/data_encoding.h"
 #include "libweave/src/notification/notification_channel.h"
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/pull_channel.h"
@@ -102,28 +102,25 @@ class DeviceRegistrationInfo : public Cloud,
   // appended to the base URL which is normally
   //    https://www.googleapis.com/clouddevices/v1/".
   // If |params| are specified, each key-value pair is formatted using
-  // chromeos::data_encoding::WebParamsEncode() and appended to URL as a query
+  // WebParamsEncode() and appended to URL as a query
   // string.
   // So, calling:
   //    GetServiceURL("ticket", {{"key","apiKey"}})
   // will return something like:
   //    https://www.googleapis.com/clouddevices/v1/ticket?key=apiKey
-  std::string GetServiceURL(
-      const std::string& subpath = {},
-      const chromeos::data_encoding::WebParamList& params = {}) const;
+  std::string GetServiceURL(const std::string& subpath = {},
+                            const WebParamList& params = {}) const;
 
   // Returns a service URL to access the registered device on GCD server.
   // The base URL used to construct the full URL looks like this:
   //    https://www.googleapis.com/clouddevices/v1/devices/<device_id>/
-  std::string GetDeviceURL(
-      const std::string& subpath = {},
-      const chromeos::data_encoding::WebParamList& params = {}) const;
+  std::string GetDeviceURL(const std::string& subpath = {},
+                           const WebParamList& params = {}) const;
 
   // Similar to GetServiceURL, GetOAuthURL() returns a URL of OAuth 2.0 server.
   // The base URL used is https://accounts.google.com/o/oauth2/.
-  std::string GetOAuthURL(
-      const std::string& subpath = {},
-      const chromeos::data_encoding::WebParamList& params = {}) const;
+  std::string GetOAuthURL(const std::string& subpath = {},
+                          const WebParamList& params = {}) const;
 
   // Starts GCD device if credentials available.
   void Start();

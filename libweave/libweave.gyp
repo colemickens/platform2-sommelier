@@ -17,10 +17,14 @@
     {
       'target_name': 'libweave_external',
       'type': 'static_library',
+      'include_dirs': [
+        '../libweave/third_party/modp_b64/modp_b64/',
+      ],
       'sources': [
         'external/crypto/p224.cc',
         'external/crypto/p224_spake.cc',
         'external/crypto/sha2.cc',
+        'third_party/modp_b64/modp_b64.cc',
       ],
     },
     {
@@ -43,6 +47,7 @@
         'src/commands/schema_constants.cc',
         'src/commands/schema_utils.cc',
         'src/commands/user_role.cc',
+        'src/data_encoding.cc',
         'src/device_manager.cc',
         'src/device_registration_info.cc',
         'src/http_constants.cc',
@@ -132,6 +137,7 @@
             'src/commands/command_queue_unittest.cc',
             'src/commands/object_schema_unittest.cc',
             'src/commands/schema_utils_unittest.cc',
+            'src/data_encoding_unittest.cc',
             'src/device_registration_info_unittest.cc',
             'src/notification/notification_parser_unittest.cc',
             'src/notification/xml_node_unittest.cc',
