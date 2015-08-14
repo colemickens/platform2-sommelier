@@ -12,10 +12,12 @@
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
+#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/process_manager.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"
 
@@ -38,50 +40,54 @@ static string ObjectID(ChromeosDaemon* d) { return "(shill_daemon)"; }
 
 
 ChromeosDaemon::ChromeosDaemon(const Settings& settings,
-                               Config* config,
-                               ControlInterface* control)
-    : config_(config),
-      control_(control),
-      metrics_(new Metrics(&dispatcher_)),
-      rtnl_handler_(RTNLHandler::GetInstance()),
-      routing_table_(RoutingTable::GetInstance()),
-      dhcp_provider_(DHCPProvider::GetInstance()),
-#if !defined(DISABLE_WIFI)
-      netlink_manager_(NetlinkManager::GetInstance()),
-      callback80211_metrics_(metrics_.get()),
-#endif  // DISABLE_WIFI
-      manager_(new Manager(control_.get(),
-                           &dispatcher_,
-                           metrics_.get(),
-                           &glib_,
-                           config->GetRunDirectory(),
-                           config->GetStorageDirectory(),
-                           config->GetUserStorageDirectory())) {
-  ApplySettings(settings);
-}
+                               Config* config)
+    : settings_(settings), config_(config) {}
 
 ChromeosDaemon::~ChromeosDaemon() {}
 
-void ChromeosDaemon::ApplySettings(const Settings& settings) {
-  for (const auto& device_name : settings.device_blacklist) {
+void ChromeosDaemon::Init(ControlInterface* control,
+                          EventDispatcher* dispatcher) {
+  control_.reset(control);
+  dispatcher_ = dispatcher;
+  metrics_.reset(new Metrics(dispatcher_));
+  rtnl_handler_ = RTNLHandler::GetInstance();
+  routing_table_ = RoutingTable::GetInstance();
+  dhcp_provider_ = DHCPProvider::GetInstance();
+  process_manager_ = ProcessManager::GetInstance();
+#if !defined(DISABLE_WIFI)
+  netlink_manager_ = NetlinkManager::GetInstance();
+  callback80211_metrics_.reset(new Callback80211Metrics(metrics_.get()));
+#endif
+  manager_.reset(new Manager(control_.get(),
+                             dispatcher_,
+                             metrics_.get(),
+                             &glib_,
+                             config_->GetRunDirectory(),
+                             config_->GetStorageDirectory(),
+                             config_->GetUserStorageDirectory()));
+  ApplySettings();
+}
+
+void ChromeosDaemon::ApplySettings() {
+  for (const auto& device_name : settings_.device_blacklist) {
     manager_->AddDeviceToBlackList(device_name);
   }
   Error error;
-  manager_->SetTechnologyOrder(settings.default_technology_order, &error);
+  manager_->SetTechnologyOrder(settings_.default_technology_order, &error);
   CHECK(error.IsSuccess());  // Command line should have been validated.
-  manager_->SetIgnoreUnknownEthernet(settings.ignore_unknown_ethernet);
-  if (settings.use_portal_list) {
-    manager_->SetStartupPortalList(settings.portal_list);
+  manager_->SetIgnoreUnknownEthernet(settings_.ignore_unknown_ethernet);
+  if (settings_.use_portal_list) {
+    manager_->SetStartupPortalList(settings_.portal_list);
   }
-  if (settings.passive_mode) {
+  if (settings_.passive_mode) {
     manager_->SetPassiveMode();
   }
-  manager_->SetPrependDNSServers(settings.prepend_dns_servers);
-  if (settings.minimum_mtu) {
-    manager_->SetMinimumMTU(settings.minimum_mtu);
+  manager_->SetPrependDNSServers(settings_.prepend_dns_servers);
+  if (settings_.minimum_mtu) {
+    manager_->SetMinimumMTU(settings_.minimum_mtu);
   }
-  manager_->SetAcceptHostnameFrom(settings.accept_hostname_from);
-  manager_->SetDHCPv6EnabledDevices(settings.dhcpv6_enabled_devices);
+  manager_->SetAcceptHostnameFrom(settings_.accept_hostname_from);
+  manager_->SetDHCPv6EnabledDevices(settings_.dhcpv6_enabled_devices);
 }
 
 void ChromeosDaemon::Quit() {
@@ -119,13 +125,12 @@ void ChromeosDaemon::TerminationActionsCompleted(const Error& error) {
   //                     -> DeviceInfo::Stop
   //                       -> Cellular::~Cellular
   //           -> Manager::RemoveTerminationAction
-  dispatcher_.PostTask(
+  dispatcher_->PostTask(
       Bind(&ChromeosDaemon::StopAndReturnToMain, Unretained(this)));
 }
 
 void ChromeosDaemon::StopAndReturnToMain() {
   Stop();
-  dispatcher_.PostTask(base::MessageLoop::QuitClosure());
 }
 
 void ChromeosDaemon::Start() {
@@ -135,8 +140,8 @@ void ChromeosDaemon::Start() {
       RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
       RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT);
   routing_table_->Start();
-  dhcp_provider_->Init(control_.get(), &dispatcher_, &glib_, metrics_.get());
-
+  dhcp_provider_->Init(control_.get(), dispatcher_, metrics_.get());
+  process_manager_->Init(dispatcher_);
 #if !defined(DISABLE_WIFI)
   if (netlink_manager_) {
     netlink_manager_->Init();
@@ -153,7 +158,7 @@ void ChromeosDaemon::Start() {
     // (which are registered by message sequence number).
     netlink_manager_->AddBroadcastHandler(Bind(
         &Callback80211Metrics::CollectDisconnectStatistics,
-        callback80211_metrics_.AsWeakPtr()));
+        callback80211_metrics_->AsWeakPtr()));
   }
 #endif  // DISABLE_WIFI
 

@@ -13,13 +13,14 @@
 
 namespace shill {
 
-ChromeosDBusDaemon::ChromeosDBusDaemon(const Settings& settings,
+// TODO(zqiu): ObjectManager is not being exported as of now. To export
+// ObjectManager, initialize DBusServiceDaemon with a valid path.
+ChromeosDBusDaemon::ChromeosDBusDaemon(const base::Closure& startup_callback,
+                                       const Settings& settings,
                                        Config* config)
-    : DBusServiceDaemon(kFlimflamServiceName, kFlimflamServicePath),
-      ChromeosDaemon(
-          settings,
-          config,
-          new ChromeosDBusControl(object_manager_->AsWeakPtr(), bus_)) {}
+    : DBusServiceDaemon(kFlimflamServiceName, ""),
+      ChromeosDaemon(settings, config),
+      startup_callback_(startup_callback) {}
 
 void ChromeosDBusDaemon::RunMessageLoop() {
   DBusServiceDaemon::Run();
@@ -32,8 +33,8 @@ int ChromeosDBusDaemon::OnInit() {
     return return_code;
   }
 
-  // Start manager.
-  ChromeosDaemon::Start();
+  // Signal that we've acquired all resources.
+  startup_callback_.Run();
 
   return EX_OK;
 }
@@ -45,11 +46,33 @@ void ChromeosDBusDaemon::OnShutdown(int* return_code) {
 
 void ChromeosDBusDaemon::RegisterDBusObjectsAsync(
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+  // Put the Init call here instead of the constructor so that
+  // ChromeosDBusControl initialization is performed after the |bus_| is
+  // initialized.
+  // |bus_| is initialized in chromeos::DBusServiceDaemon::OnInit()
+  Init(new ChromeosDBusControl(bus_, &dispatcher_), &dispatcher_);
+
   // Register "org.chromium.flimflam.Manager" interface.
   // The daemon will request the ownership of the DBus service
   // "org.chromium.flimflam" after Manager interface registration is
   // completed.
-  manager()->RegisterAsync(sequencer);
+  manager()->RegisterAsync(
+      base::Bind(
+          &ChromeosDBusDaemon::OnDBusServiceRegistered,
+          base::Unretained(this),
+          sequencer->GetHandler("Manager.RegisterAsync() failed.", true)));
+}
+
+void ChromeosDBusDaemon::OnDBusServiceRegistered(
+    const base::Callback<void(bool)>& completion_action, bool success) {
+  // The daemon will take over the ownership of the DBus service in this
+  // callback.  The daemon will crash if registration failed.
+  completion_action.Run(success);
+
+  // We can start the manager now that we have ownership of the D-Bus service.
+  // Doing so earlier would allow the manager to emit signals before service
+  // ownership was acquired.
+  ChromeosDaemon::Start();
 }
 
 }  // namespace shill

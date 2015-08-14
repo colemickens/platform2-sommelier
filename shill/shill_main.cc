@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
@@ -19,14 +18,15 @@
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
 
-#include "shill/dbus_control.h"
+#include "shill/chromeos_daemon.h"
 #include "shill/error.h"
-#include "shill/glib_io_handler_factory.h"
 #include "shill/logging.h"
-#include "shill/net/io_handler_factory_container.h"
-#include "shill/shared_dbus_connection.h"
 #include "shill/shill_config.h"
-#include "shill/shill_daemon.h"
+#include "shill/technology.h"
+
+#if !defined(DISABLE_CHROMEOS_DBUS)
+#include "shill/dbus/chromeos_dbus_daemon.h"
+#endif
 
 using base::FilePath;
 using std::string;
@@ -105,7 +105,7 @@ const char* kDefaultTechnologyOrder = "vpn,ethernet,wifi,wimax,cellular";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
-void SetupLogging(bool foreground, char* daemon_name) {
+void SetupLogging(bool foreground, const char* daemon_name) {
   int log_flags = 0;
   log_flags |= chromeos::kLogToSyslog;
   log_flags |= chromeos::kLogHeader;
@@ -121,7 +121,7 @@ void SetupLogging(bool foreground, char* daemon_name) {
     logger_command_line.push_back(const_cast<char*>("--priority"));
     logger_command_line.push_back(const_cast<char*>("daemon.err"));
     logger_command_line.push_back(const_cast<char*>("--tag"));
-    logger_command_line.push_back(daemon_name);
+    logger_command_line.push_back(const_cast<char*>(daemon_name));
     logger_command_line.push_back(nullptr);
 
     chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
@@ -144,17 +144,12 @@ void SetupLogging(bool foreground, char* daemon_name) {
   }
 }
 
-gboolean ExitSigHandler(gpointer data) {
-  LOG(INFO) << "Shutting down due to received signal.";
-
-  shill::Daemon* daemon = reinterpret_cast<shill::Daemon*>(data);
-  daemon->Quit();
-  return TRUE;
+void OnStartup(const char *daemon_name, base::CommandLine* cl) {
+  SetupLogging(cl->HasSwitch(switches::kForeground), daemon_name);
+  shill::SetLogLevelFromCommandLine(cl);
 }
 
-
 int main(int argc, char** argv) {
-  base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
@@ -167,20 +162,7 @@ int main(int argc, char** argv) {
   if (!cl->HasSwitch(switches::kForeground))
     PLOG_IF(FATAL, daemon(nochdir, noclose) == -1) << "Failed to daemonize";
 
-  SetupLogging(cl->HasSwitch(switches::kForeground), argv[0]);
-  shill::SetLogLevelFromCommandLine(cl);
-
-  // Overwrite default IOHandlerFactory with the glib version of it. This needs
-  // to be placed before any reference to the IOHandlerFactory.
-  shill::IOHandlerFactoryContainer::GetInstance()->SetIOHandlerFactory(
-        new shill::GlibIOHandlerFactory());
-
-  // TODO(pstew): This should be chosen based on config
-  shill::SharedDBusConnection::GetInstance()->Init();
-  shill::DBusControl* dbus_control = new shill::DBusControl();
-  dbus_control->Init();
-
-  shill::Daemon::Settings settings;
+  shill::ChromeosDaemon::Settings settings;
   if (cl->HasSwitch(switches::kTechnologyOrder)) {
     shill::Error error;
     string order_flag = cl->GetSwitchValueASCII(
@@ -241,19 +223,18 @@ int main(int argc, char** argv) {
 
   shill::Config config;
 
-  // Passes ownership of dbus_control.
-  shill::Daemon daemon(&config, dbus_control);
-  daemon.ApplySettings(settings);
+  std::unique_ptr<shill::ChromeosDaemon> daemon;
 
-  g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);
-  g_unix_signal_add(SIGTERM, ExitSigHandler, &daemon);
+#if !defined(DISABLE_CHROMEOS_DBUS)
+  daemon.reset(
+      new shill::ChromeosDBusDaemon(
+          base::Bind(&OnStartup, argv[0], cl), settings, &config));
+#else
+  // TODO(zqiu): use default stub control interface.
+#error Control interface type not specified.
+#endif  // DISABLE_CHROMEOS_DBUS
 
-  // Catch but ignore SIGPIPE signals we receive if we write to the logger
-  // process after it exits.  GLib cannot handle this signal number, so use
-  // signal() directly.
-  signal(SIGPIPE, SIG_IGN);
-
-  daemon.Run();
+  daemon->RunMessageLoop();
 
   LOG(INFO) << "Process exiting.";
 

@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 
 #if !defined(DISABLE_WIFI)
@@ -22,8 +21,10 @@ class Config;
 class ControlInterface;
 class DHCPProvider;
 class Error;
+class EventDispatcher;
 class Manager;
 class Metrics;
+class ProcessManager;
 class RoutingTable;
 class RTNLHandler;
 
@@ -53,26 +54,29 @@ class ChromeosDaemon {
   };
 
   ChromeosDaemon(const Settings& settings,
-                 Config* config,
-                 ControlInterface* control);
+                 Config* config);
   ~ChromeosDaemon();
 
   // Runs the message loop.
   virtual void RunMessageLoop() = 0;
 
   // Starts the termination actions in the manager.
-  void Quit();
+  virtual void Quit();
 
  protected:
+  // Initialize daemon with specific control interface.
+  void Init(ControlInterface* control, EventDispatcher* dispatcher);
+
   Manager* manager() const { return manager_.get(); }
 
   void Start();
 
  private:
   friend class ChromeosDaemonTest;
+  friend class ChromeosDaemonForTest;
 
   // Apply run-time settings to the manager.
-  void ApplySettings(const Settings& settings);
+  void ApplySettings();
 
   // Called when the termination actions are completed.
   void TerminationActionsCompleted(const Error& error);
@@ -83,17 +87,19 @@ class ChromeosDaemon {
 
   void Stop();
 
+  Settings settings_;
   Config* config_;
   std::unique_ptr<ControlInterface> control_;
-  EventDispatcher dispatcher_;
+  EventDispatcher* dispatcher_;
   GLib glib_;
   std::unique_ptr<Metrics> metrics_;
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;
   DHCPProvider* dhcp_provider_;
+  ProcessManager* process_manager_;
 #if !defined(DISABLE_WIFI)
   NetlinkManager* netlink_manager_;
-  Callback80211Metrics callback80211_metrics_;
+  std::unique_ptr<Callback80211Metrics> callback80211_metrics_;
 #endif  // DISABLE_WIFI
   std::unique_ptr<Manager> manager_;
 };

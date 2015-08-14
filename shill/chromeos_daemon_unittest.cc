@@ -18,11 +18,13 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_process_manager.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/ndisc.h"
 #include "shill/shill_test_config.h"
+#include "shill/test_event_dispatcher.h"
 
 #if !defined(DISABLE_WIFI)
 #include "shill/net/mock_netlink_manager.h"
@@ -43,40 +45,44 @@ using ::testing::_;
 
 namespace shill {
 
-// TODO(zqiu): extend chromeos::Daemon for initializing the message loop once
-// we remove the message loop initialization in EventDispatcher.
-class TestChromeosDaemon : public ChromeosDaemon {
+class ChromeosDaemonForTest : public ChromeosDaemon {
  public:
-  TestChromeosDaemon(const Settings& setttings,
-                     Config* config,
-                     ControlInterface* control)
-      : ChromeosDaemon(Settings(), config, control) {}
-  virtual ~TestChromeosDaemon() {}
+  ChromeosDaemonForTest(const Settings& setttings,
+                        Config* config,
+                        EventDispatcher* dispatcher)
+      : ChromeosDaemon(Settings(), config) {
+    Init(new MockControl(), dispatcher);
+  }
+  virtual ~ChromeosDaemonForTest() {}
 
-  MOCK_METHOD0(RunMessageLoop, void());
+  void RunMessageLoop() override { dispatcher_->DispatchForever(); }
+
+  void Quit() override {
+    ChromeosDaemon::Quit();
+    dispatcher_->PostTask(base::MessageLoop::QuitClosure());
+  }
 };
 
 class ChromeosDaemonTest : public Test {
  public:
   ChromeosDaemonTest()
-      : daemon_(ChromeosDaemon::Settings(), &config_, new MockControl()),
-        metrics_(new MockMetrics(&daemon_.dispatcher_)),
+      : daemon_(ChromeosDaemon::Settings(), &config_, &dispatcher_),
+        metrics_(new MockMetrics(daemon_.dispatcher_)),
         manager_(new MockManager(daemon_.control_.get(),
-                                 &daemon_.dispatcher_,
+                                 daemon_.dispatcher_,
                                  metrics_,
                                  &daemon_.glib_)),
-        dispatcher_(&daemon_.dispatcher_),
-        device_info_(daemon_.control_.get(), dispatcher_, metrics_,
-                     daemon_.manager_.get()) {
+        device_info_(daemon_.control_.get(), daemon_.dispatcher_,
+                     metrics_, manager_) {
   }
   virtual ~ChromeosDaemonTest() {}
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor
     ASSERT_NE(nullptr, daemon_.config_);
-    ASSERT_NE(nullptr, daemon_.control_.get());
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;
     daemon_.dhcp_provider_ = &dhcp_provider_;
+    daemon_.process_manager_ = &process_manager_;
     daemon_.metrics_.reset(metrics_);  // Passes ownership
     daemon_.manager_.reset(manager_);  // Passes ownership
 
@@ -95,30 +101,30 @@ class ChromeosDaemonTest : public Test {
     daemon_.Stop();
   }
 
-  // TODO(zqiu): temporary until we remove message loop initialization in
-  // EventDispatcher.
   void RunDaemon() {
-    dispatcher_->DispatchForever();
+    daemon_.RunMessageLoop();
   }
 
   void ApplySettings(const ChromeosDaemon::Settings& settings) {
-    daemon_.ApplySettings(settings);
+    daemon_.settings_ = settings;
+    daemon_.ApplySettings();
   }
 
   MOCK_METHOD0(TerminationAction, void());
 
  protected:
+  EventDispatcherForTest dispatcher_;
   TestConfig config_;
-  TestChromeosDaemon daemon_;
+  ChromeosDaemonForTest daemon_;
   MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
   MockDHCPProvider dhcp_provider_;
+  MockProcessManager process_manager_;
   MockMetrics* metrics_;
   MockManager* manager_;
 #if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
 #endif  // DISABLE_WIFI
-  EventDispatcher* dispatcher_;
   DeviceInfo device_info_;
 };
 
@@ -136,7 +142,8 @@ TEST_F(ChromeosDaemonTest, StartStop) {
       RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
       RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
-  EXPECT_CALL(dhcp_provider_, Init(_, _, _, _));
+  EXPECT_CALL(dhcp_provider_, Init(_,  _, _));
+  EXPECT_CALL(process_manager_, Init(_));
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();
   Mock::VerifyAndClearExpectations(metrics_);
@@ -161,7 +168,7 @@ TEST_F(ChromeosDaemonTest, Quit) {
                                       Unretained(this)));
 
   // Run Daemon::Quit() after the daemon starts running.
-  dispatcher_->PostTask(Bind(&ChromeosDaemon::Quit, Unretained(&daemon_)));
+  dispatcher_.PostTask(Bind(&ChromeosDaemon::Quit, Unretained(&daemon_)));
 
   RunDaemon();
 }
