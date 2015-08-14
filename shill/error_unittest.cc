@@ -6,10 +6,8 @@
 
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
-#include <dbus-c++/error.h>
+#include <chromeos/errors/error_codes.h>
 #include <gtest/gtest.h>
-
-#include "shill/dbus_adaptor.h"
 
 using testing::Test;
 
@@ -66,18 +64,6 @@ TEST_F(ErrorTest, CopyFrom) {
   EXPECT_EQ(e.message(), copy.message());
 }
 
-TEST_F(ErrorTest, ToDBusError) {
-  DBus::Error dbus_error;
-  ASSERT_FALSE(dbus_error.is_set());
-  Error().ToDBusError(&dbus_error);
-  ASSERT_FALSE(dbus_error.is_set());
-  static const char kMessage[] = "Test error message";
-  Error(Error::kPermissionDenied, kMessage).ToDBusError(&dbus_error);
-  ASSERT_TRUE(dbus_error.is_set());
-  EXPECT_STREQ(kErrorResultPermissionDenied, dbus_error.name());
-  EXPECT_STREQ(kMessage, dbus_error.message());
-}
-
 TEST_F(ErrorTest, ToChromeosError) {
   chromeos::ErrorPtr chromeos_error;
   EXPECT_EQ(nullptr, chromeos_error.get());
@@ -86,8 +72,8 @@ TEST_F(ErrorTest, ToChromeosError) {
   static const std::string kMessage = "Test error message";
   Error(Error::kPermissionDenied, kMessage).ToChromeosError(&chromeos_error);
   EXPECT_NE(nullptr, chromeos_error.get());
-  EXPECT_EQ("shill", chromeos_error->GetDomain());
-  EXPECT_EQ("permission_denied", chromeos_error->GetCode());
+  EXPECT_EQ(chromeos::errors::dbus::kDomain, chromeos_error->GetDomain());
+  EXPECT_EQ(kErrorResultPermissionDenied, chromeos_error->GetCode());
   EXPECT_EQ(kMessage, chromeos_error->GetMessage());
 }
 

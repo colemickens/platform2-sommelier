@@ -70,10 +70,6 @@ class Error {
 
   void CopyFrom(const Error& error);
 
-  // Sets the DBus |error| and returns true if Error represents failure.
-  // Leaves |error| unchanged, and returns false, otherwise.
-  bool ToDBusError(::DBus::Error* error) const;
-
   // Sets the Chromeos |error| and returns true if Error represents failure.
   // Leaves error unchanged, and returns false otherwise.
   bool ToChromeosError(chromeos::ErrorPtr* error) const;
@@ -101,8 +97,6 @@ class Error {
   };
 
   static const Info kInfos[kNumErrors];
-  static const Info kChromeosInfos[kNumErrors];
-  static const char kChromeosErrorDomain[];
 
   Type type_;
   std::string message_;
