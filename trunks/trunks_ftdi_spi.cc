@@ -139,7 +139,7 @@ bool TrunksFtdiSpi::Init() {
   if (mpsse_)
     return true;
 
-  mpsse_ = MPSSE(SPI0, TWO_MHZ, MSB);
+  mpsse_ = MPSSE(SPI0, ONE_MHZ, MSB);
   if (!mpsse_)
     return false;
 
@@ -245,6 +245,9 @@ std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
     rv.push_back(c);
     ReadTpmSts(&status);
   } while ((status & expected_status_bits) == expected_status_bits);
+
+  /* Move the TPM back to idle state. */
+  WriteTpmSts(commandReady);
 
   return rv;
 }
