@@ -53,6 +53,7 @@ class KeyValueStore {
   bool ContainsUint8(const std::string& name) const;
   bool ContainsUint8s(const std::string& name) const;
   bool ContainsUint32s(const std::string& name) const;
+  bool Contains(const std::string& name) const;
 
   bool GetBool(const std::string& name) const;
   const std::vector<std::vector<uint8_t>>& GetByteArrays(
@@ -70,6 +71,7 @@ class KeyValueStore {
   uint8_t GetUint8(const std::string& name) const;
   const std::vector<uint8_t>& GetUint8s(const std::string& name) const;
   const std::vector<uint32_t>& GetUint32s(const std::string& name) const;
+  const chromeos::Any& Get(const std::string& name) const;
 
   // TODO(zqiu): remove type specific set functions and add a generic set
   // function instead.  This way, we don't need to add new functions every
@@ -91,6 +93,7 @@ class KeyValueStore {
   void SetUint8(const std::string& name, uint8_t value);
   void SetUint8s(const std::string& name, const std::vector<uint8_t>& value);
   void SetUint32s(const std::string& name, const std::vector<uint32_t>& value);
+  void Set(const std::string& name, const chromeos::Any& value);
 
   // TODO(zqiu): remove type specific remove functions and add a generic remove
   // function instead.
@@ -106,6 +109,7 @@ class KeyValueStore {
   void RemoveUint8(const std::string& name);
   void RemoveUint8s(const std::string& name);
   void RemoveUint32s(const std::string& name);
+  void Remove(const std::string& name);
 
   // If |name| is in this store returns its value, otherwise returns
   // |default_value|.

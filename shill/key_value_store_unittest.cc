@@ -21,6 +21,17 @@ class KeyValueStoreTest : public Test {
   KeyValueStore store_;
 };
 
+TEST_F(KeyValueStoreTest, Any) {
+  const string kKey("foo");
+  const string kValue("baz");
+  EXPECT_FALSE(store_.Contains(kKey));
+  store_.Set(kKey, chromeos::Any(kValue));
+  EXPECT_TRUE(store_.Contains(kKey));
+  EXPECT_EQ(kValue, store_.Get(kKey).Get<string>());
+  store_.Remove(kKey);
+  EXPECT_FALSE(store_.Contains(kKey));
+}
+
 TEST_F(KeyValueStoreTest, Bool) {
   const string kKey("foo");
   const bool kDefaultValue = true;

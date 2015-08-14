@@ -108,6 +108,10 @@ bool KeyValueStore::ContainsUint32s(const string& name) const {
       properties_.find(name)->second.GetType() == typeid(vector<uint32_t>);
 }
 
+bool KeyValueStore::Contains(const string& name) const {
+  return ContainsKey(properties_, name);
+}
+
 bool KeyValueStore::GetBool(const string& name) const {
   const auto it(properties_.find(name));
   // TODO(zqiu): Replace typeid comparison with chromeos::Any::IsTypeCompatible.
@@ -209,6 +213,12 @@ const vector<uint32_t>& KeyValueStore::GetUint32s(const string& name) const {
   return it->second.Get<vector<uint32_t>>();
 }
 
+const chromeos::Any& KeyValueStore::Get(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end());
+  return it->second;
+}
+
 void KeyValueStore::SetBool(const string& name, bool value) {
   properties_[name] = chromeos::Any(value);
 }
@@ -271,6 +281,10 @@ void KeyValueStore::SetUint32s(const string& name,
   properties_[name] = chromeos::Any(value);
 }
 
+void KeyValueStore::Set(const string& name, const chromeos::Any& value) {
+  properties_[name] = value;
+}
+
 void KeyValueStore::RemoveByteArrays(const string& name) {
   properties_.erase(name);
 }
@@ -316,6 +330,10 @@ void KeyValueStore::RemoveUint8s(const string& name) {
 }
 
 void KeyValueStore::RemoveUint32s(const string& name) {
+  properties_.erase(name);
+}
+
+void KeyValueStore::Remove(const string& name) {
   properties_.erase(name);
 }
 
