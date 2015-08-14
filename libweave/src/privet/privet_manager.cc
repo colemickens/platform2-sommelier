@@ -17,7 +17,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/strings/string_utils.h>
 #include <weave/network.h>
 
 #include "libweave/src/device_registration_info.h"
@@ -27,6 +26,7 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/privet_handler.h"
 #include "libweave/src/privet/publisher.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 namespace privet {
@@ -123,9 +123,7 @@ void Manager::PrivetRequestHandler(
   const base::DictionaryValue* dictionary = &empty;
 
   std::string content_type =
-      chromeos::string_utils::SplitAtFirst(
-          request.GetFirstHeader(http::kContentType), ";")
-          .first;
+      SplitAtFirst(request.GetFirstHeader(http::kContentType), ";", true).first;
   if (content_type == http::kJson) {
     value.reset(base::JSONReader::Read(data).release());
     if (value)

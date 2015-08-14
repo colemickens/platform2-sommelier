@@ -12,11 +12,11 @@
 #include <base/macros.h>
 #include <base/values.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/strings/string_utils.h>
 
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/schema_utils.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 
@@ -134,9 +134,8 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
                 chromeos::ErrorPtr* error) const override {
     const T& v = static_cast<const TypedValueBase<T>&>(value).GetValue();
     if (v < this->limit_.value) {
-      return this->ReportErrorLessThan(
-          error, chromeos::string_utils::ToString(v),
-          chromeos::string_utils::ToString(this->limit_.value));
+      return this->ReportErrorLessThan(error, std::to_string(v),
+                                       std::to_string(this->limit_.value));
     }
     return true;
   }
@@ -176,9 +175,8 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
                 chromeos::ErrorPtr* error) const override {
     const T& v = static_cast<const TypedValueBase<T>&>(value).GetValue();
     if (v > this->limit_.value)
-      return this->ReportErrorGreaterThan(
-          error, chromeos::string_utils::ToString(v),
-          chromeos::string_utils::ToString(this->limit_.value));
+      return this->ReportErrorGreaterThan(error, std::to_string(v),
+                                          std::to_string(this->limit_.value));
     return true;
   }
 

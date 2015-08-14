@@ -10,11 +10,11 @@
 
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/strings/string_utils.h>
 #include <gtest/gtest.h>
 
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/object_schema.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 
@@ -72,7 +72,6 @@ class FakeDispatcher {
   // Get the comma-separated list of command IDs currently accumulated in the
   // command queue_.
   std::string GetIDs() const {
-    using chromeos::string_utils::Join;
     return Join(",", std::vector<std::string>(ids_.begin(), ids_.end()));
   }
 
@@ -136,8 +135,8 @@ TEST_F(CommandQueueTest, Dispatch) {
   queue_.Add(CreateDummyCommandInstance("base.reboot", id1));
   queue_.Add(CreateDummyCommandInstance("base.reboot", id2));
   std::set<std::string> ids{id1, id2};  // Make sure they are sorted properly.
-  std::string expected_set = chromeos::string_utils::Join(
-      ",", std::vector<std::string>(ids.begin(), ids.end()));
+  std::string expected_set =
+      Join(",", std::vector<std::string>(ids.begin(), ids.end()));
   EXPECT_EQ(expected_set, dispatch.GetIDs());
   Remove(id1);
   EXPECT_EQ(id2, dispatch.GetIDs());

@@ -19,7 +19,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/strings/string_utils.h>
 #include "libweave/external/crypto/p224_spake.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -102,7 +101,7 @@ class SecurityManagerTest : public testing::Test {
     std::vector<uint8_t> device_commitment;
     ASSERT_TRUE(Base64Decode(device_commitment_base64, &device_commitment));
     spake.ProcessMessage(
-        chromeos::string_utils::GetBytesAsString(device_commitment));
+        std::string(device_commitment.begin(), device_commitment.end()));
 
     const std::string& key = spake.GetUnverifiedKey();
     std::vector<uint8_t> auth_code{

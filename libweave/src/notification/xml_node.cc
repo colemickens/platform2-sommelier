@@ -5,7 +5,8 @@
 #include "libweave/src/notification/xml_node.h"
 
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 
@@ -61,10 +62,9 @@ const XmlNode* XmlNode::FindChildHelper(
     const std::string& name_path,
     bool recursive,
     std::vector<const XmlNode*>* children) const {
-  std::string name;
-  std::string rest_of_path;
-  chromeos::string_utils::SplitAtFirst(name_path, "/", &name, &rest_of_path,
-                                       false);
+  auto parts = SplitAtFirst(name_path, "/", false);
+  const std::string& name = parts.first;
+  const std::string& rest_of_path = parts.second;
   for (const auto& child : children_) {
     const XmlNode* found_node = nullptr;
     if (child->name() == name) {

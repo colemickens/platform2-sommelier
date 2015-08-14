@@ -9,8 +9,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
 
+#include "libweave/src/string_utils.h"
 #include "libweave/third_party/modp_b64/modp_b64/modp_b64.h"
 
 namespace weave {
@@ -90,17 +90,16 @@ std::string WebParamsEncode(const WebParamList& params,
   for (const auto& p : params) {
     std::string key = UrlEncode(p.first.c_str(), encodeSpaceAsPlus);
     std::string value = UrlEncode(p.second.c_str(), encodeSpaceAsPlus);
-    pairs.push_back(chromeos::string_utils::Join("=", key, value));
+    pairs.push_back(Join("=", key, value));
   }
 
-  return chromeos::string_utils::Join("&", pairs);
+  return Join("&", pairs);
 }
 
 WebParamList WebParamsDecode(const std::string& data) {
   WebParamList result;
-  std::vector<std::string> params = chromeos::string_utils::Split(data, "&");
-  for (const auto& p : params) {
-    auto pair = chromeos::string_utils::SplitAtFirst(p, "=");
+  for (const auto& p : Split(data, "&", true, true)) {
+    auto pair = SplitAtFirst(p, "=", true);
     result.emplace_back(UrlDecode(pair.first.c_str()),
                         UrlDecode(pair.second.c_str()));
   }

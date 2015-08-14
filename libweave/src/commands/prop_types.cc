@@ -11,7 +11,6 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/strings/string_utils.h>
 
 #include "libweave/src/commands/object_schema.h"
 #include "libweave/src/commands/prop_values.h"

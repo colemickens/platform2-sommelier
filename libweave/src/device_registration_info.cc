@@ -16,7 +16,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/strings/string_utils.h>
 #include <weave/http_client.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
@@ -31,6 +30,7 @@
 #include "libweave/src/json_error_codes.h"
 #include "libweave/src/notification/xmpp_channel.h"
 #include "libweave/src/states/state_manager.h"
+#include "libweave/src/string_utils.h"
 #include "libweave/src/utils.h"
 
 namespace weave {
@@ -175,9 +175,8 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
     chromeos::ErrorPtr* error) {
   // Make sure we have a correct content type. Do not try to parse
   // binary files, or HTML output. Limit to application/json and text/plain.
-  auto content_type =
-      chromeos::string_utils::SplitAtFirst(response.GetContentType(), ";")
-          .first;
+  std::string content_type =
+      SplitAtFirst(response.GetContentType(), ";", true).first;
 
   if (content_type != http::kJson && content_type != http::kPlain) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::json::kDomain,
@@ -890,8 +889,7 @@ void DeviceRegistrationInfo::NotifyCommandAborted(const std::string& command_id,
                           EnumToString(CommandStatus::kAborted));
   if (error) {
     command_patch.SetString(commands::attributes::kCommand_ErrorCode,
-                            chromeos::string_utils::Join(
-                                ":", error->GetDomain(), error->GetCode()));
+                            Join(":", error->GetDomain(), error->GetCode()));
     std::vector<std::string> messages;
     const chromeos::Error* current_error = error.get();
     while (current_error) {
@@ -899,7 +897,7 @@ void DeviceRegistrationInfo::NotifyCommandAborted(const std::string& command_id,
       current_error = current_error->GetInnerError();
     }
     command_patch.SetString(commands::attributes::kCommand_ErrorMessage,
-                            chromeos::string_utils::Join(";", messages));
+                            Join(";", messages));
   }
   UpdateCommand(command_id, command_patch, base::Bind(&base::DoNothing),
                 base::Bind(&base::DoNothing));

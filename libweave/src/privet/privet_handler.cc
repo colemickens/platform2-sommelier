@@ -15,7 +15,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
-#include <chromeos/strings/string_utils.h>
 #include <weave/enum_to_string.h>
 
 #include "libweave/src/http_constants.h"
@@ -25,6 +24,7 @@
 #include "libweave/src/privet/identity_delegate.h"
 #include "libweave/src/privet/security_delegate.h"
 #include "libweave/src/privet/wifi_delegate.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 namespace privet {
@@ -155,10 +155,7 @@ AuthScope AuthScopeFromString(const std::string& scope, AuthScope auto_scope) {
 }
 
 std::string GetAuthTokenFromAuthHeader(const std::string& auth_header) {
-  std::string name;
-  std::string value;
-  chromeos::string_utils::SplitAtFirst(auth_header, " ", &name, &value);
-  return value;
+  return SplitAtFirst(auth_header, " ", true).second;
 }
 
 std::unique_ptr<base::DictionaryValue> ErrorInfoToJson(

@@ -18,13 +18,13 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/strings/string_utils.h>
 #include <weave/task_runner.h>
 
 #include "libweave/external/crypto/p224_spake.h"
 #include "libweave/src/data_encoding.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/openssl_utils.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 namespace privet {
@@ -49,7 +49,7 @@ std::string CreateTokenData(const UserInfo& user_info, const base::Time& time) {
 // Splits string of "scope:id:time" format.
 UserInfo SplitTokenData(const std::string& token, base::Time* time) {
   const UserInfo kNone;
-  auto parts = chromeos::string_utils::Split(token, kTokenDelimeter);
+  auto parts = Split(token, kTokenDelimeter, false, false);
   if (parts.size() != 3)
     return kNone;
   int scope = 0;
@@ -300,7 +300,7 @@ bool SecurityManager::StartPairing(PairingType mode,
   // simultaneously and implement throttling to avoid brute force attack.
   if (!on_start_.is_null()) {
     on_start_.Run(session, mode,
-                  chromeos::string_utils::GetStringAsBytes(code));
+                  std::vector<uint8_t>{code.begin(), code.end()});
   }
 
   return true;

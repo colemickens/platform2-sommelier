@@ -9,11 +9,11 @@
 #include <base/logging.h>
 #include <base/values.h>
 #include <chromeos/key_value_store.h>
-#include <chromeos/strings/string_utils.h>
 
 #include "libweave/src/json_error_codes.h"
 #include "libweave/src/states/error_codes.h"
 #include "libweave/src/states/state_change_queue_interface.h"
+#include "libweave/src/string_utils.h"
 #include "libweave/src/utils.h"
 
 namespace weave {
@@ -108,10 +108,11 @@ bool StateManager::SetPropertyValue(const std::string& full_property_name,
                                     const base::Value& value,
                                     const base::Time& timestamp,
                                     chromeos::ErrorPtr* error) {
-  std::string package_name;
-  std::string property_name;
-  bool split = chromeos::string_utils::SplitAtFirst(
-      full_property_name, ".", &package_name, &property_name);
+  auto parts = SplitAtFirst(full_property_name, ".", true);
+  const std::string& package_name = parts.first;
+  const std::string& property_name = parts.second;
+  const bool split = (full_property_name.find(".") != std::string::npos);
+
   if (full_property_name.empty() || (split && property_name.empty())) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::state::kDomain,
                            errors::state::kPropertyNameMissing,

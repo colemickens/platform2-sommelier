@@ -8,6 +8,7 @@
 
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 
@@ -54,11 +55,10 @@ bool Constraint::ReportErrorGreaterThan(chromeos::ErrorPtr* error,
 bool Constraint::ReportErrorNotOneOf(chromeos::ErrorPtr* error,
                                      const std::string& val,
                                      const std::vector<std::string>& values) {
-  chromeos::Error::AddToPrintf(
-      error, FROM_HERE, errors::commands::kDomain,
-      errors::commands::kOutOfRange,
-      "Value %s is invalid. Expected one of [%s]", val.c_str(),
-      chromeos::string_utils::Join(",", values).c_str());
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                               errors::commands::kOutOfRange,
+                               "Value %s is invalid. Expected one of [%s]",
+                               val.c_str(), Join(",", values).c_str());
   return false;
 }
 

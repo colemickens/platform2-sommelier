@@ -9,11 +9,11 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/strings/string_utils.h>
 #include <weave/enum_to_string.h>
 
 #include "libweave/src/storage_impls.h"
 #include "libweave/src/storage_interface.h"
+#include "libweave/src/string_utils.h"
 
 namespace {
 
@@ -195,8 +195,7 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   std::string modes_str;
   if (store.GetString(config_keys::kPairingModes, &modes_str)) {
     std::set<PairingType> pairing_modes;
-    for (const std::string& mode :
-         chromeos::string_utils::Split(modes_str, ",", true, true)) {
+    for (const std::string& mode : Split(modes_str, ",", true, true)) {
       PairingType pairing_mode;
       CHECK(StringToEnum(mode, &pairing_mode));
       pairing_modes.insert(pairing_mode);

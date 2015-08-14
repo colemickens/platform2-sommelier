@@ -14,6 +14,7 @@
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 
@@ -23,10 +24,10 @@ namespace {
 // Generates an error if the string identifies an unknown type.
 std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
                                          chromeos::ErrorPtr* error) {
-  std::string primary_type;
-  std::string array_type;
-  chromeos::string_utils::SplitAtFirst(type_name, ".", &primary_type,
-                                       &array_type, false);
+  auto parts = SplitAtFirst(type_name, ".", false);
+  const std::string& primary_type = parts.first;
+  const std::string& array_type = parts.second;
+
   std::unique_ptr<PropType> prop;
   ValueType type;
   if (PropType::GetTypeFromTypeString(primary_type, &type)) {

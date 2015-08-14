@@ -5,11 +5,11 @@
 #include "libweave/src/commands/command_dictionary.h"
 
 #include <base/values.h>
-#include <chromeos/strings/string_utils.h>
 #include <weave/enum_to_string.h>
 
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 
@@ -64,8 +64,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         return false;
       }
       // Construct the compound command name as "pkg_name.cmd_name".
-      std::string full_command_name =
-          chromeos::string_utils::Join(".", package_name, command_name);
+      std::string full_command_name = Join(".", package_name, command_name);
 
       const ObjectSchema* base_parameters_def = nullptr;
       const ObjectSchema* base_progress_def = nullptr;
@@ -226,9 +225,10 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
     CHECK(parameters);
     // Progress and results are not part of public commandDefs.
 
-    auto cmd_name_parts = chromeos::string_utils::SplitAtFirst(pair.first, ".");
-    std::string package_name = cmd_name_parts.first;
-    std::string command_name = cmd_name_parts.second;
+    auto parts = SplitAtFirst(pair.first, ".", true);
+    const std::string& package_name = parts.first;
+    const std::string& command_name = parts.second;
+
     base::DictionaryValue* package = nullptr;
     if (!dict->GetDictionaryWithoutPathExpansion(package_name, &package)) {
       // If this is the first time we encounter this package, create a JSON

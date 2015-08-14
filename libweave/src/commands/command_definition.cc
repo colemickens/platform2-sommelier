@@ -7,9 +7,9 @@
 #include <vector>
 
 #include <chromeos/errors/error.h>
-#include <chromeos/strings/string_utils.h>
 
 #include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/string_utils.h"
 
 namespace weave {
 
@@ -29,7 +29,7 @@ bool CommandDefinition::Visibility::FromString(const std::string& str,
   if (str == commands::attributes::kCommand_Visibility_None)
     return true;
 
-  for (const std::string& value : chromeos::string_utils::Split(str, ",")) {
+  for (const std::string& value : Split(str, ",", true, true)) {
     if (value == commands::attributes::kCommand_Visibility_Local) {
       local = true;
     } else if (value == commands::attributes::kCommand_Visibility_Cloud) {
