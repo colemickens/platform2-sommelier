@@ -6,6 +6,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'libudev',
+        'libfirewalld-client',
       ],
     },
   },
@@ -47,20 +48,6 @@
         'udev_scopers.cc',
         'usb_subsystem_udev_rule.cc',
       ],
-      'actions': [
-        {
-          'action_name': 'generate-firewalld-proxies',
-          'variables': {
-            'dbus_service_config': '<(platform2_root)/firewalld/dbus_bindings/dbus-service-config.json',
-            'mock_output_file': 'include/firewalld/dbus-mocks.h',
-            'proxy_output_file': 'include/firewalld/dbus-proxies.h',
-          },
-          'sources': [
-            '../firewalld/dbus_bindings/org.chromium.Firewalld.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-      ],
     },
     {
       'target_name': 'permission_broker',
@@ -75,6 +62,11 @@
         {
           'target_name': 'permission_broker_unittest',
           'type': 'executable',
+          'variables': {
+            'deps': [
+              'libfirewalld-client-test',
+            ],
+          },
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libpermission_broker'],
           'sources': [
