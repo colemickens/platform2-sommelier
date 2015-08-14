@@ -7,9 +7,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_writer.h>
-#include <chromeos/bind_lambda.h>
 #include <gtest/gtest.h>
 
+#include "libweave/src/bind_lambda.h"
 #include "libweave/src/commands/unittest_utils.h"
 
 namespace weave {

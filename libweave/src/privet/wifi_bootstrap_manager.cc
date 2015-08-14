@@ -6,12 +6,12 @@
 
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 #include <weave/enum_to_string.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
 
+#include "libweave/src/bind_lambda.h"
 #include "libweave/src/privet/constants.h"
 
 namespace weave {

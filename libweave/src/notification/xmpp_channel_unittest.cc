@@ -8,9 +8,10 @@
 #include <queue>
 
 #include <base/test/simple_test_clock.h>
-#include <chromeos/bind_lambda.h>
 #include <gtest/gtest.h>
 #include <weave/mock_task_runner.h>
+
+#include "libweave/src/bind_lambda.h"
 
 using testing::StrictMock;
 

@@ -4,9 +4,9 @@
 
 #include "libweave/src/states/state_change_queue.h"
 
-#include <chromeos/bind_lambda.h>
 #include <gtest/gtest.h>
 
+#include "libweave/src/bind_lambda.h"
 #include "libweave/src/commands/unittest_utils.h"
 
 namespace weave {

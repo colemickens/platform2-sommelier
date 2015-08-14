@@ -7,11 +7,11 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
-#include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 #include <gtest/gtest.h>
 #include <weave/mock_http_client.h>
 
+#include "libweave/src/bind_lambda.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/unittest_utils.h"
 #include "libweave/src/http_constants.h"

@@ -7,11 +7,11 @@
 #include <map>
 #include <memory>
 
-#include <chromeos/bind_lambda.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <weave/mock_task_runner.h>
 
+#include "libweave/src/bind_lambda.h"
 #include "libweave/src/notification/xml_node.h"
 #include "libweave/src/notification/xmpp_channel.h"
 #include "libweave/src/notification/xmpp_stream_parser.h"

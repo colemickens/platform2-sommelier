@@ -15,13 +15,13 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 #include <weave/http_client.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
 
+#include "libweave/src/bind_lambda.h"
 #include "libweave/src/commands/cloud_command_proxy.h"
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_manager.h"
