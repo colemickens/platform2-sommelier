@@ -13,7 +13,8 @@ extern "C" {
 }
 
 #include <base/lazy_instance.h>
-#include <chromeos/libminijail.h>
+
+#include <libminijail.h>
 
 namespace chromeos {
 
