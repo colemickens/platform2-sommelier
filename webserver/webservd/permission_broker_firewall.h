@@ -5,7 +5,7 @@
 #ifndef WEBSERVER_WEBSERVD_PERMISSION_BROKER_FIREWALL_H_
 #define WEBSERVER_WEBSERVD_PERMISSION_BROKER_FIREWALL_H_
 
-#include "webserver/webservd/firewall_interface.h"
+#include "webservd/firewall_interface.h"
 
 #include <string>
 

@@ -7,7 +7,7 @@
 
 #include <base/macros.h>
 
-#include "webserver/webservd/config.h"
+#include "webservd/config.h"
 
 namespace webservd {
 

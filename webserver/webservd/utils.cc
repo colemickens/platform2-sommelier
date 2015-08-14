@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/utils.h"
+#include "webservd/utils.h"
 
 #include <sys/socket.h>
 
@@ -61,7 +61,7 @@ chromeos::SecureBlob StoreRSAPrivateKey(RSA* rsa_key_pair) {
   CHECK(PEM_write_bio_RSAPrivateKey(bio.get(), rsa_key_pair, nullptr, nullptr,
                                     0, nullptr, nullptr));
   uint8_t* buffer = nullptr;
-  size_t size = BIO_get_mem_data(bio.get(), &buffer);
+  size_t size = BIO_get_mem_data(bio.get(), reinterpret_cast<char**>(&buffer));
   CHECK_GT(size, 0u);
   CHECK(buffer);
   chromeos::SecureBlob key_blob(buffer, buffer + size);
@@ -75,7 +75,7 @@ chromeos::Blob StoreCertificate(X509* cert) {
   CHECK(bio);
   CHECK(PEM_write_bio_X509(bio.get(), cert));
   uint8_t* buffer = nullptr;
-  size_t size = BIO_get_mem_data(bio.get(), &buffer);
+  size_t size = BIO_get_mem_data(bio.get(), reinterpret_cast<char**>(&buffer));
   CHECK_GT(size, 0u);
   CHECK(buffer);
   return chromeos::Blob(buffer, buffer + size);

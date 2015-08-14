@@ -15,7 +15,7 @@
 #include <base/strings/string_piece.h>
 #include <chromeos/secure_blob.h>
 
-#include "webserver/webservd/config.h"
+#include "webservd/config.h"
 
 struct MHD_Daemon;
 

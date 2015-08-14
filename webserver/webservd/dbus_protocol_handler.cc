@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/dbus_protocol_handler.h"
+#include "webservd/dbus_protocol_handler.h"
 
 #include <base/bind.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 
-#include "webserver/webservd/dbus_request_handler.h"
-#include "webserver/webservd/protocol_handler.h"
-#include "webserver/webservd/request.h"
-#include "webserver/webservd/server.h"
+#include "webservd/dbus_request_handler.h"
+#include "webservd/protocol_handler.h"
+#include "webservd/request.h"
+#include "webservd/server.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;

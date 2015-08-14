@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/request.h"
+#include "webservd/request.h"
 
 #include <microhttpd.h>
 
@@ -12,9 +12,9 @@
 #include <chromeos/http/http_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
-#include "webserver/webservd/log_manager.h"
-#include "webserver/webservd/protocol_handler.h"
-#include "webserver/webservd/request_handler_interface.h"
+#include "webservd/log_manager.h"
+#include "webservd/protocol_handler.h"
+#include "webservd/request_handler_interface.h"
 
 namespace webservd {
 

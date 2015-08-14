@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/config.h"
+#include "webservd/config.h"
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -10,8 +10,8 @@
 #include <chromeos/errors/error_codes.h>
 #include <gtest/gtest.h>
 
-#include "webserver/webservd/error_codes.h"
-#include "webserver/webservd/protocol_handler.h"
+#include "webservd/error_codes.h"
+#include "webservd/protocol_handler.h"
 
 namespace {
 

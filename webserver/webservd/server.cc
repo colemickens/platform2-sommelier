@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/server.h"
+#include "webservd/server.h"
 
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -13,9 +13,9 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 
-#include "webserver/webservd/dbus_protocol_handler.h"
-#include "webserver/webservd/protocol_handler.h"
-#include "webserver/webservd/utils.h"
+#include "webservd/dbus_protocol_handler.h"
+#include "webservd/protocol_handler.h"
+#include "webservd/utils.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;

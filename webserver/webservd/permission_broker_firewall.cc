@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/permission_broker_firewall.h"
+#include "webservd/permission_broker_firewall.h"
 
 #include <unistd.h>
 

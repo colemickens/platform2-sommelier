@@ -14,16 +14,16 @@
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
 
-#include "webserver/webservd/config.h"
-#include "webserver/webservd/log_manager.h"
-#include "webserver/webservd/server.h"
-#include "webserver/webservd/utils.h"
+#include "webservd/config.h"
+#include "webservd/log_manager.h"
+#include "webservd/server.h"
+#include "webservd/utils.h"
 
 #if defined(__BRILLO__)
-#include "webserver/webservd/firewalld_firewall.h"
+#include "webservd/firewalld_firewall.h"
 using FirewallImpl = webservd::FirewalldFirewall;
 #else
-#include "webserver/webservd/permission_broker_firewall.h"
+#include "webservd/permission_broker_firewall.h"
 using FirewallImpl = webservd::PermissionBrokerFirewall;
 #endif  // __BRILLO__
 

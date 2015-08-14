@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/dbus_request_handler.h"
+#include "webservd/dbus_request_handler.h"
 
 #include <tuple>
 #include <vector>
@@ -12,8 +12,8 @@
 #include <chromeos/mime_utils.h>
 
 #include "libwebserv/dbus-proxies.h"
-#include "webserver/webservd/request.h"
-#include "webserver/webservd/server.h"
+#include "webservd/request.h"
+#include "webservd/server.h"
 
 namespace webservd {
 

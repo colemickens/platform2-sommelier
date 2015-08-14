@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/log_manager.h"
+#include "webservd/log_manager.h"
 
 #include <arpa/inet.h>
 #include <cinttypes>

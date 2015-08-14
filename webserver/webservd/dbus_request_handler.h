@@ -11,7 +11,7 @@
 #include <dbus/object_path.h>
 
 #include "libwebserv/dbus-proxies.h"
-#include "webserver/webservd/request_handler_interface.h"
+#include "webservd/request_handler_interface.h"
 
 namespace webservd {
 

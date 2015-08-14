@@ -18,7 +18,7 @@
 
 #include "webservd/firewall_interface.h"
 #include "webservd/org.chromium.WebServer.Server.h"
-#include "webserver/webservd/server_interface.h"
+#include "webservd/server_interface.h"
 
 namespace webservd {
 

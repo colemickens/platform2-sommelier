@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/protocol_handler.h"
+#include "webservd/protocol_handler.h"
 
 #include <linux/tcp.h>
 #include <microhttpd.h>
@@ -18,9 +18,9 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 
-#include "webserver/webservd/request.h"
-#include "webserver/webservd/request_handler_interface.h"
-#include "webserver/webservd/server_interface.h"
+#include "webservd/request.h"
+#include "webservd/request_handler_interface.h"
+#include "webservd/server_interface.h"
 
 namespace webservd {
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/webservd/error_codes.h"
+#include "webservd/error_codes.h"
 
 namespace webservd {
 namespace errors {

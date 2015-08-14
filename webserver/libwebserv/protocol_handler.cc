@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webserver/libwebserv/protocol_handler.h"
+#include "libwebserv/protocol_handler.h"
 
 #include <tuple>
 
@@ -10,11 +10,11 @@
 #include <chromeos/map_utils.h>
 
 #include "libwebserv/org.chromium.WebServer.RequestHandler.h"
+#include "libwebserv/request.h"
+#include "libwebserv/request_handler_callback.h"
+#include "libwebserv/response.h"
+#include "libwebserv/server.h"
 #include "webservd/dbus-proxies.h"
-#include "webserver/libwebserv/request.h"
-#include "webserver/libwebserv/request_handler_callback.h"
-#include "webserver/libwebserv/response.h"
-#include "webserver/libwebserv/server.h"
 
 namespace libwebserv {
 
