@@ -18,7 +18,7 @@
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
-#include <chromeos/url_utils.h>
+#include <chromeos/data_encoding.h>
 #include <weave/http_client.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
@@ -75,11 +75,25 @@ void ParseGCDError(const base::DictionaryValue* json,
   }
 }
 
+std::string AppendQueryParams(
+    const std::string& url,
+    const chromeos::data_encoding::WebParamList& params) {
+  CHECK_EQ(std::string::npos, url.find_first_of("?#"));
+  if (params.empty())
+    return url;
+  return url + '?' + chromeos::data_encoding::WebParamsEncode(params);
+}
+
 std::string BuildURL(const std::string& url,
-                     const std::vector<std::string>& subpaths,
+                     const std::string& subpath,
                      const chromeos::data_encoding::WebParamList& params) {
-  std::string result = chromeos::url::CombineMultiple(url, subpaths);
-  return chromeos::url::AppendQueryParams(result, params);
+  std::string result = url;
+  if (!result.empty() && result.back() != '/' && !subpath.empty()) {
+    CHECK_NE('/', subpath.front());
+    result += '/';
+  }
+  result += subpath;
+  return AppendQueryParams(result, params);
 }
 
 void IgnoreCloudError(const chromeos::Error*) {
@@ -243,7 +257,7 @@ DeviceRegistrationInfo::~DeviceRegistrationInfo() = default;
 std::string DeviceRegistrationInfo::GetServiceURL(
     const std::string& subpath,
     const chromeos::data_encoding::WebParamList& params) const {
-  return BuildURL(config_->service_url(), {subpath}, params);
+  return BuildURL(config_->service_url(), subpath, params);
 }
 
 std::string DeviceRegistrationInfo::GetDeviceURL(
@@ -251,13 +265,13 @@ std::string DeviceRegistrationInfo::GetDeviceURL(
     const chromeos::data_encoding::WebParamList& params) const {
   CHECK(!config_->device_id().empty()) << "Must have a valid device ID";
   return BuildURL(config_->service_url(),
-                  {"devices", config_->device_id(), subpath}, params);
+                  "devices/" + config_->device_id() + "/" + subpath, params);
 }
 
 std::string DeviceRegistrationInfo::GetOAuthURL(
     const std::string& subpath,
     const chromeos::data_encoding::WebParamList& params) const {
-  return BuildURL(config_->oauth_url(), {subpath}, params);
+  return BuildURL(config_->oauth_url(), subpath, params);
 }
 
 void DeviceRegistrationInfo::Start() {
