@@ -110,7 +110,7 @@ class ManagerTest : public PropertyStoreTest {
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
 #endif  // DISABLE_WIFI
         crypto_util_proxy_(
-            new NiceMock<MockCryptoUtilProxy>(dispatcher(), glib())),
+            new NiceMock<MockCryptoUtilProxy>(dispatcher())),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
     ON_CALL(*control_interface(), CreatePowerManagerProxy(_))
         .WillByDefault(ReturnNull());

@@ -17,7 +17,6 @@
 #include "shill/mock_crypto_util_proxy.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_process_killer.h"
 
 using base::Bind;
@@ -50,7 +49,7 @@ const char kTestSerializedCommandMessage[] =
     "actually makes it to a shim, we're safe to write whatever we want here.";
 const char kTestSerializedCommandResponse[] =
     "Similarly, we never ask a protocol buffer to deserialize this string.";
-const char kTestSignedData[] = "bytes bytes bytes";
+const char kTestSignedData[] = "Ynl0ZXMgYnl0ZXMgYnl0ZXMK";
 const int kTestStdinFd = 9111;
 const int kTestStdoutFd = 9119;
 const pid_t kTestShimPid = 989898;
@@ -91,7 +90,7 @@ MATCHER_P(ErrorIsOfType, error_type, "") {
 class CryptoUtilProxyTest : public testing::Test {
  public:
   CryptoUtilProxyTest()
-      : crypto_util_proxy_(&dispatcher_, &glib_) {
+      : crypto_util_proxy_(&dispatcher_) {
     test_ssid_.push_back(78);
     test_ssid_.push_back(69);
     test_ssid_.push_back(80);
@@ -208,7 +207,6 @@ class CryptoUtilProxyTest : public testing::Test {
   MockMinijail minijail_;
   MockProcessKiller process_killer_;
   MockEventDispatcher dispatcher_;
-  MockGLib glib_;
   MockFileIO file_io_;
   MockCryptoUtilProxy crypto_util_proxy_;
   std::vector<uint8_t> test_ssid_;
@@ -222,8 +220,6 @@ TEST_F(CryptoUtilProxyTest, BasicAPIUsage) {
                 VerifyDestination(_, _, _, _, _, _, _, _, _))
         .WillOnce(Invoke(&crypto_util_proxy_,
                          &MockCryptoUtilProxy::RealVerifyDestination));
-    EXPECT_CALL(glib_, B64Decode(StrEq(kTestSignedData), _))
-        .WillOnce(Return(true));
     // API calls are just thin wrappers that write up a message to a shim, then
     // send it via StartShimForCommand.  Expect that a shim will be started in
     // response to the API being called.
@@ -252,8 +248,6 @@ TEST_F(CryptoUtilProxyTest, BasicAPIUsage) {
     EXPECT_CALL(crypto_util_proxy_, EncryptData(_, _, _, _))
         .WillOnce(Invoke(&crypto_util_proxy_,
                          &MockCryptoUtilProxy::RealEncryptData));
-    EXPECT_CALL(glib_, B64Decode(StrEq(kTestPublicKey), _))
-        .WillOnce(Return(true));
     EXPECT_CALL(crypto_util_proxy_,
                 StartShimForCommand(CryptoUtilProxy::kCommandEncrypt, _, _))
         .WillOnce(Return(true));

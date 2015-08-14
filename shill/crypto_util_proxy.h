@@ -25,7 +25,6 @@ namespace shill {
 
 class EventDispatcher;
 class FileIO;
-class GLib;
 class ProcessKiller;
 
 class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
@@ -34,7 +33,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   static const char kCommandEncrypt[];
   static const char kCryptoUtilShimPath[];
 
-  CryptoUtilProxy(EventDispatcher* dispatcher, GLib* glib);
+  explicit CryptoUtilProxy(EventDispatcher* dispatcher);
   virtual ~CryptoUtilProxy();
 
   // Verify credentials for the currently connected endpoint of
@@ -103,8 +102,8 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   virtual void CleanupShim(const Error& shim_result);
   virtual void OnShimDeath();
 
-  // Callbacks that handle IO operations between shill and the shim.  Called by
-  // GLib on changes in file descriptor state.
+  // Callbacks that handle IO operations between shill and the shim.
+  // Called on changes in file descriptor state.
   void HandleShimStdinReady(int fd);
   void HandleShimOutput(InputData* data);
   void HandleShimReadError(const std::string& error_msg);
@@ -122,7 +121,6 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
                            const Error& error);
 
   EventDispatcher* dispatcher_;
-  GLib* glib_;
   chromeos::Minijail* minijail_;
   ProcessKiller* process_killer_;
   FileIO* file_io_;

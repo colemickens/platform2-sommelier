@@ -148,7 +148,7 @@ Manager::Manager(ControlInterface* control_interface,
       is_wake_on_lan_enabled_(true),
       ignore_unknown_ethernet_(false),
       default_service_callback_tag_(0),
-      crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
+      crypto_util_proxy_(new CryptoUtilProxy(dispatcher)),
       health_checker_remote_ips_(new IPAddressStore()),
       suppress_autoconnect_(false),
       is_connected_state_(false) {

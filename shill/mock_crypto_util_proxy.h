@@ -22,7 +22,7 @@ class MockCryptoUtilProxy
     : public CryptoUtilProxy,
       public base::SupportsWeakPtr<MockCryptoUtilProxy> {
  public:
-  MockCryptoUtilProxy(EventDispatcher* dispatcher, GLib* glib);
+  explicit MockCryptoUtilProxy(EventDispatcher* dispatcher);
   ~MockCryptoUtilProxy() override;
 
   MOCK_METHOD9(VerifyDestination,

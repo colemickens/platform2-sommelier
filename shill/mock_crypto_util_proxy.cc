@@ -19,8 +19,8 @@ using testing::Return;
 namespace shill {
 
 MockCryptoUtilProxy::MockCryptoUtilProxy(
-    EventDispatcher* dispatcher, GLib* glib)
-    : CryptoUtilProxy(dispatcher, glib) {
+    EventDispatcher* dispatcher)
+    : CryptoUtilProxy(dispatcher) {
   ON_CALL(*this, VerifyDestination(_, _, _, _, _, _, _, _, _))
       .WillByDefault(DoAll(SetOperationFailedInArgumentAndWarn<8>(),
                            Return(false)));

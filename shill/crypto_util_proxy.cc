@@ -11,10 +11,10 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/data_encoding.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/file_io.h"
-#include "shill/glib.h"
 #include "shill/process_killer.h"
 
 using base::Bind;
@@ -37,9 +37,8 @@ const char CryptoUtilProxy::kCryptoUtilShimPath[] = SHIMDIR "/crypto-util";
 const char CryptoUtilProxy::kDestinationVerificationUser[] = "shill-crypto";
 const int CryptoUtilProxy::kShimJobTimeoutMilliseconds = 30 * 1000;
 
-CryptoUtilProxy::CryptoUtilProxy(EventDispatcher* dispatcher, GLib* glib)
+CryptoUtilProxy::CryptoUtilProxy(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
-      glib_(glib),
       minijail_(chromeos::Minijail::GetInstance()),
       process_killer_(ProcessKiller::GetInstance()),
       file_io_(FileIO::GetInstance()),
@@ -75,7 +74,8 @@ bool CryptoUtilProxy::VerifyDestination(
                                     public_key.c_str(),
                                     nonce.c_str()));
   string decoded_signed_data;
-  if (!glib_->B64Decode(signed_data, &decoded_signed_data)) {
+  if (!chromeos::data_encoding::Base64Decode(
+          signed_data, &decoded_signed_data)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to decode signed data.");
     return false;
@@ -112,7 +112,7 @@ bool CryptoUtilProxy::EncryptData(
     const ResultStringCallback& result_callback,
     Error* error) {
   string decoded_public_key;
-  if (!glib_->B64Decode(public_key, &decoded_public_key)) {
+  if (!chromeos::data_encoding::Base64Decode(public_key, &decoded_public_key)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Unable to decode public key.");
     return false;
@@ -384,13 +384,8 @@ void CryptoUtilProxy::HandleEncryptResult(
     return;
   }
 
-  string encoded_data;
-  if (!glib_->B64Encode(response.encrypted_data(), &encoded_data)) {
-    e.Populate(Error::kInternalError, "Failed to encode result.");
-    result_handler.Run(e, "");
-    return;
-  }
-
+  string encoded_data(
+      chromeos::data_encoding::Base64Encode(response.encrypted_data()));
   result_handler.Run(e, encoded_data);
 }
 
