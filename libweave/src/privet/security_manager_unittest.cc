@@ -66,7 +66,7 @@ base::FilePath GetTempFilePath() {
 class SecurityManagerTest : public testing::Test {
  public:
   void SetUp() override {
-    chromeos::Blob fingerprint;
+    std::vector<uint8_t> fingerprint;
     fingerprint.resize(256 / 8);
     base::RandBytes(fingerprint.data(), fingerprint.size());
     security_.SetCertificateFingerprint(fingerprint);
@@ -99,14 +99,15 @@ class SecurityManagerTest : public testing::Test {
     EXPECT_TRUE(IsBase64(*fingerprint));
     EXPECT_TRUE(IsBase64(*signature));
 
-    chromeos::Blob device_commitment;
+    std::vector<uint8_t> device_commitment;
     ASSERT_TRUE(Base64Decode(device_commitment_base64, &device_commitment));
     spake.ProcessMessage(
         chromeos::string_utils::GetBytesAsString(device_commitment));
 
-    chromeos::Blob auth_code{
-        HmacSha256(chromeos::SecureBlob{spake.GetUnverifiedKey()},
-                   chromeos::SecureBlob{session_id})};
+    const std::string& key = spake.GetUnverifiedKey();
+    std::vector<uint8_t> auth_code{
+        HmacSha256(std::vector<uint8_t>{key.begin(), key.end()},
+                   std::vector<uint8_t>{session_id.begin(), session_id.end()})};
 
     std::string auth_code_base64{Base64Encode(auth_code)};
 

@@ -157,24 +157,25 @@ SecurityManager::~SecurityManager() {
 // Returns "base64([hmac]scope:id:time)".
 std::string SecurityManager::CreateAccessToken(const UserInfo& user_info,
                                                const base::Time& time) {
-  chromeos::SecureBlob data(CreateTokenData(user_info, time));
-  chromeos::Blob hash(HmacSha256(secret_, data));
-  return Base64Encode(chromeos::SecureBlob::Combine(
-      chromeos::SecureBlob(hash.begin(), hash.end()), data));
+  std::string data_str{CreateTokenData(user_info, time)};
+  std::vector<uint8_t> data{data_str.begin(), data_str.end()};
+  std::vector<uint8_t> hash{HmacSha256(secret_, data)};
+  hash.insert(hash.end(), data.begin(), data.end());
+  return Base64Encode(hash);
 }
 
 // Parses "base64([hmac]scope:id:time)".
 UserInfo SecurityManager::ParseAccessToken(const std::string& token,
                                            base::Time* time) const {
-  chromeos::Blob decoded;
+  std::vector<uint8_t> decoded;
   if (!Base64Decode(token, &decoded) || decoded.size() <= kSha256OutputSize) {
     return UserInfo{};
   }
-  chromeos::SecureBlob data(decoded.begin() + kSha256OutputSize, decoded.end());
+  std::vector<uint8_t> data(decoded.begin() + kSha256OutputSize, decoded.end());
   decoded.resize(kSha256OutputSize);
   if (decoded != HmacSha256(secret_, data))
     return UserInfo{};
-  return SplitTokenData(data.to_string(), time);
+  return SplitTokenData(std::string(data.begin(), data.end()), time);
 }
 
 std::set<PairingType> SecurityManager::GetPairingTypes() const {
@@ -191,13 +192,15 @@ std::set<CryptoType> SecurityManager::GetCryptoTypes() const {
 bool SecurityManager::IsValidPairingCode(const std::string& auth_code) const {
   if (is_security_disabled_)
     return true;
-  chromeos::Blob auth_decoded;
+  std::vector<uint8_t> auth_decoded;
   if (!Base64Decode(auth_code, &auth_decoded))
     return false;
   for (const auto& session : confirmed_sessions_) {
+    const std::string& key = session.second->GetKey();
+    const std::string& id = session.first;
     if (auth_decoded ==
-        HmacSha256(chromeos::SecureBlob{session.second->GetKey()},
-                   chromeos::SecureBlob{session.first})) {
+        HmacSha256(std::vector<uint8_t>(key.begin(), key.end()),
+                   std::vector<uint8_t>(id.begin(), id.end()))) {
       pairing_attemts_ = 0;
       block_pairing_until_ = base::Time{};
       return true;
@@ -317,7 +320,7 @@ bool SecurityManager::ConfirmPairing(const std::string& session_id,
   }
   CHECK(!certificate_fingerprint_.empty());
 
-  chromeos::Blob commitment;
+  std::vector<uint8_t> commitment;
   if (!Base64Decode(client_commitment, &commitment)) {
     ClosePendingSession(session_id);
     chromeos::Error::AddToPrintf(
@@ -335,13 +338,12 @@ bool SecurityManager::ConfirmPairing(const std::string& session_id,
     return false;
   }
 
-  std::string key = session->second->GetKey();
+  const std::string& key = session->second->GetKey();
   VLOG(3) << "KEY " << base::HexEncode(key.data(), key.size());
 
   *fingerprint = Base64Encode(certificate_fingerprint_);
-  chromeos::Blob cert_hmac =
-      HmacSha256(chromeos::SecureBlob(session->second->GetKey()),
-                 certificate_fingerprint_);
+  std::vector<uint8_t> cert_hmac = HmacSha256(
+      std::vector<uint8_t>(key.begin(), key.end()), certificate_fingerprint_);
   *signature = Base64Encode(cert_hmac);
   confirmed_sessions_.emplace(session->first, std::move(session->second));
   task_runner_->PostDelayedTask(

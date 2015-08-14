@@ -122,7 +122,7 @@ std::string Base64EncodeWrapLines(const void* data, size_t size) {
   return wrapped;
 }
 
-bool Base64Decode(const std::string& input, chromeos::Blob* output) {
+bool Base64Decode(const std::string& input, std::vector<uint8_t>* output) {
   std::string temp_buffer;
   const std::string* data = &input;
   if (input.find_first_of("\r\n") != std::string::npos) {

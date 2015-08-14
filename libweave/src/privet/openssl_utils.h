@@ -8,16 +8,13 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/secure_blob.h>
-
 namespace weave {
 namespace privet {
 
 const size_t kSha256OutputSize = 32;
 
-chromeos::Blob HmacSha256(const chromeos::SecureBlob& key,
-                          const chromeos::Blob& data);
-
+std::vector<uint8_t> HmacSha256(const std::vector<uint8_t>& key,
+                                const std::vector<uint8_t>& data);
 }  // namespace privet
 }  // namespace weave
 

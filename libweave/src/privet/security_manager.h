@@ -15,7 +15,6 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/secure_blob.h>
 
 #include "libweave/src/privet/security_delegate.h"
 
@@ -80,7 +79,7 @@ class SecurityManager : public SecurityDelegate {
   void RegisterPairingListeners(const PairingStartListener& on_start,
                                 const PairingEndListener& on_end);
 
-  void SetCertificateFingerprint(const chromeos::Blob& fingerprint) {
+  void SetCertificateFingerprint(const std::vector<uint8_t>& fingerprint) {
     certificate_fingerprint_ = fingerprint;
   }
 
@@ -102,8 +101,8 @@ class SecurityManager : public SecurityDelegate {
   std::map<std::string, std::unique_ptr<KeyExchanger>> confirmed_sessions_;
   mutable int pairing_attemts_{0};
   mutable base::Time block_pairing_until_;
-  chromeos::SecureBlob secret_;
-  chromeos::Blob certificate_fingerprint_;
+  std::vector<uint8_t> secret_;
+  std::vector<uint8_t> certificate_fingerprint_;
   PairingStartListener on_start_;
   PairingEndListener on_end_;
 

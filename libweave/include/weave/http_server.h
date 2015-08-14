@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/secure_blob.h>
-
 #include <base/callback.h>
 
 namespace weave {
@@ -46,7 +44,8 @@ class HttpServer {
 
   virtual uint16_t GetHttpPort() const = 0;
   virtual uint16_t GetHttpsPort() const = 0;
-  virtual const chromeos::Blob& GetHttpsCertificateFingerprint() const = 0;
+  virtual const std::vector<uint8_t>& GetHttpsCertificateFingerprint()
+      const = 0;
 
  protected:
   virtual ~HttpServer() = default;

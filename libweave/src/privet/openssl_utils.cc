@@ -14,9 +14,9 @@
 namespace weave {
 namespace privet {
 
-chromeos::Blob HmacSha256(const chromeos::SecureBlob& key,
-                          const chromeos::Blob& data) {
-  chromeos::Blob mac(kSha256OutputSize);
+std::vector<uint8_t> HmacSha256(const std::vector<uint8_t>& key,
+                                const std::vector<uint8_t>& data) {
+  std::vector<uint8_t> mac(kSha256OutputSize);
   uint32_t len = 0;
   CHECK(HMAC(EVP_sha256(), key.data(), key.size(), data.data(), data.size(),
              mac.data(), &len));

@@ -9,8 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <chromeos/secure_blob.h>
-
 namespace weave {
 
 using WebParamList = std::vector<std::pair<std::string, std::string>>;
@@ -49,14 +47,14 @@ std::string Base64Encode(const void* data, size_t size);
 std::string Base64EncodeWrapLines(const void* data, size_t size);
 
 // Decodes the input string from Base64.
-bool Base64Decode(const std::string& input, chromeos::Blob* output);
+bool Base64Decode(const std::string& input, std::vector<uint8_t>* output);
 
-// Helper wrappers to use std::string and chromeos::Blob as binary data
+// Helper wrappers to use std::string and std::vector<uint8_t> as binary data
 // containers.
-inline std::string Base64Encode(const chromeos::Blob& input) {
+inline std::string Base64Encode(const std::vector<uint8_t>& input) {
   return Base64Encode(input.data(), input.size());
 }
-inline std::string Base64EncodeWrapLines(const chromeos::Blob& input) {
+inline std::string Base64EncodeWrapLines(const std::vector<uint8_t>& input) {
   return Base64EncodeWrapLines(input.data(), input.size());
 }
 inline std::string Base64Encode(const std::string& input) {
@@ -66,7 +64,7 @@ inline std::string Base64EncodeWrapLines(const std::string& input) {
   return Base64EncodeWrapLines(input.data(), input.size());
 }
 inline bool Base64Decode(const std::string& input, std::string* output) {
-  chromeos::Blob blob;
+  std::vector<uint8_t> blob;
   if (!Base64Decode(input, &blob))
     return false;
   *output = std::string{blob.begin(), blob.end()};

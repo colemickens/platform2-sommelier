@@ -52,7 +52,7 @@ TEST(data_encoding, Base64Encode) {
       "RlZ2VyIGVyYXQgaXBzdW0sIGludGVnZXIgbW9sZXN0aWUsIGFyY3UgaW4sIHNpdCBtYXVya"
       "XMgYWMgYSBzZWQgc2l0IGV0aWFtLg==";
 
-  chromeos::Blob data3(256);
+  std::vector<uint8_t> data3(256);
   std::iota(data3.begin(), data3.end(), 0);  // Fills the buffer with 0x00-0xFF.
   const std::string encoded3 =
       "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ"
@@ -80,7 +80,7 @@ TEST(data_encoding, Base64EncodeWrapLines) {
       "bmNpZHVudCBpbnRlZ2VyIGVyYXQgaXBzdW0sIGludGVnZXIgbW9sZXN0aWUsIGFy\n"
       "Y3UgaW4sIHNpdCBtYXVyaXMgYWMgYSBzZWQgc2l0IGV0aWFtLg==\n";
 
-  chromeos::Blob data3(256);
+  std::vector<uint8_t> data3(256);
   std::iota(data3.begin(), data3.end(), 0);  // Fills the buffer with 0x00-0xFF.
   const std::string encoded3 =
       "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4v\n"
@@ -115,7 +115,7 @@ TEST(data_encoding, Base64Decode) {
       "prbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en"
       "6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU"
       "1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==";
-  chromeos::Blob decoded3(256);
+  std::vector<uint8_t> decoded3(256);
   std::iota(decoded3.begin(), decoded3.end(), 0);  // Fill with 0x00..0xFF.
 
   std::string decoded;
@@ -125,7 +125,7 @@ TEST(data_encoding, Base64Decode) {
   EXPECT_TRUE(Base64Decode(encoded2, &decoded));
   EXPECT_EQ(decoded2, decoded);
 
-  chromeos::Blob decoded_blob;
+  std::vector<uint8_t> decoded_blob;
   EXPECT_TRUE(Base64Decode(encoded3, &decoded_blob));
   EXPECT_EQ(decoded3, decoded_blob);
 
@@ -133,10 +133,10 @@ TEST(data_encoding, Base64Decode) {
   EXPECT_TRUE(decoded_blob.empty());
 
   EXPECT_TRUE(Base64Decode("/w==", &decoded_blob));
-  EXPECT_EQ((chromeos::Blob{0xFF}), decoded_blob);
+  EXPECT_EQ((std::vector<uint8_t>{0xFF}), decoded_blob);
 
   EXPECT_TRUE(Base64Decode("//8=", &decoded_blob));
-  EXPECT_EQ((chromeos::Blob{0xFF, 0xFF}), decoded_blob);
+  EXPECT_EQ((std::vector<uint8_t>{0xFF, 0xFF}), decoded_blob);
 
   EXPECT_FALSE(Base64Decode("AAECAwQFB,cI", &decoded_blob));
   EXPECT_TRUE(decoded_blob.empty());

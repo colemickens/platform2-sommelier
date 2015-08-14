@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
@@ -15,6 +16,7 @@
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/notification_parser.h"
 #include "libweave/src/notification/xml_node.h"
+#include "libweave/src/privet/openssl_utils.h"
 #include "libweave/src/utils.h"
 
 namespace weave {
@@ -29,7 +31,7 @@ std::string BuildXmppStartStreamCommand() {
 
 std::string BuildXmppAuthenticateCommand(const std::string& account,
                                          const std::string& token) {
-  chromeos::Blob credentials;
+  std::vector<uint8_t> credentials;
   credentials.push_back(0);
   credentials.insert(credentials.end(), account.begin(), account.end());
   credentials.push_back(0);

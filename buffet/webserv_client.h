@@ -45,7 +45,7 @@ class WebServClient : public weave::HttpServer {
                          const OnRequestCallback& callback) override;
   uint16_t GetHttpPort() const override;
   uint16_t GetHttpsPort() const override;
-  const chromeos::Blob& GetHttpsCertificateFingerprint() const override;
+  const std::vector<uint8_t>& GetHttpsCertificateFingerprint() const override;
 
  private:
   void OnRequest(const OnRequestCallback& callback,
@@ -65,7 +65,7 @@ class WebServClient : public weave::HttpServer {
 
   uint16_t http_port_{0};
   uint16_t https_port_{0};
-  chromeos::Blob certificate_;
+  std::vector<uint8_t> certificate_;
 
   std::vector<OnStateChangedCallback> on_state_changed_callbacks_;
 
