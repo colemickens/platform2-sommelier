@@ -26,7 +26,8 @@ class TpmManagerServiceTest : public testing::Test {
  public:
   ~TpmManagerServiceTest() override = default;
   void SetUp() override {
-    service_.reset(new TpmManagerService(true /*wait_for_ownership*/));
+    service_.reset(new TpmManagerService(true /*wait_for_ownership*/,
+                                         &mock_local_data_store_));
     SetupService();
   }
 
@@ -51,7 +52,6 @@ class TpmManagerServiceTest : public testing::Test {
   }
 
   void SetupService() {
-    service_->set_local_data_store(&mock_local_data_store_);
     service_->set_tpm_initializer(&mock_tpm_initializer_);
     service_->set_tpm_status(&mock_tpm_status_);
     CHECK(service_->Initialize());
@@ -72,7 +72,8 @@ class TpmManagerServiceTest_NoWaitForOwnership : public TpmManagerServiceTest {
  public:
   ~TpmManagerServiceTest_NoWaitForOwnership() override = default;
   void SetUp() override {
-    service_.reset(new TpmManagerService(false /*wait_for_ownership*/));
+    service_.reset(new TpmManagerService(false /*wait_for_ownership*/,
+                                         &mock_local_data_store_));
   }
 };
 

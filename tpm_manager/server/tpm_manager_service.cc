@@ -10,8 +10,10 @@
 
 namespace tpm_manager {
 
-TpmManagerService::TpmManagerService(bool wait_for_ownership)
-    : wait_for_ownership_(wait_for_ownership),
+TpmManagerService::TpmManagerService(bool wait_for_ownership,
+                                     LocalDataStore* local_data_store)
+    : local_data_store_(local_data_store),
+      wait_for_ownership_(wait_for_ownership),
       weak_factory_(this) {
 }
 

@@ -56,8 +56,9 @@
       'target_name': 'server_library',
       'type': 'static_library',
       'sources': [
-        'server/tpm_manager_service.cc',
         'server/dbus_service.cc',
+        'server/local_data_store_impl.cc',
+        'server/tpm_manager_service.cc',
       ],
       'dependencies': [
         'proto_library',

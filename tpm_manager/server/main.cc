@@ -14,47 +14,24 @@
 
 #include "tpm_manager/common/dbus_interface.h"
 #include "tpm_manager/server/dbus_service.h"
+#include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_manager_service.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace {
 
-const uid_t kRootUID = 0;
-const char kTpmManagerUser[] = "tpm_manager";
-const char kTpmManagerGroup[] = "tpm_manager";
-const char kTpmManagerSeccompPath[] =
-    "/usr/share/policy/tpm_managerd-seccomp.policy";
 const char kWaitForOwnershipTriggerSwitch[] = "wait_for_ownership_trigger";
-
-
-void InitMinijailSandbox() {
-  uid_t tpm_manager_uid;
-  gid_t tpm_manager_gid;
-  CHECK(chromeos::userdb::GetUserInfo(kTpmManagerUser,
-                                      &tpm_manager_uid,
-                                      &tpm_manager_gid))
-      << "Error getting tpm_manager uid and gid.";
-  CHECK_EQ(getuid(), kRootUID) << "TpmManagerDaemon not initialized as root.";
-  chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
-  struct minijail* jail = minijail->New();
-  minijail->DropRoot(jail, kTpmManagerUser, kTpmManagerGroup);
-  minijail->UseSeccompFilter(jail, kTpmManagerSeccompPath);
-  minijail->Enter(jail);
-  minijail->Destroy(jail);
-  CHECK_EQ(getuid(), tpm_manager_uid)
-      << "TpmManagerDaemon was not able to drop to tpm_manager user.";
-  CHECK_EQ(getgid(), tpm_manager_gid)
-      << "TpmManagerDaemon was not able to drop to tpm_manager group.";
-}
 
 class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
  public:
   TpmManagerDaemon()
       : chromeos::DBusServiceDaemon(tpm_manager::kTpmManagerServiceName) {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+    local_data_store_.reset(new tpm_manager::LocalDataStoreImpl());
     tpm_manager_service_.reset(new tpm_manager::TpmManagerService(
-        command_line->HasSwitch(kWaitForOwnershipTriggerSwitch)));
+        command_line->HasSwitch(kWaitForOwnershipTriggerSwitch),
+        local_data_store_.get()));
   }
 
  protected:
@@ -75,6 +52,7 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
   }
 
  private:
+  std::unique_ptr<tpm_manager::LocalDataStore> local_data_store_;
   std::unique_ptr<tpm_manager::TpmManagerInterface> tpm_manager_service_;
   std::unique_ptr<tpm_manager::DBusService> dbus_service_;
 
@@ -86,8 +64,7 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
-  InitMinijailSandbox();
   TpmManagerDaemon daemon;
-  LOG(INFO) << "TpmManager Daemon Started";
+  LOG(INFO) << "TpmManager Daemon Started.";
   return daemon.Run();
 }
