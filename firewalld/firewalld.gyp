@@ -4,6 +4,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libpermission_broker-client',
       ],
     },
   },
@@ -15,19 +16,6 @@
         'firewall_daemon.cc',
         'firewall_service.cc',
         'iptables.cc',
-      ],
-      'actions': [
-        {
-          'action_name': 'generate-permission_broker-proxies',
-          'variables': {
-            'dbus_service_config': '<(platform2_root)/permission_broker/dbus_bindings/dbus-service-config.json',
-            'proxy_output_file': 'include/permission_broker/dbus-proxies.h',
-          },
-          'sources': [
-            '<(platform2_root)/permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
       ],
     },
     {
@@ -77,6 +65,11 @@
         {
           'target_name': 'firewalld_unittest',
           'type': 'executable',
+          'variables': {
+            'deps': [
+              'libpermission_broker-client-test',
+            ],
+          },
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libfirewalld'],
           'sources': [
