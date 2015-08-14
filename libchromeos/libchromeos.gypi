@@ -183,9 +183,17 @@
       'target_name': 'libchromeos-minijail-<(libbase_ver)',
       'type': 'shared_library',
       'variables': {
-        'deps': [
+        'exported_deps': [
           'libminijail',
         ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
       },
       'cflags': [
         '-fvisibility=default',
