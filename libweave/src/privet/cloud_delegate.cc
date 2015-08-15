@@ -14,8 +14,8 @@
 #include <weave/error.h>
 #include <weave/task_runner.h>
 
-#include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
+#include "libweave/src/config.h"
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/states/state_manager.h"

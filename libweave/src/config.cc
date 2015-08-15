@@ -6,30 +6,16 @@
 
 #include <set>
 
-#include <base/files/file_util.h>
+#include <base/bind.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/values.h>
 #include <weave/enum_to_string.h>
 
-#include "libweave/src/storage_impls.h"
-#include "libweave/src/storage_interface.h"
+#include "libweave/src/privet/privet_types.h"
 #include "libweave/src/string_utils.h"
-
-namespace {
-
-bool IsValidAccessRole(const std::string& role) {
-  return role == "none" || role == "viewer" || role == "user";
-}
-
-bool StringToTimeDelta(const std::string& value, base::TimeDelta* delta) {
-  uint64_t ms{0};
-  if (!base::StringToUint64(value, &ms))
-    return false;
-  *delta = base::TimeDelta::FromMilliseconds(ms);
-  return true;
-}
-
-}  // namespace
 
 namespace weave {
 
@@ -46,23 +32,21 @@ const char kLocation[] = "location";
 const char kLocalAnonymousAccessRole[] = "local_anonymous_access_role";
 const char kLocalDiscoveryEnabled[] = "local_discovery_enabled";
 const char kLocalPairingEnabled[] = "local_pairing_enabled";
-const char kOemName[] = "oem_name";
-const char kModelName[] = "model_name";
-const char kModelId[] = "model_id";
-const char kPollingPeriodMs[] = "polling_period_ms";
-const char kBackupPollingPeriodMs[] = "backup_polling_period_ms";
 const char kRefreshToken[] = "refresh_token";
 const char kDeviceId[] = "device_id";
 const char kRobotAccount[] = "robot_account";
-const char kWifiAutoSetupEnabled[] = "wifi_auto_setup_enabled";
-const char kBleSetupEnabled[] = "ble_setup_enabled";
-const char kEmbeddedCode[] = "embedded_code";
-const char kPairingModes[] = "pairing_modes";
 const char kLastConfiguredSsid[] = "last_configured_ssid";
 
 }  // namespace config_keys
 
-Settings Config::CreateDefaultSettings() {
+namespace {
+
+bool IsValidAccessRole(const std::string& role) {
+  privet::AuthScope scope;
+  return StringToEnum(role, &scope);
+}
+
+Settings CreateDefaultSettings() {
   Settings result;
   result.client_id = "58855907228.apps.googleusercontent.com";
   result.client_secret = "eHSAREAHrIqPsHBxCE9zPPBi";
@@ -84,11 +68,15 @@ Settings Config::CreateDefaultSettings() {
   return result;
 }
 
-Config::Config(std::unique_ptr<StorageInterface> storage)
-    : storage_{std::move(storage)} {}
+}  // namespace
 
-Config::Config(const base::FilePath& state_path)
-    : Config{std::unique_ptr<StorageInterface>{new FileStorage{state_path}}} {}
+Config::Config(ConfigStore* config_store)
+    : settings_{CreateDefaultSettings()}, config_store_{config_store} {
+  if (config_store_) {
+    AddOnChangedCallback(base::Bind(&ConfigStore::OnSettingsChanged,
+                                    base::Unretained(config_store_)));
+  }
+}
 
 void Config::AddOnChangedCallback(const OnChangedCallback& callback) {
   on_changed_.push_back(callback);
@@ -100,97 +88,50 @@ const Settings& Config::GetSettings() const {
   return settings_;
 }
 
-void Config::Load(const base::FilePath& config_path) {
-  chromeos::KeyValueStore store;
-  if (base::PathExists(config_path)) {
-    CHECK(store.Load(config_path)) << "Unable to read or parse config file at"
-                                   << config_path.value();
-  }
-  Load(store);
-}
-
-void Config::Load(const chromeos::KeyValueStore& store) {
+void Config::Load() {
   Transaction change{this};
   change.save_ = false;
 
-  store.GetString(config_keys::kClientId, &settings_.client_id);
+  settings_ = CreateDefaultSettings();
+
+  if (!config_store_)
+    return;
+
+  // Crash on any mistakes in defaults.
+  CHECK(config_store_->LoadDefaults(&settings_));
+
   CHECK(!settings_.client_id.empty());
-
-  store.GetString(config_keys::kClientSecret, &settings_.client_secret);
   CHECK(!settings_.client_secret.empty());
-
-  store.GetString(config_keys::kApiKey, &settings_.api_key);
   CHECK(!settings_.api_key.empty());
-
-  store.GetString(config_keys::kOAuthURL, &settings_.oauth_url);
   CHECK(!settings_.oauth_url.empty());
-
-  store.GetString(config_keys::kServiceURL, &settings_.service_url);
   CHECK(!settings_.service_url.empty());
-
-  store.GetString(config_keys::kOemName, &settings_.oem_name);
   CHECK(!settings_.oem_name.empty());
-
-  store.GetString(config_keys::kModelName, &settings_.model_name);
   CHECK(!settings_.model_name.empty());
-
-  store.GetString(config_keys::kModelId, &settings_.model_id);
   CHECK(!settings_.model_id.empty());
-
-  std::string polling_period_str;
-  if (store.GetString(config_keys::kPollingPeriodMs, &polling_period_str))
-    CHECK(StringToTimeDelta(polling_period_str, &settings_.polling_period));
-
-  if (store.GetString(config_keys::kBackupPollingPeriodMs, &polling_period_str))
-    CHECK(StringToTimeDelta(polling_period_str,
-                            &settings_.backup_polling_period));
-
-  store.GetBoolean(config_keys::kWifiAutoSetupEnabled,
-                   &settings_.wifi_auto_setup_enabled);
-
-  store.GetBoolean(config_keys::kBleSetupEnabled, &settings_.ble_setup_enabled);
-
-  store.GetString(config_keys::kEmbeddedCode, &settings_.embedded_code);
-
-  std::string modes_str;
-  if (store.GetString(config_keys::kPairingModes, &modes_str)) {
-    std::set<PairingType> pairing_modes;
-    for (const std::string& mode : Split(modes_str, ",", true, true)) {
-      PairingType pairing_mode;
-      CHECK(StringToEnum(mode, &pairing_mode));
-      pairing_modes.insert(pairing_mode);
-    }
-    settings_.pairing_modes = std::move(pairing_modes);
-  }
-
-  // Empty name set by user or server is allowed, still we expect some
-  // meaningfull config value.
-  store.GetString(config_keys::kName, &settings_.name);
   CHECK(!settings_.name.empty());
-
-  store.GetString(config_keys::kDescription, &settings_.description);
-  store.GetString(config_keys::kLocation, &settings_.location);
-
-  store.GetString(config_keys::kLocalAnonymousAccessRole,
-                  &settings_.local_anonymous_access_role);
   CHECK(IsValidAccessRole(settings_.local_anonymous_access_role))
       << "Invalid role: " << settings_.local_anonymous_access_role;
-
-  store.GetBoolean(config_keys::kLocalDiscoveryEnabled,
-                   &settings_.local_discovery_enabled);
-  store.GetBoolean(config_keys::kLocalPairingEnabled,
-                   &settings_.local_pairing_enabled);
+  CHECK_EQ(
+      settings_.embedded_code.empty(),
+      std::find(settings_.pairing_modes.begin(), settings_.pairing_modes.end(),
+                PairingType::kEmbeddedCode) == settings_.pairing_modes.end());
 
   change.LoadState();
 }
 
 void Config::Transaction::LoadState() {
-  if (!config_->storage_)
+  if (!config_->config_store_)
     return;
-  auto value = config_->storage_->Load();
+  std::string json_string = config_->config_store_->LoadSettings();
+  if (json_string.empty())
+    return;
+
+  auto value = base::JSONReader::Read(json_string);
   const base::DictionaryValue* dict = nullptr;
-  if (!value || !value->GetAsDictionary(&dict))
+  if (!value || !value->GetAsDictionary(&dict)) {
+    LOG(ERROR) << "Failed to parse settings.";
     return;
+  }
 
   std::string tmp;
   bool tmp_bool{false};
@@ -241,9 +182,10 @@ void Config::Transaction::LoadState() {
     set_device_id(tmp);
 }
 
-bool Config::Save() {
-  if (!storage_)
-    return false;
+void Config::Save() {
+  if (!config_store_)
+    return;
+
   base::DictionaryValue dict;
   dict.SetString(config_keys::kClientId, settings_.client_id);
   dict.SetString(config_keys::kClientSecret, settings_.client_secret);
@@ -265,7 +207,11 @@ bool Config::Save() {
   dict.SetBoolean(config_keys::kLocalPairingEnabled,
                   settings_.local_pairing_enabled);
 
-  return storage_->Save(dict);
+  std::string json_string;
+  base::JSONWriter::WriteWithOptions(
+      dict, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json_string);
+
+  config_store_->SaveSettings(json_string);
 }
 
 Config::Transaction::~Transaction() {

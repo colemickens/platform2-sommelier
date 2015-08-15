@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_INCLUDE_WEAVE_CONFIG_H_
-#define LIBWEAVE_INCLUDE_WEAVE_CONFIG_H_
+#ifndef LIBWEAVE_INCLUDE_WEAVE_CONFIG_STORE_H_
+#define LIBWEAVE_INCLUDE_WEAVE_CONFIG_STORE_H_
 
 #include <set>
 #include <string>
 
 #include <base/callback.h>
+#include <base/time/time.h>
 #include <weave/enum_to_string.h>
 #include <weave/privet.h>
 
@@ -43,20 +44,17 @@ struct Settings {
   std::string last_configured_ssid;
 };
 
-class Config {
+class ConfigStore {
  public:
-  // TODO(vitalybuka): Add information to identify changed values.
-  using OnChangedCallback = base::Callback<void(const Settings& settings)>;
-
-  // Sets callback which is called when config is changed.
-  virtual void AddOnChangedCallback(const OnChangedCallback& callback) = 0;
-
-  virtual const Settings& GetSettings() const = 0;
+  virtual bool LoadDefaults(Settings* settings) = 0;
+  virtual std::string LoadSettings() = 0;
+  virtual void SaveSettings(const std::string& settings) = 0;
+  virtual void OnSettingsChanged(const Settings& settings) = 0;
 
  protected:
-  virtual ~Config() = default;
+  virtual ~ConfigStore() = default;
 };
 
 }  // namespace weave
 
-#endif  // LIBWEAVE_INCLUDE_WEAVE_CONFIG_H_
+#endif  // LIBWEAVE_INCLUDE_WEAVE_CONFIG_STORE_H_

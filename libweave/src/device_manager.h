@@ -11,7 +11,7 @@
 namespace weave {
 
 class BaseApiHandler;
-class BuffetConfig;
+class Config;
 class CommandManager;
 class DeviceRegistrationInfo;
 class StateChangeQueue;
@@ -27,6 +27,7 @@ class DeviceManager final : public Device {
   ~DeviceManager() override;
 
   void Start(const Options& options,
+             ConfigStore* config_store,
              TaskRunner* task_runner,
              HttpClient* http_client,
              Network* network,
@@ -35,9 +36,10 @@ class DeviceManager final : public Device {
 
   Commands* GetCommands() override;
   State* GetState() override;
-  Config* GetConfig() override;
   Cloud* GetCloud() override;
   Privet* GetPrivet() override;
+
+  Config* GetConfig();
 
  private:
   void StartPrivet(const Options& options,

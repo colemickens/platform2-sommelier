@@ -7,8 +7,8 @@
 #include <string>
 
 #include "libweave/src/base_api_handler.h"
-#include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
+#include "libweave/src/config.h"
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/privet_manager.h"
 #include "libweave/src/states/state_change_queue.h"
@@ -28,6 +28,7 @@ DeviceManager::DeviceManager() {}
 DeviceManager::~DeviceManager() {}
 
 void DeviceManager::Start(const Options& options,
+                          ConfigStore* config_store,
                           TaskRunner* task_runner,
                           HttpClient* http_client,
                           Network* network,
@@ -40,8 +41,8 @@ void DeviceManager::Start(const Options& options,
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
 
-  std::unique_ptr<BuffetConfig> config{new BuffetConfig{options.state_path}};
-  config->Load(options.config_path);
+  std::unique_ptr<Config> config{new Config{config_store}};
+  config->Load();
 
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
@@ -101,7 +102,7 @@ void DeviceManager::OnWiFiBootstrapStateChanged(
     weave::privet::WifiBootstrapManager::State state) {
   const std::string& ssid = privet_->GetCurrentlyConnectedSsid();
   if (ssid != device_info_->GetConfig().last_configured_ssid()) {
-    weave::BuffetConfig::Transaction change{device_info_->GetMutableConfig()};
+    weave::Config::Transaction change{device_info_->GetMutableConfig()};
     change.set_last_configured_ssid(ssid);
   }
 }

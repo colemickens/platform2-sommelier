@@ -12,7 +12,7 @@
 #include <base/files/file_path.h>
 #include <weave/cloud.h>
 #include <weave/commands.h>
-#include <weave/config.h>
+#include <weave/config_store.h>
 #include <weave/export.h>
 #include <weave/http_client.h>
 #include <weave/http_server.h>
@@ -42,6 +42,7 @@ class Device {
   virtual ~Device() = default;
 
   virtual void Start(const Options& options,
+                     ConfigStore* config_store,
                      TaskRunner* task_runner,
                      HttpClient* http_client,
                      Network* network,
@@ -50,7 +51,6 @@ class Device {
 
   virtual Commands* GetCommands() = 0;
   virtual State* GetState() = 0;
-  virtual Config* GetConfig() = 0;
   virtual Cloud* GetCloud() = 0;
   virtual Privet* GetPrivet() = 0;
 

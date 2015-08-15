@@ -7,8 +7,8 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
-#include <chromeos/key_value_store.h>
 #include <gtest/gtest.h>
+#include <weave/mock_config_store.h>
 #include <weave/mock_http_client.h>
 
 #include "libweave/src/bind_lambda.h"
@@ -17,7 +17,6 @@
 #include "libweave/src/http_constants.h"
 #include "libweave/src/states/mock_state_change_queue_interface.h"
 #include "libweave/src/states/state_manager.h"
-#include "libweave/src/storage_impls.h"
 
 using testing::_;
 using testing::AtLeast;
@@ -27,6 +26,7 @@ using testing::Mock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::ReturnRefOfCopy;
+using testing::SaveArg;
 using testing::StrictMock;
 using testing::WithArgs;
 
@@ -65,13 +65,6 @@ const char kRobotAccountEmail[] =
     "clouddevices.gserviceaccount.com";
 
 }  // namespace test_data
-
-// Add the test device registration information.
-void SetDefaultDeviceRegistration(base::DictionaryValue* data) {
-  data->SetString("refresh_token", test_data::kRefreshToken);
-  data->SetString("device_id", test_data::kDeviceId);
-  data->SetString("robot_account", test_data::kRobotAccountEmail);
-}
 
 std::string GetFormField(const std::string& data, const std::string& name) {
   EXPECT_FALSE(data.empty());
@@ -123,36 +116,47 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     EXPECT_CALL(mock_state_change_queue_, MockAddOnStateUpdatedCallback(_))
         .WillRepeatedly(Return(nullptr));
 
-    std::unique_ptr<StorageInterface> storage{new MemStorage};
-    storage_ = storage.get();
-    storage->Save(data_);
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
 
-    std::unique_ptr<BuffetConfig> config{new BuffetConfig{std::move(storage)}};
+    std::unique_ptr<Config> config{new Config{&config_store_}};
     config_ = config.get();
     dev_reg_.reset(new DeviceRegistrationInfo{command_manager_, state_manager_,
                                               std::move(config), nullptr,
                                               &http_client_, true, nullptr});
 
-    ReloadConfig();
+    ReloadDefaults();
   }
 
-  void ReloadConfig() {
-    chromeos::KeyValueStore config_store;
-    config_store.SetString("client_id", test_data::kClientId);
-    config_store.SetString("client_secret", test_data::kClientSecret);
-    config_store.SetString("api_key", test_data::kApiKey);
-    config_store.SetString("device_kind", "vendor");
-    config_store.SetString("name", "Coffee Pot");
-    config_store.SetString("description", "Easy to clean");
-    config_store.SetString("location", "Kitchen");
-    config_store.SetString("local_anonymous_access_role", "viewer");
-    config_store.SetString("model_id", "AAAAA");
-    config_store.SetString("oauth_url", test_data::kOAuthURL);
-    config_store.SetString("service_url", test_data::kServiceURL);
-    config_->Load(config_store);
+  void ReloadDefaults() {
+    EXPECT_CALL(config_store_, LoadDefaults(_))
+        .WillOnce(Invoke([](Settings* settings) {
+          settings->client_id = test_data::kClientId;
+          settings->client_secret = test_data::kClientSecret;
+          settings->api_key = test_data::kApiKey;
+          settings->name = "Coffee Pot";
+          settings->description = "Easy to clean";
+          settings->location = "Kitchen";
+          settings->local_anonymous_access_role = "viewer";
+          settings->model_id = "AAAAA";
+          settings->oauth_url = test_data::kOAuthURL;
+          settings->service_url = test_data::kServiceURL;
+          return true;
+        }));
+    config_->Load();
     dev_reg_->Start();
+  }
+
+  void ReloadSettings() {
+    base::DictionaryValue dict;
+    dict.SetString("refresh_token", test_data::kRefreshToken);
+    dict.SetString("device_id", test_data::kDeviceId);
+    dict.SetString("robot_account", test_data::kRobotAccountEmail);
+    std::string json_string;
+    base::JSONWriter::WriteWithOptions(
+        dict, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json_string);
+    EXPECT_CALL(config_store_, LoadSettings()).WillOnce(Return(json_string));
+    ReloadDefaults();
   }
 
   void PublishCommands(const base::ListValue& commands) {
@@ -177,10 +181,10 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     return dev_reg_->registration_status_;
   }
 
+  unittests::MockConfigStore config_store_;
   StrictMock<MockHttpClient> http_client_;
   base::DictionaryValue data_;
-  StorageInterface* storage_{nullptr};
-  BuffetConfig* config_{nullptr};
+  Config* config_{nullptr};
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
   StrictMock<MockStateChangeQueueInterface> mock_state_change_queue_;
@@ -223,9 +227,7 @@ TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
 
 TEST_F(DeviceRegistrationInfoTest, HaveRegistrationCredentials) {
   EXPECT_FALSE(dev_reg_->HaveRegistrationCredentials());
-  SetDefaultDeviceRegistration(&data_);
-  storage_->Save(data_);
-  ReloadConfig();
+  ReloadSettings();
 
   EXPECT_CALL(http_client_,
               MockSendRequest(http::kPost, dev_reg_->GetOAuthURL("token"),
@@ -250,9 +252,7 @@ TEST_F(DeviceRegistrationInfoTest, HaveRegistrationCredentials) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
-  SetDefaultDeviceRegistration(&data_);
-  storage_->Save(data_);
-  ReloadConfig();
+  ReloadSettings();
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   EXPECT_CALL(http_client_,
@@ -278,9 +278,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
-  SetDefaultDeviceRegistration(&data_);
-  storage_->Save(data_);
-  ReloadConfig();
+  ReloadSettings();
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   EXPECT_CALL(http_client_,
@@ -306,9 +304,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
-  SetDefaultDeviceRegistration(&data_);
-  storage_->Save(data_);
-  ReloadConfig();
+  ReloadSettings();
   SetAccessToken();
 
   EXPECT_CALL(http_client_,
@@ -483,6 +479,11 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
         return ReplyWithJson(200, json);
       })));
 
+  Settings saved_settings;
+  EXPECT_CALL(config_store_, OnSettingsChanged(_))
+      .Times(AtLeast(1))
+      .WillRepeatedly(SaveArg<0>(&saved_settings));
+
   std::string device_id =
       dev_reg_->RegisterDevice(test_data::kClaimTicketId, nullptr);
 
@@ -490,16 +491,9 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   // Validate the device info saved to storage...
-  auto storage_data = storage_->Load();
-  base::DictionaryValue* dict = nullptr;
-  EXPECT_TRUE(storage_data->GetAsDictionary(&dict));
-  std::string value;
-  EXPECT_TRUE(dict->GetString("device_id", &value));
-  EXPECT_EQ(test_data::kDeviceId, value);
-  EXPECT_TRUE(dict->GetString("refresh_token", &value));
-  EXPECT_EQ(test_data::kRefreshToken, value);
-  EXPECT_TRUE(dict->GetString("robot_account", &value));
-  EXPECT_EQ(test_data::kRobotAccountEmail, value);
+  EXPECT_EQ(test_data::kDeviceId, saved_settings.device_id);
+  EXPECT_EQ(test_data::kRefreshToken, saved_settings.refresh_token);
+  EXPECT_EQ(test_data::kRobotAccountEmail, saved_settings.robot_account);
 }
 
 TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
@@ -507,16 +501,12 @@ TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
   // unregistered, depending on whether or not we've found credentials.
   EXPECT_EQ(RegistrationStatus::kUnconfigured, GetRegistrationStatus());
   // Put some credentials into our state, make sure we call that offline.
-  SetDefaultDeviceRegistration(&data_);
-  storage_->Save(data_);
-  ReloadConfig();
+  ReloadSettings();
   EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 }
 
 TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
-  SetDefaultDeviceRegistration(&data_);
-  storage_->Save(data_);
-  ReloadConfig();
+  ReloadSettings();
   SetAccessToken();
 
   auto json_cmds = CreateDictionaryValue(R"({

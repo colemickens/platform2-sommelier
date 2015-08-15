@@ -7,15 +7,15 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
+#include <weave/mock_config_store.h>
 #include <weave/mock_http_client.h>
 
-#include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/unittest_utils.h"
+#include "libweave/src/config.h"
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/states/mock_state_change_queue_interface.h"
 #include "libweave/src/states/state_manager.h"
-#include "libweave/src/storage_impls.h"
 
 using testing::_;
 using testing::StrictMock;
@@ -57,9 +57,8 @@ class BaseApiHandlerTest : public ::testing::Test {
     ASSERT_TRUE(state_manager_->LoadStateDefaults(*state_defaults, nullptr));
     dev_reg_.reset(new DeviceRegistrationInfo(
         command_manager_, state_manager_,
-        std::unique_ptr<BuffetConfig>{new BuffetConfig{
-            std::unique_ptr<StorageInterface>{new MemStorage}}},
-        nullptr, &http_client_, true, nullptr));
+        std::unique_ptr<Config>{new Config{&config_store_}}, nullptr,
+        &http_client_, true, nullptr));
     handler_.reset(new BaseApiHandler{dev_reg_.get(), "123123", state_manager_,
                                       command_manager_});
   }
@@ -84,6 +83,7 @@ class BaseApiHandlerTest : public ::testing::Test {
               command_manager_->FindCommand(id)->GetStatus());
   }
 
+  unittests::MockConfigStore config_store_;
   StrictMock<unittests::MockHttpClient> http_client_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
@@ -107,7 +107,7 @@ TEST_F(BaseApiHandlerTest, UpdateBaseConfiguration) {
     }
   })");
 
-  BuffetConfig& config{*dev_reg_->GetMutableConfig()};
+  Config& config{*dev_reg_->GetMutableConfig()};
 
   AddCommand(R"({
     'name' : 'base.updateBaseConfiguration',
@@ -155,7 +155,7 @@ TEST_F(BaseApiHandlerTest, UpdateBaseConfiguration) {
   EXPECT_JSON_EQ(expected, *state_manager_->GetStateValuesAsJson());
 
   {
-    BuffetConfig::Transaction change{&config};
+    Config::Transaction change{&config};
     change.set_local_anonymous_access_role("viewer");
   }
   expected = R"({
@@ -196,7 +196,7 @@ TEST_F(BaseApiHandlerTest, UpdateDeviceInfo) {
     }
   })");
 
-  const BuffetConfig& config{dev_reg_->GetConfig()};
+  const Config& config{dev_reg_->GetConfig()};
   EXPECT_EQ("testName", config.name());
   EXPECT_EQ("testDescription", config.description());
   EXPECT_EQ("testLocation", config.location());

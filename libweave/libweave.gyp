@@ -4,7 +4,6 @@
       'deps': [
         'expat',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
         'libcrypto',
       ],
     },
@@ -35,7 +34,6 @@
       'sources': [
         'src/backoff_entry.cc',
         'src/base_api_handler.cc',
-        'src/buffet_config.cc',
         'src/commands/cloud_command_proxy.cc',
         'src/commands/command_definition.cc',
         'src/commands/command_dictionary.cc',
@@ -49,6 +47,7 @@
         'src/commands/schema_constants.cc',
         'src/commands/schema_utils.cc',
         'src/commands/user_role.cc',
+        'src/config.cc',
         'src/data_encoding.cc',
         'src/device_manager.cc',
         'src/device_registration_info.cc',
@@ -77,7 +76,6 @@
         'src/states/state_change_queue.cc',
         'src/states/state_manager.cc',
         'src/states/state_package.cc',
-        'src/storage_impls.cc',
         'src/string_utils.cc',
         'src/utils.cc',
       ],
@@ -117,7 +115,6 @@
           'variables': {
             'deps': [
               'libchrome-test-<(libbase_ver)',
-              'libchromeos-test-<(libbase_ver)',
             ],
           },
           'dependencies': [
@@ -132,7 +129,6 @@
             'external/crypto/sha2_unittest.cc',
             'src/backoff_entry_unittest.cc',
             'src/base_api_handler_unittest.cc',
-            'src/buffet_config_unittest.cc',
             'src/commands/cloud_command_proxy_unittest.cc',
             'src/commands/command_definition_unittest.cc',
             'src/commands/command_dictionary_unittest.cc',
@@ -141,6 +137,7 @@
             'src/commands/command_queue_unittest.cc',
             'src/commands/object_schema_unittest.cc',
             'src/commands/schema_utils_unittest.cc',
+            'src/config_unittest.cc',
             'src/data_encoding_unittest.cc',
             'src/device_registration_info_unittest.cc',
             'src/error_unittest.cc',

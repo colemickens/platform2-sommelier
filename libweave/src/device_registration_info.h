@@ -20,19 +20,17 @@
 #include <base/timer/timer.h>
 #include <weave/error.h>
 #include <weave/cloud.h>
-#include <weave/config.h>
 #include <weave/http_client.h>
 
 #include "libweave/src/backoff_entry.h"
-#include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/cloud_command_update_interface.h"
 #include "libweave/src/commands/command_manager.h"
+#include "libweave/src/config.h"
 #include "libweave/src/data_encoding.h"
 #include "libweave/src/notification/notification_channel.h"
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/pull_channel.h"
 #include "libweave/src/states/state_change_queue_interface.h"
-#include "libweave/src/storage_interface.h"
 
 namespace base {
 class DictionaryValue;
@@ -63,7 +61,7 @@ class DeviceRegistrationInfo : public Cloud,
 
   DeviceRegistrationInfo(const std::shared_ptr<CommandManager>& command_manager,
                          const std::shared_ptr<StateManager>& state_manager,
-                         std::unique_ptr<BuffetConfig> config,
+                         std::unique_ptr<Config> config,
                          TaskRunner* task_runner,
                          HttpClient* http_client,
                          bool notifications_enabled,
@@ -137,8 +135,8 @@ class DeviceRegistrationInfo : public Cloud,
                      const base::Closure& on_error) override;
 
   // TODO(vitalybuka): remove getters and pass config to dependent code.
-  const BuffetConfig& GetConfig() const { return *config_; }
-  BuffetConfig* GetMutableConfig() { return config_.get(); }
+  const Config& GetConfig() const { return *config_; }
+  Config* GetMutableConfig() { return config_.get(); }
 
  private:
   friend class DeviceRegistrationInfoTest;
@@ -301,7 +299,7 @@ class DeviceRegistrationInfo : public Cloud,
   // Device state manager.
   std::shared_ptr<StateManager> state_manager_;
 
-  std::unique_ptr<BuffetConfig> config_;
+  std::unique_ptr<Config> config_;
 
   // Backoff manager for DoCloudRequest() method.
   std::unique_ptr<BackoffEntry::Policy> cloud_backoff_policy_;

@@ -50,7 +50,7 @@ void BaseApiHandler::OnCommandAdded(Command* command) {
 void BaseApiHandler::UpdateBaseConfiguration(Command* command) {
   command->SetProgress(base::DictionaryValue{}, nullptr);
 
-  const BuffetConfig& config{device_info_->GetConfig()};
+  const Config& config{device_info_->GetConfig()};
   std::string anonymous_access_role{config.local_anonymous_access_role()};
   bool discovery_enabled{config.local_discovery_enabled()};
   bool pairing_enabled{config.local_pairing_enabled()};
@@ -82,7 +82,7 @@ void BaseApiHandler::OnConfigChanged(const Settings& settings) {
 void BaseApiHandler::UpdateDeviceInfo(Command* command) {
   command->SetProgress(base::DictionaryValue{}, nullptr);
 
-  const BuffetConfig& config{device_info_->GetConfig()};
+  const Config& config{device_info_->GetConfig()};
   std::string name{config.name()};
   std::string description{config.description()};
   std::string location{config.location()};

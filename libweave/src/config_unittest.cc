@@ -9,11 +9,12 @@
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <weave/mock_config_store.h>
 
 #include "libweave/src/commands/unittest_utils.h"
-#include "libweave/src/storage_impls.h"
 
 using testing::_;
+using testing::Invoke;
 
 namespace weave {
 
@@ -22,18 +23,14 @@ class ConfigTest : public ::testing::Test {
   void SetUp() override {
     EXPECT_CALL(*this, OnConfigChanged(_))
         .Times(1);  // Called from AddOnChangedCallback
-
-    std::unique_ptr<StorageInterface> storage{new MemStorage};
-    storage_ = storage.get();
-    config_.reset(new Config{std::move(storage)});
-
+    config_.reset(new Config{&config_store_});
     config_->AddOnChangedCallback(
         base::Bind(&ConfigTest::OnConfigChanged, base::Unretained(this)));
   }
 
   MOCK_METHOD1(OnConfigChanged, void(const Settings&));
 
-  StorageInterface* storage_{nullptr};
+  unittests::MockConfigStore config_store_;
   std::unique_ptr<Config> config_;
   const Config default_{nullptr};
 };
@@ -73,125 +70,28 @@ TEST_F(ConfigTest, Defaults) {
   EXPECT_EQ("", config_->last_configured_ssid());
 }
 
-TEST_F(ConfigTest, LoadConfig) {
-  chromeos::KeyValueStore config_store;
-  config_store.SetString("client_id", "conf_client_id");
-  config_store.SetString("client_secret", "conf_client_secret");
-  config_store.SetString("api_key", "conf_api_key");
-  config_store.SetString("oauth_url", "conf_oauth_url");
-  config_store.SetString("service_url", "conf_service_url");
-  config_store.SetString("oem_name", "conf_oem_name");
-  config_store.SetString("model_name", "conf_model_name");
-  config_store.SetString("model_id", "ABCDE");
-  config_store.SetString("polling_period_ms", "12345");
-  config_store.SetString("backup_polling_period_ms", "6589");
-  config_store.SetBoolean("wifi_auto_setup_enabled", false);
-  config_store.SetBoolean("ble_setup_enabled", true);
-  config_store.SetString("pairing_modes",
-                         "pinCode,embeddedCode,ultrasound32,audible32");
-  config_store.SetString("embedded_code", "1234");
-  config_store.SetString("name", "conf_name");
-  config_store.SetString("description", "conf_description");
-  config_store.SetString("location", "conf_location");
-  config_store.SetString("local_anonymous_access_role", "user");
-  config_store.SetBoolean("local_pairing_enabled", false);
-  config_store.SetBoolean("local_discovery_enabled", false);
-
-  // Following will be ignored.
-  config_store.SetString("device_kind", "conf_device_kind");
-  config_store.SetString("device_id", "conf_device_id");
-  config_store.SetString("refresh_token", "conf_refresh_token");
-  config_store.SetString("robot_account", "conf_robot_account");
-  config_store.SetString("last_configured_ssid", "conf_last_configured_ssid");
-
-  EXPECT_CALL(*this, OnConfigChanged(_)).Times(1);
-  config_->Load(config_store);
-
-  EXPECT_EQ("conf_client_id", config_->client_id());
-  EXPECT_EQ("conf_client_secret", config_->client_secret());
-  EXPECT_EQ("conf_api_key", config_->api_key());
-  EXPECT_EQ("conf_oauth_url", config_->oauth_url());
-  EXPECT_EQ("conf_service_url", config_->service_url());
-  EXPECT_EQ("conf_oem_name", config_->oem_name());
-  EXPECT_EQ("conf_model_name", config_->model_name());
-  EXPECT_EQ("ABCDE", config_->model_id());
-  EXPECT_EQ(base::TimeDelta::FromMilliseconds(12345),
-            config_->polling_period());
-  EXPECT_EQ(base::TimeDelta::FromMilliseconds(6589),
-            config_->backup_polling_period());
-  EXPECT_FALSE(config_->wifi_auto_setup_enabled());
-  EXPECT_TRUE(config_->ble_setup_enabled());
-  std::set<PairingType> pairing_types{
-      PairingType::kPinCode, PairingType::kEmbeddedCode,
-      PairingType::kUltrasound32, PairingType::kAudible32};
-  EXPECT_EQ(pairing_types, config_->pairing_modes());
-  EXPECT_EQ("1234", config_->embedded_code());
-  EXPECT_EQ("conf_name", config_->name());
-  EXPECT_EQ("conf_description", config_->description());
-  EXPECT_EQ("conf_location", config_->location());
-  EXPECT_EQ("user", config_->local_anonymous_access_role());
-  EXPECT_FALSE(config_->local_pairing_enabled());
-  EXPECT_FALSE(config_->local_discovery_enabled());
-
-  // Not from config.
-  EXPECT_EQ(default_.device_id(), config_->device_id());
-  EXPECT_EQ(default_.refresh_token(), config_->refresh_token());
-  EXPECT_EQ(default_.robot_account(), config_->robot_account());
-  EXPECT_EQ(default_.last_configured_ssid(), config_->last_configured_ssid());
-
-  // Nothing should be saved yet.
-  EXPECT_JSON_EQ("{}", *storage_->Load());
-
-  Config::Transaction change{config_.get()};
-  EXPECT_CALL(*this, OnConfigChanged(_)).Times(1);
-  change.Commit();
-
-  auto expected = R"({
-    'api_key': 'conf_api_key',
-    'client_id': 'conf_client_id',
-    'client_secret': 'conf_client_secret',
-    'description': 'conf_description',
-    'device_id': '',
-    'local_anonymous_access_role': 'user',
-    'local_discovery_enabled': false,
-    'local_pairing_enabled': false,
-    'location': 'conf_location',
-    'name': 'conf_name',
-    'oauth_url': 'conf_oauth_url',
-    'refresh_token': '',
-    'robot_account': '',
-    'last_configured_ssid': '',
-    'service_url': 'conf_service_url'
-  })";
-  EXPECT_JSON_EQ(expected, *storage_->Load());
-}
-
 TEST_F(ConfigTest, LoadState) {
   auto state = R"({
-    'api_key': 'state_api_key',
-    'client_id': 'state_client_id',
-    'client_secret': 'state_client_secret',
-    'description': 'state_description',
-    'device_id': 'state_device_id',
-    'local_anonymous_access_role': 'user',
-    'local_discovery_enabled': false,
-    'local_pairing_enabled': false,
-    'location': 'state_location',
-    'name': 'state_name',
-    'oauth_url': 'state_oauth_url',
-    'refresh_token': 'state_refresh_token',
-    'robot_account': 'state_robot_account',
-    'last_configured_ssid': 'state_last_configured_ssid',
-    'service_url': 'state_service_url'
+    "api_key": "state_api_key",
+    "client_id": "state_client_id",
+    "client_secret": "state_client_secret",
+    "description": "state_description",
+    "device_id": "state_device_id",
+    "local_anonymous_access_role": "user",
+    "local_discovery_enabled": false,
+    "local_pairing_enabled": false,
+    "location": "state_location",
+    "name": "state_name",
+    "oauth_url": "state_oauth_url",
+    "refresh_token": "state_refresh_token",
+    "robot_account": "state_robot_account",
+    "last_configured_ssid": "state_last_configured_ssid",
+    "service_url": "state_service_url"
   })";
-  storage_->Save(*unittests::CreateDictionaryValue(state));
+  EXPECT_CALL(config_store_, LoadSettings()).WillOnce(Return(state));
 
-  chromeos::KeyValueStore config_store;
   EXPECT_CALL(*this, OnConfigChanged(_)).Times(1);
-  config_->Load(config_store);
-
-  // Clear storage.
-  storage_->Save(base::DictionaryValue());
+  config_->Load();
 
   EXPECT_EQ("state_client_id", config_->client_id());
   EXPECT_EQ("state_client_secret", config_->client_secret());
@@ -218,15 +118,6 @@ TEST_F(ConfigTest, LoadState) {
   EXPECT_EQ("state_refresh_token", config_->refresh_token());
   EXPECT_EQ("state_robot_account", config_->robot_account());
   EXPECT_EQ("state_last_configured_ssid", config_->last_configured_ssid());
-
-  // Nothing should be saved yet.
-  EXPECT_JSON_EQ("{}", *storage_->Load());
-
-  Config::Transaction change{config_.get()};
-  EXPECT_CALL(*this, OnConfigChanged(_)).Times(1);
-  change.Commit();
-
-  EXPECT_JSON_EQ(state, *storage_->Load());
 }
 
 TEST_F(ConfigTest, Setters) {
@@ -290,25 +181,31 @@ TEST_F(ConfigTest, Setters) {
   EXPECT_EQ("set_last_configured_ssid", config_->last_configured_ssid());
 
   EXPECT_CALL(*this, OnConfigChanged(_)).Times(1);
-  change.Commit();
 
-  auto expected = R"({
-    'api_key': 'set_api_key',
-    'client_id': 'set_client_id',
-    'client_secret': 'set_client_secret',
-    'description': 'set_description',
-    'device_id': 'set_id',
-    'local_anonymous_access_role': 'user',
-    'local_discovery_enabled': true,
-    'local_pairing_enabled': true,
-    'location': 'set_location',
-    'name': 'set_name',
-    'oauth_url': 'set_oauth_url',
-    'refresh_token': 'set_token',
-    'robot_account': 'set_account',
-    'last_configured_ssid': 'set_last_configured_ssid',
-    'service_url': 'set_service_url'
-  })";
-  EXPECT_JSON_EQ(expected, *storage_->Load());
+  EXPECT_CALL(config_store_, SaveSettings(_))
+      .WillOnce(Invoke([](const std::string& json) {
+        auto expected = R"({
+          'api_key': 'set_api_key',
+          'client_id': 'set_client_id',
+          'client_secret': 'set_client_secret',
+          'description': 'set_description',
+          'device_id': 'set_id',
+          'local_anonymous_access_role': 'user',
+          'local_discovery_enabled': true,
+          'local_pairing_enabled': true,
+          'location': 'set_location',
+          'name': 'set_name',
+          'oauth_url': 'set_oauth_url',
+          'refresh_token': 'set_token',
+          'robot_account': 'set_account',
+          'last_configured_ssid': 'set_last_configured_ssid',
+          'service_url': 'set_service_url'
+        })";
+        EXPECT_JSON_EQ(expected, *unittests::CreateValue(json));
+      }));
+  EXPECT_CALL(config_store_, OnSettingsChanged(_)).Times(1);
+
+  change.Commit();
 }
+
 }  // namespace weave

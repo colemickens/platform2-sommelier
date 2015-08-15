@@ -8,7 +8,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/key_value_store.h>
 
 #include "libweave/src/json_error_codes.h"
 #include "libweave/src/states/error_codes.h"

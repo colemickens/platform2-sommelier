@@ -10,10 +10,8 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/files/file_path.h>
+#include <weave/config_store.h>
 #include <weave/error.h>
-#include <chromeos/key_value_store.h>
-#include <weave/config.h>
 
 #include "libweave/src/privet/security_delegate.h"
 
@@ -22,21 +20,17 @@ namespace weave {
 class StorageInterface;
 
 // Handles reading buffet config and state files.
-class Config final : public Config {
+class Config final {
  public:
   using OnChangedCallback = base::Callback<void(const Settings&)>;
-  ~Config() override = default;
+  ~Config() = default;
 
-  explicit Config(std::unique_ptr<StorageInterface> storage);
+  explicit Config(ConfigStore* config_store);
 
-  explicit Config(const base::FilePath& state_path);
+  void AddOnChangedCallback(const OnChangedCallback& callback);
+  const Settings& GetSettings() const;
 
-  // Config overrides.
-  void AddOnChangedCallback(const OnChangedCallback& callback) override;
-  const Settings& GetSettings() const override;
-
-  void Load(const base::FilePath& config_path);
-  void Load(const chromeos::KeyValueStore& store);
+  void Load();
 
   // Allows editing of config. Makes sure that callbacks were called and changes
   // were saved.
@@ -136,14 +130,10 @@ class Config final : public Config {
   }
 
  private:
-  bool Save();
-  static Settings CreateDefaultSettings();
+  void Save();
 
-  Settings settings_ = CreateDefaultSettings();
-
-  // Serialization interface to save and load buffet state.
-  std::unique_ptr<StorageInterface> storage_;
-
+  Settings settings_;
+  ConfigStore* config_store_{nullptr};
   std::vector<OnChangedCallback> on_changed_;
 
   DISALLOW_COPY_AND_ASSIGN(Config);

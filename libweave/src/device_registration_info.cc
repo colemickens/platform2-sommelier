@@ -15,7 +15,6 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <chromeos/key_value_store.h>
 #include <weave/http_client.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>
@@ -215,7 +214,7 @@ bool IsSuccessful(const HttpClient::Response& response) {
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
-    std::unique_ptr<BuffetConfig> config,
+    std::unique_ptr<Config> config,
     TaskRunner* task_runner,
     HttpClient* http_client,
     bool notifications_enabled,
@@ -480,7 +479,7 @@ void DeviceRegistrationInfo::AddOnRegistrationChangedCallback(
 }
 
 void DeviceRegistrationInfo::AddOnConfigChangedCallback(
-    const BuffetConfig::OnChangedCallback& callback) {
+    const Config::OnChangedCallback& callback) {
   config_->AddOnChangedCallback(callback);
 }
 
@@ -614,7 +613,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(const std::string& ticket_id,
   access_token_expiration_ =
       base::Time::Now() + base::TimeDelta::FromSeconds(expires_in);
 
-  BuffetConfig::Transaction change{config_.get()};
+  Config::Transaction change{config_.get()};
   change.set_device_id(device_id);
   change.set_robot_account(robot_account);
   change.set_refresh_token(refresh_token);
@@ -807,7 +806,7 @@ bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
                                               const std::string& description,
                                               const std::string& location,
                                               ErrorPtr* error) {
-  BuffetConfig::Transaction change{config_.get()};
+  Config::Transaction change{config_.get()};
   change.set_name(name);
   change.set_description(description);
   change.set_location(location);
@@ -826,7 +825,7 @@ bool DeviceRegistrationInfo::UpdateBaseConfig(
     bool local_discovery_enabled,
     bool local_pairing_enabled,
     ErrorPtr* error) {
-  BuffetConfig::Transaction change(config_.get());
+  Config::Transaction change(config_.get());
   if (!change.set_local_anonymous_access_role(anonymous_access_role)) {
     Error::AddToPrintf(error, FROM_HERE, kErrorDomain, "invalid_parameter",
                        "Invalid role: %s", anonymous_access_role.c_str());
@@ -851,7 +850,7 @@ bool DeviceRegistrationInfo::UpdateServiceConfig(
                  "Unable to change config for registered device");
     return false;
   }
-  BuffetConfig::Transaction change{config_.get()};
+  Config::Transaction change{config_.get()};
   change.set_client_id(client_id);
   change.set_client_secret(client_secret);
   change.set_api_key(api_key);
@@ -1273,7 +1272,7 @@ void DeviceRegistrationInfo::MarkDeviceUnregistered() {
   connected_to_cloud_ = false;
 
   LOG(INFO) << "Device is unregistered from the cloud. Deleting credentials";
-  BuffetConfig::Transaction change{config_.get()};
+  Config::Transaction change{config_.get()};
   change.set_device_id("");
   change.set_robot_account("");
   change.set_refresh_token("");
