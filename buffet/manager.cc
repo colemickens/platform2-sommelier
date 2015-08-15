@@ -25,6 +25,7 @@
 #include <dbus/values_util.h>
 #include <weave/enum_to_string.h>
 
+#include "buffet/buffet_config.h"
 #include "buffet/dbus_command_dispatcher.h"
 #include "buffet/dbus_conversion.h"
 #include "buffet/http_transport_client.h"
@@ -88,7 +89,11 @@ void Manager::Start(const weave::Device::Options& options,
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   device_ = weave::Device::Create();
-  device_->Start(options, task_runner_.get(), http_client_.get(),
+  config_.reset(new BuffetConfig{options.config_path, options.state_path});
+  config_->AddOnChangedCallback(
+      base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
+
+  device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
                  shill_client_.get(), mdns, http_server);
 
   command_dispatcher_.reset(new DBusCommandDispacher{
@@ -96,9 +101,6 @@ void Manager::Start(const weave::Device::Options& options,
 
   device_->GetState()->AddOnChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
-
-  device_->GetConfig()->AddOnChangedCallback(
-      base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
   device_->GetCloud()->AddOnRegistrationChangedCallback(base::Bind(
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));

@@ -30,6 +30,7 @@ class ExportedObjectManager;
 
 namespace buffet {
 
+class BuffetConfig;
 class DBusCommandDispacher;
 class HttpTransportClient;
 class PeerdClient;
@@ -127,6 +128,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::unique_ptr<PeerdClient> peerd_client_;
   std::unique_ptr<WebServClient> web_serv_client_;
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
+  std::unique_ptr<BuffetConfig> config_;
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
 
