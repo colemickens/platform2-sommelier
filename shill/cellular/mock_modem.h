@@ -15,8 +15,7 @@ namespace shill {
 
 class MockModem : public Modem {
  public:
-  MockModem(const std::string& owner,
-            const std::string& service,
+  MockModem(const std::string& service,
             const std::string& path,
             ModemInfo* modem_info,
             ControlInterface* control_interface);
@@ -26,9 +25,9 @@ class MockModem : public Modem {
   // more thorough mock, know that modem_unittest.cc depends on the
   // incompleteness of this mock.
   MOCK_METHOD1(SetModemStateFromProperties,
-               void(const DBusPropertiesMap& properties));
+               void(const KeyValueStore& properties));
   MOCK_CONST_METHOD2(GetLinkName,
-                     bool(const DBusPropertiesMap& modem_properties,
+                     bool(const KeyValueStore& modem_properties,
                           std::string* name));
   MOCK_CONST_METHOD0(GetModemInterface,
                      std::string(void));

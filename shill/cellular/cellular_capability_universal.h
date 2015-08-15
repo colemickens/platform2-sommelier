@@ -8,6 +8,7 @@
 #include <deque>
 #include <map>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
@@ -35,9 +36,12 @@ class ModemInfo;
 // all types of modems, i.e. CDMA, GSM, and LTE modems.
 class CellularCapabilityUniversal : public CellularCapability {
  public:
-  typedef std::vector<DBusPropertiesMap> ScanResults;
-  typedef DBusPropertiesMap ScanResult;
+  typedef std::vector<KeyValueStore> ScanResults;
+  typedef KeyValueStore ScanResult;
   typedef std::map<uint32_t, uint32_t> LockRetryData;
+  typedef std::tuple<uint32_t, bool> SignalQuality;
+  typedef std::tuple<uint32_t, uint32_t> ModesData;
+  typedef std::vector<ModesData> SupportedModes;
 
   // Constants used in connect method call.  Make available to test matchers.
   // TODO(jglasgow): Generate from modem manager into
@@ -60,9 +64,9 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
-  void OnDBusPropertiesChanged(
+  void OnPropertiesChanged(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties) override;
   // Checks the modem state.  If the state is kModemStateDisabled, then the
   // modem is enabled.  Otherwise, the enable command is buffered until the
@@ -85,8 +89,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string GetRoamingStateString() const override;
   bool AllowRoaming() override;
   void GetSignalQuality() override;
-  void SetupConnectProperties(DBusPropertiesMap* properties) override;
-  void Connect(const DBusPropertiesMap& properties,
+  void SetupConnectProperties(KeyValueStore* properties) override;
+  void Connect(const KeyValueStore& properties,
                Error* error,
                const ResultCallback& callback) override;
   void Disconnect(Error* error, const ResultCallback& callback) override;
@@ -286,7 +290,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   KeyValueStore SimLockStatusToProperty(Error* error);
 
   void SetupApnTryList();
-  void FillConnectPropertyMap(DBusPropertiesMap* properties);
+  void FillConnectPropertyMap(KeyValueStore* properties);
 
   void HelpRegisterConstDerivedKeyValueStore(
       const std::string& name,
@@ -305,7 +309,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Property Change notification handlers
   void OnModemPropertiesChanged(
-      const DBusPropertiesMap& properties,
+      const KeyValueStore& properties,
       const std::vector<std::string>& invalidated_properties);
 
   void OnSignalQualityChanged(uint32_t quality);
@@ -329,7 +333,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // 3GPP property change handlers
   virtual void OnModem3GPPPropertiesChanged(
-      const DBusPropertiesMap& properties,
+      const KeyValueStore& properties,
       const std::vector<std::string>& invalidated_properties);
   void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
                                  const std::string& operator_code,
@@ -344,7 +348,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // SIM property change handlers
   // TODO(armansito): Put these methods in a 3GPP-only subclass.
   void OnSimPropertiesChanged(
-      const DBusPropertiesMap& props,
+      const KeyValueStore& props,
       const std::vector<std::string>& invalidated_properties);
   void OnSpnChanged(const std::string& spn);
   void OnSimIdentifierChanged(const std::string& id);
@@ -359,7 +363,7 @@ class CellularCapabilityUniversal : public CellularCapability {
                    const ScanResults& results,
                    const Error& error);
   void OnConnectReply(const ResultCallback& callback,
-                      const DBus::Path& bearer,
+                      const std::string& bearer,
                       const Error& error);
 
   // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a

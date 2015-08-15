@@ -11,7 +11,7 @@
 #include <base/callback.h>
 
 #include "shill/accessor_interface.h"
-#include "shill/dbus_properties.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 
@@ -22,18 +22,14 @@ typedef base::Callback<void(const Error&, bool)> ResultBoolCallback;
 typedef base::Callback<void(const Error&,
                             const std::string&)> ResultStringCallback;
 typedef base::Callback<void(const Error&)> EnabledStateChangedCallback;
-typedef base::Callback<void(const DBusPropertiesMap&,
-                            const Error&)> DBusPropertyMapCallback;
-typedef base::Callback<void(const std::vector<DBusPropertiesMap>&,
-                            const Error&)> DBusPropertyMapsCallback;
-typedef base::Callback<void(const DBusEnumValueMap&,
-                            const Error&)> DBusEnumValueMapCallback;
-typedef base::Callback<void(const DBus::Path&,
-                            const Error&)> DBusPathCallback;
-typedef base::Callback<void(
-    const std::vector<DBus::Path>&, const Error&)> DBusPathsCallback;
+typedef base::Callback<void(const KeyValueStore&,
+                            const Error&)> KeyValueStoreCallback;
+typedef base::Callback<void(const std::vector<KeyValueStore>&,
+                            const Error&)> KeyValueStoresCallback;
+typedef base::Callback<void(const std::string&,
+                            const Error&)> RpcIdentifierCallback;
 typedef base::Callback<void(const std::string&, const Error&)> StringCallback;
-typedef base::Callback<void(uint32_t, uint32_t, const DBusPropertiesMap&)>
+typedef base::Callback<void(uint32_t, uint32_t, const KeyValueStore&)>
     ActivationStateSignalCallback;
 typedef base::Callback<void(const Stringmaps&,
                             const Error&)> ResultStringmapsCallback;

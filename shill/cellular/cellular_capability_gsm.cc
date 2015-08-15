@@ -81,7 +81,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(
   // enabled.
   card_proxy_.reset(
       control_interface->CreateModemGSMCardProxy(cellular->dbus_path(),
-                                                 cellular->dbus_owner()));
+                                                 cellular->dbus_service()));
   // TODO(benchan): To allow unit testing using a mock proxy without further
   // complicating the code, the test proxy factory is set up to return a nullptr
   // pointer when CellularCapabilityGSM is constructed. Refactor the code to
@@ -120,12 +120,12 @@ void CellularCapabilityGSM::InitProxies() {
   // initialization.
   if (!card_proxy_.get()) {
     card_proxy_.reset(
-        control_interface()->CreateModemGSMCardProxy(cellular()->dbus_path(),
-                                                     cellular()->dbus_owner()));
+        control_interface()->CreateModemGSMCardProxy(
+            cellular()->dbus_path(), cellular()->dbus_service()));
   }
   network_proxy_.reset(
       control_interface()->CreateModemGSMNetworkProxy(
-          cellular()->dbus_path(), cellular()->dbus_owner()));
+          cellular()->dbus_path(), cellular()->dbus_service()));
   network_proxy_->set_signal_quality_callback(
       Bind(&CellularCapabilityGSM::OnSignalQualitySignal,
            weak_ptr_factory_.GetWeakPtr()));
@@ -252,36 +252,34 @@ void CellularCapabilityGSM::SetupApnTryList() {
 }
 
 void CellularCapabilityGSM::SetupConnectProperties(
-    DBusPropertiesMap* properties) {
+    KeyValueStore* properties) {
   SetupApnTryList();
   FillConnectPropertyMap(properties);
 }
 
 void CellularCapabilityGSM::FillConnectPropertyMap(
-    DBusPropertiesMap* properties) {
-  (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
-      kPhoneNumber);
+    KeyValueStore* properties) {
+  properties->SetString(kConnectPropertyPhoneNumber, kPhoneNumber);
 
   if (!AllowRoaming())
-    (*properties)[kConnectPropertyHomeOnly].writer().append_bool(true);
+    properties->SetBool(kConnectPropertyHomeOnly, true);
 
   if (!apn_try_list_.empty()) {
     // Leave the APN at the front of the list, so that it can be recorded
     // if the connect attempt succeeds.
     Stringmap apn_info = apn_try_list_.front();
     SLOG(this, 2) << __func__ << ": Using APN " << apn_info[kApnProperty];
-    (*properties)[kConnectPropertyApn].writer().append_string(
-        apn_info[kApnProperty].c_str());
+    properties->SetString(kConnectPropertyApn, apn_info[kApnProperty]);
     if (ContainsKey(apn_info, kApnUsernameProperty))
-      (*properties)[kConnectPropertyApnUsername].writer().append_string(
-          apn_info[kApnUsernameProperty].c_str());
+      properties->SetString(kConnectPropertyApnUsername,
+                            apn_info[kApnUsernameProperty]);
     if (ContainsKey(apn_info, kApnPasswordProperty))
-      (*properties)[kConnectPropertyApnPassword].writer().append_string(
-          apn_info[kApnPasswordProperty].c_str());
+      properties->SetString(kConnectPropertyApnPassword,
+                            apn_info[kApnPasswordProperty]);
   }
 }
 
-void CellularCapabilityGSM::Connect(const DBusPropertiesMap& properties,
+void CellularCapabilityGSM::Connect(const KeyValueStore& properties,
                                     Error* error,
                                     const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
@@ -308,7 +306,7 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback& callback,
       apn_try_list_.pop_front();
       SLOG(this, 2) << "Connect failed with invalid APN, "
                     << apn_try_list_.size() << " remaining APNs to try";
-      DBusPropertiesMap props;
+      KeyValueStore props;
       FillConnectPropertyMap(&props);
       Error error;
       Connect(props, &error, callback);
@@ -649,36 +647,34 @@ string CellularCapabilityGSM::GetRoamingStateString() const {
   return kRoamingStateUnknown;
 }
 
-void CellularCapabilityGSM::OnDBusPropertiesChanged(
+void CellularCapabilityGSM::OnPropertiesChanged(
     const string& interface,
-    const DBusPropertiesMap& properties,
+    const KeyValueStore& properties,
     const vector<string>& invalidated_properties) {
-  CellularCapabilityClassic::OnDBusPropertiesChanged(interface,
-                                                     properties,
-                                                     invalidated_properties);
+  CellularCapabilityClassic::OnPropertiesChanged(interface,
+                                                 properties,
+                                                 invalidated_properties);
   if (interface == MM_MODEM_GSM_NETWORK_INTERFACE) {
-    uint32_t access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
-    if (DBusProperties::GetUint32(properties,
-                                  kPropertyAccessTechnology,
-                                  &access_technology)) {
-      SetAccessTechnology(access_technology);
+    if (properties.ContainsUint(kPropertyAccessTechnology)) {
+      SetAccessTechnology(properties.GetUint(kPropertyAccessTechnology));
     }
   } else {
     bool emit = false;
     if (interface == MM_MODEM_GSM_CARD_INTERFACE) {
-      uint32_t locks = 0;
-      if (DBusProperties::GetUint32(
-              properties, kPropertyEnabledFacilityLocks, &locks)) {
+      if (properties.ContainsUint(kPropertyEnabledFacilityLocks)) {
+        uint32_t locks = properties.GetUint(kPropertyEnabledFacilityLocks);
         sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
         emit = true;
       }
     } else if (interface == MM_MODEM_INTERFACE) {
-      if (DBusProperties::GetString(properties, kPropertyUnlockRequired,
-                                    &sim_lock_status_.lock_type)) {
+      if (properties.ContainsString(kPropertyUnlockRequired)) {
+        sim_lock_status_.lock_type =
+            properties.GetString(kPropertyUnlockRequired);
         emit = true;
       }
-      if (DBusProperties::GetUint32(properties, kPropertyUnlockRetries,
-                                    &sim_lock_status_.retries_left)) {
+      if (properties.ContainsUint(kPropertyUnlockRetries)) {
+        sim_lock_status_.retries_left =
+            properties.GetUint(kPropertyUnlockRetries);
         emit = true;
       }
     }

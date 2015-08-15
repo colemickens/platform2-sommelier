@@ -190,7 +190,9 @@ PermissionBrokerProxyInterface*
 DBusObjectManagerProxyInterface*
     ChromeosDBusControl::CreateDBusObjectManagerProxy(
         const string& path,
-        const string& service) {
+        const string& service,
+        const base::Closure& service_appeared_callback,
+        const base::Closure& service_vanished_callback) {
   return nullptr;
 }
 
@@ -198,7 +200,9 @@ ModemManagerProxyInterface*
     ChromeosDBusControl::CreateModemManagerProxy(
         ModemManagerClassic* manager,
         const string& path,
-        const string& service) {
+        const string& service,
+        const base::Closure& service_vanished_callback,
+        const base::Closure& service_appeared_callback) {
   return nullptr;
 }
 

@@ -18,10 +18,9 @@ MockCellular::MockCellular(ModemInfo* modem_info,
                            const std::string& address,
                            int interface_index,
                            Type type,
-                           const std::string& owner,
                            const std::string& service,
                            const std::string& path)
-    : Cellular(modem_info, link_name, address, interface_index, type, owner,
+    : Cellular(modem_info, link_name, address, interface_index, type,
                service, path) {}
 
 MockCellular::~MockCellular() {}

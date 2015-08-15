@@ -63,8 +63,8 @@ CellularCapabilityUniversalCDMA::~CellularCapabilityUniversalCDMA() {}
 void CellularCapabilityUniversalCDMA::InitProxies() {
   SLOG(this, 2) << __func__;
   modem_cdma_proxy_.reset(
-      control_interface()->CreateMM1ModemModemCdmaProxy(cellular()->dbus_path(),
-                                                    cellular()->dbus_owner()));
+      control_interface()->CreateMM1ModemModemCdmaProxy(
+          cellular()->dbus_path(), cellular()->dbus_service()));
   modem_cdma_proxy_->set_activation_state_callback(
       Bind(&CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal,
       weak_cdma_ptr_factory_.GetWeakPtr()));
@@ -242,9 +242,10 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
   CellularCapabilityUniversal::GetProperties();
 
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
-      control_interface()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
-                                                     cellular()->dbus_owner()));
-  DBusPropertiesMap properties(
+      control_interface()->CreateDBusPropertiesProxy(
+          cellular()->dbus_path(), cellular()->dbus_service()));
+
+  KeyValueStore properties(
       properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEMCDMA));
   OnModemCDMAPropertiesChanged(properties, vector<string>());
 }
@@ -252,18 +253,17 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
 void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
     uint32_t activation_state,
     uint32_t activation_error,
-    const DBusPropertiesMap& status_changes) {
+    const KeyValueStore& status_changes) {
   SLOG(this, 2) << __func__;
 
   activation_state_ =
       static_cast<MMModemCdmaActivationState>(activation_state);
 
   string value;
-  if (DBusProperties::GetString(status_changes, "mdn", &value))
-    cellular()->set_mdn(value);
-  if (DBusProperties::GetString(status_changes, "min", &value))
-    cellular()->set_min(value);
-
+  if (status_changes.ContainsString("mdn"))
+    cellular()->set_mdn(status_changes.GetString("mdn"));
+  if (status_changes.ContainsString("min"))
+    cellular()->set_min(status_changes.GetString("min"));
   SLOG(this, 2) << "Activation state: "
                 << GetActivationStateString(activation_state_);
 
@@ -381,9 +381,8 @@ void CellularCapabilityUniversalCDMA::SetUnregistered(bool /*searching*/) {
 }
 
 void CellularCapabilityUniversalCDMA::SetupConnectProperties(
-    DBusPropertiesMap* properties) {
-  (*properties)[kPropertyConnectNumber].writer().append_string(
-      kPhoneNumber);
+    KeyValueStore* properties) {
+  properties->SetString(kPropertyConnectNumber, kPhoneNumber);
 }
 
 void CellularCapabilityUniversalCDMA::RequirePIN(
@@ -444,72 +443,61 @@ string CellularCapabilityUniversalCDMA::GetRoamingStateString() const {
   return kRoamingStateUnknown;
 }
 
-void CellularCapabilityUniversalCDMA::OnDBusPropertiesChanged(
+void CellularCapabilityUniversalCDMA::OnPropertiesChanged(
     const string& interface,
-    const DBusPropertiesMap& changed_properties,
+    const KeyValueStore& changed_properties,
     const vector<string>& invalidated_properties) {
   SLOG(this, 2) << __func__ << "(" << interface << ")";
   if (interface == MM_DBUS_INTERFACE_MODEM_MODEMCDMA) {
     OnModemCDMAPropertiesChanged(changed_properties, invalidated_properties);
   } else {
-    CellularCapabilityUniversal::OnDBusPropertiesChanged(
+    CellularCapabilityUniversal::OnPropertiesChanged(
         interface, changed_properties, invalidated_properties);
   }
 }
 
 void CellularCapabilityUniversalCDMA::OnModemCDMAPropertiesChanged(
-    const DBusPropertiesMap& properties,
+    const KeyValueStore& properties,
     const std::vector<std::string>& /*invalidated_properties*/) {
   SLOG(this, 2) << __func__;
   string str_value;
-  if (DBusProperties::GetString(properties,
-                                MM_MODEM_MODEMCDMA_PROPERTY_MEID,
-                                &str_value))
-    cellular()->set_meid(str_value);
-  if (DBusProperties::GetString(properties,
-                                MM_MODEM_MODEMCDMA_PROPERTY_ESN,
-                                &str_value))
-    cellular()->set_esn(str_value);
+  if (properties.ContainsString(MM_MODEM_MODEMCDMA_PROPERTY_MEID)) {
+    cellular()->set_meid(
+        properties.GetString(MM_MODEM_MODEMCDMA_PROPERTY_MEID));
+  }
+  if (properties.ContainsString(MM_MODEM_MODEMCDMA_PROPERTY_ESN)) {
+    cellular()->set_esn(properties.GetString(MM_MODEM_MODEMCDMA_PROPERTY_ESN));
+  }
 
   uint32_t sid = sid_;
   uint32_t nid = nid_;
   MMModemCdmaRegistrationState state_1x = cdma_1x_registration_state_;
   MMModemCdmaRegistrationState state_evdo = cdma_evdo_registration_state_;
   bool registration_changed = false;
-  uint32_t uint_value;
-  if (DBusProperties::GetUint32(
-      properties,
-      MM_MODEM_MODEMCDMA_PROPERTY_CDMA1XREGISTRATIONSTATE,
-      &uint_value)) {
-    state_1x = static_cast<MMModemCdmaRegistrationState>(uint_value);
+  if (properties.ContainsUint(
+      MM_MODEM_MODEMCDMA_PROPERTY_CDMA1XREGISTRATIONSTATE)) {
+    state_1x = static_cast<MMModemCdmaRegistrationState>(
+        properties.GetUint(
+            MM_MODEM_MODEMCDMA_PROPERTY_CDMA1XREGISTRATIONSTATE));
     registration_changed = true;
   }
-  if (DBusProperties::GetUint32(
-      properties,
-      MM_MODEM_MODEMCDMA_PROPERTY_EVDOREGISTRATIONSTATE,
-      &uint_value)) {
-    state_evdo = static_cast<MMModemCdmaRegistrationState>(uint_value);
+  if (properties.ContainsUint(
+      MM_MODEM_MODEMCDMA_PROPERTY_EVDOREGISTRATIONSTATE)) {
+    state_evdo = static_cast<MMModemCdmaRegistrationState>(
+        properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_EVDOREGISTRATIONSTATE));
     registration_changed = true;
   }
-  if (DBusProperties::GetUint32(
-      properties,
-      MM_MODEM_MODEMCDMA_PROPERTY_SID,
-      &uint_value)) {
-    sid = uint_value;
+  if (properties.ContainsUint(MM_MODEM_MODEMCDMA_PROPERTY_SID)) {
+    sid = properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_SID);
     registration_changed = true;
   }
-  if (DBusProperties::GetUint32(
-      properties,
-      MM_MODEM_MODEMCDMA_PROPERTY_NID,
-      &uint_value)) {
-    nid = uint_value;
+  if (properties.ContainsUint(MM_MODEM_MODEMCDMA_PROPERTY_NID)) {
+    nid = properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_NID);
     registration_changed = true;
   }
-  if (DBusProperties::GetUint32(
-      properties,
-      MM_MODEM_MODEMCDMA_PROPERTY_ACTIVATIONSTATE,
-      &uint_value)) {
-    activation_state_ = static_cast<MMModemCdmaActivationState>(uint_value);
+  if (properties.ContainsUint(MM_MODEM_MODEMCDMA_PROPERTY_ACTIVATIONSTATE)) {
+    activation_state_ = static_cast<MMModemCdmaActivationState>(
+        properties.GetUint(MM_MODEM_MODEMCDMA_PROPERTY_ACTIVATIONSTATE));
     HandleNewActivationStatus(MM_CDMA_ACTIVATION_ERROR_NONE);
   }
   if (registration_changed)

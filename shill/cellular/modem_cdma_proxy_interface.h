@@ -8,7 +8,6 @@
 #include <string>
 
 #include "shill/callbacks.h"
-#include "shill/dbus_properties.h"
 
 namespace shill {
 

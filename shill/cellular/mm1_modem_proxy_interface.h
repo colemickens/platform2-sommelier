@@ -30,11 +30,11 @@ class ModemProxyInterface {
                       Error* error,
                       const ResultCallback& callback,
                       int timeout) = 0;
-  virtual void CreateBearer(const DBusPropertiesMap& properties,
+  virtual void CreateBearer(const KeyValueStore& properties,
                             Error* error,
-                            const DBusPathCallback& callback,
+                            const RpcIdentifierCallback& callback,
                             int timeout) = 0;
-  virtual void DeleteBearer(const ::DBus::Path& bearer,
+  virtual void DeleteBearer(const std::string& bearer,
                             Error* error,
                             const ResultCallback& callback,
                             int timeout) = 0;
@@ -49,7 +49,8 @@ class ModemProxyInterface {
                                       Error* error,
                                       const ResultCallback& callback,
                                       int timeout) = 0;
-  virtual void SetCurrentModes(const ::DBus::Struct<uint32_t, uint32_t>& modes,
+  virtual void SetCurrentModes(uint32_t allowed_modes,
+                               uint32_t preferred_mode,
                                Error* error,
                                const ResultCallback& callback,
                                int timeout) = 0;

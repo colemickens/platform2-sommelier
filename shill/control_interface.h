@@ -143,12 +143,16 @@ class ControlInterface {
 #if !defined(DISABLE_CELLULAR)
   virtual DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
       const std::string& path,
-      const std::string& service) = 0;
+      const std::string& service,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) = 0;
 
   virtual ModemManagerProxyInterface* CreateModemManagerProxy(
       ModemManagerClassic* manager,
       const std::string& path,
-      const std::string& service) = 0;
+      const std::string& service,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) = 0;
 
   virtual ModemProxyInterface* CreateModemProxy(const std::string& path,
                                                 const std::string& service) = 0;

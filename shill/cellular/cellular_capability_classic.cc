@@ -84,9 +84,9 @@ CellularCapabilityClassic::~CellularCapabilityClassic() {}
 void CellularCapabilityClassic::InitProxies() {
   SLOG(this, 2) << __func__;
   proxy_.reset(control_interface()->CreateModemProxy(
-      cellular()->dbus_path(), cellular()->dbus_owner()));
+      cellular()->dbus_path(), cellular()->dbus_service()));
   simple_proxy_.reset(control_interface()->CreateModemSimpleProxy(
-      cellular()->dbus_path(), cellular()->dbus_owner()));
+      cellular()->dbus_path(), cellular()->dbus_service()));
   proxy_->set_state_changed_callback(
       Bind(&CellularCapabilityClassic::OnModemStateChangedSignal,
            weak_ptr_factory_.GetWeakPtr()));
@@ -176,7 +176,7 @@ void CellularCapabilityClassic::DisableModem(const ResultCallback& callback) {
 void CellularCapabilityClassic::GetModemStatus(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
-  DBusPropertyMapCallback cb = Bind(
+  KeyValueStoreCallback cb = Bind(
       &CellularCapabilityClassic::OnGetModemStatusReply,
       weak_ptr_factory_.GetWeakPtr(), callback);
   Error error;
@@ -223,7 +223,7 @@ void CellularCapabilityClassic::StopModem(Error* error,
   RunNextStep(tasks);
 }
 
-void CellularCapabilityClassic::Connect(const DBusPropertiesMap& properties,
+void CellularCapabilityClassic::Connect(const KeyValueStore& properties,
                                         Error* error,
                                         const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
@@ -245,19 +245,18 @@ void CellularCapabilityClassic::SetCarrier(const string& carrier,
   LOG(INFO) << __func__ << "(" << carrier << ")";
   if (!gobi_proxy_.get()) {
     gobi_proxy_.reset(control_interface()->CreateModemGobiProxy(
-        cellular()->dbus_path(), cellular()->dbus_owner()));
+        cellular()->dbus_path(), cellular()->dbus_service()));
   }
   CHECK(error);
   gobi_proxy_->SetCarrier(carrier, error, callback,
                           kTimeoutSetCarrierMilliseconds);
 }
 
-void CellularCapabilityClassic::OnDBusPropertiesChanged(
+void CellularCapabilityClassic::OnPropertiesChanged(
     const std::string& interface,
-    const DBusPropertiesMap& changed_properties,
+    const KeyValueStore& changed_properties,
     const std::vector<std::string>& invalidated_properties) {
   SLOG(this, 2) << __func__;
-  bool enabled;
   // This solves a bootstrapping problem: If the modem is not yet
   // enabled, there are no proxy objects associated with the capability
   // object, so modem signals like StateChanged aren't seen. By monitoring
@@ -270,8 +269,8 @@ void CellularCapabilityClassic::OnDBusPropertiesChanged(
   // the device regardless of whether it has been registered with the Manager.
   //
   // All other state changes are handled from OnModemStateChangedSignal.
-  if (DBusProperties::GetBool(changed_properties,
-                              kModemPropertyEnabled, &enabled)) {
+  if (changed_properties.ContainsBool(kModemPropertyEnabled)) {
+    bool enabled = changed_properties.GetBool(kModemPropertyEnabled);
     SLOG(this, 2) << "Property \"Enabled\" changed: " << enabled;
     Cellular::ModemState prev_modem_state = cellular()->modem_state();
     if (!Cellular::IsEnabledModemState(prev_modem_state)) {
@@ -284,40 +283,40 @@ void CellularCapabilityClassic::OnDBusPropertiesChanged(
 
 void CellularCapabilityClassic::OnGetModemStatusReply(
     const ResultCallback& callback,
-    const DBusPropertiesMap& props,
+    const KeyValueStore& props,
     const Error& error) {
-  string prop_value;
-  SLOG(this, 2) << __func__ << " " << props.size() << " props. error "
-                << error;
+  SLOG(this, 2) << __func__ << " error " << error;
   if (error.IsSuccess()) {
-    if (DBusProperties::GetString(props, "carrier", &prop_value)) {
-      cellular()->set_carrier(prop_value);
-      cellular()->home_provider_info()->UpdateOperatorName(prop_value);
+    if (props.ContainsString("carrier")) {
+      string carrier = props.GetString("carrier");
+      cellular()->set_carrier(carrier);
+      cellular()->home_provider_info()->UpdateOperatorName(carrier);
     }
-    if (DBusProperties::GetString(props, "meid", &prop_value)) {
-      cellular()->set_meid(prop_value);
+    if (props.ContainsString("meid")) {
+      cellular()->set_meid(props.GetString("meid"));
     }
-    if (DBusProperties::GetString(props, "imei", &prop_value)) {
-     cellular()->set_imei(prop_value);
+    if (props.ContainsString("imei")) {
+     cellular()->set_imei(props.GetString("imei"));
     }
-    if (DBusProperties::GetString(props, kModemPropertyIMSI, &prop_value)) {
-      cellular()->set_imsi(prop_value);
-      cellular()->home_provider_info()->UpdateIMSI(prop_value);
+    if (props.ContainsString(kModemPropertyIMSI)) {
+      string imsi = props.GetString(kModemPropertyIMSI);
+      cellular()->set_imsi(imsi);
+      cellular()->home_provider_info()->UpdateIMSI(imsi);
       // We do not currently obtain the IMSI OTA at all. Provide the IMSI from
       // the SIM to the serving operator as well to aid in MVNO identification.
-      cellular()->serving_operator_info()->UpdateIMSI(prop_value);
+      cellular()->serving_operator_info()->UpdateIMSI(imsi);
     }
-    if (DBusProperties::GetString(props, "esn", &prop_value)) {
-      cellular()->set_esn(prop_value);
+    if (props.ContainsString("esn")) {
+      cellular()->set_esn(props.GetString("esn"));
     }
-    if (DBusProperties::GetString(props, "mdn", &prop_value)) {
-      cellular()->set_mdn(prop_value);
+    if (props.ContainsString("mdn")) {
+      cellular()->set_mdn(props.GetString("mdn"));
     }
-    if (DBusProperties::GetString(props, "min", &prop_value)) {
-      cellular()->set_min(prop_value);
+    if (props.ContainsString("min")) {
+      cellular()->set_min(props.GetString("min"));
     }
-    if (DBusProperties::GetString(props, "firmware_revision", &prop_value)) {
-      cellular()->set_firmware_revision(prop_value);
+    if (props.ContainsString("firmware_revision")) {
+      cellular()->set_firmware_revision(props.GetString("firmware_revision"));
     }
     UpdateStatus(props);
   }
@@ -325,21 +324,23 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
 }
 
 void CellularCapabilityClassic::UpdateStatus(
-    const DBusPropertiesMap& properties) {
+    const KeyValueStore& properties) {
   SLOG(this, 3) << __func__;
 }
 
 void CellularCapabilityClassic::OnGetModemInfoReply(
     const ResultCallback& callback,
-    const ModemHardwareInfo& info,
+    const std::string& manufacturer,
+    const std::string& modem,
+    const std::string& version,
     const Error& error) {
   SLOG(this, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess()) {
-    cellular()->set_manufacturer(info._1);
-    cellular()->set_model_id(info._2);
-    cellular()->set_hardware_revision(info._3);
-    SLOG(this, 2) << __func__ << ": " << info._1 << ", " << info._2 << ", "
-                  << info._3;
+    cellular()->set_manufacturer(manufacturer);
+    cellular()->set_model_id(modem);
+    cellular()->set_hardware_revision(version);
+    SLOG(this, 2) << __func__ << ": " << manufacturer << ", " << modem << ", "
+                  << version;
   }
   callback.Run(error);
 }

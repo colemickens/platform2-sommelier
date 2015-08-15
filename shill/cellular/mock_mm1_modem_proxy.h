@@ -26,11 +26,11 @@ class MockModemProxy : public ModemProxyInterface {
                             Error* error,
                             const ResultCallback& callback,
                             int timeout));
-  MOCK_METHOD4(CreateBearer, void(const DBusPropertiesMap& properties,
+  MOCK_METHOD4(CreateBearer, void(const KeyValueStore& properties,
                                   Error* error,
-                                  const DBusPathCallback& callback,
+                                  const RpcIdentifierCallback& callback,
                                   int timeout));
-  MOCK_METHOD4(DeleteBearer, void(const ::DBus::Path& bearer,
+  MOCK_METHOD4(DeleteBearer, void(const std::string& bearer,
                                   Error* error,
                                   const ResultCallback& callback,
                                   int timeout));
@@ -45,8 +45,9 @@ class MockModemProxy : public ModemProxyInterface {
                                             Error* error,
                                             const ResultCallback& callback,
                                             int timeout));
-  MOCK_METHOD4(SetCurrentModes,
-               void(const ::DBus::Struct<uint32_t, uint32_t>& modes,
+  MOCK_METHOD5(SetCurrentModes,
+               void(uint32_t allowed_modes,
+                    uint32_t preferred_mode,
                     Error* error,
                     const ResultCallback& callback,
                     int timeout));

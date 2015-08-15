@@ -20,16 +20,16 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
   MockModemSimpleProxy();
   ~MockModemSimpleProxy() override;
 
-  MOCK_METHOD4(Connect, void(const DBusPropertiesMap& properties,
+  MOCK_METHOD4(Connect, void(const KeyValueStore& properties,
                              Error* error,
-                             const DBusPathCallback& callback,
+                             const RpcIdentifierCallback& callback,
                              int timeout));
-  MOCK_METHOD4(Disconnect, void(const ::DBus::Path& bearer,
+  MOCK_METHOD4(Disconnect, void(const std::string& bearer,
                                 Error* error,
                                 const ResultCallback& callback,
                                 int timeout));
   MOCK_METHOD3(GetStatus, void(Error* error,
-                               const DBusPropertyMapCallback& callback,
+                               const KeyValueStoreCallback& callback,
                                int timeout));
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemSimpleProxy);

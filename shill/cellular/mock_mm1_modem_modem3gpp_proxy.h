@@ -25,7 +25,7 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
                               const ResultCallback& callback,
                               int timeout));
   MOCK_METHOD3(Scan, void(Error* error,
-                          const DBusPropertyMapsCallback& callback,
+                          const KeyValueStoresCallback& callback,
                           int timeout));
 
  private:

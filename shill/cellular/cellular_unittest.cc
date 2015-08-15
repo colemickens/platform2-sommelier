@@ -31,7 +31,6 @@
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
@@ -39,9 +38,11 @@
 #include "shill/mock_external_task.h"
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_ppp_device_factory.h"
+#include "shill/mock_process_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/property_store_unittest.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 // mm/mm-modem.h must be included after cellular_capability_universal.h
@@ -82,7 +83,6 @@ class CellularPropertyTest : public PropertyStoreTest {
                              3,
                              Cellular::kTypeCDMA,
                              "",
-                             "",
                              "")) {}
   virtual ~CellularPropertyTest() {}
 
@@ -98,33 +98,25 @@ TEST_F(CellularPropertyTest, Contains) {
 
 TEST_F(CellularPropertyTest, SetProperty) {
   {
-    ::DBus::Error error;
-    ::DBus::Variant allow_roaming;
-    allow_roaming.writer().append_bool(true);
-    EXPECT_TRUE(DBusAdaptor::SetProperty(
-        device_->mutable_store(),
-        kCellularAllowRoamingProperty,
-        allow_roaming,
-        &error));
+    Error error;
+    const bool allow_roaming = true;
+    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
+        kCellularAllowRoamingProperty, allow_roaming, &error));
   }
   // Ensure that attempting to write a R/O property returns InvalidArgs error.
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                          kAddressProperty,
-                                          PropertyStoreTest::kStringV,
-                                          &error));
-    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
+        kAddressProperty, PropertyStoreTest::kStringV, &error));
+    ASSERT_TRUE(error.IsFailure());  // name() may be invalid otherwise
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                          kCarrierProperty,
-                                          PropertyStoreTest::kStringV,
-                                          &error));
-    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
-    EXPECT_EQ(invalid_args(), error.name());
+    Error error;
+    EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
+        kCarrierProperty, PropertyStoreTest::kStringV, &error));
+    ASSERT_TRUE(error.IsFailure());  // name() may be invalid otherwise
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }
 
@@ -152,7 +144,6 @@ class CellularTest : public testing::Test {
                              kTestDeviceAddress,
                              3,
                              Cellular::kTypeGSM,
-                             kDBusOwner,
                              kDBusService,
                              kDBusPath)) {
     PopulateProxies();
@@ -163,6 +154,7 @@ class CellularTest : public testing::Test {
   virtual void SetUp() {
     static_cast<Device*>(device_.get())->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
+    device_->process_manager_ = &process_manager_;
     EXPECT_CALL(*modem_info_.mock_manager(), device_info())
         .WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(*modem_info_.mock_manager(), DeregisterService(_))
@@ -217,11 +209,11 @@ class CellularTest : public testing::Test {
     callback.Run(kStrength, Error());
   }
   void InvokeGetModemStatus(Error* error,
-                            const DBusPropertyMapCallback& callback,
+                            const KeyValueStoreCallback& callback,
                             int timeout) {
-    DBusPropertiesMap props;
-    props["carrier"].writer().append_string(kTestCarrier);
-    props["unknown-property"].writer().append_string("irrelevant-value");
+    KeyValueStore props;
+    props.SetString("carrier", kTestCarrier);
+    props.SetString("unknown-property", "irrelevant-value");
     callback.Run(props, Error());
   }
   void InvokeGetModemInfo(Error* error, const ModemInfoCallback& callback,
@@ -229,11 +221,7 @@ class CellularTest : public testing::Test {
     static const char kManufacturer[] = "Company";
     static const char kModelID[] = "Gobi 2000";
     static const char kHWRev[] = "A00B1234";
-    ModemHardwareInfo info;
-    info._1 = kManufacturer;
-    info._2 = kModelID;
-    info._3 = kHWRev;
-    callback.Run(info, Error());
+    callback.Run(kManufacturer, kModelID, kHWRev, Error());
   }
   void InvokeGetRegistrationState1X(Error* error,
                                     const RegistrationStateCallback& callback,
@@ -286,22 +274,22 @@ class CellularTest : public testing::Test {
                  MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
                  Error());
   }
-  void InvokeConnect(DBusPropertiesMap props, Error* error,
+  void InvokeConnect(KeyValueStore props, Error* error,
                      const ResultCallback& callback, int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(Error());
   }
-  void InvokeConnectFail(DBusPropertiesMap props, Error* error,
+  void InvokeConnectFail(KeyValueStore props, Error* error,
                          const ResultCallback& callback, int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(Error(Error::kNotOnHomeNetwork));
   }
-  void InvokeConnectFailNoService(DBusPropertiesMap props, Error* error,
+  void InvokeConnectFailNoService(KeyValueStore props, Error* error,
                                   const ResultCallback& callback, int timeout) {
     device_->service_ = nullptr;
     callback.Run(Error(Error::kNotOnHomeNetwork));
   }
-  void InvokeConnectSuccessNoService(DBusPropertiesMap props, Error* error,
+  void InvokeConnectSuccessNoService(KeyValueStore props, Error* error,
                                      const ResultCallback& callback,
                                      int timeout) {
     device_->service_ = nullptr;
@@ -318,7 +306,7 @@ class CellularTest : public testing::Test {
     if (!callback.is_null())
       callback.Run(*error);
   }
-  void InvokeDisconnectMM1(const ::DBus::Path& bearer, Error* error,
+  void InvokeDisconnectMM1(const string& bearer, Error* error,
                            const ResultCallback& callback, int timeout) {
     if (!callback.is_null())
       callback.Run(Error());
@@ -367,16 +355,14 @@ class CellularTest : public testing::Test {
   }
 
   void StartPPP(int pid) {
-    MockGLib& mock_glib(*dynamic_cast<MockGLib*>(modem_info_.glib()));
-    EXPECT_CALL(mock_glib, ChildWatchAdd(pid, _, _));
-    EXPECT_CALL(mock_glib, SpawnAsync(_, _, _, _, _, _, _, _))
-        .WillOnce(DoAll(SetArgumentPointee<6>(pid), Return(true)));
+    EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+        .WillOnce(Return(pid));
     device_->StartPPP("fake_serial_device");
     EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
     EXPECT_FALSE(device_->selected_service());
     EXPECT_FALSE(device_->is_ppp_authenticating_);
     EXPECT_NE(nullptr, device_->ppp_task_);
-    Mock::VerifyAndClearExpectations(&mock_glib);
+    Mock::VerifyAndClearExpectations(&process_manager_);
   }
 
   void FakeUpConnectedPPP() {
@@ -402,7 +388,7 @@ class CellularTest : public testing::Test {
 
   void SetCommonOnAfterResumeExpectations() {
     EXPECT_CALL(*dbus_properties_proxy_, GetAll(_))
-        .WillRepeatedly(Return(DBusPropertiesMap()));
+        .WillRepeatedly(Return(KeyValueStore()));
     EXPECT_CALL(*mm1_proxy_, set_state_changed_callback(_)).Times(AnyNumber());
     EXPECT_CALL(*modem_info_.mock_metrics(), NotifyDeviceScanStarted(_))
         .Times(AnyNumber());
@@ -453,7 +439,6 @@ class CellularTest : public testing::Test {
  protected:
   static const char kTestDeviceName[];
   static const char kTestDeviceAddress[];
-  static const char kDBusOwner[];
   static const char kDBusService[];
   static const char kDBusPath[];
   static const char kTestCarrier[];
@@ -601,10 +586,11 @@ class CellularTest : public testing::Test {
     capability->active_bearer_ = std::move(bearer);
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   TestControl control_interface_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
+  MockProcessManager process_manager_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
 
   MockDHCPProvider dhcp_provider_;
@@ -627,7 +613,6 @@ class CellularTest : public testing::Test {
 
 const char CellularTest::kTestDeviceName[] = "usb0";
 const char CellularTest::kTestDeviceAddress[] = "00:01:02:03:04:05";
-const char CellularTest::kDBusOwner[] = ":1.19";
 const char CellularTest::kDBusService[] = "org.chromium.ModemManager";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
@@ -1137,8 +1122,8 @@ TEST_F(CellularTest, StorageIdentifier) {
 namespace {
 
 MATCHER(ContainsPhoneNumber, "") {
-  return ContainsKey(arg,
-                     CellularCapabilityClassic::kConnectPropertyPhoneNumber);
+  return arg.ContainsString(
+      CellularCapabilityClassic::kConnectPropertyPhoneNumber);
 }
 
 }  // namespace
@@ -1316,10 +1301,9 @@ TEST_F(CellularTest, ModemStateChangeEnable) {
   device_->set_modem_state(Cellular::kModemStateDisabled);
   SetCellularType(Cellular::kTypeCDMA);
 
-  DBusPropertiesMap props;
-  props[CellularCapabilityClassic::kModemPropertyEnabled].writer().
-      append_bool(true);
-  device_->OnDBusPropertiesChanged(MM_MODEM_INTERFACE, props, vector<string>());
+  KeyValueStore props;
+  props.SetBool(CellularCapabilityClassic::kModemPropertyEnabled, true);
+  device_->OnPropertiesChanged(MM_MODEM_INTERFACE, props, vector<string>());
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_EQ(Cellular::kModemStateEnabled, device_->modem_state());
@@ -1445,7 +1429,7 @@ TEST_F(CellularTest, LinkEventUpWithPPP) {
   base::Callback<void(pid_t, int)> death_callback;
   unique_ptr<NiceMock<MockExternalTask>> mock_task(
       new NiceMock<MockExternalTask>(modem_info_.control_interface(),
-                                     modem_info_.glib(),
+                                     &process_manager_,
                                      task_delegate.AsWeakPtr(),
                                      death_callback));
   EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
@@ -1856,10 +1840,9 @@ TEST_F(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   EXPECT_EQ(Cellular::kStateDisabled, device_->state_);  // by OnAfterResume
 
   // Set up state that we need.
-  DBusPropertiesMap modem_properties;
-  DBus::Variant modem_state;
-  modem_state.writer().append_int32(Cellular::kModemStateDisabled);
-  modem_properties = DBusPropertiesMap{{MM_MODEM_PROPERTY_STATE, modem_state}};
+  KeyValueStore modem_properties;
+  modem_properties.SetInt(MM_MODEM_PROPERTY_STATE,
+                          Cellular::kModemStateDisabled);
 
   // Let the disable complete.
   EXPECT_CALL(*mm1_proxy, Enable(false, _, _, _))
@@ -1957,10 +1940,9 @@ TEST_F(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   EXPECT_FALSE(new_mm1_proxy == mm1_proxy);
 
   // Set up state that we need.
-  DBusPropertiesMap modem_properties;
-  DBus::Variant modem_state;
-  modem_state.writer().append_int32(Cellular::kModemStateEnabled);
-  modem_properties = DBusPropertiesMap{{MM_MODEM_PROPERTY_STATE, modem_state}};
+  KeyValueStore modem_properties;
+  modem_properties.SetInt(MM_MODEM_PROPERTY_STATE,
+                          Cellular::kModemStateEnabled);
 
   // Let the enable complete.
   ASSERT_TRUE(error.IsSuccess());
@@ -2101,10 +2083,8 @@ TEST_F(CellularTest, EstablishLinkPPP) {
   device_->state_ = Cellular::kStateConnected;
 
   const int kPID = 123;
-  MockGLib& mock_glib(*dynamic_cast<MockGLib*>(modem_info_.glib()));
-  EXPECT_CALL(mock_glib, ChildWatchAdd(kPID, _, _));
-  EXPECT_CALL(mock_glib, SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+      .WillOnce(Return(kPID));
   device_->EstablishLink();
   EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
   EXPECT_FALSE(device_->selected_service());

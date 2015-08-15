@@ -51,7 +51,7 @@ CellularCapabilityCDMA::~CellularCapabilityCDMA() {}
 void CellularCapabilityCDMA::InitProxies() {
   CellularCapabilityClassic::InitProxies();
   proxy_.reset(control_interface()->CreateModemCDMAProxy(
-      cellular()->dbus_path(), cellular()->dbus_owner()));
+      cellular()->dbus_path(), cellular()->dbus_service()));
   proxy_->set_signal_quality_callback(
       Bind(&CellularCapabilityCDMA::OnSignalQualitySignal,
            weak_ptr_factory_.GetWeakPtr()));
@@ -113,17 +113,17 @@ void CellularCapabilityCDMA::OnServiceCreated() {
   HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
 }
 
-void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap& properties) {
+void CellularCapabilityCDMA::UpdateStatus(const KeyValueStore& properties) {
   string carrier;
-  DBusProperties::GetUint32(
-      properties, "activation_state", &activation_state_);
+  if (properties.ContainsUint("activation_state")) {
+    activation_state_ = properties.GetUint("activation_state");
+  }
   // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
   // match flimflam. In the future, get these from an alternative source (e.g.,
   // database, carrier-specific properties, etc.).
   UpdateOnlinePortal(properties);
-  uint16_t prl_version;
-  if (DBusProperties::GetUint16(properties, "prl_version", &prl_version))
-    cellular()->set_prl_version(prl_version);
+  if (properties.ContainsUint("prl_version"))
+    cellular()->set_prl_version(properties.GetUint("prl_version"));
 }
 
 void CellularCapabilityCDMA::UpdateServiceOLP() {
@@ -148,9 +148,8 @@ void CellularCapabilityCDMA::UpdateServiceOLP() {
 }
 
 void CellularCapabilityCDMA::SetupConnectProperties(
-    DBusPropertiesMap* properties) {
-  (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
-      kPhoneNumber);
+    KeyValueStore* properties) {
+  properties->SetString(kConnectPropertyPhoneNumber, kPhoneNumber);
 }
 
 void CellularCapabilityCDMA::Activate(const string& carrier,
@@ -360,14 +359,13 @@ void CellularCapabilityCDMA::OnGetSignalQualityReply(uint32_t quality,
 void CellularCapabilityCDMA::OnActivationStateChangedSignal(
     uint32_t activation_state,
     uint32_t activation_error,
-    const DBusPropertiesMap& status_changes) {
+    const KeyValueStore& status_changes) {
   SLOG(this, 2) << __func__;
-  string prop_value;
 
-  if (DBusProperties::GetString(status_changes, "mdn", &prop_value))
-    cellular()->set_mdn(prop_value);
-  if (DBusProperties::GetString(status_changes, "min", &prop_value))
-    cellular()->set_min(prop_value);
+  if (status_changes.ContainsString("mdn"))
+    cellular()->set_mdn(status_changes.GetString("mdn"));
+  if (status_changes.ContainsString("min"))
+    cellular()->set_min(status_changes.GetString("min"));
 
   UpdateOnlinePortal(status_changes);
   activation_state_ = activation_state;
@@ -387,19 +385,16 @@ void CellularCapabilityCDMA::OnSignalQualitySignal(uint32_t strength) {
 }
 
 void CellularCapabilityCDMA::UpdateOnlinePortal(
-    const DBusPropertiesMap& properties) {
+    const KeyValueStore& properties) {
   // Treat the three updates atomically: Only update the serving operator when
   // all three are known:
-  string olp_url, olp_method, olp_post_data;
-  if (DBusProperties::GetString(properties, "payment_url", &olp_url) &&
-      DBusProperties::GetString(properties,
-                                "payment_url_method", &olp_method) &&
-      DBusProperties::GetString(properties,
-                                "payment_url_postdata",
-                                &olp_post_data)) {
-    cellular()->home_provider_info()->UpdateOnlinePortal(olp_url,
-                                                            olp_method,
-                                                            olp_post_data);
+  if (properties.ContainsString("payment_url") &&
+      properties.ContainsString("payment_url_method") &&
+      properties.ContainsString("payment_url_postdata")) {
+    cellular()->home_provider_info()->UpdateOnlinePortal(
+        properties.GetString("payment_url"),
+        properties.GetString("payment_url_method"),
+        properties.GetString("payment_url_postdata"));
   }
 }
 

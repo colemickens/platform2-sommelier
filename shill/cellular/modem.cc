@@ -36,24 +36,22 @@ const char Modem::kFakeDevAddress[] = "000000000000";
 const int Modem::kFakeDevInterfaceIndex = -1;
 size_t Modem::fake_dev_serial_ = 0;
 
-Modem::Modem(const string& owner,
-             const string& service,
+Modem::Modem(const string& service,
              const string& path,
              ModemInfo* modem_info,
              ControlInterface* control_interface)
-    : owner_(owner),
-      service_(service),
+    : service_(service),
       path_(path),
       modem_info_(modem_info),
       type_(Cellular::kTypeInvalid),
       pending_device_info_(false),
       rtnl_handler_(RTNLHandler::GetInstance()),
       control_interface_(control_interface) {
-  LOG(INFO) << "Modem created: " << owner << " at " << path;
+  LOG(INFO) << "Modem created: at " << path;
 }
 
 Modem::~Modem() {
-  LOG(INFO) << "Modem destructed: " << owner_ << " at " << path_;
+  LOG(INFO) << "Modem destructed: " << path_;
   if (device_) {
     device_->DestroyService();
     modem_info_->manager()->device_info()->DeregisterDevice(device_);
@@ -62,11 +60,11 @@ Modem::~Modem() {
 
 void Modem::Init() {
   dbus_properties_proxy_.reset(
-      control_interface_->CreateDBusPropertiesProxy(path(), owner()));
+      control_interface_->CreateDBusPropertiesProxy(path(), service()));
   dbus_properties_proxy_->set_modem_manager_properties_changed_callback(
       Bind(&Modem::OnModemManagerPropertiesChanged, Unretained(this)));
   dbus_properties_proxy_->set_properties_changed_callback(
-      Bind(&Modem::OnDBusPropertiesChanged, Unretained(this)));
+      Bind(&Modem::OnPropertiesChanged, Unretained(this)));
 }
 
 void Modem::OnDeviceInfoAvailable(const string& link_name) {
@@ -90,20 +88,19 @@ Cellular* Modem::ConstructCellular(const string& link_name,
                       address,
                       interface_index,
                       type_,
-                      owner_,
                       service_,
                       path_);
 }
 
 void Modem::CreateDeviceFromModemProperties(
-    const DBusInterfaceToProperties& properties) {
+    const InterfaceToProperties& properties) {
   SLOG(this, 2) << __func__;
 
   if (device_.get()) {
     return;
   }
 
-  DBusInterfaceToProperties::const_iterator properties_it =
+  InterfaceToProperties::const_iterator properties_it =
       properties.find(GetModemInterface());
   if (properties_it == properties.end()) {
     LOG(ERROR) << "Unable to find modem interface properties.";
@@ -146,7 +143,7 @@ void Modem::CreateDeviceFromModemProperties(
   // Give the device a chance to extract any capability-specific properties.
   for (properties_it = properties.begin(); properties_it != properties.end();
        ++properties_it) {
-    device_->OnDBusPropertiesChanged(
+    device_->OnPropertiesChanged(
         properties_it->first, properties_it->second, vector<string>());
   }
 
@@ -171,24 +168,24 @@ bool Modem::GetDeviceParams(string* mac_address, int* interface_index) {
   return true;
 }
 
-void Modem::OnDBusPropertiesChanged(
+void Modem::OnPropertiesChanged(
     const string& interface,
-    const DBusPropertiesMap& changed_properties,
+    const KeyValueStore& changed_properties,
     const vector<string>& invalidated_properties) {
   SLOG(this, 2) << __func__;
   SLOG(this, 3) << "PropertiesChanged signal received.";
   if (device_.get()) {
-    device_->OnDBusPropertiesChanged(interface,
-                                      changed_properties,
-                                      invalidated_properties);
+    device_->OnPropertiesChanged(interface,
+                                 changed_properties,
+                                 invalidated_properties);
   }
 }
 
 void Modem::OnModemManagerPropertiesChanged(
     const string& interface,
-    const DBusPropertiesMap& properties) {
+    const KeyValueStore& properties) {
   vector<string> invalidated_properties;
-  OnDBusPropertiesChanged(interface, properties, invalidated_properties);
+  OnPropertiesChanged(interface, properties, invalidated_properties);
 }
 
 }  // namespace shill

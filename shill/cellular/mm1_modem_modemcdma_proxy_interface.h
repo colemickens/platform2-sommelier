@@ -8,6 +8,7 @@
 #include <string>
 
 #include "shill/callbacks.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 class Error;
@@ -28,7 +29,7 @@ class ModemModemCdmaProxyInterface {
                         const ResultCallback& callback,
                         int timeout) = 0;
   virtual void ActivateManual(
-      const DBusPropertiesMap& properties,
+      const KeyValueStore& properties,
       Error* error,
       const ResultCallback& callback,
       int timeout) = 0;

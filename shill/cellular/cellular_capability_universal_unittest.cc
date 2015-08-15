@@ -5,6 +5,7 @@
 #include "shill/cellular/cellular_capability_universal.h"
 
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <base/bind.h>
@@ -25,9 +26,7 @@
 #include "shill/cellular/mock_mm1_sim_proxy.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/dbus_adaptor.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
@@ -35,6 +34,7 @@
 #include "shill/mock_pending_activation_store.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -57,11 +57,8 @@ using testing::_;
 namespace shill {
 
 MATCHER_P(HasApn, expected_apn, "") {
-  string apn;
-  return (DBusProperties::GetString(arg,
-                                    CellularCapabilityUniversal::kConnectApn,
-                                    &apn) &&
-          apn == expected_apn);
+  return arg.ContainsString(CellularCapabilityUniversal::kConnectApn) &&
+      expected_apn == arg.GetString(CellularCapabilityUniversal::kConnectApn);
 }
 
 class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
@@ -83,7 +80,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                "00:01:02:03:04:05",
                                0,
                                Cellular::kTypeUniversal,
-                               "",
                                "",
                                "")),
         service_(new MockCellularService(&modem_info_, cellular_)),
@@ -147,27 +143,21 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   void ExpectModemAndModem3gppProperties() {
     // Set up mock modem properties.
-    DBusPropertiesMap modem_properties;
+    KeyValueStore modem_properties;
     string operator_name = "TestOperator";
     string operator_code = "001400";
 
-    modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
-        writer().append_uint32(kAccessTechnologies);
-
-    DBus::Variant variant;
-    DBus::MessageIter writer = variant.writer();
-    DBus::Struct<uint32_t, bool> signal_signal;
-    signal_signal._1 = 90;
-    signal_signal._2 = true;
-    writer << signal_signal;
-    modem_properties[MM_MODEM_PROPERTY_SIGNALQUALITY] = variant;
+    modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
+                             kAccessTechnologies);
+    std::tuple<uint32_t, bool> signal_signal { 90, true };
+    modem_properties.Set(MM_MODEM_PROPERTY_SIGNALQUALITY,
+                         chromeos::Any(signal_signal));
 
     // Set up mock modem 3gpp properties.
-    DBusPropertiesMap modem3gpp_properties;
-    modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS].
-        writer().append_uint32(0);
-    modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_IMEI].
-        writer().append_string(kImei);
+    KeyValueStore modem3gpp_properties;
+    modem3gpp_properties.SetUint(
+        MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS, 0);
+    modem3gpp_properties.SetString(MM_MODEM_MODEM3GPP_PROPERTY_IMEI, kImei);
 
     EXPECT_CALL(*properties_proxy_,
                 GetAll(MM_DBUS_INTERFACE_MODEM))
@@ -249,26 +239,23 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
    public:
     explicit TestControl(CellularCapabilityUniversalTest* test)
         : test_(test) {
-      active_bearer_properties_[MM_BEARER_PROPERTY_CONNECTED].writer()
-          .append_bool(true);
-      active_bearer_properties_[MM_BEARER_PROPERTY_INTERFACE].writer()
-          .append_string("/dev/fake");
+      active_bearer_properties_.SetBool(MM_BEARER_PROPERTY_CONNECTED, true);
+      active_bearer_properties_.SetString(MM_BEARER_PROPERTY_INTERFACE,
+                                          "/dev/fake");
 
-      DBusPropertiesMap ip4config;
-      ip4config["method"].writer().append_uint32(MM_BEARER_IP_METHOD_DHCP);
-      DBus::MessageIter writer =
-          active_bearer_properties_[MM_BEARER_PROPERTY_IP4CONFIG].writer();
-      writer << ip4config;
+      KeyValueStore ip4config;
+      ip4config.SetUint("method", MM_BEARER_IP_METHOD_DHCP);
+      active_bearer_properties_.SetKeyValueStore(
+          MM_BEARER_PROPERTY_IP4CONFIG, ip4config);
 
-      inactive_bearer_properties_[MM_BEARER_PROPERTY_CONNECTED].writer()
-          .append_bool(false);
+      inactive_bearer_properties_.SetBool(MM_BEARER_PROPERTY_CONNECTED, false);
     }
 
-    DBusPropertiesMap* mutable_active_bearer_properties() {
+    KeyValueStore* mutable_active_bearer_properties() {
       return &active_bearer_properties_;
     }
 
-    DBusPropertiesMap* mutable_inactive_bearer_properties() {
+    KeyValueStore* mutable_inactive_bearer_properties() {
       return &inactive_bearer_properties_;
     }
 
@@ -324,8 +311,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
    private:
     CellularCapabilityUniversalTest* test_;
-    DBusPropertiesMap active_bearer_properties_;
-    DBusPropertiesMap inactive_bearer_properties_;
+    KeyValueStore active_bearer_properties_;
+    KeyValueStore inactive_bearer_properties_;
   };
 
   EventDispatcher* dispatcher_;
@@ -341,7 +328,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
   MockCellularService* service_;  // owned by cellular_
-  DBusPathCallback connect_callback_;  // saved for testing connect operations
+  // saved for testing connect operations.
+  RpcIdentifierCallback connect_callback_;
 
   // Set when required and passed to |cellular_|. Owned by |cellular_|.
   MockMobileOperatorInfo* mock_home_provider_info_;
@@ -356,7 +344,7 @@ class CellularCapabilityUniversalMainTest
       CellularCapabilityUniversalTest(&dispatcher_) {}
 
  protected:
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
 };
 
 // Tests that involve timers will (or may) use a mock of the event dispatcher
@@ -548,7 +536,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
 
   ResultCallback delete_bearer_callback;
   EXPECT_CALL(*modem_proxy,
-              DeleteBearer(::DBus::Path(kBearerDBusPath), _, _,
+              DeleteBearer(kBearerDBusPath, _, _,
                            CellularCapability::kTimeoutDefault))
       .WillOnce(SaveArg<2>(&delete_bearer_callback));
   dispatcher_.DispatchPendingEvents();
@@ -595,7 +583,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
 
   ResultCallback delete_bearer_callback;
   EXPECT_CALL(*modem_proxy,
-              DeleteBearer(::DBus::Path(kBearerDBusPath), _, _,
+              DeleteBearer(kBearerDBusPath, _, _,
                            CellularCapability::kTimeoutDefault))
       .WillOnce(SaveArg<2>(&delete_bearer_callback));
   dispatcher_.DispatchPendingEvents();
@@ -783,14 +771,12 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
   const char kOperatorName[] = "Custom SPN";
-  DBusPropertiesMap sim_properties;
-  sim_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kImsi);
-  sim_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer()
-      .append_string(kSimIdentifier);
-  sim_properties[MM_SIM_PROPERTY_OPERATORIDENTIFIER].writer()
-      .append_string(kOperatorIdentifier);
-  sim_properties[MM_SIM_PROPERTY_OPERATORNAME].writer()
-      .append_string(kOperatorName);
+  KeyValueStore sim_properties;
+  sim_properties.SetString(MM_SIM_PROPERTY_IMSI, kImsi);
+  sim_properties.SetString(MM_SIM_PROPERTY_SIMIDENTIFIER, kSimIdentifier);
+  sim_properties.SetString(MM_SIM_PROPERTY_OPERATORIDENTIFIER,
+                           kOperatorIdentifier);
+  sim_properties.SetString(MM_SIM_PROPERTY_OPERATORNAME, kOperatorName);
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
@@ -868,21 +854,19 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
 TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   // Set up mock modem properties
-  DBusPropertiesMap modem_properties;
-  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
-      writer().append_uint32(kAccessTechnologies);
-  modem_properties[MM_MODEM_PROPERTY_SIM].
-      writer().append_path(kSimPath);
+  KeyValueStore modem_properties;
+  modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
+                           kAccessTechnologies);
+  modem_properties.SetRpcIdentifier(MM_MODEM_PROPERTY_SIM, kSimPath);
 
   // Set up mock modem 3gpp properties
-  DBusPropertiesMap modem3gpp_properties;
-  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS].
-      writer().append_uint32(0);
-  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_IMEI].
-      writer().append_string(kImei);
+  KeyValueStore modem3gpp_properties;
+  modem3gpp_properties.SetUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS,
+                               0);
+  modem3gpp_properties.SetString(MM_MODEM_MODEM3GPP_PROPERTY_IMEI, kImei);
 
   // Set up mock modem sim properties
-  DBusPropertiesMap sim_properties;
+  KeyValueStore sim_properties;
 
   EXPECT_CALL(*properties_proxy_,
               GetAll(MM_DBUS_INTERFACE_SIM))
@@ -895,59 +879,59 @@ TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
       kTechnologyFamilyProperty, kTechnologyFamilyGsm));
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(kImeiProperty, kImei));
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                       modem_properties, vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                   modem_properties, vector<string>());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_TRUE(capability_->sim_proxy_.get());
 
   // Changing properties on wrong interface will not have an effect
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                       modem3gpp_properties,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                   modem3gpp_properties,
+                                   vector<string>());
   EXPECT_EQ("", cellular_->imei());
 
   // Changing properties on the right interface gets reflected in the
   // capabilities object
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
-                                       modem3gpp_properties,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
+                                   modem3gpp_properties,
+                                   vector<string>());
   EXPECT_EQ(kImei, cellular_->imei());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // Expect to see changes when the family changes
-  modem_properties.clear();
-  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
-      writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
+  modem_properties.Clear();
+  modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
+                           MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
       kTechnologyFamilyProperty, kTechnologyFamilyCdma)).
       Times(1);
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties,
                                        vector<string>());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // Back to LTE
-  modem_properties.clear();
-  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
-      writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_LTE);
+  modem_properties.Clear();
+  modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
+                           MM_MODEM_ACCESS_TECHNOLOGY_LTE);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(
       kTechnologyFamilyProperty, kTechnologyFamilyGsm)).
       Times(1);
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                       modem_properties,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                   modem_properties,
+                                   vector<string>());
   Mock::VerifyAndClearExpectations(device_adaptor_);
 
   // LTE & CDMA - the device adaptor should not be called!
-  modem_properties.clear();
-  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
-      writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_LTE |
-                             MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
+  modem_properties.Clear();
+  modem_properties.SetUint(MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
+                           MM_MODEM_ACCESS_TECHNOLOGY_LTE |
+                           MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(_, _)).Times(0);
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                       modem_properties,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                   modem_properties,
+                                   vector<string>());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
@@ -1164,14 +1148,12 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
   const char kOperatorName[] = "Custom SPN";
-  DBusPropertiesMap sim_properties;
-  sim_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kImsi);
-  sim_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer()
-      .append_string(kSimIdentifier);
-  sim_properties[MM_SIM_PROPERTY_OPERATORIDENTIFIER].writer()
-      .append_string(kOperatorIdentifier);
-  sim_properties[MM_SIM_PROPERTY_OPERATORNAME].writer()
-      .append_string(kOperatorName);
+  KeyValueStore sim_properties;
+  sim_properties.SetString(MM_SIM_PROPERTY_IMSI, kImsi);
+  sim_properties.SetString(MM_SIM_PROPERTY_SIMIDENTIFIER, kSimIdentifier);
+  sim_properties.SetString(MM_SIM_PROPERTY_OPERATORIDENTIFIER,
+                           kOperatorIdentifier);
+  sim_properties.SetString(MM_SIM_PROPERTY_OPERATORNAME, kOperatorName);
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .Times(1).WillOnce(Return(sim_properties));
@@ -1238,13 +1220,13 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
 TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   // Set up mock modem properties
-  DBusPropertiesMap modem_properties;
-  modem_properties[MM_MODEM_PROPERTY_SIM].writer().append_path(kSimPath);
+  KeyValueStore modem_properties;
+  modem_properties.SetRpcIdentifier(MM_MODEM_PROPERTY_SIM, kSimPath);
 
   // Set up mock modem sim properties
   const char kImsi[] = "310100000001";
-  DBusPropertiesMap sim_properties;
-  sim_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kImsi);
+  KeyValueStore sim_properties;
+  sim_properties.SetString(MM_SIM_PROPERTY_IMSI, kImsi);
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
@@ -1253,15 +1235,15 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
       .Times(0);
 
   EXPECT_FALSE(capability_->sim_proxy_.get());
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                       modem_properties, vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                   modem_properties, vector<string>());
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_TRUE(capability_->sim_proxy_.get());
   EXPECT_EQ(kImsi, cellular_->imsi());
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Updating the SIM
-  DBusPropertiesMap new_properties;
+  KeyValueStore new_properties;
   const char kNewImsi[] = "310240123456789";
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
@@ -1270,23 +1252,21 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(2);
   EXPECT_CALL(*mock_home_provider_info_, UpdateIMSI(kNewImsi)).Times(2);
-  new_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kNewImsi);
-  new_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer().
-      append_string(kSimIdentifier);
-  new_properties[MM_SIM_PROPERTY_OPERATORIDENTIFIER].writer().
-      append_string(kOperatorIdentifier);
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_SIM,
-                                       new_properties,
-                                       vector<string>());
+  new_properties.SetString(MM_SIM_PROPERTY_IMSI, kNewImsi);
+  new_properties.SetString(MM_SIM_PROPERTY_SIMIDENTIFIER, kSimIdentifier);
+  new_properties.SetString(MM_SIM_PROPERTY_OPERATORIDENTIFIER,
+                           kOperatorIdentifier);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM,
+                                   new_properties,
+                                   vector<string>());
   EXPECT_EQ(kNewImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
   EXPECT_EQ("", capability_->spn_);
 
-  new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
-      append_string(kOperatorName);
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_SIM,
-                                       new_properties,
-                                       vector<string>());
+  new_properties.SetString(MM_SIM_PROPERTY_OPERATORNAME, kOperatorName);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_SIM,
+                                   new_properties,
+                                   vector<string>());
   EXPECT_EQ(kOperatorName, capability_->spn_);
 }
 
@@ -1315,7 +1295,7 @@ TEST_F(CellularCapabilityUniversalMainTest, Reset) {
 TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
   // Common resources.
   const size_t kPathCount = 3;
-  DBus::Path active_paths[kPathCount], inactive_paths[kPathCount];
+  string active_paths[kPathCount], inactive_paths[kPathCount];
   for (size_t i = 0; i < kPathCount; ++i) {
     active_paths[i] = base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i);
     inactive_paths[i] =
@@ -1362,11 +1342,11 @@ TEST_F(CellularCapabilityUniversalMainTest, Connect) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
-  DBusPropertiesMap properties;
+  KeyValueStore properties;
   capability_->apn_try_list_.clear();
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
-  DBus::Path bearer("/foo");
+  string bearer("/foo");
 
   // Test connect failures
   EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _, _))
@@ -1402,11 +1382,11 @@ TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
-  DBusPropertiesMap properties;
+  KeyValueStore properties;
   capability_->apn_try_list_.clear();
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
-  DBus::Path bearer("/bearer0");
+  string bearer("/bearer0");
 
   const char apn_name_foo[] = "foo";
   const char apn_name_bar[] = "bar";
@@ -1968,42 +1948,33 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
 
-  DBusPropertiesMap changed;
+  KeyValueStore changed;
   vector<string> invalidated;
 
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
 
-  ::DBus::Variant variant;
-  ::DBus::MessageIter writer = variant.writer();
-
   // Unlock retries changed, but the SIM wasn't locked.
   CellularCapabilityUniversal::LockRetryData retry_data;
   retry_data[MM_MODEM_LOCK_SIM_PIN] = 3;
-  writer << retry_data;
-  changed[MM_MODEM_PROPERTY_UNLOCKRETRIES] = variant;
+  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, chromeos::Any(retry_data));
 
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
 
   // Unlock retries changed and the SIM got locked.
-  variant.clear();
-  writer = variant.writer();
-  writer << static_cast<uint32_t>(MM_MODEM_LOCK_SIM_PIN);
-  changed[MM_MODEM_PROPERTY_UNLOCKREQUIRED] = variant;
+  changed.SetUint(MM_MODEM_PROPERTY_UNLOCKREQUIRED,
+                  static_cast<uint32_t>(MM_MODEM_LOCK_SIM_PIN));
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
 
   // Only unlock retries changed.
-  changed.erase(MM_MODEM_PROPERTY_UNLOCKREQUIRED);
+  changed.Remove(MM_MODEM_PROPERTY_UNLOCKREQUIRED);
   retry_data[MM_MODEM_LOCK_SIM_PIN] = 2;
-  variant.clear();
-  writer = variant.writer();
-  writer << retry_data;
-  changed[MM_MODEM_PROPERTY_UNLOCKRETRIES] = variant;
+  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, chromeos::Any(retry_data));
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);
@@ -2012,10 +1983,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   // lock type. Default to whatever count is available.
   retry_data.clear();
   retry_data[MM_MODEM_LOCK_SIM_PIN2] = 2;
-  variant.clear();
-  writer = variant.writer();
-  writer << retry_data;
-  changed[MM_MODEM_PROPERTY_UNLOCKRETRIES] = variant;
+  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, chromeos::Any(retry_data));
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);

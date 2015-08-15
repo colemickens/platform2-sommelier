@@ -14,30 +14,27 @@ using std::vector;
 
 namespace shill {
 
-Modem1::Modem1(const string& owner,
-               const string& service,
+Modem1::Modem1(const string& service,
                const string& path,
                ModemInfo* modem_info,
                ControlInterface* control_interface)
-    : Modem(owner, service, path, modem_info, control_interface) {}
+    : Modem(service, path, modem_info, control_interface) {}
 
 Modem1::~Modem1() {}
 
-bool Modem1::GetLinkName(const DBusPropertiesMap& modem_props,
+bool Modem1::GetLinkName(const KeyValueStore& modem_props,
                          string* name) const {
-  DBusPropertiesMap::const_iterator props_it;
-  string net_port;
-
-  props_it = modem_props.find(MM_MODEM_PROPERTY_PORTS);
-  if (props_it == modem_props.end()) {
+  if (!modem_props.Contains(MM_MODEM_PROPERTY_PORTS)) {
     LOG(ERROR) << "Device missing property: " << MM_MODEM_PROPERTY_PORTS;
     return false;
   }
 
-  vector<DBus::Struct<string, uint32_t>> ports = props_it->second;
+  auto ports = modem_props.Get(MM_MODEM_PROPERTY_PORTS).
+      Get<vector<std::tuple<string, uint32_t>>>();
+  string net_port;
   for (const auto& port_pair : ports) {
-    if (port_pair._2 == MM_MODEM_PORT_TYPE_NET) {
-      net_port = port_pair._1;
+    if (std::get<1>(port_pair) == MM_MODEM_PORT_TYPE_NET) {
+      net_port = std::get<0>(port_pair);
       break;
     }
   }
@@ -51,19 +48,20 @@ bool Modem1::GetLinkName(const DBusPropertiesMap& modem_props,
   return true;
 }
 
-void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties& properties) {
+void Modem1::CreateDeviceMM1(const InterfaceToProperties& properties) {
   Init();
   uint32_t capabilities = kuint32max;
-  DBusInterfaceToProperties::const_iterator it =
+  InterfaceToProperties::const_iterator it =
       properties.find(MM_DBUS_INTERFACE_MODEM);
   if (it == properties.end()) {
     LOG(ERROR) << "Cellular device with no modem properties";
     return;
   }
-  const DBusPropertiesMap& modem_props = it->second;
-  DBusProperties::GetUint32(modem_props,
-                            MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
-                            &capabilities);
+  const KeyValueStore& modem_props = it->second;
+  if (modem_props.ContainsUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES)) {
+    capabilities =
+      modem_props.GetUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES);
+  }
 
   if ((capabilities & MM_MODEM_CAPABILITY_LTE) ||
       (capabilities & MM_MODEM_CAPABILITY_GSM_UMTS)) {

@@ -12,7 +12,6 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
-#include "shill/dbus_properties.h"
 #include "shill/ipconfig.h"
 
 namespace shill {
@@ -42,10 +41,10 @@ class CellularBearer {
   // success or false if it fails to the DBus properties proxy.
   bool Init();
 
-  // Callback upon DBus property changes of the bearer.
-  void OnDBusPropertiesChanged(
+  // Callback upon property changes of the bearer.
+  void OnPropertiesChanged(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties);
 
   const std::string& dbus_path() const { return dbus_path_; }
@@ -73,7 +72,7 @@ class CellularBearer {
   // |ipconfig_method| and |ipconfig_properties| are used to return the IP
   // configuration method and properties and should be non-NULL.
   void GetIPConfigMethodAndProperties(
-      const DBusPropertiesMap& properties,
+      const KeyValueStore& properties,
       IPAddress::Family address_family,
       IPConfig::Method* ipconfig_method,
       std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const;

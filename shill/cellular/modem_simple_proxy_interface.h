@@ -6,7 +6,6 @@
 #define SHILL_CELLULAR_MODEM_SIMPLE_PROXY_INTERFACE_H_
 
 #include "shill/callbacks.h"
-#include "shill/dbus_properties.h"
 
 namespace shill {
 
@@ -20,9 +19,9 @@ class ModemSimpleProxyInterface {
   virtual ~ModemSimpleProxyInterface() {}
 
   virtual void GetModemStatus(Error* error,
-                              const DBusPropertyMapCallback& callback,
+                              const KeyValueStoreCallback& callback,
                               int timeout) = 0;
-  virtual void Connect(const DBusPropertiesMap& properties,
+  virtual void Connect(const KeyValueStore& properties,
                        Error* error, const ResultCallback& callback,
                        int timeout) = 0;
 };

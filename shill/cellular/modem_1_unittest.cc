@@ -10,14 +10,13 @@
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/dbus_property_matchers.h"
-#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_device_info.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using base::FilePath;
@@ -35,7 +34,6 @@ namespace {
 
 const int kTestInterfaceIndex = 5;
 const char kLinkName[] = "usb0";
-const char kOwner[] = ":1.18";
 const char kService[] = "org.chromium.ModemManager";
 const char kPath[] = "/org/chromium/ModemManager/Gobi/0";
 const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
@@ -51,7 +49,6 @@ class Modem1Test : public Test {
         proxy_(new MockDBusPropertiesProxy()),
         modem_(
             new Modem1(
-                kOwner,
                 kService,
                 kPath,
                 &modem_info_,
@@ -64,7 +61,7 @@ class Modem1Test : public Test {
   }
 
  protected:
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
   std::unique_ptr<MockDBusPropertiesProxy> proxy_;
@@ -75,7 +72,6 @@ class Modem1Test : public Test {
 };
 
 void Modem1Test::SetUp() {
-  EXPECT_EQ(kOwner, modem_->owner_);
   EXPECT_EQ(kService, modem_->service_);
   EXPECT_EQ(kPath, modem_->path_);
   ReplaceSingletons();
@@ -96,33 +92,23 @@ void Modem1Test::TearDown() {
 }
 
 TEST_F(Modem1Test, CreateDeviceMM1) {
-  DBusInterfaceToProperties properties;
-  DBusPropertiesMap modem_properties;
-  DBus::Variant lock;
-  lock.writer().append_uint32(MM_MODEM_LOCK_NONE);
-  modem_properties[MM_MODEM_PROPERTY_UNLOCKREQUIRED] = lock;
+  InterfaceToProperties properties;
 
-  DBus::Variant ports_variant;
-  DBus::MessageIter ports_message_iter = ports_variant.writer();
-  DBus::MessageIter ports_array_iter = ports_message_iter.new_array("(su)");
-  DBus::MessageIter port_struct_iter = ports_array_iter.new_struct();
-  port_struct_iter.append_string(kLinkName);
-  port_struct_iter.append_uint32(MM_MODEM_PORT_TYPE_NET);
-  ports_array_iter.close_container(port_struct_iter);
-  ports_message_iter.close_container(ports_array_iter);
-  modem_properties[MM_MODEM_PROPERTY_PORTS] = ports_variant;
-
+  KeyValueStore modem_properties;
+  modem_properties.SetUint(MM_MODEM_PROPERTY_UNLOCKREQUIRED,
+                           MM_MODEM_LOCK_NONE);
+  vector<std::tuple<string, uint32_t>> ports = {
+      std::make_tuple(kLinkName, MM_MODEM_PORT_TYPE_NET) };
+  modem_properties.Set(MM_MODEM_PROPERTY_PORTS, chromeos::Any(ports));
   properties[MM_DBUS_INTERFACE_MODEM] = modem_properties;
 
-  DBusPropertiesMap modem3gpp_properties;
-  DBus::Variant registration_state_variant;
-  registration_state_variant.writer().append_uint32(
+  KeyValueStore modem3gpp_properties;
+  modem3gpp_properties.SetUint(
+      MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE,
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME);
-  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE] =
-      registration_state_variant;
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
-  EXPECT_CALL(control_interface_, CreateDBusPropertiesProxy(kPath, kOwner))
+  EXPECT_CALL(control_interface_, CreateDBusPropertiesProxy(kPath, kService))
       .WillOnce(ReturnAndReleasePointee(&proxy_));
   modem_->CreateDeviceMM1(properties);
   EXPECT_TRUE(modem_->device().get());

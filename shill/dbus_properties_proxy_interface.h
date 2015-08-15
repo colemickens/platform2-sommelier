@@ -10,7 +10,7 @@
 
 #include <base/callback.h>
 
-#include "shill/dbus_properties.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 
@@ -21,7 +21,7 @@ class DBusPropertiesProxyInterface {
   // Callback invoked when an object sends a DBus property change signal.
   typedef base::Callback<void(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties)>
     PropertiesChangedCallback;
 
@@ -29,13 +29,13 @@ class DBusPropertiesProxyInterface {
   // property change signal.
   typedef base::Callback<void(
       const std::string& interface,
-      const DBusPropertiesMap& properties)>
+      const KeyValueStore& properties)>
     ModemManagerPropertiesChangedCallback;
 
   virtual ~DBusPropertiesProxyInterface() {}
 
-  virtual DBusPropertiesMap GetAll(const std::string& interface_name) = 0;
-  virtual DBus::Variant Get(const std::string& interface_name,
+  virtual KeyValueStore GetAll(const std::string& interface_name) = 0;
+  virtual chromeos::Any Get(const std::string& interface_name,
                             const std::string& property) = 0;
 
   virtual void set_properties_changed_callback(

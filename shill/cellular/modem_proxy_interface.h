@@ -7,21 +7,18 @@
 
 #include <string>
 
-#include <dbus-c++/types.h>
-
 #include "shill/callbacks.h"
-#include "shill/dbus_properties.h"
 
 namespace shill {
 
 class CallContext;
 class Error;
 
-typedef DBus::Struct<std::string, std::string, std::string> ModemHardwareInfo;
-
 typedef base::Callback<void(uint32_t, uint32_t, uint32_t)>
     ModemStateChangedSignalCallback;
-typedef base::Callback<void(const ModemHardwareInfo&,
+typedef base::Callback<void(const std::string& manufacturer,
+                            const std::string& modem,
+                            const std::string& version,
                             const Error&)> ModemInfoCallback;
 
 // These are the methods that a ModemManager.Modem proxy must support. The

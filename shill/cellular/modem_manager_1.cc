@@ -30,19 +30,35 @@ ModemManager1::ModemManager1(ControlInterface* control_interface,
                    modem_info),
       weak_ptr_factory_(this) {}
 
-ModemManager1::~ModemManager1() {}
+ModemManager1::~ModemManager1() {
+  Stop();
+}
 
-void ModemManager1::Connect(const string& supplied_owner) {
-  ModemManager::Connect(supplied_owner);
+void ModemManager1::Start() {
+  LOG(INFO) << "Start watching modem manager service: " << service();
+  CHECK(!proxy_);
   proxy_.reset(
-      control_interface()->CreateDBusObjectManagerProxy(path(), owner()));
+      control_interface()->CreateDBusObjectManagerProxy(
+          path(),
+          service(),
+          base::Bind(&ModemManager1::OnAppeared, base::Unretained(this)),
+          base::Bind(&ModemManager1::OnVanished, base::Unretained(this))));
   proxy_->set_interfaces_added_callback(
       Bind(&ModemManager1::OnInterfacesAddedSignal,
            weak_ptr_factory_.GetWeakPtr()));
   proxy_->set_interfaces_removed_callback(
       Bind(&ModemManager1::OnInterfacesRemovedSignal,
            weak_ptr_factory_.GetWeakPtr()));
+}
 
+void ModemManager1::Stop() {
+  LOG(INFO) << "Stop watching modem manager service: " << service();
+  proxy_.reset();
+  Disconnect();
+}
+
+void ModemManager1::Connect() {
+  ModemManager::Connect();
   // TODO(rochberg):  Make global kDBusDefaultTimeout and use it here
   Error error;
   proxy_->GetManagedObjects(&error,
@@ -57,12 +73,11 @@ void ModemManager1::Disconnect() {
 }
 
 void ModemManager1::AddModem1(const string& path,
-                              const DBusInterfaceToProperties& properties) {
+                              const InterfaceToProperties& properties) {
   if (ModemExists(path)) {
     return;
   }
-  shared_ptr<Modem1> modem1(new Modem1(owner(),
-                                       service(),
+  shared_ptr<Modem1> modem1(new Modem1(service(),
                                        path,
                                        modem_info(),
                                        control_interface()));
@@ -71,7 +86,7 @@ void ModemManager1::AddModem1(const string& path,
 }
 
 void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
-                               const DBusInterfaceToProperties& properties) {
+                               const InterfaceToProperties& properties) {
   if (modem == nullptr) {
     return;
   }
@@ -81,8 +96,8 @@ void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
 // signal methods
 // Also called by OnGetManagedObjectsReply
 void ModemManager1::OnInterfacesAddedSignal(
-    const ::DBus::Path& object_path,
-    const DBusInterfaceToProperties& properties) {
+    const string& object_path,
+    const InterfaceToProperties& properties) {
   if (ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
     AddModem1(object_path, properties);
   } else {
@@ -91,7 +106,7 @@ void ModemManager1::OnInterfacesAddedSignal(
 }
 
 void ModemManager1::OnInterfacesRemovedSignal(
-    const ::DBus::Path& object_path,
+    const string& object_path,
     const vector<string>& interfaces) {
   LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
   if (find(interfaces.begin(),
@@ -107,10 +122,10 @@ void ModemManager1::OnInterfacesRemovedSignal(
 
 // DBusObjectManagerProxy async method call
 void ModemManager1::OnGetManagedObjectsReply(
-    const DBusObjectsWithProperties& objects,
+    const ObjectsWithProperties& objects,
     const Error& error) {
   if (error.IsSuccess()) {
-    DBusObjectsWithProperties::const_iterator m;
+    ObjectsWithProperties::const_iterator m;
     for (m = objects.begin(); m != objects.end(); ++m) {
       OnInterfacesAddedSignal(m->first, m->second);
     }

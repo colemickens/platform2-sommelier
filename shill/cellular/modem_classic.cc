@@ -13,25 +13,30 @@ using std::vector;
 
 namespace shill {
 
-ModemClassic::ModemClassic(const string& owner,
-                           const string& service,
+ModemClassic::ModemClassic(const string& service,
                            const string& path,
                            ModemInfo* modem_info,
                            ControlInterface* control_interface)
-    : Modem(owner, service, path, modem_info, control_interface) {}
+    : Modem(service, path, modem_info, control_interface) {}
 
 ModemClassic::~ModemClassic() {}
 
-bool ModemClassic::GetLinkName(const DBusPropertiesMap& modem_properties,
+bool ModemClassic::GetLinkName(const KeyValueStore& modem_properties,
                                string* name) const {
-  return DBusProperties::GetString(modem_properties, kPropertyLinkName, name);
+  if (!modem_properties.ContainsString(kPropertyLinkName)) {
+    return false;
+  }
+  *name = modem_properties.GetString(kPropertyLinkName);
+  return true;
 }
 
 void ModemClassic::CreateDeviceClassic(
-    const DBusPropertiesMap& modem_properties) {
+    const KeyValueStore& modem_properties) {
   Init();
   uint32_t mm_type = kuint32max;
-  DBusProperties::GetUint32(modem_properties, kPropertyType, &mm_type);
+  if (modem_properties.ContainsUint(kPropertyType)) {
+    mm_type = modem_properties.GetUint(kPropertyType);
+  }
   switch (mm_type) {
     case MM_MODEM_TYPE_CDMA:
       set_type(Cellular::kTypeCDMA);
@@ -44,15 +49,14 @@ void ModemClassic::CreateDeviceClassic(
       return;
   }
   uint32_t ip_method = kuint32max;
-  if (!DBusProperties::GetUint32(modem_properties,
-                                 kPropertyIPMethod,
-                                 &ip_method) ||
-      ip_method != MM_MODEM_IP_METHOD_DHCP) {
+  if (!modem_properties.ContainsUint(kPropertyIPMethod) ||
+      (ip_method = modem_properties.GetUint(kPropertyIPMethod)) !=
+          MM_MODEM_IP_METHOD_DHCP) {
     LOG(ERROR) << "Unsupported IP method: " << ip_method;
     return;
   }
 
-  DBusInterfaceToProperties properties;
+  InterfaceToProperties properties;
   properties[MM_MODEM_INTERFACE] = modem_properties;
   CreateDeviceFromModemProperties(properties);
 }

@@ -16,8 +16,8 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular/mobile_operator_info_impl.h"
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/test_event_dispatcher.h"
 
 // These files contain binary protobuf definitions used by the following tests
 // inside the namespace ::mobile_operator_db
@@ -114,7 +114,7 @@ class MobileOperatorInfoInitTest : public Test {
     return operator_info_impl_->database();
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   vector<FilePath> tmp_db_paths_;
   std::unique_ptr<MobileOperatorInfo> operator_info_;
   // Owned by |operator_info_| and tied to its life cycle.

@@ -24,8 +24,8 @@ MockModemProxy::MockModemProxy() {
       .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
   ON_CALL(*this, SetCurrentCapabilities(_, _, _, _))
       .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
-  ON_CALL(*this, SetCurrentModes(_, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+  ON_CALL(*this, SetCurrentModes(_, _, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
   ON_CALL(*this, Command(_, _, _, _, _))
       .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
   ON_CALL(*this, SetPowerState(_, _, _, _))

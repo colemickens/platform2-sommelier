@@ -38,6 +38,7 @@
 #include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
+#include "shill/process_manager.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
@@ -69,7 +70,6 @@ Cellular::Cellular(ModemInfo* modem_info,
                    const string& address,
                    int interface_index,
                    Type type,
-                   const string& owner,
                    const string& service,
                    const string& path)
     : Device(modem_info->control_interface(),
@@ -89,7 +89,6 @@ Cellular::Cellular(ModemInfo* modem_info,
           new MobileOperatorInfo(modem_info->dispatcher(), "ServingOperator")),
       mobile_operator_info_observer_(
           new Cellular::MobileOperatorInfoObserver(this)),
-      dbus_owner_(owner),
       dbus_service_(service),
       dbus_path_(path),
       scanning_supported_(false),
@@ -101,6 +100,7 @@ Cellular::Cellular(ModemInfo* modem_info,
       modem_info_(modem_info),
       type_(type),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
+      process_manager_(ProcessManager::GetInstance()),
       allow_roaming_(false),
       proposed_scan_in_progress_(false),
       explicit_disconnect_(false),
@@ -683,7 +683,7 @@ void Cellular::Connect(Error* error) {
     return;
   }
 
-  DBusPropertiesMap properties;
+  KeyValueStore properties;
   capability_->SetupConnectProperties(&properties);
   ResultCallback cb = Bind(&Cellular::OnConnectReply,
                            weak_ptr_factory_.GetWeakPtr());
@@ -876,13 +876,13 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
-void Cellular::OnDBusPropertiesChanged(
+void Cellular::OnPropertiesChanged(
     const string& interface,
-    const DBusPropertiesMap& changed_properties,
+    const KeyValueStore& changed_properties,
     const vector<string>& invalidated_properties) {
-  capability_->OnDBusPropertiesChanged(interface,
-                                       changed_properties,
-                                       invalidated_properties);
+  capability_->OnPropertiesChanged(interface,
+                                   changed_properties,
+                                   invalidated_properties);
 }
 
 string Cellular::CreateDefaultFriendlyServiceName() {
@@ -1027,7 +1027,7 @@ void Cellular::StartPPP(const string& serial_device) {
   Error error;
   std::unique_ptr<ExternalTask> new_ppp_task(
       PPPDaemon::Start(modem_info_->control_interface(),
-                       modem_info_->glib(),
+                       process_manager_,
                        weak_ptr_factory_.GetWeakPtr(),
                        options,
                        serial_device,

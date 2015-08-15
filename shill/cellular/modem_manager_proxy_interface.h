@@ -5,9 +5,8 @@
 #ifndef SHILL_CELLULAR_MODEM_MANAGER_PROXY_INTERFACE_H_
 #define SHILL_CELLULAR_MODEM_MANAGER_PROXY_INTERFACE_H_
 
+#include <string>
 #include <vector>
-
-#include <dbus-c++/types.h>
 
 namespace shill {
 
@@ -17,7 +16,7 @@ class ModemManagerProxyInterface {
  public:
   virtual ~ModemManagerProxyInterface() {}
 
-  virtual std::vector<DBus::Path> EnumerateDevices() = 0;
+  virtual std::vector<std::string> EnumerateDevices() = 0;
 };
 
 }  // namespace shill

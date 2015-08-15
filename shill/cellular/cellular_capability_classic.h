@@ -18,7 +18,6 @@
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/modem_proxy_interface.h"
 #include "shill/cellular/modem_simple_proxy_interface.h"
-#include "shill/dbus_properties.h"
 
 namespace shill {
 
@@ -61,16 +60,16 @@ class CellularCapabilityClassic : public CellularCapability {
   ~CellularCapabilityClassic() override;
 
   // Inherited from CellularCapability.
-  void OnDBusPropertiesChanged(
+  void OnPropertiesChanged(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties) override;
   void StopModem(Error* error, const ResultCallback& callback) override;
   bool AreProxiesInitialized() const override;
   void SetCarrier(const std::string& carrier,
                   Error* error,
                   const ResultCallback& callback) override;
-  void Connect(const DBusPropertiesMap& properties,
+  void Connect(const KeyValueStore& properties,
                Error* error,
                const ResultCallback& callback) override;
   void Disconnect(Error* error,
@@ -96,7 +95,7 @@ class CellularCapabilityClassic : public CellularCapability {
   void ReleaseProxies() override;
 
   // Default implementation is no-op.
-  virtual void UpdateStatus(const DBusPropertiesMap& properties);
+  virtual void UpdateStatus(const KeyValueStore& properties);
 
   // Runs the next task in a list.
   // Precondition: |tasks| is not empty.
@@ -149,12 +148,14 @@ class CellularCapabilityClassic : public CellularCapability {
                                  uint32_t new_state,
                                  uint32_t reason);
   void OnGetModemInfoReply(const ResultCallback& callback,
-                           const ModemHardwareInfo& info,
+                           const std::string& manufacturer,
+                           const std::string& modem,
+                           const std::string& version,
                            const Error& error);
 
   // Method reply callbacks from Modem.Simple interface
   void OnGetModemStatusReply(const ResultCallback& callback,
-                             const DBusPropertiesMap& props,
+                             const KeyValueStore& props,
                              const Error& error);
 
   Cellular* cellular_;

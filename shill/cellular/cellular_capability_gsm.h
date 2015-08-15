@@ -36,9 +36,9 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
-  void OnDBusPropertiesChanged(
+  void OnPropertiesChanged(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties) override;
   void StartModem(Error* error, const ResultCallback& callback) override;
   bool AreProxiesInitialized() const override;
@@ -53,8 +53,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   std::string GetRoamingStateString() const override;
   bool AllowRoaming() override;
   void GetSignalQuality() override;
-  void SetupConnectProperties(DBusPropertiesMap* properties) override;
-  void Connect(const DBusPropertiesMap& properties,
+  void SetupConnectProperties(KeyValueStore* properties) override;
+  void Connect(const KeyValueStore& properties,
                Error* error,
                const ResultCallback& callback) override;
   void RequirePIN(const std::string& pin,
@@ -114,7 +114,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
   FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityGSMTest, OnDBusPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityGSMTest, OnPropertiesChanged);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
@@ -158,7 +158,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   KeyValueStore SimLockStatusToProperty(Error* error);
 
   void SetupApnTryList();
-  void FillConnectPropertyMap(DBusPropertiesMap* properties);
+  void FillConnectPropertyMap(KeyValueStore* properties);
 
   void HelpRegisterConstDerivedKeyValueStore(
       const std::string& name,

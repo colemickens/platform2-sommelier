@@ -27,7 +27,7 @@ class MockModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
       int timeout));
 
   MOCK_METHOD4(ActivateManual, void(
-      const DBusPropertiesMap& properties,
+      const KeyValueStore& properties,
       Error* error,
       const ResultCallback& callback,
       int timeout));

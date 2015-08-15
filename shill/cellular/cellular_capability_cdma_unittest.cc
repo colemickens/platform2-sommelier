@@ -16,8 +16,8 @@
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/cellular/mock_modem_proxy.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/test_event_dispatcher.h"
 
 using base::Bind;
 using base::Unretained;
@@ -39,7 +39,6 @@ class CellularCapabilityCDMATest : public testing::Test {
                                    "",
                                    0,
                                    Cellular::kTypeCDMA,
-                                   "",
                                    "",
                                    "")),
         classic_proxy_(new MockModemProxy()),
@@ -126,7 +125,7 @@ class CellularCapabilityCDMATest : public testing::Test {
     cellular_->state_ = state;
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockModemInfo modem_info_;
   scoped_refptr<MockCellular> cellular_;
   std::unique_ptr<MockModemProxy> classic_proxy_;

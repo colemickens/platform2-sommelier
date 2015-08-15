@@ -11,23 +11,23 @@
 
 #include <base/callback.h>
 
-#include "shill/dbus_properties.h"  // For DBusPropertiesMap
+#include "shill/key_value_store.h"
 
 namespace shill {
 
 class Error;
 
-typedef std::map<std::string, DBusPropertiesMap> DBusInterfaceToProperties;
-typedef std::map<::DBus::Path, DBusInterfaceToProperties>
-    DBusObjectsWithProperties;
-typedef base::Callback<void(const DBusObjectsWithProperties&, const Error&)>
+typedef std::map<std::string, KeyValueStore> InterfaceToProperties;
+typedef std::map<std::string, InterfaceToProperties>
+    ObjectsWithProperties;
+typedef base::Callback<void(const ObjectsWithProperties&, const Error&)>
     ManagedObjectsCallback;
-typedef base::Callback<void(const DBusInterfaceToProperties&, const Error&)>
+typedef base::Callback<void(const InterfaceToProperties&, const Error&)>
     InterfaceAndPropertiesCallback;
-typedef base::Callback<void(const DBus::Path&,
-                            const DBusInterfaceToProperties&)>
+typedef base::Callback<void(const std::string&,
+                            const InterfaceToProperties&)>
     InterfacesAddedSignalCallback;
-typedef base::Callback<void(const DBus::Path&,
+typedef base::Callback<void(const std::string&,
                             const std::vector<std::string>&)>
     InterfacesRemovedSignalCallback;
 

@@ -7,13 +7,15 @@
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 
+#include "shill/cellular/mock_dbus_objectmanager_proxy.h"
+#include "shill/cellular/mock_modem_manager_proxy.h"
 #include "shill/cellular/modem_manager.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/test_event_dispatcher.h"
 
 using testing::_;
 using testing::Return;
@@ -26,34 +28,27 @@ class ModemInfoTest : public Test {
   ModemInfoTest()
       : metrics_(&dispatcher_),
         manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
-        dbus_service_proxy_(nullptr),
         modem_info_(&control_interface_, &dispatcher_, &metrics_, &manager_,
                     &glib_) {}
-
-  virtual void SetUp() {
-    manager_.dbus_manager_.reset(new DBusManager(&control_interface_));
-    dbus_service_proxy_ = new MockDBusServiceProxy();
-    // Ownership  of |dbus_service_proxy_| is transferred to
-    // |manager_.dbus_manager_|.
-    manager_.dbus_manager_->proxy_.reset(dbus_service_proxy_);
-  }
 
  protected:
   MockGLib glib_;
   MockControl control_interface_;
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockDBusServiceProxy* dbus_service_proxy_;
   ModemInfo modem_info_;
 };
 
 TEST_F(ModemInfoTest, StartStop) {
   EXPECT_EQ(0, modem_info_.modem_managers_.size());
-  EXPECT_CALL(*dbus_service_proxy_,
-              GetNameOwner("org.chromium.ModemManager", _, _, _));
-  EXPECT_CALL(*dbus_service_proxy_,
-              GetNameOwner("org.freedesktop.ModemManager1", _, _, _));
+  EXPECT_CALL(control_interface_,
+              CreateModemManagerProxy(_, _, "org.chromium.ModemManager", _, _))
+      .WillOnce(Return(new MockModemManagerProxy()));
+  EXPECT_CALL(control_interface_,
+              CreateDBusObjectManagerProxy(
+                  _, "org.freedesktop.ModemManager1", _, _))
+      .WillOnce(Return(new MockDBusObjectManagerProxy()));
   modem_info_.Start();
   EXPECT_EQ(2, modem_info_.modem_managers_.size());
   modem_info_.Stop();
@@ -62,7 +57,9 @@ TEST_F(ModemInfoTest, StartStop) {
 
 TEST_F(ModemInfoTest, RegisterModemManager) {
   static const char kService[] = "some.dbus.service";
-  EXPECT_CALL(*dbus_service_proxy_, GetNameOwner(kService, _, _, _));
+  EXPECT_CALL(control_interface_,
+              CreateModemManagerProxy(_, _, kService, _, _))
+      .WillOnce(Return(new MockModemManagerProxy()));
   modem_info_.RegisterModemManager(
       new ModemManagerClassic(&control_interface_,
                               kService,

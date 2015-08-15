@@ -18,9 +18,9 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
   ~MockModemSimpleProxy() override;
 
   MOCK_METHOD3(GetModemStatus, void(Error* error,
-                                    const DBusPropertyMapCallback& callback,
+                                    const KeyValueStoreCallback& callback,
                                     int timeout));
-  MOCK_METHOD4(Connect, void(const DBusPropertiesMap& properties,
+  MOCK_METHOD4(Connect, void(const KeyValueStore& properties,
                              Error* error, const ResultCallback& callback,
                              int timeout));
 

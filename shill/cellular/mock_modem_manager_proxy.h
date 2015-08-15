@@ -5,6 +5,7 @@
 #ifndef SHILL_CELLULAR_MOCK_MODEM_MANAGER_PROXY_H_
 #define SHILL_CELLULAR_MOCK_MODEM_MANAGER_PROXY_H_
 
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -19,7 +20,7 @@ class MockModemManagerProxy : public ModemManagerProxyInterface {
   MockModemManagerProxy();
   ~MockModemManagerProxy() override;
 
-  MOCK_METHOD0(EnumerateDevices, std::vector<DBus::Path>());
+  MOCK_METHOD0(EnumerateDevices, std::vector<std::string>());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemManagerProxy);

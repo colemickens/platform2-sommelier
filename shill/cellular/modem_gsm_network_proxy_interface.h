@@ -9,16 +9,12 @@
 #include <string>
 #include <vector>
 
-#include <dbus-c++/types.h>
-
 #include "shill/callbacks.h"
 
 namespace shill {
 
 class Error;
 
-typedef DBus::Struct<unsigned int, std::string, std::string>
-    GSMRegistrationInfo;
 typedef std::map<std::string, std::string> GSMScanResult;
 typedef std::vector<GSMScanResult> GSMScanResults;
 

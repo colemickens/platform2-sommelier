@@ -29,9 +29,9 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   bool IsActivated() const;
 
   // Inherited from CellularCapability.
-  void OnDBusPropertiesChanged(
+  void OnPropertiesChanged(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties) override;
   bool IsServiceActivationRequired() const override;
   bool IsActivating() const override;
@@ -43,7 +43,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   void SetUnregistered(bool searching) override;
   void OnServiceCreated() override;
   std::string GetRoamingStateString() const override;
-  void SetupConnectProperties(DBusPropertiesMap* properties) override;
+  void SetupConnectProperties(KeyValueStore* properties) override;
 
   // TODO(armansito): Remove once 3GPP is implemented in its own class
   void Register(const ResultCallback& callback) override;
@@ -91,7 +91,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   // CDMA property change handlers
   virtual void OnModemCDMAPropertiesChanged(
-      const DBusPropertiesMap& properties,
+      const KeyValueStore& properties,
       const std::vector<std::string>& invalidated_properties);
   void OnCDMARegistrationChanged(MMModemCdmaRegistrationState state_1x,
                                  MMModemCdmaRegistrationState state_evdo,
@@ -101,7 +101,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   void ActivateAutomatic();
   void OnActivationStateChangedSignal(uint32_t activation_state,
                                       uint32_t activation_error,
-                                      const DBusPropertiesMap& status_changes);
+                                      const KeyValueStore& status_changes);
   void OnActivateReply(const ResultCallback& callback,
                        const Error& error);
   void HandleNewActivationStatus(uint32_t error);

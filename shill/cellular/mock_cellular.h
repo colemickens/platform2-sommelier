@@ -21,16 +21,15 @@ class MockCellular : public Cellular {
                const std::string& address,
                int interface_index,
                Type type,
-               const std::string& owner,
                const std::string& service,
                const std::string& path);
   ~MockCellular() override;
 
   MOCK_METHOD1(Connect, void(Error* error));
   MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
-  MOCK_METHOD3(OnDBusPropertiesChanged, void(
+  MOCK_METHOD3(OnPropertiesChanged, void(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties));
   MOCK_METHOD1(set_modem_state, void(ModemState state));
   MOCK_METHOD0(DestroyService, void());

@@ -8,9 +8,8 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular/modem.h"
-#include "shill/cellular/modem_manager_proxy.h"
+#include "shill/cellular/modem_manager_proxy_interface.h"
 #include "shill/control_interface.h"
-#include "shill/dbus_manager.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -28,50 +27,34 @@ ModemManager::ModemManager(ControlInterface* control_interface,
     : control_interface_(control_interface),
       service_(service),
       path_(path),
+      service_connected_(false),
       modem_info_(modem_info) {}
 
-ModemManager::~ModemManager() {
-  Stop();
-}
+ModemManager::~ModemManager() {}
 
-void ModemManager::Start() {
-  LOG(INFO) << "Start watching modem manager service: " << service_;
-  CHECK(!name_watcher_);
-  name_watcher_.reset(modem_info_->manager()->dbus_manager()->CreateNameWatcher(
-      service_,
-      base::Bind(&ModemManager::OnAppear, base::Unretained(this)),
-      base::Bind(&ModemManager::OnVanish, base::Unretained(this))));
-}
-
-void ModemManager::Stop() {
-  LOG(INFO) << "Stop watching modem manager service: " << service_;
-  name_watcher_.reset();
-  Disconnect();
-}
-
-void ModemManager::Connect(const string& owner) {
+void ModemManager::Connect() {
   // Inheriting classes call this superclass method.
-  owner_ = owner;
+  service_connected_ = true;
 }
 
 void ModemManager::Disconnect() {
   // Inheriting classes call this superclass method.
   modems_.clear();
-  owner_.clear();
+  service_connected_ = false;
 }
 
-void ModemManager::OnAppear(const string& name, const string& owner) {
-  LOG(INFO) << "Modem manager " << name << " appeared. Owner: " << owner;
-  Connect(owner);
+void ModemManager::OnAppeared() {
+  LOG(INFO) << "Modem manager " << service_ << " appeared.";
+  Connect();
 }
 
-void ModemManager::OnVanish(const string& name) {
-  LOG(INFO) << "Modem manager " << name << " vanished.";
+void ModemManager::OnVanished() {
+  LOG(INFO) << "Modem manager " << service_ << " vanished.";
   Disconnect();
 }
 
 bool ModemManager::ModemExists(const std::string& path) const {
-  CHECK(!owner_.empty());
+  CHECK(service_connected_);
   if (ContainsKey(modems_, path)) {
     LOG(INFO) << "ModemExists: " << path << " already exists.";
     return true;
@@ -86,7 +69,7 @@ void ModemManager::RecordAddedModem(shared_ptr<Modem> modem) {
 
 void ModemManager::RemoveModem(const string& path) {
   LOG(INFO) << "Remove modem: " << path;
-  CHECK(!owner_.empty());
+  CHECK(service_connected_);
   modems_.erase(path);
 }
 
@@ -104,16 +87,35 @@ ModemManagerClassic::ModemManagerClassic(
     ModemInfo* modem_info)
     : ModemManager(control_interface, service, path, modem_info) {}
 
-ModemManagerClassic::~ModemManagerClassic() {}
+ModemManagerClassic::~ModemManagerClassic() {
+  Stop();
+}
 
-void ModemManagerClassic::Connect(const string& supplied_owner) {
-  ModemManager::Connect(supplied_owner);
+void ModemManagerClassic::Start() {
+  LOG(INFO) << "Start watching modem manager service: " << service();
+  CHECK(!proxy_);
   proxy_.reset(
-      control_interface()->CreateModemManagerProxy(this, path(), owner()));
-  // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
-  vector<DBus::Path> devices = proxy_->EnumerateDevices();
+      control_interface()->CreateModemManagerProxy(
+          this,
+          path(),
+          service(),
+          base::Bind(&ModemManagerClassic::OnAppeared, base::Unretained(this)),
+          base::Bind(&ModemManagerClassic::OnVanished,
+                     base::Unretained(this))));
+}
 
-  for (vector<DBus::Path>::const_iterator it = devices.begin();
+void ModemManagerClassic::Stop() {
+  LOG(INFO) << "Stop watching modem manager service: " << service();
+  proxy_.reset();
+  Disconnect();
+}
+
+void ModemManagerClassic::Connect() {
+  ModemManager::Connect();
+  // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
+  vector<string> devices = proxy_->EnumerateDevices();
+
+  for (vector<string>::const_iterator it = devices.begin();
        it != devices.end(); ++it) {
     AddModemClassic(*it);
   }
@@ -123,8 +125,7 @@ void ModemManagerClassic::AddModemClassic(const string& path) {
   if (ModemExists(path)) {
     return;
   }
-  shared_ptr<ModemClassic> modem(new ModemClassic(owner(),
-                                                  service(),
+  shared_ptr<ModemClassic> modem(new ModemClassic(service(),
                                                   path,
                                                   modem_info(),
                                                   control_interface()));
@@ -134,7 +135,6 @@ void ModemManagerClassic::AddModemClassic(const string& path) {
 
 void ModemManagerClassic::Disconnect() {
   ModemManager::Disconnect();
-  proxy_.reset();
 }
 
 void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
@@ -145,8 +145,8 @@ void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
 
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
       control_interface()->CreateDBusPropertiesProxy(modem->path(),
-                                                     modem->owner()));
-  DBusPropertiesMap properties =
+                                                     modem->service()));
+  KeyValueStore properties =
       properties_proxy->GetAll(MM_MODEM_INTERFACE);
 
   modem->CreateDeviceClassic(properties);

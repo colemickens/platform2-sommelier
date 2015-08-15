@@ -45,7 +45,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   std::string GetRoamingStateString() const override;
   bool AllowRoaming() override;
   void GetSignalQuality() override;
-  void SetupConnectProperties(DBusPropertiesMap* properties) override;
+  void SetupConnectProperties(KeyValueStore* properties) override;
   void DisconnectCleanup() override;
 
   // Inherited from CellularCapabilityClassic.
@@ -62,7 +62,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   // Inherited from CellularCapabilityClassic.
   void InitProxies() override;
   void ReleaseProxies() override;
-  void UpdateStatus(const DBusPropertiesMap& properties) override;
+  void UpdateStatus(const KeyValueStore& properties) override;
 
  private:
   friend class CellularCapabilityCDMATest;
@@ -85,7 +85,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   void OnActivationStateChangedSignal(
       uint32_t activation_state,
       uint32_t activation_error,
-      const DBusPropertiesMap& status_changes);
+      const KeyValueStore& status_changes);
   void OnRegistrationStateChangedSignal(
       uint32_t state_1x, uint32_t state_evdo);
   void OnSignalQualitySignal(uint32_t strength);
@@ -102,7 +102,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
   // Helper method to extract the online portal information from properties.
-  void UpdateOnlinePortal(const DBusPropertiesMap& properties);
+  void UpdateOnlinePortal(const KeyValueStore& properties);
   void UpdateServiceOLP() override;
 
   bool activation_starting_;

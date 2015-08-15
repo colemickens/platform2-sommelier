@@ -78,13 +78,19 @@ class NiceMockControl : public ControlInterface {
 
 #if !defined(DISABLE_CELLULAR)
 
-  MOCK_METHOD2(CreateDBusObjectManagerProxy,
-               DBusObjectManagerProxyInterface*(const std::string& path,
-                                                const std::string& service));
-  MOCK_METHOD3(CreateModemManagerProxy,
-               ModemManagerProxyInterface*(ModemManagerClassic* manager,
-                                           const std::string& path,
-                                           const std::string& service));
+  MOCK_METHOD4(CreateDBusObjectManagerProxy,
+               DBusObjectManagerProxyInterface*(
+                   const std::string& path,
+                   const std::string& service,
+                   const base::Closure& service_appeared_callback,
+                   const base::Closure& serivce_vanished_callback));
+  MOCK_METHOD5(CreateModemManagerProxy,
+               ModemManagerProxyInterface*(
+                   ModemManagerClassic* manager,
+                   const std::string& path,
+                   const std::string& service,
+                   const base::Closure& service_appeared_callback,
+                   const base::Closure& serivce_vanished_callback));
   MOCK_METHOD2(CreateModemProxy,
                ModemProxyInterface*(const std::string& path,
                                     const std::string& service));

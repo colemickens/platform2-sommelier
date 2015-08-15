@@ -8,6 +8,7 @@
 #include <string>
 
 #include "shill/callbacks.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 class Error;
@@ -23,16 +24,16 @@ class ModemSimpleProxyInterface {
  public:
   virtual ~ModemSimpleProxyInterface() {}
 
-  virtual void Connect(const DBusPropertiesMap& properties,
+  virtual void Connect(const KeyValueStore& properties,
                        Error* error,
-                       const DBusPathCallback& callback,
+                       const RpcIdentifierCallback& callback,
                        int timeout) = 0;
-  virtual void Disconnect(const ::DBus::Path& bearer,
+  virtual void Disconnect(const std::string& bearer,
                           Error* error,
                           const ResultCallback& callback,
                           int timeout) = 0;
   virtual void GetStatus(Error* error,
-                         const DBusPropertyMapCallback& callback,
+                         const KeyValueStoreCallback& callback,
                          int timeout) = 0;
 };
 

@@ -21,11 +21,11 @@
 #include "shill/cellular/mock_modem_proxy.h"
 #include "shill/cellular/mock_modem_simple_proxy.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_profile.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -59,7 +59,6 @@ class CellularCapabilityGSMTest : public testing::Test {
                                kAddress,
                                0,
                                Cellular::kTypeGSM,
-                               "",
                                "",
                                "")),
         mock_home_provider_info_(nullptr),
@@ -148,18 +147,17 @@ class CellularCapabilityGSMTest : public testing::Test {
     callback.Run(Error());
   }
   void InvokeGetModemStatus(Error* error,
-                            const DBusPropertyMapCallback& callback,
+                            const KeyValueStoreCallback& callback,
                             int timeout) {
-    DBusPropertiesMap props;
+    KeyValueStore props;
     callback.Run(props, Error());
   }
   void InvokeGetModemInfo(Error* error, const ModemInfoCallback& callback,
                           int timeout) {
-    ModemHardwareInfo info;
-    callback.Run(info, Error());
+    callback.Run("", "", "", Error());
   }
 
-  void InvokeConnectFail(DBusPropertiesMap props, Error* error,
+  void InvokeConnectFail(KeyValueStore props, Error* error,
                          const ResultCallback& callback, int timeout) {
     callback.Run(Error(Error::kOperationFailed));
   }
@@ -308,7 +306,7 @@ class CellularCapabilityGSMTest : public testing::Test {
     create_card_proxy_from_factory_ = true;
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   TestControl control_interface_;
   MockModemInfo modem_info_;
   bool create_card_proxy_from_factory_;
@@ -646,25 +644,23 @@ TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
   EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
 }
 
-TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
+TEST_F(CellularCapabilityGSMTest, OnPropertiesChanged) {
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN, capability_->access_technology_);
   EXPECT_FALSE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ("", capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
-  DBusPropertiesMap props;
+  KeyValueStore props;
   static const char kLockType[] = "sim-pin";
   const int kRetries = 3;
-  props[CellularCapabilityGSM::kPropertyAccessTechnology].writer().
-      append_uint32(MM_MODEM_GSM_ACCESS_TECH_EDGE);
-  props[CellularCapabilityGSM::kPropertyEnabledFacilityLocks].writer().
-      append_uint32(MM_MODEM_GSM_FACILITY_SIM);
-  props[CellularCapabilityGSM::kPropertyUnlockRequired].writer().append_string(
-      kLockType);
-  props[CellularCapabilityGSM::kPropertyUnlockRetries].writer().append_uint32(
-      kRetries);
+  props.SetUint(CellularCapabilityGSM::kPropertyAccessTechnology,
+                MM_MODEM_GSM_ACCESS_TECH_EDGE);
+  props.SetUint(CellularCapabilityGSM::kPropertyEnabledFacilityLocks,
+                MM_MODEM_GSM_FACILITY_SIM);
+  props.SetString(CellularCapabilityGSM::kPropertyUnlockRequired, kLockType);
+  props.SetUint(CellularCapabilityGSM::kPropertyUnlockRetries, kRetries);
   // Call with the 'wrong' interface and nothing should change.
-  capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_INTERFACE, props,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_MODEM_GSM_INTERFACE, props,
+                                   vector<string>());
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN, capability_->access_technology_);
   EXPECT_FALSE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ("", capability_->sim_lock_status_.lock_type);
@@ -681,11 +677,11 @@ TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
       kSIMLockStatusProperty,
       KeyValueStoreEq(lock_status)));
 
-  capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_NETWORK_INTERFACE, props,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_MODEM_GSM_NETWORK_INTERFACE, props,
+                                   vector<string>());
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_EDGE, capability_->access_technology_);
-  capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_CARD_INTERFACE, props,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_MODEM_GSM_CARD_INTERFACE, props,
+                                   vector<string>());
   EXPECT_TRUE(capability_->sim_lock_status_.enabled);
   EXPECT_TRUE(capability_->sim_lock_status_.lock_type.empty());
   EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
@@ -701,8 +697,8 @@ TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   EXPECT_CALL(*device_adaptor_,
               EmitKeyValueStoreChanged(kSIMLockStatusProperty,
                                        KeyValueStoreEq(lock_status2)));
-  capability_->OnDBusPropertiesChanged(MM_MODEM_INTERFACE, props,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_MODEM_INTERFACE, props,
+                                   vector<string>());
   EXPECT_FALSE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ(kLockType, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(kRetries, capability_->sim_lock_status_.retries_left);
@@ -768,7 +764,7 @@ TEST_F(CellularCapabilityGSMTest, ConnectFailureNoService) {
   InitProxies();
   EXPECT_FALSE(capability_->cellular()->service());
   Error error;
-  DBusPropertiesMap props;
+  KeyValueStore props;
   capability_->Connect(props, &error,
                        Bind(&CellularCapabilityGSMTest::TestCallback,
                             Unretained(this)));

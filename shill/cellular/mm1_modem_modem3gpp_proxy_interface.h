@@ -28,7 +28,7 @@ class ModemModem3gppProxyInterface {
                         const ResultCallback& callback,
                         int timeout) = 0;
   virtual void Scan(Error* error,
-                    const DBusPropertyMapsCallback& callback,
+                    const KeyValueStoresCallback& callback,
                     int timeout) = 0;
 };
 

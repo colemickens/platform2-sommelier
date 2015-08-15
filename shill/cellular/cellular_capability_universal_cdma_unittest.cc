@@ -24,7 +24,6 @@
 #include "shill/cellular/mock_mm1_sim_proxy.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
@@ -33,6 +32,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_pending_activation_store.h"
 #include "shill/nice_mock_control.h"
+#include "shill/test_event_dispatcher.h"
 
 using base::StringPrintf;
 using base::UintToString;
@@ -67,7 +67,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
                                kMachineAddress,
                                0,
                                Cellular::kTypeUniversalCDMA,
-                               "",
                                "",
                                "")),
         service_(new MockCellularService(&modem_info_,
@@ -212,7 +211,7 @@ class CellularCapabilityUniversalCDMAMainTest
       : CellularCapabilityUniversalCDMATest(&dispatcher_) {}
 
  private:
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
 };
 
 class CellularCapabilityUniversalCDMADispatcherTest
@@ -224,11 +223,9 @@ class CellularCapabilityUniversalCDMADispatcherTest
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged) {
   // Set up mock modem CDMA properties.
-  DBusPropertiesMap modem_cdma_properties;
-  modem_cdma_properties[MM_MODEM_MODEMCDMA_PROPERTY_MEID].
-      writer().append_string(kMeid);
-  modem_cdma_properties[MM_MODEM_MODEMCDMA_PROPERTY_ESN].
-      writer().append_string(kEsn);
+  KeyValueStore modem_cdma_properties;
+  modem_cdma_properties.SetString(MM_MODEM_MODEMCDMA_PROPERTY_MEID, kMeid);
+  modem_cdma_properties.SetString(MM_MODEM_MODEMCDMA_PROPERTY_ESN, kEsn);
 
   SetUp();
 
@@ -236,17 +233,17 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged) {
   EXPECT_TRUE(cellular_->esn().empty());
 
   // Changing properties on wrong interface will not have an effect
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
-                                       modem_cdma_properties,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                   modem_cdma_properties,
+                                   vector<string>());
   EXPECT_TRUE(cellular_->meid().empty());
   EXPECT_TRUE(cellular_->esn().empty());
 
   // Changing properties on the right interface gets reflected in the
   // capabilities object
-  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEMCDMA,
-                                       modem_cdma_properties,
-                                       vector<string>());
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEMCDMA,
+                                   modem_cdma_properties,
+                                   vector<string>());
   EXPECT_EQ(kMeid, cellular_->meid());
   EXPECT_EQ(kEsn, cellular_->esn());
 }
@@ -559,10 +556,10 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, IsRegistered) {
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, SetupConnectProperties) {
-  DBusPropertiesMap map;
+  KeyValueStore map;
   capability_->SetupConnectProperties(&map);
-  EXPECT_EQ(1, map.size());
-  EXPECT_STREQ("#777", map["number"].reader().get_string());
+  EXPECT_EQ(1, map.properties().size());
+  EXPECT_EQ("#777", map.GetString("number"));
 }
 
 TEST_F(CellularCapabilityUniversalCDMADispatcherTest,

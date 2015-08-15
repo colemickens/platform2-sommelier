@@ -18,11 +18,11 @@
 #include "shill/cellular/mock_modem_proxy.h"
 #include "shill/cellular/mock_modem_simple_proxy.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -54,7 +54,6 @@ class CellularCapabilityTest : public testing::Test {
                                "",
                                0,
                                Cellular::kTypeGSM,
-                               "",
                                "",
                                "")) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
@@ -129,20 +128,16 @@ class CellularCapabilityTest : public testing::Test {
     callback.Run(Error(Error::kOperationFailed));
   }
   void InvokeGetModemStatus(Error* error,
-                            const DBusPropertyMapCallback& callback,
+                            const KeyValueStoreCallback& callback,
                             int timeout) {
-    DBusPropertiesMap props;
-    props["carrier"].writer().append_string(kTestCarrier);
-    props["unknown-property"].writer().append_string("irrelevant-value");
+    KeyValueStore props;
+    props.SetString("carrier", kTestCarrier);
+    props.SetString("unknown-property", "irrelevant-value");
     callback.Run(props, Error());
   }
   void InvokeGetModemInfo(Error* error, const ModemInfoCallback& callback,
                           int timeout) {
-    ModemHardwareInfo info;
-    info._1 = kManufacturer;
-    info._2 = kModelID;
-    info._3 = kHWRev;
-    callback.Run(info, Error());
+    callback.Run(kManufacturer, kModelID, kHWRev, Error());
   }
   void InvokeSetCarrier(const string& carrier, Error* error,
                         const ResultCallback& callback, int timeout) {
@@ -231,7 +226,7 @@ class CellularCapabilityTest : public testing::Test {
     create_gsm_card_proxy_from_factory_ = true;
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   TestControl control_interface_;
   MockModemInfo modem_info_;
   MockRTNLHandler rtnl_handler_;
@@ -368,12 +363,11 @@ TEST_F(CellularCapabilityTest, SetCarrier) {
 }
 
 MATCHER_P(HasApn, apn, "") {
-  DBusPropertiesMap::const_iterator it = arg.find(kApnProperty);
-  return it != arg.end() && apn == it->second.reader().get_string();
+  return arg.ContainsString(kApnProperty) && apn == arg.GetString(kApnProperty);
 }
 
 MATCHER(HasNoApn, "") {
-  return arg.find(kApnProperty) == arg.end();
+  return !arg.ContainsString(kApnProperty);
 }
 
 TEST_F(CellularCapabilityTest, TryApns) {
@@ -400,51 +394,51 @@ TEST_F(CellularCapabilityTest, TryApns) {
 
   Error error;
   Stringmap apn_info;
-  DBusPropertiesMap props;
+  KeyValueStore props;
   CellularCapabilityGSM* gsm_capability = GetGsmCapability();
 
   apn_info[kApnProperty] = kLastGoodApn;
   apn_info[kApnUsernameProperty] = kLastGoodUsername;
   cellular_->service()->SetLastGoodApn(apn_info);
-  props.clear();
-  EXPECT_TRUE(props.find(kApnProperty) == props.end());
+  props.Clear();
+  EXPECT_TRUE(props.IsEmpty());
   gsm_capability->SetupConnectProperties(&props);
   // We expect the list to contain the last good APN, plus
   // the 4 APNs from the mobile provider info database.
   EXPECT_EQ(5, gsm_capability->apn_try_list_.size());
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
-  EXPECT_FALSE(props.find(kApnUsernameProperty) == props.end());
+  EXPECT_TRUE(props.ContainsString(kApnProperty));
+  EXPECT_EQ(kLastGoodApn, props.GetString(kApnProperty));
+  EXPECT_TRUE(props.ContainsString(kApnUsernameProperty));
   EXPECT_EQ(kLastGoodUsername,
-            props[kApnUsernameProperty].reader().get_string());
+            props.GetString(kApnUsernameProperty));
 
   apn_info.clear();
-  props.clear();
+  props.Clear();
   apn_info[kApnProperty] = kSuppliedApn;
   // Setting the APN has the side effect of clearing the LastGoodApn,
   // so the try list will have 5 elements, with the first one being
   // the supplied APN.
   cellular_->service()->SetApn(apn_info, &error);
-  EXPECT_TRUE(props.find(kApnProperty) == props.end());
+  EXPECT_TRUE(props.IsEmpty());
   gsm_capability->SetupConnectProperties(&props);
   EXPECT_EQ(5, gsm_capability->apn_try_list_.size());
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kSuppliedApn, props[kApnProperty].reader().get_string());
+  EXPECT_TRUE(props.ContainsString(kApnProperty));
+  EXPECT_EQ(kSuppliedApn, props.GetString(kApnProperty));
 
   apn_info.clear();
-  props.clear();
+  props.Clear();
   apn_info[kApnProperty] = kLastGoodApn;
   apn_info[kApnUsernameProperty] = kLastGoodUsername;
   // Now when LastGoodAPN is set, it will be the one selected.
   cellular_->service()->SetLastGoodApn(apn_info);
-  EXPECT_TRUE(props.find(kApnProperty) == props.end());
+  EXPECT_TRUE(props.IsEmpty());
   gsm_capability->SetupConnectProperties(&props);
   // We expect the list to contain the last good APN, plus
   // the user-supplied APN, plus the 4 APNs from the mobile
   // provider info database.
   EXPECT_EQ(6, gsm_capability->apn_try_list_.size());
-  EXPECT_FALSE(props.find(kApnProperty) == props.end());
-  EXPECT_EQ(kLastGoodApn, props[kApnProperty].reader().get_string());
+  EXPECT_TRUE(props.ContainsString(kApnProperty));
+  EXPECT_EQ(kLastGoodApn, props.GetString(kApnProperty));
 
   // Now try all the given APNs.
   using testing::InSequence;

@@ -14,7 +14,6 @@
 
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular.h"
-#include "shill/dbus_properties.h"
 #include "shill/metrics.h"
 
 namespace shill {
@@ -77,10 +76,10 @@ class CellularCapability {
   virtual std::string GetTypeString() const = 0;
 
   // Called when the modem manager has sent a property change notification
-  // signal over DBus.
-  virtual void OnDBusPropertiesChanged(
+  // signal.
+  virtual void OnPropertiesChanged(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties) = 0;
 
   // -------------------------------------------------------------------------
@@ -214,11 +213,11 @@ class CellularCapability {
 
   // Fills |properties| with properties for establishing a connection, which
   // will be passed to Connect().
-  virtual void SetupConnectProperties(DBusPropertiesMap* properties) = 0;
+  virtual void SetupConnectProperties(KeyValueStore* properties) = 0;
 
   // Connects the modem to a network based on the connection properties
   // specified by |properties|.
-  virtual void Connect(const DBusPropertiesMap& properties,
+  virtual void Connect(const KeyValueStore& properties,
                        Error* error,
                        const ResultCallback& callback) = 0;
 

@@ -85,12 +85,16 @@ class ChromeosDBusControl : public ControlInterface {
 #if !defined(DISABLE_CELLULAR)
   DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
       const std::string& path,
-      const std::string& service) override;
+      const std::string& service,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) override;
 
   ModemManagerProxyInterface* CreateModemManagerProxy(
       ModemManagerClassic* manager,
       const std::string& path,
-      const std::string& service) override;
+      const std::string& service,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) override;
 
   ModemProxyInterface* CreateModemProxy(const std::string& path,
                                         const std::string& service) override;

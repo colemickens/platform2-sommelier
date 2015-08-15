@@ -17,7 +17,6 @@
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/modem_info.h"
 #include "shill/cellular/modem_proxy_interface.h"
-#include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
@@ -31,6 +30,7 @@ class Error;
 class ExternalTask;
 class MobileOperatorInfo;
 class PPPDeviceFactory;
+class ProcessManager;
 
 class Cellular : public Device, public RPCTaskDelegate {
  public:
@@ -76,7 +76,6 @@ class Cellular : public Device, public RPCTaskDelegate {
     kModemStateConnected = 11,
   };
 
-  // |owner| is the ModemManager DBus service owner (e.g., ":1.17").
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").
   // |service| is the modem mananager service name (e.g.,
@@ -86,7 +85,6 @@ class Cellular : public Device, public RPCTaskDelegate {
            const std::string& address,
            int interface_index,
            Type type,
-           const std::string& owner,
            const std::string& service,
            const std::string& path);
   ~Cellular() override;
@@ -155,9 +153,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   // destroying or updating the CellularService.
   void HandleNewRegistrationState();
 
-  virtual void OnDBusPropertiesChanged(
+  virtual void OnPropertiesChanged(
       const std::string& interface,
-      const DBusPropertiesMap& changed_properties,
+      const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties);
 
   // Inherited from Device.
@@ -225,7 +223,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   void RegisterProperties();
 
   // getters
-  const std::string& dbus_owner() const { return dbus_owner_; }
   const std::string& dbus_service() const { return dbus_service_; }
   const std::string& dbus_path() const { return dbus_path_; }
   const Stringmap& home_provider() const { return home_provider_; }
@@ -495,7 +492,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   // ///////////////////////////////////////////////////////////////////////////
   // All DBus Properties exposed by the Cellular device.
   // Properties common to GSM and CDMA modems.
-  const std::string dbus_owner_;  // :x.y
   const std::string dbus_service_;  // org.*.ModemManager*
   const std::string dbus_path_;  // ModemManager.Modem
   Stringmap home_provider_;
@@ -536,6 +532,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   ModemInfo* modem_info_;
   const Type type_;
   PPPDeviceFactory* ppp_device_factory_;
+
+  ProcessManager* process_manager_;
 
   CellularServiceRefPtr service_;
 

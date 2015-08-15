@@ -9,8 +9,7 @@
 #include <base/bind.h>
 
 #include "shill/control_interface.h"
-#include "shill/dbus_properties.h"
-#include "shill/dbus_properties_proxy.h"
+#include "shill/dbus_properties_proxy_interface.h"
 #include "shill/logging.h"
 
 using std::string;
@@ -77,34 +76,35 @@ bool CellularBearer::Init() {
   }
 
   dbus_properties_proxy_->set_properties_changed_callback(base::Bind(
-      &CellularBearer::OnDBusPropertiesChanged, base::Unretained(this)));
+      &CellularBearer::OnPropertiesChanged, base::Unretained(this)));
   UpdateProperties();
   return true;
 }
 
 void CellularBearer::GetIPConfigMethodAndProperties(
-    const DBusPropertiesMap& properties,
+    const KeyValueStore& properties,
     IPAddress::Family address_family,
     IPConfig::Method* ipconfig_method,
     std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const {
   DCHECK(ipconfig_method);
   DCHECK(ipconfig_properties);
 
-  uint32_t method;
-  if (!DBusProperties::GetUint32(properties, kPropertyMethod, &method)) {
+  uint32_t method = MM_BEARER_IP_METHOD_UNKNOWN;
+  if (properties.ContainsUint(kPropertyMethod)) {
+    method = properties.GetUint(kPropertyMethod);
+  } else {
     SLOG(this, 2) << "Bearer '" << dbus_path_
                   << "' does not specify an IP configuration method.";
-    method = MM_BEARER_IP_METHOD_UNKNOWN;
   }
+
   *ipconfig_method = ConvertMMBearerIPConfigMethod(method);
   ipconfig_properties->reset();
 
   if (*ipconfig_method != IPConfig::kMethodStatic)
     return;
 
-  string address, gateway;
-  if (!DBusProperties::GetString(properties, kPropertyAddress, &address) ||
-      !DBusProperties::GetString(properties, kPropertyGateway, &gateway)) {
+  if (!properties.ContainsString(kPropertyAddress) ||
+      !properties.ContainsString(kPropertyGateway)) {
     SLOG(this, 2) << "Bearer '" << dbus_path_
                   << "' static IP configuration does not specify valid "
                          "address/gateway information.";
@@ -114,24 +114,28 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   ipconfig_properties->reset(new IPConfig::Properties);
   (*ipconfig_properties)->address_family = address_family;
-  (*ipconfig_properties)->address = address;
-  (*ipconfig_properties)->gateway = gateway;
+  (*ipconfig_properties)->address = properties.GetString(kPropertyAddress);
+  (*ipconfig_properties)->gateway = properties.GetString(kPropertyGateway);
 
   uint32_t prefix;
-  if (!DBusProperties::GetUint32(properties, kPropertyPrefix, &prefix)) {
+  if (!properties.ContainsUint(kPropertyPrefix)) {
     prefix = IPAddress::GetMaxPrefixLength(address_family);
+  } else {
+    prefix = properties.GetUint(kPropertyPrefix);
   }
   (*ipconfig_properties)->subnet_prefix = prefix;
 
-  string dns;
-  if (DBusProperties::GetString(properties, kPropertyDNS1, &dns)) {
-    (*ipconfig_properties)->dns_servers.push_back(dns);
+  if (properties.ContainsString(kPropertyDNS1)) {
+    (*ipconfig_properties)->dns_servers.push_back(
+        properties.GetString(kPropertyDNS1));
   }
-  if (DBusProperties::GetString(properties, kPropertyDNS2, &dns)) {
-    (*ipconfig_properties)->dns_servers.push_back(dns);
+  if (properties.ContainsString(kPropertyDNS2)) {
+    (*ipconfig_properties)->dns_servers.push_back(
+        properties.GetString(kPropertyDNS2));
   }
-  if (DBusProperties::GetString(properties, kPropertyDNS3, &dns)) {
-    (*ipconfig_properties)->dns_servers.push_back(dns);
+  if (properties.ContainsString(kPropertyDNS3)) {
+    (*ipconfig_properties)->dns_servers.push_back(
+        properties.GetString(kPropertyDNS3));
   }
 }
 
@@ -150,21 +154,22 @@ void CellularBearer::UpdateProperties() {
   if (!dbus_properties_proxy_)
     return;
 
-  DBusPropertiesMap properties =
+  KeyValueStore properties =
       dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_BEARER);
-  if (properties.empty()) {
+  if (properties.IsEmpty()) {
     LOG(WARNING) << "Could not get properties of bearer '" << dbus_path_
                  << "'. Bearer is likely gone and thus ignored.";
     return;
   }
 
-  OnDBusPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties,
-                          vector<string>());
+  OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER,
+                      properties,
+                      vector<string>());
 }
 
-void CellularBearer::OnDBusPropertiesChanged(
+void CellularBearer::OnPropertiesChanged(
     const string& interface,
-    const DBusPropertiesMap& changed_properties,
+    const KeyValueStore& changed_properties,
     const vector<string>& /*invalidated_properties*/) {
   SLOG(this, 3) << __func__ << ": path=" << dbus_path_
                 << ", interface=" << interface;
@@ -172,28 +177,27 @@ void CellularBearer::OnDBusPropertiesChanged(
   if (interface != MM_DBUS_INTERFACE_BEARER)
     return;
 
-  bool connected;
-  if (DBusProperties::GetBool(
-        changed_properties, MM_BEARER_PROPERTY_CONNECTED, &connected)) {
-    connected_ = connected;
+  if (changed_properties.ContainsBool(MM_BEARER_PROPERTY_CONNECTED)) {
+    connected_ = changed_properties.GetBool(MM_BEARER_PROPERTY_CONNECTED);
   }
 
   string data_interface;
-  if (DBusProperties::GetString(
-        changed_properties, MM_BEARER_PROPERTY_INTERFACE, &data_interface)) {
-    data_interface_ = data_interface;
+  if (changed_properties.ContainsString(MM_BEARER_PROPERTY_INTERFACE)) {
+    data_interface_ =
+        changed_properties.GetString(MM_BEARER_PROPERTY_INTERFACE);
   }
 
-  DBusPropertiesMap ipconfig;
-  if (DBusProperties::GetDBusPropertiesMap(
-        changed_properties, MM_BEARER_PROPERTY_IP4CONFIG, &ipconfig)) {
+  if (changed_properties.ContainsKeyValueStore(MM_BEARER_PROPERTY_IP4CONFIG)) {
+    KeyValueStore ipconfig =
+        changed_properties.GetKeyValueStore(MM_BEARER_PROPERTY_IP4CONFIG);
     GetIPConfigMethodAndProperties(ipconfig,
                                    IPAddress::kFamilyIPv4,
                                    &ipv4_config_method_,
                                    &ipv4_config_properties_);
   }
-  if (DBusProperties::GetDBusPropertiesMap(
-        changed_properties, MM_BEARER_PROPERTY_IP6CONFIG, &ipconfig)) {
+  if (changed_properties.ContainsKeyValueStore(MM_BEARER_PROPERTY_IP6CONFIG)) {
+    KeyValueStore ipconfig =
+        changed_properties.GetKeyValueStore(MM_BEARER_PROPERTY_IP6CONFIG);
     GetIPConfigMethodAndProperties(ipconfig,
                                    IPAddress::kFamilyIPv6,
                                    &ipv6_config_method_,

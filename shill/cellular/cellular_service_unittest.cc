@@ -41,7 +41,6 @@ class CellularServiceTest : public testing::Test {
                                  3,
                                  Cellular::kTypeCDMA,
                                  "",
-                                 "",
                                  "")),
         service_(new CellularService(&modem_info_, device_)),
         adaptor_(nullptr) {}

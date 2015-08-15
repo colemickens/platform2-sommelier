@@ -12,12 +12,12 @@
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_cellular_service.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_connection_health_checker.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_traffic_monitor.h"
+#include "shill/test_event_dispatcher.h"
 
 using testing::Mock;
 using testing::NiceMock;
@@ -38,7 +38,6 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
                                              kAddress,
                                              3,
                                              Cellular::kTypeCDMA,
-                                             "",
                                              "",
                                              "")),
         service_(new NiceMock<MockCellularService>(&modem_info_, cellular_)),
@@ -61,7 +60,7 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
  protected:
   static const char kAddress[];
 
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockModemInfo modem_info_;
   NiceMock<MockDeviceInfo> device_info_;
   NiceMock<MockManager> manager_;

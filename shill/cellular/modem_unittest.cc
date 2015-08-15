@@ -18,12 +18,11 @@
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_modem.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/dbus_property_matchers.h"
-#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_device_info.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/test_event_dispatcher.h"
 
 using std::string;
 using std::vector;
@@ -42,7 +41,6 @@ namespace {
 
 const int kTestInterfaceIndex = 5;
 const char kLinkName[] = "usb0";
-const char kOwner[] = ":1.18";
 const char kService[] = "org.chromium.ModemManager";
 const char kPath[] = "/org/chromium/ModemManager/Gobi/0";
 const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
@@ -58,7 +56,6 @@ class ModemTest : public Test {
                      modem_info_.metrics(), modem_info_.manager()),
         modem_(
             new StrictModem(
-                kOwner,
                 kService,
                 kPath,
                 &modem_info_,
@@ -71,7 +68,7 @@ class ModemTest : public Test {
   }
 
  protected:
-  EventDispatcher dispatcher_;
+  EventDispatcherForTest dispatcher_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
   std::unique_ptr<StrictModem> modem_;
@@ -80,7 +77,6 @@ class ModemTest : public Test {
 };
 
 void ModemTest::SetUp() {
-  EXPECT_EQ(kOwner, modem_->owner_);
   EXPECT_EQ(kService, modem_->service_);
   EXPECT_EQ(kPath, modem_->path_);
   ReplaceSingletons();
@@ -97,13 +93,16 @@ void ModemTest::TearDown() {
   modem_.reset();
 }
 
+MATCHER_P2(HasPropertyWithValueU32, key, value, "") {
+  return arg.ContainsUint(key) && value == arg.GetUint(key);
+}
+
 TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   static const char kSentinel[] = "sentinel";
   static const uint32_t kSentinelValue = 17;
 
-  DBusInterfaceToProperties properties;
-  properties[MM_MODEM_INTERFACE][kSentinel].writer().append_uint32(
-      kSentinelValue);
+  InterfaceToProperties properties;
+  properties[MM_MODEM_INTERFACE].SetUint(kSentinel, kSentinelValue);
 
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillRepeatedly(DoAll(
       SetArgumentPointee<1>(string(kLinkName)),
@@ -133,7 +132,6 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
       kAddressAsString,
       kTestInterfaceIndex,
       Cellular::kTypeCDMA,
-      kOwner,
       kService,
       kPath);
 
@@ -143,9 +141,9 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
                                 kTestInterfaceIndex)).
       WillOnce(Return(cellular));
 
-  EXPECT_CALL(*cellular, OnDBusPropertiesChanged(
+  EXPECT_CALL(*cellular, OnPropertiesChanged(
       _,
-      HasDBusPropertyWithValueU32(kSentinel, kSentinelValue),
+      HasPropertyWithValueU32(kSentinel, kSentinelValue),
       _));
   EXPECT_CALL(device_info_, RegisterDevice(_));
   modem_->OnDeviceInfoAvailable(kLinkName);
@@ -165,7 +163,7 @@ TEST_F(ModemTest, EarlyDeviceProperties) {
 }
 
 TEST_F(ModemTest, CreateDeviceEarlyFailures) {
-  DBusInterfaceToProperties properties;
+  InterfaceToProperties properties;
 
   EXPECT_CALL(*modem_, ConstructCellular(_, _, _)).Times(0);
   EXPECT_CALL(*modem_, GetModemInterface()).
@@ -175,7 +173,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
 
-  properties[MM_MODEM_INTERFACE] = DBusPropertiesMap();
+  properties[MM_MODEM_INTERFACE] = KeyValueStore();
 
   // Link name, but no ifindex: no device created
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
@@ -204,8 +202,8 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 }
 
 TEST_F(ModemTest, CreateDevicePPP) {
-  DBusInterfaceToProperties properties;
-  properties[MM_MODEM_INTERFACE] = DBusPropertiesMap();
+  InterfaceToProperties properties;
+  properties[MM_MODEM_INTERFACE] = KeyValueStore();
 
   string dev_name(
       base::StringPrintf(Modem::kFakeDevNameFormat, Modem::fake_dev_serial_));
@@ -217,7 +215,6 @@ TEST_F(ModemTest, CreateDevicePPP) {
       Modem::kFakeDevAddress,
       Modem::kFakeDevInterfaceIndex,
       Cellular::kTypeUniversal,
-      kOwner,
       kService,
       kPath);
 
