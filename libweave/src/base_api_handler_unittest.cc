@@ -18,14 +18,21 @@
 #include "libweave/src/states/state_manager.h"
 
 using testing::_;
-using testing::StrictMock;
+using testing::Invoke;
 using testing::Return;
+using testing::StrictMock;
 
 namespace weave {
 
 class BaseApiHandlerTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    EXPECT_CALL(config_store_, LoadDefaults(_))
+        .WillOnce(Invoke([](Settings* settings) {
+          settings->firmware_version = "123123";
+          return true;
+        }));
+
     EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(_, _))
         .WillRepeatedly(Return(true));
 
@@ -55,12 +62,13 @@ class BaseApiHandlerTest : public ::testing::Test {
     ASSERT_TRUE(state_manager_->LoadStateDefinition(*state_definition, "base",
                                                     nullptr));
     ASSERT_TRUE(state_manager_->LoadStateDefaults(*state_defaults, nullptr));
-    dev_reg_.reset(new DeviceRegistrationInfo(
-        command_manager_, state_manager_,
-        std::unique_ptr<Config>{new Config{&config_store_}}, nullptr,
-        &http_client_, true, nullptr));
-    handler_.reset(new BaseApiHandler{dev_reg_.get(), "123123", state_manager_,
-                                      command_manager_});
+    std::unique_ptr<Config> config{new Config{&config_store_}};
+    config->Load();
+    dev_reg_.reset(new DeviceRegistrationInfo(command_manager_, state_manager_,
+                                              std::move(config), nullptr,
+                                              &http_client_, true, nullptr));
+    handler_.reset(
+        new BaseApiHandler{dev_reg_.get(), state_manager_, command_manager_});
   }
 
   void LoadCommands(const std::string& command_definitions) {

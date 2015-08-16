@@ -27,7 +27,6 @@ struct Settings;
 class BaseApiHandler final {
  public:
   BaseApiHandler(DeviceRegistrationInfo* device_info,
-                 const std::string& firmware_version,
                  const std::shared_ptr<StateManager>& state_manager,
                  const std::shared_ptr<CommandManager>& command_manager);
 

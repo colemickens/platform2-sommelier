@@ -72,6 +72,8 @@ Manager::~Manager() {
 }
 
 void Manager::Start(const weave::Device::Options& options,
+                    const base::FilePath& config_path,
+                    const base::FilePath& state_path,
                     const std::set<std::string>& device_whitelist,
                     AsyncEventSequencer* sequencer) {
   task_runner_.reset(new TaskRunner{});
@@ -89,7 +91,7 @@ void Manager::Start(const weave::Device::Options& options,
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   device_ = weave::Device::Create();
-  config_.reset(new BuffetConfig{options.config_path, options.state_path});
+  config_.reset(new BuffetConfig{config_path, state_path});
   config_->AddOnChangedCallback(
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 

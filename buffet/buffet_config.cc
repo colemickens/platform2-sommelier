@@ -84,6 +84,17 @@ bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
   store.GetString(config_keys::kOemName, &settings->oem_name);
   store.GetString(config_keys::kModelName, &settings->model_name);
   store.GetString(config_keys::kModelId, &settings->model_id);
+
+  base::FilePath lsb_release_path("/etc/lsb-release");
+  chromeos::KeyValueStore lsb_release_store;
+  if (lsb_release_store.Load(lsb_release_path) &&
+      lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
+                                  &settings->firmware_version)) {
+  } else {
+    LOG(ERROR) << "Failed to get CHROMEOS_RELEASE_VERSION from "
+               << lsb_release_path.value();
+  }
+
   std::string polling_period_str;
   if (store.GetString(config_keys::kPollingPeriodMs, &polling_period_str) &&
       !StringToTimeDelta(polling_period_str, &settings->polling_period)) {

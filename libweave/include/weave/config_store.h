@@ -27,6 +27,7 @@ struct Settings {
   std::string local_anonymous_access_role;
   bool local_discovery_enabled{true};
   bool local_pairing_enabled{true};
+  std::string firmware_version;
   std::string oem_name;
   std::string model_name;
   std::string model_id;

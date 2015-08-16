@@ -51,6 +51,7 @@ TEST_F(ConfigTest, Defaults) {
   EXPECT_EQ("Chromium", config_->oem_name());
   EXPECT_EQ("Brillo", config_->model_name());
   EXPECT_EQ("AAAAA", config_->model_id());
+  EXPECT_EQ("", config_->firmware_version());
   EXPECT_EQ(base::TimeDelta::FromSeconds(7), config_->polling_period());
   EXPECT_EQ(base::TimeDelta::FromMinutes(30), config_->backup_polling_period());
   EXPECT_TRUE(config_->wifi_auto_setup_enabled());

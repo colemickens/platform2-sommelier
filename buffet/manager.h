@@ -56,6 +56,8 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   ~Manager();
 
   void Start(const weave::Device::Options& options,
+             const base::FilePath& config_path,
+             const base::FilePath& state_path,
              const std::set<std::string>& device_whitelist,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 

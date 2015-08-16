@@ -97,6 +97,9 @@ class Config final {
   const std::string& oem_name() const { return settings_.oem_name; }
   const std::string& model_name() const { return settings_.model_name; }
   const std::string& model_id() const { return settings_.model_id; }
+  const std::string& firmware_version() const {
+    return settings_.firmware_version;
+  }
   base::TimeDelta polling_period() const { return settings_.polling_period; }
   base::TimeDelta backup_polling_period() const {
     return settings_.backup_polling_period;

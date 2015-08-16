@@ -20,16 +20,16 @@ const char kBaseStatePairingEnabled[] = "base.localPairingEnabled";
 
 BaseApiHandler::BaseApiHandler(
     DeviceRegistrationInfo* device_info,
-    const std::string& firmware_version,
     const std::shared_ptr<StateManager>& state_manager,
     const std::shared_ptr<CommandManager>& command_manager)
     : device_info_{device_info}, state_manager_{state_manager} {
   device_info_->AddOnConfigChangedCallback(base::Bind(
       &BaseApiHandler::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
+  const Config& config{device_info_->GetConfig()};
   base::DictionaryValue state;
   state.SetStringWithoutPathExpansion(kBaseStateFirmwareVersion,
-                                      firmware_version);
+                                      config.firmware_version());
   CHECK(state_manager_->SetProperties(state, nullptr));
 
   command_manager->AddOnCommandAddedCallback(base::Bind(

@@ -9,7 +9,6 @@
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/flag_helper.h>
-#include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
 
@@ -26,21 +25,28 @@ namespace buffet {
 class Daemon final : public DBusServiceDaemon {
  public:
   Daemon(const weave::Device::Options& options,
+         const base::FilePath& config_path,
+         const base::FilePath& state_path,
          const std::set<std::string>& device_whitelist)
       : DBusServiceDaemon(kServiceName, kRootServicePath),
         options_{options},
+        config_path_{config_path},
+        state_path_{state_path},
         device_whitelist_{device_whitelist} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     manager_.reset(new buffet::Manager(object_manager_->AsWeakPtr()));
-    manager_->Start(options_, device_whitelist_, sequencer);
+    manager_->Start(options_, config_path_, state_path_, device_whitelist_,
+                    sequencer);
   }
 
   void OnShutdown(int* return_code) override { manager_->Stop(); }
 
  private:
   weave::Device::Options options_;
+  base::FilePath config_path_;
+  base::FilePath state_path_;
   std::set<std::string> device_whitelist_;
 
   std::unique_ptr<buffet::Manager> manager_;
@@ -92,8 +98,6 @@ int main(int argc, char* argv[]) {
       chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
 
   weave::Device::Options options;
-  options.config_path = base::FilePath{FLAGS_config_path};
-  options.state_path = base::FilePath{FLAGS_state_path};
   options.definitions_path = base::FilePath{"/etc/buffet"};
   options.test_definitions_path = base::FilePath{FLAGS_test_definitions_path};
   options.xmpp_enabled = FLAGS_enable_xmpp;
@@ -102,17 +106,9 @@ int main(int argc, char* argv[]) {
   options.enable_ping = FLAGS_enable_ping;
   options.test_privet_ssid = FLAGS_test_privet_ssid;
 
-  base::FilePath lsb_release_path("/etc/lsb-release");
-  chromeos::KeyValueStore lsb_release_store;
-  if (lsb_release_store.Load(lsb_release_path) &&
-      lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
-                                  &options.firmware_version)) {
-  } else {
-    LOG(ERROR) << "Failed to get CHROMEOS_RELEASE_VERSION from "
-               << lsb_release_path.value();
-  }
-
-  buffet::Daemon daemon{options, std::set<std::string>{device_whitelist.begin(),
-                                                       device_whitelist.end()}};
+  buffet::Daemon daemon{
+      options, base::FilePath{FLAGS_config_path},
+      base::FilePath{FLAGS_state_path},
+      std::set<std::string>{device_whitelist.begin(), device_whitelist.end()}};
   return daemon.Run();
 }
