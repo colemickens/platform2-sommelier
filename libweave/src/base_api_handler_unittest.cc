@@ -60,8 +60,8 @@ class BaseApiHandlerTest : public ::testing::Test {
         std::unique_ptr<BuffetConfig>{new BuffetConfig{
             std::unique_ptr<StorageInterface>{new MemStorage}}},
         nullptr, &http_client_, true, nullptr));
-    handler_.reset(
-        new BaseApiHandler{dev_reg_.get(), state_manager_, command_manager_});
+    handler_.reset(new BaseApiHandler{dev_reg_.get(), "123123", state_manager_,
+                                      command_manager_});
   }
 
   void LoadCommands(const std::string& command_definitions) {

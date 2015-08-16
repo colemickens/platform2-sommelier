@@ -48,8 +48,9 @@ void DeviceManager::Start(const Options& options,
   device_info_.reset(new DeviceRegistrationInfo(
       command_manager_, state_manager_, std::move(config), task_runner,
       http_client, options.xmpp_enabled, network));
-  base_api_handler_.reset(
-      new BaseApiHandler{device_info_.get(), state_manager_, command_manager_});
+  base_api_handler_.reset(new BaseApiHandler{device_info_.get(),
+                                             options.firmware_version,
+                                             state_manager_, command_manager_});
 
   device_info_->Start();
 

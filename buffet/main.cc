@@ -5,10 +5,11 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
-#include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/flag_helper.h>
+#include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
 
@@ -100,6 +101,16 @@ int main(int argc, char* argv[]) {
   options.disable_security = FLAGS_disable_security;
   options.enable_ping = FLAGS_enable_ping;
   options.test_privet_ssid = FLAGS_test_privet_ssid;
+
+  base::FilePath lsb_release_path("/etc/lsb-release");
+  chromeos::KeyValueStore lsb_release_store;
+  if (lsb_release_store.Load(lsb_release_path) &&
+      lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
+                                  &options.firmware_version)) {
+  } else {
+    LOG(ERROR) << "Failed to get CHROMEOS_RELEASE_VERSION from "
+               << lsb_release_path.value();
+  }
 
   buffet::Daemon daemon{options, std::set<std::string>{device_whitelist.begin(),
                                                        device_whitelist.end()}};

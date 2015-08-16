@@ -27,6 +27,7 @@ namespace weave {
 class Device {
  public:
   struct Options {
+    std::string firmware_version;  // TODO: Move into weave::Settings
     base::FilePath config_path;
     base::FilePath state_path;
     base::FilePath definitions_path;

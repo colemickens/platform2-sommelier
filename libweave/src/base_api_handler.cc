@@ -20,27 +20,17 @@ const char kBaseStatePairingEnabled[] = "base.localPairingEnabled";
 
 BaseApiHandler::BaseApiHandler(
     DeviceRegistrationInfo* device_info,
+    const std::string& firmware_version,
     const std::shared_ptr<StateManager>& state_manager,
     const std::shared_ptr<CommandManager>& command_manager)
     : device_info_{device_info}, state_manager_{state_manager} {
   device_info_->AddOnConfigChangedCallback(base::Bind(
       &BaseApiHandler::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  // Populate state fields that belong to the system.
-  base::FilePath lsb_release_path("/etc/lsb-release");
-  chromeos::KeyValueStore lsb_release_store;
-  std::string firmware_version;
-  if (lsb_release_store.Load(lsb_release_path) &&
-      lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
-                                  &firmware_version)) {
-    base::DictionaryValue state;
-    state.SetStringWithoutPathExpansion(kBaseStateFirmwareVersion,
-                                        firmware_version);
-    CHECK(state_manager_->SetProperties(state, nullptr));
-  } else {
-    LOG(ERROR) << "Failed to get CHROMEOS_RELEASE_VERSION from "
-               << lsb_release_path.value();
-  }
+  base::DictionaryValue state;
+  state.SetStringWithoutPathExpansion(kBaseStateFirmwareVersion,
+                                      firmware_version);
+  CHECK(state_manager_->SetProperties(state, nullptr));
 
   command_manager->AddOnCommandAddedCallback(base::Bind(
       &BaseApiHandler::OnCommandAdded, weak_ptr_factory_.GetWeakPtr()));
