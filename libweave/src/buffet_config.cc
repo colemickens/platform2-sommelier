@@ -17,36 +17,6 @@
 
 namespace {
 
-// TODO(vitalybuka): Remove this when deviceKind is gone from server.
-std::string GetDeviceKind(const std::string& manifest_id) {
-  CHECK_EQ(5u, manifest_id.size());
-  std::string kind = manifest_id.substr(0, 2);
-  if (kind == "AC")
-    return "accessPoint";
-  if (kind == "AK")
-    return "aggregator";
-  if (kind == "AM")
-    return "camera";
-  if (kind == "AB")
-    return "developmentBoard";
-  if (kind == "AE")
-    return "printer";
-  if (kind == "AF")
-    return "scanner";
-  if (kind == "AD")
-    return "speaker";
-  if (kind == "AL")
-    return "storage";
-  if (kind == "AJ")
-    return "toy";
-  if (kind == "AA")
-    return "vendor";
-  if (kind == "AN")
-    return "video";
-  LOG(FATAL) << "Invalid model id: " << manifest_id;
-  return std::string();
-}
-
 bool IsValidAccessRole(const std::string& role) {
   return role == "none" || role == "viewer" || role == "user";
 }
@@ -86,7 +56,7 @@ const char kDeviceId[] = "device_id";
 const char kRobotAccount[] = "robot_account";
 const char kWifiAutoSetupEnabled[] = "wifi_auto_setup_enabled";
 const char kBleSetupEnabled[] = "ble_setup_enabled";
-const char kEmbeddedCodePath[] = "embedded_code_path";
+const char kEmbeddedCode[] = "embedded_code";
 const char kPairingModes[] = "pairing_modes";
 const char kLastConfiguredSsid[] = "last_configured_ssid";
 
@@ -106,7 +76,6 @@ Settings BuffetConfig::CreateDefaultSettings() {
   result.oem_name = "Chromium";
   result.model_name = "Brillo";
   result.model_id = "AAAAA";
-  result.device_kind = "vendor";
   result.polling_period = base::TimeDelta::FromSeconds(7);
   result.backup_polling_period = base::TimeDelta::FromMinutes(30);
   result.wifi_auto_setup_enabled = true;
@@ -169,7 +138,7 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   CHECK(!settings_.model_name.empty());
 
   store.GetString(config_keys::kModelId, &settings_.model_id);
-  settings_.device_kind = GetDeviceKind(settings_.model_id);
+  CHECK(!settings_.model_id.empty());
 
   std::string polling_period_str;
   if (store.GetString(config_keys::kPollingPeriodMs, &polling_period_str))
@@ -185,12 +154,7 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   store.GetBoolean(config_keys::kBleSetupEnabled,
                    &settings_.ble_setup_enabled);
 
-  std::string embedded_code_path;
-  if (store.GetString(config_keys::kEmbeddedCodePath, &embedded_code_path)) {
-    settings_.embedded_code_path = base::FilePath(embedded_code_path);
-    if (!settings_.embedded_code_path.empty())
-      settings_.pairing_modes = {PairingType::kEmbeddedCode};
-  }
+  store.GetString(config_keys::kEmbeddedCode, &settings_.embedded_code);
 
   std::string modes_str;
   if (store.GetString(config_keys::kPairingModes, &modes_str)) {

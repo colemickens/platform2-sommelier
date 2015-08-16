@@ -103,7 +103,6 @@ class BuffetConfig final : public Config {
   const std::string& oem_name() const { return settings_.oem_name; }
   const std::string& model_name() const { return settings_.model_name; }
   const std::string& model_id() const { return settings_.model_id; }
-  const std::string& device_kind() const { return settings_.device_kind; }
   base::TimeDelta polling_period() const { return settings_.polling_period; }
   base::TimeDelta backup_polling_period() const {
     return settings_.backup_polling_period;
@@ -118,9 +117,7 @@ class BuffetConfig final : public Config {
   const std::set<PairingType>& pairing_modes() const {
     return settings_.pairing_modes;
   }
-  const base::FilePath& embedded_code_path() const {
-    return settings_.embedded_code_path;
-  }
+  const std::string& embedded_code() const { return settings_.embedded_code; }
 
   const std::string& name() const { return settings_.name; }
   const std::string& description() const { return settings_.description; }

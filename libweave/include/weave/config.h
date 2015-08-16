@@ -29,14 +29,13 @@ struct Settings {
   std::string oem_name;
   std::string model_name;
   std::string model_id;
-  std::string device_kind;
   base::TimeDelta polling_period;
   base::TimeDelta backup_polling_period;
 
   bool wifi_auto_setup_enabled{true};
   bool ble_setup_enabled{false};
   std::set<PairingType> pairing_modes;
-  base::FilePath embedded_code_path;
+  std::string embedded_code;
 
   std::string device_id;
   std::string refresh_token;

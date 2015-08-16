@@ -13,17 +13,15 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <chromeos/key_value_store.h>
-#include "libweave/external/crypto/p224_spake.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <weave/mock_task_runner.h>
 
+#include "libweave/external/crypto/p224_spake.h"
 #include "libweave/src/data_encoding.h"
 #include "libweave/src/privet/openssl_utils.h"
 
@@ -54,12 +52,6 @@ class MockPairingCallbacks {
   MOCK_METHOD1(OnPairingEnd, void(const std::string& session_id));
 };
 
-base::FilePath GetTempFilePath() {
-  base::FilePath file_path;
-  EXPECT_TRUE(base::CreateTemporaryFile(&file_path));
-  return file_path;
-}
-
 }  // namespace
 
 class SecurityManagerTest : public testing::Test {
@@ -69,13 +61,7 @@ class SecurityManagerTest : public testing::Test {
     fingerprint.resize(256 / 8);
     base::RandBytes(fingerprint.data(), fingerprint.size());
     security_.SetCertificateFingerprint(fingerprint);
-
-    chromeos::KeyValueStore store;
-    store.SetString("embedded_code", "1234");
-    EXPECT_TRUE(store.Save(embedded_code_path_));
   }
-
-  void TearDown() override { base::DeleteFile(embedded_code_path_, false); }
 
  protected:
   void PairAndAuthenticate(std::string* fingerprint, std::string* signature) {
@@ -114,12 +100,11 @@ class SecurityManagerTest : public testing::Test {
   }
 
   const base::Time time_ = base::Time::FromTimeT(1410000000);
-  base::FilePath embedded_code_path_{GetTempFilePath()};
   unittests::MockTaskRunner task_runner_;
   SecurityManager security_{{PairingType::kEmbeddedCode},
-                            embedded_code_path_,
-                            &task_runner_,
-                            false};
+                            "1234",
+                            false,
+                            &task_runner_};
 };
 
 TEST_F(SecurityManagerTest, IsBase64) {
@@ -154,14 +139,14 @@ TEST_F(SecurityManagerTest, CreateTokenDifferentTime) {
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentInstance) {
   EXPECT_NE(security_.CreateAccessToken(UserInfo{AuthScope::kUser, 123}, time_),
-            SecurityManager({}, base::FilePath{}, &task_runner_, false)
+            SecurityManager({}, "", false, &task_runner_)
                 .CreateAccessToken(UserInfo{AuthScope::kUser, 123}, time_));
 }
 
 TEST_F(SecurityManagerTest, ParseAccessToken) {
   // Multiple attempts with random secrets.
   for (size_t i = 0; i < 1000; ++i) {
-    SecurityManager security{{}, base::FilePath{}, &task_runner_, false};
+    SecurityManager security{{}, "", false, &task_runner_};
 
     std::string token =
         security.CreateAccessToken(UserInfo{AuthScope::kUser, 5}, time_);
@@ -300,17 +285,6 @@ TEST_F(SecurityManagerTest, DontBlockForCanceledSessions) {
                                        &device_commitment, nullptr));
     EXPECT_TRUE(security_.CancelPairing(session_id, nullptr));
   }
-}
-
-TEST_F(SecurityManagerTest, EmbeddedCodeNotReady) {
-  std::string session_id;
-  std::string device_commitment;
-  base::DeleteFile(embedded_code_path_, false);
-  ErrorPtr error;
-  ASSERT_FALSE(security_.StartPairing(PairingType::kEmbeddedCode,
-                                      CryptoType::kSpake_p224, &session_id,
-                                      &device_commitment, &error));
-  EXPECT_EQ("deviceBusy", error->GetCode());
 }
 
 }  // namespace privet

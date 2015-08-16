@@ -389,8 +389,6 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
         EXPECT_EQ("pull", value);
         EXPECT_TRUE(json->GetString("oauthClientId", &value));
         EXPECT_EQ(test_data::kClientId, value);
-        EXPECT_TRUE(json->GetString("deviceDraft.deviceKind", &value));
-        EXPECT_EQ("vendor", value);
         EXPECT_TRUE(json->GetString("deviceDraft.description", &value));
         EXPECT_EQ("Easy to clean", value);
         EXPECT_TRUE(json->GetString("deviceDraft.location", &value));

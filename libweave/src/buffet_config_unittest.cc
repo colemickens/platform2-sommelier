@@ -54,14 +54,13 @@ TEST_F(BuffetConfigTest, Defaults) {
   EXPECT_EQ("Chromium", config_->oem_name());
   EXPECT_EQ("Brillo", config_->model_name());
   EXPECT_EQ("AAAAA", config_->model_id());
-  EXPECT_EQ("vendor", config_->device_kind());
   EXPECT_EQ(base::TimeDelta::FromSeconds(7), config_->polling_period());
   EXPECT_EQ(base::TimeDelta::FromMinutes(30), config_->backup_polling_period());
   EXPECT_TRUE(config_->wifi_auto_setup_enabled());
   EXPECT_FALSE(config_->ble_setup_enabled());
   EXPECT_EQ(std::set<PairingType>{PairingType::kPinCode},
             config_->pairing_modes());
-  EXPECT_EQ("", config_->embedded_code_path().value());
+  EXPECT_EQ("", config_->embedded_code());
   EXPECT_EQ("Developer device", config_->name());
   EXPECT_EQ("", config_->description());
   EXPECT_EQ("", config_->location());
@@ -90,7 +89,7 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   config_store.SetBoolean("ble_setup_enabled", true);
   config_store.SetString("pairing_modes",
                          "pinCode,embeddedCode,ultrasound32,audible32");
-  config_store.SetString("embedded_code_path", "/conf_code");
+  config_store.SetString("embedded_code", "1234");
   config_store.SetString("name", "conf_name");
   config_store.SetString("description", "conf_description");
   config_store.SetString("location", "conf_location");
@@ -116,7 +115,6 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ("conf_oem_name", config_->oem_name());
   EXPECT_EQ("conf_model_name", config_->model_name());
   EXPECT_EQ("ABCDE", config_->model_id());
-  EXPECT_EQ("developmentBoard", config_->device_kind());
   EXPECT_EQ(base::TimeDelta::FromMilliseconds(12345),
             config_->polling_period());
   EXPECT_EQ(base::TimeDelta::FromMilliseconds(6589),
@@ -127,7 +125,7 @@ TEST_F(BuffetConfigTest, LoadConfig) {
       PairingType::kPinCode, PairingType::kEmbeddedCode,
       PairingType::kUltrasound32, PairingType::kAudible32};
   EXPECT_EQ(pairing_types, config_->pairing_modes());
-  EXPECT_EQ("/conf_code", config_->embedded_code_path().value());
+  EXPECT_EQ("1234", config_->embedded_code());
   EXPECT_EQ("conf_name", config_->name());
   EXPECT_EQ("conf_description", config_->description());
   EXPECT_EQ("conf_location", config_->location());
@@ -203,7 +201,6 @@ TEST_F(BuffetConfigTest, LoadState) {
   EXPECT_EQ(default_.oem_name(), config_->oem_name());
   EXPECT_EQ(default_.model_name(), config_->model_name());
   EXPECT_EQ(default_.model_id(), config_->model_id());
-  EXPECT_EQ(default_.device_kind(), config_->device_kind());
   EXPECT_EQ(default_.polling_period(), config_->polling_period());
   EXPECT_EQ(default_.backup_polling_period(), config_->backup_polling_period());
   EXPECT_EQ(default_.wifi_auto_setup_enabled(),
@@ -211,7 +208,7 @@ TEST_F(BuffetConfigTest, LoadState) {
   EXPECT_EQ(default_.ble_setup_enabled(),
             config_->ble_setup_enabled());
   EXPECT_EQ(default_.pairing_modes(), config_->pairing_modes());
-  EXPECT_EQ(default_.embedded_code_path(), config_->embedded_code_path());
+  EXPECT_EQ(default_.embedded_code(), config_->embedded_code());
   EXPECT_EQ("state_name", config_->name());
   EXPECT_EQ("state_description", config_->description());
   EXPECT_EQ("state_location", config_->location());

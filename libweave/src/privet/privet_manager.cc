@@ -16,7 +16,6 @@
 #include <base/scoped_observer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <chromeos/key_value_store.h>
 #include <weave/network.h>
 
 #include "libweave/src/device_registration_info.h"
@@ -52,8 +51,8 @@ void Manager::Start(const Device::Options& options,
                                         state_manager);
   cloud_observer_.Add(cloud_.get());
   security_.reset(new SecurityManager(device->GetConfig().pairing_modes(),
-                                      device->GetConfig().embedded_code_path(),
-                                      task_runner, disable_security_));
+                                      device->GetConfig().embedded_code(),
+                                      disable_security_, task_runner));
   network->AddOnConnectionChangedCallback(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
 

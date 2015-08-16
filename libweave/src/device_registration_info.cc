@@ -506,7 +506,6 @@ DeviceRegistrationInfo::BuildDeviceResource(ErrorPtr* error) {
   if (!config_->location().empty())
     resource->SetString("location", config_->location());
   resource->SetString("modelManifestId", config_->model_id());
-  resource->SetString("deviceKind", config_->device_kind());
   std::unique_ptr<base::DictionaryValue> channel{new base::DictionaryValue};
   if (current_notification_channel_) {
     channel->SetString("supportedType",

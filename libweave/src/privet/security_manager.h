@@ -48,9 +48,9 @@ class SecurityManager : public SecurityDelegate {
   };
 
   SecurityManager(const std::set<PairingType>& pairing_modes,
-                  const base::FilePath& embedded_code_path,
-                  TaskRunner* task_runner,
-                  bool disable_security);
+                  const std::string& embedded_code,
+                  bool disable_security,
+                  TaskRunner* task_runner);
   ~SecurityManager() override;
 
   // SecurityDelegate methods
@@ -92,7 +92,6 @@ class SecurityManager : public SecurityDelegate {
   // If true allows unencrypted pairing and accepts any access code.
   bool is_security_disabled_{false};
   std::set<PairingType> pairing_modes_;
-  const base::FilePath embedded_code_path_;
   std::string embedded_code_;
   // TODO(vitalybuka): Session cleanup can be done without posting tasks.
   TaskRunner* task_runner_{nullptr};

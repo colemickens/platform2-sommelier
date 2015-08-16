@@ -17,7 +17,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <chromeos/key_value_store.h>
 #include <weave/task_runner.h>
 
 #include "libweave/external/crypto/p224_spake.h"
@@ -36,8 +35,6 @@ const int kSessionExpirationTimeMinutes = 5;
 const int kPairingExpirationTimeMinutes = 5;
 const int kMaxAllowedPairingAttemts = 3;
 const int kPairingBlockingTimeMinutes = 1;
-
-const char kEmbeddedCode[] = "embedded_code";
 
 // Returns "scope:id:time".
 std::string CreateTokenData(const UserInfo& user_info, const base::Time& time) {
@@ -68,14 +65,6 @@ UserInfo SplitTokenData(const std::string& token, base::Time* time) {
     return kNone;
   *time = base::Time::FromTimeT(timestamp);
   return UserInfo{static_cast<AuthScope>(scope), id};
-}
-
-std::string LoadEmbeddedCode(const base::FilePath& path) {
-  std::string code;
-  chromeos::KeyValueStore store;
-  if (store.Load(path))
-    store.GetString(kEmbeddedCode, &code);
-  return code;
 }
 
 class Spakep224Exchanger : public SecurityManager::KeyExchanger {
@@ -131,17 +120,17 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
 }  // namespace
 
 SecurityManager::SecurityManager(const std::set<PairingType>& pairing_modes,
-                                 const base::FilePath& embedded_code_path,
-                                 TaskRunner* task_runner,
-                                 bool disable_security)
+                                 const std::string& embedded_code,
+                                 bool disable_security,
+                                 TaskRunner* task_runner)
     : is_security_disabled_(disable_security),
       pairing_modes_(pairing_modes),
-      embedded_code_path_(embedded_code_path),
+      embedded_code_(embedded_code),
       task_runner_{task_runner},
       secret_(kSha256OutputSize) {
   base::RandBytes(secret_.data(), kSha256OutputSize);
 
-  CHECK_EQ(embedded_code_path_.empty(),
+  CHECK_EQ(embedded_code_.empty(),
            std::find(pairing_modes_.begin(), pairing_modes_.end(),
                      PairingType::kEmbeddedCode) == pairing_modes_.end());
 }
@@ -225,17 +214,7 @@ bool SecurityManager::StartPairing(PairingType mode,
   std::string code;
   switch (mode) {
     case PairingType::kEmbeddedCode:
-      CHECK(!embedded_code_path_.empty());
-
-      if (embedded_code_.empty())
-        embedded_code_ = LoadEmbeddedCode(embedded_code_path_);
-
-      if (embedded_code_.empty()) {  // File is not created yet.
-        Error::AddTo(error, FROM_HERE, errors::kDomain, errors::kDeviceBusy,
-                     "Embedded code is not ready");
-        return false;
-      }
-
+      CHECK(!embedded_code_.empty());
       code = embedded_code_;
       break;
     case PairingType::kUltrasound32:
