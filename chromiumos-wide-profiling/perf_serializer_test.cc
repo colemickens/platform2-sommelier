@@ -546,13 +546,14 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   build_id_map["file6"] = "0123456789abcdef0123456789ab0000";
   build_id_map["file7"] = "0123456789abcdef012345670000";
   build_id_map["file8"] = "0123456789abcdef01234567";
+  build_id_map["file9"] = "00000000";
   EXPECT_TRUE(serializer.InjectBuildIDs(build_id_map));
 
   PerfDataProto perf_data_proto;
   EXPECT_TRUE(serializer.Serialize(&perf_data_proto));
 
   // Verify that the build ID info was properly injected.
-  EXPECT_EQ(8, perf_data_proto.build_ids_size());
+  EXPECT_EQ(9, perf_data_proto.build_ids_size());
   for (int i = 0; i < perf_data_proto.build_ids_size(); ++i) {
     EXPECT_TRUE(perf_data_proto.build_ids(i).has_filename());
     EXPECT_TRUE(perf_data_proto.build_ids(i).has_build_id_hash());
@@ -592,12 +593,15 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   EXPECT_EQ("0123456789abcdef01234567",
             BuildIDToString(perf_data_proto.build_ids(7).build_id_hash()));
 
+  EXPECT_EQ("file9", perf_data_proto.build_ids(8).filename());
+  EXPECT_EQ("", BuildIDToString(perf_data_proto.build_ids(8).build_id_hash()));
+
   // Check deserialization.
   PerfSerializer deserializer;
   EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
   const std::vector<malloced_unique_ptr<build_id_event>>& build_id_events =
       deserializer.build_id_events();
-  EXPECT_EQ(8, build_id_events.size());
+  EXPECT_EQ(9, build_id_events.size());
 
   // All trimmed build IDs should be padded to the full 20 byte length.
   EXPECT_EQ(string("file1"), build_id_events[0]->filename);
@@ -631,6 +635,10 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   EXPECT_EQ(string("file8"), build_id_events[7]->filename);
   EXPECT_EQ("0123456789abcdef012345670000000000000000",
             HexToString(build_id_events[7]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file9"), build_id_events[8]->filename);
+  EXPECT_EQ("0000000000000000000000000000000000000000",
+            HexToString(build_id_events[8]->build_id, kBuildIDArraySize));
 }
 
 // Regression test for http://crbug.com/500746.
