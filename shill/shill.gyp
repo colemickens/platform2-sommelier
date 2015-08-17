@@ -40,6 +40,11 @@
           ],
         },
       }],
+      ['USE_dhcpv6 == 0', {
+        'defines': [
+          'DISABLE_DHCPV6',
+        ],
+      }],
       ['USE_pppoe == 0', {
         'defines': [
           'DISABLE_PPPOE',
@@ -68,11 +73,6 @@
       ['USE_wired_8021x == 0', {
         'defines': [
           'DISABLE_WIRED_8021X',
-        ],
-      }],
-      ['USE_dhcpv6 == 0', {
-        'defines': [
-          'DISABLE_DHCPV6',
         ],
       }],
     ],
