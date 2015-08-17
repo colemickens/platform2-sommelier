@@ -59,9 +59,8 @@ bool is_hw_jpeg_acc_device(int fd) {
   struct v4l2_capability cap;
   int ret = do_ioctl(fd, VIDIOC_QUERYCAP, &cap);
   if (ret == 0) {
-    if ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) &&
-        (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT) &&
-        (cap.capabilities & V4L2_CAP_STREAMING)) {
+    if ((cap.capabilities & V4L2_CAP_STREAMING) &&
+        (cap.capabilities & V4L2_CAP_VIDEO_M2M)) {
       TRACE("is_hw_jpeg_acc_device: true\n");
       return true;
     }
