@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <weave/error.h>
 

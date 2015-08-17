@@ -4,7 +4,6 @@
 
 #include "libweave/src/privet/wifi_ssid_generator.h"
 
-#include <base/strings/utf_string_conversions.h>
 #include <gtest/gtest.h>
 
 #include "libweave/src/privet/mock_delegates.h"

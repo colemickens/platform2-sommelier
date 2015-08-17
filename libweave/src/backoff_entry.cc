@@ -9,7 +9,6 @@
 #include <limits>
 
 #include <base/logging.h>
-#include <base/numerics/safe_math.h>
 #include <base/rand_util.h>
 
 namespace weave {

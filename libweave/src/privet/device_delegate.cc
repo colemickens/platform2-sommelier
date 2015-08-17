@@ -4,7 +4,6 @@
 
 #include "libweave/src/privet/device_delegate.h"
 
-#include <base/files/file_util.h>
 #include <base/guid.h>
 
 #include "libweave/src/privet/constants.h"

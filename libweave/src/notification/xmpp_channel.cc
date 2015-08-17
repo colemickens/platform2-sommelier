@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/base64.h>
 #include <base/bind.h>
 #include <weave/network.h>
 #include <weave/task_runner.h>

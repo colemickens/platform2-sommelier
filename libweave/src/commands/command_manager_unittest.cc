@@ -6,8 +6,6 @@
 
 #include <map>
 
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/json/json_writer.h>
 #include <gtest/gtest.h>
 #include <weave/mock_config_store.h>

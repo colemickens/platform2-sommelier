@@ -9,7 +9,6 @@
 #include <set>
 #include <string>
 
-#include <base/files/file_path.h>
 #include <weave/cloud.h>
 #include <weave/commands.h>
 #include <weave/config_store.h>

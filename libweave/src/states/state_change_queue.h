@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/threading/thread_checker.h>
 
 #include "libweave/src/states/state_change_queue_interface.h"
 

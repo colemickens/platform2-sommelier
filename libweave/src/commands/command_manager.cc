@@ -4,7 +4,6 @@
 
 #include "libweave/src/commands/command_manager.h"
 
-#include <base/files/file_enumerator.h>
 #include <base/values.h>
 #include <weave/config_store.h>
 #include <weave/enum_to_string.h>
