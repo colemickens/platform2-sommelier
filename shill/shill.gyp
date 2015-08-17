@@ -299,6 +299,27 @@
             'cellular/subscription_state_out_of_credits_detector.cc',
             'protobuf_lite_streams.cc',
           ],
+          'conditions': [
+            ['USE_chromeos_dbus == 1', {
+              'sources': [
+                'dbus/chromeos_dbus_objectmanager_proxy.cc',
+                'dbus/chromeos_dbus_properties_proxy.cc',
+              ],
+              'actions': [
+                {
+                  'action_name': 'generate-cellular-proxies',
+                  'variables': {
+                    'proxy_output_file': 'include/cellular/dbus-proxies.h',
+                  },
+                  'sources': [
+                    'dbus_bindings/dbus-objectmanager.xml',
+                    'dbus_bindings/dbus-properties.xml',
+                  ],
+                  'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+                },
+              ],
+            }],
+          ],
         }],
         ['USE_chromeos_dbus ==1', {
           'sources': [

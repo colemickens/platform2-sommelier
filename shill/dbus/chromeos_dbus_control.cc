@@ -24,6 +24,11 @@
 
 #include "shill/dbus/chromeos_dbus_service_watcher.h"
 
+#if !defined(DISABLE_CELLULAR)
+#include "shill/dbus/chromeos_dbus_objectmanager_proxy.h"
+#include "shill/dbus/chromeos_dbus_properties_proxy.h"
+#endif  // DISABLE_CELLULAR
+
 #if !defined(DISABLE_WIMAX)
 #include "shill/dbus/chromeos_wimax_device_proxy.h"
 #include "shill/dbus/chromeos_wimax_manager_proxy.h"
@@ -118,7 +123,7 @@ RPCServiceWatcherInterface* ChromeosDBusControl::CreateRPCServiceWatcher(
 DBusPropertiesProxyInterface* ChromeosDBusControl::CreateDBusPropertiesProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new ChromeosDBusPropertiesProxy(bus_, path, service);
 }
 
 DBusServiceProxyInterface* ChromeosDBusControl::CreateDBusServiceProxy() {
@@ -193,7 +198,12 @@ DBusObjectManagerProxyInterface*
         const string& service,
         const base::Closure& service_appeared_callback,
         const base::Closure& service_vanished_callback) {
-  return nullptr;
+  return new ChromeosDBusObjectManagerProxy(dispatcher_,
+                                            bus_,
+                                            path,
+                                            service,
+                                            service_appeared_callback,
+                                            service_vanished_callback);
 }
 
 ModemManagerProxyInterface*

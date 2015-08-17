@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+<node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.freedesktop.DBus.Properties">
     <method name="Get">
       <arg direction="in" type="s" name="interface_name"/>

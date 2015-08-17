@@ -14,6 +14,8 @@
 
 namespace shill {
 
+// This is a cellular-specific DBus Properties interface, as it supports
+// cellular-specific signal (ModemManagerPropertiesChanged).
 // These are the methods that a DBusProperties proxy must support. The interface
 // is provided so that it can be mocked in tests.
 class DBusPropertiesProxyInterface {
