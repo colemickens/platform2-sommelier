@@ -5,8 +5,10 @@
 #ifndef LIBWEAVE_INCLUDE_WEAVE_CONFIG_STORE_H_
 #define LIBWEAVE_INCLUDE_WEAVE_CONFIG_STORE_H_
 
+#include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/time/time.h>
@@ -51,6 +53,15 @@ class ConfigStore {
   virtual std::string LoadSettings() = 0;
   virtual void SaveSettings(const std::string& settings) = 0;
   virtual void OnSettingsChanged(const Settings& settings) = 0;
+
+  virtual std::string LoadBaseCommandDefs() = 0;
+  virtual std::map<std::string, std::string> LoadCommandDefs() = 0;
+
+  virtual std::string LoadBaseStateDefs() = 0;
+  virtual std::string LoadBaseStateDefaults() = 0;
+
+  virtual std::map<std::string, std::string> LoadStateDefs() = 0;
+  virtual std::vector<std::string> LoadStateDefaults() = 0;
 
  protected:
   virtual ~ConfigStore() = default;

@@ -27,8 +27,6 @@ namespace weave {
 class Device {
  public:
   struct Options {
-    base::FilePath definitions_path;
-    base::FilePath test_definitions_path;
     bool xmpp_enabled = true;
     bool disable_privet = false;
     bool disable_security = false;

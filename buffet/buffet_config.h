@@ -5,6 +5,7 @@
 #ifndef BUFFET_BUFFET_CONFIG_H_
 #define BUFFET_BUFFET_CONFIG_H_
 
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -18,20 +19,33 @@ namespace buffet {
 
 class StorageInterface;
 
+struct BuffetConfigPaths {
+  base::FilePath defaults;
+  base::FilePath settings;
+
+  base::FilePath definitions;
+  base::FilePath test_definitions;
+};
+
 // Handles reading buffet config and state files.
 class BuffetConfig final : public weave::ConfigStore {
  public:
   using OnChangedCallback = base::Callback<void(const weave::Settings&)>;
   ~BuffetConfig() override = default;
 
-  BuffetConfig(const base::FilePath& defaults_path,
-               const base::FilePath& settings_path);
+  explicit BuffetConfig(const BuffetConfigPaths& paths);
 
   // Config overrides.
   bool LoadDefaults(weave::Settings* settings) override;
   std::string LoadSettings() override;
   void SaveSettings(const std::string& settings) override;
   void OnSettingsChanged(const weave::Settings& settings) override;
+  std::string LoadBaseCommandDefs() override;
+  std::map<std::string, std::string> LoadCommandDefs() override;
+  std::string LoadBaseStateDefs() override;
+  std::string LoadBaseStateDefaults() override;
+  std::map<std::string, std::string> LoadStateDefs() override;
+  std::vector<std::string> LoadStateDefaults() override;
 
   void AddOnChangedCallback(const OnChangedCallback& callback);
 
@@ -39,8 +53,7 @@ class BuffetConfig final : public weave::ConfigStore {
                     weave::Settings* settings);
 
  private:
-  base::FilePath defaults_path_;
-  base::FilePath settings_path_;
+  BuffetConfigPaths paths_;
 
   std::vector<OnChangedCallback> on_changed_;
 

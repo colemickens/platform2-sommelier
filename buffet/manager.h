@@ -36,6 +36,7 @@ class HttpTransportClient;
 class PeerdClient;
 class ShillClient;
 class WebServClient;
+struct BuffetConfigPaths;
 
 template<typename... Types>
 using DBusMethodResponsePtr =
@@ -56,8 +57,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   ~Manager();
 
   void Start(const weave::Device::Options& options,
-             const base::FilePath& config_path,
-             const base::FilePath& state_path,
+             const BuffetConfigPaths& paths,
              const std::set<std::string>& device_whitelist,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 

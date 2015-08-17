@@ -43,7 +43,7 @@ TEST(BuffetConfigTest, LoadConfig) {
   config_store.SetString("last_configured_ssid", "conf_last_configured_ssid");
 
   weave::Settings settings;
-  BuffetConfig config{{}, {}};
+  BuffetConfig config{{}};
   EXPECT_TRUE(config.LoadDefaults(config_store, &settings));
 
   EXPECT_EQ("conf_client_id", settings.client_id);

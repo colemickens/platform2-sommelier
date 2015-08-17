@@ -5,7 +5,6 @@
 #include "libweave/src/utils.h"
 
 #include <base/bind_helpers.h>
-#include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 
 #include "libweave/src/json_error_codes.h"
@@ -26,23 +25,12 @@ const size_t kMaxStrLen = 1700;  // Log messages are limited to 2000 chars.
 
 }  // anonymous namespace
 
+namespace errors {
 const char kErrorDomain[] = "weave";
-const char kFileReadError[] = "file_read_error";
+const char kSchemaError[] = "schema_error";
 const char kInvalidCategoryError[] = "invalid_category";
 const char kInvalidPackageError[] = "invalid_package";
-
-std::unique_ptr<base::DictionaryValue> LoadJsonDict(
-    const base::FilePath& json_file_path,
-    ErrorPtr* error) {
-  std::string json_string;
-  if (!base::ReadFileToString(json_file_path, &json_string)) {
-    Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                       "Failed to read file '%s'",
-                       json_file_path.value().c_str());
-    return {};
-  }
-  return LoadJsonDict(json_string, error);
-}
+}  // namespace errors
 
 std::unique_ptr<base::DictionaryValue> LoadJsonDict(
     const std::string& json_string,

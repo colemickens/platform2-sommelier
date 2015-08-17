@@ -12,6 +12,7 @@
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
 
+#include "buffet/buffet_config.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/manager.h"
 
@@ -25,28 +26,24 @@ namespace buffet {
 class Daemon final : public DBusServiceDaemon {
  public:
   Daemon(const weave::Device::Options& options,
-         const base::FilePath& config_path,
-         const base::FilePath& state_path,
+         const BuffetConfigPaths& paths,
          const std::set<std::string>& device_whitelist)
       : DBusServiceDaemon(kServiceName, kRootServicePath),
         options_{options},
-        config_path_{config_path},
-        state_path_{state_path},
+        paths_(paths),
         device_whitelist_{device_whitelist} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     manager_.reset(new buffet::Manager(object_manager_->AsWeakPtr()));
-    manager_->Start(options_, config_path_, state_path_, device_whitelist_,
-                    sequencer);
+    manager_->Start(options_, paths_, device_whitelist_, sequencer);
   }
 
   void OnShutdown(int* return_code) override { manager_->Stop(); }
 
  private:
   weave::Device::Options options_;
-  base::FilePath config_path_;
-  base::FilePath state_path_;
+  BuffetConfigPaths paths_;
   std::set<std::string> device_whitelist_;
 
   std::unique_ptr<buffet::Manager> manager_;
@@ -97,9 +94,13 @@ int main(int argc, char* argv[]) {
   auto device_whitelist =
       chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
 
+  buffet::BuffetConfigPaths paths;
+  paths.defaults = base::FilePath{FLAGS_config_path};
+  paths.settings = base::FilePath{FLAGS_state_path};
+  paths.definitions = base::FilePath{"/etc/buffet"};
+  paths.test_definitions = base::FilePath{FLAGS_test_definitions_path};
+
   weave::Device::Options options;
-  options.definitions_path = base::FilePath{"/etc/buffet"};
-  options.test_definitions_path = base::FilePath{FLAGS_test_definitions_path};
   options.xmpp_enabled = FLAGS_enable_xmpp;
   options.disable_privet = FLAGS_disable_privet;
   options.disable_security = FLAGS_disable_security;
@@ -107,8 +108,7 @@ int main(int argc, char* argv[]) {
   options.test_privet_ssid = FLAGS_test_privet_ssid;
 
   buffet::Daemon daemon{
-      options, base::FilePath{FLAGS_config_path},
-      base::FilePath{FLAGS_state_path},
+      options, paths,
       std::set<std::string>{device_whitelist.begin(), device_whitelist.end()}};
   return daemon.Run();
 }

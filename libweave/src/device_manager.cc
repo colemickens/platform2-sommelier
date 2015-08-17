@@ -35,11 +35,10 @@ void DeviceManager::Start(const Options& options,
                           Mdns* mdns,
                           HttpServer* http_server) {
   command_manager_ = std::make_shared<CommandManager>();
-  command_manager_->Startup(options.definitions_path,
-                            options.test_definitions_path);
+  command_manager_->Startup(config_store);
   state_change_queue_.reset(new StateChangeQueue(kMaxStateChangeQueueSize));
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
-  state_manager_->Startup();
+  state_manager_->Startup(config_store);
 
   std::unique_ptr<Config> config{new Config{config_store}};
   config->Load();

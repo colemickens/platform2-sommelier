@@ -6,6 +6,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/values.h>
+#include <weave/config_store.h>
 #include <weave/enum_to_string.h>
 #include <weave/error.h>
 
@@ -27,65 +28,47 @@ const CommandDictionary& CommandManager::GetCommandDictionary() const {
   return dictionary_;
 }
 
-bool CommandManager::LoadBaseCommands(const base::DictionaryValue& json,
+bool CommandManager::LoadBaseCommands(const base::DictionaryValue& dict,
                                       ErrorPtr* error) {
-  return base_dictionary_.LoadCommands(json, "", nullptr, error);
+  return base_dictionary_.LoadCommands(dict, "", nullptr, error);
 }
 
-bool CommandManager::LoadBaseCommands(const base::FilePath& json_file_path,
+bool CommandManager::LoadBaseCommands(const std::string& json,
                                       ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> json =
-      LoadJsonDict(json_file_path, error);
-  if (!json)
+  std::unique_ptr<const base::DictionaryValue> dict = LoadJsonDict(json, error);
+  if (!dict)
     return false;
-  return LoadBaseCommands(*json, error);
+  return LoadBaseCommands(*dict, error);
 }
 
-bool CommandManager::LoadCommands(const base::DictionaryValue& json,
+bool CommandManager::LoadCommands(const base::DictionaryValue& dict,
                                   const std::string& category,
                                   ErrorPtr* error) {
   bool result =
-      dictionary_.LoadCommands(json, category, &base_dictionary_, error);
+      dictionary_.LoadCommands(dict, category, &base_dictionary_, error);
   for (const auto& cb : on_command_changed_)
     cb.Run();
   return result;
 }
 
-bool CommandManager::LoadCommands(const base::FilePath& json_file_path,
+bool CommandManager::LoadCommands(const std::string& json,
+                                  const std::string& category,
                                   ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> json =
-      LoadJsonDict(json_file_path, error);
-  if (!json)
+  std::unique_ptr<const base::DictionaryValue> dict = LoadJsonDict(json, error);
+  if (!dict)
     return false;
-  std::string category = json_file_path.BaseName().RemoveExtension().value();
-  return LoadCommands(*json, category, error);
+  return LoadCommands(*dict, category, error);
 }
 
-void CommandManager::Startup(const base::FilePath& definitions_path,
-                             const base::FilePath& test_definitions_path) {
+void CommandManager::Startup(ConfigStore* config_store) {
   LOG(INFO) << "Initializing CommandManager.";
-  // Load global standard GCD command dictionary.
-  base::FilePath base_command_file{definitions_path.Append("gcd.json")};
-  LOG(INFO) << "Loading standard commands from " << base_command_file.value();
-  CHECK(LoadBaseCommands(base_command_file, nullptr))
-      << "Failed to load the standard command definitions.";
 
-  auto LoadPackages = [this](const base::FilePath& root,
-                             const base::FilePath::StringType& pattern) {
-    base::FilePath device_command_dir{root.Append("commands")};
-    VLOG(2) << "Looking for commands in " << root.value();
-    base::FileEnumerator enumerator(device_command_dir, false,
-                                    base::FileEnumerator::FILES, pattern);
-    base::FilePath json_file_path = enumerator.Next();
-    while (!json_file_path.empty()) {
-      LOG(INFO) << "Loading command schema from " << json_file_path.value();
-      CHECK(this->LoadCommands(json_file_path, nullptr))
-          << "Failed to load the command definition file.";
-      json_file_path = enumerator.Next();
-    }
-  };
-  LoadPackages(definitions_path, FILE_PATH_LITERAL("*.json"));
-  LoadPackages(test_definitions_path, FILE_PATH_LITERAL("*test.json"));
+  // Load global standard GCD command dictionary.
+  CHECK(LoadBaseCommands(config_store->LoadBaseCommandDefs(), nullptr));
+
+  // Loading the rest of commands.
+  for (const auto& defs : config_store->LoadCommandDefs())
+    CHECK(this->LoadCommands(defs.second, defs.first, nullptr));
 }
 
 void CommandManager::AddCommand(

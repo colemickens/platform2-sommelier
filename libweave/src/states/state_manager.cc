@@ -4,10 +4,9 @@
 
 #include "libweave/src/states/state_manager.h"
 
-#include <base/files/file_enumerator.h>
-#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <weave/config_store.h>
 
 #include "libweave/src/json_error_codes.h"
 #include "libweave/src/states/error_codes.h"
@@ -29,47 +28,22 @@ void StateManager::AddOnChangedCallback(const base::Closure& callback) {
   callback.Run();  // Force to read current state.
 }
 
-void StateManager::Startup() {
+void StateManager::Startup(ConfigStore* config_store) {
   LOG(INFO) << "Initializing StateManager.";
 
   // Load standard device state definition.
-  base::FilePath base_state_file("/etc/buffet/base_state.schema.json");
-  LOG(INFO) << "Loading standard state definition from "
-            << base_state_file.value();
-  CHECK(LoadBaseStateDefinition(base_state_file, nullptr))
-      << "Failed to load the standard state definition file.";
+  CHECK(LoadBaseStateDefinition(config_store->LoadBaseStateDefs(), nullptr));
 
   // Load component-specific device state definitions.
-  base::FilePath device_state_dir("/etc/buffet/states");
-  base::FileEnumerator enumerator(device_state_dir, false,
-                                  base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.schema.json"));
-  base::FilePath json_file_path = enumerator.Next();
-  while (!json_file_path.empty()) {
-    LOG(INFO) << "Loading state definition from " << json_file_path.value();
-    CHECK(LoadStateDefinition(json_file_path, nullptr))
-        << "Failed to load the state definition file.";
-    json_file_path = enumerator.Next();
-  }
+  for (const auto& pair : config_store->LoadStateDefs())
+    CHECK(LoadStateDefinition(pair.first, pair.second, nullptr));
 
   // Load standard device state defaults.
-  base::FilePath base_state_defaults("/etc/buffet/base_state.defaults.json");
-  LOG(INFO) << "Loading base state defaults from "
-            << base_state_defaults.value();
-  CHECK(LoadStateDefaults(base_state_defaults, nullptr))
-      << "Failed to load the base state defaults.";
+  CHECK(LoadStateDefaults(config_store->LoadBaseStateDefaults(), nullptr));
 
   // Load component-specific device state defaults.
-  base::FileEnumerator enumerator2(device_state_dir, false,
-                                   base::FileEnumerator::FILES,
-                                   FILE_PATH_LITERAL("*.defaults.json"));
-  json_file_path = enumerator2.Next();
-  while (!json_file_path.empty()) {
-    LOG(INFO) << "Loading state defaults from " << json_file_path.value();
-    CHECK(LoadStateDefaults(json_file_path, nullptr))
-        << "Failed to load the state defaults.";
-    json_file_path = enumerator2.Next();
-  }
+  for (const auto& json : config_store->LoadStateDefaults())
+    CHECK(LoadStateDefaults(json, nullptr));
 
   for (const auto& cb : on_changed_)
     cb.Run();
@@ -151,15 +125,15 @@ void StateManager::NotifyStateUpdatedOnServer(
   state_change_queue_->NotifyStateUpdatedOnServer(id);
 }
 
-bool StateManager::LoadStateDefinition(const base::DictionaryValue& json,
+bool StateManager::LoadStateDefinition(const base::DictionaryValue& dict,
                                        const std::string& category,
                                        ErrorPtr* error) {
-  base::DictionaryValue::Iterator iter(json);
+  base::DictionaryValue::Iterator iter(dict);
   while (!iter.IsAtEnd()) {
     std::string package_name = iter.key();
     if (package_name.empty()) {
-      Error::AddTo(error, FROM_HERE, kErrorDomain, kInvalidPackageError,
-                   "State package name is empty");
+      Error::AddTo(error, FROM_HERE, errors::kErrorDomain,
+                   errors::kInvalidPackageError, "State package name is empty");
       return false;
     }
     const base::DictionaryValue* package_dict = nullptr;
@@ -182,52 +156,50 @@ bool StateManager::LoadStateDefinition(const base::DictionaryValue& json,
   return true;
 }
 
-bool StateManager::LoadStateDefinition(const base::FilePath& json_file_path,
+bool StateManager::LoadStateDefinition(const std::string& json,
+                                       const std::string& category,
                                        ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> json =
-      LoadJsonDict(json_file_path, error);
-  if (!json)
+  std::unique_ptr<const base::DictionaryValue> dict = LoadJsonDict(json, error);
+  if (!dict)
     return false;
-  std::string category = json_file_path.BaseName().RemoveExtension().value();
   if (category == kDefaultCategory) {
-    Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kInvalidCategoryError,
-                       "Invalid state category specified in '%s'",
-                       json_file_path.value().c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::kErrorDomain,
+                       errors::kInvalidCategoryError,
+                       "Invalid state category: '%s'", category.c_str());
     return false;
   }
 
-  if (!LoadStateDefinition(*json, category, error)) {
-    Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                       "Failed to load file '%s'",
-                       json_file_path.value().c_str());
+  if (!LoadStateDefinition(*dict, category, error)) {
+    Error::AddToPrintf(error, FROM_HERE, errors::kErrorDomain,
+                       errors::kSchemaError,
+                       "Failed to load state definition: '%s'", json.c_str());
     return false;
   }
   return true;
 }
 
-bool StateManager::LoadBaseStateDefinition(const base::FilePath& json_file_path,
+bool StateManager::LoadBaseStateDefinition(const std::string& json,
                                            ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> json =
-      LoadJsonDict(json_file_path, error);
-  if (!json)
+  std::unique_ptr<const base::DictionaryValue> dict = LoadJsonDict(json, error);
+  if (!dict)
     return false;
-  if (!LoadStateDefinition(*json, kDefaultCategory, error)) {
-    Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                       "Failed to load file '%s'",
-                       json_file_path.value().c_str());
+  if (!LoadStateDefinition(*dict, kDefaultCategory, error)) {
+    Error::AddToPrintf(
+        error, FROM_HERE, errors::kErrorDomain, errors::kSchemaError,
+        "Failed to load base state definition: '%s'", json.c_str());
     return false;
   }
   return true;
 }
 
-bool StateManager::LoadStateDefaults(const base::DictionaryValue& json,
+bool StateManager::LoadStateDefaults(const base::DictionaryValue& dict,
                                      ErrorPtr* error) {
-  base::DictionaryValue::Iterator iter(json);
+  base::DictionaryValue::Iterator iter(dict);
   while (!iter.IsAtEnd()) {
     std::string package_name = iter.key();
     if (package_name.empty()) {
-      Error::AddTo(error, FROM_HERE, kErrorDomain, kInvalidPackageError,
-                   "State package name is empty");
+      Error::AddTo(error, FROM_HERE, errors::kErrorDomain,
+                   errors::kInvalidPackageError, "State package name is empty");
       return false;
     }
     const base::DictionaryValue* package_dict = nullptr;
@@ -253,16 +225,14 @@ bool StateManager::LoadStateDefaults(const base::DictionaryValue& json,
   return true;
 }
 
-bool StateManager::LoadStateDefaults(const base::FilePath& json_file_path,
-                                     ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> json =
-      LoadJsonDict(json_file_path, error);
-  if (!json)
+bool StateManager::LoadStateDefaults(const std::string& json, ErrorPtr* error) {
+  std::unique_ptr<const base::DictionaryValue> dict = LoadJsonDict(json, error);
+  if (!dict)
     return false;
-  if (!LoadStateDefaults(*json, error)) {
-    Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                       "Failed to load file '%s'",
-                       json_file_path.value().c_str());
+  if (!LoadStateDefaults(*dict, error)) {
+    Error::AddToPrintf(error, FROM_HERE, errors::kErrorDomain,
+                       errors::kSchemaError, "Failed to load defaults: '%s'",
+                       json.c_str());
     return false;
   }
   return true;

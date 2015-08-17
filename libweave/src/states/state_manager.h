@@ -22,11 +22,12 @@
 
 namespace base {
 class DictionaryValue;
-class FilePath;
 class Time;
 }  // namespace base
 
 namespace weave {
+
+class ConfigStore;
 
 // StateManager is the class that aggregates the device state fragments
 // provided by device daemons and makes the aggregate device state available
@@ -44,7 +45,7 @@ class StateManager final : public State {
 
   // Initializes the state manager and load device state fragments.
   // Called by Buffet daemon at startup.
-  void Startup();
+  void Startup(ConfigStore* config_store);
 
   // Returns all the categories the state properties are registered from.
   // As with GCD command handling, the category normally represent a device
@@ -78,26 +79,25 @@ class StateManager final : public State {
   // Loads a device state fragment from a JSON object. |category| represents
   // a device daemon providing the state fragment or empty string for the
   // base state fragment.
-  bool LoadStateDefinition(const base::DictionaryValue& json,
+  bool LoadStateDefinition(const base::DictionaryValue& dict,
                            const std::string& category,
                            ErrorPtr* error);
 
-  // Loads a device state fragment JSON file. The file name (without extension)
-  // is used as the state fragment category.
-  bool LoadStateDefinition(const base::FilePath& json_file_path,
+  // Loads a device state fragment JSON.
+  bool LoadStateDefinition(const std::string& json,
+                           const std::string& category,
                            ErrorPtr* error);
 
-  // Loads the base device state fragment JSON file. This state fragment
+  // Loads the base device state fragment JSON. This state fragment
   // defines the standard state properties from the 'base' package as defined
   // by GCD specification.
-  bool LoadBaseStateDefinition(const base::FilePath& json_file_path,
-                               ErrorPtr* error);
+  bool LoadBaseStateDefinition(const std::string& json, ErrorPtr* error);
 
   // Loads state default values from JSON object.
-  bool LoadStateDefaults(const base::DictionaryValue& json, ErrorPtr* error);
+  bool LoadStateDefaults(const base::DictionaryValue& dict, ErrorPtr* error);
 
-  // Loads state default values from JSON file.
-  bool LoadStateDefaults(const base::FilePath& json_file_path, ErrorPtr* error);
+  // Loads state default values from JSON.
+  bool LoadStateDefaults(const std::string& json, ErrorPtr* error);
 
   // Finds a package by its name. Returns nullptr if not found.
   StatePackage* FindPackage(const std::string& package_name);

@@ -827,8 +827,9 @@ bool DeviceRegistrationInfo::UpdateBaseConfig(
     ErrorPtr* error) {
   Config::Transaction change(config_.get());
   if (!change.set_local_anonymous_access_role(anonymous_access_role)) {
-    Error::AddToPrintf(error, FROM_HERE, kErrorDomain, "invalid_parameter",
-                       "Invalid role: %s", anonymous_access_role.c_str());
+    Error::AddToPrintf(error, FROM_HERE, errors::kErrorDomain,
+                       "invalid_parameter", "Invalid role: %s",
+                       anonymous_access_role.c_str());
     return false;
   }
 
@@ -846,7 +847,7 @@ bool DeviceRegistrationInfo::UpdateServiceConfig(
     const std::string& service_url,
     ErrorPtr* error) {
   if (HaveRegistrationCredentials()) {
-    Error::AddTo(error, FROM_HERE, kErrorDomain, "already_registered",
+    Error::AddTo(error, FROM_HERE, errors::kErrorDomain, "already_registered",
                  "Unable to change config for registered device");
     return false;
   }

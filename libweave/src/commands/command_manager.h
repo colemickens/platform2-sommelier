@@ -21,6 +21,7 @@
 namespace weave {
 
 class CommandInstance;
+class ConfigStore;
 
 // CommandManager class that will have a list of all the device command
 // schemas as well as the live command queue of pending command instances
@@ -47,22 +48,22 @@ class CommandManager final : public Commands {
   const CommandDictionary& GetCommandDictionary() const;
 
   // Loads base/standard GCD command definitions.
-  // |json| is the full JSON schema of standard GCD commands. These commands
+  // |dict| is the full JSON schema of standard GCD commands. These commands
   // are not necessarily supported by a particular device but rather
   // all the standard commands defined by GCD standard for all known/supported
   // device kinds.
   // On success, returns true. Otherwise, |error| contains additional
   // error information.
-  bool LoadBaseCommands(const base::DictionaryValue& json, ErrorPtr* error);
+  bool LoadBaseCommands(const base::DictionaryValue& dict, ErrorPtr* error);
 
   // Same as the overload above, but takes a path to a json file to read
   // the base command definitions from.
-  bool LoadBaseCommands(const base::FilePath& json_file_path, ErrorPtr* error);
+  bool LoadBaseCommands(const std::string& json, ErrorPtr* error);
 
   // Loads device command schema for particular category.
   // See CommandDictionary::LoadCommands for detailed description of the
   // parameters.
-  bool LoadCommands(const base::DictionaryValue& json,
+  bool LoadCommands(const base::DictionaryValue& dict,
                     const std::string& category,
                     ErrorPtr* error);
 
@@ -70,16 +71,15 @@ class CommandManager final : public Commands {
   // the base command definitions from. Also, the command category is
   // derived from file name (without extension). So, if the path points to
   // "power_manager.json", the command category used will be "power_manager".
-  bool LoadCommands(const base::FilePath& json_file_path, ErrorPtr* error);
+  bool LoadCommands(const std::string& json,
+                    const std::string& category,
+                    ErrorPtr* error);
 
   // Startup method to be called by buffet daemon at startup.
-  // Initializes the object and reads files in |definitions_path| to load
+  // Initializes the object and loads:
   //   1) the standard GCD command dictionary
   //   2) static vendor-provided command definitions
-  // If |test_definitions_path| is not empty, we'll also look there for
-  // additional commands.
-  void Startup(const base::FilePath& definitions_path,
-               const base::FilePath& test_definitions_path);
+  void Startup(weave::ConfigStore* config_store);
 
   // Adds a new command to the command queue.
   void AddCommand(std::unique_ptr<CommandInstance> command_instance);
