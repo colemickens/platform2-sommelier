@@ -25,18 +25,18 @@ static const char* kErrorGprsNotSubscribed =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_GPRSNOTSUBSCRIBED);
 
 // static
-void CellularError::FromDBusError(const DBus::Error& dbus_error,
-                                  Error* error) {
+void CellularError::FromChromeosDBusError(chromeos::Error* dbus_error,
+                                          Error* error) {
   if (!error)
     return;
 
-  if (!dbus_error.is_set()) {
+  if (!dbus_error) {
     error->Reset();
     return;
   }
 
-  string name(dbus_error.name());
-  const char* msg = dbus_error.message();
+  const string name = dbus_error->GetCode();
+  const string msg = dbus_error->GetMessage();
   Error::Type type;
 
   if (name == kErrorIncorrectPassword)
@@ -50,7 +50,7 @@ void CellularError::FromDBusError(const DBus::Error& dbus_error,
   else
     type = Error::kOperationFailed;
 
-  if (msg)
+  if (!msg.empty())
     return error->Populate(type, msg);
   else
     return error->Populate(type);

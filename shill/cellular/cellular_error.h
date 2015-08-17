@@ -5,7 +5,7 @@
 #ifndef SHILL_CELLULAR_CELLULAR_ERROR_H_
 #define SHILL_CELLULAR_CELLULAR_ERROR_H_
 
-#include <dbus-c++/error.h>
+#include <chromeos/errors/error.h>
 
 #include "shill/error.h"
 
@@ -13,9 +13,11 @@ namespace shill {
 
 class CellularError {
  public:
-  static void FromDBusError(const DBus::Error& dbus_error, Error* error);
+  static void FromChromeosDBusError(chromeos::Error* dbus_error,
+                                    Error* error);
 
-  static void FromMM1DBusError(const DBus::Error& dbus_error, Error* error);
+  static void FromMM1ChromeosDBusError(chromeos::Error* dbus_error,
+                                       Error* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CellularError);

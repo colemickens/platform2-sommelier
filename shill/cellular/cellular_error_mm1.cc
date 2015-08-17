@@ -38,18 +38,18 @@ const char* kErrorWrongState = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
 }  // namespace
 
 // static
-void CellularError::FromMM1DBusError(const DBus::Error& dbus_error,
-                                     Error* error) {
+void CellularError::FromMM1ChromeosDBusError(chromeos::Error* dbus_error,
+                                             Error* error) {
   if (!error)
     return;
 
-  if (!dbus_error.is_set()) {
+  if (!dbus_error) {
     error->Reset();
     return;
   }
 
-  string name(dbus_error.name());
-  const char* msg = dbus_error.message();
+  const string name = dbus_error->GetCode();
+  const string msg = dbus_error->GetMessage();
   Error::Type type;
 
   if (name == kErrorIncorrectPassword)
@@ -67,7 +67,7 @@ void CellularError::FromMM1DBusError(const DBus::Error& dbus_error,
   else
     type = Error::kOperationFailed;
 
-  if (msg)
+  if (!msg.empty())
     return error->Populate(type, msg);
   else
     return error->Populate(type);
