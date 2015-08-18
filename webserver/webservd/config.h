@@ -63,6 +63,9 @@ struct Config final {
   // HTTP clients.
   bool use_debug{false};
 
+  // Specifies whether IPv6 is enabled and should be used by the server.
+  bool use_ipv6{true};
+
   // Output directory for web server's request log in Common Log Format
   // (see http://www.w3.org/Daemon/User/Config/Logging.html).
   // The files in this directory contain only the "official" request logs, not

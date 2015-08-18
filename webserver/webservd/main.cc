@@ -84,6 +84,7 @@ int main(int argc, char* argv[]) {
                 "path to a file containing server configuration");
   DEFINE_bool(debug, false,
               "return debug error information in web requests");
+  DEFINE_bool(ipv6, true, "enable IPv6 support");
   chromeos::FlagHelper::Init(argc, argv, "Brillo web server daemon");
 
   int flags = chromeos::kLogToSyslog;
@@ -92,6 +93,7 @@ int main(int argc, char* argv[]) {
   chromeos::InitLog(flags | chromeos::kLogHeader);
 
   webservd::Config config;
+  config.use_ipv6 = FLAGS_ipv6;
   base::FilePath default_file_path{kDefaultConfigFilePath};
   if (!FLAGS_config_path.empty()) {
     // In tests, we'll override the board specific and default configurations

@@ -178,7 +178,9 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
   if (server_interface_->GetConfig().use_debug)
     flags |= MHD_USE_DEBUG;
 
-  flags |= MHD_USE_DUAL_STACK;  // Enable both IPv4 and IPv6.
+  // Enable IPv6 if supported.
+  if (server_interface_->GetConfig().use_ipv6)
+    flags |= MHD_USE_DUAL_STACK;
   flags |= MHD_USE_TCP_FASTOPEN;  // Use TCP Fast Open (see RFC 7413).
 
   std::vector<MHD_OptionItem> options{
