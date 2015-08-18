@@ -1,6 +1,16 @@
-// Copyright 2015 The Chromium OS Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2015 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <string>
 #include <sysexits.h>
@@ -11,7 +21,9 @@
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/flag_helper.h>
+#if !defined(__BRILLO__)
 #include <chromeos/minijail/minijail.h>
+#endif  // !defined(__BRILLO__)
 #include <chromeos/syslog_logging.h>
 
 #include "webservd/config.h"
@@ -25,7 +37,7 @@ using FirewallImpl = webservd::FirewalldFirewall;
 #else
 #include "webservd/permission_broker_firewall.h"
 using FirewallImpl = webservd::PermissionBrokerFirewall;
-#endif  // __BRILLO__
+#endif  // defined(__BRILLO__)
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
@@ -113,6 +125,8 @@ int main(int argc, char* argv[]) {
   config.use_debug = FLAGS_debug;
   Daemon daemon{std::move(config)};
 
+  // TODO: Re-enable this for Brillo once minijail works with libcap-ng.
+#if !defined(__BRILLO__)
   // Drop privileges and use 'webservd' user. We need to do this after Daemon
   // object is constructed since it creates an instance of base::AtExitManager
   // which is required for chromeos::Minijail::GetInstance() to work.
@@ -124,5 +138,7 @@ int main(int argc, char* argv[]) {
   minijail_instance->UseCapabilities(jail, CAP_TO_MASK(CAP_NET_BIND_SERVICE));
   minijail_enter(jail);
   minijail_instance->Destroy(jail);
+#endif  // !defined(__BRILLO__)
+
   return daemon.Run();
 }
