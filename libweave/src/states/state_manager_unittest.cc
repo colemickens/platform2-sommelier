@@ -11,6 +11,7 @@
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <weave/mock_config_store.h>
 
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/unittest_utils.h"
@@ -24,25 +25,30 @@ using testing::Return;
 using unittests::CreateDictionaryValue;
 
 namespace {
+
+const char kBaseDefinition[] = R"({
+  "base": {
+    "manufacturer":"string",
+    "serialNumber":"string"
+  },
+  "device": {
+    "state_property":"string"
+  }
+})";
+
 std::unique_ptr<base::DictionaryValue> GetTestSchema() {
-  return CreateDictionaryValue(R"({
-    'base': {
-      'manufacturer':'string',
-      'serialNumber':'string'
-    },
-    'device': {
-      'state_property':'string'
-    }
-  })");
+  return CreateDictionaryValue(kBaseDefinition);
 }
 
+const char kBaseDefaults[] = R"({
+  "base": {
+    "manufacturer":"Test Factory",
+    "serialNumber":"Test Model"
+  }
+})";
+
 std::unique_ptr<base::DictionaryValue> GetTestValues() {
-  return CreateDictionaryValue(R"({
-    'base': {
-      'manufacturer':'Test Factory',
-      'serialNumber':'Test Model'
-    }
-  })");
+  return CreateDictionaryValue(kBaseDefaults);
 }
 
 }  // anonymous namespace
@@ -129,6 +135,40 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
     }
   })";
   EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
+}
+
+TEST_F(StateManagerTest, Startup) {
+  unittests::MockConfigStore config_store;
+  StateManager manager(&mock_state_change_queue_);
+
+  EXPECT_CALL(config_store, LoadBaseStateDefs())
+      .WillOnce(Return(kBaseDefinition));
+
+  EXPECT_CALL(config_store, LoadStateDefs())
+      .WillOnce(Return(std::map<std::string, std::string>{
+          {"powerd", R"({"power": {"battery_level":"integer"}})"}}));
+
+  EXPECT_CALL(config_store, LoadBaseStateDefaults())
+      .WillOnce(Return(kBaseDefaults));
+  EXPECT_CALL(config_store, LoadStateDefaults())
+      .WillOnce(Return(std::vector<std::string>{
+          R"({"power": {"battery_level":44}})"}));
+
+  manager.Startup(&config_store);
+
+  auto expected = R"({
+    'base': {
+      'manufacturer': 'Test Factory',
+      'serialNumber': 'Test Model'
+    },
+    'power': {
+      'battery_level': 44
+    },
+    'device': {
+      'state_property': ''
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *manager.GetStateValuesAsJson());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue) {

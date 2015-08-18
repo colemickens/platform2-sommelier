@@ -36,7 +36,7 @@ void StateManager::Startup(ConfigStore* config_store) {
 
   // Load component-specific device state definitions.
   for (const auto& pair : config_store->LoadStateDefs())
-    CHECK(LoadStateDefinition(pair.first, pair.second, nullptr));
+    CHECK(LoadStateDefinition(pair.second, pair.first, nullptr));
 
   // Load standard device state defaults.
   CHECK(LoadStateDefaults(config_store->LoadBaseStateDefaults(), nullptr));
