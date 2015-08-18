@@ -17,11 +17,11 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
-#include "shill/key_file_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
+#include "shill/store_factory.h"
 #include "shill/store_interface.h"
 #include "shill/stub_storage.h"
 
@@ -74,7 +74,8 @@ bool Profile::InitStorage(GLib* glib, InitStorageOption storage_option,
                            name_.user.c_str(), name_.identifier.c_str()));
     return false;
   }
-  std::unique_ptr<KeyFileStore> storage(new KeyFileStore(glib));
+  std::unique_ptr<StoreInterface> storage(
+      StoreFactory::GetInstance()->CreateStore());
   storage->set_path(final_path);
   bool already_exists = storage->IsNonEmpty();
   if (!already_exists && storage_option != kCreateNew &&

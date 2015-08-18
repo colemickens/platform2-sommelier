@@ -21,6 +21,7 @@
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
+#include "shill/store_factory.h"
 
 using base::FilePath;
 using std::set;
@@ -38,6 +39,7 @@ namespace shill {
 class ProfileTest : public PropertyStoreTest {
  public:
   ProfileTest() : mock_metrics_(new MockMetrics(nullptr)) {
+    StoreFactory::GetInstance()->set_glib(&real_glib_);
     Profile::Identifier id("rather", "irrelevant");
     profile_ =
         new Profile(control_interface(), metrics(), manager(), id, "", false);

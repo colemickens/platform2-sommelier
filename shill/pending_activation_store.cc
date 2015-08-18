@@ -4,8 +4,9 @@
 
 #include "shill/pending_activation_store.h"
 
-#include "shill/key_file_store.h"
 #include "shill/logging.h"
+#include "shill/store_factory.h"
+#include "shill/store_interface.h"
 
 using base::FilePath;
 using std::string;
@@ -95,7 +96,8 @@ bool PendingActivationStore::InitStorage(
     return false;
   }
   FilePath path = storage_path.Append(kStorageFileName);
-  std::unique_ptr<KeyFileStore> storage(new KeyFileStore(glib));
+  std::unique_ptr<StoreInterface> storage(
+    StoreFactory::GetInstance()->CreateStore());
   storage->set_path(path);
   bool already_exists = storage->IsNonEmpty();
   if (!storage->Open()) {

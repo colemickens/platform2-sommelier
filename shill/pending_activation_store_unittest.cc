@@ -10,6 +10,7 @@
 
 #include "shill/glib.h"
 #include "shill/mock_store.h"
+#include "shill/store_factory.h"
 
 using base::FilePath;
 using ::testing::_;
@@ -22,7 +23,9 @@ namespace shill {
 
 class PendingActivationStoreTest : public ::testing::Test {
  public:
-  PendingActivationStoreTest() : mock_store_(new MockStore()) {}
+  PendingActivationStoreTest() : mock_store_(new MockStore()) {
+    StoreFactory::GetInstance()->set_glib(&glib_);
+  }
 
  protected:
   void SetMockStore() {

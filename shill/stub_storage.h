@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+
 #include "shill/store_interface.h"
 
 namespace shill {
@@ -18,7 +20,13 @@ class StubStorage : public StoreInterface {
  public:
   ~StubStorage() override {}
 
+  void set_path(const base::FilePath& path) override {}
+  const base::FilePath& path() const override { return default_path_; }
+  bool IsNonEmpty() const override { return false; }
+  bool Open() override { return false; }
+  bool Close() override { return false; }
   bool Flush() override { return false; }
+  bool MarkAsCorrupted() override { return false; }
   std::set<std::string> GetGroups() const override { return {}; }
   std::set<std::string> GetGroupsWithKey(
       const std::string& key) const override {
@@ -95,6 +103,9 @@ class StubStorage : public StoreInterface {
                         const std::string& value) override {
     return false;
   }
+
+ private:
+  const base::FilePath default_path_;  // non-static since non-POD.
 };
 
 }  // namespace shill

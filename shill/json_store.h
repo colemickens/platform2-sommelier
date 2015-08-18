@@ -26,32 +26,14 @@ class JsonStore : public StoreInterface {
   // need one of StoreInterface implementations are expected to
   // automatically Flush() before destruction.
 
-  // Configures the filesystem path to which this store will be
-  // persisted. This method must be called before any calls to Open(),
-  // Close(), or Flush().
-  void set_path(const base::FilePath& path) { path_ = path; }
-  const base::FilePath& path() const { return path_; }
-
-  // Returns true if the store exists and is non-empty.
-  bool IsNonEmpty() const;
-
-  // Opens the store. Returns true on success. This method should be
-  // invoked before adding any data to the store. This method should
-  // not be called a second time, without first calling Close().
-  bool Open();
-
-  // Saves in-memory data to disk (overwriting any existing on-disk
-  // data), and closes the store. The effect of reading from or writing
-  // to a closed store is undefined.
-  bool Close();
-
-  // Marks the underlying file store as corrupted, moving the data file
-  // to a new filename.  This will prevent the file from being re-opened
-  // the next time Open() is called.
-  bool MarkAsCorrupted();
-
   // Inherited from StoreInterface.
+  void set_path(const base::FilePath& path) override { path_ = path; }
+  const base::FilePath& path() const override { return path_; }
+  bool IsNonEmpty() const override;
+  bool Open() override;
+  bool Close() override;
   bool Flush() override;
+  bool MarkAsCorrupted() override;
   std::set<std::string> GetGroups() const override;
   std::set<std::string> GetGroupsWithKey(const std::string& key) const override;
   std::set<std::string> GetGroupsWithProperties(

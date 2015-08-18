@@ -45,6 +45,7 @@
 #include "shill/result_aggregator.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
+#include "shill/store_factory.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 #include "shill/wimax/wimax_service.h"
@@ -210,6 +211,12 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
   HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
                                   &Manager::ClaimedDevices);
+
+  // TODO(quiche): This should probably move to Daemon, after we
+  // figure out the story for unit tests. b/23354429.
+#if !defined(ENABLE_JSON_STORE)
+  StoreFactory::GetInstance()->set_glib(glib_);
+#endif
 
   UpdateProviderMapping();
 

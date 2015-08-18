@@ -9,6 +9,10 @@
 #include <string>
 #include <vector>
 
+namespace base {
+class FilePath;
+}
+
 namespace shill {
 
 class KeyValueStore;
@@ -18,8 +22,31 @@ class StoreInterface {
  public:
   virtual ~StoreInterface() {}
 
+  // Configures the path which data should be read from, and written to.
+  virtual void set_path(const base::FilePath& path) = 0;
+  virtual const base::FilePath& path() const = 0;
+
+  // Returns true if the store exists and is non-empty.
+  virtual bool IsNonEmpty() const = 0;
+
+  // Opens the store. Returns true on success. The effects of
+  // re-opening an open store are undefined. The effects of calling a
+  // getter or setter on an unopened store are also undefined.
+  virtual bool Open() = 0;
+
+  // Closes the store and flushes it to persistent storage. Returns
+  // true on success. Note that the store is considered closed even if
+  // Close returns false. The effects of closing and already closed
+  // store are undefined.
+  virtual bool Close() = 0;
+
   // Flush current in-memory data to disk.
   virtual bool Flush() = 0;
+
+  // Mark the underlying file store as corrupted, moving the data file
+  // to a new filename.  This will prevent the file from being re-opened
+  // the next time Open() is called.
+  virtual bool MarkAsCorrupted() = 0;
 
   // Returns a set of all groups contained in the store.
   virtual std::set<std::string> GetGroups() const = 0;

@@ -26,32 +26,14 @@ class KeyFileStore : public StoreInterface {
   explicit KeyFileStore(GLib* glib);
   ~KeyFileStore() override;
 
-  void set_path(const base::FilePath& path) { path_ = path; }
-  const base::FilePath& path() const { return path_; }
-
-  // Returns true if the store exists and is non-empty.
-  bool IsNonEmpty() const;
-
-  // Opens the store. Returns true on success. This method must be
-  // invoked before using any of the getters or setters.
-  // This method does not complete gracefully if invoked on a store
-  // that has been opened already but not closed yet.
-  bool Open();
-
-  // Closes the store and flushes it to persistent storage. Returns true on
-  // success. Note that the store is considered closed even if Close returns
-  // false.
-  // This method does not complete gracefully if invoked on a store
-  // that has not been opened successfully or has been closed already.
-  bool Close();
-
-  // Mark the underlying file store as corrupted, moving the data file
-  // to a new filename.  This will prevent the file from being re-opened
-  // the next time Open() is called.
-  bool MarkAsCorrupted();
-
   // Inherited from StoreInterface.
+  void set_path(const base::FilePath& path) override { path_ = path; }
+  const base::FilePath& path() const override { return path_; }
+  bool IsNonEmpty() const override;
+  bool Open() override;
+  bool Close() override;
   bool Flush() override;
+  bool MarkAsCorrupted() override;
   std::set<std::string> GetGroups() const override;
   std::set<std::string> GetGroupsWithKey(const std::string& key) const override;
   std::set<std::string> GetGroupsWithProperties(

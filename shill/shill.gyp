@@ -45,6 +45,11 @@
           'DISABLE_DHCPV6',
         ],
       }],
+      ['USE_json_store == 1', {
+        'defines': [
+          'ENABLE_JSON_STORE',
+        ],
+      }],
       ['USE_pppoe == 0', {
         'defines': [
           'DISABLE_PPPOE',
@@ -588,6 +593,7 @@
         'socket_info.cc',
         'socket_info_reader.cc',
         'static_ip_parameters.cc',
+        'store_factory.cc',
         'technology.cc',
         'tethering.cc',
         'traffic_monitor.cc',
