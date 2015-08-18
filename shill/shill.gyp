@@ -373,6 +373,16 @@
             },
           ],
         }],
+        ['USE_json_store == 0', {
+          'sources': [
+            'key_file_store.cc',
+          ],
+        }],
+        ['USE_json_store == 1', {
+          'sources': [
+            'json_store.cc',
+          ],
+        }],
         ['USE_vpn == 1', {
           'sources': [
             'vpn/l2tp_ipsec_driver.cc',
@@ -539,8 +549,6 @@
         'ip_address_store.cc',
         'ipconfig.cc',
         'ipconfig_dbus_adaptor.cc',
-        'json_store.cc',
-        'key_file_store.cc',
         'key_value_store.cc',
         'link_monitor.cc',
         'logging.cc',
@@ -758,8 +766,6 @@
             'icmp_session_unittest.cc',
             'ip_address_store_unittest.cc',
             'ipconfig_unittest.cc',
-            'json_store_unittest.cc',
-            'key_file_store_unittest.cc',
             'key_value_store_unittest.cc',
             'link_monitor_unittest.cc',
             'manager_unittest.cc',
@@ -921,6 +927,16 @@
             ['USE_dhcpv6 == 1', {
               'sources': [
                 'dhcp/dhcpv6_config_unittest.cc',
+              ],
+            }],
+            ['USE_json_store == 0', {
+              'sources': [
+                'key_file_store_unittest.cc',
+              ],
+            }],
+            ['USE_json_store == 1', {
+              'sources': [
+                'json_store_unittest.cc',
               ],
             }],
             ['USE_vpn == 1', {

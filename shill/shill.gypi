@@ -1,4 +1,8 @@
 {
+  'variables': {
+    'USE_json_store%': 0,
+  },
+
   'targets': [
     {
       'target_name': 'shill-proxies',
