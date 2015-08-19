@@ -41,7 +41,7 @@ class MockModemProxy : public ModemProxyInterface {
                                   Error* error,
                                   const ResultCallback& callback,
                                   int timeout));
-  MOCK_METHOD4(SetCurrentCapabilities, void(const uint32_t& capabilities,
+  MOCK_METHOD4(SetCurrentCapabilities, void(uint32_t capabilities,
                                             Error* error,
                                             const ResultCallback& callback,
                                             int timeout));
@@ -56,11 +56,11 @@ class MockModemProxy : public ModemProxyInterface {
                                      const ResultCallback& callback,
                                      int timeout));
   MOCK_METHOD5(Command, void(const std::string& cmd,
-                             const uint32_t& user_timeout,
+                             uint32_t user_timeout,
                              Error* error,
                              const StringCallback& callback,
                              int timeout));
-  MOCK_METHOD4(SetPowerState, void(const uint32_t& power_state,
+  MOCK_METHOD4(SetPowerState, void(uint32_t power_state,
                                    Error* error,
                                    const ResultCallback& callback,
                                    int timeout));

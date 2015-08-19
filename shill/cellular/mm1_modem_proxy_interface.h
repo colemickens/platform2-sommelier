@@ -45,7 +45,7 @@ class ModemProxyInterface {
                             Error* error,
                             const ResultCallback& callback,
                             int timeout) = 0;
-  virtual void SetCurrentCapabilities(const uint32_t& capabilities,
+  virtual void SetCurrentCapabilities(uint32_t capabilities,
                                       Error* error,
                                       const ResultCallback& callback,
                                       int timeout) = 0;
@@ -59,11 +59,11 @@ class ModemProxyInterface {
                                const ResultCallback& callback,
                                int timeout) = 0;
   virtual void Command(const std::string& cmd,
-                       const uint32_t& user_timeout,
+                       uint32_t user_timeout,
                        Error* error,
                        const StringCallback& callback,
                        int timeout) = 0;
-  virtual void SetPowerState(const uint32_t& power_state,
+  virtual void SetPowerState(uint32_t power_state,
                              Error* error,
                              const ResultCallback& callback,
                              int timeout) = 0;

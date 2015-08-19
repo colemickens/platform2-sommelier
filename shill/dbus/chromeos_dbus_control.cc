@@ -27,6 +27,11 @@
 #if !defined(DISABLE_CELLULAR)
 #include "shill/dbus/chromeos_dbus_objectmanager_proxy.h"
 #include "shill/dbus/chromeos_dbus_properties_proxy.h"
+#include "shill/dbus/chromeos_mm1_modem_modem3gpp_proxy.h"
+#include "shill/dbus/chromeos_mm1_modem_modemcdma_proxy.h"
+#include "shill/dbus/chromeos_mm1_modem_proxy.h"
+#include "shill/dbus/chromeos_mm1_modem_simple_proxy.h"
+#include "shill/dbus/chromeos_mm1_sim_proxy.h"
 #include "shill/dbus/chromeos_modem_cdma_proxy.h"
 #include "shill/dbus/chromeos_modem_gobi_proxy.h"
 #include "shill/dbus/chromeos_modem_gsm_card_proxy.h"
@@ -270,32 +275,32 @@ mm1::ModemModem3gppProxyInterface*
     ChromeosDBusControl::CreateMM1ModemModem3gppProxy(
         const string& path,
         const string& service) {
-  return nullptr;
+  return new mm1::ChromeosModemModem3gppProxy(bus_, path, service);
 }
 
 mm1::ModemModemCdmaProxyInterface*
     ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(
         const string& path,
         const string& service) {
-  return nullptr;
+  return new mm1::ChromeosModemModemCdmaProxy(bus_, path, service);
 }
 
 mm1::ModemProxyInterface* ChromeosDBusControl::CreateMM1ModemProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new mm1::ChromeosModemProxy(bus_, path, service);
 }
 
 mm1::ModemSimpleProxyInterface* ChromeosDBusControl::CreateMM1ModemSimpleProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new mm1::ChromeosModemSimpleProxy(bus_, path, service);
 }
 
 mm1::SimProxyInterface* ChromeosDBusControl::CreateSimProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new mm1::ChromeosSimProxy(bus_, path, service);
 }
 #endif  // DISABLE_CELLULAR
 
