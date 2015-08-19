@@ -43,7 +43,8 @@ TEST_F(StateChangeQueueTest, UpdateOne) {
   EXPECT_TRUE(queue_->GetAndClearRecordedStateChanges().empty());
 }
 
-TEST_F(StateChangeQueueTest, UpdateMany) {
+// TODO(vitalybuka): Fix flakiness.
+TEST_F(StateChangeQueueTest, DISABLED_UpdateMany) {
   StateChange change1{
       base::Time::Now(),
       ValueMap{{"prop.name1", unittests::make_int_prop_value(23)}}};
