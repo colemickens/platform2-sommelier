@@ -27,6 +27,13 @@
 #if !defined(DISABLE_CELLULAR)
 #include "shill/dbus/chromeos_dbus_objectmanager_proxy.h"
 #include "shill/dbus/chromeos_dbus_properties_proxy.h"
+#include "shill/dbus/chromeos_modem_cdma_proxy.h"
+#include "shill/dbus/chromeos_modem_gobi_proxy.h"
+#include "shill/dbus/chromeos_modem_gsm_card_proxy.h"
+#include "shill/dbus/chromeos_modem_gsm_network_proxy.h"
+#include "shill/dbus/chromeos_modem_manager_proxy.h"
+#include "shill/dbus/chromeos_modem_proxy.h"
+#include "shill/dbus/chromeos_modem_simple_proxy.h"
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
@@ -211,45 +218,51 @@ ModemManagerProxyInterface*
         ModemManagerClassic* manager,
         const string& path,
         const string& service,
-        const base::Closure& service_vanished_callback,
-        const base::Closure& service_appeared_callback) {
-  return nullptr;
+        const base::Closure& service_appeared_callback,
+        const base::Closure& service_vanished_callback) {
+  return new ChromeosModemManagerProxy(dispatcher_,
+                                       bus_,
+                                       manager,
+                                       path,
+                                       service,
+                                       service_appeared_callback,
+                                       service_vanished_callback);
 }
 
 ModemProxyInterface* ChromeosDBusControl::CreateModemProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new ChromeosModemProxy(bus_, path, service);
 }
 
 ModemSimpleProxyInterface* ChromeosDBusControl::CreateModemSimpleProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new ChromeosModemSimpleProxy(bus_, path, service);
 }
 
 ModemCDMAProxyInterface* ChromeosDBusControl::CreateModemCDMAProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new ChromeosModemCDMAProxy(bus_, path, service);
 }
 
 ModemGSMCardProxyInterface* ChromeosDBusControl::CreateModemGSMCardProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new ChromeosModemGSMCardProxy(bus_, path, service);
 }
 
 ModemGSMNetworkProxyInterface* ChromeosDBusControl::CreateModemGSMNetworkProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new ChromeosModemGSMNetworkProxy(bus_, path, service);
 }
 
 ModemGobiProxyInterface* ChromeosDBusControl::CreateModemGobiProxy(
     const string& path,
     const string& service) {
-  return nullptr;
+  return new ChromeosModemGobiProxy(bus_, path, service);
 }
 
 // Proxies for ModemManager1 interfaces

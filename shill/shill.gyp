@@ -304,16 +304,31 @@
               'sources': [
                 'dbus/chromeos_dbus_objectmanager_proxy.cc',
                 'dbus/chromeos_dbus_properties_proxy.cc',
+                'dbus/chromeos_modem_cdma_proxy.cc',
+                'dbus/chromeos_modem_gobi_proxy.cc',
+                'dbus/chromeos_modem_gsm_card_proxy.cc',
+                'dbus/chromeos_modem_gsm_network_proxy.cc',
+                'dbus/chromeos_modem_manager_proxy.cc',
+                'dbus/chromeos_modem_proxy.cc',
+                'dbus/chromeos_modem_simple_proxy.cc',
               ],
               'actions': [
                 {
                   'action_name': 'generate-cellular-proxies',
                   'variables': {
                     'proxy_output_file': 'include/cellular/dbus-proxies.h',
+                    'modemmanager_in_dir': '<(sysroot)/usr/share/dbus-1/interfaces/',
                   },
                   'sources': [
                     'dbus_bindings/dbus-objectmanager.xml',
                     'dbus_bindings/dbus-properties.xml',
+                    'dbus_bindings/modem-gobi.xml',
+                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Cdma.xml',
+                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Card.xml',
+                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Network.xml',
+                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Simple.xml',
+                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.xml',
+                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.xml',
                   ],
                   'includes': ['../common-mk/generate-dbus-proxies.gypi'],
                 },
