@@ -21,9 +21,9 @@
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/flag_helper.h>
-#if !defined(__BRILLO__)
+#if !defined(__ANDROID__)
 #include <chromeos/minijail/minijail.h>
-#endif  // !defined(__BRILLO__)
+#endif  // !defined(__ANDROID__)
 #include <chromeos/syslog_logging.h>
 
 #include "webservd/config.h"
@@ -31,13 +31,13 @@
 #include "webservd/server.h"
 #include "webservd/utils.h"
 
-#if defined(__BRILLO__)
+#if defined(__ANDROID__)
 #include "webservd/firewalld_firewall.h"
 using FirewallImpl = webservd::FirewalldFirewall;
 #else
 #include "webservd/permission_broker_firewall.h"
 using FirewallImpl = webservd::PermissionBrokerFirewall;
-#endif  // defined(__BRILLO__)
+#endif  // defined(__ANDROID__)
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
@@ -127,8 +127,8 @@ int main(int argc, char* argv[]) {
   config.use_debug = FLAGS_debug;
   Daemon daemon{std::move(config)};
 
-  // TODO: Re-enable this for Brillo once minijail works with libcap-ng.
-#if !defined(__BRILLO__)
+  // TODO: Re-enable this for Android once minijail works with libcap-ng.
+#if !defined(__ANDROID__)
   // Drop privileges and use 'webservd' user. We need to do this after Daemon
   // object is constructed since it creates an instance of base::AtExitManager
   // which is required for chromeos::Minijail::GetInstance() to work.
@@ -140,7 +140,7 @@ int main(int argc, char* argv[]) {
   minijail_instance->UseCapabilities(jail, CAP_TO_MASK(CAP_NET_BIND_SERVICE));
   minijail_enter(jail);
   minijail_instance->Destroy(jail);
-#endif  // !defined(__BRILLO__)
+#endif  // !defined(__ANDROID__)
 
   return daemon.Run();
 }
