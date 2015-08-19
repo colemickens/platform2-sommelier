@@ -15,7 +15,12 @@
 
 namespace {
 
-const char kChromeOSCACertificatePath[] = "/usr/share/chromeos-ca-certificates";
+const char kCACertificatePath[] =
+#ifdef __ANDROID__
+    "/system/etc/security/cacerts";
+#else
+    "/usr/share/chromeos-ca-certificates";
+#endif
 
 }  // namespace
 
@@ -132,7 +137,7 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 
   if (code == CURLE_OK) {
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_CAPATH,
-                                          kChromeOSCACertificatePath);
+                                          kCACertificatePath);
   }
   if (code == CURLE_OK) {
     code =

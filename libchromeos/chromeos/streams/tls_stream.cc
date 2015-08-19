@@ -56,7 +56,12 @@ void TlsInfoCallback(const SSL *ssl, int where, int ret) {
 int ssl_ctx_private_data_index = -1;
 
 // Default trusted certificate store location.
-const char kChromeOSCACertificatePath[] = "/usr/share/chromeos-ca-certificates";
+const char kCACertificatePath[] =
+#ifdef __ANDROID__
+    "/system/etc/security/cacerts";
+#else
+    "/usr/share/chromeos-ca-certificates";
+#endif
 
 }  // anonymous namespace
 
@@ -351,7 +356,7 @@ bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
     return ReportError(error, FROM_HERE, "Cannot set the cipher list");
 
   res = SSL_CTX_load_verify_locations(ctx_.get(), nullptr,
-                                      kChromeOSCACertificatePath);
+                                      kCACertificatePath);
   if (res != 1) {
     return ReportError(error, FROM_HERE,
                        "Failed to specify trusted certificate location");
