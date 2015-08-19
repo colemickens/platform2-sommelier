@@ -5,10 +5,12 @@
 #ifndef BASE_STRINGS_UTF_STRING_CONVERSION_UTILS_H_
 #define BASE_STRINGS_UTF_STRING_CONVERSION_UTILS_H_
 
+#include <string>
+
 // This should only be used by the various UTF string conversion files.
 
 #include "base/base_export.h"
-#include "base/strings/string16.h"
+#include "base/basictypes.h"
 
 namespace base {
 
@@ -42,12 +44,6 @@ BASE_EXPORT bool ReadUnicodeCharacter(const char* src,
                                       int32* char_index,
                                       uint32* code_point_out);
 
-// Reads a UTF-16 character. The usage is the same as the 8-bit version above.
-BASE_EXPORT bool ReadUnicodeCharacter(const char16* src,
-                                      int32 src_len,
-                                      int32* char_index,
-                                      uint32* code_point);
-
 #if defined(WCHAR_T_IS_UTF32)
 // Reads UTF-32 character. The usage is the same as the 8-bit version above.
 BASE_EXPORT bool ReadUnicodeCharacter(const wchar_t* src,
@@ -63,10 +59,6 @@ BASE_EXPORT bool ReadUnicodeCharacter(const wchar_t* src,
 // TODO(brettw) Bug 79631: This function should not be exposed.
 BASE_EXPORT size_t WriteUnicodeCharacter(uint32 code_point,
                                          std::string* output);
-
-// Appends the given code point as a UTF-16 character to the given 16-bit
-// string.  Returns the number of 16-bit values written.
-BASE_EXPORT size_t WriteUnicodeCharacter(uint32 code_point, string16* output);
 
 #if defined(WCHAR_T_IS_UTF32)
 // Appends the given UTF-32 character to the given 32-bit string.  Returns the

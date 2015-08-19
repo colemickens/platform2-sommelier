@@ -59,9 +59,6 @@
 
 namespace base {
 
-template <typename ObserverType>
-class ObserverListThreadSafe;
-
 template <class ObserverType>
 class ObserverListBase
     : public SupportsWeakPtr<ObserverListBase<ObserverType>> {
@@ -113,8 +110,6 @@ class ObserverListBase
   void Compact();
 
  private:
-  friend class ObserverListThreadSafe<ObserverType>;
-
   typedef std::vector<ObserverType*> ListType;
 
   ListType observers_;

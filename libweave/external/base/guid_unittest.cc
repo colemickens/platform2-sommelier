@@ -6,14 +6,41 @@
 
 #include <limits>
 
+#include <gtest/gtest.h>
+
 #include "base/strings/string_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
 #if defined(OS_POSIX)
 
 namespace {
+
+template <typename Char>
+inline bool IsHexDigit(Char c) {
+  return (c >= '0' && c <= '9') ||
+         (c >= 'A' && c <= 'F') ||
+         (c >= 'a' && c <= 'f');
+}
+
+bool IsValidGUID(const std::string& guid) {
+  const size_t kGUIDLength = 36U;
+  if (guid.length() != kGUIDLength)
+    return false;
+
+  for (size_t i = 0; i < guid.length(); ++i) {
+    char current = guid[i];
+    if (i == 8 || i == 13 || i == 18 || i == 23) {
+      if (current != '-')
+        return false;
+    } else {
+      if (!IsHexDigit(current))
+        return false;
+    }
+  }
+
+  return true;
+}
 
 bool IsGUIDv4(const std::string& guid) {
   // The format of GUID version 4 must be xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx,
@@ -43,8 +70,6 @@ TEST(GUIDTest, GUIDCorrectlyFormatted) {
   for (int it = 0; it < kIterations; ++it) {
     std::string guid = GenerateGUID();
     EXPECT_TRUE(IsValidGUID(guid));
-    EXPECT_TRUE(IsValidGUID(StringToLowerASCII(guid)));
-    EXPECT_TRUE(IsValidGUID(StringToUpperASCII(guid)));
   }
 }
 

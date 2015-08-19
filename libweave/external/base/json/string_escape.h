@@ -29,17 +29,9 @@ BASE_EXPORT bool EscapeJSONString(const StringPiece& str,
                                   bool put_in_quotes,
                                   std::string* dest);
 
-// Performs a similar function to the UTF-8 StringPiece version above,
-// converting UTF-16 code units to UTF-8 code units and escaping non-printing
-// control characters. On return, |dest| will contain a valid UTF-8 JSON string.
-BASE_EXPORT bool EscapeJSONString(const StringPiece16& str,
-                                  bool put_in_quotes,
-                                  std::string* dest);
-
 // Helper functions that wrap the above two functions but return the value
 // instead of appending. |put_in_quotes| is always true.
 BASE_EXPORT std::string GetQuotedJSONString(const StringPiece& str);
-BASE_EXPORT std::string GetQuotedJSONString(const StringPiece16& str);
 
 // Given an arbitrary byte string |str|, this will escape all non-ASCII bytes
 // as \uXXXX escape sequences. This function is *NOT* meant to be used with

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "build/build_config.h"
+#include "base/build/build_config.h"
 
 #if defined(COMPILER_MSVC)
 #include <intrin.h>

@@ -9,12 +9,12 @@
 #include <limits>
 #include <string>
 
+#include <gtest/gtest.h>
+
 #include "base/compiler_specific.h"
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
-#include "base/threading/platform_thread.h"
-#include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include "base/build/build_config.h"
 
 namespace base {
 
@@ -160,201 +160,6 @@ TEST_F(TimeTest, LocalMidnight) {
   EXPECT_EQ(0, exploded.minute);
   EXPECT_EQ(0, exploded.second);
   EXPECT_EQ(0, exploded.millisecond);
-}
-
-TEST_F(TimeTest, ParseTimeTest1) {
-  time_t current_time = 0;
-  time(&current_time);
-
-  const int BUFFER_SIZE = 64;
-  struct tm local_time = {0};
-  char time_buf[BUFFER_SIZE] = {0};
-#if defined(OS_WIN)
-  localtime_s(&local_time, &current_time);
-  asctime_s(time_buf, arraysize(time_buf), &local_time);
-#elif defined(OS_POSIX)
-  localtime_r(&current_time, &local_time);
-  asctime_r(&local_time, time_buf);
-#endif
-
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString(time_buf, &parsed_time));
-  EXPECT_EQ(current_time, parsed_time.ToTimeT());
-}
-
-TEST_F(TimeTest, DayOfWeekSunday) {
-  Time time;
-  EXPECT_TRUE(Time::FromString("Sun, 06 May 2012 12:00:00 GMT", &time));
-  Time::Exploded exploded;
-  time.UTCExplode(&exploded);
-  EXPECT_EQ(0, exploded.day_of_week);
-}
-
-TEST_F(TimeTest, DayOfWeekWednesday) {
-  Time time;
-  EXPECT_TRUE(Time::FromString("Wed, 09 May 2012 12:00:00 GMT", &time));
-  Time::Exploded exploded;
-  time.UTCExplode(&exploded);
-  EXPECT_EQ(3, exploded.day_of_week);
-}
-
-TEST_F(TimeTest, DayOfWeekSaturday) {
-  Time time;
-  EXPECT_TRUE(Time::FromString("Sat, 12 May 2012 12:00:00 GMT", &time));
-  Time::Exploded exploded;
-  time.UTCExplode(&exploded);
-  EXPECT_EQ(6, exploded.day_of_week);
-}
-
-TEST_F(TimeTest, ParseTimeTest2) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("Mon, 15 Oct 2007 19:45:00 GMT", &parsed_time));
-  EXPECT_EQ(comparison_time_pdt_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest3) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("15 Oct 07 12:45:00", &parsed_time));
-  EXPECT_EQ(comparison_time_local_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest4) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("15 Oct 07 19:45 GMT", &parsed_time));
-  EXPECT_EQ(comparison_time_pdt_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest5) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("Mon Oct 15 12:45 PDT 2007", &parsed_time));
-  EXPECT_EQ(comparison_time_pdt_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest6) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("Monday, Oct 15, 2007 12:45 PM", &parsed_time));
-  EXPECT_EQ(comparison_time_local_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest7) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("10/15/07 12:45:00 PM", &parsed_time));
-  EXPECT_EQ(comparison_time_local_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest8) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("15-OCT-2007 12:45pm", &parsed_time));
-  EXPECT_EQ(comparison_time_local_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest9) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("16 Oct 2007 4:45-JST (Tuesday)", &parsed_time));
-  EXPECT_EQ(comparison_time_pdt_, parsed_time);
-}
-
-TEST_F(TimeTest, ParseTimeTest10) {
-  Time parsed_time;
-  EXPECT_TRUE(Time::FromString("15/10/07 12:45", &parsed_time));
-  EXPECT_EQ(parsed_time, comparison_time_local_);
-}
-
-// Test some of edge cases around epoch, etc.
-TEST_F(TimeTest, ParseTimeTestEpoch0) {
-  Time parsed_time;
-
-  // time_t == epoch == 0
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 01:00:00 +0100 1970",
-                               &parsed_time));
-  EXPECT_EQ(0, parsed_time.ToTimeT());
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 00:00:00 GMT 1970",
-                               &parsed_time));
-  EXPECT_EQ(0, parsed_time.ToTimeT());
-}
-
-TEST_F(TimeTest, ParseTimeTestEpoch1) {
-  Time parsed_time;
-
-  // time_t == 1 second after epoch == 1
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 01:00:01 +0100 1970",
-                               &parsed_time));
-  EXPECT_EQ(1, parsed_time.ToTimeT());
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 00:00:01 GMT 1970",
-                               &parsed_time));
-  EXPECT_EQ(1, parsed_time.ToTimeT());
-}
-
-TEST_F(TimeTest, ParseTimeTestEpoch2) {
-  Time parsed_time;
-
-  // time_t == 2 seconds after epoch == 2
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 01:00:02 +0100 1970",
-                               &parsed_time));
-  EXPECT_EQ(2, parsed_time.ToTimeT());
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 00:00:02 GMT 1970",
-                               &parsed_time));
-  EXPECT_EQ(2, parsed_time.ToTimeT());
-}
-
-TEST_F(TimeTest, ParseTimeTestEpochNeg1) {
-  Time parsed_time;
-
-  // time_t == 1 second before epoch == -1
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 00:59:59 +0100 1970",
-                               &parsed_time));
-  EXPECT_EQ(-1, parsed_time.ToTimeT());
-  EXPECT_TRUE(Time::FromString("Wed Dec 31 23:59:59 GMT 1969",
-                               &parsed_time));
-  EXPECT_EQ(-1, parsed_time.ToTimeT());
-}
-
-// If time_t is 32 bits, a date after year 2038 will overflow time_t and
-// cause timegm() to return -1.  The parsed time should not be 1 second
-// before epoch.
-TEST_F(TimeTest, ParseTimeTestEpochNotNeg1) {
-  Time parsed_time;
-
-  EXPECT_TRUE(Time::FromString("Wed Dec 31 23:59:59 GMT 2100",
-                               &parsed_time));
-  EXPECT_NE(-1, parsed_time.ToTimeT());
-}
-
-TEST_F(TimeTest, ParseTimeTestEpochNeg2) {
-  Time parsed_time;
-
-  // time_t == 2 seconds before epoch == -2
-  EXPECT_TRUE(Time::FromString("Thu Jan 01 00:59:58 +0100 1970",
-                               &parsed_time));
-  EXPECT_EQ(-2, parsed_time.ToTimeT());
-  EXPECT_TRUE(Time::FromString("Wed Dec 31 23:59:58 GMT 1969",
-                               &parsed_time));
-  EXPECT_EQ(-2, parsed_time.ToTimeT());
-}
-
-TEST_F(TimeTest, ParseTimeTestEpoch1960) {
-  Time parsed_time;
-
-  // time_t before Epoch, in 1960
-  EXPECT_TRUE(Time::FromString("Wed Jun 29 19:40:01 +0100 1960",
-                               &parsed_time));
-  EXPECT_EQ(-299999999, parsed_time.ToTimeT());
-  EXPECT_TRUE(Time::FromString("Wed Jun 29 18:40:01 GMT 1960",
-                               &parsed_time));
-  EXPECT_EQ(-299999999, parsed_time.ToTimeT());
-  EXPECT_TRUE(Time::FromString("Wed Jun 29 17:40:01 GMT 1960",
-                               &parsed_time));
-  EXPECT_EQ(-300003599, parsed_time.ToTimeT());
-}
-
-TEST_F(TimeTest, ParseTimeTestEmpty) {
-  Time parsed_time;
-  EXPECT_FALSE(Time::FromString("", &parsed_time));
-}
-
-TEST_F(TimeTest, ParseTimeTestInvalidString) {
-  Time parsed_time;
-  EXPECT_FALSE(Time::FromString("Monday morning 2000", &parsed_time));
 }
 
 TEST_F(TimeTest, ExplodeBeforeUnixEpoch) {
@@ -615,33 +420,6 @@ TEST_F(TimeTest, FromLocalExplodedCrashOnAndroid) {
 }
 #endif  // OS_ANDROID
 
-TEST(TimeTicks, Deltas) {
-  for (int index = 0; index < 50; index++) {
-    TimeTicks ticks_start = TimeTicks::Now();
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
-    TimeTicks ticks_stop = TimeTicks::Now();
-    TimeDelta delta = ticks_stop - ticks_start;
-    // Note:  Although we asked for a 10ms sleep, if the
-    // time clock has a finer granularity than the Sleep()
-    // clock, it is quite possible to wakeup early.  Here
-    // is how that works:
-    //      Time(ms timer)      Time(us timer)
-    //          5                   5010
-    //          6                   6010
-    //          7                   7010
-    //          8                   8010
-    //          9                   9000
-    // Elapsed  4ms                 3990us
-    //
-    // Unfortunately, our InMilliseconds() function truncates
-    // rather than rounds.  We should consider fixing this
-    // so that our averages come out better.
-    EXPECT_GE(delta.InMilliseconds(), 9);
-    EXPECT_GE(delta.InMicroseconds(), 9000);
-    EXPECT_EQ(delta.InSeconds(), 0);
-  }
-}
-
 static void HighResClockTest(TimeTicks (*GetTicks)()) {
   // IsHighResolution() is false on some systems.  Since the product still works
   // even if it's false, it makes this entire test questionable.
@@ -681,33 +459,6 @@ static void HighResClockTest(TimeTicks (*GetTicks)()) {
 
 TEST(TimeTicks, HighRes) {
   HighResClockTest(&TimeTicks::Now);
-}
-
-// Fails frequently on Android http://crbug.com/352633 with:
-// Expected: (delta_thread.InMicroseconds()) > (0), actual: 0 vs 0
-#if defined(OS_ANDROID)
-#define MAYBE_ThreadNow DISABLED_ThreadNow
-#else
-#define MAYBE_ThreadNow ThreadNow
-#endif
-TEST(ThreadTicks, MAYBE_ThreadNow) {
-  if (ThreadTicks::IsSupported()) {
-    TimeTicks begin = TimeTicks::Now();
-    ThreadTicks begin_thread = ThreadTicks::Now();
-    // Make sure that ThreadNow value is non-zero.
-    EXPECT_GT(begin_thread, ThreadTicks());
-    // Sleep for 10 milliseconds to get the thread de-scheduled.
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
-    ThreadTicks end_thread = ThreadTicks::Now();
-    TimeTicks end = TimeTicks::Now();
-    TimeDelta delta = end - begin;
-    TimeDelta delta_thread = end_thread - begin_thread;
-    // Make sure that some thread time have elapsed.
-    EXPECT_GT(delta_thread.InMicroseconds(), 0);
-    // But the thread time is at least 9ms less than clock time.
-    TimeDelta difference = delta - delta_thread;
-    EXPECT_GE(difference.InMicroseconds(), 9000);
-  }
 }
 
 TEST(TraceTicks, NowFromSystemTraceTime) {
@@ -1048,12 +799,6 @@ TEST(TimeDeltaLogging, DoesNotMakeStreamBad) {
 
 TEST(TimeLogging, DCheckEqCompiles) {
   DCHECK_EQ(Time(), Time());
-}
-
-TEST(TimeLogging, ChromeBirthdate) {
-  Time birthdate;
-  ASSERT_TRUE(Time::FromString("Tue, 02 Sep 2008 09:42:18 GMT", &birthdate));
-  EXPECT_EQ("2008-09-02 09:42:18.000 UTC", AnyToString(birthdate));
 }
 
 TEST(TimeLogging, DoesNotMessUpFormattingFlags) {

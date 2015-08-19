@@ -8,9 +8,9 @@
 
 #include <vector>
 
+#include "base/logging.h"
 #include "base/scoped_clear_errno.h"
 #include "base/strings/string_util.h"
-#include "base/strings/utf_string_conversions.h"
 
 namespace base {
 
@@ -28,15 +28,6 @@ inline int vsnprintfT(char* buffer,
                       va_list argptr) {
   return base::vsnprintf(buffer, buf_size, format, argptr);
 }
-
-#if defined(OS_WIN)
-inline int vsnprintfT(wchar_t* buffer,
-                      size_t buf_size,
-                      const wchar_t* format,
-                      va_list argptr) {
-  return base::vswprintf(buffer, buf_size, format, argptr);
-}
-#endif
 
 // Templatized backend for StringPrintF/StringAppendF. This does not finalize
 // the va_list, the caller is expected to do that.
@@ -119,17 +110,6 @@ std::string StringPrintf(const char* format, ...) {
   return result;
 }
 
-#if defined(OS_WIN)
-std::wstring StringPrintf(const wchar_t* format, ...) {
-  va_list ap;
-  va_start(ap, format);
-  std::wstring result;
-  StringAppendV(&result, format, ap);
-  va_end(ap);
-  return result;
-}
-#endif
-
 std::string StringPrintV(const char* format, va_list ap) {
   std::string result;
   StringAppendV(&result, format, ap);
@@ -145,18 +125,6 @@ const std::string& SStringPrintf(std::string* dst, const char* format, ...) {
   return *dst;
 }
 
-#if defined(OS_WIN)
-const std::wstring& SStringPrintf(std::wstring* dst,
-                                  const wchar_t* format, ...) {
-  va_list ap;
-  va_start(ap, format);
-  dst->clear();
-  StringAppendV(dst, format, ap);
-  va_end(ap);
-  return *dst;
-}
-#endif
-
 void StringAppendF(std::string* dst, const char* format, ...) {
   va_list ap;
   va_start(ap, format);
@@ -164,23 +132,8 @@ void StringAppendF(std::string* dst, const char* format, ...) {
   va_end(ap);
 }
 
-#if defined(OS_WIN)
-void StringAppendF(std::wstring* dst, const wchar_t* format, ...) {
-  va_list ap;
-  va_start(ap, format);
-  StringAppendV(dst, format, ap);
-  va_end(ap);
-}
-#endif
-
 void StringAppendV(std::string* dst, const char* format, va_list ap) {
   StringAppendVT(dst, format, ap);
 }
-
-#if defined(OS_WIN)
-void StringAppendV(std::wstring* dst, const wchar_t* format, va_list ap) {
-  StringAppendVT(dst, format, ap);
-}
-#endif
 
 }  // namespace base

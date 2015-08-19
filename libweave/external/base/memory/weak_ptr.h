@@ -68,8 +68,6 @@
 #include "base/base_export.h"
 #include "base/logging.h"
 #include "base/memory/ref_counted.h"
-#include "base/sequence_checker.h"
-#include "base/template_util.h"
 
 namespace base {
 
@@ -96,7 +94,6 @@ class BASE_EXPORT WeakReference {
 
     ~Flag();
 
-    SequenceChecker sequence_checker_;
     bool is_valid_;
   };
 
@@ -153,8 +150,8 @@ class SupportsWeakPtrBase {
   // function that makes calling this easier.
   template<typename Derived>
   static WeakPtr<Derived> StaticAsWeakPtr(Derived* t) {
-    typedef
-        is_convertible<Derived, internal::SupportsWeakPtrBase&> convertible;
+    typedef std::is_convertible<Derived*, internal::SupportsWeakPtrBase*>
+        convertible;
     COMPILE_ASSERT(convertible::value,
                    AsWeakPtr_argument_inherits_from_SupportsWeakPtr);
     return AsWeakPtrImpl<Derived>(t, *t);

@@ -4,8 +4,9 @@
 
 #include "base/template_util.h"
 
+#include <gtest/gtest.h>
+
 #include "base/basictypes.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {
@@ -16,6 +17,13 @@ enum AnEnum {};
 
 class Parent {};
 class Child : public Parent {};
+
+using std::is_pointer;
+using std::is_array;
+using std::is_convertible;
+using std::is_same;
+using std::is_class;
+using std::is_member_function_pointer;
 
 // is_pointer<Type>
 COMPILE_ASSERT(!is_pointer<int>::value, IsPointer);

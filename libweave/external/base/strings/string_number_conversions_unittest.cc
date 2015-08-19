@@ -11,10 +11,10 @@
 #include <cmath>
 #include <limits>
 
-#include "base/format_macros.h"
+#include <gtest/gtest.h>
+
 #include "base/strings/stringprintf.h"
-#include "base/strings/utf_string_conversions.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include "base/strings/utf_string_conversion_utils.h"
 
 namespace base {
 
@@ -50,16 +50,12 @@ TEST(StringNumberConversionsTest, IntToString) {
   for (size_t i = 0; i < arraysize(int_tests); ++i) {
     const IntToStringTest<int>* test = &int_tests[i];
     EXPECT_EQ(IntToString(test->num), test->sexpected);
-    EXPECT_EQ(IntToString16(test->num), UTF8ToUTF16(test->sexpected));
     EXPECT_EQ(UintToString(test->num), test->uexpected);
-    EXPECT_EQ(UintToString16(test->num), UTF8ToUTF16(test->uexpected));
   }
   for (size_t i = 0; i < arraysize(int64_tests); ++i) {
     const IntToStringTest<int64>* test = &int64_tests[i];
     EXPECT_EQ(Int64ToString(test->num), test->sexpected);
-    EXPECT_EQ(Int64ToString16(test->num), UTF8ToUTF16(test->sexpected));
     EXPECT_EQ(Uint64ToString(test->num), test->uexpected);
-    EXPECT_EQ(Uint64ToString16(test->num), UTF8ToUTF16(test->uexpected));
   }
 }
 
@@ -80,7 +76,7 @@ TEST(StringNumberConversionsTest, Uint64ToString) {
 
 TEST(StringNumberConversionsTest, SizeTToString) {
   size_t size_t_max = std::numeric_limits<size_t>::max();
-  std::string size_t_max_string = StringPrintf("%" PRIuS, size_t_max);
+  std::string size_t_max_string = std::to_string(size_t_max);
 
   static const struct {
     size_t input;
@@ -137,11 +133,6 @@ TEST(StringNumberConversionsTest, StringToInt) {
     int output = 0;
     EXPECT_EQ(cases[i].success, StringToInt(cases[i].input, &output));
     EXPECT_EQ(cases[i].output, output);
-
-    string16 utf16_input = UTF8ToUTF16(cases[i].input);
-    output = 0;
-    EXPECT_EQ(cases[i].success, StringToInt(utf16_input, &output));
-    EXPECT_EQ(cases[i].output, output);
   }
 
   // One additional test to verify that conversion of numbers in strings with
@@ -152,16 +143,6 @@ TEST(StringNumberConversionsTest, StringToInt) {
   int output;
   EXPECT_FALSE(StringToInt(input_string, &output));
   EXPECT_EQ(6, output);
-
-  string16 utf16_input = UTF8ToUTF16(input_string);
-  output = 0;
-  EXPECT_FALSE(StringToInt(utf16_input, &output));
-  EXPECT_EQ(6, output);
-
-  output = 0;
-  const char16 negative_wide_input[] = { 0xFF4D, '4', '2', 0};
-  EXPECT_FALSE(StringToInt(string16(negative_wide_input), &output));
-  EXPECT_EQ(0, output);
 }
 
 TEST(StringNumberConversionsTest, StringToUint) {
@@ -201,11 +182,6 @@ TEST(StringNumberConversionsTest, StringToUint) {
     unsigned output = 0;
     EXPECT_EQ(cases[i].success, StringToUint(cases[i].input, &output));
     EXPECT_EQ(cases[i].output, output);
-
-    string16 utf16_input = UTF8ToUTF16(cases[i].input);
-    output = 0;
-    EXPECT_EQ(cases[i].success, StringToUint(utf16_input, &output));
-    EXPECT_EQ(cases[i].output, output);
   }
 
   // One additional test to verify that conversion of numbers in strings with
@@ -216,16 +192,6 @@ TEST(StringNumberConversionsTest, StringToUint) {
   unsigned output;
   EXPECT_FALSE(StringToUint(input_string, &output));
   EXPECT_EQ(6U, output);
-
-  string16 utf16_input = UTF8ToUTF16(input_string);
-  output = 0;
-  EXPECT_FALSE(StringToUint(utf16_input, &output));
-  EXPECT_EQ(6U, output);
-
-  output = 0;
-  const char16 negative_wide_input[] = { 0xFF4D, '4', '2', 0};
-  EXPECT_FALSE(StringToUint(string16(negative_wide_input), &output));
-  EXPECT_EQ(0U, output);
 }
 
 TEST(StringNumberConversionsTest, StringToInt64) {
@@ -271,11 +237,6 @@ TEST(StringNumberConversionsTest, StringToInt64) {
     int64 output = 0;
     EXPECT_EQ(cases[i].success, StringToInt64(cases[i].input, &output));
     EXPECT_EQ(cases[i].output, output);
-
-    string16 utf16_input = UTF8ToUTF16(cases[i].input);
-    output = 0;
-    EXPECT_EQ(cases[i].success, StringToInt64(utf16_input, &output));
-    EXPECT_EQ(cases[i].output, output);
   }
 
   // One additional test to verify that conversion of numbers in strings with
@@ -285,11 +246,6 @@ TEST(StringNumberConversionsTest, StringToInt64) {
   std::string input_string(input, arraysize(input) - 1);
   int64 output;
   EXPECT_FALSE(StringToInt64(input_string, &output));
-  EXPECT_EQ(6, output);
-
-  string16 utf16_input = UTF8ToUTF16(input_string);
-  output = 0;
-  EXPECT_FALSE(StringToInt64(utf16_input, &output));
   EXPECT_EQ(6, output);
 }
 
@@ -338,11 +294,6 @@ TEST(StringNumberConversionsTest, StringToUint64) {
     uint64 output = 0;
     EXPECT_EQ(cases[i].success, StringToUint64(cases[i].input, &output));
     EXPECT_EQ(cases[i].output, output);
-
-    string16 utf16_input = UTF8ToUTF16(cases[i].input);
-    output = 0;
-    EXPECT_EQ(cases[i].success, StringToUint64(utf16_input, &output));
-    EXPECT_EQ(cases[i].output, output);
   }
 
   // One additional test to verify that conversion of numbers in strings with
@@ -353,16 +304,11 @@ TEST(StringNumberConversionsTest, StringToUint64) {
   uint64 output;
   EXPECT_FALSE(StringToUint64(input_string, &output));
   EXPECT_EQ(6U, output);
-
-  string16 utf16_input = UTF8ToUTF16(input_string);
-  output = 0;
-  EXPECT_FALSE(StringToUint64(utf16_input, &output));
-  EXPECT_EQ(6U, output);
 }
 
 TEST(StringNumberConversionsTest, StringToSizeT) {
   size_t size_t_max = std::numeric_limits<size_t>::max();
-  std::string size_t_max_string = StringPrintf("%" PRIuS, size_t_max);
+  std::string size_t_max_string = std::to_string(size_t_max);
 
   static const struct {
     std::string input;
@@ -407,11 +353,6 @@ TEST(StringNumberConversionsTest, StringToSizeT) {
     size_t output = 0;
     EXPECT_EQ(cases[i].success, StringToSizeT(cases[i].input, &output));
     EXPECT_EQ(cases[i].output, output);
-
-    string16 utf16_input = UTF8ToUTF16(cases[i].input);
-    output = 0;
-    EXPECT_EQ(cases[i].success, StringToSizeT(utf16_input, &output));
-    EXPECT_EQ(cases[i].output, output);
   }
 
   // One additional test to verify that conversion of numbers in strings with
@@ -421,11 +362,6 @@ TEST(StringNumberConversionsTest, StringToSizeT) {
   std::string input_string(input, arraysize(input) - 1);
   size_t output;
   EXPECT_FALSE(StringToSizeT(input_string, &output));
-  EXPECT_EQ(6U, output);
-
-  string16 utf16_input = UTF8ToUTF16(input_string);
-  output = 0;
-  EXPECT_FALSE(StringToSizeT(utf16_input, &output));
   EXPECT_EQ(6U, output);
 }
 

@@ -4,10 +4,10 @@
 
 #include <string>
 
-#include "base/strings/string16.h"
+#include <gtest/gtest.h>
+
 #include "base/strings/string_piece.h"
-#include "base/strings/utf_string_conversions.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include "base/strings/utf_string_conversion_utils.h"
 
 namespace base {
 
@@ -22,18 +22,7 @@ class CommonStringPieceTest : public ::testing::Test {
   }
 };
 
-template <>
-class CommonStringPieceTest<string16> : public ::testing::Test {
- public:
-  static const string16 as_string(const char* input) {
-    return ASCIIToUTF16(input);
-  }
-  static const string16 as_string(const std::string& input) {
-    return ASCIIToUTF16(input);
-  }
-};
-
-typedef ::testing::Types<std::string, string16> SupportedStringTypes;
+typedef ::testing::Types<std::string> SupportedStringTypes;
 
 TYPED_TEST_CASE(CommonStringPieceTest, SupportedStringTypes);
 
@@ -638,32 +627,6 @@ TYPED_TEST(CommonStringPieceTest, HeterogenousStringPieceEquals) {
 
   ASSERT_TRUE(BasicStringPiece<TypeParam>(hello) == hello);
   ASSERT_TRUE(hello.c_str() == BasicStringPiece<TypeParam>(hello));
-}
-
-// string16-specific stuff
-TEST(StringPiece16Test, CheckSTL) {
-  // Check some non-ascii characters.
-  string16 fifth(ASCIIToUTF16("123"));
-  fifth.push_back(0x0000);
-  fifth.push_back(0xd8c5);
-  fifth.push_back(0xdffe);
-  StringPiece16 f(fifth);
-
-  ASSERT_EQ(f[3], '\0');
-  ASSERT_EQ(f[5], static_cast<char16>(0xdffe));
-
-  ASSERT_EQ(f.size(), 6U);
-}
-
-
-
-TEST(StringPiece16Test, CheckConversion) {
-  // Make sure that we can convert from UTF8 to UTF16 and back. We use a two
-  // byte character (G clef) to test this.
-  ASSERT_EQ(
-      UTF16ToUTF8(
-          StringPiece16(UTF8ToUTF16("\xf0\x9d\x84\x9e")).as_string()),
-      "\xf0\x9d\x84\x9e");
 }
 
 TYPED_TEST(CommonStringPieceTest, CheckConstructors) {

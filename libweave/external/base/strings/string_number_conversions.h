@@ -10,7 +10,6 @@
 
 #include "base/base_export.h"
 #include "base/basictypes.h"
-#include "base/strings/string16.h"
 #include "base/strings/string_piece.h"
 
 // ----------------------------------------------------------------------------
@@ -30,19 +29,14 @@ namespace base {
 // Number -> string conversions ------------------------------------------------
 
 BASE_EXPORT std::string IntToString(int value);
-BASE_EXPORT string16 IntToString16(int value);
 
 BASE_EXPORT std::string UintToString(unsigned value);
-BASE_EXPORT string16 UintToString16(unsigned value);
 
 BASE_EXPORT std::string Int64ToString(int64 value);
-BASE_EXPORT string16 Int64ToString16(int64 value);
 
 BASE_EXPORT std::string Uint64ToString(uint64 value);
-BASE_EXPORT string16 Uint64ToString16(uint64 value);
 
 BASE_EXPORT std::string SizeTToString(size_t value);
-BASE_EXPORT string16 SizeTToString16(size_t value);
 
 // DoubleToString converts the double to a string format that ignores the
 // locale. If you want to use locale specific formatting, use ICU.
@@ -65,19 +59,14 @@ BASE_EXPORT std::string DoubleToString(double value);
 //    |*output| will be set to 0.
 //  - Empty string.  |*output| will be set to 0.
 BASE_EXPORT bool StringToInt(const StringPiece& input, int* output);
-BASE_EXPORT bool StringToInt(const StringPiece16& input, int* output);
 
 BASE_EXPORT bool StringToUint(const StringPiece& input, unsigned* output);
-BASE_EXPORT bool StringToUint(const StringPiece16& input, unsigned* output);
 
 BASE_EXPORT bool StringToInt64(const StringPiece& input, int64* output);
-BASE_EXPORT bool StringToInt64(const StringPiece16& input, int64* output);
 
 BASE_EXPORT bool StringToUint64(const StringPiece& input, uint64* output);
-BASE_EXPORT bool StringToUint64(const StringPiece16& input, uint64* output);
 
 BASE_EXPORT bool StringToSizeT(const StringPiece& input, size_t* output);
-BASE_EXPORT bool StringToSizeT(const StringPiece16& input, size_t* output);
 
 // For floating-point conversions, only conversions of input strings in decimal
 // form are defined to work.  Behavior with strings representing floating-point

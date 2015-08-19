@@ -4,11 +4,12 @@
 
 #include "base/callback_list.h"
 
+#include <gtest/gtest.h>
+
 #include "base/basictypes.h"
 #include "base/bind.h"
 #include "base/bind_helpers.h"
 #include "base/memory/scoped_ptr.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 namespace {

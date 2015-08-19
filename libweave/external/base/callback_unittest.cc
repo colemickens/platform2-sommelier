@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/bind.h"
 #include "base/callback.h"
-#include "base/callback_helpers.h"
+
+#include <gtest/gtest.h>
+
+#include "base/bind.h"
 #include "base/callback_internal.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -147,15 +148,6 @@ struct TestForReentrancy {
   bool cb_already_run;
   Closure cb;
 };
-
-TEST_F(CallbackTest, ResetAndReturn) {
-  TestForReentrancy tfr;
-  ASSERT_FALSE(tfr.cb.is_null());
-  ASSERT_FALSE(tfr.cb_already_run);
-  ResetAndReturn(&tfr.cb).Run();
-  ASSERT_TRUE(tfr.cb.is_null());
-  ASSERT_TRUE(tfr.cb_already_run);
-}
 
 class CallbackOwner : public base::RefCounted<CallbackOwner> {
  public:

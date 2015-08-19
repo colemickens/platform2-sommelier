@@ -6,10 +6,10 @@
 
 #include <string>
 
+#include "base/logging.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversion_utils.h"
-#include "base/strings/utf_string_conversions.h"
 #include "base/third_party/icu/icu_utf.h"
 
 namespace base {
@@ -107,20 +107,7 @@ bool EscapeJSONString(const StringPiece& str,
   return EscapeJSONStringImpl(str, put_in_quotes, dest);
 }
 
-bool EscapeJSONString(const StringPiece16& str,
-                      bool put_in_quotes,
-                      std::string* dest) {
-  return EscapeJSONStringImpl(str, put_in_quotes, dest);
-}
-
 std::string GetQuotedJSONString(const StringPiece& str) {
-  std::string dest;
-  bool ok = EscapeJSONStringImpl(str, true, &dest);
-  DCHECK(ok);
-  return dest;
-}
-
-std::string GetQuotedJSONString(const StringPiece16& str) {
   std::string dest;
   bool ok = EscapeJSONStringImpl(str, true, &dest);
   DCHECK(ok);

@@ -13,7 +13,6 @@
 
 #include "base/logging.h"
 #include "base/scoped_clear_errno.h"
-#include "base/strings/utf_string_conversions.h"
 #include "base/third_party/dmg_fp/dmg_fp.h"
 
 namespace base {
@@ -142,13 +141,6 @@ template<> class WhitespaceHelper<char> {
  public:
   static bool Invoke(char c) {
     return 0 != isspace(static_cast<unsigned char>(c));
-  }
-};
-
-template<> class WhitespaceHelper<char16> {
- public:
-  static bool Invoke(char16 c) {
-    return 0 != iswspace(c);
   }
 };
 
@@ -352,28 +344,10 @@ bool StringToIntImpl(const StringPiece& input, VALUE* output) {
       input.begin(), input.end(), output);
 }
 
-template <typename VALUE, int BASE>
-class StringPiece16ToNumberTraits
-    : public BaseIteratorRangeToNumberTraits<StringPiece16::const_iterator,
-                                             VALUE,
-                                             BASE> {
-};
-
-template <typename VALUE>
-bool String16ToIntImpl(const StringPiece16& input, VALUE* output) {
-  return IteratorRangeToNumber<StringPiece16ToNumberTraits<VALUE, 10> >::Invoke(
-      input.begin(), input.end(), output);
-}
-
 }  // namespace
 
 std::string IntToString(int value) {
   return IntToStringT<std::string, int, unsigned int, true>::
-      IntToString(value);
-}
-
-string16 IntToString16(int value) {
-  return IntToStringT<string16, int, unsigned int, true>::
       IntToString(value);
 }
 
@@ -382,33 +356,16 @@ std::string UintToString(unsigned int value) {
       IntToString(value);
 }
 
-string16 UintToString16(unsigned int value) {
-  return IntToStringT<string16, unsigned int, unsigned int, false>::
-      IntToString(value);
-}
-
 std::string Int64ToString(int64 value) {
   return IntToStringT<std::string, int64, uint64, true>::IntToString(value);
-}
-
-string16 Int64ToString16(int64 value) {
-  return IntToStringT<string16, int64, uint64, true>::IntToString(value);
 }
 
 std::string Uint64ToString(uint64 value) {
   return IntToStringT<std::string, uint64, uint64, false>::IntToString(value);
 }
 
-string16 Uint64ToString16(uint64 value) {
-  return IntToStringT<string16, uint64, uint64, false>::IntToString(value);
-}
-
 std::string SizeTToString(size_t value) {
   return IntToStringT<std::string, size_t, size_t, false>::IntToString(value);
-}
-
-string16 SizeTToString16(size_t value) {
-  return IntToStringT<string16, size_t, size_t, false>::IntToString(value);
 }
 
 std::string DoubleToString(double value) {
@@ -422,40 +379,20 @@ bool StringToInt(const StringPiece& input, int* output) {
   return StringToIntImpl(input, output);
 }
 
-bool StringToInt(const StringPiece16& input, int* output) {
-  return String16ToIntImpl(input, output);
-}
-
 bool StringToUint(const StringPiece& input, unsigned* output) {
   return StringToIntImpl(input, output);
-}
-
-bool StringToUint(const StringPiece16& input, unsigned* output) {
-  return String16ToIntImpl(input, output);
 }
 
 bool StringToInt64(const StringPiece& input, int64* output) {
   return StringToIntImpl(input, output);
 }
 
-bool StringToInt64(const StringPiece16& input, int64* output) {
-  return String16ToIntImpl(input, output);
-}
-
 bool StringToUint64(const StringPiece& input, uint64* output) {
   return StringToIntImpl(input, output);
 }
 
-bool StringToUint64(const StringPiece16& input, uint64* output) {
-  return String16ToIntImpl(input, output);
-}
-
 bool StringToSizeT(const StringPiece& input, size_t* output) {
   return StringToIntImpl(input, output);
-}
-
-bool StringToSizeT(const StringPiece16& input, size_t* output) {
-  return String16ToIntImpl(input, output);
 }
 
 bool StringToDouble(const std::string& input, double* output) {

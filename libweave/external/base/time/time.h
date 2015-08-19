@@ -61,8 +61,8 @@
 
 #include "base/base_export.h"
 #include "base/basictypes.h"
+#include "base/build/build_config.h"
 #include "base/numerics/safe_math.h"
-#include "build/build_config.h"
 
 #if defined(OS_MACOSX)
 #include <CoreFoundation/CoreFoundation.h>
@@ -539,21 +539,6 @@ class BASE_EXPORT Time : public time_internal::TimeBase<Time> {
     return FromExploded(true, exploded);
   }
 
-  // Converts a string representation of time to a Time object.
-  // An example of a time string which is converted is as below:-
-  // "Tue, 15 Nov 1994 12:45:26 GMT". If the timezone is not specified
-  // in the input string, FromString assumes local time and FromUTCString
-  // assumes UTC. A timezone that cannot be parsed (e.g. "UTC" which is not
-  // specified in RFC822) is treated as if the timezone is not specified.
-  // TODO(iyengar) Move the FromString/FromTimeT/ToTimeT/FromFileTime to
-  // a new time converter class.
-  static bool FromString(const char* time_string, Time* parsed_time) {
-    return FromStringInternal(time_string, true, parsed_time);
-  }
-  static bool FromUTCString(const char* time_string, Time* parsed_time) {
-    return FromStringInternal(time_string, false, parsed_time);
-  }
-
   // Fills the given exploded structure with either the local time or UTC from
   // this time structure (containing UTC).
   void UTCExplode(Exploded* exploded) const {
@@ -580,17 +565,6 @@ class BASE_EXPORT Time : public time_internal::TimeBase<Time> {
   // Unexplodes a given time assuming the source is either local time
   // |is_local = true| or UTC |is_local = false|.
   static Time FromExploded(bool is_local, const Exploded& exploded);
-
-  // Converts a string representation of time to a Time object.
-  // An example of a time string which is converted is as below:-
-  // "Tue, 15 Nov 1994 12:45:26 GMT". If the timezone is not specified
-  // in the input string, local time |is_local = true| or
-  // UTC |is_local = false| is assumed. A timezone that cannot be parsed
-  // (e.g. "UTC" which is not specified in RFC822) is treated as if the
-  // timezone is not specified.
-  static bool FromStringInternal(const char* time_string,
-                                 bool is_local,
-                                 Time* parsed_time);
 };
 
 // Inline the TimeDelta factory methods, for fast TimeDelta construction.

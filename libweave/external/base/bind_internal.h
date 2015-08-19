@@ -6,12 +6,11 @@
 #define BASE_BIND_INTERNAL_H_
 
 #include "base/bind_helpers.h"
+#include "base/build/build_config.h"
 #include "base/callback_internal.h"
-#include "base/memory/raw_scoped_refptr_mismatch_checker.h"
 #include "base/memory/weak_ptr.h"
 #include "base/template_util.h"
 #include "base/tuple.h"
-#include "build/build_config.h"
 
 #if defined(OS_WIN)
 #include "base/bind_internal_win.h"
@@ -70,7 +69,7 @@ namespace internal {
 // Implementation note: This non-specialized case handles zero-arity case only.
 // Non-zero-arity cases should be handled by the specialization below.
 template <typename Sig>
-struct HasNonConstReferenceParam : false_type {};
+struct HasNonConstReferenceParam : std::false_type {};
 
 // Implementation note: Select true_type if the first parameter is a non-const
 // reference.  Otherwise, skip the first parameter and check rest of parameters
@@ -78,7 +77,7 @@ struct HasNonConstReferenceParam : false_type {};
 template <typename R, typename T, typename... Args>
 struct HasNonConstReferenceParam<R(T, Args...)>
     : SelectType<is_non_const_reference<T>::value,
-                 true_type,
+                 std::true_type,
                  HasNonConstReferenceParam<R(Args...)>>::Type {};
 
 // HasRefCountedTypeAsRawPtr selects true_type when any of the |Args| is a raw
@@ -86,16 +85,7 @@ struct HasNonConstReferenceParam<R(T, Args...)>
 // Implementation note: This non-specialized case handles zero-arity case only.
 // Non-zero-arity cases should be handled by the specialization below.
 template <typename... Args>
-struct HasRefCountedTypeAsRawPtr : false_type {};
-
-// Implementation note: Select true_type if the first parameter is a raw pointer
-// to a RefCounted type. Otherwise, skip the first parameter and check rest of
-// parameters recursively.
-template <typename T, typename... Args>
-struct HasRefCountedTypeAsRawPtr<T, Args...>
-    : SelectType<NeedsScopedRefptrButGetsRawPtr<T>::value,
-                 true_type,
-                 HasRefCountedTypeAsRawPtr<Args...>>::Type {};
+struct HasRefCountedTypeAsRawPtr : std::false_type {};
 
 // BindsArrayToFirstArg selects true_type when |is_method| is true and the first
 // item of |Args| is an array type.
@@ -103,10 +93,10 @@ struct HasRefCountedTypeAsRawPtr<T, Args...>
 // zero-arity case only.  Other cases should be handled by the specialization
 // below.
 template <bool is_method, typename... Args>
-struct BindsArrayToFirstArg : false_type {};
+struct BindsArrayToFirstArg : std::false_type {};
 
 template <typename T, typename... Args>
-struct BindsArrayToFirstArg<true, T, Args...> : is_array<T> {};
+struct BindsArrayToFirstArg<true, T, Args...> : std::is_array<T> {};
 
 // HasRefCountedParamAsRawPtr is the same to HasRefCountedTypeAsRawPtr except
 // when |is_method| is true HasRefCountedParamAsRawPtr skips the first argument.
@@ -166,7 +156,7 @@ template <typename R, typename T, typename... Args>
 class RunnableAdapter<R(T::*)(Args...)> {
  public:
   typedef R (RunType)(T*, Args...);
-  typedef true_type IsMethod;
+  typedef std::true_type IsMethod;
 
   explicit RunnableAdapter(R(T::*method)(Args...))
       : method_(method) {
@@ -185,7 +175,7 @@ template <typename R, typename T, typename... Args>
 class RunnableAdapter<R(T::*)(Args...) const> {
  public:
   typedef R (RunType)(const T*, Args...);
-  typedef true_type IsMethod;
+  typedef std::true_type IsMethod;
 
   explicit RunnableAdapter(R(T::*method)(Args...) const)
       : method_(method) {
@@ -311,7 +301,7 @@ struct InvokeHelper<true, ReturnType, Runnable, ArgsType> {
   // WeakCalls are only supported for functions with a void return type.
   // Otherwise, the function result would be undefined if the the WeakPtr<>
   // is invalidated.
-  COMPILE_ASSERT(is_void<ReturnType>::value,
+  COMPILE_ASSERT(std::is_void<ReturnType>::value,
                  weak_ptrs_can_only_bind_to_methods_without_return_values);
 };
 

@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include "base/json/json_writer.h"
+
+#include <gtest/gtest.h>
+
 #include "base/values.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 

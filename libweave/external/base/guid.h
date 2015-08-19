@@ -9,7 +9,7 @@
 
 #include "base/base_export.h"
 #include "base/basictypes.h"
-#include "build/build_config.h"
+#include "base/build/build_config.h"
 
 namespace base {
 
@@ -18,9 +18,6 @@ namespace base {
 // The POSIX implementation uses pseudo random number generation to create
 // the GUID.  The Windows implementation uses system services.
 BASE_EXPORT std::string GenerateGUID();
-
-// Returns true if the input string conforms to the GUID format.
-BASE_EXPORT bool IsValidGUID(const std::string& guid);
 
 #if defined(OS_POSIX)
 // For unit testing purposes only.  Do not use outside of tests.

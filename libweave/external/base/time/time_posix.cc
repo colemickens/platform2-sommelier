@@ -16,28 +16,12 @@
 #include <ostream>
 
 #include "base/basictypes.h"
+#include "base/build/build_config.h"
 #include "base/logging.h"
-#include "build/build_config.h"
-
-#if defined(OS_ANDROID)
-#include "base/os_compat_android.h"
-#elif defined(OS_NACL)
-#include "base/os_compat_nacl.h"
-#endif
-
-#if !defined(OS_MACOSX)
-#include "base/lazy_instance.h"
-#include "base/synchronization/lock.h"
-#endif
 
 namespace {
 
 #if !defined(OS_MACOSX)
-// This prevents a crash on traversing the environment global and looking up
-// the 'TZ' variable in libc. See: crbug.com/390567.
-base::LazyInstance<base::Lock>::Leaky
-    g_sys_time_to_time_struct_lock = LAZY_INSTANCE_INITIALIZER;
-
 // Define a system-specific SysTime that wraps either to a time_t or
 // a time64_t depending on the host system, and associated convertion.
 // See crbug.com/162007
@@ -45,7 +29,6 @@ base::LazyInstance<base::Lock>::Leaky
 typedef time64_t SysTime;
 
 SysTime SysTimeFromTimeStruct(struct tm* timestruct, bool is_local) {
-  base::AutoLock locked(g_sys_time_to_time_struct_lock.Get());
   if (is_local)
     return mktime64(timestruct);
   else
@@ -53,7 +36,6 @@ SysTime SysTimeFromTimeStruct(struct tm* timestruct, bool is_local) {
 }
 
 void SysTimeToTimeStruct(SysTime t, struct tm* timestruct, bool is_local) {
-  base::AutoLock locked(g_sys_time_to_time_struct_lock.Get());
   if (is_local)
     localtime64_r(&t, timestruct);
   else
@@ -64,7 +46,6 @@ void SysTimeToTimeStruct(SysTime t, struct tm* timestruct, bool is_local) {
 typedef time_t SysTime;
 
 SysTime SysTimeFromTimeStruct(struct tm* timestruct, bool is_local) {
-  base::AutoLock locked(g_sys_time_to_time_struct_lock.Get());
   if (is_local)
     return mktime(timestruct);
   else
@@ -72,7 +53,6 @@ SysTime SysTimeFromTimeStruct(struct tm* timestruct, bool is_local) {
 }
 
 void SysTimeToTimeStruct(SysTime t, struct tm* timestruct, bool is_local) {
-  base::AutoLock locked(g_sys_time_to_time_struct_lock.Get());
   if (is_local)
     localtime_r(&t, timestruct);
   else
@@ -154,7 +134,7 @@ Time Time::Now() {
   struct timezone tz = { 0, 0 };  // UTC
   if (gettimeofday(&tv, &tz) != 0) {
     DCHECK(0) << "Could not determine time of day";
-    PLOG(ERROR) << "Call to gettimeofday failed.";
+    LOG(ERROR) << "Call to gettimeofday failed.";
     // Return null instead of uninitialized |tv| value, which contains random
     // garbage data. This may result in the crash seen in crbug.com/147570.
     return Time();

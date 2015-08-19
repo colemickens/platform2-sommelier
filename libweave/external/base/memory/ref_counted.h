@@ -10,13 +10,10 @@
 
 #include "base/atomic_ref_count.h"
 #include "base/base_export.h"
+#include "base/build/build_config.h"
 #include "base/compiler_specific.h"
-#ifndef NDEBUG
 #include "base/logging.h"
-#endif
 #include "base/move.h"
-#include "base/threading/thread_collision_warner.h"
-#include "build/build_config.h"
 
 namespace base {
 
@@ -43,10 +40,6 @@ class BASE_EXPORT RefCountedBase {
 
 
   void AddRef() const {
-    // TODO(maruel): Add back once it doesn't assert 500 times/sec.
-    // Current thread books the critical section "AddRelease"
-    // without release it.
-    // DFAKE_SCOPED_LOCK_THREAD_LOCKED(add_release_);
   #ifndef NDEBUG
     DCHECK(!in_dtor_);
   #endif
@@ -55,10 +48,6 @@ class BASE_EXPORT RefCountedBase {
 
   // Returns true if the object should self-delete.
   bool Release() const {
-    // TODO(maruel): Add back once it doesn't assert 500 times/sec.
-    // Current thread books the critical section "AddRelease"
-    // without release it.
-    // DFAKE_SCOPED_LOCK_THREAD_LOCKED(add_release_);
   #ifndef NDEBUG
     DCHECK(!in_dtor_);
   #endif
@@ -76,8 +65,6 @@ class BASE_EXPORT RefCountedBase {
 #ifndef NDEBUG
   mutable bool in_dtor_;
 #endif
-
-  DFAKE_MUTEX(add_release_);
 
   DISALLOW_COPY_AND_ASSIGN(RefCountedBase);
 };

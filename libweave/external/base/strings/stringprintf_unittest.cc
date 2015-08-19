@@ -6,8 +6,9 @@
 
 #include <errno.h>
 
+#include <gtest/gtest.h>
+
 #include "base/basictypes.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -79,10 +80,6 @@ TEST(StringPrintfTest, StringPrintfBounds) {
   char src[kSrcLen];
   for (size_t i = 0; i < arraysize(src); i++)
     src[i] = 'A';
-
-  wchar_t srcw[kSrcLen];
-  for (size_t i = 0; i < arraysize(srcw); i++)
-    srcw[i] = 'A';
 
   for (int i = 1; i < 3; i++) {
     src[kSrcLen - i] = 0;

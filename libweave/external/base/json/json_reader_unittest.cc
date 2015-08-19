@@ -4,16 +4,14 @@
 
 #include "base/json/json_reader.h"
 
-#include "base/base_paths.h"
-#include "base/files/file_util.h"
+#include <gtest/gtest.h>
+
+#include "base/build/build_config.h"
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/path_service.h"
 #include "base/strings/string_piece.h"
-#include "base/strings/utf_string_conversions.h"
+#include "base/strings/utf_string_conversion_utils.h"
 #include "base/values.h"
-#include "build/build_config.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -225,7 +223,7 @@ TEST(JSONReaderTest, Reading) {
   EXPECT_TRUE(root->IsType(Value::TYPE_STRING));
   str_val.clear();
   EXPECT_TRUE(root->GetAsString(&str_val));
-  EXPECT_EQ(std::wstring(L"A\0\x1234", 3), UTF8ToWide(str_val));
+  EXPECT_EQ((std::string{'A', '\0', '\xE1', '\x88', '\xB4'}), str_val);
 
   // Test invalid strings
   root = JSONReader().ReadToValue("\"no closing quote");
@@ -482,7 +480,7 @@ TEST(JSONReaderTest, Reading) {
   EXPECT_TRUE(root->IsType(Value::TYPE_STRING));
   str_val.clear();
   EXPECT_TRUE(root->GetAsString(&str_val));
-  EXPECT_EQ(L"\x7f51\x9875", UTF8ToWide(str_val));
+  EXPECT_EQ("\xE7\xBD\x91\xE9\xA1\xB5", str_val);
 
   root = JSONReader().ReadToValue(
       "{\"path\": \"/tmp/\xc3\xa0\xc3\xa8\xc3\xb2.png\"}");
@@ -549,22 +547,6 @@ TEST(JSONReaderTest, Reading) {
   ASSERT_TRUE(root.get());
   EXPECT_TRUE(root->GetAsString(&str_val));
   EXPECT_EQ("root", str_val);
-}
-
-TEST(JSONReaderTest, ReadFromFile) {
-  FilePath path;
-  ASSERT_TRUE(PathService::Get(base::DIR_TEST_DATA, &path));
-  path = path.AppendASCII("json");
-  ASSERT_TRUE(base::PathExists(path));
-
-  std::string input;
-  ASSERT_TRUE(ReadFileToString(
-      path.Append(FILE_PATH_LITERAL("bom_feff.json")), &input));
-
-  JSONReader reader;
-  scoped_ptr<Value> root(reader.ReadToValue(input));
-  ASSERT_TRUE(root.get()) << reader.GetErrorMessage();
-  EXPECT_TRUE(root->IsType(Value::TYPE_DICTIONARY));
 }
 
 // Tests that the root of a JSON object can be deleted safely while its

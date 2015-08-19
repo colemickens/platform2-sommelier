@@ -4,8 +4,7 @@
 
 #include "base/memory/ref_counted.h"
 
-#include "base/test/opaque_ref_counted.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -137,16 +136,6 @@ TEST(RefCountedUnitTest, ScopedRefPtrToSelfMoveAssignment) {
   // release |check->self_ptr_|.
   check->self_ptr_ = scoped_refptr<ScopedRefPtrToSelf>();
   EXPECT_TRUE(ScopedRefPtrToSelf::was_destroyed());
-}
-
-TEST(RefCountedUnitTest, ScopedRefPtrToOpaque) {
-  scoped_refptr<base::OpaqueRefCounted> p = base::MakeOpaqueRefCounted();
-  base::TestOpaqueRefCounted(p);
-
-  scoped_refptr<base::OpaqueRefCounted> q;
-  q = p;
-  base::TestOpaqueRefCounted(p);
-  base::TestOpaqueRefCounted(q);
 }
 
 TEST(RefCountedUnitTest, BooleanTesting) {

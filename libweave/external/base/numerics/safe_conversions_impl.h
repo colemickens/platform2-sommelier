@@ -7,8 +7,6 @@
 
 #include <limits>
 
-#include "base/template_util.h"
-
 namespace base {
 namespace internal {
 

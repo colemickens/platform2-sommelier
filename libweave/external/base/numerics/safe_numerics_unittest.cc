@@ -9,11 +9,12 @@
 
 #include <limits>
 
+#include <gtest/gtest.h>
+
 #include "base/compiler_specific.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/numerics/safe_math.h"
 #include "base/template_util.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 using std::numeric_limits;
 using base::CheckedNumeric;
@@ -27,7 +28,7 @@ using base::internal::RANGE_VALID;
 using base::internal::RANGE_INVALID;
 using base::internal::RANGE_OVERFLOW;
 using base::internal::RANGE_UNDERFLOW;
-using base::enable_if;
+using std::enable_if;
 
 // These tests deliberately cause arithmetic overflows. If the compiler is
 // aggressive enough, it can const fold these overflows. Disable warnings about

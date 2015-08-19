@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "testing/gtest/include/gtest/gtest.h"
+#include <gtest/gtest.h>
 
 template <class AtomicType>
 static void TestAtomicIncrement() {

@@ -6,10 +6,11 @@
 
 #include <sstream>
 
+#include <gtest/gtest.h>
+
 #include "base/basictypes.h"
 #include "base/bind.h"
 #include "base/callback.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace {
 

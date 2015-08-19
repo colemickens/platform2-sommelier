@@ -12,8 +12,7 @@
 
 #include "base/base_export.h"
 #include "base/basictypes.h"
-#include "base/debug/debugger.h"
-#include "build/build_config.h"
+#include "base/build/build_config.h"
 
 //
 // Optional message capabilities
@@ -114,18 +113,6 @@
 //
 // We also override the standard 'assert' to use 'DLOG_ASSERT'.
 //
-// Lastly, there is:
-//
-//   PLOG(ERROR) << "Couldn't do foo";
-//   DPLOG(ERROR) << "Couldn't do foo";
-//   PLOG_IF(ERROR, cond) << "Couldn't do foo";
-//   DPLOG_IF(ERROR, cond) << "Couldn't do foo";
-//   PCHECK(condition) << "Couldn't do foo";
-//   DPCHECK(condition) << "Couldn't do foo";
-//
-// which append the last system error to the message in string form (taken from
-// GetLastError() on Windows and errno on POSIX).
-//
 // The supported severity levels for macros that allow you to specify one
 // are (in increasing order of severity) INFO, WARNING, ERROR, and FATAL.
 //
@@ -137,61 +124,24 @@
 
 namespace logging {
 
-// TODO(avi): do we want to do a unification of character types here?
-#if defined(OS_WIN)
-typedef wchar_t PathChar;
-#else
-typedef char PathChar;
-#endif
-
 // Where to record logging output? A flat file and/or system debug log
 // via OutputDebugString.
 enum LoggingDestination {
   LOG_NONE                = 0,
-  LOG_TO_FILE             = 1 << 0,
   LOG_TO_SYSTEM_DEBUG_LOG = 1 << 1,
 
-  LOG_TO_ALL = LOG_TO_FILE | LOG_TO_SYSTEM_DEBUG_LOG,
+  LOG_TO_ALL = LOG_TO_SYSTEM_DEBUG_LOG,
 
-  // On Windows, use a file next to the exe; on POSIX platforms, where
-  // it may not even be possible to locate the executable on disk, use
-  // stderr.
-#if defined(OS_WIN)
-  LOG_DEFAULT = LOG_TO_FILE,
-#elif defined(OS_POSIX)
   LOG_DEFAULT = LOG_TO_SYSTEM_DEBUG_LOG,
-#endif
 };
-
-// Indicates that the log file should be locked when being written to.
-// Unless there is only one single-threaded process that is logging to
-// the log file, the file should be locked during writes to make each
-// log output atomic. Other writers will block.
-//
-// All processes writing to the log file must have their locking set for it to
-// work properly. Defaults to LOCK_LOG_FILE.
-enum LogLockingState { LOCK_LOG_FILE, DONT_LOCK_LOG_FILE };
-
-// On startup, should we delete or append to an existing log file (if any)?
-// Defaults to APPEND_TO_OLD_LOG_FILE.
-enum OldFileDeletionState { DELETE_OLD_LOG_FILE, APPEND_TO_OLD_LOG_FILE };
 
 struct BASE_EXPORT LoggingSettings {
   // The defaults values are:
   //
   //  logging_dest: LOG_DEFAULT
-  //  log_file:     NULL
-  //  lock_log:     LOCK_LOG_FILE
-  //  delete_old:   APPEND_TO_OLD_LOG_FILE
   LoggingSettings();
 
   LoggingDestination logging_dest;
-
-  // The three settings below have an effect only when LOG_TO_FILE is
-  // set in |logging_dest|.
-  const PathChar* log_file;
-  LogLockingState lock_log;
-  OldFileDeletionState delete_old;
 };
 
 // Define different names for the BaseInitLoggingImpl() function depending on
@@ -322,20 +272,6 @@ const LogSeverity LOG_DFATAL = LOG_FATAL;
 #define COMPACT_GOOGLE_LOG_DFATAL \
   COMPACT_GOOGLE_LOG_EX_DFATAL(LogMessage)
 
-#if defined(OS_WIN)
-// wingdi.h defines ERROR to be 0. When we call LOG(ERROR), it gets
-// substituted with 0, and it expands to COMPACT_GOOGLE_LOG_0. To allow us
-// to keep using this syntax, we define this macro to do the same thing
-// as COMPACT_GOOGLE_LOG_ERROR, and also define ERROR the same way that
-// the Windows SDK does for consistency.
-#define ERROR 0
-#define COMPACT_GOOGLE_LOG_EX_0(ClassName, ...) \
-  COMPACT_GOOGLE_LOG_EX_ERROR(ClassName , ##__VA_ARGS__)
-#define COMPACT_GOOGLE_LOG_0 COMPACT_GOOGLE_LOG_ERROR
-// Needed for LOG_IS_ON(ERROR).
-const LogSeverity LOG_0 = LOG_ERROR;
-#endif
-
 // As special cases, we can assume that LOG_IS_ON(FATAL) always holds. Also,
 // LOG_IS_ON(DFATAL) always holds in debug mode. In particular, CHECK()s will
 // always fire if they fail.
@@ -382,45 +318,10 @@ const LogSeverity LOG_0 = LOG_ERROR;
   LAZY_STREAM(VLOG_STREAM(verbose_level), \
       VLOG_IS_ON(verbose_level) && (condition))
 
-#if defined (OS_WIN)
-#define VPLOG_STREAM(verbose_level) \
-  logging::Win32ErrorLogMessage(__FILE__, __LINE__, -verbose_level, \
-    ::logging::GetLastSystemErrorCode()).stream()
-#elif defined(OS_POSIX)
-#define VPLOG_STREAM(verbose_level) \
-  logging::ErrnoLogMessage(__FILE__, __LINE__, -verbose_level, \
-    ::logging::GetLastSystemErrorCode()).stream()
-#endif
-
-#define VPLOG(verbose_level) \
-  LAZY_STREAM(VPLOG_STREAM(verbose_level), VLOG_IS_ON(verbose_level))
-
-#define VPLOG_IF(verbose_level, condition) \
-  LAZY_STREAM(VPLOG_STREAM(verbose_level), \
-    VLOG_IS_ON(verbose_level) && (condition))
-
-// TODO(akalin): Add more VLOG variants, e.g. VPLOG.
-
 #define LOG_ASSERT(condition)  \
   LOG_IF(FATAL, !(condition)) << "Assert failed: " #condition ". "
 #define SYSLOG_ASSERT(condition) \
   SYSLOG_IF(FATAL, !(condition)) << "Assert failed: " #condition ". "
-
-#if defined(OS_WIN)
-#define PLOG_STREAM(severity) \
-  COMPACT_GOOGLE_LOG_EX_ ## severity(Win32ErrorLogMessage, \
-      ::logging::GetLastSystemErrorCode()).stream()
-#elif defined(OS_POSIX)
-#define PLOG_STREAM(severity) \
-  COMPACT_GOOGLE_LOG_EX_ ## severity(ErrnoLogMessage, \
-      ::logging::GetLastSystemErrorCode()).stream()
-#endif
-
-#define PLOG(severity)                                          \
-  LAZY_STREAM(PLOG_STREAM(severity), LOG_IS_ON(severity))
-
-#define PLOG_IF(severity, condition) \
-  LAZY_STREAM(PLOG_STREAM(severity), LOG_IS_ON(severity) && (condition))
 
 // The actual stream used isn't important.
 #define EAT_STREAM_PARAMETERS                                           \
@@ -450,35 +351,9 @@ const LogSeverity LOG_0 = LOG_ERROR;
 
 #else
 
-#if defined(_PREFAST_) && defined(OS_WIN)
-// Use __analysis_assume to tell the VC++ static analysis engine that
-// assert conditions are true, to suppress warnings.  The LAZY_STREAM
-// parameter doesn't reference 'condition' in /analyze builds because
-// this evaluation confuses /analyze. The !! before condition is because
-// __analysis_assume gets confused on some conditions:
-// http://randomascii.wordpress.com/2011/09/13/analyze-for-visual-studio-the-ugly-part-5/
-
-#define CHECK(condition)                \
-  __analysis_assume(!!(condition)),     \
-  LAZY_STREAM(LOG_STREAM(FATAL), false) \
-  << "Check failed: " #condition ". "
-
-#define PCHECK(condition)                \
-  __analysis_assume(!!(condition)),      \
-  LAZY_STREAM(PLOG_STREAM(FATAL), false) \
-  << "Check failed: " #condition ". "
-
-#else  // _PREFAST_
-
 #define CHECK(condition)                       \
   LAZY_STREAM(LOG_STREAM(FATAL), !(condition)) \
   << "Check failed: " #condition ". "
-
-#define PCHECK(condition)                       \
-  LAZY_STREAM(PLOG_STREAM(FATAL), !(condition)) \
-  << "Check failed: " #condition ". "
-
-#endif  // _PREFAST_
 
 // Helper macro for binary operators.
 // Don't use this macro directly in your code, use CHECK_EQ et al below.
@@ -572,9 +447,7 @@ DEFINE_CHECK_OP_IMPL(GT, > )
 #define DLOG_IS_ON(severity) LOG_IS_ON(severity)
 #define DLOG_IF(severity, condition) LOG_IF(severity, condition)
 #define DLOG_ASSERT(condition) LOG_ASSERT(condition)
-#define DPLOG_IF(severity, condition) PLOG_IF(severity, condition)
 #define DVLOG_IF(verboselevel, condition) VLOG_IF(verboselevel, condition)
-#define DVPLOG_IF(verboselevel, condition) VPLOG_IF(verboselevel, condition)
 
 #else  // ENABLE_DLOG
 
@@ -586,9 +459,7 @@ DEFINE_CHECK_OP_IMPL(GT, > )
 #define DLOG_IS_ON(severity) false
 #define DLOG_IF(severity, condition) EAT_STREAM_PARAMETERS
 #define DLOG_ASSERT(condition) EAT_STREAM_PARAMETERS
-#define DPLOG_IF(severity, condition) EAT_STREAM_PARAMETERS
 #define DVLOG_IF(verboselevel, condition) EAT_STREAM_PARAMETERS
-#define DVPLOG_IF(verboselevel, condition) EAT_STREAM_PARAMETERS
 
 #endif  // ENABLE_DLOG
 
@@ -607,12 +478,7 @@ enum { DEBUG_MODE = ENABLE_DLOG };
 #define DLOG(severity)                                          \
   LAZY_STREAM(LOG_STREAM(severity), DLOG_IS_ON(severity))
 
-#define DPLOG(severity)                                         \
-  LAZY_STREAM(PLOG_STREAM(severity), DLOG_IS_ON(severity))
-
 #define DVLOG(verboselevel) DVLOG_IF(verboselevel, VLOG_IS_ON(verboselevel))
-
-#define DVPLOG(verboselevel) DVPLOG_IF(verboselevel, VLOG_IS_ON(verboselevel))
 
 // Definitions for DCHECK et al.
 
@@ -638,30 +504,9 @@ const LogSeverity LOG_DCHECK = LOG_INFO;
 // variable warnings if the only use of a variable is in a DCHECK.
 // This behavior is different from DLOG_IF et al.
 
-#if defined(_PREFAST_) && defined(OS_WIN)
-// See comments on the previous use of __analysis_assume.
-
-#define DCHECK(condition)                                               \
-  __analysis_assume(!!(condition)),                                     \
-  LAZY_STREAM(LOG_STREAM(DCHECK), false)                                \
-  << "Check failed: " #condition ". "
-
-#define DPCHECK(condition)                                              \
-  __analysis_assume(!!(condition)),                                     \
-  LAZY_STREAM(PLOG_STREAM(DCHECK), false)                               \
-  << "Check failed: " #condition ". "
-
-#else  // _PREFAST_
-
 #define DCHECK(condition)                                                \
   LAZY_STREAM(LOG_STREAM(DCHECK), DCHECK_IS_ON() ? !(condition) : false) \
       << "Check failed: " #condition ". "
-
-#define DPCHECK(condition)                                                \
-  LAZY_STREAM(PLOG_STREAM(DCHECK), DCHECK_IS_ON() ? !(condition) : false) \
-      << "Check failed: " #condition ". "
-
-#endif  // _PREFAST_
 
 // Helper macro for binary operators.
 // Don't use this macro directly in your code, use DCHECK_EQ et al below.
@@ -699,16 +544,7 @@ const LogSeverity LOG_DCHECK = LOG_INFO;
 #define DCHECK_GT(val1, val2) DCHECK_OP(GT, > , val1, val2)
 #define DCHECK_IMPLIES(val1, val2) DCHECK(!(val1) || (val2))
 
-#if !DCHECK_IS_ON() && defined(OS_CHROMEOS)
-// Implement logging of NOTREACHED() as a dedicated function to get function
-// call overhead down to a minimum.
-void LogErrorNotReached(const char* file, int line);
-#define NOTREACHED()                                       \
-  true ? ::logging::LogErrorNotReached(__FILE__, __LINE__) \
-       : EAT_STREAM_PARAMETERS
-#else
 #define NOTREACHED() DCHECK(false)
-#endif
 
 // Redefine the standard assert to use our nice log files
 #undef assert
@@ -750,26 +586,6 @@ class BASE_EXPORT LogMessage {
   const char* file_;
   const int line_;
 
-#if defined(OS_WIN)
-  // Stores the current value of GetLastError in the constructor and restores
-  // it in the destructor by calling SetLastError.
-  // This is useful since the LogMessage class uses a lot of Win32 calls
-  // that will lose the value of GLE and the code that called the log function
-  // will have lost the thread error value when the log call returns.
-  class SaveLastError {
-   public:
-    SaveLastError();
-    ~SaveLastError();
-
-    unsigned long get_error() const { return last_error_; }
-
-   protected:
-    unsigned long last_error_;
-  };
-
-  SaveLastError last_error_;
-#endif
-
   DISALLOW_COPY_AND_ASSIGN(LogMessage);
 };
 
@@ -790,65 +606,6 @@ class LogMessageVoidify {
   void operator&(std::ostream&) { }
 };
 
-#if defined(OS_WIN)
-typedef unsigned long SystemErrorCode;
-#elif defined(OS_POSIX)
-typedef int SystemErrorCode;
-#endif
-
-// Alias for ::GetLastError() on Windows and errno on POSIX. Avoids having to
-// pull in windows.h just for GetLastError() and DWORD.
-BASE_EXPORT SystemErrorCode GetLastSystemErrorCode();
-BASE_EXPORT std::string SystemErrorCodeToString(SystemErrorCode error_code);
-
-#if defined(OS_WIN)
-// Appends a formatted system message of the GetLastError() type.
-class BASE_EXPORT Win32ErrorLogMessage {
- public:
-  Win32ErrorLogMessage(const char* file,
-                       int line,
-                       LogSeverity severity,
-                       SystemErrorCode err);
-
-  // Appends the error message before destructing the encapsulated class.
-  ~Win32ErrorLogMessage();
-
-  std::ostream& stream() { return log_message_.stream(); }
-
- private:
-  SystemErrorCode err_;
-  LogMessage log_message_;
-
-  DISALLOW_COPY_AND_ASSIGN(Win32ErrorLogMessage);
-};
-#elif defined(OS_POSIX)
-// Appends a formatted system message of the errno type
-class BASE_EXPORT ErrnoLogMessage {
- public:
-  ErrnoLogMessage(const char* file,
-                  int line,
-                  LogSeverity severity,
-                  SystemErrorCode err);
-
-  // Appends the error message before destructing the encapsulated class.
-  ~ErrnoLogMessage();
-
-  std::ostream& stream() { return log_message_.stream(); }
-
- private:
-  SystemErrorCode err_;
-  LogMessage log_message_;
-
-  DISALLOW_COPY_AND_ASSIGN(ErrnoLogMessage);
-};
-#endif  // OS_WIN
-
-// Closes the log file explicitly if open.
-// NOTE: Since the log file is opened as necessary by the action of logging
-//       statements, there's no guarantee that it will stay closed
-//       after this call.
-BASE_EXPORT void CloseLogFile();
-
 // Async signal safe logging mechanism.
 BASE_EXPORT void RawLog(int level, const char* message);
 
@@ -860,33 +617,8 @@ BASE_EXPORT void RawLog(int level, const char* message);
       logging::RawLog(logging::LOG_FATAL, "Check failed: " #condition "\n");   \
   } while (0)
 
-#if defined(OS_WIN)
-// Returns the default log file path.
-BASE_EXPORT std::wstring GetLogFileFullPath();
-#endif
 
 }  // namespace logging
-
-// Note that "The behavior of a C++ program is undefined if it adds declarations
-// or definitions to namespace std or to a namespace within namespace std unless
-// otherwise specified." --C++11[namespace.std]
-//
-// We've checked that this particular definition has the intended behavior on
-// our implementations, but it's prone to breaking in the future, and please
-// don't imitate this in your own definitions without checking with some
-// standard library experts.
-namespace std {
-// These functions are provided as a convenience for logging, which is where we
-// use streams (it is against Google style to use streams in other places). It
-// is designed to allow you to emit non-ASCII Unicode strings to the log file,
-// which is normally ASCII. It is relatively slow, so try not to use it for
-// common cases. Non-ASCII characters will be converted to UTF-8 by these
-// operators.
-BASE_EXPORT std::ostream& operator<<(std::ostream& out, const wchar_t* wstr);
-inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
-  return out << wstr.c_str();
-}
-}  // namespace std
 
 // The NOTIMPLEMENTED() macro annotates codepaths which have
 // not been implemented yet.
@@ -900,12 +632,8 @@ inline std::ostream& operator<<(std::ostream& out, const std::wstring& wstr) {
 //   5 -- LOG(ERROR) at runtime, only once per call-site
 
 #ifndef NOTIMPLEMENTED_POLICY
-#if defined(OS_ANDROID) && defined(OFFICIAL_BUILD)
-#define NOTIMPLEMENTED_POLICY 0
-#else
 // Select default policy: LOG(ERROR)
 #define NOTIMPLEMENTED_POLICY 4
-#endif
 #endif
 
 #if defined(COMPILER_GCC)

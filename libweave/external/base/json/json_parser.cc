@@ -13,7 +13,6 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversion_utils.h"
-#include "base/strings/utf_string_conversions.h"
 #include "base/third_party/icu/icu_utf.h"
 #include "base/values.h"
 
@@ -140,10 +139,6 @@ class JSONStringValue : public base::Value {
   // Overridden from base::Value:
   bool GetAsString(std::string* out_value) const override {
     string_piece_.CopyToString(out_value);
-    return true;
-  }
-  bool GetAsString(string16* out_value) const override {
-    *out_value = UTF8ToUTF16(string_piece_);
     return true;
   }
   Value* DeepCopy() const override {
@@ -885,7 +880,7 @@ bool JSONParser::ReadInt(bool allow_leading_zeros) {
   int len = 0;
 
   char c = first;
-  while (CanConsume(1) && IsAsciiDigit(c)) {
+  while (CanConsume(1) && std::isdigit(c)) {
     c = *NextChar();
     ++len;
   }

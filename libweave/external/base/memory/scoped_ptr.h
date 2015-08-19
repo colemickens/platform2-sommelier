@@ -120,7 +120,7 @@ struct DefaultDeleter {
     // cannot convert to T*.
     enum { T_must_be_complete = sizeof(T) };
     enum { U_must_be_complete = sizeof(U) };
-    COMPILE_ASSERT((base::is_convertible<U*, T*>::value),
+    COMPILE_ASSERT((std::is_convertible<U*, T*>::value),
                    U_ptr_must_implicitly_convert_to_T_ptr);
   }
   inline void operator()(T* ptr) const {
@@ -169,8 +169,8 @@ namespace internal {
 
 template <typename T> struct IsNotRefCounted {
   enum {
-    value = !base::is_convertible<T*, base::subtle::RefCountedBase*>::value &&
-        !base::is_convertible<T*, base::subtle::RefCountedThreadSafeBase*>::
+    value = !std::is_convertible<T*, base::subtle::RefCountedBase*>::value &&
+        !std::is_convertible<T*, base::subtle::RefCountedThreadSafeBase*>::
             value
   };
 };
@@ -345,7 +345,7 @@ class scoped_ptr {
   template <typename U, typename V>
   scoped_ptr(scoped_ptr<U, V>&& other)
       : impl_(&other.impl_) {
-    COMPILE_ASSERT(!base::is_array<U>::value, U_cannot_be_an_array);
+    COMPILE_ASSERT(!std::is_array<U>::value, U_cannot_be_an_array);
   }
 
   // operator=.  Allows assignment from a scoped_ptr rvalue for a convertible
@@ -360,7 +360,7 @@ class scoped_ptr {
   // scoped_ptr.
   template <typename U, typename V>
   scoped_ptr& operator=(scoped_ptr<U, V>&& rhs) {
-    COMPILE_ASSERT(!base::is_array<U>::value, U_cannot_be_an_array);
+    COMPILE_ASSERT(!std::is_array<U>::value, U_cannot_be_an_array);
     impl_.TakeState(&rhs.impl_);
     return *this;
   }

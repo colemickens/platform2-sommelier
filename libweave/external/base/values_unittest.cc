@@ -4,11 +4,11 @@
 
 #include <limits>
 
+#include <gtest/gtest.h>
+
 #include "base/memory/scoped_ptr.h"
-#include "base/strings/string16.h"
-#include "base/strings/utf_string_conversions.h"
+#include "base/strings/utf_string_conversion_utils.h"
 #include "base/values.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
@@ -141,30 +141,16 @@ TEST(ValuesTest, StringValue) {
   scoped_ptr<Value> narrow_value(new StringValue("narrow"));
   ASSERT_TRUE(narrow_value.get());
   ASSERT_TRUE(narrow_value->IsType(Value::TYPE_STRING));
-  scoped_ptr<Value> utf16_value(new StringValue(ASCIIToUTF16("utf16")));
-  ASSERT_TRUE(utf16_value.get());
-  ASSERT_TRUE(utf16_value->IsType(Value::TYPE_STRING));
 
   // Test overloaded GetAsString.
   std::string narrow = "http://google.com";
-  string16 utf16 = ASCIIToUTF16("http://google.com");
   const StringValue* string_value = NULL;
   ASSERT_TRUE(narrow_value->GetAsString(&narrow));
-  ASSERT_TRUE(narrow_value->GetAsString(&utf16));
   ASSERT_TRUE(narrow_value->GetAsString(&string_value));
   ASSERT_EQ(std::string("narrow"), narrow);
-  ASSERT_EQ(ASCIIToUTF16("narrow"), utf16);
-  ASSERT_EQ(string_value->GetString(), narrow);
-
-  ASSERT_TRUE(utf16_value->GetAsString(&narrow));
-  ASSERT_TRUE(utf16_value->GetAsString(&utf16));
-  ASSERT_TRUE(utf16_value->GetAsString(&string_value));
-  ASSERT_EQ(std::string("utf16"), narrow);
-  ASSERT_EQ(ASCIIToUTF16("utf16"), utf16);
   ASSERT_EQ(string_value->GetString(), narrow);
 
   // Don't choke on NULL values.
-  ASSERT_TRUE(narrow_value->GetAsString(static_cast<string16*>(NULL)));
   ASSERT_TRUE(narrow_value->GetAsString(static_cast<std::string*>(NULL)));
   ASSERT_TRUE(narrow_value->GetAsString(
                   static_cast<const StringValue**>(NULL)));
@@ -406,10 +392,6 @@ TEST(ValuesTest, DeepCopy) {
   scoped_ptr<StringValue> scoped_string(new StringValue("hello"));
   StringValue* original_string = scoped_string.get();
   original_dict.Set("string", scoped_string.Pass());
-  scoped_ptr<StringValue> scoped_string16(
-      new StringValue(ASCIIToUTF16("hello16")));
-  StringValue* original_string16 = scoped_string16.get();
-  original_dict.Set("string16", scoped_string16.Pass());
 
   scoped_ptr<char[]> original_buffer(new char[42]);
   memset(original_buffer.get(), '!', 42);
@@ -476,21 +458,6 @@ TEST(ValuesTest, DeepCopy) {
   ASSERT_NE(copy_string, original_string);
   ASSERT_TRUE(copy_string->IsType(Value::TYPE_STRING));
   std::string copy_string_value;
-  string16 copy_string16_value;
-  ASSERT_TRUE(copy_string->GetAsString(&copy_string_value));
-  ASSERT_TRUE(copy_string->GetAsString(&copy_string16_value));
-  ASSERT_EQ(std::string("hello"), copy_string_value);
-  ASSERT_EQ(ASCIIToUTF16("hello"), copy_string16_value);
-
-  Value* copy_string16 = NULL;
-  ASSERT_TRUE(copy_dict->Get("string16", &copy_string16));
-  ASSERT_TRUE(copy_string16);
-  ASSERT_NE(copy_string16, original_string16);
-  ASSERT_TRUE(copy_string16->IsType(Value::TYPE_STRING));
-  ASSERT_TRUE(copy_string16->GetAsString(&copy_string_value));
-  ASSERT_TRUE(copy_string16->GetAsString(&copy_string16_value));
-  ASSERT_EQ(std::string("hello16"), copy_string_value);
-  ASSERT_EQ(ASCIIToUTF16("hello16"), copy_string16_value);
 
   Value* copy_binary = NULL;
   ASSERT_TRUE(copy_dict->Get("binary", &copy_binary));
@@ -556,7 +523,6 @@ TEST(ValuesTest, Equals) {
   dv.SetInteger("b", 2);
   dv.SetDouble("c", 2.5);
   dv.SetString("d1", "string");
-  dv.SetString("d2", ASCIIToUTF16("http://google.com"));
   dv.Set("e", Value::CreateNullValue());
 
   scoped_ptr<DictionaryValue> copy = dv.CreateDeepCopy();
@@ -624,10 +590,6 @@ TEST(ValuesTest, DeepCopyCovariantReturnTypes) {
   scoped_ptr<StringValue> scoped_string(new StringValue("hello"));
   Value* original_string = scoped_string.get();
   original_dict.Set("string", scoped_string.Pass());
-  scoped_ptr<StringValue> scoped_string16(
-      new StringValue(ASCIIToUTF16("hello16")));
-  Value* original_string16 = scoped_string16.get();
-  original_dict.Set("string16", scoped_string16.Pass());
 
   scoped_ptr<char[]> original_buffer(new char[42]);
   memset(original_buffer.get(), '!', 42);
@@ -650,7 +612,6 @@ TEST(ValuesTest, DeepCopyCovariantReturnTypes) {
   scoped_ptr<Value> copy_int = original_int->CreateDeepCopy();
   scoped_ptr<Value> copy_double = original_double->CreateDeepCopy();
   scoped_ptr<Value> copy_string = original_string->CreateDeepCopy();
-  scoped_ptr<Value> copy_string16 = original_string16->CreateDeepCopy();
   scoped_ptr<Value> copy_binary = original_binary->CreateDeepCopy();
   scoped_ptr<Value> copy_list = original_list->CreateDeepCopy();
 
@@ -660,7 +621,6 @@ TEST(ValuesTest, DeepCopyCovariantReturnTypes) {
   EXPECT_TRUE(original_int->Equals(copy_int.get()));
   EXPECT_TRUE(original_double->Equals(copy_double.get()));
   EXPECT_TRUE(original_string->Equals(copy_string.get()));
-  EXPECT_TRUE(original_string16->Equals(copy_string16.get()));
   EXPECT_TRUE(original_binary->Equals(copy_binary.get()));
   EXPECT_TRUE(original_list->Equals(copy_list.get()));
 }
@@ -933,15 +893,6 @@ TEST(ValuesTest, GetWithNullOutValue) {
   EXPECT_FALSE(main_dict.GetString("list", static_cast<std::string*>(NULL)));
   EXPECT_FALSE(main_dict.GetString("DNE", static_cast<std::string*>(NULL)));
 
-  EXPECT_FALSE(main_dict.GetString("bool", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetString("int", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetString("double", static_cast<string16*>(NULL)));
-  EXPECT_TRUE(main_dict.GetString("string", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetString("binary", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetString("dict", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetString("list", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetString("DNE", static_cast<string16*>(NULL)));
-
   EXPECT_FALSE(main_dict.GetBinary("bool", NULL));
   EXPECT_FALSE(main_dict.GetBinary("int", NULL));
   EXPECT_FALSE(main_dict.GetBinary("double", NULL));
@@ -1022,23 +973,6 @@ TEST(ValuesTest, GetWithNullOutValue) {
   EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
       "DNE", static_cast<std::string*>(NULL)));
 
-  EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
-      "bool", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
-      "int", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
-      "double", static_cast<string16*>(NULL)));
-  EXPECT_TRUE(main_dict.GetStringWithoutPathExpansion(
-      "string", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
-      "binary", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
-      "dict", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
-      "list", static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_dict.GetStringWithoutPathExpansion(
-      "DNE", static_cast<string16*>(NULL)));
-
   // There is no GetBinaryWithoutPathExpansion for some reason, but if there
   // were it should be tested here...
 
@@ -1104,15 +1038,6 @@ TEST(ValuesTest, GetWithNullOutValue) {
   EXPECT_FALSE(main_list.GetString(5, static_cast<std::string*>(NULL)));
   EXPECT_FALSE(main_list.GetString(6, static_cast<std::string*>(NULL)));
   EXPECT_FALSE(main_list.GetString(7, static_cast<std::string*>(NULL)));
-
-  EXPECT_FALSE(main_list.GetString(0, static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_list.GetString(1, static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_list.GetString(2, static_cast<string16*>(NULL)));
-  EXPECT_TRUE(main_list.GetString(3, static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_list.GetString(4, static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_list.GetString(5, static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_list.GetString(6, static_cast<string16*>(NULL)));
-  EXPECT_FALSE(main_list.GetString(7, static_cast<string16*>(NULL)));
 
   EXPECT_FALSE(main_list.GetBinary(0, NULL));
   EXPECT_FALSE(main_list.GetBinary(1, NULL));

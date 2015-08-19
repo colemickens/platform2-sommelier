@@ -8,16 +8,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "base/files/file_util.h"
-#include "base/lazy_instance.h"
 #include "base/logging.h"
+#include "base/posix/eintr_wrapper.h"
 
 namespace {
 
-// We keep the file descriptor for /dev/urandom around so we don't need to
-// reopen it (which is expensive), and since we may not even be able to reopen
-// it if we are later put in a sandbox. This class wraps the file descriptor so
-// we can use LazyInstance to handle opening it on the first access.
 class URandomFd {
  public:
   URandomFd() : fd_(open("/dev/urandom", O_RDONLY)) {
@@ -32,7 +27,17 @@ class URandomFd {
   const int fd_;
 };
 
-base::LazyInstance<URandomFd>::Leaky g_urandom_fd = LAZY_INSTANCE_INITIALIZER;
+bool ReadFromFD(int fd, char* buffer, size_t bytes) {
+  size_t total_read = 0;
+  while (total_read < bytes) {
+    ssize_t bytes_read =
+        HANDLE_EINTR(read(fd, buffer + total_read, bytes - total_read));
+    if (bytes_read <= 0)
+      break;
+    total_read += bytes_read;
+  }
+  return total_read == bytes;
+}
 
 }  // namespace
 
@@ -46,14 +51,10 @@ uint64 RandUint64() {
 }
 
 void RandBytes(void* output, size_t output_length) {
-  const int urandom_fd = g_urandom_fd.Pointer()->fd();
+  URandomFd urandom_fd;
   const bool success =
-      ReadFromFD(urandom_fd, static_cast<char*>(output), output_length);
+      ReadFromFD(urandom_fd.fd(), static_cast<char*>(output), output_length);
   CHECK(success);
-}
-
-int GetUrandomFD(void) {
-  return g_urandom_fd.Pointer()->fd();
 }
 
 }  // namespace base

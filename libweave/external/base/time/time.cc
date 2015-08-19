@@ -10,10 +10,8 @@
 #include <ostream>
 #include <sstream>
 
-#include "base/lazy_instance.h"
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
-#include "base/third_party/nspr/prtime.h"
 
 namespace base {
 
@@ -246,27 +244,6 @@ Time Time::LocalMidnight() const {
   return FromLocalExploded(exploded);
 }
 
-// static
-bool Time::FromStringInternal(const char* time_string,
-                              bool is_local,
-                              Time* parsed_time) {
-  DCHECK((time_string != NULL) && (parsed_time != NULL));
-
-  if (time_string[0] == '\0')
-    return false;
-
-  PRTime result_time = 0;
-  PRStatus result = PR_ParseTimeString(time_string,
-                                       is_local ? PR_FALSE : PR_TRUE,
-                                       &result_time);
-  if (PR_SUCCESS != result)
-    return false;
-
-  result_time += kTimeTToMicrosecondsOffset;
-  *parsed_time = Time(result_time);
-  return true;
-}
-
 std::ostream& operator<<(std::ostream& os, Time time) {
   Time::Exploded exploded;
   time.UTCExplode(&exploded);
@@ -295,14 +272,6 @@ class UnixEpochSingleton {
 
   DISALLOW_COPY_AND_ASSIGN(UnixEpochSingleton);
 };
-
-static LazyInstance<UnixEpochSingleton>::Leaky
-    leaky_unix_epoch_singleton_instance = LAZY_INSTANCE_INITIALIZER;
-
-// Static
-TimeTicks TimeTicks::UnixEpoch() {
-  return leaky_unix_epoch_singleton_instance.Get().unix_epoch();
-}
 
 TimeTicks TimeTicks::SnappedToNextTick(TimeTicks tick_phase,
                                        TimeDelta tick_interval) const {

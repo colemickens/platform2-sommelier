@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/basictypes.h"
-#include "base/compiler_specific.h"
 #include "base/logging.h"
 
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "base/basictypes.h"
+#include "base/compiler_specific.h"
 
 namespace logging {
 
@@ -54,7 +55,7 @@ class MockLogSource {
 
 TEST_F(LoggingTest, BasicLogging) {
   MockLogSource mock_log_source;
-  EXPECT_CALL(mock_log_source, Log()).Times(DEBUG_MODE ? 16 : 8).
+  EXPECT_CALL(mock_log_source, Log()).
       WillRepeatedly(Return("log message"));
 
   SetMinLogLevel(LOG_INFO);
@@ -68,21 +69,13 @@ TEST_F(LoggingTest, BasicLogging) {
 
   LOG(INFO) << mock_log_source.Log();
   LOG_IF(INFO, true) << mock_log_source.Log();
-  PLOG(INFO) << mock_log_source.Log();
-  PLOG_IF(INFO, true) << mock_log_source.Log();
   VLOG(0) << mock_log_source.Log();
   VLOG_IF(0, true) << mock_log_source.Log();
-  VPLOG(0) << mock_log_source.Log();
-  VPLOG_IF(0, true) << mock_log_source.Log();
 
   DLOG(INFO) << mock_log_source.Log();
   DLOG_IF(INFO, true) << mock_log_source.Log();
-  DPLOG(INFO) << mock_log_source.Log();
-  DPLOG_IF(INFO, true) << mock_log_source.Log();
   DVLOG(0) << mock_log_source.Log();
   DVLOG_IF(0, true) << mock_log_source.Log();
-  DVPLOG(0) << mock_log_source.Log();
-  DVPLOG_IF(0, true) << mock_log_source.Log();
 }
 
 TEST_F(LoggingTest, LogIsOn) {
@@ -134,21 +127,13 @@ TEST_F(LoggingTest, LoggingIsLazy) {
 
   LOG(INFO) << mock_log_source.Log();
   LOG_IF(INFO, false) << mock_log_source.Log();
-  PLOG(INFO) << mock_log_source.Log();
-  PLOG_IF(INFO, false) << mock_log_source.Log();
   VLOG(1) << mock_log_source.Log();
   VLOG_IF(1, true) << mock_log_source.Log();
-  VPLOG(1) << mock_log_source.Log();
-  VPLOG_IF(1, true) << mock_log_source.Log();
 
   DLOG(INFO) << mock_log_source.Log();
   DLOG_IF(INFO, true) << mock_log_source.Log();
-  DPLOG(INFO) << mock_log_source.Log();
-  DPLOG_IF(INFO, true) << mock_log_source.Log();
   DVLOG(1) << mock_log_source.Log();
   DVLOG_IF(1, true) << mock_log_source.Log();
-  DVPLOG(1) << mock_log_source.Log();
-  DVPLOG_IF(1, true) << mock_log_source.Log();
 }
 
 // Official builds have CHECKs directly call BreakDebugger.
@@ -156,14 +141,13 @@ TEST_F(LoggingTest, LoggingIsLazy) {
 
 TEST_F(LoggingTest, CheckStreamsAreLazy) {
   MockLogSource mock_log_source, uncalled_mock_log_source;
-  EXPECT_CALL(mock_log_source, Log()).Times(8).
+  EXPECT_CALL(mock_log_source, Log()).
       WillRepeatedly(Return("check message"));
   EXPECT_CALL(uncalled_mock_log_source, Log()).Times(0);
 
   SetLogAssertHandler(&LogSink);
 
   CHECK(mock_log_source.Log()) << uncalled_mock_log_source.Log();
-  PCHECK(!mock_log_source.Log()) << mock_log_source.Log();
   CHECK_EQ(mock_log_source.Log(), mock_log_source.Log())
       << uncalled_mock_log_source.Log();
   CHECK_NE(mock_log_source.Log(), mock_log_source.Log())
@@ -180,7 +164,6 @@ TEST_F(LoggingTest, DebugLoggingReleaseBehavior) {
   // in release mode.
   DLOG_IF(INFO, debug_only_variable) << "test";
   DLOG_ASSERT(debug_only_variable) << "test";
-  DPLOG_IF(INFO, debug_only_variable) << "test";
   DVLOG_IF(1, debug_only_variable) << "test";
 }
 
@@ -219,10 +202,8 @@ TEST_F(LoggingTest, Dcheck) {
   EXPECT_EQ(0, log_sink_call_count);
   DCHECK(false);
   EXPECT_EQ(DCHECK_IS_ON() ? 1 : 0, log_sink_call_count);
-  DPCHECK(false);
-  EXPECT_EQ(DCHECK_IS_ON() ? 2 : 0, log_sink_call_count);
   DCHECK_EQ(0, 1);
-  EXPECT_EQ(DCHECK_IS_ON() ? 3 : 0, log_sink_call_count);
+  EXPECT_EQ(DCHECK_IS_ON() ? 2 : 0, log_sink_call_count);
 }
 
 TEST_F(LoggingTest, DcheckReleaseBehavior) {
@@ -230,28 +211,8 @@ TEST_F(LoggingTest, DcheckReleaseBehavior) {
   // These should still reference |some_variable| so we don't get
   // unused variable warnings.
   DCHECK(some_variable) << "test";
-  DPCHECK(some_variable) << "test";
   DCHECK_EQ(some_variable, 1) << "test";
 }
-
-// Test that defining an operator<< for a type in a namespace doesn't prevent
-// other code in that namespace from calling the operator<<(ostream, wstring)
-// defined by logging.h. This can fail if operator<<(ostream, wstring) can't be
-// found by ADL, since defining another operator<< prevents name lookup from
-// looking in the global namespace.
-namespace nested_test {
-  class Streamable {};
-  ALLOW_UNUSED_TYPE std::ostream& operator<<(std::ostream& out,
-                                             const Streamable&) {
-    return out << "Streamable";
-  }
-  TEST_F(LoggingTest, StreamingWstringFindsCorrectOperator) {
-    std::wstring wstr = L"Hello World";
-    std::ostringstream ostr;
-    ostr << wstr;
-    EXPECT_EQ("Hello World", ostr.str());
-  }
-}  // namespace nested_test
 
 }  // namespace
 

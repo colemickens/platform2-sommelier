@@ -10,7 +10,6 @@
 
 #include "base/base_export.h"
 #include "base/basictypes.h"
-#include "base/containers/hash_tables.h"
 
 namespace tracked_objects {
 
@@ -46,26 +45,6 @@ class BASE_EXPORT Location {
   const void* program_counter() const { return program_counter_; }
 
   std::string ToString() const;
-
-  // Hash operator for hash maps.
-  struct Hash {
-    size_t operator()(const Location& location) const {
-      // Compute the hash value using file name pointer and line number.
-      // No need to use |function_name_| since the other two fields uniquely
-      // identify this location.
-
-      // The file name will always be uniquely identified by its pointer since
-      // it comes from __FILE__, so no need to check the contents of the string.
-      // See the definition of FROM_HERE in location.h, and how it is used
-      // elsewhere.
-
-      // Due to inconsistent definitions of uint64_t and uintptr_t, casting the
-      // file name pointer to a uintptr_t causes a compiler error for some
-      // platforms. The solution is to explicitly cast it to a uint64_t.
-      return base::HashPair(reinterpret_cast<uint64_t>(location.file_name()),
-                            location.line_number());
-    }
-  };
 
   // Translate the some of the state in this instance into a human readable
   // string with HTML characters in the function names escaped, and append that
