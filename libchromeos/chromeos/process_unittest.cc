@@ -17,7 +17,7 @@
 using base::FilePath;
 
 // This test assumes the following standard binaries are installed.
-#if defined(__BRILLO__)
+#if defined(__ANDROID__)
 # define SYSTEM_PREFIX "/system"
 #else
 # define SYSTEM_PREFIX ""
@@ -266,7 +266,7 @@ TEST_F(ProcessTest, NoParams) {
   EXPECT_EQ(-1, process_.Run());
 }
 
-#if !defined(__BRILLO__) // Bionic intercepts the segfault in brillo
+#if !defined(__BIONIC__)  // Bionic intercepts the segfault on Android.
 TEST_F(ProcessTest, SegFaultHandling) {
   process_.AddArg(kBinSh);
   process_.AddArg("-c");
