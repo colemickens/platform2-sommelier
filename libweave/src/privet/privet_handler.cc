@@ -11,7 +11,6 @@
 
 #include <base/bind.h>
 #include <base/location.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
@@ -533,7 +532,8 @@ void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
 
   PairingType pairing;
   std::set<PairingType> modes = security_->GetPairingTypes();
-  if (!StringToEnum(pairing_str, &pairing) || !ContainsKey(modes, pairing)) {
+  if (!StringToEnum(pairing_str, &pairing) ||
+      modes.find(pairing) == modes.end()) {
     Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
                        errors::kInvalidParams, kInvalidParamValueFormat,
                        kPairingKey, pairing_str.c_str());
@@ -542,7 +542,8 @@ void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
 
   CryptoType crypto;
   std::set<CryptoType> cryptos = security_->GetCryptoTypes();
-  if (!StringToEnum(crypto_str, &crypto) || !ContainsKey(cryptos, crypto)) {
+  if (!StringToEnum(crypto_str, &crypto) ||
+      cryptos.find(crypto) == cryptos.end()) {
     Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
                        errors::kInvalidParams, kInvalidParamValueFormat,
                        kCryptoKey, crypto_str.c_str());

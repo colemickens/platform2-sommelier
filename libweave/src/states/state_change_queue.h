@@ -30,11 +30,6 @@ class StateChangeQueue : public StateChangeQueueInterface {
   void NotifyStateUpdatedOnServer(UpdateID update_id) override;
 
  private:
-  // To make sure we do not call NotifyPropertiesUpdated() and
-  // GetAndClearRecordedStateChanges() on different threads, |thread_checker_|
-  // is here to help us with verifying the single-threaded operation.
-  base::ThreadChecker thread_checker_;
-
   // Maximum queue size. If it is full, the oldest state update records are
   // merged together until the queue size is within the size limit.
   const size_t max_queue_size_;

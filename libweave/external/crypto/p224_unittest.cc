@@ -771,9 +771,9 @@ static const TestVector kNISTTestVectors[kNumNISTTestVectors] = {
 TEST(P224, ExternalToInternalAndBack) {
   Point point;
 
-  EXPECT_TRUE(point.SetFromString(base::StringPiece(
-      reinterpret_cast<const char *>(kBasePointExternal),
-      sizeof(kBasePointExternal))));
+  EXPECT_TRUE(point.SetFromString(
+      std::string(reinterpret_cast<const char*>(kBasePointExternal),
+                  sizeof(kBasePointExternal))));
 
   const std::string external = point.ToString();
 
@@ -797,10 +797,10 @@ TEST(P224, ScalarBaseMult) {
 TEST(P224, Addition) {
   Point a, b, minus_b, sum, a_again;
 
-  ASSERT_TRUE(a.SetFromString(base::StringPiece(
-      reinterpret_cast<const char *>(kNISTTestVectors[10].affine), 56)));
-  ASSERT_TRUE(b.SetFromString(base::StringPiece(
-      reinterpret_cast<const char *>(kNISTTestVectors[11].affine), 56)));
+  ASSERT_TRUE(a.SetFromString(std::string(
+      reinterpret_cast<const char*>(kNISTTestVectors[10].affine), 56)));
+  ASSERT_TRUE(b.SetFromString(std::string(
+      reinterpret_cast<const char*>(kNISTTestVectors[11].affine), 56)));
 
   p224::Negate(b, &minus_b);
   p224::Add(a, b, &sum);

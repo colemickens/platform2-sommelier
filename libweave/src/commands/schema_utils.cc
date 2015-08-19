@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 
 #include "libweave/src/commands/object_schema.h"
 #include "libweave/src/commands/prop_types.h"

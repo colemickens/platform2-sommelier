@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include <base/bind.h>
+
 #include "libweave/src/base_api_handler.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/config.h"

@@ -15,8 +15,6 @@ StateChangeQueue::StateChangeQueue(size_t max_queue_size)
 
 bool StateChangeQueue::NotifyPropertiesUpdated(base::Time timestamp,
                                                ValueMap changed_properties) {
-  DCHECK(thread_checker_.CalledOnValidThread());
-
   auto& stored_changes = state_changes_[timestamp];
   // Merge the old property set.
   changed_properties.insert(stored_changes.begin(), stored_changes.end());
@@ -41,7 +39,6 @@ bool StateChangeQueue::NotifyPropertiesUpdated(base::Time timestamp,
 }
 
 std::vector<StateChange> StateChangeQueue::GetAndClearRecordedStateChanges() {
-  DCHECK(thread_checker_.CalledOnValidThread());
   std::vector<StateChange> changes;
   changes.reserve(state_changes_.size());
   for (const auto& pair : state_changes_) {

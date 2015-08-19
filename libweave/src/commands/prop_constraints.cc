@@ -5,6 +5,7 @@
 #include "libweave/src/commands/prop_constraints.h"
 
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"

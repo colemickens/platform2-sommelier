@@ -9,7 +9,8 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/tracked_objects.h>
+#include <base/location.h>
+#include <base/compiler_specific.h>
 #include <weave/export.h>
 
 namespace weave {

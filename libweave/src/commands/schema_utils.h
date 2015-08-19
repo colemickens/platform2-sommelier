@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/values.h>
 #include <weave/error.h>
 

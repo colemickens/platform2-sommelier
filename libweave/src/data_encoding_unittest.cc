@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <numeric>
 
+#include <base/logging.h>
 #include <gtest/gtest.h>
 
 namespace weave {

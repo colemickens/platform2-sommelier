@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <queue>
 
-#include <base/test/simple_test_clock.h>
 #include <gtest/gtest.h>
 #include <weave/mock_task_runner.h>
 

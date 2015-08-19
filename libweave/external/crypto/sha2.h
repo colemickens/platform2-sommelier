@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/strings/string_piece.h>
-
 namespace weave {
 namespace crypto {
 
@@ -21,12 +19,11 @@ static const size_t kSHA256Length = 32;  // Length in bytes of a SHA-256 hash.
 // Computes the SHA-256 hash of the input string 'str' and stores the first
 // 'len' bytes of the hash in the output buffer 'output'.  If 'len' > 32,
 // only 32 bytes (the full hash) are stored in the 'output' buffer.
-void SHA256HashString(const base::StringPiece& str, uint8_t* output,
-                      size_t len);
+void SHA256HashString(const std::string& str, uint8_t* output, size_t len);
 
 // Convenience version of the above that returns the result in a 32-byte
 // string.
-std::string SHA256HashString(const base::StringPiece& str);
+std::string SHA256HashString(const std::string& str);
 
 }  // namespace crypto
 }  // namespace weave

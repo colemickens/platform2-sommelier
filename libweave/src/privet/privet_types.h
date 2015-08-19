@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/logging.h>
 #include <weave/error.h>
 
 namespace weave {

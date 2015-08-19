@@ -115,10 +115,9 @@ bool SecureMemEqual(const uint8_t* s1_ptr, const uint8_t* s2_ptr, size_t n) {
 
 }  // anonymous namespace
 
-P224EncryptedKeyExchange::P224EncryptedKeyExchange(
-    PeerType peer_type, const base::StringPiece& password)
-    : state_(kStateInitial),
-      is_server_(peer_type == kPeerTypeServer) {
+P224EncryptedKeyExchange::P224EncryptedKeyExchange(PeerType peer_type,
+                                                   const std::string& password)
+    : state_(kStateInitial), is_server_(peer_type == kPeerTypeServer) {
   memset(&x_, 0, sizeof(x_));
   memset(&expected_authenticator_, 0, sizeof(expected_authenticator_));
 
@@ -165,7 +164,7 @@ const std::string& P224EncryptedKeyExchange::GetNextMessage() {
 }
 
 P224EncryptedKeyExchange::Result P224EncryptedKeyExchange::ProcessMessage(
-    const base::StringPiece& message) {
+    const std::string& message) {
   if (state_ == kStateRecvHash) {
     // This is the final state of the protocol: we are reading the peer's
     // authentication hash and checking that it matches the one that we expect.
@@ -212,11 +211,11 @@ P224EncryptedKeyExchange::Result P224EncryptedKeyExchange::ProcessMessage(
 
   std::string client_masked_dh, server_masked_dh;
   if (is_server_) {
-    client_masked_dh = message.as_string();
+    client_masked_dh = message;
     server_masked_dh = next_message_;
   } else {
     client_masked_dh = next_message_;
-    server_masked_dh = message.as_string();
+    server_masked_dh = message;
   }
 
   // Now we calculate the hashes that each side will use to prove to the other

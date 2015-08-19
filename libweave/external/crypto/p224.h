@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/strings/string_piece.h>
 
 namespace weave {
 namespace crypto {
@@ -26,7 +25,7 @@ struct Point {
   // representation. The external point representation is an (x, y) pair of a
   // point on the curve. Each field element is represented as a big-endian
   // number < p.
-  bool SetFromString(const base::StringPiece& in);
+  bool SetFromString(const std::string& in);
 
   // ToString returns an external representation of the Point.
   std::string ToString() const;

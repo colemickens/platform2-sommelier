@@ -4,6 +4,8 @@
 
 #include "libweave/src/base_api_handler.h"
 
+#include <base/bind.h>
+
 #include "libweave/src/commands/command_instance.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/device_registration_info.h"

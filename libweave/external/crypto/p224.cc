@@ -11,16 +11,32 @@
 
 #include <string.h>
 
-#include <base/sys_byteorder.h>
-
 namespace weave {
 namespace crypto {
 namespace p224 {
 
 namespace {
 
-using base::HostToNet32;
-using base::NetToHost32;
+inline uint32 ByteSwap(uint32 x) {
+  return ((x & 0x000000fful) << 24) | ((x & 0x0000ff00ul) << 8) |
+         ((x & 0x00ff0000ul) >> 8) | ((x & 0xff000000ul) >> 24);
+}
+
+inline uint32 HostToNet32(uint32 x) {
+#if defined(ARCH_CPU_LITTLE_ENDIAN)
+  return ByteSwap(x);
+#else
+  return x;
+#endif
+}
+
+inline uint32 NetToHost32(uint32 x) {
+#if defined(ARCH_CPU_LITTLE_ENDIAN)
+  return ByteSwap(x);
+#else
+  return x;
+#endif
+}
 
 // Field element functions.
 //
@@ -655,7 +671,7 @@ void Put224Bits(uint32* out, const uint32* in) {
 
 }  // anonymous namespace
 
-bool Point::SetFromString(const base::StringPiece& in) {
+bool Point::SetFromString(const std::string& in) {
   if (in.size() != 2*28)
     return false;
   const uint32* inwords = reinterpret_cast<const uint32*>(in.data());

@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/test/simple_test_clock.h>
+#include <base/time/clock.h>
 #include <gmock/gmock.h>
 
 namespace weave {
@@ -51,7 +51,7 @@ class MockTaskRunner : public TaskRunner {
     }
   }
 
-  base::SimpleTestClock* GetClock() { return &test_clock_; }
+  base::Clock* GetClock() { return &test_clock_; }
 
  private:
   void SaveTask(const tracked_objects::Location& from_here,
@@ -69,7 +69,17 @@ class MockTaskRunner : public TaskRunner {
   };
 
   size_t counter_{0};  // Keeps order of tasks with the same time.
-  base::SimpleTestClock test_clock_;
+
+  class TestClock : public base::Clock {
+   public:
+    base::Time Now() override { return now_; }
+
+    void SetNow(base::Time now) { now_ = now; }
+
+   private:
+    base::Time now_;
+  };
+  TestClock test_clock_;
 
   std::priority_queue<QueueItem,
                       std::vector<QueueItem>,

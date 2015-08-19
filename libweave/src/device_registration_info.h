@@ -13,11 +13,8 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/single_thread_task_runner.h>
 #include <base/time/time.h>
-#include <base/timer/timer.h>
 #include <weave/error.h>
 #include <weave/cloud.h>
 #include <weave/http_client.h>

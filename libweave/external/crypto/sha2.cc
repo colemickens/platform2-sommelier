@@ -12,14 +12,13 @@
 namespace weave {
 namespace crypto {
 
-void SHA256HashString(const base::StringPiece& str, uint8_t* output,
-                      size_t len) {
+void SHA256HashString(const std::string& str, uint8_t* output, size_t len) {
   std::string hash = SHA256HashString(str);
   len = std::min(hash.size(), len);
   std::copy(hash.begin(), hash.begin() + len, output);
 }
 
-std::string SHA256HashString(const base::StringPiece& str) {
+std::string SHA256HashString(const std::string& str) {
   SHA256_CTX sha_context;
   SHA256_Init(&sha_context);
   SHA256_Update(&sha_context, str.data(), str.size());
