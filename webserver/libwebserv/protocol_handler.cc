@@ -19,7 +19,7 @@
 #include <base/logging.h>
 #include <chromeos/map_utils.h>
 
-#include "libwebserv/org.chromium.WebServer.RequestHandler.h"
+#include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "libwebserv/request.h"
 #include "libwebserv/request_handler_callback.h"
 #include "libwebserv/response.h"

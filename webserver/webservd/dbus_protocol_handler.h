@@ -28,7 +28,7 @@
 #include <dbus/bus.h>
 
 #include "libwebserv/dbus-proxies.h"
-#include "webservd/org.chromium.WebServer.ProtocolHandler.h"
+#include "dbus_bindings/org.chromium.WebServer.ProtocolHandler.h"
 
 namespace chromeos {
 namespace dbus_utils {

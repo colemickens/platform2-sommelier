@@ -20,7 +20,7 @@
 #include <libwebserv/protocol_handler.h>
 #include <libwebserv/request.h>
 
-#include "libwebserv/org.chromium.WebServer.RequestHandler.h"
+#include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "webservd/dbus-proxies.h"
 
 namespace libwebserv {

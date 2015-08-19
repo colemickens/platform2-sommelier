@@ -26,8 +26,8 @@
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/secure_blob.h>
 
+#include "dbus_bindings/org.chromium.WebServer.Server.h"
 #include "webservd/firewall_interface.h"
-#include "webservd/org.chromium.WebServer.Server.h"
 #include "webservd/server_interface.h"
 
 namespace webservd {

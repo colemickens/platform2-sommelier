@@ -17,7 +17,8 @@
         # get tied to some constant service name, since it will be
         # provided by the consumer of libwebserv library.
         'dbus_service_config': '',
-        'dbus_adaptors_out_dir': 'include/libwebserv',
+        'dbus_adaptors_out_dir': 'include/dbus_bindings',
+        'dbus_xml_extension': 'dbus-xml',
       },
       # This static library is used in libwebserv shared library, which means
       # we must generate position-independent code for the files comprising
@@ -36,7 +37,7 @@
         'libwebserv/request_handler_callback.cc',
         'libwebserv/response.cc',
         'libwebserv/server.cc',
-        'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.xml',
+        'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml',
       ],
       'actions': [
         {
@@ -48,8 +49,8 @@
             'dbus_adaptors_out_dir': '',
           },
           'sources': [
-            'webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.xml',
-            'webservd/dbus_bindings/org.chromium.WebServer.Server.xml',
+            'webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.dbus-xml',
+            'webservd/dbus_bindings/org.chromium.WebServer.Server.dbus-xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
@@ -77,8 +78,9 @@
           'openssl',
         ],
         'deps': ['<@(exported_deps)'],
-        'dbus_adaptors_out_dir': 'include/webservd',
+        'dbus_adaptors_out_dir': 'include/dbus_bindings',
         'dbus_service_config': 'webservd/dbus_bindings/dbus-service-config.json',
+        'dbus_xml_extension': 'dbus-xml',
       },
       'all_dependent_settings': {
         'variables': {
@@ -89,8 +91,8 @@
       },
       'sources': [
         'webservd/config.cc',
-        'webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.xml',
-        'webservd/dbus_bindings/org.chromium.WebServer.Server.xml',
+        'webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.dbus-xml',
+        'webservd/dbus_bindings/org.chromium.WebServer.Server.dbus-xml',
         'webservd/dbus_protocol_handler.cc',
         'webservd/dbus_request_handler.cc',
         'webservd/error_codes.cc',
@@ -114,7 +116,7 @@
             'proxy_output_file': 'include/libwebserv/dbus-proxies.h',
           },
           'sources': [
-            'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.xml',
+            'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
