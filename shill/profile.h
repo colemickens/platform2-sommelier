@@ -27,7 +27,6 @@ namespace shill {
 
 class ControlInterface;
 class Error;
-class GLib;
 class Manager;
 class Metrics;
 class ProfileAdaptorInterface;
@@ -70,8 +69,7 @@ class Profile : public base::RefCounted<Profile> {
   virtual ~Profile();
 
   // Set up persistent storage for this Profile.
-  bool InitStorage(GLib* glib,
-                   InitStorageOption storage_option,
+  bool InitStorage(InitStorageOption storage_option,
                    Error* error);
 
   // Set up stub storage for this Profile. The data will NOT be
@@ -81,7 +79,7 @@ class Profile : public base::RefCounted<Profile> {
   // Remove the persistent storage for this Profile.  It is an error to
   // do so while the underlying storage is open via InitStorage() or
   // set_storage().
-  bool RemoveStorage(GLib* glib, Error* error);
+  bool RemoveStorage(Error* error);
 
   virtual std::string GetFriendlyName();
 

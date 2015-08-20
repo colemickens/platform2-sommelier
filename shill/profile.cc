@@ -64,8 +64,7 @@ Profile::Profile(ControlInterface* control_interface,
 
 Profile::~Profile() {}
 
-bool Profile::InitStorage(GLib* glib, InitStorageOption storage_option,
-                          Error* error) {
+bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
   FilePath final_path;
   if (!GetStoragePath(&final_path)) {
     Error::PopulateAndLog(
@@ -124,7 +123,7 @@ void Profile::InitStubStorage() {
   set_storage(new StubStorage());
 }
 
-bool Profile::RemoveStorage(GLib* glib, Error* error) {
+bool Profile::RemoveStorage(Error* error) {
   FilePath path;
 
   CHECK(!storage_.get());

@@ -70,7 +70,7 @@ class ProfileTest : public PropertyStoreTest {
     ProfileRefPtr profile(
         new Profile(control_interface(), mock_metrics_.get(), manager(), id,
                     storage_path(), false));
-    bool ret = profile->InitStorage(&real_glib_, storage_option, &error);
+    bool ret = profile->InitStorage(storage_option, &error);
     EXPECT_EQ(error_type, error.type());
     if (ret && save) {
       EXPECT_TRUE(profile->Save());

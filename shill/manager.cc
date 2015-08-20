@@ -327,10 +327,8 @@ void Manager::InitializeProfiles() {
                                          props_));
   // The default profile may fail to initialize if it's corrupted.
   // If so, recreate the default profile.
-  if (!default_profile->InitStorage(
-      glib_, Profile::kCreateOrOpenExisting, nullptr))
-    CHECK(default_profile->InitStorage(glib_, Profile::kCreateNew,
-                                       nullptr));
+  if (!default_profile->InitStorage(Profile::kCreateOrOpenExisting, nullptr))
+    CHECK(default_profile->InitStorage(Profile::kCreateNew, nullptr));
   // In case we created a new profile, initialize its default values,
   // and then save. This is required for properties such as
   // PortalDetector::kDefaultCheckPortalList to be initialized correctly.
@@ -391,7 +389,7 @@ void Manager::CreateProfile(const string& name, string* path, Error* error) {
                           true);
   }
 
-  if (!profile->InitStorage(glib_, Profile::kCreateNew, error)) {
+  if (!profile->InitStorage(Profile::kCreateNew, error)) {
     // |error| will have been populated by InitStorage().
     return;
   }
@@ -444,7 +442,7 @@ void Manager::PushProfileInternal(
                                            storage_path_,
                                            ident.identifier,
                                            props_));
-    if (!default_profile->InitStorage(glib_, Profile::kOpenExisting, nullptr)) {
+    if (!default_profile->InitStorage(Profile::kOpenExisting, nullptr)) {
       LOG(ERROR) << "Failed to open default profile.";
       // Try to continue anyway, so that we can be useful in cases
       // where the disk is full.
@@ -460,7 +458,7 @@ void Manager::PushProfileInternal(
                           ident,
                           user_storage_path_,
                           connect_profiles_to_rpc_);
-    if (!profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
+    if (!profile->InitStorage(Profile::kOpenExisting, error)) {
       // |error| will have been populated by InitStorage().
       return;
     }
@@ -649,7 +647,7 @@ void Manager::RemoveProfile(const string& name, Error* error) {
 
 
   // |error| will have been populated if RemoveStorage fails.
-  profile->RemoveStorage(glib_, error);
+  profile->RemoveStorage(error);
 
   return;
 }
