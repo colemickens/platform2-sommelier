@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -15,7 +16,6 @@
 #include <gmock/gmock.h>
 
 #include "shill/connectivity_trial.h"
-#include "shill/glib.h"
 #include "shill/key_file_store.h"
 #include "shill/link_monitor.h"
 #include "shill/manager.h"
@@ -34,6 +34,7 @@
 
 using base::FilePath;
 using std::map;
+using std::set;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -64,20 +65,9 @@ class DefaultProfileTest : public PropertyStoreTest {
 
   virtual ~DefaultProfileTest() {}
 
-  virtual void SetUp() {
-    PropertyStoreTest::SetUp();
-    FilePath final_path;
-    ASSERT_TRUE(profile_->GetStoragePath(&final_path));
-    unique_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
-    storage->set_path(final_path);
-    ASSERT_TRUE(storage->Open());
-    profile_->set_storage(storage.release());  // Passes ownership.
-  }
-
  protected:
   static const char kTestStoragePath[];
 
-  GLib real_glib_;
   scoped_refptr<DefaultProfile> profile_;
   scoped_refptr<MockDevice> device_;
   Manager::Properties properties_;
@@ -86,6 +76,15 @@ class DefaultProfileTest : public PropertyStoreTest {
 const char DefaultProfileTest::kTestStoragePath[] = "/no/where";
 
 TEST_F(DefaultProfileTest, GetProperties) {
+  // DBusAdaptor::GetProperties() will iterate over all the accessors
+  // provided by Profile. The |kEntriesProperty| accessor calls
+  // GetGroups() on the StoreInterface.
+  unique_ptr<MockStore> storage(new MockStore());
+  set<string> empty_group_set;
+  EXPECT_CALL(*storage.get(), GetGroups())
+      .WillRepeatedly(Return(empty_group_set));
+  profile_->set_storage(storage.release());
+
   Error error(Error::kInvalidProperty, "");
   {
     map<string, ::DBus::Variant> props;
