@@ -113,7 +113,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
 }
 
 TEST_F(DefaultProfileTest, Save) {
-  unique_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore());
   EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
                                       true))
@@ -174,7 +174,7 @@ TEST_F(DefaultProfileTest, Save) {
 }
 
 TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
-  unique_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore());
   Manager::Properties manager_props;
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
@@ -242,7 +242,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
-  unique_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore());
   const string host_name("hostname");
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
@@ -327,7 +327,7 @@ TEST_F(DefaultProfileTest, GetStoragePath) {
 }
 
 TEST_F(DefaultProfileTest, ConfigureService) {
-  unique_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore());
   EXPECT_CALL(*storage, ContainsGroup(_))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*storage, Flush())
