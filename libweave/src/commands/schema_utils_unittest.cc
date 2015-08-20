@@ -19,8 +19,8 @@
 
 namespace weave {
 
-using unittests::CreateDictionaryValue;
-using unittests::CreateValue;
+using test::CreateDictionaryValue;
+using test::CreateValue;
 
 TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
   EXPECT_JSON_EQ("true", *TypedValueToJson(true));

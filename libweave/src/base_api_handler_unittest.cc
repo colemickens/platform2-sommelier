@@ -7,8 +7,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
-#include <weave/mock_config_store.h>
-#include <weave/mock_http_client.h>
+#include <weave/test/mock_config_store.h>
+#include <weave/test/mock_http_client.h>
 
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/unittest_utils.h"
@@ -38,7 +38,7 @@ class BaseApiHandlerTest : public ::testing::Test {
 
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
-    auto state_definition = unittests::CreateDictionaryValue(R"({
+    auto state_definition = test::CreateDictionaryValue(R"({
       'base': {
         'firmwareVersion': 'string',
         'localDiscoveryEnabled': 'boolean',
@@ -51,7 +51,7 @@ class BaseApiHandlerTest : public ::testing::Test {
         }
       }
     })");
-    auto state_defaults = unittests::CreateDictionaryValue(R"({
+    auto state_defaults = test::CreateDictionaryValue(R"({
       'base': {
         'firmwareVersion': '123123',
         'localDiscoveryEnabled': false,
@@ -72,14 +72,14 @@ class BaseApiHandlerTest : public ::testing::Test {
   }
 
   void LoadCommands(const std::string& command_definitions) {
-    auto json = unittests::CreateDictionaryValue(command_definitions.c_str());
+    auto json = test::CreateDictionaryValue(command_definitions.c_str());
     EXPECT_TRUE(command_manager_->LoadBaseCommands(*json, nullptr));
     EXPECT_TRUE(command_manager_->LoadCommands(*json, "", nullptr));
   }
 
   void AddCommand(const std::string& command) {
     auto command_instance = CommandInstance::FromJson(
-        unittests::CreateDictionaryValue(command.c_str()).get(),
+        test::CreateDictionaryValue(command.c_str()).get(),
         CommandOrigin::kLocal, command_manager_->GetCommandDictionary(),
         nullptr, nullptr);
     EXPECT_TRUE(!!command_instance);
@@ -91,8 +91,8 @@ class BaseApiHandlerTest : public ::testing::Test {
               command_manager_->FindCommand(id)->GetStatus());
   }
 
-  unittests::MockConfigStore config_store_;
-  StrictMock<unittests::MockHttpClient> http_client_;
+  test::MockConfigStore config_store_;
+  StrictMock<test::MockHttpClient> http_client_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
   testing::StrictMock<MockStateChangeQueueInterface> mock_state_change_queue_;

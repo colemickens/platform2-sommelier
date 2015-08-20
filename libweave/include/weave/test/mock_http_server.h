@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_INCLUDE_WEAVE_MOCK_HTTP_SERVER_H_
-#define LIBWEAVE_INCLUDE_WEAVE_MOCK_HTTP_SERVER_H_
+#ifndef LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_HTTP_SERVER_H_
+#define LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_HTTP_SERVER_H_
 
 #include <weave/http_server.h>
 
@@ -13,7 +13,7 @@
 #include <base/callback.h>
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 class MockHttpServer : public HttpServer {
  public:
@@ -26,7 +26,7 @@ class MockHttpServer : public HttpServer {
   MOCK_CONST_METHOD0(GetHttpsCertificateFingerprint, std::vector<uint8_t>&());
 };
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave
 
-#endif  // LIBWEAVE_INCLUDE_WEAVE_MOCK_HTTP_SERVER_H_
+#endif  // LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_HTTP_SERVER_H_

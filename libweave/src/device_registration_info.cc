@@ -283,7 +283,7 @@ void DeviceRegistrationInfo::ScheduleCloudConnection(
     const base::TimeDelta& delay) {
   SetRegistrationStatus(RegistrationStatus::kConnecting);
   if (!task_runner_)
-    return;  // Assume we're in unittests
+    return;  // Assume we're in test
   task_runner_->PostDelayedTask(
       FROM_HERE,
       base::Bind(&DeviceRegistrationInfo::ConnectToCloud, AsWeakPtr()),
@@ -435,7 +435,7 @@ void DeviceRegistrationInfo::StartNotificationChannel() {
 
   LOG(INFO) << "Starting notification channel";
 
-  // If no TaskRunner assume we're in unittests.
+  // If no TaskRunner assume we're in test.
   if (!task_runner_) {
     LOG(INFO) << "No TaskRunner, not starting notification channel";
     return;

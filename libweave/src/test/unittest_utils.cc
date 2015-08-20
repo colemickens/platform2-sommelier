@@ -9,7 +9,7 @@
 #include <base/logging.h>
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 std::unique_ptr<base::Value> CreateValue(const std::string& json) {
   std::string json2(json);
@@ -42,5 +42,5 @@ std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(
   return std::unique_ptr<base::DictionaryValue>(dict);
 }
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave

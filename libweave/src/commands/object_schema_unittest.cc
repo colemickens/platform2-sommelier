@@ -21,8 +21,8 @@
 
 namespace weave {
 
-using unittests::CreateValue;
-using unittests::CreateDictionaryValue;
+using test::CreateValue;
+using test::CreateDictionaryValue;
 
 namespace {
 

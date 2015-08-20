@@ -6,13 +6,13 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <weave/mock_config_store.h>
-#include <weave/mock_http_client.h>
-#include <weave/mock_http_server.h>
-#include <weave/mock_mdns.h>
-#include <weave/mock_network.h>
-#include <weave/mock_task_runner.h>
-#include <weave/unittest_utils.h>
+#include <weave/test/mock_config_store.h>
+#include <weave/test/mock_http_client.h>
+#include <weave/test/mock_http_server.h>
+#include <weave/test/mock_mdns.h>
+#include <weave/test/mock_network.h>
+#include <weave/test/mock_task_runner.h>
+#include <weave/test/unittest_utils.h>
 
 #include "libweave/src/bind_lambda.h"
 
@@ -32,8 +32,8 @@ using testing::WithArgs;
 
 namespace weave {
 
-using unittests::CreateDictionaryValue;
-using unittests::ValueToString;
+using test::CreateDictionaryValue;
+using test::ValueToString;
 
 const char kCategory[] = "powerd";
 
@@ -162,8 +162,8 @@ class WeaveTest : public ::testing::Test {
                      const std::string& json_response) {
     EXPECT_CALL(http_client_, MockSendRequest(method, url, _, _, _))
         .WillOnce(InvokeWithoutArgs([json_response]() {
-          unittests::MockHttpClientResponse* response =
-              new StrictMock<unittests::MockHttpClientResponse>;
+          test::MockHttpClientResponse* response =
+              new StrictMock<test::MockHttpClientResponse>;
           EXPECT_CALL(*response, GetStatusCode())
               .Times(AtLeast(1))
               .WillRepeatedly(Return(200));
@@ -295,12 +295,12 @@ class WeaveTest : public ::testing::Test {
   std::vector<HttpServer::OnStateChangedCallback> http_server_changed_cb_;
   std::vector<HttpServer::OnRequestCallback> http_server_request_cb_;
 
-  StrictMock<unittests::MockConfigStore> config_store_;
-  StrictMock<unittests::MockTaskRunner> task_runner_;
-  StrictMock<unittests::MockHttpClient> http_client_;
-  StrictMock<unittests::MockNetwork> network_;
-  StrictMock<unittests::MockMdns> mdns_;
-  StrictMock<unittests::MockHttpServer> http_server_;
+  StrictMock<test::MockConfigStore> config_store_;
+  StrictMock<test::MockTaskRunner> task_runner_;
+  StrictMock<test::MockHttpClient> http_client_;
+  StrictMock<test::MockNetwork> network_;
+  StrictMock<test::MockMdns> mdns_;
+  StrictMock<test::MockHttpServer> http_server_;
 
   weave::Cloud* cloud_{nullptr};
 

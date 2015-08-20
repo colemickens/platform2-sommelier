@@ -11,7 +11,7 @@
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <weave/mock_config_store.h>
+#include <weave/test/mock_config_store.h>
 
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/unittest_utils.h"
@@ -22,7 +22,7 @@ namespace weave {
 
 using testing::_;
 using testing::Return;
-using unittests::CreateDictionaryValue;
+using test::CreateDictionaryValue;
 
 namespace {
 
@@ -138,7 +138,7 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
 }
 
 TEST_F(StateManagerTest, Startup) {
-  unittests::MockConfigStore config_store;
+  test::MockConfigStore config_store;
   StateManager manager(&mock_state_change_queue_);
 
   EXPECT_CALL(config_store, LoadBaseStateDefs())
@@ -173,8 +173,7 @@ TEST_F(StateManagerTest, Startup) {
 
 TEST_F(StateManagerTest, SetPropertyValue) {
   ValueMap expected_prop_set{
-      {"device.state_property",
-       unittests::make_string_prop_value("Test Value")},
+      {"device.state_property", test::make_string_prop_value("Test Value")},
   };
   EXPECT_CALL(mock_state_change_queue_,
               NotifyPropertiesUpdated(timestamp_, expected_prop_set))
@@ -232,7 +231,7 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
   std::vector<StateChange> expected_val;
   expected_val.emplace_back(
       timestamp_, ValueMap{{"device.state_property",
-                            unittests::make_string_prop_value("Test Value")}});
+                            test::make_string_prop_value("Test Value")}});
   EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
       .WillOnce(Return(expected_val));
   EXPECT_CALL(mock_state_change_queue_, GetLastStateChangeId())
@@ -246,7 +245,7 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
 
 TEST_F(StateManagerTest, SetProperties) {
   ValueMap expected_prop_set{
-      {"base.manufacturer", unittests::make_string_prop_value("No Name")},
+      {"base.manufacturer", test::make_string_prop_value("No Name")},
   };
   EXPECT_CALL(mock_state_change_queue_,
               NotifyPropertiesUpdated(_, expected_prop_set))

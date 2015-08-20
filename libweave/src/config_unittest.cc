@@ -9,7 +9,7 @@
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <weave/mock_config_store.h>
+#include <weave/test/mock_config_store.h>
 
 #include "libweave/src/commands/unittest_utils.h"
 
@@ -31,7 +31,7 @@ class ConfigTest : public ::testing::Test {
 
   MOCK_METHOD1(OnConfigChanged, void(const Settings&));
 
-  unittests::MockConfigStore config_store_;
+  test::MockConfigStore config_store_;
   std::unique_ptr<Config> config_;
   const Config default_{nullptr};
 };
@@ -203,7 +203,7 @@ TEST_F(ConfigTest, Setters) {
           'last_configured_ssid': 'set_last_configured_ssid',
           'service_url': 'set_service_url'
         })";
-        EXPECT_JSON_EQ(expected, *unittests::CreateValue(json));
+        EXPECT_JSON_EQ(expected, *test::CreateValue(json));
       }));
   EXPECT_CALL(config_store_, OnSettingsChanged(_)).Times(1);
 

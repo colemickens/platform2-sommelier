@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_INCLUDE_WEAVE_MOCK_CONFIG_STORE_H_
-#define LIBWEAVE_INCLUDE_WEAVE_MOCK_CONFIG_STORE_H_
+#ifndef LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_CONFIG_STORE_H_
+#define LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_CONFIG_STORE_H_
 
 #include <map>
 #include <string>
@@ -13,7 +13,7 @@
 #include <weave/config_store.h>
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 class MockConfigStore : public ConfigStore {
  public:
@@ -41,7 +41,7 @@ class MockConfigStore : public ConfigStore {
   MOCK_METHOD0(LoadStateDefaults, std::vector<std::string>());
 };
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave
 
-#endif  // LIBWEAVE_INCLUDE_WEAVE_MOCK_CONFIG_STORE_H_
+#endif  // LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_CONFIG_STORE_H_

@@ -10,13 +10,13 @@
 
 #include <base/values.h>
 #include <gtest/gtest.h>
-#include <weave/unittest_utils.h>
+#include <weave/test/unittest_utils.h>
 
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 template <typename T>
 std::unique_ptr<const PropValue> make_prop_value(const base::Value& value) {
@@ -41,7 +41,7 @@ inline std::unique_ptr<const PropValue> make_string_prop_value(
   return make_prop_value<std::string>(base::StringValue{value});
 }
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_UNITTEST_UTILS_H_

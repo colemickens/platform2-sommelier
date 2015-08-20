@@ -10,8 +10,8 @@
 
 namespace weave {
 
-using unittests::CreateDictionaryValue;
-using unittests::IsEqualValue;
+using test::CreateDictionaryValue;
+using test::IsEqualValue;
 
 TEST(CommandDictionary, Empty) {
   CommandDictionary dict;

@@ -8,8 +8,8 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
-#include <weave/mock_config_store.h>
-#include <weave/mock_http_client.h>
+#include <weave/test/mock_config_store.h>
+#include <weave/test/mock_http_client.h>
 
 #include "libweave/src/bind_lambda.h"
 #include "libweave/src/commands/command_manager.h"
@@ -32,10 +32,10 @@ using testing::WithArgs;
 
 namespace weave {
 
-using unittests::CreateDictionaryValue;
-using unittests::CreateValue;
-using unittests::MockHttpClient;
-using unittests::MockHttpClientResponse;
+using test::CreateDictionaryValue;
+using test::CreateValue;
+using test::MockHttpClient;
+using test::MockHttpClientResponse;
 
 namespace {
 
@@ -181,7 +181,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     return dev_reg_->registration_status_;
   }
 
-  unittests::MockConfigStore config_store_;
+  test::MockConfigStore config_store_;
   StrictMock<MockHttpClient> http_client_;
   base::DictionaryValue data_;
   Config* config_{nullptr};
@@ -375,7 +375,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
       MockSendRequest(http::kPatch, ticket_url + "?key=" + test_data::kApiKey,
                       HttpClient::Headers{GetJsonHeader()}, _, _))
       .WillOnce(WithArgs<3>(Invoke([](const std::string& data) {
-        auto json = unittests::CreateDictionaryValue(data);
+        auto json = test::CreateDictionaryValue(data);
         EXPECT_NE(nullptr, json.get());
         std::string value;
         EXPECT_TRUE(json->GetString("id", &value));

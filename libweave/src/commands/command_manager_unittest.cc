@@ -8,7 +8,7 @@
 
 #include <base/json/json_writer.h>
 #include <gtest/gtest.h>
-#include <weave/mock_config_store.h>
+#include <weave/test/mock_config_store.h>
 
 #include "libweave/src/bind_lambda.h"
 #include "libweave/src/commands/unittest_utils.h"
@@ -17,7 +17,7 @@ using testing::Return;
 
 namespace weave {
 
-using unittests::CreateDictionaryValue;
+using test::CreateDictionaryValue;
 
 namespace {
 
@@ -115,7 +115,7 @@ TEST(CommandManager, LoadCommandsJson) {
 
 TEST(CommandManager, ShouldLoadStandardAndTestDefinitions) {
   CommandManager manager;
-  unittests::MockConfigStore config_store;
+  test::MockConfigStore config_store;
   EXPECT_CALL(config_store, LoadBaseCommandDefs())
       .WillOnce(Return(kTestBaseCommands));
   EXPECT_CALL(config_store, LoadCommandDefs())

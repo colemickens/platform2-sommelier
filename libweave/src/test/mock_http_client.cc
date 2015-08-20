@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <weave/mock_http_client.h>
+#include <weave/test/mock_http_client.h>
 
 #include <memory>
 #include <string>
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 std::unique_ptr<HttpClient::Response> MockHttpClient::SendRequestAndBlock(
     const std::string& method,
@@ -37,5 +37,5 @@ int MockHttpClient::SendRequest(const std::string& method,
   return 0;
 }
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave

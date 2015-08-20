@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <weave/mock_command.h>
+#include <weave/test/mock_command.h>
 
 #include <memory>
 #include <string>
@@ -12,7 +12,7 @@
 #include "libweave/src/commands/unittest_utils.h"
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 std::unique_ptr<base::DictionaryValue> MockCommand::GetParameters() const {
   return CreateDictionaryValue(MockGetParameters());
@@ -30,5 +30,5 @@ std::unique_ptr<base::DictionaryValue> MockCommand::ToJson() const {
   return CreateDictionaryValue(MockToJson());
 }
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave

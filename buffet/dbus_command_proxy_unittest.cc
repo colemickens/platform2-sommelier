@@ -16,9 +16,9 @@
 #include <gtest/gtest.h>
 #include <weave/command.h>
 #include <weave/enum_to_string.h>
-#include <weave/mock_command.h>
-#include <weave/mock_commands.h>
-#include <weave/unittest_utils.h>
+#include <weave/test/mock_command.h>
+#include <weave/test/mock_commands.h>
+#include <weave/test/unittest_utils.h>
 
 #include "buffet/dbus_constants.h"
 
@@ -32,8 +32,8 @@ using ::testing::StrictMock;
 
 using chromeos::VariantDictionary;
 using chromeos::dbus_utils::AsyncEventSequencer;
-using weave::unittests::CreateDictionaryValue;
-using weave::unittests::IsEqualValue;
+using weave::test::CreateDictionaryValue;
+using weave::test::IsEqualValue;
 
 namespace {
 
@@ -124,7 +124,7 @@ class DBusCommandProxyTest : public ::testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
   scoped_refptr<dbus::MockBus> bus_;
 
-  StrictMock<weave::unittests::MockCommand> command_;
+  StrictMock<weave::test::MockCommand> command_;
   std::unique_ptr<DBusCommandProxy> proxy_;
 };
 

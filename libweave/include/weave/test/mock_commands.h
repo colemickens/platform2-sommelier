@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMANDS_H_
-#define LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMANDS_H_
+#ifndef LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_COMMANDS_H_
+#define LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_COMMANDS_H_
 
 #include <weave/commands.h>
 
@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 class MockCommands : public Commands {
  public:
@@ -26,7 +26,7 @@ class MockCommands : public Commands {
   MOCK_METHOD1(FindCommand, Command*(const std::string&));
 };
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave
 
-#endif  // LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMANDS_H_
+#endif  // LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_COMMANDS_H_

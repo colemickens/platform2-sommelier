@@ -19,7 +19,7 @@
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <weave/mock_task_runner.h>
+#include <weave/test/mock_task_runner.h>
 
 #include "libweave/external/crypto/p224_spake.h"
 #include "libweave/src/data_encoding.h"
@@ -100,7 +100,7 @@ class SecurityManagerTest : public testing::Test {
   }
 
   const base::Time time_ = base::Time::FromTimeT(1410000000);
-  unittests::MockTaskRunner task_runner_;
+  test::MockTaskRunner task_runner_;
   SecurityManager security_{{PairingType::kEmbeddedCode},
                             "1234",
                             false,

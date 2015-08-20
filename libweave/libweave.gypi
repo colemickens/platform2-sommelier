@@ -53,10 +53,10 @@
       'third_party/modp_b64/modp_b64.cc',
     ],
     'weave_test_sources': [
-      'src/commands/mock_command.cc',
-      'src/commands/unittest_utils.cc',
-      'src/mock_http_client.cc',
-      'src/mock_task_runner.cc',
+      'src/test/mock_command.cc',
+      'src/test/mock_http_client.cc',
+      'src/test/mock_task_runner.cc',
+      'src/test/unittest_utils.cc',
     ],
     'weave_unittest_sources': [
       'external/crypto/p224_spake_unittest.cc',
@@ -88,11 +88,11 @@
       'src/states/state_manager_unittest.cc',
       'src/states/state_package_unittest.cc',
       'src/string_utils_unittest.cc',
-      'src/weave_testrunner.cc',
+      'src/test/weave_testrunner.cc',
     ],
     'weave_exports_unittest_sources': [
+      'src/test/weave_testrunner.cc',
       'src/weave_unittest.cc',
-      'src/weave_testrunner.cc',
     ],
     'base_sources': [
       'external/base/bind_helpers.cc',

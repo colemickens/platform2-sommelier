@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMAND_H_
-#define LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMAND_H_
+#ifndef LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_COMMAND_H_
+#define LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_COMMAND_H_
 
 #include <weave/command.h>
 
@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 
 namespace weave {
-namespace unittests {
+namespace test {
 
 class MockCommand : public Command {
  public:
@@ -43,7 +43,7 @@ class MockCommand : public Command {
   std::unique_ptr<base::DictionaryValue> ToJson() const override;
 };
 
-}  // namespace unittests
+}  // namespace test
 }  // namespace weave
 
-#endif  // LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMAND_H_
+#endif  // LIBWEAVE_INCLUDE_WEAVE_TEST_MOCK_COMMAND_H_

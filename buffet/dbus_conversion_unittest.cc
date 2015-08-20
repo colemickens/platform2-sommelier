@@ -14,7 +14,7 @@
 #include <base/values.h>
 #include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
-#include <weave/unittest_utils.h>
+#include <weave/test/unittest_utils.h>
 
 namespace buffet {
 
@@ -22,8 +22,8 @@ namespace {
 
 using chromeos::Any;
 using chromeos::VariantDictionary;
-using weave::unittests::CreateDictionaryValue;
-using weave::unittests::IsEqualValue;
+using weave::test::CreateDictionaryValue;
+using weave::test::IsEqualValue;
 
 chromeos::VariantDictionary ToDBus(const base::DictionaryValue& object) {
   return DictionaryToDBusVariantDictionary(object);

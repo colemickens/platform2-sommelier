@@ -15,7 +15,7 @@ using testing::_;
 
 namespace weave {
 
-using unittests::CreateDictionaryValue;
+using test::CreateDictionaryValue;
 
 class MockNotificationDelegate : public NotificationDelegate {
  public:

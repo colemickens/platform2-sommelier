@@ -16,7 +16,7 @@
 
 namespace weave {
 
-using unittests::CreateDictionaryValue;
+using test::CreateDictionaryValue;
 
 class StatePackageTestHelper {
  public:

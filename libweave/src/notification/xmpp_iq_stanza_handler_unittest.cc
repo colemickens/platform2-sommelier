@@ -9,7 +9,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <weave/mock_task_runner.h>
+#include <weave/test/mock_task_runner.h>
 
 #include "libweave/src/bind_lambda.h"
 #include "libweave/src/notification/xml_node.h"
@@ -76,7 +76,7 @@ class MockResponseReceiver {
 class IqStanzaHandlerTest : public testing::Test {
  public:
   testing::StrictMock<MockXmppChannelInterface> mock_xmpp_channel_;
-  unittests::MockTaskRunner task_runner_;
+  test::MockTaskRunner task_runner_;
   IqStanzaHandler iq_stanza_handler_{&mock_xmpp_channel_, &task_runner_};
   MockResponseReceiver receiver_;
 };
