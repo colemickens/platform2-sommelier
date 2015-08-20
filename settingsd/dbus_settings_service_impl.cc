@@ -97,6 +97,13 @@ void DBusSettingsServiceImpl::OnSettingsChanged(const std::set<Key>& keys) {
   dbus_adaptor_.SendOnSettingsChangedSignal(changed_keys);
 }
 
+void DBusSettingsServiceImpl::Start(
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(sequencer->GetHandler(
+      "DBusSettingsServiceImpl.RegisterAsync() failed.", true));
+}
+
 bool DBusSettingsServiceImpl::Get(chromeos::ErrorPtr* error,
                                   const std::string& in_key,
                                   std::vector<uint8_t>* out_value) {

@@ -49,7 +49,25 @@
         'version_stamp.cc',
         'version_stamp.h',
       ],
-      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+    },
+    {
+      'target_name': 'settingsd',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'libchromeos-<(libbase_ver)',
+        ],
+      },
+      'dependencies': [
+        'settingsd_common',
+      ],
+      'sources': [
+        'daemon.cc',
+        'daemon.h',
+        'dbus_constants.cc',
+        'dbus_constants.h',
+        'main.cc',
+      ],
     },
     {
       'target_name': 'settingsd_testrunner',

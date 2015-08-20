@@ -50,6 +50,8 @@ class DBusSettingsServiceImpl
   // SettingsObserver:
   void OnSettingsChanged(const std::set<Key>& keys) override;
 
+  void Start(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+
  private:
   // org::chromium::Settingsd::SettingsInterface:
   bool Get(chromeos::ErrorPtr* error,
