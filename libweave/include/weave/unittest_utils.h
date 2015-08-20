@@ -19,6 +19,8 @@ namespace unittests {
 // are replaced with apostrophes.
 std::unique_ptr<base::Value> CreateValue(const std::string& json);
 
+std::string ValueToString(const base::Value& value);
+
 // Helper method to create a JSON dictionary object from a string.
 std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(
     const std::string& json);

@@ -147,6 +147,39 @@
             '<@(base_unittests)',
           ],
         },
+        {
+          'target_name': 'libweave_exports_testrunner',
+          'type': 'executable',
+          'variables': {
+            'deps': [
+              'libchrome-<(libbase_ver)',
+            ],
+          },
+          'dependencies': [
+            'libweave-<(libbase_ver)',
+            'libweave-test-<(libbase_ver)',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            '<@(weave_exports_unittest_sources)',
+          ],
+        },
+        {
+          'target_name': 'libweave_base_exports_testrunner',
+          'type': 'executable',
+          'cflags': ['-Wno-format-nonliteral'],
+          'include_dirs': [
+            '../libweave/external',
+          ],
+          'dependencies': [
+            'libweave_base',
+            'libweave_base-test',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            '<@(weave_exports_unittest_sources)',
+          ],
+        },
       ],
     }],
   ],

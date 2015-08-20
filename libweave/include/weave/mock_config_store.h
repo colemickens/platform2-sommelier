@@ -12,15 +12,15 @@
 #include <gmock/gmock.h>
 #include <weave/config_store.h>
 
-using testing::_;
-using testing::Return;
-
 namespace weave {
 namespace unittests {
 
 class MockConfigStore : public ConfigStore {
  public:
   MockConfigStore() {
+    using testing::_;
+    using testing::Return;
+
     EXPECT_CALL(*this, LoadDefaults(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*this, LoadSettings()).WillRepeatedly(Return(""));
     EXPECT_CALL(*this, SaveSettings(_)).WillRepeatedly(Return());

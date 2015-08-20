@@ -523,6 +523,12 @@ DeviceRegistrationInfo::BuildDeviceResource(ErrorPtr* error) {
 void DeviceRegistrationInfo::GetDeviceInfo(
     const CloudRequestCallback& success_callback,
     const CloudRequestErrorCallback& error_callback) {
+  ErrorPtr error;
+  if (!VerifyRegistrationCredentials(&error)) {
+    if (!error_callback.is_null())
+      error_callback.Run(error.get());
+    return;
+  }
   DoCloudRequest(http::kGet, GetDeviceURL(), nullptr, success_callback,
                  error_callback);
 }

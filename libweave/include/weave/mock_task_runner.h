@@ -20,45 +20,22 @@ namespace unittests {
 
 class MockTaskRunner : public TaskRunner {
  public:
-  MockTaskRunner() {
-    test_clock_.SetNow(base::Time::Now());
-    using testing::_;
-    using testing::Invoke;
-    using testing::AnyNumber;
-    ON_CALL(*this, PostDelayedTask(_, _, _))
-        .WillByDefault(Invoke(this, &MockTaskRunner::SaveTask));
-    EXPECT_CALL(*this, PostDelayedTask(_, _, _)).Times(AnyNumber());
-  }
-  ~MockTaskRunner() override = default;
+  MockTaskRunner();
+  ~MockTaskRunner() override;
 
   MOCK_METHOD3(PostDelayedTask,
                void(const tracked_objects::Location&,
                     const base::Closure&,
                     base::TimeDelta));
 
-  bool RunOnce() {
-    if (queue_.empty())
-      return false;
-    auto top = queue_.top();
-    queue_.pop();
-    test_clock_.SetNow(std::max(test_clock_.Now(), top.first.first));
-    top.second.Run();
-    return true;
-  }
-
-  void Run() {
-    while (RunOnce()) {
-    }
-  }
-
-  base::Clock* GetClock() { return &test_clock_; }
+  bool RunOnce();
+  void Run();
+  base::Clock* GetClock();
 
  private:
   void SaveTask(const tracked_objects::Location& from_here,
                 const base::Closure& task,
-                base::TimeDelta delay) {
-    queue_.emplace(std::make_pair(test_clock_.Now() + delay, ++counter_), task);
-  }
+                base::TimeDelta delay);
 
   using QueueItem = std::pair<std::pair<base::Time, size_t>, base::Closure>;
 
@@ -70,16 +47,8 @@ class MockTaskRunner : public TaskRunner {
 
   size_t counter_{0};  // Keeps order of tasks with the same time.
 
-  class TestClock : public base::Clock {
-   public:
-    base::Time Now() override { return now_; }
-
-    void SetNow(base::Time now) { now_ = now; }
-
-   private:
-    base::Time now_;
-  };
-  TestClock test_clock_;
+  class TestClock;
+  std::unique_ptr<TestClock> test_clock_;
 
   std::priority_queue<QueueItem,
                       std::vector<QueueItem>,

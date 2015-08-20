@@ -13,6 +13,8 @@
 #include "libweave/src/bind_lambda.h"
 #include "libweave/src/commands/unittest_utils.h"
 
+using testing::Return;
+
 namespace weave {
 
 using unittests::CreateDictionaryValue;

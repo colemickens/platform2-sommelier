@@ -5,6 +5,7 @@
 #include "libweave/src/commands/unittest_utils.h"
 
 #include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 
 namespace weave {
@@ -22,6 +23,13 @@ std::unique_ptr<base::Value> CreateValue(const std::string& json) {
           .release()};
   CHECK(value) << "Failed to load JSON: " << message << ", " << json;
   return value;
+}
+
+std::string ValueToString(const base::Value& value) {
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      value, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+  return json;
 }
 
 std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(

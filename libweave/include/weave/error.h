@@ -19,7 +19,7 @@ class Error;  // Forward declaration.
 
 using ErrorPtr = std::unique_ptr<Error>;
 
-class Error final {
+class LIBWEAVE_EXPORT Error final {
  public:
   ~Error() = default;
 
@@ -36,20 +36,19 @@ class Error final {
   // If |error| is not nullptr, creates another instance of Error class,
   // initializes it with specified arguments and adds it to the head of
   // the error chain pointed to by |error|.
-  LIBWEAVE_EXPORT static void AddTo(ErrorPtr* error,
-                                    const tracked_objects::Location& location,
-                                    const std::string& domain,
-                                    const std::string& code,
-                                    const std::string& message);
+  static void AddTo(ErrorPtr* error,
+                    const tracked_objects::Location& location,
+                    const std::string& domain,
+                    const std::string& code,
+                    const std::string& message);
   // Same as the Error::AddTo above, but allows to pass in a printf-like
   // format string and optional parameters to format the error message.
-  LIBWEAVE_EXPORT static void AddToPrintf(
-      ErrorPtr* error,
-      const tracked_objects::Location& location,
-      const std::string& domain,
-      const std::string& code,
-      const char* format,
-      ...) PRINTF_FORMAT(5, 6);
+  static void AddToPrintf(ErrorPtr* error,
+                          const tracked_objects::Location& location,
+                          const std::string& domain,
+                          const std::string& code,
+                          const char* format,
+                          ...) PRINTF_FORMAT(5, 6);
 
   // Clones error with all inner errors.
   ErrorPtr Clone() const;

@@ -41,6 +41,7 @@ class Publisher : public IdentityDelegate {
   void ExposeService();
   void RemoveService();
 
+  bool is_publishing_{false};
   Mdns* mdns_{nullptr};
 
   const DeviceDelegate* device_{nullptr};
