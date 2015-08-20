@@ -52,17 +52,17 @@ inline int snprintf(char* buffer, size_t size, const char* format, ...) {
 // Contains the set of characters representing whitespace in the corresponding
 // encoding. Null-terminated. The ASCII versions are the whitespaces as defined
 // by HTML5, and don't include control characters.
-BASE_EXPORT extern const char kWhitespaceASCII[];
+extern const char kWhitespaceASCII[];
 
 // Replaces characters in |replace_chars| from anywhere in |input| with
 // |replace_with|.  Each character in |replace_chars| will be replaced with
 // the |replace_with| string.  Returns true if any characters were replaced.
 // |replace_chars| must be null-terminated.
 // NOTE: Safe to use the same variable for both |input| and |output|.
-BASE_EXPORT bool ReplaceChars(const std::string& input,
-                              const base::StringPiece& replace_chars,
-                              const std::string& replace_with,
-                              std::string* output);
+bool ReplaceChars(const std::string& input,
+                  const base::StringPiece& replace_chars,
+                  const std::string& replace_with,
+                  std::string* output);
 
 enum TrimPositions {
   TRIM_NONE     = 0,
@@ -76,15 +76,15 @@ enum TrimPositions {
 //
 // It is safe to use the same variable for both |input| and |output| (this is
 // the normal usage to trim in-place).
-BASE_EXPORT bool TrimString(const std::string& input,
-                            base::StringPiece trim_chars,
-                            std::string* output);
+bool TrimString(const std::string& input,
+                base::StringPiece trim_chars,
+                std::string* output);
 
 // StringPiece versions of the above. The returned pieces refer to the original
 // buffer.
-BASE_EXPORT StringPiece TrimString(StringPiece input,
-                                   const base::StringPiece& trim_chars,
-                                   TrimPositions positions);
+StringPiece TrimString(StringPiece input,
+                       const base::StringPiece& trim_chars,
+                       TrimPositions positions);
 
 // Trims any whitespace from either end of the input string.  Returns where
 // whitespace was found.
@@ -93,15 +93,15 @@ BASE_EXPORT StringPiece TrimString(StringPiece input,
 //   This function is for ASCII strings and only looks for ASCII whitespace;
 // Please choose the best one according to your usage.
 // NOTE: Safe to use the same variable for both input and output.
-BASE_EXPORT TrimPositions TrimWhitespaceASCII(const std::string& input,
-                                              TrimPositions positions,
-                                              std::string* output);
+TrimPositions TrimWhitespaceASCII(const std::string& input,
+                                  TrimPositions positions,
+                                  std::string* output);
 
 // Deprecated. This function is only for backward compatibility and calls
 // TrimWhitespaceASCII().
-BASE_EXPORT TrimPositions TrimWhitespace(const std::string& input,
-                                         TrimPositions positions,
-                                         std::string* output);
+TrimPositions TrimWhitespace(const std::string& input,
+                             TrimPositions positions,
+                             std::string* output);
 
 // Returns true if the specified string matches the criteria. How can a wide
 // string be 8-bit or UTF8? It contains only characters that are < 256 (in the
@@ -117,8 +117,8 @@ BASE_EXPORT TrimPositions TrimWhitespace(const std::string& input,
 //
 // IsStringASCII assumes the input is likely all ASCII, and does not leave early
 // if it is not the case.
-BASE_EXPORT bool IsStringUTF8(const StringPiece& str);
-BASE_EXPORT bool IsStringASCII(const StringPiece& str);
+bool IsStringUTF8(const StringPiece& str);
+bool IsStringASCII(const StringPiece& str);
 
 }  // namespace base
 

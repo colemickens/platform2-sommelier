@@ -19,7 +19,7 @@ namespace base {
 
 namespace subtle {
 
-class BASE_EXPORT RefCountedBase {
+class RefCountedBase {
  public:
   bool HasOneRef() const { return ref_count_ == 1; }
 
@@ -69,7 +69,7 @@ class BASE_EXPORT RefCountedBase {
   DISALLOW_COPY_AND_ASSIGN(RefCountedBase);
 };
 
-class BASE_EXPORT RefCountedThreadSafeBase {
+class RefCountedThreadSafeBase {
  public:
   bool HasOneRef() const;
 

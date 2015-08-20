@@ -167,8 +167,7 @@ struct AtomicOps_x86CPUFeatureStruct {
   bool has_sse2;            // Processor has SSE2.
   bool has_cmpxchg16b;      // Processor supports cmpxchg16b instruction.
 };
-BASE_EXPORT extern struct AtomicOps_x86CPUFeatureStruct
-    AtomicOps_Internalx86CPUFeatures;
+extern struct AtomicOps_x86CPUFeatureStruct AtomicOps_Internalx86CPUFeatures;
 #endif
 
 // Try to use a portable implementation based on C++11 atomics.

@@ -39,17 +39,17 @@ inline bool IsValidCharacter(uint32 code_point) {
 // (as in a for loop) will take the reader to the next character.
 //
 // Returns true on success. On false, |*code_point| will be invalid.
-BASE_EXPORT bool ReadUnicodeCharacter(const char* src,
-                                      int32 src_len,
-                                      int32* char_index,
-                                      uint32* code_point_out);
+bool ReadUnicodeCharacter(const char* src,
+                          int32 src_len,
+                          int32* char_index,
+                          uint32* code_point_out);
 
 #if defined(WCHAR_T_IS_UTF32)
 // Reads UTF-32 character. The usage is the same as the 8-bit version above.
-BASE_EXPORT bool ReadUnicodeCharacter(const wchar_t* src,
-                                      int32 src_len,
-                                      int32* char_index,
-                                      uint32* code_point);
+bool ReadUnicodeCharacter(const wchar_t* src,
+                          int32 src_len,
+                          int32* char_index,
+                          uint32* code_point);
 #endif  // defined(WCHAR_T_IS_UTF32)
 
 // WriteUnicodeCharacter -------------------------------------------------------
@@ -57,8 +57,7 @@ BASE_EXPORT bool ReadUnicodeCharacter(const wchar_t* src,
 // Appends a UTF-8 character to the given 8-bit string.  Returns the number of
 // bytes written.
 // TODO(brettw) Bug 79631: This function should not be exposed.
-BASE_EXPORT size_t WriteUnicodeCharacter(uint32 code_point,
-                                         std::string* output);
+size_t WriteUnicodeCharacter(uint32 code_point, std::string* output);
 
 #if defined(WCHAR_T_IS_UTF32)
 // Appends the given UTF-32 character to the given 32-bit string.  Returns the

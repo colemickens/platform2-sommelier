@@ -252,7 +252,7 @@ void RawLog(int level, const char* message) {
 // This was defined at the beginning of this file.
 #undef write
 
-BASE_EXPORT void LogErrorNotReached(const char* file, int line) {
+void LogErrorNotReached(const char* file, int line) {
   LogMessage(file, line, LOG_ERROR).stream()
       << "NOTREACHED() hit.";
 }

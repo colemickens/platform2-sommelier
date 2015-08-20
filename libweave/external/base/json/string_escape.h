@@ -25,13 +25,13 @@ namespace base {
 //
 // If |put_in_quotes| is true, then a leading and trailing double-quote mark
 // will be appended to |dest| as well.
-BASE_EXPORT bool EscapeJSONString(const StringPiece& str,
-                                  bool put_in_quotes,
-                                  std::string* dest);
+bool EscapeJSONString(const StringPiece& str,
+                      bool put_in_quotes,
+                      std::string* dest);
 
 // Helper functions that wrap the above two functions but return the value
 // instead of appending. |put_in_quotes| is always true.
-BASE_EXPORT std::string GetQuotedJSONString(const StringPiece& str);
+std::string GetQuotedJSONString(const StringPiece& str);
 
 // Given an arbitrary byte string |str|, this will escape all non-ASCII bytes
 // as \uXXXX escape sequences. This function is *NOT* meant to be used with
@@ -44,8 +44,8 @@ BASE_EXPORT std::string GetQuotedJSONString(const StringPiece& str);
 //
 // The output of this function takes the *appearance* of JSON but is not in
 // fact valid according to RFC 4627.
-BASE_EXPORT std::string EscapeBytesAsInvalidJSONString(const StringPiece& str,
-                                                       bool put_in_quotes);
+std::string EscapeBytesAsInvalidJSONString(const StringPiece& str,
+                                           bool put_in_quotes);
 
 }  // namespace base
 

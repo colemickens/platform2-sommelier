@@ -422,7 +422,7 @@ class BASE_EXPORT Time : public time_internal::TimeBase<Time> {
   // Represents an exploded time that can be formatted nicely. This is kind of
   // like the Win32 SYSTEMTIME structure or the Unix "struct tm" with a few
   // additions and changes to prevent errors.
-  struct BASE_EXPORT Exploded {
+  struct Exploded {
     int year;          // Four digit year "2007"
     int month;         // 1-based month (values 1 = January, etc.)
     int day_of_week;   // 0-based day of week (0 = Sunday, etc.)
@@ -639,7 +639,7 @@ BASE_EXPORT std::ostream& operator<<(std::ostream& os, Time time);
 // TimeTicks ------------------------------------------------------------------
 
 // Represents monotonically non-decreasing clock time.
-class BASE_EXPORT TimeTicks : public time_internal::TimeBase<TimeTicks> {
+class TimeTicks : public time_internal::TimeBase<TimeTicks> {
  public:
   TimeTicks() : TimeBase(0) {
   }
@@ -693,13 +693,13 @@ class BASE_EXPORT TimeTicks : public time_internal::TimeBase<TimeTicks> {
 };
 
 // For logging use only.
-BASE_EXPORT std::ostream& operator<<(std::ostream& os, TimeTicks time_ticks);
+std::ostream& operator<<(std::ostream& os, TimeTicks time_ticks);
 
 // ThreadTicks ----------------------------------------------------------------
 
 // Represents a clock, specific to a particular thread, than runs only while the
 // thread is running.
-class BASE_EXPORT ThreadTicks : public time_internal::TimeBase<ThreadTicks> {
+class ThreadTicks : public time_internal::TimeBase<ThreadTicks> {
  public:
   ThreadTicks() : TimeBase(0) {
   }
@@ -731,12 +731,12 @@ class BASE_EXPORT ThreadTicks : public time_internal::TimeBase<ThreadTicks> {
 };
 
 // For logging use only.
-BASE_EXPORT std::ostream& operator<<(std::ostream& os, ThreadTicks time_ticks);
+std::ostream& operator<<(std::ostream& os, ThreadTicks time_ticks);
 
 // TraceTicks ----------------------------------------------------------------
 
 // Represents high-resolution system trace clock time.
-class BASE_EXPORT TraceTicks : public time_internal::TimeBase<TraceTicks> {
+class TraceTicks : public time_internal::TimeBase<TraceTicks> {
  public:
   // We define this even without OS_CHROMEOS for seccomp sandbox testing.
 #if defined(OS_LINUX)
@@ -777,7 +777,7 @@ class BASE_EXPORT TraceTicks : public time_internal::TimeBase<TraceTicks> {
 };
 
 // For logging use only.
-BASE_EXPORT std::ostream& operator<<(std::ostream& os, TraceTicks time_ticks);
+std::ostream& operator<<(std::ostream& os, TraceTicks time_ticks);
 
 }  // namespace base
 

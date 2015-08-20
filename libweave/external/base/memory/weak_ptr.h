@@ -78,11 +78,11 @@ namespace internal {
 // These classes are part of the WeakPtr implementation.
 // DO NOT USE THESE CLASSES DIRECTLY YOURSELF.
 
-class BASE_EXPORT WeakReference {
+class WeakReference {
  public:
   // Although Flag is bound to a specific SequencedTaskRunner, it may be
   // deleted from another via base::WeakPtr::~WeakPtr().
-  class BASE_EXPORT Flag : public RefCountedThreadSafe<Flag> {
+  class Flag : public RefCountedThreadSafe<Flag> {
    public:
     Flag();
 
@@ -107,7 +107,7 @@ class BASE_EXPORT WeakReference {
   scoped_refptr<const Flag> flag_;
 };
 
-class BASE_EXPORT WeakReferenceOwner {
+class WeakReferenceOwner {
  public:
   WeakReferenceOwner();
   ~WeakReferenceOwner();
@@ -128,7 +128,7 @@ class BASE_EXPORT WeakReferenceOwner {
 // constructor by avoiding the need for a public accessor for ref_.  A
 // WeakPtr<T> cannot access the private members of WeakPtr<U>, so this
 // base class gives us a way to access ref_ in a protected fashion.
-class BASE_EXPORT WeakPtrBase {
+class WeakPtrBase {
  public:
   WeakPtrBase();
   ~WeakPtrBase();

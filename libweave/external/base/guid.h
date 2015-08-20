@@ -17,11 +17,11 @@ namespace base {
 // If GUID generation fails an empty string is returned.
 // The POSIX implementation uses pseudo random number generation to create
 // the GUID.  The Windows implementation uses system services.
-BASE_EXPORT std::string GenerateGUID();
+std::string GenerateGUID();
 
 #if defined(OS_POSIX)
 // For unit testing purposes only.  Do not use outside of tests.
-BASE_EXPORT std::string RandomDataToGUIDString(const uint64 bytes[2]);
+std::string RandomDataToGUIDString(const uint64 bytes[2]);
 #endif
 
 }  // namespace base

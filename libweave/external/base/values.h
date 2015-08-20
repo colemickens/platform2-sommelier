@@ -163,7 +163,7 @@ class BASE_EXPORT StringValue : public Value {
   std::string value_;
 };
 
-class BASE_EXPORT BinaryValue: public Value {
+class BASE_EXPORT BinaryValue : public Value {
  public:
   // Creates a BinaryValue with a null buffer and size of 0.
   BinaryValue();

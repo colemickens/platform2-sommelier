@@ -5,7 +5,7 @@
 #ifndef BASE_BASE_EXPORT_H_
 #define BASE_BASE_EXPORT_H_
 
-#define BASE_EXPORT
-#define BASE_EXPORT_PRIVATE
+#define BASE_EXPORT __attribute__((__visibility__("default")))
+#define BASE_EXPORT_PRIVATE __attribute__((__visibility__("hidden")))
 
 #endif  // BASE_BASE_EXPORT_H_

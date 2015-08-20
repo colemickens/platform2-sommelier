@@ -157,7 +157,7 @@ struct BASE_EXPORT LoggingSettings {
 // Implementation of the InitLogging() method declared below.  We use a
 // more-specific name so we can #define it above without affecting other code
 // that has named stuff "InitLogging".
-BASE_EXPORT bool BaseInitLoggingImpl(const LoggingSettings& settings);
+bool BASE_EXPORT BaseInitLoggingImpl(const LoggingSettings& settings);
 
 // Sets the log file name and other global logging state. Calling this function
 // is recommended, and is normally done at the beginning of application init.
@@ -195,7 +195,7 @@ BASE_EXPORT int GetVlogVerbosity();
 // __FILE__).
 
 // Note that |N| is the size *with* the null terminator.
-BASE_EXPORT int GetVlogLevelHelper(const char* file_start, size_t N);
+int GetVlogLevelHelper(const char* file_start, size_t N);
 
 template <size_t N>
 int GetVlogLevel(const char (&file)[N]) {
@@ -206,13 +206,15 @@ int GetVlogLevel(const char (&file)[N]) {
 // process and thread IDs default to off, the timestamp defaults to on.
 // If this function is not called, logging defaults to writing the timestamp
 // only.
-BASE_EXPORT void SetLogItems(bool enable_process_id, bool enable_thread_id,
-                             bool enable_timestamp, bool enable_tickcount);
+BASE_EXPORT void SetLogItems(bool enable_process_id,
+                             bool enable_thread_id,
+                             bool enable_timestamp,
+                             bool enable_tickcount);
 
 // Sets whether or not you'd like to see fatal debug messages popped up in
 // a dialog box or not.
 // Dialogs are not shown by default.
-BASE_EXPORT void SetShowErrorDialogs(bool enable_dialogs);
+void SetShowErrorDialogs(bool enable_dialogs);
 
 // Sets the Log Assert Handler that will be used to notify of check failures.
 // The default handler shows a dialog box and then terminate the process,
@@ -382,8 +384,8 @@ std::string* MakeCheckOpString(const t1& v1, const t2& v2, const char* names) {
 
 // Commonly used instantiations of MakeCheckOpString<>. Explicitly instantiated
 // in logging.cc.
-extern template BASE_EXPORT std::string* MakeCheckOpString<int, int>(
-    const int&, const int&, const char* names);
+extern template BASE_EXPORT std::string*
+MakeCheckOpString<int, int>(const int&, const int&, const char* names);
 extern template BASE_EXPORT
 std::string* MakeCheckOpString<unsigned long, unsigned long>(
     const unsigned long&, const unsigned long&, const char* names);

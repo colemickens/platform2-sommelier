@@ -46,57 +46,34 @@ typedef BasicStringPiece<std::string> StringPiece;
 // template internal to the .cc file.
 namespace internal {
 
-BASE_EXPORT void CopyToString(const StringPiece& self, std::string* target);
+void CopyToString(const StringPiece& self, std::string* target);
 
-BASE_EXPORT void AppendToString(const StringPiece& self, std::string* target);
+void AppendToString(const StringPiece& self, std::string* target);
 
-BASE_EXPORT size_t copy(const StringPiece& self,
-                        char* buf,
-                        size_t n,
-                        size_t pos);
+size_t copy(const StringPiece& self, char* buf, size_t n, size_t pos);
 
-BASE_EXPORT size_t find(const StringPiece& self,
-                        const StringPiece& s,
-                        size_t pos);
-BASE_EXPORT size_t find(const StringPiece& self,
-                        char c,
-                        size_t pos);
+size_t find(const StringPiece& self, const StringPiece& s, size_t pos);
+size_t find(const StringPiece& self, char c, size_t pos);
 
-BASE_EXPORT size_t rfind(const StringPiece& self,
+size_t rfind(const StringPiece& self, const StringPiece& s, size_t pos);
+size_t rfind(const StringPiece& self, char c, size_t pos);
+
+size_t find_first_of(const StringPiece& self, const StringPiece& s, size_t pos);
+
+size_t find_first_not_of(const StringPiece& self,
                          const StringPiece& s,
                          size_t pos);
-BASE_EXPORT size_t rfind(const StringPiece& self,
-                         char c,
-                         size_t pos);
+size_t find_first_not_of(const StringPiece& self, char c, size_t pos);
 
-BASE_EXPORT size_t find_first_of(const StringPiece& self,
-                                 const StringPiece& s,
-                                 size_t pos);
+size_t find_last_of(const StringPiece& self, const StringPiece& s, size_t pos);
+size_t find_last_of(const StringPiece& self, char c, size_t pos);
 
-BASE_EXPORT size_t find_first_not_of(const StringPiece& self,
-                                     const StringPiece& s,
-                                     size_t pos);
-BASE_EXPORT size_t find_first_not_of(const StringPiece& self,
-                                     char c,
-                                     size_t pos);
+size_t find_last_not_of(const StringPiece& self,
+                        const StringPiece& s,
+                        size_t pos);
+size_t find_last_not_of(const StringPiece& self, char c, size_t pos);
 
-BASE_EXPORT size_t find_last_of(const StringPiece& self,
-                                const StringPiece& s,
-                                size_t pos);
-BASE_EXPORT size_t find_last_of(const StringPiece& self,
-                                char c,
-                                size_t pos);
-
-BASE_EXPORT size_t find_last_not_of(const StringPiece& self,
-                                    const StringPiece& s,
-                                    size_t pos);
-BASE_EXPORT size_t find_last_not_of(const StringPiece& self,
-                                    char c,
-                                    size_t pos);
-
-BASE_EXPORT StringPiece substr(const StringPiece& self,
-                               size_t pos,
-                               size_t n);
+StringPiece substr(const StringPiece& self, size_t pos, size_t n);
 
 }  // namespace internal
 
@@ -306,12 +283,12 @@ BasicStringPiece<STRING_TYPE>::npos =
 
 // MSVC doesn't like complex extern templates and DLLs.
 #if !defined(COMPILER_MSVC)
-extern template class BASE_EXPORT BasicStringPiece<std::string>;
+extern template class BasicStringPiece<std::string>;
 #endif
 
 // StingPiece operators --------------------------------------------------------
 
-BASE_EXPORT bool operator==(const StringPiece& x, const StringPiece& y);
+bool operator==(const StringPiece& x, const StringPiece& y);
 
 inline bool operator!=(const StringPiece& x, const StringPiece& y) {
   return !(x == y);
@@ -335,8 +312,7 @@ inline bool operator>=(const StringPiece& x, const StringPiece& y) {
   return !(x < y);
 }
 
-BASE_EXPORT std::ostream& operator<<(std::ostream& o,
-                                     const StringPiece& piece);
+std::ostream& operator<<(std::ostream& o, const StringPiece& piece);
 
 }  // namespace base
 

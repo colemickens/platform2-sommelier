@@ -15,25 +15,24 @@
 namespace base {
 
 // Return a C++ string given printf-like input.
-BASE_EXPORT std::string StringPrintf(const char* format, ...)
+std::string StringPrintf(const char* format, ...)
     PRINTF_FORMAT(1, 2) WARN_UNUSED_RESULT;
 
 // Return a C++ string given vprintf-like input.
-BASE_EXPORT std::string StringPrintV(const char* format, va_list ap)
+std::string StringPrintV(const char* format, va_list ap)
     PRINTF_FORMAT(1, 0) WARN_UNUSED_RESULT;
 
 // Store result into a supplied string and return it.
-BASE_EXPORT const std::string& SStringPrintf(std::string* dst,
-                                             const char* format, ...)
+const std::string& SStringPrintf(std::string* dst, const char* format, ...)
     PRINTF_FORMAT(2, 3);
 
 // Append result to a supplied string.
-BASE_EXPORT void StringAppendF(std::string* dst, const char* format, ...)
+void StringAppendF(std::string* dst, const char* format, ...)
     PRINTF_FORMAT(2, 3);
 
 // Lower-level routine that takes a va_list and appends to a specified
 // string.  All other routines are just convenience wrappers around it.
-BASE_EXPORT void StringAppendV(std::string* dst, const char* format, va_list ap)
+void StringAppendV(std::string* dst, const char* format, va_list ap)
     PRINTF_FORMAT(2, 0);
 
 }  // namespace base

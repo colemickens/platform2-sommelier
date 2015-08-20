@@ -12,7 +12,7 @@
 namespace base {
 
 // DefaultClock is a Clock implementation that uses Time::Now().
-class BASE_EXPORT DefaultClock : public Clock {
+class DefaultClock : public Clock {
  public:
   ~DefaultClock() override;
 

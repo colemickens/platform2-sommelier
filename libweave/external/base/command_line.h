@@ -21,7 +21,7 @@
 
 namespace base {
 
-class BASE_EXPORT CommandLine {
+class CommandLine {
  public:
   static bool Init(int argc, const char* const* argv) { return true; }
 };
