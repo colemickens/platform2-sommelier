@@ -103,7 +103,7 @@ int HttpTransportClient::SendRequest(const std::string& method,
   request.AddHeaders(headers);
   if (!data.empty()) {
     auto stream = chromeos::MemoryStream::OpenCopyOf(data, nullptr);
-    CHECK_GT(stream->GetRemainingSize(), 0);
+    CHECK(stream->GetRemainingSize());
     chromeos::ErrorPtr cromeos_error;
     if (!request.AddRequestBody(std::move(stream), &cromeos_error)) {
       weave::ErrorPtr error;
