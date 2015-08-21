@@ -165,6 +165,10 @@ bool PPPoEService::Unload() {
   return Service::Unload();
 }
 
+string PPPoEService::GetInnerDeviceRpcIdentifier() const {
+  return ppp_device_ ? ppp_device_->GetRpcIdentifier() : "";
+}
+
 void PPPoEService::GetLogin(string* user, string* password) {
   CHECK(user && password);
   *user = username_;

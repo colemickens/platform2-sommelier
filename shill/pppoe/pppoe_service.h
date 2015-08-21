@@ -47,6 +47,9 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
   bool Save(StoreInterface* storage) override;
   bool Unload() override;
 
+  // Inherited from Service.
+  std::string GetInnerDeviceRpcIdentifier() const override;
+
   // Inherited from RPCTaskDelegate.
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,

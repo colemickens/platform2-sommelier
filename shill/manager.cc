@@ -2150,6 +2150,12 @@ RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
   for (const auto& device : devices_) {
     device_rpc_ids.push_back(device->GetRpcIdentifier());
   }
+  // Enumerate devices that are internal to the services, such as PPPoE devices.
+  for (const auto& service : services_) {
+    if (!service->GetInnerDeviceRpcIdentifier().empty()) {
+      device_rpc_ids.push_back(service->GetInnerDeviceRpcIdentifier());
+    }
+  }
   return device_rpc_ids;
 }
 

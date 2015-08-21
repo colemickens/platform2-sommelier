@@ -543,6 +543,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, DisableTechnology);
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
+  FRIEND_TEST(ManagerTest, EnumerateServiceInnerDevices);
   FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
