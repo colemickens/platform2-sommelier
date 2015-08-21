@@ -42,6 +42,7 @@ PPPoEService::PPPoEService(ControlInterface* control_interface,
     : EthernetService(control_interface, dispatcher, metrics, manager,
                       Technology::kPPPoE, ethernet),
       control_interface_(control_interface),
+      ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       lcp_echo_interval_(kDefaultLCPEchoInterval),
       lcp_echo_failure_(kDefaultLCPEchoFailure),
       max_auth_failure_(kDefaultMaxAuthFailure),
@@ -211,14 +212,20 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
     ppp_device_->SelectService(nullptr);
   }
 
-  const auto factory = PPPDeviceFactory::GetInstance();
-  ppp_device_ = factory->CreatePPPDevice(
+  ppp_device_ = ppp_device_factory_->CreatePPPDevice(
       control_interface_, dispatcher(), metrics(), manager(), interface_name,
       interface_index);
   device_info->RegisterDevice(ppp_device_);
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(this);
   ppp_device_->UpdateIPConfigFromPPP(params, false);
+#ifndef DISABLE_DHCPV6
+  // Acquire DHCPv6 configurations through the PPPoE (virtual) interface
+  // if it is enabled for DHCPv6.
+  if (manager()->IsDHCPv6EnabledForDevice(ppp_device_->link_name())) {
+    ppp_device_->AcquireIPv6Config();
+  }
+#endif
 }
 
 void PPPoEService::OnPPPDisconnected() {

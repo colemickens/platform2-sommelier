@@ -53,6 +53,12 @@ void PPPDevice::UpdateIPConfigFromPPPWithMTU(
   UpdateIPConfig(properties);
 }
 
+#ifndef DISABLE_DHCPV6
+bool PPPDevice::AcquireIPv6Config() {
+  return AcquireIPv6ConfigWithLeaseName(string());
+}
+#endif
+
 // static
 string PPPDevice::GetInterfaceName(const map<string, string>& configuration) {
   if (ContainsKey(configuration, kPPPInterfaceName)) {

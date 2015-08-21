@@ -40,6 +40,7 @@ class MockPPPDevice : public PPPDevice {
       const std::map<std::string, std::string>& config,
       bool blackhole_ipv6,
       int32_t mtu));
+  MOCK_METHOD0(AcquireIPv6Config, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPPPDevice);

@@ -457,6 +457,15 @@ class Device : public base::RefCounted<Device> {
   // request was successfully sent.
   bool AcquireIPConfigWithLeaseName(const std::string& lease_name);
 
+#ifndef DISABLE_DHCPV6
+  // Creates a new DHCPv6 configuration instances, stores it in
+  // |dhcpv6_config_| and requests a new configuration.  Saves the DHCPv6
+  // lease to a filename based on the passed-in |lease_name|.
+  // The acquired configurations will not be used to setup a connection
+  // for the device.
+  bool AcquireIPv6ConfigWithLeaseName(const std::string& lease_name);
+#endif
+
   // Assigns the IP configuration |properties| to |ipconfig_|.
   void AssignIPConfig(const IPConfig::Properties& properties);
 

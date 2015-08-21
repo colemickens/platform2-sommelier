@@ -23,6 +23,7 @@ class EventDispatcher;
 class ExternalTask;
 class Manager;
 class Metrics;
+class PPPDeviceFactory;
 class StoreInterface;
 
 // PPPoEService is an EthernetService that manages PPPoE connectivity on a
@@ -53,6 +54,7 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
 
  private:
   FRIEND_TEST(PPPoEServiceTest, Disconnect);
+  FRIEND_TEST(PPPoEServiceTest, OnPPPConnected);
 
   static const int kDefaultLCPEchoInterval;
   static const int kDefaultLCPEchoFailure;
@@ -65,6 +67,7 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
   void OnPPPDied(pid_t pid, int exit);
 
   ControlInterface* control_interface_;
+  PPPDeviceFactory* ppp_device_factory_;
 
   std::string username_;
   std::string password_;

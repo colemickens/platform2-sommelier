@@ -21,6 +21,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_ppp_device.h"
+#include "shill/mock_ppp_device_factory.h"
 #include "shill/service.h"
 #include "shill/testing.h"
 
@@ -119,6 +120,31 @@ TEST_F(PPPoEServiceTest, ConnectFailsWhenEthernetLinkDown) {
   Error error;
   service_->Connect(&error, "in test");
   EXPECT_FALSE(error.IsSuccess());
+}
+
+TEST_F(PPPoEServiceTest, OnPPPConnected) {
+  // Setup device factory.
+  MockPPPDeviceFactory* factory = MockPPPDeviceFactory::GetInstance();
+  service_->ppp_device_factory_ = factory;
+
+  static const char kLinkName[] = "ppp0";
+  map<string, string> params = { {kPPPInterfaceName, kLinkName} };
+  MockPPPDevice* device = new MockPPPDevice(
+      &control_interface_, &dispatcher_, &metrics_, &manager_, kLinkName, 0);
+
+  EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName))).WillOnce(Return(0));
+  EXPECT_CALL(*factory, CreatePPPDevice(_, _, _, _, _, _))
+      .WillOnce(Return(device));
+  EXPECT_CALL(device_info_, RegisterDevice(IsRefPtrTo(device)));
+  EXPECT_CALL(*device, SetEnabled(true));
+  EXPECT_CALL(*device, SelectService(_));
+  EXPECT_CALL(*device, UpdateIPConfigFromPPP(params, false));
+#ifndef DISABLE_DHCPV6
+  EXPECT_CALL(manager_, IsDHCPv6EnabledForDevice(StrEq(kLinkName)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*device, AcquireIPv6Config());
+#endif  // DISABLE_DHCPV6
+  service_->OnPPPConnected(params);
 }
 
 TEST_F(PPPoEServiceTest, Connect) {

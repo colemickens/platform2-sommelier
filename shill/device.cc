@@ -734,26 +734,32 @@ bool Device::AcquireIPConfigWithLeaseName(const string& lease_name) {
   }
 
 #ifndef DISABLE_DHCPV6
-  // Request DHCPv6 configurations. DHCPv6 configurations will not be use to
-  // setup connection for the device.
+  // Only start DHCPv6 configuration instance only if DHCPv6 is enabled
+  // for this device.
   if (manager_->IsDHCPv6EnabledForDevice(link_name_)) {
-    auto dhcpv6_config =
-        dhcp_provider_->CreateIPv6Config(link_name_, lease_name);
-    dhcpv6_config_ = dhcpv6_config;
-    dhcpv6_config_->RegisterUpdateCallback(
-        Bind(&Device::OnDHCPv6ConfigUpdated, weak_ptr_factory_.GetWeakPtr()));
-    dhcpv6_config_->RegisterFailureCallback(
-        Bind(&Device::OnDHCPv6ConfigFailed, weak_ptr_factory_.GetWeakPtr()));
-    dhcpv6_config_->RegisterExpireCallback(
-        Bind(&Device::OnDHCPv6ConfigExpired, weak_ptr_factory_.GetWeakPtr()));
-    if (!dhcpv6_config_->RequestIP()) {
-      return false;
-    }
+    return AcquireIPv6ConfigWithLeaseName(lease_name);
   }
 #endif  // DISABLE_DHCPV6
-
   return true;
 }
+
+#ifndef DISABLE_DHCPV6
+bool Device::AcquireIPv6ConfigWithLeaseName(const string& lease_name) {
+  auto dhcpv6_config =
+      dhcp_provider_->CreateIPv6Config(link_name_, lease_name);
+  dhcpv6_config_ = dhcpv6_config;
+  dhcpv6_config_->RegisterUpdateCallback(
+      Bind(&Device::OnDHCPv6ConfigUpdated, weak_ptr_factory_.GetWeakPtr()));
+  dhcpv6_config_->RegisterFailureCallback(
+      Bind(&Device::OnDHCPv6ConfigFailed, weak_ptr_factory_.GetWeakPtr()));
+  dhcpv6_config_->RegisterExpireCallback(
+      Bind(&Device::OnDHCPv6ConfigExpired, weak_ptr_factory_.GetWeakPtr()));
+  if (!dhcpv6_config_->RequestIP()) {
+    return false;
+  }
+  return true;
+}
+#endif  // DISABLE_DHCPV6
 
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   DestroyIPConfig();

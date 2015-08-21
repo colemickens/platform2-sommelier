@@ -52,6 +52,15 @@ class PPPDevice : public VirtualDevice {
       bool blackhole_ipv6,
       int32_t mtu);
 
+#ifndef DISABLE_DHCPV6
+  // Start a DHCPv6 configuration client for this device.  The generic
+  // file name (based on the device name) will be used for the acquired
+  // lease, so that the lease file will be removed when the DHCPv6 client
+  // terminates.  For PPP devices, there is no correlation between
+  // the service name and the network that it connected to.
+  virtual bool AcquireIPv6Config();
+#endif  // DISABLE_DHCPV6
+
   // Get the network device name (e.g. "ppp0") from the dictionary of
   // configuration strings received from our PPP plugin.
   static std::string GetInterfaceName(
