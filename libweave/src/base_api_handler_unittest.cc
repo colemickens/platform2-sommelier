@@ -115,7 +115,7 @@ TEST_F(BaseApiHandlerTest, UpdateBaseConfiguration) {
     }
   })");
 
-  Config& config{*dev_reg_->GetMutableConfig()};
+  Config& config = *dev_reg_->GetMutableConfig();
 
   AddCommand(R"({
     'name' : 'base.updateBaseConfiguration',
@@ -204,7 +204,7 @@ TEST_F(BaseApiHandlerTest, UpdateDeviceInfo) {
     }
   })");
 
-  const Config& config{dev_reg_->GetConfig()};
+  const Config& config = dev_reg_->GetConfig();
   EXPECT_EQ("testName", config.name());
   EXPECT_EQ("testDescription", config.description());
   EXPECT_EQ("testLocation", config.location());
