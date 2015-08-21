@@ -206,8 +206,8 @@ SettingsDocumentManager::InsertDocument(
     return kInsertionStatusCollision;
   }
 
-  entry.document_entries_.insert(
-      insertion_point, DocumentEntry(std::move(document), handle));
+  entry.document_entries_.insert(insertion_point,
+                                 DocumentEntry(std::move(document), handle));
 
   // Purge any unreferenced documents. Note that this may invalidate the
   // iterator |insertion_point|. This might actually include |document|, if e.g.
@@ -215,7 +215,7 @@ SettingsDocumentManager::InsertDocument(
   // inserted before.
   for (auto unreferenced_document : unreferenced_documents) {
     if (!PurgeBlobAndDocumentEntry(unreferenced_document))
-        LOG(ERROR) << "Failed to purge unreferenced document";
+      LOG(ERROR) << "Failed to purge unreferenced document";
   }
 
   // Process any trust configuration changes.
@@ -232,7 +232,7 @@ void SettingsDocumentManager::RevalidateSourceDocuments(
     std::priority_queue<std::string>* sources_to_revalidate) {
   std::vector<const SettingsDocument*> obsolete_documents;
   for (auto& doc_entry : entry.document_entries_) {
-    if (RevalidateDocument(&entry.source_, doc_entry.document_.get()))
+    if (RevalidateDocument(&entry.source_, doc_entry))
       // |doc| is still valid.
       continue;
 
@@ -251,8 +251,7 @@ void SettingsDocumentManager::RevalidateSourceDocuments(
                               unreferenced_documents.begin(),
                               unreferenced_documents.end());
 
-    UpdateSourceValidationQueue(keys_changed_by_removal,
-                                sources_to_revalidate);
+    UpdateSourceValidationQueue(keys_changed_by_removal, sources_to_revalidate);
 
     // Update |changed_keys| to include the keys affected by the removal.
     changed_keys->insert(keys_changed_by_removal.begin(),
@@ -363,12 +362,22 @@ SettingsDocumentManager::ParseAndValidateBlob(
 
 bool SettingsDocumentManager::RevalidateDocument(
     const Source* source,
-    const SettingsDocument* doc) const {
-  // TODO(mnissler): Reload the document from disk and perform signature
-  // validation.
+    const DocumentEntry& doc_entry) const {
+  // Load corresponding blob from the BlobStore.
+  const std::vector<uint8_t> blob = blob_store_.Load(doc_entry.handle_);
+
+  // Parse and validate the document against the SourceDelegate. |container| is
+  // discarded without being used in this method, as we are only interested in
+  // whether the LockedSettingsContainer can be validated.
+  std::unique_ptr<LockedSettingsContainer> container;
+  if (ParseAndValidateBlob(source, BlobRef(&blob), &container) !=
+      kInsertionStatusSuccess) {
+    return false;
+  }
 
   // NB: When re-validating documents, "withdrawn" status is sufficient.
-  return source->CheckAccess(doc, kSettingStatusWithdrawn);
+  return source->CheckAccess(doc_entry.document_.get(),
+                             kSettingStatusWithdrawn);
 }
 
 const Source* SettingsDocumentManager::FindSource(

@@ -162,7 +162,7 @@ class SettingsDocumentManager : public SettingsService {
   // Returns true if the document is still valid against current trust
   // configuration.
   bool RevalidateDocument(const Source* source,
-                          const SettingsDocument* doc) const;
+                          const DocumentEntry& doc_entry) const;
 
   // Re-validate all documents belonging to a source. Documents that fail
   // validation are removed from the SettingsMap, the SettingsDocument is
