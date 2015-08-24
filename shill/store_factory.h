@@ -25,7 +25,7 @@ class StoreFactory {
 
  private:
   friend struct base::DefaultLazyInstanceTraits<StoreFactory>;
-  GLib *glib_;
+  GLib* glib_;
 
   DISALLOW_COPY_AND_ASSIGN(StoreFactory);
 };

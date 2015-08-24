@@ -24,7 +24,6 @@
 #include "shill/fake_store.h"
 #include "shill/geolocation_info.h"
 #include "shill/glib.h"
-#include "shill/key_file_store.h"
 #include "shill/key_value_store.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
@@ -48,6 +47,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
+#include "shill/store_factory.h"
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
 #include "shill/wimax/wimax_service.h"
@@ -219,18 +219,22 @@ class ManagerTest : public PropertyStoreTest {
     return profile;  // Passes ownership of "profile".
   }
 
-  bool CreateBackingStoreForService(ScopedTempDir* temp_dir,
+  bool CreateBackingStoreForService(GLib *glib,
+                                    ScopedTempDir* temp_dir,
                                     const string& user_identifier,
                                     const string& profile_identifier,
                                     const string& service_name) {
-    GLib glib;
-    KeyFileStore store(&glib);
-    store.set_path(temp_dir->path().Append(
+    StoreFactory* store_factory(StoreFactory::GetInstance());
+    store_factory->set_glib(glib);
+
+    std::unique_ptr<StoreInterface> store(store_factory->CreateStore());
+    store->set_path(temp_dir->path().Append(
         base::StringPrintf("%s/%s.profile", user_identifier.c_str(),
                            profile_identifier.c_str())));
-    return store.Open() &&
-        store.SetString(service_name, "rather", "irrelevant") &&
-        store.Close();
+
+    return store->Open() &&
+        store->SetString(service_name, "rather", "irrelevant") &&
+        store->Close();
   }
 
   Error::Type TestCreateProfile(Manager* manager, const string& name) {
@@ -1049,7 +1053,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   ASSERT_EQ(GetEphemeralProfile(&manager), service->profile());
 
   // Create storage for a profile that contains the service storage name.
-  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile2Id,
+  ASSERT_TRUE(CreateBackingStoreForService(&glib, &temp_dir, "user", kProfile2Id,
                                            kServiceName));
 
   // When we push the profile, the service should move away from the
@@ -1063,7 +1067,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Insert another profile that should supersede ownership of the service.
   const char kProfile3Id[] = "profile3";
   const string kProfile3 = base::StringPrintf("~user/%s", kProfile3Id);
-  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile3Id,
+  ASSERT_TRUE(CreateBackingStoreForService(&glib, &temp_dir, "user", kProfile3Id,
                                            kServiceName));
   // We don't verify this expectation inline, since this would clear other
   // recurring expectations on the service.
