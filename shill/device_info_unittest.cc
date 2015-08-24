@@ -1374,21 +1374,12 @@ void DeviceInfoTechnologyTest::CreateInfoSymLink(const string& name,
 }
 
 TEST_F(DeviceInfoTechnologyTest, Unknown) {
-  // With a uevent file but no driver symlink, we should act as if this
-  // is a regular Ethernet driver by default.
-  EXPECT_CALL(manager_, ignore_unknown_ethernet())
-      .WillRepeatedly(Return(false));
-  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+  // With a uevent file but no driver symlink, we should get a pseudo-technology
+  // which specifies this condition explicitly.
+  EXPECT_EQ(Technology::kNoDeviceSymlink, GetDeviceTechnology());
 
   // Should be unknown without a uevent file.
   EXPECT_TRUE(base::DeleteFile(GetInfoPath("uevent"), false));
-  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
-}
-
-TEST_F(DeviceInfoTechnologyTest, UnknownWithNoSymlink) {
-  // If the manager is setup to ignore devices with no device symlink,
-  // this device should instead be unknown.
-  EXPECT_CALL(manager_, ignore_unknown_ethernet()).WillOnce(Return(true));
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 
@@ -1577,12 +1568,12 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     test_device_info_.DelayedDeviceCreationTask();
   }
 
-  void AddDelayedDevice() {
+  void AddDelayedDevice(Technology::Identifier delayed_technology) {
     unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName))
-        .WillOnce(Return(Technology::kCDCEthernet));
+        .WillOnce(Return(delayed_technology));
     EXPECT_CALL(test_device_info_, CreateDevice(
-        kTestDeviceName, _, kTestDeviceIndex, Technology::kCDCEthernet))
+        kTestDeviceName, _, kTestDeviceIndex, delayed_technology))
         .WillOnce(Return(DeviceRefPtr()));
     test_device_info_.AddLinkMsgHandler(*message);
     Mock::VerifyAndClearExpectations(&test_device_info_);
@@ -1590,6 +1581,17 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     // out CreateDevice.  This insertion is tested in CreateDeviceCDCEthernet
     // above.
     GetDelayedDevices().insert(kTestDeviceIndex);
+  }
+
+  void EnsureDelayedDevice(Technology::Identifier reported_device_technology,
+                           Technology::Identifier created_device_technology) {
+    EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
+        .WillOnce(Return(reported_device_technology));
+    EXPECT_CALL(test_device_info_, CreateDevice(
+        kTestDeviceName, _, kTestDeviceIndex, created_device_technology))
+        .WillOnce(Return(DeviceRefPtr()));
+    DelayedDeviceCreationTask();
+    EXPECT_TRUE(GetDelayedDevices().empty());
   }
 
 #if !defined(DISABLE_WIFI)
@@ -1608,26 +1610,33 @@ TEST_F(DeviceInfoDelayedCreationTest, NoDevices) {
   DelayedDeviceCreationTask();
 }
 
-TEST_F(DeviceInfoDelayedCreationTest, EthernetDevice) {
-  AddDelayedDevice();
-  EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
-      .WillOnce(Return(Technology::kCDCEthernet));
-  EXPECT_CALL(test_device_info_, CreateDevice(
-      kTestDeviceName, _, kTestDeviceIndex, Technology::kEthernet))
-      .WillOnce(Return(DeviceRefPtr()));
-  DelayedDeviceCreationTask();
-  EXPECT_TRUE(GetDelayedDevices().empty());
+TEST_F(DeviceInfoDelayedCreationTest, CDCEthernetDevice) {
+  AddDelayedDevice(Technology::kCDCEthernet);
+  EnsureDelayedDevice(Technology::kCDCEthernet, Technology::kEthernet);
 }
 
 TEST_F(DeviceInfoDelayedCreationTest, CellularDevice) {
-  AddDelayedDevice();
-  EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
-      .WillOnce(Return(Technology::kCellular));
-  EXPECT_CALL(test_device_info_, CreateDevice(
-      kTestDeviceName, _, kTestDeviceIndex, Technology::kCellular))
-      .WillOnce(Return(DeviceRefPtr()));
-  DelayedDeviceCreationTask();
-  EXPECT_TRUE(GetDelayedDevices().empty());
+  AddDelayedDevice(Technology::kCDCEthernet);
+  EnsureDelayedDevice(Technology::kCellular, Technology::kCellular);
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, TunnelDevice) {
+  AddDelayedDevice(Technology::kNoDeviceSymlink);
+  EnsureDelayedDevice(Technology::kTunnel, Technology::kTunnel);
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkEthernet) {
+  AddDelayedDevice(Technology::kNoDeviceSymlink);
+  EXPECT_CALL(manager_, ignore_unknown_ethernet())
+      .WillOnce(Return(false));
+  EnsureDelayedDevice(Technology::kNoDeviceSymlink, Technology::kEthernet);
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkIgnored) {
+  AddDelayedDevice(Technology::kNoDeviceSymlink);
+  EXPECT_CALL(manager_, ignore_unknown_ethernet())
+      .WillOnce(Return(true));
+  EnsureDelayedDevice(Technology::kNoDeviceSymlink, Technology::kUnknown);
 }
 
 #if !defined(DISABLE_WIFI)
@@ -1665,7 +1674,7 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
 
   // Use the AddDelayedDevice() method to create a device info entry with no
   // associated device.
-  AddDelayedDevice();
+  AddDelayedDevice(Technology::kNoDeviceSymlink);
 
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
                        HasSubstr("it is not in station mode")));
