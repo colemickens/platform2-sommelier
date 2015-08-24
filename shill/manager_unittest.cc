@@ -21,6 +21,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/fake_store.h"
 #include "shill/geolocation_info.h"
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
@@ -202,12 +203,10 @@ class ManagerTest : public PropertyStoreTest {
     return manager->profiles_;
   }
 
-  Profile* CreateProfileForManager(Manager* manager, GLib* glib) {
+  Profile* CreateProfileForManager(Manager* manager) {
     Profile::Identifier id("rather", "irrelevant");
-    FilePath final_path(storage_path());
-    final_path = final_path.Append("test.profile");
-    std::unique_ptr<KeyFileStore> storage(new KeyFileStore(glib));
-    storage->set_path(final_path);
+    std::unique_ptr<FakeStore> storage(new FakeStore());
+    storage->set_path(FilePath("/not/really/persistent"));
     if (!storage->Open())
       return nullptr;
     Profile* profile(new Profile(control_interface(),
@@ -217,7 +216,7 @@ class ManagerTest : public PropertyStoreTest {
                                  "",
                                  false));
     profile->set_storage(storage.release());  // Passes ownership of "storage".
-    return profile;  // Passes onwership of "profile".
+    return profile;  // Passes ownership of "profile".
   }
 
   bool CreateBackingStoreForService(ScopedTempDir* temp_dir,
@@ -640,7 +639,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
                   run_path(),
                   storage_path(),
                   string());
-  ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
+  ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
 
@@ -693,7 +692,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
                   run_path(),
                   storage_path(),
                   string());
-  ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
+  ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
   {
@@ -726,7 +725,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
                   run_path(),
                   storage_path(),
                   string());
-  ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
+  ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
   {
