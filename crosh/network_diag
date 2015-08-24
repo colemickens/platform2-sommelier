@@ -332,9 +332,15 @@ diag_devs () {
 # Check whether we are in sync with the time server
 diag_date () {
   local host="$1"
+  local proxy="$2"
+  local cmd=()
   fn_enter "${FUNCNAME}" "$@"
   echo "Local time of day: $(date)"
-  date_out="$("${TLSDATE}" -nv -H "${host}" 2>&1 >/dev/null)"
+  cmd=( "${TLSDATE}" -nv -H "${host}" )
+  if [[ -n "${proxy}" ]]; then
+    cmd+=( -x "${proxy}" )
+  fi
+  date_out="$( "${cmd[@]}" 2>&1 >/dev/null )"
   date_exit="$?"
   offset="$(echo "$date_out" | grep 'difference is' | cut -f8 -d' ')"
   if [ "${date_exit}" != 0 ]; then
@@ -791,16 +797,23 @@ diag_flimflam () {
 
 run_webget () {
   local url="$1"
+  local proxy="$2"
+  local cmd=()
   local timeout_secs=10
+  cmd=( curl -s "${url}" --max-time "${timeout_secs}" )
+  if [[ -n "${proxy}" ]]; then
+    cmd+=( --proxy "${proxy}" )
+  fi
   echo "Trying to contact ${url} ... (waiting up to ${timeout_secs} seconds)"
-  curl -s "${url}" --max-time "${timeout_secs}" > /dev/null
+  "${cmd[@]}" >/dev/null
 }
 
 # Try to connect to a host via SSL, diagnose failures
 diag_webget () {
   local host="$1"
   local url="https://${host}"
-  run_webget "${url}"
+  local proxy="$2"
+  run_webget "${url}" "${proxy}"
   local err="$?"
 
   case ${err} in
@@ -853,14 +866,15 @@ diag_webget () {
 # Do standard run of tests
 diag_run () {
   local host="$1"
-  if run_webget "https://${host}"; then
+  local proxy="$2"
+  if run_webget "https://${host}" "${proxy}"; then
     pass "Loaded $host via HTTPS"
-  elif run_webget "http://${host}"; then
+  elif run_webget "http://${host}" "${proxy}"; then
     pass "Loaded $host via HTTP (ignore any tlsdate failure below)"
   else
-    diag_webget "${host}"
+    diag_webget "${host}" "${proxy}"
   fi
-  diag_date "${host}"
+  diag_date "${host}" "${proxy}"
   diag_gateway_latency "${host}"
 }
 
@@ -1023,6 +1037,7 @@ usage () {
   echo "    --latency:   Diagnose link-latency to default gateway"
   echo "    --link:      Diagnose all network links"
   echo "    --no-log:    Do not log output"
+  echo "    --proxy:     Specify proxy to use with tests"
   echo "    --route:     Diagnose routes to each host"
   echo "    --show-macs: Display full MAC addresses"
   echo "    --wifi:      Display driver-specific debugging information"
@@ -1042,15 +1057,22 @@ check_no_arg () {
 
 main () {
   local test_host=www.google.com
+  local proxy
   local option_and_arg_provided=no
   local option
   local param
   local rest=()
-  for param in "$@"; do
+  while [[ $# -gt 0 ]]; do
+    param="$1"
+    shift
     # Arguments that modify the behavior of diagnostic modules
     # should be placed here. This ensures that they are processed
     # before running the diagnostics.
     case ${param} in
+      --proxy)
+        proxy="$1"
+        shift
+        ;;
       --show-macs)
         anonymize_macs=no
         ;;
@@ -1064,7 +1086,7 @@ main () {
   done
   case ${#rest[@]} in
     0)
-      diag_run ${test_host}
+      diag_run "${test_host}" "${proxy}"
       return
       ;;
     1)
@@ -1072,7 +1094,7 @@ main () {
         option=${rest[0]}
       else
         test_host=${rest[0]}
-        diag_run ${test_host}
+        diag_run "${test_host}" "${proxy}"
         return
       fi
       ;;
@@ -1090,7 +1112,7 @@ main () {
   if [[ -n "${option}" ]]; then
     case ${option} in
       --date)
-        diag_date "${test_host}"
+        diag_date "${test_host}" "${proxy}"
         ;;
       --dhcp)
         check_no_arg "${option}" "${option_and_arg_provided}"
