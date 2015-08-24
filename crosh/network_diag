@@ -14,6 +14,7 @@ TLSDATE=/usr/bin/tlsdate
 ETHTOOL=/usr/sbin/ethtool
 anonymize_macs=${ANONYMIZE_MACS-yes}
 fail_count=0
+CROS_CERTS=/usr/share/chromeos-ca-certificates/
 declare -A fn_entry
 
 # Annotate function entry.
@@ -795,6 +796,82 @@ diag_flimflam () {
   diag_flimflam_dbus
 }
 
+run_hosts_webget() {
+  local host="$1"
+  local proxy="$2"
+  local cmd=()
+  local timeout_secs=10
+  cmd=( curl -s "https://${host}" --max-time ${timeout_secs} --capath "${CROS_CERTS}" )
+  if [[ -n "${proxy}" ]]; then
+    cmd+=( --proxy "${proxy}" )
+  fi
+  printf "checking %-40s" "${host}..."
+  "${cmd[@]}" >/dev/null
+}
+
+# Try to connect to a host via SSL, diagnose failures.
+diag_hosts () {
+  local host
+  local proxy="$1"
+  # Hosts is pulled from
+  # https://support.google.com/chrome/a/answer/3504942?hl=en#sslinspection
+  local hosts=(
+    "accounts.google.com"
+    "accounts.gstatic.com"
+    "accounts.youtube.com"
+    "clients1.google.com"
+    "clients2.google.com"
+    "clients3.google.com"
+    "clients4.google.com"
+    "cros-omahaproxy.appspot.com"
+    "dl.google.com"
+    "dl-ssl.google.com"
+    "www.googleapis.com"
+    "m.google.com"
+    "omahaproxy.appspot.com"
+    "safebrowsing-cache.google.com"
+    "safebrowsing.google.com"
+    "ssl.gstatic.com"
+    "tools.google.com"
+    "pack.google.com"
+    "www.gstatic.com"
+    "gweb-gettingstartedguide.appspot.com"
+    "storage.googleapis.com"
+    "commondatastorage.googleapis.com"
+  )
+  for host in "${hosts[@]}"; do
+    run_hosts_webget "${host}" "${proxy}"
+    local err=$?
+
+    case ${err} in
+      0)
+        echo "PASS"
+        ;;
+      5)
+        echo "FAIL: proxy resolution error"
+        ;;
+      6)
+        echo "FAIL: DNS resolution error"
+        ;;
+      7)
+        echo "FAIL: connection error"
+        ;;
+      28)
+        echo "FAIL: connection timed out"
+        ;;
+      35)
+        echo "FAIL: SSL connection error"
+        ;;
+      60)
+        echo "FAIL: non-Google SSL/TLS certificate"
+        ;;
+      *)
+        echo "FAIL: unknown error ${err}"
+        ;;
+    esac
+  done
+}
+
 run_webget () {
   local url="$1"
   local proxy="$2"
@@ -1033,6 +1110,7 @@ usage () {
   echo "                 ([host] must support SSL)"
   echo "    --dhcp:      Display DHCP information"
   echo "    --flimflam:  Diagnose flimflam status"
+  echo "    --hosts:     Diagnose SSL connection to Google hosts"
   echo "    --interface: Diagnose interface status"
   echo "    --latency:   Diagnose link-latency to default gateway"
   echo "    --link:      Diagnose all network links"
@@ -1121,6 +1199,9 @@ main () {
       --flimflam)
         check_no_arg "${option}" "${option_and_arg_provided}"
         diag_flimflam
+        ;;
+      --hosts)
+        diag_hosts "${proxy}"
         ;;
       --interface)
         check_no_arg "${option}" "${option_and_arg_provided}"
