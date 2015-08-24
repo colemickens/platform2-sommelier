@@ -12,8 +12,8 @@
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
+#include "shill/fake_store.h"
 #include "shill/glib.h"
-#include "shill/key_file_store.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -43,6 +43,13 @@ class ProfileTest : public PropertyStoreTest {
     Profile::Identifier id("rather", "irrelevant");
     profile_ =
         new Profile(control_interface(), metrics(), manager(), id, "", false);
+
+    // Install a FakeStore by default. In tests that actually care
+    // about the interaction between Profile and StoreInterface, we'll
+    // replace this with a MockStore.
+    std::unique_ptr<FakeStore> fake_store(new FakeStore());
+    fake_store->set_path(FilePath("/not/really/persistent"));
+    profile_->set_storage(fake_store.release());
   }
 
   MockService* CreateMockService() {
@@ -52,20 +59,12 @@ class ProfileTest : public PropertyStoreTest {
                                        manager());
   }
 
-  virtual void SetUp() {
-    PropertyStoreTest::SetUp();
-    FilePath final_path(storage_path());
-    final_path = final_path.Append("test.profile");
-    std::unique_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
-    storage->set_path(final_path);
-    ASSERT_TRUE(storage->Open());
-    profile_->set_storage(storage.release());  // Passes ownership.
-  }
-
   bool ProfileInitStorage(const Profile::Identifier& id,
                           Profile::InitStorageOption storage_option,
                           bool save,
                           Error::Type error_type) {
+    // Note: this code uses neither FakeStore, nor MockStore. Instead,
+    // it exercises a real StoreInterface implemenation.
     Error error;
     ProfileRefPtr profile(
         new Profile(control_interface(), mock_metrics_.get(), manager(), id,
@@ -258,7 +257,7 @@ TEST_F(ProfileTest, ServiceConfigure) {
                                               dispatcher(),
                                               metrics(),
                                               manager()));
-  // Change prioirty from default.
+  // Change priority from default.
   service1->SetPriority(service1->priority() + 1, nullptr);
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->ContainsService(service1));
