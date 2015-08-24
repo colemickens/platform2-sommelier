@@ -630,12 +630,10 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
-  // It's much easier and safer to use a real GLib for this test.
-  GLib glib;
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   string());
@@ -683,12 +681,10 @@ TEST_F(ManagerTest, ServiceRegistration) {
 }
 
 TEST_F(ManagerTest, RegisterKnownService) {
-  // It's much easier and safer to use a real GLib for this test.
-  GLib glib;
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   string());
@@ -716,12 +712,10 @@ TEST_F(ManagerTest, RegisterKnownService) {
 }
 
 TEST_F(ManagerTest, RegisterUnknownService) {
-  // It's much easier and safer to use a real GLib for this test.
-  GLib glib;
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   string());
