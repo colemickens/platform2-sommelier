@@ -763,6 +763,7 @@
             'ethernet/mock_ethernet.cc',
             'ethernet/mock_ethernet_service.cc',
             'external_task_unittest.cc',
+            'fake_store.cc',
             'file_reader_unittest.cc',
             'hook_table_unittest.cc',
             'http_proxy_unittest.cc',
