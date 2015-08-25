@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <ctime>
 #include <string>
 #include <unistd.h>
 
@@ -194,16 +195,19 @@ void TrunksFtdiSpi::SendCommand(const std::string& command,
 bool TrunksFtdiSpi::WaitForStatus(uint32_t statusMask,
                                   uint32_t statusExpected, int timeout_ms) {
   uint32_t status;
-  do {
-    usleep(1000);
-    if (!timeout_ms--) {
-      LOG(ERROR) << "failed to get expected status " << std::hex
-                 << statusExpected;
-      return false;
-    }
-    ReadTpmSts(&status);
-  } while ((status & statusMask) != statusExpected);
-  return true;
+  time_t target_time;
+
+  target_time = time(NULL) + timeout_ms / 1000;
+   do {
+     usleep(10000);  // 10 ms polling period.
+     if (time(NULL) >= target_time) {
+       LOG(ERROR) << "failed to get expected status " << std::hex
+                  << statusExpected;
+       return false;
+     }
+     ReadTpmSts(&status);
+   } while ((status & statusMask) != statusExpected);
+   return true;
 }
 
 std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
