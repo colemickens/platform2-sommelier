@@ -157,7 +157,11 @@ class ChromeosDBusControl : public ControlInterface {
 
   static const char kNullPath[];
 
-  scoped_refptr<dbus::Bus> bus_;
+  // Use separate bus connection for adaptors and proxies.  This allows the
+  // proxy to receive all broadcast signal messages that it is interested in.
+  // Refer to crbug.com/446837 for more info.
+  scoped_refptr<dbus::Bus> adaptor_bus_;
+  scoped_refptr<dbus::Bus> proxy_bus_;
   EventDispatcher* dispatcher_;
   std::string null_identifier_;
 };
