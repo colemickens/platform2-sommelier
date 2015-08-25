@@ -103,6 +103,9 @@ class ManagerTest : public PropertyStoreTest {
                                                   nullptr,
                                                   nullptr,
                                                   nullptr)),
+#if !defined(ENABLE_JSON_STORE)
+        real_glib_(new GLib()),
+#endif  // ENABLE_JSON_STORE
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
 #if !defined(DISABLE_WIRED_8021X)
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
@@ -219,13 +222,12 @@ class ManagerTest : public PropertyStoreTest {
     return profile;  // Passes ownership of "profile".
   }
 
-  bool CreateBackingStoreForService(GLib *glib,
-                                    ScopedTempDir* temp_dir,
+  bool CreateBackingStoreForService(ScopedTempDir* temp_dir,
                                     const string& user_identifier,
                                     const string& profile_identifier,
                                     const string& service_name) {
     StoreFactory* store_factory(StoreFactory::GetInstance());
-    store_factory->set_glib(glib);
+    store_factory->set_glib(real_glib_.get());
 
     std::unique_ptr<StoreInterface> store(store_factory->CreateStore());
     store->set_path(temp_dir->path().Append(
@@ -487,6 +489,7 @@ class ManagerTest : public PropertyStoreTest {
   std::unique_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice>> mock_devices_;
   std::unique_ptr<MockDeviceInfo> device_info_;
+  std::unique_ptr<GLib> real_glib_;  // For persisting profiles.
 
 #if !defined(DISABLE_WIFI)
   // This service is held for the manager, and given ownership in a mock
@@ -936,16 +939,13 @@ TEST_F(ManagerTest, SetProfileForService) {
 }
 
 TEST_F(ManagerTest, CreateProfile) {
-  // It's much easier to use real Glib here since we want the storage
-  // side-effects.
-  GLib glib;
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  real_glib_.get(),
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -977,15 +977,12 @@ TEST_F(ManagerTest, CreateProfile) {
 }
 
 TEST_F(ManagerTest, PushPopProfile) {
-  // It's much easier to use real Glib in creating a Manager for this
-  // test here since we want the storage side-effects.
-  GLib glib;
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  real_glib_.get(),
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -1053,7 +1050,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   ASSERT_EQ(GetEphemeralProfile(&manager), service->profile());
 
   // Create storage for a profile that contains the service storage name.
-  ASSERT_TRUE(CreateBackingStoreForService(&glib, &temp_dir, "user", kProfile2Id,
+  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile2Id,
                                            kServiceName));
 
   // When we push the profile, the service should move away from the
@@ -1067,7 +1064,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Insert another profile that should supersede ownership of the service.
   const char kProfile3Id[] = "profile3";
   const string kProfile3 = base::StringPrintf("~user/%s", kProfile3Id);
-  ASSERT_TRUE(CreateBackingStoreForService(&glib, &temp_dir, "user", kProfile3Id,
+  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, "user", kProfile3Id,
                                            kServiceName));
   // We don't verify this expectation inline, since this would clear other
   // recurring expectations on the service.
@@ -1153,15 +1150,12 @@ TEST_F(ManagerTest, PushPopProfile) {
 }
 
 TEST_F(ManagerTest, RemoveProfile) {
-  // It's much easier to use real Glib in creating a Manager for this
-  // test here since we want the storage side-effects.
-  GLib glib;
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  real_glib_.get(),
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -1267,15 +1261,12 @@ TEST_F(ManagerTest, RemoveService) {
 }
 
 TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
-  // It's much easier to use real Glib in creating a Manager for this
-  // test here since we want the storage side-effects.
-  GLib glib;
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  real_glib_.get(),
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -4345,14 +4336,12 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
 
 #if !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
-  // We need a real glib here, so that profiles are persisted.
-  GLib glib;
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  &glib,
+                  real_glib_.get(),
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -4394,8 +4383,6 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
 #endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
-  // We need a real glib here, so that profiles are persisted.
-  GLib glib;
   ScopedTempDir temp_dir;
   std::unique_ptr<Manager> manager;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -4409,7 +4396,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            &glib,
+                            real_glib_.get(),
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4436,7 +4423,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            &glib,
+                            real_glib_.get(),
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4449,7 +4436,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            &glib,
+                            real_glib_.get(),
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4459,16 +4446,13 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
 }
 
 TEST_F(ManagerTest, ProfileStackChangeLogging) {
-  // We use a real glib here, since Manager and Profile don't provide an
-  // easy way to mock out KeyFileStore.
-  GLib glib;
   ScopedTempDir temp_dir;
   std::unique_ptr<Manager> manager;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            &glib,
+                            real_glib_.get(),
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
