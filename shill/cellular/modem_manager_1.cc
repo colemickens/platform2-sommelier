@@ -69,7 +69,6 @@ void ModemManager1::Connect() {
 
 void ModemManager1::Disconnect() {
   ModemManager::Disconnect();
-  proxy_.reset();
 }
 
 void ModemManager1::AddModem1(const string& path,

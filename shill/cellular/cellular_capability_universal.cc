@@ -1106,9 +1106,9 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // Update the bearers property before the modem state property as
   // OnModemStateChanged may call UpdateActiveBearer, which reads the bearers
   // property.
-  if (properties.Contains(MM_MODEM_PROPERTY_BEARERS)) {
+  if (properties.ContainsRpcIdentifiers(MM_MODEM_PROPERTY_BEARERS)) {
     RpcIdentifiers bearers =
-        properties.Get(MM_MODEM_PROPERTY_BEARERS).Get<RpcIdentifiers>();
+        properties.GetRpcIdentifiers(MM_MODEM_PROPERTY_BEARERS);
     OnBearersChanged(bearers);
   }
 
