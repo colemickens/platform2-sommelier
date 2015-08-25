@@ -27,40 +27,6 @@ std::string GLib::ConvertErrorToMessage(GError* error) {
   return message;
 }
 
-bool GLib::B64Decode(const string& input, string* output) {
-  CHECK(output);
-  gsize result_len = 0;
-  guchar* result = g_base64_decode(input.c_str(), &result_len);
-  if (!result) {
-    LOG(ERROR) << "Failed in encoding.";
-    return false;
-  }
-
-  if (!result_len) {
-    LOG(ERROR) << "Failed in encoding.";
-    Free(result);
-    return false;
-  }
-
-  output->assign(reinterpret_cast<char*>(result), result_len);
-  Free(result);
-  return true;
-}
-
-bool GLib::B64Encode(const string& input, string* output) {
-  CHECK(output);
-  gchar* result = g_base64_encode(
-      reinterpret_cast<const unsigned char*>(input.c_str()), input.length());
-  if (!result) {
-    LOG(ERROR) << "Failed in encoding.";
-    return false;
-  }
-
-  output->assign(result);
-  Free(result);
-  return true;
-}
-
 guint GLib::ChildWatchAdd(GPid pid,
                           GChildWatchFunc function,
                           gpointer data) {
