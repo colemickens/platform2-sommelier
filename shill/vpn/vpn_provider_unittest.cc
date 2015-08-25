@@ -7,14 +7,11 @@
 #include <memory>
 #include <set>
 
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/glib.h"
-#include "shill/key_file_store.h"
+#include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
@@ -241,39 +238,20 @@ MATCHER_P(ServiceWithStorageId, storage_id, "") {
 }
 
 TEST_F(VPNProviderTest, CreateServicesFromProfile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath test_profile = temp_dir.path().Append("test-profile");
-  GLib glib;
-  KeyFileStore storage(&glib);
-  storage.set_path(test_profile);
-  static const char contents[] =
-      "[no_type]\n"
-      "Name=No Type Entry\n"
-      "\n"
-      "[no_vpn]\n"
-      "Type=wimax\n"
-      "\n"
-      "[vpn_no_type]\n"
-      "Type=vpn\n"
-      "\n"
-      "[vpn_no_name]\n"
-      "Type=vpn\n"
-      "Provider.Type=openvpn\n"
-      "\n"
-      "[vpn_no_host]\n"
-      "Type=vpn\n"
-      "Provider.Type=openvpn\n"
-      "Name=name\n"
-      "\n"
-      "[vpn_complete]\n"
-      "Type=vpn\n"
-      "Provider.Type=openvpn\n"
-      "Name=name\n"
-      "Provider.Host=1.2.3.4\n";
-  EXPECT_EQ(strlen(contents),
-            base::WriteFile(test_profile, contents, strlen(contents)));
-  ASSERT_TRUE(storage.Open());
+  FakeStore storage;
+  storage.SetString("no_type", "Name", "No Type Entry");
+  storage.SetString("no_vpn", "Type", "wimax");
+  storage.SetString("vpn_no_provider_type", "Type", "vpn");
+  storage.SetString("vpn_no_name", "Type", "vpn");
+  storage.SetString("vpn_no_name", "Provider.Type", "openvpn");
+  storage.SetString("vpn_no_host", "Type", "vpn");
+  storage.SetString("vpn_no_host", "Provider.Type", "openvpn");
+  storage.SetString("vpn_ho_host", "Name", "name");
+  storage.SetString("vpn_complete", "Type", "vpn");
+  storage.SetString("vpn_complete", "Provider.Type", "openvpn");
+  storage.SetString("vpn_complete", "Name", "name");
+  storage.SetString("vpn_complete", "Provider.Host", "1.2.3.4");
+
   scoped_refptr<MockProfile> profile(
       new NiceMock<MockProfile>(&control_, &metrics_, &manager_, ""));
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&storage));
@@ -325,36 +303,19 @@ TEST_F(VPNProviderTest, CreateService) {
 }
 
 TEST_F(VPNProviderTest, CreateTemporaryServiceFromProfile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath test_profile = temp_dir.path().Append("test-profile");
-  GLib glib;
-  KeyFileStore storage(&glib);
-  storage.set_path(test_profile);
-  static const char contents[] =
-      "[no_vpn]\n"
-      "Type=wimax\n"
-      "\n"
-      "[vpn_no_type]\n"
-      "Type=vpn\n"
-      "\n"
-      "[vpn_no_name]\n"
-      "Type=vpn\n"
-      "Provider.Type=openvpn\n"
-      "\n"
-      "[vpn_no_host]\n"
-      "Type=vpn\n"
-      "Provider.Type=openvpn\n"
-      "Name=name\n"
-      "\n"
-      "[vpn_complete]\n"
-      "Type=vpn\n"
-      "Provider.Type=openvpn\n"
-      "Name=name\n"
-      "Provider.Host=1.2.3.4\n";
-  EXPECT_EQ(strlen(contents),
-            base::WriteFile(test_profile, contents, strlen(contents)));
-  ASSERT_TRUE(storage.Open());
+  FakeStore storage;
+  storage.SetString("no_vpn", "Type", "wimax");
+  storage.SetString("vpn_no_provider_type", "Type", "vpn");
+  storage.SetString("vpn_no_name", "Type", "vpn");
+  storage.SetString("vpn_no_name", "Provider.Type", "openvpn");
+  storage.SetString("vpn_no_host", "Type", "vpn");
+  storage.SetString("vpn_no_host", "Provider.Type", "openvpn");
+  storage.SetString("vpn_no_host", "Name", "name");
+  storage.SetString("vpn_complete", "Type", "vpn");
+  storage.SetString("vpn_complete", "Provider.Type", "openvpn");
+  storage.SetString("vpn_complete", "Name", "name");
+  storage.SetString("vpn_complete", "Provider.Host", "1.2.3.4");
+
   scoped_refptr<MockProfile> profile(
       new NiceMock<MockProfile>(&control_, &metrics_, &manager_, ""));
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&storage));
@@ -373,7 +334,7 @@ TEST_F(VPNProviderTest, CreateTemporaryServiceFromProfile) {
   error.Reset();
   EXPECT_EQ(nullptr,
             provider_.CreateTemporaryServiceFromProfile(profile,
-                                                        "vpn_no_type",
+                                                        "vpn_no_provider_type",
                                                         &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("VPN type not specified"));
