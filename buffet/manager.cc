@@ -185,12 +185,12 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
   auto properties =
       DictionaryFromDBusVariantDictionary(property_set, &chromeos_error);
   if (!properties)
-    response->ReplyWithError(chromeos_error.get());
+    return response->ReplyWithError(chromeos_error.get());
 
   weave::ErrorPtr error;
   if (!device_->GetState()->SetProperties(*properties, &error)) {
     ConvertError(*error, &chromeos_error);
-    response->ReplyWithError(chromeos_error.get());
+    return response->ReplyWithError(chromeos_error.get());
   }
   response->Return();
 }
