@@ -11,6 +11,7 @@
 
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
+#include "chromiumos-wide-profiling/limits.h"
 #include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/perf_test_files.h"
@@ -471,6 +472,90 @@ TEST(PerfParserTest, HandlesFinishedRoundEventsAndSortsByTime) {
   EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[4]->raw_event->header.type);
   parser.ReadPerfSampleInfo(*sorted_events[4]->raw_event, &sample);
   EXPECT_EQ(12300050, sample.time);
+}
+
+TEST(PerfParserTest, MmapCoversEntireAddressSpace) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP, a kernel mapping that covers the whole space.
+  const uint32_t kKernelMmapPid = kUint32Max;
+  testing::ExampleMmapEvent(
+      kKernelMmapPid, 0, kUint64Max, 0, "[kernel.kallsyms]_text",
+      testing::SampleInfo().Tid(kKernelMmapPid, 0)).WriteTo(&input);
+
+  // PERF_RECORD_MMAP, a shared object library.
+  testing::ExampleMmapEvent(
+      1234, 0x7f008e000000, 0x2000000, 0, "/usr/lib/libfoo.so",
+      testing::SampleInfo().Tid(1234, 1234)).WriteTo(&input);
+
+  // PERF_RECORD_SAMPLE, within library.
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x7f008e123456).Tid(1234, 1235))
+      .WriteTo(&input);
+  // PERF_RECORD_SAMPLE, within kernel.
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x8000819e).Tid(1234, 1235))
+      .WriteTo(&input);
+  // PERF_RECORD_SAMPLE, within library.
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x7f008fdeadbe).Tid(1234, 1235))
+      .WriteTo(&input);
+  // PERF_RECORD_SAMPLE, within kernel.
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0xffffffff8100cafe).Tid(1234, 1235))
+      .WriteTo(&input);
+
+
+  //
+  // Parse input.
+  //
+
+  PerfParser::Options options;
+  options.do_remap = true;
+  PerfParser parser(options);
+  EXPECT_TRUE(parser.ReadFromString(input.str()));
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(2, parser.stats().num_mmap_events);
+  EXPECT_EQ(4, parser.stats().num_sample_events);
+  EXPECT_EQ(4, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(6, events.size());
+
+  EXPECT_EQ(PERF_RECORD_MMAP, events[0].raw_event->header.type);
+  EXPECT_EQ(string("[kernel.kallsyms]_text"),
+            events[0].raw_event->mmap.filename);
+  EXPECT_EQ(PERF_RECORD_MMAP, events[1].raw_event->header.type);
+  EXPECT_EQ(string("/usr/lib/libfoo.so"), events[1].raw_event->mmap.filename);
+
+  // Sample from library.
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/libfoo.so", events[2].dso_and_offset.dso_name());
+  EXPECT_EQ(0x123456, events[2].dso_and_offset.offset());
+
+  // Sample from kernel.
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].raw_event->header.type);
+  EXPECT_EQ("[kernel.kallsyms]_text", events[3].dso_and_offset.dso_name());
+  EXPECT_EQ(0x8000819e, events[3].dso_and_offset.offset());
+
+  // Sample from library.
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/libfoo.so", events[4].dso_and_offset.dso_name());
+  EXPECT_EQ(0x1deadbe, events[4].dso_and_offset.offset());
+
+  // Sample from kernel.
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].raw_event->header.type);
+  EXPECT_EQ("[kernel.kallsyms]_text", events[5].dso_and_offset.dso_name());
+  EXPECT_EQ(0xffffffff8100cafe, events[5].dso_and_offset.offset());
 }
 
 }  // namespace quipper
