@@ -127,19 +127,6 @@ class GLib {
                               gpointer user_data,
                               GPid* child_pid,
                               GError** error);
-  // g_spawn_close_pid
-  virtual void SpawnClosePID(GPid pid);
-  // g_spawn_sync
-  virtual gboolean SpawnSync(const gchar* working_directory,
-                             gchar** argv,
-                             gchar** envp,
-                             GSpawnFlags flags,
-                             GSpawnChildSetupFunc child_setup,
-                             gpointer user_data,
-                             gchar** standard_output,
-                             gchar** standard_error,
-                             gint* exit_status,
-                             GError** error);
 
 #if !defined(ENABLE_JSON_STORE)
   // g_strfreev

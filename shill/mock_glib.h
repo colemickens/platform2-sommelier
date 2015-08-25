@@ -95,17 +95,6 @@ class MockGLib : public GLib {
                                     gpointer user_data,
                                     GPid* child_pid,
                                     GError** error));
-  MOCK_METHOD1(SpawnClosePID, void(GPid pid));
-  MOCK_METHOD10(SpawnSync, gboolean(const gchar* working_directory,
-                                    gchar** argv,
-                                    gchar** envp,
-                                    GSpawnFlags flags,
-                                    GSpawnChildSetupFunc child_setup,
-                                    gpointer user_data,
-                                    gchar** standard_output,
-                                    gchar** standard_error,
-                                    gint* exit_status,
-                                    GError** error));
   MOCK_METHOD1(Strfreev, void(gchar** str_array));
   MOCK_METHOD0(TypeInit, void());
 
