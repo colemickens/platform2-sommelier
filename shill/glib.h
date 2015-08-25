@@ -20,13 +20,17 @@ class GLib {
   GLib();
   virtual ~GLib();
 
+#if !defined(ENABLE_JSON_STORE)
   // Converts GLib's |error| to a string message and frees the GError object.
   virtual std::string ConvertErrorToMessage(GError* error);
+#endif
 
   // g_child_watch_add
   virtual guint ChildWatchAdd(GPid pid,
                               GChildWatchFunc function,
                               gpointer data);
+
+#if !defined(ENABLE_JSON_STORE)
   // g_free
   virtual void Free(gpointer mem);
   // g_key_file_free
@@ -110,6 +114,8 @@ class GLib {
   virtual gchar* KeyFileToData(GKeyFile* key_file,
                                gsize* length,
                                GError** error);
+#endif
+
   // g_source_remove
   virtual gboolean SourceRemove(guint tag);
   // g_spawn_async
@@ -134,8 +140,12 @@ class GLib {
                              gchar** standard_error,
                              gint* exit_status,
                              GError** error);
+
+#if !defined(ENABLE_JSON_STORE)
   // g_strfreev
   virtual void Strfreev(gchar** str_array);
+#endif
+
   // g_type_init
   virtual void TypeInit();
 

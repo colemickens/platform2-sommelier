@@ -17,6 +17,7 @@ namespace shill {
 GLib::GLib() {}
 GLib::~GLib() {}
 
+#if !defined(ENABLE_JSON_STORE)
 std::string GLib::ConvertErrorToMessage(GError* error) {
   if (!error) {
     return "Unknown GLib error.";
@@ -27,12 +28,15 @@ std::string GLib::ConvertErrorToMessage(GError* error) {
   return message;
 }
 
+#endif
+
 guint GLib::ChildWatchAdd(GPid pid,
                           GChildWatchFunc function,
                           gpointer data) {
   return g_child_watch_add(pid, function, data);
 }
 
+#if !defined(ENABLE_JSON_STORE)
 void GLib::Free(gpointer mem) {
   g_free(mem);
 }
@@ -153,6 +157,7 @@ gchar* GLib::KeyFileToData(GKeyFile* key_file,
                            GError** error) {
   return g_key_file_to_data(key_file, length, error);
 }
+#endif
 
 gboolean GLib::SourceRemove(guint tag) {
   return g_source_remove(tag);
@@ -202,9 +207,11 @@ gboolean GLib::SpawnSync(const gchar* working_directory,
                       error);
 }
 
+#if !defined(ENABLE_JSON_STORE)
 void GLib::Strfreev(gchar** str_array) {
   g_strfreev(str_array);
 }
+#endif
 
 void GLib::TypeInit() {
   g_type_init();
