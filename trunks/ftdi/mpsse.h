@@ -149,7 +149,8 @@ struct mpsse_context {
   int pid;
   int clock;
   int xsize;
-  int endianess;
+  uint8_t endianess;
+  uint8_t opened;
   uint8_t tris;
   uint8_t pstart;
   uint8_t pstop;

@@ -113,7 +113,7 @@ struct mpsse_context* OpenIndex(int vid,
                                 const char* description,
                                 const char* serial,
                                 int index) {
-  int status = 0, success = 0;
+  int status = 0;
   struct mpsse_context* mpsse = NULL;
 
   mpsse = malloc(sizeof(struct mpsse_context));
@@ -164,7 +164,7 @@ struct mpsse_context* OpenIndex(int vid,
 
         if (SetClock(mpsse, freq) == MPSSE_OK) {
           if (SetMode(mpsse, endianess) == MPSSE_OK) {
-            success = 1;
+            mpsse->opened = 1;
 
             /* Give the chip a few mS to initialize */
             usleep(SETUP_DELAY);
@@ -182,12 +182,12 @@ struct mpsse_context* OpenIndex(int vid,
         /* Skip the setup functions if we're just operating in BITBANG mode
          */
         if (!ftdi_set_bitmode(&mpsse->ftdi, 0xFF, BITMODE_BITBANG))
-          success = 1;
+          mpsse->opened = 1;
       }
     }
   }
 
-  if (mpsse && !success) {
+  if (mpsse && !mpsse->opened) {
     Close(mpsse);
     mpsse = NULL;
   }
@@ -207,8 +207,11 @@ void Close(struct mpsse_context* mpsse) {
   if (!mpsse)
     return;
 
-  ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_RESET);
-  ftdi_usb_close(&mpsse->ftdi);
+  if (mpsse->opened) {
+    /* Shut these down only if initialization succeeded before. */
+    ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_RESET);
+    ftdi_usb_close(&mpsse->ftdi);
+  }
   ftdi_deinit(&mpsse->ftdi);
   free(mpsse);
 }
