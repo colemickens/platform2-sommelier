@@ -12,6 +12,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
@@ -289,13 +290,8 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string& tag) {
     // Don't reuse token.
     driver_->args()->RemoveString(kOpenVPNTokenProperty);
   } else {
-    string b64_password;
-    string b64_otp;
-    if (!glib_->B64Encode(password, &b64_password) ||
-        !glib_->B64Encode(otp, &b64_otp)) {
-      LOG(ERROR) << "Unable to base64-encode credentials.";
-      return;
-    }
+    string b64_password(chromeos::data_encoding::Base64Encode(password));
+    string b64_otp(chromeos::data_encoding::Base64Encode(otp));
     password_encoded = StringPrintf("SCRV1:%s:%s",
                                     b64_password.c_str(),
                                     b64_otp.c_str());
