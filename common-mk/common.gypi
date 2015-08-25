@@ -72,8 +72,8 @@
     'include_dirs': [
       '<(INTERMEDIATE_DIR)/include',
       '<(SHARED_INTERMEDIATE_DIR)/include',
-      '..',             # src/platform2
-      '../../platform', # src/platform
+      '<(platform2_root)',
+      '<(platform2_root)/../platform', # src/platform
     ],
     'cflags': [
       '-Wall',
