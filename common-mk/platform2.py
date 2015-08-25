@@ -258,6 +258,9 @@ class Platform2(object):
     if self.verbose:
       ninja_args.append('-v')
 
+    if os.environ.get('NINJA_ARGS'):
+      ninja_args.extend(os.environ['NINJA_ARGS'].split())
+
     try:
       subprocess.check_call(ninja_args)
     except subprocess.CalledProcessError:
