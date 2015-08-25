@@ -38,6 +38,9 @@ class ChromeosDBusDaemon : public chromeos::DBusServiceDaemon,
       const base::Callback<void(bool)>& completion_action,
       bool success);
 
+  // Invoke when shill completes its termination tasks during shutdown.
+  void OnTerminationCompleted();
+
   EventDispatcher dispatcher_;
   base::Closure startup_callback_;
 

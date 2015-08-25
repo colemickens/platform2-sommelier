@@ -61,7 +61,7 @@ class ChromeosDaemon {
   virtual void RunMessageLoop() = 0;
 
   // Starts the termination actions in the manager.
-  virtual void Quit();
+  virtual void Quit(const base::Closure& completion_callback);
 
  protected:
   // Initialize daemon with specific control interface.
@@ -102,6 +102,7 @@ class ChromeosDaemon {
   std::unique_ptr<Callback80211Metrics> callback80211_metrics_;
 #endif  // DISABLE_WIFI
   std::unique_ptr<Manager> manager_;
+  base::Closure termination_completed_callback_;
 };
 
 }  // namespace shill

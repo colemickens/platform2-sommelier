@@ -90,8 +90,9 @@ void ChromeosDaemon::ApplySettings() {
   manager_->SetDHCPv6EnabledDevices(settings_.dhcpv6_enabled_devices);
 }
 
-void ChromeosDaemon::Quit() {
+void ChromeosDaemon::Quit(const base::Closure& completion_callback) {
   SLOG(this, 1) << "Starting termination actions.";
+  termination_completed_callback_ = completion_callback;
   if (!manager_->RunTerminationActionsAndNotifyMetrics(
           Bind(&ChromeosDaemon::TerminationActionsCompleted,
                Unretained(this)))) {
@@ -131,6 +132,9 @@ void ChromeosDaemon::TerminationActionsCompleted(const Error& error) {
 
 void ChromeosDaemon::StopAndReturnToMain() {
   Stop();
+  if (!termination_completed_callback_.is_null()) {
+    termination_completed_callback_.Run();
+  }
 }
 
 void ChromeosDaemon::Start() {
@@ -168,8 +172,13 @@ void ChromeosDaemon::Start() {
 void ChromeosDaemon::Stop() {
   manager_->Stop();
   manager_ = nullptr;  // Release manager resources, including DBus adaptor.
+#if !defined(DISABLE_WIFI)
+  callback80211_metrics_ = nullptr;
+#endif  // DISABLE_WIFI
   metrics_->Stop();
   dhcp_provider_->Stop();
+  metrics_ = nullptr;
+  control_ = nullptr;
 }
 
 }  // namespace shill

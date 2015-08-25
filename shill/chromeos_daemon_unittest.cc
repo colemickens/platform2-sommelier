@@ -57,8 +57,8 @@ class ChromeosDaemonForTest : public ChromeosDaemon {
 
   void RunMessageLoop() override { dispatcher_->DispatchForever(); }
 
-  void Quit() override {
-    ChromeosDaemon::Quit();
+  void Quit(const base::Closure& completion_callback) override {
+    ChromeosDaemon::Quit(completion_callback);
     dispatcher_->PostTask(base::MessageLoop::QuitClosure());
   }
 };
@@ -111,6 +111,7 @@ class ChromeosDaemonTest : public Test {
   }
 
   MOCK_METHOD0(TerminationAction, void());
+  MOCK_METHOD0(TerminationCompleted, void());
 
  protected:
   EventDispatcherForTest dispatcher_;
@@ -162,13 +163,18 @@ TEST_F(ChromeosDaemonTest, Quit) {
   // This expectation verifies that the termination actions are invoked.
   EXPECT_CALL(*this, TerminationAction())
       .WillOnce(CompleteAction(manager_, "daemon test"));
+  EXPECT_CALL(*this, TerminationCompleted()).Times(1);
 
   manager_->AddTerminationAction("daemon test",
                                  Bind(&ChromeosDaemonTest::TerminationAction,
                                       Unretained(this)));
 
   // Run Daemon::Quit() after the daemon starts running.
-  dispatcher_.PostTask(Bind(&ChromeosDaemon::Quit, Unretained(&daemon_)));
+  dispatcher_.PostTask(
+      Bind(&ChromeosDaemon::Quit,
+           Unretained(&daemon_),
+           Bind(&ChromeosDaemonTest::TerminationCompleted,
+                Unretained(this))));
 
   RunDaemon();
 }
