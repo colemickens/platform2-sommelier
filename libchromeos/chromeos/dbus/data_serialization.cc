@@ -219,6 +219,19 @@ bool PopArrayValueFromReader(dbus::MessageReader* reader,
   else if (signature == "a{sa{sv}}")
     return PopTypedMapFromReader<
         std::string, chromeos::VariantDictionary>(reader, value);
+  else if (signature == "a{say}")
+    return PopTypedMapFromReader<
+        std::string, std::vector<uint8_t>>(reader, value);
+  else if (signature == "a{uv}")
+    return PopTypedMapFromReader<uint32_t, chromeos::Any>(reader, value);
+  else if (signature == "a(su)")
+    return PopTypedArrayFromReader<
+        std::tuple<std::string, uint32_t>>(reader, value);
+  else if (signature == "a{uu}")
+    return PopTypedMapFromReader<uint32_t, uint32_t>(reader, value);
+  else if (signature == "a(uu)")
+    return PopTypedArrayFromReader<
+        std::tuple<uint32_t, uint32_t>>(reader, value);
 
   // When a use case for particular array signature is found, feel free
   // to add handing for it here.
@@ -234,10 +247,15 @@ bool PopStructValueFromReader(dbus::MessageReader* reader,
                               chromeos::Any* value) {
   std::string signature = reader->GetDataSignature();
   if (signature == "(ii)")
-    return PopTypedValueFromReader<std::pair<int, int>>(reader, value);
+    return PopTypedValueFromReader<std::tuple<int, int>>(reader, value);
   else if (signature == "(ss)")
-    return PopTypedValueFromReader<std::pair<std::string, std::string>>(reader,
-                                                                        value);
+    return PopTypedValueFromReader<std::tuple<std::string, std::string>>(reader,
+                                                                         value);
+  else if (signature == "(ub)")
+    return PopTypedValueFromReader<std::tuple<uint32_t, bool>>(reader, value);
+  else if (signature == "(uu)")
+    return PopTypedValueFromReader<std::tuple<uint32_t, uint32_t>>(reader,
+                                                                   value);
 
   // When a use case for particular struct signature is found, feel free
   // to add handing for it here.
