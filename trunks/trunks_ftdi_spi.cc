@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <ctime>
 #include <string>
 #include <unistd.h>
 
 #include <base/logging.h>
 
+#include "trunks/tpm_generated.h"
 #include "trunks/trunks_ftdi_spi.h"
 
 // Assorted TPM2 registers for interface type FIFO.
@@ -133,6 +135,13 @@ bool TrunksFtdiSpi::FtdiReadReg(unsigned reg_number, size_t bytes,
   return true;
 }
 
+size_t TrunksFtdiSpi::GetBurstCount(void) {
+  uint32_t status;
+
+  ReadTpmSts(&status);
+  return (size_t)((status >> burstCountShift) & burstCountMask);
+}
+
 bool TrunksFtdiSpi::Init() {
   uint32_t did_vid, status;
   uint8_t cmd;
@@ -179,7 +188,6 @@ bool TrunksFtdiSpi::Init() {
                << status;
     return false;
   }
-  burst_count_ = (status >> burstCountShift) & burstCountMask;
   FtdiReadReg(TPM_RID_REG, sizeof(cmd), &cmd);
   printf("Connected to device vid:did:rid of %4.4x:%4.4x:%2.2x\n",
          did_vid & 0xffff, did_vid >> 16, cmd);
@@ -198,21 +206,23 @@ bool TrunksFtdiSpi::WaitForStatus(uint32_t statusMask,
   time_t target_time;
 
   target_time = time(NULL) + timeout_ms / 1000;
-   do {
-     usleep(10000);  // 10 ms polling period.
-     if (time(NULL) >= target_time) {
-       LOG(ERROR) << "failed to get expected status " << std::hex
-                  << statusExpected;
-       return false;
-     }
-     ReadTpmSts(&status);
-   } while ((status & statusMask) != statusExpected);
-   return true;
+  do {
+    usleep(10000);  // 10 ms polling period.
+    if (time(NULL) >= target_time) {
+      LOG(ERROR) << "failed to get expected status " << std::hex
+                 << statusExpected;
+      return false;
+    }
+    ReadTpmSts(&status);
+  } while ((status & statusMask) != statusExpected);
+  return true;
 }
 
 std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
   uint32_t status;
   uint32_t expected_status_bits;
+  size_t transaction_size, handled_so_far(0);
+
   std::string rv("");
 
   if (!mpsse_) {
@@ -220,17 +230,24 @@ std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
     return rv;
   }
 
-  if (command.length() > burst_count_) {
-    LOG(ERROR) << "cannot (yet) transmit more than " << burst_count_
-               << " bytes";
-    return rv;
-  }
-
   WriteTpmSts(commandReady);
 
   // No need to wait for the sts.Expect bit to be set, at least with the
-  // 15d1:001b device, let's just write the command into FIFO.
-  FtdiWriteReg(TPM_DATA_FIFO_REG, command.length(), command.c_str());
+  // 15d1:001b device, let's just write the command into FIFO, not exceeding
+  // the minimum of the two values - burst_count and 64 (which is the protocol
+  // limitation)
+  do {
+    transaction_size = std::min(std::min(command.size() - handled_so_far,
+                                         GetBurstCount()),
+                                (size_t)64);
+
+    if (transaction_size) {
+      LOG(INFO) << "will transfer " << transaction_size << " bytes";
+      FtdiWriteReg(TPM_DATA_FIFO_REG, transaction_size,
+                   command.c_str() + handled_so_far);
+      handled_so_far += transaction_size;
+    }
+  } while (handled_so_far != command.size());
 
   // And tell the device it can start processing it.
   WriteTpmSts(tpmGo);
@@ -244,44 +261,66 @@ std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
   // The header size is fixed to six bytes, the total payload size is stored
   // in network order in the last four bytes of the header.
   char data_header[6];
-  uint32_t payload_size;
 
   // Let's read the header first.
   FtdiReadReg(TPM_DATA_FIFO_REG, sizeof(data_header), data_header);
-  rv = std::string(data_header, sizeof(data_header));
 
   // Figure out the total payload size.
+  uint32_t payload_size;
   memcpy(&payload_size, data_header + 2, sizeof(payload_size));
   payload_size = be32toh(payload_size);
+  // A FIFO message with the minimum required header and contents can not be
+  // less than 10 bytes long. It also should never be more than 4096 bytes
+  // long.
+  if ((payload_size < 10) || (payload_size > MAX_RESPONSE_SIZE)) {
+    // Something must be wrong...
+    LOG(ERROR) << "Bad total payload size value: " << payload_size;
+    return rv;
+  }
+
   LOG(INFO) << "Total payload size " << payload_size;
 
-  // Calculate how much to read in the next shot and read: all but the last
-  // byte.
+
+  // Let's read all but the last byte in the FIFO to make sure the status
+  // register is showing correct flow control bits: 'more data' until the last
+  // byte and then 'no more data' once the last byte is read.
+  handled_so_far = 0;
   payload_size = payload_size - sizeof(data_header) - 1;
-  char *payload = new char[payload_size];
-  FtdiReadReg(TPM_DATA_FIFO_REG, payload_size, payload);
+  // Allow room for the last byte too.
+  uint8_t *payload = new uint8_t[payload_size + 1];
+  do {
+    transaction_size = std::min(std::min(payload_size - handled_so_far,
+                                         GetBurstCount()),
+                                (size_t)64);
+
+    if (transaction_size) {
+      FtdiReadReg(TPM_DATA_FIFO_REG, transaction_size,
+                  payload + handled_so_far);
+      handled_so_far += transaction_size;
+    }
+  } while (handled_so_far != payload_size);
 
   // Verify that there is still data to come.
   ReadTpmSts(&status);
   if ((status & expected_status_bits) != expected_status_bits) {
     LOG(ERROR) << "unexpected status 0x" << std::hex << status;
     delete[] payload;
-    return std::string("");
+    return rv;
   }
-  rv += std::string(payload, payload_size);
 
   // Now, read the last byte of the payload.
-  uint8_t last_char;
-  FtdiReadReg(TPM_DATA_FIFO_REG, sizeof(last_char), &last_char);
+  FtdiReadReg(TPM_DATA_FIFO_REG, sizeof(uint8_t), payload + payload_size);
 
   // Verify that 'data available' is not asseretd any more.
   ReadTpmSts(&status);
   if ((status & expected_status_bits) != stsValid) {
     LOG(ERROR) << "unexpected status 0x" << std::hex << status;
     delete[] payload;
-    return std::string("");
+    return rv;
   }
-  rv.push_back(last_char);
+
+  rv = std::string(data_header, sizeof(data_header)) +
+    std::string(reinterpret_cast<char *>(payload), payload_size + 1);
 
   /* Move the TPM back to idle state. */
   WriteTpmSts(commandReady);

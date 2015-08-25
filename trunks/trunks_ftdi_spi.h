@@ -33,7 +33,6 @@ class TRUNKS_EXPORT TrunksFtdiSpi: public CommandTransceiver {
 
  private:
   struct mpsse_context* mpsse_;
-  size_t burst_count_;  // As reported by the TPM_STS register.
   unsigned locality_;   // Set at initialization.
 
   // Read a TPM register into the passed in buffer, where 'bytes' the width of
@@ -60,6 +59,8 @@ class TRUNKS_EXPORT TrunksFtdiSpi: public CommandTransceiver {
   // expires.
   bool WaitForStatus(uint32_t statusMask,
                      uint32_t statusExpected, int timeout_ms = 10000);
+  // Retrieve current value of the burst count field.
+  size_t GetBurstCount(void);
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFtdiSpi);
 };
