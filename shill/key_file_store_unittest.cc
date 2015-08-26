@@ -34,7 +34,7 @@ const char kROT47Text[] = "rot47:%9:D :D 2 E6DEP";
 
 class KeyFileStoreTest : public Test {
  public:
-  KeyFileStoreTest() : store_(&glib_) {}
+  KeyFileStoreTest() {}
 
   virtual void SetUp() {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -54,7 +54,6 @@ class KeyFileStoreTest : public Test {
                       const string& key,
                       const string& expected_value);
 
-  GLib glib_;  // Use real GLib for testing KeyFileStore.
   base::ScopedTempDir temp_dir_;
   FilePath test_file_;
   KeyFileStore store_;
@@ -653,7 +652,7 @@ TEST_F(KeyFileStoreTest, PersistAcrossClose) {
 bool KeyFileStoreTest::OpenCheckClose(const string& group,
                                       const string& key,
                                       const string& expected_value) {
-  KeyFileStore store(&glib_);
+  KeyFileStore store;
   store.set_path(test_file_);
   EXPECT_TRUE(store.Open());
   string value;

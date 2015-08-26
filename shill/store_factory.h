@@ -7,8 +7,6 @@
 
 #include <base/lazy_instance.h>
 
-#include "shill/glib.h"
-
 namespace shill {
 
 class StoreInterface;
@@ -25,7 +23,6 @@ class StoreFactory {
 
  private:
   friend struct base::DefaultLazyInstanceTraits<StoreFactory>;
-  GLib glib_;
 
   DISALLOW_COPY_AND_ASSIGN(StoreFactory);
 };

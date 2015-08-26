@@ -11,7 +11,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <fcntl.h>
-#include <glib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -46,9 +45,8 @@ string ConvertErrorToMessage(GError* error) {
 
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
-KeyFileStore::KeyFileStore(GLib* glib)
-    : glib_(glib),
-      crypto_(),
+KeyFileStore::KeyFileStore()
+    : crypto_(),
       key_file_(nullptr) {}
 
 KeyFileStore::~KeyFileStore() {

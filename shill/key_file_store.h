@@ -9,11 +9,11 @@
 #include <string>
 #include <vector>
 
+#include <glib.h>  // Can't forward-declare GKeyFile due to typedef.
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/crypto_provider.h"
-#include "shill/glib.h"
 #include "shill/store_interface.h"
 
 namespace shill {
@@ -23,7 +23,7 @@ namespace shill {
 // of the key file format.
 class KeyFileStore : public StoreInterface {
  public:
-  explicit KeyFileStore(GLib* glib);
+  KeyFileStore();
   ~KeyFileStore() override;
 
   // Inherited from StoreInterface.
@@ -89,7 +89,6 @@ class KeyFileStore : public StoreInterface {
   bool DoesGroupMatchProperties(const std::string& group,
                                 const KeyValueStore& properties) const;
 
-  GLib* glib_;
   CryptoProvider crypto_;
   GKeyFile* key_file_;
   base::FilePath path_;

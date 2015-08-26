@@ -4,7 +4,6 @@
 
 #include "shill/store_factory.h"
 
-#include "shill/glib.h"
 #include "shill/json_store.h"
 #include "shill/key_file_store.h"
 
@@ -28,7 +27,7 @@ StoreInterface* StoreFactory::CreateStore() {
 #if defined(ENABLE_JSON_STORE)
   return new JsonStore();
 #else
-  return new KeyFileStore(&glib_);
+  return new KeyFileStore();
 #endif
 }
 
