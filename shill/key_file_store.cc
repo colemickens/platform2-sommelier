@@ -9,7 +9,9 @@
 #include <base/files/important_file_writer.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <fcntl.h>
+#include <glib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -30,6 +32,18 @@ static auto kModuleLogScope = ScopeLogger::kStorage;
 static string ObjectID(const KeyFileStore* k) { return "(key_file_store)"; }
 }
 
+namespace {
+string ConvertErrorToMessage(GError* error) {
+  if (!error) {
+    return "Unknown GLib error.";
+  }
+  string message =
+    base::StringPrintf("GError(%d): %s", error->code, error->message);
+  g_error_free(error);
+  return message;
+}
+}  // namespace
+
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
 KeyFileStore::KeyFileStore(GLib* glib)
@@ -43,7 +57,7 @@ KeyFileStore::~KeyFileStore() {
 
 void KeyFileStore::ReleaseKeyFile() {
   if (key_file_) {
-    glib_->KeyFileFree(key_file_);
+    g_key_file_free(key_file_);
     key_file_ = nullptr;
   }
 }
@@ -57,13 +71,13 @@ bool KeyFileStore::Open() {
   CHECK(!path_.empty());
   CHECK(!key_file_);
   crypto_.Init();
-  key_file_ = glib_->KeyFileNew();
+  key_file_ = g_key_file_new();
   if (!IsNonEmpty()) {
     LOG(INFO) << "Creating a new key file at " << path_.value();
     return true;
   }
   GError* error = nullptr;
-  if (glib_->KeyFileLoadFromFile(
+  if (g_key_file_load_from_file(
           key_file_,
           path_.value().c_str(),
           static_cast<GKeyFileFlags>(G_KEY_FILE_KEEP_COMMENTS |
@@ -72,7 +86,7 @@ bool KeyFileStore::Open() {
     return true;
   }
   LOG(ERROR) << "Failed to load key file from " << path_.value() << ": "
-             << glib_->ConvertErrorToMessage(error);
+             << ConvertErrorToMessage(error);
   ReleaseKeyFile();
   return false;
 }
@@ -87,7 +101,7 @@ bool KeyFileStore::Flush() {
   CHECK(key_file_);
   GError* error = nullptr;
   gsize length = 0;
-  gchar* data = glib_->KeyFileToData(key_file_, &length, &error);
+  gchar* data = g_key_file_to_data(key_file_, &length, &error);
 
   bool success = true;
   if (path_.empty()) {
@@ -96,7 +110,7 @@ bool KeyFileStore::Flush() {
   }
   if (success && (!data || error)) {
     LOG(ERROR) << "Failed to convert key file to string: "
-               << glib_->ConvertErrorToMessage(error);
+               << ConvertErrorToMessage(error);
     success = false;
   }
   if (success) {
@@ -106,7 +120,7 @@ bool KeyFileStore::Flush() {
       LOG(ERROR) << "Failed to store key file: " << path_.value();
     }
   }
-  glib_->Free(data);
+  g_free(data);
   return success;
 }
 
@@ -128,13 +142,13 @@ bool KeyFileStore::MarkAsCorrupted() {
 set<string> KeyFileStore::GetGroups() const {
   CHECK(key_file_);
   gsize length = 0;
-  gchar** groups = glib_->KeyFileGetGroups(key_file_, &length);
+  gchar** groups = g_key_file_get_groups(key_file_, &length);
   if (!groups) {
     LOG(ERROR) << "Unable to obtain groups.";
     return set<string>();
   }
   set<string> group_set(groups, groups + length);
-  glib_->Strfreev(groups);
+  g_strfreev(groups);
   return group_set;
 }
 
@@ -144,7 +158,7 @@ set<string> KeyFileStore::GetGroupsWithKey(const string& key) const {
   set<string> groups = GetGroups();
   set<string> groups_with_key;
   for (const auto& group : groups) {
-    if (glib_->KeyFileHasKey(key_file_, group.c_str(), key.c_str(), nullptr)) {
+    if (g_key_file_has_key(key_file_, group.c_str(), key.c_str(), nullptr)) {
       groups_with_key.insert(group);
     }
   }
@@ -165,16 +179,16 @@ set<string> KeyFileStore::GetGroupsWithProperties(
 
 bool KeyFileStore::ContainsGroup(const string& group) const {
   CHECK(key_file_);
-  return glib_->KeyFileHasGroup(key_file_, group.c_str());
+  return g_key_file_has_group(key_file_, group.c_str());
 }
 
 bool KeyFileStore::DeleteKey(const string& group, const string& key) {
   CHECK(key_file_);
   GError* error = nullptr;
-  glib_->KeyFileRemoveKey(key_file_, group.c_str(), key.c_str(), &error);
+  g_key_file_remove_key(key_file_, group.c_str(), key.c_str(), &error);
   if (error && error->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete (" << group << ":" << key << "): "
-               << glib_->ConvertErrorToMessage(error);
+               << ConvertErrorToMessage(error);
     return false;
   }
   return true;
@@ -183,10 +197,10 @@ bool KeyFileStore::DeleteKey(const string& group, const string& key) {
 bool KeyFileStore::DeleteGroup(const string& group) {
   CHECK(key_file_);
   GError* error = nullptr;
-  glib_->KeyFileRemoveGroup(key_file_, group.c_str(), &error);
+  g_key_file_remove_group(key_file_, group.c_str(), &error);
   if (error && error->code != G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete group " << group << ": "
-               << glib_->ConvertErrorToMessage(error);
+               << ConvertErrorToMessage(error);
     return false;
   }
   return true;
@@ -194,10 +208,10 @@ bool KeyFileStore::DeleteGroup(const string& group) {
 
 bool KeyFileStore::SetHeader(const string& header) {
   GError* error = nullptr;
-  glib_->KeyFileSetComment(key_file_, nullptr, nullptr, header.c_str(), &error);
+  g_key_file_set_comment(key_file_, nullptr, nullptr, header.c_str(), &error);
   if (error) {
     LOG(ERROR) << "Failed to to set header: "
-               << glib_->ConvertErrorToMessage(error);
+               << ConvertErrorToMessage(error);
     return false;
   }
   return true;
@@ -209,16 +223,16 @@ bool KeyFileStore::GetString(const string& group,
   CHECK(key_file_);
   GError* error = nullptr;
   gchar* data =
-      glib_->KeyFileGetString(key_file_, group.c_str(), key.c_str(), &error);
+      g_key_file_get_string(key_file_, group.c_str(), key.c_str(), &error);
   if (!data) {
-    string s = glib_->ConvertErrorToMessage(error);
+    string s = ConvertErrorToMessage(error);
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
     *value = data;
   }
-  glib_->Free(data);
+  g_free(data);
   return true;
 }
 
@@ -226,7 +240,7 @@ bool KeyFileStore::SetString(const string& group,
                              const string& key,
                              const string& value) {
   CHECK(key_file_);
-  glib_->KeyFileSetString(key_file_, group.c_str(), key.c_str(), value.c_str());
+  g_key_file_set_string(key_file_, group.c_str(), key.c_str(), value.c_str());
   return true;
 }
 
@@ -236,9 +250,9 @@ bool KeyFileStore::GetBool(const string& group,
   CHECK(key_file_);
   GError* error = nullptr;
   gboolean data =
-      glib_->KeyFileGetBoolean(key_file_, group.c_str(), key.c_str(), &error);
+      g_key_file_get_boolean(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
-    string s = glib_->ConvertErrorToMessage(error);
+    string s = ConvertErrorToMessage(error);
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
@@ -250,10 +264,10 @@ bool KeyFileStore::GetBool(const string& group,
 
 bool KeyFileStore::SetBool(const string& group, const string& key, bool value) {
   CHECK(key_file_);
-  glib_->KeyFileSetBoolean(key_file_,
-                           group.c_str(),
-                           key.c_str(),
-                           value ? TRUE : FALSE);
+  g_key_file_set_boolean(key_file_,
+                         group.c_str(),
+                         key.c_str(),
+                         value ? TRUE : FALSE);
   return true;
 }
 
@@ -262,9 +276,9 @@ bool KeyFileStore::GetInt(
   CHECK(key_file_);
   GError* error = nullptr;
   gint data =
-      glib_->KeyFileGetInteger(key_file_, group.c_str(), key.c_str(), &error);
+      g_key_file_get_integer(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
-    string s = glib_->ConvertErrorToMessage(error);
+    string s = ConvertErrorToMessage(error);
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
@@ -276,7 +290,7 @@ bool KeyFileStore::GetInt(
 
 bool KeyFileStore::SetInt(const string& group, const string& key, int value) {
   CHECK(key_file_);
-  glib_->KeyFileSetInteger(key_file_, group.c_str(), key.c_str(), value);
+  g_key_file_set_integer(key_file_, group.c_str(), key.c_str(), value);
   return true;
 }
 
@@ -318,20 +332,20 @@ bool KeyFileStore::GetStringList(const string& group,
   CHECK(key_file_);
   gsize length = 0;
   GError* error = nullptr;
-  gchar** data = glib_->KeyFileGetStringList(key_file_,
-                                             group.c_str(),
-                                             key.c_str(),
-                                             &length,
-                                             &error);
+  gchar** data = g_key_file_get_string_list(key_file_,
+                                            group.c_str(),
+                                            key.c_str(),
+                                            &length,
+                                            &error);
   if (!data) {
-    string s = glib_->ConvertErrorToMessage(error);
+    string s = ConvertErrorToMessage(error);
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
     value->assign(data, data + length);
   }
-  glib_->Strfreev(data);
+  g_strfreev(data);
   return true;
 }
 
@@ -343,11 +357,11 @@ bool KeyFileStore::SetStringList(const string& group,
   for (const auto& string_entry : value) {
     list.push_back(string_entry.c_str());
   }
-  glib_->KeyFileSetStringList(key_file_,
-                              group.c_str(),
-                              key.c_str(),
-                              list.data(),
-                              list.size());
+  g_key_file_set_string_list(key_file_,
+                             group.c_str(),
+                             key.c_str(),
+                             list.data(),
+                             list.size());
   return true;
 }
 
