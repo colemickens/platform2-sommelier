@@ -4,6 +4,7 @@
 
 #include "shill/key_file_store.h"
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@ using base::FileEnumerator;
 using base::FilePath;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::Test;
 
@@ -39,11 +41,12 @@ class KeyFileStoreTest : public Test {
   virtual void SetUp() {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     test_file_ = temp_dir_.path().Append("test-key-file-store");
-    store_.set_path(test_file_);
+    store_.reset(new KeyFileStore());
+    store_->set_path(test_file_);
   }
 
   virtual void TearDown() {
-    store_.set_path(FilePath(""));  // Don't try to save the store.
+    store_->set_path(FilePath(""));  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
   }
 
@@ -56,29 +59,29 @@ class KeyFileStoreTest : public Test {
 
   base::ScopedTempDir temp_dir_;
   FilePath test_file_;
-  KeyFileStore store_;
+  unique_ptr<KeyFileStore> store_;
 };
 
 string KeyFileStoreTest::ReadKeyFile() {
   string data;
-  EXPECT_TRUE(base::ReadFileToString(store_.path(), &data));
+  EXPECT_TRUE(base::ReadFileToString(store_->path(), &data));
   return data;
 }
 
 void KeyFileStoreTest::WriteKeyFile(string data) {
   EXPECT_EQ(data.size(),
-            base::WriteFile(store_.path(), data.data(), data.size()));
+            base::WriteFile(store_->path(), data.data(), data.size()));
 }
 
 TEST_F(KeyFileStoreTest, OpenClose) {
-  EXPECT_FALSE(store_.key_file_);
+  EXPECT_FALSE(store_->key_file_);
 
-  EXPECT_FALSE(store_.IsNonEmpty());
-  ASSERT_TRUE(store_.Open());
-  EXPECT_TRUE(store_.key_file_);
-  EXPECT_EQ(1, store_.crypto_.cryptos_.size());
-  ASSERT_TRUE(store_.Close());
-  EXPECT_FALSE(store_.key_file_);
+  EXPECT_FALSE(store_->IsNonEmpty());
+  ASSERT_TRUE(store_->Open());
+  EXPECT_TRUE(store_->key_file_);
+  EXPECT_EQ(1, store_->crypto_.cryptos_.size());
+  ASSERT_TRUE(store_->Close());
+  EXPECT_FALSE(store_->key_file_);
   FileEnumerator file_enumerator(temp_dir_.path(),
                                  false /* not recursive */,
                                  FileEnumerator::FILES);
@@ -91,33 +94,33 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   // owner only.
   EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, file_info.stat().st_mode);
 
-  ASSERT_TRUE(store_.Open());
-  EXPECT_TRUE(store_.key_file_);
-  ASSERT_TRUE(store_.Close());
-  EXPECT_FALSE(store_.key_file_);
+  ASSERT_TRUE(store_->Open());
+  EXPECT_TRUE(store_->key_file_);
+  ASSERT_TRUE(store_->Close());
+  EXPECT_FALSE(store_->key_file_);
 
-  ASSERT_TRUE(store_.Open());
-  store_.set_path(FilePath(""));
-  ASSERT_FALSE(store_.Close());
-  EXPECT_FALSE(store_.key_file_);
+  ASSERT_TRUE(store_->Open());
+  store_->set_path(FilePath(""));
+  ASSERT_FALSE(store_->Close());
+  EXPECT_FALSE(store_->key_file_);
 }
 
 TEST_F(KeyFileStoreTest, OpenFail) {
   WriteKeyFile("garbage\n");
-  EXPECT_FALSE(store_.Open());
-  EXPECT_FALSE(store_.key_file_);
+  EXPECT_FALSE(store_->Open());
+  EXPECT_FALSE(store_->key_file_);
 }
 
 TEST_F(KeyFileStoreTest, MarkAsCorrupted) {
-  EXPECT_FALSE(store_.MarkAsCorrupted());
-  EXPECT_FALSE(store_.IsNonEmpty());
+  EXPECT_FALSE(store_->MarkAsCorrupted());
+  EXPECT_FALSE(store_->IsNonEmpty());
   WriteKeyFile("garbage\n");
-  EXPECT_TRUE(store_.IsNonEmpty());
-  EXPECT_TRUE(base::PathExists(store_.path()));
-  EXPECT_TRUE(store_.MarkAsCorrupted());
-  EXPECT_FALSE(store_.IsNonEmpty());
-  EXPECT_FALSE(base::PathExists(store_.path()));
-  EXPECT_TRUE(base::PathExists(FilePath(store_.path().value() + ".corrupted")));
+  EXPECT_TRUE(store_->IsNonEmpty());
+  EXPECT_TRUE(base::PathExists(store_->path()));
+  EXPECT_TRUE(store_->MarkAsCorrupted());
+  EXPECT_FALSE(store_->IsNonEmpty());
+  EXPECT_FALSE(base::PathExists(store_->path()));
+  EXPECT_TRUE(base::PathExists(FilePath(store_->path().value() + ".corrupted")));
 }
 
 TEST_F(KeyFileStoreTest, GetGroups) {
@@ -128,15 +131,15 @@ TEST_F(KeyFileStoreTest, GetGroups) {
                                   "[%s]\n"
                                   "[%s]\n",
                                   kGroupA, kGroupB, kGroupC));
-  EXPECT_TRUE(store_.IsNonEmpty());
-  ASSERT_TRUE(store_.Open());
-  set<string> groups = store_.GetGroups();
+  EXPECT_TRUE(store_->IsNonEmpty());
+  ASSERT_TRUE(store_->Open());
+  set<string> groups = store_->GetGroups();
   EXPECT_EQ(3, groups.size());
   EXPECT_TRUE(ContainsKey(groups, kGroupA));
   EXPECT_TRUE(ContainsKey(groups, kGroupB));
   EXPECT_TRUE(ContainsKey(groups, kGroupC));
   EXPECT_FALSE(ContainsKey(groups, "g-x"));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, GetGroupsWithKey) {
@@ -156,17 +159,17 @@ TEST_F(KeyFileStoreTest, GetGroupsWithKey) {
                                   kGroupA, kKeyA, kValue,
                                   kGroupB, kKeyA, kValue, kKeyB, kValue,
                                   kGroupC, kKeyB, kValue));
-  EXPECT_TRUE(store_.IsNonEmpty());
-  ASSERT_TRUE(store_.Open());
-  set<string> groups_a = store_.GetGroupsWithKey(kKeyA);
+  EXPECT_TRUE(store_->IsNonEmpty());
+  ASSERT_TRUE(store_->Open());
+  set<string> groups_a = store_->GetGroupsWithKey(kKeyA);
   EXPECT_EQ(2, groups_a.size());
   EXPECT_TRUE(ContainsKey(groups_a, kGroupA));
   EXPECT_TRUE(ContainsKey(groups_a, kGroupB));
-  set<string> groups_b = store_.GetGroupsWithKey(kKeyB);
+  set<string> groups_b = store_->GetGroupsWithKey(kKeyB);
   EXPECT_EQ(2, groups_b.size());
   EXPECT_TRUE(ContainsKey(groups_b, kGroupB));
   EXPECT_TRUE(ContainsKey(groups_b, kGroupC));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, ContainsGroup) {
@@ -177,12 +180,12 @@ TEST_F(KeyFileStoreTest, ContainsGroup) {
                                   "[%s]\n"
                                   "[%s]\n",
                                   kGroupA, kGroupB, kGroupC));
-  ASSERT_TRUE(store_.Open());
-  EXPECT_TRUE(store_.ContainsGroup(kGroupA));
-  EXPECT_TRUE(store_.ContainsGroup(kGroupB));
-  EXPECT_TRUE(store_.ContainsGroup(kGroupC));
-  EXPECT_FALSE(store_.ContainsGroup("group-d"));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  EXPECT_TRUE(store_->ContainsGroup(kGroupA));
+  EXPECT_TRUE(store_->ContainsGroup(kGroupB));
+  EXPECT_TRUE(store_->ContainsGroup(kGroupC));
+  EXPECT_FALSE(store_->ContainsGroup("group-d"));
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
@@ -224,12 +227,12 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
                                   kAttributeA, kValueA_0,
                                   kAttributeB, kValueB_0,
                                   kAttributeC, kValueC_1_string));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
   {
     KeyValueStore args;
     args.SetString(kAttributeA, kValueA_0);
     args.SetInt(kAttributeB, kValueB_0);
-    set<string> results = store_.GetGroupsWithProperties(args);
+    set<string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(2, results.size());
     EXPECT_TRUE(results.find(kGroupA) != results.end());
     EXPECT_TRUE(results.find(kGroupC) != results.end());
@@ -238,7 +241,7 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
     KeyValueStore args;
     args.SetString(kAttributeA, kValueA_0);
     args.SetBool(kAttributeC, kValueC_0);
-    set<string> results = store_.GetGroupsWithProperties(args);
+    set<string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(2, results.size());
     EXPECT_TRUE(results.find(kGroupA) != results.end());
     EXPECT_TRUE(results.find(kGroupB) != results.end());
@@ -246,14 +249,14 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
   {
     KeyValueStore args;
     args.SetBool(kAttributeC, kValueC_1);
-    set<string> results = store_.GetGroupsWithProperties(args);
+    set<string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(1, results.size());
     EXPECT_TRUE(results.find(kGroupC) != results.end());
   }
   {
     KeyValueStore args;
     args.SetString(kAttributeA, kValueA_0);
-    set<string> results = store_.GetGroupsWithProperties(args);
+    set<string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(3, results.size());
     EXPECT_TRUE(results.find(kGroupA) != results.end());
     EXPECT_TRUE(results.find(kGroupB) != results.end());
@@ -262,10 +265,10 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
   {
     KeyValueStore args;
     args.SetString(kAttributeA, kValueA_1);
-    set<string> results = store_.GetGroupsWithProperties(args);
+    set<string> results = store_->GetGroupsWithProperties(args);
     EXPECT_EQ(0, results.size());
   }
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, DeleteKey) {
@@ -277,11 +280,11 @@ TEST_F(KeyFileStoreTest, DeleteKey) {
                                   "%s=5\n"
                                   "%s=%d\n",
                                   kGroup, kKeyDead, kKeyAlive, kValueAlive));
-  ASSERT_TRUE(store_.Open());
-  EXPECT_TRUE(store_.DeleteKey(kGroup, kKeyDead));
-  EXPECT_TRUE(store_.DeleteKey(kGroup, "random-key"));
-  EXPECT_FALSE(store_.DeleteKey("random-group", kKeyAlive));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  EXPECT_TRUE(store_->DeleteKey(kGroup, kKeyDead));
+  EXPECT_TRUE(store_->DeleteKey(kGroup, "random-key"));
+  EXPECT_FALSE(store_->DeleteKey("random-group", kKeyAlive));
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%d\n",
                                kGroup, kKeyAlive, kValueAlive),
@@ -297,10 +300,10 @@ TEST_F(KeyFileStoreTest, DeleteGroup) {
                                   "key-to-be-deleted=true\n"
                                   "[%s]\n",
                                   kGroupA, kGroupB, kGroupC));
-  ASSERT_TRUE(store_.Open());
-  EXPECT_TRUE(store_.DeleteGroup(kGroupB));
-  EXPECT_TRUE(store_.DeleteGroup("group-d"));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  EXPECT_TRUE(store_->DeleteGroup(kGroupB));
+  EXPECT_TRUE(store_->DeleteGroup("group-d"));
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "\n"
                                "[%s]\n",
@@ -315,14 +318,14 @@ TEST_F(KeyFileStoreTest, GetString) {
   WriteKeyFile(base::StringPrintf("[%s]\n"
                                   "%s=%s\n",
                                   kGroup, kKey, kValue));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
   string value;
-  EXPECT_TRUE(store_.GetString(kGroup, kKey, &value));
+  EXPECT_TRUE(store_->GetString(kGroup, kKey, &value));
   EXPECT_EQ(kValue, value);
-  EXPECT_FALSE(store_.GetString("something-else", kKey, &value));
-  EXPECT_FALSE(store_.GetString(kGroup, "bar", &value));
-  EXPECT_TRUE(store_.GetString(kGroup, kKey, nullptr));
-  ASSERT_TRUE(store_.Close());
+  EXPECT_FALSE(store_->GetString("something-else", kKey, &value));
+  EXPECT_FALSE(store_->GetString(kGroup, "bar", &value));
+  EXPECT_TRUE(store_->GetString(kGroup, kKey, nullptr));
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, SetString) {
@@ -331,10 +334,10 @@ TEST_F(KeyFileStoreTest, SetString) {
   static const char kValue1[] = "foo";
   static const char kKey2[] = "empty-string";
   static const char kValue2[] = "";
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetString(kGroup, kKey1, kValue1));
-  ASSERT_TRUE(store_.SetString(kGroup, kKey2, kValue2));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetString(kGroup, kKey1, kValue1));
+  ASSERT_TRUE(store_->SetString(kGroup, kKey2, kValue2));
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s\n"
                                "%s=%s\n",
@@ -352,35 +355,35 @@ TEST_F(KeyFileStoreTest, GetBool) {
                                   "%s=false\n"
                                   "%s=moo\n",
                                   kGroup, kKeyTrue, kKeyFalse, kKeyBad));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
   {
     bool value = true;
-    EXPECT_TRUE(store_.GetBool(kGroup, kKeyFalse, &value));
+    EXPECT_TRUE(store_->GetBool(kGroup, kKeyFalse, &value));
     EXPECT_FALSE(value);
   }
   {
     bool value = false;
-    EXPECT_TRUE(store_.GetBool(kGroup, kKeyTrue, &value));
+    EXPECT_TRUE(store_->GetBool(kGroup, kKeyTrue, &value));
     EXPECT_TRUE(value);
   }
   {
     bool value;
-    EXPECT_FALSE(store_.GetBool(kGroup, kKeyBad, &value));
-    EXPECT_FALSE(store_.GetBool(kGroup, "unknown", &value));
-    EXPECT_FALSE(store_.GetBool("unknown", kKeyTrue, &value));
+    EXPECT_FALSE(store_->GetBool(kGroup, kKeyBad, &value));
+    EXPECT_FALSE(store_->GetBool(kGroup, "unknown", &value));
+    EXPECT_FALSE(store_->GetBool("unknown", kKeyTrue, &value));
   }
-  EXPECT_TRUE(store_.GetBool(kGroup, kKeyFalse, nullptr));
-  ASSERT_TRUE(store_.Close());
+  EXPECT_TRUE(store_->GetBool(kGroup, kKeyFalse, nullptr));
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, SetBool) {
   static const char kGroup[] = "bool-group";
   static const char kKeyTrue[] = "test-true-bool";
   static const char kKeyFalse[] = "test-false-bool";
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetBool(kGroup, kKeyTrue, true));
-  ASSERT_TRUE(store_.SetBool(kGroup, kKeyFalse, false));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetBool(kGroup, kKeyTrue, true));
+  ASSERT_TRUE(store_->SetBool(kGroup, kKeyFalse, false));
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=true\n"
                                "%s=false\n",
@@ -404,25 +407,25 @@ TEST_F(KeyFileStoreTest, GetInt) {
                                   kKeyPos, kValuePos,
                                   kKeyNeg, kValueNeg,
                                   kKeyBad, kValueBad));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
   {
     int value = 0;
-    EXPECT_TRUE(store_.GetInt(kGroup, kKeyNeg, &value));
+    EXPECT_TRUE(store_->GetInt(kGroup, kKeyNeg, &value));
     EXPECT_EQ(kValueNeg, value);
   }
   {
     int value = 0;
-    EXPECT_TRUE(store_.GetInt(kGroup, kKeyPos, &value));
+    EXPECT_TRUE(store_->GetInt(kGroup, kKeyPos, &value));
     EXPECT_EQ(kValuePos, value);
   }
   {
     int value;
-    EXPECT_FALSE(store_.GetInt(kGroup, kKeyBad, &value));
-    EXPECT_FALSE(store_.GetInt(kGroup, "invalid", &value));
-    EXPECT_FALSE(store_.GetInt("invalid", kKeyPos, &value));
+    EXPECT_FALSE(store_->GetInt(kGroup, kKeyBad, &value));
+    EXPECT_FALSE(store_->GetInt(kGroup, "invalid", &value));
+    EXPECT_FALSE(store_->GetInt("invalid", kKeyPos, &value));
   }
-  EXPECT_TRUE(store_.GetInt(kGroup, kKeyPos, nullptr));
-  ASSERT_TRUE(store_.Close());
+  EXPECT_TRUE(store_->GetInt(kGroup, kKeyPos, nullptr));
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, SetInt) {
@@ -431,10 +434,10 @@ TEST_F(KeyFileStoreTest, SetInt) {
   static const char kKey2[] = "test-negative";
   const int kValue1 = 5;
   const int kValue2 = -10;
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetInt(kGroup, kKey1, kValue1));
-  ASSERT_TRUE(store_.SetInt(kGroup, kKey2, kValue2));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetInt(kGroup, kKey1, kValue1));
+  ASSERT_TRUE(store_->SetInt(kGroup, kKey2, kValue2));
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%d\n"
                                "%s=%d\n",
@@ -458,29 +461,29 @@ TEST_F(KeyFileStoreTest, GetUint64) {
                                   kKeyGood,
                                   base::Uint64ToString(kValueGood).c_str(),
                                   kKeyBad, kValueBad));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
   {
     uint64_t value = 0;
-    EXPECT_TRUE(store_.GetUint64(kGroup, kKeyGood, &value));
+    EXPECT_TRUE(store_->GetUint64(kGroup, kKeyGood, &value));
     EXPECT_EQ(kValueGood, value);
   }
   {
     uint64_t value;
-    EXPECT_FALSE(store_.GetUint64(kGroup, kKeyBad, &value));
-    EXPECT_FALSE(store_.GetUint64(kGroup, "invalid", &value));
-    EXPECT_FALSE(store_.GetUint64("invalid", kKeyGood, &value));
+    EXPECT_FALSE(store_->GetUint64(kGroup, kKeyBad, &value));
+    EXPECT_FALSE(store_->GetUint64(kGroup, "invalid", &value));
+    EXPECT_FALSE(store_->GetUint64("invalid", kKeyGood, &value));
   }
-  EXPECT_TRUE(store_.GetUint64(kGroup, kKeyGood, nullptr));
-  ASSERT_TRUE(store_.Close());
+  EXPECT_TRUE(store_->GetUint64(kGroup, kKeyGood, nullptr));
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, SetUint64) {
   static const char kGroup[] = "int-group";
   static const char kKey[] = "test-int";
   const uint64_t kValue = 0xFEDCBA9876543210LL;
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetUint64(kGroup, kKey, kValue));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetUint64(kGroup, kKey, kValue));
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s\n",
                                kGroup, kKey,
@@ -510,39 +513,39 @@ TEST_F(KeyFileStoreTest, GetStringList) {
                                   kKeyValueEmpty, kValue,
                                   kKeyValueEmptyValue, kValue, kValue2,
                                   kKeyValues, kValue, kValue2, kValue3));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
 
   vector<string> value;
 
-  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValues, &value));
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValues, &value));
   ASSERT_EQ(3, value.size());
   EXPECT_EQ(kValue, value[0]);
   EXPECT_EQ(kValue2, value[1]);
   EXPECT_EQ(kValue3, value[2]);
 
-  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyEmptyValue, &value));
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKeyEmptyValue, &value));
   ASSERT_EQ(2, value.size());
   EXPECT_EQ("", value[0]);
   EXPECT_EQ(kValue, value[1]);
 
-  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValueEmpty, &value));
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValueEmpty, &value));
   ASSERT_EQ(2, value.size());
   EXPECT_EQ(kValue, value[0]);
   EXPECT_EQ("", value[1]);
 
-  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyEmpty, &value));
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKeyEmpty, &value));
   ASSERT_EQ(0, value.size());
 
-  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValueEmptyValue, &value));
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValueEmptyValue, &value));
   ASSERT_EQ(3, value.size());
   EXPECT_EQ(kValue, value[0]);
   EXPECT_EQ("", value[1]);
   EXPECT_EQ(kValue2, value[2]);
 
-  EXPECT_FALSE(store_.GetStringList("unknown-string-lists", kKeyEmpty, &value));
-  EXPECT_FALSE(store_.GetStringList(kGroup, "some-key", &value));
-  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValues, nullptr));
-  ASSERT_TRUE(store_.Close());
+  EXPECT_FALSE(store_->GetStringList("unknown-string-lists", kKeyEmpty, &value));
+  EXPECT_FALSE(store_->GetStringList(kGroup, "some-key", &value));
+  EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValues, nullptr));
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, SetStringList) {
@@ -555,38 +558,38 @@ TEST_F(KeyFileStoreTest, SetStringList) {
   static const char kValue[] = "abc";
   static const char kValue2[] = "pqr";
   static const char kValue3[] = "xyz";
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
   {
     vector<string> value;
-    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyEmpty, value));
+    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmpty, value));
   }
   {
     vector<string> value;
     value.push_back("");
     value.push_back(kValue);
-    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyEmptyValue, value));
+    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyEmptyValue, value));
   }
   {
     vector<string> value;
     value.push_back(kValue);
     value.push_back("");
-    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValueEmpty, value));
+    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmpty, value));
   }
   {
     vector<string> value;
     value.push_back(kValue);
     value.push_back("");
     value.push_back(kValue2);
-    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValueEmptyValue, value));
+    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValueEmptyValue, value));
   }
   {
     vector<string> value;
     value.push_back(kValue);
     value.push_back(kValue2);
     value.push_back(kValue3);
-    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValues, value));
+    ASSERT_TRUE(store_->SetStringList(kGroup, kKeyValues, value));
   }
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=\n"
                                "%s=;%s;\n"
@@ -608,22 +611,22 @@ TEST_F(KeyFileStoreTest, GetCryptedString) {
   WriteKeyFile(base::StringPrintf("[%s]\n"
                                   "%s=%s\n",
                                   kGroup, kKey, kROT47Text));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
   string value;
-  EXPECT_TRUE(store_.GetCryptedString(kGroup, kKey, &value));
+  EXPECT_TRUE(store_->GetCryptedString(kGroup, kKey, &value));
   EXPECT_EQ(kPlainText, value);
-  EXPECT_FALSE(store_.GetCryptedString("something-else", kKey, &value));
-  EXPECT_FALSE(store_.GetCryptedString(kGroup, "non-secret", &value));
-  EXPECT_TRUE(store_.GetCryptedString(kGroup, kKey, nullptr));
-  ASSERT_TRUE(store_.Close());
+  EXPECT_FALSE(store_->GetCryptedString("something-else", kKey, &value));
+  EXPECT_FALSE(store_->GetCryptedString(kGroup, "non-secret", &value));
+  EXPECT_TRUE(store_->GetCryptedString(kGroup, kKey, nullptr));
+  ASSERT_TRUE(store_->Close());
 }
 
 TEST_F(KeyFileStoreTest, SetCryptedString) {
   static const char kGroup[] = "crypted-string-group";
   static const char kKey[] = "test-string";
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetCryptedString(kGroup, kKey, kPlainText));
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetCryptedString(kGroup, kKey, kPlainText));
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s\n",
                                kGroup, kKey, kROT47Text),
@@ -636,17 +639,17 @@ TEST_F(KeyFileStoreTest, PersistAcrossClose) {
   static const char kValue1[] = "foo";
   static const char kKey2[] = "empty-string";
   static const char kValue2[] = "";
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetString(kGroup, kKey1, kValue1));
-  ASSERT_TRUE(store_.Close());
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetString(kGroup, kKey2, kValue2));
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetString(kGroup, kKey1, kValue1));
+  ASSERT_TRUE(store_->Close());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetString(kGroup, kKey2, kValue2));
   string value;
-  ASSERT_TRUE(store_.GetString(kGroup, kKey1, &value));
+  ASSERT_TRUE(store_->GetString(kGroup, kKey1, &value));
   ASSERT_EQ(kValue1, value);
-  ASSERT_TRUE(store_.GetString(kGroup, kKey2, &value));
+  ASSERT_TRUE(store_->GetString(kGroup, kKey2, &value));
   ASSERT_EQ(kValue2, value);
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Close());
 }
 
 bool KeyFileStoreTest::OpenCheckClose(const string& group,
@@ -668,32 +671,32 @@ TEST_F(KeyFileStoreTest, Flush) {
   static const char kValue1[] = "foo";
   static const char kKey2[] = "empty-string";
   static const char kValue2[] = "";
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetString(kGroup, kKey1, kValue1));
-  ASSERT_TRUE(store_.Flush());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetString(kGroup, kKey1, kValue1));
+  ASSERT_TRUE(store_->Flush());
   ASSERT_TRUE(OpenCheckClose(kGroup, kKey1, kValue1));
 
-  ASSERT_TRUE(store_.SetString(kGroup, kKey2, kValue2));
-  ASSERT_TRUE(store_.Flush());
+  ASSERT_TRUE(store_->SetString(kGroup, kKey2, kValue2));
+  ASSERT_TRUE(store_->Flush());
   ASSERT_TRUE(OpenCheckClose(kGroup, kKey2, kValue2));
 
-  EXPECT_TRUE(store_.DeleteKey(kGroup, kKey1));
-  ASSERT_TRUE(store_.Flush());
+  EXPECT_TRUE(store_->DeleteKey(kGroup, kKey1));
+  ASSERT_TRUE(store_->Flush());
   ASSERT_FALSE(OpenCheckClose(kGroup, kKey1, kValue1));
 }
 
 TEST_F(KeyFileStoreTest, EmptyFile) {
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.Close());
-  EXPECT_FALSE(store_.IsNonEmpty());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->Close());
+  EXPECT_FALSE(store_->IsNonEmpty());
 }
 
 TEST_F(KeyFileStoreTest, SetHeader) {
-  ASSERT_TRUE(store_.Open());
-  ASSERT_TRUE(store_.SetHeader("this is a test"));
-  ASSERT_TRUE(store_.Close());
-  EXPECT_TRUE(store_.IsNonEmpty());
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetHeader("this is a test"));
+  ASSERT_TRUE(store_->Close());
+  EXPECT_TRUE(store_->IsNonEmpty());
+  ASSERT_TRUE(store_->Open());
 }
 
 TEST_F(KeyFileStoreTest, Combo) {
@@ -736,14 +739,14 @@ TEST_F(KeyFileStoreTest, Combo) {
                                   kGroupC,
                                   kKeyString, kValueStringC,
                                   kKeyBool));
-  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_->Open());
 
-  EXPECT_TRUE(store_.ContainsGroup(kGroupA));
-  EXPECT_TRUE(store_.ContainsGroup(kGroupB));
-  EXPECT_TRUE(store_.ContainsGroup(kGroupC));
-  EXPECT_FALSE(store_.ContainsGroup(kGroupX));
+  EXPECT_TRUE(store_->ContainsGroup(kGroupA));
+  EXPECT_TRUE(store_->ContainsGroup(kGroupB));
+  EXPECT_TRUE(store_->ContainsGroup(kGroupC));
+  EXPECT_FALSE(store_->ContainsGroup(kGroupX));
 
-  set<string> groups = store_.GetGroups();
+  set<string> groups = store_->GetGroups();
   EXPECT_EQ(3, groups.size());
   EXPECT_TRUE(ContainsKey(groups, kGroupA));
   EXPECT_TRUE(ContainsKey(groups, kGroupB));
@@ -752,97 +755,97 @@ TEST_F(KeyFileStoreTest, Combo) {
 
   {
     string value;
-    EXPECT_TRUE(store_.GetString(kGroupB, kKeyString, &value));
+    EXPECT_TRUE(store_->GetString(kGroupB, kKeyString, &value));
     EXPECT_EQ(kValueStringB, value);
-    EXPECT_TRUE(store_.GetString(kGroupA, kKeyString, &value));
+    EXPECT_TRUE(store_->GetString(kGroupA, kKeyString, &value));
     EXPECT_EQ(kValueStringA, value);
-    EXPECT_TRUE(store_.GetString(kGroupC, kKeyString, &value));
+    EXPECT_TRUE(store_->GetString(kGroupC, kKeyString, &value));
     EXPECT_EQ(kValueStringC, value);
   }
   {
     vector<string> value;
-    EXPECT_TRUE(store_.GetStringList(kGroupB, kKeyStringList, &value));
+    EXPECT_TRUE(store_->GetStringList(kGroupB, kKeyStringList, &value));
     ASSERT_EQ(2, value.size());
     EXPECT_EQ(kValueStringA, value[0]);
     EXPECT_EQ(kValueStringC, value[1]);
-    EXPECT_TRUE(store_.GetStringList(kGroupA, kKeyStringList, &value));
+    EXPECT_TRUE(store_->GetStringList(kGroupA, kKeyStringList, &value));
     ASSERT_EQ(2, value.size());
     EXPECT_EQ(kValueStringB, value[0]);
     EXPECT_EQ(kValueStringC, value[1]);
-    EXPECT_FALSE(store_.GetStringList(kGroupC, kKeyStringList, &value));
+    EXPECT_FALSE(store_->GetStringList(kGroupC, kKeyStringList, &value));
   }
   {
     int value = 0;
-    EXPECT_TRUE(store_.GetInt(kGroupB, kKeyInt, &value));
+    EXPECT_TRUE(store_->GetInt(kGroupB, kKeyInt, &value));
     EXPECT_EQ(kValueIntB, value);
-    EXPECT_TRUE(store_.GetInt(kGroupA, kKeyInt, &value));
+    EXPECT_TRUE(store_->GetInt(kGroupA, kKeyInt, &value));
     EXPECT_EQ(kValueIntA, value);
-    EXPECT_FALSE(store_.GetInt(kGroupC, kKeyInt, &value));
+    EXPECT_FALSE(store_->GetInt(kGroupC, kKeyInt, &value));
   }
   {
     bool value = false;
-    EXPECT_TRUE(store_.GetBool(kGroupB, kKeyBool, &value));
+    EXPECT_TRUE(store_->GetBool(kGroupB, kKeyBool, &value));
     EXPECT_TRUE(value);
-    EXPECT_TRUE(store_.GetBool(kGroupC, kKeyBool, &value));
+    EXPECT_TRUE(store_->GetBool(kGroupC, kKeyBool, &value));
     EXPECT_FALSE(value);
-    EXPECT_FALSE(store_.GetBool(kGroupA, kKeyBool, &value));
+    EXPECT_FALSE(store_->GetBool(kGroupA, kKeyBool, &value));
   }
 
-  EXPECT_TRUE(store_.DeleteGroup(kGroupA));
-  EXPECT_TRUE(store_.DeleteGroup(kGroupA));
+  EXPECT_TRUE(store_->DeleteGroup(kGroupA));
+  EXPECT_TRUE(store_->DeleteGroup(kGroupA));
 
-  EXPECT_FALSE(store_.ContainsGroup(kGroupA));
-  EXPECT_TRUE(store_.ContainsGroup(kGroupB));
-  EXPECT_TRUE(store_.ContainsGroup(kGroupC));
+  EXPECT_FALSE(store_->ContainsGroup(kGroupA));
+  EXPECT_TRUE(store_->ContainsGroup(kGroupB));
+  EXPECT_TRUE(store_->ContainsGroup(kGroupC));
 
-  groups = store_.GetGroups();
+  groups = store_->GetGroups();
   EXPECT_EQ(2, groups.size());
   EXPECT_FALSE(ContainsKey(groups, kGroupA));
   EXPECT_TRUE(ContainsKey(groups, kGroupB));
   EXPECT_TRUE(ContainsKey(groups, kGroupC));
 
-  EXPECT_TRUE(store_.SetBool(kGroupB, kKeyBool, false));
-  EXPECT_TRUE(store_.SetInt(kGroupB, kKeyInt, kValueIntBNew));
-  EXPECT_TRUE(store_.SetString(kGroupC, kKeyString, kValueStringCNew));
-  store_.SetStringList(kGroupB,
+  EXPECT_TRUE(store_->SetBool(kGroupB, kKeyBool, false));
+  EXPECT_TRUE(store_->SetInt(kGroupB, kKeyInt, kValueIntBNew));
+  EXPECT_TRUE(store_->SetString(kGroupC, kKeyString, kValueStringCNew));
+  store_->SetStringList(kGroupB,
                        kKeyStringList,
                        vector<string>(1, kValueStringB));
 
-  EXPECT_TRUE(store_.DeleteKey(kGroupB, kKeyString));
-  EXPECT_TRUE(store_.DeleteKey(kGroupB, kKeyString));
+  EXPECT_TRUE(store_->DeleteKey(kGroupB, kKeyString));
+  EXPECT_TRUE(store_->DeleteKey(kGroupB, kKeyString));
 
   {
     string value;
-    EXPECT_FALSE(store_.GetString(kGroupB, kKeyString, &value));
-    EXPECT_FALSE(store_.GetString(kGroupA, kKeyString, &value));
-    EXPECT_TRUE(store_.GetString(kGroupC, kKeyString, &value));
+    EXPECT_FALSE(store_->GetString(kGroupB, kKeyString, &value));
+    EXPECT_FALSE(store_->GetString(kGroupA, kKeyString, &value));
+    EXPECT_TRUE(store_->GetString(kGroupC, kKeyString, &value));
     EXPECT_EQ(kValueStringCNew, value);
   }
   {
     vector<string> value;
-    EXPECT_TRUE(store_.GetStringList(kGroupB, kKeyStringList, &value));
+    EXPECT_TRUE(store_->GetStringList(kGroupB, kKeyStringList, &value));
     ASSERT_EQ(1, value.size());
     EXPECT_EQ(kValueStringB, value[0]);
-    EXPECT_FALSE(store_.GetStringList(kGroupA, kKeyStringList, &value));
-    EXPECT_FALSE(store_.GetStringList(kGroupC, kKeyStringList, &value));
+    EXPECT_FALSE(store_->GetStringList(kGroupA, kKeyStringList, &value));
+    EXPECT_FALSE(store_->GetStringList(kGroupC, kKeyStringList, &value));
   }
   {
     int value = 0;
-    EXPECT_TRUE(store_.GetInt(kGroupB, kKeyInt, &value));
+    EXPECT_TRUE(store_->GetInt(kGroupB, kKeyInt, &value));
     EXPECT_EQ(kValueIntBNew, value);
-    EXPECT_FALSE(store_.GetInt(kGroupA, kKeyInt, &value));
-    EXPECT_FALSE(store_.GetInt(kGroupC, kKeyInt, &value));
+    EXPECT_FALSE(store_->GetInt(kGroupA, kKeyInt, &value));
+    EXPECT_FALSE(store_->GetInt(kGroupC, kKeyInt, &value));
   }
   {
     bool value = false;
-    EXPECT_TRUE(store_.GetBool(kGroupB, kKeyBool, &value));
+    EXPECT_TRUE(store_->GetBool(kGroupB, kKeyBool, &value));
     EXPECT_FALSE(value);
-    EXPECT_TRUE(store_.GetBool(kGroupC, kKeyBool, &value));
+    EXPECT_TRUE(store_->GetBool(kGroupC, kKeyBool, &value));
     EXPECT_FALSE(value);
-    EXPECT_FALSE(store_.GetBool(kGroupA, kKeyBool, &value));
+    EXPECT_FALSE(store_->GetBool(kGroupA, kKeyBool, &value));
   }
 
-  ASSERT_TRUE(store_.Close());
+  ASSERT_TRUE(store_->Close());
   EXPECT_EQ(base::StringPrintf("[%s]\n"
                                "%s=%s;\n"
                                "%s=%d\n"
