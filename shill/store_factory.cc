@@ -17,7 +17,7 @@ base::LazyInstance<StoreFactory> g_persistent_store_factory
 
 }  // namespace
 
-StoreFactory::StoreFactory() : glib_(nullptr) {}
+StoreFactory::StoreFactory() {}
 
 // static
 StoreFactory* StoreFactory::GetInstance() {
@@ -28,8 +28,7 @@ StoreInterface* StoreFactory::CreateStore() {
 #if defined(ENABLE_JSON_STORE)
   return new JsonStore();
 #else
-  CHECK(glib_);
-  return new KeyFileStore(glib_);
+  return new KeyFileStore(&glib_);
 #endif
 }
 

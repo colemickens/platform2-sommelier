@@ -13,7 +13,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/fake_store.h"
-#include "shill/glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -39,9 +38,6 @@ namespace shill {
 class ProfileTest : public PropertyStoreTest {
  public:
   ProfileTest() : mock_metrics_(new MockMetrics(nullptr)) {
-#if !defined(ENABLE_JSON_STORE)
-    StoreFactory::GetInstance()->set_glib(&real_glib_);
-#endif
     Profile::Identifier id("rather", "irrelevant");
     profile_ =
         new Profile(control_interface(), metrics(), manager(), id, "", false);
@@ -80,9 +76,6 @@ class ProfileTest : public PropertyStoreTest {
   }
 
  protected:
-#if !defined(ENABLE_JSON_STORE)
-  GLib real_glib_;
-#endif
   std::unique_ptr<MockMetrics> mock_metrics_;
   ProfileRefPtr profile_;
 };

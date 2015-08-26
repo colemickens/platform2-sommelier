@@ -8,8 +8,6 @@
 #include <memory>
 #include <set>
 
-#include <glib.h>
-
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
@@ -23,7 +21,6 @@
 #include "shill/error.h"
 #include "shill/fake_store.h"
 #include "shill/geolocation_info.h"
-#include "shill/glib.h"
 #include "shill/key_value_store.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
@@ -103,9 +100,6 @@ class ManagerTest : public PropertyStoreTest {
                                                   nullptr,
                                                   nullptr,
                                                   nullptr)),
-#if !defined(ENABLE_JSON_STORE)
-        real_glib_(new GLib()),
-#endif  // ENABLE_JSON_STORE
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
 #if !defined(DISABLE_WIRED_8021X)
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
@@ -226,10 +220,8 @@ class ManagerTest : public PropertyStoreTest {
                                     const string& user_identifier,
                                     const string& profile_identifier,
                                     const string& service_name) {
-    StoreFactory* store_factory(StoreFactory::GetInstance());
-    store_factory->set_glib(real_glib_.get());
-
-    std::unique_ptr<StoreInterface> store(store_factory->CreateStore());
+    std::unique_ptr<StoreInterface> store(
+        StoreFactory::GetInstance()->CreateStore());
     store->set_path(temp_dir->path().Append(
         base::StringPrintf("%s/%s.profile", user_identifier.c_str(),
                            profile_identifier.c_str())));
@@ -489,7 +481,6 @@ class ManagerTest : public PropertyStoreTest {
   std::unique_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice>> mock_devices_;
   std::unique_ptr<MockDeviceInfo> device_info_;
-  std::unique_ptr<GLib> real_glib_;  // For persisting profiles.
 
 #if !defined(DISABLE_WIFI)
   // This service is held for the manager, and given ownership in a mock
@@ -945,7 +936,7 @@ TEST_F(ManagerTest, CreateProfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  real_glib_.get(),
+                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -982,7 +973,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  real_glib_.get(),
+                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -1155,7 +1146,7 @@ TEST_F(ManagerTest, RemoveProfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  real_glib_.get(),
+                  nullptr,  // GLib*,
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -1266,7 +1257,7 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  real_glib_.get(),
+                  nullptr,  // GLib*,
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -4362,7 +4353,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  real_glib_.get(),
+                  nullptr,  // GLib*,
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -4417,7 +4408,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            real_glib_.get(),
+                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4444,7 +4435,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            real_glib_.get(),
+                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4457,7 +4448,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            real_glib_.get(),
+                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4473,7 +4464,7 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            real_glib_.get(),
+                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));

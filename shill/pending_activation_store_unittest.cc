@@ -8,7 +8,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/glib.h"
 #include "shill/mock_store.h"
 #include "shill/store_factory.h"
 
@@ -24,7 +23,6 @@ namespace shill {
 class PendingActivationStoreTest : public ::testing::Test {
  public:
   PendingActivationStoreTest() : mock_store_(new MockStore()) {
-    StoreFactory::GetInstance()->set_glib(&glib_);
   }
 
  protected:
@@ -32,7 +30,6 @@ class PendingActivationStoreTest : public ::testing::Test {
     store_.storage_.reset(mock_store_.release());
   }
 
-  GLib glib_;
   std::unique_ptr<MockStore> mock_store_;
   PendingActivationStore store_;
 };

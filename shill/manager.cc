@@ -212,12 +212,6 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
                                   &Manager::ClaimedDevices);
 
-  // TODO(quiche): This should probably move to Daemon, after we
-  // figure out the story for unit tests. b/23354429.
-#if !defined(ENABLE_JSON_STORE)
-  StoreFactory::GetInstance()->set_glib(glib_);
-#endif
-
   UpdateProviderMapping();
 
   SLOG(this, 2) << "Manager initialized.";
