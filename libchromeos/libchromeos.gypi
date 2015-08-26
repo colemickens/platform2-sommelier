@@ -19,7 +19,6 @@
         'libchromeos-http-<(libbase_ver)',
         'libchromeos-minijail-<(libbase_ver)',
         'libchromeos-streams-<(libbase_ver)',
-        'libchromeos-ui-<(libbase_ver)',
         'libpolicy-<(libbase_ver)',
       ],
       'direct_dependent_settings': {
@@ -203,24 +202,6 @@
       ],
     },
     {
-      'target_name': 'libchromeos-ui-<(libbase_ver)',
-      'type': 'shared_library',
-      'dependencies': [
-        'libchromeos-core-<(libbase_ver)',
-      ],
-      'libraries': [
-        '-lbootstat',
-      ],
-      'cflags': [
-        '-fvisibility=default',
-      ],
-      'sources': [
-        'chromeos/ui/chromium_command_builder.cc',
-        'chromeos/ui/util.cc',
-        'chromeos/ui/x_server_runner.cc',
-      ],
-    },
-    {
       'target_name': 'libpolicy-<(libbase_ver)',
       'type': 'shared_library',
       'dependencies': [
@@ -293,7 +274,6 @@
           'dependencies': [
             'libchromeos-<(libbase_ver)',
             'libchromeos-test-<(libbase_ver)',
-            'libchromeos-ui-<(libbase_ver)',
             'libchromeos-glib-<(libbase_ver)',
           ],
           'variables': {
@@ -365,8 +345,6 @@
             'chromeos/streams/stream_unittest.cc',
             'chromeos/streams/stream_utils_unittest.cc',
             'chromeos/strings/string_utils_unittest.cc',
-            'chromeos/ui/chromium_command_builder_unittest.cc',
-            'chromeos/ui/x_server_runner_unittest.cc',
             'chromeos/url_utils_unittest.cc',
             'chromeos/variant_dictionary_unittest.cc',
             'testrunner.cc',
