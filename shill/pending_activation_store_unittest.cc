@@ -44,7 +44,7 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  EXPECT_TRUE(store_.InitStorage(&glib_, temp_dir.path()));
+  EXPECT_TRUE(store_.InitStorage(temp_dir.path()));
 
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
             store_.GetActivationState(
@@ -113,7 +113,7 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
                                       kEntry2));
 
   // Close and reopen the file to verify that the entries persisted.
-  EXPECT_TRUE(store_.InitStorage(&glib_, temp_dir.path()));
+  EXPECT_TRUE(store_.InitStorage(temp_dir.path()));
 
   EXPECT_EQ(PendingActivationStore::kStateActivated,
             store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
@@ -151,7 +151,7 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
             store_.GetActivationState(
                 PendingActivationStore::kIdentifierMEID, kEntry2));
 
-  EXPECT_TRUE(store_.InitStorage(&glib_, temp_dir.path()));
+  EXPECT_TRUE(store_.InitStorage(temp_dir.path()));
 
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
             store_.GetActivationState(

@@ -15,7 +15,6 @@
 
 namespace shill {
 
-class GLib;
 class StoreInterface;
 
 // PendingActivationStore stores the network activation status for a
@@ -60,7 +59,7 @@ class PendingActivationStore {
   // open will allways be flushed and closed, however it is not guaranteed that
   // the file will always be successfully reopened (technically it should, but
   // it is not guaranteed).
-  virtual bool InitStorage(GLib* glib, const base::FilePath& storage_path);
+  virtual bool InitStorage(const base::FilePath& storage_path);
 
   // Returns the activation state for a SIM with the given identifier. A return
   // value of kStateUnknown indicates that the given identifier was not found.

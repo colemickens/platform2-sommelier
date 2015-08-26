@@ -34,8 +34,7 @@ ModemInfo::~ModemInfo() {
 
 void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
-  pending_activation_store_->InitStorage(manager_->glib(),
-      manager_->storage_path());
+  pending_activation_store_->InitStorage(manager_->storage_path());
 
   RegisterModemManager(new ModemManagerClassic(control_interface_,
                                                cromo::kCromoServiceName,

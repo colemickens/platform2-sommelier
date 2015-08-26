@@ -79,17 +79,11 @@ string PendingActivationStore::IdentifierTypeToGroupId(IdentifierType type) {
   }
 }
 
-bool PendingActivationStore::InitStorage(
-    GLib* glib,
-    const FilePath& storage_path) {
+bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
   // Close the current file.
   if (storage_.get()) {
     storage_->Flush();
     storage_.reset();  // KeyFileStore closes the file in its destructor.
-  }
-  if (!glib) {
-    LOG(ERROR) << "Null pointer passed for |glib|.";
-    return false;
   }
   if (storage_path.empty()) {
     LOG(ERROR) << "Empty storage directory path provided.";
