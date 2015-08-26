@@ -7,14 +7,11 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/eap_credentials.h"
-#include "shill/glib.h"
-#include "shill/key_file_store.h"
+#include "shill/fake_store.h"
 #include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
@@ -28,7 +25,6 @@
 #include "shill/wimax/mock_wimax_service.h"
 #include "shill/wimax/wimax_service.h"
 
-using base::FilePath;
 using std::string;
 using std::vector;
 using testing::Return;
@@ -437,33 +433,16 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
 }
 
 TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath test_profile = temp_dir.path().Append("test-profile");
-  GLib glib;
-  KeyFileStore store(&glib);
-  store.set_path(test_profile);
-  static const char contents[] =
-      "[no_type]\n"
-      "Name=No Type Entry\n"
-      "\n"
-      "[no_wimax]\n"
-      "Type=vpn\n"
-      "\n"
-      "[wimax_network_01234567]\n"
-      "Name=network\n"
-      "Type=wimax\n"
-      "NetworkId=01234567\n"
-      "\n"
-      "[no_network_id]\n"
-      "Type=wimax\n"
-      "\n"
-      "[no_name]\n"
-      "Type=wimax\n"
-      "NetworkId=76543210\n";
-  EXPECT_EQ(strlen(contents),
-            base::WriteFile(test_profile, contents, strlen(contents)));
-  ASSERT_TRUE(store.Open());
+  FakeStore store;
+  store.SetString("no_type", "Name", "No Type Entry");
+  store.SetString("no_wimax", "Type", "vpn");
+  store.SetString("wimax_network_01234567", "Name", "network");
+  store.SetString("wimax_network_01234567", "Type", "wimax");
+  store.SetString("wimax_network_01234567", "NetworkId", "01234567");
+  store.SetString("no_network_id", "Type", "wimax");
+  store.SetString("no_name", "Type", "wimax");
+  store.SetString("no_name", "NetworkId", "76543210");
+
   scoped_refptr<MockProfile> profile(
       new MockProfile(&control_, &metrics_, &manager_));
   EXPECT_CALL(*profile, GetConstStorage())
@@ -473,6 +452,7 @@ TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
   EXPECT_CALL(*profile, ConfigureService(_)).WillOnce(Return(true));
   provider_.CreateServicesFromProfile(profile);
   ASSERT_EQ(1, provider_.services_.size());
+
   WiMaxServiceRefPtr service = provider_.services_.begin()->second;
   EXPECT_EQ("wimax_network_01234567", service->GetStorageIdentifier());
   provider_.CreateServicesFromProfile(profile);
@@ -481,33 +461,15 @@ TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
 }
 
 TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath test_profile = temp_dir.path().Append("test-profile");
-  GLib glib;
-  KeyFileStore store(&glib);
-  store.set_path(test_profile);
-  static const char contents[] =
-      "[no_type]\n"
-      "Name=No Type Entry\n"
-      "\n"
-      "[no_wimax]\n"
-      "Type=vpn\n"
-      "\n"
-      "[wimax_network_01234567]\n"
-      "Name=network\n"
-      "Type=wimax\n"
-      "NetworkId=01234567\n"
-      "\n"
-      "[no_network_id]\n"
-      "Type=wimax\n"
-      "\n"
-      "[no_name]\n"
-      "Type=wimax\n"
-      "NetworkId=76543210\n";
-  EXPECT_EQ(strlen(contents),
-            base::WriteFile(test_profile, contents, strlen(contents)));
-  ASSERT_TRUE(store.Open());
+  FakeStore store;
+  store.SetString("no_type", "Name", "No Type Entry");
+  store.SetString("no_wimax", "Type", "vpn");
+  store.SetString("wimax_network_01234567", "Name", "network");
+  store.SetString("wimax_network_01234567", "Type", "wimax");
+  store.SetString("wimax_network_01234567", "NetworkId", "01234567");
+  store.SetString("no_network_id", "Type", "wimax");
+  store.SetString("no_name", "Type", "wimax");
+  store.SetString("no_name", "NetworkId", "76543210");
   scoped_refptr<MockProfile> profile(
       new MockProfile(&control_, &metrics_, &manager_));
   EXPECT_CALL(*profile, GetConstStorage())
@@ -522,6 +484,24 @@ TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Unspecified or invalid network type"));
+
+  // Not a WiMAX network.
+  error.Reset();
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(profile,
+                                                        "no_wimax",
+                                                        &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(),
+              StartsWith("Unspecified or invalid network type"));
+
+  // WiMAX network with required properties.
+  error.Reset();
+  EXPECT_TRUE(
+      provider_.CreateTemporaryServiceFromProfile(profile,
+                                                  "wimax_network_01234567",
+                                                  &error));
+  EXPECT_TRUE(error.IsSuccess());
 
   // Network ID not specified.
   error.Reset();
