@@ -1208,19 +1208,20 @@ void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {
 }
 
 void Manager::EmitDeviceProperties() {
-  vector<string> device_paths;
-  for (const auto& device : devices_) {
-    device_paths.push_back(device->GetRpcIdentifier());
-  }
+  Error error;
+  vector<string> device_paths = EnumerateDevices(&error);
   adaptor_->EmitRpcIdentifierArrayChanged(kDevicesProperty,
                                           device_paths);
-  Error error;
   adaptor_->EmitStringsChanged(kAvailableTechnologiesProperty,
                                AvailableTechnologies(&error));
   adaptor_->EmitStringsChanged(kEnabledTechnologiesProperty,
                                EnabledTechnologies(&error));
   adaptor_->EmitStringsChanged(kUninitializedTechnologiesProperty,
                                UninitializedTechnologies(&error));
+}
+
+void Manager::OnInnerDevicesChanged() {
+  EmitDeviceProperties();
 }
 
 #if !defined(DISABLE_WIFI)

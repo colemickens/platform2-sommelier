@@ -107,6 +107,7 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(ignore_unknown_ethernet, bool());
   MOCK_CONST_METHOD1(FilterPrependDNSServersByFamily,
                      std::vector<std::string>(IPAddress::Family family));
+  MOCK_METHOD0(OnInnerDevicesChanged, void());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

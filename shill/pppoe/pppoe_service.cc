@@ -129,6 +129,7 @@ void PPPoEService::Disconnect(Error* error, const char* reason) {
   }
   ppp_device_ = nullptr;
   pppd_.reset();
+  manager()->OnInnerDevicesChanged();
 }
 
 bool PPPoEService::Load(StoreInterface* storage) {
@@ -232,6 +233,7 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
     ppp_device_->AcquireIPv6Config();
   }
 #endif
+  manager()->OnInnerDevicesChanged();
 }
 
 void PPPoEService::OnPPPDisconnected() {

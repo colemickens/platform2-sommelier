@@ -493,10 +493,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // power_manager->suspending() is true), false otherwise.
   virtual bool IsSuspending();
 
+  void RecordDarkResumeWakeReason(const std::string& wake_reason);
+
+  // Called when service's inner device changed.
+  virtual void OnInnerDevicesChanged();
+
   void set_suppress_autoconnect(bool val) { suppress_autoconnect_ = val; }
   bool suppress_autoconnect() { return suppress_autoconnect_; }
-
-  void RecordDarkResumeWakeReason(const std::string& wake_reason);
 
  private:
   friend class CellularTest;

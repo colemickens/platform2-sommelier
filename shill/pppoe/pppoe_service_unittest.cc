@@ -28,6 +28,7 @@
 
 using std::map;
 using std::string;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrEq;
@@ -147,7 +148,9 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
       .WillOnce(Return(true));
   EXPECT_CALL(*device, AcquireIPv6Config());
 #endif  // DISABLE_DHCPV6
+  EXPECT_CALL(manager_, OnInnerDevicesChanged());
   service_->OnPPPConnected(params);
+  Mock::VerifyAndClearExpectations(&manager_);
 }
 
 TEST_F(PPPoEServiceTest, Connect) {
