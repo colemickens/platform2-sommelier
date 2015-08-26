@@ -5,8 +5,6 @@
 #ifndef SHILL_GLIB_H_
 #define SHILL_GLIB_H_
 
-#include <string>
-
 #include <gio/gio.h>
 #include <glib.h>
 
@@ -20,102 +18,10 @@ class GLib {
   GLib();
   virtual ~GLib();
 
-#if !defined(ENABLE_JSON_STORE)
-  // Converts GLib's |error| to a string message and frees the GError object.
-  virtual std::string ConvertErrorToMessage(GError* error);
-#endif
-
   // g_child_watch_add
   virtual guint ChildWatchAdd(GPid pid,
                               GChildWatchFunc function,
                               gpointer data);
-
-#if !defined(ENABLE_JSON_STORE)
-  // g_free
-  virtual void Free(gpointer mem);
-  // g_key_file_free
-  virtual void KeyFileFree(GKeyFile* key_file);
-  // g_key_file_get_boolean
-  virtual gboolean KeyFileGetBoolean(GKeyFile* key_file,
-                                     const gchar* group_name,
-                                     const gchar* key,
-                                     GError** error);
-  // g_key_file_get_groups
-  virtual gchar** KeyFileGetGroups(GKeyFile* key_file,
-                                   gsize* length);
-  // g_key_file_get_integer
-  virtual gint KeyFileGetInteger(GKeyFile* key_file,
-                                 const gchar* group_name,
-                                 const gchar* key,
-                                 GError** error);
-  // g_key_file_get_string
-  virtual gchar* KeyFileGetString(GKeyFile* key_file,
-                                  const gchar* group_name,
-                                  const gchar* key,
-                                  GError** error);
-  // g_key_file_get_string_list
-  virtual gchar** KeyFileGetStringList(GKeyFile* key_file,
-                                       const gchar* group_name,
-                                       const gchar* key,
-                                       gsize* length,
-                                       GError** error);
-  // g_key_file_has_group
-  virtual gboolean KeyFileHasGroup(GKeyFile* key_file,
-                                   const gchar* group_name);
-  // g_key_file_has_key
-  virtual gboolean KeyFileHasKey(GKeyFile* key_file,
-                                 const gchar* group_name,
-                                 const gchar* key,
-                                 GError** error);
-  // g_key_file_load_from_file
-  virtual gboolean KeyFileLoadFromFile(GKeyFile* key_file,
-                                       const gchar* file,
-                                       GKeyFileFlags flags,
-                                       GError** error);
-  // g_key_file_new
-  virtual GKeyFile* KeyFileNew();
-  // g_key_file_remove_group
-  virtual void KeyFileRemoveGroup(GKeyFile* key_file,
-                                  const gchar* group_name,
-                                  GError** error);
-  // g_key_file_remove_key
-  virtual void KeyFileRemoveKey(GKeyFile* key_file,
-                                const gchar* group_name,
-                                const gchar* key,
-                                GError** error);
-  // g_key_file_set_boolean
-  virtual void KeyFileSetBoolean(GKeyFile* key_file,
-                                 const gchar* group_name,
-                                 const gchar* key,
-                                 gboolean value);
-  // g_key_file_set_comment
-  virtual gboolean KeyFileSetComment(GKeyFile* key_file,
-                                     const gchar* group_name,
-                                     const gchar* key,
-                                     const gchar* comment,
-                                     GError** error);
-  // g_key_file_set_integer
-  virtual void KeyFileSetInteger(GKeyFile* key_file,
-                                 const gchar* group_name,
-                                 const gchar* key,
-                                 gint value);
-  // g_key_file_set_string
-  virtual void KeyFileSetString(GKeyFile* key_file,
-                                const gchar* group_name,
-                                const gchar* key,
-                                const gchar* value);
-  // g_key_file_set_string_list
-  virtual void KeyFileSetStringList(GKeyFile* key_file,
-                                    const gchar* group_name,
-                                    const gchar* key,
-                                    const gchar* const list[],
-                                    gsize length);
-  // g_key_file_to_data
-  virtual gchar* KeyFileToData(GKeyFile* key_file,
-                               gsize* length,
-                               GError** error);
-#endif
-
   // g_source_remove
   virtual gboolean SourceRemove(guint tag);
   // g_spawn_async
@@ -127,12 +33,6 @@ class GLib {
                               gpointer user_data,
                               GPid* child_pid,
                               GError** error);
-
-#if !defined(ENABLE_JSON_STORE)
-  // g_strfreev
-  virtual void Strfreev(gchar** str_array);
-#endif
-
   // g_type_init
   virtual void TypeInit();
 
