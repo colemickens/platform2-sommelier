@@ -47,7 +47,6 @@ class KeyFileStoreTest : public Test {
   }
 
   virtual void TearDown() {
-    store_->path_ = FilePath("");  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
   }
 
