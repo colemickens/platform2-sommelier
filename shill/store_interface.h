@@ -24,7 +24,6 @@ class StoreInterface {
 
   // Configures the path which data should be read from, and written to.
   virtual void set_path(const base::FilePath& path) = 0;
-  virtual const base::FilePath& path() const = 0;
 
   // Returns true if the store exists and is non-empty.
   virtual bool IsNonEmpty() const = 0;

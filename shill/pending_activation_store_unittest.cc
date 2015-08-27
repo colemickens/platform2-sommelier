@@ -11,7 +11,6 @@
 #include "shill/mock_store.h"
 #include "shill/store_factory.h"
 
-using base::FilePath;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Mock;

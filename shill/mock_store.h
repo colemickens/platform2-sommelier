@@ -24,7 +24,6 @@ class MockStore : public StoreInterface {
   ~MockStore() override;
 
   MOCK_METHOD1(set_path, void(const base::FilePath& path));
-  MOCK_CONST_METHOD0(path, const base::FilePath&());
   MOCK_CONST_METHOD0(IsNonEmpty, bool());
   MOCK_METHOD0(Open, bool());
   MOCK_METHOD0(Close, bool());
