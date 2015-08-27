@@ -60,19 +60,10 @@ bool FakeStore::Close() {
 }
 
 bool FakeStore::Flush() {
-  if (path_.empty()) {
-    LOG(ERROR) << "Empty key file path.";
-    return false;
-  }
-
   return true;
 }
 
 bool FakeStore::MarkAsCorrupted() {
-  if (path_.empty()) {
-    LOG(ERROR) << "Empty key file path.";
-    return false;
-  }
   return true;
 }
 

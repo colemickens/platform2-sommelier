@@ -203,7 +203,6 @@ class ManagerTest : public PropertyStoreTest {
   Profile* CreateProfileForManager(Manager* manager) {
     Profile::Identifier id("rather", "irrelevant");
     std::unique_ptr<FakeStore> storage(new FakeStore());
-    storage->set_path(FilePath("/not/really/persistent"));
     if (!storage->Open())
       return nullptr;
     Profile* profile(new Profile(control_interface(),

@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
@@ -23,7 +22,6 @@ class MockStore : public StoreInterface {
   MockStore();
   ~MockStore() override;
 
-  MOCK_METHOD1(set_path, void(const base::FilePath& path));
   MOCK_CONST_METHOD0(IsNonEmpty, bool());
   MOCK_METHOD0(Open, bool());
   MOCK_METHOD0(Close, bool());

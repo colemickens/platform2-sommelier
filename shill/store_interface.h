@@ -9,10 +9,6 @@
 #include <string>
 #include <vector>
 
-namespace base {
-class FilePath;
-}
-
 namespace shill {
 
 class KeyValueStore;
@@ -21,9 +17,6 @@ class KeyValueStore;
 class StoreInterface {
  public:
   virtual ~StoreInterface() {}
-
-  // Configures the path which data should be read from, and written to.
-  virtual void set_path(const base::FilePath& path) = 0;
 
   // Returns true if the store exists and is non-empty.
   virtual bool IsNonEmpty() const = 0;

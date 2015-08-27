@@ -27,7 +27,6 @@ class KeyFileStore : public StoreInterface {
   ~KeyFileStore() override;
 
   // Inherited from StoreInterface.
-  void set_path(const base::FilePath& path) override { path_ = path; }
   bool IsNonEmpty() const override;
   bool Open() override;
   bool Close() override;

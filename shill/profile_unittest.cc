@@ -45,9 +45,7 @@ class ProfileTest : public PropertyStoreTest {
     // Install a FakeStore by default. In tests that actually care
     // about the interaction between Profile and StoreInterface, we'll
     // replace this with a MockStore.
-    std::unique_ptr<FakeStore> fake_store(new FakeStore());
-    fake_store->set_path(FilePath("/not/really/persistent"));
-    profile_->set_storage(fake_store.release());
+    profile_->set_storage(new FakeStore());
   }
 
   MockService* CreateMockService() {

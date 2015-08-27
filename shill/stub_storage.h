@@ -18,7 +18,6 @@ class StubStorage : public StoreInterface {
  public:
   ~StubStorage() override {}
 
-  void set_path(const base::FilePath& path) override {}
   bool IsNonEmpty() const override { return false; }
   bool Open() override { return false; }
   bool Close() override { return false; }
