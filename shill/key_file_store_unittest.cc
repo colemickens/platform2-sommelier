@@ -53,9 +53,6 @@ class KeyFileStoreTest : public Test {
  protected:
   string ReadKeyFile();
   void WriteKeyFile(string data);
-  bool OpenCheckClose(const string& group,
-                      const string& key,
-                      const string& expected_value);
 
   base::ScopedTempDir temp_dir_;
   FilePath test_file_;
@@ -100,7 +97,7 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_FALSE(store_->key_file_);
 
   ASSERT_TRUE(store_->Open());
-  store_->set_path(FilePath(""));
+  store_->set_path(FilePath(""));  // Force Flush() to fail.
   ASSERT_FALSE(store_->Close());
   EXPECT_FALSE(store_->key_file_);
 }
@@ -652,15 +649,22 @@ TEST_F(KeyFileStoreTest, PersistAcrossClose) {
   ASSERT_TRUE(store_->Close());
 }
 
-bool KeyFileStoreTest::OpenCheckClose(const string& group,
-                                      const string& key,
-                                      const string& expected_value) {
-  KeyFileStore store;
-  store.set_path(test_file_);
+namespace {
+class ReadOnlyKeyFileStore : public KeyFileStore {
+ public:
+  ReadOnlyKeyFileStore() : KeyFileStore() {}
+  bool Flush() override { return true; }
+};
+
+bool OpenCheckClose(const FilePath& path,
+                    const string& group,
+                    const string& key,
+                    const string& expected_value) {
+  ReadOnlyKeyFileStore store;  // Don't modify file owned by caller.
+  store.set_path(path);
   EXPECT_TRUE(store.Open());
   string value;
   bool could_get = store.GetString(group, key, &value);
-  store.set_path(FilePath(""));  // Don't persist to disk.
   store.Close();
   return could_get && expected_value == value;
 }
@@ -674,16 +678,17 @@ TEST_F(KeyFileStoreTest, Flush) {
   ASSERT_TRUE(store_->Open());
   ASSERT_TRUE(store_->SetString(kGroup, kKey1, kValue1));
   ASSERT_TRUE(store_->Flush());
-  ASSERT_TRUE(OpenCheckClose(kGroup, kKey1, kValue1));
+  ASSERT_TRUE(OpenCheckClose(test_file_, kGroup, kKey1, kValue1));
 
   ASSERT_TRUE(store_->SetString(kGroup, kKey2, kValue2));
   ASSERT_TRUE(store_->Flush());
-  ASSERT_TRUE(OpenCheckClose(kGroup, kKey2, kValue2));
+  ASSERT_TRUE(OpenCheckClose(test_file_, kGroup, kKey2, kValue2));
 
   EXPECT_TRUE(store_->DeleteKey(kGroup, kKey1));
   ASSERT_TRUE(store_->Flush());
-  ASSERT_FALSE(OpenCheckClose(kGroup, kKey1, kValue1));
+  ASSERT_FALSE(OpenCheckClose(test_file_, kGroup, kKey1, kValue1));
 }
+}  // namespace
 
 TEST_F(KeyFileStoreTest, EmptyFile) {
   ASSERT_TRUE(store_->Open());
