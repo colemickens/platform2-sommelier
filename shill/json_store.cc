@@ -319,7 +319,10 @@ scoped_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
 
 }  // namespace
 
-JsonStore::JsonStore() {}
+JsonStore::JsonStore(const base::FilePath& path)
+    : path_(path) {
+  CHECK(!path_.empty());
+}
 
 bool JsonStore::IsNonEmpty() const {
   int64_t file_size = 0;

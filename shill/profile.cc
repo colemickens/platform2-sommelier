@@ -75,8 +75,7 @@ bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
     return false;
   }
   std::unique_ptr<StoreInterface> storage(
-      StoreFactory::GetInstance()->CreateStore());
-  storage->set_path(final_path);
+      StoreFactory::GetInstance()->CreateStore(final_path));
   bool already_exists = storage->IsNonEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {

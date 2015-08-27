@@ -45,9 +45,12 @@ string ConvertErrorToMessage(GError* error) {
 
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
-KeyFileStore::KeyFileStore()
+KeyFileStore::KeyFileStore(const base::FilePath& path)
     : crypto_(),
-      key_file_(nullptr) {}
+      key_file_(nullptr),
+      path_(path) {
+  CHECK(!path_.empty());
+}
 
 KeyFileStore::~KeyFileStore() {
   ReleaseKeyFile();

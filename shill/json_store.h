@@ -20,8 +20,7 @@ namespace shill {
 
 class JsonStore : public StoreInterface {
  public:
-  JsonStore();
-
+  explicit JsonStore(const base::FilePath& path);
   // TODO(quiche): Determine if we need a dtor. In particular, we'll
   // need one of StoreInterface implementations are expected to
   // automatically Flush() before destruction.

@@ -7,6 +7,10 @@
 
 #include <base/lazy_instance.h>
 
+namespace base {
+class FilePath;
+}
+
 namespace shill {
 
 class StoreInterface;
@@ -16,7 +20,7 @@ class StoreFactory {
   // This is a singleton. Use StoreFactory::GetInstance()->Foo().
   static StoreFactory* GetInstance();
 
-  StoreInterface* CreateStore();
+  StoreInterface* CreateStore(const base::FilePath& path);
 
  protected:
   StoreFactory();

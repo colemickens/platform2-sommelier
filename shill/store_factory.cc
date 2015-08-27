@@ -23,11 +23,11 @@ StoreFactory* StoreFactory::GetInstance() {
   return g_persistent_store_factory.Pointer();
 }
 
-StoreInterface* StoreFactory::CreateStore() {
+StoreInterface* StoreFactory::CreateStore(const base::FilePath& path) {
 #if defined(ENABLE_JSON_STORE)
-  return new JsonStore();
+  return new JsonStore(path);
 #else
-  return new KeyFileStore();
+  return new KeyFileStore(path);
 #endif
 }
 

@@ -49,8 +49,7 @@ class JsonStoreTest : public Test {
     ASSERT_FALSE(base::IsStringUTF8(kNonUtf8String));
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     test_file_ = temp_dir_.path().Append("test-json-store");
-    store_.reset(new JsonStore());
-    store_->set_path(test_file_);
+    store_.reset(new JsonStore(test_file_));
     EXPECT_CALL(log_, Log(_, _, _)).Times(AnyNumber());
   }
 
@@ -968,8 +967,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreHeader) {
   ASSERT_EQ("rosetta stone", store_->file_description_);
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->file_description_, persisted_data.file_description_);
@@ -986,8 +984,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreAllTypes) {
   store_->SetCryptedString("group_a", "cryptedstring_knob", "s3kr!t");
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -997,8 +994,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreNonUtf8Strings) {
   store_->SetString("group_a", "string_knob", kNonUtf8String);
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1009,8 +1005,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreNonUtf8StringList) {
       "group_a", "string_knob", vector<string>({kNonUtf8String}));
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1020,8 +1015,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreStringsWithEmbeddedNulls) {
   store_->SetString("group_a", "string_knob", kStringWithEmbeddedNulls);
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1032,8 +1026,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreStringListWithEmbeddedNulls) {
       "group_a", "string_knob", vector<string>({kStringWithEmbeddedNulls}));
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1044,8 +1037,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreMultipleGroups) {
   store_->SetString("group_b", "knob_2", "second string");
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1058,8 +1050,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreMultipleGroupsWithSameKeys) {
   store_->SetStringList("group_b", "knob_2", vector<string>{"2nd try"});
   store_->Flush();
 
-  JsonStore persisted_data;
-  persisted_data.set_path(test_file_);
+  JsonStore persisted_data(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1069,17 +1060,14 @@ TEST_F(JsonStoreTest, CanDeleteKeyFromPersistedData) {
   store_->SetString("group_a", "knob_1", "first string");
   store_->Flush();
 
-  JsonStore persisted_data_v1;
-  persisted_data_v1.set_path(test_file_);
+  JsonStore persisted_data_v1(test_file_);
   persisted_data_v1.Open();
   ASSERT_TRUE(persisted_data_v1.GetString("group_a", "knob_1", nullptr));
   store_->DeleteKey("group_a", "knob_1");
   store_->Flush();
 
-  JsonStore persisted_data_v2;
+  JsonStore persisted_data_v2(test_file_);
   SetVerboseLevel(10);
-  persisted_data_v2.set_path(test_file_);
-  persisted_data_v2.Open();
   // Whether an empty group is written or not is an implementation
   // detail.  Hence, we don't care if the error message is about a
   // missing group, or a missing property.
@@ -1091,16 +1079,14 @@ TEST_F(JsonStoreTest, CanDeleteGroupFromPersistedData) {
   store_->SetString("group_a", "knob_1", "first string");
   store_->Flush();
 
-  JsonStore persisted_data_v1;
-  persisted_data_v1.set_path(test_file_);
+  JsonStore persisted_data_v1(test_file_);
   persisted_data_v1.Open();
   ASSERT_TRUE(persisted_data_v1.GetString("group_a", "knob_1", nullptr));
   store_->DeleteGroup("group_a");
   store_->Flush();
 
-  JsonStore persisted_data_v2;
+  JsonStore persisted_data_v2(test_file_);
   SetVerboseLevel(10);
-  persisted_data_v2.set_path(test_file_);
   persisted_data_v2.Open();
   EXPECT_CALL(log_, Log(_, _, HasSubstr("Could not find group")));
   EXPECT_FALSE(persisted_data_v2.GetString("group_a", "knob_1", nullptr));

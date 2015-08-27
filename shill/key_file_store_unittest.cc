@@ -41,8 +41,7 @@ class KeyFileStoreTest : public Test {
   virtual void SetUp() {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     test_file_ = temp_dir_.path().Append("test-key-file-store");
-    store_.reset(new KeyFileStore());
-    store_->set_path(test_file_);
+    store_.reset(new KeyFileStore(test_file_));
   }
 
   virtual void TearDown() {
@@ -539,7 +538,9 @@ TEST_F(KeyFileStoreTest, GetStringList) {
   EXPECT_EQ("", value[1]);
   EXPECT_EQ(kValue2, value[2]);
 
-  EXPECT_FALSE(store_->GetStringList("unknown-string-lists", kKeyEmpty, &value));
+  EXPECT_FALSE(store_->GetStringList("unknown-string-lists",
+                                     kKeyEmpty,
+                                     &value));
   EXPECT_FALSE(store_->GetStringList(kGroup, "some-key", &value));
   EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValues, nullptr));
   ASSERT_TRUE(store_->Close());
@@ -652,7 +653,8 @@ TEST_F(KeyFileStoreTest, PersistAcrossClose) {
 namespace {
 class ReadOnlyKeyFileStore : public KeyFileStore {
  public:
-  ReadOnlyKeyFileStore() : KeyFileStore() {}
+  explicit ReadOnlyKeyFileStore(const base::FilePath& path)
+      : KeyFileStore(path) {}
   bool Flush() override { return true; }
 };
 
@@ -660,8 +662,7 @@ bool OpenCheckClose(const FilePath& path,
                     const string& group,
                     const string& key,
                     const string& expected_value) {
-  ReadOnlyKeyFileStore store;  // Don't modify file owned by caller.
-  store.set_path(path);
+  ReadOnlyKeyFileStore store(path);  // Don't modify file owned by caller.
   EXPECT_TRUE(store.Open());
   string value;
   bool could_get = store.GetString(group, key, &value);

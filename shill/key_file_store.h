@@ -23,7 +23,7 @@ namespace shill {
 // of the key file format.
 class KeyFileStore : public StoreInterface {
  public:
-  KeyFileStore();
+  explicit KeyFileStore(const base::FilePath& path);
   ~KeyFileStore() override;
 
   // Inherited from StoreInterface.

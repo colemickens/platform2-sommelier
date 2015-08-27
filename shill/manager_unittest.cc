@@ -221,10 +221,10 @@ class ManagerTest : public PropertyStoreTest {
                                     const string& profile_identifier,
                                     const string& service_name) {
     std::unique_ptr<StoreInterface> store(
-        StoreFactory::GetInstance()->CreateStore());
-    store->set_path(temp_dir->path().Append(
-        base::StringPrintf("%s/%s.profile", user_identifier.c_str(),
-                           profile_identifier.c_str())));
+        StoreFactory::GetInstance()->CreateStore(
+            temp_dir->path().Append(
+                base::StringPrintf("%s/%s.profile", user_identifier.c_str(),
+                                   profile_identifier.c_str()))));
 
     return store->Open() &&
         store->SetString(service_name, "rather", "irrelevant") &&
