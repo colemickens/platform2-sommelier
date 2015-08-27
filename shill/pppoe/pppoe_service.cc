@@ -103,6 +103,7 @@ void PPPoEService::Connect(Error* error, const char* reason) {
   options.lcp_echo_interval = lcp_echo_interval_;
   options.lcp_echo_failure = lcp_echo_failure_;
   options.max_fail = max_auth_failure_;
+  options.use_ipv6 = true;
 
   pppd_ = PPPDaemon::Start(
       control_interface_, process_manager_, weak_ptr_factory_.GetWeakPtr(),

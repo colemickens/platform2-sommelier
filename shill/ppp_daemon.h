@@ -42,7 +42,8 @@ class PPPDaemon {
           use_pppoe_plugin(false),
           lcp_echo_interval(kUnspecifiedValue),
           lcp_echo_failure(kUnspecifiedValue),
-          max_fail(kUnspecifiedValue) {}
+          max_fail(kUnspecifiedValue),
+          use_ipv6(false) {}
 
     // Causes pppd to emit log messages useful for debugging connectivity.
     bool debug;
@@ -75,6 +76,9 @@ class PPPDaemon {
     // The number of allowed failed consecutive connection attempts before
     // giving up.  A value of 0 means there is no limit.
     uint32_t max_fail;
+
+    // Instructs pppd to request an IPv6 address from the remote server.
+    bool use_ipv6;
   };
 
   // The path to the pppd plugin provided by shill.

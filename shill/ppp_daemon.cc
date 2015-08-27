@@ -67,6 +67,10 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
     arguments.push_back("maxfail");
     arguments.push_back(base::UintToString(options.max_fail));
   }
+  if (options.use_ipv6) {
+    arguments.push_back("+ipv6");
+    arguments.push_back("ipv6cp-use-ipaddr");
+  }
 
   arguments.push_back(device);
 
