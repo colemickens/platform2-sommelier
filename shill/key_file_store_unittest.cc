@@ -61,13 +61,13 @@ class KeyFileStoreTest : public Test {
 
 string KeyFileStoreTest::ReadKeyFile() {
   string data;
-  EXPECT_TRUE(base::ReadFileToString(store_->path(), &data));
+  EXPECT_TRUE(base::ReadFileToString(test_file_, &data));
   return data;
 }
 
 void KeyFileStoreTest::WriteKeyFile(string data) {
   EXPECT_EQ(data.size(),
-            base::WriteFile(store_->path(), data.data(), data.size()));
+            base::WriteFile(test_file_, data.data(), data.size()));
 }
 
 TEST_F(KeyFileStoreTest, OpenClose) {
@@ -113,11 +113,11 @@ TEST_F(KeyFileStoreTest, MarkAsCorrupted) {
   EXPECT_FALSE(store_->IsNonEmpty());
   WriteKeyFile("garbage\n");
   EXPECT_TRUE(store_->IsNonEmpty());
-  EXPECT_TRUE(base::PathExists(store_->path()));
+  EXPECT_TRUE(base::PathExists(test_file_));
   EXPECT_TRUE(store_->MarkAsCorrupted());
   EXPECT_FALSE(store_->IsNonEmpty());
-  EXPECT_FALSE(base::PathExists(store_->path()));
-  EXPECT_TRUE(base::PathExists(FilePath(store_->path().value() + ".corrupted")));
+  EXPECT_FALSE(base::PathExists(test_file_));
+  EXPECT_TRUE(base::PathExists(FilePath(test_file_.value() + ".corrupted")));
 }
 
 TEST_F(KeyFileStoreTest, GetGroups) {
