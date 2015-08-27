@@ -98,10 +98,6 @@ class ControlInterface {
       const std::string& connection_name,
       const base::Closure& on_connection_vanished) = 0;
 
-  virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
-      const std::string& path,
-      const std::string& service) = 0;
-
   virtual DBusServiceProxyInterface* CreateDBusServiceProxy() = 0;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
@@ -141,6 +137,10 @@ class ControlInterface {
   virtual PermissionBrokerProxyInterface* CreatePermissionBrokerProxy() = 0;
 
 #if !defined(DISABLE_CELLULAR)
+  virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
   virtual DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
       const std::string& path,
       const std::string& service,

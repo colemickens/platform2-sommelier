@@ -142,12 +142,6 @@ RPCServiceWatcherInterface* ChromeosDBusControl::CreateRPCServiceWatcher(
                                         on_connection_vanished);
 }
 
-DBusPropertiesProxyInterface* ChromeosDBusControl::CreateDBusPropertiesProxy(
-    const string& path,
-    const string& service) {
-  return new ChromeosDBusPropertiesProxy(proxy_bus_, path, service);
-}
-
 DBusServiceProxyInterface* ChromeosDBusControl::CreateDBusServiceProxy() {
   return nullptr;
 }
@@ -217,6 +211,12 @@ PermissionBrokerProxyInterface*
 }
 
 #if !defined(DISABLE_CELLULAR)
+DBusPropertiesProxyInterface* ChromeosDBusControl::CreateDBusPropertiesProxy(
+    const string& path,
+    const string& service) {
+  return new ChromeosDBusPropertiesProxy(proxy_bus_, path, service);
+}
+
 DBusObjectManagerProxyInterface*
     ChromeosDBusControl::CreateDBusObjectManagerProxy(
         const string& path,

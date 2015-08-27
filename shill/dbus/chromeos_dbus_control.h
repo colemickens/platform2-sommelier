@@ -40,10 +40,6 @@ class ChromeosDBusControl : public ControlInterface {
       const std::string& connection_name,
       const base::Closure& on_connection_vanished) override;
 
-  DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
-      const std::string& path,
-      const std::string& service) override;
-
   DBusServiceProxyInterface* CreateDBusServiceProxy() override;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
@@ -83,6 +79,10 @@ class ChromeosDBusControl : public ControlInterface {
   PermissionBrokerProxyInterface* CreatePermissionBrokerProxy() override;
 
 #if !defined(DISABLE_CELLULAR)
+  DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+      const std::string& path,
+      const std::string& service) override;
+
   DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
       const std::string& path,
       const std::string& service,

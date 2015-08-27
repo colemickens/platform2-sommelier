@@ -39,9 +39,6 @@ class NiceMockControl : public ControlInterface {
                    const std::string& connection_name,
                    const base::Closure& on_connection_vanished));
 
-  MOCK_METHOD2(CreateDBusPropertiesProxy,
-               DBusPropertiesProxyInterface*(const std::string& path,
-                                             const std::string& service));
   MOCK_METHOD0(CreateDBusServiceProxy, DBusServiceProxyInterface*());
   MOCK_METHOD3(
       CreatePowerManagerProxy,
@@ -77,6 +74,9 @@ class NiceMockControl : public ControlInterface {
   MOCK_METHOD0(CreatePermissionBrokerProxy, PermissionBrokerProxyInterface*());
 
 #if !defined(DISABLE_CELLULAR)
+  MOCK_METHOD2(CreateDBusPropertiesProxy,
+               DBusPropertiesProxyInterface*(const std::string& path,
+                                             const std::string& service));
 
   MOCK_METHOD4(CreateDBusObjectManagerProxy,
                DBusObjectManagerProxyInterface*(
@@ -125,11 +125,9 @@ class NiceMockControl : public ControlInterface {
   MOCK_METHOD2(CreateSimProxy,
                mm1::SimProxyInterface*(const std::string& path,
                                        const std::string& service));
-
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
-
   MOCK_METHOD1(CreateWiMaxDeviceProxy,
                WiMaxDeviceProxyInterface*(const std::string& path));
   MOCK_METHOD2(CreateWiMaxManagerProxy,
@@ -138,7 +136,6 @@ class NiceMockControl : public ControlInterface {
                    const base::Closure& service_vanished_callback));
   MOCK_METHOD1(CreateWiMaxNetworkProxy,
                WiMaxNetworkProxyInterface*(const std::string& path));
-
 #endif  // DISABLE_WIMAX
 
  private:
