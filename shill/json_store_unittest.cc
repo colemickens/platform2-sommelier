@@ -77,7 +77,7 @@ void JsonStoreTest::SetVerboseLevel(int new_level) {
 
 void JsonStoreTest::SetJsonFileContents(const string& data) {
   EXPECT_EQ(data.size(),
-            base::WriteFile(store_->path(), data.data(), data.size()));
+            base::WriteFile(test_file_, data.data(), data.size()));
 }
 
 // In memory operations: basic storage and retrieval.
@@ -969,7 +969,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreHeader) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->file_description_, persisted_data.file_description_);
@@ -987,7 +987,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreAllTypes) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -998,7 +998,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreNonUtf8Strings) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1010,7 +1010,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreNonUtf8StringList) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1021,7 +1021,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreStringsWithEmbeddedNulls) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1033,7 +1033,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreStringListWithEmbeddedNulls) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1045,7 +1045,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreMultipleGroups) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1059,7 +1059,7 @@ TEST_F(JsonStoreTest, CanPersistAndRestoreMultipleGroupsWithSameKeys) {
   store_->Flush();
 
   JsonStore persisted_data;
-  persisted_data.set_path(store_->path());
+  persisted_data.set_path(test_file_);
   persisted_data.Open();
   EXPECT_EQ(
       store_->group_name_to_settings_, persisted_data.group_name_to_settings_);
@@ -1070,7 +1070,7 @@ TEST_F(JsonStoreTest, CanDeleteKeyFromPersistedData) {
   store_->Flush();
 
   JsonStore persisted_data_v1;
-  persisted_data_v1.set_path(store_->path());
+  persisted_data_v1.set_path(test_file_);
   persisted_data_v1.Open();
   ASSERT_TRUE(persisted_data_v1.GetString("group_a", "knob_1", nullptr));
   store_->DeleteKey("group_a", "knob_1");
@@ -1078,7 +1078,7 @@ TEST_F(JsonStoreTest, CanDeleteKeyFromPersistedData) {
 
   JsonStore persisted_data_v2;
   SetVerboseLevel(10);
-  persisted_data_v2.set_path(store_->path());
+  persisted_data_v2.set_path(test_file_);
   persisted_data_v2.Open();
   // Whether an empty group is written or not is an implementation
   // detail.  Hence, we don't care if the error message is about a
@@ -1092,7 +1092,7 @@ TEST_F(JsonStoreTest, CanDeleteGroupFromPersistedData) {
   store_->Flush();
 
   JsonStore persisted_data_v1;
-  persisted_data_v1.set_path(store_->path());
+  persisted_data_v1.set_path(test_file_);
   persisted_data_v1.Open();
   ASSERT_TRUE(persisted_data_v1.GetString("group_a", "knob_1", nullptr));
   store_->DeleteGroup("group_a");
@@ -1100,7 +1100,7 @@ TEST_F(JsonStoreTest, CanDeleteGroupFromPersistedData) {
 
   JsonStore persisted_data_v2;
   SetVerboseLevel(10);
-  persisted_data_v2.set_path(store_->path());
+  persisted_data_v2.set_path(test_file_);
   persisted_data_v2.Open();
   EXPECT_CALL(log_, Log(_, _, HasSubstr("Could not find group")));
   EXPECT_FALSE(persisted_data_v2.GetString("group_a", "knob_1", nullptr));
@@ -1115,7 +1115,6 @@ TEST_F(JsonStoreTest, MarkAsCorruptedFailsWhenPathIsNotSet) {
 }
 
 TEST_F(JsonStoreTest, MarkAsCorruptedFailsWhenStoreHasNotBeenPersisted) {
-  ASSERT_FALSE(store_->path().empty());
   EXPECT_CALL(log_,
               Log(logging::LOG_ERROR, _, HasSubstr("rename failed")));
   EXPECT_FALSE(store_->MarkAsCorrupted());
@@ -1124,12 +1123,12 @@ TEST_F(JsonStoreTest, MarkAsCorruptedFailsWhenStoreHasNotBeenPersisted) {
 TEST_F(JsonStoreTest, MarkAsCorruptedMovesCorruptStore) {
   store_->Flush();
   ASSERT_TRUE(store_->IsNonEmpty());
-  ASSERT_TRUE(base::PathExists(store_->path()));
+  ASSERT_TRUE(base::PathExists(test_file_));
 
   EXPECT_TRUE(store_->MarkAsCorrupted());
   EXPECT_FALSE(store_->IsNonEmpty());
-  EXPECT_FALSE(base::PathExists(store_->path()));
-  EXPECT_TRUE(base::PathExists(FilePath(store_->path().value() + ".corrupted")));
+  EXPECT_FALSE(base::PathExists(test_file_));
+  EXPECT_TRUE(base::PathExists(FilePath(test_file_.value() + ".corrupted")));
 }
 
 }  // namespace shill
