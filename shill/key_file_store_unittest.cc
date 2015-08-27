@@ -4,6 +4,8 @@
 
 #include "shill/key_file_store.h"
 
+#include <sys/stat.h>
+
 #include <memory>
 #include <set>
 #include <string>
@@ -96,7 +98,9 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_FALSE(store_->key_file_);
 
   ASSERT_TRUE(store_->Open());
-  store_->path_ = FilePath("");  // Force Flush() to fail.
+  // Replace file with directory, to force Flush() to fail.
+  ASSERT_TRUE(base::DeleteFile(test_file_, false));
+  ASSERT_TRUE(base::CreateDirectory(test_file_));
   ASSERT_FALSE(store_->Close());
   EXPECT_FALSE(store_->key_file_);
 }
