@@ -9,6 +9,7 @@
         'dbus-1',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libchromeos-ui-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
         'nss',
         # system_api depends on protobuf (or protobuf-lite). It must appear

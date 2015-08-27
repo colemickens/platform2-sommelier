@@ -4,6 +4,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libchromeos-ui-<(libbase_ver)',
       ],
     },
   },
