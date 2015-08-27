@@ -89,16 +89,14 @@ class JsonStore : public StoreInterface {
   FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreStringsWithEmbeddedNulls);
   FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreStringListWithEmbeddedNulls);
   // Tests which modify |path_|.
-  FRIEND_TEST(JsonStoreTest, FlushFailsWhenPathIsEmpty);
   FRIEND_TEST(JsonStoreTest, FlushFailsWhenPathComponentDoesNotExist);
-  FRIEND_TEST(JsonStoreTest, MarkAsCorruptedFailsWhenPathIsNotSet);
 
   template<typename T> bool ReadSetting(
       const std::string& group, const std::string& key, T* out) const;
   template<typename T> bool WriteSetting(
       const std::string& group, const std::string& key, const T& new_value);
 
-  base::FilePath path_;
+  const base::FilePath path_;
   std::string file_description_;
   std::map<std::string, chromeos::VariantDictionary> group_name_to_settings_;
 

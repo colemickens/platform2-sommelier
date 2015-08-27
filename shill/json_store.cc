@@ -330,7 +330,6 @@ bool JsonStore::IsNonEmpty() const {
 }
 
 bool JsonStore::Open() {
-  CHECK(!path_.empty());
   if (!IsNonEmpty()) {
     LOG(INFO) << "Creating a new key file at |" << path_.value() << "|.";
     return true;
@@ -415,11 +414,6 @@ bool JsonStore::Close() {
 }
 
 bool JsonStore::Flush() {
-  if (path_.empty()) {
-    LOG(ERROR) << "Empty key file path.";
-    return false;
-  }
-
   auto groups(make_scoped_ptr(new base::DictionaryValue()));
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     const auto& group_name = group_name_and_settings.first;
@@ -459,10 +453,6 @@ bool JsonStore::Flush() {
 
 bool JsonStore::MarkAsCorrupted() {
   LOG(INFO) << "In " << __func__ << " for " << path_.value();
-  if (path_.empty()) {
-    LOG(ERROR) << "Empty key file path.";
-    return false;
-  }
   string corrupted_path = path_.value() + kCorruptSuffix;
   int ret = rename(path_.value().c_str(), corrupted_path.c_str());
   if (ret != 0) {
