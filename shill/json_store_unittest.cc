@@ -940,15 +940,15 @@ TEST_F(JsonStoreTest, FlushCreatesPersistentStore) {
 }
 
 TEST_F(JsonStoreTest, FlushFailsWhenPathIsEmpty) {
-  store_->set_path(FilePath());
+  store_->path_ = FilePath();
   EXPECT_CALL(log_,
               Log(logging::LOG_ERROR, _, StartsWith("Empty key file path")));
   EXPECT_FALSE(store_->Flush());
 }
 
 TEST_F(JsonStoreTest, FlushFailsWhenPathComponentDoesNotExist) {
-  store_->set_path(
-      temp_dir_.path().Append("non-existent-dir").Append("test-store"));
+  store_->path_ =
+      temp_dir_.path().Append("non-existent-dir").Append("test-store");
   EXPECT_CALL(log_,
               Log(logging::LOG_ERROR, _, StartsWith("Failed to write")));
   EXPECT_FALSE(store_->Flush());
@@ -1094,7 +1094,7 @@ TEST_F(JsonStoreTest, CanDeleteGroupFromPersistedData) {
 
 // File operations: file management.
 TEST_F(JsonStoreTest, MarkAsCorruptedFailsWhenPathIsNotSet) {
-  store_->set_path(FilePath());
+  store_->path_ = FilePath();
   EXPECT_CALL(log_,
               Log(logging::LOG_ERROR, _, StartsWith("Empty key file path")));
   EXPECT_FALSE(store_->MarkAsCorrupted());

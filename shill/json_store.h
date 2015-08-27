@@ -89,6 +89,10 @@ class JsonStore : public StoreInterface {
   FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreMultipleGroupsWithSameKeys);
   FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreStringsWithEmbeddedNulls);
   FRIEND_TEST(JsonStoreTest, CanPersistAndRestoreStringListWithEmbeddedNulls);
+  // Tests which modify |path_|.
+  FRIEND_TEST(JsonStoreTest, FlushFailsWhenPathIsEmpty);
+  FRIEND_TEST(JsonStoreTest, FlushFailsWhenPathComponentDoesNotExist);
+  FRIEND_TEST(JsonStoreTest, MarkAsCorruptedFailsWhenPathIsNotSet);
 
   template<typename T> bool ReadSetting(
       const std::string& group, const std::string& key, T* out) const;
