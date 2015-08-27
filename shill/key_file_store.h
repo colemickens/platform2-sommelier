@@ -89,7 +89,7 @@ class KeyFileStore : public StoreInterface {
 
   CryptoProvider crypto_;
   GKeyFile* key_file_;
-  base::FilePath path_;
+  const base::FilePath path_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyFileStore);
 };

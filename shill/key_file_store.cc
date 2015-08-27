@@ -69,7 +69,6 @@ bool KeyFileStore::IsNonEmpty() const {
 }
 
 bool KeyFileStore::Open() {
-  CHECK(!path_.empty());
   CHECK(!key_file_);
   crypto_.Init();
   key_file_ = g_key_file_new();
@@ -105,11 +104,7 @@ bool KeyFileStore::Flush() {
   gchar* data = g_key_file_to_data(key_file_, &length, &error);
 
   bool success = true;
-  if (path_.empty()) {
-    LOG(ERROR) << "Empty key file path.";
-    success = false;
-  }
-  if (success && (!data || error)) {
+  if (!data || error) {
     LOG(ERROR) << "Failed to convert key file to string: "
                << ConvertErrorToMessage(error);
     success = false;
@@ -127,10 +122,6 @@ bool KeyFileStore::Flush() {
 
 bool KeyFileStore::MarkAsCorrupted() {
   LOG(INFO) << "In " << __func__ << " for " << path_.value();
-  if (path_.empty()) {
-    LOG(ERROR) << "Empty key file path.";
-    return false;
-  }
   string corrupted_path = path_.value() + kCorruptSuffix;
   int ret =  rename(path_.value().c_str(), corrupted_path.c_str());
   if (ret != 0) {
