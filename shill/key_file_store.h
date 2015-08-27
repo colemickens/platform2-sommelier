@@ -79,6 +79,7 @@ class KeyFileStore : public StoreInterface {
                         const std::string& value) override;
 
  private:
+  friend class KeyFileStoreTest;  // For |path_|.
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
   FRIEND_TEST(KeyFileStoreTest, OpenFail);
 

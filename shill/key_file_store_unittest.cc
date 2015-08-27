@@ -45,7 +45,7 @@ class KeyFileStoreTest : public Test {
   }
 
   virtual void TearDown() {
-    store_->set_path(FilePath(""));  // Don't try to save the store.
+    store_->path_ = FilePath("");  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
   }
 
@@ -96,7 +96,7 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_FALSE(store_->key_file_);
 
   ASSERT_TRUE(store_->Open());
-  store_->set_path(FilePath(""));  // Force Flush() to fail.
+  store_->path_ = FilePath("");  // Force Flush() to fail.
   ASSERT_FALSE(store_->Close());
   EXPECT_FALSE(store_->key_file_);
 }
