@@ -214,6 +214,17 @@ bool ChromeosSupplicantInterfaceProxy::NetworkReply(const string& network,
   return true;
 }
 
+bool ChromeosSupplicantInterfaceProxy::Roam(const string& addr) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  chromeos::ErrorPtr error;
+  if (!interface_proxy_->Roam(addr, &error)) {
+    LOG(ERROR) << "Failed to Roam: "
+               << error->GetCode() << " " << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
 bool ChromeosSupplicantInterfaceProxy::Reassociate() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   chromeos::ErrorPtr error;

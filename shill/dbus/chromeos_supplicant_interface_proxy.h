@@ -46,6 +46,7 @@ class ChromeosSupplicantInterfaceProxy
   bool Reattach() override;
   bool RemoveAllNetworks() override;
   bool RemoveNetwork(const std::string& network) override;
+  bool Roam(const std::string& addr) override;
   bool Scan(const KeyValueStore& args) override;
   bool SelectNetwork(const std::string& network) override;
   bool TDLSDiscover(const std::string& peer) override;

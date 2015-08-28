@@ -117,6 +117,17 @@ bool SupplicantInterfaceProxy::NetworkReply(const string& network,
   return true;
 }
 
+bool SupplicantInterfaceProxy::Roam(const string& addr) {
+  SLOG(&proxy_.path(), 2) << __func__;
+  try {
+    proxy_.Roam(addr);
+  } catch (const DBus::Error& e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    return false;
+  }
+  return true;
+}
+
 bool SupplicantInterfaceProxy::Reassociate() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {

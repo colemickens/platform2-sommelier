@@ -41,6 +41,7 @@ class SupplicantInterfaceProxy
   bool NetworkReply(const std::string& network,
                     const std::string& field,
                     const std::string& value) override;
+  bool Roam(const std::string& addr) override;
   bool Reassociate() override;
   bool Reattach() override;
   bool RemoveAllNetworks() override;

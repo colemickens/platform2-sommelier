@@ -36,6 +36,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD0(Reattach, bool());
   MOCK_METHOD0(RemoveAllNetworks, bool());
   MOCK_METHOD1(RemoveNetwork, bool(const std::string& network));
+  MOCK_METHOD1(Roam, bool(const std::string& addr));
   MOCK_METHOD1(Scan, bool(const KeyValueStore& args));
   MOCK_METHOD1(SelectNetwork, bool(const std::string& network));
   MOCK_METHOD1(SetFastReauth, bool(bool enabled));

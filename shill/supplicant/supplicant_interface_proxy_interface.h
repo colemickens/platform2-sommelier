@@ -32,6 +32,7 @@ class SupplicantInterfaceProxyInterface {
   virtual bool Reattach() = 0;
   virtual bool RemoveAllNetworks() = 0;
   virtual bool RemoveNetwork(const std::string& network) = 0;
+  virtual bool Roam(const std::string& addr) = 0;
   virtual bool Scan(const KeyValueStore& args) = 0;
   virtual bool SelectNetwork(const std::string& network) = 0;
   virtual bool SetFastReauth(bool enabled) = 0;

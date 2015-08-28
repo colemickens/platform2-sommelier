@@ -50,6 +50,9 @@
       <arg name="field" type="s" direction="in"/>
       <arg name="value" type="s" direction="in"/>
     </method>
+    <method name="Roam">
+      <arg name="addr" type="s" direction="in"/>
+    </method>
     <method name="TDLSDiscover">
       <arg name="peer" type="s" direction="in"/>
     </method>
