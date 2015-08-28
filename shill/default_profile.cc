@@ -79,11 +79,12 @@ const char DefaultProfile::kStorageProhibitedTechnologies[] =
 DefaultProfile::DefaultProfile(ControlInterface* control,
                                Metrics* metrics,
                                Manager* manager,
-                               const FilePath& storage_path,
+                               const FilePath& storage_directory,
                                const string& profile_id,
                                const Manager::Properties& manager_props)
     : Profile(
-          control, metrics, manager, Identifier(profile_id), storage_path, true),
+          control, metrics, manager, Identifier(profile_id),
+          storage_directory, true),
       profile_id_(profile_id),
       props_(manager_props),
       random_engine_(time(nullptr)) {
@@ -104,6 +105,8 @@ DefaultProfile::DefaultProfile(ControlInterface* control,
                             &manager_props.portal_check_interval_seconds);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
                              &manager_props.prohibited_technologies);
+  set_persistent_profile_path(
+      GetFinalStoragePath(storage_directory, Identifier(profile_id)));
 }
 
 DefaultProfile::~DefaultProfile() {}
@@ -215,11 +218,5 @@ bool DefaultProfile::UpdateWiFiProvider(const WiFiProvider& wifi_provider) {
   return wifi_provider.Save(storage()) && storage()->Flush();
 }
 #endif  // DISABLE_WIFI
-
-bool DefaultProfile::GetStoragePath(FilePath* path) {
-  *path = storage_path().Append(base::StringPrintf("%s.profile",
-                                                   profile_id_.c_str()));
-  return true;
-}
 
 }  // namespace shill

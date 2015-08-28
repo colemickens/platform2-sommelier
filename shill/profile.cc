@@ -44,6 +44,12 @@ using std::vector;
 
 namespace shill {
 
+#if defined(ENABLE_JSON_STORE)
+namespace {
+const char kFileExtensionJson[] = "json";
+}
+#endif
+
 // static
 const char Profile::kUserProfileListPathname[] =
     RUNDIR "/loaded_profile_list";
@@ -52,12 +58,11 @@ Profile::Profile(ControlInterface* control_interface,
                  Metrics* metrics,
                  Manager* manager,
                  const Identifier& name,
-                 const base::FilePath& user_storage_directory,
+                 const base::FilePath& storage_directory,
                  bool connect_to_rpc)
     : metrics_(metrics),
       manager_(manager),
       control_interface_(control_interface),
-      storage_path_(user_storage_directory),
       name_(name) {
   if (connect_to_rpc)
     adaptor_.reset(control_interface->CreateProfileAdaptor(this));
@@ -73,21 +78,34 @@ Profile::Profile(ControlInterface* control_interface,
   HelpRegisterConstDerivedStrings(kServicesProperty,
                                   &Profile::EnumerateAvailableServices);
   HelpRegisterConstDerivedStrings(kEntriesProperty, &Profile::EnumerateEntries);
+
+  if (name.user.empty()) {
+    // Subtle: Profile is only directly instantiated for user
+    // profiles. And user profiles must have a non-empty
+    // |name.user|. So we want to CHECK here. But Profile is also the
+    // base class for DefaultProfile. So a CHECK here would cause us
+    // to abort whenever we attempt to instantiate a DefaultProfile.
+    //
+    // Instead, we leave |persistent_profile_path_| unintialized. One
+    // of two things will happen: a) we become a DefaultProfile, and
+    // the DefaultProfile ctor sets |persistent_profile_path_|, or b)
+    // we really are destined to be a user Profile. In the latter
+    // case, our |name| argument was invalid,
+    // |persistent_profile_path_| is never set, and we CHECK for an
+    // empty |persistent_profile_path_| in InitStorage().
+    //
+    // TODO(quiche): Clean this up. crbug.com/527553
+  } else {
+    persistent_profile_path_ = GetFinalStoragePath(storage_directory, name);
+  }
 }
 
 Profile::~Profile() {}
 
 bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
-  FilePath final_path;
-  if (!GetStoragePath(&final_path)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInvalidArguments,
-        base::StringPrintf("Could not set up profile storage for %s:%s",
-                           name_.user.c_str(), name_.identifier.c_str()));
-    return false;
-  }
+  CHECK(!persistent_profile_path_.empty());
   std::unique_ptr<StoreInterface> storage(
-      StoreFactory::GetInstance()->CreateStore(final_path));
+      StoreFactory::GetInstance()->CreateStore(persistent_profile_path_));
   bool already_exists = storage->IsNonEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {
@@ -136,22 +154,14 @@ void Profile::InitStubStorage() {
 }
 
 bool Profile::RemoveStorage(Error* error) {
-  FilePath path;
-
   CHECK(!storage_.get());
+  CHECK(!persistent_profile_path_.empty());
 
-  if (!GetStoragePath(&path)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInvalidArguments,
-        base::StringPrintf("Could get the storage path for %s:%s",
-                           name_.user.c_str(), name_.identifier.c_str()));
-    return false;
-  }
-
-  if (!base::DeleteFile(path, false)) {
+  if (!base::DeleteFile(persistent_profile_path_, false)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
-        base::StringPrintf("Could not remove path %s", path.value().c_str()));
+        base::StringPrintf("Could not remove path %s",
+                           persistent_profile_path_.value().c_str()));
     return false;
   }
 
@@ -366,18 +376,6 @@ bool Profile::Save() {
   return storage_->Flush();
 }
 
-bool Profile::GetStoragePath(FilePath* path) {
-  if (name_.user.empty()) {
-    LOG(ERROR) << "Non-default profiles cannot be stored globally.";
-    return false;
-  }
-  // TODO(petkov): Validate the directory permissions, etc.
-  *path = storage_path_.Append(
-      base::StringPrintf("%s/%s.profile", name_.user.c_str(),
-                         name_.identifier.c_str()));
-  return true;
-}
-
 vector<string> Profile::EnumerateAvailableServices(Error* error) {
   // We should return the Manager's service list if this is the active profile.
   if (manager_->IsActiveProfile(this)) {
@@ -416,6 +414,30 @@ void Profile::HelpRegisterConstDerivedStrings(
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
                 new CustomAccessor<Profile, Strings>(this, get, nullptr)));
+}
+
+// static
+FilePath Profile::GetFinalStoragePath(
+    const FilePath& storage_dir,
+    const Identifier& profile_name) {
+  FilePath base_path;
+  if (profile_name.user.empty()) {  // True for DefaultProfiles.
+    base_path = storage_dir.Append(
+        base::StringPrintf("%s.profile", profile_name.identifier.c_str()));
+  } else {
+    base_path = storage_dir.Append(
+        base::StringPrintf("%s/%s.profile",
+                           profile_name.user.c_str(),
+                           profile_name.identifier.c_str()));
+  }
+
+  // TODO(petkov): Validate the directory permissions, etc.
+
+#if defined(ENABLE_JSON_STORE)
+  return base_path.AddExtension(kFileExtensionJson);
+#else
+  return base_path;
+#endif
 }
 
 }  // namespace shill

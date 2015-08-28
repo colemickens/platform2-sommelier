@@ -47,11 +47,6 @@ class EphemeralProfile : public Profile {
   // Should not be called.
   bool Save() override;
 
-  // Leaves |path| untouched and returns false.
-  bool GetStoragePath(base::FilePath* /*path*/) override {
-    return false;
-  }
-
  private:
   static const char kFriendlyName[];
 

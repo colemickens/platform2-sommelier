@@ -228,10 +228,10 @@ class ManagerTest : public PropertyStoreTest {
                                     const string& service_name) {
     std::unique_ptr<StoreInterface> store(
         StoreFactory::GetInstance()->CreateStore(
-            temp_dir->path().Append(
-                base::StringPrintf("%s/%s.profile", user_identifier.c_str(),
-                                   profile_identifier.c_str()))));
-
+            Profile::GetFinalStoragePath(
+                temp_dir->path(),
+                Profile::Identifier(user_identifier,
+                                    profile_identifier))));
     return store->Open() &&
         store->SetString(service_name, "rather", "irrelevant") &&
         store->Close();
@@ -1148,7 +1148,8 @@ TEST_F(ManagerTest, RemoveProfile) {
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
-      FilePath(storage_path()).Append(string(kProfile0) + ".profile"));
+      Profile::GetFinalStoragePath(
+          FilePath(storage_path()), Profile::Identifier(kProfile0)));
 
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
   ASSERT_TRUE(base::PathExists(profile_path));
@@ -1258,8 +1259,8 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
-      FilePath(storage_path()).Append(string(kProfile0) + ".profile"));
-
+      Profile::GetFinalStoragePath(
+          FilePath(storage_path()), Profile::Identifier(kProfile0)));
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
   ASSERT_TRUE(base::PathExists(profile_path));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));

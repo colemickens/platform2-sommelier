@@ -43,7 +43,7 @@ class DefaultProfile : public Profile {
   DefaultProfile(ControlInterface* control,
                  Metrics* metrics,
                  Manager* manager,
-                 const base::FilePath& storage_path,
+                 const base::FilePath& storage_directory,
                  const std::string& profile_id,
                  const Manager::Properties& manager_props);
   ~DefaultProfile() override;
@@ -70,14 +70,6 @@ class DefaultProfile : public Profile {
 #endif  // DISABLE_WIFI
 
   bool IsDefault() const override { return true; }
-
- protected:
-  // Sets |path| to the persistent store file path for the default, global
-  // profile. Returns true on success, and false if unable to determine an
-  // appropriate file location.
-  //
-  // In this implementation, |name_| is ignored.
-  bool GetStoragePath(base::FilePath* path) override;
 
  private:
   friend class DefaultProfileTest;

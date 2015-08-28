@@ -75,7 +75,7 @@ class Profile : public base::RefCounted<Profile> {
           Metrics* metrics,
           Manager* manager,
           const Identifier& name,
-          const base::FilePath& user_storage_directory,
+          const base::FilePath& storage_directory,
           bool connect_to_rpc);
 
   virtual ~Profile();
@@ -210,23 +210,29 @@ class Profile : public base::RefCounted<Profile> {
   virtual bool IsDefault() const { return false; }
 
  protected:
-  // Protected getters
+  // Returns the persistent store file path for a Profile with the
+  // given |storage_dir| and |profile_name|. Provided as a static
+  // method, so that tests can use this logic without having to
+  // instantiate a Profile.
+  static base::FilePath GetFinalStoragePath(
+      const base::FilePath& storage_dir,
+      const Identifier& profile_name);
+
   Metrics* metrics() const { return metrics_; }
   Manager* manager() const { return manager_; }
   StoreInterface* storage() { return storage_.get(); }
-  const base::FilePath& storage_path() { return storage_path_; }
-
-  // Sets |path| to the persistent store file path for a profile identified by
-  // |name_|. Returns true on success, and false if unable to determine an
-  // appropriate file location. |name_| must be a valid identifier,
-  // possibly parsed and validated through Profile::ParseIdentifier.
-  //
-  // In the default implementation, |name_.user| cannot be empty, because
-  // all regular profiles should be associated with a user.
-  virtual bool GetStoragePath(base::FilePath* path);
+  const base::FilePath& persistent_profile_path() {
+    return persistent_profile_path_;
+  }
+  void set_persistent_profile_path(const base::FilePath& path) {
+    persistent_profile_path_ = path;
+  }
 
  private:
+  friend class ManagerTest;
   friend class ProfileAdaptorInterface;
+  FRIEND_TEST(ManagerTest, CreateDuplicateProfileWithMissingKeyfile);
+  FRIEND_TEST(ManagerTest, RemoveProfile);
   FRIEND_TEST(ProfileTest, DeleteEntry);
   FRIEND_TEST(ProfileTest, GetStoragePath);
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
@@ -243,7 +249,7 @@ class Profile : public base::RefCounted<Profile> {
   Metrics* metrics_;
   Manager* manager_;
   ControlInterface* control_interface_;
-  const base::FilePath storage_path_;  // Path to user profile directory.
+  base::FilePath persistent_profile_path_;
 
   // Shared with |adaptor_| via public getter.
   PropertyStore store_;
