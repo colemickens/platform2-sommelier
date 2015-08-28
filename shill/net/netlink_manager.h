@@ -182,11 +182,11 @@ class SHILL_EXPORT NetlinkManager {
   virtual ~NetlinkManager();
 
   // Performs non-trivial object initialization of the NetlinkManager singleton.
-  bool Init();
+  virtual bool Init();
 
   // Passes the job of waiting for, and the subsequent reading from, the
   // netlink socket to the current message loop.
-  void Start();
+  virtual void Start();
 
   // The following methods deal with the network family table.  This table
   // associates netlink family names with family_ids (also called message

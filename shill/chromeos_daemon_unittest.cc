@@ -88,9 +88,6 @@ class ChromeosDaemonTest : public Test {
 
 #if !defined(DISABLE_WIFI)
     daemon_.netlink_manager_ = &netlink_manager_;
-    const uint16_t kNl80211MessageType = 42;  // Arbitrary.
-    ON_CALL(netlink_manager_, GetFamily(Nl80211Message::kMessageTypeString, _)).
-            WillByDefault(Return(kNl80211MessageType));
 #endif  // DISABLE_WIFI
   }
   void StartDaemon() {
@@ -145,6 +142,14 @@ TEST_F(ChromeosDaemonTest, StartStop) {
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_,  _, _));
   EXPECT_CALL(process_manager_, Init(_));
+#if !defined(DISABLE_WIFI)
+  EXPECT_CALL(netlink_manager_, Init());
+  const uint16_t kNl80211MessageType = 42;  // Arbitrary.
+  EXPECT_CALL(netlink_manager_,
+              GetFamily(Nl80211Message::kMessageTypeString, _))
+      .WillOnce(Return(kNl80211MessageType));
+  EXPECT_CALL(netlink_manager_, Start());
+#endif  // DISABLE_WIFI
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();
   Mock::VerifyAndClearExpectations(metrics_);

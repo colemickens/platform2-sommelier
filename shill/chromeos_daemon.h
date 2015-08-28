@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
+
 #include "shill/glib.h"
 
 #if !defined(DISABLE_WIFI)

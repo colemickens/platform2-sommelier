@@ -21,6 +21,8 @@ class MockNetlinkManager : public NetlinkManager {
   MockNetlinkManager() {}
   ~MockNetlinkManager() override {}
 
+  MOCK_METHOD0(Init, bool());
+  MOCK_METHOD0(Start, void());
   MOCK_METHOD2(
       GetFamily,
       uint16_t(const std::string& family_name,
