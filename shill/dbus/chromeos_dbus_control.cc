@@ -16,10 +16,6 @@
 #include "shill/dbus/chromeos_dhcpcd_proxy.h"
 #include "shill/dbus/chromeos_permission_broker_proxy.h"
 #include "shill/dbus/chromeos_power_manager_proxy.h"
-#include "shill/dbus/chromeos_supplicant_bss_proxy.h"
-#include "shill/dbus/chromeos_supplicant_interface_proxy.h"
-#include "shill/dbus/chromeos_supplicant_network_proxy.h"
-#include "shill/dbus/chromeos_supplicant_process_proxy.h"
 #include "shill/dbus/chromeos_upstart_proxy.h"
 
 #include "shill/dbus/chromeos_dbus_service_watcher.h"
@@ -40,6 +36,16 @@
 #include "shill/dbus/chromeos_modem_proxy.h"
 #include "shill/dbus/chromeos_modem_simple_proxy.h"
 #endif  // DISABLE_CELLULAR
+
+#if !defined(DISABLE_WIFI)
+#include "shill/dbus/chromeos_supplicant_bss_proxy.h"
+#endif  // DISABLE_WIFI
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/dbus/chromeos_supplicant_interface_proxy.h"
+#include "shill/dbus/chromeos_supplicant_network_proxy.h"
+#include "shill/dbus/chromeos_supplicant_process_proxy.h"
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIMAX)
 #include "shill/dbus/chromeos_wimax_device_proxy.h"
