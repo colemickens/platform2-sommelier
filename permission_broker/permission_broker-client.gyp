@@ -9,7 +9,7 @@
           'variables': {
             'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
             'proxy_output_file': 'include/permission_broker/dbus-proxies.h',
-            'mock_output_file': 'include/permission_broker/dbus-mocks.h',
+            'mock_output_file': 'include/permission_broker/dbus-proxy-mocks.h',
             'proxy_path_in_mocks': 'permission_broker/dbus-proxies.h',
           },
           'sources': [

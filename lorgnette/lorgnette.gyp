@@ -31,6 +31,21 @@
     {
       'target_name': 'liblorgnette',
       'type': 'static_library',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/buffet',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+        'exported_deps': [
+          'libpermission_broker-client',
+        ],
+        'deps': ['>@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
       'dependencies': [
         'lorgnette-adaptors',
       ],
@@ -39,18 +54,6 @@
         'epson_probe.cc',
         'firewall_manager.cc',
         'manager.cc',
-      ],
-      'actions': [
-        {
-          'action_name': 'generate-permission_broker-proxies',
-          'variables': {
-            'proxy_output_file': 'include/permission_broker/dbus-proxies.h'
-          },
-          'sources': [
-            '../permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
       ],
     },
     {

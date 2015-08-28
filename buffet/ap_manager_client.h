@@ -8,10 +8,9 @@
 #include <memory>
 #include <string>
 
+#include <apmanager/dbus-proxies.h>
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-
-#include "apmanager/dbus-proxies.h"
 
 namespace buffet {
 

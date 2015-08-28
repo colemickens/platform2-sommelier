@@ -5,7 +5,6 @@
 #include "lorgnette/firewall_manager.h"
 
 #include <base/bind.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
 
 using std::string;
@@ -43,10 +42,7 @@ void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
     return;
   }
 
-  permission_broker_proxy_.reset(
-      new org::chromium::PermissionBrokerProxy(
-          bus,
-          permission_broker::kPermissionBrokerServiceName));
+  permission_broker_proxy_.reset(new org::chromium::PermissionBrokerProxy(bus));
 
   // This will connect the name owner changed signal in DBus object proxy,
   // The callback will be invoked as soon as service is avalilable and will

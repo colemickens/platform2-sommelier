@@ -35,7 +35,7 @@
         'xml2cpp_out_dir': 'include/session_manager/dbus_proxies',
       },
       'sources': [
-        '<(xml2cpp_in_dir)/org.chromium.SessionManagerInterface.xml',
+        '<(xml2cpp_in_dir)/dbus_bindings/org.chromium.SessionManagerInterface.xml',
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
@@ -96,6 +96,27 @@
       'libraries': ['-lrootdev'],
       'dependencies': ['libsession_manager'],
       'sources': ['session_manager_main.cc'],
+    },
+    # session_manager client library generated headers. Used by other daemons to
+    # interact with session_manager.
+    {
+      'target_name': 'libsession_manager-client-headers',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'libsession_manager-client-dbus-proxies',
+          'variables': {
+            'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/session_manager/dbus-proxies.h',
+            'mock_output_file': 'include/session_manager/dbus-proxy-mocks.h',
+            'proxy_path_in_mocks': 'session_manager/dbus-proxies.h',
+          },
+          'sources': [
+            'dbus_bindings/org.chromium.SessionManagerInterface.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+      ]
     },
   ],
   'conditions': [

@@ -86,7 +86,7 @@ weave::NetworkState ShillServiceStateToNetworkState(const string& state) {
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
                          const set<string>& device_whitelist)
     : bus_{bus},
-      manager_proxy_{bus_, ObjectPath{"/"}},
+      manager_proxy_{bus_},
       device_whitelist_{device_whitelist},
       ap_manager_client_{new ApManagerClient(bus)} {
   manager_proxy_.RegisterPropertyChangedSignalHandler(

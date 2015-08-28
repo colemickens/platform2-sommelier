@@ -16,7 +16,9 @@
       'variables': {
         'exported_deps': [
           'libchrome-<(libbase_ver)',
+          'libdebugd-client',
           'libpcrecpp',
+          'libsession_manager-client',
         ],
         'deps': ['<@(exported_deps)'],
       },
@@ -35,28 +37,6 @@
         'udev_collector.cc',
         'unclean_shutdown_collector.cc',
         'user_collector.cc',
-      ],
-      'actions': [
-        {
-          'action_name': 'generate-session-manager-proxies',
-          'variables': {
-            'proxy_output_file': 'include/session_manager/dbus-proxies.h'
-          },
-          'sources': [
-            '../login_manager/org.chromium.SessionManagerInterface.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-        {
-          'action_name': 'generate-debugd-proxies',
-          'variables': {
-            'proxy_output_file': 'include/debugd/dbus-proxies.h'
-          },
-          'sources': [
-            '../debugd/share/org.chromium.debugd.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
       ],
     },
     {

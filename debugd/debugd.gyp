@@ -43,7 +43,7 @@
         'xml2cpp_out_dir': 'include/debugd/dbus_adaptors',
       },
       'sources': [
-        'share/org.chromium.debugd.xml',
+        'dbus_bindings/org.chromium.debugd.xml',
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
     },

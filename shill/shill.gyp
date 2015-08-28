@@ -161,6 +161,33 @@
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
+    # shill client library generated headers. Used by other daemons to
+    # interact with shill.
+    {
+      'target_name': 'libshill-client-headers',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'libshill-client-dbus-proxies',
+          'variables': {
+            'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/shill/dbus-proxies.h',
+            'mock_output_file': 'include/shill/dbus-proxy-mocks.h',
+            'proxy_path_in_mocks': 'shill/dbus-proxies.h',
+          },
+          'sources': [
+            'dbus_bindings/org.chromium.flimflam.Device.xml',
+            'dbus_bindings/org.chromium.flimflam.IPConfig.xml',
+            'dbus_bindings/org.chromium.flimflam.Manager.xml',
+            'dbus_bindings/org.chromium.flimflam.Profile.xml',
+            'dbus_bindings/org.chromium.flimflam.Service.xml',
+            'dbus_bindings/org.chromium.flimflam.Task.xml',
+            'dbus_bindings/org.chromium.flimflam.ThirdPartyVpn.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+      ]
+    },
     {
       'target_name': 'shim-protos',
       'type': 'static_library',
@@ -365,6 +392,20 @@
             'dbus/chromeos_third_party_vpn_dbus_adaptor.cc',
             'dbus/chromeos_upstart_proxy.cc',
           ],
+          'variables': {
+            'exported_deps': [
+              'libpermission_broker-client',
+              'libpower_manager-client',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'all_dependent_settings': {
+            'variables': {
+              'deps': [
+                '<@(exported_deps)',
+              ],
+            },
+          },
           'actions': [
             {
               'action_name': 'generate-dhcpcd-proxies',
@@ -373,26 +414,6 @@
               },
               'sources': [
                 'dbus_bindings/dhcpcd.xml',
-              ],
-              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-            },
-            {
-              'action_name': 'generate-permission-broker-proxies',
-              'variables': {
-                'proxy_output_file': 'include/permission-broker/dbus-proxies.h',
-              },
-              'sources': [
-                '../permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
-              ],
-              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-            },
-            {
-              'action_name': 'generate-power-manager-proxies',
-              'variables': {
-                'proxy_output_file': 'include/power-manager/dbus-proxies.h',
-              },
-              'sources': [
-                '../power_manager/dbus_bindings/org.chromium.PowerManager.xml',
               ],
               'includes': ['../common-mk/generate-dbus-proxies.gypi'],
             },
@@ -1022,22 +1043,11 @@
         {
           'target_name': 'shill_setup_wifi',
           'type': 'executable',
+          'dependencies': [
+            'libshill-client-headers',
+          ],
           'sources': [
             'setup_wifi/main.cc'
-          ],
-          'actions': [
-            {
-              'action_name': 'generate-shill-proxies',
-              'variables': {
-                'proxy_output_file':
-                    'include/shill/dbus_proxies/shill_proxies.h',
-              },
-              'sources': [
-                'dbus_bindings/org.chromium.flimflam.Manager.xml',
-                'dbus_bindings/org.chromium.flimflam.Service.xml',
-              ],
-              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-            },
           ],
         },
       ],

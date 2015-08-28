@@ -14,8 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
-#include "session_manager/dbus-proxies.h"
+#include <session_manager/dbus-proxies.h>
 
 // User crash collector.
 class CrashCollector {

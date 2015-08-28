@@ -1,0 +1,6 @@
+include_dir=@INCLUDE_DIR@
+
+Name: libdebugd-client
+Version: 1.0
+Description: debugd client interface library
+Cflags: -I${include_dir}

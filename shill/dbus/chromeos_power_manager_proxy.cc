@@ -5,7 +5,6 @@
 #include "shill/dbus/chromeos_power_manager_proxy.h"
 
 #include <base/bind.h>
-#include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/message_lite.h>
 
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -50,10 +49,7 @@ ChromeosPowerManagerProxy::ChromeosPowerManagerProxy(
       PowerManagerProxyDelegate* delegate,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback)
-    : proxy_(
-          new org::chromium::PowerManagerProxy(
-              bus,
-              power_manager::kPowerManagerServiceName)),
+    : proxy_(new org::chromium::PowerManagerProxy(bus)),
       dispatcher_(dispatcher),
       delegate_(delegate),
       service_appeared_callback_(service_appeared_callback),

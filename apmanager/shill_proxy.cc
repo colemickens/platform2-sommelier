@@ -12,18 +12,13 @@ using std::string;
 
 namespace apmanager {
 
-// static.
-const char ShillProxy::kManagerPath[] = "/";
-
 ShillProxy::ShillProxy() {}
 
 ShillProxy::~ShillProxy() {}
 
 void ShillProxy::Init(const scoped_refptr<dbus::Bus>& bus) {
   CHECK(!manager_proxy_) << "Already init";
-  manager_proxy_.reset(
-      new org::chromium::flimflam::ManagerProxy(
-          bus, shill::kFlimflamServiceName, dbus::ObjectPath(kManagerPath)));
+  manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus));
   // This will connect the name owner changed signal in DBus object proxy,
   // The callback will be invoked as soon as service is avalilable. and will
   // be cleared after it is invoked. So this will be an one time callback.

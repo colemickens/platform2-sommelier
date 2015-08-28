@@ -15,8 +15,8 @@
 #include <vector>
 
 #include <base/compiler_specific.h>
+#include <power_manager/dbus-proxies.h>
 
-#include "power-manager/dbus-proxies.h"
 #include "shill/power_manager_proxy_interface.h"
 
 namespace shill {

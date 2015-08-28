@@ -7,8 +7,6 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/dbus/service_constants.h>
-
 #include "shill/logging.h"
 
 namespace shill {
@@ -18,9 +16,7 @@ const int ChromeosPermissionBrokerProxy::kInvalidHandle = -1;
 
 ChromeosPermissionBrokerProxy::ChromeosPermissionBrokerProxy(
     const scoped_refptr<dbus::Bus>& bus)
-    : proxy_(
-        new org::chromium::PermissionBrokerProxy(
-            bus, permission_broker::kPermissionBrokerServiceName)),
+    : proxy_(new org::chromium::PermissionBrokerProxy(bus)),
       lifeline_read_fd_(kInvalidHandle),
       lifeline_write_fd_(kInvalidHandle) {
   // TODO(zqiu): register handler for service name owner changes, to

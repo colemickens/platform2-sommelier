@@ -10,7 +10,7 @@
 
 #include <base/macros.h>
 
-#include "permission-broker/dbus-proxies.h"
+#include "permission_broker/dbus-proxies.h"
 #include "shill/permission_broker_proxy_interface.h"
 
 namespace shill {

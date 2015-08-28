@@ -13,8 +13,7 @@
 #include <chromeos/any.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/dbus/service_constants.h>
-
-#include "shill/dbus_proxies/shill_proxies.h"
+#include <shill/dbus-proxies.h>
 
 namespace {
 
@@ -54,9 +53,7 @@ class MyClient : public chromeos::DBusDaemon {
 
   bool ConfigureAndConnect() {
     std::unique_ptr<org::chromium::flimflam::ManagerProxy> shill_manager_proxy(
-        new org::chromium::flimflam::ManagerProxy(
-            bus_, shill::kFlimflamServiceName,
-            dbus::ObjectPath(shill::kFlimflamServicePath)));
+        new org::chromium::flimflam::ManagerProxy(bus_));
 
     dbus::ObjectPath created_service;
     chromeos::ErrorPtr configure_error;
@@ -68,8 +65,8 @@ class MyClient : public chromeos::DBusDaemon {
 
     chromeos::ErrorPtr connect_error;
     std::unique_ptr<org::chromium::flimflam::ServiceProxy> shill_service_proxy(
-        new org::chromium::flimflam::ServiceProxy(
-            bus_, shill::kFlimflamServiceName, created_service));
+        new org::chromium::flimflam::ServiceProxy(bus_,
+                                                  created_service));
     if (!shill_service_proxy->Connect(&connect_error)) {
       LOG(ERROR) << "Connect service failed";
       return false;

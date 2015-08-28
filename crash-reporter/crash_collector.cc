@@ -24,7 +24,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/cryptohome.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/process.h>
 
@@ -111,9 +110,7 @@ void CrashCollector::SetUpDBus() {
   CHECK(bus_->Connect());
 
   session_manager_proxy_.reset(
-      new org::chromium::SessionManagerInterfaceProxy(
-          bus_,
-          login_manager::kSessionManagerServiceName));
+      new org::chromium::SessionManagerInterfaceProxy(bus_));
 }
 
 int CrashCollector::WriteNewFile(const FilePath &filename,

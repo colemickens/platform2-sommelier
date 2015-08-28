@@ -10,8 +10,7 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-
-#include "shill/dbus-proxies.h"
+#include <shill/dbus-proxies.h>
 
 // Proxy for shill "org.chromium.flimflam" DBus service.
 namespace apmanager {
@@ -32,8 +31,6 @@ class ShillProxy {
   void OnServiceAvailable(bool service_available);
   void OnServiceNameChanged(const std::string& old_owner,
                             const std::string& new_owner);
-
-  static const char kManagerPath[];
 
   // DBus proxy for shill manager.
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;

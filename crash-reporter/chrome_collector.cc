@@ -16,7 +16,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/data_encoding.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/process.h>
 #include <chromeos/syslog_logging.h>
 
@@ -198,8 +197,7 @@ bool ChromeCollector::HandleCrash(const FilePath &file_path,
 void ChromeCollector::SetUpDBus() {
   CrashCollector::SetUpDBus();
 
-  debugd_proxy_.reset(
-      new org::chromium::debugdProxy(bus_, debugd::kDebugdServiceName));
+  debugd_proxy_.reset(new org::chromium::debugdProxy(bus_));
 }
 
 bool ChromeCollector::ParseCrashLog(const std::string &data,

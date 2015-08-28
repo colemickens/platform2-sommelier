@@ -19,6 +19,8 @@
         'dbus_adaptors_out_dir': 'include/buffet',
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'exported_deps': [
+          'libshill-client',
+          'libapmanager-client',
           'libweave-<(libbase_ver)',
         ],
         'deps': ['>@(exported_deps)'],
@@ -73,35 +75,6 @@
           'sources': [
             'dbus_bindings/org.chromium.Buffet.Command.xml',
             'dbus_bindings/org.chromium.Buffet.Manager.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-        {
-          # Import D-Bus bindings from shill.
-          'action_name': 'generate-shill-proxies',
-          'variables': {
-            'dbus_service_config': '../shill/dbus_bindings/dbus-service-config.json',
-            'proxy_output_file': 'include/shill/dbus-proxies.h'
-          },
-          'sources': [
-            '../shill/dbus_bindings/org.chromium.flimflam.Device.xml',
-            '../shill/dbus_bindings/org.chromium.flimflam.Manager.xml',
-            '../shill/dbus_bindings/org.chromium.flimflam.Service.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-        {
-          # Import D-Bus bindings from apmanager.
-          'action_name': 'generate-apmanager-proxies',
-          'variables': {
-            'dbus_service_config': '../apmanager/dbus_bindings/dbus-service-config.json',
-            'proxy_output_file': 'include/apmanager/dbus-proxies.h'
-          },
-          'sources': [
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Config.xml',
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Device.xml',
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Manager.xml',
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Service.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },

@@ -1,6 +1,6 @@
 # Design doc: debugd
 
-[iface]: ../share/org.chromium.debugd.xml
+[iface]: ../dbus_bindings/org.chromium.debugd.xml
 [impl]: implementation
 
 ## Objective:
@@ -36,9 +36,9 @@ its helpers.
 
 The debug daemon will present its functionality as a single object at a
 fixed path `/org/chromium/debugd` implementing the interface described
-in [`/share/org.chromium.debugd.xml`][iface]. All the debugd methods can be
-synchronous, since it is used only to fetch debugging info - we don't
-need to worry about concurrent users since it is unlikely that the user
+in [`/dbus_bindings/org.chromium.debugd.xml`][iface]. All the debugd
+methods can be synchronous, since it is used only to fetch debugging info - we
+don't need to worry about concurrent users since it is unlikely that the user
 will run two debug commands from two different crosh instances at once,
 and even if they do, the commands will be queued. Making `chrome://system`
 slower is something we do need to be concerned about. An example method
