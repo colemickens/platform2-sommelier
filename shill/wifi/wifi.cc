@@ -2921,4 +2921,12 @@ void WiFi::ReportConnectedToServiceAfterWake() {
       IsConnectedToCurrentService());
 }
 
+bool WiFi::RequestRoam(const std::string& addr, Error* error) {
+  if (!supplicant_interface_proxy_->Roam(addr)) {
+    LOG(WARNING) << "Request roam to " << addr << " failed.";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace shill

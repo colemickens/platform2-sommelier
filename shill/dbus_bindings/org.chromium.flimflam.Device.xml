@@ -68,6 +68,9 @@
 			<arg type="s" direction="in"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
+		<method name="RequestRoam">
+			<arg type="s" direction="in"/>
+		</method>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>

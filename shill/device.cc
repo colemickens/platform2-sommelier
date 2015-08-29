@@ -1931,4 +1931,8 @@ string Device::MakeStringFromHardwareAddress(
                       address_bytes[3], address_bytes[4], address_bytes[5]);
 }
 
+bool Device::RequestRoam(const std::string& addr, Error* error) {
+  return false;
+}
+
 }  // namespace shill

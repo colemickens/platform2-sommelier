@@ -86,6 +86,9 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   void ResetByteCounters(DBus::Error& error) override;  // NOLINT
   void SetCarrier(const std::string& carrier,
                   DBus::Error& error) override;  // NOLINT
+  void RequestRoam(const std::string& addr,
+                   DBus::Error& error) override;  // NOLINT
+
 
   void AddWakeOnPacketConnection(const std::string& ip_endpoint,
                                  DBus::Error& error) override;  // NOLINT

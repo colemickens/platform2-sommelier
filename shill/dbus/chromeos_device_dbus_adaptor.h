@@ -89,6 +89,8 @@ class ChromeosDeviceDBusAdaptor
                             std::string* out_state) override;
   void Reset(DBusMethodResponsePtr<> response) override;
   bool ResetByteCounters(chromeos::ErrorPtr* error) override;
+  bool RequestRoam(chromeos::ErrorPtr* error,
+                   const std::string& addr) override;
   void SetCarrier(DBusMethodResponsePtr<> response,
                   const std::string& carrierr) override;
   bool AddWakeOnPacketConnection(chromeos::ErrorPtr* error,

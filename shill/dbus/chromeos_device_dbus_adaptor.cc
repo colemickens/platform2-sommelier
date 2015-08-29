@@ -272,6 +272,14 @@ void ChromeosDeviceDBusAdaptor::SetCarrier(DBusMethodResponsePtr<> response,
   ReturnResultOrDefer(callback, e);
 }
 
+bool ChromeosDeviceDBusAdaptor::RequestRoam(chromeos::ErrorPtr* error,
+                                            const std::string& addr) {
+  SLOG(this, 2) << __func__ << ": " << addr;
+  Error e;
+  device_->RequestRoam(addr, &e);
+  return !e.ToChromeosError(error);
+}
+
 bool ChromeosDeviceDBusAdaptor::AddWakeOnPacketConnection(
     chromeos::ErrorPtr* error, const string& ip_endpoint) {
   SLOG(this, 2) << __func__;

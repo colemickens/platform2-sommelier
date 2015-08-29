@@ -232,6 +232,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Passed as a callback to |wake_on_wifi_| where it is used.
   void RemoveSupplicantNetworks();
 
+  bool RequestRoam(const std::string& addr, Error* error) override;
+
  private:
   enum ScanMethod {
     kScanMethodNone,

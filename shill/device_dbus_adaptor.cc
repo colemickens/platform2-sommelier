@@ -283,4 +283,12 @@ void DeviceDBusAdaptor::RemoveAllWakeOnPacketConnections(
   e.ToDBusError(&error);
 }
 
+void DeviceDBusAdaptor::RequestRoam(const string& addr,
+                                    DBus::Error& error) {  // NOLINT
+  SLOG(this, 2) << __func__ << ": " << addr;
+  Error e;
+  device_->RequestRoam(addr, &e);
+  e.ToDBusError(&error);
+}
+
 }  // namespace shill

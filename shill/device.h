@@ -339,6 +339,10 @@ class Device : public base::RefCounted<Device> {
   static std::string MakeStringFromHardwareAddress(
       const std::vector<uint8_t>& address_data);
 
+  // Request the WiFi device to roam to AP with |addr|.
+  // This call will send Roam command to wpa_supplicant.
+  virtual bool RequestRoam(const std::string& addr, Error* error);
+
  protected:
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;
