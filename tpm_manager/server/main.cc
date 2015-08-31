@@ -18,8 +18,10 @@
 #include "tpm_manager/server/tpm_manager_service.h"
 
 #if USE_TPM2
+#include "tpm_manager/server/tpm2_initializer_impl.h"
 #include "tpm_manager/server/tpm2_status_impl.h"
 #else
+#include "tpm_manager/server/tpm_initializer_impl.h"
 #include "tpm_manager/server/tpm_status_impl.h"
 #endif
 
@@ -37,13 +39,20 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
     local_data_store_.reset(new tpm_manager::LocalDataStoreImpl());
 #if USE_TPM2
     tpm_status_.reset(new tpm_manager::Tpm2StatusImpl);
+    tpm_initializer_.reset(new tpm_manager::Tpm2InitializerImpl(
+        local_data_store_.get(),
+        tpm_status_.get()));
 #else
     tpm_status_.reset(new tpm_manager::TpmStatusImpl);
+    tpm_initializer_.reset(new tpm_manager::TpmInitializerImpl(
+        local_data_store_.get(),
+        tpm_status_.get()));
 #endif
     tpm_manager_service_.reset(new tpm_manager::TpmManagerService(
         command_line->HasSwitch(kWaitForOwnershipTriggerSwitch),
         local_data_store_.get(),
-        tpm_status_.get()));
+        tpm_status_.get(),
+        tpm_initializer_.get()));
   }
 
  protected:
@@ -66,6 +75,7 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
  private:
   std::unique_ptr<tpm_manager::LocalDataStore> local_data_store_;
   std::unique_ptr<tpm_manager::TpmStatus> tpm_status_;
+  std::unique_ptr<tpm_manager::TpmInitializer> tpm_initializer_;
   std::unique_ptr<tpm_manager::TpmManagerInterface> tpm_manager_service_;
   std::unique_ptr<tpm_manager::DBusService> dbus_service_;
 

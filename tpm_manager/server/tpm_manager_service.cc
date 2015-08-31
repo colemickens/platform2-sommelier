@@ -12,9 +12,11 @@ namespace tpm_manager {
 
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
                                      LocalDataStore* local_data_store,
-                                     TpmStatus* tpm_status)
+                                     TpmStatus* tpm_status,
+                                     TpmInitializer* tpm_initializer)
     : local_data_store_(local_data_store),
       tpm_status_(tpm_status),
+      tpm_initializer_(tpm_initializer),
       wait_for_ownership_(wait_for_ownership),
       weak_factory_(this) {
 }
@@ -106,6 +108,7 @@ void TpmManagerService::TakeOwnershipTask(
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
+  result->set_status(STATUS_SUCCESS);
 }
 
 }  // namespace tpm_manager

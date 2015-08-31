@@ -22,11 +22,14 @@
 namespace tpm_manager {
 
 const char kGetTpmStatusCommand[] = "status";
+const char kTakeOwnershipCommand[] = "take_ownership";
 const char kUsage[] = R"(
 Usage: tpm_manager_client <command> [<args>]
 Commands:
   status
       Prints the current status of the Tpm.
+  take_ownership
+      Takes ownership of the Tpm with a random password.
 )";
 
 using ClientLoopBase = chromeos::Daemon;
@@ -69,6 +72,9 @@ class ClientLoop : public ClientLoopBase {
     } else if (command_line->HasSwitch(kGetTpmStatusCommand)) {
       task = base::Bind(&ClientLoop::HandleGetTpmStatus,
                         weak_factory_.GetWeakPtr());
+    } else if (command_line->HasSwitch(kTakeOwnershipCommand)) {
+      task = base::Bind(&ClientLoop::HandleTakeOwnership,
+                        weak_factory_.GetWeakPtr());
     } else {
       // Command line arguments did not match any valid commands.
       LOG(ERROR) << "No Valid Command selected.";
@@ -93,6 +99,22 @@ class ClientLoop : public ClientLoopBase {
         request,
         base::Bind(&ClientLoop::PrintGetTpmStatusReply,
                    weak_factory_.GetWeakPtr()));
+  }
+
+  void PrintTakeOwnershipReply(const TakeOwnershipReply& reply) {
+    if (reply.has_status() && reply.status() == STATUS_NOT_AVAILABLE) {
+      LOG(INFO) << "tpm_managerd is not available.";
+    } else {
+      LOG(INFO) << "TakeOwnershipReply: " << GetProtoDebugString(reply);
+    }
+    Quit();
+  }
+
+  void HandleTakeOwnership() {
+    TakeOwnershipRequest request;
+    tpm_manager_->TakeOwnership(request,
+                                base::Bind(&ClientLoop::PrintTakeOwnershipReply,
+                                           weak_factory_.GetWeakPtr()));
   }
 
   // Pointer to a DBus proxy to tpm_managerd.

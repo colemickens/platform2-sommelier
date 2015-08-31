@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include <base/stl_util.h>
+#include <base/logging.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 

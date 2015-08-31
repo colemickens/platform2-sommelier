@@ -5,9 +5,10 @@
 #ifndef TPM_MANAGER_SERVER_TPM_CONNECTION_H_
 #define TPM_MANAGER_SERVER_TPM_CONNECTION_H_
 
+#include <string>
+
 #include <base/macros.h>
 #include <trousers/scoped_tss_type.h>
-
 
 namespace tpm_manager {
 
@@ -16,13 +17,17 @@ class TpmConnection {
   TpmConnection() = default;
   ~TpmConnection() = default;
 
-  // This method tries to get a handle to the TPM. Returns 0 on failure.
-  TSS_HTPM GetTpm();
-
   // This method returns a handle to the current Tpm context.
   // Note: this method still retains ownership of the context. If this class
   // is deleted, the context handle will be invalidated. Returns 0 on failure.
   TSS_HCONTEXT GetContext();
+
+  // This method tries to get a handle to the TPM. Returns 0 on failure.
+  TSS_HTPM GetTpm();
+
+  // This method tries to get a handle to the TPM and with the given owner
+  // password. Returns 0 on failure.
+  TSS_HTPM GetTpmWithAuth(const std::string& owner_password);
 
  private:
   // This method connects to the Tpm. Returns true on success.

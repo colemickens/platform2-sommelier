@@ -43,10 +43,11 @@ class TpmManagerService : public TpmManagerInterface {
  public:
   // If |wait_for_ownership| is set, TPM initialization will be postponed until
   // an explicit TakeOwnership request is received. Does not take ownership of
-  // |local_data_store| or |tpm_status|.
+  // |local_data_store|, |tpm_status| or |tpm_initializer|.
   explicit TpmManagerService(bool wait_for_ownership,
                              LocalDataStore* local_data_store,
-                             TpmStatus* tpm_status);
+                             TpmStatus* tpm_status,
+                             TpmInitializer* tpm_initializer);
   ~TpmManagerService() override = default;
 
   // TpmManagerInterface methods.
@@ -55,11 +56,6 @@ class TpmManagerService : public TpmManagerInterface {
                     const GetTpmStatusCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
-
-  // Mutators useful for injecting dependencies for testing.
-  void set_tpm_initializer(TpmInitializer* initializer) {
-    tpm_initializer_ = initializer;
-  }
 
  private:
   // A relay callback which allows the use of weak pointer semantics for a reply
@@ -88,8 +84,8 @@ class TpmManagerService : public TpmManagerInterface {
   void InitializeTask();
 
   LocalDataStore* local_data_store_;
-  TpmInitializer* tpm_initializer_{nullptr};
   TpmStatus* tpm_status_;
+  TpmInitializer* tpm_initializer_;
   // Whether to wait for an explicit call to 'TakeOwnership' before initializing
   // the TPM. Normally tracks the --wait_for_ownership command line option.
   bool wait_for_ownership_;

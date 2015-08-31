@@ -5,10 +5,13 @@
 #include "tpm_manager/server/tpm_connection.h"
 
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
+
+#include "tpm_manager/server/tpm_util.h"
 
 namespace {
 
@@ -19,9 +22,12 @@ const int kTpmConnectIntervalMs = 100;
 
 namespace tpm_manager {
 
-#define TPM_LOG(severity, result) \
-  LOG(severity) << "TPM error 0x" << std::hex << result \
-                << " (" << Trspi_Error_String(result) << "): "
+TSS_HCONTEXT TpmConnection::GetContext() {
+  if (!ConnectContextIfNeeded()) {
+    return 0;
+  }
+  return context_.value();
+}
 
 TSS_HTPM TpmConnection::GetTpm() {
   if (!ConnectContextIfNeeded()) {
@@ -37,11 +43,28 @@ TSS_HTPM TpmConnection::GetTpm() {
   return tpm_handle;
 }
 
-TSS_HCONTEXT TpmConnection::GetContext() {
-  if (!ConnectContextIfNeeded()) {
+TSS_HTPM TpmConnection::GetTpmWithAuth(const std::string& owner_password) {
+  TSS_HTPM tpm_handle = GetTpm();
+  if (tpm_handle == 0) {
     return 0;
   }
-  return context_.value();
+  TSS_RESULT result;
+  TSS_HPOLICY tpm_usage_policy;
+  if (TPM_ERROR(result = Tspi_GetPolicyObject(tpm_handle,
+                                              TSS_POLICY_USAGE,
+                                              &tpm_usage_policy))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+    return false;
+  }
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
+      tpm_usage_policy,
+      TSS_SECRET_MODE_PLAIN,
+      owner_password.size(),
+      reinterpret_cast<BYTE *>(const_cast<char*>(owner_password.data()))))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
+    return false;
+  }
+  return tpm_handle;
 }
 
 bool TpmConnection::ConnectContextIfNeeded() {

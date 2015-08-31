@@ -9,6 +9,7 @@
       'deps': [  # This is a list of pkg-config dependencies
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'openssl',
         'protobuf-lite',
       ],
     },
@@ -61,12 +62,14 @@
       'sources': [
         'server/dbus_service.cc',
         'server/local_data_store_impl.cc',
+        'server/openssl_crypto_util.cc',
         'server/tpm_manager_service.cc',
       ],
       'conditions': [
         ['USE_tpm2 == 1', {
           'sources': [
             'server/tpm2_status_impl.cc',
+            'server/tpm2_initializer_impl.cc',
           ],
           'all_dependent_settings': {
             'libraries': [
@@ -78,6 +81,7 @@
           'sources': [
             'server/tpm_connection.cc',
             'server/tpm_status_impl.cc',
+            'server/tpm_initializer_impl.cc',
           ],
           'all_dependent_settings': {
             'libraries': [
@@ -143,6 +147,7 @@
                 '../trunks/mock_tpm_utility.cc',
                 '../trunks/trunks_factory_for_test.cc',
                 'server/tpm2_status_test.cc',
+                'server/tpm2_initializer_test.cc',
               ],
             }],
           ],
