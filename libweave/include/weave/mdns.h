@@ -15,6 +15,8 @@ namespace weave {
 class Mdns {
  public:
   // Publishes new service on mDns or updates existing one.
+  // TODO(vitlaybuka): txt -> vector<string>
+  // TODO(vitlaybuka): service_name -> service_type
   virtual void PublishService(
       const std::string& service_name,
       uint16_t port,
