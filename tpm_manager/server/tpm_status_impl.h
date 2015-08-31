@@ -7,12 +7,14 @@
 
 #include "tpm_manager/server/tpm_status.h"
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
+
+#include <tpm_manager/server/tpm_connection.h>
 
 namespace tpm_manager {
 
@@ -40,12 +42,8 @@ class TpmStatusImpl : public TpmStatus {
                      uint32_t sub_capability,
                      std::string* data,
                      TSS_RESULT* tpm_result);
-  // This method tries to get a handle to the TPM. Returns 0 on failure.
-  TSS_HTPM GetTpm();
-  // This method connects to the Tpm. Returns true on success.
-  bool ConnectContext();
 
-  trousers::ScopedTssContext context_;
+  TpmConnection tpm_connection_;
   bool is_enabled_{false};
   bool is_owned_{false};
   bool is_enable_initialized_{false};

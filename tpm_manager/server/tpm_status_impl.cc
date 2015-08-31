@@ -6,21 +6,12 @@
 
 #include <vector>
 
-#include <base/threading/platform_thread.h>
 #include <base/stl_util.h>
-#include <base/time/time.h>
-#include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
 namespace tpm_manager {
 
-#define TPM_LOG(severity, result) \
-  LOG(severity) << "TPM error 0x" << std::hex << result \
-                << " (" << Trspi_Error_String(result) << "): "
-
-const unsigned int kTpmConnectRetries = 10;
-const unsigned int kTpmConnectIntervalMs = 100;
 // Minimum size of TPM_DA_INFO struct.
 const size_t kMinimumDaInfoSize = 21;
 
@@ -89,12 +80,12 @@ bool TpmStatusImpl::GetCapability(uint32_t capability,
                                   std::string* data,
                                   TSS_RESULT* tpm_result) {
   CHECK(data);
-  TSS_HTPM tpm_handle = GetTpm();
+  TSS_HTPM tpm_handle = tpm_connection_.GetTpm();
   if (tpm_handle == 0) {
     return false;
   }
   uint32_t length = 0;
-  trousers::ScopedTssMemory buf(context_.value());
+  trousers::ScopedTssMemory buf(tpm_connection_.GetContext());
   TSS_RESULT result = Tspi_TPM_GetCapability(
       tpm_handle, capability, sizeof(uint32_t),
       reinterpret_cast<BYTE*>(&sub_capability),
@@ -103,52 +94,11 @@ bool TpmStatusImpl::GetCapability(uint32_t capability,
     *tpm_result = result;
   }
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Error getting TPM capability data.";
+    LOG(ERROR) << "Error getting TPM capability data.";
     return false;
   }
   data->assign(buf.value(), buf.value() + length);
   return true;
-}
-
-TSS_HTPM TpmStatusImpl::GetTpm() {
-  if (context_.value() == 0 && !ConnectContext()) {
-    LOG(ERROR) << "Cannot get a handle to the TPM without context.";
-    return 0;
-  }
-  TSS_RESULT result;
-  TSS_HTPM tpm_handle;
-  if (TPM_ERROR(result = Tspi_Context_GetTpmObject(context_.value(),
-                                                   &tpm_handle))) {
-    TPM_LOG(ERROR, result) << "Error getting a handle to the TPM.";
-    return 0;
-  }
-  return tpm_handle;
-}
-
-bool TpmStatusImpl::ConnectContext() {
-  if (context_.value() != 0) {
-    return true;
-  }
-  TSS_RESULT result;
-  if (TPM_ERROR(result = Tspi_Context_Create(context_.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error connecting to TPM.";
-    return false;
-  }
-  // We retry on failure. It might be that tcsd is starting up.
-  for (unsigned int i = 0; i < kTpmConnectRetries; i++) {
-    if (TPM_ERROR(result = Tspi_Context_Connect(context_, nullptr))) {
-      if (ERROR_CODE(result) == TSS_E_COMM_FAILURE) {
-        base::PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));
-      } else {
-        TPM_LOG(ERROR, result) << "Error connecting to TPM.";
-        return false;
-      }
-    } else {
-      break;
-    }
-  }
-  return (context_.value() != 0);
 }
 
 }  // namespace tpm_manager

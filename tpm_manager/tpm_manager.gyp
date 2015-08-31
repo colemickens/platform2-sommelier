@@ -76,6 +76,7 @@
         }],
         ['USE_tpm2 == 0', {
           'sources': [
+            'server/tpm_connection.cc',
             'server/tpm_status_impl.cc',
           ],
           'all_dependent_settings': {
