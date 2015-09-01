@@ -25,7 +25,7 @@ Device::Device(Manager* manager, const string& device_name)
       manager_(manager),
       supports_ap_mode_(false) {
   SetDeviceName(device_name);
-  SetInUsed(false);
+  SetInUse(false);
 }
 
 Device::~Device() {}
@@ -140,7 +140,7 @@ void Device::ParseWiphyCapability(const shill::Nl80211Message& msg) {
 }
 
 bool Device::ClaimDevice(bool full_control) {
-  if (GetInUsed()) {
+  if (GetInUse()) {
     LOG(ERROR) << "Failed to claim device [" << GetDeviceName()
                << "]: already in used.";
     return false;
@@ -155,12 +155,12 @@ bool Device::ClaimDevice(bool full_control) {
     manager_->ClaimInterface(GetPreferredApInterface());
     claimed_interfaces_.insert(GetPreferredApInterface());
   }
-  SetInUsed(true);
+  SetInUse(true);
   return true;
 }
 
 bool Device::ReleaseDevice() {
-  if (!GetInUsed()) {
+  if (!GetInUse()) {
     LOG(ERROR) << "Failed to release device [" << GetDeviceName()
                << "]: not currently in-used.";
     return false;
@@ -170,7 +170,7 @@ bool Device::ReleaseDevice() {
     manager_->ReleaseInterface(interface);
   }
   claimed_interfaces_.clear();
-  SetInUsed(false);
+  SetInUse(false);
   return true;
 }
 

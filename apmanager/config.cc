@@ -359,7 +359,7 @@ bool Config::AppendInterface(ErrorPtr* error,
           interface.c_str());
       return false;
     }
-    if (device_->GetInUsed()) {
+    if (device_->GetInUse()) {
       chromeos::Error::AddToPrintf(
           error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
           "Device [%s] for interface [%s] already in use",

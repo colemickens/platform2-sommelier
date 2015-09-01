@@ -48,11 +48,11 @@ TEST_F(ManagerTest, GetAvailableDevice) {
   EXPECT_EQ(device0, manager_.GetAvailableDevice());
 
   // Set first one to be in used, should return the non-used device.
-  device0->SetInUsed(true);
+  device0->SetInUse(true);
   EXPECT_EQ(device1, manager_.GetAvailableDevice());
 
   // Both devices are in used, should return a nullptr.
-  device1->SetInUsed(true);
+  device1->SetInUse(true);
   EXPECT_EQ(nullptr, manager_.GetAvailableDevice());
 }
 

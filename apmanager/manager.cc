@@ -110,7 +110,7 @@ bool Manager::RemoveService(chromeos::ErrorPtr* error,
 scoped_refptr<Device> Manager::GetAvailableDevice() {
   for (const auto& device : devices_) {
     // Look for an unused device with AP interface mode support.
-    if (!device->GetInUsed() && !device->GetPreferredApInterface().empty()) {
+    if (!device->GetInUse() && !device->GetPreferredApInterface().empty()) {
       return device;
     }
   }
