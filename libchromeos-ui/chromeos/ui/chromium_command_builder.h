@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBCHROMEOS_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
-#define LIBCHROMEOS_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
+#ifndef LIBCHROMEOS_UI_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
+#define LIBCHROMEOS_UI_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
 
 #include <sys/types.h>
 
@@ -180,4 +180,4 @@ class ChromiumCommandBuilder {
 }  // namespace ui
 }  // namespace chromeos
 
-#endif  // LIBCHROMEOS_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
+#endif  // LIBCHROMEOS_UI_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_

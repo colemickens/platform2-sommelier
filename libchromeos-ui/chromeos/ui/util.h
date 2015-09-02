@@ -8,8 +8,8 @@
 
 #include <base/files/file_path.h>
 
-#ifndef LIBCHROMEOS_CHROMEOS_UI_UTIL_H_
-#define LIBCHROMEOS_CHROMEOS_UI_UTIL_H_
+#ifndef LIBCHROMEOS_UI_CHROMEOS_UI_UTIL_H_
+#define LIBCHROMEOS_UI_CHROMEOS_UI_UTIL_H_
 
 namespace chromeos {
 namespace ui {
@@ -44,4 +44,4 @@ bool Run(const char* command, const char* arg, ...);
 }  // namespace ui
 }  // namespace chromeos
 
-#endif  // LIBCHROMEOS_CHROMEOS_UI_UTIL_H_
+#endif  // LIBCHROMEOS_UI_CHROMEOS_UI_UTIL_H_

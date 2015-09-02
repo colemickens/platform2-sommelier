@@ -461,7 +461,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
   }
 
   // TODO(hshi): Fix GPU hang on sandybridge (crbug.com/521249).
-  if (IsBoard("lumpy") || IsBoard("stumpy") || IsBoard("parrot") || IsBoard("butterfly"))
+  if (IsBoard("lumpy") || IsBoard("stumpy") || IsBoard("parrot") ||
+      IsBoard("butterfly"))
     AddArg("--disable-accelerated-video-decode");
 
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
