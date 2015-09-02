@@ -1,5 +1,5 @@
 {
- 'includes': [
+  'includes': [
     'libweave.gypi',
   ],
   'target_defaults': {
@@ -62,7 +62,6 @@
       ],
       'includes': ['../common-mk/deps.gypi'],
     },
-
     {
       'target_name': 'libweave_base_common',
       'type': 'static_library',
