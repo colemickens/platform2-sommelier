@@ -71,7 +71,7 @@ class NiceMockControl : public ControlInterface {
 
   MOCK_METHOD0(CreateUpstartProxy, UpstartProxyInterface*());
 
-  MOCK_METHOD0(CreatePermissionBrokerProxy, PermissionBrokerProxyInterface*());
+  MOCK_METHOD0(CreateFirewallProxy, FirewallProxyInterface*());
 
 #if !defined(DISABLE_CELLULAR)
   MOCK_METHOD2(CreateDBusPropertiesProxy,

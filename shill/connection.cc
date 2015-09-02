@@ -13,9 +13,9 @@
 
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
+#include "shill/firewall_proxy_interface.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/permission_broker_proxy.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 
@@ -259,14 +259,14 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
 }
 
 bool Connection::SetupIptableEntries() {
-  if (!permission_broker_) {
-    permission_broker_.reset(control_interface_->CreatePermissionBrokerProxy());
+  if (!firewall_proxy_) {
+    firewall_proxy_.reset(control_interface_->CreateFirewallProxy());
   }
 
   std::vector<std::string> user_names;
   user_names.push_back("chronos");
 
-  if (!permission_broker_->RequestVpnSetup(user_names, interface_name_)) {
+  if (!firewall_proxy_->RequestVpnSetup(user_names, interface_name_)) {
     LOG(ERROR) << "VPN iptables setup request failed.";
     return false;
   }
@@ -275,7 +275,7 @@ bool Connection::SetupIptableEntries() {
 }
 
 bool Connection::TearDownIptableEntries() {
-  return permission_broker_ ? permission_broker_->RemoveVpnSetup() : true;
+  return firewall_proxy_ ? firewall_proxy_->RemoveVpnSetup() : true;
 }
 
 void Connection::SetIsDefault(bool is_default) {

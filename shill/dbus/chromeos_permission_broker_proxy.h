@@ -11,11 +11,11 @@
 #include <base/macros.h>
 
 #include "permission_broker/dbus-proxies.h"
-#include "shill/permission_broker_proxy_interface.h"
+#include "shill/firewall_proxy_interface.h"
 
 namespace shill {
 
-class ChromeosPermissionBrokerProxy : public PermissionBrokerProxyInterface {
+class ChromeosPermissionBrokerProxy : public FirewallProxyInterface {
  public:
   explicit ChromeosPermissionBrokerProxy(const scoped_refptr<dbus::Bus>& bus);
   ~ChromeosPermissionBrokerProxy() override;

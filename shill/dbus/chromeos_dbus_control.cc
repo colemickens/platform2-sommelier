@@ -211,8 +211,7 @@ UpstartProxyInterface* ChromeosDBusControl::CreateUpstartProxy() {
   return new ChromeosUpstartProxy(proxy_bus_);
 }
 
-PermissionBrokerProxyInterface*
-    ChromeosDBusControl::CreatePermissionBrokerProxy() {
+FirewallProxyInterface* ChromeosDBusControl::CreateFirewallProxy() {
   return new ChromeosPermissionBrokerProxy(proxy_bus_);
 }
 

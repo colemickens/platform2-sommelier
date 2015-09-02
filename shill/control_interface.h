@@ -35,6 +35,7 @@ class DBusServiceProxyInterface;
 class DHCPCDListenerInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
+class FirewallProxyInterface;
 class ModemCDMAProxyInterface;
 class ModemGSMCardProxyInterface;
 class ModemGSMNetworkProxyInterface;
@@ -43,7 +44,6 @@ class ModemManagerClassic;
 class ModemManagerProxyInterface;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
-class PermissionBrokerProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
 class UpstartProxyInterface;
@@ -134,7 +134,7 @@ class ControlInterface {
 
   virtual DHCPProxyInterface* CreateDHCPProxy(const std::string& service) = 0;
 
-  virtual PermissionBrokerProxyInterface* CreatePermissionBrokerProxy() = 0;
+  virtual FirewallProxyInterface* CreateFirewallProxy() = 0;
 
 #if !defined(DISABLE_CELLULAR)
   virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(

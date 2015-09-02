@@ -19,7 +19,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_permission_broker_proxy.h"
+#include "shill/mock_firewall_proxy.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -343,10 +343,9 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
 
-  MockPermissionBrokerProxy* permission_broker =
-      new MockPermissionBrokerProxy();
-  connection->permission_broker_.reset(permission_broker);
-  EXPECT_CALL(*permission_broker, RequestVpnSetup(_, _));
+  MockFirewallProxy* firewall_proxy = new MockFirewallProxy();
+  connection->firewall_proxy_.reset(firewall_proxy);
+  EXPECT_CALL(*firewall_proxy, RequestVpnSetup(_, _));
   properties_.user_traffic_only = true;
   properties_.default_route = false;
   properties_.exclusion_list.push_back(kExcludeAddress1);
@@ -422,7 +421,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   connection->SetIsDefault(false);
   EXPECT_FALSE(connection->is_default());
   AddDestructorExpectations();
-  EXPECT_CALL(*permission_broker, RemoveVpnSetup());
+  EXPECT_CALL(*firewall_proxy, RemoveVpnSetup());
 }
 
 TEST_F(ConnectionTest, AddConfigIPv6) {
