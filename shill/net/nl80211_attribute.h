@@ -641,6 +641,7 @@ class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyBands);
 };
 
+#if !defined(DISABLE_WAKE_ON_WIFI)
 class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
  public:
   static const int kName;
@@ -661,6 +662,7 @@ class Nl80211AttributeWowlanTriggersSupported : public NetlinkNestedAttribute {
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWowlanTriggersSupported);
 };
+#endif  // DISABLE_WAKE_ON_WIFI
 
 // Raw.
 

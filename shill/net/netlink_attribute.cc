@@ -230,12 +230,14 @@ NetlinkAttribute* NetlinkAttribute::NewNl80211AttributeFromId(
     case NL80211_ATTR_WIPHY_RTS_THRESHOLD:
       attr.reset(new Nl80211AttributeWiphyRtsThreshold());
       break;
+#if !defined(DISABLE_WAKE_ON_WIFI)
     case NL80211_ATTR_WOWLAN_TRIGGERS:
       attr.reset(new Nl80211AttributeWowlanTriggers(context));
       break;
     case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
       attr.reset(new Nl80211AttributeWowlanTriggersSupported());
       break;
+#endif  // DISABLE_WAKE_ON_WIFI
     case NL80211_ATTR_SURVEY_INFO:
       attr.reset(new Nl80211AttributeSurveyInfo());
       break;

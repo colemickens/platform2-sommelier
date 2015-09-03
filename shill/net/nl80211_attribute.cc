@@ -291,6 +291,7 @@ Nl80211AttributeWiphyBands::Nl80211AttributeWiphyBands()
   nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, bands));
 }
 
+#if !defined(DISABLE_WAKE_ON_WIFI)
 const int Nl80211AttributeWowlanTriggers::kName = NL80211_ATTR_WOWLAN_TRIGGERS;
 const char Nl80211AttributeWowlanTriggers::kNameString[] =
     "NL80211_ATTR_WOWLAN_TRIGGERS";
@@ -392,6 +393,7 @@ Nl80211AttributeWowlanTriggersSupported::
       NL80211_WOWLAN_TRIG_NET_DETECT,
       NestedData(kTypeU32, "NL80211_WOWLAN_TRIG_NET_DETECT", false)));
 }
+#endif  // DISABLE_WAKE_ON_WIFI
 
 const int Nl80211AttributeCipherSuites::kName = NL80211_ATTR_CIPHER_SUITES;
 const char Nl80211AttributeCipherSuites::kNameString[] =
