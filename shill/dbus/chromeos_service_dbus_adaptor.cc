@@ -83,7 +83,7 @@ void ChromeosServiceDBusAdaptor::EmitIntChanged(const string& name, int value) {
 void ChromeosServiceDBusAdaptor::EmitRpcIdentifierChanged(const string& name,
                                                           const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, chromeos::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosServiceDBusAdaptor::EmitStringChanged(const string& name,
