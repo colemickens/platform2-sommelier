@@ -465,7 +465,7 @@ class WakeOnWiFi {
   //    NL80211_ATTR_SCAN_FREQUENCIES attributes. This attribute list is assumed
   //    to have been extracted from a NL80211_CMD_SET_WOWLAN response message
   //    using the NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS id.
-  static WiFi::FreqSet ParseWakeOnWakeOnSSIDResults(
+  static WiFi::FreqSet ParseWakeOnSSIDResults(
       AttributeListConstRefPtr results_list);
 
   // Sets the |dark_resume_scan_retries_left_| counter if necessary, then runs

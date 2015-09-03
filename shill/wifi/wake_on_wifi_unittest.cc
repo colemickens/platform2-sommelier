@@ -971,9 +971,8 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->OnWakeupReasonReceived(netlink_message);
   }
 
-  WiFi::FreqSet ParseWakeOnWakeOnSSIDResults(
-      AttributeListConstRefPtr results_list) {
-    return wake_on_wifi_->ParseWakeOnWakeOnSSIDResults(results_list);
+  WiFi::FreqSet ParseWakeOnSSIDResults(AttributeListConstRefPtr results_list) {
+    return wake_on_wifi_->ParseWakeOnSSIDResults(results_list);
   }
 
   NetlinkMessage::MessageContext GetWakeupReportMsgContext() {
@@ -2031,7 +2030,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, DisableWakeOnWiFi_ClearsTriggers) {
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWakeOnWakeOnSSIDResults) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWakeOnSSIDResults) {
   SetWakeOnPacketConnMessage msg;
   NetlinkPacket packet(kWakeReasonSSIDNlMsg, sizeof(kWakeReasonSSIDNlMsg));
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
@@ -2041,7 +2040,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWakeOnWakeOnSSIDResults) {
   AttributeListConstRefPtr results_list;
   ASSERT_TRUE(triggers->ConstGetNestedAttributeList(
       NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS, &results_list));
-  WiFi::FreqSet freqs = ParseWakeOnWakeOnSSIDResults(results_list);
+  WiFi::FreqSet freqs = ParseWakeOnSSIDResults(results_list);
   EXPECT_EQ(arraysize(kSSID1FreqMatches), freqs.size());
   for (uint32_t freq : kSSID1FreqMatches) {
     EXPECT_TRUE(freqs.find(freq) != freqs.end());
