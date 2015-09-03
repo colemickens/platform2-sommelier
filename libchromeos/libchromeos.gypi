@@ -226,9 +226,9 @@
         '-Wl,--version-script,<(platform2_root)/libchromeos/libpolicy.ver',
       ],
       'sources': [
-        'chromeos/policy/device_policy.cc',
-        'chromeos/policy/device_policy_impl.cc',
-        'chromeos/policy/libpolicy.cc',
+        'policy/device_policy.cc',
+        'policy/device_policy_impl.cc',
+        'policy/libpolicy.cc',
       ],
     },
     {
@@ -357,7 +357,7 @@
           'dependencies': ['libpolicy-<(libbase_ver)'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'chromeos/policy/tests/libpolicy_unittest.cc',
+            'policy/tests/libpolicy_unittest.cc',
           ]
         },
       ],

@@ -6,13 +6,19 @@
 
 #include <base/logging.h>
 
+#include "policy/device_policy.h"
+#ifndef __ANDROID__
 #include "policy/device_policy_impl.h"
+#endif
 
 namespace policy {
 
 PolicyProvider::PolicyProvider()
-    : device_policy_(new DevicePolicyImpl),
+    : device_policy_(nullptr),
       device_policy_is_loaded_(false) {
+#ifndef __ANDROID__
+  device_policy_.reset(new DevicePolicyImpl());
+#endif
 }
 
 PolicyProvider::PolicyProvider(DevicePolicy* device_policy)
@@ -24,6 +30,8 @@ PolicyProvider::~PolicyProvider() {
 }
 
 bool PolicyProvider::Reload() {
+  if (!device_policy_)
+    return false;
   device_policy_is_loaded_ = device_policy_->LoadPolicy();
   if (!device_policy_is_loaded_) {
     LOG(WARNING) << "Could not load the device policy file.";
