@@ -498,7 +498,7 @@ Signals		PropertyChanged(string name, variant value)
 			current state and so can avoid to be woken up when
 			other details changes.
 
-Properties 	object ActiveProfile [readwrite]
+Properties 	string ActiveProfile [readwrite]
 
 			Object path of the current active profile.
 
@@ -645,7 +645,7 @@ Properties 	object ActiveProfile [readwrite]
 			The interval in seconds between re-checking a
 			service in the portal state.
 
-		array{object} Profiles [readonly]
+		array{string} Profiles [readonly]
 
 			List of profile object paths.
 

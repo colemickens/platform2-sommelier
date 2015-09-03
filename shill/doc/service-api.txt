@@ -1177,11 +1177,11 @@ Properties	boolean AutoConnect [readwrite]
 			clients must set one if they desire.  To remove an
 			existing priority use the ClearProperty method.
 
-		object Profile [readwrite]
+		string Profile [readwrite]
 
 			The object path of the associated Profile object.
-			This may not be present if the Service object
-			has not been written to a profile yet.
+			This may not be present or may be empty if the Service
+			object has not been written to a profile yet.
 
 		string ProxyConfig [readwrite]
 
