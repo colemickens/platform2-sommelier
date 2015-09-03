@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/policy/libpolicy.h"
+#include "policy/libpolicy.h"
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -11,15 +11,15 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-#include "chromeos/policy/device_policy_impl.h"
+#include "policy/device_policy_impl.h"
 
 namespace policy {
 
 static const char kPolicyFileAllSet[] =
-    "chromeos/policy/tests/whitelist/policy_all";
+    "policy/tests/whitelist/policy_all";
 static const char kPolicyFileNoneSet[] =
-    "chromeos/policy/tests/whitelist/policy_none";
-static const char kKeyFile[] = "chromeos/policy/tests/whitelist/owner.key";
+    "policy/tests/whitelist/policy_none";
+static const char kKeyFile[] = "policy/tests/whitelist/owner.key";
 
 // This class mocks only the minimally needed functionionality to run tests
 // that would otherwise fail because of hard restrictions like root file
