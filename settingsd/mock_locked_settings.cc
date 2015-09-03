@@ -17,6 +17,7 @@ std::unique_ptr<MockLockedVersionComponent> MockLockedVersionComponent::Clone()
   std::unique_ptr<MockLockedVersionComponent> copy(
       new MockLockedVersionComponent);
   copy->source_id_ = source_id_;
+  copy->valid_ = valid_;
   return copy;
 }
 
@@ -42,6 +43,7 @@ MockLockedSettingsContainer::Clone() const {
     copy->version_component_blobs_.insert(
         std::make_pair(entry.first, entry.second->Clone()));
   }
+  copy->valid_ = valid_;
   return copy;
 }
 

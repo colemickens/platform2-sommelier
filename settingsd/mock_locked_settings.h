@@ -33,8 +33,12 @@ class MockLockedVersionComponent : public LockedVersionComponent {
 
   void SetSourceId(const std::string& source_id);
 
+  bool is_valid() const { return valid_; }
+  void set_valid(bool valid) { valid_ = valid; }
+
  private:
   std::string source_id_;
+  bool valid_{true};
 
   DISALLOW_COPY_AND_ASSIGN(MockLockedVersionComponent);
 };
@@ -55,10 +59,14 @@ class MockLockedSettingsContainer : public LockedSettingsContainer {
 
   MockLockedVersionComponent* GetVersionComponent(const std::string& source_id);
 
+  bool is_valid() const { return valid_; }
+  void set_valid(bool valid) { valid_ = valid; }
+
  private:
   std::unordered_map<std::string, std::unique_ptr<MockLockedVersionComponent>>
       version_component_blobs_;
   std::unique_ptr<MockSettingsDocument> payload_;
+  bool valid_{true};
 
   DISALLOW_COPY_AND_ASSIGN(MockLockedSettingsContainer);
 };
