@@ -246,7 +246,7 @@ RequestID Transport::StartAsyncTransfer(http::Connection* connection,
     request_id_map_.erase(request_id);
     return 0;
   }
-  VLOG(1) << "Started asynchronous HTTP request with ID " << request_id;
+  LOG(INFO) << "Started asynchronous HTTP request with ID " << request_id;
   return request_id;
 }
 
@@ -258,7 +258,7 @@ bool Transport::CancelRequest(RequestID request_id) {
     LOG(WARNING) << "HTTP request #" << request_id << " not found";
     return false;
   }
-  VLOG(1) << "Canceling HTTP request #" << request_id;
+  LOG(INFO) << "Canceling HTTP request #" << request_id;
   CleanAsyncConnection(p->second);
   return true;
 }
@@ -446,8 +446,9 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
   auto p = async_requests_.find(connection);
   CHECK(p != async_requests_.end()) << "Unknown connection";
   AsyncRequestData* request_data = p->second.get();
-  VLOG(1) << "HTTP request # " << request_data->request_id << " has completed "
-          << (code == CURLE_OK ? "successfully" : "with an error");
+  LOG(INFO) << "HTTP request # " << request_data->request_id
+            << " has completed "
+            << (code == CURLE_OK ? "successfully" : "with an error");
   if (code != CURLE_OK) {
     chromeos::ErrorPtr error;
     AddEasyCurlError(&error, FROM_HERE, code, curl_interface_.get());
@@ -456,6 +457,8 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
                                 p->second->request_id,
                                 base::Owned(error.release())));
   } else {
+    LOG(INFO) << "Response: " << connection->GetResponseStatusCode() << " ("
+              << connection->GetResponseStatusText() << ")";
     chromeos::ErrorPtr error;
     // Rewind the response data stream to the beginning so the clients can
     // read the data back.
