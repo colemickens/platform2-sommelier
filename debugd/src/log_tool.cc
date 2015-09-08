@@ -63,6 +63,8 @@ const Log common_logs[] = {
   { "console-ramoops", "/bin/cat /dev/pstore/console-ramoops 2> /dev/null" },
   { "cpu", "/usr/bin/uname -p" },
   { "cpuinfo", "/bin/cat /proc/cpuinfo" },
+  { "cros_ec",
+    "/bin/cat /var/log/cros_ec.previous /var/log/cros_ec.log 2> /dev/null" },
   { "dmesg", "/bin/dmesg" },
   { "ec_info", "/bin/cat /var/log/ec_info.txt" },
   { "eventlog", "/bin/cat /var/log/eventlog.txt" },
