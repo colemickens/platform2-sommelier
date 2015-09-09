@@ -14,11 +14,10 @@
 #include <base/strings/string_util.h>
 
 #include <chromeos/dbus/service_constants.h>
+#include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
 
 #include "debugd/src/anonymizer_tool.h"
 #include "debugd/src/process_with_output.h"
-
-#include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
 
 namespace debugd {
 

@@ -10,11 +10,10 @@
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 #include <debugd/src/dbus_utils.h>
-
-#include "shill/dbus_proxies/org.chromium.flimflam.Device.h"
-#include "shill/dbus_proxies/org.chromium.flimflam.IPConfig.h"
-#include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
-#include "shill/dbus_proxies/org.chromium.flimflam.Service.h"
+#include <shill/dbus_proxies/org.chromium.flimflam.Device.h>
+#include <shill/dbus_proxies/org.chromium.flimflam.IPConfig.h>
+#include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
+#include <shill/dbus_proxies/org.chromium.flimflam.Service.h>
 
 using base::DictionaryValue;
 using base::Value;

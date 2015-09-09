@@ -6,6 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
 
 #include "dbus_proxies/org.freedesktop.DBus.Properties.h"
 
@@ -13,8 +14,6 @@
 #include "dbus_proxies/org.freedesktop.ModemManager.h"
 #include "dbus_proxies/org.freedesktop.ModemManager1.h"
 #endif  // USE_CELLULAR
-
-#include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
 
 namespace debugd {
 

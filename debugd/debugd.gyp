@@ -53,8 +53,20 @@
       'dependencies': [
         '../common-mk/external_dependencies.gyp:dbus-proxies',
         '../login_manager/login_manager.gyp:session_manager_proxies',
-        '../shill/shill.gypi:shill-proxies',
       ],
+      'variables': {
+        'exported_deps': [
+          'libshill-client',
+        ],
+        'deps': ['>@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
       'conditions': [
         ['USE_cellular == 1', {
           'dependencies': [
