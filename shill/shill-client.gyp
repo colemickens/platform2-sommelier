@@ -27,5 +27,24 @@
         },
       ]
     },
+    {
+      'target_name': 'libshill-client-dbus-c++-proxies',
+      'type': 'none',
+      'variables': {
+        'xml2cpp_type': 'proxy',
+        'xml2cpp_in_dir': 'dbus_bindings',
+        'xml2cpp_out_dir': 'include/shill/dbus_proxies',
+      },
+      'sources': [
+        '<(xml2cpp_in_dir)/org.chromium.flimflam.Device.xml',
+        '<(xml2cpp_in_dir)/org.chromium.flimflam.IPConfig.xml',
+        '<(xml2cpp_in_dir)/org.chromium.flimflam.Manager.xml',
+        '<(xml2cpp_in_dir)/org.chromium.flimflam.Profile.xml',
+        '<(xml2cpp_in_dir)/org.chromium.flimflam.Service.xml',
+        '<(xml2cpp_in_dir)/org.chromium.flimflam.Task.xml',
+        '<(xml2cpp_in_dir)/org.chromium.flimflam.ThirdPartyVpn.xml',
+      ],
+      'includes': ['../common-mk/xml2cpp.gypi'],
+    },
   ],
 }
