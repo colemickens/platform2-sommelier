@@ -5,6 +5,7 @@
 #include "buffet/peerd_client.h"
 
 #include <map>
+#include <vector>
 
 #include <base/message_loop/message_loop.h>
 #include <chromeos/errors/error.h>
@@ -27,6 +28,9 @@ void OnError(const std::string& operation, chromeos::Error* error) {
   LOG(ERROR) << operation << " failed:" << error->GetMessage();
 }
 
+const char kExpectedServiceType[] = "_privet._tcp";
+const char kServiceName[] = "privet";
+
 }  // namespace
 
 PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus)
@@ -47,25 +51,20 @@ std::string PeerdClient::GetId() const {
   return device_id_;
 }
 
-void PeerdClient::PublishService(
-    const std::string& service_name,
-    uint16_t port,
-    const std::map<std::string, std::string>& txt) {
+void PeerdClient::PublishService(const std::string& service_type,
+                                 uint16_t port,
+                                 const std::vector<std::string>& txt) {
   // Only one service supported.
-  CHECK(service_name_.empty() || service_name_ == service_name);
-  service_name_ = service_name;
+  CHECK_EQ(service_type, kExpectedServiceType);
   port_ = port;
   txt_ = txt;
-
   Update();
 }
 
-void PeerdClient::StopPublishing(const std::string& service_name) {
+void PeerdClient::StopPublishing(const std::string& service_type) {
   // Only one service supported.
-  CHECK(service_name_.empty() || service_name_ == service_name);
-  service_name_ = service_name;
+  CHECK_EQ(service_type, kExpectedServiceType);
   port_ = 0;
-
   Update();
 }
 
@@ -117,14 +116,21 @@ void PeerdClient::ExposeService() {
     return;
   VLOG(1) << "Starting peerd advertising.";
   CHECK_NE(port_, 0);
-  CHECK(!service_name_.empty());
   CHECK(!txt_.empty());
   std::map<std::string, chromeos::Any> mdns_options{
       {"port", chromeos::Any{port_}},
   };
 
+  std::map<std::string, std::string> txt;
+  for (const auto& record : txt_) {
+    auto name_value = chromeos::string_utils::SplitAtFirst(record, "=");
+    CHECK(!name_value.second.empty());
+    txt.emplace(std::move(name_value));
+  }
+
+  published_ = true;
   peerd_manager_proxy_->ExposeServiceAsync(
-      service_name_, txt_, {{"mdns", mdns_options}}, base::Closure(),
+      kServiceName, txt, {{"mdns", mdns_options}}, base::Closure(),
       base::Bind(&OnError, "ExposeService"));
 }
 
@@ -133,9 +139,10 @@ void PeerdClient::RemoveService() {
     return;
 
   VLOG(1) << "Stopping peerd advertising.";
-  if (!service_name_.empty()) {
+  if (published_) {
+    published_ = false;
     peerd_manager_proxy_->RemoveExposedServiceAsync(
-        service_name_, base::Closure(), base::Bind(&OnError, "RemoveService"));
+        kServiceName, base::Closure(), base::Bind(&OnError, "RemoveService"));
   }
 }
 
