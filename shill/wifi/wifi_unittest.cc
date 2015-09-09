@@ -2065,6 +2065,14 @@ TEST_F(WiFiMainTest, ReconnectPreservesDBusPath) {
   // Complete the disconnection by reporting a BSS change.
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
 
+  Mock::VerifyAndClearExpectations(control_interface());
+  unique_ptr<MockSupplicantNetworkProxy> network_proxy(
+      new MockSupplicantNetworkProxy());
+  EXPECT_CALL(*control_interface(),
+              CreateSupplicantNetworkProxy(kPath))
+      .WillOnce(ReturnAndReleasePointee(&network_proxy));
+  EXPECT_CALL(*network_proxy, SetEnabled(true)).WillOnce(Return(true));
+
   // A second connection attempt should remember the DBus path associated
   // with this service, and should not request new configuration parameters.
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters()).Times(0);
