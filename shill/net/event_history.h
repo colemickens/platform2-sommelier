@@ -6,13 +6,14 @@
 #define SHILL_NET_EVENT_HISTORY_H_
 
 #include <deque>
+#include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/accessor_interface.h"
+#include "shill/net/shill_export.h"
 #include "shill/net/shill_time.h"
-#include "shill/shill_export.h"
 
 namespace shill {
 
@@ -52,7 +53,7 @@ class SHILL_EXPORT EventHistory {
 
   // Returns a vector of human-readable strings representing each timestamp in
   // |events_|.
-  Strings ExtractWallClockToStrings() const;
+  std::vector<std::string> ExtractWallClockToStrings() const;
 
   // Returns the number of timestamps in |events_| within the interval spanning
   // now and the time |seconds_ago| before now (inclusive). |clock_type|

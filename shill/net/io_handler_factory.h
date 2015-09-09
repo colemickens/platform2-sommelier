@@ -6,7 +6,7 @@
 #define SHILL_NET_IO_HANDLER_FACTORY_H_
 
 #include "shill/net/io_handler.h"
-#include "shill/shill_export.h"
+#include "shill/net/shill_export.h"
 
 namespace shill {
 

@@ -14,7 +14,7 @@
 #include <base/bind.h>
 
 #include "shill/net/netlink_message.h"
-#include "shill/shill_export.h"
+#include "shill/net/shill_export.h"
 
 struct nlattr;
 namespace shill {

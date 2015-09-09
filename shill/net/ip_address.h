@@ -8,7 +8,7 @@
 #include <string>
 
 #include "shill/net/byte_string.h"
-#include "shill/shill_export.h"
+#include "shill/net/shill_export.h"
 
 namespace shill {
 

@@ -5,16 +5,15 @@
 #ifndef SHILL_NET_NETLINK_PACKET_H_
 #define SHILL_NET_NETLINK_PACKET_H_
 
-#include "shill/shill_export.h"
-
-#include <linux/netlink.h>
 #include <linux/genetlink.h>
+#include <linux/netlink.h>
 
 #include <memory>
 
 #include <base/macros.h>
 
 #include "shill/net/attribute_list.h"
+#include "shill/net/shill_export.h"
 
 namespace shill {
 

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_SHILL_EXPORT_H_
-#define SHILL_SHILL_EXPORT_H_
+#ifndef SHILL_NET_SHILL_EXPORT_H_
+#define SHILL_NET_SHILL_EXPORT_H_
 
 // Use SHILL_EXPORT attribute to decorate your classes, methods and variables
 // that need to be exported out of libshill By default, any symbol not
@@ -57,4 +57,4 @@ class SHILL_EXPORT Foo {
 // linker errors.
 #define SHILL_PRIVATE __attribute__((__visibility__("hidden")))
 
-#endif  // SHILL_SHILL_EXPORT_H_
+#endif  // SHILL_NET_SHILL_EXPORT_H_

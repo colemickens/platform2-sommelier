@@ -32,7 +32,7 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/shill_export.h"
+#include "shill/net/shill_export.h"
 
 namespace shill {
 

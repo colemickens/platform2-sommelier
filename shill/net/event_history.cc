@@ -8,7 +8,6 @@
 
 #include <deque>
 
-#include "shill/accessor_interface.h"
 #include "shill/net/shill_time.h"
 
 using std::deque;
@@ -30,8 +29,8 @@ void EventHistory::RecordEventAndExpireEventsBefore(int seconds_ago,
   ExpireEventsBeforeInternal(seconds_ago, now, clock_type);
 }
 
-Strings EventHistory::ExtractWallClockToStrings() const {
-  Strings strings;
+std::vector<std::string> EventHistory::ExtractWallClockToStrings() const {
+  std::vector<std::string> strings;
   for (deque<Timestamp>::const_iterator it = events_.begin();
        it != events_.end(); ++it) {
     strings.push_back(it->wall_clock);

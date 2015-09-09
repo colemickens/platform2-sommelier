@@ -18,7 +18,7 @@
 #include "shill/net/io_handler_factory_container.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/shill_export.h"
+#include "shill/net/shill_export.h"
 
 namespace shill {
 

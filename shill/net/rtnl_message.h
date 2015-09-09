@@ -13,7 +13,7 @@
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
-#include "shill/shill_export.h"
+#include "shill/net/shill_export.h"
 
 struct rtattr;
 
