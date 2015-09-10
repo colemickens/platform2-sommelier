@@ -4,6 +4,8 @@
 
 #include <string>
 
+#include <signal.h>
+
 #include <base/files/file_path.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/dbus/async_event_sequencer.h>
@@ -93,6 +95,11 @@ int main(int argc, char* argv[]) {
 
   auto device_whitelist =
       chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
+
+  // We are handling write errors on closed sockets correctly and not relying on
+  // (nor handling) SIGPIPE signal, which just kills the process.
+  // Mark it to be ignored.
+  signal(SIGPIPE, SIG_IGN);
 
   buffet::BuffetConfigPaths paths;
   paths.defaults = base::FilePath{FLAGS_config_path};
