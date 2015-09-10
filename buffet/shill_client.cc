@@ -509,19 +509,26 @@ void ShillClient::CleanupConnectingService(bool check_for_reset_pending) {
   connecting_service_reset_pending_ = false;
 }
 
-std::unique_ptr<weave::Stream> ShillClient::OpenSocketBlocking(
+void ShillClient::OpenSslSocket(
     const std::string& host,
-    uint16_t port) {
-  return SocketStream::ConnectBlocking(host, port);
-}
-
-void ShillClient::CreateTlsStream(
-    std::unique_ptr<weave::Stream> socket,
-    const std::string& host,
+    uint16_t port,
     const base::Callback<void(std::unique_ptr<weave::Stream>)>&
         success_callback,
     const base::Callback<void(const weave::Error*)>& error_callback) {
-  SocketStream::TlsConnect(std::move(socket), host, success_callback,
+  std::unique_ptr<weave::Stream> raw_stream{
+      SocketStream::ConnectBlocking(host, port)};
+  if (!raw_stream) {
+    chromeos::ErrorPtr error;
+    chromeos::errors::system::AddSystemError(&error, FROM_HERE, errno);
+    weave::ErrorPtr weave_error;
+    ConvertError(*error.get(), &weave_error);
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE,
+        base::Bind(error_callback, base::Owned(weave_error.release())));
+    return;
+  }
+
+  SocketStream::TlsConnect(std::move(raw_stream), host, success_callback,
                            error_callback);
 }
 

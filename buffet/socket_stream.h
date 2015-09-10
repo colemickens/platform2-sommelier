@@ -34,10 +34,6 @@ class SocketStream : public weave::Stream {
       const base::Callback<void(const weave::Error*)>& error_callback,
       weave::ErrorPtr* error) override;
 
-  bool FlushBlocking(weave::ErrorPtr* error) override;
-
-  bool CloseBlocking(weave::ErrorPtr* error) override;
-
   void CancelPendingAsyncOperations() override;
 
   static std::unique_ptr<weave::Stream> ConnectBlocking(const std::string& host,

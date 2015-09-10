@@ -41,11 +41,9 @@ class ShillClient final : public weave::Network {
   weave::NetworkState GetConnectionState() const override;
   void EnableAccessPoint(const std::string& ssid) override;
   void DisableAccessPoint() override;
-  std::unique_ptr<weave::Stream> OpenSocketBlocking(const std::string& host,
-                                                    uint16_t port) override;
-  void CreateTlsStream(
-      std::unique_ptr<weave::Stream> socket,
+  void OpenSslSocket(
       const std::string& host,
+      uint16_t port,
       const base::Callback<void(std::unique_ptr<weave::Stream>)>&
           success_callback,
       const base::Callback<void(const weave::Error*)>& error_callback) override;

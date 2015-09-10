@@ -99,24 +99,6 @@ bool SocketStream::WriteAllAsync(
   return true;
 }
 
-bool SocketStream::FlushBlocking(weave::ErrorPtr* error) {
-  chromeos::ErrorPtr chromeos_error;
-  if (!ptr_->FlushBlocking(&chromeos_error)) {
-    ConvertError(*chromeos_error, error);
-    return false;
-  }
-  return true;
-}
-
-bool SocketStream::CloseBlocking(weave::ErrorPtr* error) {
-  chromeos::ErrorPtr chromeos_error;
-  if (!ptr_->CloseBlocking(&chromeos_error)) {
-    ConvertError(*chromeos_error, error);
-    return false;
-  }
-  return true;
-}
-
 void SocketStream::CancelPendingAsyncOperations() {
   ptr_->CancelPendingAsyncOperations();
 }
