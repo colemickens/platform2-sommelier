@@ -24,6 +24,8 @@
 
 namespace webservd {
 
+extern const char kDefaultLogDirectory[];
+
 // This class contains global server configuration.
 struct Config final {
  public:
@@ -70,8 +72,8 @@ struct Config final {
   // (see http://www.w3.org/Daemon/User/Config/Logging.html).
   // The files in this directory contain only the "official" request logs, not
   // general logging messages from the webserver, which still go to the standard
-  // system log at /var/log/messages.
-  std::string log_directory{"/var/log/webservd"};
+  // system log.
+  std::string log_directory{kDefaultLogDirectory};
 };
 
 // Initializes the config with default preset settings (two handlers, one for

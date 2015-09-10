@@ -24,6 +24,12 @@
 
 namespace webservd {
 
+#ifdef __ANDROID__
+const char kDefaultLogDirectory[] = "/data/misc/webservd/logs";
+#else
+const char kDefaultLogDirectory[] = "/var/log/webservd";
+#endif
+
 namespace {
 
 const char kLogDirectoryKey[] = "log_directory";
