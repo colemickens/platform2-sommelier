@@ -18,7 +18,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_provider.h"
-#include "shill/dhcp/dhcpcd_proxy.h"
+#include "shill/dhcp/dhcp_proxy_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"

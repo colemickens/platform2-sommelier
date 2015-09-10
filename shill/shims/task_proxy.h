@@ -9,8 +9,7 @@
 #include <string>
 
 #include <base/macros.h>
-
-#include "shill/dbus_proxies/org.chromium.flimflam.Task.h"
+#include <shill/dbus_proxies/org.chromium.flimflam.Task.h>
 
 namespace shill {
 
