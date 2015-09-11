@@ -785,34 +785,62 @@ cmd_autest() (
   /usr/bin/update_engine_client --omaha_url=$omaha_url
 )
 
-USAGE_p2p_update='[enable|disable]'
+USAGE_p2p_update='[enable|disable] [--num-connections] [--show-peers]'
 HELP_p2p_update='
   Enables or disables the peer-to-peer (P2P) sharing of updates over the local
   network. This will both attempt to get updates from other peers in the
   network and share the downloaded updates with them. Run this command without
-  arguments to see the current state.
+  arguments to see the current state.  Additional switches will display number
+  of connections and P2P peers.
 '
 cmd_p2p_update() (
-  case "$1" in
-    "enable")
-      param="-p2p_update=yes"
-      ;;
 
-    "disable")
-      param="-p2p_update=no"
-      ;;
+  if [ "$1" = "" ]; then
+    /usr/bin/update_engine_client -show_p2p_update
+  fi
 
-    "")
-      param=""
-      ;;
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      "enable")
+        /usr/bin/update_engine_client -p2p_update=yes -show_p2p_update
+        ;;
 
-    *)
-      help "unknown option: $1"
-      return 1
-      ;;
-  esac
-  /usr/bin/update_engine_client $param -show_p2p_update
+      "disable")
+        /usr/bin/update_engine_client -p2p_update=no -show_p2p_update
+        ;;
+
+      "--num-connections")
+        if p2p_check_enabled; then
+          echo "Number of active p2p connections:"
+          /usr/sbin/p2p-client --num-connections
+        fi
+        ;;
+
+      "--show-peers")
+        if p2p_check_enabled; then
+          echo "Current p2p peers:"
+          /usr/sbin/p2p-client --list-all
+        fi
+        ;;
+
+      *)
+        help "unknown option: $1"
+        return 1
+        ;;
+    esac
+
+    shift
+  done
 )
+
+p2p_check_enabled() {
+  if ! /usr/bin/update_engine_client -show_p2p_update 2>&1 \
+    | grep -q "ENABLED"; then
+    echo "Run \"p2p_update enable\" to enable peer-to-peer before" \
+    "using this command."
+    return 1
+  fi
+}
 
 USAGE_rollback=''
 HELP_rollback='
