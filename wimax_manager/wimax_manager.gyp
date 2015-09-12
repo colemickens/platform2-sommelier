@@ -19,6 +19,7 @@
     },
   },
   'targets': [
+    # Generated proxy headers used by wimax_manager.
     {
       'target_name': 'wimax_manager-proxies',
       'type': 'none',
@@ -28,13 +29,34 @@
         'xml2cpp_out_dir': 'include/wimax_manager/dbus_proxies',
       },
       'sources': [
+        # TODO(zqiu): use libpower_manger-client instead of using
+        # PowerManager xml file directly.
         '../power_manager/dbus_bindings/org.chromium.PowerManager.xml',
         '<(xml2cpp_in_dir)/org.freedesktop.DBus.xml',
-        '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.xml',
-        '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Device.xml',
-        '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Network.xml',
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
+    },
+    # wimax_manager client library generated headers. Used by other daemons to
+    # interact with wimax_manager.
+    {
+      'target_name': 'libwimax_manager-client-headers',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'libwimax_manager-client-dbus-proxies',
+          'variables': {
+            'proxy_output_file': 'include/wimax_manager/dbus-proxies.h',
+            'mock_output_file': 'include/wimax_manager/dbus-proxy-mocks.h',
+            'proxy_path_in_mocks': 'wimax_manager/dbus-proxies.h',
+          },
+          'sources': [
+            'dbus_bindings/org.chromium.WiMaxManager.xml',
+            'dbus_bindings/org.chromium.WiMaxManager.Device.xml',
+            'dbus_bindings/org.chromium.WiMaxManager.Network.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+      ],
     },
   ],
   'conditions': [
