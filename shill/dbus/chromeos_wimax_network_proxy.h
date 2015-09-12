@@ -20,9 +20,9 @@
 #include <string>
 
 #include <base/callback.h>
+#include <wimax_manager/dbus-proxies.h>
 
 #include "shill/wimax/wimax_network_proxy_interface.h"
-#include "wimax-manager/dbus-proxies.h"
 
 namespace shill {
 

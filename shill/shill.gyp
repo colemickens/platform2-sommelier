@@ -485,6 +485,19 @@
           ],
         }],
         ['USE_wimax == 1', {
+          'variables': {
+            'exported_deps': [
+              'libwimax_manager-client',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'all_dependent_settings': {
+            'variables': {
+              'deps': [
+                '<@(exported_deps)',
+              ],
+            },
+          },
           'sources': [
             'wimax/wimax.cc',
             'wimax/wimax_provider.cc',
@@ -496,20 +509,6 @@
                 'dbus/chromeos_wimax_device_proxy.cc',
                 'dbus/chromeos_wimax_manager_proxy.cc',
                 'dbus/chromeos_wimax_network_proxy.cc',
-              ],
-              'actions': [
-                {
-                  'action_name': 'generate-wimax-manager-proxies',
-                  'variables': {
-                    'proxy_output_file': 'include/wimax-manager/dbus-proxies.h',
-                  },
-                  'sources': [
-                    '../wimax_manager/dbus_bindings/org.chromium.WiMaxManager.Device.xml',
-                    '../wimax_manager/dbus_bindings/org.chromium.WiMaxManager.Network.xml',
-                    '../wimax_manager/dbus_bindings/org.chromium.WiMaxManager.xml',
-                  ],
-                  'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-                },
               ],
             }],
           ],

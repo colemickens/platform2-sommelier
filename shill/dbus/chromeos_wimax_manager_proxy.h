@@ -21,9 +21,9 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <wimax_manager/dbus-proxies.h>
 
 #include "shill/wimax/wimax_manager_proxy_interface.h"
-#include "wimax-manager/dbus-proxies.h"
 
 namespace shill {
 
