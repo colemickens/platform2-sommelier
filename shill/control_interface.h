@@ -43,7 +43,6 @@ class ThirdPartyVpnAdaptorInterface;
 
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
-class DBusServiceProxyInterface;
 class DHCPCDListenerInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
@@ -109,8 +108,6 @@ class ControlInterface {
   virtual RPCServiceWatcherInterface* CreateRPCServiceWatcher(
       const std::string& connection_name,
       const base::Closure& on_connection_vanished) = 0;
-
-  virtual DBusServiceProxyInterface* CreateDBusServiceProxy() = 0;
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.

@@ -51,7 +51,6 @@ class NiceMockControl : public ControlInterface {
                    const std::string& connection_name,
                    const base::Closure& on_connection_vanished));
 
-  MOCK_METHOD0(CreateDBusServiceProxy, DBusServiceProxyInterface*());
   MOCK_METHOD3(
       CreatePowerManagerProxy,
       PowerManagerProxyInterface*(

@@ -23,7 +23,6 @@
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "shill/dbus_variant_gmock_printer.h"
 #include "shill/refptr_types.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 

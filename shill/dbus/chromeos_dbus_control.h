@@ -52,8 +52,6 @@ class ChromeosDBusControl : public ControlInterface {
       const std::string& connection_name,
       const base::Closure& on_connection_vanished) override;
 
-  DBusServiceProxyInterface* CreateDBusServiceProxy() override;
-
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
   PowerManagerProxyInterface* CreatePowerManagerProxy(

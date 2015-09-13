@@ -600,7 +600,6 @@
         'scoped_umask.cc',
         'service.cc',
         'service_property_change_notifier.cc',
-        'shared_dbus_connection.cc',
         'shill_ares.cc',
         'shill_config.cc',
         'shill_test_config.cc',

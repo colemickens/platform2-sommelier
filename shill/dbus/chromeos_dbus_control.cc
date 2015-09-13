@@ -160,10 +160,6 @@ RPCServiceWatcherInterface* ChromeosDBusControl::CreateRPCServiceWatcher(
                                         on_connection_vanished);
 }
 
-DBusServiceProxyInterface* ChromeosDBusControl::CreateDBusServiceProxy() {
-  return nullptr;
-}
-
 PowerManagerProxyInterface* ChromeosDBusControl::CreatePowerManagerProxy(
     PowerManagerProxyDelegate* delegate,
     const base::Closure& service_appeared_callback,
