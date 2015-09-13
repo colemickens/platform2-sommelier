@@ -18,6 +18,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'dbus-1',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
@@ -35,6 +36,7 @@
       '-Wno-missing-field-initializers',  # for LAZY_INSTANCE_INITIALIZER
     ],
     'defines': [
+      'ENABLE_CHROMEOS_DBUS',
       'RUNDIR="/var/run/shill"',
       'SHIMDIR="<(libdir)/shill/shims"',
     ],
@@ -43,18 +45,6 @@
         'defines': [
           'DISABLE_CELLULAR',
         ],
-      }],
-      ['USE_chromeos_dbus == 0', {
-        'defines': [
-          'DISABLE_CHROMEOS_DBUS',
-        ],
-      }],
-      ['USE_chromeos_dbus == 1', {
-        'variables': {
-          'deps': [
-            'dbus-1',
-          ],
-        },
       }],
       ['USE_dhcpv6 == 0', {
         'defines': [
@@ -139,28 +129,6 @@
       ],
     },
     {
-      'target_name': 'shill-adaptors',
-      'type': 'none',
-      'variables': {
-        'xml2cpp_type': 'adaptor',
-        'xml2cpp_in_dir': 'dbus_bindings',
-        'xml2cpp_out_dir': 'include/shill/dbus_adaptors',
-      },
-      'sources': [
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Device.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.IPConfig.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Manager.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Profile.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Service.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.Task.xml',
-        '<(xml2cpp_in_dir)/org.chromium.flimflam.ThirdPartyVpn.xml',
-      ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
-    },
-    # ChromeOS DBus bindings.
-    # TODO(zqiu): remove the legacy dbus-c++ bindings when switching over
-    # to ChromeOS DBus.
-    {
       'target_name': 'shill-chromeos-dbus-adaptors',
       'type': 'none',
       'variables': {
@@ -237,17 +205,18 @@
       'type': 'static_library',
       'dependencies': [
         'mobile_operator_db',
-        'shill-adaptors',
+        'shill-chromeos-dbus-adaptors',
         'shim-protos',
         'libshill-net-<(libbase_ver)',
       ],
       'variables': {
         'exported_deps': [
-          'dbus-c++-1',
           'gio-2.0',
           'glib-2.0',
           'libcares',
           'libmetrics-<(libbase_ver)',
+          'libpermission_broker-client',
+          'libpower_manager-client',
           'protobuf-lite',
         ],
         'deps': [
@@ -265,7 +234,6 @@
       'link_settings': {
         'variables': {
           'deps': [
-            'dbus-c++-1',
             'gio-2.0',
             'glib-2.0',
             'libcares',
@@ -315,106 +283,44 @@
             'cellular/modem_manager_1.cc',
             'cellular/out_of_credits_detector.cc',
             'cellular/subscription_state_out_of_credits_detector.cc',
+            'dbus/chromeos_dbus_objectmanager_proxy.cc',
+            'dbus/chromeos_dbus_properties_proxy.cc',
+            'dbus/chromeos_mm1_modem_modem3gpp_proxy.cc',
+            'dbus/chromeos_mm1_modem_modemcdma_proxy.cc',
+            'dbus/chromeos_mm1_modem_proxy.cc',
+            'dbus/chromeos_mm1_modem_simple_proxy.cc',
+            'dbus/chromeos_mm1_sim_proxy.cc',
+            'dbus/chromeos_modem_cdma_proxy.cc',
+            'dbus/chromeos_modem_gobi_proxy.cc',
+            'dbus/chromeos_modem_gsm_card_proxy.cc',
+            'dbus/chromeos_modem_gsm_network_proxy.cc',
+            'dbus/chromeos_modem_manager_proxy.cc',
+            'dbus/chromeos_modem_proxy.cc',
+            'dbus/chromeos_modem_simple_proxy.cc',
             'protobuf_lite_streams.cc',
           ],
-          'conditions': [
-            ['USE_chromeos_dbus == 1', {
-              'sources': [
-                'dbus/chromeos_dbus_objectmanager_proxy.cc',
-                'dbus/chromeos_dbus_properties_proxy.cc',
-                'dbus/chromeos_mm1_modem_modem3gpp_proxy.cc',
-                'dbus/chromeos_mm1_modem_modemcdma_proxy.cc',
-                'dbus/chromeos_mm1_modem_proxy.cc',
-                'dbus/chromeos_mm1_modem_simple_proxy.cc',
-                'dbus/chromeos_mm1_sim_proxy.cc',
-                'dbus/chromeos_modem_cdma_proxy.cc',
-                'dbus/chromeos_modem_gobi_proxy.cc',
-                'dbus/chromeos_modem_gsm_card_proxy.cc',
-                'dbus/chromeos_modem_gsm_network_proxy.cc',
-                'dbus/chromeos_modem_manager_proxy.cc',
-                'dbus/chromeos_modem_proxy.cc',
-                'dbus/chromeos_modem_simple_proxy.cc',
-              ],
-              'actions': [
-                {
-                  'action_name': 'generate-cellular-proxies',
-                  'variables': {
-                    'proxy_output_file': 'include/cellular/dbus-proxies.h',
-                    'modemmanager_in_dir': '<(sysroot)/usr/share/dbus-1/interfaces/',
-                  },
-                  'sources': [
-                    'dbus_bindings/dbus-objectmanager.xml',
-                    'dbus_bindings/dbus-properties.xml',
-                    'dbus_bindings/modem-gobi.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Cdma.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Card.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Network.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Simple.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.Modem3gpp.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.ModemCdma.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.Simple.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.xml',
-                    '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Sim.xml',
-                  ],
-                  'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-                },
-              ],
-            }],
-          ],
-        }],
-        ['USE_chromeos_dbus ==1', {
-          'sources': [
-            'dbus/chromeos_dbus_adaptor.cc',
-            'dbus/chromeos_dbus_control.cc',
-            'dbus/chromeos_dbus_daemon.cc',
-            'dbus/chromeos_dbus_service_watcher.cc',
-            'dbus/chromeos_device_dbus_adaptor.cc',
-            'dbus/chromeos_dhcpcd_listener.cc',
-            'dbus/chromeos_dhcpcd_proxy.cc',
-            'dbus/chromeos_ipconfig_dbus_adaptor.cc',
-            'dbus/chromeos_manager_dbus_adaptor.cc',
-            'dbus/chromeos_permission_broker_proxy.cc',
-            'dbus/chromeos_power_manager_proxy.cc',
-            'dbus/chromeos_profile_dbus_adaptor.cc',
-            'dbus/chromeos_rpc_task_dbus_adaptor.cc',
-            'dbus/chromeos_service_dbus_adaptor.cc',
-            'dbus/chromeos_third_party_vpn_dbus_adaptor.cc',
-            'dbus/chromeos_upstart_proxy.cc',
-          ],
-          'variables': {
-            'exported_deps': [
-              'libpermission_broker-client',
-              'libpower_manager-client',
-            ],
-            'deps': ['<@(exported_deps)'],
-          },
-          'all_dependent_settings': {
-            'variables': {
-              'deps': [
-                '<@(exported_deps)',
-              ],
-            },
-          },
           'actions': [
             {
-              'action_name': 'generate-dhcpcd-proxies',
+              'action_name': 'generate-cellular-proxies',
               'variables': {
-                'proxy_output_file': 'include/dhcpcd/dbus-proxies.h',
+                'proxy_output_file': 'include/cellular/dbus-proxies.h',
+                'modemmanager_in_dir': '<(sysroot)/usr/share/dbus-1/interfaces/',
               },
               'sources': [
-                'dbus_bindings/dhcpcd.xml',
-              ],
-              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-            },
-            {
-              'action_name': 'generate-upstart-proxies',
-              'variables': {
-                'proxy_output_file': 'include/upstart/dbus-proxies.h',
-              },
-              'sources': [
-                'dbus_bindings/upstart.xml',
+                'dbus_bindings/dbus-objectmanager.xml',
+                'dbus_bindings/dbus-properties.xml',
+                'dbus_bindings/modem-gobi.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Cdma.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Card.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Network.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Simple.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.Modem3gpp.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.ModemCdma.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.Simple.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.xml',
+                '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Sim.xml',
               ],
               'includes': ['../common-mk/generate-dbus-proxies.gypi'],
             },
@@ -453,35 +359,29 @@
         }],
         ['USE_wifi == 1 or USE_wired_8021x == 1', {
           'sources': [
+            'dbus/chromeos_supplicant_bss_proxy.cc',
+            'dbus/chromeos_supplicant_interface_proxy.cc',
+            'dbus/chromeos_supplicant_network_proxy.cc',
+            'dbus/chromeos_supplicant_process_proxy.cc',
             'eap_credentials.cc',
             'eap_listener.cc',
             'supplicant/supplicant_eap_state_handler.cc',
             'supplicant/wpa_supplicant.cc',
           ],
-          'conditions': [
-            ['USE_chromeos_dbus == 1', {
+          'actions': [
+            {
+              'action_name': 'generate-supplicant-proxies',
+              'variables': {
+                'proxy_output_file': 'include/supplicant/dbus-proxies.h',
+              },
               'sources': [
-                'dbus/chromeos_supplicant_bss_proxy.cc',
-                'dbus/chromeos_supplicant_interface_proxy.cc',
-                'dbus/chromeos_supplicant_network_proxy.cc',
-                'dbus/chromeos_supplicant_process_proxy.cc',
+                'dbus_bindings/supplicant-bss.xml',
+                'dbus_bindings/supplicant-interface.xml',
+                'dbus_bindings/supplicant-network.xml',
+                'dbus_bindings/supplicant-process.xml',
               ],
-              'actions': [
-                {
-                  'action_name': 'generate-supplicant-proxies',
-                  'variables': {
-                    'proxy_output_file': 'include/supplicant/dbus-proxies.h',
-                  },
-                  'sources': [
-                    'dbus_bindings/supplicant-bss.xml',
-                    'dbus_bindings/supplicant-interface.xml',
-                    'dbus_bindings/supplicant-network.xml',
-                    'dbus_bindings/supplicant-process.xml',
-                  ],
-                  'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-                },
-              ],
-            }],
+              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+            },
           ],
         }],
         ['USE_wimax == 1', {
@@ -499,18 +399,12 @@
             },
           },
           'sources': [
+            'dbus/chromeos_wimax_device_proxy.cc',
+            'dbus/chromeos_wimax_manager_proxy.cc',
+            'dbus/chromeos_wimax_network_proxy.cc',
             'wimax/wimax.cc',
             'wimax/wimax_provider.cc',
             'wimax/wimax_service.cc',
-          ],
-          'conditions': [
-            ['USE_chromeos_dbus == 1', {
-              'sources': [
-                'dbus/chromeos_wimax_device_proxy.cc',
-                'dbus/chromeos_wimax_manager_proxy.cc',
-                'dbus/chromeos_wimax_network_proxy.cc',
-              ],
-            }],
           ],
         }],
         ['USE_wired_8021x == 1', {
@@ -543,6 +437,22 @@
         'crypto_provider.cc',
         'crypto_rot47.cc',
         'crypto_util_proxy.cc',
+        'dbus/chromeos_dbus_adaptor.cc',
+        'dbus/chromeos_dbus_control.cc',
+        'dbus/chromeos_dbus_daemon.cc',
+        'dbus/chromeos_dbus_service_watcher.cc',
+        'dbus/chromeos_device_dbus_adaptor.cc',
+        'dbus/chromeos_dhcpcd_listener.cc',
+        'dbus/chromeos_dhcpcd_proxy.cc',
+        'dbus/chromeos_ipconfig_dbus_adaptor.cc',
+        'dbus/chromeos_manager_dbus_adaptor.cc',
+        'dbus/chromeos_permission_broker_proxy.cc',
+        'dbus/chromeos_power_manager_proxy.cc',
+        'dbus/chromeos_profile_dbus_adaptor.cc',
+        'dbus/chromeos_rpc_task_dbus_adaptor.cc',
+        'dbus/chromeos_service_dbus_adaptor.cc',
+        'dbus/chromeos_third_party_vpn_dbus_adaptor.cc',
+        'dbus/chromeos_upstart_proxy.cc',
         'default_profile.cc',
         'device.cc',
         'device_claimer.cc',
@@ -615,6 +525,28 @@
         'vpn/vpn_driver.cc',
         'vpn/vpn_provider.cc',
         'vpn/vpn_service.cc',
+      ],
+      'actions': [
+        {
+          'action_name': 'generate-dhcpcd-proxies',
+          'variables': {
+            'proxy_output_file': 'include/dhcpcd/dbus-proxies.h',
+          },
+          'sources': [
+            'dbus_bindings/dhcpcd.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+        {
+          'action_name': 'generate-upstart-proxies',
+          'variables': {
+            'proxy_output_file': 'include/upstart/dbus-proxies.h',
+          },
+          'sources': [
+            'dbus_bindings/upstart.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
     },
     {
@@ -740,6 +672,7 @@
             'arp_packet_unittest.cc',
             'async_connection_unittest.cc',
             'certificate_file_unittest.cc',
+            'chromeos_daemon_unittest.cc',
             'connection_diagnostics_unittest.cc',
             'connection_health_checker_unittest.cc',
             'connection_info_reader_unittest.cc',
@@ -751,6 +684,7 @@
             'crypto_provider_unittest.cc',
             'crypto_rot47_unittest.cc',
             'crypto_util_proxy_unittest.cc',
+            'dbus/chromeos_dbus_adaptor_unittest.cc',
             'default_profile_unittest.cc',
             'device_claimer_unittest.cc',
             'device_info_unittest.cc',
@@ -924,15 +858,6 @@
                 'cellular/modem_unittest.cc',
                 'cellular/subscription_state_out_of_credits_detector_unittest.cc',
                 'mock_dbus_properties_proxy.cc',
-              ],
-            }],
-            ['USE_chromeos_dbus ==1', {
-              'sources': [
-                # TODO(zqiu): putting "chromeos_daemon_unittest.cc" here
-                # temporarily until the legacy shill_daemon.cc is removed.
-                # This is a replacement for shill_daemon.
-                'chromeos_daemon_unittest.cc',
-                'dbus/chromeos_dbus_adaptor_unittest.cc',
               ],
             }],
             ['USE_dhcpv6 == 1', {

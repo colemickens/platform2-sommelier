@@ -36,9 +36,9 @@
 #include "shill/shill_config.h"
 #include "shill/technology.h"
 
-#if !defined(DISABLE_CHROMEOS_DBUS)
+#if defined(ENABLE_CHROMEOS_DBUS)
 #include "shill/dbus/chromeos_dbus_daemon.h"
-#endif
+#endif  // ENABLE_CHROMEOS_DBUS
 
 using base::FilePath;
 using std::string;
@@ -237,14 +237,14 @@ int main(int argc, char** argv) {
 
   std::unique_ptr<shill::ChromeosDaemon> daemon;
 
-#if !defined(DISABLE_CHROMEOS_DBUS)
+#if defined(ENABLE_CHROMEOS_DBUS)
   daemon.reset(
       new shill::ChromeosDBusDaemon(
           base::Bind(&OnStartup, argv[0], cl), settings, &config));
 #else
   // TODO(zqiu): use default stub control interface.
 #error Control interface type not specified.
-#endif  // DISABLE_CHROMEOS_DBUS
+#endif  // ENABLE_CHROMEOS_DBUS
 
   daemon->RunMessageLoop();
 
