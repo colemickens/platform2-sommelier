@@ -14,12 +14,6 @@ AddressMapper::AddressMapper(const AddressMapper& source) {
   mappings_ = source.mappings_;
 }
 
-bool AddressMapper::Map(const uint64_t real_addr,
-                        const uint64_t size,
-                        const bool remove_existing_mappings) {
-  return MapWithID(real_addr, size, kUint64Max, 0, remove_existing_mappings);
-}
-
 bool AddressMapper::MapWithID(const uint64_t real_addr,
                               const uint64_t size,
                               const uint64_t id,

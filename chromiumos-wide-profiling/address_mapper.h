@@ -5,6 +5,7 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_ADDRESS_MAPPER_H_
 #define CHROMIUMOS_WIDE_PROFILING_ADDRESS_MAPPER_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include <list>
@@ -20,25 +21,20 @@ class AddressMapper {
   // is also useful to copy kernel mappings to any process that is created.
   AddressMapper(const AddressMapper& source);
 
-  // Maps a new address range to quipper space.
-  // |remove_existing_mappings| indicates whether to remove old mappings that
-  // collide with the new range in real address space, indicating it has been
-  // unmapped.
-  // Returns true if mapping was successful.
-  bool Map(const uint64_t real_addr,
-           const uint64_t length,
-           bool remove_existing_mappings);
-
-  // Like Map(real_addr, length, remove_existing_mappings).  |id| is an
-  // identifier value to be stored along with the mapping.  AddressMapper does
-  // not care whether it is unique compared to all other IDs passed in.  That is
-  // up to the caller to keep track of.
+  // Maps a new address range [real_addr, real_addr + length) to quipper space.
+  // |id| is an identifier value to be stored along with the mapping.
+  // AddressMapper does not care whether it is unique compared to all other IDs
+  // passed in. That is up to the caller to keep track of.
   // |offset_base| represents the offset within the original region at which the
   // mapping begins. The original region can be much larger than the mapped
   // region.
   // e.g. Given a mapped region with base=0x4000 and size=0x2000 mapped with
   // offset_base=0x10000, then the address 0x5000 maps to an offset of 0x11000
   // (0x5000 - 0x4000 + 0x10000).
+  // |remove_existing_mappings| indicates whether to remove old mappings that
+  // collide with the new range in real address space, indicating it has been
+  // unmapped.
+  // Returns true if mapping was successful.
   bool MapWithID(const uint64_t real_addr,
                  const uint64_t length,
                  const uint64_t id,
@@ -60,7 +56,7 @@ class AddressMapper {
   }
 
   // Returns the number of address ranges that are currently mapped.
-  unsigned int GetNumMappedRanges() const {
+  size_t GetNumMappedRanges() const {
     return mappings_.size();
   }
 
