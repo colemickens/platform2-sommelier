@@ -21,10 +21,38 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
 
 namespace webservd {
+
+namespace {
+
+// Returns the current date/time. This is used for TLS certificate validation
+// very early in process start when the system clock might not be adjusted
+// yet on devices that don't have a real-time clock. So, try to get the system
+// time and if it is earlier than the build date of this executable, use
+// the build date instead as a lower limit to the date/time.
+// See http://b/23897170 for more details.
+base::Time GetTimeNow() {
+  base::Time now = base::Time::Now();
+
+  base::File::Info info;
+  base::FilePath exe_path;
+  if (!base::ReadSymbolicLink(base::FilePath{"/proc/self/exe"}, &exe_path) ||
+      !base::GetFileInfo(exe_path, &info) || info.creation_time < now) {
+    return now;
+  }
+
+  LOG(WARNING) << "Current time (" << now
+               << ") is earlier than the application build time. Using "
+               << info.creation_time << " instead!";
+  return info.creation_time;
+}
+
+}  // anonymous namespace
 
 std::unique_ptr<X509, void(*)(X509*)> CreateCertificate(
     int serial_number,
@@ -37,8 +65,10 @@ std::unique_ptr<X509, void(*)(X509*)> CreateCertificate(
   // Set certificate properties...
   ASN1_INTEGER* sn = X509_get_serialNumber(cert.get());
   ASN1_INTEGER_set(sn, serial_number);
-  X509_gmtime_adj(X509_get_notBefore(cert.get()), 0);
-  X509_gmtime_adj(X509_get_notAfter(cert.get()), cert_expiration.InSeconds());
+  time_t current_time = GetTimeNow().ToTimeT();
+  X509_time_adj(X509_get_notBefore(cert.get()), 0, &current_time);
+  X509_time_adj(X509_get_notAfter(cert.get()), cert_expiration.InSeconds(),
+                &current_time);
 
   // The issuer is the same as the subject, since this cert is self-signed.
   X509_NAME* name = X509_get_subject_name(cert.get());
