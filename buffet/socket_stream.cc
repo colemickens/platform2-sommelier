@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/message_loop/message_loop.h>
 #include <chromeos/streams/file_stream.h>
 #include <chromeos/streams/tls_stream.h>
 
@@ -68,35 +69,35 @@ void OnError(const base::Callback<void(const weave::Error*)>& error_callback,
 
 }  // namespace
 
-bool SocketStream::ReadAsync(
+void SocketStream::ReadAsync(
     void* buffer,
     size_t size_to_read,
     const base::Callback<void(size_t)>& success_callback,
-    const base::Callback<void(const weave::Error*)>& error_callback,
-    weave::ErrorPtr* error) {
+    const base::Callback<void(const weave::Error*)>& error_callback) {
   chromeos::ErrorPtr chromeos_error;
   if (!ptr_->ReadAsync(buffer, size_to_read, success_callback,
                        base::Bind(&OnError, error_callback), &chromeos_error)) {
-    ConvertError(*chromeos_error, error);
-    return false;
+    weave::ErrorPtr error;
+    ConvertError(*chromeos_error, &error);
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
   }
-  return true;
 }
 
-bool SocketStream::WriteAllAsync(
+void SocketStream::WriteAllAsync(
     const void* buffer,
     size_t size_to_write,
     const base::Closure& success_callback,
-    const base::Callback<void(const weave::Error*)>& error_callback,
-    weave::ErrorPtr* error) {
+    const base::Callback<void(const weave::Error*)>& error_callback) {
   chromeos::ErrorPtr chromeos_error;
   if (!ptr_->WriteAllAsync(buffer, size_to_write, success_callback,
                            base::Bind(&OnError, error_callback),
                            &chromeos_error)) {
-    ConvertError(*chromeos_error, error);
-    return false;
+    weave::ErrorPtr error;
+    ConvertError(*chromeos_error, &error);
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
   }
-  return true;
 }
 
 void SocketStream::CancelPendingAsyncOperations() {

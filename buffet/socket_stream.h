@@ -20,19 +20,17 @@ class SocketStream : public weave::Stream {
 
   ~SocketStream() override = default;
 
-  bool ReadAsync(
+  void ReadAsync(
       void* buffer,
       size_t size_to_read,
       const base::Callback<void(size_t)>& success_callback,
-      const base::Callback<void(const weave::Error*)>& error_callback,
-      weave::ErrorPtr* error) override;
+      const base::Callback<void(const weave::Error*)>& error_callback) override;
 
-  bool WriteAllAsync(
+  void WriteAllAsync(
       const void* buffer,
       size_t size_to_write,
       const base::Closure& success_callback,
-      const base::Callback<void(const weave::Error*)>& error_callback,
-      weave::ErrorPtr* error) override;
+      const base::Callback<void(const weave::Error*)>& error_callback) override;
 
   void CancelPendingAsyncOperations() override;
 
