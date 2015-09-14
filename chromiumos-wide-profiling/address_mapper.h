@@ -109,9 +109,9 @@ class AddressMapper {
   // TODO(sque): implement with set or map to improve searching.
   typedef std::list<MappedRange> MappingList;
 
-  // Removes an existing address mapping.
-  // Returns true if successful, false if no mapped address range was found.
-  bool Unmap(const MappedRange& range);
+  // Removes an existing address mapping, given by an iterator pointing to an
+  // element of |mappings_|.
+  void Unmap(MappingList::iterator mapping_iter);
 
   // Container for all the existing mappings.
   MappingList mappings_;

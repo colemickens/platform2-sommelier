@@ -4,6 +4,8 @@
 
 #include "chromiumos-wide-profiling/address_mapper.h"
 
+#include <vector>
+
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/limits.h"
@@ -42,54 +44,61 @@ bool AddressMapper::MapWithID(const uint64_t real_addr,
   // Check for collision with an existing mapping.  This must be an overlap that
   // does not result in one range being completely covered by another
   MappingList::iterator iter;
-  MappingList mappings_to_delete;
-  bool old_range_found = false;
-  MappedRange old_range;
+  std::vector<MappingList::iterator> mappings_to_delete;
+  MappingList::iterator old_range_iter = mappings_.end();
   for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
     if (!iter->Intersects(range))
       continue;
     // Quit if existing ranges that collide aren't supposed to be removed.
     if (!remove_existing_mappings)
       return false;
-    if (!old_range_found && iter->Covers(range) && iter->size > range.size) {
-      old_range_found = true;
-      old_range = *iter;
+    if (old_range_iter == mappings_.end() && iter->Covers(range)
+        && iter->size > range.size) {
+      old_range_iter = iter;
       continue;
     }
-    mappings_to_delete.push_back(*iter);
+    mappings_to_delete.push_back(iter);
   }
 
-  while (!mappings_to_delete.empty()) {
-    const MappedRange& range = mappings_to_delete.front();
-    CHECK(Unmap(range));
-    mappings_to_delete.pop_front();
-  }
+  for (MappingList::iterator mapping_iter : mappings_to_delete)
+    Unmap(mapping_iter);
+  mappings_to_delete.clear();
 
   // Otherwise check for this range being covered by another range.  If that
   // happens, split or reduce the existing range to make room.
-  if (old_range_found) {
-    CHECK(Unmap(old_range));
+  if (old_range_iter != mappings_.end()) {
+    // Make a copy of the old mapping before removing it.
+    const MappedRange old_range = *old_range_iter;
+    Unmap(old_range_iter);
 
     uint64_t gap_before = range.real_addr - old_range.real_addr;
     uint64_t gap_after = (old_range.real_addr + old_range.size) -
                          (range.real_addr + range.size);
 
     if (gap_before) {
-      CHECK(MapWithID(old_range.real_addr,
-                      gap_before,
-                      old_range.id,
-                      old_range.offset_base,
-                      false));
+      if (!MapWithID(old_range.real_addr, gap_before, old_range.id,
+                     old_range.offset_base, false)) {
+        LOG(ERROR) << "Could not map old range from " << std::hex
+                   << old_range.real_addr << " to "
+                   << old_range.real_addr + gap_before;
+        return false;
+      }
     }
 
-    CHECK(MapWithID(range.real_addr, range.size, id, offset_base, false));
+    if (!MapWithID(range.real_addr, range.size, id, offset_base, false)) {
+      LOG(ERROR) << "Could not map new range at " << std::hex << range.real_addr
+                 << " to " << range.real_addr + range.size << " over old range";
+      return false;
+    }
 
     if (gap_after) {
-      CHECK(MapWithID(range.real_addr + range.size,
-                      gap_after,
-                      old_range.id,
-                      old_range.offset_base + gap_before + range.size,
-                      false));
+      if (!MapWithID(range.real_addr + range.size, gap_after, old_range.id,
+                     old_range.offset_base + gap_before + range.size, false)) {
+        LOG(ERROR) << "Could not map old range from " << std::hex
+                   << old_range.real_addr << " to "
+                   << old_range.real_addr + gap_before;
+        return false;
+      }
     }
 
     return true;
@@ -188,26 +197,16 @@ uint64_t AddressMapper::GetMaxMappedLength() const {
   return max - min;
 }
 
-bool AddressMapper::Unmap(const MappedRange& range) {
-  MappingList::iterator iter;
-  // TODO(sque): this is highly inefficient since Unmap() is called from a
-  // function that has already iterated to the right place within |mappings_|.
-  // For a first revision, I am sacrificing efficiency for of clarity, due to
-  // the trickiness of removing elements using iterators.
-  for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
-    if (range.real_addr == iter->real_addr && range.size == iter->size) {
-      // Add the freed up space to the free space counter of the previous
-      // mapped region, if it exists.
-      if (iter != mappings_.begin()) {
-        --iter;
-        iter->unmapped_space_after += range.size + range.unmapped_space_after;
-        ++iter;
-      }
-      mappings_.erase(iter);
-      return true;
-    }
+void AddressMapper::Unmap(MappingList::iterator mapping_iter) {
+  // Add the freed up space to the free space counter of the previous
+  // mapped region, if it exists.
+  if (mapping_iter != mappings_.begin()) {
+    const MappedRange& range = *mapping_iter;
+    MappingList::iterator previous_range_iter = std::prev(mapping_iter);
+    previous_range_iter->unmapped_space_after +=
+        range.size + range.unmapped_space_after;
   }
-  return false;
+  mappings_.erase(mapping_iter);
 }
 
 }  // namespace quipper
