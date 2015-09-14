@@ -44,9 +44,11 @@ const int64_t kMaxLogFileSize = 1024 * 1024;  // 1 MB
 
 // Obtain an IP address as a human-readable string for logging.
 std::string GetIPAddress(const sockaddr* addr) {
-  CHECK(addr);
   static_assert(INET6_ADDRSTRLEN > INET_ADDRSTRLEN, "Unexpected IP addr len.");
   char buf[INET6_ADDRSTRLEN] = "-";
+  if (!addr)
+    return buf;
+
   switch (addr->sa_family) {
     case AF_INET: {
       auto addr_in = reinterpret_cast<const sockaddr_in*>(addr);
