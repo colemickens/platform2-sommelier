@@ -1840,6 +1840,7 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
   LOG(INFO) << __func__ << ": "
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
   StopScanTimer();
+  supplicant_process_proxy_->ExpectDisconnect();
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);

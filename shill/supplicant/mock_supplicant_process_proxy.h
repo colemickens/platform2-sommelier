@@ -39,6 +39,7 @@ class MockSupplicantProcessProxy : public SupplicantProcessProxyInterface {
   MOCK_METHOD1(RemoveInterface, bool(const std::string& rpc_identifier));
   MOCK_METHOD1(GetDebugLevel, bool(std::string* level));
   MOCK_METHOD1(SetDebugLevel, bool(const std::string& level));
+  MOCK_METHOD0(ExpectDisconnect, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantProcessProxy);

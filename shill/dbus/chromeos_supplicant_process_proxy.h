@@ -51,6 +51,7 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
   // method. Any failures will be logged in the callback.
   bool SetDebugLevel(const std::string& level) override;
   bool GetDebugLevel(std::string* level) override;
+  bool ExpectDisconnect() override;
 
  private:
   class PropertySet : public dbus::PropertySet {

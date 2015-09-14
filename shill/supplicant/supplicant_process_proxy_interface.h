@@ -35,6 +35,7 @@ class SupplicantProcessProxyInterface {
   virtual bool RemoveInterface(const std::string& rpc_identifier) = 0;
   virtual bool SetDebugLevel(const std::string& level) = 0;
   virtual bool GetDebugLevel(std::string* level) = 0;
+  virtual bool ExpectDisconnect() = 0;
 };
 
 }  // namespace shill

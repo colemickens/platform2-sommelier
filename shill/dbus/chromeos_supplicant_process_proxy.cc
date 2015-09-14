@@ -198,6 +198,17 @@ bool ChromeosSupplicantProcessProxy::GetDebugLevel(string* level) {
   return true;
 }
 
+bool ChromeosSupplicantProcessProxy::ExpectDisconnect() {
+  SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__;
+  if (!service_available_) {
+    LOG(ERROR) << "Supplicant process not present";
+    return false;
+  }
+  chromeos::ErrorPtr error;
+  supplicant_proxy_->ExpectDisconnect(&error);
+  return true;
+}
+
 void ChromeosSupplicantProcessProxy::InterfaceAdded(
     const dbus::ObjectPath& /*path*/,
     const chromeos::VariantDictionary& /*properties*/) {
