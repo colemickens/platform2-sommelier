@@ -311,7 +311,7 @@ TEST_F(TPM2UtilityTest, GenerateKeySuccess) {
   std::string key_blob;
   int key_handle;
   EXPECT_CALL(mock_tpm_utility_,
-              CreateRSAKeyPair(_, modulus_bits, _, _, _, _, _, _))
+              CreateRSAKeyPair(_, modulus_bits, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(utility.GenerateKey(1,
                                   modulus_bits,
@@ -343,7 +343,7 @@ TEST_F(TPM2UtilityTest, GenerateKeyCreateFail) {
   SecureBlob auth_data;
   std::string key_blob;
   int key_handle;
-  EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(utility.GenerateKey(1,
                                    modulus_bits,

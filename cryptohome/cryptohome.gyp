@@ -399,16 +399,10 @@
           ],
           'conditions': [
             ['USE_tpm2 == 1', {
+              'libraries': [
+                '-ltrunks_test',
+              ],
               'sources': [
-                '../trunks/mock_authorization_delegate.cc',
-                '../trunks/mock_blob_parser.cc',
-                '../trunks/mock_hmac_session.cc',
-                '../trunks/mock_policy_session.cc',
-                '../trunks/mock_session_manager.cc',
-                '../trunks/mock_tpm.cc',
-                '../trunks/mock_tpm_state.cc',
-                '../trunks/mock_tpm_utility.cc',
-                '../trunks/trunks_factory_for_test.cc',
                 'tpm2_test.cc',
               ],
             }],

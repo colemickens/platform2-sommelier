@@ -415,16 +415,10 @@
               ],
               'libraries': [
                 '-ltrunks',
+                '-ltrunks_test',
               ],
               'includes': ['../common-mk/common_test.gypi'],
               'sources': [
-                '../trunks/mock_hmac_session.cc',
-                '../trunks/mock_policy_session.cc',
-                '../trunks/mock_session_manager.cc',
-                '../trunks/mock_tpm.cc',
-                '../trunks/mock_tpm_state.cc',
-                '../trunks/mock_tpm_utility.cc',
-                '../trunks/trunks_factory_for_test.cc',
                 'tpm2_utility_impl.cc',
                 'tpm2_utility_test.cc',
               ]
