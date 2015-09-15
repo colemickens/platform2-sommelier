@@ -14,12 +14,12 @@ namespace quipper {
 
 class AddressMapper {
  public:
-  AddressMapper() {}
+  AddressMapper() : page_alignment_(0) {}
 
   // Copy constructor: copies mappings from |source| to this AddressMapper. This
   // is useful for copying mappings from parent to child process upon fork(). It
   // is also useful to copy kernel mappings to any process that is created.
-  AddressMapper(const AddressMapper& source);
+  AddressMapper(const AddressMapper& other) = default;
 
   // Maps a new address range [real_addr, real_addr + length) to quipper space.
   // |id| is an identifier value to be stored along with the mapping.
@@ -65,6 +65,16 @@ class AddressMapper {
   // If the result is 2^64 (all of quipper space), this returns 0.  Call
   // IsEmpty() to distinguish this from actual emptiness.
   uint64_t GetMaxMappedLength() const;
+
+  // Sets the page alignment size. Set to 0 to disable page alignment.
+  // The alignment value must be a power of two. Any other value passed in will
+  // have no effect. Changing this value in between mappings results in
+  // undefined behavior.
+  void set_page_alignment(uint64_t alignment) {
+    // This also includes the case of 0.
+    if ((alignment & (alignment - 1)) == 0)
+      page_alignment_ = alignment;
+  }
 
   // Dumps the state of the address mapper to logs. Useful for debugging.
   void DumpToLog() const;
@@ -113,10 +123,25 @@ class AddressMapper {
   // element of |mappings_|.
   void Unmap(MappingList::iterator mapping_iter);
 
+  // Given an address, and a nonzero, power-of-two |page_alignment_| value,
+  // returns the offset of the address from the start of the page it is on.
+  // Equivalent to |addr % page_alignment_|. Should not be called if
+  // |page_alignment_| is zero.
+  uint64_t GetAlignedOffset(uint64_t addr) const {
+    return addr & (page_alignment_ - 1);
+  }
+
   // Container for all the existing mappings.
   MappingList mappings_;
 
-  bool CheckMappings() const;
+  // If set to nonzero, use this as a mapping page boundary. If a mapping does
+  // not begin at a multiple of this value, the remapped address should be given
+  // an offset that is the remainder.
+  //
+  // e.g. if alignment=0x1000 and a mapping starts at 0x520100, then the
+  // remapping should treat the mapping as starting at 0x520000, but addresses
+  // are only valid starting at 0x520100.
+  uint64_t page_alignment_;
 };
 
 }  // namespace quipper

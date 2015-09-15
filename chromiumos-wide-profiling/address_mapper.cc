@@ -12,10 +12,6 @@
 
 namespace quipper {
 
-AddressMapper::AddressMapper(const AddressMapper& source) {
-  mappings_ = source.mappings_;
-}
-
 bool AddressMapper::MapWithID(const uint64_t real_addr,
                               const uint64_t size,
                               const uint64_t id,
@@ -75,6 +71,17 @@ bool AddressMapper::MapWithID(const uint64_t real_addr,
     uint64_t gap_after = (old_range.real_addr + old_range.size) -
                          (range.real_addr + range.size);
 
+    // If the new mapping is not aligned to a page boundary at either its start
+    // or end, it will require the end of the old mapping range to be moved,
+    // which is not allowed.
+    if (page_alignment_) {
+      if ((gap_before && GetAlignedOffset(range.real_addr)) ||
+          (gap_after && GetAlignedOffset(range.real_addr + range.size))) {
+        LOG(ERROR) << "Split mapping must result in page-aligned mappings.";
+        return false;
+      }
+    }
+
     if (gap_before) {
       if (!MapWithID(old_range.real_addr, gap_before, old_range.id,
                      old_range.offset_base, false)) {
@@ -107,18 +114,22 @@ bool AddressMapper::MapWithID(const uint64_t real_addr,
   // Now search for a location for the new range.  It should be in the first
   // free block in quipper space.
 
+  uint64_t page_offset =
+      page_alignment_ ? GetAlignedOffset(range.real_addr) : 0;
+
   // If there is no existing mapping, add it to the beginning of quipper space.
   if (mappings_.empty()) {
-    range.mapped_addr = 0;
-    range.unmapped_space_after = kUint64Max - range.size;
+    range.mapped_addr = page_offset;
+    range.unmapped_space_after = kUint64Max - range.size - page_offset;
     mappings_.push_back(range);
     return true;
   }
 
   // If there is space before the first mapped range in quipper space, use it.
-  if (mappings_.begin()->mapped_addr >= range.size) {
-    range.mapped_addr = 0;
-    range.unmapped_space_after = mappings_.begin()->mapped_addr - range.size;
+  if (mappings_.begin()->mapped_addr >= range.size + page_offset) {
+    range.mapped_addr = page_offset;
+    range.unmapped_space_after =
+        mappings_.begin()->mapped_addr - range.size - page_offset;
     mappings_.push_front(range);
     return true;
   }
@@ -126,12 +137,44 @@ bool AddressMapper::MapWithID(const uint64_t real_addr,
   // Otherwise, search through the existing mappings for a free block after one
   // of them.
   for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
-    if (iter->unmapped_space_after < range.size)
-      continue;
+    MappedRange& existing_mapping = *iter;
+    if (page_alignment_) {
+      uint64_t end_of_existing_mapping =
+          existing_mapping.mapped_addr + existing_mapping.size;
 
-    range.mapped_addr = iter->mapped_addr + iter->size;
-    range.unmapped_space_after = iter->unmapped_space_after - range.size;
-    iter->unmapped_space_after = 0;
+      // Find next page boundary after end of this existing mapping.
+      uint64_t existing_page_offset = GetAlignedOffset(end_of_existing_mapping);
+      uint64_t next_page_boundary =
+          existing_page_offset
+              ? end_of_existing_mapping - existing_page_offset + page_alignment_
+              : end_of_existing_mapping;
+      // Compute where the new mapping would end if it were aligned to this
+      // page boundary.
+      uint64_t mapping_offset = GetAlignedOffset(range.real_addr);
+      uint64_t end_of_new_mapping =
+          next_page_boundary + mapping_offset + range.size;
+      uint64_t end_of_unmapped_space_after =
+          end_of_existing_mapping + existing_mapping.unmapped_space_after;
+
+      // Check if there's enough room in the unmapped space following the
+      // current existing mapping for the page-aligned mapping.
+      if (end_of_new_mapping > end_of_unmapped_space_after)
+        continue;
+
+      range.mapped_addr = next_page_boundary + mapping_offset;
+      range.unmapped_space_after =
+          end_of_unmapped_space_after - end_of_new_mapping;
+      existing_mapping.unmapped_space_after =
+          range.mapped_addr - end_of_existing_mapping;
+    } else {
+      if (existing_mapping.unmapped_space_after < range.size)
+        continue;
+      // Insert the new mapping range immediately after the existing one.
+      range.mapped_addr = existing_mapping.mapped_addr + existing_mapping.size;
+      range.unmapped_space_after =
+          existing_mapping.unmapped_space_after - range.size;
+      existing_mapping.unmapped_space_after = 0;
+    }
 
     mappings_.insert(++iter, range);
     return true;

@@ -402,6 +402,81 @@ TEST_F(AddressMapperTest, SplitRangeWithOffsetBase) {
   TestMappedRange(kSecondRange, kSecondRange.addr - kFirstRange.addr);
 }
 
+// Test mappings that are not aligned to mmap page boundaries.
+TEST_F(AddressMapperTest, NotPageAligned) {
+  mapper_->set_page_alignment(0x1000);
+
+  // Some address ranges that do not begin on a page boundary.
+  const Range kUnalignedRanges[] = {
+    Range(0xff000100,   0x1fff00, 0xdeadbeef,  0x100),
+    Range(0x00a00180,    0x10000, 0xcafebabe,  0x180),
+    Range(0x0c000300,  0x1000800, 0x900df00d, 0x4300),
+    Range(0x000017f0,    0x30000, 0x9000091e,  0x7f0),
+  };
+
+  // Map the ranges.
+  for (const Range& range : kUnalignedRanges)
+    ASSERT_TRUE(MapRange(range, true));
+
+  EXPECT_EQ(4U, mapper_->GetNumMappedRanges());
+
+  // Now make sure the mappings are correct.
+
+  // First region is mapped as usual, except it does not start at the page
+  // boundary.
+  TestMappedRange(kUnalignedRanges[0], 0x00000100);
+
+  // Second region follows at the end of the first, but notice that its length
+  // is a full number of pages, which means...
+  TestMappedRange(kUnalignedRanges[1], 0x00200180);
+
+  // ... the third region starts beyond the next page boundary: 0x211000 instead
+  // of 0x210000.
+  TestMappedRange(kUnalignedRanges[2], 0x00211300);
+
+  // Similarly, the fourth region starts beyond the next page boundary:
+  // 0x1212000 instead of 0x1211000.
+  TestMappedRange(kUnalignedRanges[3], 0x012127f0);
+}
+
+// Have one mapping in the middle of another, with a nonzero page alignment
+// parameter.
+TEST_F(AddressMapperTest, SplitRangeWithPageAlignment) {
+  mapper_->set_page_alignment(0x1000);
+
+  // These should map just fine.
+  const Range kRange0(0x3000, 0x8000, 0xdeadbeef, 0);
+  const Range kRange1(0x5000, 0x2000, 0xfeedbabe, 0);
+
+  EXPECT_TRUE(MapRange(kRange0, true));
+  EXPECT_TRUE(MapRange(kRange1, true));
+
+  EXPECT_EQ(3U, mapper_->GetNumMappedRanges());
+
+  // Determine the expected split mappings.
+  const Range kRange0Head(0x3000, 0x2000, 0xdeadbeef, 0);
+  const Range kRange0Tail(0x7000, 0x4000, 0xdeadbeef, 0x4000);
+
+  // Everything should be mapped and split as usual.
+  TestMappedRange(kRange0Head, 0);
+  TestMappedRange(kRange0Tail, 0x4000);
+  TestMappedRange(kRange1, 0x2000);
+}
+
+// Have one mapping in the middle of another, with a nonzero page alignment
+// parameter. The overlapping region will not be aligned to page boundaries.
+TEST_F(AddressMapperTest, MisalignedSplitRangeWithPageAlignment) {
+  mapper_->set_page_alignment(0x1000);
+
+  const Range kRange0(0x3000, 0x8000, 0xdeadbeef, 0);
+  const Range kMisalignedRange(0x4800, 0x2000, 0xfeedbabe, 0);
+
+  EXPECT_TRUE(MapRange(kRange0, true));
+  // The misaligned mapping should not find enough space to split the existing
+  // range. It is not allowed to move the existing mapping.
+  EXPECT_FALSE(MapRange(kMisalignedRange, true));
+}
+
 }  // namespace quipper
 
 int main(int argc, char * argv[]) {
