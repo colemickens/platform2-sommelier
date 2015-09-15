@@ -14,23 +14,23 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_DBUS_CHROMEOS_PERMISSION_BROKER_PROXY_H_
-#define SHILL_DBUS_CHROMEOS_PERMISSION_BROKER_PROXY_H_
+#ifndef SHILL_DBUS_CHROMEOS_FIREWALLD_PROXY_H_
+#define SHILL_DBUS_CHROMEOS_FIREWALLD_PROXY_H_
 
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <permission_broker/dbus-proxies.h>
+#include <firewalld/dbus-proxies.h>
 
 #include "shill/firewall_proxy_interface.h"
 
 namespace shill {
 
-class ChromeosPermissionBrokerProxy : public FirewallProxyInterface {
+class ChromeosFirewalldProxy : public FirewallProxyInterface {
  public:
-  explicit ChromeosPermissionBrokerProxy(const scoped_refptr<dbus::Bus>& bus);
-  ~ChromeosPermissionBrokerProxy() override;
+  explicit ChromeosFirewalldProxy(const scoped_refptr<dbus::Bus>& bus);
+  ~ChromeosFirewalldProxy() override;
 
   bool RequestVpnSetup(const std::vector<std::string>& user_names,
                        const std::string& interface) override;
@@ -38,15 +38,13 @@ class ChromeosPermissionBrokerProxy : public FirewallProxyInterface {
   bool RemoveVpnSetup() override;
 
  private:
-  static const int kInvalidHandle;
+  std::unique_ptr<org::chromium::FirewalldProxy> proxy_;
+  std::vector<std::string> user_names_;
+  std::string interface_name_;
 
-  std::unique_ptr<org::chromium::PermissionBrokerProxy> proxy_;
-  int lifeline_read_fd_;
-  int lifeline_write_fd_;
-
-  DISALLOW_COPY_AND_ASSIGN(ChromeosPermissionBrokerProxy);
+  DISALLOW_COPY_AND_ASSIGN(ChromeosFirewalldProxy);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_DBUS_CHROMEOS_PERMISSION_BROKER_PROXY_H_
+#endif  // SHILL_DBUS_CHROMEOS_FIREWALLD_PROXY_H_
