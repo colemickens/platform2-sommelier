@@ -993,7 +993,8 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteNonBlocking) {
   EXPECT_FALSE(stream->CanSeek());
   EXPECT_FALSE(stream->CanGetSize());
 
-  std::vector<char> buffer(10 * 1024 * 1024);
+  // Pipe buffer is generally 64K, so 128K should be more than enough.
+  std::vector<char> buffer(128 * 1024);
   base::RandBytes(buffer.data(), buffer.size());
   size_t written = 0;
   size_t total_size = 0;

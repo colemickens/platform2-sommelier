@@ -216,6 +216,8 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
   };
 
   EXPECT_CALL(*curl_api_, MultiInit()).WillOnce(Return(multi_handle_));
+  EXPECT_CALL(*curl_api_, EasyGetInfoInt(handle_, CURLINFO_RESPONSE_CODE, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(200), Return(CURLE_OK)));
 
   curl_socket_callback socket_callback = nullptr;
   EXPECT_CALL(*curl_api_,
