@@ -54,11 +54,10 @@ base::Time GetTimeNow() {
 
 }  // anonymous namespace
 
-std::unique_ptr<X509, void(*)(X509*)> CreateCertificate(
-    int serial_number,
-    const base::TimeDelta& cert_expiration,
-    const std::string& common_name) {
-  auto cert = std::unique_ptr<X509, void(*)(X509*)>{X509_new(), X509_free};
+X509Ptr CreateCertificate(int serial_number,
+                          const base::TimeDelta& cert_expiration,
+                          const std::string& common_name) {
+  auto cert = X509Ptr{X509_new(), X509_free};
   CHECK(cert.get());
   X509_set_version(cert.get(), 2);  // Using X.509 v3 certificate...
 
@@ -109,6 +108,15 @@ chromeos::SecureBlob StoreRSAPrivateKey(RSA* rsa_key_pair) {
   return key_blob;
 }
 
+bool ValidateRSAPrivateKey(const chromeos::SecureBlob& key) {
+  std::unique_ptr<BIO, void(*)(BIO*)> bio{
+      BIO_new_mem_buf(const_cast<uint8_t*>(key.data()), key.size()), BIO_vfree};
+  std::unique_ptr<RSA, void(*)(RSA*)> rsa_key{
+      PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, nullptr, nullptr),
+      RSA_free};
+  return rsa_key.get() != nullptr;
+}
+
 chromeos::Blob StoreCertificate(X509* cert) {
   auto bio =
       std::unique_ptr<BIO, void(*)(BIO*)>{BIO_new(BIO_s_mem()), BIO_vfree};
@@ -119,6 +127,31 @@ chromeos::Blob StoreCertificate(X509* cert) {
   CHECK_GT(size, 0u);
   CHECK(buffer);
   return chromeos::Blob(buffer, buffer + size);
+}
+
+bool StoreCertificate(X509* cert, const base::FilePath& file) {
+  std::unique_ptr<BIO, void(*)(BIO*)> bio{
+      BIO_new_file(file.value().c_str(), "w"), BIO_vfree};
+  return bio && PEM_write_bio_X509(bio.get(), cert) != 0;
+}
+
+X509Ptr LoadAndValidateCertificate(const base::FilePath& file) {
+  X509Ptr cert{nullptr, X509_free};
+  std::unique_ptr<BIO, void(*)(BIO*)> bio{
+      BIO_new_file(file.value().c_str(), "r"), BIO_vfree};
+  if (!bio)
+    return cert;
+  LOG(INFO) << "Loading certificate from " << file.value();
+  cert.reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  if (cert) {
+    // Regenerate certificate 30 days before it expires.
+    time_t deadline = (GetTimeNow() + base::TimeDelta::FromDays(30)).ToTimeT();
+    if (X509_cmp_time(X509_get_notAfter(cert.get()), &deadline) < 0) {
+      LOG(WARNING) << "Certificate is expiring soon. Regenerating new one.";
+      cert.reset();
+    }
+  }
+  return cert;
 }
 
 // Same as openssl x509 -fingerprint -sha256.

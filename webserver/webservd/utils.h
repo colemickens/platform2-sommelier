@@ -20,16 +20,18 @@
 #include <vector>
 #include <openssl/ossl_typ.h>
 
+#include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <chromeos/secure_blob.h>
 
 namespace webservd {
 
+using X509Ptr = std::unique_ptr<X509, void(*)(X509*)>;
+
 // Creates a new X509 certificate.
-std::unique_ptr<X509, void(*)(X509*)> CreateCertificate(
-    int serial_number,
-    const base::TimeDelta& cert_expiration,
-    const std::string& common_name);
+X509Ptr CreateCertificate(int serial_number,
+                          const base::TimeDelta& cert_expiration,
+                          const std::string& common_name);
 
 // Generates an RSA public-private key pair of the specified strength.
 std::unique_ptr<RSA, void(*)(RSA*)> GenerateRSAKeyPair(int key_length_bits);
@@ -38,8 +40,15 @@ std::unique_ptr<RSA, void(*)(RSA*)> GenerateRSAKeyPair(int key_length_bits);
 // it as a binary blob.
 chromeos::SecureBlob StoreRSAPrivateKey(RSA* rsa_key_pair);
 
+// Checks if the buffer |key| contains a valid RSA private key.
+bool ValidateRSAPrivateKey(const chromeos::SecureBlob& key);
+
 // Serializes an X509 certificate using PEM format.
 chromeos::Blob StoreCertificate(X509* cert);
+
+// Stores/loads an X509 certificate to/from a file (in PEM format).
+bool StoreCertificate(X509* cert, const base::FilePath& file);
+X509Ptr LoadAndValidateCertificate(const base::FilePath& file);
 
 // Same as openssl x509 -fingerprint -sha256.
 chromeos::Blob GetSha256Fingerprint(X509* cert);

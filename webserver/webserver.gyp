@@ -96,6 +96,7 @@
         'webservd/dbus_protocol_handler.cc',
         'webservd/dbus_request_handler.cc',
         'webservd/error_codes.cc',
+        'webservd/fake_encryptor.cc',
         'webservd/log_manager.cc',
         'webservd/permission_broker_firewall.cc',
         'webservd/protocol_handler.cc',

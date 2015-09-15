@@ -27,6 +27,7 @@
 #include <chromeos/secure_blob.h>
 
 #include "dbus_bindings/org.chromium.WebServer.Server.h"
+#include "webservd/encryptor.h"
 #include "webservd/firewall_interface.h"
 #include "webservd/server_interface.h"
 
@@ -65,6 +66,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
 
   org::chromium::WebServer::ServerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<Encryptor> encryptor_;
 
   Config config_;
   int last_protocol_handler_index_{0};

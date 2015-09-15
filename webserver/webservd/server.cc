@@ -19,11 +19,13 @@
 
 #include <limits>
 
+#include <base/files/file_util.h>
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 
 #include "webservd/dbus_protocol_handler.h"
+#include "webservd/fake_encryptor.h"
 #include "webservd/protocol_handler.h"
 #include "webservd/utils.h"
 
@@ -32,6 +34,14 @@ using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace {
+
+#ifdef __ANDROID__
+const char kCertificateFile[] = "/data/misc/webservd/certificate";
+const char kKeyFile[] = "/data/misc/webservd/key";
+#else
+const char kCertificateFile[] = "/var/lib/webservd-certificate";
+const char kKeyFile[] = "/var/lib/webservd-key";
+#endif
 
 void OnFirewallSuccess(const std::string& itf_name,
                        uint16_t port,
@@ -48,6 +58,20 @@ void OnFirewallSuccess(const std::string& itf_name,
 void IgnoreFirewallDBusMethodError(chromeos::Error* error) {
 }
 
+chromeos::SecureBlob LoadAndValidatePrivateKey(const base::FilePath& key_file,
+                                               webservd::Encryptor* encryptor) {
+  std::string encrypted_key_data;
+  if (!base::ReadFileToString(key_file, &encrypted_key_data))
+    return {};
+  std::string key_data;
+  if (!encryptor->DecryptString(encrypted_key_data, &key_data))
+    return {};
+  chromeos::SecureBlob key{key_data};
+  if (!webservd::ValidateRSAPrivateKey(key))
+    key.clear();
+  return key;
+}
+
 }  // anonymous namespace
 
 namespace webservd {
@@ -57,6 +81,8 @@ Server::Server(ExportedObjectManager* object_manager, const Config& config,
     : dbus_object_{new DBusObject{
           object_manager, object_manager->GetBus(),
           org::chromium::WebServer::ServerAdaptor::GetObjectPath()}},
+      // TODO(avakulenko): Use a real encryptor here. See: b/24101323
+      encryptor_{new FakeEncryptor},
       config_{config},
       firewall_{std::move(firewall)} {}
 
@@ -145,29 +171,43 @@ void Server::InitTlsData() {
       base::TimeDelta::FromSeconds(5 * kOneYearInSeconds);
   const char kCommonName[] = "Brillo device";
 
-  // Create the X509 certificate.
-  int cert_serial_number = base::RandInt(0, std::numeric_limits<int>::max());
-  auto cert =
-      CreateCertificate(cert_serial_number, kCertExpiration, kCommonName);
+  const base::FilePath certificate_file{kCertificateFile};
+  const base::FilePath key_file{kKeyFile};
 
-  // Create RSA key pair.
-  auto rsa_key_pair = GenerateRSAKeyPair(kKeyLengthBits);
+  auto cert = LoadAndValidateCertificate(certificate_file);
+  chromeos::SecureBlob private_key =
+      LoadAndValidatePrivateKey(key_file, encryptor_.get());
+  if (!cert || private_key.empty()) {
+    // Create the X509 certificate.
+    LOG(INFO) << "Generating new certificate...";
+    int cert_serial_number = base::RandInt(0, std::numeric_limits<int>::max());
+    cert = CreateCertificate(cert_serial_number, kCertExpiration, kCommonName);
 
-  // Store the private key to a temp buffer.
-  // Do not assign it to |TLS_private_key_| yet until the end when we are sure
-  // everything else has worked out.
-  chromeos::SecureBlob private_key = StoreRSAPrivateKey(rsa_key_pair.get());
+    // Create RSA key pair.
+    auto rsa_key_pair = GenerateRSAKeyPair(kKeyLengthBits);
 
-  // Create EVP key and set it to the certificate.
-  auto key = std::unique_ptr<EVP_PKEY, void (*)(EVP_PKEY*)>{EVP_PKEY_new(),
-                                                            EVP_PKEY_free};
-  CHECK(key.get());
-  // Transfer ownership of |rsa_key_pair| to |key|.
-  CHECK(EVP_PKEY_assign_RSA(key.get(), rsa_key_pair.release()));
-  CHECK(X509_set_pubkey(cert.get(), key.get()));
+    // Store the private key to a temp buffer.
+    // Do not assign it to |TLS_private_key_| yet until the end when we are sure
+    // everything else has worked out.
+    private_key = StoreRSAPrivateKey(rsa_key_pair.get());
 
-  // Sign the certificate.
-  CHECK(X509_sign(cert.get(), key.get(), EVP_sha256()));
+    // Create EVP key and set it to the certificate.
+    auto key = std::unique_ptr<EVP_PKEY, void (*)(EVP_PKEY*)>{EVP_PKEY_new(),
+                                                              EVP_PKEY_free};
+    CHECK(key.get());
+    // Transfer ownership of |rsa_key_pair| to |key|.
+    CHECK(EVP_PKEY_assign_RSA(key.get(), rsa_key_pair.release()));
+    CHECK(X509_set_pubkey(cert.get(), key.get()));
+
+    // Sign the certificate.
+    CHECK(X509_sign(cert.get(), key.get(), EVP_sha256()));
+
+    // Save the certificate and private key to disk.
+    StoreCertificate(cert.get(), certificate_file);
+    std::string encrypted_key;
+    encryptor_->EncryptString(private_key.to_string(), &encrypted_key);
+    base::WriteFile(key_file, encrypted_key.data(), encrypted_key.size());
+  }
 
   TLS_certificate_ = StoreCertificate(cert.get());
   TLS_certificate_fingerprint_ = GetSha256Fingerprint(cert.get());
