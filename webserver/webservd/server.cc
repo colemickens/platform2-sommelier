@@ -140,7 +140,9 @@ void Server::InitTlsData() {
   // TODO(avakulenko): verify these constants and provide sensible values
   // for the long-term. See brbug.com/227
   const int kKeyLengthBits = 1024;
-  const base::TimeDelta kCertExpiration = base::TimeDelta::FromDays(365);
+  const int64_t kOneYearInSeconds = 31556952;  // 365.2425 days
+  const base::TimeDelta kCertExpiration =
+      base::TimeDelta::FromSeconds(5 * kOneYearInSeconds);
   const char kCommonName[] = "Brillo device";
 
   // Create the X509 certificate.
