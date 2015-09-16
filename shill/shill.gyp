@@ -98,7 +98,7 @@
       'variables': {
         'proto_in_dir': 'mobile_operator_db',
         'proto_out_dir':
-            'include/shill/proto_bindings/mobile_operator_db'
+            'include/shill/mobile_operator_db'
       },
       'sources': [
         '<(proto_in_dir)/mobile_operator_db.proto'
@@ -150,7 +150,7 @@
       'type': 'static_library',
       'variables': {
         'proto_in_dir': 'shims/protos',
-        'proto_out_dir': 'include/shill/proto_bindings/shims/protos',
+        'proto_out_dir': 'include/shill/shims/protos',
       },
       'sources': [
         '<(proto_in_dir)/crypto_util.proto',

@@ -30,7 +30,7 @@
 
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/event_dispatcher.h"
-#include "shill/proto_bindings/mobile_operator_db/mobile_operator_db.pb.h"
+#include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 
 namespace shill {
 

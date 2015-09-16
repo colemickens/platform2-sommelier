@@ -31,7 +31,7 @@
 #include "shill/callbacks.h"
 #include "shill/error.h"
 #include "shill/net/io_handler.h"
-#include "shill/proto_bindings/shims/protos/crypto_util.pb.h"
+#include "shill/shims/protos/crypto_util.pb.h"
 
 namespace shill {
 

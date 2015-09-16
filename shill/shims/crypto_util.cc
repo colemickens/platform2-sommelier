@@ -33,7 +33,7 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
-#include "shill/proto_bindings/shims/protos/crypto_util.pb.h"
+#include "shill/shims/protos/crypto_util.pb.h"
 
 using shill_protos::EncryptDataMessage;
 using shill_protos::EncryptDataResponse;
