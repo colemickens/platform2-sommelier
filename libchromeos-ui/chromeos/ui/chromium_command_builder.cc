@@ -474,18 +474,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("gpu_sandbox_start_early"))
     AddArg("--gpu-sandbox-start-early");
 
-  // Ozone platform configuration.
-  if (UseFlagIsSet("ozone_platform_gbm")) {
-    AddArg("--ozone-platform=gbm");
-    AddArg("--ozone-use-surfaceless");
-  } else if (UseFlagIsSet("ozone_platform_drm")) {
-    AddArg("--ozone-platform=drm");
-
-    // TODO(spang): Fix hardware acceleration.
-    AddArg("--disable-gpu");
-    AddArg("--ui-disable-threaded-compositing");
-  }
-
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug
   // being owned by debugd. This limits the security attack surface versus
   // leaving the whole debug directory world-readable: http://crbug.com/175828
