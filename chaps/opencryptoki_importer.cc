@@ -30,7 +30,9 @@ namespace {
 
 // Extracts a 32-bit integer by reinterpreting bytes.
 uint32_t ExtractUint32(const void* data) {
-  return *reinterpret_cast<const uint32_t*>(data);
+  uint32_t value;
+  memcpy(&value, data, sizeof(value));
+  return value;
 }
 
 }  // namespace
