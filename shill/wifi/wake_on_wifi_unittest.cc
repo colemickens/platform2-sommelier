@@ -83,67 +83,9 @@ const uint8_t kWakeReasonSSIDNlMsg[] = {
     0x3c, 0x14, 0x00, 0x00, 0x08, 0x00, 0x04, 0x00, 0x78, 0x14, 0x00, 0x00,
     0x08, 0x00, 0x05, 0x00, 0x71, 0x16, 0x00, 0x00, 0x08, 0x00, 0x06, 0x00,
     0xad, 0x16, 0x00, 0x00, 0x08, 0x00, 0x07, 0x00, 0xc1, 0x16, 0x00, 0x00};
-
 const uint32_t kTimeToNextLeaseRenewalShort = 1;
 const uint32_t kTimeToNextLeaseRenewalLong = 1000;
-
-#if !defined(DISABLE_WAKE_ON_WIFI)
-
-// Zero-byte pattern prefixes to match the offsetting bytes in the Ethernet
-// frame that lie before the source IP address field.
-const uint8_t kIPV4PatternPrefix[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0x00};
-const uint8_t kIPV6PatternPrefix[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-// These masks have bits set to 1 to match bytes in an IP address pattern that
-// represent the source IP address of the frame. They are padded with zero
-// bits in front to ignore the frame offset and at the end to byte-align the
-// mask itself.
-const uint8_t kIPV4MaskBytes[] = {0x00, 0x00, 0x00, 0x3c};
-const uint8_t kIPV6MaskBytes[] = {0x00, 0x00, 0xc0, 0xff, 0x3f};
-
-const char kIPV4Address0[] = "192.168.10.20";
-const uint8_t kIPV4Address0Bytes[] = {0xc0, 0xa8, 0x0a, 0x14};
-const char kIPV4Address1[] = "1.2.3.4";
-const uint8_t kIPV4Address1Bytes[] = {0x01, 0x02, 0x03, 0x04};
-
-const char kIPV6Address0[] = "FEDC:BA98:7654:3210:FEDC:BA98:7654:3210";
-const uint8_t kIPV6Address0Bytes[] = {0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54,
-                                      0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98,
-                                      0x76, 0x54, 0x32, 0x10};
-const char kIPV6Address1[] = "1080:0:0:0:8:800:200C:417A";
-const uint8_t kIPV6Address1Bytes[] = {0x10, 0x80, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x08, 0x08, 0x00,
-                                      0x20, 0x0c, 0x41, 0x7a};
-const char kIPV6Address2[] = "1080::8:800:200C:417A";
-const uint8_t kIPV6Address2Bytes[] = {0x10, 0x80, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x08, 0x08, 0x00,
-                                      0x20, 0x0c, 0x41, 0x7a};
-const char kIPV6Address3[] = "FF01::101";
-const uint8_t kIPV6Address3Bytes[] = {0xff, 0x01, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x01, 0x01};
-const char kIPV6Address4[] = "::1";
-const uint8_t kIPV6Address4Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x01};
-const char kIPV6Address5[] = "::";
-const uint8_t kIPV6Address5Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00};
-const char kIPV6Address6[] = "0:0:0:0:0:FFFF:129.144.52.38";
-const uint8_t kIPV6Address6Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
-                                      0x81, 0x90, 0x34, 0x26};
-const char kIPV6Address7[] = "::DEDE:190.144.52.38";
-const uint8_t kIPV6Address7Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00, 0xde, 0xde,
-                                      0xbe, 0x90, 0x34, 0x26};
-
+const uint32_t kNetDetectScanIntervalSeconds = 120;
 // These blobs represent NL80211 messages from the kernel reporting the NIC's
 // wake-on-packet settings, sent in response to NL80211_CMD_GET_WOWLAN requests.
 const uint8_t kResponseNoIPAddresses[] = {
@@ -253,7 +195,6 @@ const uint8_t kResponseWakeOnSSID[] = {
     0x33, 0x35, 0x00, 0x00};
 const uint8_t kSSIDBytes2[] = {0x54, 0x50, 0x2d, 0x4c, 0x49, 0x4e, 0x4b,
                                0x5f, 0x38, 0x37, 0x36, 0x44, 0x33, 0x35};
-const uint32_t kNetDetectScanIntervalSeconds = 120;
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
 // capabilities of a NIC. This message reports that the NIC supports wake on
@@ -554,6 +495,64 @@ const uint8_t kNewWiphyNlMsg[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x00, 0xa9, 0x00,
     0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x0c, 0x00, 0xaa, 0x00,
     0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40};
+const char kIPV4Address0[] = "192.168.10.20";
+const char kIPV4Address1[] = "1.2.3.4";
+const char kIPV6Address0[] = "FEDC:BA98:7654:3210:FEDC:BA98:7654:3210";
+const char kIPV6Address1[] = "1080:0:0:0:8:800:200C:417A";
+
+#if !defined(DISABLE_WAKE_ON_WIFI)
+
+// Zero-byte pattern prefixes to match the offsetting bytes in the Ethernet
+// frame that lie before the source IP address field.
+const uint8_t kIPV4PatternPrefix[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0x00};
+const uint8_t kIPV6PatternPrefix[] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+// These masks have bits set to 1 to match bytes in an IP address pattern that
+// represent the source IP address of the frame. They are padded with zero
+// bits in front to ignore the frame offset and at the end to byte-align the
+// mask itself.
+const uint8_t kIPV4MaskBytes[] = {0x00, 0x00, 0x00, 0x3c};
+const uint8_t kIPV6MaskBytes[] = {0x00, 0x00, 0xc0, 0xff, 0x3f};
+
+const uint8_t kIPV4Address0Bytes[] = {0xc0, 0xa8, 0x0a, 0x14};
+const uint8_t kIPV4Address1Bytes[] = {0x01, 0x02, 0x03, 0x04};
+
+const uint8_t kIPV6Address0Bytes[] = {0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54,
+                                      0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98,
+                                      0x76, 0x54, 0x32, 0x10};
+const uint8_t kIPV6Address1Bytes[] = {0x10, 0x80, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x08, 0x08, 0x00,
+                                      0x20, 0x0c, 0x41, 0x7a};
+const char kIPV6Address2[] = "1080::8:800:200C:417A";
+const uint8_t kIPV6Address2Bytes[] = {0x10, 0x80, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x08, 0x08, 0x00,
+                                      0x20, 0x0c, 0x41, 0x7a};
+const char kIPV6Address3[] = "FF01::101";
+const uint8_t kIPV6Address3Bytes[] = {0xff, 0x01, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x01, 0x01};
+const char kIPV6Address4[] = "::1";
+const uint8_t kIPV6Address4Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x01};
+const char kIPV6Address5[] = "::";
+const uint8_t kIPV6Address5Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00};
+const char kIPV6Address6[] = "0:0:0:0:0:FFFF:129.144.52.38";
+const uint8_t kIPV6Address6Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+                                      0x81, 0x90, 0x34, 0x26};
+const char kIPV6Address7[] = "::DEDE:190.144.52.38";
+const uint8_t kIPV6Address7Bytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0xde, 0xde,
+                                      0xbe, 0x90, 0x34, 0x26};
+
 const uint32_t kNewWiphyNlMsg_MaxPatterns = 20;
 const uint32_t kNewWiphyNlMsg_MaxSSIDs = 11;
 const int kNewWiphyNlMsg_PattSupportOffset = 3300;
@@ -1358,84 +1357,80 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   trigs.insert(WakeOnWiFi::kWakeTriggerPattern);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
-  ByteString expected_mask = ByteString(kIPV4MaskBytes, sizeof(kIPV4MaskBytes));
-  ByteString expected_pattern =
-      CreatePattern(kIPV4PatternPrefix, sizeof(kIPV4PatternPrefix),
-                    kIPV4Address0Bytes, sizeof(kIPV4Address0Bytes));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg0, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg0, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg1;
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address1, sizeof(kIPV4Address1))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg1, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg1, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg2;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg2, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg2, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg3;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg3, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg3, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg4;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address2, sizeof(kIPV6Address2))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg4, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg4, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg5;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address3, sizeof(kIPV6Address3))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg5, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg5, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg6;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address4, sizeof(kIPV6Address4))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg6, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg6, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg7;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address5, sizeof(kIPV6Address5))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg7, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg7, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg7, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg8;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address6, sizeof(kIPV6Address6))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg8, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg8, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg8, trigs, all_addresses, interval, whitelist));
 
   SetWakeOnPacketConnMessage msg9;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address7, sizeof(kIPV6Address7))));
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg9, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg9, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(
       WakeOnWiFiSettingsMatch(msg9, trigs, all_addresses, interval, whitelist));
 
@@ -1445,8 +1440,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   trigs.insert(WakeOnWiFi::kWakeTriggerSSID);
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
   AddSSIDToWhitelist(kSSIDBytes2, sizeof(kSSIDBytes2), &whitelist);
-  ConfigureSetWakeOnWiFiSettingsMessage(&msg10, trigs, all_addresses, index,
-                                        interval, whitelist, &e);
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg10, trigs, all_addresses, index, interval, whitelist, &e));
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg10, trigs, all_addresses, interval,
                                       whitelist));
 }
@@ -3357,6 +3352,116 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_ConfigureSetWakeOnWiFiSettingsMessage_ReturnsFalse) {
+  IPAddressStore no_addresses;
+  IPAddressStore one_address;
+  const char kIPv4AddrString[] = "1.1.1.1";
+  one_address.AddUnique(
+      IPAddress(string(kIPv4AddrString, sizeof(kIPv4AddrString))));
+  set<WakeOnWiFi::WakeOnWiFiTrigger> no_trigs;
+  set<WakeOnWiFi::WakeOnWiFiTrigger> one_trig;
+  one_trig.insert(WakeOnWiFi::kWakeTriggerPattern);
+  const int index = 1;  // wiphy device number
+  vector<ByteString> whitelist;
+  const uint32_t interval = kNetDetectScanIntervalSeconds;
+  SetWakeOnPacketConnMessage msg;
+  Error e;
+  EXPECT_FALSE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg, no_trigs, no_addresses, index, interval, whitelist, &e));
+  EXPECT_FALSE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg, one_trig, one_address, index, interval, whitelist, &e));
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_WakeOnWiFiSettingsMatch_ReturnsFalse) {
+  // Test that WakeOnWiFi::WakeOnWiFiSettingsMatch unconditionally returns false
+  // when wake-on-WiFi is disabled by testing it against several cases where we
+  // expect it to return true.
+  IPAddressStore all_addresses;
+  set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
+  vector<ByteString> whitelist;
+  const uint32_t interval = kNetDetectScanIntervalSeconds;
+
+  GetWakeOnPacketConnMessage msg0;
+  NetlinkPacket packet0(kResponseNoIPAddresses, sizeof(kResponseNoIPAddresses));
+  msg0.InitFromPacket(&packet0, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(
+      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, whitelist));
+
+  trigs.insert(WakeOnWiFi::kWakeTriggerPattern);
+  all_addresses.AddUnique(
+      IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
+  GetWakeOnPacketConnMessage msg1;
+  NetlinkPacket packet1(kResponseIPV40, sizeof(kResponseIPV40));
+  msg1.InitFromPacket(&packet1, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(
+      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, whitelist));
+
+  trigs.insert(WakeOnWiFi::kWakeTriggerDisconnect);
+  GetWakeOnPacketConnMessage msg2;
+  NetlinkPacket packet2(kResponseIPV40WakeOnDisconnect,
+                        sizeof(kResponseIPV40WakeOnDisconnect));
+  msg2.InitFromPacket(&packet2, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(
+      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, whitelist));
+
+  trigs.erase(WakeOnWiFi::kWakeTriggerDisconnect);
+  all_addresses.AddUnique(
+      IPAddress(string(kIPV4Address1, sizeof(kIPV4Address1))));
+  GetWakeOnPacketConnMessage msg3;
+  NetlinkPacket packet3(kResponseIPV401, sizeof(kResponseIPV401));
+  msg3.InitFromPacket(&packet3, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(
+      WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, whitelist));
+
+  all_addresses.AddUnique(
+      IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
+  GetWakeOnPacketConnMessage msg4;
+  NetlinkPacket packet4(kResponseIPV401IPV60, sizeof(kResponseIPV401IPV60));
+  msg4.InitFromPacket(&packet4, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(
+      WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, whitelist));
+
+  all_addresses.AddUnique(
+      IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
+  GetWakeOnPacketConnMessage msg5;
+  NetlinkPacket packet5(kResponseIPV401IPV601, sizeof(kResponseIPV401IPV601));
+  msg5.InitFromPacket(&packet5, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(
+      WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, whitelist));
+
+  all_addresses.Clear();
+  trigs.clear();
+  trigs.insert(WakeOnWiFi::kWakeTriggerSSID);
+  AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
+  AddSSIDToWhitelist(kSSIDBytes2, sizeof(kSSIDBytes2), &whitelist);
+  GetWakeOnPacketConnMessage msg6;
+  NetlinkPacket packet6(kResponseWakeOnSSID, sizeof(kResponseWakeOnSSID));
+  msg6.InitFromPacket(&packet6, NetlinkMessage::MessageContext());
+  EXPECT_FALSE(
+      WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, whitelist));
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_ParseWakeOnWiFiCapabilities_DoesNothing) {
+  // |kNewWiphyNlMsg| should indicate that the NIC supports wake on pattern
+  // (on up to |kNewWiphyNlMsg_MaxPatterns| registered patterns),
+  // supports wake on SSID (on up to |kNewWiphyNlMsg_MaxSSIDs| SSIDs), and
+  // supports wake on disconnect. Test that
+  // WakeOnWiFi::ParseWakeOnWiFiCapabilities does nothing and does not parse
+  // these capabilities when wake-on-WiFi is disabled.
+  ClearWakeOnWiFiTriggersSupported();
+  SetWakeOnWiFiMaxSSIDs(0);
+  NewWiphyMessage msg;
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  ParseWakeOnWiFiCapabilities(msg);
+  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->empty());
+  EXPECT_EQ(0, GetWakeOnWiFiMaxPatterns());
+  EXPECT_EQ(0, GetWakeOnWiFiMaxSSIDs());
 }
 
 #endif  // DISABLE_WAKE_ON_WIFI

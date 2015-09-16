@@ -289,6 +289,9 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     uint32_t net_detect_scan_period_seconds,
     const vector<ByteString>& ssid_whitelist,
     Error* error) {
+#if defined(DISABLE_WAKE_ON_WIFI)
+  return false;
+#else
   if (trigs.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "No triggers to configure.");
@@ -488,6 +491,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     }
   }
   return true;
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 // static
@@ -577,6 +581,9 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
     const Nl80211Message& msg, const set<WakeOnWiFiTrigger>& trigs,
     const IPAddressStore& addrs, uint32_t net_detect_scan_period_seconds,
     const vector<ByteString>& ssid_whitelist) {
+#if defined(DISABLE_WAKE_ON_WIFI)
+  return false;
+#else
   if (msg.command() != NL80211_CMD_GET_WOWLAN &&
       msg.command() != NL80211_CMD_SET_WOWLAN) {
     LOG(ERROR) << __func__ << ": "
@@ -779,6 +786,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
     }
   }
   return true;
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::AddWakeOnPacketConnection(const string& ip_endpoint,
@@ -1078,6 +1086,7 @@ void WakeOnWiFi::ReportMetrics() {
 void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
     const Nl80211Message& nl80211_message) {
   // Verify NL80211_CMD_NEW_WIPHY.
+#if !defined(DISABLE_WAKE_ON_WIFI)
   if (nl80211_message.command() != NewWiphyMessage::kCommand) {
     LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
     return;
@@ -1134,6 +1143,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
                     << " whitelisted SSIDs supported by this WiFi device";
     }
   }
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
