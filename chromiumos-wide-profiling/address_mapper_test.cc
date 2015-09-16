@@ -63,20 +63,6 @@ const uint64_t kAddressesNotInRanges[] = {
   0xffffffff,
 };
 
-// A huge region that overlaps with all ranges in |kMapRanges|.
-const Range kBigRegion = Range(0xa00, 0xff000000, 0x1234, 0);
-
-// A region that extends to the end of the address space.
-const Range kEndRegion = Range(0xffffffff00000000, 0x100000000, 0x3456, 0);
-
-// A region toward the end of address space that overruns the end of the address
-// space.
-const Range kOutOfBoundsRegion =
-    Range(0xffffffff00000000, 0x200000000, 0xccddeeff, 0);
-
-// A huge region that covers all of the available space.
-const Range kFullRegion = Range(0, kUint64Max, 0xaabbccdd, 0);
-
 // Number of regularly-spaced intervals within a mapped range to test.
 const int kNumRangeTestIntervals = 8;
 
@@ -277,6 +263,9 @@ TEST_F(AddressMapperTest, OverlapSimple) {
 
 // Test mapping of a giant map that overlaps with all existing ranges.
 TEST_F(AddressMapperTest, OverlapBig) {
+  // A huge region that overlaps with all ranges in |kMapRanges|.
+  const Range kBigRegion(0xa00, 0xff000000, 0x1234, 0);
+
   unsigned int i;
   // Map all the ranges first.
   for (i = 0; i < arraysize(kMapRanges); ++i)
@@ -328,6 +317,9 @@ TEST_F(AddressMapperTest, OverlapBig) {
 
 // Test a mapping at the end of memory space.
 TEST_F(AddressMapperTest, EndOfMemory) {
+  // A region that extends to the end of the address space.
+  const Range kEndRegion(0xffffffff00000000, 0x100000000, 0x3456, 0);
+
   ASSERT_TRUE(MapRange(kEndRegion, true));
   EXPECT_EQ(1U, mapper_->GetNumMappedRanges());
   TestMappedRange(kEndRegion, 0);
@@ -335,6 +327,10 @@ TEST_F(AddressMapperTest, EndOfMemory) {
 
 // Test mapping of an out-of-bounds mapping.
 TEST_F(AddressMapperTest, OutOfBounds) {
+  // A region toward the end of address space that overruns the end of the
+  // address space.
+  const Range kOutOfBoundsRegion(0xffffffff00000000, 0x00000000, 0xccddeeff, 0);
+
   ASSERT_FALSE(MapRange(kOutOfBoundsRegion, false));
   ASSERT_FALSE(MapRange(kOutOfBoundsRegion, true));
   EXPECT_EQ(0, mapper_->GetNumMappedRanges());
@@ -346,6 +342,9 @@ TEST_F(AddressMapperTest, OutOfBounds) {
 // Test mapping of a region that covers the entire memory space.  Then map other
 // regions over it.
 TEST_F(AddressMapperTest, FullRange) {
+  // A huge region that covers all of the available space.
+  const Range kFullRegion(0, kUint64Max, 0xaabbccdd, 0);
+
   ASSERT_TRUE(MapRange(kFullRegion, false));
   size_t num_expected_ranges = 1;
   EXPECT_EQ(num_expected_ranges, mapper_->GetNumMappedRanges());
