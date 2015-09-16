@@ -46,6 +46,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <endian.h>
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/ieee80211.h"
