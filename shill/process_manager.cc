@@ -127,6 +127,14 @@ pid_t ProcessManager::StartProcessInMinijail(
     LOG(ERROR) << "Unable to spawn " << program.value() << " in a jail.";
     return -1;
   }
+
+  CHECK(process_reaper_.WatchForChild(
+      from_here,
+      pid,
+      base::Bind(&ProcessManager::OnProcessExited,
+                 weak_factory_.GetWeakPtr(),
+                 pid)));
+
   watched_processes_.emplace(pid, exit_callback);
   return pid;
 }
@@ -178,7 +186,7 @@ void ProcessManager::ProcessTerminationTimeoutHandler(pid_t pid,
   pending_termination_processes_.erase(pid);
   // Process still not killed after SIGKILL signal.
   if (kill_signal) {
-    LOG(ERROR) << "Timeout waiting for process to be killed.";
+    LOG(ERROR) << "Timeout waiting for process " << pid << " to be killed.";
     return;
   }
 
