@@ -69,7 +69,7 @@ class ChromeosDaemon {
 
   ChromeosDaemon(const Settings& settings,
                  Config* config);
-  ~ChromeosDaemon();
+  virtual ~ChromeosDaemon();
 
   // Runs the message loop.
   virtual void RunMessageLoop() = 0;

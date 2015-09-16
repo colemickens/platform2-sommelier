@@ -48,6 +48,9 @@ class ProcessManager {
   // Register async signal handler and setup process reaper.
   virtual void Init(EventDispatcher* dispatcher);
 
+  // Call on shutdown to release async_signal_handler_.
+  virtual void Stop();
+
   // Create and start a process for |program| with |arguments|. |enivronment|
   // variables will be setup in the child process before exec the |program|.
   // |terminate_with_parent| is used to indicate if child process should
@@ -108,7 +111,7 @@ class ProcessManager {
   bool TerminateProcess(pid_t pid, bool kill_signal);
 
   // Used to watch processes.
-  chromeos::AsynchronousSignalHandler async_signal_handler_;
+  std::unique_ptr<chromeos::AsynchronousSignalHandler> async_signal_handler_;
   chromeos::ProcessReaper process_reaper_;
 
   EventDispatcher* dispatcher_;

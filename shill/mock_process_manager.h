@@ -34,6 +34,7 @@ class MockProcessManager : public ProcessManager {
   ~MockProcessManager() override;
 
   MOCK_METHOD1(Init, void(EventDispatcher* dispatcher));
+  MOCK_METHOD0(Stop, void());
   MOCK_METHOD6(StartProcess,
                pid_t(const tracked_objects::Location& from_here,
                      const base::FilePath& program,

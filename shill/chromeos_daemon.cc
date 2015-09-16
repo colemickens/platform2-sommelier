@@ -188,6 +188,7 @@ void ChromeosDaemon::Stop() {
   callback80211_metrics_ = nullptr;
 #endif  // DISABLE_WIFI
   metrics_->Stop();
+  process_manager_->Stop();
   dhcp_provider_->Stop();
   metrics_ = nullptr;
   control_ = nullptr;

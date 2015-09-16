@@ -60,10 +60,18 @@ ProcessManager* ProcessManager::GetInstance() {
 }
 
 void ProcessManager::Init(EventDispatcher* dispatcher) {
-  async_signal_handler_.Init();
-  process_reaper_.Register(&async_signal_handler_);
+  CHECK(!async_signal_handler_);
+  async_signal_handler_.reset(new chromeos::AsynchronousSignalHandler());
+  async_signal_handler_->Init();
+  process_reaper_.Register(async_signal_handler_.get());
   dispatcher_ = dispatcher;
   minijail_ = chromeos::Minijail::GetInstance();
+}
+
+void ProcessManager::Stop() {
+  CHECK(async_signal_handler_);
+  process_reaper_.Unregister();
+  async_signal_handler_.reset();
 }
 
 pid_t ProcessManager::StartProcess(

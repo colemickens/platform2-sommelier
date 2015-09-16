@@ -169,6 +169,7 @@ TEST_F(ChromeosDaemonTest, StartStop) {
 
   EXPECT_CALL(*manager_, Stop());
   EXPECT_CALL(*metrics_, Stop());
+  EXPECT_CALL(process_manager_, Stop());
   StopDaemon();
 }
 
