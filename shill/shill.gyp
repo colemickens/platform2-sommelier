@@ -132,7 +132,7 @@
       'target_name': 'shill-chromeos-dbus-adaptors',
       'type': 'none',
       'variables': {
-        'dbus_adaptors_out_dir': 'include/shill/chromeos_dbus_adaptors',
+        'dbus_adaptors_out_dir': 'include/dbus_bindings',
         'dbus_xml_extension': 'dbus-xml',
       },
       'sources': [

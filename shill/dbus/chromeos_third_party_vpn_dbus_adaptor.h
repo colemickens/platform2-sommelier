@@ -24,8 +24,8 @@
 #include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "dbus_bindings/org.chromium.flimflam.ThirdPartyVpn.h"
 #include "shill/adaptor_interfaces.h"
-#include "shill/chromeos_dbus_adaptors/org.chromium.flimflam.ThirdPartyVpn.h"
 #include "shill/dbus/chromeos_dbus_adaptor.h"
 
 namespace shill {

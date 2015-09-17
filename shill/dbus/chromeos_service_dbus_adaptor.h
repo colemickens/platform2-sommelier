@@ -23,8 +23,8 @@
 
 #include <base/macros.h>
 
+#include "dbus_bindings/org.chromium.flimflam.Service.h"
 #include "shill/adaptor_interfaces.h"
-#include "shill/chromeos_dbus_adaptors/org.chromium.flimflam.Service.h"
 #include "shill/dbus/chromeos_dbus_adaptor.h"
 
 namespace shill {
