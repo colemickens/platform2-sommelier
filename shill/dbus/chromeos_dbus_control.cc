@@ -26,7 +26,11 @@
 
 #include "shill/dbus/chromeos_dhcpcd_listener.h"
 #include "shill/dbus/chromeos_dhcpcd_proxy.h"
+#if defined(__ANDROID__)
+#include "shill/dbus/chromeos_firewalld_proxy.h"
+#else
 #include "shill/dbus/chromeos_permission_broker_proxy.h"
+#endif  // __ANDROID__
 #include "shill/dbus/chromeos_power_manager_proxy.h"
 #include "shill/dbus/chromeos_upstart_proxy.h"
 
@@ -220,7 +224,11 @@ UpstartProxyInterface* ChromeosDBusControl::CreateUpstartProxy() {
 }
 
 FirewallProxyInterface* ChromeosDBusControl::CreateFirewallProxy() {
+#if defined(__ANDROID__)
+  return new ChromeosFirewalldProxy(proxy_bus_);
+#else
   return new ChromeosPermissionBrokerProxy(proxy_bus_);
+#endif  // __ANDROID__
 }
 
 #if !defined(DISABLE_CELLULAR)
