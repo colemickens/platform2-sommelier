@@ -17,11 +17,11 @@
 #ifndef TRUNKS_MOCK_BLOB_PARSER_H_
 #define TRUNKS_MOCK_BLOB_PARSER_H_
 
-#include "trunks/blob_parser.h"
-
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "trunks/blob_parser.h"
 
 namespace trunks {
 

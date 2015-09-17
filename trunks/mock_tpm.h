@@ -17,12 +17,12 @@
 #ifndef TRUNKS_MOCK_TPM_H_
 #define TRUNKS_MOCK_TPM_H_
 
-#include "trunks/tpm_generated.h"
-
 #include <string>
 
 #include <base/callback.h>
 #include <gmock/gmock.h>
+
+#include "trunks/tpm_generated.h"
 
 namespace trunks {
 

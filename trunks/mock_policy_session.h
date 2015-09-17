@@ -17,12 +17,12 @@
 #ifndef TRUNKS_MOCK_POLICY_SESSION_H_
 #define TRUNKS_MOCK_POLICY_SESSION_H_
 
-#include "trunks/policy_session.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "trunks/policy_session.h"
 
 namespace trunks {
 

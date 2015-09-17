@@ -17,9 +17,9 @@
 #ifndef TRUNKS_MOCK_TPM_STATE_H_
 #define TRUNKS_MOCK_TPM_STATE_H_
 
-#include "trunks/tpm_state.h"
-
 #include <gmock/gmock.h>
+
+#include "trunks/tpm_state.h"
 
 namespace trunks {
 

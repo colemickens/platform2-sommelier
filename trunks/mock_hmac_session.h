@@ -17,11 +17,11 @@
 #ifndef TRUNKS_MOCK_HMAC_SESSION_H_
 #define TRUNKS_MOCK_HMAC_SESSION_H_
 
-#include "trunks/hmac_session.h"
-
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "trunks/hmac_session.h"
 
 namespace trunks {
 

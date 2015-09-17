@@ -14,11 +14,11 @@
 // limitations under the License.
 //
 
-#include "trunks/hmac_authorization_delegate.h"
-
 #include <string>
 
 #include <gtest/gtest.h>
+
+#include "trunks/hmac_authorization_delegate.h"
 
 namespace trunks {
 

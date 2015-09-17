@@ -17,11 +17,11 @@
 #ifndef TRUNKS_MOCK_TPM_UTILITY_H_
 #define TRUNKS_MOCK_TPM_UTILITY_H_
 
-#include "trunks/tpm_utility.h"
-
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "trunks/tpm_utility.h"
 
 namespace trunks {
 

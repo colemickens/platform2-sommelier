@@ -17,11 +17,11 @@
 #ifndef TRUNKS_MOCK_SESSION_MANAGER_H_
 #define TRUNKS_MOCK_SESSION_MANAGER_H_
 
-#include "trunks/session_manager.h"
-
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "trunks/session_manager.h"
 
 namespace trunks {
 
