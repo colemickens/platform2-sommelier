@@ -9,9 +9,11 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
+#include <dbus/bus.h>
 
-#include "permission_broker/dbus-proxies.h"
+#include "apmanager/firewall_proxy_interface.h"
 
 // Class for managing required firewall rules for apmanager.
 namespace apmanager {
@@ -28,36 +30,21 @@ class FirewallManager final {
   void ReleaseDHCPPortAccess(const std::string& interface);
 
  private:
-  // Setup lifeline pipe to allow the remote firewall server
-  // (permission_broker) to monitor this process, so it can remove the firewall
-  // rules in case this process crashes.
-  bool SetupLifelinePipe();
+  // Invoked when remote firewall service appeared/vanished.
+  void OnFirewallServiceAppeared();
+  void OnFirewallServiceVanished();
 
-  void OnServiceAvailable(bool service_available);
-  void OnServiceNameChanged(const std::string& old_owner,
-                            const std::string& new_owner);
-
-  // This is called when a new instance of permission_broker is detected. Since
-  // the new instance doesn't have any knowledge of previously port access
-  // requests, re-issue those requests to permission_broker to get in sync.
+  // This is called when a new instance of firewall proxy is detected. Since
+  // the new instance doesn't have any knowledge of previous port access
+  // requests, re-issue those requests to the proxy to get in sync.
   void RequestAllPortsAccess();
 
-  // Request/release UDP port access for the specified interface and port.
-  void RequestUdpPortAccess(const std::string& interface, uint16_t port);
-  void ReleaseUdpPortAccess(const std::string& interface, uint16_t port);
-
-  // DBus proxy for permission_broker.
-  std::unique_ptr<org::chromium::PermissionBrokerProxy>
-      permission_broker_proxy_;
-  // File descriptors for the two end of the pipe use for communicating with
-  // remote firewall server (permission_broker), where the remote firewall
-  // server will use the read end of the pipe to detect when this process exits.
-  int lifeline_read_fd_;
-  int lifeline_write_fd_;
+  std::unique_ptr<FirewallProxyInterface> firewall_proxy_;
 
   // List of interfaces with DHCP port access.
   std::set<std::string> dhcp_access_interfaces_;
 
+  base::WeakPtrFactory<FirewallManager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(FirewallManager);
 };
 
