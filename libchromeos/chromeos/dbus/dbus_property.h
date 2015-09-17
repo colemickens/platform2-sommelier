@@ -40,6 +40,12 @@ class Property : public dbus::PropertyBase {
     property_set()->Set(this, callback);
   }
 
+  // Synchronous version of Set().
+  bool SetAndBlock(const T& value) {
+    set_value_ = value;
+    return property_set()->SetAndBlock(this);
+  }
+
   // Method used by PropertySet to retrieve the value from a MessageReader,
   // no knowledge of the contained type is required, this method returns
   // true if its expected type was found, false if not.
