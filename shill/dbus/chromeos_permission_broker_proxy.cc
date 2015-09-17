@@ -35,7 +35,9 @@ ChromeosPermissionBrokerProxy::ChromeosPermissionBrokerProxy(
   // automatically re-request VPN setup when permission broker is restarted.
 }
 
-ChromeosPermissionBrokerProxy::~ChromeosPermissionBrokerProxy() {}
+ChromeosPermissionBrokerProxy::~ChromeosPermissionBrokerProxy() {
+  proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 bool ChromeosPermissionBrokerProxy::RequestVpnSetup(
     const std::vector<std::string>& user_names,

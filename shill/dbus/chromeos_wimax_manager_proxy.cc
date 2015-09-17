@@ -91,7 +91,9 @@ ChromeosWiMaxManagerProxy::ChromeosWiMaxManagerProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosWiMaxManagerProxy::~ChromeosWiMaxManagerProxy() {}
+ChromeosWiMaxManagerProxy::~ChromeosWiMaxManagerProxy() {
+  proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 void ChromeosWiMaxManagerProxy::set_devices_changed_callback(
     const DevicesChangedCallback& callback) {

@@ -95,7 +95,9 @@ ChromeosPowerManagerProxy::ChromeosPowerManagerProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosPowerManagerProxy::~ChromeosPowerManagerProxy() {}
+ChromeosPowerManagerProxy::~ChromeosPowerManagerProxy() {
+  proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 bool ChromeosPowerManagerProxy::RegisterSuspendDelay(
     base::TimeDelta timeout,

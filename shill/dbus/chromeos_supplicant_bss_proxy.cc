@@ -51,7 +51,9 @@ ChromeosSupplicantBSSProxy::ChromeosSupplicantBSSProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosSupplicantBSSProxy::~ChromeosSupplicantBSSProxy() {}
+ChromeosSupplicantBSSProxy::~ChromeosSupplicantBSSProxy() {
+  bss_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 void ChromeosSupplicantBSSProxy::PropertiesChanged(
     const chromeos::VariantDictionary& properties) {

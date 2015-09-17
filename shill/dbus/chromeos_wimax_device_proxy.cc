@@ -84,7 +84,9 @@ ChromeosWiMaxDeviceProxy::ChromeosWiMaxDeviceProxy(
   properties_->GetAll();
 }
 
-ChromeosWiMaxDeviceProxy::~ChromeosWiMaxDeviceProxy() {}
+ChromeosWiMaxDeviceProxy::~ChromeosWiMaxDeviceProxy() {
+  proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 void ChromeosWiMaxDeviceProxy::Enable(Error* /*error*/,
                                       const ResultCallback& callback,

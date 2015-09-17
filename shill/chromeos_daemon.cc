@@ -191,7 +191,6 @@ void ChromeosDaemon::Stop() {
   process_manager_->Stop();
   dhcp_provider_->Stop();
   metrics_ = nullptr;
-  control_ = nullptr;
 }
 
 }  // namespace shill

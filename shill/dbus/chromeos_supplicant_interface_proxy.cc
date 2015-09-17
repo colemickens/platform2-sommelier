@@ -136,7 +136,9 @@ ChromeosSupplicantInterfaceProxy::ChromeosSupplicantInterfaceProxy(
   properties_->GetAll();
 }
 
-ChromeosSupplicantInterfaceProxy::~ChromeosSupplicantInterfaceProxy() {}
+ChromeosSupplicantInterfaceProxy::~ChromeosSupplicantInterfaceProxy() {
+  interface_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
                                                   string* network) {

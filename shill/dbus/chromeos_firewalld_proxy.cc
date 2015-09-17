@@ -30,7 +30,9 @@ ChromeosFirewalldProxy::ChromeosFirewalldProxy(
   // automatically re-request VPN setup when firewalld is restarted.
 }
 
-ChromeosFirewalldProxy::~ChromeosFirewalldProxy() {}
+ChromeosFirewalldProxy::~ChromeosFirewalldProxy() {
+  proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 bool ChromeosFirewalldProxy::RequestVpnSetup(
     const std::vector<std::string>& user_names,

@@ -35,7 +35,9 @@ ChromeosDHCPCDProxy::ChromeosDHCPCDProxy(const scoped_refptr<dbus::Bus>& bus,
   // ChromeosDHCPCDListener.
 }
 
-ChromeosDHCPCDProxy::~ChromeosDHCPCDProxy() {}
+ChromeosDHCPCDProxy::~ChromeosDHCPCDProxy() {
+  dhcpcd_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+}
 
 void ChromeosDHCPCDProxy::Rebind(const string& interface) {
   SLOG(DBus, nullptr, 2) << __func__;
