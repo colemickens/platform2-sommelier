@@ -23,7 +23,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
-#include "tpm_manager/server/openssl_crypto_util.h"
+#include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/tpm_connection.h"
 #include "tpm_manager/server/tpm_initializer.h"
 
@@ -79,7 +79,7 @@ class TpmInitializerImpl : public TpmInitializer {
   // an error communicating with the Tpm.
   bool TestTpmAuth(const std::string& owner_password);
 
-  OpensslCryptoUtil openssl_util_;
+  OpensslCryptoUtilImpl openssl_util_;
   TpmConnection tpm_connection_;
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_;

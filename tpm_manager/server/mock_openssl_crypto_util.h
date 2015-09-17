@@ -14,25 +14,26 @@
 // limitations under the License.
 //
 
-#include "tpm_manager/server/openssl_crypto_util.h"
+#ifndef TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPT_UTIL_H_
+#define TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPT_UTIL_H_
 
-#include <base/logging.h>
-#include <base/stl_util.h>
-#include <openssl/rand.h>
+#include <gmock/gmock.h>
+
+#include "tpm_manager/server/openssl_crypto_util.h"
 
 namespace tpm_manager {
 
-bool OpensslCryptoUtil::GetRandomBytes(size_t num_bytes,
-                                       std::string* random_data) {
-  random_data->resize(num_bytes);
-  unsigned char* random_buffer =
-      reinterpret_cast<unsigned char*>(string_as_array(random_data));
-  if (RAND_bytes(random_buffer, num_bytes) != 1) {
-    LOG(ERROR) << "Error getting random bytes using Openssl.";
-    random_data->clear();
-    return false;
-  }
-  return true;
-}
+class MockOpensslCryptoUtil : public OpensslCryptoUtil {
+ public:
+  MockOpensslCryptoUtil();
+  ~MockOpensslCryptoUtil() override;
+
+  MOCK_METHOD2(GetRandomBytes, bool(size_t, std::string*));
+
+ private:
+  bool FakeGetRandomBytes(size_t num_bytes, std::string* random_data);
+};
 
 }  // namespace tpm_manager
+
+#endif  // TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPT_UTIL_H_

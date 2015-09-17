@@ -25,19 +25,15 @@
 namespace tpm_manager {
 
 // This class is used to provide a mockable interface for openssl calls.
-// Example usage:
-// OpensslCryptoUtil util;
-// std::string random_bytes;
-// bool result = util.GetRandomBytes(5, &random_bytes);
 class OpensslCryptoUtil {
  public:
   OpensslCryptoUtil() = default;
-  ~OpensslCryptoUtil() = default;
+  virtual ~OpensslCryptoUtil() = default;
 
   // This method sets the out argument |random_data| to a string with at
   // least |num_bytes| of random data and returns true on success.
-  bool GetRandomBytes(size_t num_bytes,
-                      std::string* random_data) WARN_UNUSED_RESULT;
+  virtual bool GetRandomBytes(size_t num_bytes,
+                              std::string* random_data) WARN_UNUSED_RESULT = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(OpensslCryptoUtil);

@@ -23,6 +23,7 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "tpm_manager/common/local_data.pb.h"
+#include "tpm_manager/server/openssl_crypto_util_impl.h"
 
 namespace {
 const size_t kDefaultPasswordSize = 20;
@@ -33,7 +34,7 @@ namespace tpm_manager {
 Tpm2InitializerImpl::Tpm2InitializerImpl(LocalDataStore* local_data_store,
                                          TpmStatus* tpm_status)
     : trunks_factory_(new trunks::TrunksFactoryImpl()),
-      openssl_util_(new OpensslCryptoUtil()),
+      openssl_util_(new OpensslCryptoUtilImpl()),
       local_data_store_(local_data_store),
       tpm_status_(tpm_status) {}
 

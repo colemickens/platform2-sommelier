@@ -74,7 +74,7 @@
       'sources': [
         'server/dbus_service.cc',
         'server/local_data_store_impl.cc',
-        'server/openssl_crypto_util.cc',
+        'server/openssl_crypto_util_impl.cc',
         'server/tpm_manager_service.cc',
       ],
       'conditions': [
@@ -142,6 +142,7 @@
             'common/mock_tpm_manager_interface.cc',
             'server/dbus_service_test.cc',
             'server/mock_local_data_store.cc',
+            'server/mock_openssl_crypto_util.cc',
             'server/mock_tpm_initializer.cc',
             'server/mock_tpm_status.cc',
             'server/tpm_manager_service_test.cc',
@@ -150,16 +151,11 @@
           'conditions': [
             ['USE_tpm2 == 1', {
               'sources': [
-                '../trunks/mock_blob_parser.cc',
-                '../trunks/mock_hmac_session.cc',
-                '../trunks/mock_policy_session.cc',
-                '../trunks/mock_session_manager.cc',
-                '../trunks/mock_tpm.cc',
-                '../trunks/mock_tpm_state.cc',
-                '../trunks/mock_tpm_utility.cc',
-                '../trunks/trunks_factory_for_test.cc',
                 'server/tpm2_status_test.cc',
                 'server/tpm2_initializer_test.cc',
+              ],
+              'libraries': [
+                '-ltrunks_test',
               ],
             }],
           ],
