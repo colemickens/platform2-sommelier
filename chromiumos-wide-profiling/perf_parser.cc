@@ -4,6 +4,8 @@
 
 #include "chromiumos-wide-profiling/perf_parser.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <cstdio>
 #include <set>
@@ -23,6 +25,15 @@ struct EventAndTime {
   ParsedEvent* event;
   uint64_t time;
 };
+
+// MMAPs are aligned to pages of this many bytes.
+const uint64_t kMmapPageAlignment = sysconf(_SC_PAGESIZE);
+
+// Returns the offset within a page of size |kMmapPageAlignment|, given an
+// address. Requires that |kMmapPageAlignment| be a power of 2.
+uint64_t GetPageAlignedOffset(uint64_t addr) {
+  return addr % kMmapPageAlignment;
+}
 
 // Returns true if |e1| has an earlier timestamp than |e2|.  The args are const
 // pointers instead of references because of the way this function is used when
@@ -454,8 +465,15 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
 
       ++parsed_event->num_samples_in_mmap_region;
     }
-    if (options_.do_remap)
+    if (options_.do_remap) {
+      if (GetPageAlignedOffset(mapped_addr) != GetPageAlignedOffset(ip)) {
+        LOG(ERROR) << "Remapped address " << std::hex << mapped_addr << " "
+                   << "does not have the same page alignment offset as "
+                   << "original address " << ip;
+        return false;
+      }
       *new_ip = mapped_addr;
+    }
   }
   return mapped;
 }
@@ -520,7 +538,17 @@ bool PerfParser::MapMmapEvent(uint64_t id,
 
   if (options_.do_remap) {
     uint64_t mapped_addr;
-    CHECK(mapper->GetMappedAddress(start, &mapped_addr));
+    if (!mapper->GetMappedAddress(start, &mapped_addr)) {
+      LOG(ERROR) << "Failed to map starting address " << std::hex << start;
+      return false;
+    }
+    if (GetPageAlignedOffset(mapped_addr) != GetPageAlignedOffset(start)) {
+      LOG(ERROR) << "Remapped address " << std::hex << mapped_addr << " "
+                 << "does not have the same page alignment offset as start "
+                 << "address " << start;
+      return false;
+    }
+
     *p_start = mapped_addr;
     *p_len = len;
     *p_pgoff = pgoff;
@@ -537,10 +565,12 @@ std::pair<AddressMapper*, bool> PerfParser::GetOrCreateProcessMapper(
 
   std::unique_ptr<AddressMapper> mapper;
   const auto& parent_mapper = process_mappers_.find(ppid);
-  if (parent_mapper != process_mappers_.end())
+  if (parent_mapper != process_mappers_.end()) {
     mapper.reset(new AddressMapper(*parent_mapper->second));
-  else
+  } else {
     mapper.reset(new AddressMapper());
+    mapper->set_page_alignment(kMmapPageAlignment);
+  }
 
   const auto inserted =
       process_mappers_.insert(search, std::make_pair(pid, std::move(mapper)));
