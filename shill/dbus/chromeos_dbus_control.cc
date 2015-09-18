@@ -28,10 +28,11 @@
 #include "shill/dbus/chromeos_dhcpcd_proxy.h"
 #if defined(__ANDROID__)
 #include "shill/dbus/chromeos_firewalld_proxy.h"
+#include "shill/power_manager_proxy_stub.h"
 #else
 #include "shill/dbus/chromeos_permission_broker_proxy.h"
-#endif  // __ANDROID__
 #include "shill/dbus/chromeos_power_manager_proxy.h"
+#endif  // __ANDROID__
 #include "shill/dbus/chromeos_upstart_proxy.h"
 
 #include "shill/dbus/chromeos_dbus_service_watcher.h"
@@ -168,11 +169,15 @@ PowerManagerProxyInterface* ChromeosDBusControl::CreatePowerManagerProxy(
     PowerManagerProxyDelegate* delegate,
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
+#if defined(__ANDROID__)
+  return new PowerManagerProxyStub();
+#else
   return new ChromeosPowerManagerProxy(dispatcher_,
                                        proxy_bus_,
                                        delegate,
                                        service_appeared_callback,
                                        service_vanished_callback);
+#endif  // __ANDROID__
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
