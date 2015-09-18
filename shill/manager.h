@@ -269,8 +269,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual ServiceRefPtr GetDefaultService() const;
 
   // Set enabled state of all |technology_name| devices to |enabled_state|.
+  // Persist the state to storage is |persist| is true.
   void SetEnabledStateForTechnology(const std::string& technology_name,
                                     bool enabled_state,
+                                    bool persist,
                                     Error* error,
                                     const ResultCallback& callback);
   // Return whether a technology is marked as enabled for portal detection.

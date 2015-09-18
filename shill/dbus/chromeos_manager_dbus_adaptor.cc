@@ -235,8 +235,9 @@ void ChromeosManagerDBusAdaptor::EnableTechnology(
   SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  manager_->SetEnabledStateForTechnology(technology_name, true, &e,
-                                         callback);
+  const bool kPersistentSave = true;
+  manager_->SetEnabledStateForTechnology(technology_name, true,
+                                         kPersistentSave, &e, callback);
   ReturnResultOrDefer(callback, e);
 }
 
@@ -245,8 +246,9 @@ void ChromeosManagerDBusAdaptor::DisableTechnology(
   SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  manager_->SetEnabledStateForTechnology(technology_name, false, &e,
-                                         callback);
+  const bool kPersistentSave = true;
+  manager_->SetEnabledStateForTechnology(technology_name, false,
+                                         kPersistentSave, &e, callback);
   ReturnResultOrDefer(callback, e);
 }
 

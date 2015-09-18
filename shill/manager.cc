@@ -1018,6 +1018,7 @@ void Manager::SetProfileForService(const ServiceRefPtr& to_set,
 
 void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
                                            bool enabled_state,
+                                           bool persist,
                                            Error* error,
                                            const ResultCallback& callback) {
   CHECK(error);
@@ -1041,8 +1042,13 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     Error device_error(Error::kOperationInitiated);
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));
-    device->SetEnabledPersistent(
-        enabled_state, &device_error, aggregator_callback);
+    if (persist) {
+      device->SetEnabledPersistent(
+          enabled_state, &device_error, aggregator_callback);
+    } else {
+      device->SetEnabledNonPersistent(
+          enabled_state, &device_error, aggregator_callback);
+    }
     if (device_error.IsOngoing()) {
       deferred = true;
     } else if (!error->IsFailure()) {  // Report first failure.
@@ -1158,7 +1164,7 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
 
   if (IsTechnologyProhibited(to_manage->technology())) {
     Error unused_error;
-    to_manage->SetEnabledPersistent(false, &unused_error, ResultCallback());
+    to_manage->SetEnabledNonPersistent(false, &unused_error, ResultCallback());
   }
 
   // If |to_manage| is new, it needs to be persisted.
@@ -1262,8 +1268,10 @@ bool Manager::SetProhibitedTechnologies(const string& prohibited_technologies,
     Error unused_error(Error::kOperationInitiated);
     ResultCallback result_callback(Bind(
         &Manager::OnTechnologyProhibited, Unretained(this), technology));
+    const bool kPersistentSave = false;
     SetEnabledStateForTechnology(Technology::NameFromIdentifier(technology),
                                  false,
+                                 kPersistentSave,
                                  &unused_error,
                                  result_callback);
   }

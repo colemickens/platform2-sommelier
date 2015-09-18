@@ -47,6 +47,9 @@ class MockDevice : public Device {
   MOCK_METHOD3(SetEnabledPersistent, void(bool enable,
                                           Error* error,
                                           const ResultCallback& callback));
+  MOCK_METHOD3(SetEnabledNonPersistent, void(bool enable,
+                                             Error* error,
+                                             const ResultCallback& callback));
   MOCK_METHOD3(Scan, void(Device::ScanType scan_type, Error* error,
                           const std::string& reason));
   MOCK_METHOD1(Load, bool(StoreInterface* storage));
