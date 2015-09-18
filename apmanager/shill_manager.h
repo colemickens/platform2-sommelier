@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef APMANAGER_SHILL_PROXY_H_
-#define APMANAGER_SHILL_PROXY_H_
+#ifndef APMANAGER_SHILL_MANAGER_H_
+#define APMANAGER_SHILL_MANAGER_H_
 
 #include <set>
 #include <string>
@@ -12,13 +12,12 @@
 #include <base/memory/scoped_ptr.h>
 #include <shill/dbus-proxies.h>
 
-// Proxy for shill "org.chromium.flimflam" DBus service.
 namespace apmanager {
 
-class ShillProxy {
+class ShillManager {
  public:
-  ShillProxy();
-  virtual ~ShillProxy();
+  ShillManager();
+  virtual ~ShillManager();
 
   void Init(const scoped_refptr<dbus::Bus>& bus);
 
@@ -37,9 +36,9 @@ class ShillProxy {
   // List of interfaces apmanager have claimed.
   std::set<std::string> claimed_interfaces_;
 
-  DISALLOW_COPY_AND_ASSIGN(ShillProxy);
+  DISALLOW_COPY_AND_ASSIGN(ShillManager);
 };
 
 }  // namespace apmanager
 
-#endif  // APMANAGER_SHILL_PROXY_H_
+#endif  // APMANAGER_SHILL_MANAGER_H_

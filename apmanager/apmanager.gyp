@@ -66,7 +66,7 @@
         'permission_broker_dbus_proxy.cc',
         'process_factory.cc',
         'service.cc',
-        'shill_proxy.cc',
+        'shill_manager.cc',
       ],
     },
     {
