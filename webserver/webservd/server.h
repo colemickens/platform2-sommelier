@@ -30,6 +30,7 @@
 #include "webservd/encryptor.h"
 #include "webservd/firewall_interface.h"
 #include "webservd/server_interface.h"
+#include "webservd/temp_file_manager.h"
 
 namespace webservd {
 
@@ -56,6 +57,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   void ProtocolHandlerStarted(ProtocolHandler* handler) override;
   void ProtocolHandlerStopped(ProtocolHandler* handler) override;
   const Config& GetConfig() const override { return config_; }
+  TempFileManager* GetTempFileManager() override { return &temp_file_manager_; }
 
   scoped_refptr<dbus::Bus> GetBus() { return dbus_object_->GetBus(); }
 
@@ -63,6 +65,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   void CreateProtocolHandler(Config::ProtocolHandler* handler_config);
   void InitTlsData();
   void OnFirewallServiceOnline();
+  base::FilePath GetUploadDirectory() const;
 
   org::chromium::WebServer::ServerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
@@ -84,6 +87,9 @@ class Server final : public org::chromium::WebServer::ServerInterface,
 
   // The firewall service handler.
   const std::unique_ptr<FirewallInterface> firewall_;
+
+  FileDeleter file_deleter_;
+  TempFileManager temp_file_manager_{GetUploadDirectory(), &file_deleter_};
 
   base::WeakPtrFactory<Server> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Server);

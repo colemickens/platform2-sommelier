@@ -146,13 +146,17 @@ bool DBusProtocolHandler::GetRequestFileData(
     chromeos::ErrorPtr* error,
     const std::string& in_request_id,
     int32_t in_file_id,
-    std::vector<uint8_t>* out_contents) {
+    dbus::FileDescriptor* out_contents) {
   auto request = GetRequest(in_request_id, error);
   if (!request)
     return false;
 
-  if (request->GetFileData(in_file_id, out_contents))
+  int data_fd = 0;
+  if (request->GetFileData(in_file_id, &data_fd)) {
+    out_contents->PutValue(data_fd);
+    out_contents->CheckValidity();
     return true;
+  }
 
   chromeos::Error::AddToPrintf(error,
                                FROM_HERE,

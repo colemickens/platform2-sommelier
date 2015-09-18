@@ -30,7 +30,7 @@
       </tp:docstring>
       <arg name="request_id" type="s" direction="in"/>
       <arg name="file_id" type="i" direction="in"/>
-      <arg name="contents" type="ay" direction="out"/>
+      <arg name="contents" type="h" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="CompleteRequest">

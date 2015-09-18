@@ -102,6 +102,7 @@
         'webservd/protocol_handler.cc',
         'webservd/request.cc',
         'webservd/server.cc',
+        'webservd/temp_file_manager.cc',
         'webservd/utils.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],

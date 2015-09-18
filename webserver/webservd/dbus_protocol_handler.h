@@ -71,7 +71,7 @@ class DBusProtocolHandler final
   bool GetRequestFileData(chromeos::ErrorPtr* error,
                           const std::string& in_request_id,
                           int32_t in_file_id,
-                          std::vector<uint8_t>* out_contents) override;
+                          dbus::FileDescriptor* out_contents) override;
 
   bool CompleteRequest(
       chromeos::ErrorPtr* error,

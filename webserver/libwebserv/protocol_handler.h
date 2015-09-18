@@ -26,6 +26,7 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/secure_blob.h>
+#include <chromeos/streams/stream.h>
 #include <dbus/object_path.h>
 
 #include <libwebserv/export.h>
@@ -174,7 +175,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   LIBWEBSERV_PRIVATE void GetFileData(
       const std::string& request_id,
       int file_id,
-      const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
+      const base::Callback<void(chromeos::StreamPtr)>& success_callback,
       const base::Callback<void(chromeos::Error*)>& error_callback);
 
   // A helper method to obtain a corresponding protocol handler D-Bus proxy for

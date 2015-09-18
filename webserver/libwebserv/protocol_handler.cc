@@ -18,6 +18,7 @@
 
 #include <base/logging.h>
 #include <chromeos/map_utils.h>
+#include <chromeos/streams/file_stream.h>
 
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "libwebserv/request.h"
@@ -226,13 +227,41 @@ void ProtocolHandler::CompleteRequest(
 void ProtocolHandler::GetFileData(
     const std::string& request_id,
     int file_id,
-    const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
+    const base::Callback<void(chromeos::StreamPtr)>& success_callback,
     const base::Callback<void(chromeos::Error*)>& error_callback) {
   ProtocolHandlerProxy* proxy = GetRequestProtocolHandlerProxy(request_id);
   CHECK(proxy);
 
-  proxy->GetRequestFileDataAsync(
-      request_id, file_id, success_callback, error_callback);
+  // Store the success/error callback in a shared object so it can be referenced
+  // by the two wrapper callbacks. Since the original callbacks MAY contain
+  // move-only types, copying the base::Callback object is generally unsafe and
+  // may destroy the source object of the copy (despite the fact that it is
+  // constant). So, here we move both callbacks to |Callbacks| structure and
+  // use a shared pointer to it in both success and error callback wrappers.
+  struct Callbacks {
+    base::Callback<void(chromeos::StreamPtr)> on_success;
+    base::Callback<void(chromeos::Error*)> on_error;
+  };
+  auto callbacks = std::make_shared<Callbacks>();
+  callbacks->on_success = success_callback;
+  callbacks->on_error = error_callback;
+
+  auto on_success = [callbacks](const dbus::FileDescriptor& fd) {
+    chromeos::ErrorPtr error;
+    // Unfortunately there is no way to take ownership of the file descriptor
+    // since |fd| is a const reference, so duplicate the descriptor.
+    int dupfd = dup(fd.value());
+    auto stream = chromeos::FileStream::FromFileDescriptor(dupfd, true, &error);
+    if (!stream)
+      return callbacks->on_error.Run(error.get());
+    callbacks->on_success.Run(std::move(stream));
+  };
+  auto on_error = [callbacks](chromeos::Error* error) {
+    callbacks->on_error.Run(error);
+  };
+
+  proxy->GetRequestFileDataAsync(request_id, file_id, base::Bind(on_success),
+                                 base::Bind(on_error));
 }
 
 ProtocolHandler::ProtocolHandlerProxy*

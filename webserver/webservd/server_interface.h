@@ -22,6 +22,7 @@
 namespace webservd {
 
 class ProtocolHandler;
+class TempFileManager;
 
 // An abstract interface to expose Server object to IPC transport layer such as
 // D-Bus.
@@ -36,6 +37,11 @@ class ServerInterface {
 
   // Returns the server configuration data.
   virtual const Config& GetConfig() const = 0;
+
+  // Returns the temp file manager used to track life-times of temporary files.
+  // The returned pointer is still owned by the server, so it must not be
+  // stored or deleted.
+  virtual TempFileManager* GetTempFileManager() = 0;
 
  protected:
   // This interface should not be used to control the life-time of the class

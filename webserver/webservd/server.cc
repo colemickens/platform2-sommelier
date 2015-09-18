@@ -223,4 +223,14 @@ void Server::InitTlsData() {
   }
 }
 
+base::FilePath Server::GetUploadDirectory() const {
+  base::FilePath upload_dir;
+#ifdef __ANDROID__
+  upload_dir = base::FilePath{"/data/misc/webservd/uploads"};
+#else
+  CHECK(base::GetTempDir(&upload_dir));
+#endif
+  return upload_dir;
+}
+
 }  // namespace webservd

@@ -22,6 +22,8 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/files/file_path.h>
+#include <chromeos/streams/stream.h>
 
 struct MHD_Connection;
 struct MHD_PostProcessor;
@@ -29,6 +31,7 @@ struct MHD_PostProcessor;
 namespace webservd {
 
 class ProtocolHandler;
+class TempFileManager;
 
 using PairOfStrings = std::pair<std::string, std::string>;
 
@@ -51,7 +54,9 @@ class FileInfo final {
   // was specified.
   std::string transfer_encoding;
   // The file content data.
-  std::vector<uint8_t> data;
+  chromeos::StreamPtr data_stream;
+  // The temporary file containing the file part data.
+  base::FilePath temp_file_name;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FileInfo);
@@ -68,8 +73,9 @@ class Request final {
           ProtocolHandler* protocol_handler);
   ~Request();
 
-  // Obtains the content data of uploaded file identified by |file_id|.
-  bool GetFileData(int file_id, std::vector<uint8_t>* contents);
+  // Obtains the file descriptor containing data of uploaded file identified
+  // by |file_id|.
+  bool GetFileData(int file_id, int* contents_fd);
 
   // Finishes the request and provides the reply data.
   bool Complete(
@@ -152,6 +158,8 @@ class Request final {
                         const char* data,
                         size_t size);
   bool AppendPostFieldData(const char* key, const char* data, size_t size);
+
+  TempFileManager* GetTempFileManager();
 
   std::string id_;
   std::string request_handler_id_;

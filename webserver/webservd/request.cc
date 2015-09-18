@@ -17,14 +17,18 @@
 #include <microhttpd.h>
 
 #include <base/bind.h>
+#include <base/files/file.h>
 #include <base/guid.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/http/http_utils.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/file_stream.h>
 #include <chromeos/strings/string_utils.h>
 #include "webservd/log_manager.h"
 #include "webservd/protocol_handler.h"
 #include "webservd/request_handler_interface.h"
+#include "webservd/server_interface.h"
+#include "webservd/temp_file_manager.h"
 
 namespace webservd {
 
@@ -99,13 +103,18 @@ Request::Request(
 Request::~Request() {
   if (post_processor_)
     MHD_destroy_post_processor(post_processor_);
+  GetTempFileManager()->DeleteRequestTempFiles(id_);
   protocol_handler_->RemoveRequest(this);
 }
 
-bool Request::GetFileData(int file_id, std::vector<uint8_t>* contents) {
+bool Request::GetFileData(int file_id, int* contents_fd) {
   if (file_id < 0 || static_cast<size_t>(file_id) >= file_info_.size())
     return false;
-  *contents = file_info_[file_id]->data;
+  base::File file(file_info_[file_id]->temp_file_name,
+                  base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!file.IsValid())
+    return false;
+  *contents_fd = file.TakePlatformFile();
   return true;
 }
 
@@ -172,6 +181,10 @@ void Request::EndRequestData() {
   if (state_ == State::kIdle) {
     state_ = State::kWaitingForResponse;
     if (!request_handler_id_.empty()) {
+      // Close all temporary file streams, if any.
+      for (auto& file : file_info_)
+        file->data_stream->CloseBlocking(nullptr);
+
       protocol_handler_->AddRequest(this);
       auto p = protocol_handler_->request_handlers_.find(request_handler_id_);
       CHECK(p != protocol_handler_->request_handlers_.end());
@@ -228,7 +241,14 @@ bool Request::AddPostFieldData(const char* key,
     std::unique_ptr<FileInfo> file_info{
         new FileInfo{key, filename, content_type ? content_type : "",
                      transfer_encoding ? transfer_encoding : ""}};
-    file_info->data.assign(data, data + size);
+    file_info->temp_file_name = GetTempFileManager()->CreateTempFileName(id_);
+    file_info->data_stream = chromeos::FileStream::Open(
+        file_info->temp_file_name, chromeos::Stream::AccessMode::READ_WRITE,
+        chromeos::FileStream::Disposition::CREATE_ALWAYS, nullptr);
+    if (!file_info->data_stream ||
+        !file_info->data_stream->WriteAllBlocking(data, size, nullptr)) {
+      return false;
+    }
     file_info_.push_back(std::move(file_info));
     last_posted_data_was_file_ = true;
     return true;
@@ -246,8 +266,7 @@ bool Request::AppendPostFieldData(const char* key,
     CHECK(!file_info_.empty());
     CHECK(file_info_.back()->field_name == key);
     FileInfo* file_info = file_info_.back().get();
-    file_info->data.insert(file_info->data.end(), data, data + size);
-    return true;
+    return file_info->data_stream->WriteAllBlocking(data, size, nullptr);
   }
 
   CHECK(!post_data_.empty());
@@ -255,5 +274,10 @@ bool Request::AppendPostFieldData(const char* key,
   post_data_.back().second.append(data, size);
   return true;
 }
+
+TempFileManager* Request::GetTempFileManager() {
+  return protocol_handler_->GetServer()->GetTempFileManager();
+}
+
 
 }  // namespace webservd

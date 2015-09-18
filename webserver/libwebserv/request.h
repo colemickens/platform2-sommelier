@@ -25,6 +25,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/streams/stream.h>
 #include <libwebserv/export.h>
 
 struct MHD_Connection;
@@ -43,8 +44,8 @@ class LIBWEBSERV_EXPORT FileInfo final {
   const std::string& GetContentType() const { return content_type_; }
   const std::string& GetTransferEncoding() const { return transfer_encoding_; }
   void GetData(
-      const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback);
+      const base::Callback<void(chromeos::StreamPtr)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback) const;
 
  private:
   friend class Server;
@@ -62,7 +63,6 @@ class LIBWEBSERV_EXPORT FileInfo final {
   std::string file_name_;
   std::string content_type_;
   std::string transfer_encoding_;
-  std::vector<uint8_t> data_;
 
   DISALLOW_COPY_AND_ASSIGN(FileInfo);
 };

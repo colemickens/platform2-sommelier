@@ -36,8 +36,8 @@ FileInfo::FileInfo(ProtocolHandler* handler,
 }
 
 void FileInfo::GetData(
-    const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
-    const base::Callback<void(chromeos::Error*)>& error_callback) {
+    const base::Callback<void(chromeos::StreamPtr)>& success_callback,
+    const base::Callback<void(chromeos::Error*)>& error_callback) const {
   handler_->GetFileData(request_id_,
                         file_id_,
                         success_callback,
