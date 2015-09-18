@@ -37,6 +37,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_killer.h"
+#include "shill/mock_process_manager.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_virtual_device.h"
@@ -104,7 +105,7 @@ class OpenVPNDriverTest
         metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
         driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
-                                  &device_info_, &glib_)),
+                                  &device_info_, &glib_, &process_manager_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
         device_(new MockVirtualDevice(
@@ -127,7 +128,6 @@ class OpenVPNDriverTest
 
   virtual void TearDown() {
     driver_->default_service_callback_tag_ = 0;
-    driver_->child_watch_tag_ = 0;
     driver_->pid_ = 0;
     driver_->device_ = nullptr;
     driver_->service_ = nullptr;
@@ -259,6 +259,7 @@ class OpenVPNDriverTest
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
+  MockProcessManager process_manager_;
   MockManager manager_;
   OpenVPNDriver* driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
@@ -1137,8 +1138,10 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   SetArg(kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
+  EXPECT_CALL(
+      process_manager_,
+      StartProcess(_, _, _, _, false /* Don't exit with parent */, _))
+      .WillOnce(Return(true));
   const int kServiceCallbackTag = 1;
   EXPECT_EQ(0, driver_->default_service_callback_tag_);
   EXPECT_CALL(manager_, RegisterDefaultServiceCallback(_))
@@ -1169,12 +1172,10 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
                    Service::kFailureUnknown,
                    Service::kErrorDetailsNone);
 
-  const unsigned int kChildTag = 123;
   const int kPID = 123456;
   const int kServiceCallbackTag = 5;
   static const char kErrorDetails[] = "Certificate revoked.";
   driver_->default_service_callback_tag_ = kServiceCallbackTag;
-  driver_->child_watch_tag_ = kChildTag;
   driver_->pid_ = kPID;
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
@@ -1189,7 +1190,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->tls_auth_file_ = tls_auth_file;
   // Stop will be called twice -- once by Cleanup and once by the destructor.
   EXPECT_CALL(*management_server_, Stop()).Times(2);
-  EXPECT_CALL(glib_, SourceRemove(kChildTag));
+  EXPECT_CALL(process_manager_, UpdateExitCallback(kPID, _));
   EXPECT_CALL(manager_, DeregisterDefaultServiceCallback(kServiceCallbackTag));
   EXPECT_CALL(process_killer_, Kill(kPID, _));
   EXPECT_CALL(device_info_, DeleteInterface(_)).Times(0);
@@ -1198,7 +1199,6 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_CALL(*service_, SetFailure(Service::kFailureInternal));
   driver_->Cleanup(
       Service::kStateFailure, Service::kFailureInternal,  kErrorDetails);
-  EXPECT_EQ(0, driver_->child_watch_tag_);
   EXPECT_EQ(0, driver_->default_service_callback_tag_);
   EXPECT_EQ(0, driver_->pid_);
   EXPECT_FALSE(driver_->rpc_task_.get());
@@ -1211,16 +1211,6 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_TRUE(driver_->ip_properties_.address.empty());
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
-
-namespace {
-MATCHER(CheckEnv, "") {
-  if (!arg || !arg[0] || !arg[1] || arg[2]) {
-    return false;
-  }
-  return (string(arg[0]) == "IV_PLAT=Chromium OS" &&
-          string(arg[1]) == "IV_PLAT_REL=2202.0");
-}
-}  // namespace
 
 TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   SetupLSBRelease();
@@ -1237,29 +1227,26 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_CALL(manager_, IsConnected()).Times(2).WillRepeatedly(Return(false));
 
   const int kPID = 234678;
-  EXPECT_CALL(glib_, SpawnAsync(_, _, CheckEnv(), _, _, _, _, _))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
-  const int kTag = 6;
-  EXPECT_CALL(glib_, ChildWatchAdd(kPID, &driver_->OnOpenVPNDied, driver_))
-      .WillOnce(Return(kTag));
+  const map<string, string> expected_env{
+    {"IV_PLAT", "Chromium OS"},
+    {"IV_PLAT_REL", "2202.0"}};
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, expected_env, _, _))
+      .WillOnce(Return(-1))
+      .WillOnce(Return(kPID));
   EXPECT_FALSE(driver_->SpawnOpenVPN());
   EXPECT_TRUE(driver_->SpawnOpenVPN());
   EXPECT_EQ(kPID, driver_->pid_);
-  EXPECT_EQ(kTag, driver_->child_watch_tag_);
 }
 
 TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
   const int kPID = 99999;
   driver_->device_ = device_;
-  driver_->child_watch_tag_ = 333;
   driver_->pid_ = kPID;
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
-  OpenVPNDriver::OnOpenVPNDied(kPID, 2, driver_);
-  EXPECT_EQ(0, driver_->child_watch_tag_);
+  driver_->OnOpenVPNDied(2);
   EXPECT_EQ(0, driver_->pid_);
 }
 
@@ -1373,29 +1360,15 @@ TEST_F(OpenVPNDriverTest, PassphraseRequired) {
   EXPECT_FALSE(props.ContainsString(kOpenVPNTokenProperty));
 }
 
-TEST_F(OpenVPNDriverTest, ParseLSBRelease) {
+TEST_F(OpenVPNDriverTest, GetEnvironment) {
   SetupLSBRelease();
-  map<string, string> lsb_release;
-  EXPECT_TRUE(driver_->ParseLSBRelease(&lsb_release));
-  EXPECT_TRUE(ContainsKey(lsb_release, "foo") && lsb_release["foo"] == "");
-  EXPECT_EQ("=", lsb_release["zoo"]);
-  EXPECT_EQ("Chromium OS", lsb_release[OpenVPNDriver::kChromeOSReleaseName]);
-  EXPECT_EQ("2202.0", lsb_release[OpenVPNDriver::kChromeOSReleaseVersion]);
-  driver_->lsb_release_file_ = FilePath("/non/existent/file");
-  EXPECT_FALSE(driver_->ParseLSBRelease(nullptr));
-}
+  const map<string, string> expected{
+    {"IV_PLAT", "Chromium OS"},
+    {"IV_PLAT_REL", "2202.0"}};
+  ASSERT_EQ(expected, driver_->GetEnvironment());
 
-TEST_F(OpenVPNDriverTest, InitEnvironment) {
-  vector<string> env;
-  SetupLSBRelease();
-  driver_->InitEnvironment(&env);
-  ASSERT_EQ(2, env.size());
-  EXPECT_EQ("IV_PLAT=Chromium OS", env[0]);
-  EXPECT_EQ("IV_PLAT_REL=2202.0", env[1]);
-  env.clear();
   EXPECT_EQ(0, base::WriteFile(lsb_release_file_, "", 0));
-  driver_->InitEnvironment(&env);
-  EXPECT_EQ(0, env.size());
+  EXPECT_EQ(0, driver_->GetEnvironment().size());
 }
 
 TEST_F(OpenVPNDriverTest, DeleteInterface) {

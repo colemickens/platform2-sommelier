@@ -33,6 +33,7 @@
 #include "shill/manager.h"
 #include "shill/net/sockets.h"
 #include "shill/process_killer.h"
+#include "shill/process_manager.h"
 #include "shill/rpc_task.h"
 #include "shill/virtual_device.h"
 #include "shill/vpn/openvpn_management_server.h"
@@ -58,6 +59,10 @@ static string ObjectID(const OpenVPNDriver* o) {
 
 namespace {
 
+const char kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
+const char kChromeOSReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
+const char kOpenVPNEnvVarPlatformName[] = "IV_PLAT";
+const char kOpenVPNEnvVarPlatformVersion[] = "IV_PLAT_REL";
 const char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
 const char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
 const char kOpenVPNIfconfigLocal[] = "ifconfig_local";
@@ -77,6 +82,9 @@ const char kDefaultPKCS11Provider[] = "libchaps.so";
 // a "broadcast mode" network instead of peer-to-peer.  See
 // http://crbug.com/241264 for an example of this issue.
 const char kSuspectedNetmaskPrefix[] = "255.";
+
+void DoNothingWithExitStatus(int exit_status) {
+}
 
 }  // namespace
 
@@ -140,9 +148,6 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
 };
 
 const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
-const char OpenVPNDriver::kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
-const char OpenVPNDriver::kChromeOSReleaseVersion[] =
-    "CHROMEOS_RELEASE_VERSION";
 
 // Directory where OpenVPN configuration files are exported while the
 // process is running.
@@ -157,12 +162,13 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface* control,
                              Metrics* metrics,
                              Manager* manager,
                              DeviceInfo* device_info,
-                             GLib* glib)
+                             GLib* glib,
+                             ProcessManager* process_manager)
     : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
       control_(control),
       metrics_(metrics),
       device_info_(device_info),
-      glib_(glib),
+      process_manager_(process_manager),
       management_server_(new OpenVPNManagementServer(this, glib)),
       certificate_file_(new CertificateFile()),
       extra_certificates_file_(new CertificateFile()),
@@ -170,7 +176,6 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface* control,
       lsb_release_file_(kLSBReleaseFile),
       openvpn_config_directory_(kDefaultOpenVPNConfigurationDirectory),
       pid_(0),
-      child_watch_tag_(0),
       default_service_callback_tag_(0) {}
 
 OpenVPNDriver::~OpenVPNDriver() {
@@ -194,13 +199,14 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   SLOG(this, 2) << __func__ << "(" << Service::ConnectStateToString(state)
                 << ", " << error_details << ")";
   StopConnectTimeout();
-  if (child_watch_tag_) {
-    glib_->SourceRemove(child_watch_tag_);
-    child_watch_tag_ = 0;
-  }
   // Disconnecting the management interface will terminate the openvpn
-  // process. Ensure this is handled robustly by first removing the child watch
-  // above and then terminating and reaping the process through ProcessKiller.
+  // process. Ensure this is handled robustly by first unregistering
+  // the callback for OnOpenVPNDied, and then terminating and reaping
+  // the process through ProcessKiller.
+  if (pid_) {
+    process_manager_->UpdateExitCallback(
+        pid_, base::Bind(DoNothingWithExitStatus));
+  }
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
     base::DeleteFile(tls_auth_file_, false);
@@ -318,47 +324,26 @@ bool OpenVPNDriver::SpawnOpenVPN() {
 
   // TODO(quiche): This should be migrated to use ExternalTask.
   // (crbug.com/246263).
-  vector<char*> process_args;
-  process_args.push_back(const_cast<char*>(kOpenVPNPath));
-  process_args.push_back(const_cast<char*>("--config"));
-  process_args.push_back(const_cast<char*>(
-      openvpn_config_file_.value().c_str()));
-  process_args.push_back(nullptr);
-
-  vector<string> environment;
-  InitEnvironment(&environment);
-
-  vector<char*> process_env;
-  for (const auto& environment_variable : environment) {
-    process_env.push_back(const_cast<char*>(environment_variable.c_str()));
-  }
-  process_env.push_back(nullptr);
-
   CHECK(!pid_);
-  if (!glib_->SpawnAsync(nullptr,
-                         process_args.data(),
-                         process_env.data(),
-                         G_SPAWN_DO_NOT_REAP_CHILD,
-                         nullptr,
-                         nullptr,
-                         &pid_,
-                         nullptr)) {
+  pid_t pid = process_manager_->StartProcess(
+      FROM_HERE, FilePath(kOpenVPNPath),
+      vector<string>{"--config", openvpn_config_file_.value()},
+      GetEnvironment(),
+      false,  // Do not terminate with parent.
+      base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
+  if (pid < 0) {
     LOG(ERROR) << "Unable to spawn: " << kOpenVPNPath;
     return false;
   }
-  CHECK(!child_watch_tag_);
-  child_watch_tag_ = glib_->ChildWatchAdd(pid_, OnOpenVPNDied, this);
+
+  pid_ = pid;
   return true;
 }
 
-// static
-void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
-  SLOG(nullptr, 2) << __func__ << "(" << pid << ", "  << status << ")";
-  OpenVPNDriver* me = reinterpret_cast<OpenVPNDriver*>(data);
-  me->child_watch_tag_ = 0;
-  CHECK_EQ(pid, me->pid_);
-  me->pid_ = 0;
-  me->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
+  SLOG(nullptr, 2) << __func__ << "(" << pid_ << ", "  << exit_status << ")";
+  pid_ = 0;
+  FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
@@ -1023,41 +1008,32 @@ KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
   return props;
 }
 
-// TODO(petkov): Consider refactoring lsb-release parsing out into a shared
-// singleton if it's used outside OpenVPN.
-bool OpenVPNDriver::ParseLSBRelease(map<string, string>* lsb_release) {
+map<string, string> OpenVPNDriver::GetEnvironment() {
   SLOG(this, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
+  map<string, string> environment;
   string contents;
   if (!base::ReadFileToString(lsb_release_file_, &contents)) {
     LOG(ERROR) << "Unable to read the lsb-release file: "
                << lsb_release_file_.value();
-    return false;
+    return environment;
   }
   vector<string> lines;
   SplitString(contents, '\n', &lines);
   for (const auto& line : lines) {
-    size_t assign = line.find('=');
+    const size_t assign = line.find('=');
     if (assign == string::npos) {
       continue;
     }
-    (*lsb_release)[line.substr(0, assign)] = line.substr(assign + 1);
+    const string key = line.substr(0, assign);
+    const string value = line.substr(assign + 1);
+    if (key == kChromeOSReleaseName) {
+      environment[kOpenVPNEnvVarPlatformName] = value;
+    } else if (key == kChromeOSReleaseVersion) {
+      environment[kOpenVPNEnvVarPlatformVersion] = value;
+    }
+    // Other LSB release values are irrelevant.
   }
-  return true;
-}
-
-void OpenVPNDriver::InitEnvironment(vector<string>* environment) {
-  // Adds the platform name and version to the environment so that openvpn can
-  // send them to the server when OpenVPN.PushPeerInfo is set.
-  map<string, string> lsb_release;
-  ParseLSBRelease(&lsb_release);
-  string platform_name = lsb_release[kChromeOSReleaseName];
-  if (!platform_name.empty()) {
-    environment->push_back("IV_PLAT=" + platform_name);
-  }
-  string platform_version = lsb_release[kChromeOSReleaseVersion];
-  if (!platform_version.empty()) {
-    environment->push_back("IV_PLAT_REL=" + platform_version);
-  }
+  return environment;
 }
 
 void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr& service) {

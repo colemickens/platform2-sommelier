@@ -49,6 +49,7 @@ class Error;
 class Metrics;
 class OpenVPNManagementServer;
 class ProcessKiller;
+class ProcessManager;
 
 class OpenVPNDriver : public VPNDriver,
                       public RPCTaskDelegate {
@@ -64,7 +65,8 @@ class OpenVPNDriver : public VPNDriver,
                 Metrics* metrics,
                 Manager* manager,
                 DeviceInfo* device_info,
-                GLib* glib);
+                GLib* glib,
+                ProcessManager* process_manager);
   ~OpenVPNDriver() override;
 
   virtual void OnReconnecting(ReconnectReason reason);
@@ -140,11 +142,11 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
   FRIEND_TEST(OpenVPNDriverTest, DeleteInterface);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
+  FRIEND_TEST(OpenVPNDriverTest, GetEnvironment);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitCAOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitCertificateVerifyOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitClientAuthOptions);
-  FRIEND_TEST(OpenVPNDriverTest, InitEnvironment);
   FRIEND_TEST(OpenVPNDriverTest, InitExtraCertOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
@@ -159,7 +161,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
-  FRIEND_TEST(OpenVPNDriverTest, ParseLSBRelease);
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
@@ -178,8 +179,6 @@ class OpenVPNDriver : public VPNDriver,
   static const Property kProperties[];
 
   static const char kLSBReleaseFile[];
-  static const char kChromeOSReleaseName[];
-  static const char kChromeOSReleaseVersion[];
 
   static const char kDefaultOpenVPNConfigurationDirectory[];
 
@@ -220,11 +219,10 @@ class OpenVPNDriver : public VPNDriver,
       std::vector<std::vector<std::string>>* options, Error* error);
   void InitLoggingOptions(std::vector<std::vector<std::string>>* options);
 
-  void InitEnvironment(std::vector<std::string>* environment);
+  std::map<std::string, std::string> GetEnvironment();
   void ParseIPConfiguration(
       const std::map<std::string, std::string>& configuration,
       IPConfig::Properties* properties) const;
-  bool ParseLSBRelease(std::map<std::string, std::string>* lsb_release);
 
   bool SpawnOpenVPN();
 
@@ -248,7 +246,7 @@ class OpenVPNDriver : public VPNDriver,
                        base::FilePath* config_file);
 
   // Called when the openpvn process exits.
-  static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
+  void OnOpenVPNDied(int exit_status);
 
   // Standalone callback used to delete the tunnel interface when the openvpn
   // process dies.
@@ -270,7 +268,7 @@ class OpenVPNDriver : public VPNDriver,
   ControlInterface* control_;
   Metrics* metrics_;
   DeviceInfo* device_info_;
-  GLib* glib_;
+  ProcessManager* process_manager_;
   Sockets sockets_;
   std::unique_ptr<OpenVPNManagementServer> management_server_;
   std::unique_ptr<CertificateFile> certificate_file_;
@@ -290,9 +288,6 @@ class OpenVPNDriver : public VPNDriver,
   // The PID of the spawned openvpn process. May be 0 if no process has been
   // spawned yet or the process has died.
   int pid_;
-
-  // Child exit watch callback source tag.
-  unsigned int child_watch_tag_;
 
   // Default service watch callback tag.
   int default_service_callback_tag_;
