@@ -193,4 +193,19 @@ TEST_F(ProcessManagerTest, StartProcessInMinijailFailed) {
   AssertEmptyWatchedProcesses();
 }
 
+TEST_F(ProcessManagerTest, UpdateExitCallbackUpdatesCallback) {
+  const pid_t kPid = 123;
+  const int kExitStatus = 1;
+  CallbackObserver original_observer;
+  AddWatchedProcess(kPid, original_observer.exited_callback_);
+
+  CallbackObserver new_observer;
+  EXPECT_CALL(original_observer, OnProcessExited(_)).Times(0);
+  EXPECT_TRUE(process_manager_->UpdateExitCallback(
+      kPid,
+      new_observer.exited_callback_));
+  EXPECT_CALL(new_observer, OnProcessExited(_)).Times(1);
+  OnProcessExited(kPid, kExitStatus);
+}
+
 }  // namespace shill

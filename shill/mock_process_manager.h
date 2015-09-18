@@ -51,6 +51,8 @@ class MockProcessManager : public ProcessManager {
                      uint64_t capmask,
                      const base::Callback<void(int)>& exit_callback));
   MOCK_METHOD1(StopProcess, bool(pid_t pid));
+  MOCK_METHOD2(UpdateExitCallback,
+               bool(pid_t pid, const base::Callback<void(int)>& new_callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockProcessManager);

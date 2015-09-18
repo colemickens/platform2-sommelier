@@ -166,6 +166,19 @@ bool ProcessManager::StopProcess(pid_t pid) {
   return TerminateProcess(pid, false);
 }
 
+bool ProcessManager::UpdateExitCallback(
+    pid_t pid,
+    const base::Callback<void(int)>& new_callback) {
+  const auto process_entry = watched_processes_.find(pid);
+  if (process_entry == watched_processes_.end()) {
+    LOG(ERROR) << "Process " << pid << " not being watched";
+    return false;
+  }
+
+  process_entry->second = new_callback;
+  return true;
+}
+
 void ProcessManager::OnProcessExited(pid_t pid, const siginfo_t& info) {
   // Invoke the exit callback if the process is being watched.
   auto watched_process = watched_processes_.find(pid);
