@@ -17,7 +17,11 @@
 #ifndef SHILL_ICMP_H_
 #define SHILL_ICMP_H_
 
+#if defined(__ANDROID__)
+#include <linux/icmp.h>
+#else
 #include <netinet/ip_icmp.h>
+#endif  // __ANDROID__
 
 #include <memory>
 
