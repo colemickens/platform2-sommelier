@@ -22,7 +22,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_provider.h"
-#include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"

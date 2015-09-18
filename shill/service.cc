@@ -31,7 +31,6 @@
 
 #include "shill/connection.h"
 #include "shill/control_interface.h"
-#include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/http_proxy.h"
 #include "shill/logging.h"
@@ -130,8 +129,6 @@ const uint64_t Service::kAutoConnectCooldownBackoffFactor = 2;
 
 const int Service::kDisconnectsMonitorSeconds = 5 * 60;
 const int Service::kMisconnectsMonitorSeconds = 5 * 60;
-const int Service::kReportDisconnectsThreshold = 2;
-const int Service::kReportMisconnectsThreshold = 3;
 const int Service::kMaxDisconnectEventHistory = 20;
 const int Service::kMaxMisconnectEventHistory = 20;
 
@@ -184,7 +181,6 @@ Service::Service(ControlInterface* control_interface,
       manager_(manager),
       sockets_(new Sockets()),
       time_(Time::GetInstance()),
-      diagnostics_reporter_(DiagnosticsReporter::GetInstance()),
       connection_id_(0),
       is_dns_auto_fallback_allowed_(false),
       link_monitor_disabled_(false),
@@ -985,7 +981,6 @@ void Service::NoteDisconnectEvent() {
     return;
   }
   int period = 0;
-  size_t threshold = 0;
   EventHistory* events = nullptr;
   // Sometimes services transition to Idle before going into a failed state so
   // take into account the last non-idle state.
@@ -993,12 +988,10 @@ void Service::NoteDisconnectEvent() {
   if (IsConnectedState(state)) {
     LOG(INFO) << "Noting an unexpected connection drop.";
     period = kDisconnectsMonitorSeconds;
-    threshold = kReportDisconnectsThreshold;
     events = &disconnects_;
   } else if (IsConnectingState(state)) {
     LOG(INFO) << "Noting an unexpected failure to connect.";
     period = kMisconnectsMonitorSeconds;
-    threshold = kReportMisconnectsThreshold;
     events = &misconnects_;
   } else {
     SLOG(this, 2)
@@ -1007,9 +1000,6 @@ void Service::NoteDisconnectEvent() {
   }
   events->RecordEventAndExpireEventsBefore(period,
                                            EventHistory::kClockTypeMonotonic);
-  if (events->Size() >= threshold) {
-    diagnostics_reporter_->OnConnectivityEvent();
-  }
 }
 
 void Service::ReportUserInitiatedConnectionResult(ConnectState state) {

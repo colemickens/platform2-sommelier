@@ -461,7 +461,6 @@
         'dhcp/dhcp_config.cc',
         'dhcp/dhcp_provider.cc',
         'dhcp/dhcpv4_config.cc',
-        'diagnostics_reporter.cc',
         'dns_client.cc',
         'dns_client_factory.cc',
         'dns_server_tester.cc',
@@ -570,13 +569,6 @@
       },
       'sources': [
         'shims/crypto_util.cc',
-      ]
-    },
-    {
-      'target_name': 'net-diags-upload',
-      'type': 'executable',
-      'sources': [
-        'shims/net_diags_upload.cc',
       ]
     },
     {
@@ -696,7 +688,6 @@
             'dhcp/mock_dhcp_config.cc',
             'dhcp/mock_dhcp_provider.cc',
             'dhcp/mock_dhcp_proxy.cc',
-            'diagnostics_reporter_unittest.cc',
             'dns_client_unittest.cc',
             'dns_server_tester_unittest.cc',
             'error_unittest.cc',
@@ -734,7 +725,6 @@
             'mock_device.cc',
             'mock_device_claimer.cc',
             'mock_device_info.cc',
-            'mock_diagnostics_reporter.cc',
             'mock_dns_client.cc',
             'mock_dns_client_factory.cc',
             'mock_dns_server_tester.cc',
