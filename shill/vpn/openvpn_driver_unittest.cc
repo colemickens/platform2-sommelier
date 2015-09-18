@@ -36,7 +36,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_process_killer.h"
 #include "shill/mock_process_manager.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -118,7 +117,6 @@ class OpenVPNDriverTest
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
     driver_->extra_certificates_file_.reset(
         extra_certificates_file_);  // Passes ownership.
-    driver_->process_killer_ = &process_killer_;
     CHECK(temporary_directory_.CreateUniqueTempDir());
     driver_->openvpn_config_directory_ =
         temporary_directory_.path().Append(kOpenVPNConfigDirectory);
@@ -266,7 +264,6 @@ class OpenVPNDriverTest
   scoped_refptr<MockVirtualDevice> device_;
   MockCertificateFile* certificate_file_;  // Owned by |driver_|.
   MockCertificateFile* extra_certificates_file_;  // Owned by |driver_|.
-  MockProcessKiller process_killer_;
   base::ScopedTempDir temporary_directory_;
 
   // Owned by |driver_|.
@@ -1190,9 +1187,11 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->tls_auth_file_ = tls_auth_file;
   // Stop will be called twice -- once by Cleanup and once by the destructor.
   EXPECT_CALL(*management_server_, Stop()).Times(2);
-  EXPECT_CALL(process_manager_, UpdateExitCallback(kPID, _));
+  // UpdateExitCallback will be called twice -- once to ignore exit,
+  // and once to re-enabling monitoring of exit.
+  EXPECT_CALL(process_manager_, UpdateExitCallback(kPID, _)).Times(2);
   EXPECT_CALL(manager_, DeregisterDefaultServiceCallback(kServiceCallbackTag));
-  EXPECT_CALL(process_killer_, Kill(kPID, _));
+  EXPECT_CALL(process_manager_, StopProcess(kPID));
   EXPECT_CALL(device_info_, DeleteInterface(_)).Times(0);
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
@@ -1244,7 +1243,7 @@ TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
   driver_->pid_ = kPID;
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
-  EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
+  EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
   driver_->OnOpenVPNDied(2);
   EXPECT_EQ(0, driver_->pid_);
@@ -1371,18 +1370,19 @@ TEST_F(OpenVPNDriverTest, GetEnvironment) {
   EXPECT_EQ(0, driver_->GetEnvironment().size());
 }
 
-TEST_F(OpenVPNDriverTest, DeleteInterface) {
+TEST_F(OpenVPNDriverTest, OnOpenVPNExited) {
+  const int kExitStatus = 1;
   std::unique_ptr<MockDeviceInfo> device_info(
       new MockDeviceInfo(&control_, &dispatcher_, &metrics_, &manager_));
   EXPECT_CALL(*device_info, DeleteInterface(kInterfaceIndex))
       .WillOnce(Return(true));
   WeakPtr<DeviceInfo> weak = device_info->AsWeakPtr();
   EXPECT_TRUE(weak);
-  OpenVPNDriver::DeleteInterface(weak, kInterfaceIndex);
+  OpenVPNDriver::OnOpenVPNExited(weak, kInterfaceIndex, kExitStatus);
   device_info.reset();
   EXPECT_FALSE(weak);
   // Expect no crash.
-  OpenVPNDriver::DeleteInterface(weak, kInterfaceIndex);
+  OpenVPNDriver::OnOpenVPNExited(weak, kInterfaceIndex, kExitStatus);
 }
 
 TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {

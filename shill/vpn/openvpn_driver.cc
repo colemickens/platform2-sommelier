@@ -32,7 +32,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/sockets.h"
-#include "shill/process_killer.h"
 #include "shill/process_manager.h"
 #include "shill/rpc_task.h"
 #include "shill/virtual_device.h"
@@ -172,7 +171,6 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface* control,
       management_server_(new OpenVPNManagementServer(this, glib)),
       certificate_file_(new CertificateFile()),
       extra_certificates_file_(new CertificateFile()),
-      process_killer_(ProcessKiller::GetInstance()),
       lsb_release_file_(kLSBReleaseFile),
       openvpn_config_directory_(kDefaultOpenVPNConfigurationDirectory),
       pid_(0),
@@ -202,7 +200,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   // Disconnecting the management interface will terminate the openvpn
   // process. Ensure this is handled robustly by first unregistering
   // the callback for OnOpenVPNDied, and then terminating and reaping
-  // the process through ProcessKiller.
+  // the process with StopProcess().
   if (pid_) {
     process_manager_->UpdateExitCallback(
         pid_, base::Bind(DoNothingWithExitStatus));
@@ -229,13 +227,15 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
     device_ = nullptr;
   }
   if (pid_) {
-    Closure callback;
     if (interface_index >= 0) {
-      callback =
-          Bind(&DeleteInterface, device_info_->AsWeakPtr(), interface_index);
+      // NB: |callback| must be bound to a static method, as
+      // |callback| may be called after our dtor completes.
+      const auto callback(
+          Bind(OnOpenVPNExited, device_info_->AsWeakPtr(), interface_index));
       interface_index = -1;
+      process_manager_->UpdateExitCallback(pid_, callback);
     }
-    process_killer_->Kill(pid_, callback);
+    process_manager_->StopProcess(pid_);
     pid_ = 0;
   }
   if (interface_index >= 0) {
@@ -348,8 +348,9 @@ void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
 }
 
 // static
-void OpenVPNDriver::DeleteInterface(const WeakPtr<DeviceInfo>& device_info,
-                                    int interface_index) {
+void OpenVPNDriver::OnOpenVPNExited(const WeakPtr<DeviceInfo>& device_info,
+                                    int interface_index,
+                                    int /* exit_status */) {
   if (device_info) {
     LOG(INFO) << "Deleting interface " << interface_index;
     device_info->DeleteInterface(interface_index);

@@ -48,7 +48,6 @@ class DeviceInfo;
 class Error;
 class Metrics;
 class OpenVPNManagementServer;
-class ProcessKiller;
 class ProcessManager;
 
 class OpenVPNDriver : public VPNDriver,
@@ -140,7 +139,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Cleanup);
   FRIEND_TEST(OpenVPNDriverTest, Connect);
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
-  FRIEND_TEST(OpenVPNDriverTest, DeleteInterface);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetEnvironment);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
@@ -158,6 +156,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultServiceChanged);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
+  FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNExited);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
@@ -248,10 +247,13 @@ class OpenVPNDriver : public VPNDriver,
   // Called when the openpvn process exits.
   void OnOpenVPNDied(int exit_status);
 
-  // Standalone callback used to delete the tunnel interface when the openvpn
-  // process dies.
-  static void DeleteInterface(const base::WeakPtr<DeviceInfo>& device_info,
-                              int interface_index);
+  // Standalone callback used to delete the tunnel interface when the
+  // openvpn process exits as we clean up. ("Exiting" is expected
+  // termination during cleanup, while "dying" is any unexpected
+  // termination.)
+  static void OnOpenVPNExited(const base::WeakPtr<DeviceInfo>& device_info,
+                              int interface_index,
+                              int exit_status);
 
   // Inherit from VPNDriver to add custom properties.
   KeyValueStore GetProvider(Error* error) override;
@@ -273,7 +275,6 @@ class OpenVPNDriver : public VPNDriver,
   std::unique_ptr<OpenVPNManagementServer> management_server_;
   std::unique_ptr<CertificateFile> certificate_file_;
   std::unique_ptr<CertificateFile> extra_certificates_file_;
-  ProcessKiller* process_killer_;
   base::FilePath lsb_release_file_;
 
   VPNServiceRefPtr service_;
