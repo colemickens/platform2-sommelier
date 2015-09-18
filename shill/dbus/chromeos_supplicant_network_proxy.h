@@ -64,9 +64,6 @@ class ChromeosSupplicantNetworkProxy
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);
 
-  // Callback invoked when Enabled property set completed.
-  void OnEnabledSet(bool success);
-
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,

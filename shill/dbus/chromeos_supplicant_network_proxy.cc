@@ -80,9 +80,10 @@ ChromeosSupplicantNetworkProxy::~ChromeosSupplicantNetworkProxy() {}
 
 bool ChromeosSupplicantNetworkProxy::SetEnabled(bool enabled) {
   SLOG(&network_proxy_->GetObjectPath(), 2) << __func__;
-  properties_->enabled.Set(
-      enabled, base::Bind(&ChromeosSupplicantNetworkProxy::OnEnabledSet,
-                          weak_factory_.GetWeakPtr()));
+  if(!properties_->enabled.SetAndBlock(enabled)) {
+    LOG(ERROR) << "Failed to SetEnabled: " << enabled;
+    return false;
+  }
   return true;
 }
 
@@ -95,13 +96,6 @@ void ChromeosSupplicantNetworkProxy::OnPropertyChanged(
     const std::string& property_name) {
   SLOG(&network_proxy_->GetObjectPath(), 2) << __func__ << ": "
       << property_name;
-}
-
-void ChromeosSupplicantNetworkProxy::OnEnabledSet(bool success) {
-  SLOG(&network_proxy_->GetObjectPath(), 2) << __func__ << ": " << success;
-  if (!success) {
-    LOG(ERROR) << "Failed to set Enabled property";
-  }
 }
 
 // Called when signal is connected to the ObjectProxy.
