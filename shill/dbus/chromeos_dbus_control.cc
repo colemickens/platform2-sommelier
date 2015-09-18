@@ -29,12 +29,12 @@
 #if defined(__ANDROID__)
 #include "shill/dbus/chromeos_firewalld_proxy.h"
 #include "shill/power_manager_proxy_stub.h"
+#include "shill/upstart/upstart_proxy_stub.h"
 #else
 #include "shill/dbus/chromeos_permission_broker_proxy.h"
 #include "shill/dbus/chromeos_power_manager_proxy.h"
-#endif  // __ANDROID__
 #include "shill/dbus/chromeos_upstart_proxy.h"
-
+#endif  // __ANDROID__
 #include "shill/dbus/chromeos_dbus_service_watcher.h"
 
 #if !defined(DISABLE_CELLULAR)
@@ -225,7 +225,11 @@ DHCPProxyInterface* ChromeosDBusControl::CreateDHCPProxy(
 }
 
 UpstartProxyInterface* ChromeosDBusControl::CreateUpstartProxy() {
+#if defined(__ANDROID__)
+  return new UpstartProxyStub();
+#else
   return new ChromeosUpstartProxy(proxy_bus_);
+#endif  // __ANDROID__
 }
 
 FirewallProxyInterface* ChromeosDBusControl::CreateFirewallProxy() {
