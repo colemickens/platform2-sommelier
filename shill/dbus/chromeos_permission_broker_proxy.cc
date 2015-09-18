@@ -59,6 +59,7 @@ bool ChromeosPermissionBrokerProxy::RequestVpnSetup(
   lifeline_write_fd_ = fds[1];
 
   dbus::FileDescriptor dbus_fd(lifeline_read_fd_);
+  dbus_fd.CheckValidity();
   chromeos::ErrorPtr error;
   bool success = false;
   if (!proxy_->RequestVpnSetup(
