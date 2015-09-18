@@ -59,22 +59,47 @@ class ProcessManager {
   // if failed to start the process, otherwise, return the pid of the child
   // process.
   virtual pid_t StartProcess(
-      const tracked_objects::Location& from_here,
+      const tracked_objects::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
       bool terminate_with_parent,
       const base::Callback<void(int)>& exit_callback);
 
-  // Same as above, except the spawned process will be started in a minijail.
+  // Similar to StartProcess(), with the following differences:
+  // - environment variables are not supported (no need yet)
+  // - terminate_with_parent is not supported (may be non-trivial)
+  // - the child process will run as |user| and |group|
+  // - the |capmask| argument can be used to provide the child process
+  //   with capabilities, which |user| might not have on its own
   virtual pid_t StartProcessInMinijail(
-      const tracked_objects::Location& from_here,
+      const tracked_objects::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::string& user,
       const std::string& group,
       uint64_t capmask,
-      const base::Callback<void(int)>& exit_callback);
+      const base::Callback<void(int)>& exit_callback) {
+    return StartProcessInMinijailWithPipes(
+        spawn_source, program, arguments, user, group, capmask, exit_callback,
+        nullptr, nullptr, nullptr);
+  }
+
+  // Similar to StartProcessInMinijail(), with the additional ability to
+  // pipe the child's stdin/stdout/stderr back to us. If any of those
+  // streams is not needed, simply pass nullptr for the corresponding
+  // 'fd' argument. If no pipes are needed, use StartProcessInMinijail().
+  virtual pid_t StartProcessInMinijailWithPipes(
+      const tracked_objects::Location& spawn_source,
+      const base::FilePath& program,
+      const std::vector<std::string>& arguments,
+      const std::string& user,
+      const std::string& group,
+      uint64_t capmask,
+      const base::Callback<void(int)>& exit_callback,
+      int* stdin_fd,
+      int* stdout_fd,
+      int* stderr_fd);
 
   // Stop the given |pid|.  Previously registered |exit_callback| will be
   // unregistered, since the caller is not interested in this process anymore

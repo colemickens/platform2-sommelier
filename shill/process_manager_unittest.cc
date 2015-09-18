@@ -146,32 +146,47 @@ TEST_F(ProcessManagerTest, TerminateProcessExited) {
   AssertEmptyTerminateProcesses();
 }
 
-TEST_F(ProcessManagerTest, StartProcessInMinijailReturnsPidAndWatchesChild) {
+TEST_F(ProcessManagerTest,
+       StartProcessInMinijailWithPipesReturnsPidAndWatchesChild) {
   const string kProgram = "/usr/bin/dump";
   const vector<string> kArgs = { "-b", "-g" };
   const string kUser = "user";
   const string kGroup = "group";
   const uint64_t kCapMask = 1;
   const pid_t kPid = 123;
+  int stdin_fd;
+  int stdout_fd;
+  int stderr_fd;
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
-  EXPECT_CALL(minijail_, RunAndDestroy(_, IsProcessArgs(kProgram, kArgs), _))
+  EXPECT_CALL(minijail_,
+              RunPipesAndDestroy(_,  // minijail*
+                                 IsProcessArgs(kProgram, kArgs),
+                                 _,  // pid_t*
+                                 &stdin_fd,
+                                 &stdout_fd,
+                                 &stderr_fd))
       .WillOnce(DoAll(SetArgumentPointee<2>(kPid), Return(true)));
   pid_t actual_pid =
-      process_manager_->StartProcessInMinijail(FROM_HERE,
-                                               base::FilePath(kProgram),
-                                               kArgs,
-                                               kUser,
-                                               kGroup,
-                                               kCapMask,
-                                               Callback<void(int)>());
+      process_manager_->StartProcessInMinijailWithPipes(
+          FROM_HERE,
+          base::FilePath(kProgram),
+          kArgs,
+          kUser,
+          kGroup,
+          kCapMask,
+          Callback<void(int)>(),
+          &stdin_fd,
+          &stdout_fd,
+          &stderr_fd);
   EXPECT_EQ(kPid, actual_pid);
   AssertNonEmptyWatchedProcesses();
 }
 
-TEST_F(ProcessManagerTest, StartProcessInMinijailHandlesFailureOfDropRoot) {
+TEST_F(ProcessManagerTest,
+       StartProcessInMinijailWithPipesHandlesFailureOfDropRoot) {
   const string kProgram = "/usr/bin/dump";
   const vector<string> kArgs = { "-b", "-g" };
   const string kUser = "user";
@@ -180,21 +195,27 @@ TEST_F(ProcessManagerTest, StartProcessInMinijailHandlesFailureOfDropRoot) {
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(false));
-  EXPECT_CALL(minijail_, RunAndDestroy(_, IsProcessArgs(kProgram, kArgs), _))
+  EXPECT_CALL(minijail_,
+              RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .Times(0);
   pid_t actual_pid =
-      process_manager_->StartProcessInMinijail(FROM_HERE,
-                                               base::FilePath(kProgram),
-                                               kArgs,
-                                               kUser,
-                                               kGroup,
-                                               kCapMask,
-                                               Callback<void(int)>());
+      process_manager_->StartProcessInMinijailWithPipes(
+          FROM_HERE,
+          base::FilePath(kProgram),
+          kArgs,
+          kUser,
+          kGroup,
+          kCapMask,
+          Callback<void(int)>(),
+          nullptr,
+          nullptr,
+          nullptr);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }
 
-TEST_F(ProcessManagerTest, StartProcessInMinijailHandlesFailureOfRunAndDestroy) {
+TEST_F(ProcessManagerTest,
+       StartProcessInMinijailWithPipesHandlesFailureOfRunAndDestroy) {
   const string kProgram = "/usr/bin/dump";
   const vector<string> kArgs = { "-b", "-g" };
   const string kUser = "user";
@@ -204,16 +225,21 @@ TEST_F(ProcessManagerTest, StartProcessInMinijailHandlesFailureOfRunAndDestroy) 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
-  EXPECT_CALL(minijail_, RunAndDestroy(_, IsProcessArgs(kProgram, kArgs), _))
+  EXPECT_CALL(minijail_,
+              RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .WillOnce(Return(false));
   pid_t actual_pid =
-      process_manager_->StartProcessInMinijail(FROM_HERE,
-                                               base::FilePath(kProgram),
-                                               kArgs,
-                                               kUser,
-                                               kGroup,
-                                               kCapMask,
-                                               Callback<void(int)>());
+      process_manager_->StartProcessInMinijailWithPipes(
+          FROM_HERE,
+          base::FilePath(kProgram),
+          kArgs,
+          kUser,
+          kGroup,
+          kCapMask,
+          Callback<void(int)>(),
+          nullptr,
+          nullptr,
+          nullptr);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }

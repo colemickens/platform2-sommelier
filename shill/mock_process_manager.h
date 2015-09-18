@@ -36,20 +36,31 @@ class MockProcessManager : public ProcessManager {
   MOCK_METHOD1(Init, void(EventDispatcher* dispatcher));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD6(StartProcess,
-               pid_t(const tracked_objects::Location& from_here,
+               pid_t(const tracked_objects::Location& spawn_source,
                      const base::FilePath& program,
                      const std::vector<std::string>& arguments,
                      const std::map<std::string, std::string>& env,
                      bool terminate_with_parent,
                      const base::Callback<void(int)>& exit_callback));
   MOCK_METHOD7(StartProcessInMinijail,
-               pid_t(const tracked_objects::Location& from_here,
+               pid_t(const tracked_objects::Location& spawn_source,
                      const base::FilePath& program,
                      const std::vector<std::string>& arguments,
                      const std::string& user,
                      const std::string& group,
                      uint64_t capmask,
                      const base::Callback<void(int)>& exit_callback));
+  MOCK_METHOD10(StartProcessInMinijailWithPipes,
+                pid_t(const tracked_objects::Location& spawn_source,
+                      const base::FilePath& program,
+                      const std::vector<std::string>& arguments,
+                      const std::string& user,
+                      const std::string& group,
+                      uint64_t capmask,
+                      const base::Callback<void(int)>& exit_callback,
+                      int* stdin_fd,
+                      int* stdout_fd,
+                      int* stderr_fd));
   MOCK_METHOD1(StopProcess, bool(pid_t pid));
   MOCK_METHOD2(UpdateExitCallback,
                bool(pid_t pid, const base::Callback<void(int)>& new_callback));

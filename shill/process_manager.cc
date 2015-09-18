@@ -75,7 +75,7 @@ void ProcessManager::Stop() {
 }
 
 pid_t ProcessManager::StartProcess(
-    const tracked_objects::Location& from_here,
+    const tracked_objects::Location& spawn_source,
     const base::FilePath& program,
     const vector<string>& arguments,
     const map<string, string>& environment,
@@ -97,7 +97,7 @@ pid_t ProcessManager::StartProcess(
   // Setup watcher for the child process.
   pid_t pid = process->pid();
   CHECK(process_reaper_.WatchForChild(
-      from_here,
+      spawn_source,
       pid,
       base::Bind(&ProcessManager::OnProcessExited,
                  weak_factory_.GetWeakPtr(),
@@ -111,14 +111,17 @@ pid_t ProcessManager::StartProcess(
   return pid;
 }
 
-pid_t ProcessManager::StartProcessInMinijail(
-    const tracked_objects::Location& from_here,
+pid_t ProcessManager::StartProcessInMinijailWithPipes(
+    const tracked_objects::Location& spawn_source,
     const base::FilePath& program,
     const std::vector<std::string>& arguments,
     const std::string& user,
     const std::string& group,
     uint64_t capmask,
-    const base::Callback<void(int)>& exit_callback) {
+    const base::Callback<void(int)>& exit_callback,
+    int* stdin_fd,
+    int* stdout_fd,
+    int* stderr_fd) {
   vector<char*> args;
   args.push_back(const_cast<char*>(program.value().c_str()));
   for (const auto& arg : arguments) {
@@ -134,13 +137,14 @@ pid_t ProcessManager::StartProcessInMinijail(
   minijail_->UseCapabilities(jail, capmask);
 
   pid_t pid;
-  if (!minijail_->RunAndDestroy(jail, args, &pid)) {
+  if (!minijail_->RunPipesAndDestroy(
+          jail, args, &pid, stdin_fd, stdout_fd, stderr_fd)) {
     LOG(ERROR) << "Unable to spawn " << program.value() << " in a jail.";
     return -1;
   }
 
   CHECK(process_reaper_.WatchForChild(
-      from_here,
+      spawn_source,
       pid,
       base::Bind(&ProcessManager::OnProcessExited,
                  weak_factory_.GetWeakPtr(),
