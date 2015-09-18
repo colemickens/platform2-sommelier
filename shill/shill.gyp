@@ -212,8 +212,6 @@
       ],
       'variables': {
         'exported_deps': [
-          'gio-2.0',
-          'glib-2.0',
           'libcares',
           'libmetrics-<(libbase_ver)',
           'libpermission_broker-client',
@@ -235,8 +233,6 @@
       'link_settings': {
         'variables': {
           'deps': [
-            'gio-2.0',
-            'glib-2.0',
             'libcares',
             # system_api depends on protobuf (or protobuf-lite). It must appear
             # before protobuf here or the linker flags won't be in the right
@@ -328,9 +324,24 @@
           ],
         }],
         ['USE_json_store == 0', {
+          'link_settings': {
+            'variables': {
+              'deps': [
+                'gio-2.0',  # for g_type_init()
+                'glib-2.0',  # for g_key_*(), etc.
+              ],
+            },
+          },
           'sources': [
             'key_file_store.cc',
           ],
+          'variables': {
+            'exported_deps': [
+              'gio-2.0',  # for g_type_init()
+              'glib-2.0',  # for g_key_*(), etc.
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
         }],
         ['USE_json_store == 1', {
           'sources': [
