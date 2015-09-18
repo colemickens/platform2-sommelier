@@ -21,12 +21,12 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
 #include <base/lazy_instance.h>
 
-namespace DBus {
-class BusDispatcher;
-class Connection;
-}  // namespace DBus
+namespace dbus {
+class Bus;
+}  // namespace dbus
 
 namespace shill {
 
@@ -60,8 +60,7 @@ class PPP {
 
   static std::string ConvertIPToText(const void* addr);
 
-  std::unique_ptr<DBus::BusDispatcher> dispatcher_;
-  std::unique_ptr<DBus::Connection> connection_;
+  scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<TaskProxy> proxy_;
   bool running_;
 

@@ -30,6 +30,7 @@ extern "C" {
 #include <pppd/pppd.h>
 #undef bool
 #undef class
+#undef STOPPED
 #include <pppd/lcp.h>
 }
 
@@ -44,7 +45,6 @@ extern "C" {
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/syslog_logging.h>
-#include <dbus-c++/eventloop-integration.h>
 
 #include "shill/ppp_device.h"
 #include "shill/rpc_task.h"
@@ -158,19 +158,22 @@ bool PPP::CreateProxy() {
     return false;
   }
 
-  dispatcher_.reset(new DBus::BusDispatcher());
-  DBus::default_dispatcher = dispatcher_.get();
-  connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
-  proxy_.reset(new TaskProxy(connection_.get(), path, service));
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  bus_ = new dbus::Bus(options);
+  CHECK(bus_->Connect());
+
+  proxy_.reset(new TaskProxy(bus_, path, service));
+
   LOG(INFO) << "Task proxy created: " << service << " - " << path;
   return true;
 }
 
 void PPP::DestroyProxy() {
   proxy_.reset();
-  connection_.reset();
-  DBus::default_dispatcher = NULL;
-  dispatcher_.reset();
+  if (bus_) {
+    bus_->ShutdownAndBlock();
+  }
   LOG(INFO) << "Task proxy destroyed.";
 }
 

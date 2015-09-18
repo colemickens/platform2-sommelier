@@ -20,8 +20,8 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
 #include <chromeos/syslog_logging.h>
-#include <dbus-c++/eventloop-integration.h>
 
 #include "shill/rpc_task.h"
 #include "shill/shims/environment.h"
@@ -45,11 +45,17 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  DBus::BusDispatcher dispatcher;
-  DBus::default_dispatcher = &dispatcher;
-  DBus::Connection connection(DBus::Connection::SystemBus());
-  shill::shims::TaskProxy proxy(&connection, path, service);
+  scoped_refptr<dbus::Bus> bus;
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  bus = new dbus::Bus(options);
+  CHECK(bus->Connect());
+
+  shill::shims::TaskProxy proxy(bus, path, service);
   map<string, string> env = environment->AsMap();
   proxy.Notify(reason, env);
+  if (bus) {
+    bus->ShutdownAndBlock();
+  }
   return EXIT_SUCCESS;
 }
