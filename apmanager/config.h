@@ -11,7 +11,7 @@
 #include <base/macros.h>
 #include <chromeos/errors/error.h>
 
-#include "apmanager/dbus_adaptors/org.chromium.apmanager.Config.h"
+#include "dbus_bindings/org.chromium.apmanager.Config.h"
 
 namespace apmanager {
 

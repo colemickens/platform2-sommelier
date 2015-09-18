@@ -11,11 +11,11 @@
 #include <chromeos/process.h>
 
 #include "apmanager/config.h"
-#include "apmanager/dbus_adaptors/org.chromium.apmanager.Service.h"
 #include "apmanager/dhcp_server_factory.h"
 #include "apmanager/file_writer.h"
 #include "apmanager/hostapd_monitor.h"
 #include "apmanager/process_factory.h"
+#include "dbus_bindings/org.chromium.apmanager.Service.h"
 
 namespace apmanager {
 

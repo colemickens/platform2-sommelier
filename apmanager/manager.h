@@ -12,12 +12,11 @@
 #include <base/macros.h>
 #include <chromeos/dbus/dbus_service_watcher.h>
 
-#include "apmanager/dbus_adaptors/org.chromium.apmanager.Manager.h"
-
 #include "apmanager/device_info.h"
 #include "apmanager/firewall_manager.h"
 #include "apmanager/service.h"
 #include "apmanager/shill_proxy.h"
+#include "dbus_bindings/org.chromium.apmanager.Manager.h"
 
 namespace apmanager {
 

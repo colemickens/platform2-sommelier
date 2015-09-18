@@ -14,7 +14,7 @@
 #include <shill/net/byte_string.h>
 #include <shill/net/nl80211_message.h>
 
-#include "apmanager/dbus_adaptors/org.chromium.apmanager.Device.h"
+#include "dbus_bindings/org.chromium.apmanager.Device.h"
 
 namespace apmanager {
 
