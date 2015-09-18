@@ -127,7 +127,10 @@ pid_t ProcessManager::StartProcessInMinijail(
   args.push_back(nullptr);
 
   struct minijail* jail = minijail_->New();
-  minijail_->DropRoot(jail, user.c_str(), group.c_str());
+  if (!minijail_->DropRoot(jail, user.c_str(), group.c_str())) {
+    LOG(ERROR) << "Minijail failed to drop root privileges?";
+    return -1;
+  }
   minijail_->UseCapabilities(jail, capmask);
 
   pid_t pid;
