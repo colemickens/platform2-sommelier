@@ -9,8 +9,11 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
-#include <shill/dbus-proxies.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
+#include <dbus/bus.h>
+
+#include "apmanager/shill_proxy_interface.h"
 
 namespace apmanager {
 
@@ -27,15 +30,14 @@ class ShillManager {
   virtual void ReleaseInterface(const std::string& interface_name);
 
  private:
-  void OnServiceAvailable(bool service_available);
-  void OnServiceNameChanged(const std::string& old_owner,
-                            const std::string& new_owner);
+  void OnShillServiceAppeared();
+  void OnShillServiceVanished();
 
-  // DBus proxy for shill manager.
-  std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;
+  std::unique_ptr<ShillProxyInterface> shill_proxy_;
   // List of interfaces apmanager have claimed.
   std::set<std::string> claimed_interfaces_;
 
+  base::WeakPtrFactory<ShillManager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ShillManager);
 };
 
