@@ -243,8 +243,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
   if (type == kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
         control_interface_, dispatcher_, metrics_, manager_,
-        manager_->device_info(), manager_->glib(),
-        ProcessManager::GetInstance()));
+        manager_->device_info(), ProcessManager::GetInstance()));
   } else if (type == kProviderL2tpIpsec) {
     driver.reset(new L2TPIPSecDriver(
         control_interface_, dispatcher_, metrics_, manager_,

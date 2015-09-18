@@ -32,13 +32,11 @@ namespace shill {
 ModemInfo::ModemInfo(ControlInterface* control_interface,
                      EventDispatcher* dispatcher,
                      Metrics* metrics,
-                     Manager* manager,
-                     GLib* glib)
+                     Manager* manager)
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      manager_(manager),
-      glib_(glib) {}
+      manager_(manager) {}
 
 ModemInfo::~ModemInfo() {
   Stop();

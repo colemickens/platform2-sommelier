@@ -24,7 +24,6 @@
 #include "shill/cellular/modem_manager.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/test_event_dispatcher.h"
@@ -39,12 +38,10 @@ class ModemInfoTest : public Test {
  public:
   ModemInfoTest()
       : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
-        modem_info_(&control_interface_, &dispatcher_, &metrics_, &manager_,
-                    &glib_) {}
+        manager_(&control_interface_, &dispatcher_, &metrics_),
+        modem_info_(&control_interface_, &dispatcher_, &metrics_, &manager_) {}
 
  protected:
-  MockGLib glib_;
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;

@@ -37,7 +37,7 @@ class EthernetEapProviderTest : public testing::Test {
  public:
   EthernetEapProviderTest()
       : metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, nullptr),
+        manager_(&control_, &dispatcher_, &metrics_),
         provider_(&control_, &dispatcher_, &metrics_, &manager_) {}
   virtual ~EthernetEapProviderTest() {}
 

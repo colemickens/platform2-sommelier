@@ -45,7 +45,7 @@ namespace shill {
 class CellularCapabilityCDMATest : public testing::Test {
  public:
   CellularCapabilityCDMATest()
-      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr),
         cellular_(new MockCellular(&modem_info_,
                                    "",
                                    "",

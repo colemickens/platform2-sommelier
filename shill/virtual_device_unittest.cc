@@ -22,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_store.h"
@@ -44,7 +43,7 @@ class VirtualDeviceTest : public testing::Test {
  public:
   VirtualDeviceTest()
       : metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_, &dispatcher_, &metrics_),
         device_(new VirtualDevice(&control_,
                                   &dispatcher_,
                                   &metrics_,
@@ -63,7 +62,6 @@ class VirtualDeviceTest : public testing::Test {
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
-  MockGLib glib_;
   MockManager manager_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 

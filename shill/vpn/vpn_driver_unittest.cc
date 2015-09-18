@@ -24,10 +24,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/glib.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
@@ -105,7 +103,7 @@ class VPNDriverTest : public Test {
   VPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_, &dispatcher_, &metrics_),
         driver_(&dispatcher_, &manager_) {}
 
   virtual ~VPNDriverTest() {}
@@ -151,7 +149,6 @@ class VPNDriverTest : public Test {
   NiceMock<MockDeviceInfo> device_info_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
-  MockGLib glib_;
   MockManager manager_;
   VPNDriverUnderTest driver_;
 };

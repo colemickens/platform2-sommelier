@@ -27,7 +27,6 @@ namespace shill {
 
 class ControlInterface;
 class EventDispatcher;
-class GLib;
 class Manager;
 class Metrics;
 class ModemManager;
@@ -39,8 +38,7 @@ class ModemInfo {
   ModemInfo(ControlInterface* control,
             EventDispatcher* dispatcher,
             Metrics* metrics,
-            Manager* manager,
-            GLib* glib);
+            Manager* manager);
   virtual ~ModemInfo();
 
   virtual void Start();
@@ -52,7 +50,6 @@ class ModemInfo {
   EventDispatcher* dispatcher() const { return dispatcher_; }
   Metrics* metrics() const { return metrics_; }
   Manager* manager() const { return manager_; }
-  GLib* glib() const { return glib_; }
   PendingActivationStore* pending_activation_store() const {
     return pending_activation_store_.get();
   }
@@ -70,9 +67,6 @@ class ModemInfo {
   }
   void set_manager(Manager* manager) {
     manager_ = manager;
-  }
-  void set_glib(GLib* glib) {
-    glib_ = glib;
   }
   void set_pending_activation_store(
       PendingActivationStore* pending_activation_store);
@@ -92,7 +86,6 @@ class ModemInfo {
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   Manager* manager_;
-  GLib* glib_;
 
   // Post-payment activation state of the modem.
   std::unique_ptr<PendingActivationStore> pending_activation_store_;

@@ -26,7 +26,6 @@
 #include "shill/cellular/modem_info.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_pending_activation_store.h"
@@ -41,14 +40,13 @@ class MockModemInfo : public ModemInfo {
   MockModemInfo(ControlInterface* control,
                 EventDispatcher* dispatcher,
                 Metrics* metrics,
-                Manager* manager,
-                GLib* glib);
+                Manager* manager);
 
   ~MockModemInfo() override;
 
   // Replaces data members in ModemInfo by mock objects.
   // The following are relaced by mocks if they are nullptr: control_interface,
-  // dispatcher, metrics, manager, glib.
+  // dispatcher, metrics, manager.
   // The following are always replaced by mocks: pending_activation_store.
   void SetMockMembers();
 
@@ -68,9 +66,6 @@ class MockModemInfo : public ModemInfo {
   MockManager* mock_manager() const {
     return mock_manager_.get();
   }
-  MockGLib* mock_glib() const {
-    return mock_glib_.get();
-  }
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
@@ -81,7 +76,6 @@ class MockModemInfo : public ModemInfo {
   std::unique_ptr<MockEventDispatcher> mock_dispatcher_;
   std::unique_ptr<MockMetrics> mock_metrics_;
   std::unique_ptr<MockManager> mock_manager_;
-  std::unique_ptr<MockGLib> mock_glib_;
 
   // owned by ModemInfo
   MockPendingActivationStore* mock_pending_activation_store_;

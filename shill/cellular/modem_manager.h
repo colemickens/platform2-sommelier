@@ -29,7 +29,6 @@
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/modem_info.h"
 #include "shill/dbus_properties_proxy_interface.h"
-#include "shill/glib.h"
 
 namespace shill {
 

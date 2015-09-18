@@ -31,7 +31,6 @@
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_metrics.h"
 #include "shill/property_store.h"
 #include "shill/test_event_dispatcher.h"
@@ -190,7 +189,6 @@ class PropertyStoreTest : public testing::TestWithParam<chromeos::Any> {
   Manager* manager() { return &manager_; }
   MockControl* control_interface() { return &control_interface_; }
   EventDispatcher* dispatcher() { return &dispatcher_; }
-  MockGLib* glib() { return &glib_; }
   MockMetrics* metrics() { return &metrics_; }
   const std::vector<Technology::Identifier>& default_technology_order() {
     return default_technology_order_;
@@ -213,7 +211,6 @@ class PropertyStoreTest : public testing::TestWithParam<chromeos::Any> {
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
   testing::NiceMock<MockMetrics> metrics_;
-  MockGLib glib_;
   const std::vector<Technology::Identifier> default_technology_order_;
   Manager manager_;
 };

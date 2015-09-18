@@ -79,7 +79,7 @@ namespace shill {
 class ServiceTest : public PropertyStoreTest {
  public:
   ServiceTest()
-      : mock_manager_(control_interface(), dispatcher(), metrics(), glib()),
+      : mock_manager_(control_interface(), dispatcher(), metrics()),
         service_(new ServiceUnderTest(control_interface(),
                                       dispatcher(),
                                       metrics(),
@@ -231,7 +231,7 @@ class AllMockServiceTest : public testing::Test {
  public:
   AllMockServiceTest()
       : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_interface_, &dispatcher_, &metrics_),
         service_(new ServiceUnderTest(&control_interface_,
                                       &dispatcher_,
                                       &metrics_,
@@ -241,7 +241,6 @@ class AllMockServiceTest : public testing::Test {
  protected:
   MockControl control_interface_;
   StrictMock<MockEventDispatcher> dispatcher_;
-  MockGLib glib_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   scoped_refptr<ServiceUnderTest> service_;

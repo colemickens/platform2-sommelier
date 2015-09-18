@@ -46,7 +46,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_server_tester.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_ip_address_store.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_link_monitor.h"
@@ -363,8 +362,7 @@ TEST_F(DeviceTest, AcquireIPConfig) {
 #ifndef DISABLE_DHCPV6
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -399,8 +397,7 @@ TEST_F(DeviceTest, ConfigWithMinimumMTU) {
 
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -770,8 +767,7 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   device_->enabled_persistent_ = false;
   StrictMock<MockManager> manager(control_interface(),
                                   dispatcher(),
-                                  metrics(),
-                                  glib());
+                                  metrics());
   SetManager(&manager);
   Error error;
   device_->SetEnabledNonPersistent(true, &error, ResultCallback());
@@ -823,8 +819,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   device_->enabled_persistent_ = false;
   StrictMock<MockManager> manager(control_interface(),
                                   dispatcher(),
-                                  metrics(),
-                                  glib());
+                                  metrics());
   EXPECT_CALL(manager, UpdateDevice(_));
   SetManager(&manager);
   Error error;
@@ -1007,8 +1002,7 @@ TEST_F(DeviceTest, LinkMonitor) {
       new StrictMock<MockConnection>(&device_info_));
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
@@ -1058,8 +1052,7 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
       new StrictMock<MockConnection>(&device_info_));
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
@@ -1084,8 +1077,7 @@ TEST_F(DeviceTest, TrafficMonitor) {
       new StrictMock<MockConnection>(&device_info_));
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
@@ -1124,8 +1116,7 @@ TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
       new StrictMock<MockConnection>(&device_info_));
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
@@ -1202,8 +1193,7 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
 TEST_F(DeviceTest, OnIPv6AddressChanged) {
   StrictMock<MockManager> manager(control_interface(),
                                   dispatcher(),
-                                  metrics(),
-                                  glib());
+                                  metrics());
   manager.set_mock_device_info(&device_info_);
   EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
       .WillRepeatedly(Return(vector<string>()));
@@ -1287,9 +1277,8 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
 
 TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged_LeaseExpirationUpdated) {
   MockManager manager(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  glib());
+                      dispatcher(),
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
       .WillRepeatedly(Return(vector<string>()));
@@ -1325,8 +1314,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged_LeaseExpirationUpdated) {
 TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   StrictMock<MockManager> manager(control_interface(),
                                   dispatcher(),
-                                  metrics(),
-                                  glib());
+                                  metrics());
   manager.set_mock_device_info(&device_info_);
   EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
       .WillRepeatedly(Return(vector<string>()));
@@ -1465,8 +1453,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
 TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   StrictMock<MockManager> manager(control_interface(),
                                   dispatcher(),
-                                  metrics(),
-                                  glib());
+                                  metrics());
   manager.set_mock_device_info(&device_info_);
   EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
       .WillRepeatedly(Return(vector<string>()));
@@ -1584,7 +1571,7 @@ TEST_F(DeviceTest, OnDHCPv6ConfigExpired) {
 }
 
 TEST_F(DeviceTest, PrependIPv4DNSServers) {
-  MockManager manager(control_interface(), dispatcher(), metrics(), glib());
+  MockManager manager(control_interface(), dispatcher(), metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1621,7 +1608,7 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
 }
 
 TEST_F(DeviceTest, PrependIPv6DNSServers) {
-  MockManager manager(control_interface(), dispatcher(), metrics(), glib());
+  MockManager manager(control_interface(), dispatcher(), metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1646,7 +1633,7 @@ TEST_F(DeviceTest, PrependIPv6DNSServers) {
 }
 
 TEST_F(DeviceTest, PrependWithStaticConfiguration) {
-  MockManager manager(control_interface(), dispatcher(), metrics(), glib());
+  MockManager manager(control_interface(), dispatcher(), metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1691,8 +1678,7 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
 TEST_F(DeviceTest, ResolvePeerMacAddress) {
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1731,8 +1717,7 @@ TEST_F(DeviceTest, ResolvePeerMacAddress) {
 TEST_F(DeviceTest, SetHostnameWithEmptyHostname) {
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1744,8 +1729,7 @@ TEST_F(DeviceTest, SetHostnameWithEmptyHostname) {
 TEST_F(DeviceTest, SetHostnameForDisallowedDevice) {
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1758,8 +1742,7 @@ TEST_F(DeviceTest, SetHostnameForDisallowedDevice) {
 TEST_F(DeviceTest, SetHostnameWithFailingDeviceInfo) {
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1773,8 +1756,7 @@ TEST_F(DeviceTest, SetHostnameWithFailingDeviceInfo) {
 TEST_F(DeviceTest, SetHostnameMaximumHostnameLength) {
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1790,8 +1772,7 @@ TEST_F(DeviceTest, SetHostnameMaximumHostnameLength) {
 TEST_F(DeviceTest, SetHostnameTruncateDomainName) {
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1806,8 +1787,7 @@ TEST_F(DeviceTest, SetHostnameTruncateDomainName) {
 TEST_F(DeviceTest, SetHostnameTruncateHostname) {
   MockManager manager(control_interface(),
                       dispatcher(),
-                      metrics(),
-                      glib());
+                      metrics());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
@@ -1826,8 +1806,7 @@ class DevicePortalDetectionTest : public DeviceTest {
       : connection_(new StrictMock<MockConnection>(&device_info_)),
         manager_(control_interface(),
                  dispatcher(),
-                 metrics(),
-                 glib()),
+                 metrics()),
         service_(new StrictMock<MockService>(control_interface(),
                                              dispatcher(),
                                              metrics(),
@@ -2490,8 +2469,7 @@ class DeviceByteCountTest : public DeviceTest {
   DeviceByteCountTest()
       : manager_(control_interface(),
                  dispatcher(),
-                 metrics(),
-                 glib()),
+                 metrics()),
         rx_byte_count_(0),
         tx_byte_count_(0),
         rx_stored_byte_count_(0),

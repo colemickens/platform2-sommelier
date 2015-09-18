@@ -28,7 +28,6 @@ namespace shill {
 
 class Error;
 class EventDispatcher;
-class GLib;
 struct InputData;
 class IOHandler;
 class OpenVPNDriver;
@@ -39,7 +38,7 @@ class OpenVPNManagementServer {
   static const char kStateReconnecting[];
   static const char kStateResolve[];
 
-  OpenVPNManagementServer(OpenVPNDriver* driver, GLib* glib);
+  explicit OpenVPNManagementServer(OpenVPNDriver* driver);
   virtual ~OpenVPNManagementServer();
 
   // Returns false on failure. On success, returns true and appends management
@@ -150,7 +149,6 @@ class OpenVPNManagementServer {
   bool IsStarted() const { return sockets_; }
 
   OpenVPNDriver* driver_;
-  GLib* glib_;
 
   Sockets* sockets_;
   int socket_;

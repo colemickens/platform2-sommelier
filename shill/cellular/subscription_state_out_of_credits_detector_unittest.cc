@@ -39,11 +39,11 @@ namespace shill {
 class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
  public:
   SubscriptionStateOutOfCreditsDetectorTest()
-      : modem_info_(nullptr, &dispatcher_, &metrics_, &manager_, nullptr),
+      : modem_info_(nullptr, &dispatcher_, &metrics_, &manager_),
         device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
                      modem_info_.metrics(), modem_info_.manager()),
         manager_(modem_info_.control_interface(), modem_info_.dispatcher(),
-                 modem_info_.metrics(), modem_info_.glib()),
+                 modem_info_.metrics()),
         metrics_(modem_info_.dispatcher()),
         cellular_(new NiceMock<MockCellular>(&modem_info_,
                                              "usb0",

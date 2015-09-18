@@ -108,7 +108,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   Manager(ControlInterface* control_interface,
           EventDispatcher* dispatcher,
           Metrics* metrics,
-          GLib* glib,
           const std::string& run_directory,
           const std::string& storage_directory,
           const std::string& user_storage_directory);
@@ -357,7 +356,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #endif  // DISABLE_WIMAX
   PropertyStore* mutable_store() { return &store_; }
   virtual const PropertyStore& store() const { return store_; }
-  GLib* glib() const { return glib_; }
   virtual const base::FilePath& run_path() const { return run_path_; }
   const base::FilePath& storage_path() const { return storage_path_; }
   IPAddressStore* health_checker_remote_ips() const {
@@ -781,7 +779,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ProfileRefPtr ephemeral_profile_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
-  GLib* glib_;
   std::unique_ptr<PowerManager> power_manager_;
   std::unique_ptr<Upstart> upstart_;
 

@@ -43,7 +43,6 @@
 #include "shill/mock_device.h"
 #include "shill/mock_device_claimer.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
@@ -638,7 +637,6 @@ TEST_F(ManagerTest, ServiceRegistration) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   string());
@@ -689,7 +687,6 @@ TEST_F(ManagerTest, RegisterKnownService) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   string());
@@ -720,7 +717,6 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   string());
@@ -822,7 +818,6 @@ TEST_F(ManagerTest, MoveService) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  glib(),
                   run_path(),
                   storage_path(),
                   string());
@@ -943,7 +938,6 @@ TEST_F(ManagerTest, CreateProfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -980,7 +974,6 @@ TEST_F(ManagerTest, PushPopProfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -1153,7 +1146,6 @@ TEST_F(ManagerTest, RemoveProfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*,
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -1264,7 +1256,6 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*,
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -4370,7 +4361,6 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   Manager manager(control_interface(),
                   dispatcher(),
                   metrics(),
-                  nullptr,  // GLib*,
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
@@ -4425,7 +4415,6 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4452,7 +4441,6 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4465,7 +4453,6 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));
@@ -4481,7 +4468,6 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
   manager.reset(new Manager(control_interface(),
                             dispatcher(),
                             metrics(),
-                            nullptr,  // GLib*,
                             run_path(),
                             temp_dir.path().value(),
                             temp_dir.path().value()));

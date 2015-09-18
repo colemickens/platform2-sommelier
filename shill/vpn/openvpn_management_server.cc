@@ -29,7 +29,6 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/glib.h"
 #include "shill/logging.h"
 #include "shill/net/sockets.h"
 #include "shill/vpn/openvpn_driver.h"
@@ -58,10 +57,8 @@ const char kPasswordTagAuth[] = "Auth";
 const char OpenVPNManagementServer::kStateReconnecting[] = "RECONNECTING";
 const char OpenVPNManagementServer::kStateResolve[] = "RESOLVE";
 
-OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver* driver,
-                                                 GLib* glib)
+OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver* driver)
     : driver_(driver),
-      glib_(glib),
       sockets_(nullptr),
       socket_(-1),
       dispatcher_(nullptr),

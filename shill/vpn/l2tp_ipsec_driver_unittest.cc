@@ -29,7 +29,6 @@
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_external_task.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_ppp_device.h"
@@ -61,7 +60,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   L2TPIPSecDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_, &dispatcher_, &metrics_),
         driver_(new L2TPIPSecDriver(&control_, &dispatcher_, &metrics_,
                                     &manager_, &device_info_,
                                     &process_manager_)),
@@ -199,7 +198,6 @@ class L2TPIPSecDriverTest : public testing::Test,
   NiceMock<MockDeviceInfo> device_info_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
-  MockGLib glib_;
   MockProcessManager process_manager_;
   MockManager manager_;
   L2TPIPSecDriver* driver_;  // Owned by |service_|.

@@ -576,7 +576,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   explicit WiFiObjectTest(EventDispatcher* dispatcher)
       : event_dispatcher_(dispatcher),
         metrics_(nullptr),
-        manager_(&control_interface_, nullptr, &metrics_, &glib_),
+        manager_(&control_interface_, nullptr, &metrics_),
         device_info_(&control_interface_, dispatcher, &metrics_, &manager_),
         wifi_(new WiFi(&control_interface_, dispatcher, &metrics_, &manager_,
                        kDeviceName, kDeviceAddress, kInterfaceIndex)),
@@ -1347,7 +1347,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
  private:
   NiceMockControl control_interface_;
   MockMetrics metrics_;
-  MockGLib glib_;
   MockManager manager_;
   MockDeviceInfo device_info_;
   WiFiRefPtr wifi_;

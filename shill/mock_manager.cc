@@ -30,9 +30,8 @@ namespace shill {
 
 MockManager::MockManager(ControlInterface* control_interface,
                          EventDispatcher* dispatcher,
-                         Metrics* metrics,
-                         GLib* glib)
-    : Manager(control_interface, dispatcher, metrics, glib, "", "", ""),
+                         Metrics* metrics)
+    : Manager(control_interface, dispatcher, metrics, "", "", ""),
       mock_device_info_(nullptr) {
   EXPECT_CALL(*this, device_info())
       .WillRepeatedly(Invoke(this, &MockManager::mock_device_info));

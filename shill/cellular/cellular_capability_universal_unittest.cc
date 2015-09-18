@@ -78,7 +78,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   explicit CellularCapabilityUniversalTest(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
         control_interface_(this),
-        modem_info_(&control_interface_, dispatcher, nullptr, nullptr, nullptr),
+        modem_info_(&control_interface_, dispatcher, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),

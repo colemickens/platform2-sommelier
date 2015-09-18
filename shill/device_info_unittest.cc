@@ -18,7 +18,6 @@
 
 #include <memory>
 
-#include <glib.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
@@ -42,7 +41,6 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -100,7 +98,7 @@ class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
       : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_) {
   }
   virtual ~DeviceInfoTest() {}
@@ -189,7 +187,6 @@ class DeviceInfoTest : public Test {
                                  const vector<IPAddress>& dns_servers);
   void SendMessageToDeviceInfo(const RTNLMessage& message);
 
-  MockGLib glib_;
   MockControl control_interface_;
   MockMetrics metrics_;
   StrictMock<MockManager> manager_;

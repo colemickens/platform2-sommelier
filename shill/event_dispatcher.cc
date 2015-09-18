@@ -16,7 +16,6 @@
 
 #include "shill/event_dispatcher.h"
 
-#include <glib.h>
 #include <stdio.h>
 
 #include <base/callback.h>

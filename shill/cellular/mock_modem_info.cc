@@ -19,16 +19,15 @@
 namespace shill {
 
 MockModemInfo::MockModemInfo() :
-    ModemInfo(nullptr, nullptr, nullptr, nullptr, nullptr),
+    ModemInfo(nullptr, nullptr, nullptr, nullptr),
     mock_pending_activation_store_(nullptr) {}
 
 MockModemInfo::MockModemInfo(ControlInterface* control,
                              EventDispatcher* dispatcher,
                              Metrics* metrics,
-                             Manager* manager,
-                             GLib* glib) :
-    ModemInfo(control, dispatcher, metrics, manager, glib),
-    mock_pending_activation_store_(nullptr) {
+                             Manager* manager)
+    : ModemInfo(control, dispatcher, metrics, manager),
+      mock_pending_activation_store_(nullptr) {
   SetMockMembers();
 }
 
@@ -53,13 +52,9 @@ void MockModemInfo::SetMockMembers() {
     mock_metrics_.reset(new MockMetrics(dispatcher()));
     set_metrics(mock_metrics_.get());
   }
-  if (glib() == nullptr) {
-    mock_glib_.reset(new MockGLib());
-    set_glib(mock_glib_.get());
-  }
   if (manager() == nullptr) {
     mock_manager_.reset(new MockManager(control_interface(), dispatcher(),
-                                        metrics(), glib()));
+                                        metrics()));
     set_manager(mock_manager_.get());
   }
 }

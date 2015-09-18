@@ -25,7 +25,6 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/glib.h"
 #include "shill/ipconfig.h"
 #include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
@@ -64,7 +63,6 @@ class OpenVPNDriver : public VPNDriver,
                 Metrics* metrics,
                 Manager* manager,
                 DeviceInfo* device_info,
-                GLib* glib,
                 ProcessManager* process_manager);
   ~OpenVPNDriver() override;
 

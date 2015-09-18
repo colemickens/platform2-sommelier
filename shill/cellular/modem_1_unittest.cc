@@ -55,7 +55,7 @@ const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
 class Modem1Test : public Test {
  public:
   Modem1Test()
-      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr),
         device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
                      modem_info_.metrics(), modem_info_.manager()),
         proxy_(new MockDBusPropertiesProxy()),

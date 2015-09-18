@@ -50,8 +50,7 @@ class CellularCapabilityTest : public testing::Test {
  public:
   CellularCapabilityTest()
       : control_interface_(this),
-        modem_info_(&control_interface_, &dispatcher_,
-                    nullptr, nullptr, nullptr),
+        modem_info_(&control_interface_, &dispatcher_, nullptr, nullptr),
         create_gsm_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),

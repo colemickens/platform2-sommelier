@@ -45,8 +45,8 @@ namespace shill {
 class ModemManagerTest : public Test {
  public:
   ModemManagerTest()
-      : manager_(&control_, &dispatcher_, nullptr, nullptr),
-        modem_info_(&control_, &dispatcher_, nullptr, &manager_, nullptr) {}
+      : manager_(&control_, &dispatcher_, nullptr),
+        modem_info_(&control_, &dispatcher_, nullptr, &manager_) {}
 
   virtual void SetUp() {
     modem_.reset(

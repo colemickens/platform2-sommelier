@@ -32,7 +32,6 @@
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/byte_string.h"
@@ -1044,7 +1043,6 @@ class WakeOnWiFiTest : public ::testing::Test {
  protected:
   NiceMockControl control_interface_;
   MockMetrics metrics_;
-  MockGLib glib_;
   MockNetlinkManager netlink_manager_;
   MockTime time_;
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;

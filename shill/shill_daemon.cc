@@ -20,6 +20,11 @@
 
 #include <base/bind.h>
 
+#if !defined(ENABLE_JSON_STORE)
+#include <glib.h>
+#include <glib-object.h>
+#endif
+
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
@@ -61,7 +66,6 @@ Daemon::Daemon(Config* config, ControlInterface* control)
       manager_(new Manager(control_.get(),
                            &dispatcher_,
                            metrics_.get(),
-                           &glib_,
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectory())) {
@@ -141,13 +145,15 @@ void Daemon::StopAndReturnToMain() {
 }
 
 void Daemon::Start() {
-  glib_.TypeInit();
+#if !defined(ENABLE_JSON_STORE)
+  g_type_init();
+#endif
   metrics_->Start();
   rtnl_handler_->Start(
       RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
       RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT);
   routing_table_->Start();
-  dhcp_provider_->Init(control_.get(), &dispatcher_, &glib_, metrics_.get());
+  dhcp_provider_->Init(control_.get(), &dispatcher_, metrics_.get());
 
 #if !defined(DISABLE_WIFI)
   if (netlink_manager_) {

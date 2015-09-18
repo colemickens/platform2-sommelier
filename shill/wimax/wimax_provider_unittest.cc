@@ -69,7 +69,7 @@ class WiMaxProviderTest : public testing::Test {
   WiMaxProviderTest()
       : network_proxy_(new MockWiMaxNetworkProxy()),
         metrics_(nullptr),
-        manager_(&control_, nullptr, &metrics_, nullptr),
+        manager_(&control_, nullptr, &metrics_),
         device_info_(&control_, nullptr, &metrics_, &manager_),
         provider_(&control_, nullptr, &metrics_, &manager_) {}
 

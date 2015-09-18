@@ -21,7 +21,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/glib.h"
 #include "shill/key_value_store.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/net/mock_sockets.h"
@@ -48,7 +47,7 @@ MATCHER_P(VoidStringEq, value, "") {
 class OpenVPNManagementServerTest : public testing::Test {
  public:
   OpenVPNManagementServerTest()
-      : server_(&driver_, &glib_) {}
+      : server_(&driver_) {}
 
   virtual ~OpenVPNManagementServerTest() {}
 
@@ -161,7 +160,6 @@ class OpenVPNManagementServerTest : public testing::Test {
     server_.state_ = state;
   }
 
-  GLib glib_;
   MockOpenVPNDriver driver_;
   MockSockets sockets_;
   MockEventDispatcher dispatcher_;

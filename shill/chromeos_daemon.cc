@@ -20,6 +20,11 @@
 
 #include <base/bind.h>
 
+#if !defined(ENABLE_JSON_STORE)
+#include <glib.h>
+#include <glib-object.h>
+#endif
+
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
@@ -72,7 +77,6 @@ void ChromeosDaemon::Init(ControlInterface* control,
   manager_.reset(new Manager(control_.get(),
                              dispatcher_,
                              metrics_.get(),
-                             &glib_,
                              config_->GetRunDirectory(),
                              config_->GetStorageDirectory(),
                              config_->GetUserStorageDirectory()));
@@ -149,7 +153,9 @@ void ChromeosDaemon::StopAndReturnToMain() {
 }
 
 void ChromeosDaemon::Start() {
-  glib_.TypeInit();
+#if !defined(ENABLE_JSON_STORE)
+  g_type_init();
+#endif
   metrics_->Start();
   rtnl_handler_->Start(
       RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |

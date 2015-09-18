@@ -22,7 +22,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
@@ -44,7 +43,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   ThirdPartyVpnDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_, &dispatcher_, &metrics_),
         driver_(new ThirdPartyVpnDriver(&control_, &dispatcher_, &metrics_,
                                         &manager_, &device_info_)),
         adaptor_interface_(new ThirdPartyVpnMockAdaptor()),
@@ -77,7 +76,6 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockFileIO mock_file_io_;
-  MockGLib glib_;
   MockManager manager_;
   ThirdPartyVpnDriver* driver_;                  // Owned by |service_|
   ThirdPartyVpnMockAdaptor* adaptor_interface_;  // Owned by |driver_|

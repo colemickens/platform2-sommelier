@@ -33,7 +33,6 @@
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
@@ -102,9 +101,9 @@ class OpenVPNDriverTest
   OpenVPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_, &dispatcher_, &metrics_),
         driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
-                                  &device_info_, &glib_, &process_manager_)),
+                                  &device_info_, &process_manager_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
         device_(new MockVirtualDevice(
@@ -256,7 +255,6 @@ class OpenVPNDriverTest
   NiceMock<MockDeviceInfo> device_info_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
-  MockGLib glib_;
   MockProcessManager process_manager_;
   MockManager manager_;
   OpenVPNDriver* driver_;  // Owned by |service_|.

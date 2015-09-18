@@ -23,8 +23,6 @@
 
 #include <base/callback.h>
 
-#include "shill/glib.h"
-
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/callback80211_metrics.h"
 #endif  // DISABLE_WIFI
@@ -105,7 +103,6 @@ class ChromeosDaemon {
   Config* config_;
   std::unique_ptr<ControlInterface> control_;
   EventDispatcher* dispatcher_;
-  GLib glib_;
   std::unique_ptr<Metrics> metrics_;
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;

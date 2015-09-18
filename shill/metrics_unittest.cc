@@ -25,7 +25,6 @@
 
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
@@ -52,8 +51,7 @@ class MetricsTest : public Test {
   MetricsTest()
       : manager_(&control_interface_,
                  &dispatcher_,
-                 &metrics_,
-                 &glib_),
+                 &metrics_),
         metrics_(&dispatcher_),
 #if !defined(DISABLE_WIFI)
         open_wifi_service_(new MockWiFiService(&control_interface_,
@@ -128,7 +126,6 @@ class MetricsTest : public Test {
 
   MockControl control_interface_;
   MockEventDispatcher dispatcher_;
-  MockGLib glib_;
   MockManager manager_;
   Metrics metrics_;  // This must be destroyed after all |service_|s.
   MetricsLibraryMock library_;

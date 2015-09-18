@@ -89,7 +89,6 @@ PropertyStoreTest::PropertyStoreTest()
       manager_(control_interface(),
                dispatcher(),
                metrics(),
-               glib(),
                run_path(),
                storage_path(),
                string()) {

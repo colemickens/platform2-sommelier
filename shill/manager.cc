@@ -116,7 +116,6 @@ const char Manager::kDefaultClaimerName[] = "";
 Manager::Manager(ControlInterface* control_interface,
                  EventDispatcher* dispatcher,
                  Metrics* metrics,
-                 GLib* glib,
                  const string& run_directory,
                  const string& storage_directory,
                  const string& user_storage_directory)
@@ -128,7 +127,7 @@ Manager::Manager(ControlInterface* control_interface,
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
 #if !defined(DISABLE_CELLULAR)
-      modem_info_(control_interface, dispatcher, metrics, this, glib),
+      modem_info_(control_interface, dispatcher, metrics, this),
 #endif  // DISABLE_CELLULAR
 #if !defined(DISABLE_WIRED_8021X)
       ethernet_eap_provider_(
@@ -152,7 +151,6 @@ Manager::Manager(ControlInterface* control_interface,
           new EphemeralProfile(control_interface, metrics, this)),
       control_interface_(control_interface),
       metrics_(metrics),
-      glib_(glib),
       use_startup_portal_list_(false),
       device_status_check_task_(Bind(&Manager::DeviceStatusCheckTask,
                                      base::Unretained(this))),

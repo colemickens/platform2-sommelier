@@ -82,8 +82,7 @@ class ChromeosDaemonTest : public Test {
         metrics_(new MockMetrics(daemon_.dispatcher_)),
         manager_(new MockManager(daemon_.control_.get(),
                                  daemon_.dispatcher_,
-                                 metrics_,
-                                 &daemon_.glib_)),
+                                 metrics_)),
         device_info_(daemon_.control_.get(), daemon_.dispatcher_,
                      metrics_, manager_) {
   }

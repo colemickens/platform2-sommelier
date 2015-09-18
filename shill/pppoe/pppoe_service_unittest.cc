@@ -28,7 +28,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_external_task.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_ppp_device.h"
@@ -52,7 +51,7 @@ class PPPoEServiceTest : public testing::Test {
  public:
   PPPoEServiceTest()
       : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+        manager_(&control_interface_, &dispatcher_, &metrics_),
         ethernet_(new MockEthernet(&control_interface_,
                                    &dispatcher_,
                                    &metrics_,
@@ -92,7 +91,6 @@ class PPPoEServiceTest : public testing::Test {
 
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
-  MockGLib glib_;
   MockControl control_interface_;
   MockProcessManager process_manager_;
   MockManager manager_;

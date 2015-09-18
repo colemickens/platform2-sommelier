@@ -36,7 +36,7 @@ namespace shill {
 class EthernetServiceTest : public PropertyStoreTest {
  public:
   EthernetServiceTest()
-      : mock_manager_(control_interface(), dispatcher(), metrics(), glib()),
+      : mock_manager_(control_interface(), dispatcher(), metrics()),
         ethernet_(
             new NiceMock<MockEthernet>(control_interface(),
                                        dispatcher(),

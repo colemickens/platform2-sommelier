@@ -50,7 +50,7 @@ class VPNServiceTest : public testing::Test {
   VPNServiceTest()
       : interface_name_("test-interface"),
         driver_(new MockVPNDriver()),
-        manager_(&control_, nullptr, nullptr, nullptr),
+        manager_(&control_, nullptr, nullptr),
         metrics_(nullptr),
         device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new NiceMock<MockConnection>(&device_info_)),

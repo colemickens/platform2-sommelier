@@ -75,7 +75,7 @@ namespace shill {
 class WiFiServiceTest : public PropertyStoreTest {
  public:
   WiFiServiceTest()
-      : mock_manager_(control_interface(), dispatcher(), metrics(), glib()),
+      : mock_manager_(control_interface(), dispatcher(), metrics()),
         wifi_(
             new NiceMock<MockWiFi>(control_interface(),
                                    dispatcher(),

@@ -61,7 +61,7 @@ class WiMaxServiceTest : public testing::Test {
  public:
   WiMaxServiceTest()
       : proxy_(new MockWiMaxNetworkProxy()),
-        manager_(&control_, nullptr, nullptr, nullptr),
+        manager_(&control_, nullptr, nullptr),
         metrics_(nullptr),
         device_(new MockWiMax(&control_, nullptr, &metrics_, &manager_,
                               kTestLinkName, kTestAddress, kTestInterfaceIndex,

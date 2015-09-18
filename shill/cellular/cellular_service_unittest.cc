@@ -46,7 +46,7 @@ namespace shill {
 class CellularServiceTest : public testing::Test {
  public:
   CellularServiceTest()
-      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr),
         device_(new MockCellular(&modem_info_,
                                  "usb0",
                                  kAddress,

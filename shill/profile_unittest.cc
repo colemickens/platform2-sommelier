@@ -92,7 +92,7 @@ class ProfileTest : public PropertyStoreTest {
 
 TEST_F(ProfileTest, DeleteEntry) {
   std::unique_ptr<MockManager> manager(new StrictMock<MockManager>(
-      control_interface(), dispatcher(), metrics(), glib()));
+      control_interface(), dispatcher(), metrics()));
   profile_->manager_ = manager.get();
 
   MockStore* storage(new StrictMock<MockStore>());
@@ -475,7 +475,7 @@ TEST_F(ProfileTest, UpdateDevice) {
 
 TEST_F(ProfileTest, GetServiceFromEntry) {
   std::unique_ptr<MockManager> manager(new StrictMock<MockManager>(
-      control_interface(), dispatcher(), metrics(), glib()));
+      control_interface(), dispatcher(), metrics()));
   profile_->manager_ = manager.get();
 
   MockStore* storage(new StrictMock<MockStore>());

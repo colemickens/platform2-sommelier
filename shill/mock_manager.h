@@ -31,8 +31,7 @@ class MockManager : public Manager {
  public:
   MockManager(ControlInterface* control_interface,
               EventDispatcher* dispatcher,
-              Metrics* metrics,
-              GLib* glib);
+              Metrics* metrics);
   ~MockManager() override;
 
   MOCK_METHOD0(device_info, DeviceInfo*());

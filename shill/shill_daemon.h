@@ -23,7 +23,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
-#include "shill/glib.h"
 #include "shill/manager.h"
 
 #if !defined(DISABLE_WIFI)
@@ -35,7 +34,6 @@ namespace shill {
 class Config;
 class DHCPProvider;
 class Error;
-class GLib;
 class Metrics;
 class RoutingTable;
 class RTNLHandler;
@@ -93,7 +91,6 @@ class Daemon {
   Config* config_;
   std::unique_ptr<ControlInterface> control_;
   EventDispatcher dispatcher_;
-  GLib glib_;
   std::unique_ptr<Metrics> metrics_;
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;

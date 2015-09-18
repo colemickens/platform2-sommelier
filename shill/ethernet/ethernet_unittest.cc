@@ -31,7 +31,6 @@
 #include "shill/ethernet/mock_ethernet_service.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -73,7 +72,7 @@ class EthernetTest : public testing::Test {
  public:
   EthernetTest()
       : metrics_(nullptr),
-        manager_(&control_interface_, nullptr, &metrics_, &glib_),
+        manager_(&control_interface_, nullptr, &metrics_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         ethernet_(new Ethernet(&control_interface_,
                                &dispatcher_,
@@ -211,7 +210,6 @@ class EthernetTest : public testing::Test {
 #endif  // DISABLE_WIRED_8021X
 
   StrictMock<MockEventDispatcher> dispatcher_;
-  MockGLib glib_;
   NiceMockControl control_interface_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;

@@ -39,7 +39,6 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
-#include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_pending_activation_store.h"
@@ -67,7 +66,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
         control_interface_(this),
         capability_(nullptr),
         device_adaptor_(nullptr),
-        modem_info_(&control_interface_, dispatcher, nullptr, nullptr, nullptr),
+        modem_info_(&control_interface_, dispatcher, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -192,7 +191,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   CellularCapabilityUniversalCDMA* capability_;
   NiceMock<DeviceMockAdaptor>* device_adaptor_;
   MockModemInfo modem_info_;
-  MockGLib glib_;
   // TODO(armansito): Remove |modem_3gpp_proxy_| after refactor.
   unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
