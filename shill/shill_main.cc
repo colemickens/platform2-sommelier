@@ -15,7 +15,6 @@
 //
 
 #include <errno.h>
-#include <glib-unix.h>
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
