@@ -11,6 +11,7 @@
 #include <base/cancelable_callback.h>
 #include <base/compiler_specific.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -77,7 +78,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
     }
   }
 
-  DLOG(INFO) << "Sending a liveness ping to the browser.";
+  DVLOG(1) << "Sending a liveness ping to the browser.";
   last_ping_acked_ = false;
   dbus::MethodCall ping(chromeos::kLibCrosServiceInterface,
                         chromeos::kCheckLiveness);
@@ -86,7 +87,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
                                  base::Bind(&LivenessCheckerImpl::HandleAck,
                                             weak_ptr_factory_.GetWeakPtr()));
 
-  DLOG(INFO) << "Scheduling liveness check in " << interval.InSeconds() << "s.";
+  DVLOG(1) << "Scheduling liveness check in " << interval.InSeconds() << "s.";
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(), interval));
