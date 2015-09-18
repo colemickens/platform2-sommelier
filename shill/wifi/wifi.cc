@@ -33,7 +33,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <glib.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -114,6 +113,12 @@ const uint32_t WiFi::kDefaultWiphyIndex = UINT32_MAX;
 const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
 // Invalid 802.11 disconnect reason code.
 const int WiFi::kDefaultDisconnectReason = INT32_MAX;
+
+namespace {
+bool IsPrintableAsciiChar(char c) {
+  return (c >= ' ' && c <= '~');
+}
+}  // namespace
 
 WiFi::WiFi(ControlInterface* control_interface,
            EventDispatcher* dispatcher,
@@ -1700,7 +1705,7 @@ bool WiFi::SanitizeSSID(string* ssid) {
   bool changed = false;
 
   for (i = 0; i < ssid_len; ++i) {
-    if (!g_ascii_isprint((*ssid)[i])) {
+    if (!IsPrintableAsciiChar((*ssid)[i])) {
       (*ssid)[i] = '?';
       changed = true;
     }
@@ -1715,7 +1720,7 @@ string WiFi::LogSSID(const string& ssid) {
   for (const auto& chr : ssid) {
     // Replace '[' and ']' (in addition to non-printable characters) so that
     // it's easy to match the right substring through a non-greedy regex.
-    if (chr == '[' || chr == ']' || !g_ascii_isprint(chr)) {
+    if (chr == '[' || chr == ']' || !IsPrintableAsciiChar(chr)) {
       base::StringAppendF(&out, "\\x%02x", chr);
     } else {
       out += chr;
