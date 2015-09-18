@@ -37,7 +37,7 @@ namespace shill {
 
 class EventDispatcher;
 class FileIO;
-class ProcessKiller;
+class ProcessManager;
 
 class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
  public:
@@ -95,6 +95,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   FRIEND_TEST(CryptoUtilProxyTest, ShimCleanedBeforeCallback);
 
   static const char kDestinationVerificationUser[];
+  static const uint64_t kRequiredCapabilities;
   static const int kShimJobTimeoutMilliseconds;
 
   // Helper method for parsing the proto buffer return codes sent back by the
@@ -112,7 +113,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
                                    const StringCallback& result_handler);
   // This is the big hammer we use to clean up past shim state.
   virtual void CleanupShim(const Error& shim_result);
-  virtual void OnShimDeath();
+  virtual void OnShimDeath(int exit_status);
 
   // Callbacks that handle IO operations between shill and the shim.
   // Called on changes in file descriptor state.
@@ -133,8 +134,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
                            const Error& error);
 
   EventDispatcher* dispatcher_;
-  chromeos::Minijail* minijail_;
-  ProcessKiller* process_killer_;
+  ProcessManager* process_manager_;
   FileIO* file_io_;
   std::string input_buffer_;
   std::string::const_iterator next_input_byte_;

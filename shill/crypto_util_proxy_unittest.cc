@@ -21,21 +21,19 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <chromeos/minijail/minijail.h>
-#include <chromeos/minijail/mock_minijail.h>
 #include <gtest/gtest.h>
 
 #include "shill/callbacks.h"
 #include "shill/mock_crypto_util_proxy.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"
-#include "shill/mock_process_killer.h"
+#include "shill/mock_process_manager.h"
 
 using base::Bind;
-using chromeos::MockMinijail;
 using std::min;
 using std::string;
 using std::vector;
+using testing::AnyOf;
 using testing::DoAll;
 using testing::InSequence;
 using testing::Invoke;
@@ -68,29 +66,6 @@ const pid_t kTestShimPid = 989898;
 
 }  // namespace
 
-MATCHER_P(IsCryptoUtilCommandLine, command, "") {
-  if (arg.size() != 3) {
-    LOG(ERROR) << "Expected 3 command line arguments, but got "
-               << arg.size() << ".";
-    return false;
-  }
-
-  if (strcmp(arg[0], CryptoUtilProxy::kCryptoUtilShimPath)) {
-    return false;
-  }
-
-  if (strcmp(arg[1], CryptoUtilProxy::kCommandVerify) &&
-      strcmp(arg[1], CryptoUtilProxy::kCommandEncrypt)) {
-    return false;
-  }
-
-  if (arg[2] != nullptr) {
-    return false;
-  }
-
-  return true;
-}
-
 MATCHER_P(ErrorIsOfType, error_type, "") {
   if (error_type != arg.type()) {
     return false;
@@ -113,25 +88,35 @@ class CryptoUtilProxyTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    crypto_util_proxy_.minijail_ = &minijail_;
-    crypto_util_proxy_.process_killer_ = &process_killer_;
+    crypto_util_proxy_.process_manager_ = &process_manager_;
     crypto_util_proxy_.file_io_ = &file_io_;
   }
 
   virtual void TearDown() {
-    // Note that |crypto_util_proxy_| needs its process killer reference in
+    // Note that |crypto_util_proxy_| needs its process manager reference in
     // order not to segfault when it tries to kill any outstanding shims on
     // shutdown.  Thus we don't clear out those fields here, and we make sure
     // to declare the proxy after mocks it consumes.
   }
 
-  bool HandleRunPipesAndDestroy(struct minijail* jail, vector<char*> args,
-                                int* shim_pid, int* stdin, int* stdout,
-                                int* stderr) {
-    *shim_pid = kTestShimPid;
+  // TODO(quiche): Consider refactoring
+  // HandleStartInMinijailWithPipes, HandleStopProcess, and
+  // HandleUpdateExitCallback into a FakeProcessManager. b/24210150
+  pid_t HandleStartInMinijailWithPipes(
+      const tracked_objects::Location& /* spawn_source */,
+      const base::FilePath& /* program */,
+      vector<string> /* program_args */,
+      const std::string& /* run_as_user */,
+      const std::string& /* run_as_group */,
+      uint64_t /* capabilities_mask */,
+      const base::Callback<void(int)>& exit_callback,
+      int* stdin,
+      int* stdout,
+      int* /* stderr */) {
+    exit_callback_ = exit_callback;
     *stdin = kTestStdinFd;
     *stdout = kTestStdoutFd;
-    return true;
+    return kTestShimPid;
   }
 
   void StartAndCheckShim(const std::string& command,
@@ -142,17 +127,23 @@ class CryptoUtilProxyTest : public testing::Test {
         .WillOnce(Invoke(&crypto_util_proxy_,
                          &MockCryptoUtilProxy::RealStartShimForCommand));
     // All shims should be spawned in a Minijail.
-    EXPECT_CALL(minijail_, New());
-    EXPECT_CALL(minijail_, DropRoot(_, StrEq("shill-crypto"),
-                                    StrEq("shill-crypto")))
-        .WillOnce(Return(true));
-    EXPECT_CALL(minijail_, RunPipesAndDestroy(_,
-                                              IsCryptoUtilCommandLine(command),
-                                              NotNull(),  // pid
-                                              NotNull(),  // stdin
-                                              NotNull(),  // stdout
-                                              nullptr))  // stderr
-        .WillOnce(Invoke(this, &CryptoUtilProxyTest::HandleRunPipesAndDestroy));
+    EXPECT_CALL(
+        process_manager_,
+        StartProcessInMinijailWithPipes(
+            _,  // caller location
+            base::FilePath(CryptoUtilProxy::kCryptoUtilShimPath),
+            AnyOf(
+                vector<string>{CryptoUtilProxy::kCommandVerify},
+                vector<string>{CryptoUtilProxy::kCommandEncrypt}),
+            "shill-crypto",
+            "shill-crypto",
+            0,  // no capabilities required
+            _,  // exit_callback
+            NotNull(),  // stdin
+            NotNull(),  // stdout
+            nullptr))  // stderr
+        .WillOnce(Invoke(this,
+                         &CryptoUtilProxyTest::HandleStartInMinijailWithPipes));
     // We should always schedule a shim timeout callback.
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _));
     // We don't allow file I/O to block.
@@ -167,7 +158,7 @@ class CryptoUtilProxyTest : public testing::Test {
     EXPECT_CALL(dispatcher_, CreateInputHandler(_, _, _)).Times(1);
     EXPECT_CALL(dispatcher_, CreateReadyHandler(_, _, _)).Times(1);
     // The shim is left in flight, not killed.
-    EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
+    EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
     crypto_util_proxy_.StartShimForCommand(
         command, shim_stdin,
         Bind(&MockCryptoUtilProxy::TestResultHandlerCallback,
@@ -177,9 +168,8 @@ class CryptoUtilProxyTest : public testing::Test {
     EXPECT_TRUE(crypto_util_proxy_.output_buffer_.empty());
     EXPECT_EQ(crypto_util_proxy_.shim_pid_, kTestShimPid);
     Mock::VerifyAndClearExpectations(&crypto_util_proxy_);
-    Mock::VerifyAndClearExpectations(&minijail_);
     Mock::VerifyAndClearExpectations(&dispatcher_);
-    Mock::VerifyAndClearExpectations(&process_killer_);
+    Mock::VerifyAndClearExpectations(&process_manager_);
   }
 
   void ExpectCleanup(const Error& expected_result) {
@@ -192,10 +182,14 @@ class CryptoUtilProxyTest : public testing::Test {
                   Close(crypto_util_proxy_.shim_stdout_)).Times(1);
     }
     if (crypto_util_proxy_.shim_pid_) {
-      EXPECT_CALL(process_killer_, Kill(crypto_util_proxy_.shim_pid_, _))
+      EXPECT_CALL(process_manager_, UpdateExitCallback(_, _))
           .Times(1)
           .WillOnce(Invoke(this,
-                           &CryptoUtilProxyTest::HandleShimKill));
+                           &CryptoUtilProxyTest::HandleUpdateExitCallback));
+      EXPECT_CALL(process_manager_, StopProcess(crypto_util_proxy_.shim_pid_))
+          .Times(1)
+          .WillOnce(Invoke(this,
+                           &CryptoUtilProxyTest::HandleStopProcess));
     }
   }
 
@@ -203,25 +197,35 @@ class CryptoUtilProxyTest : public testing::Test {
     EXPECT_FALSE(crypto_util_proxy_.shim_pid_);
   }
 
-  void HandleShimKill(int /*pid*/, const base::Closure& callback) {
-    callback.Run();
+  bool HandleUpdateExitCallback(pid_t /*pid*/,
+                                const base::Callback<void(int)>& new_callback) {
+    exit_callback_ = new_callback;
+    return true;
+  }
+
+  bool HandleStopProcess(pid_t /*pid*/) {
+    const int kExitStatus = -1;
+    // NB: in the real world, this ordering is not guaranteed. That
+    // is, StopProcess() might return before executing the callback.
+    exit_callback_.Run(kExitStatus);
+    return true;
   }
 
   void StopAndCheckShim(const Error& error) {
     ExpectCleanup(error);
     crypto_util_proxy_.CleanupShim(error);
-    crypto_util_proxy_.OnShimDeath();
+    crypto_util_proxy_.OnShimDeath(-1);
     EXPECT_EQ(crypto_util_proxy_.shim_pid_, 0);
-    Mock::VerifyAndClearExpectations(&process_killer_);
+    Mock::VerifyAndClearExpectations(&process_manager_);
   }
 
  protected:
-  MockMinijail minijail_;
-  MockProcessKiller process_killer_;
+  MockProcessManager process_manager_;
   MockEventDispatcher dispatcher_;
   MockFileIO file_io_;
   MockCryptoUtilProxy crypto_util_proxy_;
   std::vector<uint8_t> test_ssid_;
+  base::Callback<void(int)> exit_callback_;
 };
 
 TEST_F(CryptoUtilProxyTest, BasicAPIUsage) {

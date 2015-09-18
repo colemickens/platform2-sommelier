@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -27,7 +28,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/file_io.h"
-#include "shill/process_killer.h"
+#include "shill/process_manager.h"
 
 using base::Bind;
 using base::Callback;
@@ -47,12 +48,17 @@ const char CryptoUtilProxy::kCommandEncrypt[] = "encrypt";
 const char CryptoUtilProxy::kCommandVerify[] = "verify";
 const char CryptoUtilProxy::kCryptoUtilShimPath[] = SHIMDIR "/crypto-util";
 const char CryptoUtilProxy::kDestinationVerificationUser[] = "shill-crypto";
+const uint64_t CryptoUtilProxy::kRequiredCapabilities = 0;
 const int CryptoUtilProxy::kShimJobTimeoutMilliseconds = 30 * 1000;
+
+namespace {
+void DoNothingWithExitStatus(int /* exit_status */) {
+}
+}  // namespace
 
 CryptoUtilProxy::CryptoUtilProxy(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
-      minijail_(chromeos::Minijail::GetInstance()),
-      process_killer_(ProcessKiller::GetInstance()),
+      process_manager_(ProcessManager::GetInstance()),
       file_io_(FileIO::GetInstance()),
       input_buffer_(),
       next_input_byte_(),
@@ -164,18 +170,18 @@ bool CryptoUtilProxy::StartShimForCommand(
     LOG(ERROR) << "Refusing to start a shim with no input data.";
     return false;
   }
-  struct minijail* jail = minijail_->New();
-  if (!minijail_->DropRoot(jail, kDestinationVerificationUser,
-                           kDestinationVerificationUser)) {
-    LOG(ERROR) << "Minijail failed to drop root privileges?";
-    return false;
-  }
-  vector<char*> args;
-  args.push_back(const_cast<char*>(kCryptoUtilShimPath));
-  args.push_back(const_cast<char*>(command.c_str()));
-  args.push_back(nullptr);
-  if (!minijail_->RunPipesAndDestroy(jail, args, &shim_pid_,
-                                     &shim_stdin_, &shim_stdout_, nullptr)) {
+  shim_pid_ = process_manager_->StartProcessInMinijailWithPipes(
+      FROM_HERE,
+      base::FilePath(kCryptoUtilShimPath),
+      vector<string>{command},
+      kDestinationVerificationUser,
+      kDestinationVerificationUser,
+      kRequiredCapabilities,
+      base::Bind(DoNothingWithExitStatus),
+      &shim_stdin_,
+      &shim_stdout_,
+      nullptr);
+  if (shim_pid_ == -1) {
     LOG(ERROR) << "Minijail couldn't run our child process";
     return false;
   }
@@ -231,17 +237,18 @@ void CryptoUtilProxy::CleanupShim(const Error& shim_result) {
   shim_stdout_handler_.reset();
   shim_stdin_handler_.reset();
 
-  // TODO(wiley) Change dhcp_config.cc to use the process killer.  Change the
-  //             process killer to send TERM before KILL a la dhcp_config.cc.
   if (shim_pid_) {
-    process_killer_->Kill(shim_pid_, Bind(&CryptoUtilProxy::OnShimDeath,
-                                          AsWeakPtr()));
+    process_manager_->UpdateExitCallback(shim_pid_,
+                                         Bind(&CryptoUtilProxy::OnShimDeath,
+                                              AsWeakPtr()));
+    process_manager_->StopProcess(shim_pid_);
   } else {
-    OnShimDeath();
+    const int kExitStatus = -1;
+    OnShimDeath(kExitStatus);
   }
 }
 
-void CryptoUtilProxy::OnShimDeath() {
+void CryptoUtilProxy::OnShimDeath(int /* exit_status */) {
   // Make sure the proxy is completely clean before calling back out.  This
   // requires we copy some state locally.
   shim_pid_ = 0;
