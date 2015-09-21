@@ -39,12 +39,14 @@
         - body - Raw unparsed request data. Could be empty for POST requests
                  that have form data/uploaded files already parsed into
                  form_fields/files parameters.
+                 The data is sent over D-Bus as a file descriptor representing
+                 the read end of a pipe.
       </tp:docstring>
       <arg name="request_info" type="(sssss)" direction="in"/>
       <arg name="headers" type="a(ss)" direction="in"/>
       <arg name="params" type="a(bss)" direction="in"/>
       <arg name="files" type="a(issss)" direction="in"/>
-      <arg name="body" type="ay" direction="in"/>
+      <arg name="body" type="h" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
   </interface>

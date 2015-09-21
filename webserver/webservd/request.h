@@ -21,8 +21,10 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/streams/stream.h>
 
 struct MHD_Connection;
@@ -107,9 +109,13 @@ class Request final {
   // Returns the request method (e.g. "GET", "POST", ...).
   const std::string& GetMethod() const { return method_; }
 
-  // Returns the raw body of the request, or empty byte array of the request
+  // Returns the output end of the body data stream pipe. The file descriptor
+  // is owned by the caller and must be closed when no longer needed.
+  // The pipe will contain the request body data, or no data if the request
   // had no body or a POST request has been parsed into form data.
-  const std::vector<uint8_t>& GetBody() const { return raw_data_; }
+  // In case there is no data, the file descriptor will represent a closed pipe,
+  // so reading from it will just indicate end-of-file (no data to read).
+  int GetBodyDataFileDescriptor() const;
 
   // Returns the POST form field data.
   const std::vector<PairOfStrings>& GetDataPost() const { return post_data_; }
@@ -129,14 +135,12 @@ class Request final {
   friend class RequestHelper;
   friend class ServerHelper;
 
-  enum class State { kIdle, kWaitingForResponse, kResponseReceived, kDone };
-
   // Helper methods for processing request data coming from the raw HTTP
   // connection.
   // Helper callback methods used by ProtocolHandler's ConnectionHandler to
   // transfer request headers and data to the Request object.
   bool BeginRequestData();
-  bool AddRequestData(const void* data, size_t size);
+  bool AddRequestData(const void* data, size_t* size);
   void EndRequestData();
 
   // Callback for libmicrohttpd's PostProcessor.
@@ -150,7 +154,10 @@ class Request final {
 
   // These methods parse the request headers and data so they can be accessed
   // by request handlers later.
-  bool AddRawRequestData(const void* data, size_t size);
+  // AddRawRequestData takes the amount of data to write in |*size|. On output,
+  // |*size| contains the number of bytes REMAINING to be written, or 0 if all
+  // data have been written successfully.
+  bool AddRawRequestData(const void* data, size_t* size);
   bool AddPostFieldData(const char* key,
                         const char* filename,
                         const char* content_type,
@@ -158,6 +165,12 @@ class Request final {
                         const char* data,
                         size_t size);
   bool AppendPostFieldData(const char* key, const char* data, size_t size);
+
+  // Callback to be called when data can be written to the output pipe again.
+  void OnPipeAvailable(chromeos::Stream::AccessMode mode);
+
+  // Forwards the request to the request handler.
+  void ForwardRequestToHandler();
 
   TempFileManager* GetTempFileManager();
 
@@ -168,9 +181,16 @@ class Request final {
   std::string version_;
   MHD_Connection* connection_{nullptr};
   MHD_PostProcessor* post_processor_{nullptr};
-  std::vector<uint8_t> raw_data_;
+  // Data pipe for request body data (in/write and out/read ends of the pipe).
+  base::File raw_data_pipe_in_;
+  base::File raw_data_pipe_out_;
+  // Data stream for the input end of the data pipe.
+  chromeos::StreamPtr raw_data_stream_in_;
   bool last_posted_data_was_file_{false};
-  State state_{State::kIdle};
+  bool request_forwarded_{false};
+  bool request_data_finished_{false};
+  bool response_data_started_{false};
+  bool response_data_finished_{false};
 
   std::vector<PairOfStrings> post_data_;
   std::vector<PairOfStrings> get_data_;
@@ -182,6 +202,7 @@ class Request final {
   std::vector<PairOfStrings> response_headers_;
   ProtocolHandler* protocol_handler_;
 
+  base::WeakPtrFactory<Request> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Request);
 };
 

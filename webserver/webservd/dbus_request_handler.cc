@@ -78,13 +78,12 @@ void DBusRequestHandler::HandleRequest(Request* request) {
                                     request->GetURL(),
                                     request->GetMethod());
 
-  handler_proxy_->ProcessRequestAsync(request_id,
-                                      headers,
-                                      params,
-                                      files,
-                                      request->GetBody(),
-                                      base::Bind(&base::DoNothing),
-                                      error_callback);
+  dbus::FileDescriptor body_data_pipe;
+  body_data_pipe.PutValue(request->GetBodyDataFileDescriptor());
+  body_data_pipe.CheckValidity();
+  handler_proxy_->ProcessRequestAsync(
+      request_id, headers, params, files, body_data_pipe,
+      base::Bind(&base::DoNothing), error_callback);
 }
 
 }  // namespace webservd

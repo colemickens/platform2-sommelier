@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <base/callback_forward.h>
+#include <base/files/file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/errors/error.h>
@@ -77,7 +78,10 @@ class LIBWEBSERV_EXPORT Request final {
   // pre-parsed by the server (e.g. "application/x-www-form-urlencoded" and
   // "multipart/form-data"). If there is no request body, or the data has been
   // pre-parsed by the server, the returned stream will be empty.
-  const std::vector<uint8_t>& GetData() const;
+  // The stream returned is valid for as long as the Request object itself is
+  // alive. Accessing the stream after the Request object is destroyed will lead
+  // to an undefined behavior (will likely just crash).
+  chromeos::StreamPtr GetDataStream();
 
   // Returns the request path (e.g. "/path/document").
   const std::string& GetPath() const { return url_; }
@@ -137,7 +141,7 @@ class LIBWEBSERV_EXPORT Request final {
   ProtocolHandler* handler_{nullptr};
   std::string url_;
   std::string method_;
-  std::vector<uint8_t> raw_data_;
+  base::File raw_data_fd_;
   bool last_posted_data_was_file_{false};
 
   std::multimap<std::string, std::string> post_data_;

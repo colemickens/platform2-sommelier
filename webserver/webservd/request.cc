@@ -96,6 +96,19 @@ Request::Request(
       version_{version},
       connection_{connection},
       protocol_handler_{protocol_handler} {
+  // Here we create the data pipe used to transfer the request body from the
+  // web server to the remote request handler.
+  int pipe_fds[2] = {-1, -1};
+  CHECK_EQ(0, pipe(pipe_fds));
+  raw_data_pipe_in_ = base::File{pipe_fds[1]};
+  CHECK(raw_data_pipe_in_.IsValid());
+  raw_data_pipe_out_ = base::File{pipe_fds[0]};
+  CHECK(raw_data_pipe_out_.IsValid());
+  raw_data_stream_in_ = chromeos::FileStream::FromFileDescriptor(
+      raw_data_pipe_in_.GetPlatformFile(), false, nullptr);
+  CHECK(raw_data_stream_in_);
+
+  // POST request processor.
   post_processor_ = MHD_create_post_processor(
       connection, 1024, &RequestHelper::PostDataIterator, this);
 }
@@ -122,7 +135,7 @@ bool Request::Complete(
     int32_t status_code,
     const std::vector<std::tuple<std::string, std::string>>& headers,
     const std::vector<uint8_t>& data) {
-  if (state_ != State::kWaitingForResponse)
+  if (response_data_started_)
     return false;
 
   response_status_code_ = status_code;
@@ -131,14 +144,14 @@ bool Request::Complete(
     response_headers_.emplace_back(std::get<0>(tuple), std::get<1>(tuple));
   }
   response_data_ = data;
-  state_ = State::kResponseReceived;
+  response_data_started_ = true;
   const MHD_ConnectionInfo* info =
       MHD_get_connection_info(connection_, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
 
   const sockaddr* client_addr = (info ? info->client_addr : nullptr);
   LogManager::OnRequestCompleted(base::Time::Now(), client_addr, method_, url_,
                                  version_, status_code, data.size());
-  protocol_handler_->OnResponseDataReceived();
+  protocol_handler_->ScheduleWork();
   return true;
 }
 
@@ -158,6 +171,12 @@ const std::string& Request::GetProtocolHandlerID() const {
   return protocol_handler_->GetID();
 }
 
+int Request::GetBodyDataFileDescriptor() const {
+  int fd = dup(raw_data_pipe_out_.GetPlatformFile());
+  CHECK_GE(fd, 0);
+  return fd;
+}
+
 bool Request::BeginRequestData() {
   MHD_get_connection_values(connection_, MHD_HEADER_KIND,
                             &RequestHelper::ValueCallback, this);
@@ -167,36 +186,36 @@ bool Request::BeginRequestData() {
                             &RequestHelper::ValueCallback, this);
   MHD_get_connection_values(connection_, MHD_GET_ARGUMENT_KIND,
                             &RequestHelper::ValueCallback, this);
+  // If we have POST processor, then we are parsing the request ourselves and
+  // we need to dispatch it to the handler only after all the data is parsed.
+  // Otherwise forward the request immediately and let the handler read the
+  // request data as needed.
+  if (!post_processor_)
+    ForwardRequestToHandler();
   return true;
 }
 
-bool Request::AddRequestData(const void* data, size_t size) {
+bool Request::AddRequestData(const void* data, size_t* size) {
   if (!post_processor_)
     return AddRawRequestData(data, size);
-  return MHD_post_process(post_processor_,
-                          static_cast<const char*>(data), size) == MHD_YES;
+  int result =
+      MHD_post_process(post_processor_, static_cast<const char*>(data), *size);
+  *size = 0;
+  return result == MHD_YES;
 }
 
 void Request::EndRequestData() {
-  if (state_ == State::kIdle) {
-    state_ = State::kWaitingForResponse;
-    if (!request_handler_id_.empty()) {
-      // Close all temporary file streams, if any.
-      for (auto& file : file_info_)
-        file->data_stream->CloseBlocking(nullptr);
-
-      protocol_handler_->AddRequest(this);
-      auto p = protocol_handler_->request_handlers_.find(request_handler_id_);
-      CHECK(p != protocol_handler_->request_handlers_.end());
-      // Send the request over D-Bus and await the response...
-      p->second.handler->HandleRequest(this);
-    } else {
-      // There was no handler found when request was made, respond with
-      // 404 Page Not Found...
-      Complete(chromeos::http::status_code::NotFound, {},
-               chromeos::mime::text::kPlain, "Not Found");
+  if (!request_data_finished_) {
+    if (raw_data_stream_in_) {
+      raw_data_stream_in_->CloseBlocking(nullptr);
+      raw_data_pipe_in_.Close();
     }
-  } else if (state_ == State::kResponseReceived) {
+    if (!request_forwarded_)
+      ForwardRequestToHandler();
+    request_data_finished_ = true;
+  }
+
+  if (response_data_started_ && !response_data_finished_) {
     MHD_Response* resp = MHD_create_response_from_buffer(
         response_data_.size(), response_data_.data(), MHD_RESPMEM_PERSISTENT);
     for (const auto& pair : response_headers_) {
@@ -206,7 +225,27 @@ void Request::EndRequestData() {
              MHD_queue_response(connection_, response_status_code_, resp))
         << "Failed to queue response";
     MHD_destroy_response(resp);  // |resp| is ref-counted.
-    state_ = State::kDone;
+    response_data_finished_ = true;
+  }
+}
+
+void Request::ForwardRequestToHandler() {
+  request_forwarded_ = true;
+  if (!request_handler_id_.empty()) {
+    // Close all temporary file streams, if any.
+    for (auto& file : file_info_)
+      file->data_stream->CloseBlocking(nullptr);
+
+    protocol_handler_->AddRequest(this);
+    auto p = protocol_handler_->request_handlers_.find(request_handler_id_);
+    CHECK(p != protocol_handler_->request_handlers_.end());
+    // Send the request over D-Bus and await the response.
+    p->second.handler->HandleRequest(this);
+  } else {
+    // There was no handler found when request was made, respond with
+    // 404 Page Not Found.
+    Complete(chromeos::http::status_code::NotFound, {},
+             chromeos::mime::text::kPlain, "Not Found");
   }
 }
 
@@ -220,15 +259,54 @@ bool Request::ProcessPostData(const char* key,
   if (off > 0)
     return AppendPostFieldData(key, data, size);
 
-  return  AddPostFieldData(key, filename, content_type, transfer_encoding, data,
-                           size);
+  return AddPostFieldData(key, filename, content_type, transfer_encoding, data,
+                          size);
 }
 
+bool Request::AddRawRequestData(const void* data, size_t* size) {
+  CHECK(*size);
+  CHECK(raw_data_stream_in_) << "Data pipe hasn't been created.";
 
-bool Request::AddRawRequestData(const void* data, size_t size) {
-  const uint8_t* byte_data_ = static_cast<const uint8_t*>(data);
-  raw_data_.insert(raw_data_.end(), byte_data_, byte_data_ + size);
-  return true;
+  size_t written = 0;
+  if (!raw_data_stream_in_->WriteNonBlocking(data, *size, &written, nullptr))
+    return false;
+
+  CHECK_LE(written, *size);
+
+  // If we didn't write all the data requested, we need to let libmicrohttpd do
+  // another write cycle. Schedule a DoWork() action here.
+  if (written != *size)
+    protocol_handler_->ScheduleWork();
+
+  *size -= written;
+
+  // If written at least some data, we are good. We will be called again if more
+  // data is available.
+  if (written > 0)
+    return true;
+
+  // Nothing has been written. The output pipe is full. Need to stop the data
+  // transfer on the connection and wait till some data is being read from the
+  // pipe by the request handler.
+  MHD_suspend_connection(connection_);
+
+  // Now, just monitor the pipe and figure out when we can resume sending data
+  // over it.
+  bool success = raw_data_stream_in_->WaitForData(
+      chromeos::Stream::AccessMode::WRITE,
+      base::Bind(&Request::OnPipeAvailable, weak_ptr_factory_.GetWeakPtr()),
+      nullptr);
+
+  if (!success)
+    MHD_resume_connection(connection_);
+
+  return success;
+}
+
+void Request::OnPipeAvailable(chromeos::Stream::AccessMode mode) {
+  CHECK(mode == chromeos::Stream::AccessMode::WRITE);
+  MHD_resume_connection(connection_);
+  protocol_handler_->ScheduleWork();
 }
 
 bool Request::AddPostFieldData(const char* key,
@@ -278,6 +356,5 @@ bool Request::AppendPostFieldData(const char* key,
 TempFileManager* Request::GetTempFileManager() {
   return protocol_handler_->GetServer()->GetTempFileManager();
 }
-
 
 }  // namespace webservd

@@ -92,8 +92,8 @@ class ProtocolHandler final {
   void RemoveRequest(Request* request);
   Request* GetRequest(const std::string& request_id) const;
 
-  // Notification of incoming reply from the request handler.
-  void OnResponseDataReceived();
+  // Schedules an asynchronous call to DoWork().
+  void ScheduleWork();
 
  private:
   friend class Request;
@@ -105,8 +105,6 @@ class ProtocolHandler final {
     std::unique_ptr<RequestHandlerInterface> handler;
   };
 
-  // Schedules an asynchronous call to DoWork().
-  void ScheduleWork();
   // Called when new data is available on sockets for libmicrohttpd to process.
   void DoWork();
 

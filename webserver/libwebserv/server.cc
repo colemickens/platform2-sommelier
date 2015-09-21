@@ -37,7 +37,7 @@ class Server::RequestHandler final
       const std::vector<std::tuple<bool, std::string, std::string>>& in_params,
       const std::vector<std::tuple<int32_t, std::string, std::string,
                                    std::string, std::string>>& in_files,
-      const std::vector<uint8_t>& in_body) override;
+      const dbus::FileDescriptor& in_body) override;
 
  private:
   Server* server_{nullptr};
@@ -50,9 +50,9 @@ bool Server::RequestHandler::ProcessRequest(
                      std::string>& in_request_info,
     const std::vector<std::tuple<std::string, std::string>>& in_headers,
     const std::vector<std::tuple<bool, std::string, std::string>>& in_params,
-    const std::vector<std::tuple<int32_t, std::string, std::string,
-                                 std::string, std::string>>& in_files,
-    const std::vector<uint8_t>& in_body) {
+    const std::vector<std::tuple<int32_t, std::string, std::string, std::string,
+                                 std::string>>& in_files,
+    const dbus::FileDescriptor& in_body) {
   std::string protocol_handler_id = std::get<0>(in_request_info);
   std::string request_handler_id = std::get<1>(in_request_info);
   std::string request_id = std::get<2>(in_request_info);
@@ -92,7 +92,8 @@ bool Server::RequestHandler::ProcessRequest(
             std::get<4>(tuple)}});  // transfer_encoding
   }
 
-  request->raw_data_ = in_body;
+  request->raw_data_fd_ = base::File(dup(in_body.value()));
+  CHECK(request->raw_data_fd_.IsValid());
 
   return protocol_handler->ProcessRequest(protocol_handler_id,
                                           request_handler_id,

@@ -61,9 +61,8 @@ class ServerHelper final {
     } else {
       auto request = reinterpret_cast<Request*>(*con_cls);
       if (*upload_data_size) {
-        if (!request->AddRequestData(upload_data, *upload_data_size))
+        if (!request->AddRequestData(upload_data, upload_data_size))
           return MHD_NO;
-        *upload_data_size = 0;
       } else {
         request->EndRequestData();
       }
@@ -182,6 +181,7 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
   if (server_interface_->GetConfig().use_ipv6)
     flags |= MHD_USE_DUAL_STACK;
   flags |= MHD_USE_TCP_FASTOPEN;  // Use TCP Fast Open (see RFC 7413).
+  flags |= MHD_USE_SUSPEND_RESUME;  // Allow suspending/resuming connections.
 
   std::vector<MHD_OptionItem> options{
     {MHD_OPTION_CONNECTION_LIMIT, 10, nullptr},
@@ -261,7 +261,7 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
                              &ServerHelper::ConnectionHandler, this,
                              MHD_OPTION_ARRAY, options.data(), MHD_OPTION_END);
   if (!server_) {
-    LOG(ERROR) << "Failed to create protocol handler on port " << config->port;
+    PLOG(ERROR) << "Failed to create protocol handler on port " << config->port;
     return false;
   }
   server_interface_->ProtocolHandlerStarted(this);
@@ -346,10 +346,6 @@ class ProtocolHandler::Watcher final : public base::MessageLoopForIO::Watcher {
 
   DISALLOW_COPY_AND_ASSIGN(Watcher);
 };
-
-void ProtocolHandler::OnResponseDataReceived() {
-  ScheduleWork();
-}
 
 void ProtocolHandler::ScheduleWork() {
   if (work_scheduled_)

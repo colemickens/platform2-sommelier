@@ -16,6 +16,7 @@
 
 #include <base/callback.h>
 #include <chromeos/http/http_utils.h>
+#include <chromeos/streams/file_stream.h>
 
 #include <libwebserv/protocol_handler.h>
 
@@ -53,8 +54,9 @@ Request::Request(ProtocolHandler* handler,
 Request::~Request() {
 }
 
-const std::vector<uint8_t>& Request::GetData() const {
-  return raw_data_;
+chromeos::StreamPtr Request::GetDataStream() {
+  return chromeos::FileStream::FromFileDescriptor(
+      raw_data_fd_.GetPlatformFile(), false, nullptr);
 }
 
 std::vector<PairOfStrings> Request::GetFormData() const {
