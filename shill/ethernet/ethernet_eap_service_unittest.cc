@@ -17,7 +17,11 @@
 #include "shill/ethernet/ethernet_eap_service.h"
 
 #include <base/bind.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 #include <gtest/gtest.h>
 
 #include "shill/ethernet/mock_ethernet_eap_provider.h"

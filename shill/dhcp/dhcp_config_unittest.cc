@@ -22,7 +22,11 @@
 
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"

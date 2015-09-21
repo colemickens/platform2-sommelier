@@ -24,7 +24,11 @@
 #include <base/logging.h>
 #include <chromeos/any.h>
 #include <chromeos/daemons/dbus_daemon.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 #include <shill/dbus-proxies.h>
 
 namespace {

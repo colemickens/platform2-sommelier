@@ -17,7 +17,11 @@
 #include "shill/error.h"
 
 #include <base/files/file_path.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
 

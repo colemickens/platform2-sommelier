@@ -24,7 +24,11 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

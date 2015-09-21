@@ -21,7 +21,11 @@
 #include <base/bind.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 
 #include "shill/connection.h"
 #include "shill/connectivity_trial.h"

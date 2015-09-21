@@ -17,7 +17,11 @@
 #include "shill/cellular/modem_info.h"
 
 #include <base/files/file_path.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 
 #include "shill/cellular/modem_manager.h"
 #include "shill/logging.h"

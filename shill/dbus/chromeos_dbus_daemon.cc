@@ -18,7 +18,11 @@
 
 #include <sysexits.h>
 
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 
 #include "shill/dbus/chromeos_dbus_control.h"
 #include "shill/manager.h"

@@ -18,7 +18,11 @@
 
 #include <sys/time.h>
 
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"

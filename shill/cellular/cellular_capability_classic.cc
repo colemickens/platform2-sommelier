@@ -17,7 +17,11 @@
 #include "shill/cellular/cellular_capability_classic.h"
 
 #include <base/bind.h>
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
 #include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/modem_gobi_proxy_interface.h"
