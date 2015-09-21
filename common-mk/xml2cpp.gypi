@@ -1,13 +1,14 @@
 {
   'variables': {
     'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(xml2cpp_out_dir)',
+    'xml2cpp_extension%': 'xml',
     'xml2cpp_in_dir%': '.',
     'dbusxx-xml2cpp': '<!(which dbusxx-xml2cpp)',
   },
   'rules': [
     {
       'rule_name': 'genxml2cpp',
-      'extension': 'xml',
+      'extension': '<(xml2cpp_extension)',
       'inputs': [
         '<(dbusxx-xml2cpp)',
       ],
