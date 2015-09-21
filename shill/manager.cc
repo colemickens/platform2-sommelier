@@ -52,7 +52,6 @@
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
 #include "shill/ip_address_store.h"
-#include "shill/key_file_store.h"
 #include "shill/logging.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"

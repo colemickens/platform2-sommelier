@@ -16,8 +16,11 @@
 
 #include "shill/store_factory.h"
 
+#if defined(ENABLE_JSON_STORE)
 #include "shill/json_store.h"
+#else
 #include "shill/key_file_store.h"
+#endif  // ENABLE_JSON_STORE
 
 namespace shill {
 

@@ -23,8 +23,6 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/key_file_store.h"
-
 namespace shill {
 
 class StoreInterface;
