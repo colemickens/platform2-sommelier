@@ -4,7 +4,6 @@
 
 #include "chromiumos-wide-profiling/perf_reader.h"
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +13,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "base/macros.h"
 
 #include "chromiumos-wide-profiling/buffer_reader.h"
 #include "chromiumos-wide-profiling/buffer_writer.h"

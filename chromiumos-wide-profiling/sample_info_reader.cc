@@ -4,6 +4,8 @@
 
 #include "chromiumos-wide-profiling/sample_info_reader.h"
 
+#include <string.h>
+
 #include "base/logging.h"
 #include "chromiumos-wide-profiling/buffer_reader.h"
 #include "chromiumos-wide-profiling/buffer_writer.h"

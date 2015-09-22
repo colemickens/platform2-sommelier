@@ -4,12 +4,15 @@
 
 #include "chromiumos-wide-profiling/test_perf_data.h"
 
+#include <stddef.h>
+
 #include <algorithm>
 #include <ostream>  // NOLINT
 #include <vector>
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
 #include "chromiumos-wide-profiling/utils.h"
 

@@ -105,7 +105,7 @@ bool PerfParser::ParseRawEvents() {
 
 bool PerfParser::ProcessEvents() {
   MaybeSortParsedEvents();
-  memset(&stats_, 0, sizeof(stats_));
+  stats_ = {0};
 
   stats_.did_remap = false;   // Explicitly clear the remap flag.
 

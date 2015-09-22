@@ -4,8 +4,6 @@
 
 #include "chromiumos-wide-profiling/address_mapper.h"
 
-#include <limits.h>
-
 #include <algorithm>
 #include <memory>
 
