@@ -4,11 +4,11 @@
 
 #include "chromiumos-wide-profiling/address_mapper.h"
 
+#include <stdint.h>
+
 #include <vector>
 
 #include "base/logging.h"
-
-#include "chromiumos-wide-profiling/limits.h"
 
 namespace quipper {
 
@@ -29,8 +29,7 @@ bool AddressMapper::MapWithID(const uint64_t real_addr,
   }
 
   // Check that this mapping does not overflow the address space.
-  if (real_addr + size - 1 != kUint64Max &&
-      !(real_addr + size > real_addr)) {
+  if (real_addr + size - 1 != UINT64_MAX && !(real_addr + size > real_addr)) {
     DumpToLog();
     LOG(ERROR) << "Address mapping at " << std::hex << real_addr
                << " with size " << std::hex << size << " overflows.";
@@ -120,7 +119,7 @@ bool AddressMapper::MapWithID(const uint64_t real_addr,
   // If there is no existing mapping, add it to the beginning of quipper space.
   if (mappings_.empty()) {
     range.mapped_addr = page_offset;
-    range.unmapped_space_after = kUint64Max - range.size - page_offset;
+    range.unmapped_space_after = UINT64_MAX - range.size - page_offset;
     mappings_.push_back(range);
     return true;
   }

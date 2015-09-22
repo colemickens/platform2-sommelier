@@ -5,12 +5,12 @@
 #include "chromiumos-wide-profiling/perf_reader.h"
 
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <algorithm>
 #include <bitset>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <vector>
 
 #include "base/logging.h"
@@ -19,7 +19,6 @@
 #include "chromiumos-wide-profiling/buffer_writer.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/file_reader.h"
-#include "chromiumos-wide-profiling/limits.h"
 #include "chromiumos-wide-profiling/sample_info_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdint.h>
+
 #include <map>
 #include <set>
 #include <string>
@@ -11,7 +13,6 @@
 
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
-#include "chromiumos-wide-profiling/limits.h"
 #include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/perf_test_files.h"
@@ -486,9 +487,9 @@ TEST(PerfParserTest, MmapCoversEntireAddressSpace) {
       .WriteTo(&input);
 
   // PERF_RECORD_MMAP, a kernel mapping that covers the whole space.
-  const uint32_t kKernelMmapPid = kUint32Max;
+  const uint32_t kKernelMmapPid = UINT32_MAX;
   testing::ExampleMmapEvent(
-      kKernelMmapPid, 0, kUint64Max, 0, "[kernel.kallsyms]_text",
+      kKernelMmapPid, 0, UINT64_MAX, 0, "[kernel.kallsyms]_text",
       testing::SampleInfo().Tid(kKernelMmapPid, 0)).WriteTo(&input);
 
   // PERF_RECORD_MMAP, a shared object library.

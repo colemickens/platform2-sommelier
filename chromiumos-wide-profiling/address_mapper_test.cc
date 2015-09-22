@@ -4,13 +4,14 @@
 
 #include "chromiumos-wide-profiling/address_mapper.h"
 
+#include <limits.h>
+
 #include <algorithm>
 #include <memory>
 
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/compat/test.h"
-#include "chromiumos-wide-profiling/limits.h"
 
 namespace quipper {
 
@@ -110,7 +111,7 @@ class AddressMapperTest : public ::testing::Test {
   // and end addresses of the range, as well as a bunch of addresses inside it.
   // Also checks lookup of ID and offset.
   void TestMappedRange(const Range& range, uint64_t expected_mapped_addr) {
-    uint64_t mapped_addr = kUint64Max;
+    uint64_t mapped_addr = UINT64_MAX;
 
     LOG(INFO) << "Testing range at " << std::hex << range.addr
               << " with length of " << std::hex << range.size;
@@ -283,7 +284,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
   // not mapped.
   for (i = 0; i < arraysize(kAddressesNotInRanges); ++i) {
     uint64_t addr = kAddressesNotInRanges[i];
-    uint64_t mapped_addr = kUint64Max;
+    uint64_t mapped_addr = UINT64_MAX;
     bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
     if (kBigRegion.contains(addr)) {
       EXPECT_TRUE(map_success);
@@ -301,7 +302,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
     for (uint64_t addr = range.addr;
          addr < range.addr + range.size;
          addr += range.size / kNumRangeTestIntervals) {
-      uint64_t mapped_addr = kUint64Max;
+      uint64_t mapped_addr = UINT64_MAX;
       bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
       if (kBigRegion.contains(addr)) {
         EXPECT_TRUE(map_success);
@@ -343,7 +344,7 @@ TEST_F(AddressMapperTest, OutOfBounds) {
 // regions over it.
 TEST_F(AddressMapperTest, FullRange) {
   // A huge region that covers all of the available space.
-  const Range kFullRegion(0, kUint64Max, 0xaabbccdd, 0);
+  const Range kFullRegion(0, UINT64_MAX, 0xaabbccdd, 0);
 
   ASSERT_TRUE(MapRange(kFullRegion, false));
   size_t num_expected_ranges = 1;
