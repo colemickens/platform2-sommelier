@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-
 // THIS CODE IS GENERATED.
 
 #include "tpm_manager/common/print_local_data_proto.h"
@@ -54,6 +53,22 @@ std::string GetProtoDebugStringWithIndent(const LocalData& value,
     base::StringAppendF(&output, "%s", value.owner_dependency(i).c_str());
   }
   output += "}\n";
+  if (value.has_endorsement_password()) {
+    output += indent + "  endorsement_password: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.endorsement_password().data(),
+                                        value.endorsement_password().size())
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_lockout_password()) {
+    output += indent + "  lockout_password: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.lockout_password().data(),
+                                        value.lockout_password().size())
+                            .c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }

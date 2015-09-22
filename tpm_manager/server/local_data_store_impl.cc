@@ -28,18 +28,20 @@ using base::FilePath;
 
 namespace tpm_manager {
 
-const char kTpmLocalDataFile[] =
-    "/mnt/stateful_partition/unencrypted/preserve/local_tpm_data";
+const char kTpmLocalDataFile[] = "/var/lib/tpm_manager/local_tpm_data";
 const mode_t kLocalDataPermissions = 0600;
 
 bool LocalDataStoreImpl::Read(LocalData* data) {
   CHECK(data);
-  const int kMask = base::FILE_PERMISSION_OTHERS_MASK;
   FilePath path(kTpmLocalDataFile);
+  if (!base::PathExists(path)) {
+    data->Clear();
+    return true;
+  }
   int permissions = 0;
   if (base::GetPosixFilePermissions(path, &permissions) &&
-      (permissions & kMask) != 0) {
-    base::SetPosixFilePermissions(path, permissions & ~kMask);
+      (permissions & ~kLocalDataPermissions) != 0) {
+    base::SetPosixFilePermissions(path, kLocalDataPermissions);
   }
   std::string file_data;
   if (!ReadFileToString(path, &file_data)) {

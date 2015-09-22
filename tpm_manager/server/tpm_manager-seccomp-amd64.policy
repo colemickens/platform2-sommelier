@@ -48,7 +48,13 @@ open: 1
 read: 1
 write: 1
 close: 1
+access: 1
+rename: 1
+pwrite64: 1
 
+chmod: 1
+fsync: 1
+fdatasync: 1
 fstat: 1
 stat: 1
 lseek: 1
@@ -59,6 +65,7 @@ set_robust_list: 1
 restart_syscall: 1
 exit: 1
 exit_group: 1
+rt_sigaction: 1
 rt_sigreturn: 1
 rt_sigprocmask: 1
 signalfd4: 1
@@ -73,3 +80,4 @@ clone: 1
 # These calls are attempted but apparently not necessary; return EPERM.
 prctl: return 1
 ioctl: return 1
+tgkill: return 1
