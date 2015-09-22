@@ -7,8 +7,11 @@
 #include <base/bind.h>
 #include <chromeos/errors/error.h>
 
-// TODO(zqiu): should put this under a compiler flag.
+#if !defined(__ANDROID__)
 #include "apmanager/permission_broker_dbus_proxy.h"
+#else
+#include "apmanager/firewalld_dbus_proxy.h"
+#endif  // __ANDROID__
 
 using std::string;
 
@@ -24,7 +27,7 @@ FirewallManager::~FirewallManager() {}
 
 void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
   CHECK(!firewall_proxy_) << "Already started";
-  // TODO(zqiu): should put this under a compiler flag.
+#if !defined(__ANDROID__)
   firewall_proxy_.reset(
       new PermissionBrokerDBusProxy(
           bus,
@@ -32,6 +35,15 @@ void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
                      weak_factory_.GetWeakPtr()),
           base::Bind(&FirewallManager::OnFirewallServiceVanished,
                      weak_factory_.GetWeakPtr())));
+#else
+  firewall_proxy_.reset(
+      new FirewalldDBusProxy(
+          bus,
+          base::Bind(&FirewallManager::OnFirewallServiceAppeared,
+                     weak_factory_.GetWeakPtr()),
+          base::Bind(&FirewallManager::OnFirewallServiceVanished,
+                     weak_factory_.GetWeakPtr())));
+#endif  // __ANDROID__
 }
 
 void FirewallManager::RequestDHCPPortAccess(const std::string& interface) {

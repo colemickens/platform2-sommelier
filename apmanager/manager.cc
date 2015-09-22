@@ -5,7 +5,12 @@
 #include "apmanager/manager.h"
 
 #include <base/bind.h>
+
+#if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
+#else
+#include "dbus/apmanager/dbus-constants.h"
+#endif  // __ANDROID__
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;

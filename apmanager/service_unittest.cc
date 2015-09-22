@@ -8,10 +8,15 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/process_mock.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#if !defined(__ANDROID__)
+#include <chromeos/dbus/service_constants.h>
+#else
+#include "dbus/apmanager/dbus-constants.h"
+#endif  // __ANDROID__
 
 #include "apmanager/mock_config.h"
 #include "apmanager/mock_dhcp_server.h"

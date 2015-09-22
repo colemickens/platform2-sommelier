@@ -7,8 +7,13 @@
 #include <signal.h>
 
 #include <base/strings/stringprintf.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
+
+#if !defined(__ANDROID__)
+#include <chromeos/dbus/service_constants.h>
+#else
+#include "dbus/apmanager/dbus-constants.h"
+#endif  // __ANDROID__
 
 #include "apmanager/manager.h"
 
