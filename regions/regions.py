@@ -505,7 +505,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'bn', 'xkb:bn::msa', 'Asia/Brunei', ['ms-BN', 'en-BN'],
         _KML.ANSI, 'Brunei', None, 59),
     Region(
-        'bo', 'xkb:bo::spa', 'America/La_Paz', ['es-BO', 'qu', 'ay'],
+        'bo', 'xkb:latam::spa', 'America/La_Paz', ['es-BO', 'qu', 'ay'],
         _KML.ANSI, 'Bolivia', None, 60),
     Region(
         'bh', 'xkb:bh::ara', 'Asia/Bahrain', ['ar-BH', 'en', 'fa', 'ur'],
@@ -571,7 +571,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'gu', 'xkb:gu::eng', 'Pacific/Guam', ['en-GU', 'ch-GU'],
         _KML.ANSI, 'Guam', None, 81),
     Region(
-        'gt', 'xkb:gt::spa', 'America/Guatemala', 'es-GT', _KML.ANSI,
+        'gt', 'xkb:latam::spa', 'America/Guatemala', 'es-GT', _KML.ANSI,
         'Guatemala', None, 82),
     Region(
         'gs', 'xkb:gs::eng', 'Atlantic/South_Georgia', 'en', _KML.ANSI,
@@ -601,7 +601,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'ga', 'xkb:ga::fra', 'Africa/Libreville', 'fr-GA', _KML.ANSI,
         'Gabon', None, 91),
     Region(
-        'sv', 'xkb:sv::spa', 'America/El_Salvador', 'es-SV', _KML.ANSI,
+        'sv', 'xkb:latam::spa', 'America/El_Salvador', 'es-SV', _KML.ANSI,
         'El Salvador', None, 92),
     Region(
         'gn', 'xkb:gn::fra', 'Africa/Conakry', 'fr-GN', _KML.ANSI,
@@ -639,10 +639,10 @@ UNCONFIRMED_REGIONS_LIST = [
         'hu', ['xkb:us::eng', 'xkb:hu::hun'], 'Europe/Budapest',
         ['hu', 'en-GB'], _KML.ISO, 'Hungary', None, 103),
     Region(
-        'hn', 'xkb:hn::spa', 'America/Tegucigalpa', 'es-HN', _KML.ANSI,
+        'hn', 'xkb:latam::spa', 'America/Tegucigalpa', 'es-HN', _KML.ANSI,
         'Honduras', None, 104),
     Region(
-        've', 'xkb:ve::spa', 'America/Caracas', 'es-VE', _KML.ANSI,
+        've', 'xkb:latam::spa', 'America/Caracas', 'es-VE', _KML.ANSI,
         'Venezuela', None, 105),
     Region(
         'pr', 'xkb:pr::eng', 'America/Puerto_Rico', ['en-PR', 'es-PR'],
@@ -658,13 +658,13 @@ UNCONFIRMED_REGIONS_LIST = [
         'sj', 'xkb:sj::nor', 'Arctic/Longyearbyen', ['no', 'ru'],
         _KML.ANSI, 'Svalbard and Jan Mayen', None, 109),
     Region(
-        'py', 'xkb:py::spa', 'America/Asuncion', ['es-PY', 'gn'],
+        'py', 'xkb:latam::spa', 'America/Asuncion', ['es-PY', 'gn'],
         _KML.ANSI, 'Paraguay', None, 110),
     Region(
         'iq', 'xkb:iq::ara', 'Asia/Baghdad', ['ar-IQ', 'ku', 'hy'],
         _KML.ANSI, 'Iraq', None, 111),
     Region(
-        'pa', 'xkb:pa::spa', 'America/Panama', ['es-PA', 'en'],
+        'pa', 'xkb:latam::spa', 'America/Panama', ['es-PA', 'en'],
         _KML.ANSI, 'Panama', None, 112),
     Region(
         'pf', 'xkb:pf::fra',
@@ -699,7 +699,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'eg', 'xkb:eg::ara', 'Africa/Cairo', ['ar-EG', 'en', 'fr'],
         _KML.ANSI, 'Egypt', None, 122),
     Region(
-        'ec', 'xkb:ec::spa', ['America/Guayaquil', 'Pacific/Galapagos'],
+        'ec', 'xkb:latam::spa', ['America/Guayaquil', 'Pacific/Galapagos'],
         'es-EC', _KML.ANSI, 'Ecuador', None, 123),
     Region(
         'sb', 'xkb:sb::eng', 'Pacific/Guadalcanal', ['en-SB', 'tpi'],
@@ -815,7 +815,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'fo', 'xkb:fo::fao', 'Atlantic/Faroe', ['fo', 'da-FO'],
         _KML.ANSI, 'Faroe Islands', None, 160),
     Region(
-        'ni', 'xkb:ni::spa', 'America/Managua', ['es-NI', 'en'],
+        'ni', 'xkb:latam::spa', 'America/Managua', ['es-NI', 'en'],
         _KML.ANSI, 'Nicaragua', None, 161),
     Region(
         'no', 'xkb:no::nor', 'Europe/Oslo',
@@ -851,7 +851,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'ci', 'xkb:ci::fra', 'Africa/Abidjan', 'fr-CI', _KML.ANSI,
         'Ivory Coast', None, 172),
     Region(
-        'co', 'xkb:co::spa', 'America/Bogota', 'es-CO', _KML.ANSI,
+        'co', 'xkb:latem::spa', 'America/Bogota', 'es-CO', _KML.ANSI,
         'Colombia', None, 173),
     Region(
         'cn', 'xkb:us::eng', 'Asia/Shanghai', 'zh-CN', _KML.ANSI, 'China',
@@ -880,7 +880,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'cx', 'xkb:cx::eng', 'Indian/Christmas', ['en', 'zh', 'ms-CC'],
         _KML.ANSI, 'Christmas Island', None, 182),
     Region(
-        'cr', 'xkb:cr::spa', 'America/Costa_Rica', ['es-CR', 'en'],
+        'cr', 'xkb:latam::spa', 'America/Costa_Rica', ['es-CR', 'en'],
         _KML.ANSI, 'Costa Rica', None, 183),
     Region(
         'cw', 'xkb:cw::nld', 'America/Curacao', ['nl', 'pap'],
@@ -889,7 +889,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'cv', 'xkb:cv::por', 'Atlantic/Cape_Verde', 'pt-CV', _KML.ANSI,
         'Cape Verde', None, 185),
     Region(
-        'cu', 'xkb:cu::spa', 'America/Havana', 'es-CU', _KML.ANSI, 'Cuba',
+        'cu', 'xkb:latam::spa', 'America/Havana', 'es-CU', _KML.ANSI, 'Cuba',
         None, 186),
     Region(
         'sz', 'xkb:sz::eng', 'Africa/Mbabane', ['en-SZ', 'ss-SZ'],
@@ -959,7 +959,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'sd', 'xkb:sd::ara', 'Africa/Khartoum', ['ar-SD', 'en', 'fia'],
         _KML.ANSI, 'Sudan', None, 208),
     Region(
-        'do', 'xkb:do::spa', 'America/Santo_Domingo', 'es-DO',
+        'do', 'xkb:latam::spa', 'America/Santo_Domingo', 'es-DO',
         _KML.ANSI, 'Dominican Republic', None, 209),
     Region(
         'dm', 'xkb:dm::eng', 'America/Dominica', 'en-DM', _KML.ANSI,
