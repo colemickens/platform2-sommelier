@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
+#include <signal.h>
 #include <sysexits.h>
+
+#include <string>
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -86,6 +88,14 @@ int main(int argc, char* argv[]) {
               "return debug error information in web requests");
   DEFINE_bool(ipv6, true, "enable IPv6 support");
   chromeos::FlagHelper::Init(argc, argv, "Brillo web server daemon");
+
+  // From libmicrohttpd documentation, section 1.5 SIGPIPE:
+  // ... portable code using MHD must install a SIGPIPE handler or explicitly
+  // block the SIGPIPE signal.
+  // This also applies to using pipes over D-Bus to pass request/response data
+  // to/from remote request handlers. We handle errors from write operations on
+  // sockets/pipes correctly, so SIGPIPE is just a pest.
+  signal(SIGPIPE, SIG_IGN);
 
   int flags = chromeos::kLogToSyslog;
   if (FLAGS_log_to_stderr)
