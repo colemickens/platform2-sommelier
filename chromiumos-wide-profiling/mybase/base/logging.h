@@ -5,13 +5,12 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_MYBASE_BASE_LOGGING_H_
 #define CHROMIUMOS_WIDE_PROFILING_MYBASE_BASE_LOGGING_H_
 
-#include <errno.h>
-#include <stdint.h>
-#include <string.h>
+#include <errno.h>   // for errno
+#include <string.h>  // for strerror
 
-#include <cstdlib>
 #include <iostream>  // NOLINT(readability/streams)
 #include <sstream>
+#include <string>
 
 #include "base/macros.h"
 
@@ -19,57 +18,108 @@
 
 // LogLevel is an enumeration that holds the log levels like libbase does.
 enum LogLevel {
-  FATAL,
-  ERROR,
   INFO,
   WARNING,
+  ERROR,
+  FATAL,
 };
 
-// Class that emulates logging from libbase. It prints to std::cerr. It features
-// an explicit constructor that must be used to specify the level of the log.
-class LOG {
+namespace logging {
+
+// Sets the log level. Anything at or above this level will be written to the
+// log file/displayed to the user (if applicable). Anything below this level
+// will be silently ignored. The log level defaults to 0 (everything is logged
+// up to level INFO) if this function is not called.
+// Note that log messages for VLOG(x) are logged at level -x, so setting
+// the min log level to negative values enables verbose logging.
+void SetMinLogLevel(int level);
+
+// Gets the current log level.
+int GetMinLogLevel();
+
+// Gets the VLOG verbosity level.
+int GetVlogVerbosity();
+
+// Generic logging class that emulates logging from libbase. Do not use this
+// class directly.
+class LogBase {
  public:
-  explicit LOG(int level) {
-    level_ = level;
-  }
+  virtual ~LogBase() {}
 
-  virtual ~LOG() {
-    PrintAll();
-    if (level_ <= FATAL) {
-      std::exit(EXIT_FAILURE);
-    }
-  }
-
-  template <class T> LOG& operator <<(const T& x) {
+  template <class T> LogBase& operator <<(const T& x) {
     ss_ << x;
     return *this;
   }
 
  protected:
-  virtual void PrintAll() {
-    std::cerr << ss_.str() << std::endl;
+  LogBase(const std::string label, const char* file, int line) {
+    ss_ << "[" << label << ":"<< file << ":" << line << "] ";
   }
 
+  // Accumulates the contents to be printed.
   std::ostringstream ss_;
+};
 
- private:
-  LOG() {}
-  int level_;
+// For general logging.
+class Log : public LogBase {
+ public:
+  Log(LogLevel level, const char* level_str, const char* file, int line)
+      : LogBase(level_str, file, line) {
+    level_ = level;
+  }
+
+  ~Log() {
+    if (level_ >= GetMinLogLevel())
+      std::cerr << ss_.str() << std::endl;
+    if (level_ >= FATAL)
+      exit(EXIT_FAILURE);
+  }
+
+ protected:
+  LogLevel level_;
 };
 
 // Like LOG but appends errno's string description to the logging.
-class PLOG : public LOG {
+class PLog : public Log {
  public:
-  explicit PLOG(int level) : LOG(level), errnum_(errno) {}
+  PLog(LogLevel level, const char* level_str, const char* file, int line)
+      : Log(level, level_str, file, line) {}
 
- protected:
-  void PrintAll() override {
-    std::cerr << ss_.str() << ": " << strerror(errnum_) << std::endl;
+  ~PLog() {
+    if (level_ >= GetMinLogLevel())
+      std::cerr << ss_.str() << ": " << strerror(errnum_) << std::endl;
   }
 
+ private:
   // Cached error value, in case errno changes during this object's lifetime.
   int errnum_;
 };
+
+// Like LOG but conditional upon the logging verbosity level.
+class VLog : public LogBase {
+ public:
+  VLog(int vlog_level, const char* file, int line)
+      : LogBase(std::string("VLOG(") + std::to_string(vlog_level) + ")",
+                file, line),
+        vlog_level_(vlog_level) {}
+
+  ~VLog() {
+    if (vlog_level_ <= GetVlogVerbosity())
+      std::cerr << ss_.str() << std::endl;
+  }
+
+ private:
+  // Logging verbosity level. The logging will be printed if this value is less
+  // than or equal to GetVlogVerbosity().
+  int vlog_level_;
+};
+
+}  // namespace logging
+
+// These macros are for LOG() and related logging commands.
+#define LOG(level) logging::Log(level, #level, __FILE__, __LINE__)
+#define PLOG(level) logging::PLog(level, #level, __FILE__, __LINE__)
+#define VLOG(level) logging::VLog(level, __FILE__, __LINE__)
 
 // Some macros from libbase that we use.
 #define CHECK(x) if (!(x)) LOG(FATAL) << #x
@@ -83,7 +133,6 @@ class PLOG : public LOG {
 #define CHECK_EQ(x, y) if (!(x == y)) LOG(FATAL) << #x << " == " << #y \
                                                  << "failed"
 #define DLOG(x) LOG(x)
-#define VLOG(x) LOG(x)
 #define DCHECK(x) CHECK(x)
 
 #endif  // CHROMIUMOS_WIDE_PROFILING_MYBASE_BASE_LOGGING_H_

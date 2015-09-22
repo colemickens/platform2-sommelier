@@ -39,8 +39,9 @@ bool ParseArguments(int argc, char* argv[], FormatAndFile* input,
   output->format = kDefaultOutputFormat;
   input->filename = kDefaultInputFilename;
   input->format = kDefaultInputFormat;
+
   int opt;
-  while ((opt = getopt(argc, argv, "i:o:I:O:")) != -1) {
+  while ((opt = getopt(argc, argv, "i:o:I:O:v:")) != -1) {
     switch (opt) {
       case 'i': {
         input->filename = optarg;
@@ -58,6 +59,12 @@ bool ParseArguments(int argc, char* argv[], FormatAndFile* input,
         output->format = optarg;
         break;
       }
+      case 'v': {
+        // Negate the verbosity level to match the scale used within
+        // base/logging.h
+        logging::SetMinLogLevel(-atoi(optarg));
+        break;
+      }
       default:
         return false;
     }
@@ -68,11 +75,13 @@ bool ParseArguments(int argc, char* argv[], FormatAndFile* input,
 void PrintUsage() {
   LOG(INFO) << "Usage:";
   LOG(INFO) << "<exe> -i <input filename> -I <input format>"
-            << " -o <output filename> -O <output format>";
+            << " -o <output filename> -O <output format> -v <verbosity level>";
   LOG(INFO) << "Format options are: '" << kPerfFormat << "' for perf.data"
             << " and '" << kProtoTextFormat << "' for proto text.";
   LOG(INFO) << "By default it reads from perf.data and outputs to /dev/stdout"
             << " in proto text format.";
+  LOG(INFO) << "Default verbosity level is 0. Higher values increase verbosity."
+            << " Negative values filter LOG() levels.";
 }
 }  // namespace
 
