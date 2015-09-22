@@ -82,9 +82,8 @@ DefaultProfile::DefaultProfile(ControlInterface* control,
                                const FilePath& storage_path,
                                const string& profile_id,
                                const Manager::Properties& manager_props)
-    : Profile(control, metrics, manager, Identifier(profile_id),
-              FilePath(), true),
-      storage_path_(storage_path),
+    : Profile(
+          control, metrics, manager, Identifier(profile_id), storage_path, true),
       profile_id_(profile_id),
       props_(manager_props),
       random_engine_(time(nullptr)) {
@@ -218,8 +217,8 @@ bool DefaultProfile::UpdateWiFiProvider(const WiFiProvider& wifi_provider) {
 #endif  // DISABLE_WIFI
 
 bool DefaultProfile::GetStoragePath(FilePath* path) {
-  *path = storage_path_.Append(base::StringPrintf("%s.profile",
-                                                  profile_id_.c_str()));
+  *path = storage_path().Append(base::StringPrintf("%s.profile",
+                                                   profile_id_.c_str()));
   return true;
 }
 

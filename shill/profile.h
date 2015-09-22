@@ -214,6 +214,7 @@ class Profile : public base::RefCounted<Profile> {
   Metrics* metrics() const { return metrics_; }
   Manager* manager() const { return manager_; }
   StoreInterface* storage() { return storage_.get(); }
+  const base::FilePath& storage_path() { return storage_path_; }
 
   // Sets |path| to the persistent store file path for a profile identified by
   // |name_|. Returns true on success, and false if unable to determine an
@@ -242,15 +243,13 @@ class Profile : public base::RefCounted<Profile> {
   Metrics* metrics_;
   Manager* manager_;
   ControlInterface* control_interface_;
+  const base::FilePath storage_path_;  // Path to user profile directory.
 
   // Shared with |adaptor_| via public getter.
   PropertyStore store_;
 
   // Properties to be gotten via PropertyStore calls.
   Identifier name_;
-
-  // Path to user profile directory.
-  const base::FilePath storage_path_;
 
   // Allows this profile to be backed with on-disk storage.
   std::unique_ptr<StoreInterface> storage_;

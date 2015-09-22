@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
@@ -101,7 +100,6 @@ class DefaultProfile : public Profile {
   static const char kStoragePortalURL[];
   static const char kStorageProhibitedTechnologies[];
 
-  const base::FilePath storage_path_;
   const std::string profile_id_;
   const Manager::Properties& props_;
   std::default_random_engine random_engine_;

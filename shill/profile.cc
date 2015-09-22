@@ -57,8 +57,8 @@ Profile::Profile(ControlInterface* control_interface,
     : metrics_(metrics),
       manager_(manager),
       control_interface_(control_interface),
-      name_(name),
-      storage_path_(user_storage_directory) {
+      storage_path_(user_storage_directory),
+      name_(name) {
   if (connect_to_rpc)
     adaptor_.reset(control_interface->CreateProfileAdaptor(this));
 
