@@ -727,9 +727,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
     } else {
       VLOG(3) << "All replies for NL dump message "
               << PendingDumpSequenceNumber() << " received";
-      MessageLoopProxy::current()->PostTask(
-          FROM_HERE, Bind(&NetlinkManager::OnPendingDumpComplete,
-                          weak_ptr_factory_.GetWeakPtr()));
+      OnPendingDumpComplete();
     }
   }
 
@@ -798,9 +796,7 @@ void NetlinkManager::ResendPendingDumpMessage() {
     ErrorAckMessage err_message(pending_messages_.front().last_received_error);
     CallErrorHandler(PendingDumpSequenceNumber(), kErrorFromKernel,
                      &err_message);
-    MessageLoopProxy::current()->PostTask(
-        FROM_HERE, Bind(&NetlinkManager::OnPendingDumpComplete,
-                        weak_ptr_factory_.GetWeakPtr()));
+    OnPendingDumpComplete();
   }
 }
 

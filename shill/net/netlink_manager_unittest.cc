@@ -30,7 +30,6 @@
 
 #include <base/strings/stringprintf.h>
 #include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -890,7 +889,6 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   EXPECT_CALL(auxilliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnNlMessageReceived(&received_message_1_pt2);
-  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_2_seq_num,
@@ -901,7 +899,6 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   EXPECT_CALL(response_handler, OnNetlinkMessage(_));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).Times(0);
   netlink_manager_->OnNlMessageReceived(&received_message_2);
-  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(netlink_manager_->IsDumpPending());
   EXPECT_TRUE(netlink_manager_->pending_messages_.empty());
   EXPECT_EQ(0, netlink_manager_->PendingDumpSequenceNumber());
@@ -1043,7 +1040,6 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
               OnErrorHandler(NetlinkManager::kErrorFromKernel, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnNlMessageReceived(&received_ebusy_message);
-  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_2_seq_num,
@@ -1065,7 +1061,6 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   // Trigger this manually instead of via message loop since it is posted as a
   // delayed task, which base::RunLoop().RunUntilIdle() will not dispatch.
   netlink_manager_->ResendPendingDumpMessage();
-  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(netlink_manager_->IsDumpPending());
   EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
   EXPECT_TRUE(netlink_manager_->pending_messages_.empty());
