@@ -76,9 +76,7 @@ ChromeosSupplicantNetworkProxy::ChromeosSupplicantNetworkProxy(
   properties_->GetAll();
 }
 
-ChromeosSupplicantNetworkProxy::~ChromeosSupplicantNetworkProxy() {
-  network_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
-}
+ChromeosSupplicantNetworkProxy::~ChromeosSupplicantNetworkProxy() {}
 
 bool ChromeosSupplicantNetworkProxy::SetEnabled(bool enabled) {
   SLOG(&network_proxy_->GetObjectPath(), 2) << __func__;

@@ -81,9 +81,7 @@ ChromeosWiMaxNetworkProxy::ChromeosWiMaxNetworkProxy(
 }
 
 
-ChromeosWiMaxNetworkProxy::~ChromeosWiMaxNetworkProxy() {
-  proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
-}
+ChromeosWiMaxNetworkProxy::~ChromeosWiMaxNetworkProxy() {}
 
 RpcIdentifier ChromeosWiMaxNetworkProxy::path() const {
   return proxy_->GetObjectPath().value();

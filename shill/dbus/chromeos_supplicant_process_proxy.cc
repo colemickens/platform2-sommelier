@@ -112,9 +112,7 @@ ChromeosSupplicantProcessProxy::ChromeosSupplicantProcessProxy(
                  weak_factory_.GetWeakPtr()));
 }
 
-ChromeosSupplicantProcessProxy::~ChromeosSupplicantProcessProxy() {
-  supplicant_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
-}
+ChromeosSupplicantProcessProxy::~ChromeosSupplicantProcessProxy() {}
 
 bool ChromeosSupplicantProcessProxy::CreateInterface(
     const KeyValueStore& args, string* rpc_identifier) {
