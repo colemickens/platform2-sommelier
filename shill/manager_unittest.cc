@@ -216,12 +216,8 @@ class ManagerTest : public PropertyStoreTest {
     std::unique_ptr<FakeStore> storage(new FakeStore());
     if (!storage->Open())
       return nullptr;
-    Profile* profile(new Profile(control_interface(),
-                                 metrics(),
-                                 manager,
-                                 id,
-                                 "",
-                                 false));
+    Profile* profile(new Profile(
+        control_interface(), metrics(), manager, id, FilePath(), false));
     profile->set_storage(storage.release());  // Passes ownership of "storage".
     return profile;  // Passes ownership of "profile".
   }
@@ -828,8 +824,8 @@ TEST_F(ManagerTest, MoveService) {
   // Inject an actual profile, backed by a fake StoreInterface
   {
     Profile::Identifier id("irrelevant");
-    ProfileRefPtr profile(
-        new Profile(control_interface(), metrics(), &manager, id, "", false));
+    ProfileRefPtr profile(new Profile(
+        control_interface(), metrics(), &manager, id, FilePath(), false));
     MockStore* storage = new MockStore;
     EXPECT_CALL(*storage, ContainsGroup(s2->GetStorageIdentifier()))
         .WillRepeatedly(Return(true));

@@ -38,7 +38,8 @@ const char EphemeralProfile::kFriendlyName[] = "(ephemeral)";
 EphemeralProfile::EphemeralProfile(ControlInterface* control_interface,
                                    Metrics* metrics,
                                    Manager* manager)
-    : Profile(control_interface, metrics, manager, Identifier(), "", false) {
+    : Profile(control_interface, metrics, manager, Identifier(),
+              base::FilePath(), false) {
 }
 
 EphemeralProfile::~EphemeralProfile() {}

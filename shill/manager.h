@@ -743,7 +743,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   EventDispatcher* dispatcher_;
   const base::FilePath run_path_;
   const base::FilePath storage_path_;
-  const std::string user_storage_path_;
+  const base::FilePath user_storage_path_;
   base::FilePath user_profile_list_path_;  // Changed in tests.
   std::unique_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;

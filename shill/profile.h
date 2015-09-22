@@ -75,7 +75,7 @@ class Profile : public base::RefCounted<Profile> {
           Metrics* metrics,
           Manager* manager,
           const Identifier& name,
-          const std::string& user_storage_directory,
+          const base::FilePath& user_storage_directory,
           bool connect_to_rpc);
 
   virtual ~Profile();

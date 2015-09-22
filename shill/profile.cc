@@ -52,7 +52,7 @@ Profile::Profile(ControlInterface* control_interface,
                  Metrics* metrics,
                  Manager* manager,
                  const Identifier& name,
-                 const string& user_storage_directory,
+                 const base::FilePath& user_storage_directory,
                  bool connect_to_rpc)
     : metrics_(metrics),
       manager_(manager),
