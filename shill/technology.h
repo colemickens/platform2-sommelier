@@ -41,7 +41,6 @@ class Technology {
     kLoopback,
     kCDCEthernet,  // Only for internal use in DeviceInfo.
     kVirtioEthernet,  // Only for internal use in DeviceInfo.
-    kNoDeviceSymlink,  // Only for internal use in DeviceInfo.
     kPPP,
     kPPPoE,
     kUnknown,

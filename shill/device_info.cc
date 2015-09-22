@@ -248,7 +248,6 @@ bool DeviceInfo::GetDeviceInfoContents(const string& iface_name,
   return base::ReadFileToString(GetDeviceInfoPath(iface_name, path_name),
                                 contents_out);
 }
-
 bool DeviceInfo::GetDeviceInfoSymbolicLink(const string& iface_name,
                                            const string& path_name,
                                            FilePath* path_out) {
@@ -337,7 +336,19 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     }
 
     // We don't know what sort of device it is.
-    return Technology::kNoDeviceSymlink;
+    if (manager_->ignore_unknown_ethernet()) {
+      SLOG(this, 2) << StringPrintf("%s: device %s, without driver name "
+                                    "will be ignored",
+                                    __func__, iface_name.c_str());
+      return Technology::kUnknown;
+    } else {
+      // Act the same as if there was a driver symlink, but we did not
+      // recognize the driver name.
+      SLOG(this, 2) << StringPrintf("%s: device %s, without driver name "
+                                    "is defaulted to type ethernet",
+                                    __func__, iface_name.c_str());
+      return Technology::kEthernet;
+    }
   }
 
   string driver_name(driver_path.BaseName().value());
@@ -549,11 +560,6 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
       // device and create and register a Cellular device.  In either
       // case, we should delay creating a Device until we can make a
       // better determination of what type this Device should be.
-    case Technology::kNoDeviceSymlink:  // FALLTHROUGH
-      // The same is true for devices that do not report a device
-      // symlink.  It has been observed that tunnel devices may not
-      // immediately contain a tun_flags component in their
-      // /sys/class/net entry.
       LOG(INFO) << "Delaying creation of device for " << link_name
                 << " at index " << interface_index;
       DelayDeviceCreation(interface_index);
@@ -623,8 +629,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
       SLOG(this, 2) << "link index " << dev_index << " address "
                     << infos_[dev_index].mac_address.HexEncode();
     } else if (technology != Technology::kTunnel &&
-               technology != Technology::kPPP &&
-               technology != Technology::kNoDeviceSymlink) {
+               technology != Technology::kPPP) {
       LOG(ERROR) << "Add Link message for link '" << link_name
                  << "' does not have IFLA_ADDRESS!";
       return;
@@ -1093,31 +1098,14 @@ void DeviceInfo::DelayedDeviceCreationTask() {
       LOG(INFO) << "In " << __func__ << ": device " << link_name
                 << " is now assumed to be regular Ethernet.";
       technology = Technology::kEthernet;
-    } else if (technology == Technology::kNoDeviceSymlink) {
-      if (manager_->ignore_unknown_ethernet()) {
-        SLOG(this, 2) << StringPrintf("%s: device %s, without driver name "
-                                      "will be ignored",
-                                      __func__, link_name.c_str());
-        technology = Technology::kUnknown;
-      } else {
-        // Act the same as if there was a driver symlink, but we did not
-        // recognize the driver name.
-        SLOG(this, 2) << StringPrintf("%s: device %s, without driver name "
-                                      "is defaulted to type ethernet",
-                                      __func__, link_name.c_str());
-        technology = Technology::kEthernet;
-      }
-    } else if (technology != Technology::kCellular &&
-               technology != Technology::kTunnel) {
+    } else if (technology != Technology::kCellular) {
       LOG(WARNING) << "In " << __func__ << ": device " << link_name
                    << " is unexpected technology "
                    << Technology::NameFromIdentifier(technology);
     }
     string address =
         base::StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
-
-    if (technology != Technology::kTunnel)
-      DCHECK(!address.empty());
+    DCHECK(!address.empty());
 
     DeviceRefPtr device = CreateDevice(link_name, address, dev_index,
                                        technology);
