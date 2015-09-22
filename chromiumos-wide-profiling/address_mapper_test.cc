@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "base/logging.h"
+#include "base/macros.h"
 
 #include "chromiumos-wide-profiling/compat/test.h"
 
@@ -140,9 +141,8 @@ class AddressMapperTest : public ::testing::Test {
 
 // Map one range at a time and test looking up addresses.
 TEST_F(AddressMapperTest, MapSingle) {
-  for (unsigned int i = 0; i < arraysize(kMapRanges); ++i) {
+  for (const Range& range : kMapRanges) {
     mapper_.reset(new AddressMapper);
-    const Range& range = kMapRanges[i];
     ASSERT_TRUE(MapRange(range, false));
     EXPECT_EQ(1U, mapper_->GetNumMappedRanges());
     TestMappedRange(range, 0);
@@ -161,11 +161,10 @@ TEST_F(AddressMapperTest, MapSingle) {
 
 // Map all the ranges at once and test looking up addresses.
 TEST_F(AddressMapperTest, MapAll) {
-  unsigned int i;
   uint64_t size_mapped = 0;
-  for (i = 0; i < arraysize(kMapRanges); ++i) {
-    ASSERT_TRUE(MapRange(kMapRanges[i], false));
-    size_mapped += kMapRanges[i].size;
+  for (const Range& range : kMapRanges) {
+    ASSERT_TRUE(MapRange(range, false));
+    size_mapped += range.size;
   }
   EXPECT_EQ(arraysize(kMapRanges), mapper_->GetNumMappedRanges());
 
@@ -175,8 +174,7 @@ TEST_F(AddressMapperTest, MapAll) {
   // For each mapped range, test addresses at the start, middle, and end.
   // Also test the address right before and after each range.
   uint64_t mapped_addr;
-  for (i = 0; i < arraysize(kMapRanges); ++i) {
-    const Range& range = kMapRanges[i];
+  for (const Range& range : kMapRanges) {
     TestMappedRange(range,
                     GetMappedAddressFromRanges(kMapRanges,
                                                arraysize(kMapRanges),
@@ -193,31 +191,22 @@ TEST_F(AddressMapperTest, MapAll) {
 
   // Test some addresses that are out of these ranges, should not be able to
   // get mapped addresses.
-  for (i = 0; i < arraysize(kAddressesNotInRanges); ++i) {
-    EXPECT_FALSE(mapper_->GetMappedAddress(kAddressesNotInRanges[i],
-                 &mapped_addr));
-  }
+  for (uint64_t addr : kAddressesNotInRanges)
+    EXPECT_FALSE(mapper_->GetMappedAddress(addr, &mapped_addr));
 }
 
 // Map all the ranges at once and test looking up IDs and offsets.
 TEST_F(AddressMapperTest, MapAllWithIDsAndOffsets) {
-  unsigned int i;
-  for (i = 0; i < arraysize(kMapRanges); ++i) {
-    const Range& range = kMapRanges[i];
+  for (const Range& range : kMapRanges) {
     LOG(INFO) << "Mapping range at " << std::hex << range.addr
               << " with length of " << std::hex << range.size;
-    ASSERT_TRUE(mapper_->MapWithID(kMapRanges[i].addr,
-                                   kMapRanges[i].size,
-                                   kMapRanges[i].id,
-                                   0,
-                                   false));
+    ASSERT_TRUE(mapper_->MapWithID(range.addr, range.size, range.id, 0, false));
   }
   EXPECT_EQ(arraysize(kMapRanges), mapper_->GetNumMappedRanges());
 
   // For each mapped range, test addresses at the start, middle, and end.
   // Also test the address right before and after each range.
-  for (i = 0; i < arraysize(kMapRanges); ++i) {
-    const Range& range = kMapRanges[i];
+  for (const Range& range : kMapRanges) {
     TestMappedRange(range,
                     GetMappedAddressFromRanges(kMapRanges,
                                                arraysize(kMapRanges),
@@ -227,36 +216,35 @@ TEST_F(AddressMapperTest, MapAllWithIDsAndOffsets) {
 
 // Test overlap detection.
 TEST_F(AddressMapperTest, OverlapSimple) {
-  unsigned int i;
   // Map all the ranges first.
-  for (i = 0; i < arraysize(kMapRanges); ++i)
-    ASSERT_TRUE(MapRange(kMapRanges[i], false));
+  for (const Range& range : kMapRanges)
+    ASSERT_TRUE(MapRange(range, false));
 
   // Attempt to re-map each range, but offset by size / 2.
-  for (i = 0; i < arraysize(kMapRanges); ++i) {
-    Range range;
-    range.addr = kMapRanges[i].addr + kMapRanges[i].size / 2;
-    range.size = kMapRanges[i].size;
+  for (const Range& range : kMapRanges) {
+    Range new_range;
+    new_range.addr = range.addr + range.size / 2;
+    new_range.size = range.size;
     // The maps should fail because of overlap with an existing mapping.
-    EXPECT_FALSE(MapRange(range, false));
+    EXPECT_FALSE(MapRange(new_range, false));
   }
 
   // Re-map each range with the same offset.  Only this time, remove any old
   // mapped range that overlaps with it.
-  for (i = 0; i < arraysize(kMapRanges); ++i) {
-    Range range;
-    range.addr = kMapRanges[i].addr + kMapRanges[i].size / 2;
-    range.size = kMapRanges[i].size;
-    EXPECT_TRUE(MapRange(range, true));
+  for (const Range& range : kMapRanges) {
+    Range new_range;
+    new_range.addr = range.addr + range.size / 2;
+    new_range.size = range.size;
+    EXPECT_TRUE(MapRange(new_range, true));
     // Make sure the number of ranges is unchanged (one deleted, one added).
     EXPECT_EQ(arraysize(kMapRanges), mapper_->GetNumMappedRanges());
 
     // The range is shifted in real space but should still be the same in
     // quipper space.
-    TestMappedRange(range,
+    TestMappedRange(new_range,
                     GetMappedAddressFromRanges(kMapRanges,
                                                arraysize(kMapRanges),
-                                               kMapRanges[i].addr));
+                                               range.addr));
   }
 }
 
@@ -265,10 +253,9 @@ TEST_F(AddressMapperTest, OverlapBig) {
   // A huge region that overlaps with all ranges in |kMapRanges|.
   const Range kBigRegion(0xa00, 0xff000000, 0x1234, 0);
 
-  unsigned int i;
   // Map all the ranges first.
-  for (i = 0; i < arraysize(kMapRanges); ++i)
-    ASSERT_TRUE(MapRange(kMapRanges[i], false));
+  for (const Range& range : kMapRanges)
+    ASSERT_TRUE(MapRange(range, false));
 
   // Make sure overlap is detected before removing old ranges.
   ASSERT_FALSE(MapRange(kBigRegion, false));
@@ -280,8 +267,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
   // Given the list of previously unmapped addresses, test that the ones within
   // |kBigRegion| are now mapped; for the ones that are not, test that they are
   // not mapped.
-  for (i = 0; i < arraysize(kAddressesNotInRanges); ++i) {
-    uint64_t addr = kAddressesNotInRanges[i];
+  for (uint64_t addr : kAddressesNotInRanges) {
     uint64_t mapped_addr = UINT64_MAX;
     bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
     if (kBigRegion.contains(addr)) {
@@ -295,8 +281,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
   // Check that addresses in the originally mapped ranges no longer map to the
   // same addresses if they fall within |kBigRegion|, and don't map at all if
   // they are not within |kBigRegion|.
-  for (i = 0; i < arraysize(kMapRanges); ++i) {
-    const Range& range = kMapRanges[i];
+  for (const Range& range : kMapRanges) {
     for (uint64_t addr = range.addr;
          addr < range.addr + range.size;
          addr += range.size / kNumRangeTestIntervals) {
@@ -351,8 +336,7 @@ TEST_F(AddressMapperTest, FullRange) {
   TestMappedRange(kFullRegion, 0);
 
   // Map some smaller ranges.
-  for (size_t i = 0; i < arraysize(kMapRanges); ++i) {
-    const Range& range = kMapRanges[i];
+  for (const Range& range : kMapRanges) {
     // Check for collision first.
     ASSERT_FALSE(MapRange(range, false));
     ASSERT_TRUE(MapRange(range, true));

@@ -71,10 +71,7 @@ TEST(PerfParserTest, Test1Cycle) {
   ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataFiles);
-       ++i) {
-    const string test_file = perf_test_files::kPerfDataFiles[i];
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
@@ -105,10 +102,7 @@ TEST(PerfParserTest, TestNormalProcessing) {
   ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataFiles);
-       ++i) {
-    const string test_file = perf_test_files::kPerfDataFiles[i];
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
@@ -133,11 +127,8 @@ TEST(PerfParserTest, TestNormalProcessing) {
 }
 
 TEST(PerfParserTest, TestPipedProcessing) {
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfPipedDataFiles);
-       ++i) {
-    string input_perf_data =
-        GetTestInputFilePath(perf_test_files::kPerfPipedDataFiles[i]);
+  for (const char* test_file : perf_test_files::kPerfPipedDataFiles) {
+    string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
     PerfParser parser(GetTestOptions());

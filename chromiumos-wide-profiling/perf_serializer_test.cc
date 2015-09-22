@@ -10,6 +10,7 @@
 #include <string>
 
 #include "base/logging.h"
+#include "base/macros.h"
 
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
@@ -105,8 +106,7 @@ void SerializeAndDeserialize(const string& input,
   EXPECT_EQ(do_remap, out_stats.did_remap);
 }
 
-void SerializeToFileAndBack(const string& input,
-                            const string& output) {
+void SerializeToFileAndBack(const string& input, const string& output) {
   struct timeval pre_serialize_time;
   gettimeofday(&pre_serialize_time, NULL);
 
@@ -177,14 +177,11 @@ TEST(PerfSerializerTest, Test1Cycle) {
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   // TODO(sque): test exact number of events after discarding unused events.
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataFiles);
-       ++i) {
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
     PerfReader input_perf_reader, output_perf_reader, output_perf_reader1,
                output_perf_reader2;
     PerfDataProto perf_data_proto, perf_data_proto1;
 
-    const char* test_file = perf_test_files::kPerfDataFiles[i];
     string input_perf_data = GetTestInputFilePath(test_file);
     string output_perf_data = output_path + test_file + ".serialized.out";
     string output_perf_data1 = output_path + test_file + ".serialized.1.out";
@@ -238,20 +235,14 @@ TEST(PerfSerializerTest, TestRemap) {
   // Read perf data using the PerfReader class with address remapping.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataFiles);
-       ++i) {
-    const string test_file = perf_test_files::kPerfDataFiles[i];
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     const string output_perf_data = output_path + test_file + ".ser.remap.out";
     SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
 
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfPipedDataFiles);
-       ++i) {
-    const string test_file = perf_test_files::kPerfPipedDataFiles[i];
+  for (const char* test_file : perf_test_files::kPerfPipedDataFiles) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     const string output_perf_data = output_path + test_file + ".ser.remap.out";
@@ -266,10 +257,7 @@ TEST(PerfSerializeTest, TestCommMd5s) {
 
   // Replace command strings with their Md5sums.  Test size adjustment for
   // command strings.
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataFiles);
-       ++i) {
-    const string test_file = perf_test_files::kPerfDataFiles[i];
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing COMM Md5sum for " << input_perf_data;
 
@@ -310,10 +298,7 @@ TEST(PerfSerializeTest, TestMmapMd5s) {
 
   // Replace MMAP filename strings with their Md5sums.  Test size adjustment for
   // MMAP filename strings.
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataFiles);
-       ++i) {
-    const string test_file = perf_test_files::kPerfDataFiles[i];
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing MMAP Md5sum for " << input_perf_data;
 
@@ -349,11 +334,8 @@ TEST(PerfSerializeTest, TestMmapMd5s) {
 }
 
 TEST(PerfSerializerTest, TestProtoFiles) {
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataProtoFiles);
-       ++i) {
-    string perf_data_proto_file =
-        GetTestInputFilePath(perf_test_files::kPerfDataProtoFiles[i]);
+  for (const char* test_file : perf_test_files::kPerfDataProtoFiles) {
+    string perf_data_proto_file = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << perf_data_proto_file;
     std::vector<char> data;
     ASSERT_TRUE(FileToBuffer(perf_data_proto_file, &data));
@@ -370,11 +352,8 @@ TEST(PerfSerializerTest, TestProtoFiles) {
 }
 
 TEST(PerfSerializerTest, TestBuildIDs) {
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataProtoFiles);
-       ++i) {
-    string perf_data_file =
-        GetTestInputFilePath(perf_test_files::kPerfDataFiles[i]);
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
+    string perf_data_file = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << perf_data_file;
 
     // Serialize into a protobuf.

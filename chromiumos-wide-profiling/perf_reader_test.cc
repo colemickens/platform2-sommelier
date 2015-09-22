@@ -73,8 +73,8 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
 
   ASSERT_FALSE(filenames.empty());
   CheckNoDuplicates(filenames);
-  for (size_t i = 0; i < arraysize(kExpectedFilenameSubstrings); ++i)
-    CheckForElementWithSubstring(kExpectedFilenameSubstrings[i], filenames);
+  for (const char* substring : kExpectedFilenameSubstrings)
+    CheckForElementWithSubstring(substring, filenames);
 
   std::set<string> filename_set;
   reader->GetFilenamesAsSet(&filename_set);
