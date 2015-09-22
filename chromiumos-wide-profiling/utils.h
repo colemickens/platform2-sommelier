@@ -6,9 +6,11 @@
 #define CHROMIUMOS_WIDE_PROFILING_UTILS_H_
 
 #include <byteswap.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>  // for free()
 
+#include <bitset>
 #include <memory>
 #include <string>
 #include <vector>
@@ -86,6 +88,12 @@ T MaybeSwap(T value, bool swap) {
   if (swap)
     ByteSwap(&value);
   return value;
+}
+
+// Returns the number of bits in a numerical value.
+template <typename T>
+size_t GetNumBits(const T& value) {
+  return std::bitset<sizeof(T) * CHAR_BIT>(value).count();
 }
 
 uint64_t Md5Prefix(const string& input);

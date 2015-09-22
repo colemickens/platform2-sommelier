@@ -664,9 +664,8 @@ bool PerfSerializer::DeserializeCommSample(
   uint64_t sample_fields =
       SampleInfoReader::GetSampleFieldsForEventType(comm.header.type,
                                                     sample_type_);
-  std::bitset<sizeof(sample_fields) * CHAR_BIT> sample_type_bits(sample_fields);
   comm.header.size = SampleInfoReader::GetPerfSampleDataOffset(*event) +
-                     sample_type_bits.count() * sizeof(uint64_t);
+                     GetNumBits(sample_fields) * sizeof(uint64_t);
 
   return DeserializeSampleInfo(sample.sample_info(), event);
 }

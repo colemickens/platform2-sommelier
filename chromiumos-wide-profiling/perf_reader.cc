@@ -60,13 +60,6 @@ const uint32_t kSupportedMetadataMask =
 // By default, the build ID event has PID = -1.
 const uint32_t kDefaultBuildIDEventPid = static_cast<uint32_t>(-1);
 
-// Returns the number of bits in a numerical value.
-template <typename T>
-size_t GetNumBits(const T& value) {
-  std::bitset<sizeof(T) * CHAR_BIT> bits(value);
-  return bits.count();
-}
-
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
   return num_bytes * 8;
