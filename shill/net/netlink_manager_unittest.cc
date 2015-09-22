@@ -1020,6 +1020,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   netlink_manager_->OnNlMessageReceived(&received_ebusy_message);
   // Cancel timeout callback before attempting resend.
   EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_FALSE(netlink_manager_->resend_dump_message_callback_.IsCancelled());
   // Trigger this manually instead of via message loop since it is posted as a
   // delayed task, which base::RunLoop().RunUntilIdle() will not dispatch.
   netlink_manager_->ResendPendingDumpMessage();
@@ -1058,11 +1059,13 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   netlink_manager_->OnNlMessageReceived(&received_ebusy_message);
   // Cancel timeout callback before attempting resend.
   EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_FALSE(netlink_manager_->resend_dump_message_callback_.IsCancelled());
   // Trigger this manually instead of via message loop since it is posted as a
   // delayed task, which base::RunLoop().RunUntilIdle() will not dispatch.
   netlink_manager_->ResendPendingDumpMessage();
   EXPECT_FALSE(netlink_manager_->IsDumpPending());
   EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->resend_dump_message_callback_.IsCancelled());
   EXPECT_TRUE(netlink_manager_->pending_messages_.empty());
 
   // Put the state of the singleton back where it was.

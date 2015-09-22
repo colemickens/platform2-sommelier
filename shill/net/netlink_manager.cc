@@ -205,6 +205,7 @@ void NetlinkManager::Reset(bool full) {
     pending_messages_.pop();
   }
   pending_dump_timeout_callback_.Cancel();
+  resend_dump_message_callback_.Cancel();
   dump_pending_ = false;
   if (full) {
     sock_.reset();
@@ -603,6 +604,7 @@ void NetlinkManager::OnPendingDumpComplete() {
   VLOG(3) << __func__;
   dump_pending_ = false;
   pending_dump_timeout_callback_.Cancel();
+  resend_dump_message_callback_.Cancel();
   pending_messages_.pop();
   if (!pending_messages_.empty()) {
     VLOG(3) << "Sending next pending message";
@@ -713,20 +715,24 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
     // Dump currently in progress, this message's sequence number matches that
     // of the pending dump request, and we are not in the middle of receiving a
     // multi-part reply.
-    if (is_error_ack_message && (error_code == static_cast<uint32_t>(-EBUSY)) &&
-        pending_messages_.front().retries_left) {
-      VLOG(3) << "Resending NL message " << PendingDumpSequenceNumber();
-      pending_messages_.front().last_received_error = error_code;
-      pending_dump_timeout_callback_.Cancel();
-      MessageLoopProxy::current()->PostDelayedTask(
-          FROM_HERE, Bind(&NetlinkManager::ResendPendingDumpMessage,
-                          weak_ptr_factory_.GetWeakPtr()),
-          base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));
-      // Since we will resend the message, do not invoke error handler.
-      return;
+    if (is_error_ack_message && (error_code == static_cast<uint32_t>(-EBUSY))) {
+      VLOG(3) << "EBUSY reply received for NL dump message "
+              << PendingDumpSequenceNumber();
+      if (pending_messages_.front().retries_left) {
+        pending_messages_.front().last_received_error = error_code;
+        pending_dump_timeout_callback_.Cancel();
+        ResendPendingDumpMessageAfterDelay();
+        // Since we will resend the message, do not invoke error handler.
+        return;
+      } else {
+        VLOG(3) << "No more resend attempts left for NL dump message "
+                << PendingDumpSequenceNumber() << " -- stop waiting "
+                                                  "for replies";
+        OnPendingDumpComplete();
+      }
     } else {
-      VLOG(3) << "All replies for NL dump message "
-              << PendingDumpSequenceNumber() << " received";
+      VLOG(3) << "Reply received for NL dump message "
+              << PendingDumpSequenceNumber() << " -- stop waiting for replies";
       OnPendingDumpComplete();
     }
   }
@@ -780,6 +786,10 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
 }
 
 void NetlinkManager::ResendPendingDumpMessage() {
+  if (!IsDumpPending()) {
+    VLOG(3) << "No pending dump, so do not resend dump message";
+    return;
+  }
   --pending_messages_.front().retries_left;
   if (SendMessageInternal(pending_messages_.front())) {
     VLOG(3) << "NL message " << PendingDumpSequenceNumber()
@@ -788,11 +798,11 @@ void NetlinkManager::ResendPendingDumpMessage() {
   }
   VLOG(3) << "Failed to resend NL message " << PendingDumpSequenceNumber();
   if (pending_messages_.front().retries_left) {
-    MessageLoopProxy::current()->PostDelayedTask(
-        FROM_HERE, Bind(&NetlinkManager::ResendPendingDumpMessage,
-                        weak_ptr_factory_.GetWeakPtr()),
-        base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));
+    ResendPendingDumpMessageAfterDelay();
   } else {
+    VLOG(3) << "No more resend attempts left for NL dump message "
+            << PendingDumpSequenceNumber() << " -- stop waiting "
+                                              "for replies";
     ErrorAckMessage err_message(pending_messages_.front().last_received_error);
     CallErrorHandler(PendingDumpSequenceNumber(), kErrorFromKernel,
                      &err_message);
@@ -818,5 +828,15 @@ void NetlinkManager::OnReadError(const string& error_msg) {
              << error_msg;
 }
 
+void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
+  VLOG(3) << "Resending NL dump message " << PendingDumpSequenceNumber()
+          << " after " << kNlMessageRetryDelayMilliseconds << " ms";
+  resend_dump_message_callback_.Reset(
+      Bind(&NetlinkManager::ResendPendingDumpMessage,
+           weak_ptr_factory_.GetWeakPtr()));
+  MessageLoopProxy::current()->PostDelayedTask(
+      FROM_HERE, resend_dump_message_callback_.callback(),
+      base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));
+}
 
 }  // namespace shill.

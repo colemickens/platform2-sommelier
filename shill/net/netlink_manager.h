@@ -365,6 +365,11 @@ class SHILL_EXPORT NetlinkManager {
   // Called by InputHandler on exceptional events.
   void OnReadError(const std::string& error_msg);
 
+  // Utility function that posts a task to the message loop to call
+  // NetlinkManager::ResendPendingDumpMessage kNlMessageRetryDelayMilliseconds
+  // from now.
+  void ResendPendingDumpMessageAfterDelay();
+
   // Just for tests, this method turns off WiFi and clears the subscribed
   // events list. If |full| is true, also clears state set by Init.
   void Reset(bool full);
@@ -430,6 +435,7 @@ class SHILL_EXPORT NetlinkManager {
 
   base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
   base::CancelableClosure pending_dump_timeout_callback_;
+  base::CancelableClosure resend_dump_message_callback_;
   base::Callback<void(InputData*)> dispatcher_callback_;
   std::unique_ptr<IOHandler> dispatcher_handler_;
 
