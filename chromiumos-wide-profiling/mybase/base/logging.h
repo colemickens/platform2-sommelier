@@ -5,7 +5,9 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_MYBASE_BASE_LOGGING_H_
 #define CHROMIUMOS_WIDE_PROFILING_MYBASE_BASE_LOGGING_H_
 
+#include <errno.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <cstdlib>
 #include <iostream>  // NOLINT(readability/streams)
@@ -31,8 +33,8 @@ class LOG {
     level_ = level;
   }
 
-  ~LOG() {
-    std::cerr << ss_.str() << std::endl;
+  virtual ~LOG() {
+    PrintAll();
     if (level_ <= FATAL) {
       std::exit(EXIT_FAILURE);
     }
@@ -43,10 +45,30 @@ class LOG {
     return *this;
   }
 
+ protected:
+  virtual void PrintAll() {
+    std::cerr << ss_.str() << std::endl;
+  }
+
+  std::ostringstream ss_;
+
  private:
   LOG() {}
-  std::ostringstream ss_;
   int level_;
+};
+
+// Like LOG but appends errno's string description to the logging.
+class PLOG : public LOG {
+ public:
+  explicit PLOG(int level) : LOG(level), errnum_(errno) {}
+
+ protected:
+  void PrintAll() override {
+    std::cerr << ss_.str() << ": " << strerror(errnum_) << std::endl;
+  }
+
+  // Cached error value, in case errno changes during this object's lifetime.
+  int errnum_;
 };
 
 // Some macros from libbase that we use.

@@ -275,7 +275,7 @@ struct perf_sample {
 };
 
 // Taken from tools/perf/util/include/linux/kernel.h
-#define ALIGN(x,a)		__ALIGN_MASK(x,(typeof(x))(a)-1)
+#define ALIGN(x,a)		__ALIGN_MASK(x,(decltype(x))(a)-1)
 #define __ALIGN_MASK(x,mask)	(((x)+(mask))&~(mask))
 
 // If this is changed, kBuildIDArraySize in perf_reader.h must also be changed.

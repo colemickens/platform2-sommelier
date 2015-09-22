@@ -9,4 +9,6 @@
     TypeName(const TypeName&); \
     void operator=(const TypeName&)
 
+#define arraysize(x) (sizeof(x) / sizeof(*x))
+
 #endif  // CHROMIUMOS_WIDE_PROFILING_MYBASE_BASE_MACROS_H_
