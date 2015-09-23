@@ -64,7 +64,6 @@ using testing::ReturnRef;
 using testing::SetArgumentPointee;
 using testing::StrEq;
 using testing::StrictMock;
-using testing::Throw;
 
 namespace shill {
 

@@ -122,7 +122,6 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
-using ::testing::Throw;
 using ::testing::Values;
 
 namespace shill {

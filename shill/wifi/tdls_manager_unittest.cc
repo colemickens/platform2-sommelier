@@ -40,7 +40,6 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
-using ::testing::Throw;
 
 namespace shill {
 
