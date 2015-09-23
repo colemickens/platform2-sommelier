@@ -84,25 +84,19 @@ class ShillClient final : public weave::Network, public weave::Wifi {
                                const std::string& property_name,
                                const chromeos::Any& property_value);
 
-  void OnStateChangeForConnectingService(const dbus::ObjectPath& service_path,
-                                         const std::string& state);
-  void OnStrengthChangeForConnectingService(
-      const dbus::ObjectPath& service_path,
-      uint8_t signal_strength);
+  void OnStateChangeForConnectingService(const std::string& state);
+  void OnErrorChangeForConnectingService(const std::string& error);
+  void OnStrengthChangeForConnectingService(uint8_t signal_strength);
   void OnStateChangeForSelectedService(const dbus::ObjectPath& service_path,
                                        const std::string& state);
   void UpdateConnectivityState();
   void NotifyConnectivityListeners(bool am_online);
-  // Clean up state related to a connecting service.  If
-  // |check_for_reset_pending| is set, then we'll check to see if we've called
-  // ConnectToService() in the time since a task to call this function was
-  // posted.
-  void CleanupConnectingService(bool check_for_reset_pending);
+  // Clean up state related to a connecting service.
+  void CleanupConnectingService();
 
-  bool ConnectToServiceImpl(const std::string& ssid,
-                            const std::string& passphrase,
-                            const base::Closure& on_success,
-                            chromeos::ErrorPtr* error);
+  void ConnectToServiceError(
+      std::shared_ptr<org::chromium::flimflam::ServiceProxy>
+          connecting_service);
 
   const scoped_refptr<dbus::Bus> bus_;
   org::chromium::flimflam::ManagerProxy manager_proxy_;
@@ -112,10 +106,11 @@ class ShillClient final : public weave::Network, public weave::Wifi {
   std::vector<OnConnectionChangedCallback> connectivity_listeners_;
 
   // State for tracking where we are in our attempts to connect to a service.
-  bool connecting_service_reset_pending_{false};
   bool have_called_connect_{false};
   std::shared_ptr<org::chromium::flimflam::ServiceProxy> connecting_service_;
-  base::CancelableClosure on_connect_success_;
+  std::string connecting_service_error_;
+  base::Closure connect_success_callback_;
+  base::Callback<void(const weave::Error*)> connect_error_callback_;
 
   // State for tracking our online connectivity.
   std::map<dbus::ObjectPath, DeviceState> devices_;

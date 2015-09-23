@@ -31,6 +31,8 @@ namespace buffet {
 
 namespace {
 
+const char kErrorDomain[] = "buffet";
+
 void IgnoreDetachEvent() {}
 
 bool GetStateForService(ServiceProxy* service, string* state) {
@@ -104,7 +106,7 @@ ShillClient::~ShillClient() {}
 
 void ShillClient::Init() {
   VLOG(2) << "ShillClient::Init();";
-  CleanupConnectingService(false);
+  CleanupConnectingService();
   devices_.clear();
   connectivity_state_ = weave::NetworkState::kOffline;
   VariantDictionary properties;
@@ -123,22 +125,15 @@ void ShillClient::ConnectToService(
     const string& passphrase,
     const base::Closure& success_callback,
     const base::Callback<void(const weave::Error*)>& error_callback) {
-  chromeos::ErrorPtr chromeos_error;
-  if (!ConnectToServiceImpl(ssid, passphrase, success_callback,
-                            &chromeos_error)) {
-    weave::ErrorPtr weave_error;
-    ConvertError(*chromeos_error, &weave_error);
+  if (connecting_service_) {
+    weave::ErrorPtr error;
+    weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "busy",
+                        "Already connecting to WiFi network");
     base::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::Bind(error_callback, base::Owned(weave_error.release())));
+        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
+    return;
   }
-}
-
-bool ShillClient::ConnectToServiceImpl(const string& ssid,
-                                       const string& passphrase,
-                                       const base::Closure& on_success,
-                                       chromeos::ErrorPtr* error) {
-  CleanupConnectingService(false);
+  CleanupConnectingService();
   VariantDictionary service_properties;
   service_properties[shill::kTypeProperty] = Any{string{shill::kTypeWifi}};
   service_properties[shill::kSSIDProperty] = Any{ssid};
@@ -151,21 +146,43 @@ bool ShillClient::ConnectToServiceImpl(const string& ssid,
   service_properties[shill::kSaveCredentialsProperty] = Any{true};
   service_properties[shill::kAutoConnectProperty] = Any{true};
   ObjectPath service_path;
+  chromeos::ErrorPtr chromeos_error;
   if (!manager_proxy_.ConfigureService(service_properties, &service_path,
-                                       error)) {
-    return false;
-  }
-  if (!manager_proxy_.RequestScan(shill::kTypeWifi, error)) {
-    return false;
+                                       &chromeos_error) ||
+      !manager_proxy_.RequestScan(shill::kTypeWifi, &chromeos_error)) {
+    weave::ErrorPtr weave_error;
+    ConvertError(*chromeos_error, &weave_error);
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE,
+        base::Bind(error_callback, base::Owned(weave_error.release())));
+    return;
   }
   connecting_service_.reset(new ServiceProxy{bus_, service_path});
-  on_connect_success_.Reset(on_success);
+  connecting_service_->Connect(nullptr);
+  connect_success_callback_ = success_callback;
+  connect_error_callback_ = error_callback;
   connecting_service_->RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnServicePropertyChange,
                  weak_factory_.GetWeakPtr(), service_path),
       base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
                  weak_factory_.GetWeakPtr(), service_path));
-  return true;
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE, base::Bind(&ShillClient::ConnectToServiceError,
+                            weak_factory_.GetWeakPtr(), connecting_service_),
+      base::TimeDelta::FromMinutes(1));
+}
+
+void ShillClient::ConnectToServiceError(
+    std::shared_ptr<org::chromium::flimflam::ServiceProxy> connecting_service) {
+  if (connecting_service != connecting_service_ ||
+      connect_error_callback_.is_null()) {
+    return;
+  }
+  std::string error = have_called_connect_ ? connecting_service_error_
+                                           : shill::kErrorOutOfRange;
+  if (error.empty())
+    error = shill::kErrorInternal;
+  OnErrorChangeForConnectingService(error);
 }
 
 weave::NetworkState ShillClient::GetConnectionState() const {
@@ -206,7 +223,7 @@ void ShillClient::OnShillServiceOwnerChange(const string& old_owner,
                                             const string& new_owner) {
   VLOG(1) << "Shill service owner name changed to '" << new_owner << "'";
   if (new_owner.empty()) {
-    CleanupConnectingService(false);
+    CleanupConnectingService();
     devices_.clear();
     connectivity_state_ = weave::NetworkState::kOffline;
   } else {
@@ -371,9 +388,8 @@ void ShillClient::OnServicePropertyChangeRegistration(const ObjectPath& path,
   if (connecting_service_ && connecting_service_->GetObjectPath() == path) {
     // Note that the connecting service might also be a selected service.
     service = connecting_service_.get();
-    if (!success) {
-      CleanupConnectingService(false);
-    }
+    if (!success)
+      CleanupConnectingService();
   } else {
     for (const auto& kv : devices_) {
       if (kv.second.selected_service &&
@@ -392,13 +408,11 @@ void ShillClient::OnServicePropertyChangeRegistration(const ObjectPath& path,
   }
   // Give ourselves property changed signals for the initial property
   // values.
-  auto it = properties.find(shill::kStateProperty);
-  if (it != properties.end()) {
-    OnServicePropertyChange(path, shill::kStateProperty, it->second);
-  }
-  it = properties.find(shill::kSignalStrengthProperty);
-  if (it != properties.end()) {
-    OnServicePropertyChange(path, shill::kSignalStrengthProperty, it->second);
+  for (auto name : {shill::kStateProperty, shill::kSignalStrengthProperty,
+                    shill::kErrorProperty}) {
+    auto it = properties.find(name);
+    if (it != properties.end())
+      OnServicePropertyChange(path, name, it->second);
   }
 }
 
@@ -407,6 +421,10 @@ void ShillClient::OnServicePropertyChange(const ObjectPath& service_path,
                                           const Any& property_value) {
   VLOG(3) << "ServicePropertyChange(" << service_path.value() << ", "
           << property_name << ", ...);";
+
+  bool is_connecting_service =
+      connecting_service_ &&
+      connecting_service_->GetObjectPath() == service_path;
   if (property_name == shill::kStateProperty) {
     const string state{property_value.TryGet<string>()};
     if (state.empty()) {
@@ -415,33 +433,57 @@ void ShillClient::OnServicePropertyChange(const ObjectPath& service_path,
     }
     VLOG(3) << "New service state=" << state;
     OnStateChangeForSelectedService(service_path, state);
-    OnStateChangeForConnectingService(service_path, state);
+    if (is_connecting_service)
+      OnStateChangeForConnectingService(state);
   } else if (property_name == shill::kSignalStrengthProperty) {
-    OnStrengthChangeForConnectingService(service_path,
-                                         property_value.TryGet<uint8_t>());
+    VLOG(3) << "Signal strength=" << property_value.TryGet<uint8_t>();
+    if (is_connecting_service)
+      OnStrengthChangeForConnectingService(property_value.TryGet<uint8_t>());
+  } else if (property_name == shill::kErrorProperty) {
+    VLOG(3) << "Error=" << property_value.TryGet<std::string>();
+    if (is_connecting_service)
+      connecting_service_error_ = property_value.TryGet<std::string>();
   }
 }
 
-void ShillClient::OnStateChangeForConnectingService(
-    const ObjectPath& service_path,
-    const string& state) {
-  if (!connecting_service_ ||
-      connecting_service_->GetObjectPath() != service_path ||
-      ShillServiceStateToNetworkState(state) !=
-          weave::NetworkState::kConnected) {
-    return;
+void ShillClient::OnStateChangeForConnectingService(const string& state) {
+  switch (ShillServiceStateToNetworkState(state)) {
+    case weave::NetworkState::kConnected: {
+      auto callback = connect_success_callback_;
+      CleanupConnectingService();
+
+      if (!callback.is_null())
+        callback.Run();
+      break;
+    }
+    case weave::NetworkState::kFailure: {
+      ConnectToServiceError(connecting_service_);
+      break;
+    }
+    case weave::NetworkState::kOffline:
+    case weave::NetworkState::kConnecting:
+      break;
   }
-  connecting_service_reset_pending_ = true;
-  on_connect_success_.callback().Run();
-  CleanupConnectingService(true);
+}
+
+void ShillClient::OnErrorChangeForConnectingService(const std::string& error) {
+  if (error.empty())
+    return;
+
+  auto callback = connect_error_callback_;
+  CleanupConnectingService();
+
+  weave::ErrorPtr weave_error;
+  weave::Error::AddTo(&weave_error, FROM_HERE, kErrorDomain, error,
+                      "Failed to connect to WiFi network");
+
+  if (!callback.is_null())
+    callback.Run(weave_error.get());
 }
 
 void ShillClient::OnStrengthChangeForConnectingService(
-    const ObjectPath& service_path,
     uint8_t signal_strength) {
-  if (!connecting_service_ ||
-      connecting_service_->GetObjectPath() != service_path ||
-      signal_strength <= 0 || have_called_connect_) {
+  if (signal_strength == 0 || have_called_connect_) {
     return;
   }
   VLOG(1) << "Connecting service has signal. Calling Connect().";
@@ -498,22 +540,18 @@ void ShillClient::UpdateConnectivityState() {
 
 void ShillClient::NotifyConnectivityListeners(bool am_online) {
   VLOG(3) << "Notifying connectivity listeners that online=" << am_online;
-  for (const auto& listener : connectivity_listeners_) {
+  for (const auto& listener : connectivity_listeners_)
     listener.Run();
-  }
 }
 
-void ShillClient::CleanupConnectingService(bool check_for_reset_pending) {
-  if (check_for_reset_pending && !connecting_service_reset_pending_) {
-    return;  // Must have called connect before we got here.
-  }
+void ShillClient::CleanupConnectingService() {
   if (connecting_service_) {
     connecting_service_->ReleaseObjectProxy(base::Bind(&IgnoreDetachEvent));
     connecting_service_.reset();
   }
-  on_connect_success_.Cancel();
+  connect_success_callback_.Reset();
+  connect_error_callback_.Reset();
   have_called_connect_ = false;
-  connecting_service_reset_pending_ = false;
 }
 
 void ShillClient::OpenSslSocket(
