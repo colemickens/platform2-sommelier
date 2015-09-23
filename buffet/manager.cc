@@ -95,7 +95,8 @@ void Manager::Start(const weave::Device::Options& options,
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
   device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
-                 shill_client_.get(), mdns, http_server, nullptr);
+                 shill_client_.get(), mdns, http_server, shill_client_.get(),
+                 nullptr);
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});

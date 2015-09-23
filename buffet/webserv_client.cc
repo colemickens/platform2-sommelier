@@ -26,11 +26,17 @@ class RequestImpl : public weave::HttpServer::Request {
 
   // HttpServer::Request implementation.
   const std::string& GetPath() const override { return request_->GetPath(); }
+
   std::string GetFirstHeader(const std::string& name) const override {
     return request_->GetFirstHeader(name);
   }
   const std::vector<uint8_t>& GetData() const override {
     return request_->GetData();
+  }
+
+  std::unique_ptr<weave::Stream> GetDataStream() const override {
+    NOTIMPLEMENTED();
+    return nullptr;
   }
 
  private:

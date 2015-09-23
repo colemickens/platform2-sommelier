@@ -18,12 +18,13 @@
 #include <dbus/bus.h>
 #include <shill/dbus-proxies.h>
 #include <weave/network.h>
+#include <weave/wifi.h>
 
 namespace buffet {
 
 class ApManagerClient;
 
-class ShillClient final : public weave::Network {
+class ShillClient final : public weave::Network, public weave::Wifi {
  public:
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
               const std::set<std::string>& device_whitelist);
@@ -34,10 +35,11 @@ class ShillClient final : public weave::Network {
   // Network implementation.
   void AddOnConnectionChangedCallback(
       const OnConnectionChangedCallback& listener) override;
-  bool ConnectToService(const std::string& ssid,
-                        const std::string& passphrase,
-                        const base::Closure& on_success,
-                        weave::ErrorPtr* error) override;
+  void ConnectToService(
+      const std::string& ssid,
+      const std::string& passphrase,
+      const base::Closure& success_callback,
+      const base::Callback<void(const weave::Error*)>& error_callback) override;
   weave::NetworkState GetConnectionState() const override;
   void EnableAccessPoint(const std::string& ssid) override;
   void DisableAccessPoint() override;

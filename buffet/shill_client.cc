@@ -118,16 +118,20 @@ void ShillClient::Init() {
   OnManagerPropertyChange(shill::kDevicesProperty, it->second);
 }
 
-bool ShillClient::ConnectToService(const string& ssid,
-                                   const string& passphrase,
-                                   const base::Closure& on_success,
-                                   weave::ErrorPtr* error) {
+void ShillClient::ConnectToService(
+    const string& ssid,
+    const string& passphrase,
+    const base::Closure& success_callback,
+    const base::Callback<void(const weave::Error*)>& error_callback) {
   chromeos::ErrorPtr chromeos_error;
-  if (!ConnectToServiceImpl(ssid, passphrase, on_success, &chromeos_error)) {
-    ConvertError(*chromeos_error, error);
-    return false;
+  if (!ConnectToServiceImpl(ssid, passphrase, success_callback,
+                            &chromeos_error)) {
+    weave::ErrorPtr weave_error;
+    ConvertError(*chromeos_error, &weave_error);
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE,
+        base::Bind(error_callback, base::Owned(weave_error.release())));
   }
-  return true;
 }
 
 bool ShillClient::ConnectToServiceImpl(const string& ssid,
@@ -492,7 +496,7 @@ void ShillClient::UpdateConnectivityState() {
 void ShillClient::NotifyConnectivityListeners(bool am_online) {
   VLOG(3) << "Notifying connectivity listeners that online=" << am_online;
   for (const auto& listener : connectivity_listeners_) {
-    listener.Run(am_online);
+    listener.Run();
   }
 }
 
