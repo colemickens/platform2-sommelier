@@ -159,6 +159,7 @@ class ChromeosManagerDBusAdaptor
                       const std::string& claimer_name,
                       const std::string& interface_name) override;
   bool ReleaseInterface(chromeos::ErrorPtr* error,
+                        dbus::Message* message,
                         const std::string& claimer_name,
                         const std::string& interface_name) override;
   bool SetSchedScan(chromeos::ErrorPtr* error, bool enable) override;

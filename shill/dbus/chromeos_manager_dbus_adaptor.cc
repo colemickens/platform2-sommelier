@@ -541,11 +541,18 @@ bool ChromeosManagerDBusAdaptor::ClaimInterface(
 
 bool ChromeosManagerDBusAdaptor::ReleaseInterface(
     chromeos::ErrorPtr* error,
+    dbus::Message* message,
     const string& claimer_name,
     const string& interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
-  manager_->ReleaseDevice(claimer_name, interface_name, &e);
+  // Empty claimer name is used to indicate default claimer.
+  // TODO(zqiu): update this API or make a new API to use a flag to indicate
+  // default claimer instead.
+  manager_->ReleaseDevice(
+      claimer_name == "" ? "" : message->GetSender(),
+      interface_name,
+      &e);
   return !e.ToChromeosError(error);
 }
 
