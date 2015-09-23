@@ -77,13 +77,13 @@ class Request final {
 
   // Obtains the file descriptor containing data of uploaded file identified
   // by |file_id|.
-  bool GetFileData(int file_id, int* contents_fd);
+  base::File GetFileData(int file_id);
 
   // Finishes the request and provides the reply data.
-  bool Complete(
+  base::File Complete(
       int32_t status_code,
       const std::vector<std::tuple<std::string, std::string>>& headers,
-      const std::vector<uint8_t>& data);
+      int64_t in_data_size);
 
   // Helper function to provide the string data and mime type.
   bool Complete(
@@ -172,6 +172,10 @@ class Request final {
   // Forwards the request to the request handler.
   void ForwardRequestToHandler();
 
+  // Response data callback for MHD_create_response_from_callback().
+  static ssize_t ResponseDataCallback(void* cls, uint64_t pos, char* buf,
+                                      size_t max);
+
   TempFileManager* GetTempFileManager();
 
   std::string id_;
@@ -181,16 +185,17 @@ class Request final {
   std::string version_;
   MHD_Connection* connection_{nullptr};
   MHD_PostProcessor* post_processor_{nullptr};
-  // Data pipe for request body data (in/write and out/read ends of the pipe).
-  base::File raw_data_pipe_in_;
-  base::File raw_data_pipe_out_;
-  // Data stream for the input end of the data pipe.
-  chromeos::StreamPtr raw_data_stream_in_;
+  // Data pipe for request body data (output/read end of the pipe).
+  base::File request_data_pipe_out_;
+  // Data stream for the input/write end of the request data pipe.
+  chromeos::StreamPtr request_data_stream_;
+
   bool last_posted_data_was_file_{false};
   bool request_forwarded_{false};
   bool request_data_finished_{false};
   bool response_data_started_{false};
   bool response_data_finished_{false};
+  bool waiting_for_data_{false};
 
   std::vector<PairOfStrings> post_data_;
   std::vector<PairOfStrings> get_data_;
@@ -198,7 +203,10 @@ class Request final {
   std::vector<PairOfStrings> headers_;
 
   int response_status_code_{0};
-  std::vector<uint8_t> response_data_;
+  // Data size of response, -1 if unknown.
+  int64_t response_data_size_{-1};
+  // Data stream for the output/read end of the response data pipe.
+  chromeos::StreamPtr response_data_stream_;
   std::vector<PairOfStrings> response_headers_;
   ProtocolHandler* protocol_handler_;
 

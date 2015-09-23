@@ -78,7 +78,8 @@ class DBusProtocolHandler final
       const std::string& in_request_id,
       int32_t in_status_code,
       const std::vector<std::tuple<std::string, std::string>>& in_headers,
-      const std::vector<uint8_t>& in_data) override;
+      int64_t in_data_size,
+      dbus::FileDescriptor* out_response_stream) override;
 
  private:
   using RequestHandlerProxy = org::chromium::WebServer::RequestHandlerProxy;

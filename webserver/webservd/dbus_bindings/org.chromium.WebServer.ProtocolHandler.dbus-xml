@@ -36,11 +36,15 @@
     <method name="CompleteRequest">
       <tp:docstring>
         Fulfills the request with specified |request_id| and provides response.
+        |data_size| if the size of the data is known. Otherwise should be set to
+        a value of -1. The actual data is to be written to the pipe provided
+        in |response_stream| file descriptor.
       </tp:docstring>
       <arg name="request_id" type="s" direction="in"/>
       <arg name="status_code" type="i" direction="in"/>
       <arg name="headers" type="a(ss)" direction="in"/>
-      <arg name="data" type="ay" direction="in"/>
+      <arg name="data_size" type="x" direction="in"/>
+      <arg name="response_stream" type="h" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <!-- Properties -->

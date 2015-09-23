@@ -151,9 +151,9 @@ bool DBusProtocolHandler::GetRequestFileData(
   if (!request)
     return false;
 
-  int data_fd = 0;
-  if (request->GetFileData(in_file_id, &data_fd)) {
-    out_contents->PutValue(data_fd);
+  base::File file = request->GetFileData(in_file_id);
+  if (file.IsValid()) {
+    out_contents->PutValue(file.TakePlatformFile());
     out_contents->CheckValidity();
     return true;
   }
@@ -172,12 +172,16 @@ bool DBusProtocolHandler::CompleteRequest(
     const std::string& in_request_id,
     int32_t in_status_code,
     const std::vector<std::tuple<std::string, std::string>>& in_headers,
-    const std::vector<uint8_t>& in_data) {
+    int64_t in_data_size,
+    dbus::FileDescriptor* out_response_stream) {
   auto request = GetRequest(in_request_id, error);
   if (!request)
     return false;
 
-  if (request->Complete(in_status_code, in_headers, in_data)) {
+  base::File file = request->Complete(in_status_code, in_headers, in_data_size);
+  if (file.IsValid()) {
+    out_response_stream->PutValue(file.TakePlatformFile());
+    out_response_stream->CheckValidity();
     return true;
   }
   chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::dbus::kDomain,

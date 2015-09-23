@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <chromeos/streams/stream.h>
 #include <libwebserv/export.h>
 
 namespace base {
@@ -47,8 +48,7 @@ class LIBWEBSERV_EXPORT Response final {
 
   // Generic reply method for sending arbitrary binary data response.
   void Reply(int status_code,
-             const void* data,
-             size_t data_size,
+             chromeos::StreamPtr data_stream,
              const std::string& mime_type);
 
   // Reply with text body.
@@ -87,7 +87,7 @@ class LIBWEBSERV_EXPORT Response final {
   ProtocolHandler* handler_{nullptr};
   std::string request_id_;
   int status_code_{0};
-  std::vector<uint8_t> data_;
+  chromeos::StreamPtr data_stream_;
   std::multimap<std::string, std::string> headers_;
   bool reply_sent_{false};
 

@@ -100,13 +100,11 @@ Request::Request(
   // web server to the remote request handler.
   int pipe_fds[2] = {-1, -1};
   CHECK_EQ(0, pipe(pipe_fds));
-  raw_data_pipe_in_ = base::File{pipe_fds[1]};
-  CHECK(raw_data_pipe_in_.IsValid());
-  raw_data_pipe_out_ = base::File{pipe_fds[0]};
-  CHECK(raw_data_pipe_out_.IsValid());
-  raw_data_stream_in_ = chromeos::FileStream::FromFileDescriptor(
-      raw_data_pipe_in_.GetPlatformFile(), false, nullptr);
-  CHECK(raw_data_stream_in_);
+  request_data_pipe_out_ = base::File{pipe_fds[0]};
+  CHECK(request_data_pipe_out_.IsValid());
+  request_data_stream_ = chromeos::FileStream::FromFileDescriptor(
+      pipe_fds[1], true, nullptr);
+  CHECK(request_data_stream_);
 
   // POST request processor.
   post_processor_ = MHD_create_post_processor(
@@ -120,39 +118,48 @@ Request::~Request() {
   protocol_handler_->RemoveRequest(this);
 }
 
-bool Request::GetFileData(int file_id, int* contents_fd) {
-  if (file_id < 0 || static_cast<size_t>(file_id) >= file_info_.size())
-    return false;
-  base::File file(file_info_[file_id]->temp_file_name,
-                  base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!file.IsValid())
-    return false;
-  *contents_fd = file.TakePlatformFile();
-  return true;
+base::File Request::GetFileData(int file_id) {
+  base::File file;
+  if (file_id >= 0 && static_cast<size_t>(file_id) < file_info_.size()) {
+    file.Initialize(file_info_[file_id]->temp_file_name,
+                    base::File::FLAG_OPEN | base::File::FLAG_READ);
+  }
+  return file.Pass();
 }
 
-bool Request::Complete(
+base::File Request::Complete(
     int32_t status_code,
     const std::vector<std::tuple<std::string, std::string>>& headers,
-    const std::vector<uint8_t>& data) {
+    int64_t in_data_size) {
+  base::File file;
   if (response_data_started_)
-    return false;
+    return file.Pass();
 
   response_status_code_ = status_code;
   response_headers_.reserve(headers.size());
   for (const auto& tuple : headers) {
     response_headers_.emplace_back(std::get<0>(tuple), std::get<1>(tuple));
   }
-  response_data_ = data;
+
+  // Create the pipe for response data.
+  int pipe_fds[2] = {-1, -1};
+  CHECK_EQ(0, pipe(pipe_fds));
+  file = base::File{pipe_fds[1]};
+  CHECK(file.IsValid());
+  response_data_stream_ = chromeos::FileStream::FromFileDescriptor(
+      pipe_fds[0], true, nullptr);
+  CHECK(response_data_stream_);
+
+  response_data_size_ = in_data_size;
   response_data_started_ = true;
   const MHD_ConnectionInfo* info =
       MHD_get_connection_info(connection_, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
 
   const sockaddr* client_addr = (info ? info->client_addr : nullptr);
   LogManager::OnRequestCompleted(base::Time::Now(), client_addr, method_, url_,
-                                 version_, status_code, data.size());
+                                 version_, status_code, in_data_size);
   protocol_handler_->ScheduleWork();
-  return true;
+  return file.Pass();
 }
 
 bool Request::Complete(
@@ -163,8 +170,13 @@ bool Request::Complete(
   std::vector<std::tuple<std::string, std::string>> headers_copy;
   headers_copy.emplace_back(chromeos::http::response_header::kContentType,
                             mime_type);
-  return Complete(status_code, headers_copy,
-                  chromeos::string_utils::GetStringAsBytes(data));
+  base::File file = Complete(status_code, headers_copy, data.size());
+  bool success = false;
+  if (file.IsValid()) {
+    const int size = data.size();
+    success = (file.WriteAtCurrentPos(data.c_str(), size) == size);
+  }
+  return success;
 }
 
 const std::string& Request::GetProtocolHandlerID() const {
@@ -172,7 +184,7 @@ const std::string& Request::GetProtocolHandlerID() const {
 }
 
 int Request::GetBodyDataFileDescriptor() const {
-  int fd = dup(raw_data_pipe_out_.GetPlatformFile());
+  int fd = dup(request_data_pipe_out_.GetPlatformFile());
   CHECK_GE(fd, 0);
   return fd;
 }
@@ -206,18 +218,18 @@ bool Request::AddRequestData(const void* data, size_t* size) {
 
 void Request::EndRequestData() {
   if (!request_data_finished_) {
-    if (raw_data_stream_in_) {
-      raw_data_stream_in_->CloseBlocking(nullptr);
-      raw_data_pipe_in_.Close();
-    }
+    if (request_data_stream_)
+      request_data_stream_->CloseBlocking(nullptr);
     if (!request_forwarded_)
       ForwardRequestToHandler();
     request_data_finished_ = true;
   }
 
   if (response_data_started_ && !response_data_finished_) {
-    MHD_Response* resp = MHD_create_response_from_buffer(
-        response_data_.size(), response_data_.data(), MHD_RESPMEM_PERSISTENT);
+    MHD_Response* resp = MHD_create_response_from_callback(
+        response_data_size_, 4096, &Request::ResponseDataCallback, this,
+        nullptr);
+    CHECK(resp);
     for (const auto& pair : response_headers_) {
       MHD_add_response_header(resp, pair.first.c_str(), pair.second.c_str());
     }
@@ -265,10 +277,10 @@ bool Request::ProcessPostData(const char* key,
 
 bool Request::AddRawRequestData(const void* data, size_t* size) {
   CHECK(*size);
-  CHECK(raw_data_stream_in_) << "Data pipe hasn't been created.";
+  CHECK(request_data_stream_) << "Data pipe hasn't been created.";
 
   size_t written = 0;
-  if (!raw_data_stream_in_->WriteNonBlocking(data, *size, &written, nullptr))
+  if (!request_data_stream_->WriteNonBlocking(data, *size, &written, nullptr))
     return false;
 
   CHECK_LE(written, *size);
@@ -282,7 +294,7 @@ bool Request::AddRawRequestData(const void* data, size_t* size) {
 
   // If written at least some data, we are good. We will be called again if more
   // data is available.
-  if (written > 0)
+  if (written > 0 || waiting_for_data_)
     return true;
 
   // Nothing has been written. The output pipe is full. Need to stop the data
@@ -292,20 +304,54 @@ bool Request::AddRawRequestData(const void* data, size_t* size) {
 
   // Now, just monitor the pipe and figure out when we can resume sending data
   // over it.
-  bool success = raw_data_stream_in_->WaitForData(
+  waiting_for_data_ = request_data_stream_->WaitForData(
       chromeos::Stream::AccessMode::WRITE,
       base::Bind(&Request::OnPipeAvailable, weak_ptr_factory_.GetWeakPtr()),
       nullptr);
 
-  if (!success)
+  if (!waiting_for_data_)
     MHD_resume_connection(connection_);
 
-  return success;
+  return waiting_for_data_;
+}
+
+ssize_t Request::ResponseDataCallback(void *cls, uint64_t pos, char *buf,
+                                      size_t max) {
+  Request* self = static_cast<Request*>(cls);
+  size_t read = 0;
+  bool eos = false;
+  if (!self->response_data_stream_->ReadNonBlocking(buf, max, &read, &eos,
+                                                    nullptr)) {
+    return MHD_CONTENT_READER_END_WITH_ERROR;
+  }
+
+  if (read > 0 || self->waiting_for_data_)
+    return read;
+
+  if (eos)
+    return MHD_CONTENT_READER_END_OF_STREAM;
+
+  // Nothing can be read. The input pipe is empty. Need to stop the data
+  // transfer on the connection and wait till some data is available from the
+  // pipe.
+  MHD_suspend_connection(self->connection_);
+
+  self->waiting_for_data_ = self->response_data_stream_->WaitForData(
+      chromeos::Stream::AccessMode::READ,
+      base::Bind(&Request::OnPipeAvailable,
+                 self->weak_ptr_factory_.GetWeakPtr()),
+      nullptr);
+
+  if (!self->waiting_for_data_) {
+    MHD_resume_connection(self->connection_);
+    return MHD_CONTENT_READER_END_WITH_ERROR;
+  }
+  return 0;
 }
 
 void Request::OnPipeAvailable(chromeos::Stream::AccessMode mode) {
-  CHECK(mode == chromeos::Stream::AccessMode::WRITE);
   MHD_resume_connection(connection_);
+  waiting_for_data_ = false;
   protocol_handler_->ScheduleWork();
 }
 

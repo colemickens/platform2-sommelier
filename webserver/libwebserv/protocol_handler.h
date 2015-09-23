@@ -167,7 +167,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
       const std::string& request_id,
       int status_code,
       const std::multimap<std::string, std::string>& headers,
-      const std::vector<uint8_t>& data);
+      chromeos::StreamPtr data_stream);
 
   // Makes a call to the (remote) web server request handler over D-Bus to
   // obtain the file content of uploaded file (identified by |file_id|) during

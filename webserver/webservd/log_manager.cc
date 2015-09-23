@@ -196,15 +196,13 @@ void LogManager::OnRequestCompleted(const base::Time& timestamp,
 
   // Log file entry for one HTTP request looking like this:
   // 127.0.0.1 - - [25/Feb/2015:03:29:12 -0800] "GET /test HTTP/1.1" 200 2326
+  std::string size_string{"-"};
+  if (response_size >= 0)
+    size_string = std::to_string(response_size);
   std::string log_entry = base::StringPrintf(
-      "%s - - [%s] \"%s %s %s\" %d %" PRIu64 "\n",
-      ip_address.c_str(),
-      str_buf,
-      method.c_str(),
-      url.c_str(),
-      version.c_str(),
-      status_code,
-      response_size);
+      "%s - - [%s] \"%s %s %s\" %d %s\n", ip_address.c_str(), str_buf,
+      method.c_str(), url.c_str(), version.c_str(), status_code,
+      size_string.c_str());
   GetInstance()->logger_->Log(timestamp, log_entry);
 }
 

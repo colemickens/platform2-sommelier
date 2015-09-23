@@ -21,6 +21,7 @@
 #include <base/values.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/memory_stream.h>
 #include <chromeos/strings/string_utils.h>
 #include <libwebserv/protocol_handler.h>
 
@@ -48,12 +49,11 @@ void Response::AddHeaders(
 }
 
 void Response::Reply(int status_code,
-                     const void* data,
-                     size_t data_size,
+                     chromeos::StreamPtr data_stream,
                      const std::string& mime_type) {
+  CHECK(data_stream);
   status_code_ = status_code;
-  const uint8_t* byte_ptr = static_cast<const uint8_t*>(data);
-  data_.assign(byte_ptr, byte_ptr + data_size);
+  data_stream_ = std::move(data_stream);
   AddHeader(chromeos::http::response_header::kContentType, mime_type);
   SendResponse();
 }
@@ -61,7 +61,8 @@ void Response::Reply(int status_code,
 void Response::ReplyWithText(int status_code,
                              const std::string& text,
                              const std::string& mime_type) {
-  Reply(status_code, text.data(), text.size(), mime_type);
+  Reply(status_code, chromeos::MemoryStream::OpenCopyOf(text, nullptr),
+        mime_type);
 }
 
 void Response::ReplyWithJson(int status_code, const base::Value* json) {
@@ -91,7 +92,7 @@ void Response::Redirect(int status_code, const std::string& redirect_url) {
 
 void Response::ReplyWithError(int status_code, const std::string& error_text) {
   status_code_ = status_code;
-  data_.assign(error_text.begin(), error_text.end());
+  data_stream_ = chromeos::MemoryStream::OpenCopyOf(error_text, nullptr);
   SendResponse();
 }
 
@@ -102,7 +103,8 @@ void Response::ReplyWithErrorNotFound() {
 void Response::SendResponse() {
   CHECK(!reply_sent_) << "Response already sent";
   reply_sent_ = true;
-  handler_->CompleteRequest(request_id_, status_code_, headers_, data_);
+  handler_->CompleteRequest(request_id_, status_code_, headers_,
+                            std::move(data_stream_));
 }
 
 }  // namespace libwebserv
