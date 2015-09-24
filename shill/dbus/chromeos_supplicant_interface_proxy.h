@@ -125,9 +125,6 @@ class ChromeosSupplicantInterfaceProxy
                          const std::string& signal_name,
                          bool success);
 
-  // Callback invoked when property |property_name| set completed.
-  void OnPropertySet(const std::string& property_name, bool success);
-
   std::unique_ptr<fi::w1::wpa_supplicant1::InterfaceProxy> interface_proxy_;
   std::unique_ptr<PropertySet> properties_;
 

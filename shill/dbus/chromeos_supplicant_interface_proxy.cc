@@ -380,30 +380,29 @@ bool ChromeosSupplicantInterfaceProxy::TDLSTeardown(const string& peer) {
 
 bool ChromeosSupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
-  properties_->fast_reauth.Set(
-      enabled, base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertySet,
-                          weak_factory_.GetWeakPtr(),
-                          kPropertyFastReauth));
+  if (!properties_->fast_reauth.SetAndBlock(enabled)) {
+    LOG(ERROR) << __func__ << " failed: " << enabled;
+    return false;
+  }
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetRoamThreshold(uint16_t threshold) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << threshold;
-  properties_->roam_threshold.Set(
-      threshold, base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertySet,
-                            weak_factory_.GetWeakPtr(),
-                            kPropertyRoamThreshold));
+  if (!properties_->roam_threshold.SetAndBlock(threshold)) {
+    LOG(ERROR) << __func__ << " failed: " << threshold;
+    return false;
+  }
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": "
       << scan_interval;
-  properties_->scan_interval.Set(
-      scan_interval,
-      base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertySet,
-                 weak_factory_.GetWeakPtr(),
-                 kPropertyScanInterval));
+  if (!properties_->scan_interval.SetAndBlock(scan_interval)) {
+    LOG(ERROR) << __func__ << " failed: " << scan_interval;
+    return false;
+  }
   return true;
 }
 
@@ -411,29 +410,28 @@ bool ChromeosSupplicantInterfaceProxy::SetDisableHighBitrates(
     bool disable_high_bitrates) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": "
       << disable_high_bitrates;
-  properties_->disable_high_bitrates.Set(
-      disable_high_bitrates,
-      base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertySet,
-                 weak_factory_.GetWeakPtr(),
-                 kPropertyDisableHighBitrates));
+  if (!properties_->disable_high_bitrates.SetAndBlock(disable_high_bitrates)) {
+    LOG(ERROR) << __func__ << " failed: " << disable_high_bitrates;
+    return false;
+  }
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetSchedScan(bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
-  properties_->sched_scan.Set(
-      enable, base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertySet,
-                         weak_factory_.GetWeakPtr(),
-                         kPropertySchedScan));
+  if (!properties_->sched_scan.SetAndBlock(enable)) {
+    LOG(ERROR) << __func__ << " failed: " << enable;
+    return false;
+  }
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetScan(bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
-  properties_->scan.Set(
-      enable, base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertySet,
-                         weak_factory_.GetWeakPtr(),
-                         kPropertyScan));
+  if (!properties_->scan.SetAndBlock(enable)) {
+    LOG(ERROR) << __func__ << " failed: " << enable;
+    return false;
+  }
   return true;
 }
 
@@ -530,15 +528,6 @@ void ChromeosSupplicantInterfaceProxy::OnSignalConnected(
   if (!success) {
     LOG(ERROR) << "Failed to connect signal " << signal_name
         << " to interface " << interface_name;
-  }
-}
-
-void ChromeosSupplicantInterfaceProxy::OnPropertySet(
-    const string& property_name, bool success) {
-  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << " property: "
-      << property_name << "success: " << success;
-  if (!success) {
-    LOG(ERROR) << "Failed to set property " << property_name;
   }
 }
 

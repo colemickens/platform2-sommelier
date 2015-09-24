@@ -92,8 +92,6 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);
 
-  // Callback invoked when DebugLevel property set completed.
-  void OnDebugLevelSet(bool success);
 
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,

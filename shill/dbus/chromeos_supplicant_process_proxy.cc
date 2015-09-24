@@ -180,11 +180,10 @@ bool ChromeosSupplicantProcessProxy::SetDebugLevel(const std::string& level) {
     return false;
   }
 
-  // This is an async method call. Default to always return success.
-  // Failures will be logged in the callback.
-  properties_->debug_level.Set(
-      level, base::Bind(&ChromeosSupplicantProcessProxy::OnDebugLevelSet,
-                        weak_factory_.GetWeakPtr()));
+  if (!properties_->debug_level.SetAndBlock(level)) {
+    LOG(ERROR) << __func__ << " failed: " << level;
+    return false;
+  }
   return true;
 }
 
@@ -253,13 +252,6 @@ void ChromeosSupplicantProcessProxy::OnPropertyChanged(
     const std::string& property_name) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__ << ": "
       << property_name;
-}
-
-void ChromeosSupplicantProcessProxy::OnDebugLevelSet(bool success) {
-  SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__ << ": " << success;
-  if (!success) {
-    LOG(ERROR) << "Failed to set debug level";
-  }
 }
 
 void ChromeosSupplicantProcessProxy::OnSignalConnected(
