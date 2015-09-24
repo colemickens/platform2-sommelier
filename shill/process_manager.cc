@@ -21,6 +21,7 @@
 #include <sys/prctl.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/logging.h"
 
 using base::Closure;
 using std::map;
@@ -28,6 +29,11 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kManager;
+static string ObjectID(const ProcessManager* pm) { return "process_manager"; }
+}
 
 namespace {
 
@@ -60,6 +66,7 @@ ProcessManager* ProcessManager::GetInstance() {
 }
 
 void ProcessManager::Init(EventDispatcher* dispatcher) {
+  SLOG(this, 2) << __func__;
   CHECK(!async_signal_handler_);
   async_signal_handler_.reset(new chromeos::AsynchronousSignalHandler());
   async_signal_handler_->Init();
@@ -69,6 +76,7 @@ void ProcessManager::Init(EventDispatcher* dispatcher) {
 }
 
 void ProcessManager::Stop() {
+  SLOG(this, 2) << __func__;
   CHECK(async_signal_handler_);
   process_reaper_.Unregister();
   async_signal_handler_.reset();
@@ -81,6 +89,8 @@ pid_t ProcessManager::StartProcess(
     const map<string, string>& environment,
     bool terminate_with_parent,
     const base::Callback<void(int)>& exit_callback) {
+  SLOG(this, 2) << __func__ << "(" << program.value() << ")";
+
   // Setup/create child process.
   std::unique_ptr<chromeos::Process> process(new chromeos::ProcessImpl());
   process->AddArg(program.value());
@@ -122,6 +132,8 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     int* stdin_fd,
     int* stdout_fd,
     int* stderr_fd) {
+  SLOG(this, 2) << __func__ << "(" << program.value() << ")";
+
   vector<char*> args;
   args.push_back(const_cast<char*>(program.value().c_str()));
   for (const auto& arg : arguments) {
@@ -155,6 +167,8 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
 }
 
 bool ProcessManager::StopProcess(pid_t pid) {
+  SLOG(this, 2) << __func__ << "(" << pid << ")";
+
   if (pending_termination_processes_.find(pid) !=
       pending_termination_processes_.end()) {
     LOG(ERROR) << "Process " << pid << " already being stopped.";
@@ -176,6 +190,8 @@ bool ProcessManager::StopProcess(pid_t pid) {
 bool ProcessManager::UpdateExitCallback(
     pid_t pid,
     const base::Callback<void(int)>& new_callback) {
+  SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
+
   const auto process_entry = watched_processes_.find(pid);
   if (process_entry == watched_processes_.end()) {
     LOG(ERROR) << "Process " << pid << " not being watched";
@@ -187,6 +203,8 @@ bool ProcessManager::UpdateExitCallback(
 }
 
 void ProcessManager::OnProcessExited(pid_t pid, const siginfo_t& info) {
+  SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
+
   // Invoke the exit callback if the process is being watched.
   auto watched_process = watched_processes_.find(pid);
   if (watched_process != watched_processes_.end()) {
@@ -209,6 +227,8 @@ void ProcessManager::OnProcessExited(pid_t pid, const siginfo_t& info) {
 
 void ProcessManager::ProcessTerminationTimeoutHandler(pid_t pid,
                                                       bool kill_signal) {
+  SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
+
   CHECK(pending_termination_processes_.find(pid) !=
         pending_termination_processes_.end());
   pending_termination_processes_.erase(pid);
@@ -223,6 +243,10 @@ void ProcessManager::ProcessTerminationTimeoutHandler(pid_t pid,
 }
 
 bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
+  SLOG(this, 2) << __func__
+                << "(pid: " << pid << ", "
+                << "use_sigkill: " << kill_signal << ")";
+
   int signal = (kill_signal) ? SIGKILL : SIGTERM;
   if (kill(pid, signal) < 0) {
     PLOG(ERROR) << "Failed to send " << signal << " signal to process " << pid;
