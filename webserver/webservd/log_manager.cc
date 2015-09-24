@@ -185,7 +185,7 @@ void LogManager::OnRequestCompleted(const base::Time& timestamp,
                                     const std::string& url,
                                     const std::string& version,
                                     int status_code,
-                                    uint64_t response_size) {
+                                    int64_t response_size) {
   std::string ip_address = GetIPAddress(client_addr);
   tm time_buf = {};
   char str_buf[32] = {};

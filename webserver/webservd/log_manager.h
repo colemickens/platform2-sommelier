@@ -51,7 +51,7 @@ class LogManager final {
                                  const std::string& url,
                                  const std::string& version,
                                  int status_code,
-                                 uint64_t response_size);
+                                 int64_t response_size);
 
   // Set a custom logger interface to do stuff other than log to a file.
   static void SetLogger(std::unique_ptr<LoggerInterface> logger);
