@@ -105,14 +105,18 @@ void ChromeosDaemon::ApplySettings() {
   manager_->SetDHCPv6EnabledDevices(settings_.dhcpv6_enabled_devices);
 }
 
-void ChromeosDaemon::Quit(const base::Closure& completion_callback) {
+bool ChromeosDaemon::Quit(const base::Closure& completion_callback) {
   SLOG(this, 1) << "Starting termination actions.";
-  termination_completed_callback_ = completion_callback;
-  if (!manager_->RunTerminationActionsAndNotifyMetrics(
+  if (manager_->RunTerminationActionsAndNotifyMetrics(
           Bind(&ChromeosDaemon::TerminationActionsCompleted,
                Unretained(this)))) {
+    SLOG(this, 1) << "Will wait for termination actions to complete";
+    termination_completed_callback_ = completion_callback;
+    return false;  // Note to caller: don't exit yet!
+  } else {
     SLOG(this, 1) << "No termination actions were run";
     StopAndReturnToMain();
+    return true;  // All done, ready to exit.
   }
 }
 

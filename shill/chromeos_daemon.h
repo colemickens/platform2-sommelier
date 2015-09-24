@@ -72,8 +72,12 @@ class ChromeosDaemon {
   // Runs the message loop.
   virtual void RunMessageLoop() = 0;
 
-  // Starts the termination actions in the manager.
-  virtual void Quit(const base::Closure& completion_callback);
+  // Starts the termination actions in the manager. Returns true if
+  // termination actions have completed synchronously, and false
+  // otherwise. Arranges for |completion_callback| to be invoked after
+  // all asynchronous work completes, but ignores
+  // |completion_callback| if no asynchronous work is required.
+  virtual bool Quit(const base::Closure& completion_callback);
 
  protected:
   // Initialize daemon with specific control interface.

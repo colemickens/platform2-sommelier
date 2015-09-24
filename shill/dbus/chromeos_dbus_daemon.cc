@@ -56,17 +56,18 @@ int ChromeosDBusDaemon::OnInit() {
 }
 
 void ChromeosDBusDaemon::OnShutdown(int* return_code) {
-  ChromeosDaemon::Quit(
-      base::Bind(&ChromeosDBusDaemon::OnTerminationCompleted,
-                 base::Unretained(this)));
-
-  // Run a message loop to allow shill to complete its termination procedures.
-  // This is different from the secondary loop in chromeos::Daemon. This loop
-  // will run until we explicitly breakout of the loop, whereas the secondary
-  // loop in chromeos::Daemon will run until no more tasks are posted on the
-  // loop.  This allows asynchronous D-Bus method calls to complete before
-  // exiting.
-  chromeos::MessageLoop::current()->Run();
+  if (!ChromeosDaemon::Quit(
+          base::Bind(&ChromeosDBusDaemon::OnTerminationCompleted,
+                     base::Unretained(this)))) {
+    // Run a message loop to allow shill to complete its termination
+    // procedures. This is different from the secondary loop in
+    // chromeos::Daemon. This loop will run until we explicitly
+    // breakout of the loop, whereas the secondary loop in
+    // chromeos::Daemon will run until no more tasks are posted on the
+    // loop.  This allows asynchronous D-Bus method calls to complete
+    // before exiting.
+    chromeos::MessageLoop::current()->Run();
+  }
 
   chromeos::DBusServiceDaemon::OnShutdown(return_code);
 }
