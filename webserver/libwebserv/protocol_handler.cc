@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <chromeos/map_utils.h>
 #include <chromeos/streams/file_stream.h>
+#include <chromeos/streams/stream_utils.h>
 
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "libwebserv/request.h"
@@ -31,50 +32,25 @@ namespace libwebserv {
 
 namespace {
 
-// Dummy callbacks for async D-Bus/Stream errors.
+// Dummy callback for async D-Bus errors.
 void IgnoreDBusError(chromeos::Error* error) {}
-void IgnoreStreamError(const chromeos::Error* error) {}
-
-// Structure to hold the data needed for asynchronous copying of two streams.
-struct StreamCopyData {
-  chromeos::StreamPtr src_stream;
-  chromeos::StreamPtr dest_stream;
-  std::vector<uint8_t> buffer;
-};
-
-// Forward-declaration.
-void PerformRead(std::unique_ptr<StreamCopyData> data);
-
-// Async callback which writes data to the destination stream after read.
-void PerformWrite(std::unique_ptr<StreamCopyData> data, size_t size) {
-  if (size == 0) // We are all done.
-    return;
-  data->dest_stream->WriteAllAsync(
-      data->buffer.data(), size, base::Bind(&PerformRead, base::Passed(&data)),
-      base::Bind(&IgnoreStreamError), nullptr);
-}
-
-// Reads the data from the source stream into a buffer and invokes PerformWrite
-// when done.
-void PerformRead(std::unique_ptr<StreamCopyData> data) {
-  data->src_stream->ReadAsync(data->buffer.data(), data->buffer.size(),
-                              base::Bind(&PerformWrite, base::Passed(&data)),
-                              base::Bind(&IgnoreStreamError), nullptr);
-}
 
 // Copies the data from |src_stream| to the destination stream represented
 // by a file descriptor |fd|.
 void WriteResponseData(chromeos::StreamPtr src_stream,
                        const dbus::FileDescriptor& fd) {
-  std::unique_ptr<StreamCopyData> data{new StreamCopyData};
   int dupfd = dup(fd.value());
-  data->src_stream = std::move(src_stream);
-  data->dest_stream =
+  auto dest_stream =
       chromeos::FileStream::FromFileDescriptor(dupfd, true, nullptr);
-  data->buffer.resize(4096);  // Read buffer of 4 KiB.
-  CHECK(data->src_stream);
-  CHECK(data->dest_stream);
-  PerformRead(std::move(data));
+  CHECK(dest_stream);
+  // Dummy callbacks for success/error of data-copy operation. We ignore both
+  // notifications here.
+  auto on_success = [](chromeos::StreamPtr, chromeos::StreamPtr, uint64_t) {};
+  auto on_error = [](chromeos::StreamPtr, chromeos::StreamPtr,
+                     const chromeos::Error*) {};
+  chromeos::stream_utils::CopyData(
+      std::move(src_stream), std::move(dest_stream), base::Bind(on_success),
+      base::Bind(on_error));
 }
 
 }  // anonymous namespace
