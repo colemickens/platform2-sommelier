@@ -24,6 +24,7 @@
 
 #include <string>
 
+#include <base/compiler_specific.h>
 #include <base/macros.h>
 
 #include "shill/net/shill_export.h"
@@ -133,6 +134,10 @@ class SHILL_EXPORT ScopedSocketCloser {
  public:
   ScopedSocketCloser(Sockets* sockets, int fd);
   ~ScopedSocketCloser();
+
+  // Release and return the socket file descriptor, allowing the socket to
+  // remain open as the ScopedSocketCloser is destroyed.
+  int Release() WARN_UNUSED_RESULT;
 
  private:
   Sockets* sockets_;

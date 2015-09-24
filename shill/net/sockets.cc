@@ -179,4 +179,10 @@ ScopedSocketCloser::~ScopedSocketCloser() {
   fd_ = Sockets::kInvalidFileDescriptor;
 }
 
+int ScopedSocketCloser::Release() {
+  int fd = fd_;
+  fd_ = Sockets::kInvalidFileDescriptor;
+  return fd;
+}
+
 }  // namespace shill
