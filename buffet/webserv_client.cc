@@ -13,6 +13,7 @@
 #include <libwebserv/server.h>
 
 #include "buffet/dbus_constants.h"
+#include "buffet/socket_stream.h"
 
 namespace buffet {
 
@@ -30,17 +31,38 @@ class RequestImpl : public weave::HttpServer::Request {
   std::string GetFirstHeader(const std::string& name) const override {
     return request_->GetFirstHeader(name);
   }
+
+  // TODO(avakulenko): Remove this method and rewrite all call sites in libweave
+  // to use GetDataStream() instead.
   const std::vector<uint8_t>& GetData() const override {
-    return request_->GetData();
+    if (request_data_)
+      return *request_data_;
+
+    request_data_.reset(new std::vector<uint8_t>);
+    auto stream = request_->GetDataStream();
+    if (stream) {
+      if (stream->CanGetSize())
+        request_data_->reserve(stream->GetRemainingSize());
+      std::vector<uint8_t> buffer(16 * 1024);  // 16K seems to be good enough.
+      size_t sz = 0;
+      while (stream->ReadBlocking(buffer.data(), buffer.size(), &sz, nullptr) &&
+             sz > 0) {
+        request_data_->insert(request_data_->end(),
+                              buffer.data(), buffer.data() + sz);
+      }
+    }
+    return *request_data_;
   }
 
   std::unique_ptr<weave::Stream> GetDataStream() const override {
-    NOTIMPLEMENTED();
-    return nullptr;
+    auto stream = std::unique_ptr<weave::Stream>{
+        new SocketStream{request_->GetDataStream()}};
+    return stream;
   }
 
  private:
   std::unique_ptr<libwebserv::Request> request_;
+  mutable std::unique_ptr<std::vector<uint8_t>> request_data_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestImpl);
 };
@@ -109,7 +131,7 @@ void WebServClient::OnResponse(std::unique_ptr<libwebserv::Response> response,
                                int status_code,
                                const std::string& data,
                                const std::string& mime_type) {
-  response->Reply(status_code, data.data(), data.size(), mime_type);
+  response->ReplyWithText(status_code, data, mime_type);
 }
 
 void WebServClient::OnProtocolHandlerConnected(
