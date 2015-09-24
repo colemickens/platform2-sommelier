@@ -78,6 +78,36 @@ inline Stream::AccessMode MakeAccessMode(bool read, bool write) {
   return write ? Stream::AccessMode::WRITE : Stream::AccessMode::READ;
 }
 
+using CopyDataSuccessCallback =
+    base::Callback<void(StreamPtr, StreamPtr, uint64_t)>;
+using CopyDataErrorCallback =
+    base::Callback<void(StreamPtr, StreamPtr, const chromeos::Error*)>;
+
+// Asynchronously copies data from input stream to output stream until all the
+// data from the input stream is read. The function takes ownership of both
+// streams for the duration of the operation and then gives them back when
+// either the |success_callback| or |error_callback| is called.
+// |success_callback| also provides the number of bytes actually copied.
+// This variant of CopyData uses internal buffer of 4 KiB for the operation.
+CHROMEOS_EXPORT void CopyData(StreamPtr in_stream,
+                              StreamPtr out_stream,
+                              const CopyDataSuccessCallback& success_callback,
+                              const CopyDataErrorCallback& error_callback);
+
+// Asynchronously copies data from input stream to output stream until the
+// maximum amount of data specified in |max_size_to_copy| is copied or the end
+// of the input stream is encountered. The function takes ownership of both
+// streams for the duration of the operation and then gives them back when
+// either the |success_callback| or |error_callback| is called.
+// |success_callback| also provides the number of bytes actually copied.
+// |buffer_size| specifies the size of the read buffer to use for the operation.
+CHROMEOS_EXPORT void CopyData(StreamPtr in_stream,
+                              StreamPtr out_stream,
+                              uint64_t max_size_to_copy,
+                              size_t buffer_size,
+                              const CopyDataSuccessCallback& success_callback,
+                              const CopyDataErrorCallback& error_callback);
+
 }  // namespace stream_utils
 }  // namespace chromeos
 

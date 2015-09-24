@@ -6,8 +6,44 @@
 
 #include <limits>
 
+#include <base/bind.h>
+#include <chromeos/message_loops/fake_message_loop.h>
+#include <chromeos/message_loops/message_loop.h>
+#include <chromeos/streams/mock_stream.h>
 #include <chromeos/streams/stream_errors.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+using testing::DoAll;
+using testing::InSequence;
+using testing::Return;
+using testing::StrictMock;
+using testing::_;
+
+ACTION_TEMPLATE(InvokeAsyncCallback,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_1_VALUE_PARAMS(size)) {
+  chromeos::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(std::get<k>(args), size));
+  return true;
+}
+
+ACTION_TEMPLATE(InvokeAsyncCallback,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_0_VALUE_PARAMS()) {
+  chromeos::MessageLoop::current()->PostTask(FROM_HERE, std::get<k>(args));
+  return true;
+}
+
+ACTION_TEMPLATE(InvokeAsyncErrorCallback,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_1_VALUE_PARAMS(code)) {
+  chromeos::ErrorPtr error;
+  chromeos::Error::AddTo(&error, FROM_HERE, "test", code, "message");
+  chromeos::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(std::get<k>(args), base::Owned(error.release())));
+  return true;
+}
 
 namespace chromeos {
 
@@ -113,6 +149,152 @@ TEST(StreamUtils, CalculateStreamPosition) {
   const uint64_t max_int64 = std::numeric_limits<int64_t>::max();
   EXPECT_FALSE(stream_utils::CalculateStreamPosition(
       FROM_HERE, 1, Whence::FROM_CURRENT, max_int64, end_pos, &pos, nullptr));
+}
+
+class CopyStreamDataTest : public testing::Test {
+ public:
+  void SetUp() override {
+    fake_loop_.SetAsCurrent();
+    in_stream_.reset(new StrictMock<MockStream>{});
+    out_stream_.reset(new StrictMock<MockStream>{});
+  }
+
+  FakeMessageLoop fake_loop_{nullptr};
+  std::unique_ptr<StrictMock<MockStream>> in_stream_;
+  std::unique_ptr<StrictMock<MockStream>> out_stream_;
+  bool succeeded_{false};
+  bool failed_{false};
+
+  void OnSuccess(uint64_t expected,
+                 StreamPtr in_stream,
+                 StreamPtr out_stream,
+                 uint64_t copied) {
+    EXPECT_EQ(expected, copied);
+    succeeded_ = true;
+  }
+
+  void OnError(const std::string& expected_error,
+               StreamPtr in_stream,
+               StreamPtr out_stream,
+               const Error* error) {
+    EXPECT_EQ(expected_error, error->GetCode());
+    failed_ = true;
+  }
+
+  void ExpectSuccess() {
+    EXPECT_TRUE(succeeded_);
+    EXPECT_FALSE(failed_);
+  }
+
+  void ExpectFailure() {
+    EXPECT_FALSE(succeeded_);
+    EXPECT_TRUE(failed_);
+  }
+};
+
+TEST_F(CopyStreamDataTest, CopyAllAtOnce) {
+  {
+    InSequence seq;
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 100, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(100));
+    EXPECT_CALL(*out_stream_, WriteAllAsync(_, 100, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>());
+  }
+  stream_utils::CopyData(
+      std::move(in_stream_), std::move(out_stream_), 100, 4096,
+      base::Bind(&CopyStreamDataTest::OnSuccess, base::Unretained(this), 100),
+      base::Bind(&CopyStreamDataTest::OnError, base::Unretained(this), ""));
+  fake_loop_.Run();
+  ExpectSuccess();
+}
+
+TEST_F(CopyStreamDataTest, CopyInBlocks) {
+  {
+    InSequence seq;
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 100, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(60));
+    EXPECT_CALL(*out_stream_, WriteAllAsync(_, 60, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>());
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 40, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(40));
+    EXPECT_CALL(*out_stream_, WriteAllAsync(_, 40, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>());
+  }
+  stream_utils::CopyData(
+      std::move(in_stream_), std::move(out_stream_), 100, 4096,
+      base::Bind(&CopyStreamDataTest::OnSuccess, base::Unretained(this), 100),
+      base::Bind(&CopyStreamDataTest::OnError, base::Unretained(this), ""));
+  fake_loop_.Run();
+  ExpectSuccess();
+}
+
+TEST_F(CopyStreamDataTest, CopyTillEndOfStream) {
+  {
+    InSequence seq;
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 100, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(60));
+    EXPECT_CALL(*out_stream_, WriteAllAsync(_, 60, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>());
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 40, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(0));
+  }
+  stream_utils::CopyData(
+      std::move(in_stream_), std::move(out_stream_), 100, 4096,
+      base::Bind(&CopyStreamDataTest::OnSuccess, base::Unretained(this), 60),
+      base::Bind(&CopyStreamDataTest::OnError, base::Unretained(this), ""));
+  fake_loop_.Run();
+  ExpectSuccess();
+}
+
+TEST_F(CopyStreamDataTest, CopyInSmallBlocks) {
+  {
+    InSequence seq;
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 60, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(60));
+    EXPECT_CALL(*out_stream_, WriteAllAsync(_, 60, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>());
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 40, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(40));
+    EXPECT_CALL(*out_stream_, WriteAllAsync(_, 40, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>());
+  }
+  stream_utils::CopyData(
+      std::move(in_stream_), std::move(out_stream_), 100, 60,
+      base::Bind(&CopyStreamDataTest::OnSuccess, base::Unretained(this), 100),
+      base::Bind(&CopyStreamDataTest::OnError, base::Unretained(this), ""));
+  fake_loop_.Run();
+  ExpectSuccess();
+}
+
+TEST_F(CopyStreamDataTest, ErrorRead) {
+  {
+    InSequence seq;
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 60, _, _, _))
+        .WillOnce(InvokeAsyncErrorCallback<3>("read"));
+  }
+  stream_utils::CopyData(
+      std::move(in_stream_), std::move(out_stream_), 100, 60,
+      base::Bind(&CopyStreamDataTest::OnSuccess, base::Unretained(this), 0),
+      base::Bind(&CopyStreamDataTest::OnError, base::Unretained(this), "read"));
+  fake_loop_.Run();
+  ExpectFailure();
+}
+
+TEST_F(CopyStreamDataTest, ErrorWrite) {
+  {
+    InSequence seq;
+    EXPECT_CALL(*in_stream_, ReadAsync(_, 60, _, _, _))
+        .WillOnce(InvokeAsyncCallback<2>(60));
+    EXPECT_CALL(*out_stream_, WriteAllAsync(_, 60, _, _, _))
+        .WillOnce(InvokeAsyncErrorCallback<3>("write"));
+  }
+  stream_utils::CopyData(
+      std::move(in_stream_), std::move(out_stream_), 100, 60,
+      base::Bind(&CopyStreamDataTest::OnSuccess, base::Unretained(this), 0),
+      base::Bind(&CopyStreamDataTest::OnError, base::Unretained(this),
+                 "write"));
+  fake_loop_.Run();
+  ExpectFailure();
 }
 
 }  // namespace chromeos
