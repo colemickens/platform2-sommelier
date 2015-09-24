@@ -16,11 +16,20 @@ using std::string;
 namespace apmanager {
 
 // static.
+#if !defined(__ANDROID__)
 const char DHCPServer::kDnsmasqPath[] = "/usr/sbin/dnsmasq";
 const char DHCPServer::kDnsmasqConfigFilePathFormat[] =
     "/var/run/apmanager/dnsmasq/dhcpd-%d.conf";
 const char DHCPServer::kDHCPLeasesFilePathFormat[] =
     "/var/run/apmanager/dnsmasq/dhcpd-%d.leases";
+#else
+const char DHCPServer::kDnsmasqPath[] = "/system/bin/dnsmasq";
+const char DHCPServer::kDnsmasqConfigFilePathFormat[] =
+    "/data/misc/apmanager/dnsmasq/dhcpd-%d.conf";
+const char DHCPServer::kDHCPLeasesFilePathFormat[] =
+    "/data/misc/apmanager/dnsmasq/dhcpd-%d.leases";
+#endif  // __ANDROID__
+
 const char DHCPServer::kServerAddressFormat[] = "192.168.%d.254";
 const char DHCPServer::kAddressRangeLowFormat[] = "192.168.%d.1";
 const char DHCPServer::kAddressRangeHighFormat[] = "192.168.%d.128";

@@ -25,11 +25,20 @@ using std::string;
 namespace apmanager {
 
 // static.
+#if !defined(__ANDROID__)
 const char Service::kHostapdPath[] = "/usr/sbin/hostapd";
 const char Service::kHostapdConfigPathFormat[] =
     "/var/run/apmanager/hostapd/hostapd-%d.conf";
 const char Service::kHostapdControlInterfacePath[] =
     "/var/run/apmanager/hostapd/ctrl_iface";
+#else
+const char Service::kHostapdPath[] = "/system/bin/hostapd";
+const char Service::kHostapdConfigPathFormat[] =
+    "/data/misc/apmanager/hostapd/hostapd-%d.conf";
+const char Service::kHostapdControlInterfacePath[] =
+    "/data/misc/apmanager/hostapd/ctrl_iface";
+#endif  // __ANDROID__
+
 const int Service::kTerminationTimeoutSeconds = 2;
 
 // static. Service state definitions.

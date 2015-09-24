@@ -22,8 +22,14 @@ using std::string;
 namespace apmanager {
 
 // static.
+#if !defined(__ANDROID__)
 const char HostapdMonitor::kLocalPathFormat[] =
     "/var/run/apmanager/hostapd/hostapd_ctrl_%s";
+#else
+const char HostapdMonitor::kLocalPathFormat[] =
+    "/data/misc/apmanager/hostapd/hostapd_ctrl_%s";
+#endif  // __ANDROID__
+
 const char HostapdMonitor::kHostapdCmdAttach[] = "ATTACH";
 const char HostapdMonitor::kHostapdRespOk[] = "OK\n";
 const char HostapdMonitor::kHostapdEventStationConnected[] = "AP-STA-CONNECTED";
