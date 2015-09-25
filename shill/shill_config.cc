@@ -21,7 +21,11 @@ namespace shill {
 // static
 const char Config::kDefaultRunDirectory[] = RUNDIR;
 // static
+#if defined(__ANDROID__)
+const char Config::kDefaultStorageDirectory[] = RUNDIR "/default_profiles/";
+#else
 const char Config::kDefaultStorageDirectory[] = "/var/cache/shill";
+#endif  // __ANDROID__
 // static
 const char Config::kDefaultUserStorageDirectory[] = RUNDIR "/user_profiles/";
 
