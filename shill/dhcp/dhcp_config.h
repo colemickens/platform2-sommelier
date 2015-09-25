@@ -141,6 +141,7 @@ class DHCPConfig : public IPConfig {
   static const int kDHCPCDExitWaitMilliseconds;
   static const char kDHCPCDPath[];
   static const char kDHCPCDUser[];
+  static const char kDHCPCDGroup[];
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();
