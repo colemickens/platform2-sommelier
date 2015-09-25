@@ -220,8 +220,10 @@ help() {
     printf 'ERROR: %s\n\n' "$*"
   fi
 
-  # This is set by `dispatch`.
-  cmd_help "${CURRENT_COMMAND}"
+  # This is set by `dispatch` when a valid command has been found.
+  if [ -n "${CURRENT_COMMAND}" ]; then
+    cmd_help "${CURRENT_COMMAND}"
+  fi
 }
 
 USAGE_help_advanced=''
