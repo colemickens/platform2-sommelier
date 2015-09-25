@@ -17,14 +17,15 @@
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
 #include <shill/dbus-proxies.h>
-#include <weave/network.h>
-#include <weave/wifi.h>
+#include <weave/network_provider.h>
+#include <weave/wifi_provider.h>
 
 namespace buffet {
 
 class ApManagerClient;
 
-class ShillClient final : public weave::Network, public weave::Wifi {
+class ShillClient final : public weave::NetworkProvider,
+                          public weave::WifiProvider {
  public:
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
               const std::set<std::string>& device_whitelist);
@@ -32,23 +33,23 @@ class ShillClient final : public weave::Network, public weave::Wifi {
 
   void Init();
 
-  // Network implementation.
-  void AddOnConnectionChangedCallback(
-      const OnConnectionChangedCallback& listener) override;
-  void ConnectToService(
-      const std::string& ssid,
-      const std::string& passphrase,
-      const base::Closure& success_callback,
-      const base::Callback<void(const weave::Error*)>& error_callback) override;
+  // NetworkProvider implementation.
+  void AddConnectionChangedCallback(
+      const ConnectionChangedCallback& listener) override;
   weave::NetworkState GetConnectionState() const override;
-  void EnableAccessPoint(const std::string& ssid) override;
-  void DisableAccessPoint() override;
-  void OpenSslSocket(
-      const std::string& host,
-      uint16_t port,
-      const base::Callback<void(std::unique_ptr<weave::Stream>)>&
-          success_callback,
-      const base::Callback<void(const weave::Error*)>& error_callback) override;
+  void OpenSslSocket(const std::string& host,
+                     uint16_t port,
+                     const base::Callback<void(std::unique_ptr<weave::Stream>)>&
+                         success_callback,
+                     const weave::ErrorCallback& error_callback) override;
+
+  // WifiProvider implementation.
+  void Connect(const std::string& ssid,
+               const std::string& passphrase,
+               const weave::SuccessCallback& success_callback,
+               const weave::ErrorCallback& error_callback) override;
+  void StartAccessPoint(const std::string& ssid) override;
+  void StopAccessPoint() override;
 
  private:
   struct DeviceState {
@@ -103,7 +104,7 @@ class ShillClient final : public weave::Network, public weave::Wifi {
   // There is logic that assumes we will never change this device list
   // in OnManagerPropertyChange.  Do not be tempted to remove this const.
   const std::set<std::string> device_whitelist_;
-  std::vector<OnConnectionChangedCallback> connectivity_listeners_;
+  std::vector<ConnectionChangedCallback> connectivity_listeners_;
 
   // State for tracking where we are in our attempts to connect to a service.
   bool have_called_connect_{false};

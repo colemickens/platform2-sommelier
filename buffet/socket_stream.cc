@@ -69,11 +69,10 @@ void OnError(const base::Callback<void(const weave::Error*)>& error_callback,
 
 }  // namespace
 
-void SocketStream::ReadAsync(
-    void* buffer,
-    size_t size_to_read,
-    const base::Callback<void(size_t)>& success_callback,
-    const base::Callback<void(const weave::Error*)>& error_callback) {
+void SocketStream::Read(void* buffer,
+                        size_t size_to_read,
+                        const ReadSuccessCallback& success_callback,
+                        const weave::ErrorCallback& error_callback) {
   chromeos::ErrorPtr chromeos_error;
   if (!ptr_->ReadAsync(buffer, size_to_read, success_callback,
                        base::Bind(&OnError, error_callback), &chromeos_error)) {
@@ -84,11 +83,10 @@ void SocketStream::ReadAsync(
   }
 }
 
-void SocketStream::WriteAllAsync(
-    const void* buffer,
-    size_t size_to_write,
-    const base::Closure& success_callback,
-    const base::Callback<void(const weave::Error*)>& error_callback) {
+void SocketStream::Write(const void* buffer,
+                         size_t size_to_write,
+                         const weave::SuccessCallback& success_callback,
+                         const weave::ErrorCallback& error_callback) {
   chromeos::ErrorPtr chromeos_error;
   if (!ptr_->WriteAllAsync(buffer, size_to_write, success_callback,
                            base::Bind(&OnError, error_callback),
@@ -100,7 +98,7 @@ void SocketStream::WriteAllAsync(
   }
 }
 
-void SocketStream::CancelPendingAsyncOperations() {
+void SocketStream::CancelPendingOperations() {
   ptr_->CancelPendingAsyncOperations();
 }
 
@@ -124,7 +122,7 @@ void SocketStream::TlsConnect(
     std::unique_ptr<Stream> socket,
     const std::string& host,
     const base::Callback<void(std::unique_ptr<Stream>)>& success_callback,
-    const base::Callback<void(const weave::Error*)>& error_callback) {
+    const weave::ErrorCallback& error_callback) {
   SocketStream* stream = static_cast<SocketStream*>(socket.get());
   chromeos::TlsStream::Connect(std::move(stream->ptr_), host,
                                base::Bind(&OnSuccess, success_callback),

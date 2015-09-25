@@ -120,11 +120,10 @@ void ShillClient::Init() {
   OnManagerPropertyChange(shill::kDevicesProperty, it->second);
 }
 
-void ShillClient::ConnectToService(
-    const string& ssid,
-    const string& passphrase,
-    const base::Closure& success_callback,
-    const base::Callback<void(const weave::Error*)>& error_callback) {
+void ShillClient::Connect(const string& ssid,
+                          const string& passphrase,
+                          const weave::SuccessCallback& success_callback,
+                          const weave::ErrorCallback& error_callback) {
   if (connecting_service_) {
     weave::ErrorPtr error;
     weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "busy",
@@ -189,16 +188,16 @@ weave::NetworkState ShillClient::GetConnectionState() const {
   return connectivity_state_;
 }
 
-void ShillClient::EnableAccessPoint(const std::string& ssid) {
+void ShillClient::StartAccessPoint(const std::string& ssid) {
   ap_manager_client_->Start(ssid);
 }
 
-void ShillClient::DisableAccessPoint() {
+void ShillClient::StopAccessPoint() {
   ap_manager_client_->Stop();
 }
 
-void ShillClient::AddOnConnectionChangedCallback(
-    const OnConnectionChangedCallback& listener) {
+void ShillClient::AddConnectionChangedCallback(
+    const ConnectionChangedCallback& listener) {
   connectivity_listeners_.push_back(listener);
 }
 

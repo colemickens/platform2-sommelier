@@ -78,7 +78,7 @@ void Manager::Start(const weave::Device::Options& options,
   task_runner_.reset(new TaskRunner{});
   http_client_.reset(new HttpTransportClient);
   shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
-  weave::Mdns* mdns{nullptr};
+  weave::DnsServiceDiscoveryProvider* mdns{nullptr};
   weave::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options.disable_privet) {
