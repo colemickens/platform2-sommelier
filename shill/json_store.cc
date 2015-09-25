@@ -454,7 +454,7 @@ bool JsonStore::Flush() {
     return false;
   }
 
-  ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR));
+  ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR) & 0777);
   if (!base::ImportantFileWriter::WriteFileAtomically(path_, json_string)) {
     LOG(ERROR) << "Failed to write JSON file: |" << path_.value() << "|.";
     return false;

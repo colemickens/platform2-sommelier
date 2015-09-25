@@ -122,7 +122,7 @@ bool KeyFileStore::Flush() {
     success = false;
   }
   if (success) {
-    ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR));
+    ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR) & 0777);
     success = base::ImportantFileWriter::WriteFileAtomically(path_, data);
     if (!success) {
       LOG(ERROR) << "Failed to store key file: " << path_.value();
