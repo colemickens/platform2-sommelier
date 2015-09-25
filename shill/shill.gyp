@@ -22,8 +22,6 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
-      # shill uses try/catch to interact with dbus-c++.
-      'enable_exceptions': 1,
     },
     'cflags': [
       '-Wextra',
@@ -599,7 +597,6 @@
       'type': 'executable',
       'variables': {
         'deps': [
-          'dbus-c++-1',
           'libshill-client',
         ],
       },
@@ -634,7 +631,6 @@
           'type': 'shared_library',
           'variables': {
             'deps': [
-              'dbus-c++-1',
               'libshill-client',
             ],
           },
