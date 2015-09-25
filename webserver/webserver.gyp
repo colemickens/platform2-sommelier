@@ -35,6 +35,7 @@
         'libwebserv/protocol_handler.cc',
         'libwebserv/request.cc',
         'libwebserv/request_handler_callback.cc',
+        'libwebserv/request_utils.cc',
         'libwebserv/response.cc',
         'libwebserv/server.cc',
         'libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml',
