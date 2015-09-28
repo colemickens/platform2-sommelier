@@ -74,6 +74,7 @@ const struct ErrorMapEntry {
   ERROR_ENTRY(ELOOP),            // Too many symbolic links encountered
   ERROR_ENTRY(ENOMSG),           // No message of desired type
   ERROR_ENTRY(EIDRM),            // Identifier removed
+#ifdef __linux__
   ERROR_ENTRY(ECHRNG),           // Channel number out of range
   ERROR_ENTRY(EL2NSYNC),         // Level 2 not synchronized
   ERROR_ENTRY(EL3HLT),           // Level 3 halted
@@ -89,22 +90,30 @@ const struct ErrorMapEntry {
   ERROR_ENTRY(EBADRQC),          // Invalid request code
   ERROR_ENTRY(EBADSLT),          // Invalid slot
   ERROR_ENTRY(EBFONT),           // Bad font file format
+#endif  // __linux__
   ERROR_ENTRY(ENOSTR),           // Device not a stream
   ERROR_ENTRY(ENODATA),          // No data available
   ERROR_ENTRY(ETIME),            // Timer expired
   ERROR_ENTRY(ENOSR),            // Out of streams resources
+#ifdef __linux__
   ERROR_ENTRY(ENONET),           // Machine is not on the network
   ERROR_ENTRY(ENOPKG),           // Package not installed
+#endif  // __linux__
   ERROR_ENTRY(EREMOTE),          // Object is remote
   ERROR_ENTRY(ENOLINK),          // Link has been severed
+#ifdef __linux__
   ERROR_ENTRY(EADV),             // Advertise error
   ERROR_ENTRY(ESRMNT),           // Srmount error
   ERROR_ENTRY(ECOMM),            // Communication error on send
+#endif  // __linux__
   ERROR_ENTRY(EPROTO),           // Protocol error
   ERROR_ENTRY(EMULTIHOP),        // Multihop attempted
+#ifdef __linux__
   ERROR_ENTRY(EDOTDOT),          // RFS specific error
+#endif  // __linux__
   ERROR_ENTRY(EBADMSG),          // Not a data message
   ERROR_ENTRY(EOVERFLOW),        // Value too large for defined data type
+#ifdef __linux__
   ERROR_ENTRY(ENOTUNIQ),         // Name not unique on network
   ERROR_ENTRY(EBADFD),           // File descriptor in bad state
   ERROR_ENTRY(EREMCHG),          // Remote address changed
@@ -113,9 +122,12 @@ const struct ErrorMapEntry {
   ERROR_ENTRY(ELIBSCN),          // .lib section in a.out corrupted
   ERROR_ENTRY(ELIBMAX),          // Attempting to link in too many shared libs.
   ERROR_ENTRY(ELIBEXEC),         // Cannot exec a shared library directly
+#endif  // __linux__
   ERROR_ENTRY(EILSEQ),           // Illegal byte sequence
+#ifdef __linux__
   ERROR_ENTRY(ERESTART),         // Interrupted system call should be restarted
   ERROR_ENTRY(ESTRPIPE),         // Streams pipe error
+#endif  // __linux__
   ERROR_ENTRY(EUSERS),           // Too many users
   ERROR_ENTRY(ENOTSOCK),         // Socket operation on non-socket
   ERROR_ENTRY(EDESTADDRREQ),     // Destination address required
@@ -146,23 +158,31 @@ const struct ErrorMapEntry {
   ERROR_ENTRY(EALREADY),         // Operation already in progress
   ERROR_ENTRY(EINPROGRESS),      // Operation now in progress
   ERROR_ENTRY(ESTALE),           // Stale file handle
+#ifdef __linux__
   ERROR_ENTRY(EUCLEAN),          // Structure needs cleaning
   ERROR_ENTRY(ENOTNAM),          // Not a XENIX named type file
   ERROR_ENTRY(ENAVAIL),          // No XENIX semaphores available
   ERROR_ENTRY(EISNAM),           // Is a named type file
   ERROR_ENTRY(EREMOTEIO),        // Remote I/O error
+#endif  // __linux__
   ERROR_ENTRY(EDQUOT),           // Quota exceeded
+#ifdef __linux__
   ERROR_ENTRY(ENOMEDIUM),        // No medium found
   ERROR_ENTRY(EMEDIUMTYPE),      // Wrong medium type
+#endif  // __linux__
   ERROR_ENTRY(ECANCELED),        // Operation Canceled
+#ifdef __linux__
   ERROR_ENTRY(ENOKEY),           // Required key not available
   ERROR_ENTRY(EKEYEXPIRED),      // Key has expired
   ERROR_ENTRY(EKEYREVOKED),      // Key has been revoked
   ERROR_ENTRY(EKEYREJECTED),     // Key was rejected by service
+#endif  // __linux__
   ERROR_ENTRY(EOWNERDEAD),       // Owner died
   ERROR_ENTRY(ENOTRECOVERABLE),  // State not recoverable
+#ifdef __linux__
   ERROR_ENTRY(ERFKILL),          // Operation not possible due to RF-kill
   ERROR_ENTRY(EHWPOISON),        // Memory page has hardware error
+#endif  // __linux__
 #undef ERROR_ENTRY
   // This list comes from <errno.h> system header. The elements are ordered
   // by increasing errnum values which is the same order used in the header

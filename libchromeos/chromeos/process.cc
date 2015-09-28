@@ -21,6 +21,11 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 
+#ifndef __linux__
+#define setresuid(_u1, _u2, _u3) setreuid(_u1, _u2)
+#define setresgid(_g1, _g2, _g3) setregid(_g1, _g2)
+#endif  // !__linux__
+
 namespace chromeos {
 
 bool ReturnTrue() {
