@@ -34,8 +34,11 @@ const char kHelpMessage[] = "\n"
 
 namespace {
 
+#if !defined(__ANDROID__)
 const char kLoggerCommand[] = "/usr/bin/logger";
 const char kLoggerUser[] = "syslog";
+#endif  // __ANDROID__
+
 const char kSeccompFilePath[] = "/usr/share/policy/apmanager-seccomp.policy";
 
 }  // namespace
@@ -53,6 +56,10 @@ void SetupLogging(chromeos::Minijail* minijail,
   }
   chromeos::InitLog(log_flags);
 
+#if !defined(__ANDROID__)
+  // Logger utility doesn't exist on Android, so do not run it on Android.
+  // TODO(zqiu): add support to redirect stderr logs from child processes
+  // to Android logging facility.
   if (!foreground) {
     vector<char*> logger_command_line;
     int logger_stdin_fd;
@@ -81,6 +88,7 @@ void SetupLogging(chromeos::Minijail* minijail,
     }
     close(logger_stdin_fd);
   }
+#endif  // __ANDROID__
 }
 
 void DropPrivileges(chromeos::Minijail* minijail) {
