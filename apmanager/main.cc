@@ -111,9 +111,15 @@ void OnStartup(const char* daemon_name, base::CommandLine* cl) {
 
   LOG(INFO) << __func__ << ": Dropping privileges";
 
+  // TODO(zqiu): apmanager is currently started as the "system" user on Android,
+  // so there is no need to drop privileges to the "system" user again.
+  // Drop user privileges when we're running apmanager under a different
+  // user/group.
+#if !defined(__ANDROID__)
   // Now that the daemon has all the resources it needs to run, we can drop
   // privileges further.
   DropPrivileges(minijail);
+#endif  // __ANDROID
 }
 
 int main(int argc, char* argv[]) {
