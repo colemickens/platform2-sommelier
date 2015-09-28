@@ -11,7 +11,7 @@
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <weave/dns_service_discovery_provider.h>
+#include <weave/provider/dns_service_discovery.h>
 
 #include "peerd/dbus-proxies.h"
 
@@ -22,7 +22,7 @@ class Bus;
 namespace buffet {
 
 // Publishes privet service on mDns using peerd.
-class PeerdClient : public weave::DnsServiceDiscoveryProvider {
+class PeerdClient : public weave::provider::DnsServiceDiscovery {
  public:
   explicit PeerdClient(const scoped_refptr<dbus::Bus>& bus);
   ~PeerdClient() override;

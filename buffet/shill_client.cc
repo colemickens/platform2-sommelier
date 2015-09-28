@@ -26,6 +26,8 @@ using std::map;
 using std::set;
 using std::string;
 using std::vector;
+using weave::EnumToString;
+using weave::provider::Network;
 
 namespace buffet {
 
@@ -56,31 +58,31 @@ bool GetStateForService(ServiceProxy* service, string* state) {
   return true;
 }
 
-weave::NetworkState ShillServiceStateToNetworkState(const string& state) {
+Network::State ShillServiceStateToNetworkState(const string& state) {
   // TODO(wiley) What does "unconfigured" mean in a world with multiple sets
   //             of WiFi credentials?
   // TODO(wiley) Detect disabled devices, update state appropriately.
   if ((state.compare(shill::kStateReady) == 0) ||
       (state.compare(shill::kStatePortal) == 0) ||
       (state.compare(shill::kStateOnline) == 0)) {
-    return weave::NetworkState::kConnected;
+    return Network::State::kConnected;
   }
   if ((state.compare(shill::kStateAssociation) == 0) ||
       (state.compare(shill::kStateConfiguration) == 0)) {
-    return weave::NetworkState::kConnecting;
+    return Network::State::kConnecting;
   }
   if ((state.compare(shill::kStateFailure) == 0) ||
       (state.compare(shill::kStateActivationFailure) == 0)) {
     // TODO(wiley) Get error information off the service object.
-    return weave::NetworkState::kFailure;
+    return Network::State::kFailure;
   }
   if ((state.compare(shill::kStateIdle) == 0) ||
       (state.compare(shill::kStateOffline) == 0) ||
       (state.compare(shill::kStateDisconnect) == 0)) {
-    return weave::NetworkState::kOffline;
+    return Network::State::kOffline;
   }
   LOG(WARNING) << "Unknown state found: '" << state << "'";
-  return weave::NetworkState::kOffline;
+  return Network::State::kOffline;
 }
 
 }  // namespace
@@ -108,7 +110,7 @@ void ShillClient::Init() {
   VLOG(2) << "ShillClient::Init();";
   CleanupConnectingService();
   devices_.clear();
-  connectivity_state_ = weave::NetworkState::kOffline;
+  connectivity_state_ = Network::State::kOffline;
   VariantDictionary properties;
   if (!manager_proxy_.GetProperties(&properties, nullptr)) {
     LOG(ERROR) << "Unable to get properties from Manager, waiting for "
@@ -184,7 +186,7 @@ void ShillClient::ConnectToServiceError(
   OnErrorChangeForConnectingService(error);
 }
 
-weave::NetworkState ShillClient::GetConnectionState() const {
+Network::State ShillClient::GetConnectionState() const {
   return connectivity_state_;
 }
 
@@ -224,7 +226,7 @@ void ShillClient::OnShillServiceOwnerChange(const string& old_owner,
   if (new_owner.empty()) {
     CleanupConnectingService();
     devices_.clear();
-    connectivity_state_ = weave::NetworkState::kOffline;
+    connectivity_state_ = Network::State::kOffline;
   } else {
     Init();  // New service owner means shill reset!
   }
@@ -343,7 +345,7 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
       return;  // Spurious update?
     }
     device_state.selected_service.reset();
-    device_state.service_state = weave::NetworkState::kOffline;
+    device_state.service_state = Network::State::kOffline;
     removed_old_service = true;
   }
   std::shared_ptr<ServiceProxy> new_service;
@@ -447,7 +449,7 @@ void ShillClient::OnServicePropertyChange(const ObjectPath& service_path,
 
 void ShillClient::OnStateChangeForConnectingService(const string& state) {
   switch (ShillServiceStateToNetworkState(state)) {
-    case weave::NetworkState::kConnected: {
+    case Network::State::kConnected: {
       auto callback = connect_success_callback_;
       CleanupConnectingService();
 
@@ -455,12 +457,12 @@ void ShillClient::OnStateChangeForConnectingService(const string& state) {
         callback.Run();
       break;
     }
-    case weave::NetworkState::kFailure: {
+    case Network::State::kFailure: {
       ConnectToServiceError(connecting_service_);
       break;
     }
-    case weave::NetworkState::kOffline:
-    case weave::NetworkState::kConnecting:
+    case Network::State::kOffline:
+    case Network::State::kConnecting:
       break;
   }
 }
@@ -514,7 +516,7 @@ void ShillClient::OnStateChangeForSelectedService(
 void ShillClient::UpdateConnectivityState() {
   // Update the connectivity state of the device by picking the
   // state of the currently most connected selected service.
-  weave::NetworkState new_connectivity_state{weave::NetworkState::kOffline};
+  Network::State new_connectivity_state{Network::State::kOffline};
   for (const auto& kv : devices_) {
     if (kv.second.service_state > new_connectivity_state) {
       new_connectivity_state = kv.second.service_state;
@@ -534,7 +536,7 @@ void ShillClient::UpdateConnectivityState() {
       FROM_HERE,
       base::Bind(&ShillClient::NotifyConnectivityListeners,
                  weak_factory_.GetWeakPtr(),
-                 GetConnectionState() == weave::NetworkState::kConnected));
+                 GetConnectionState() == Network::State::kConnected));
 }
 
 void ShillClient::NotifyConnectivityListeners(bool am_online) {

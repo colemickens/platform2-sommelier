@@ -17,15 +17,15 @@
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
 #include <shill/dbus-proxies.h>
-#include <weave/network_provider.h>
-#include <weave/wifi_provider.h>
+#include <weave/provider/network.h>
+#include <weave/provider/wifi.h>
 
 namespace buffet {
 
 class ApManagerClient;
 
-class ShillClient final : public weave::NetworkProvider,
-                          public weave::WifiProvider {
+class ShillClient final : public weave::provider::Network,
+                          public weave::provider::Wifi {
  public:
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
               const std::set<std::string>& device_whitelist);
@@ -36,7 +36,7 @@ class ShillClient final : public weave::NetworkProvider,
   // NetworkProvider implementation.
   void AddConnectionChangedCallback(
       const ConnectionChangedCallback& listener) override;
-  weave::NetworkState GetConnectionState() const override;
+  State GetConnectionState() const override;
   void OpenSslSocket(const std::string& host,
                      uint16_t port,
                      const base::Callback<void(std::unique_ptr<weave::Stream>)>&
@@ -59,7 +59,7 @@ class ShillClient final : public weave::NetworkProvider,
     // service (for instance, in the period between configuring a WiFi service
     // with credentials, and when Connect() is called.)
     std::shared_ptr<org::chromium::flimflam::ServiceProxy> selected_service;
-    weave::NetworkState service_state{weave::NetworkState::kOffline};
+    State service_state{State::kOffline};
   };
 
   bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxy* device);
@@ -115,7 +115,7 @@ class ShillClient final : public weave::NetworkProvider,
 
   // State for tracking our online connectivity.
   std::map<dbus::ObjectPath, DeviceState> devices_;
-  weave::NetworkState connectivity_state_{weave::NetworkState::kOffline};
+  State connectivity_state_{State::kOffline};
 
   std::unique_ptr<ApManagerClient> ap_manager_client_;
 

@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <weave/http_server.h>
+#include <weave/provider/http_server.h>
 
 namespace dbus {
 class Bus;
@@ -32,7 +32,7 @@ class Server;
 namespace buffet {
 
 // Wrapper around libwebserv that implements HttpServer interface.
-class WebServClient : public weave::HttpServer {
+class WebServClient : public weave::provider::HttpServer {
  public:
   WebServClient(const scoped_refptr<dbus::Bus>& bus,
                 chromeos::dbus_utils::AsyncEventSequencer* sequencer);

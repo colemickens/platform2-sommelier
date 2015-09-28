@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <weave/http_client.h>
+#include <weave/provider/http_client.h>
 
 namespace chromeos {
 namespace http {
@@ -18,7 +18,7 @@ class Transport;
 
 namespace buffet {
 
-class HttpTransportClient : public weave::HttpClient {
+class HttpTransportClient : public weave::provider::HttpClient {
  public:
   HttpTransportClient();
 

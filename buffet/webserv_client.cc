@@ -19,7 +19,9 @@ namespace buffet {
 
 namespace {
 
-class RequestImpl : public weave::HttpServer::Request {
+using weave::provider::HttpServer;
+
+class RequestImpl : public HttpServer::Request {
  public:
   explicit RequestImpl(std::unique_ptr<libwebserv::Request> request)
       : request_{std::move(request)} {}

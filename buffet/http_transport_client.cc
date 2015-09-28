@@ -16,17 +16,19 @@ namespace buffet {
 
 namespace {
 
+using weave::provider::HttpClient;
+
 // The number of seconds each HTTP request will be allowed before timing out.
 const int kRequestTimeoutSeconds = 30;
 
-class ResponseImpl : public weave::HttpClient::Response {
+class ResponseImpl : public HttpClient::Response {
  public:
   ~ResponseImpl() override = default;
   explicit ResponseImpl(std::unique_ptr<chromeos::http::Response> response)
       : response_{std::move(response)},
         data_{response_->ExtractDataAsString()} {}
 
-  // weave::HttpClient::Response implementation
+  // HttpClient::Response implementation
   int GetStatusCode() const override { return response_->GetStatusCode(); }
 
   std::string GetContentType() const override {
@@ -41,14 +43,13 @@ class ResponseImpl : public weave::HttpClient::Response {
   DISALLOW_COPY_AND_ASSIGN(ResponseImpl);
 };
 
-void OnSuccessCallback(
-    const weave::HttpClient::SuccessCallback& success_callback,
-    int id,
-    std::unique_ptr<chromeos::http::Response> response) {
+void OnSuccessCallback(const HttpClient::SuccessCallback& success_callback,
+                       int id,
+                       std::unique_ptr<chromeos::http::Response> response) {
   success_callback.Run(id, ResponseImpl{std::move(response)});
 }
 
-void OnErrorCallback(const weave::HttpClient::ErrorCallback& error_callback,
+void OnErrorCallback(const HttpClient::ErrorCallback& error_callback,
                      int id,
                      const chromeos::Error* chromeos_error) {
   weave::ErrorPtr error;
@@ -66,12 +67,12 @@ HttpTransportClient::HttpTransportClient()
 
 HttpTransportClient::~HttpTransportClient() {}
 
-std::unique_ptr<weave::HttpClient::Response>
-HttpTransportClient::SendRequestAndBlock(const std::string& method,
-                                         const std::string& url,
-                                         const Headers& headers,
-                                         const std::string& data,
-                                         weave::ErrorPtr* error) {
+std::unique_ptr<HttpClient::Response> HttpTransportClient::SendRequestAndBlock(
+    const std::string& method,
+    const std::string& url,
+    const Headers& headers,
+    const std::string& data,
+    weave::ErrorPtr* error) {
   chromeos::http::Request request(url, method, transport_);
   request.AddHeaders(headers);
   if (!data.empty()) {
@@ -89,7 +90,7 @@ HttpTransportClient::SendRequestAndBlock(const std::string& method,
     return nullptr;
   }
 
-  return std::unique_ptr<weave::HttpClient::Response>{
+  return std::unique_ptr<HttpClient::Response>{
       new ResponseImpl{std::move(response)}};
 }
 

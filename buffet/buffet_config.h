@@ -13,7 +13,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <chromeos/key_value_store.h>
-#include <weave/config_store.h>
+#include <weave/provider/config_store.h>
 
 namespace buffet {
 
@@ -28,7 +28,7 @@ struct BuffetConfigPaths {
 };
 
 // Handles reading buffet config and state files.
-class BuffetConfig final : public weave::ConfigStore {
+class BuffetConfig final : public weave::provider::ConfigStore {
  public:
   using OnChangedCallback = base::Callback<void(const weave::Settings&)>;
   ~BuffetConfig() override = default;

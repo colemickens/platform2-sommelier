@@ -53,7 +53,7 @@ const char kNotImplemented[] = "notImplemented";
 
 }  // anonymous namespace
 
-class Manager::TaskRunner : public weave::TaskRunner {
+class Manager::TaskRunner : public weave::provider::TaskRunner {
  public:
   void PostDelayedTask(const tracked_objects::Location& from_here,
                        const base::Closure& task,
@@ -78,8 +78,8 @@ void Manager::Start(const weave::Device::Options& options,
   task_runner_.reset(new TaskRunner{});
   http_client_.reset(new HttpTransportClient);
   shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
-  weave::DnsServiceDiscoveryProvider* mdns{nullptr};
-  weave::HttpServer* http_server{nullptr};
+  weave::provider::DnsServiceDiscovery* mdns{nullptr};
+  weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options.disable_privet) {
     peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
