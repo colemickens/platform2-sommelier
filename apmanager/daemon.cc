@@ -18,8 +18,13 @@ const char kAPMRootServicePath[] = "/org/chromium/apmanager";
 }  // namespace
 
 // static
+#if !defined(__ANDROID__)
 const char Daemon::kAPManagerGroupName[] = "apmanager";
 const char Daemon::kAPManagerUserName[] = "apmanager";
+#else
+const char Daemon::kAPManagerGroupName[] = "system";
+const char Daemon::kAPManagerUserName[] = "system";
+#endif  // __ANDROID__
 
 Daemon::Daemon(const base::Closure& startup_callback)
     : DBusServiceDaemon(kAPManagerServiceName, kAPMRootServicePath),
