@@ -24,12 +24,19 @@ namespace shill {
 
 RTNLListener::RTNLListener(int listen_flags,
                            const Callback<void(const RTNLMessage&)>& callback)
-    : listen_flags_(listen_flags), callback_(callback) {
-  RTNLHandler::GetInstance()->AddListener(this);
+    : RTNLListener{listen_flags, callback, RTNLHandler::GetInstance()} {}
+
+RTNLListener::RTNLListener(int listen_flags,
+                           const Callback<void(const RTNLMessage&)>& callback,
+                           RTNLHandler* rtnl_handler)
+    : listen_flags_(listen_flags),
+      callback_(callback),
+      rtnl_handler_(rtnl_handler) {
+  rtnl_handler_->AddListener(this);
 }
 
 RTNLListener::~RTNLListener() {
-  RTNLHandler::GetInstance()->RemoveListener(this);
+  rtnl_handler_->RemoveListener(this);
 }
 
 void RTNLListener::NotifyEvent(int type, const RTNLMessage& msg) {
