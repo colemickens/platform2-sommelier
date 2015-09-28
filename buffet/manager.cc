@@ -108,14 +108,9 @@ void Manager::Start(const weave::Device::Options& options,
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
   if (device_->GetPrivet()) {
-    device_->GetPrivet()->AddOnWifiSetupChangedCallback(base::Bind(
-        &Manager::UpdateWiFiBootstrapState, weak_ptr_factory_.GetWeakPtr()));
-
     device_->GetPrivet()->AddOnPairingChangedCallbacks(
         base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
         base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
-  } else {
-    UpdateWiFiBootstrapState(weave::WifiSetupState::kDisabled);
   }
 
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
@@ -336,11 +331,6 @@ void Manager::OnConfigChanged(const weave::Settings& settings) {
   dbus_adaptor_.SetName(settings.name);
   dbus_adaptor_.SetDescription(settings.description);
   dbus_adaptor_.SetLocation(settings.location);
-  dbus_adaptor_.SetAnonymousAccessRole(settings.local_anonymous_access_role);
-}
-
-void Manager::UpdateWiFiBootstrapState(weave::WifiSetupState state) {
-  dbus_adaptor_.SetWiFiBootstrapState(weave::EnumToString(state));
 }
 
 void Manager::OnPairingStart(const std::string& session_id,
