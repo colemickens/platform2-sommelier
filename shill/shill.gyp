@@ -22,6 +22,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
+      'enable_exceptions': 1,
     },
     'cflags': [
       '-Wextra',
