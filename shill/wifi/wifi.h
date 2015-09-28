@@ -465,9 +465,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       const std::string& name,
       bool(WiFi::*get)(Error* error));
 
-  // Enable a network entry in wpa_supplicant, and catch any exception
-  // that occurs.  Returns false if an exception occurred, true otherwise.
-  bool EnableNetwork(const std::string& network);
   // Disable a network entry in wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
   bool DisableNetwork(const std::string& network);

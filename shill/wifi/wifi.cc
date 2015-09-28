@@ -492,8 +492,6 @@ void WiFi::ConnectTo(WiFiService* service) {
     }
     CHECK(!network_path.empty());  // No DBus path should be empty.
     rpcid_by_service_[service] = network_path;
-  } else {
-    EnableNetwork(network_path);
   }
 
   if (service->HasRecentConnectionIssues()) {
@@ -621,16 +619,6 @@ bool WiFi::DisableNetwork(const string& network) {
       control_interface()->CreateSupplicantNetworkProxy(network));
   if (!supplicant_network_proxy->SetEnabled(false)) {
     LOG(ERROR) << "DisableNetwork for " << network << " failed.";
-    return false;
-  }
-  return true;
-}
-
-bool WiFi::EnableNetwork(const string& network) {
-  std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
-      control_interface()->CreateSupplicantNetworkProxy(network));
-  if (!supplicant_network_proxy->SetEnabled(true)) {
-    LOG(ERROR) << "EnableNetwork for " << network << " failed.";
     return false;
   }
   return true;
