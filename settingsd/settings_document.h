@@ -9,8 +9,8 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/values.h>
 
+#include "settingsd/blob_ref.h"
 #include "settingsd/blob_store.h"
 #include "settingsd/key.h"
 #include "settingsd/version_stamp.h"
@@ -26,9 +26,9 @@ class SettingsDocument {
   virtual ~SettingsDocument() {}
 
   // Retrieves the value for the setting identified by |key|. If this settings
-  // document does not contain a setting with that key, the method returns a
-  // nullptr.
-  virtual const base::Value* GetValue(const Key& key) const = 0;
+  // document does not contain a setting with that key, the method returns an
+  // empty BlobRef.
+  virtual BlobRef GetValue(const Key& key) const = 0;
 
   // Returns a list of all keys that have value assignments and are equal to or
   // have |prefix| as an ancestor.

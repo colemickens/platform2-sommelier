@@ -9,6 +9,7 @@
 
 #include <base/macros.h>
 
+#include "settingsd/blob_ref.h"
 #include "settingsd/key.h"
 
 namespace base {
@@ -36,7 +37,7 @@ class SettingsService {
 
   // Get the value for the specified |key|. Returns nullptr if there is no value
   // present for this key.
-  virtual const base::Value* GetValue(const Key& key) const = 0;
+  virtual BlobRef GetValue(const Key& key) const = 0;
 
   // Get the set of keys the service has values for. Only keys that match the
   // specified |prefix| will be returned. Keys match if they are either

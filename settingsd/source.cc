@@ -5,7 +5,8 @@
 #include "settingsd/source.h"
 
 #include <base/logging.h>
-#include <base/values.h>
+#include <base/strings/string_split.h>
+#include <string>
 
 #include "settingsd/settings_document.h"
 #include "settingsd/settings_keys.h"
@@ -90,19 +91,23 @@ bool Source::CheckAccess(const SettingsDocument* document,
 bool Source::Update(
     const SourceDelegateFactoryFunction& delegate_factory_function,
     const SettingsService& settings) {
-  const base::Value* value;
   bool has_config = false;
 
   name_.clear();
-  value = settings.GetValue(MakeSourceKey(id_).Extend({keys::sources::kName}));
-  if (value)
-    has_config |= value->GetAsString(&name_);
+  BlobRef name_value =
+      settings.GetValue(MakeSourceKey(id_).Extend({keys::sources::kName}));
+  if (name_value.valid()) {
+    has_config = true;
+    name_ = name_value.ToString();
+  }
 
-  value =
+  BlobRef status_value =
       settings.GetValue(MakeSourceKey(id_).Extend({keys::sources::kStatus}));
   std::string status_string;
-  if (value)
-    has_config |= value->GetAsString(&status_string);
+  if (status_value.valid()) {
+    has_config = true;
+    status_string = status_value.ToString();
+  }
   status_ = SettingStatusFromString(status_string);
 
   delegate_ = delegate_factory_function(id_, settings);
@@ -117,9 +122,9 @@ bool Source::Update(
   for (Key access_key : access_keys) {
     has_config = true;
     status_string.clear();
-    value = settings.GetValue(access_key);
-    if (value)
-      value->GetAsString(&status_string);
+    BlobRef value = settings.GetValue(access_key);
+    if (value.valid())
+      status_string = value.ToString();
     Key suffix;
     if (access_key.Suffix(access_key_prefix, &suffix))
       access_[suffix] = SettingStatusFromString(status_string);
@@ -128,17 +133,13 @@ bool Source::Update(
   }
 
   blob_formats_.clear();
-  value = settings.GetValue(
+  BlobRef formats_value = settings.GetValue(
       MakeSourceKey(id_).Extend({keys::sources::kBlobFormat}));
-  const base::ListValue* list_value = nullptr;
-  if (value)
-    has_config |= value->GetAsList(&list_value);
-  if (list_value) {
-    for (const base::Value* entry : *list_value) {
-      std::string blob_format;
-      if (entry->GetAsString(&blob_format))
-        blob_formats_.push_back(blob_format);
-    }
+  if (formats_value.valid()) {
+    has_config = true;
+    blob_formats_ =
+        base::SplitString(formats_value.ToString(), ",", base::TRIM_WHITESPACE,
+                          base::SPLIT_WANT_NONEMPTY);
   }
 
   return has_config;

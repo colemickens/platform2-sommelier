@@ -9,7 +9,6 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <string>
 #include <vector>
 
 #include "settingsd/settings_map.h"
@@ -31,7 +30,7 @@ class SimpleSettingsMap : public SettingsMap {
 
   // SettingsMap:
   void Clear() override;
-  const base::Value* GetValue(const Key& key) const override;
+  BlobRef GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& key) const override;
   bool InsertDocument(
       const SettingsDocument* document,

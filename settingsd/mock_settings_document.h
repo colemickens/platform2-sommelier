@@ -5,7 +5,6 @@
 #ifndef SETTINGSD_MOCK_SETTINGS_DOCUMENT_H_
 #define SETTINGSD_MOCK_SETTINGS_DOCUMENT_H_
 
-#include <base/values.h>
 #include <map>
 #include <memory>
 #include <set>
@@ -25,13 +24,13 @@ class MockSettingsDocument : public SettingsDocument {
   std::unique_ptr<MockSettingsDocument> Clone() const;
 
   // SettingsDocument:
-  const base::Value* GetValue(const Key& key) const override;
+  BlobRef GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& prefix) const override;
   std::set<Key> GetDeletions(const Key& prefix) const override;
   const VersionStamp& GetVersionStamp() const override;
   bool HasKeysOrDeletions(const Key& prefix) const override;
 
-  void SetKey(const Key& key, std::unique_ptr<base::Value> value);
+  void SetKey(const Key& key, const std::string& value);
   void ClearKey(const Key& key);
   void ClearKeys();
 
@@ -41,7 +40,7 @@ class MockSettingsDocument : public SettingsDocument {
 
  private:
   const VersionStamp version_stamp_;
-  std::map<Key, std::unique_ptr<base::Value>> key_value_map_;
+  std::map<Key, std::string> key_value_map_;
   std::set<Key> deletions_;
 
   DISALLOW_COPY_AND_ASSIGN(MockSettingsDocument);

@@ -17,9 +17,9 @@ SimpleSettingsMap::SimpleSettingsMap() {}
 
 SimpleSettingsMap::~SimpleSettingsMap() {}
 
-const base::Value* SimpleSettingsMap::GetValue(const Key& key) const {
+BlobRef SimpleSettingsMap::GetValue(const Key& key) const {
   const auto it = value_map_.find(key);
-  return it == value_map_.end() ? nullptr : it->second->GetValue(key);
+  return it == value_map_.end() ? BlobRef() : it->second->GetValue(key);
 }
 
 std::set<Key> SimpleSettingsMap::GetKeys(const Key& prefix) const {

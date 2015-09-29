@@ -19,6 +19,7 @@
       },
       'sources': [
         'dbus_bindings/org.chromium.Settingsd.Settings.xml',
+        'blob_ref.cc',
         'blob_ref.h',
         'blob_store.cc',
         'blob_store.h',

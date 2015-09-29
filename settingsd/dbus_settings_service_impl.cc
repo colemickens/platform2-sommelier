@@ -113,15 +113,13 @@ bool DBusSettingsServiceImpl::Get(chromeos::ErrorPtr* error,
                                  in_key.c_str());
     return false;
   }
-  const base::Value* value = settings_document_manager_->GetValue(Key(in_key));
-  if (!value) {
+  BlobRef value = settings_document_manager_->GetValue(Key(in_key));
+  if (!value.valid()) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kErrorNoValue,
                                  kErrorMsgNoValue, in_key.c_str());
     return false;
   }
-  std::string json;
-  base::JSONWriter::Write(*value, &json);
-  out_value->assign(json.begin(), json.end());
+  *out_value = value.ToVector();
   return true;
 }
 

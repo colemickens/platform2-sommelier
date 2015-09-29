@@ -81,7 +81,7 @@ class SettingsDocumentManager : public SettingsService {
   void Init();
 
   // SettingsService:
-  const base::Value* GetValue(const Key& key) const override;
+  BlobRef GetValue(const Key& key) const override;
   const std::set<Key> GetKeys(const Key& prefix) const override;
   void AddSettingsObserver(SettingsObserver* observer) override;
   void RemoveSettingsObserver(SettingsObserver* observer) override;

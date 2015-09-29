@@ -9,7 +9,6 @@
 #include <set>
 #include <string>
 
-#include <base/values.h>
 #include <gtest/gtest.h>
 
 #include "settingsd/identifier_utils.h"
@@ -51,16 +50,16 @@ class SourceTest : public testing::Test {
   SourceTest() {
     settings_.SetValue(
         MakeSourceKey(kSource1).Extend({keys::sources::kName}),
-        MakeStringValue(kName1));
+        kName1);
     settings_.SetValue(
         MakeSourceKey(kSource1).Extend({keys::sources::kStatus}),
-        MakeStringValue(SettingStatusToString(kSettingStatusActive)));
+        SettingStatusToString(kSettingStatusActive));
     settings_.SetValue(
         MakeSourceKey(kSource1).Extend({keys::sources::kType}),
-        MakeStringValue(kSourceType));
+        kSourceType);
     settings_.SetValue(
         MakeSourceKey(kSource2).Extend({keys::sources::kStatus}),
-        MakeStringValue(SettingStatusToString(kSettingStatusWithdrawn)));
+        SettingStatusToString(kSettingStatusWithdrawn));
 
     // Access rules for some random keys.
     SetAccessRule(kSource1, Key("A.B"), kSettingStatusActive);
@@ -89,7 +88,7 @@ class SourceTest : public testing::Test {
                      SettingStatus status) {
     settings_.SetValue(
         MakeSourceKey(source).Extend({keys::sources::kAccess}).Append(prefix),
-        MakeStringValue(SettingStatusToString(status)));
+        SettingStatusToString(status));
   }
 
   std::unique_ptr<SourceDelegate> operator()(
@@ -134,34 +133,34 @@ TEST_F(SourceTest, CheckAccess) {
   // Check access rules for keys work as expected.
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
 
-  doc.SetKey(Key(), MakeIntValue(1));
+  doc.SetKey(Key(), "1");
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusActive));
 
   doc.ClearKeys();
-  doc.SetKey(Key("A.B"), MakeIntValue(0));
+  doc.SetKey(Key("A.B"), "0");
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
-  doc.SetKey(Key("A.B.C"), MakeIntValue(0));
+  doc.SetKey(Key("A.B.C"), "0");
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
 
-  doc.SetKey(Key("B"), MakeIntValue(0));
+  doc.SetKey(Key("B"), "0");
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusActive));
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
-  doc.SetKey(Key("C"), MakeIntValue(0));
+  doc.SetKey(Key("C"), "0");
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
-  doc.SetKey(Key("C.D.E.suffix"), MakeIntValue(0));
+  doc.SetKey(Key("C.D.E.suffix"), "0");
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
   doc.ClearKey(Key("C.D.E.suffix"));
-  doc.SetKey(Key("C.D.E.F"), MakeIntValue(0));
-  doc.SetKey(Key("C.D.E.F.G"), MakeIntValue(0));
+  doc.SetKey(Key("C.D.E.F"), "0");
+  doc.SetKey(Key("C.D.E.F.G"), "0");
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
-  doc.SetKey(Key("D.suffix"), MakeIntValue(0));
+  doc.SetKey(Key("D.suffix"), "0");
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
-  doc.SetKey(Key("E"), MakeIntValue(0));
+  doc.SetKey(Key("E"), "0");
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
   // Check access rules for deletions work as expected.
@@ -189,7 +188,7 @@ TEST_F(SourceTest, CheckAccess) {
   Source source2(kSource2);
   source2.Update(GetSourceDelegateFactoryFunction(), settings_);
   doc.ClearDeletions();
-  doc.SetKey(Key("A"), MakeIntValue(0));
+  doc.SetKey(Key("A"), "0");
   EXPECT_FALSE(source2.CheckAccess(&doc, kSettingStatusActive));
   EXPECT_TRUE(source2.CheckAccess(&doc, kSettingStatusWithdrawn));
 }
@@ -203,22 +202,22 @@ TEST_F(SourceTest, CheckAccessTrustConfig) {
   // Access to higher-precedence sources is denied even though there's an
   // explicit access rule.
   doc.SetKey(MakeSourceKey(kSource0).Extend({keys::sources::kStatus}),
-             MakeIntValue(0));
+             "0");
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
   // Access to own trust config is denied.
   doc.ClearKeys();
   doc.SetKey(MakeSourceKey(kSource1).Extend({keys::sources::kStatus}),
-             MakeIntValue(0));
+             "0");
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
   doc.ClearKeys();
-  doc.SetKey(MakeSourceKey(kSource1), MakeIntValue(0));
+  doc.SetKey(MakeSourceKey(kSource1), "0");
   EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
 
   // Access to whitelisted lower-precedence source is allowed.
   doc.ClearKeys();
-  doc.SetKey(MakeSourceKey(kSource2), MakeIntValue(0));
+  doc.SetKey(MakeSourceKey(kSource2), "0");
   EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
 
   // Deletions of lower-precedence sources are allowed.
@@ -231,7 +230,7 @@ TEST_F(SourceTest, CheckAccessTrustConfig) {
   Source source2(kSource2);
   source2.Update(GetSourceDelegateFactoryFunction(), settings_);
   doc.ClearDeletions();
-  doc.SetKey(Key("A"), MakeIntValue(0));
+  doc.SetKey(Key("A"), "0");
   EXPECT_TRUE(source2.CheckAccess(&doc, kSettingStatusWithdrawn));
   doc.SetDeletion(Key());
   EXPECT_FALSE(source2.CheckAccess(&doc, kSettingStatusWithdrawn));

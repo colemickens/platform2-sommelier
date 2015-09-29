@@ -5,9 +5,9 @@
 #include "settingsd/simple_settings_map.h"
 
 #include <base/logging.h>
-#include <base/values.h>
 #include <gtest/gtest.h>
 #include <memory>
+#include <string>
 
 #include "settingsd/identifier_utils.h"
 #include "settingsd/mock_settings_document.h"
@@ -41,7 +41,7 @@ class SimpleSettingsMapTest : public testing::Test {
   }
 
   void CheckSettingsMapContents(
-      const std::map<Key, std::shared_ptr<base::Value>>& expected_values,
+      const std::map<Key, std::string>& expected_values,
       const std::set<Key> expected_deletions,
       const SimpleSettingsMap& settings_map) {
     std::set<Key> value_keys = settings_map.GetKeys(Key());
@@ -49,8 +49,8 @@ class SimpleSettingsMapTest : public testing::Test {
     std::set<Key> expected_value_keys;
     for (auto& expected_value : expected_values) {
       expected_value_keys.insert(expected_value.first);
-      const base::Value* value = settings_map.GetValue(expected_value.first);
-      EXPECT_TRUE(base::Value::Equals(expected_value.second.get(), value))
+      BlobRef value = settings_map.GetValue(expected_value.first);
+      EXPECT_TRUE(BlobRef(&expected_value.second).Equals(value))
           << "Unexpected value for key " << expected_value.first.ToString();
     }
     EXPECT_EQ(expected_value_keys, value_keys);
@@ -70,7 +70,7 @@ class SimpleSettingsMapTest : public testing::Test {
 };
 
 TEST_F(SimpleSettingsMapTest, InsertionSingleDocument) {
-  document_A_->SetKey(Key("A.B.C"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.C"), "1");
   document_A_->SetDeletion(Key("A.B"));
   document_A_->SetDeletion(Key("B"));
 
@@ -82,18 +82,18 @@ TEST_F(SimpleSettingsMapTest, InsertionSingleDocument) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {Key("B"), Key("A.B")};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values{
-      {Key("A.B.C"), MakeIntValue(1)},
+  std::map<Key, std::string> expected_values{
+      {Key("A.B.C"), "1"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, InsertionTwoDocuments) {
-  document_A_->SetKey(Key("A.B.C"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.C"), "1");
   document_A_->SetDeletion(Key("A.B"));
   document_A_->SetDeletion(Key("B"));
-  document_A_->SetKey(Key("B.C"), MakeIntValue(2));
-  document_B_->SetKey(Key("B.C"), MakeIntValue(3));
+  document_A_->SetKey(Key("B.C"), "2");
+  document_B_->SetKey(Key("B.C"), "3");
   document_B_->SetDeletion(Key("A"));
 
   SimpleSettingsMap settings_map;
@@ -105,17 +105,17 @@ TEST_F(SimpleSettingsMapTest, InsertionTwoDocuments) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {Key("A"), Key("B")};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values{
-      {Key("B.C"), MakeIntValue(3)},
+  std::map<Key, std::string> expected_values{
+      {Key("B.C"), "3"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, InsertionTwoDocumentsInverseOrder) {
-  document_A_->SetKey(Key("A.B.C"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.C"), "1");
   document_A_->SetDeletion(Key("A.B"));
   document_A_->SetDeletion(Key("B"));
-  document_B_->SetKey(Key("B.C"), MakeIntValue(2));
+  document_B_->SetKey(Key("B.C"), "2");
   document_B_->SetDeletion(Key("A"));
 
   SimpleSettingsMap settings_map;
@@ -127,17 +127,17 @@ TEST_F(SimpleSettingsMapTest, InsertionTwoDocumentsInverseOrder) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {Key("A"), Key("B")};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values = {
-      {Key("B.C"), MakeIntValue(2)},
+  std::map<Key, std::string> expected_values = {
+      {Key("B.C"), "2"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, DocumentRemoval) {
-  document_A_->SetKey(Key("A"), MakeIntValue(1));
-  document_A_->SetKey(Key("B"), MakeIntValue(2));
-  document_B_->SetKey(Key("B"), MakeIntValue(3));
-  document_B_->SetKey(Key("C"), MakeIntValue(4));
+  document_A_->SetKey(Key("A"), "1");
+  document_A_->SetKey(Key("B"), "2");
+  document_B_->SetKey(Key("B"), "3");
+  document_B_->SetKey(Key("C"), "4");
 
   SimpleSettingsMap settings_map;
   EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr, nullptr));
@@ -148,15 +148,15 @@ TEST_F(SimpleSettingsMapTest, DocumentRemoval) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values{
-      {Key("A"), MakeIntValue(1)}, {Key("B"), MakeIntValue(2)},
+  std::map<Key, std::string> expected_values{
+      {Key("A"), "1"}, {Key("B"), "2"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletion) {
-  document_A_->SetKey(Key("A"), MakeIntValue(1));
-  document_A_->SetKey(Key("B.C"), MakeIntValue(2));
+  document_A_->SetKey(Key("A"), "1");
+  document_A_->SetKey(Key("B.C"), "2");
   document_B_->SetDeletion(Key("B"));
 
   SimpleSettingsMap settings_map;
@@ -168,17 +168,17 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletion) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values = {
-      {Key("A"), MakeIntValue(1)}, {Key("B.C"), MakeIntValue(2)},
+  std::map<Key, std::string> expected_values = {
+      {Key("A"), "1"}, {Key("B.C"), "2"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildPrefixShineThrough) {
-  document_A_->SetKey(Key("A.B.D"), MakeIntValue(1));
-  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
-  document_B_->SetKey(Key("A.B.C"), MakeIntValue(2));
-  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.B.D"), "1");
+  document_A_->SetKey(Key("Z.A"), "-1");
+  document_B_->SetKey(Key("A.B.C"), "2");
+  document_B_->SetKey(Key("Z.B"), "-1");
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -191,21 +191,21 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildPrefixShineThrough) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values = {
-      {Key("A.B.C"), MakeIntValue(2)},
-      {Key("A.B.D"), MakeIntValue(1)},
-      {Key("Z.A"), MakeIntValue(-1)},
-      {Key("Z.B"), MakeIntValue(-1)},
+  std::map<Key, std::string> expected_values = {
+      {Key("A.B.C"), "2"},
+      {Key("A.B.D"), "1"},
+      {Key("Z.A"), "-1"},
+      {Key("Z.B"), "-1"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletionParentDeleterUpstream) {
-  document_A_->SetKey(Key("A.A"), MakeIntValue(1));
-  document_A_->SetKey(Key("A.B.C"), MakeIntValue(2));
-  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.A"), "1");
+  document_A_->SetKey(Key("A.B.C"), "2");
+  document_A_->SetKey(Key("Z.A"), "-1");
   document_B_->SetDeletion(Key("A"));
-  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
+  document_B_->SetKey(Key("Z.B"), "-1");
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -218,18 +218,18 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionParentDeleterUpstream) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {Key("A")};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values = {
-      {Key("Z.A"), MakeIntValue(-1)}, {Key("Z.B"), MakeIntValue(-1)},
+  std::map<Key, std::string> expected_values = {
+      {Key("Z.A"), "-1"}, {Key("Z.B"), "-1"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildDeleterUpstream) {
-  document_A_->SetKey(Key("A.B.C.D"), MakeIntValue(1));
-  document_A_->SetKey(Key("A.B.D"), MakeIntValue(2));
-  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.B.C.D"), "1");
+  document_A_->SetKey(Key("A.B.D"), "2");
+  document_A_->SetKey(Key("Z.A"), "-1");
   document_B_->SetDeletion(Key("A.B.C"));
-  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
+  document_B_->SetKey(Key("Z.B"), "-1");
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -242,21 +242,21 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildDeleterUpstream) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {Key("A.B.C")};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values = {
-      {Key("A.B.D"), MakeIntValue(2)},
-      {Key("Z.A"), MakeIntValue(-1)},
-      {Key("Z.B"), MakeIntValue(-1)},
+  std::map<Key, std::string> expected_values = {
+      {Key("A.B.D"), "2"},
+      {Key("Z.A"), "-1"},
+      {Key("Z.B"), "-1"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, BasicRemovalOfDeletionSameDeletionUpstream) {
-  document_A_->SetKey(Key("A.B.C.D"), MakeIntValue(1));
-  document_A_->SetKey(Key("A.B.D"), MakeIntValue(2));
-  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.B.C.D"), "1");
+  document_A_->SetKey(Key("A.B.D"), "2");
+  document_A_->SetKey(Key("Z.A"), "-1");
   document_B_->SetDeletion(Key("A.B"));
-  document_B_->SetKey(Key("A.B.C"), MakeIntValue(3));
-  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
+  document_B_->SetKey(Key("A.B.C"), "3");
+  document_B_->SetKey(Key("Z.B"), "-1");
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -269,17 +269,17 @@ TEST_F(SimpleSettingsMapTest, BasicRemovalOfDeletionSameDeletionUpstream) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {Key("A.B")};
-  std::map<Key, std::shared_ptr<base::Value>> expected_values = {
-      {Key("A.B.C"), MakeIntValue(3)},
-      {Key("Z.A"), MakeIntValue(-1)},
-      {Key("Z.B"), MakeIntValue(-1)},
+  std::map<Key, std::string> expected_values = {
+      {Key("A.B.C"), "3"},
+      {Key("Z.A"), "-1"},
+      {Key("Z.B"), "-1"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
 
 TEST_F(SimpleSettingsMapTest, DocumentCollision) {
-  document_C_->SetKey(Key("A.B.C.D"), MakeIntValue(2));
-  document_D_->SetKey(Key("A.B.C.D"), MakeIntValue(3));
+  document_C_->SetKey(Key("A.B.C.D"), "2");
+  document_D_->SetKey(Key("A.B.C.D"), "3");
 
   SimpleSettingsMap settings_map;
   EXPECT_TRUE(settings_map.InsertDocument(document_C_.get(), nullptr, nullptr));
@@ -290,8 +290,8 @@ TEST_F(SimpleSettingsMapTest, DocumentCollision) {
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions;
-  std::map<Key, std::shared_ptr<base::Value>> expected_values = {
-      {Key("A.B.C.D"), MakeIntValue(2)},
+  std::map<Key, std::string> expected_values = {
+      {Key("A.B.C.D"), "2"},
   };
   CheckSettingsMapContents(expected_values, expected_deletions, settings_map);
 }
@@ -309,8 +309,8 @@ TEST_F(SimpleSettingsMapTest, InsertEmptyDocument) {
 }
 
 TEST_F(SimpleSettingsMapTest, UnreferencedDocsOverwrite) {
-  document_A_->SetKey(Key("A"), MakeIntValue(1));
-  document_B_->SetKey(Key("A"), MakeIntValue(2));
+  document_A_->SetKey(Key("A"), "1");
+  document_B_->SetKey(Key("A"), "2");
 
   SimpleSettingsMap settings_map;
   std::set<Key> modified_keys;
@@ -332,7 +332,7 @@ TEST_F(SimpleSettingsMapTest, UnreferencedDocsOverwrite) {
 }
 
 TEST_F(SimpleSettingsMapTest, UnreferencedDocsDeletion) {
-  document_A_->SetKey(Key("A.B"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B"), "1");
   document_B_->SetDeletion(Key("A"));
 
   SimpleSettingsMap settings_map;

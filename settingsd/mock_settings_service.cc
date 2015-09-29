@@ -4,7 +4,7 @@
 
 #include "settingsd/mock_settings_service.h"
 
-#include <base/values.h>
+#include <string>
 
 #include "settingsd/identifier_utils.h"
 
@@ -14,9 +14,9 @@ MockSettingsService::MockSettingsService() {}
 
 MockSettingsService::~MockSettingsService() {}
 
-const base::Value* MockSettingsService::GetValue(const Key& key) const {
+BlobRef MockSettingsService::GetValue(const Key& key) const {
   auto entry = prefix_value_map_.find(key);
-  return entry != prefix_value_map_.end() ? entry->second.get() : nullptr;
+  return entry != prefix_value_map_.end() ? BlobRef(&entry->second) : BlobRef();
 }
 
 const std::set<Key> MockSettingsService::GetKeys(const Key& prefix) const {
@@ -35,8 +35,8 @@ void MockSettingsService::RemoveSettingsObserver(SettingsObserver* observer) {
 }
 
 void MockSettingsService::SetValue(const Key& key,
-                                   std::unique_ptr<base::Value> value) {
-  prefix_value_map_[key] = std::move(value);
+                                   const std::string& value) {
+  prefix_value_map_[key] = value;
   std::set<Key> changed_keys;
   changed_keys.insert(key);
   NotifyObservers(changed_keys);

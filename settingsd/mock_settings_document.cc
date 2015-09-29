@@ -17,16 +17,13 @@ std::unique_ptr<MockSettingsDocument> MockSettingsDocument::Clone() const {
   std::unique_ptr<MockSettingsDocument> copy(
       new MockSettingsDocument(version_stamp_));
   copy->deletions_ = deletions_;
-  for (const auto& entry : key_value_map_) {
-    copy->key_value_map_.insert(std::make_pair(
-        entry.first, std::unique_ptr<base::Value>(entry.second->DeepCopy())));
-  }
+  copy->key_value_map_ = key_value_map_;
   return copy;
 }
 
-const base::Value* MockSettingsDocument::GetValue(const Key& key) const {
+BlobRef MockSettingsDocument::GetValue(const Key& key) const {
   auto entry = key_value_map_.find(key);
-  return entry != key_value_map_.end() ? entry->second.get() : nullptr;
+  return entry != key_value_map_.end() ? BlobRef(&entry->second) : BlobRef();
 }
 
 std::set<Key> MockSettingsDocument::GetKeys(const Key& prefix) const {
@@ -52,8 +49,7 @@ bool MockSettingsDocument::HasKeysOrDeletions(const Key& prefix) const {
          utils::HasKeys(prefix, deletions_);
 }
 
-void MockSettingsDocument::SetKey(const Key& key,
-                                  std::unique_ptr<base::Value> value) {
+void MockSettingsDocument::SetKey(const Key& key, const std::string& value) {
   key_value_map_.insert(std::make_pair(key, std::move(value)));
 }
 

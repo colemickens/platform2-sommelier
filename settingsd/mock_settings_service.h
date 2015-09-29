@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 
 #include <base/macros.h>
 #include <base/observer_list.h>
@@ -27,17 +28,17 @@ class MockSettingsService : public SettingsService {
   virtual ~MockSettingsService();
 
   // SettingsService:
-  const base::Value* GetValue(const Key& key) const override;
+  BlobRef GetValue(const Key& key) const override;
   const std::set<Key> GetKeys(const Key& prefix) const override;
   void AddSettingsObserver(SettingsObserver* observer) override;
   void RemoveSettingsObserver(SettingsObserver* observer) override;
 
-  void SetValue(const Key& key, std::unique_ptr<base::Value> value);
+  void SetValue(const Key& key, const std::string& value);
 
   void NotifyObservers(const std::set<Key>& keys);
 
  private:
-  std::map<Key, std::unique_ptr<base::Value>> prefix_value_map_;
+  std::map<Key, std::string> prefix_value_map_;
 
   base::ObserverList<SettingsObserver> observers_;
 

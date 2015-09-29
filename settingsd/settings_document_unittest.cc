@@ -19,8 +19,7 @@ const std::string kSourceId = "source";
 
 class SettingsDocumentTestBase : public testing::Test {
  public:
-  SettingsDocumentTestBase()
-      : A(version_stamp), B(version_stamp) {}
+  SettingsDocumentTestBase() : A(version_stamp), B(version_stamp) {}
 
  protected:
   VersionStamp version_stamp;
@@ -29,8 +28,8 @@ class SettingsDocumentTestBase : public testing::Test {
 };
 
 TEST_F(SettingsDocumentTestBase, OverlapParallelKey) {
-  A.SetKey(Key("A"), MakeIntValue(1));
-  B.SetKey(Key("B"), MakeIntValue(1));
+  A.SetKey(Key("A"), "1");
+  B.SetKey(Key("B"), "1");
   EXPECT_FALSE(SettingsDocument::HasOverlap(A, B));
 }
 
@@ -41,8 +40,8 @@ TEST_F(SettingsDocumentTestBase, OverlapParallelDeletion) {
 }
 
 TEST_F(SettingsDocumentTestBase, OverlapSameKey) {
-  A.SetKey(Key("A"), MakeIntValue(1));
-  B.SetKey(Key("A"), MakeIntValue(1));
+  A.SetKey(Key("A"), "1");
+  B.SetKey(Key("A"), "1");
   EXPECT_TRUE(SettingsDocument::HasOverlap(A, B));
 }
 
@@ -54,19 +53,19 @@ TEST_F(SettingsDocumentTestBase, OverlapSameDeletion) {
 
 TEST_F(SettingsDocumentTestBase, OverlapSameDeletionAndKey) {
   A.SetDeletion(Key("A"));
-  B.SetKey(Key("A"), MakeIntValue(1));
+  B.SetKey(Key("A"), "1");
   EXPECT_TRUE(SettingsDocument::HasOverlap(A, B));
 }
 
 TEST_F(SettingsDocumentTestBase, OverlapKeyAndParentKey) {
-  A.SetKey(Key("A"), MakeIntValue(1));
-  B.SetKey(Key("A.B"), MakeIntValue(1));
+  A.SetKey(Key("A"), "1");
+  B.SetKey(Key("A.B"), "1");
   EXPECT_FALSE(SettingsDocument::HasOverlap(A, B));
 }
 
 TEST_F(SettingsDocumentTestBase, OverlapKeyAndParentDeletion) {
   A.SetDeletion(Key("A"));
-  B.SetKey(Key("A.B"), MakeIntValue(1));
+  B.SetKey(Key("A.B"), "1");
   EXPECT_TRUE(SettingsDocument::HasOverlap(A, B));
 }
 
@@ -78,7 +77,7 @@ TEST_F(SettingsDocumentTestBase, OverlapDeletionAndParentDeletion) {
 
 TEST_F(SettingsDocumentTestBase, OverlapDeletionAndParentKey) {
   A.SetDeletion(Key("A.B"));
-  B.SetKey(Key("A"), MakeIntValue(1));
+  B.SetKey(Key("A"), "1");
   EXPECT_FALSE(SettingsDocument::HasOverlap(A, B));
 }
 

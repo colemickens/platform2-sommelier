@@ -120,7 +120,7 @@ void SettingsDocumentManager::Init() {
   }
 }
 
-const base::Value* SettingsDocumentManager::GetValue(const Key& key) const {
+BlobRef SettingsDocumentManager::GetValue(const Key& key) const {
   return settings_map_->GetValue(key);
 }
 

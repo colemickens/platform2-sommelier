@@ -10,9 +10,9 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 
 #include <base/files/scoped_temp_dir.h>
-#include <base/values.h>
 #include <gtest/gtest.h>
 
 #include "settingsd/mock_locked_settings.h"
@@ -45,6 +45,8 @@ class MockSettingsBlobParser {
   // been registered with the parser via Register().
   std::unique_ptr<LockedSettingsContainer> operator()(const std::string& format,
                                                       BlobRef data) {
+    if (!data.valid())
+      return std::unique_ptr<LockedSettingsContainer>();
     auto entry = containers_.find(data.ToString());
     if (entry != containers_.end())
       return entry->second->Clone();
@@ -142,16 +144,16 @@ static void ConfigureSource(MockSettingsDocument* doc,
                             SettingStatus status,
                             const std::map<Key, SettingStatus> access_rules) {
   doc->SetKey(MakeSourceKey(source_id).Extend({keys::sources::kStatus}),
-              MakeStringValue(SettingStatusToString(status)));
+              SettingStatusToString(status));
   doc->SetKey(MakeSourceKey(source_id).Extend({keys::sources::kName}),
-              MakeStringValue(source_id));
+              source_id);
   doc->SetKey(MakeSourceKey(source_id).Extend({keys::sources::kType}),
-              MakeStringValue(source_id));
+              source_id);
   for (auto& access_rule : access_rules) {
     doc->SetKey(MakeSourceKey(source_id)
                     .Extend({keys::sources::kAccess})
                     .Append(access_rule.first),
-                MakeStringValue(SettingStatusToString(access_rule.second)));
+                SettingStatusToString(access_rule.second));
   }
 }
 
@@ -254,7 +256,7 @@ class SettingsDocumentManagerTest : public testing::Test {
   MockLockedSettingsContainer* AddSentinelValue(const std::string& source_id) {
     SCOPED_TRACE("Adding sentinel value for " + source_id);
     std::unique_ptr<MockSettingsDocument> document(MakeDocument(source_id));
-    document->SetKey(Key(source_id), MakeStringValue(source_id));
+    document->SetKey(Key(source_id), source_id);
     std::unique_ptr<MockLockedSettingsContainer> container(
         new MockLockedSettingsContainer(std::move(document)));
     MockLockedSettingsContainer* container_ptr = container.get();
@@ -269,16 +271,15 @@ class SettingsDocumentManagerTest : public testing::Test {
   void CheckSentinelValues(std::initializer_list<std::string> present,
                            std::initializer_list<std::string> absent) {
     for (auto& source : present) {
-      const base::Value* value = manager_->GetValue(Key(source));
-      EXPECT_TRUE(value) << "Sentinel value " << source << " missing.";
-      base::StringValue sentinel_value(source);
-      EXPECT_TRUE(base::Value::Equals(&sentinel_value, value))
-          << "Sentinel value " << source << " has wrong value.";
+      BlobRef value = manager_->GetValue(Key(source));
+      EXPECT_TRUE(value.valid()) << "Sentinel value " << source << " missing.";
+      EXPECT_EQ(source, value.ToString()) << "Sentinel value " << source
+                                          << " has wrong value.";
     }
 
     for (auto& source : absent) {
-      const base::Value* value = manager_->GetValue(Key(source));
-      EXPECT_FALSE(value) << "Sentinel value " << source << " present.";
+      BlobRef value = manager_->GetValue(Key(source));
+      EXPECT_FALSE(value.valid()) << "Sentinel value " << source << " present.";
     }
   }
 
@@ -290,7 +291,7 @@ class SettingsDocumentManagerTest : public testing::Test {
     document->SetKey(MakeSourceKey(source_id)
                          .Extend({keys::sources::kAccess})
                          .Append(Key(source_id)),
-                     MakeStringValue(SettingStatusToString(status)));
+                     SettingStatusToString(status));
     EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
               InsertDocument(std::move(document), kTestSource0, {{}}));
   }
@@ -309,29 +310,29 @@ TEST_F(SettingsDocumentManagerTest, ValueInsertionAndRemoval) {
 
   // Insert a document with a fresh key.
   std::unique_ptr<MockSettingsDocument> document(MakeDocument(kTestSource1));
-  document->SetKey(kTestKey, MakeIntValue(42));
+  document->SetKey(kTestKey, "42");
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertDocument(std::move(document), kTestSource1, {{kTestKey}}));
-  const base::Value* value = manager_->GetValue(kTestKey);
-  base::FundamentalValue expected_int_value(42);
-  EXPECT_TRUE(base::Value::Equals(&expected_int_value, value));
+  BlobRef value = manager_->GetValue(kTestKey);
+  EXPECT_TRUE(value.valid());
+  EXPECT_EQ("42", value.ToString());
 
   // Update the value.
   document = MakeDocument(kTestSource1);
-  document->SetKey(kTestKey, MakeStringValue("string"));
+  document->SetKey(kTestKey, "string");
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertDocument(std::move(document), kTestSource1, {{kTestKey}}));
-  value = manager_->GetValue(kTestKey);
-  base::StringValue expected_string_value("string");
-  EXPECT_TRUE(base::Value::Equals(&expected_string_value, value));
+  BlobRef new_value = manager_->GetValue(kTestKey);
+  EXPECT_TRUE(new_value.valid());
+  EXPECT_EQ("string", new_value.ToString());
 
   // Clear the value.
   document = MakeDocument(kTestSource1);
   document->SetDeletion(kTestKey);
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertDocument(std::move(document), kTestSource1, {{kTestKey}}));
-  value = manager_->GetValue(kTestKey);
-  EXPECT_FALSE(value);
+  BlobRef newer_value = manager_->GetValue(kTestKey);
+  EXPECT_FALSE(newer_value.valid());
 }
 
 TEST_F(SettingsDocumentManagerTest, TrustChange) {
@@ -404,7 +405,7 @@ TEST_F(SettingsDocumentManagerTest, TrustChangeAccessRules) {
   document->SetKey(
       MakeSourceKey(kTestSource1)
           .Extend({keys::sources::kAccess, kTestSource1}),
-      MakeStringValue(SettingStatusToString(kSettingStatusInvalid)));
+      SettingStatusToString(kSettingStatusInvalid));
   EXPECT_EQ(
       SettingsDocumentManager::kInsertionStatusSuccess,
       InsertDocument(std::move(document), kTestSource0, {{Key(kTestSource1)}}));
@@ -427,7 +428,7 @@ TEST_F(SettingsDocumentManagerTest, TrustChangeWithdrawnSource) {
 
   // source1 may no longer change the value.
   document = MakeDocument(kTestSource1);
-  document->SetKey(Key(kTestSource1), MakeStringValue("change"));
+  document->SetKey(Key(kTestSource1), "change");
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusAccessViolation,
             InsertDocument(std::move(document), kTestSource1, {}));
 }
@@ -449,7 +450,7 @@ TEST_F(SettingsDocumentManagerTest, TrustChangeWithdrawnAccessRules) {
 
   // source1 may no longer change the value.
   document = MakeDocument(kTestSource1);
-  document->SetKey(Key(kTestSource1), MakeStringValue("change"));
+  document->SetKey(Key(kTestSource1), "change");
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusAccessViolation,
             InsertDocument(std::move(document), kTestSource1, {}));
 }
@@ -473,7 +474,7 @@ TEST_F(SettingsDocumentManagerTest, InsertionFailureAccessRules) {
 
   // Inserting a document with a key the source can't write to should fail.
   std::unique_ptr<MockSettingsDocument> document(MakeDocument(kTestSource1));
-  document->SetKey(Key("A"), MakeIntValue(42));
+  document->SetKey(Key("A"), "42");
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusAccessViolation,
             InsertDocument(std::move(document), kTestSource1, {}));
 }
@@ -501,7 +502,7 @@ TEST_F(SettingsDocumentManagerTest, InsertionFailureVersionCollision) {
 
   // Insert a value for |kSharedKey|.
   std::unique_ptr<MockSettingsDocument> document(MakeDocument(kTestSource1));
-  document->SetKey(Key(kSharedKey), MakeIntValue(42));
+  document->SetKey(Key(kSharedKey), "42");
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertDocument(std::move(document), kTestSource1, {{}}));
 
@@ -509,7 +510,7 @@ TEST_F(SettingsDocumentManagerTest, InsertionFailureVersionCollision) {
   VersionStamp previous_version(current_version_);
   current_version_ = initial_version;
   document = MakeDocument(kTestSource2);
-  document->SetKey(Key(kSharedKey), MakeIntValue(0));
+  document->SetKey(Key(kSharedKey), "0");
   EXPECT_TRUE(previous_version.IsConcurrent(current_version_));
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusCollision,
             InsertDocument(std::move(document), kTestSource2, {}));
@@ -518,7 +519,7 @@ TEST_F(SettingsDocumentManagerTest, InsertionFailureVersionCollision) {
 TEST_F(SettingsDocumentManagerTest, InsertBlobSuccess) {
   ConfigureTrustedSource(kTestSource1);
   std::unique_ptr<MockSettingsDocument> document(MakeDocument(kTestSource1));
-  document->SetKey(Key(kTestSource1), MakeStringValue(kTestSource1));
+  document->SetKey(Key(kTestSource1), kTestSource1);
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertBlob(kTestSource1,
                        parser_.Register(MakeContainer(std::move(document))),

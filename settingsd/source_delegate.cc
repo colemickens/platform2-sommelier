@@ -4,8 +4,6 @@
 
 #include "settingsd/source_delegate.h"
 
-#include <base/values.h>
-
 #include "settingsd/locked_settings.h"
 #include "settingsd/settings_keys.h"
 #include "settingsd/settings_service.h"
@@ -26,11 +24,10 @@ bool DummySourceDelegate::ValidateContainer(
 std::unique_ptr<SourceDelegate> SourceDelegateFactory::operator()(
     const std::string& source_id,
     const SettingsService& settings) const {
-  std::string type;
-  const base::Value* type_value = settings.GetValue(
+  BlobRef type = settings.GetValue(
       MakeSourceKey(source_id).Extend({keys::sources::kType}));
-  if (type_value && type_value->GetAsString(&type)) {
-    auto entry = function_map_.find(type);
+  if (type.valid()) {
+    auto entry = function_map_.find(type.ToString());
     if (entry != function_map_.end())
       return entry->second(source_id, settings);
   }

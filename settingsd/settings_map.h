@@ -6,13 +6,13 @@
 #define SETTINGSD_SETTINGS_MAP_H_
 
 #include <base/macros.h>
-#include <base/values.h>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "settingsd/blob_ref.h"
 #include "settingsd/settings_document.h"
 
 namespace settingsd {
@@ -49,7 +49,7 @@ class SettingsMap {
   // inserted into SettingsMap that collides with an already inserted document.
   // As such, there is at most one SettingsDocument providing the latest value
   // for a |key|.
-  virtual const base::Value* GetValue(const Key& key) const = 0;
+  virtual BlobRef GetValue(const Key& key) const = 0;
 
   // Returns the list of currently active settings whose keys have |key| as an
   // ancestor.

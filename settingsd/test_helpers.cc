@@ -6,18 +6,6 @@
 
 namespace settingsd {
 
-std::unique_ptr<base::Value> MakeIntValue(int i) {
-  return std::unique_ptr<base::Value>(new base::FundamentalValue(i));
-}
-
-std::unique_ptr<base::Value> MakeNullValue() {
-  return std::unique_ptr<base::Value>(base::Value::CreateNullValue().release());
-}
-
-std::unique_ptr<base::Value> MakeStringValue(const std::string& str) {
-  return std::unique_ptr<base::Value>(new base::StringValue(str));
-}
-
 void PrintTo(const Key& key, std::ostream* os) {
   *os << "Key(\"" << key.ToString() << "\")";
 }
