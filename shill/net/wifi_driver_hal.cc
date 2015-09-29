@@ -28,8 +28,9 @@ namespace {
 
 base::LazyInstance<WiFiDriverHal> g_wifi_driver_hal = LAZY_INSTANCE_INITIALIZER;
 
-bool WiFiDriverInit(wifi_driver_device_t** driver) {
+bool WiFiDriverInit(wifi_driver_device_t** out_driver) {
   const hw_module_t* module;
+  wifi_driver_device_t* driver;
   int ret;
 
   ret = hw_get_module(WIFI_DRIVER_DEVICE_ID_MAIN, &module);
@@ -38,11 +39,20 @@ bool WiFiDriverInit(wifi_driver_device_t** driver) {
     return false;
   }
 
-  if (wifi_driver_open(module, driver) != 0) {
+  if (wifi_driver_open(module, &driver) != 0) {
     LOG(ERROR) << "Failed to open WiFi HAL module";
     return false;
   }
 
+  wifi_driver_error error;
+  error = (*driver->wifi_driver_initialize)();
+  if (error != WIFI_SUCCESS) {
+    LOG(ERROR) << "Failed to initialize WiFi driver";
+    wifi_driver_close(driver);
+    return false;
+  }
+
+  *out_driver = driver;
   return true;
 }
 
