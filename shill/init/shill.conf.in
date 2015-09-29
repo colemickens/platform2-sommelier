@@ -73,15 +73,6 @@ post-stop script
   bootstat shill-stop
 end script
 
-# HEADS UP!  'expect fork' is usually a loser when used with
-# 'script'.  Unfortunately, shill needs 'expect fork', and
-# we need a script to figure out command arguments at run time.
-#
-# To avoid confusing Upstart, the script below can use only shell
-# built-in operations until it gets to the 'exec' at the end.  Any
-# command that causes the shell to fork/exec a subprocess is a
-# no-no.
-expect fork
 script
   DAEMONBIN="shill"
   ARGS="--log-level=${SHILL_LOG_LEVEL} --log-scopes=${SHILL_LOG_SCOPES}"
