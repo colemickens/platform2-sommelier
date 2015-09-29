@@ -49,6 +49,7 @@
         'version_stamp.cc',
         'version_stamp.h',
       ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'settingsd',
