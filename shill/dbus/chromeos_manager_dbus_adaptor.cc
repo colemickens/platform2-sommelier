@@ -564,4 +564,30 @@ bool ChromeosManagerDBusAdaptor::SetSchedScan(brillo::ErrorPtr* error,
   return !e.ToChromeosError(error);
 }
 
+bool ChromeosManagerDBusAdaptor::SetupApModeInterface(
+    brillo::ErrorPtr* error,
+    string* out_interface_name) {
+  SLOG(this, 2) << __func__;
+  Error e;
+#if !defined(__BRILLO__)
+  e.Populate(Error::kNotSupported);
+#else
+  manager_->SetupApModeInterface(out_interface_name, &e);
+#endif  // __BRILLO__
+  return !e.ToChromeosError(error);
+}
+
+bool ChromeosManagerDBusAdaptor::SetupStationModeInterface(
+    brillo::ErrorPtr* error,
+    string* out_interface_name) {
+  SLOG(this, 2) << __func__;
+  Error e;
+#if !defined(__BRILLO__)
+  e.Populate(Error::kNotSupported);
+#else
+  manager_->SetupStationModeInterface(out_interface_name, &e);
+#endif  // __BRILLO__
+  return !e.ToChromeosError(error);
+}
+
 }  // namespace shill

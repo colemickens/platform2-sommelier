@@ -235,6 +235,20 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void ReleaseDevice(const std::string& claimer_name,
                      const std::string& interface_name,
                      Error* error);
+#if defined(__BRILLO__)
+  // Setup an AP mode interface using WiFi driver HAL.  The driver
+  // may or may not teardown the station mode interface as a result
+  // of this call.  This behavior will be driver specific.
+  // Returns true and sets |interface_name| on success, false otherwise.
+  bool SetupApModeInterface(std::string* out_interface_name, Error* error);
+
+  // Setup a station mode interface using WiFi driver HAL.  The driver
+  // may or may not teardown the AP mode interface as a result of this
+  // call.  This behavior will be driver specific.
+  // Returns true and sets |interface_name| on success, false otherwise.
+  bool SetupStationModeInterface(std::string* out_interface_name, Error* error);
+#endif  // __BRILLO__
+
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
   // will be removed and the manager will search for another matching profile.

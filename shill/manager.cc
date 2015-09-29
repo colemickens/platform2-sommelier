@@ -64,6 +64,10 @@
 #include "shill/vpn/vpn_service.h"
 #include "shill/wimax/wimax_service.h"
 
+#if defined(__BRILLO__)
+#include "shill/wifi/wifi_driver_hal.h"
+#endif  // __BRILLO__
+
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_provider.h"
@@ -735,6 +739,34 @@ void Manager::OnDeviceClaimerVanished() {
   // Reset device claimer.
   device_claimer_.reset();
 }
+
+#if defined(__BRILLO__)
+bool Manager::SetupApModeInterface(string* out_interface_name, Error* error) {
+  string interface_name = WiFiDriverHal::GetInstance()->SetupApModeInterface();
+  if (interface_name.empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to setup AP mode interface");
+    return false;
+  }
+  *out_interface_name = interface_name;
+  // TODO(zqiu): Setup a service watcher for the caller. Restore interface
+  // mode back to station mode if the caller vanished.
+  return true;
+}
+
+bool Manager::SetupStationModeInterface(string* out_interface_name,
+                                        Error* error) {
+  string interface_name =
+      WiFiDriverHal::GetInstance()->SetupStationModeInterface();
+  if (interface_name.empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to setup station mode interface");
+    return false;
+  }
+  *out_interface_name = interface_name;
+  return true;
+}
+#endif  // __BRILLO__
 
 void Manager::RemoveService(const ServiceRefPtr& service) {
   LOG(INFO) << __func__ << " for service " << service->unique_name();
