@@ -41,6 +41,9 @@
 #if !defined(DISABLE_WIFI)
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/nl80211_message.h"
+#if defined(__BRILLO__)
+#include "shill/net/mock_wifi_driver_hal.h"
+#endif  // __BRILLO
 #endif  // DISABLE_WIFI
 
 using base::Bind;
@@ -105,6 +108,9 @@ class ChromeosDaemonTest : public Test {
 
 #if !defined(DISABLE_WIFI)
     daemon_.netlink_manager_ = &netlink_manager_;
+#if defined(__BRILLO__)
+    daemon_.wifi_driver_hal_ = &wifi_driver_hal_;
+#endif  // __BRILLO
 #endif  // DISABLE_WIFI
   }
   void StartDaemon() {
@@ -139,6 +145,9 @@ class ChromeosDaemonTest : public Test {
   MockManager* manager_;
 #if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
+#if defined(__BRILLO__)
+  MockWiFiDriverHal wifi_driver_hal_;
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
   DeviceInfo device_info_;
 };
@@ -166,6 +175,11 @@ TEST_F(ChromeosDaemonTest, StartStop) {
               GetFamily(Nl80211Message::kMessageTypeString, _))
       .WillOnce(Return(kNl80211MessageType));
   EXPECT_CALL(netlink_manager_, Start());
+#if defined(__BRILLO__)
+  const string kInterfaceName = "dummy";
+  EXPECT_CALL(wifi_driver_hal_, SetupStationModeInterface())
+      .WillOnce(Return(kInterfaceName));
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();

@@ -40,6 +40,9 @@
 #if !defined(DISABLE_WIFI)
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
+#if defined(__BRILLO__)
+#include "shill/net/wifi_driver_hal.h"
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
 using base::Bind;
@@ -71,9 +74,12 @@ void ChromeosDaemon::Init(ControlInterface* control,
   dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = ProcessManager::GetInstance();
 #if !defined(DISABLE_WIFI)
+#if defined(__BRILLO__)
+  wifi_driver_hal_ = WiFiDriverHal::GetInstance();
+#endif  // __BRILLO__
   netlink_manager_ = NetlinkManager::GetInstance();
   callback80211_metrics_.reset(new Callback80211Metrics(metrics_.get()));
-#endif
+#endif  // DISABLE_WIFI
   manager_.reset(new Manager(control_.get(),
                              dispatcher_,
                              metrics_.get(),
@@ -185,6 +191,12 @@ void ChromeosDaemon::Start() {
         &Callback80211Metrics::CollectDisconnectStatistics,
         callback80211_metrics_->AsWeakPtr()));
   }
+#if defined(__BRILLO__)
+  string interface = wifi_driver_hal_->SetupStationModeInterface();
+  if (interface.empty()) {
+    LOG(FATAL) << "Failed to setup station mode interface.";
+  }
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
   manager_->Start();
