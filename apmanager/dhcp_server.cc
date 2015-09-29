@@ -28,6 +28,8 @@ const char DHCPServer::kDnsmasqConfigFilePathFormat[] =
     "/data/misc/apmanager/dnsmasq/dhcpd-%d.conf";
 const char DHCPServer::kDHCPLeasesFilePathFormat[] =
     "/data/misc/apmanager/dnsmasq/dhcpd-%d.leases";
+const char DHCPServer::kDnsmasqPidFilePath[] =
+    "/data/misc/apmanager/dnsmasq/dnsmasq.pid";
 #endif  // __ANDROID__
 
 const char DHCPServer::kServerAddressFormat[] = "192.168.%d.254";
@@ -88,6 +90,12 @@ bool DHCPServer::Start() {
   dnsmasq_process_->AddArg(kDnsmasqPath);
   dnsmasq_process_->AddArg(base::StringPrintf("--conf-file=%s",
                                               file_name.c_str()));
+#if defined(__ANDROID__)
+  // dnsmasq normally creates a pid file in /var/run/dnsmasq.pid. Overwrite
+  // this file path for Android.
+  dnsmasq_process_->AddArg(
+      base::StringPrintf("--pid-file=%s", kDnsmasqPidFilePath));
+#endif  // __ANDROID__
   if (!dnsmasq_process_->Start()) {
     rtnl_handler_->RemoveInterfaceAddress(interface_index, server_address_);
     dnsmasq_process_.reset();
