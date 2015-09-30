@@ -66,7 +66,7 @@ bool ProcessReaper::HandleSIGCHLD(const struct signalfd_siginfo& sigfd_info) {
 
     auto proc = watched_processes_.find(info.si_pid);
     if (proc == watched_processes_.end()) {
-      LOG(INFO) << "Uninterested process " << info.si_pid
+      LOG(INFO) << "Untracked process " << info.si_pid
                 << " terminated with status " << info.si_status
                 << " (code = " << info.si_code << ")";
     } else {
