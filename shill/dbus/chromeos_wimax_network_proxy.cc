@@ -98,31 +98,55 @@ void ChromeosWiMaxNetworkProxy::set_signal_strength_changed_callback(
 
 uint32_t ChromeosWiMaxNetworkProxy::Identifier(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->identifier.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get Identifier";
+    return 0;
+  }
   return properties_->identifier.value();
 }
 
 string ChromeosWiMaxNetworkProxy::Name(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->name.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get Name";
+    return string();
+  }
   return properties_->name.value();
 }
 
 int ChromeosWiMaxNetworkProxy::Type(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->type.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get Type";
+    return 0;
+  }
   return properties_->type.value();
 }
 
 int ChromeosWiMaxNetworkProxy::CINR(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->cinr.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get CINR";
+    return 0;
+  }
   return properties_->cinr.value();
 }
 
 int ChromeosWiMaxNetworkProxy::RSSI(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->rssi.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get RSSI";
+    return 0;
+  }
   return properties_->rssi.value();
 }
 
 int ChromeosWiMaxNetworkProxy::SignalStrength(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->signal_strength.GetAndBlock()) {
+    LOG(ERROR) << "Faild to get SignalStrength";
+    return 0;
+  }
   return properties_->signal_strength.value();
 }
 

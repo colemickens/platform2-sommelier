@@ -130,6 +130,10 @@ void ChromeosModemCDMAProxy::GetSignalQuality(
 
 const string ChromeosModemCDMAProxy::MEID() {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->meid.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get MEID";
+    return string();
+  }
   return properties_->meid.value();
 }
 

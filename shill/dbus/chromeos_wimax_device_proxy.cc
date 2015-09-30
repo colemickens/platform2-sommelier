@@ -176,11 +176,19 @@ void ChromeosWiMaxDeviceProxy::set_status_changed_callback(
 
 uint8_t ChromeosWiMaxDeviceProxy::Index(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->index.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get Index";
+    return 0;
+  }
   return properties_->index.value();
 }
 
 string ChromeosWiMaxDeviceProxy::Name(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->name.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get Name";
+    return string();
+  }
   return properties_->name.value();
 }
 

@@ -210,6 +210,10 @@ void ChromeosModemGSMCardProxy::ChangePIN(const string& old_pin,
 
 uint32_t ChromeosModemGSMCardProxy::EnabledFacilityLocks() {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->enabled_facility_locks.GetAndBlock()) {
+    LOG(ERROR) << "Faild to get EnableFacilityLocks";
+    return 0;
+  }
   return properties_->enabled_facility_locks.value();
 }
 

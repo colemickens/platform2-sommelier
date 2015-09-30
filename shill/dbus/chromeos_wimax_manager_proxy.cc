@@ -110,6 +110,10 @@ RpcIdentifiers ChromeosWiMaxManagerProxy::Devices(Error* error) {
     return RpcIdentifiers();
   }
 
+  if (!properties_->devices.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get Devices";
+    return RpcIdentifiers();
+  }
   RpcIdentifiers rpc_devices;
   KeyValueStore::ConvertPathsToRpcIdentifiers(properties_->devices.value(),
                                               &rpc_devices);

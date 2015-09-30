@@ -193,6 +193,10 @@ bool ChromeosSupplicantProcessProxy::GetDebugLevel(string* level) {
     LOG(ERROR) << "Supplicant process not present";
     return false;
   }
+  if (!properties_->debug_level.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get DebugLevel";
+    return false;
+  }
   *level = properties_->debug_level.value();
   return true;
 }

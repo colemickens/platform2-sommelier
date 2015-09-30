@@ -147,6 +147,10 @@ void ChromeosModemGSMNetworkProxy::Scan(Error* error,
 
 uint32_t ChromeosModemGSMNetworkProxy::AccessTechnology() {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  if (!properties_->access_technology.GetAndBlock()) {
+    LOG(ERROR) << "Failed to get AccessTechnology";
+    return 0;
+  }
   return properties_->access_technology.value();
 }
 
