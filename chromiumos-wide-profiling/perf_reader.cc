@@ -790,8 +790,7 @@ bool PerfReader::ReadEventAttr(DataReader* data, perf_event_attr* attr) {
   }
   if (sample_info_reader_.get() == nullptr) {
     sample_info_reader_.reset(
-        new SampleInfoReader(sample_type_, read_format_,
-                             false /* read_cross_endian */));
+        new SampleInfoReader(*attr, false /* read_cross_endian */));
   }
 
   return true;
@@ -1738,7 +1737,8 @@ void PerfReader::MaybeSwapEventFields(event_t* event, bool is_cross_endian) {
   // ReadSampleInfo() will swap the additional perf_sample fields. Write them
   // back to |event| with WriteSampleInfo() so they are stored in native byte
   // order.
-  SampleInfoReader reader(sample_type_, read_format_, is_cross_endian);
+  CHECK_GT(attrs_.size(), 0U);
+  SampleInfoReader reader(attrs_[0].attr, is_cross_endian);
 
   struct perf_sample sample_info;
   CHECK(reader.ReadPerfSampleInfo(*event, &sample_info))

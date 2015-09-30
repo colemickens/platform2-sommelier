@@ -118,15 +118,23 @@ void ReadBranchStack(DataReader* reader, struct perf_sample* sample) {
   sample->branch_stack = branch_stack;
 }
 
-size_t ReadPerfSampleFromData(const perf_event_type event_type,
-                              const void* data,
-                              const size_t data_size,
-                              const uint64_t sample_fields,
-                              const uint64_t read_format,
-                              bool swap_bytes,
+// Reads perf sample info data from |event| into |sample|.
+// |attr| is the event attribute struct, which contains info such as which
+// sample info fields are present.
+// |is_cross_endian| indicates that the data is cross-endian and that the byte
+// order should be reversed for each field according to its size.
+// Returns number of bytes of data read or skipped.
+size_t ReadPerfSampleFromData(const event_t& event,
+                              const struct perf_event_attr& attr,
+                              bool is_cross_endian,
                               struct perf_sample* sample) {
-  BufferReader reader(data, data_size);
-  reader.set_is_cross_endian(swap_bytes);
+  BufferReader reader(&event, event.header.size);
+  reader.set_is_cross_endian(is_cross_endian);
+  reader.SeekSet(SampleInfoReader::GetPerfSampleDataOffset(event));
+
+  uint64_t sample_fields =
+      SampleInfoReader::GetSampleFieldsForEventType(event.header.type,
+                                                    attr.sample_type);
 
   // See structure for PERF_RECORD_SAMPLE in kernel/perf_event.h
   // and compare sample_id when sample_id_all is set.
@@ -138,7 +146,7 @@ size_t ReadPerfSampleFromData(const perf_event_type event_type,
 
   // PERF_SAMPLE_IDENTIFIER is in a different location depending on
   // if this is a SAMPLE event or the sample_id of another event.
-  if (event_type == PERF_RECORD_SAMPLE) {
+  if (event.header.type == PERF_RECORD_SAMPLE) {
     // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
     if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
       reader.ReadUint64(&sample->id);
@@ -190,7 +198,7 @@ size_t ReadPerfSampleFromData(const perf_event_type event_type,
   }
 
   // This is the location of PERF_SAMPLE_IDENTIFIER in struct sample_id.
-  if (event_type != PERF_RECORD_SAMPLE) {
+  if (event.header.type != PERF_RECORD_SAMPLE) {
     // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
     if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
       reader.ReadUint64(&sample->id);
@@ -209,9 +217,9 @@ size_t ReadPerfSampleFromData(const perf_event_type event_type,
   // { struct read_format    values;   } && PERF_SAMPLE_READ
   if (sample_fields & PERF_SAMPLE_READ) {
     // TODO(cwp-team): support grouped read info.
-    if (read_format & PERF_FORMAT_GROUP)
+    if (attr.read_format & PERF_FORMAT_GROUP)
       return reader.Tell();
-    ReadReadInfo(&reader, read_format, sample);
+    ReadReadInfo(&reader, attr.read_format, sample);
   }
 
   // { u64                   nr,
@@ -252,12 +260,23 @@ size_t ReadPerfSampleFromData(const perf_event_type event_type,
   return reader.Tell();
 }
 
-size_t WritePerfSampleToData(const perf_event_type event_type,
-                             const struct perf_sample& sample,
-                             const uint64_t sample_fields,
-                             const uint64_t read_format,
-                             uint64_t* array) {
-  const uint64_t* initial_array_ptr = array;
+// Writes sample info data data from |sample| into |event|.
+// |attr| is the event attribute struct, which contains info such as which
+// sample info fields are present.
+// |event| is the destination event. Its header should already be filled out.
+// Returns the number of bytes written or skipped.
+size_t WritePerfSampleToData(const struct perf_sample& sample,
+                             const struct perf_event_attr& attr,
+                             event_t* event) {
+  const uint64_t* initial_array_ptr = reinterpret_cast<const uint64_t*>(event);
+
+  uint64_t offset = SampleInfoReader::GetPerfSampleDataOffset(*event);
+  uint64_t* array =
+      reinterpret_cast<uint64_t*>(event) + offset / sizeof(uint64_t);
+
+  uint64_t sample_fields =
+      SampleInfoReader::GetSampleFieldsForEventType(event->header.type,
+                                                    attr.sample_type);
 
   union {
     uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
@@ -270,7 +289,7 @@ size_t WritePerfSampleToData(const perf_event_type event_type,
 
   // PERF_SAMPLE_IDENTIFIER is in a different location depending on
   // if this is a SAMPLE event or the sample_id of another event.
-  if (event_type == PERF_RECORD_SAMPLE) {
+  if (event->header.type == PERF_RECORD_SAMPLE) {
     // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
     if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
       *array++ = sample.id;
@@ -318,7 +337,7 @@ size_t WritePerfSampleToData(const perf_event_type event_type,
   }
 
   // This is the location of PERF_SAMPLE_IDENTIFIER in struct sample_id.
-  if (event_type != PERF_RECORD_SAMPLE) {
+  if (event->header.type != PERF_RECORD_SAMPLE) {
     // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
     if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
       *array++ = sample.id;
@@ -337,13 +356,13 @@ size_t WritePerfSampleToData(const perf_event_type event_type,
   // { struct read_format    values;   } && PERF_SAMPLE_READ
   if (sample_fields & PERF_SAMPLE_READ) {
     // TODO(cwp-team): support grouped read info.
-    if (read_format & PERF_FORMAT_GROUP)
+    if (attr.read_format & PERF_FORMAT_GROUP)
       return 0;
-    if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
+    if (attr.read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
       *array++ = sample.read.time_enabled;
-    if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
+    if (attr.read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
       *array++ = sample.read.time_running;
-    if (read_format & PERF_FORMAT_ID)
+    if (attr.read_format & PERF_FORMAT_ID)
       *array++ = sample.read.id;
   }
 
@@ -402,23 +421,15 @@ bool SampleInfoReader::ReadPerfSampleInfo(const event_t& event,
     return false;
   }
 
-  uint64_t offset = GetPerfSampleDataOffset(event);
-  size_t sample_info_size = event.header.size - offset;
-  size_t size_read = ReadPerfSampleFromData(
-      static_cast<perf_event_type>(event.header.type),
-      reinterpret_cast<const uint8_t*>(&event) + offset,
-      sample_info_size,
-      GetSampleFieldsForEventType(event.header.type, sample_type_),
-      read_format_,
-      read_cross_endian_,
-      sample);
+  size_t size_read_or_skipped = ReadPerfSampleFromData(
+      event, event_attr_, read_cross_endian_, sample);
 
-  if (size_read != sample_info_size) {
-    LOG(ERROR) << "Read " << size_read << " bytes, expected "
-               << sample_info_size << " bytes.";
+  if (size_read_or_skipped != event.header.size) {
+    LOG(ERROR) << "Read/skipped " << size_read_or_skipped << " bytes, expected "
+               << event.header.size << " bytes.";
   }
 
-  return (size_read == sample_info_size);
+  return (size_read_or_skipped == event.header.size);
 }
 
 bool SampleInfoReader::WritePerfSampleInfo(const perf_sample& sample,
@@ -430,21 +441,14 @@ bool SampleInfoReader::WritePerfSampleInfo(const perf_sample& sample,
     return false;
   }
 
-  uint64_t offset = GetPerfSampleDataOffset(*event);
-  size_t expected_size = event->header.size - offset;
-  memset(reinterpret_cast<uint8_t*>(event) + offset, 0, expected_size);
-  size_t size_written = WritePerfSampleToData(
-      static_cast<perf_event_type>(event->header.type),
-      sample,
-      GetSampleFieldsForEventType(event->header.type, sample_type_),
-      read_format_,
-      reinterpret_cast<uint64_t*>(event) + offset / sizeof(uint64_t));
-  if (size_written != expected_size) {
-    LOG(ERROR) << "Wrote " << size_written << " bytes, expected "
-               << expected_size << " bytes.";
+  size_t size_written_or_skipped =
+      WritePerfSampleToData(sample, event_attr_, event);
+  if (size_written_or_skipped != event->header.size) {
+    LOG(ERROR) << "Wrote/skipped " << size_written_or_skipped
+               << " bytes, expected " << event->header.size << " bytes.";
   }
 
-  return (size_written == expected_size);
+  return (size_written_or_skipped == event->header.size);
 }
 
 // static

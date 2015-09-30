@@ -107,8 +107,7 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   sample_type_ = attrs_[0].attr.sample_type;
   read_format_ = attrs_[0].attr.read_format;
   sample_info_reader_.reset(
-      new SampleInfoReader(sample_type_, read_format_,
-                           false /* read_cross_endian */));
+      new SampleInfoReader(attrs_[0].attr, false /* read_cross_endian */));
 
   if (!DeserializeEvents(perf_data_proto.events(), &events_)) {
     return false;

@@ -7,6 +7,7 @@
 #include <byteswap.h>
 
 #include "chromiumos-wide-profiling/compat/test.h"
+#include "chromiumos-wide-profiling/kernel/perf_event.h"
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
 #include "chromiumos-wide-profiling/test_perf_data.h"
 #include "chromiumos-wide-profiling/test_utils.h"
@@ -26,7 +27,10 @@ TEST(SampleInfoReaderTest, ReadSampleEvent) {
       PERF_SAMPLE_CPU |        // *
       PERF_SAMPLE_PERIOD;
 
-  SampleInfoReader reader(sample_type, 0, false /* read_cross_endian */);
+  struct perf_event_attr attr = {0};
+  attr.sample_type = sample_type;
+
+  SampleInfoReader reader(attr, false /* read_cross_endian */);
 
   const u64 sample_event_array[] = {
     0xffffffff01234567,                    // IP
@@ -79,7 +83,10 @@ TEST(SampleInfoReaderTest, ReadSampleEventCrossEndian) {
       PERF_SAMPLE_CPU |        // *
       PERF_SAMPLE_PERIOD;
 
-  SampleInfoReader reader(sample_type, 0, true /* read_cross_endian */);
+  struct perf_event_attr attr = {0};
+  attr.sample_type = sample_type;
+
+  SampleInfoReader reader(attr, true /* read_cross_endian */);
 
   const u64 sample_event_array[] = {
     0xffffffff01234567,                    // IP
@@ -133,7 +140,10 @@ TEST(SampleInfoReaderTest, ReadMmapEvent) {
       PERF_SAMPLE_CPU |        // *
       PERF_SAMPLE_PERIOD;
 
-  SampleInfoReader reader(sample_type, 0, false /* read_cross_endian */);
+  struct perf_event_attr attr = {0};
+  attr.sample_type = sample_type;
+
+  SampleInfoReader reader(attr, false /* read_cross_endian */);
 
   // PERF_RECORD_MMAP
   ASSERT_EQ(40, offsetof(struct mmap_event, filename));

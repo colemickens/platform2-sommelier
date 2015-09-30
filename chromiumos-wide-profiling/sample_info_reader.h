@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include "chromiumos-wide-profiling/kernel/perf_event.h"
+
 namespace quipper {
 
 // Forward declarations of structures.
@@ -16,11 +18,8 @@ struct perf_sample;
 
 class SampleInfoReader {
  public:
-  SampleInfoReader(uint64_t sample_type,
-                   uint64_t read_format,
-                   bool read_cross_endian)
-    : sample_type_(sample_type),
-      read_format_(read_format),
+  SampleInfoReader(struct perf_event_attr event_attr, bool read_cross_endian)
+    : event_attr_(event_attr),
       read_cross_endian_(read_cross_endian) {}
 
   bool ReadPerfSampleInfo(const event_t& event,
@@ -37,21 +36,17 @@ class SampleInfoReader {
   //
   // All field formats are bitfields, as defined by enum
   // perf_event_sample_format in kernel/perf_event.h.
-  static uint64_t GetSampleFieldsForEventType(
-      uint32_t event_type, uint64_t sample_type);
+  static uint64_t GetSampleFieldsForEventType(uint32_t event_type,
+                                              uint64_t sample_type);
 
   // Returns the offset in bytes within a perf event structure at which the raw
   // perf sample data is located.
   static uint64_t GetPerfSampleDataOffset(const event_t& event);
 
  private:
-  // Bitfield indicating which sample info fields are present in the event.
-  // See enum perf_event_sample_format in kernel/perf_event.h.
-  uint64_t sample_type_;
-
-  // Bitfield indicating read info format. See enum perf_event_read_format in
-  // kernel/perf_event.h.
-  uint64_t read_format_;
+  // Event attribute info, which determines the contents of some perf_sample
+  // data.
+  struct perf_event_attr event_attr_;
 
   // Set this flag if values (uint32s and uint64s) should be endian-swapped
   // during reads.
