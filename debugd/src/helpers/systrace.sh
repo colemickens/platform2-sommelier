@@ -149,7 +149,7 @@ start)
     fi
 
     logger -t systrace "start tracing"
-    tracing_write "global" trace_clock          # global clock for timestamps
+    tracing_write "mono" trace_clock          # monotonic clock for timestamps
     tracing_enable_events ${events}
     tracing_write "${buffer_size_running}" buffer_size_kb
     tracing_enable                              # start kernel tracing
