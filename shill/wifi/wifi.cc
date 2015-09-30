@@ -482,8 +482,10 @@ void WiFi::ConnectTo(WiFiService* service) {
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
     service_params.SetUint(WPASupplicant::kNetworkPropertyScanSSID, scan_ssid);
     AppendBgscan(service, &service_params);
+#if !defined(__ANDROID__)
     service_params.SetUint(WPASupplicant::kNetworkPropertyDisableVHT,
                            provider_->disable_vht());
+#endif  // __ANDROID__
     if (!supplicant_interface_proxy_->AddNetwork(service_params,
                                                  &network_path)) {
       LOG(ERROR) << "Failed to add network";
