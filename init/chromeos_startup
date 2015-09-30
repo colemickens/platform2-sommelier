@@ -4,6 +4,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+. /usr/share/misc/chromeos-common.sh
+
 UNDO_MOUNTS=
 cleanup_mounts()
 {
@@ -89,9 +91,9 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Unless we're on UBI, when it's ubi1_0.
   STATE_FLAGS="nodev,noexec,nosuid"
   if [ "${FORMAT_STATE}" = "ubi" ]; then
-    STATE_DEV="/dev/ubi1_0"
+    STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
   else
-    STATE_DEV=${ROOTDEV_TYPE}1
+    STATE_DEV=${ROOTDEV_TYPE}${PARTITION_NUM_STATE}
     STATE_FLAGS="${STATE_FLAGS},commit=600"
   fi
 
@@ -110,9 +112,9 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # on some boards.
   OEM_FLAGS="ro,nodev,noexec,nosuid"
   if [ "${FORMAT_OEM}" = "ubi" ]; then
-    OEM_DEV="/dev/ubi8_0"
+    OEM_DEV="/dev/ubi${PARTITION_NUM_OEM}_0"
   else
-    OEM_DEV=${ROOTDEV_TYPE}8
+    OEM_DEV=${ROOTDEV_TYPE}${PARTITION_NUM_OEM}
   fi
   mount -n -t ${FS_FORMAT_OEM} -o ${OEM_FLAGS} ${OEM_DEV} /usr/share/oem
 fi

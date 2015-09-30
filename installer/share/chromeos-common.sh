@@ -12,6 +12,17 @@
 # filesystems prefer 4096-byte blocks. These functions help with alignment
 # issues.
 
+PARTITION_NUM_STATE=1
+PARTITION_NUM_KERN_A=2
+PARTITION_NUM_ROOT_A=3
+PARTITION_NUM_KERN_B=4
+PARTITION_NUM_ROOT_B=5
+PARTITION_NUM_KERN_C=6
+PARTITION_NUM_ROOT_C=7
+PARTITION_NUM_OEM=8
+PARTITION_NUM_RWFW=11
+PARTITION_NUM_EFI_SYSTEM=12
+
 # This returns the size of a file or device in 512-byte sectors, rounded up if
 # needed.
 # Invoke as: subshell
@@ -227,33 +238,33 @@ legacy_offset_size_export() {
   # This should disappear eventually, but it's here to make existing
   # code work for now.
 
-  START_STATEFUL=$(partoffset $1 1)
-  START_KERN_A=$(partoffset $1 2)
-  START_ROOTFS_A=$(partoffset $1 3)
-  START_KERN_B=$(partoffset $1 4)
-  START_ROOTFS_B=$(partoffset $1 5)
-  START_OEM=$(partoffset $1 8)
-  START_RWFW=$(partoffset $1 11)
-  START_ESP=$(partoffset $1 12)
+  START_STATEFUL=$(partoffset $1 ${PARTITION_NUM_STATE})
+  START_KERN_A=$(partoffset $1 ${PARTITION_NUM_KERN_A})
+  START_ROOTFS_A=$(partoffset $1 ${PARTITION_NUM_ROOT_A})
+  START_KERN_B=$(partoffset $1 ${PARTITION_NUM_KERN_B})
+  START_ROOTFS_B=$(partoffset $1 ${PARTITION_NUM_ROOT_B})
+  START_OEM=$(partoffset $1 ${PARTITION_NUM_OEM})
+  START_RWFW=$(partoffset $1 ${PARTITION_NUM_RWFW})
+  START_ESP=$(partoffset $1 ${PARTITION_NUM_EFI_SYSTEM})
 
-  NUM_STATEFUL_SECTORS=$(partsize $1 1)
-  NUM_KERN_SECTORS=$(partsize $1 2)
-  NUM_ROOTFS_SECTORS=$(partsize $1 3)
-  NUM_OEM_SECTORS=$(partsize $1 8)
-  NUM_RWFW_SECTORS=$(partsize $1 11)
-  NUM_ESP_SECTORS=$(partsize $1 12)
+  NUM_STATEFUL_SECTORS=$(partsize $1 ${PARTITION_NUM_STATE})
+  NUM_KERN_SECTORS=$(partsize $1 ${PARTITION_NUM_KERN_A})
+  NUM_ROOTFS_SECTORS=$(partsize $1 ${PARTITION_NUM_ROOT_A})
+  NUM_OEM_SECTORS=$(partsize $1 ${PARTITION_NUM_OEM})
+  NUM_RWFW_SECTORS=$(partsize $1 ${PARTITION_NUM_RWFW})
+  NUM_ESP_SECTORS=$(partsize $1 ${PARTITION_NUM_EFI_SYSTEM})
 
-  STATEFUL_IMG_SECTORS=$(partsize $1 1)
-  KERNEL_IMG_SECTORS=$(partsize $1 2)
-  ROOTFS_IMG_SECTORS=$(partsize $1 3)
-  OEM_IMG_SECTORS=$(partsize $1 8)
-  ESP_IMG_SECTORS=$(partsize $1 12)
+  STATEFUL_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_STATE})
+  KERNEL_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_KERN_A})
+  ROOTFS_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_ROOT_A})
+  OEM_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_OEM})
+  ESP_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_EFI_SYSTEM})
 }
 
 edit_mbr() {
   locate_gpt
-  local start_esp=$(partoffset "$1" 12)
-  local num_esp_sectors=$(partsize "$1" 12)
+  local start_esp=$(partoffset "$1" ${PARTITION_NUM_EFI_SYSTEM})
+  local num_esp_sectors=$(partsize "$1" ${PARTITION_NUM_EFI_SYSTEM})
   sfdisk "${1}" <<EOF
 unit: sectors
 

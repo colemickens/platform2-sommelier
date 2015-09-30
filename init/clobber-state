@@ -183,15 +183,15 @@ wipe_ubi_dev() {
   dev="$1"
   part_no=$(echo "${dev}" | sed -e 's#/dev/ubi\(block\)\?\([0-9]\)_0#\2#')
   phy_dev="/dev/ubi${part_no}"
-  # We only wipe part 1, 3, and 5 in this function.
+  # We only wipe state and root partitions in this function.
   case "${part_no}" in
-    "1")
+    "${PARTITION_NUM_STATE}")
       part_name="STATE"
       ;;
-    "3")
+    "${PARTITION_NUM_ROOT_A}")
       part_name="ROOT_A"
       ;;
-    "5")
+    "${PARTITION_NUM_ROOT_B}")
       part_name="ROOT_B"
       ;;
     *)
@@ -289,18 +289,26 @@ detect_system_config() {
       # Special casing for NAND devices.
       IS_MTD=1
       ROOT_DISK="/dev/mtd0"
-      STATE_DEV="/dev/ubi1_0"
+      STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
       # On NAND, kernel is stored on /dev/mtdX.
-      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr '35' '24' | \
-                   sed -e 's/ubiblock\([0-9]*\)_0/mtd\1/')
+      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr \
+          "${PARTITION_NUM_ROOT_A}${PARTITION_NUM_ROOT_B}" \
+          "${PARTITION_NUM_KERN_A}${PARTITION_NUM_KERN_B}" | \
+          sed -e 's/ubiblock\([0-9]*\)_0/mtd\1/')
       ;;
     *)
-      STATE_DEV=${ROOT_DEV%[0-9]*}1
-      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr '35' '24')
+      STATE_DEV=${ROOT_DEV%[0-9]*}${PARTITION_NUM_STATE}
+      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr \
+          "${PARTITION_NUM_ROOT_A}${PARTITION_NUM_ROOT_B}" \
+          "${PARTITION_NUM_KERN_A}${PARTITION_NUM_KERN_B}")
       ;;
   esac
-  OTHER_ROOT_DEV=$(echo "${ROOT_DEV}" | tr '35' '53')
-  OTHER_KERNEL_DEV=$(echo "${KERNEL_DEV}" | tr '24' '42')
+  OTHER_ROOT_DEV=$(echo "${ROOT_DEV}" | tr \
+      "${PARTITION_NUM_ROOT_A}${PARTITION_NUM_ROOT_B}" \
+      "${PARTITION_NUM_ROOT_B}${PARTITION_NUM_ROOT_A}")
+  OTHER_KERNEL_DEV=$(echo "${KERNEL_DEV}" | tr \
+      "${PARTITION_NUM_KERN_A}${PARTITION_NUM_KERN_B}" \
+      "${PARTITION_NUM_KERN_B}${PARTITION_NUM_KERN_A}")
   KERNEL_PART_NUM=${KERNEL_DEV##[/a-z]*[/a-z]}
   WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
   WIPE_PART_NUM=${WIPE_PART_NUM%_0}
@@ -329,7 +337,8 @@ detect_system_config() {
   done
 
   # Sanity check root device partition number.
-  if [ "$WIPE_PART_NUM" != "3" ] && [ "$WIPE_PART_NUM" != "5" ]
+  if [ "$WIPE_PART_NUM" != "${PARTITION_NUM_ROOT_A}" ] && \
+     [ "$WIPE_PART_NUM" != "${PARTITION_NUM_ROOT_B}" ]
   then
     echo "Invalid partition to wipe, $WIPE_PART_NUM (${OTHER_ROOT_DEV})"
     exit 1

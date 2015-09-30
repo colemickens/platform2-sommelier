@@ -30,10 +30,10 @@ bool ConfigureInstall(const string& install_dev,
 
   string slot;
   switch (root.number()) {
-    case 3:
+    case PART_NUM_ROOT_A:
       slot = "A";
       break;
-    case 5:
+    case PART_NUM_ROOT_B:
       slot = "B";
       break;
     default:
@@ -46,7 +46,7 @@ bool ConfigureInstall(const string& install_dev,
                                        root.number() - 1);
 
   string boot_dev = MakePartitionDev(root.base_device(),
-                                     12);
+                                     PART_NUM_EFI_SYSTEM);
 
   // if we don't know the bios type, detect it. Errors are logged
   // by the detect method.

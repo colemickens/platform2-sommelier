@@ -42,10 +42,12 @@ string MakeNandPartitionDevForMounting(int partition) {
   if (partition == 0) {
     return "/dev/mtd0";
   }
-  if (partition == 2 || partition == 4 || partition == 6) {
+  if (partition == PART_NUM_KERN_A || partition == PART_NUM_KERN_B ||
+      partition == PART_NUM_KERN_C) {
     return StringPrintf("/dev/mtd%d", partition);
   }
-  if (partition == 3 || partition == 5 || partition == 7) {
+  if (partition == PART_NUM_ROOT_A || partition == PART_NUM_ROOT_B ||
+      partition == PART_NUM_ROOT_C) {
     return StringPrintf("/dev/ubiblock%d_0", partition);
   }
   return StringPrintf("/dev/ubi%d_0", partition);

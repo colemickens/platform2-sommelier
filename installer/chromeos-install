@@ -17,16 +17,10 @@ fi
 # Helpful constants.
 HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
 TMPMNT=/tmp/install-mount-point
-STATEFUL_PART=1
 # This is defined later once we have mounted the ROOT.
 STATEFUL_FORMAT=
-
 # Partition numbers that have assumptions about them. This list should be kept
 # to a minimal. Check copy_partition for most special casing.
-KERNEL_A_PART=2
-ROOTFS_A_PART=3
-KERNEL_B_PART=4
-ROOTFS_B_PART=5
 
 # TODO(installer): Clean up all these flags. There are way too many flags in
 # this script.
@@ -425,15 +419,15 @@ check_removable() {
 # Wipes and expands the stateful partition.
 wipe_stateful() {
   echo "Clearing the stateful partition..."
-  local stateful_fs_format=$(get_fs_format ${STATEFUL_PART})
+  local stateful_fs_format=$(get_fs_format ${PARTITION_NUM_STATE})
 
   case ${STATEFUL_FORMAT} in
   ubi)
-    local phy_ubi="/dev/ubi${STATEFUL_PART}"
+    local phy_ubi="/dev/ubi${PARTITION_NUM_STATE}"
     local log_ubi="${phy_ubi}_0"
-    local sysfs_name="/sys/class/mtd/mtd${STATEFUL_PART}/name"
+    local sysfs_name="/sys/class/mtd/mtd${PARTITION_NUM_STATE}/name"
 
-    init_ubi_volume "${STATEFUL_PART}" "$(cat "${sysfs_name}")"
+    init_ubi_volume "${PARTITION_NUM_STATE}" "$(cat "${sysfs_name}")"
     ;;
   *)
     loop_offset_setup ${DST} ${START_STATEFUL}
@@ -447,7 +441,7 @@ wipe_stateful() {
       $((NUM_STATEFUL_SECTORS / 8))
     ;;
   ubifs)
-    mkfs.ubifs -y -x none -R 0 /dev/ubi${STATEFUL_PART}_0
+    mkfs.ubifs -y -x none -R 0 /dev/ubi${PARTITION_NUM_STATE}_0
     ;;
   esac
 
@@ -489,7 +483,7 @@ install_stateful() {
   case ${STATEFUL_FORMAT} in
   ubi)
     # We modify the global used here as it affects how we unmount later.
-    LOOP_DEV="/dev/ubi${STATEFUL_PART}_0"
+    LOOP_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
     ;;
   *)
     loop_offset_setup ${DST} ${START_STATEFUL}
@@ -589,20 +583,20 @@ copy_partition() {
   echo "Installing partition ${part_num} to ${dst}"
 
   case ${part_num} in
-  ${STATEFUL_PART})
+  ${PARTITION_NUM_STATE})
     install_stateful
     ;;
-  ${ROOTFS_A_PART}|${ROOTFS_B_PART})
+  ${PARTITION_NUM_ROOT_A}|${PARTITION_NUM_ROOT_B})
     # Always copy from ROOT_A for rootfs partitions.
-    part_size=$(partsize ${src} ${ROOTFS_A_PART})
-    src_offset=$(partoffset ${src} ${ROOTFS_A_PART})
+    part_size=$(partsize ${src} ${PARTITION_NUM_ROOT_A})
+    src_offset=$(partoffset ${src} ${PARTITION_NUM_ROOT_A})
     write_partition ${part_num} ${part_size} ${dst_offset} \
       ${src_offset} ${src} ${dst}
     ;;
-  ${KERNEL_A_PART}|${KERNEL_B_PART})
+  ${PARTITION_NUM_KERN_A}|${PARTITION_NUM_KERN_B})
     # Use kernel B from the source into both kernel A and B in the destination.
-    part_size=$(partsize ${src} ${KERNEL_B_PART})
-    src_offset=$(partoffset ${src} ${KERNEL_B_PART})
+    part_size=$(partsize ${src} ${PARTITION_NUM_KERN_B})
+    src_offset=$(partoffset ${src} ${PARTITION_NUM_KERN_B})
     write_partition ${part_num} ${part_size} ${dst_offset} \
       ${src_offset} ${src} ${dst}
     ;;
@@ -636,7 +630,7 @@ recreate_nand_partitions() {
   flashrom -r "-iRW_GPT:${gpt_file}"
   mtd_size=$(cat "/sys/class/mtd/$(basename "${dst}")/size")
   mtd_gpt_file="-D ${mtd_size} ${gpt_file}"
-  for part_no in $(seq 12); do
+  for part_no in $(seq ${PARTITION_NUM_STATE} ${PARTITION_NUM_EFI_SYSTEM}); do
     part_size=$(partsize "${mtd_gpt_file}" "${part_no}")
     : $(( part_size *= 512 ))
     part_offset=$(partoffset "${mtd_gpt_file}" "${part_no}")
@@ -727,15 +721,15 @@ do_post_install() {
   # We can't run this if the target arch isn't the same as the host arch
   if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
     if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
-      if ! [ -b "/dev/ubiblock${ROOTFS_A_PART}_0" ]; then
-        ubiblock -c "/dev/ubi${ROOTFS_A_PART}_0"
+      if ! [ -b "/dev/ubiblock${PARTITION_NUM_ROOT_A}_0" ]; then
+        ubiblock -c "/dev/ubi${PARTITION_NUM_ROOT_A}_0"
       fi
-      LOOP_DEV="/dev/ubiblock${ROOTFS_A_PART}_0"
+      LOOP_DEV="/dev/ubiblock${PARTITION_NUM_ROOT_A}_0"
       # We need to pass the __writable__ device to postinst, hence ubiX_0.
-      dst_rootfs_dev="/dev/ubi${ROOTFS_A_PART}_0"
+      dst_rootfs_dev="/dev/ubi${PARTITION_NUM_ROOT_A}_0"
     else
       loop_offset_setup ${DST} ${START_ROOTFS_A}
-      dst_rootfs_dev=$(make_partition_dev ${DST} ${ROOTFS_A_PART})
+      dst_rootfs_dev=$(make_partition_dev ${DST} ${PARTITION_NUM_ROOT_A})
     fi
 
     mount_on_loop_dev
@@ -771,9 +765,9 @@ main() {
   if [ -n "${FLAGS_payload_image}" ]; then
     SRC="${FLAGS_payload_image}"
     # Mount files that are required to be referenced (when not already mounted).
-    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${ROOTFS_A_PART})
+    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_ROOT_A})
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"
-    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${STATEFUL_PART})
+    loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_STATE})
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
   fi
 
@@ -783,7 +777,7 @@ main() {
 
   # Now that we have loaded the partition table we can actually read the format
   # and partition information.
-  STATEFUL_FORMAT=$(get_format ${STATEFUL_PART})
+  STATEFUL_FORMAT=$(get_format ${PARTITION_NUM_STATE})
 
   DST=${FLAGS_dst:-$(get_fixed_dst_drive)}
   check_dst
@@ -823,7 +817,7 @@ main() {
   # last. The order shouldn't matter but legacy behavior has us go in reverse
   # order.
   local current_part
-  for current_part in $(seq 12 -1 1); do
+  for current_part in $(seq ${PARTITION_NUM_EFI_SYSTEM} -1 ${PARTITION_NUM_STATE}); do
     copy_partition ${current_part} ${SRC} ${DST}
   done
 

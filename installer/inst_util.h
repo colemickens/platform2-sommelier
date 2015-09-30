@@ -8,6 +8,18 @@
 #include <string>
 #include <vector>
 
+enum partition_nums_t {
+  PART_NUM_KERN_A = 2,
+  PART_NUM_ROOT_A = 3,
+  PART_NUM_KERN_B = 4,
+  PART_NUM_ROOT_B = 5,
+  PART_NUM_KERN_C = 6,
+  PART_NUM_ROOT_C = 7,
+  PART_NUM_OEM = 8,
+  PART_NUM_RWFW = 11,
+  PART_NUM_EFI_SYSTEM = 12
+};
+
 // A class to automatically close a pure file descriptor. A ScopedFileDescriptor
 // object can be treated as any regular file descriptor. You can call read(),
 // write(), etc. on these objects.
