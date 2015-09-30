@@ -108,8 +108,11 @@ static const char kHelpMessage[] = "\n"
 
 namespace {
 
+#if !defined(__ANDROID__)
 const char* kLoggerCommand = "/usr/bin/logger";
 const char* kLoggerUser = "syslog";
+#endif  // __ANDROID__
+
 const char* kDefaultTechnologyOrder = "vpn,ethernet,wifi,wimax,cellular";
 
 }  // namespace
@@ -125,6 +128,10 @@ void SetupLogging(bool foreground, const char* daemon_name) {
   }
   chromeos::InitLog(log_flags);
 
+#if !defined(__ANDROID__)
+  // Logger utility doesn't exist on Android, so do not run it on Android.
+  // TODO(zqiu): add support to redirect stderr logs from child processes
+  // to Android logging facility.
   if (!foreground) {
     vector<char*> logger_command_line;
     int logger_stdin_fd;
@@ -153,6 +160,7 @@ void SetupLogging(bool foreground, const char* daemon_name) {
     }
     close(logger_stdin_fd);
   }
+#endif  // __ANDROID__
 }
 
 void OnStartup(const char *daemon_name, base::CommandLine* cl) {
