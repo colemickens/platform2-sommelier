@@ -507,6 +507,14 @@ bool PerfSerializer::SerializeRecordSample(
       sample->mutable_branch_stack(i)->set_mispredicted(entry.flags.mispred);
     }
   }
+
+  if (sample_type_ & PERF_SAMPLE_WEIGHT)
+    sample->set_weight(sample_info.weight);
+  if (sample_type_ & PERF_SAMPLE_DATA_SRC)
+    sample->set_data_src(sample_info.data_src);
+  if (sample_type_ & PERF_SAMPLE_TRANSACTION)
+    sample->set_transaction(sample_info.transaction);
+
   return true;
 }
 
@@ -562,6 +570,14 @@ bool PerfSerializer::DeserializeRecordSample(
       entry.flags.predicted = !entry.flags.mispred;
     }
   }
+
+  if (sample.has_weight())
+    sample_info.weight = sample.weight();
+  if (sample.has_data_src())
+    sample_info.data_src = sample.data_src();
+  if (sample.has_transaction())
+    sample_info.transaction = sample.transaction();
+
   return WritePerfSampleInfo(sample_info, event);
 }
 

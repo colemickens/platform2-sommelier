@@ -240,16 +240,34 @@ size_t ReadPerfSampleFromData(const event_t& event,
     ReadBranchStack(&reader, sample);
   }
 
-  static const u64 kUnimplementedSampleFields =
-      PERF_SAMPLE_REGS_USER  |
-      PERF_SAMPLE_STACK_USER |
-      PERF_SAMPLE_WEIGHT     |
-      PERF_SAMPLE_DATA_SRC   |
-      PERF_SAMPLE_TRANSACTION;
+  // { u64                   abi; # enum perf_sample_regs_abi
+  //   u64                   regs[weight(mask)]; } && PERF_SAMPLE_REGS_USER
+  if (sample_fields & PERF_SAMPLE_REGS_USER) {
+    LOG(ERROR) << "PERF_SAMPLE_REGS_USER is not yet supported.";
+    return reader.Tell();
+  }
 
-  if (sample_fields & kUnimplementedSampleFields) {
-    LOG(WARNING) << "Unimplemented sample fields 0x"
-                 << std::hex << (sample_fields & kUnimplementedSampleFields);
+  // { u64                   size;
+  //   char                  data[size];
+  //   u64                   dyn_size; } && PERF_SAMPLE_STACK_USER
+  if (sample_fields & PERF_SAMPLE_STACK_USER) {
+    LOG(ERROR) << "PERF_SAMPLE_STACK_USER is not yet supported.";
+    return reader.Tell();
+  }
+
+  // { u64                   weight;   } && PERF_SAMPLE_WEIGHT
+  if (sample_fields & PERF_SAMPLE_WEIGHT) {
+    reader.ReadUint64(&sample->weight);
+  }
+
+  // { u64                   data_src; } && PERF_SAMPLE_DATA_SRC
+  if (sample_fields & PERF_SAMPLE_DATA_SRC) {
+    reader.ReadUint64(&sample->data_src);
+  }
+
+  // { u64                   transaction; } && PERF_SAMPLE_TRANSACTION
+  if (sample_fields & PERF_SAMPLE_TRANSACTION) {
+    reader.ReadUint64(&sample->transaction);
   }
 
   if (sample_fields & ~(PERF_SAMPLE_MAX-1)) {
@@ -405,6 +423,36 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
                sizeof(uint64_t));
       }
     }
+  }
+
+  // { u64                   abi; # enum perf_sample_regs_abi
+  //   u64                   regs[weight(mask)]; } && PERF_SAMPLE_REGS_USER
+  if (sample_fields & PERF_SAMPLE_REGS_USER) {
+    LOG(ERROR) << "PERF_SAMPLE_REGS_USER is not yet supported.";
+    return (array - initial_array_ptr) * sizeof(uint64_t);
+  }
+
+  // { u64                   size;
+  //   char                  data[size];
+  //   u64                   dyn_size; } && PERF_SAMPLE_STACK_USER
+  if (sample_fields & PERF_SAMPLE_STACK_USER) {
+    LOG(ERROR) << "PERF_SAMPLE_STACK_USER is not yet supported.";
+    return (array - initial_array_ptr) * sizeof(uint64_t);
+  }
+
+  // { u64                   weight;   } && PERF_SAMPLE_WEIGHT
+  if (sample_fields & PERF_SAMPLE_WEIGHT) {
+    *array++ = sample.weight;
+  }
+
+  // { u64                   data_src; } && PERF_SAMPLE_DATA_SRC
+  if (sample_fields & PERF_SAMPLE_DATA_SRC) {
+    *array++ = sample.data_src;
+  }
+
+  // { u64                   transaction; } && PERF_SAMPLE_TRANSACTION
+  if (sample_fields & PERF_SAMPLE_TRANSACTION) {
+    *array++ = sample.transaction;
   }
 
   return (array - initial_array_ptr) * sizeof(uint64_t);

@@ -275,7 +275,7 @@ message PerfDataProto {
     optional bool mispredicted = 3;
   }
 
-  // Next tag: 13
+  // Next tag: 17
   message SampleEvent {
     // Instruction pointer.
     optional uint64 ip = 1;
@@ -312,6 +312,21 @@ message PerfDataProto {
 
     // Branch stack info.
     repeated BranchStackEntry branch_stack = 12;
+
+    // These are not yet implemented, but are listed as placeholders.
+    // TODO(sque): implement these fields.
+    //
+    // optional RegsUser regs_user = 13;
+    // optional StackUser stack_user = 14;
+
+    // Sample weight for special events.
+    optional uint64 weight = 15;
+
+    // Sample data source flags.
+    optional uint64 data_src = 16;
+
+    // Sample transaction flags for special events.
+    optional uint64 transaction = 17;
   }
 
   // ForkEvent is used for both FORK and EXIT events, which have the same data
