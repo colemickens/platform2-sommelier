@@ -212,7 +212,8 @@ void ChromeosDaemon::Stop() {
   process_manager_->Stop();
   dhcp_provider_->Stop();
   metrics_ = nullptr;
-  control_ = nullptr;
+  // Must retain |control_|, as the D-Bus library may
+  // have some work left to do. See crbug.com/537771.
 }
 
 }  // namespace shill
