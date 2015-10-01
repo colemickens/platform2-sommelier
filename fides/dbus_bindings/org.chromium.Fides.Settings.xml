@@ -1,0 +1,41 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<node>
+  <interface name="org.chromium.Fides.Settings">
+  <tp:docstring>
+      The Service allows consumers to enumerate settings, read setting values,
+      observe setting changes and inject new settings blobs.
+    </tp:docstring>
+    <method name="Get">
+      <tp:docstring>
+        Allows to retrieve the value for the specified |key|.
+      </tp:docstring>
+      <arg type="s" name="key" direction="in"/>
+      <arg type="ay" name="value" direction="out"/>
+    </method>
+    <method name="Enumerate">
+      <tp:docstring>
+        Allows to retrieve the list of keys the service has values for, that
+        match the specified |prefix|. Passing an empty string will result in all
+        currently valid keys to be returned.
+      </tp:docstring>
+      <arg type="s" name="prefix" direction="in"/>
+      <arg type="as" name="values" direction="out"/>
+    </method>
+    <method name="Update">
+      <tp:docstring>
+        Allows to add a new settings document encoded in a binary blob to the
+        configuration.
+      </tp:docstring>
+      <arg type="ay" name="blob" direction="in"/>
+      <arg type="s" name="source_id" direction="in"/>
+    </method>
+    <signal name="OnSettingsChanged">
+      <tp:docstring>
+        Signal emitted to announce settings changes.
+      </tp:docstring>
+      <arg type="as" name="keys" />
+    </signal>
+  </interface>
+</node>
