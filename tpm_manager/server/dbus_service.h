@@ -27,6 +27,7 @@
 
 namespace tpm_manager {
 
+using chromeos::dbus_utils::DBusMethodResponse;
 using CompletionAction =
     chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
 
@@ -42,24 +43,23 @@ class DBusService {
   // Connects to D-Bus system bus and exports TpmManager methods.
   void Register(const CompletionAction& callback);
 
-  void set_service(TpmManagerInterface* service) {
-    service_ = service;
-  }
-
  private:
   friend class DBusServiceTest;
 
-  // Handles the GetTpmStatus D-Bus call.
-  void HandleGetTpmStatus(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
-          const GetTpmStatusReply&>> response,
-      const GetTpmStatusRequest& request);
+  template<typename RequestProtobufType,
+           typename ReplyProtobufType>
+  using HandlerFunction = void(TpmManagerInterface::*)(
+      const RequestProtobufType&,
+      const base::Callback<void(const ReplyProtobufType&)>&);
 
-  // Handles the TakeOwnership D-Bus call.
-  void HandleTakeOwnership(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
-          const TakeOwnershipReply&>> response,
-      const TakeOwnershipRequest& request);
+  // Template to handle D-Bus calls.
+  template<typename RequestProtobufType,
+           typename ReplyProtobufType,
+           DBusService::HandlerFunction<RequestProtobufType,
+                                        ReplyProtobufType> func>
+  void HandleDBusMethod(
+      std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
+      const RequestProtobufType& request);
 
   chromeos::dbus_utils::DBusObject dbus_object_;
   TpmManagerInterface* service_;

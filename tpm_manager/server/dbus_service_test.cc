@@ -52,6 +52,19 @@ class DBusServiceTest : public testing::Test {
                                 GetDefaultCompletionAction());
   }
 
+  template<typename RequestProtobufType, typename ReplyProtobufType>
+  void ExecuteMethod(const std::string& method_name,
+                     const RequestProtobufType& request,
+                     ReplyProtobufType* reply) {
+    std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name);
+    dbus::MessageWriter writer(call.get());
+    writer.AppendProtoAsArrayOfBytes(request);
+    auto response = CallMethod(call.get());
+    dbus::MessageReader reader(response.get());
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+  }
+
+ protected:
   std::unique_ptr<dbus::Response> CallMethod(dbus::MethodCall* method_call) {
     return chromeos::dbus_utils::testing::CallMethod(
         dbus_service_->dbus_object_, method_call);
@@ -65,7 +78,6 @@ class DBusServiceTest : public testing::Test {
     return call;
   }
 
- protected:
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   StrictMock<MockTpmManagerInterface> mock_service_;
@@ -81,14 +93,9 @@ TEST_F(DBusServiceTest, CopyableCallback) {
             base::Closure copy = base::Bind(callback, reply);
             callback.Run(reply);
           })));
-  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(kGetTpmStatus);
   GetTpmStatusRequest request;
-  dbus::MessageWriter writer(call.get());
-  writer.AppendProtoAsArrayOfBytes(request);
-  auto response = CallMethod(call.get());
-  dbus::MessageReader reader(response.get());
   GetTpmStatusReply reply;
-  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  ExecuteMethod(kGetTpmStatus, request, &reply);
 }
 
 TEST_F(DBusServiceTest, GetTpmStatus) {
@@ -98,7 +105,7 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
           const GetTpmStatusRequest& request,
           const TpmManagerInterface::GetTpmStatusCallback& callback) {
         GetTpmStatusReply reply;
-        reply.set_status(STATUS_NOT_AVAILABLE);
+        reply.set_status(STATUS_SUCCESS);
         reply.set_enabled(true);
         reply.set_owned(true);
         reply.mutable_local_data()->set_owned_by_this_install(true);
@@ -108,14 +115,9 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
         reply.set_dictionary_attack_lockout_seconds_remaining(5);
         callback.Run(reply);
       }));
-  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(kGetTpmStatus);
-  dbus::MessageWriter writer(call.get());
-  writer.AppendProtoAsArrayOfBytes(request);
-  auto response = CallMethod(call.get());
-  dbus::MessageReader reader(response.get());
   GetTpmStatusReply reply;
-  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
-  EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
+  ExecuteMethod(kGetTpmStatus, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
   EXPECT_TRUE(reply.enabled());
   EXPECT_TRUE(reply.owned());
   EXPECT_TRUE(reply.local_data().owned_by_this_install());
@@ -126,23 +128,175 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
 }
 
 TEST_F(DBusServiceTest, TakeOwnership) {
-  TakeOwnershipRequest request;
   EXPECT_CALL(mock_service_, TakeOwnership(_, _))
       .WillOnce(Invoke([](
           const TakeOwnershipRequest& request,
           const TpmManagerInterface::TakeOwnershipCallback& callback) {
         TakeOwnershipReply reply;
-        reply.set_status(STATUS_NOT_AVAILABLE);
+        reply.set_status(STATUS_SUCCESS);
         callback.Run(reply);
       }));
-  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(kTakeOwnership);
-  dbus::MessageWriter writer(call.get());
-  writer.AppendProtoAsArrayOfBytes(request);
-  auto response = CallMethod(call.get());
-  dbus::MessageReader reader(response.get());
+  TakeOwnershipRequest request;
   TakeOwnershipReply reply;
-  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
-  EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
+  ExecuteMethod(kTakeOwnership, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
+TEST_F(DBusServiceTest, DefineNvram) {
+  uint32_t nvram_index = 5;
+  size_t nvram_length = 32;
+  DefineNvramRequest request;
+  request.set_index(nvram_index);
+  request.set_length(nvram_length);
+  EXPECT_CALL(mock_service_, DefineNvram(_, _))
+      .WillOnce(Invoke([nvram_index, nvram_length](
+          const DefineNvramRequest& request,
+          const TpmManagerInterface::DefineNvramCallback& callback) {
+        EXPECT_TRUE(request.has_index());
+        EXPECT_EQ(nvram_index, request.index());
+        EXPECT_TRUE(request.has_length());
+        EXPECT_EQ(nvram_length, request.length());
+        DefineNvramReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        callback.Run(reply);
+      }));
+  DefineNvramReply reply;
+  ExecuteMethod(kDefineNvram, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
+TEST_F(DBusServiceTest, DestroyNvram) {
+  uint32_t nvram_index = 5;
+  DestroyNvramRequest request;
+  request.set_index(nvram_index);
+  EXPECT_CALL(mock_service_, DestroyNvram(_, _))
+      .WillOnce(Invoke([nvram_index](
+          const DestroyNvramRequest& request,
+          const TpmManagerInterface::DestroyNvramCallback& callback) {
+        EXPECT_TRUE(request.has_index());
+        EXPECT_EQ(nvram_index, request.index());
+        DestroyNvramReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        callback.Run(reply);
+      }));
+  DestroyNvramReply reply;
+  ExecuteMethod(kDestroyNvram, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
+TEST_F(DBusServiceTest, WriteNvram) {
+  uint32_t nvram_index = 5;
+  std::string nvram_data("nvram_data");
+  WriteNvramRequest request;
+  request.set_index(nvram_index);
+  request.set_data(nvram_data);
+  EXPECT_CALL(mock_service_, WriteNvram(_, _))
+      .WillOnce(Invoke([nvram_index, nvram_data](
+          const WriteNvramRequest& request,
+          const TpmManagerInterface::WriteNvramCallback& callback) {
+        EXPECT_TRUE(request.has_index());
+        EXPECT_EQ(nvram_index, request.index());
+        EXPECT_TRUE(request.has_data());
+        EXPECT_EQ(nvram_data, request.data());
+        WriteNvramReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        callback.Run(reply);
+      }));
+  WriteNvramReply reply;
+  ExecuteMethod(kWriteNvram, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
+TEST_F(DBusServiceTest, ReadNvram) {
+  uint32_t nvram_index = 5;
+  std::string nvram_data("nvram_data");
+  ReadNvramRequest request;
+  request.set_index(nvram_index);
+  EXPECT_CALL(mock_service_, ReadNvram(_, _))
+      .WillOnce(Invoke([nvram_index, nvram_data](
+          const ReadNvramRequest& request,
+          const TpmManagerInterface::ReadNvramCallback& callback) {
+        EXPECT_TRUE(request.has_index());
+        EXPECT_EQ(nvram_index, request.index());
+        ReadNvramReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_data(nvram_data);
+        callback.Run(reply);
+      }));
+  ReadNvramReply reply;
+  ExecuteMethod(kReadNvram, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_TRUE(reply.has_data());
+  EXPECT_EQ(nvram_data, reply.data());
+}
+
+TEST_F(DBusServiceTest, IsNvramDefined) {
+  uint32_t nvram_index = 5;
+  bool nvram_defined = true;
+  IsNvramDefinedRequest request;
+  request.set_index(nvram_index);
+  EXPECT_CALL(mock_service_, IsNvramDefined(_, _))
+      .WillOnce(Invoke([nvram_index, nvram_defined](
+          const IsNvramDefinedRequest& request,
+          const TpmManagerInterface::IsNvramDefinedCallback& callback) {
+        EXPECT_TRUE(request.has_index());
+        EXPECT_EQ(nvram_index, request.index());
+        IsNvramDefinedReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_is_defined(nvram_defined);
+        callback.Run(reply);
+      }));
+  IsNvramDefinedReply reply;
+  ExecuteMethod(kIsNvramDefined, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_TRUE(reply.has_is_defined());
+  EXPECT_EQ(nvram_defined, reply.is_defined());
+}
+
+TEST_F(DBusServiceTest, IsNvramLocked) {
+  uint32_t nvram_index = 5;
+  bool nvram_locked = true;
+  IsNvramLockedRequest request;
+  request.set_index(nvram_index);
+  EXPECT_CALL(mock_service_, IsNvramLocked(_, _))
+      .WillOnce(Invoke([nvram_index, nvram_locked](
+          const IsNvramLockedRequest& request,
+          const TpmManagerInterface::IsNvramLockedCallback& callback) {
+        EXPECT_TRUE(request.has_index());
+        EXPECT_EQ(nvram_index, request.index());
+        IsNvramLockedReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_is_locked(nvram_locked);
+        callback.Run(reply);
+      }));
+  IsNvramLockedReply reply;
+  ExecuteMethod(kIsNvramLocked, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_TRUE(reply.has_is_locked());
+  EXPECT_EQ(nvram_locked, reply.is_locked());
+}
+
+TEST_F(DBusServiceTest, GetNvramSize) {
+  uint32_t nvram_index = 5;
+  size_t nvram_size = 32;
+  GetNvramSizeRequest request;
+  request.set_index(nvram_index);
+  EXPECT_CALL(mock_service_, GetNvramSize(_, _))
+      .WillOnce(Invoke([nvram_index, nvram_size](
+          const GetNvramSizeRequest& request,
+          const TpmManagerInterface::GetNvramSizeCallback& callback) {
+        EXPECT_TRUE(request.has_index());
+        EXPECT_EQ(nvram_index, request.index());
+        GetNvramSizeReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_size(nvram_size);
+        callback.Run(reply);
+      }));
+  GetNvramSizeReply reply;
+  ExecuteMethod(kGetNvramSize, request, &reply);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_TRUE(reply.has_size());
+  EXPECT_EQ(nvram_size, reply.size());
 }
 
 }  // namespace tpm_manager

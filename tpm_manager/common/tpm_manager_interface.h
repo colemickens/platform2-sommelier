@@ -26,6 +26,7 @@ namespace tpm_manager {
 
 // This is the main TpmManager interface that is implemented by the proxies
 // and services.
+// TODO(usanghi): Break up the DBus interface (b/24659038).
 class TPM_MANAGER_EXPORT TpmManagerInterface {
  public:
   virtual ~TpmManagerInterface() = default;

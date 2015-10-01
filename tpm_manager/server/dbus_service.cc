@@ -25,8 +25,6 @@
 
 #include "tpm_manager/common/dbus_interface.h"
 
-using chromeos::dbus_utils::DBusMethodResponse;
-
 namespace tpm_manager {
 
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
@@ -38,43 +36,98 @@ void DBusService::Register(const CompletionAction& callback) {
   chromeos::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kTpmManagerInterface);
 
-  dbus_interface->AddMethodHandler(kGetTpmStatus, base::Unretained(this),
-                                   &DBusService::HandleGetTpmStatus);
-  dbus_interface->AddMethodHandler(kTakeOwnership, base::Unretained(this),
-                                   &DBusService::HandleTakeOwnership);
+  dbus_interface->AddMethodHandler(
+      kGetTpmStatus,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          GetTpmStatusRequest,
+          GetTpmStatusReply,
+          &TpmManagerInterface::GetTpmStatus>);
+
+  dbus_interface->AddMethodHandler(
+      kTakeOwnership,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          TakeOwnershipRequest,
+          TakeOwnershipReply,
+          &TpmManagerInterface::TakeOwnership>);
+
+  dbus_interface->AddMethodHandler(
+      kDefineNvram,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          DefineNvramRequest,
+          DefineNvramReply,
+          &TpmManagerInterface::DefineNvram>);
+
+  dbus_interface->AddMethodHandler(
+      kDestroyNvram,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          DestroyNvramRequest,
+          DestroyNvramReply,
+          &TpmManagerInterface::DestroyNvram>);
+
+  dbus_interface->AddMethodHandler(
+      kWriteNvram,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          WriteNvramRequest,
+          WriteNvramReply,
+          &TpmManagerInterface::WriteNvram>);
+
+  dbus_interface->AddMethodHandler(
+      kReadNvram,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          ReadNvramRequest,
+          ReadNvramReply,
+          &TpmManagerInterface::ReadNvram>);
+
+  dbus_interface->AddMethodHandler(
+      kIsNvramDefined,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          IsNvramDefinedRequest,
+          IsNvramDefinedReply,
+          &TpmManagerInterface::IsNvramDefined>);
+
+  dbus_interface->AddMethodHandler(
+      kIsNvramLocked,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          IsNvramLockedRequest,
+          IsNvramLockedReply,
+          &TpmManagerInterface::IsNvramLocked>);
+
+  dbus_interface->AddMethodHandler(
+      kGetNvramSize,
+      base::Unretained(this),
+      &DBusService::HandleDBusMethod<
+          GetNvramSizeRequest,
+          GetNvramSizeReply,
+          &TpmManagerInterface::GetNvramSize>);
+
   dbus_object_.RegisterAsync(callback);
 }
 
-void DBusService::HandleGetTpmStatus(
-    std::unique_ptr<DBusMethodResponse<const GetTpmStatusReply&>> response,
-    const GetTpmStatusRequest& request) {
+template<typename RequestProtobufType,
+         typename ReplyProtobufType,
+         DBusService::HandlerFunction<RequestProtobufType,
+                                      ReplyProtobufType> func>
+void DBusService::HandleDBusMethod(
+    std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
+    const RequestProtobufType& request) {
   // Convert |response| to a shared_ptr so |service_| can safely copy the
   // callback.
   using SharedResponsePointer = std::shared_ptr<
-      DBusMethodResponse<const GetTpmStatusReply&>>;
+      DBusMethodResponse<const ReplyProtobufType&>>;
   // A callback that sends off the reply protobuf.
   auto callback = [](const SharedResponsePointer& response,
-                     const GetTpmStatusReply& reply) {
+                     const ReplyProtobufType& reply) {
     response->Return(reply);
   };
-  service_->GetTpmStatus(
-      request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
-}
-
-void DBusService::HandleTakeOwnership(
-    std::unique_ptr<DBusMethodResponse<const TakeOwnershipReply&>> response,
-    const TakeOwnershipRequest& request) {
-  // Convert |response| to a shared_ptr so |service_| can safely copy the
-  // callback.
-  using SharedResponsePointer = std::shared_ptr<
-      DBusMethodResponse<const TakeOwnershipReply&>>;
-  // A callback that sends off the reply protobuf.
-  auto callback = [](const SharedResponsePointer& response,
-                     const TakeOwnershipReply& reply) {
-    response->Return(reply);
-  };
-  service_->TakeOwnership(
+  (service_->*func)(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }
