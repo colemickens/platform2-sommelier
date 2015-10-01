@@ -25,13 +25,14 @@ namespace tpm_manager {
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
                                      LocalDataStore* local_data_store,
                                      TpmStatus* tpm_status,
-                                     TpmInitializer* tpm_initializer)
+                                     TpmInitializer* tpm_initializer,
+                                     TpmNvram* tpm_nvram)
     : local_data_store_(local_data_store),
       tpm_status_(tpm_status),
       tpm_initializer_(tpm_initializer),
+      tpm_nvram_(tpm_nvram),
       wait_for_ownership_(wait_for_ownership),
-      weak_factory_(this) {
-}
+      weak_factory_(this) {}
 
 bool TpmManagerService::Initialize() {
   LOG(INFO) << "TpmManager service started.";
@@ -60,15 +61,8 @@ void TpmManagerService::InitializeTask() {
 
 void TpmManagerService::GetTpmStatus(const GetTpmStatusRequest& request,
                                      const GetTpmStatusCallback& callback) {
-  auto result = std::make_shared<GetTpmStatusReply>();
-  base::Closure task = base::Bind(&TpmManagerService::GetTpmStatusTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
-      &TpmManagerService::TaskRelayCallback<GetTpmStatusReply>,
-      weak_factory_.GetWeakPtr(),
-      callback,
-      result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  PostTaskToWorkerThread<GetTpmStatusReply>(
+      request, callback, &TpmManagerService::GetTpmStatusTask);
 }
 
 void TpmManagerService::GetTpmStatusTask(
@@ -93,19 +87,13 @@ void TpmManagerService::GetTpmStatusTask(
     result->set_dictionary_attack_lockout_seconds_remaining(
         lockout_time_remaining);
   }
+  result->set_status(STATUS_SUCCESS);
 }
 
 void TpmManagerService::TakeOwnership(const TakeOwnershipRequest& request,
                                       const TakeOwnershipCallback& callback) {
-  auto result = std::make_shared<TakeOwnershipReply>();
-  base::Closure task = base::Bind(&TpmManagerService::TakeOwnershipTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
-      &TpmManagerService::TaskRelayCallback<TakeOwnershipReply>,
-      weak_factory_.GetWeakPtr(),
-      callback,
-      result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  PostTaskToWorkerThread<TakeOwnershipReply>(
+      request, callback, &TpmManagerService::TakeOwnershipTask);
 }
 
 void TpmManagerService::TakeOwnershipTask(
@@ -121,6 +109,160 @@ void TpmManagerService::TakeOwnershipTask(
     return;
   }
   result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::DefineNvram(const DefineNvramRequest& request,
+                                    const DefineNvramCallback& callback) {
+  PostTaskToWorkerThread<DefineNvramReply>(
+      request, callback, &TpmManagerService::DefineNvramTask);
+}
+
+void TpmManagerService::DefineNvramTask(
+    const DefineNvramRequest& request,
+    const std::shared_ptr<DefineNvramReply>& result) {
+  VLOG(1) << __func__;
+  if (!tpm_nvram_->DefineNvram(request.index(), request.length())) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::DestroyNvram(const DestroyNvramRequest& request,
+                                     const DestroyNvramCallback& callback) {
+  PostTaskToWorkerThread<DestroyNvramReply>(
+      request, callback, &TpmManagerService::DestroyNvramTask);
+}
+
+void TpmManagerService::DestroyNvramTask(
+    const DestroyNvramRequest& request,
+    const std::shared_ptr<DestroyNvramReply>& result) {
+  VLOG(1) << __func__;
+  if (!tpm_nvram_->DestroyNvram(request.index())) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::WriteNvram(const WriteNvramRequest& request,
+                                   const WriteNvramCallback& callback) {
+  PostTaskToWorkerThread<WriteNvramReply>(
+      request, callback, &TpmManagerService::WriteNvramTask);
+}
+
+void TpmManagerService::WriteNvramTask(
+    const WriteNvramRequest& request,
+    const std::shared_ptr<WriteNvramReply>& result) {
+  VLOG(1) << __func__;
+  if (!tpm_nvram_->WriteNvram(request.index(), request.data())) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::ReadNvram(const ReadNvramRequest& request,
+                                  const ReadNvramCallback& callback) {
+  PostTaskToWorkerThread<ReadNvramReply>(
+      request, callback, &TpmManagerService::ReadNvramTask);
+}
+
+void TpmManagerService::ReadNvramTask(
+    const ReadNvramRequest& request,
+    const std::shared_ptr<ReadNvramReply>& result) {
+  VLOG(1) << __func__;
+  if (!tpm_nvram_->ReadNvram(request.index(), result->mutable_data())) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::IsNvramDefined(const IsNvramDefinedRequest& request,
+                                       const IsNvramDefinedCallback& callback) {
+  PostTaskToWorkerThread<IsNvramDefinedReply>(
+      request, callback, &TpmManagerService::IsNvramDefinedTask);
+}
+
+void TpmManagerService::IsNvramDefinedTask(
+    const IsNvramDefinedRequest& request,
+    const std::shared_ptr<IsNvramDefinedReply>& result) {
+  VLOG(1) << __func__;
+  bool defined;
+  if (!tpm_nvram_->IsNvramDefined(request.index(), &defined)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_is_defined(defined);
+  result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::IsNvramLocked(const IsNvramLockedRequest& request,
+                                      const IsNvramLockedCallback& callback) {
+  PostTaskToWorkerThread<IsNvramLockedReply>(
+      request, callback, &TpmManagerService::IsNvramLockedTask);
+}
+
+void TpmManagerService::IsNvramLockedTask(
+    const IsNvramLockedRequest& request,
+    const std::shared_ptr<IsNvramLockedReply>& result) {
+  VLOG(1) << __func__;
+  bool locked;
+  if (!tpm_nvram_->IsNvramLocked(request.index(), &locked)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_is_locked(locked);
+  result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::GetNvramSize(const GetNvramSizeRequest& request,
+                                     const GetNvramSizeCallback& callback) {
+  PostTaskToWorkerThread<GetNvramSizeReply>(
+      request, callback, &TpmManagerService::GetNvramSizeTask);
+}
+
+void TpmManagerService::GetNvramSizeTask(
+    const GetNvramSizeRequest& request,
+    const std::shared_ptr<GetNvramSizeReply>& result) {
+  VLOG(1) << __func__;
+  size_t size;
+  if (!tpm_nvram_->GetNvramSize(request.index(), &size)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_size(size);
+  result->set_status(STATUS_SUCCESS);
+}
+
+template<typename ReplyProtobufType>
+void TpmManagerService::TaskRelayCallback(
+    const base::Callback<void(const ReplyProtobufType&)> callback,
+    const std::shared_ptr<ReplyProtobufType>& reply) {
+  callback.Run(*reply);
+}
+
+template<typename ReplyProtobufType,
+         typename RequestProtobufType,
+         typename ReplyCallbackType,
+         typename TaskType>
+void TpmManagerService::PostTaskToWorkerThread(RequestProtobufType& request,
+                                               ReplyCallbackType& callback,
+                                               TaskType task) {
+  auto result = std::make_shared<ReplyProtobufType>();
+  base::Closure background_task = base::Bind(task,
+                                             base::Unretained(this),
+                                             request,
+                                             result);
+  base::Closure reply = base::Bind(
+      &TpmManagerService::TaskRelayCallback<ReplyProtobufType>,
+      weak_factory_.GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE,
+                                                  background_task,
+                                                  reply);
 }
 
 }  // namespace tpm_manager

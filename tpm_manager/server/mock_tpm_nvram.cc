@@ -31,11 +31,11 @@ MockTpmNvram::MockTpmNvram() {
       .WillByDefault(Invoke(this, &MockTpmNvram::FakeWriteNvram));
   ON_CALL(*this, ReadNvram(_, _))
       .WillByDefault(Invoke(this, &MockTpmNvram::FakeReadNvram));
-  ON_CALL(*this, IsNvramDefined(_))
+  ON_CALL(*this, IsNvramDefined(_, _))
       .WillByDefault(Invoke(this, &MockTpmNvram::FakeIsNvramDefined));
-  ON_CALL(*this, IsNvramLocked(_))
+  ON_CALL(*this, IsNvramLocked(_, _))
       .WillByDefault(Invoke(this, &MockTpmNvram::FakeIsNvramLocked));
-  ON_CALL(*this, GetNvramSize(_))
+  ON_CALL(*this, GetNvramSize(_, _))
       .WillByDefault(Invoke(this, &MockTpmNvram::FakeGetNvramSize));
 }
 
@@ -88,19 +88,27 @@ bool MockTpmNvram::FakeReadNvram(uint32_t index, std::string* data) {
   return true;
 }
 
-bool MockTpmNvram::FakeIsNvramDefined(uint32_t index) {
-  return (nvram_map_.find(index) != nvram_map_.end());
+bool MockTpmNvram::FakeIsNvramDefined(uint32_t index, bool* defined) {
+  *defined = (nvram_map_.find(index) != nvram_map_.end());
+  return true;
 }
 
-bool MockTpmNvram::FakeIsNvramLocked(uint32_t index) {
-  return IsNvramDefined(index) && nvram_map_[index].written;
-}
-
-size_t MockTpmNvram::FakeGetNvramSize(uint32_t index) {
-  if (!IsNvramDefined(index)) {
-    return 0;
+bool MockTpmNvram::FakeIsNvramLocked(uint32_t index, bool* locked) {
+  bool defined;
+  if (!IsNvramDefined(index, &defined) || !defined) {
+    return false;
   }
-  return nvram_map_[index].data.size();
+  *locked = nvram_map_[index].written;
+  return true;
+}
+
+bool MockTpmNvram::FakeGetNvramSize(uint32_t index, size_t* size) {
+  bool defined;
+  if (!IsNvramDefined(index, &defined) || !defined) {
+    return false;
+  }
+  *size = nvram_map_[index].data.size();
+  return true;
 }
 
 }  // namespace tpm_manager

@@ -42,3 +42,79 @@ message TakeOwnershipRequest {
 message TakeOwnershipReply {
   optional TpmManagerStatus status = 1;
 }
+
+// Input for the DefineNvram method.
+message DefineNvramRequest {
+  optional int32 index = 1;
+  optional int32 length = 2;
+}
+
+// Output for the DefineNvram method.
+message DefineNvramReply {
+  optional TpmManagerStatus status = 1;
+}
+
+// Input for the DestroyNvram method.
+message DestroyNvramRequest {
+  optional int32 index = 1;
+}
+
+// Output for the DestroyNvram method.
+message DestroyNvramReply {
+  optional TpmManagerStatus status = 1;
+}
+
+// Input for the WriteNvram method.
+message WriteNvramRequest {
+  optional int32 index = 1;
+  optional bytes data = 2;
+}
+
+// Output for the WriteNvram method.
+message WriteNvramReply {
+  optional TpmManagerStatus status = 1;
+}
+
+// Input for the ReadNvram method.
+message ReadNvramRequest {
+  optional int32 index = 1;
+}
+
+// Output for the ReadNvram method.
+message ReadNvramReply {
+  optional TpmManagerStatus status = 1;
+  optional bytes data = 2;
+}
+
+// Input for the IsNvramDefined method.
+message IsNvramDefinedRequest {
+  optional int32 index = 1;
+}
+
+// Output for the IsNvramDefined method.
+message IsNvramDefinedReply {
+  optional TpmManagerStatus status = 1;
+  optional bool is_defined = 2;
+}
+
+// Input for the IsNvramLocked method.
+message IsNvramLockedRequest {
+  optional int32 index = 1;
+}
+
+// Output for the IsNvramLocked method.
+message IsNvramLockedReply {
+  optional TpmManagerStatus status = 1;
+  optional bool is_locked = 2;
+}
+
+// Input for the GetNvramSize method.
+message GetNvramSizeRequest {
+  optional int32 index = 1;
+}
+
+// Output for the GetNvramSize method.
+message GetNvramSizeReply {
+  optional TpmManagerStatus status = 1;
+  optional int32 size = 2;
+}

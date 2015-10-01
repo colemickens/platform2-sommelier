@@ -64,7 +64,8 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
         command_line->HasSwitch(kWaitForOwnershipTriggerSwitch),
         local_data_store_.get(),
         tpm_status_.get(),
-        tpm_initializer_.get()));
+        tpm_initializer_.get(),
+        tpm_nvram_.get()));
   }
 
  protected:
@@ -88,6 +89,7 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
   std::unique_ptr<tpm_manager::LocalDataStore> local_data_store_;
   std::unique_ptr<tpm_manager::TpmStatus> tpm_status_;
   std::unique_ptr<tpm_manager::TpmInitializer> tpm_initializer_;
+  std::unique_ptr<tpm_manager::TpmNvram> tpm_nvram_;
   std::unique_ptr<tpm_manager::TpmManagerInterface> tpm_manager_service_;
   std::unique_ptr<tpm_manager::DBusService> dbus_service_;
 

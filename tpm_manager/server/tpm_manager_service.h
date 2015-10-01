@@ -29,6 +29,7 @@
 
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_initializer.h"
+#include "tpm_manager/server/tpm_nvram.h"
 #include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
@@ -59,7 +60,8 @@ class TpmManagerService : public TpmManagerInterface {
   explicit TpmManagerService(bool wait_for_ownership,
                              LocalDataStore* local_data_store,
                              TpmStatus* tpm_status,
-                             TpmInitializer* tpm_initializer);
+                             TpmInitializer* tpm_initializer,
+                             TpmNvram* tpm_nvram);
   ~TpmManagerService() override = default;
 
   // TpmManagerInterface methods.
@@ -68,6 +70,20 @@ class TpmManagerService : public TpmManagerInterface {
                     const GetTpmStatusCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
+  void DefineNvram(const DefineNvramRequest& request,
+                   const DefineNvramCallback& callback) override;
+  void DestroyNvram(const DestroyNvramRequest& request,
+                    const DestroyNvramCallback& callback) override;
+  void WriteNvram(const WriteNvramRequest& request,
+                  const WriteNvramCallback& callback) override;
+  void ReadNvram(const ReadNvramRequest& request,
+                 const ReadNvramCallback& callback) override;
+  void IsNvramDefined(const IsNvramDefinedRequest& request,
+                      const IsNvramDefinedCallback& callback) override;
+  void IsNvramLocked(const IsNvramLockedRequest& request,
+                     const IsNvramLockedCallback& callback) override;
+  void GetNvramSize(const GetNvramSizeRequest& request,
+                    const GetNvramSizeCallback& callback) override;
 
  private:
   // A relay callback which allows the use of weak pointer semantics for a reply
@@ -75,9 +91,24 @@ class TpmManagerService : public TpmManagerInterface {
   template<typename ReplyProtobufType>
   void TaskRelayCallback(
       const base::Callback<void(const ReplyProtobufType&)> callback,
-      const std::shared_ptr<ReplyProtobufType>& reply) {
-    callback.Run(*reply);
-  }
+      const std::shared_ptr<ReplyProtobufType>& reply);
+
+  // This templated method posts the provided |TaskType| to the background
+  // thread with the provided |RequestProtobufType|. When |TaskType| finishes
+  // executing, the |ReplyCallbackType| is called with the |ReplyProtobufType|.
+  template<typename ReplyProtobufType,
+           typename RequestProtobufType,
+           typename ReplyCallbackType,
+           typename TaskType>
+  void PostTaskToWorkerThread(RequestProtobufType& request,
+                              ReplyCallbackType& callback,
+                              TaskType task);
+
+  // Synchronously initializes the TPM according to the current configuration.
+  // If an initialization process was interrupted it will be continued. If the
+  // TPM is already initialized or cannot yet be initialized, this method has no
+  // effect.
+  void InitializeTask();
 
   // Blocking implementation of GetTpmStatus that can be executed on the
   // background worker thread.
@@ -89,15 +120,45 @@ class TpmManagerService : public TpmManagerInterface {
   void TakeOwnershipTask(const TakeOwnershipRequest& request,
                          const std::shared_ptr<TakeOwnershipReply>& result);
 
-  // Synchronously initializes the TPM according to the current configuration.
-  // If an initialization process was interrupted it will be continued. If the
-  // TPM is already initialized or cannot yet be initialized, this method has no
-  // effect.
-  void InitializeTask();
+  // Blocking implementation of DefineNvram that can be executed on the
+  // background worker thread.
+  void DefineNvramTask(const DefineNvramRequest& request,
+                       const std::shared_ptr<DefineNvramReply>& result);
+
+  // Blocking implementation of DestroyNvram that can be executed on the
+  // background worker thread.
+  void DestroyNvramTask(const DestroyNvramRequest& request,
+                        const std::shared_ptr<DestroyNvramReply>& result);
+
+  // Blocking implementation of WriteNvram that can be executed on the
+  // background worker thread.
+  void WriteNvramTask(const WriteNvramRequest& request,
+                      const std::shared_ptr<WriteNvramReply>& result);
+
+  // Blocking implementation of ReadNvram that can be executed on the
+  // background worker thread.
+  void ReadNvramTask(const ReadNvramRequest& request,
+                     const std::shared_ptr<ReadNvramReply>& result);
+
+  // Blocking implementation of IsNvramDefined that can be executed on the
+  // background worker thread.
+  void IsNvramDefinedTask(const IsNvramDefinedRequest& request,
+                          const std::shared_ptr<IsNvramDefinedReply>& result);
+
+  // Blocking implementation of IsNvramLocked that can be executed on the
+  // background worker thread.
+  void IsNvramLockedTask(const IsNvramLockedRequest& request,
+                         const std::shared_ptr<IsNvramLockedReply>& result);
+
+  // Blocking implementation of GetNvramSize that can be executed on the
+  // background worker thread.
+  void GetNvramSizeTask(const GetNvramSizeRequest& request,
+                        const std::shared_ptr<GetNvramSizeReply>& result);
 
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_;
   TpmInitializer* tpm_initializer_;
+  TpmNvram* tpm_nvram_;
   // Whether to wait for an explicit call to 'TakeOwnership' before initializing
   // the TPM. Normally tracks the --wait_for_ownership command line option.
   bool wait_for_ownership_;

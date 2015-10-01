@@ -40,6 +40,48 @@ std::string GetProtoDebugString(const TakeOwnershipRequest& value);
 std::string GetProtoDebugStringWithIndent(const TakeOwnershipReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const TakeOwnershipReply& value);
+std::string GetProtoDebugStringWithIndent(const DefineNvramRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const DefineNvramRequest& value);
+std::string GetProtoDebugStringWithIndent(const DefineNvramReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const DefineNvramReply& value);
+std::string GetProtoDebugStringWithIndent(const DestroyNvramRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const DestroyNvramRequest& value);
+std::string GetProtoDebugStringWithIndent(const DestroyNvramReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const DestroyNvramReply& value);
+std::string GetProtoDebugStringWithIndent(const WriteNvramRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const WriteNvramRequest& value);
+std::string GetProtoDebugStringWithIndent(const WriteNvramReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const WriteNvramReply& value);
+std::string GetProtoDebugStringWithIndent(const ReadNvramRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const ReadNvramRequest& value);
+std::string GetProtoDebugStringWithIndent(const ReadNvramReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const ReadNvramReply& value);
+std::string GetProtoDebugStringWithIndent(const IsNvramDefinedRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const IsNvramDefinedRequest& value);
+std::string GetProtoDebugStringWithIndent(const IsNvramDefinedReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const IsNvramDefinedReply& value);
+std::string GetProtoDebugStringWithIndent(const IsNvramLockedRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const IsNvramLockedRequest& value);
+std::string GetProtoDebugStringWithIndent(const IsNvramLockedReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const IsNvramLockedReply& value);
+std::string GetProtoDebugStringWithIndent(const GetNvramSizeRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const GetNvramSizeRequest& value);
+std::string GetProtoDebugStringWithIndent(const GetNvramSizeReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const GetNvramSizeReply& value);
 
 }  // namespace tpm_manager
 

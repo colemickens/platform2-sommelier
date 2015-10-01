@@ -43,6 +43,42 @@ class TPM_MANAGER_EXPORT TpmManagerInterface {
   using TakeOwnershipCallback = base::Callback<void(const TakeOwnershipReply&)>;
   virtual void TakeOwnership(const TakeOwnershipRequest& request,
                              const TakeOwnershipCallback& callback) = 0;
+
+  // Processes a DefineNvramRequest and responds with a DefineNvramReply.
+  using DefineNvramCallback = base::Callback<void(const DefineNvramReply&)>;
+  virtual void DefineNvram(const DefineNvramRequest& request,
+                           const DefineNvramCallback& callback) = 0;
+
+  // Processes a DestroyNvramRequest and responds with a DestroyNvramReply.
+  using DestroyNvramCallback = base::Callback<void(const DestroyNvramReply&)>;
+  virtual void DestroyNvram(const DestroyNvramRequest& request,
+                            const DestroyNvramCallback& callback) = 0;
+
+  // Processes a WriteNvramRequest and responds with a WriteNvramReply.
+  using WriteNvramCallback = base::Callback<void(const WriteNvramReply&)>;
+  virtual void WriteNvram(const WriteNvramRequest& request,
+                          const WriteNvramCallback& callback) = 0;
+
+  // Processes a ReadNvramRequest and responds with a ReadNvramReply.
+  using ReadNvramCallback = base::Callback<void(const ReadNvramReply&)>;
+  virtual void ReadNvram(const ReadNvramRequest& request,
+                         const ReadNvramCallback& callback) = 0;
+
+  // Processes a IsNvramDefinedRequest and responds with a IsNvramDefinedReply.
+  using IsNvramDefinedCallback =
+      base::Callback<void(const IsNvramDefinedReply&)>;
+  virtual void IsNvramDefined(const IsNvramDefinedRequest& request,
+                              const IsNvramDefinedCallback& callback) = 0;
+
+  // Processes a IsNvramLockedRequest and responds with a IsNvramLockedReply.
+  using IsNvramLockedCallback = base::Callback<void(const IsNvramLockedReply&)>;
+  virtual void IsNvramLocked(const IsNvramLockedRequest& request,
+                             const IsNvramLockedCallback& callback) = 0;
+
+  // Processes a GetNvramSizeRequest and responds with a GetNvramSizeReply.
+  using GetNvramSizeCallback = base::Callback<void(const GetNvramSizeReply&)>;
+  virtual void GetNvramSize(const GetNvramSizeRequest& request,
+                            const GetNvramSizeCallback& callback) = 0;
 };
 
 }  // namespace tpm_manager

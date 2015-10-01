@@ -26,6 +26,13 @@ constexpr char kTpmManagerServiceName[] = "org.chromium.TpmManager";
 // Methods exported by tpm_manager.
 constexpr char kGetTpmStatus[] = "GetTpmStatus";
 constexpr char kTakeOwnership[] = "TakeOwnership";
+constexpr char kDefineNvram[] = "DefineNvram";
+constexpr char kDestroyNvram[] = "DestroyNvram";
+constexpr char kWriteNvram[] = "WriteNvram";
+constexpr char kReadNvram[] = "ReadNvram";
+constexpr char kIsNvramDefined[] = "IsNvramDefined";
+constexpr char kIsNvramLocked[] = "IsNvramLocked";
+constexpr char kGetNvramSize[] = "GetNvramSize";
 
 }  // namespace tpm_manager
 

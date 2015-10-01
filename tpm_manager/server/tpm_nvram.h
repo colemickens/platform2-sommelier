@@ -45,16 +45,17 @@ class TpmNvram {
   // it into |data|. Returns true on success.
   virtual bool ReadNvram(uint32_t index, std::string* data) = 0;
 
-  // This method returns true iff |index| refers to a defined NVRAM space.
-  virtual bool IsNvramDefined(uint32_t index) = 0;
+  // This method sets the out argument |defined| to true iff the NVRAM space
+  // referred to by |index| is defined. Returns true on success.
+  virtual bool IsNvramDefined(uint32_t index, bool* defined) = 0;
 
-  // This method returns true iff |index| refers to an NVRAM space that has
-  // been locked for writing.
-  virtual bool IsNvramLocked(uint32_t index) = 0;
+  // This method sets the out argument |locked| to true iff the NVRAM space
+  // referred to by |index| is locked. Returns true on success.
+  virtual bool IsNvramLocked(uint32_t index, bool* locked) = 0;
 
-  // This method returns the size of the NVRAM space at |index|. Returns zero
-  // if the space is not defined.
-  virtual size_t GetNvramSize(uint32_t index) = 0;
+  // This method sets the out argument |size| to the size of the NVRAM space
+  // referred to by |index|. Returns true on success.
+  virtual bool GetNvramSize(uint32_t index, size_t* size) = 0;
 };
 
 }  // namespace tpm_manager

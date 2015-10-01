@@ -40,18 +40,18 @@ class MockTpmNvram : public TpmNvram {
   MOCK_METHOD1(DestroyNvram, bool(uint32_t));
   MOCK_METHOD2(WriteNvram, bool(uint32_t, const std::string&));
   MOCK_METHOD2(ReadNvram, bool(uint32_t, std::string*));
-  MOCK_METHOD1(IsNvramDefined, bool(uint32_t));
-  MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
-  MOCK_METHOD1(GetNvramSize, size_t(uint32_t));
+  MOCK_METHOD2(IsNvramDefined, bool(uint32_t, bool*));
+  MOCK_METHOD2(IsNvramLocked, bool(uint32_t, bool*));
+  MOCK_METHOD2(GetNvramSize, bool(uint32_t, size_t*));
 
  private:
   bool FakeDefineNvram(uint32_t index, size_t length);
   bool FakeDestroyNvram(uint32_t index);
   bool FakeWriteNvram(uint32_t index, const std::string& data);
   bool FakeReadNvram(uint32_t index, std::string* data);
-  bool FakeIsNvramDefined(uint32_t index);
-  bool FakeIsNvramLocked(uint32_t index);
-  size_t FakeGetNvramSize(uint32_t index);
+  bool FakeIsNvramDefined(uint32_t index, bool* defined);
+  bool FakeIsNvramLocked(uint32_t index, bool* locked);
+  bool FakeGetNvramSize(uint32_t index, size_t* size);
 
   std::map<uint32_t, NvSpace> nvram_map_;
 };
