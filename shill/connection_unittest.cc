@@ -32,7 +32,9 @@
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_firewall_proxy.h"
+#if !defined(__ANDROID__)
 #include "shill/mock_resolver.h"
+#endif  // __ANDROID__
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/routing_table_entry.h"
@@ -119,7 +121,9 @@ class ConnectionTest : public Test {
   }
 
   void ReplaceSingletons(ConnectionRefPtr connection) {
+#if !defined(__ANDROID__)
     connection->resolver_ = &resolver_;
+#endif  // __ANDROID__
     connection->routing_table_ = &routing_table_;
     connection->rtnl_handler_ = &rtnl_handler_;
   }
@@ -207,7 +211,9 @@ class ConnectionTest : public Test {
   IPAddress gateway_address_;
   IPAddress default_address_;
   IPAddress local_ipv6_address_;
+#if !defined(__ANDROID__)
   StrictMock<MockResolver> resolver_;
+#endif  // __ANDROID__
   StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
@@ -295,10 +301,11 @@ TEST_F(ConnectionTest, AddConfig) {
 
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                GetDefaultMetric()));
+#if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(
       ipconfig_->properties().dns_servers,
       ipconfig_->properties().domain_search));
-
+#endif  // __ANDROID__
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
       nullptr,
@@ -411,10 +418,11 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
 
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(kTestDeviceInterfaceIndex0, GetDefaultMetric()));
+#if !defined(__ANDROID__)
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
-
+#endif  // __ANDROID__
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_, nullptr, nullptr, nullptr, kTestDeviceName0, string(),
       kTestDeviceInterfaceIndex0));
@@ -528,7 +536,9 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                GetDefaultMetric()));
   vector<string> empty_list;
+#if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
+#endif  // __ANDROID__
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
       nullptr,
@@ -564,9 +574,11 @@ TEST_F(ConnectionTest, AddConfigReverse) {
                               ipconfig_,
                               GetDefaultMetric(),
                               RT_TABLE_MAIN));
+#if !defined(__ANDROID__)
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
+#endif  // __ANDROID__
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
@@ -588,7 +600,9 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   EXPECT_CALL(routing_table_, SetDefaultMetric(_, _));
   vector<string> domain_search_list;
   domain_search_list.push_back(kDomainName + ".");
+#if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list));
+#endif  // __ANDROID__
   DeviceRefPtr device;
   EXPECT_CALL(*device_info_, GetDevice(_)).WillOnce(Return(device));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
@@ -629,15 +643,23 @@ TEST_F(ConnectionTest, UpdateDNSServers) {
 
   // Non-default connection.
   connection_->is_default_ = false;
+#if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
+#endif  // __ANDROID__
   connection_->UpdateDNSServers(dns_servers);
+#if !defined(__ANDROID__)
   Mock::VerifyAndClearExpectations(&resolver_);
+#endif  // __ANDROID__
 
   // Default connection.
   connection_->is_default_ = true;
+#if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(dns_servers, _));
+#endif  // __ANDROID__
   connection_->UpdateDNSServers(dns_servers);
+#if !defined(__ANDROID__)
   Mock::VerifyAndClearExpectations(&resolver_);
+#endif  // __ANDROID__
 }
 
 TEST_F(ConnectionTest, RouteRequest) {
@@ -674,7 +696,9 @@ TEST_F(ConnectionTest, Destructor) {
                                              Technology::kUnknown,
                                              device_info_.get(),
                                              &control_));
+#if !defined(__ANDROID__)
   connection->resolver_ = &resolver_;
+#endif  // __ANDROID__
   connection->routing_table_ = &routing_table_;
   connection->rtnl_handler_ = &rtnl_handler_;
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex1));
