@@ -45,12 +45,34 @@ class TPM_MANAGER_EXPORT DBusProxy : public TpmManagerInterface {
                     const GetTpmStatusCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
+  void DefineNvram(const DefineNvramRequest& request,
+                   const DefineNvramCallback& callback) override;
+  void DestroyNvram(const DestroyNvramRequest& request,
+                    const DestroyNvramCallback& callback) override;
+  void WriteNvram(const WriteNvramRequest& request,
+                  const WriteNvramCallback& callback) override;
+  void ReadNvram(const ReadNvramRequest& request,
+                 const ReadNvramCallback& callback) override;
+  void IsNvramDefined(const IsNvramDefinedRequest& request,
+                      const IsNvramDefinedCallback& callback) override;
+  void IsNvramLocked(const IsNvramLockedRequest& request,
+                     const IsNvramLockedCallback& callback) override;
+  void GetNvramSize(const GetNvramSizeRequest& request,
+                    const GetNvramSizeCallback& callback) override;
 
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {
     object_proxy_ = object_proxy;
   }
 
  private:
+  // Template method to call a given |method_name| remotely via dbus.
+  template<typename ReplyProtobufType,
+           typename RequestProtobufType,
+           typename CallbackType>
+  void CallMethod(const std::string& method_name,
+                  const RequestProtobufType& request,
+                  const CallbackType& callback);
+
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* object_proxy_;
   DISALLOW_COPY_AND_ASSIGN(DBusProxy);
