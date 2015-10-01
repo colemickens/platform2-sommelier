@@ -142,11 +142,17 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
   args.push_back(nullptr);
 
   struct minijail* jail = minijail_->New();
+#if !defined(__ANDROID__)
+  // Don't use DropRoot or UseCapabilities on Android since they do not work
+  // yet.
+  // TODO(jorgelo): call these two functions again once they are working on
+  // Android.
   if (!minijail_->DropRoot(jail, user.c_str(), group.c_str())) {
     LOG(ERROR) << "Minijail failed to drop root privileges?";
     return -1;
   }
   minijail_->UseCapabilities(jail, capmask);
+#endif  // __ANDROID__
 
   pid_t pid;
   if (!minijail_->RunPipesAndDestroy(
