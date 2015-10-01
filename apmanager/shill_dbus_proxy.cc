@@ -17,8 +17,13 @@
 #include "apmanager/shill_dbus_proxy.h"
 
 #include <base/bind.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
+
+#if !defined(__ANDROID__)
+#include <chromeos/dbus/service_constants.h>
+#else
+#include <dbus/apmanager/dbus-constants.h>
+#endif  // __ANDROID__
 
 #include "apmanager/event_dispatcher.h"
 
