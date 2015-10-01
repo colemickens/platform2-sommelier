@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/streams/file_stream.h>
 #include <chromeos/streams/tls_stream.h>
 
@@ -22,6 +23,31 @@
 namespace buffet {
 
 namespace {
+
+std::string GetIPAddress(const sockaddr* sa) {
+  std::string addr;
+  char str[INET6_ADDRSTRLEN] = {};
+  switch (sa->sa_family) {
+    case AF_INET:
+      if (inet_ntop(AF_INET,
+                    &(reinterpret_cast<const sockaddr_in*>(sa)->sin_addr), str,
+                    sizeof(str))) {
+        addr = str;
+      }
+      break;
+
+    case AF_INET6:
+      if (inet_ntop(AF_INET6,
+                    &(reinterpret_cast<const sockaddr_in6*>(sa)->sin6_addr),
+                    str, sizeof(str))) {
+        addr = str;
+      }
+      break;
+  }
+  if (addr.empty())
+    addr = base::StringPrintf("<Unknown address family: %d>", sa->sa_family);
+  return addr;
+}
 
 int ConnectSocket(const std::string& host, uint16_t port) {
   std::string service = std::to_string(port);
@@ -38,13 +64,12 @@ int ConnectSocket(const std::string& host, uint16_t port) {
     if (socket_fd < 0)
       continue;
 
-    char str[INET6_ADDRSTRLEN] = {};
-    inet_ntop(info->ai_family, info->ai_addr, str, info->ai_addrlen);
-    LOG(INFO) << "Connecting to address: " << str;
+    std::string addr = GetIPAddress(info->ai_addr);
+    LOG(INFO) << "Connecting to address: " << addr;
     if (connect(socket_fd, info->ai_addr, info->ai_addrlen) == 0)
       break;  // Success.
 
-    PLOG(WARNING) << "Failed to connect to address: " << str;
+    PLOG(WARNING) << "Failed to connect to address: " << addr;
     close(socket_fd);
     socket_fd = -1;
   }
