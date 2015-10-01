@@ -54,11 +54,7 @@ TEST(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ("conf_oem_name", settings.oem_name);
   EXPECT_EQ("conf_model_name", settings.model_name);
   EXPECT_EQ("ABCDE", settings.model_id);
-  EXPECT_EQ(base::TimeDelta::FromMilliseconds(12345), settings.polling_period);
-  EXPECT_EQ(base::TimeDelta::FromMilliseconds(6589),
-            settings.backup_polling_period);
   EXPECT_FALSE(settings.wifi_auto_setup_enabled);
-  EXPECT_TRUE(settings.ble_setup_enabled);
   std::set<weave::PairingType> pairing_types{
       weave::PairingType::kPinCode, weave::PairingType::kEmbeddedCode,
       weave::PairingType::kUltrasound32, weave::PairingType::kAudible32};
@@ -67,7 +63,7 @@ TEST(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ("conf_name", settings.name);
   EXPECT_EQ("conf_description", settings.description);
   EXPECT_EQ("conf_location", settings.location);
-  EXPECT_EQ("user", settings.local_anonymous_access_role);
+  EXPECT_EQ(weave::AuthScope::kUser, settings.local_anonymous_access_role);
   EXPECT_FALSE(settings.local_pairing_enabled);
   EXPECT_FALSE(settings.local_discovery_enabled);
 }

@@ -18,8 +18,10 @@
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
+#include <chromeos/http/http_utils.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/message_loops/message_loop.h>
+#include <chromeos/mime_utils.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -71,13 +73,14 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
 Manager::~Manager() {
 }
 
-void Manager::Start(const weave::Device::Options& options,
-                    const BuffetConfigPaths& paths,
+void Manager::Start(const Options& options,
+                    const BuffetConfig::Options& paths,
                     const std::set<std::string>& device_whitelist,
                     AsyncEventSequencer* sequencer) {
   task_runner_.reset(new TaskRunner{});
   http_client_.reset(new HttpTransportClient);
-  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
+  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist,
+                                      !options.xmpp_enabled});
   weave::provider::DnsServiceDiscovery* mdns{nullptr};
   weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
@@ -86,17 +89,28 @@ void Manager::Start(const weave::Device::Options& options,
     web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
     mdns = peerd_client_.get();
     http_server = web_serv_client_.get();
+
+    if (options.enable_ping) {
+      http_server->AddRequestHandler(
+          "/privet/ping",
+          base::Bind(
+              [](const weave::provider::HttpServer::Request& request,
+                 const weave::provider::HttpServer::OnReplyCallback& callback) {
+                callback.Run(chromeos::http::status_code::Ok, "Hello, world!",
+                             chromeos::mime::text::kPlain);
+              }));
+    }
   }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   device_ = weave::Device::Create();
   config_.reset(new BuffetConfig{paths});
-  config_->AddOnChangedCallback(
-      base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
-
-  device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
+  device_->Start(config_.get(), task_runner_.get(), http_client_.get(),
                  shill_client_.get(), mdns, http_server, shill_client_.get(),
                  nullptr);
+
+  device_->AddSettingsChangedCallback(
+      base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});
@@ -286,12 +300,7 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
                                const std::string& name,
                                const std::string& description,
                                const std::string& location) {
-  weave::ErrorPtr error;
-  if (!device_->GetCloud()->UpdateDeviceInfo(name, description, location,
-                                             &error)) {
-    ConvertError(*error, chromeos_error);
-    return false;
-  }
+  device_->GetCloud()->UpdateDeviceInfo(name, description, location);
   return true;
 }
 
@@ -324,7 +333,7 @@ void Manager::OnRegistrationChanged(weave::RegistrationStatus status) {
 }
 
 void Manager::OnConfigChanged(const weave::Settings& settings) {
-  dbus_adaptor_.SetDeviceId(settings.device_id);
+  dbus_adaptor_.SetDeviceId(settings.cloud_id);
   dbus_adaptor_.SetOemName(settings.oem_name);
   dbus_adaptor_.SetModelName(settings.model_name);
   dbus_adaptor_.SetModelId(settings.model_id);

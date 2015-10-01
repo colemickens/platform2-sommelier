@@ -20,6 +20,7 @@
 #include <chromeos/errors/error.h>
 #include <weave/device.h>
 
+#include "buffet/buffet_config.h"
 #include "buffet/org.chromium.Buffet.Manager.h"
 
 namespace chromeos {
@@ -30,13 +31,11 @@ class ExportedObjectManager;
 
 namespace buffet {
 
-class BuffetConfig;
 class DBusCommandDispacher;
 class HttpTransportClient;
 class PeerdClient;
 class ShillClient;
 class WebServClient;
-struct BuffetConfigPaths;
 
 template<typename... Types>
 using DBusMethodResponsePtr =
@@ -51,13 +50,19 @@ using DBusMethodResponse =
 // device state.
 class Manager final : public org::chromium::Buffet::ManagerInterface {
  public:
+  struct Options {
+    bool xmpp_enabled = true;
+    bool disable_privet = false;
+    bool enable_ping = false;
+  };
+
   explicit Manager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
   ~Manager();
 
-  void Start(const weave::Device::Options& options,
-             const BuffetConfigPaths& paths,
+  void Start(const Options& options,
+             const BuffetConfig::Options& config_options,
              const std::set<std::string>& device_whitelist,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
@@ -107,7 +112,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const std::shared_ptr<DBusMethodResponse<std::string>>& response,
       const weave::Error* error);
 
-  void StartPrivet(const weave::Device::Options& options,
+  void StartPrivet(const Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnStateChanged();

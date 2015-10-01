@@ -22,8 +22,6 @@ namespace {
 // updates relevant for a short amount of time.
 const int kCommitTimeoutSeconds = 1;
 
-const char kSelfPath[] = "/org/chromium/peerd/Self";
-
 void OnError(const std::string& operation, chromeos::Error* error) {
   LOG(ERROR) << operation << " failed:" << error->GetMessage();
 }
@@ -39,16 +37,10 @@ PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus)
       base::Bind(&PeerdClient::OnPeerdOnline, weak_ptr_factory_.GetWeakPtr()));
   peerd_object_manager_proxy_.SetManagerRemovedCallback(
       base::Bind(&PeerdClient::OnPeerdOffline, weak_ptr_factory_.GetWeakPtr()));
-  peerd_object_manager_proxy_.SetPeerAddedCallback(
-      base::Bind(&PeerdClient::OnNewPeer, weak_ptr_factory_.GetWeakPtr()));
 }
 
 PeerdClient::~PeerdClient() {
   RemoveService();
-}
-
-std::string PeerdClient::GetId() const {
-  return device_id_;
 }
 
 void PeerdClient::PublishService(const std::string& service_type,
@@ -75,26 +67,6 @@ void PeerdClient::Update() {
       FROM_HERE, base::Bind(&PeerdClient::UpdateImpl,
                             restart_weak_ptr_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(kCommitTimeoutSeconds));
-}
-
-void PeerdClient::OnNewPeer(PeerProxy* peer) {
-  if (!peer || peer->GetObjectPath().value() != kSelfPath)
-    return;
-  peer->SetPropertyChangedCallback(base::Bind(
-      &PeerdClient::OnPeerPropertyChanged, weak_ptr_factory_.GetWeakPtr()));
-  OnPeerPropertyChanged(peer, PeerProxy::UUIDName());
-}
-
-void PeerdClient::OnPeerPropertyChanged(PeerProxy* peer,
-                                        const std::string& property_name) {
-  if (property_name != PeerProxy::UUIDName() ||
-      peer->GetObjectPath().value() != kSelfPath)
-    return;
-  const std::string new_id{peer->uuid()};
-  if (new_id != device_id_) {
-    device_id_ = new_id;
-    Update();
-  }
 }
 
 void PeerdClient::OnPeerdOnline(

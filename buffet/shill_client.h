@@ -28,7 +28,8 @@ class ShillClient final : public weave::provider::Network,
                           public weave::provider::Wifi {
  public:
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
-              const std::set<std::string>& device_whitelist);
+              const std::set<std::string>& device_whitelist,
+              bool disable_xmpp);
   ~ShillClient();
 
   void Init();
@@ -104,6 +105,7 @@ class ShillClient final : public weave::provider::Network,
   // There is logic that assumes we will never change this device list
   // in OnManagerPropertyChange.  Do not be tempted to remove this const.
   const std::set<std::string> device_whitelist_;
+  bool disable_xmpp_{false};
   std::vector<ConnectionChangedCallback> connectivity_listeners_;
 
   // State for tracking where we are in our attempts to connect to a service.

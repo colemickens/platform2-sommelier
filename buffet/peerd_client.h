@@ -32,14 +32,10 @@ class PeerdClient : public weave::provider::DnsServiceDiscovery {
                       uint16_t port,
                       const std::vector<std::string>& txt) override;
   void StopPublishing(const std::string& service_type) override;
-  std::string GetId() const override;
 
  private:
   void OnPeerdOnline(org::chromium::peerd::ManagerProxy* manager_proxy);
   void OnPeerdOffline(const dbus::ObjectPath& object_path);
-  void OnNewPeer(org::chromium::peerd::PeerProxy* peer_proxy);
-  void OnPeerPropertyChanged(org::chromium::peerd::PeerProxy* peer_proxy,
-                             const std::string& property_name);
 
   // Updates published information.  Removes service if HTTP is not alive.
   void Update();
@@ -52,9 +48,6 @@ class PeerdClient : public weave::provider::DnsServiceDiscovery {
   org::chromium::peerd::ObjectManagerProxy peerd_object_manager_proxy_;
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
   org::chromium::peerd::ManagerProxy* peerd_manager_proxy_{nullptr};
-
-  // Cached value of the device ID that we got from peerd.
-  std::string device_id_;
 
   bool published_{false};
   uint16_t port_{0};

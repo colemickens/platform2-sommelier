@@ -88,10 +88,12 @@ Network::State ShillServiceStateToNetworkState(const string& state) {
 }  // namespace
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
-                         const set<string>& device_whitelist)
+                         const set<string>& device_whitelist,
+                         bool disable_xmpp)
     : bus_{bus},
       manager_proxy_{bus_},
       device_whitelist_{device_whitelist},
+      disable_xmpp_{disable_xmpp},
       ap_manager_client_{new ApManagerClient(bus)} {
   manager_proxy_.RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnManagerPropertyChange,
@@ -561,6 +563,8 @@ void ShillClient::OpenSslSocket(
     const base::Callback<void(std::unique_ptr<weave::Stream>)>&
         success_callback,
     const base::Callback<void(const weave::Error*)>& error_callback) {
+  if (disable_xmpp_)
+    return;
   std::unique_ptr<weave::Stream> raw_stream{
       SocketStream::ConnectBlocking(host, port)};
   if (!raw_stream) {

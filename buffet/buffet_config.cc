@@ -24,14 +24,6 @@ namespace {
 const char kErrorDomain[] = "buffet";
 const char kFileReadError[] = "file_read_error";
 
-bool StringToTimeDelta(const std::string& value, base::TimeDelta* delta) {
-  uint64_t ms{0};
-  if (!base::StringToUint64(value, &ms))
-    return false;
-  *delta = base::TimeDelta::FromMilliseconds(ms);
-  return true;
-}
-
 bool LoadFile(const base::FilePath& file_path,
               std::string* data,
               chromeos::ErrorPtr* error) {
@@ -63,37 +55,34 @@ const char kLocalPairingEnabled[] = "local_pairing_enabled";
 const char kOemName[] = "oem_name";
 const char kModelName[] = "model_name";
 const char kModelId[] = "model_id";
-const char kPollingPeriodMs[] = "polling_period_ms";
-const char kBackupPollingPeriodMs[] = "backup_polling_period_ms";
 const char kWifiAutoSetupEnabled[] = "wifi_auto_setup_enabled";
-const char kBleSetupEnabled[] = "ble_setup_enabled";
 const char kEmbeddedCode[] = "embedded_code";
 const char kPairingModes[] = "pairing_modes";
 
 }  // namespace config_keys
 
-BuffetConfig::BuffetConfig(const BuffetConfigPaths& paths) : paths_(paths) {}
-
-void BuffetConfig::AddOnChangedCallback(const OnChangedCallback& callback) {
-  on_changed_.push_back(callback);
-}
+BuffetConfig::BuffetConfig(const Options& options) : options_(options) {}
 
 bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
-  if (!base::PathExists(paths_.defaults))
+  // Keep this hardcoded default for sometime. This previously was set by
+  // libweave. It should be set by overlay's buffet.conf.
+  settings->client_id = "58855907228.apps.googleusercontent.com";
+  settings->client_secret = "eHSAREAHrIqPsHBxCE9zPPBi";
+  settings->api_key = "AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA";
+  settings->name = "Developer device";
+  settings->oem_name = "Chromium";
+  settings->model_name = "Brillo";
+  settings->model_id = "AAAAA";
+
+  if (!base::PathExists(options_.defaults))
     return true;  // Nothing to load.
 
   chromeos::KeyValueStore store;
-  if (!store.Load(paths_.defaults))
+  if (!store.Load(options_.defaults))
     return false;
-  return LoadDefaults(store, settings);
-}
-
-std::string BuffetConfig::LoadBaseCommandDefs() {
-  // Load global standard GCD command dictionary.
-  base::FilePath path{paths_.definitions.Append("gcd.json")};
-  LOG(INFO) << "Loading standard commands from " << path.value();
-  std::string result;
-  CHECK(LoadFile(path, &result, nullptr));
+  bool result = LoadDefaults(store, settings);
+  settings->disable_security = options_.disable_security;
+  settings->test_privet_ssid = options_.test_privet_ssid;
   return result;
 }
 
@@ -112,32 +101,14 @@ std::map<std::string, std::string> BuffetConfig::LoadCommandDefs() {
       CHECK(LoadFile(path, &result[category], nullptr));
     }
   };
-  load_packages(paths_.definitions, FILE_PATH_LITERAL("*.json"));
-  load_packages(paths_.test_definitions, FILE_PATH_LITERAL("*test.json"));
-  return result;
-}
-
-std::string BuffetConfig::LoadBaseStateDefs() {
-  // Load standard device state definition.
-  base::FilePath path{paths_.definitions.Append("base_state.schema.json")};
-  LOG(INFO) << "Loading standard state definition from " << path.value();
-  std::string result;
-  CHECK(LoadFile(path, &result, nullptr));
-  return result;
-}
-
-std::string BuffetConfig::LoadBaseStateDefaults() {
-  // Load standard device state defaults.
-  base::FilePath path{paths_.definitions.Append("base_state.defaults.json")};
-  LOG(INFO) << "Loading base state defaults from " << path.value();
-  std::string result;
-  CHECK(LoadFile(path, &result, nullptr));
+  load_packages(options_.definitions, FILE_PATH_LITERAL("*.json"));
+  load_packages(options_.test_definitions, FILE_PATH_LITERAL("*test.json"));
   return result;
 }
 
 std::map<std::string, std::string> BuffetConfig::LoadStateDefs() {
   // Load component-specific device state definitions.
-  base::FilePath dir{paths_.definitions.Append("states")};
+  base::FilePath dir{options_.definitions.Append("states")};
   base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
                                   FILE_PATH_LITERAL("*.schema.json"));
   std::map<std::string, std::string> result;
@@ -152,7 +123,7 @@ std::map<std::string, std::string> BuffetConfig::LoadStateDefs() {
 
 std::vector<std::string> BuffetConfig::LoadStateDefaults() {
   // Load component-specific device state defaults.
-  base::FilePath dir{paths_.definitions.Append("states")};
+  base::FilePath dir{options_.definitions.Append("states")};
   base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
                                   FILE_PATH_LITERAL("*.defaults.json"));
   std::vector<std::string> result;
@@ -187,22 +158,8 @@ bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
                << lsb_release_path.value();
   }
 
-  std::string polling_period_str;
-  if (store.GetString(config_keys::kPollingPeriodMs, &polling_period_str) &&
-      !StringToTimeDelta(polling_period_str, &settings->polling_period)) {
-    return false;
-  }
-
-  if (store.GetString(config_keys::kBackupPollingPeriodMs,
-                      &polling_period_str) &&
-      !StringToTimeDelta(polling_period_str,
-                         &settings->backup_polling_period)) {
-    return false;
-  }
-
   store.GetBoolean(config_keys::kWifiAutoSetupEnabled,
                    &settings->wifi_auto_setup_enabled);
-  store.GetBoolean(config_keys::kBleSetupEnabled, &settings->ble_setup_enabled);
   store.GetString(config_keys::kEmbeddedCode, &settings->embedded_code);
 
   std::string modes_str;
@@ -221,8 +178,12 @@ bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
   store.GetString(config_keys::kName, &settings->name);
   store.GetString(config_keys::kDescription, &settings->description);
   store.GetString(config_keys::kLocation, &settings->location);
-  store.GetString(config_keys::kLocalAnonymousAccessRole,
-                  &settings->local_anonymous_access_role);
+
+  std::string role_str;
+  if (store.GetString(config_keys::kLocalAnonymousAccessRole, &role_str)) {
+    if (!StringToEnum(role_str, &settings->local_anonymous_access_role))
+      return false;
+  }
   store.GetBoolean(config_keys::kLocalDiscoveryEnabled,
                    &settings->local_discovery_enabled);
   store.GetBoolean(config_keys::kLocalPairingEnabled,
@@ -232,17 +193,12 @@ bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
 
 std::string BuffetConfig::LoadSettings() {
   std::string json_string;
-  base::ReadFileToString(paths_.settings, &json_string);
+  base::ReadFileToString(options_.settings, &json_string);
   return json_string;
 }
 
 void BuffetConfig::SaveSettings(const std::string& settings) {
-  base::ImportantFileWriter::WriteFileAtomically(paths_.settings, settings);
-}
-
-void BuffetConfig::OnSettingsChanged(const weave::Settings& settings) {
-  for (const auto& cb : on_changed_)
-    cb.Run(settings);
+  base::ImportantFileWriter::WriteFileAtomically(options_.settings, settings);
 }
 
 }  // namespace buffet

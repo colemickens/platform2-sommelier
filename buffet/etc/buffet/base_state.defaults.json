@@ -1,8 +1,0 @@
-{
-  "base": {
-    "firmwareVersion": "",
-    "localDiscoveryEnabled": false,
-    "localAnonymousAccessMaxRole": "none",
-    "localPairingEnabled": false
-  }
-}

@@ -27,25 +27,25 @@ namespace buffet {
 
 class Daemon final : public DBusServiceDaemon {
  public:
-  Daemon(const weave::Device::Options& options,
-         const BuffetConfigPaths& paths,
+  Daemon(const Manager::Options& options,
+         const BuffetConfig::Options& config_options,
          const std::set<std::string>& device_whitelist)
       : DBusServiceDaemon(kServiceName, kRootServicePath),
         options_{options},
-        paths_(paths),
+        config_options_{config_options},
         device_whitelist_{device_whitelist} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    manager_.reset(new buffet::Manager(object_manager_->AsWeakPtr()));
-    manager_->Start(options_, paths_, device_whitelist_, sequencer);
+    manager_.reset(new Manager(object_manager_->AsWeakPtr()));
+    manager_->Start(options_, config_options_, device_whitelist_, sequencer);
   }
 
   void OnShutdown(int* return_code) override { manager_->Stop(); }
 
  private:
-  weave::Device::Options options_;
-  BuffetConfigPaths paths_;
+  Manager::Options options_;
+  BuffetConfig::Options config_options_;
   std::set<std::string> device_whitelist_;
 
   std::unique_ptr<buffet::Manager> manager_;
@@ -101,21 +101,21 @@ int main(int argc, char* argv[]) {
   // Mark it to be ignored.
   signal(SIGPIPE, SIG_IGN);
 
-  buffet::BuffetConfigPaths paths;
-  paths.defaults = base::FilePath{FLAGS_config_path};
-  paths.settings = base::FilePath{FLAGS_state_path};
-  paths.definitions = base::FilePath{"/etc/buffet"};
-  paths.test_definitions = base::FilePath{FLAGS_test_definitions_path};
+  buffet::BuffetConfig::Options config_options;
+  config_options.defaults = base::FilePath{FLAGS_config_path};
+  config_options.settings = base::FilePath{FLAGS_state_path};
+  config_options.definitions = base::FilePath{"/etc/buffet"};
+  config_options.test_definitions = base::FilePath{FLAGS_test_definitions_path};
+  config_options.disable_security = FLAGS_disable_security;
+  config_options.test_privet_ssid = FLAGS_test_privet_ssid;
 
-  weave::Device::Options options;
+  buffet::Manager::Options options;
   options.xmpp_enabled = FLAGS_enable_xmpp;
   options.disable_privet = FLAGS_disable_privet;
-  options.disable_security = FLAGS_disable_security;
   options.enable_ping = FLAGS_enable_ping;
-  options.test_privet_ssid = FLAGS_test_privet_ssid;
 
   buffet::Daemon daemon{
-      options, paths,
+      options, config_options,
       std::set<std::string>{device_whitelist.begin(), device_whitelist.end()}};
   return daemon.Run();
 }

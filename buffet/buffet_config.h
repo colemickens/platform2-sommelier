@@ -19,43 +19,37 @@ namespace buffet {
 
 class StorageInterface;
 
-struct BuffetConfigPaths {
-  base::FilePath defaults;
-  base::FilePath settings;
-
-  base::FilePath definitions;
-  base::FilePath test_definitions;
-};
-
 // Handles reading buffet config and state files.
 class BuffetConfig final : public weave::provider::ConfigStore {
  public:
-  using OnChangedCallback = base::Callback<void(const weave::Settings&)>;
+  struct Options {
+    base::FilePath defaults;
+    base::FilePath settings;
+
+    base::FilePath definitions;
+    base::FilePath test_definitions;
+
+    bool disable_security{false};
+    std::string test_privet_ssid;
+  };
+
   ~BuffetConfig() override = default;
 
-  explicit BuffetConfig(const BuffetConfigPaths& paths);
+  explicit BuffetConfig(const Options& options);
 
   // Config overrides.
   bool LoadDefaults(weave::Settings* settings) override;
   std::string LoadSettings() override;
   void SaveSettings(const std::string& settings) override;
-  void OnSettingsChanged(const weave::Settings& settings) override;
-  std::string LoadBaseCommandDefs() override;
   std::map<std::string, std::string> LoadCommandDefs() override;
-  std::string LoadBaseStateDefs() override;
-  std::string LoadBaseStateDefaults() override;
   std::map<std::string, std::string> LoadStateDefs() override;
   std::vector<std::string> LoadStateDefaults() override;
-
-  void AddOnChangedCallback(const OnChangedCallback& callback);
 
   bool LoadDefaults(const chromeos::KeyValueStore& store,
                     weave::Settings* settings);
 
  private:
-  BuffetConfigPaths paths_;
-
-  std::vector<OnChangedCallback> on_changed_;
+  Options options_;
 
   DISALLOW_COPY_AND_ASSIGN(BuffetConfig);
 };
