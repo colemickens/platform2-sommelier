@@ -67,7 +67,7 @@ const char DHCPConfig::kDHCPCDGroup[] = "dbus";
 #else
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDUser[] = "dhcp";
-const char DHCPConfig::kDHCPCDGroup[] = kDHCPCDUser;
+const char DHCPConfig::kDHCPCDGroup[] = "dhcp";
 #endif  // __ANDROID__
 
 DHCPConfig::DHCPConfig(ControlInterface* control_interface,
