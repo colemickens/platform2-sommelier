@@ -31,6 +31,7 @@
 
 #if USE_TPM2
 #include "tpm_manager/server/tpm2_initializer_impl.h"
+#include "tpm_manager/server/tpm2_nvram_impl.h"
 #include "tpm_manager/server/tpm2_status_impl.h"
 #else
 #include "tpm_manager/server/tpm_initializer_impl.h"
@@ -55,6 +56,7 @@ class TpmManagerDaemon : public brillo::DBusServiceDaemon {
     tpm_initializer_.reset(new tpm_manager::Tpm2InitializerImpl(
         local_data_store_.get(),
         tpm_status_.get()));
+    tpm_nvram_.reset(new tpm_manager::Tpm2NvramImpl(local_data_store_.get()));
 #else
     tpm_status_.reset(new tpm_manager::TpmStatusImpl);
     tpm_initializer_.reset(new tpm_manager::TpmInitializerImpl(

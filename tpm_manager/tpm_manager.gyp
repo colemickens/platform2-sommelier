@@ -85,6 +85,7 @@
         ['USE_tpm2 == 1', {
           'sources': [
             'server/tpm2_initializer_impl.cc',
+            'server/tpm2_nvram_impl.cc',
             'server/tpm2_status_impl.cc',
           ],
           'all_dependent_settings': {
@@ -157,8 +158,9 @@
           'conditions': [
             ['USE_tpm2 == 1', {
               'sources': [
-                'server/tpm2_status_test.cc',
                 'server/tpm2_initializer_test.cc',
+                'server/tpm2_nvram_test.cc',
+                'server/tpm2_status_test.cc',
               ],
               'libraries': [
                 '-ltrunks_test',
