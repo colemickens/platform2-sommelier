@@ -33,6 +33,7 @@ namespace {
 const char kDnsmasqPath[] = "/system/bin/dnsmasq";
 const char kDnsmasqPidFilePath[] = "/data/misc/shill/dnsmasq.pid";
 const char kDnsmasqUser[] = "system";
+const char kDnsmasqGroup[] = "system";
 const int kInvalidPID = -1;
 }
 
@@ -59,11 +60,14 @@ bool DNSServerProxy::Start() {
   args.push_back("--no-resolv");
   args.push_back("--keep-in-foreground");
   args.push_back(base::StringPrintf("--user=%s", kDnsmasqUser));
+  args.push_back(base::StringPrintf("--group=%s", kDnsmasqGroup));
   for (const auto& server : dns_servers_) {
     args.push_back(base::StringPrintf("--server=%s", server.c_str()));
   }
   args.push_back(base::StringPrintf("--pid-file=%s", kDnsmasqPidFilePath));
   // Start dnsmasq.
+  // TODO(zqiu): start dnsmasq with Minijail when the latter is working on
+  // Android (b/24572800).
   pid_t pid =
       process_manager_->StartProcess(
           FROM_HERE,
