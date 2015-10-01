@@ -28,24 +28,26 @@
 #include <chromeos/any.h>
 #include <chromeos/daemons/dbus_daemon.h>
 
-#include "proxy_dbus_client.h"
+#include "proxy_shill_wifi_client.h"
 #include "proxy_rpc_server.h"
 
 class ProxyDaemon : public chromeos::DBusDaemon {
  public:
-  ProxyDaemon(ProxyDbusClient *dbus_client, ProxyRpcServer *rpc_server) :
-    dbus_client_(dbus_client), rpc_server_(rpc_server) {}
+  ProxyDaemon(int xml_rpc_server_port, int xml_rpc_lib_verbosity):
+    xml_rpc_server_port_(xml_rpc_server_port) {}
   ~ProxyDaemon() override = default;
-  static void start_rpc_server_thread(
-      std::shared_ptr<ProxyRpcServer> rpc_server);
+  static void start_rpc_server_thread(std::unique_ptr<ProxyRpcServer> rpc_server);
 
  protected:
   int OnInit() override;
   void OnShutdown (int* exit_code) override;
 
  private:
-  std::shared_ptr<ProxyDbusClient> dbus_client_;
-  std::shared_ptr<ProxyRpcServer> rpc_server_;
+  int xml_rpc_server_port_;
+  int xml_rpc_lib_verbosity_;
+  std::unique_ptr<ProxyShillWifiClient> shill_wifi_client_;
+  std::unique_ptr<ProxyRpcServer> rpc_server_;
   std::thread *rpc_server_thread_;
+
 };
 #endif //PROXY_DAEMON_H

@@ -40,36 +40,23 @@ class ProxyRpcServer : public XmlRpcServer {
     XmlRpcServer(),
     server_port_(server_port),
     xml_rpc_lib_verbosity_(xml_rpc_lib_verbosity) {}
-
   void Run();
-
-  void set_proxy_dbus_client(std::shared_ptr<ProxyDbusClient> dbus_client) {
-    proxy_dbus_client_ = dbus_client;
-  }
-
-  std::shared_ptr<ProxyDbusClient> get_proxy_dbus_client() {
-    return proxy_dbus_client_;
-  }
 
  private:
   int server_port_;
   int xml_rpc_lib_verbosity_;
-  std::shared_ptr<ProxyDbusClient> proxy_dbus_client_;
 };
 
 // Generic class for all the RPC methods exposed by Shill RPC server
 class ProxyRpcServerMethod : public XmlRpcServerMethod {
-
  public:
-   ProxyRpcServerMethod(ProxyRpcServer* rpc_server) :
-     XmlRpcServerMethod(typeid(*this).name(), rpc_server),
-     proxy_dbus_client_(rpc_server->get_proxy_dbus_client()) {}
+   ProxyRpcServerMethod(std::string method_name, ProxyRpcServer* rpc_server) :
+     XmlRpcServerMethod(method_name, rpc_server) {}
 
  protected:
    int kSuccess = 0;
    int kFailure = 1;
    int kInvalidArgs = -1;
-   std::shared_ptr<ProxyDbusClient> proxy_dbus_client_;
 
  private:
 };
@@ -80,16 +67,20 @@ class ProxyRpcServerMethod : public XmlRpcServerMethod {
 // Param3: PSK <string>
 // Return: 0 <success>, -1 <Invalid args>, 1 <Failure>
 class ConnectWifi : public ProxyRpcServerMethod {
-  using ProxyRpcServerMethod::ProxyRpcServerMethod;
-
+ public:
+  ConnectWifi(ProxyRpcServer* rpc_server) :
+    ProxyRpcServerMethod("ConnectWifi", rpc_server) {}
+ private:
   void execute(XmlRpcValue& params, XmlRpcValue& result);
 };
 
 // MethodName: DisconnectWifi
 // Return: 0 <success>, -1 <Invalid args>, 1 <Failure>
 class DisconnectWifi : public ProxyRpcServerMethod {
-  using ProxyRpcServerMethod::ProxyRpcServerMethod;
-
+ public:
+   DisconnectWifi(ProxyRpcServer* rpc_server) :
+     ProxyRpcServerMethod("DisconnectWifi", rpc_server) {}
+ private:
   void execute(XmlRpcValue& params, XmlRpcValue& result);
 };
 

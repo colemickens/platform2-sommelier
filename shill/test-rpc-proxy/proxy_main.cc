@@ -58,11 +58,10 @@ int main(int argc, char* argv[]) {
 
   int port = std::stoi(cl->GetSwitchValueASCII(switches::kPort));
 
-  ProxyDaemon proxy_daemon(
-      new ProxyDbusClient(),
-      new ProxyRpcServer(port, kXmlRpcLibVerbosity));
+  // Create the dbus daemon
+  ProxyDaemon proxy_daemon(port, kXmlRpcLibVerbosity);
 
-  // Wait indefinitely
+  // Run indefinitely
   proxy_daemon.Run();
 
   return 0;

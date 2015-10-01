@@ -29,7 +29,6 @@
 // needs to use: Dbus, Binder, etc.
 // TODO: Need to come up with comments explaining what each method needs to do here.
 class ProxyShillWifiClient {
-
  public:
   enum AutoConnectType {
     AUTO_CONNECT_TYPE_UNSPECIFIED,

@@ -14,8 +14,9 @@
 // limitations under the License.
 //
 #include "proxy_daemon.h"
+#include "proxy_dbus_shill_wifi_client.h"
 
-void ProxyDaemon::start_rpc_server_thread(std::shared_ptr<ProxyRpcServer> rpc_server) {
+void ProxyDaemon::start_rpc_server_thread(std::unique_ptr<ProxyRpcServer> rpc_server) {
   rpc_server->Run();
 }
 
@@ -25,13 +26,18 @@ int ProxyDaemon::OnInit() {
     return ret;
   }
 
-  rpc_server_->set_proxy_dbus_client(dbus_client_);
-  dbus_client_->set_proxy_dbus(bus_);
-  dbus_client_->set_proxy_message_loop(base::MessageLoop::current());
+  // TODO: Create a RPC Event dispatcher and send it to the RPC server
+  // to schedule tasks on the main thread.
+
+  // Create the RPC server object
+  rpc_server_.reset(
+      new ProxyRpcServer(xml_rpc_server_port_, xml_rpc_lib_verbosity_));
+  // We're creating the Dbus version of the Shill Wifi Client for now.
+  shill_wifi_client_.reset(new ProxyDbusShillWifiClient(bus_));
 
   rpc_server_thread_ = new std::thread(
       &ProxyDaemon::start_rpc_server_thread,
-      rpc_server_);
+      std::move(rpc_server_));
   rpc_server_thread_->detach();
 
   return EX_OK;

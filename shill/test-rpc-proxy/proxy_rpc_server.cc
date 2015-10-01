@@ -51,7 +51,9 @@ void ConnectWifi::execute(XmlRpcValue& params, XmlRpcValue& result) {
   std::string ssid = std::string(params[0]);
   bool is_hex_ssid = bool(params[1]);
   std::string psk = std::string(params[2]);
-  proxy_dbus_client_->OnConnectWifiRPCRequest(ssid, is_hex_ssid, psk);
+
+  // TODO: Use RPC Event dispatcher here
+  // proxy_dbus_client_->OnConnectWifiRPCRequest(ssid, is_hex_ssid, psk);
 
   result[0] = kSuccess;
 };
@@ -60,8 +62,8 @@ void ConnectWifi::execute(XmlRpcValue& params, XmlRpcValue& result) {
 // Return: 0 <success>, -1 <Invalid args>, 1 <Failure>
 void DisconnectWifi::execute(XmlRpcValue& params, XmlRpcValue& result) {
 
-  // Send a message to the main proxy task to trigger the required dbus commands.
-  proxy_dbus_client_->OnDisconnectWifiRPCRequest();
+  // TODO: Use RPC Event dispatcher here
+  // proxy_dbus_client_->OnDisconnectWifiRPCRequest();
 
   result[0] = kSuccess;
 };
