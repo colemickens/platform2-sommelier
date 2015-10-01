@@ -57,6 +57,7 @@ bool DNSServerProxy::Start() {
   args.push_back("--no-hosts");
   args.push_back("--listen-address=127.0.0.1");
   args.push_back("--no-resolv");
+  args.push_back("--keep-in-foreground");
   args.push_back(base::StringPrintf("--user=%s", kDnsmasqUser));
   for (const auto& server : dns_servers_) {
     args.push_back(base::StringPrintf("--server=%s", server.c_str()));
