@@ -28,8 +28,13 @@
 #include "shill/firewall_proxy_interface.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/resolver.h"
 #include "shill/routing_table.h"
+
+#if !defined(__ANDROID__)
+#include "shill/resolver.h"
+#else
+#include "shill/dns_server_proxy.h"
+#endif  // __ANDROID__
 
 using base::Bind;
 using base::Closure;
@@ -49,6 +54,15 @@ static string ObjectID(Connection* c) {
   return c->interface_name();
 }
 }
+
+#if defined(__ANDROID__)
+namespace {
+const char* kGoogleDNSServers[] = {
+    "8.8.4.4",
+    "8.8.8.8"
+};
+}  // namespace
+#endif  // __ANDROID__
 
 // static
 const uint32_t Connection::kDefaultMetric = 1;
@@ -115,7 +129,9 @@ Connection::Connection(int interface_index,
           // to use an Unretained callback.
           Bind(&Connection::OnLowerDisconnect, Unretained(this))),
       device_info_(device_info),
+#if !defined(__ANDROID__)
       resolver_(Resolver::GetInstance()),
+#endif  // __ANDROID__
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       control_interface_(control_interface) {
@@ -253,6 +269,16 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     dns_servers_ = config->properties().dns_servers;
   }
 
+#if defined(__ANDROID__)
+  // Default to Google's DNS server if it is not provided through DHCP.
+  if (config->properties().dns_servers.empty()) {
+    LOG(INFO) << "Default to use Google DNS servers";
+    dns_servers_ =
+        vector<string>(std::begin(kGoogleDNSServers),
+                       std::end(kGoogleDNSServers));
+  }
+#endif  // __ANDROID__
+
   if (!config->properties().domain_search.empty()) {
     dns_domain_search_ = config->properties().domain_search;
   }
@@ -319,6 +345,11 @@ void Connection::UpdateDNSServers(const vector<string>& dns_servers) {
 
 void Connection::PushDNSConfig() {
   if (!is_default_) {
+#if defined(__ANDROID__)
+    // Stop DNS server proxy to avoid having multiple instances of it running.
+    // Only run DNS server proxy for the current default connection.
+    dns_server_proxy_.reset();
+#endif  // __ANDROID__
     return;
   }
 
@@ -328,7 +359,12 @@ void Connection::PushDNSConfig() {
                   << dns_domain_name_;
     domain_search.push_back(dns_domain_name_ + ".");
   }
+#if !defined(__ANDROID__)
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
+#else
+  dns_server_proxy_.reset(new DNSServerProxy(dns_servers_));
+  dns_server_proxy_->Start();
+#endif  // __ANDROID__
 }
 
 void Connection::RequestRouting() {

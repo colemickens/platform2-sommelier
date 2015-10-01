@@ -36,7 +36,11 @@ class ControlInterface;
 class DeviceInfo;
 class FirewallProxyInterface;
 class RTNLHandler;
+#if !defined(__ANDROID__)
 class Resolver;
+#else
+class DNSServerProxy;
+#endif  // __ANDROID__
 class RoutingTable;
 struct RoutingTableEntry;
 
@@ -224,7 +228,11 @@ class Connection : public base::RefCounted<Connection> {
 
   // Store cached copies of singletons for speed/ease of testing
   const DeviceInfo* device_info_;
+#if !defined(__ANDROID__)
   Resolver* resolver_;
+#else
+  std::unique_ptr<DNSServerProxy> dns_server_proxy_;
+#endif  // __ANDROID__;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 
