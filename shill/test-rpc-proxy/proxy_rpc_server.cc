@@ -1,4 +1,4 @@
-
+//
 // Copyright (C) 2015 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,74 +13,121 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+
+#include <base/bind.h>
+
 #include "proxy_rpc_server.h"
 
-const int ProxyRpcServer::kDefaultXmlRpcVerbosity = 5;
+namespace {
+// Return values for the RPC calls.
+enum RpcMethodReturnValue {
+  kRpcMethodReturnInvalidArgs = -1,
+  kRpcMethodReturnFailure = 0,
+  kRpcMethodReturnSuccess = 1
+};
+// XmlRpc library verbosity level.
+static const int kDefaultXmlRpcVerbosity = 5;
+}
+
+/*************** RPC Method implementations **********/
+XmlRpcValue CreateProfile(XmlRpcValue params_in,
+                          ProxyShillWifiClient* shill_wifi_client) {
+  XmlRpcValue result;
+  if (params_in.size() != 1) {
+    result[0] = kRpcMethodReturnInvalidArgs;
+    return result;
+  }
+  const std::string& profile_name(params_in[0]);
+  result[0] = shill_wifi_client->CreateProfile(profile_name);
+  return result;
+}
+
+XmlRpcValue RemoveProfile(XmlRpcValue params_in,
+                          ProxyShillWifiClient* shill_wifi_client) {
+  XmlRpcValue result;
+  if (params_in.size() != 1) {
+    result[0] = kRpcMethodReturnInvalidArgs;
+    return result;
+  }
+  const std::string& profile_name(params_in[0]);
+  result[0] = shill_wifi_client->RemoveProfile(profile_name);
+  return result;
+}
+
+XmlRpcValue PushProfile(XmlRpcValue params_in,
+                        ProxyShillWifiClient* shill_wifi_client) {
+  XmlRpcValue result;
+  if (params_in.size() != 1) {
+    result[0] = kRpcMethodReturnInvalidArgs;
+    return result;
+  }
+  const std::string& profile_name(params_in[0]);
+  result[0] = shill_wifi_client->PushProfile(profile_name);
+  return result;
+}
+
+XmlRpcValue PopProfile(XmlRpcValue params_in,
+                       ProxyShillWifiClient* shill_wifi_client) {
+  XmlRpcValue result;
+  if (params_in.size() != 1) {
+    result[0] = kRpcMethodReturnInvalidArgs;
+    return result;
+  }
+  const std::string& profile_name(params_in[0]);
+  result[0] = shill_wifi_client->PopProfile(profile_name);
+  return result;
+}
+
+ProxyRpcServerMethod::ProxyRpcServerMethod(
+    const std::string& method_name,
+    const RpcServerMethodHandler& handler,
+    ProxyShillWifiClient* shill_wifi_client,
+    XmlRpcServer* server)
+  : XmlRpcServerMethod(method_name, server),
+    handler_(handler),
+    shill_wifi_client_(shill_wifi_client) {
+}
+
+void ProxyRpcServerMethod::execute(
+    XmlRpcValue& params_in,
+    XmlRpcValue& value_out) {
+  value_out = handler_.Run(params_in, shill_wifi_client_);
+}
+
+std::string ProxyRpcServerMethod::help(void) {
+  // TODO: Lookup the method help using the |method_name| from
+  // a text file.
+  return "Shill Test Proxy RPC methods help.";
+}
 
 ProxyRpcServer::ProxyRpcServer(
     int server_port,
-    std::unique_ptr<ProxyShillWifiClient> shill_wifi_client) :
-  XmlRpcServer(),
-  server_port_(server_port),
-  shill_wifi_client_(std::move(shill_wifi_client)) {
+    std::unique_ptr<ProxyShillWifiClient> shill_wifi_client)
+  : XmlRpcServer(),
+    server_port_(server_port),
+    shill_wifi_client_(std::move(shill_wifi_client)) {
+}
+
+void ProxyRpcServer::RegisterRpcMethod(
+    const std::string& method_name,
+    const RpcServerMethodHandler& handler) {
+  methods_.emplace_back(
+      new ProxyRpcServerMethod(
+          method_name, handler, shill_wifi_client_.get(), this));
 }
 
 void ProxyRpcServer::Run() {
-  // Set XML Rpc library
   XmlRpc::setVerbosity(kDefaultXmlRpcVerbosity);
-  // Create the server socket on the specified port
-  bindAndListen(server_port_);
-  // Enable introspection
-  enableIntrospection(true);
-
-  // Instantiate & Register all the supported RPC methods here
-  // TODO: Need maybe some kind of factory to automatically
-  // register all ProxyRpcServerMethod classes we have defined.
-  ConnectWifi connect_wifi(this);
-  DisconnectWifi disconnect_wifi(this);
-
-  // Wait for requests indefinitely
-  work(-1.0);
-}
-
-
-ProxyRpcServerMethod::ProxyRpcServerMethod(
-     std::string method_name,
-     ProxyRpcServer* rpc_server) :
-   XmlRpcServerMethod(method_name, rpc_server),
-   shill_wifi_client_(rpc_server->get_shill_wifi_client()) {
-}
-
-// MethodName: ConnectWifi
-// Param1: SSID <string>
-// Param2: IS_HEX_SSID <boolean>
-// Param3: PSK <string>
-// Return: 0 <success>, -1 <Invalid args>, 1 <Failure>
-void ConnectWifi::execute(XmlRpcValue& params, XmlRpcValue& result) {
-  int nArgs = params.size();
-  // We expect 3 params for the connect wifi RPC command.
-  if (nArgs != 3) {
-    result[0] = kInvalidArgs;
+  if (!XmlRpcServer::bindAndListen(server_port_)) {
+    LOG(ERROR) << "Failed to bind to port " << server_port_ << ".";
     return;
   }
+  XmlRpcServer::enableIntrospection(true);
 
-  // Send a message to the main proxy task to trigger the required dbus commands.
-  std::string ssid = std::string(params[0]);
-  bool is_hex_ssid = bool(params[1]);
-  std::string psk = std::string(params[2]);
+  RegisterRpcMethod("create_profile", base::Bind(&CreateProfile));
+  RegisterRpcMethod("remove_profile", base::Bind(&RemoveProfile));
+  RegisterRpcMethod("push_profile", base::Bind(&PushProfile));
+  RegisterRpcMethod("pop_profile", base::Bind(&PopProfile));
 
-  // TODO: Use RPC Event dispatcher here
-  // proxy_dbus_client_->OnConnectWifiRPCRequest(ssid, is_hex_ssid, psk);
-
-  result[0] = kSuccess;
-};
-
-// MethodName: DisconnectWifi
-// Return: 0 <success>, -1 <Invalid args>, 1 <Failure>
-void DisconnectWifi::execute(XmlRpcValue& params, XmlRpcValue& result) {
-
-  // TODO: Use RPC Event dispatcher here
-  // proxy_dbus_client_->OnDisconnectWifiRPCRequest();
-
-  result[0] = kSuccess;
-};
+  XmlRpcServer::work(-1.0);
+}

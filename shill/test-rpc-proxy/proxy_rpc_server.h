@@ -25,6 +25,7 @@
 #include <iostream>
 
 #include <base/logging.h>
+#include <base/callback.h>
 
 #include "XmlRpc.h"
 
@@ -32,61 +33,45 @@
 
 using namespace XmlRpc;
 
+typedef const base::Callback<XmlRpcValue(
+    XmlRpcValue, ProxyShillWifiClient*)> RpcServerMethodHandler;
+
+class ProxyRpcServerMethod : public XmlRpcServerMethod {
+ public:
+  ProxyRpcServerMethod(const std::string& method_name,
+                       const RpcServerMethodHandler& handler,
+                       ProxyShillWifiClient* shill_wifi_client,
+                       XmlRpcServer* server);
+  // This is the function signature exposed by the XmlRpc++ library
+  // that we depend on and hence the non-const references.
+  void execute(XmlRpcValue& params_in, XmlRpcValue& value_out);
+  std::string help(void);
+
+ private:
+  RpcServerMethodHandler handler_;
+  // RPC server methods hold a copy of the raw pointer to the instance of
+  // the |ShillWifiClient| owned by the RPC server.
+  ProxyShillWifiClient* shill_wifi_client_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProxyRpcServerMethod);
+};
+
 class ProxyRpcServer : public XmlRpcServer {
  public:
   ProxyRpcServer(int server_port,
                  std::unique_ptr<ProxyShillWifiClient> shill_wifi_client);
   void Run();
-  ProxyShillWifiClient* get_shill_wifi_client() {
-    return shill_wifi_client_.get();
-  }
+  void RegisterRpcMethod(const std::string& method_name,
+                         const RpcServerMethodHandler& handler);
 
  private:
-  static const int kDefaultXmlRpcVerbosity;
   int server_port_;
-  // RPC server owns the only instance of the |ShillWifiClient| and it
-  // gets deleted implicitly when the only instance of |RpcServer| goes out
-  // of scope.
+  // RPC server owns the only instance of the |ShillWifiClient| used.
   std::unique_ptr<ProxyShillWifiClient> shill_wifi_client_;
+  // Instances of the various methods registered with the server.
+  std::vector<std::unique_ptr<ProxyRpcServerMethod>> methods_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProxyRpcServer);
 };
 
-// Generic class for all the RPC methods exposed by Shill RPC server
-class ProxyRpcServerMethod : public XmlRpcServerMethod {
- public:
-   ProxyRpcServerMethod(std::string method_name, ProxyRpcServer* rpc_server);
-
- protected:
-  int kSuccess = 0;
-  int kFailure = 1;
-  int kInvalidArgs = -1;
-  // RPC server methods hold the copy of the raw pointer to the instance of
-  // the |ShillWifiClient| owned by the RPC server.
-  ProxyShillWifiClient* shill_wifi_client_;
-
- private:
-};
-
-// MethodName: ConnectWifi
-// Param1: SSID <string>
-// Param2: IS_HEX_SSID <boolean>
-// Param3: PSK <string>
-// Return: 0 <success>, -1 <Invalid args>, 1 <Failure>
-class ConnectWifi : public ProxyRpcServerMethod {
- public:
-  ConnectWifi(ProxyRpcServer* rpc_server) :
-    ProxyRpcServerMethod("ConnectWifi", rpc_server) {}
- private:
-  void execute(XmlRpcValue& params, XmlRpcValue& result);
-};
-
-// MethodName: DisconnectWifi
-// Return: 0 <success>, -1 <Invalid args>, 1 <Failure>
-class DisconnectWifi : public ProxyRpcServerMethod {
- public:
-   DisconnectWifi(ProxyRpcServer* rpc_server) :
-     ProxyRpcServerMethod("DisconnectWifi", rpc_server) {}
- private:
-  void execute(XmlRpcValue& params, XmlRpcValue& result);
-};
-
-#endif //PROXY_RPC_SERVER_H
+#endif // PROXY_RPC_SERVER_H
