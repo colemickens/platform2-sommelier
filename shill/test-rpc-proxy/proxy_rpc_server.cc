@@ -15,9 +15,19 @@
 //
 #include "proxy_rpc_server.h"
 
+const int ProxyRpcServer::kDefaultXmlRpcVerbosity = 5;
+
+ProxyRpcServer::ProxyRpcServer(
+    int server_port,
+    std::unique_ptr<ProxyShillWifiClient> shill_wifi_client) :
+  XmlRpcServer(),
+  server_port_(server_port),
+  shill_wifi_client_(std::move(shill_wifi_client)) {
+}
+
 void ProxyRpcServer::Run() {
   // Set XML Rpc library
-  XmlRpc::setVerbosity(xml_rpc_lib_verbosity_);
+  XmlRpc::setVerbosity(kDefaultXmlRpcVerbosity);
   // Create the server socket on the specified port
   bindAndListen(server_port_);
   // Enable introspection
@@ -33,6 +43,13 @@ void ProxyRpcServer::Run() {
   work(-1.0);
 }
 
+
+ProxyRpcServerMethod::ProxyRpcServerMethod(
+     std::string method_name,
+     ProxyRpcServer* rpc_server) :
+   XmlRpcServerMethod(method_name, rpc_server),
+   shill_wifi_client_(rpc_server->get_shill_wifi_client()) {
+}
 
 // MethodName: ConnectWifi
 // Param1: SSID <string>

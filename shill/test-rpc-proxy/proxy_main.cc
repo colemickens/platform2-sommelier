@@ -24,11 +24,9 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 
-#include "proxy_daemon.h"
-#include "proxy_dbus_client.h"
+#include "proxy_dbus_shill_wifi_client.h"
+#include "proxy_shill_wifi_client.h"
 #include "proxy_rpc_server.h"
-
-static const int kXmlRpcLibVerbosity = 5;
 
 namespace {
 namespace switches {
@@ -50,19 +48,30 @@ int main(int argc, char* argv[]) {
     return EXIT_SUCCESS;
   }
 
+  int xml_rpc_port;
   if (!cl->HasSwitch(switches::kPort)) {
     LOG(ERROR) << "port switch is mandatory.";
     LOG(ERROR) << switches::kHelpMessage;
     return EXIT_FAILURE;
   }
+  xml_rpc_port = std::stoi(cl->GetSwitchValueASCII(switches::kPort));
 
-  int port = std::stoi(cl->GetSwitchValueASCII(switches::kPort));
+  // Connect to dbus's system bus.
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> dbus_bus = new dbus::Bus(options);
+  CHECK(dbus_bus->Connect());
 
-  // Create the dbus daemon
-  ProxyDaemon proxy_daemon(port, kXmlRpcLibVerbosity);
+  // We're creating the Dbus version of the Shill Wifi Client for now.
+  std::unique_ptr<ProxyShillWifiClient> shill_wifi_client(
+      new ProxyDbusShillWifiClient(dbus_bus));
+
+  // Create the RPC server object
+  std::unique_ptr<ProxyRpcServer> rpc_server(
+      new ProxyRpcServer(xml_rpc_port, std::move(shill_wifi_client)));
 
   // Run indefinitely
-  proxy_daemon.Run();
+  rpc_server->Run();
 
   return 0;
 }

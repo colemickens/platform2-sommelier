@@ -23,7 +23,7 @@
 
 #include <string>
 
-#include <chromeos/any.h>
+#include <chromeos/variant_dictionary.h>
 // Abstract class which defines the interface for the RPC server to talk to Shill.
 // This helps in abstracting out the underlying protocol that Shill client
 // needs to use: Dbus, Binder, etc.

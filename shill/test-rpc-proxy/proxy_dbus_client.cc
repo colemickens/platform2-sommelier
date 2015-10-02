@@ -72,7 +72,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     chromeos::VariantDictionary& properties,
     const std::string property_name,
     const std::vector<chromeos::Any>& expected_values,
-    const int timeout_in_seconds,
+    const int timeout_seconds,
     chromeos::Any& final_value,
     int& duration) {
   bool is_success = false;
@@ -83,7 +83,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     is_success = true;
   }
 
-  // TODO: Need some mechanism to wait for timeout_in_seconds time for
+  // TODO: Need some mechanism to wait for timeout_seconds time for
   // the property to be set in PropertyChangedSignalCallback.
 
  end:
@@ -134,7 +134,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     ManagerProxyPtr proxy,
     const std::string property_name,
     const std::vector<chromeos::Any>& expected_values,
-    const int timeout_in_seconds,
+    const int timeout_seconds,
     chromeos::Any& final_value,
     int& duration) {
   proxy->RegisterPropertyChangedSignalHandler(
@@ -148,7 +148,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     return false;
   }
   return WaitForPropertyValueIn(
-      props, property_name, expected_values, timeout_in_seconds,
+      props, property_name, expected_values, timeout_seconds,
       final_value, duration);
 }
 
@@ -156,7 +156,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     DeviceProxyPtr proxy,
     const std::string property_name,
     const std::vector<chromeos::Any>& expected_values,
-    const int timeout_in_seconds,
+    const int timeout_seconds,
     chromeos::Any& final_value,
     int& duration) {
   proxy->RegisterPropertyChangedSignalHandler(
@@ -170,7 +170,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     return false;
   }
   return WaitForPropertyValueIn(
-      props, property_name, expected_values, timeout_in_seconds,
+      props, property_name, expected_values, timeout_seconds,
       final_value, duration);
 }
 
@@ -178,7 +178,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     ServiceProxyPtr proxy,
     const std::string property_name,
     const std::vector<chromeos::Any>& expected_values,
-    const int timeout_in_seconds,
+    const int timeout_seconds,
     chromeos::Any& final_value,
     int& duration) {
   proxy->RegisterPropertyChangedSignalHandler(
@@ -192,14 +192,14 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     return false;
   }
   return WaitForPropertyValueIn(
-      props, property_name, expected_values, timeout_in_seconds,
+      props, property_name, expected_values, timeout_seconds,
       final_value, duration);
 }
 bool ProxyDbusClient::WaitForPropertyValueIn(
     ProfileProxyPtr proxy,
     const std::string property_name,
     const std::vector<chromeos::Any>& expected_values,
-    const int timeout_in_seconds,
+    const int timeout_seconds,
     chromeos::Any& final_value,
     int& duration) {
   proxy->RegisterPropertyChangedSignalHandler(
@@ -213,7 +213,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
     return false;
   }
   return WaitForPropertyValueIn(
-      props, property_name, expected_values, timeout_in_seconds,
+      props, property_name, expected_values, timeout_seconds,
       final_value, duration);
 }
 
@@ -343,7 +343,7 @@ ServiceProxyPtr ProxyDbusClient::ConfigureServiceByGuid(
 
 bool ProxyDbusClient::ConnectService(
     ServiceProxyPtr proxy,
-    int timeout_in_seconds) {
+    int timeout_seconds) {
   chromeos::ErrorPtr error;
   if (!proxy->Connect(&error)) {
     return false;
@@ -355,12 +355,12 @@ bool ProxyDbusClient::ConnectService(
   expected_values.push_back(chromeos::Any("online"));
   return WaitForPropertyValueIn(
       proxy, shill::kStateProperty, expected_values,
-      timeout_in_seconds, final_value, duration);
+      timeout_seconds, final_value, duration);
 }
 
 bool ProxyDbusClient::DisconnectService(
     ServiceProxyPtr proxy,
-    int timeout_in_seconds) {
+    int timeout_seconds) {
   chromeos::ErrorPtr error;
   if (!proxy->Disconnect(&error)) {
     return false;
@@ -371,7 +371,7 @@ bool ProxyDbusClient::DisconnectService(
   expected_values.push_back(chromeos::Any("idle"));
   return WaitForPropertyValueIn(
       proxy, shill::kStateProperty, expected_values,
-      timeout_in_seconds, final_value, duration);
+      timeout_seconds, final_value, duration);
 }
 
 bool ProxyDbusClient::CreateProfile(std::string profile_name) {

@@ -28,35 +28,40 @@
 
 #include "XmlRpc.h"
 
-#include "proxy_dbus_client.h"
+#include "proxy_shill_wifi_client.h"
 
 using namespace XmlRpc;
 
 class ProxyRpcServer : public XmlRpcServer {
  public:
-  ProxyRpcServer(
-      int server_port,
-      int xml_rpc_lib_verbosity) :
-    XmlRpcServer(),
-    server_port_(server_port),
-    xml_rpc_lib_verbosity_(xml_rpc_lib_verbosity) {}
+  ProxyRpcServer(int server_port,
+                 std::unique_ptr<ProxyShillWifiClient> shill_wifi_client);
   void Run();
+  ProxyShillWifiClient* get_shill_wifi_client() {
+    return shill_wifi_client_.get();
+  }
 
  private:
+  static const int kDefaultXmlRpcVerbosity;
   int server_port_;
-  int xml_rpc_lib_verbosity_;
+  // RPC server owns the only instance of the |ShillWifiClient| and it
+  // gets deleted implicitly when the only instance of |RpcServer| goes out
+  // of scope.
+  std::unique_ptr<ProxyShillWifiClient> shill_wifi_client_;
 };
 
 // Generic class for all the RPC methods exposed by Shill RPC server
 class ProxyRpcServerMethod : public XmlRpcServerMethod {
  public:
-   ProxyRpcServerMethod(std::string method_name, ProxyRpcServer* rpc_server) :
-     XmlRpcServerMethod(method_name, rpc_server) {}
+   ProxyRpcServerMethod(std::string method_name, ProxyRpcServer* rpc_server);
 
  protected:
-   int kSuccess = 0;
-   int kFailure = 1;
-   int kInvalidArgs = -1;
+  int kSuccess = 0;
+  int kFailure = 1;
+  int kInvalidArgs = -1;
+  // RPC server methods hold the copy of the raw pointer to the instance of
+  // the |ShillWifiClient| owned by the RPC server.
+  ProxyShillWifiClient* shill_wifi_client_;
 
  private:
 };
