@@ -55,9 +55,6 @@ fi
 # Measure shutdown time up to this point.
 bootstat_archive /var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')
 
-# Lazy umount the tmpfs dirs under /var so we can immediately umount it.
-umount -n -l /var/run /var/lock
-
 # Remove symbolic links so that in case of auto-update rollback, the pre-38
 # chromeos_startup does not choke on them (which has been widely observed in the
 # wild, cf. https://crbug.com/447227).
