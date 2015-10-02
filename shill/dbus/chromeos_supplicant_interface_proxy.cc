@@ -156,12 +156,14 @@ bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
 
 bool ChromeosSupplicantInterfaceProxy::EnableHighBitrates() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+#if !defined(__ANDROID__)
   chromeos::ErrorPtr error;
   if (!interface_proxy_->EnableHighBitrates(&error)) {
     LOG(ERROR) << "Failed to enable high bitrates: "
                << error->GetCode() << " " << error->GetMessage();
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
@@ -228,12 +230,14 @@ bool ChromeosSupplicantInterfaceProxy::NetworkReply(const string& network,
 
 bool ChromeosSupplicantInterfaceProxy::Roam(const string& addr) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+#if !defined(__ANDROID__)
   chromeos::ErrorPtr error;
   if (!interface_proxy_->Roam(addr, &error)) {
     LOG(ERROR) << "Failed to Roam: "
                << error->GetCode() << " " << error->GetMessage();
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
@@ -322,6 +326,7 @@ bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(const string& network,
                                                      bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
       << " network: " << network << " enable: " << enable;
+#if defined(__ANDROID__)
   chromeos::ErrorPtr error;
   if (!interface_proxy_->SetHT40Enable(dbus::ObjectPath(network),
                                        enable,
@@ -330,6 +335,7 @@ bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(const string& network,
                << error->GetCode() << " " << error->GetMessage();
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
@@ -380,29 +386,35 @@ bool ChromeosSupplicantInterfaceProxy::TDLSTeardown(const string& peer) {
 
 bool ChromeosSupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
+#if !defined(__ANDROID__)
   if (!properties_->fast_reauth.SetAndBlock(enabled)) {
     LOG(ERROR) << __func__ << " failed: " << enabled;
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetRoamThreshold(uint16_t threshold) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << threshold;
+#if !defined(__ANDROID__)
   if (!properties_->roam_threshold.SetAndBlock(threshold)) {
     LOG(ERROR) << __func__ << " failed: " << threshold;
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": "
       << scan_interval;
+#if !defined(__ANDROID__)
   if (!properties_->scan_interval.SetAndBlock(scan_interval)) {
     LOG(ERROR) << __func__ << " failed: " << scan_interval;
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
@@ -410,28 +422,34 @@ bool ChromeosSupplicantInterfaceProxy::SetDisableHighBitrates(
     bool disable_high_bitrates) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": "
       << disable_high_bitrates;
+#if !defined(__ANDROID__)
   if (!properties_->disable_high_bitrates.SetAndBlock(disable_high_bitrates)) {
     LOG(ERROR) << __func__ << " failed: " << disable_high_bitrates;
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetSchedScan(bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
+#if !defined(__ANDROID__)
   if (!properties_->sched_scan.SetAndBlock(enable)) {
     LOG(ERROR) << __func__ << " failed: " << enable;
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
 bool ChromeosSupplicantInterfaceProxy::SetScan(bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
+#if !defined(__ANDROID__)
   if (!properties_->scan.SetAndBlock(enable)) {
     LOG(ERROR) << __func__ << " failed: " << enable;
     return false;
   }
+#endif  // __ANDROID__
   return true;
 }
 
