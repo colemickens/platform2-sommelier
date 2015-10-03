@@ -51,7 +51,6 @@ const char kPairingModeKey[] = "mode";
 const char kPairingCodeKey[] = "code";
 
 const char kErrorDomain[] = "buffet";
-const char kNotImplemented[] = "notImplemented";
 
 }  // anonymous namespace
 
@@ -123,11 +122,11 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});
 
-  device_->GetState()->AddStateChangedCallback(
+  device_->AddStateChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  device_->AddGcdStateChangedCallback(base::Bind(
-      &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
+  device_->AddGcdStateChangedCallback(
+      base::Bind(&Manager::OnGcdStateChanged, weak_ptr_factory_.GetWeakPtr()));
 
   device_->AddPairingChangedCallbacks(
       base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
@@ -178,7 +177,7 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
     return response->ReplyWithError(chromeos_error.get());
 
   weave::ErrorPtr error;
-  if (!device_->GetState()->SetProperties(*properties, &error)) {
+  if (!device_->SetStateProperties(*properties, &error)) {
     ConvertError(*error, &chromeos_error);
     return response->ReplyWithError(chromeos_error.get());
   }
@@ -186,7 +185,7 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
 }
 
 bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
-  auto json = device_->GetState()->GetState();
+  auto json = device_->GetState();
   CHECK(json);
   base::JSONWriter::WriteWithOptions(
       *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
@@ -194,8 +193,7 @@ bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
 }
 
 void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
-                         const std::string& json_command,
-                         const std::string& in_user_role) {
+                         const std::string& json_command) {
   std::string error_message;
   std::unique_ptr<base::Value> value(
       base::JSONReader::ReadAndReturnError(json_command, base::JSON_PARSE_RFC,
@@ -208,18 +206,10 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
                                     error_message);
   }
 
-  chromeos::ErrorPtr chromeos_error;
-  weave::UserRole role;
-  if (!StringToEnum(in_user_role, &role)) {
-    chromeos::Error::AddToPrintf(&chromeos_error, FROM_HERE, kErrorDomain,
-                                 "invalid_user_role", "Invalid role: '%s'",
-                                 in_user_role.c_str());
-    return response->ReplyWithError(chromeos_error.get());
-  }
-
   std::string id;
   weave::ErrorPtr error;
-  if (!device_->GetCommands()->AddCommand(*command, role, &id, &error)) {
+  if (!device_->GetCommands()->AddCommand(*command, &id, &error)) {
+    chromeos::ErrorPtr chromeos_error;
     ConvertError(*error, &chromeos_error);
     return response->ReplyWithError(chromeos_error.get());
   }
@@ -246,36 +236,6 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
-bool Manager::EnableWiFiBootstrapping(
-    chromeos::ErrorPtr* error,
-    const dbus::ObjectPath& in_listener_path,
-    const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual WiFi bootstrapping is not implemented");
-  return false;
-}
-
-bool Manager::DisableWiFiBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual WiFi bootstrapping is not implemented");
-  return false;
-}
-
-bool Manager::EnableGCDBootstrapping(
-    chromeos::ErrorPtr* error,
-    const dbus::ObjectPath& in_listener_path,
-    const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual GCD bootstrapping is not implemented");
-  return false;
-}
-
-bool Manager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual GCD bootstrapping is not implemented");
-  return false;
-}
-
 bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
                                const std::string& name,
                                const std::string& description,
@@ -290,8 +250,7 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
 
   std::string id;
   weave::ErrorPtr weave_error;
-  if (!device_->GetCommands()->AddCommand(command, weave::UserRole::kOwner, &id,
-                                          &weave_error)) {
+  if (!device_->GetCommands()->AddCommand(command, &id, &weave_error)) {
     ConvertError(*weave_error, chromeos_error);
     return false;
   }
@@ -328,7 +287,7 @@ bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* chromeos_error,
 }
 
 void Manager::OnStateChanged() {
-  auto state = device_->GetState()->GetState();
+  auto state = device_->GetState();
   CHECK(state);
   std::string json;
   base::JSONWriter::WriteWithOptions(
@@ -336,7 +295,7 @@ void Manager::OnStateChanged() {
   dbus_adaptor_.SetState(json);
 }
 
-void Manager::OnRegistrationChanged(weave::GcdState state) {
+void Manager::OnGcdStateChanged(weave::GcdState state) {
   dbus_adaptor_.SetStatus(weave::EnumToString(state));
 }
 

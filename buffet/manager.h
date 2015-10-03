@@ -91,27 +91,16 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                    const chromeos::VariantDictionary& property_set) override;
   bool GetState(chromeos::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponsePtr<std::string> response,
-                  const std::string& json_command,
-                  const std::string& in_user_role) override;
+                  const std::string& json_command) override;
   void GetCommand(DBusMethodResponsePtr<std::string> response,
                   const std::string& id) override;
   std::string TestMethod(const std::string& message) override;
-  bool EnableWiFiBootstrapping(
-      chromeos::ErrorPtr* error,
-      const dbus::ObjectPath& in_listener_path,
-      const chromeos::VariantDictionary& in_options) override;
-  bool DisableWiFiBootstrapping(chromeos::ErrorPtr* error) override;
-  bool EnableGCDBootstrapping(
-      chromeos::ErrorPtr* error,
-      const dbus::ObjectPath& in_listener_path,
-      const chromeos::VariantDictionary& in_options) override;
-  bool DisableGCDBootstrapping(chromeos::ErrorPtr* error) override;
 
   void StartPrivet(const Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnStateChanged();
-  void OnRegistrationChanged(weave::GcdState state);
+  void OnGcdStateChanged(weave::GcdState state);
   void OnConfigChanged(const weave::Settings& settings);
   void OnPairingStart(const std::string& session_id,
                       weave::PairingType pairing_type,
