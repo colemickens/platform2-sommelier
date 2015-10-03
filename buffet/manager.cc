@@ -282,7 +282,26 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
                                const std::string& name,
                                const std::string& description,
                                const std::string& location) {
-  device_->GetCloud()->UpdateDeviceInfo(name, description, location);
+  base::DictionaryValue command;
+  command.SetString("name", "base.updateDeviceInfo");
+  std::unique_ptr<base::DictionaryValue> parameters{new base::DictionaryValue};
+  parameters->SetString("name", name);
+  parameters->SetString("description", description);
+  parameters->SetString("location", location);
+  command.Set("parameters", parameters.release());
+
+  std::string id;
+  weave::ErrorPtr weave_error;
+  if (!device_->GetCommands()->AddCommand(command, weave::UserRole::kOwner, &id,
+                                          &weave_error)) {
+    ConvertError(*weave_error, chromeos_error);
+    return false;
+  }
+  // TODO(vitalybuka): Wait for command DONE. Currently we know that command
+  // will be handled inside of AddCommand. But this could be changed in future.
+  CHECK_EQ(device_->GetSettings().name, name);
+  CHECK_EQ(device_->GetSettings().description, description);
+  CHECK_EQ(device_->GetSettings().location, location);
   return true;
 }
 
