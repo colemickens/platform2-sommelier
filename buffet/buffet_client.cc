@@ -184,12 +184,6 @@ class Daemon final : public chromeos::DBusDaemon {
         return EX_USAGE;
       job = base::Bind(&Daemon::CallCheckDeviceRegistered,
                        weak_factory_.GetWeakPtr());
-    } else if (command.compare("GetDeviceInfo") == 0 ||
-               command.compare("di") == 0) {
-      if (!CheckArgs(command, args, 0))
-        return EX_USAGE;
-      job = base::Bind(&Daemon::CallGetDeviceInfo,
-                       weak_factory_.GetWeakPtr());
     } else if (command.compare("RegisterDevice") == 0 ||
                command.compare("rd") == 0) {
       if (!args.empty() && !CheckArgs(command, args, 1))
@@ -291,17 +285,6 @@ class Daemon final : public chromeos::DBusDaemon {
 
     printf("Device ID: %s\n",
            device_id.empty() ? "<unregistered>" : device_id.c_str());
-    OnJobComplete();
-  }
-
-  void CallGetDeviceInfo(ManagerProxy* manager_proxy) {
-    ErrorPtr error;
-    std::string device_info;
-    if (!manager_proxy->GetDeviceInfo(&device_info, &error)) {
-      return ReportError(error.get());
-    }
-
-    printf("%s\n", device_info.c_str());
     OnJobComplete();
   }
 

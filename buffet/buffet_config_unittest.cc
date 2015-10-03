@@ -25,8 +25,7 @@ TEST(BuffetConfigTest, LoadConfig) {
   config_store.SetString("backup_polling_period_ms", "6589");
   config_store.SetBoolean("wifi_auto_setup_enabled", false);
   config_store.SetBoolean("ble_setup_enabled", true);
-  config_store.SetString("pairing_modes",
-                         "pinCode,embeddedCode");
+  config_store.SetString("pairing_modes", "pinCode,embeddedCode");
   config_store.SetString("embedded_code", "567");
   config_store.SetString("name", "conf_name");
   config_store.SetString("description", "conf_description");
@@ -55,8 +54,8 @@ TEST(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ("conf_model_name", settings.model_name);
   EXPECT_EQ("ABCDE", settings.model_id);
   EXPECT_FALSE(settings.wifi_auto_setup_enabled);
-  std::set<weave::PairingType> pairing_types{
-      weave::PairingType::kPinCode, weave::PairingType::kEmbeddedCode};
+  std::set<weave::PairingType> pairing_types{weave::PairingType::kPinCode,
+                                             weave::PairingType::kEmbeddedCode};
   EXPECT_EQ(pairing_types, settings.pairing_modes);
   EXPECT_EQ("567", settings.embedded_code);
   EXPECT_EQ("conf_name", settings.name);

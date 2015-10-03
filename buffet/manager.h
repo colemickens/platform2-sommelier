@@ -75,7 +75,6 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   // DBus methods:
   void CheckDeviceRegistered(
       DBusMethodResponsePtr<std::string> response) override;
-  void GetDeviceInfo(DBusMethodResponsePtr<std::string> response) override;
   void RegisterDevice(DBusMethodResponsePtr<std::string> response,
                       const std::string& ticket_id) override;
   bool UpdateDeviceInfo(chromeos::ErrorPtr* error,
@@ -107,13 +106,6 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const dbus::ObjectPath& in_listener_path,
       const chromeos::VariantDictionary& in_options) override;
   bool DisableGCDBootstrapping(chromeos::ErrorPtr* error) override;
-
-  void OnGetDeviceInfoSuccess(
-      const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-      const base::DictionaryValue& device_info);
-  void OnGetDeviceInfoError(
-      const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-      const weave::Error* error);
 
   void StartPrivet(const Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);

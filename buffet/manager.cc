@@ -155,36 +155,6 @@ void Manager::CheckDeviceRegistered(
   response->Return(dbus_adaptor_.GetDeviceId());
 }
 
-// TODO(vitalybuka): Remove or rename to leave for testing.
-void Manager::GetDeviceInfo(DBusMethodResponsePtr<std::string> response) {
-  LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
-  std::shared_ptr<DBusMethodResponse<std::string>> shared_response =
-      std::move(response);
-
-  device_->GetCloud()->GetDeviceInfo(
-      base::Bind(&Manager::OnGetDeviceInfoSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), shared_response),
-      base::Bind(&Manager::OnGetDeviceInfoError, weak_ptr_factory_.GetWeakPtr(),
-                 shared_response));
-}
-
-void Manager::OnGetDeviceInfoSuccess(
-    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-    const base::DictionaryValue& device_info) {
-  std::string device_info_str;
-  base::JSONWriter::WriteWithOptions(
-      device_info, base::JSONWriter::OPTIONS_PRETTY_PRINT, &device_info_str);
-  response->Return(device_info_str);
-}
-
-void Manager::OnGetDeviceInfoError(
-    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-    const weave::Error* error) {
-  chromeos::ErrorPtr chromeos_error;
-  ConvertError(*error, &chromeos_error);
-  response->ReplyWithError(chromeos_error.get());
-}
-
 void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
                              const std::string& ticket_id) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
