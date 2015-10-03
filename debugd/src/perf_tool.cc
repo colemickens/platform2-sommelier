@@ -115,6 +115,28 @@ struct CPUIdentity {
   std::string intel_family_model;
 };
 
+enum PerfSubcommand {
+  PERF_COMMAND_RECORD,
+  PERF_COMMAND_STAT,
+  PERF_COMMAND_MEM,
+  PERF_COMMAND_UNSUPPORTED,
+};
+
+// Returns one of the above enums given an vector of perf arguments, starting
+// with "perf" itself in |args[0]|.
+PerfSubcommand GetPerfSubcommandType(const std::vector<std::string>& args) {
+  if (args[0] == "perf" && args.size() > 1) {
+    if (args[1] == "record")
+      return PERF_COMMAND_RECORD;
+    if (args[1] == "stat")
+      return PERF_COMMAND_STAT;
+    if (args[1] == "mem")
+      return PERF_COMMAND_MEM;
+  }
+
+  return PERF_COMMAND_UNSUPPORTED;
+}
+
 // Fills in |model_name| and maybe |intel_family_model| fields of |cpuid|.
 void ParseCPUModel(const CPUInfoParser& cpu_info_parser, CPUIdentity* cpuid) {
   // Get CPU model name, e.g. "Intel(R) Celeron(R) 2955U @ 1.40GHz".
@@ -218,13 +240,11 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
                             std::vector<uint8_t>* perf_data,
                             std::vector<uint8_t>* perf_stat,
                             DBus::Error* error) {
-  const bool is_supported_perf_subcommand =
-      perf_args[0] == "perf" &&
-      (perf_args[1] == "record" || perf_args[1] == "stat");
-  if (!is_supported_perf_subcommand) {
+  PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
+  if (subcommand == PERF_COMMAND_UNSUPPORTED) {
     error->set(kUnsupportedPerfToolErrorName,
-               "perf_args must begin with {\"perf\", \"record\"} "
-               "or {\"perf\", \"stat\"}");
+               "perf_args must begin with {\"perf\", \"record\"}, "
+               " {\"perf\", \"stat\"}, or {\"perf\", \"mem\"}");
     return -1;
   }
 
@@ -232,10 +252,18 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
   int result =
       GetPerfOutputHelper(duration_secs, perf_args, error, &output_string);
 
-  if (perf_args[1] == "record")
+  switch (subcommand) {
+  case PERF_COMMAND_RECORD:
+  case PERF_COMMAND_MEM:
     perf_data->assign(output_string.begin(), output_string.end());
-  else if (perf_args[1] == "stat")
+    break;
+  case PERF_COMMAND_STAT:
     perf_stat->assign(output_string.begin(), output_string.end());
+    break;
+  default:
+    // Discard the output.
+    break;
+  }
 
   return result;
 }
