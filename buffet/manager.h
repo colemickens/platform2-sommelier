@@ -111,7 +111,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnStateChanged();
-  void OnRegistrationChanged(weave::RegistrationStatus status);
+  void OnRegistrationChanged(weave::GcdState state);
   void OnConfigChanged(const weave::Settings& settings);
   void OnPairingStart(const std::string& session_id,
                       weave::PairingType pairing_type,

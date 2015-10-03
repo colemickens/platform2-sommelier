@@ -113,10 +113,9 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
-  device_ = weave::Device::Create();
-  device_->Start(config_.get(), task_runner_.get(), http_client_.get(),
-                 shill_client_.get(), mdns, http_server, shill_client_.get(),
-                 nullptr);
+  device_ = weave::Device::Create(config_.get(), task_runner_.get(),
+                                  http_client_.get(), shill_client_.get(), mdns,
+                                  http_server, shill_client_.get(), nullptr);
 
   device_->AddSettingsChangedCallback(
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
@@ -124,10 +123,10 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});
 
-  device_->GetState()->AddOnChangedCallback(
+  device_->GetState()->AddStateChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  device_->GetCloud()->AddOnRegistrationChangedCallback(base::Bind(
+  device_->AddGcdStateChangedCallback(base::Bind(
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
   device_->AddPairingChangedCallbacks(
@@ -160,8 +159,7 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
   weave::ErrorPtr error;
-  std::string device_id =
-      device_->GetCloud()->RegisterDevice(ticket_id, &error);
+  std::string device_id = device_->Register(ticket_id, &error);
   if (!device_id.empty()) {
     response->Return(device_id);
     return;
@@ -188,7 +186,7 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
 }
 
 bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
-  auto json = device_->GetState()->GetStateValuesAsJson();
+  auto json = device_->GetState()->GetState();
   CHECK(json);
   base::JSONWriter::WriteWithOptions(
       *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
@@ -330,7 +328,7 @@ bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* chromeos_error,
 }
 
 void Manager::OnStateChanged() {
-  auto state = device_->GetState()->GetStateValuesAsJson();
+  auto state = device_->GetState()->GetState();
   CHECK(state);
   std::string json;
   base::JSONWriter::WriteWithOptions(
@@ -338,8 +336,8 @@ void Manager::OnStateChanged() {
   dbus_adaptor_.SetState(json);
 }
 
-void Manager::OnRegistrationChanged(weave::RegistrationStatus status) {
-  dbus_adaptor_.SetStatus(weave::EnumToString(status));
+void Manager::OnRegistrationChanged(weave::GcdState state) {
+  dbus_adaptor_.SetStatus(weave::EnumToString(state));
 }
 
 void Manager::OnConfigChanged(const weave::Settings& settings) {
