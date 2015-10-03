@@ -445,6 +445,18 @@ void WiFi::ConnectTo(WiFiService* service) {
   CHECK(service) << "Can't connect to NULL service.";
   string network_path;
 
+  // Ignore this connection attempt if suppplicant is not present.
+  // This is possible when we try to connect right after WiFi
+  // boostrapping is completed (through weaved). Refer to b/24605760
+  // for more information.
+  // Once supplicant is detected, shill will auto-connect to this
+  // service (if this service is configured for auto-connect) when
+  // it is discovered in the scan.
+  if (!supplicant_present_) {
+    LOG(ERROR) << "Trying to connect before supplicant is present";
+    return;
+  }
+
   // TODO(quiche): Handle cases where already connected.
   if (pending_service_ && pending_service_ == service) {
     // TODO(quiche): Return an error to the caller. crbug.com/206812
