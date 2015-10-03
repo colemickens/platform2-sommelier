@@ -26,6 +26,7 @@ namespace {
 // Supported perf subcommands.
 const char kPerfRecordCommand[] = "record";
 const char kPerfStatCommand[] = "stat";
+const char kPerfMemCommand[] = "mem";
 
 string IntToString(const int i) {
   stringstream ss;
@@ -101,7 +102,8 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
 
   const string& perf_type = perf_args[1];
 
-  if (perf_type != kPerfRecordCommand && perf_type != kPerfStatCommand) {
+  if (perf_type != kPerfRecordCommand && perf_type != kPerfStatCommand &&
+      perf_type != kPerfMemCommand) {
     LOG(ERROR) << "Unsupported perf subcommand: " << perf_type;
     return false;
   }
@@ -134,7 +136,7 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
     return false;
   }
 
-  if (perf_type == kPerfRecordCommand)
+  if (perf_type == kPerfRecordCommand || perf_type == kPerfMemCommand)
     return ParsePerfDataFileToString(output_file.path(), output_string);
 
   // Otherwise, parse as perf stat output.

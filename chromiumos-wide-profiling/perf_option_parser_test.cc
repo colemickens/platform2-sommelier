@@ -4,6 +4,7 @@
 
 #include "chromiumos-wide-profiling/perf_option_parser.h"
 
+#include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
 
 namespace quipper {
@@ -50,6 +51,72 @@ TEST(PerfOptionParserTest, BadRecord_BannedOptions) {
       {"perf", "record", "-e", "cycles", "-D"}));
   EXPECT_FALSE(ValidatePerfCommandLine(
       {"perf", "record", "-e", "cycles", "-D", "10"}));
+}
+
+TEST(PerfOptionParserTest, GoodMemRecord) {
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "record"}));
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-e", "cycles"}));
+  // let perf reject it.
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-e", "-$;(*^:,.Non-sense!"}));
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-a", "-e", "iTLB-misses", "-c", "1000003"}));
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-a", "-e", "cycles", "-g", "-c", "4000037"}));
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-a", "-e", "cycles", "-j", "any_call",
+       "-c", "1000003"}));
+
+  // Check perf-mem options that come before "record".
+  // See http://man7.org/linux/man-pages/man1/perf-mem.1.html
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "-t", "load", "record", "-e", "-$;(*^:,.Non-sense!"}));
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "--type", "load,store",
+       "record", "-a", "-e", "iTLB-misses", "-c", "1000003"}));
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "-D", "-x", ":",
+       "record", "-a", "-e", "cycles", "-g", "-c", "4000037"}));
+  EXPECT_TRUE(ValidatePerfCommandLine(
+      {"perf", "mem", "-C", "0,1",
+       "record", "-a", "-e", "cycles", "-j", "any_call", "-c", "1000003"}));
+}
+
+TEST(PerfOptionParserTest, BadMemRecord_OutputOptions) {
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "-t", "load,store", "record", "-e", "cycles", "-v"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "-t", "load", "record", "--verbose", "-e", "cycles"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "-D", "-x", ":", "record", "-q", "-e", "cycles"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "-C", "0,1", "record", "-e", "cycles", "--quiet"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-e", "cycles", "-m", "512"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-e", "cycles", "--mmap-pages", "512"}));
+
+  // Try some bad perf-mem options.
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "-y", "-z", "record", "-e", "-$;(*^:,.Non-sense!"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "--blah",
+       "record", "-a", "-e", "iTLB-misses", "-c", "1000003"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "--no-way",
+       "record", "-a", "-e", "cycles", "-g", "-c", "4000037"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "--danger",
+       "record", "-a", "-e", "cycles", "-j", "any_call", "-c", "1000003"}));
+}
+
+TEST(PerfOptionParserTest, BadMemRecord_BannedOptions) {
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-e", "cycles", "-D"}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "record", "-e", "cycles", "-D", "10"}));
 }
 
 // Options that control the output format should only be specified by quipper.

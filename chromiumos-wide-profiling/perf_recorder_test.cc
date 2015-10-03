@@ -24,6 +24,14 @@ bool IsPerfRecordAvailable() {
       {"perf", "record", "-a", "-o", "-", "--", "sleep", "1"}, NULL) == 0;
 }
 
+// Runs "perf mem record" to see if the command is available on the current
+// system.
+bool IsPerfMemRecordAvailable() {
+  return RunCommand(
+      {"perf", "mem", "record", "-a", "-e", "cycles", "--", "sleep", "1"},
+      NULL) == 0;
+}
+
 class PerfRecorderTest : public ::testing::Test {
  public:
   PerfRecorderTest() : perf_recorder_({"sudo", GetPerfPath()}) {}
@@ -54,6 +62,21 @@ TEST_F(PerfRecorderTest, StatToProtobuf) {
   quipper::PerfStatProto stat;
   ASSERT_TRUE(stat.ParseFromString(output_string));
   EXPECT_GT(stat.line_size(), 0);
+}
+
+TEST_F(PerfRecorderTest, MemRecordToProtobuf) {
+  if (!IsPerfMemRecordAvailable())
+    return;
+
+  // Run perf stat and verify output.
+  string output_string;
+  EXPECT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
+      {"perf", "mem", "record"}, 1, &output_string));
+
+  EXPECT_GT(output_string.size(), 0);
+  quipper::PerfDataProto perf_data_proto;
+  ASSERT_TRUE(perf_data_proto.ParseFromString(output_string));
+  EXPECT_GT(perf_data_proto.build_ids_size(), 0);
 }
 
 TEST_F(PerfRecorderTest, StatSingleEvent) {

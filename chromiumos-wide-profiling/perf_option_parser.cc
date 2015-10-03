@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "chromiumos-wide-profiling/perf_option_parser.h"
 
+#include <algorithm>
 #include <map>
 
 #include "chromiumos-wide-profiling/compat/string.h"
@@ -155,17 +156,31 @@ const std::map<string, OptionType>& GetPerfStatOptions() {
   return *kPerfStatOptions;
 }
 
+const std::map<string, OptionType>& GetPerfMemOptions() {
+  static const auto* kPerfMemOptions = new std::map<string, OptionType> {
+    {"-t", OptionType::Value},
+    {"--type", OptionType::Value},
+    {"-D", OptionType::Boolean},
+    {"--dump-raw-samples", OptionType::Boolean},
+    {"-x", OptionType::Value},
+    {"--field-separator", OptionType::Value},
+    {"-C", OptionType::Value},
+    {"--cpu-list", OptionType::Value},
+  };
+  return *kPerfMemOptions;
+}
+
 bool ValidatePerfCommandLineOptions(
-    const std::vector<string> &args,
+    std::vector<string>::const_iterator begin_arg,
+    std::vector<string>::const_iterator end_arg,
     const std::map<string, OptionType> &options) {
-  for (std::size_t i = 2; i < args.size(); i++) {
-    const string &arg = args[i];
-    const auto &it = options.find(arg);
+  for (auto args_iter = begin_arg; args_iter != end_arg; ++args_iter) {
+    const auto &it = options.find(*args_iter);
     if (it == options.end()) {
       return false;
     }
     if (it->second == OptionType::Value) {
-      ++i;
+      ++args_iter;
     }
   }
   return true;
@@ -181,10 +196,22 @@ bool ValidatePerfCommandLine(const std::vector<string> &args) {
     return false;
   }
   if (args[1] == "record") {
-    return ValidatePerfCommandLineOptions(args, GetPerfRecordOptions());
+    return ValidatePerfCommandLineOptions(args.begin() + 2, args.end(),
+                                          GetPerfRecordOptions());
+  }
+  if (args[1] == "mem") {
+    auto record_arg_iter = std::find(args.begin(), args.end(), "record");
+    if (record_arg_iter == args.end())
+      return false;
+
+    return ValidatePerfCommandLineOptions(args.begin() + 2, record_arg_iter,
+                                          GetPerfMemOptions()) &&
+           ValidatePerfCommandLineOptions(record_arg_iter + 1, args.end(),
+                                          GetPerfRecordOptions());
   }
   if (args[1] == "stat") {
-    return ValidatePerfCommandLineOptions(args, GetPerfStatOptions());
+    return ValidatePerfCommandLineOptions(args.begin() + 2, args.end(),
+                                          GetPerfStatOptions());
   }
   return false;
 }
