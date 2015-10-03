@@ -26,7 +26,7 @@ TEST(BuffetConfigTest, LoadConfig) {
   config_store.SetBoolean("wifi_auto_setup_enabled", false);
   config_store.SetBoolean("ble_setup_enabled", true);
   config_store.SetString("pairing_modes",
-                         "pinCode,embeddedCode,ultrasound32,audible32");
+                         "pinCode,embeddedCode");
   config_store.SetString("embedded_code", "567");
   config_store.SetString("name", "conf_name");
   config_store.SetString("description", "conf_description");
@@ -56,8 +56,7 @@ TEST(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ("ABCDE", settings.model_id);
   EXPECT_FALSE(settings.wifi_auto_setup_enabled);
   std::set<weave::PairingType> pairing_types{
-      weave::PairingType::kPinCode, weave::PairingType::kEmbeddedCode,
-      weave::PairingType::kUltrasound32, weave::PairingType::kAudible32};
+      weave::PairingType::kPinCode, weave::PairingType::kEmbeddedCode};
   EXPECT_EQ(pairing_types, settings.pairing_modes);
   EXPECT_EQ("567", settings.embedded_code);
   EXPECT_EQ("conf_name", settings.name);

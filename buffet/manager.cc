@@ -130,11 +130,9 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   device_->GetCloud()->AddOnRegistrationChangedCallback(base::Bind(
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  if (device_->GetPrivet()) {
-    device_->GetPrivet()->AddOnPairingChangedCallbacks(
-        base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
-  }
+  device_->AddPairingChangedCallbacks(
+      base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Manager::Stop() {
