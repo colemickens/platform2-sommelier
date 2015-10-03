@@ -54,21 +54,24 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
     bool xmpp_enabled = true;
     bool disable_privet = false;
     bool enable_ping = false;
+    std::set<std::string> device_whitelist;
+
+    BuffetConfig::Options config_options;
   };
 
   explicit Manager(
+      const Options& options,
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
   ~Manager();
 
-  void Start(const Options& options,
-             const BuffetConfig::Options& config_options,
-             const std::set<std::string>& device_whitelist,
-             chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+  void Start(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void Stop();
 
  private:
+  void RestartWeave(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+
   // DBus methods:
   void CheckDeviceRegistered(
       DBusMethodResponsePtr<std::string> response) override;
@@ -123,18 +126,20 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
+  Options options_;
+
   org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   class TaskRunner;
   std::unique_ptr<TaskRunner> task_runner_;
+  std::unique_ptr<BuffetConfig> config_;
   std::unique_ptr<HttpTransportClient> http_client_;
   std::unique_ptr<ShillClient> shill_client_;
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   std::unique_ptr<PeerdClient> peerd_client_;
   std::unique_ptr<WebServClient> web_serv_client_;
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
-  std::unique_ptr<BuffetConfig> config_;
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
 

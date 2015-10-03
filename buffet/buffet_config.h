@@ -23,6 +23,12 @@ class StorageInterface;
 class BuffetConfig final : public weave::provider::ConfigStore {
  public:
   struct Options {
+    std::string client_id;
+    std::string client_secret;
+    std::string api_key;
+    std::string oauth_url;
+    std::string service_url;
+
     base::FilePath defaults;
     base::FilePath settings;
 

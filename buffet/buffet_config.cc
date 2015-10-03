@@ -83,6 +83,18 @@ bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   bool result = LoadDefaults(store, settings);
   settings->disable_security = options_.disable_security;
   settings->test_privet_ssid = options_.test_privet_ssid;
+
+  if (!options_.client_id.empty())
+    settings->client_id = options_.client_id;
+  if (!options_.client_secret.empty())
+    settings->client_secret = options_.client_secret;
+  if (!options_.api_key.empty())
+    settings->api_key = options_.api_key;
+  if (!options_.oauth_url.empty())
+    settings->oauth_url = options_.oauth_url;
+  if (!options_.service_url.empty())
+    settings->service_url = options_.service_url;
+
   return result;
 }
 

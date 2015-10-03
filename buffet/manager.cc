@@ -64,33 +64,43 @@ class Manager::TaskRunner : public weave::provider::TaskRunner {
   }
 };
 
-Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
-    : dbus_object_(object_manager.get(),
+Manager::Manager(const Options& options,
+                 const base::WeakPtr<ExportedObjectManager>& object_manager)
+    : options_{options},
+      dbus_object_(object_manager.get(),
                    object_manager->GetBus(),
-                   org::chromium::Buffet::ManagerAdaptor::GetObjectPath()) {
-}
+                   org::chromium::Buffet::ManagerAdaptor::GetObjectPath()) {}
 
 Manager::~Manager() {
 }
 
-void Manager::Start(const Options& options,
-                    const BuffetConfig::Options& paths,
-                    const std::set<std::string>& device_whitelist,
-                    AsyncEventSequencer* sequencer) {
+void Manager::Start(AsyncEventSequencer* sequencer) {
+  RestartWeave(sequencer);
+
+  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(
+      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+}
+
+void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
+  Stop();
+
   task_runner_.reset(new TaskRunner{});
+  config_.reset(new BuffetConfig{options_.config_options});
   http_client_.reset(new HttpTransportClient);
-  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist,
-                                      !options.xmpp_enabled});
+  shill_client_.reset(new ShillClient{dbus_object_.GetBus(),
+                                      options_.device_whitelist,
+                                      !options_.xmpp_enabled});
   weave::provider::DnsServiceDiscovery* mdns{nullptr};
   weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  if (!options.disable_privet) {
+  if (!options_.disable_privet) {
     peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
     web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
     mdns = peerd_client_.get();
     http_server = web_serv_client_.get();
 
-    if (options.enable_ping) {
+    if (options_.enable_ping) {
       http_server->AddRequestHandler(
           "/privet/ping",
           base::Bind(
@@ -104,7 +114,6 @@ void Manager::Start(const Options& options,
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   device_ = weave::Device::Create();
-  config_.reset(new BuffetConfig{paths});
   device_->Start(config_.get(), task_runner_.get(), http_client_.get(),
                  shill_client_.get(), mdns, http_server, shill_client_.get(),
                  nullptr);
@@ -126,14 +135,19 @@ void Manager::Start(const Options& options,
         base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
         base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
   }
-
-  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(
-      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 }
 
 void Manager::Stop() {
+  command_dispatcher_.reset();
   device_.reset();
+#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
+  web_serv_client_.reset();
+  peerd_client_.reset();
+#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
+  shill_client_.reset();
+  http_client_.reset();
+  config_.reset();
+  task_runner_.reset();
 }
 
 // TODO(vitalybuka): Remove, it's just duplicate of property.
@@ -310,12 +324,21 @@ bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* chromeos_error,
                                   const std::string& api_key,
                                   const std::string& oauth_url,
                                   const std::string& service_url) {
-  weave::ErrorPtr error;
-  if (!device_->GetCloud()->UpdateServiceConfig(
-          client_id, client_secret, api_key, oauth_url, service_url, &error)) {
-    ConvertError(*error, chromeos_error);
+  if (!dbus_adaptor_.GetDeviceId().empty()) {
+    chromeos::Error::AddTo(chromeos_error, FROM_HERE, kErrorDomain,
+                           "already_registered",
+                           "Unable to change config for registered device");
     return false;
   }
+
+  options_.config_options.client_id = client_id;
+  options_.config_options.client_secret = client_secret;
+  options_.config_options.api_key = api_key;
+  options_.config_options.oauth_url = oauth_url;
+  options_.config_options.service_url = service_url;
+
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  RestartWeave(sequencer.get());
   return true;
 }
 
