@@ -10,7 +10,11 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <weave/commands.h>
+
+namespace weave {
+class Command;
+class Device;
+}
 
 namespace chromeos {
 namespace dbus_utils {
@@ -32,7 +36,7 @@ class DBusCommandDispacher final {
   explicit DBusCommandDispacher(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager,
-      weave::Commands* command_manager);
+      weave::Device* device);
 
  private:
   void OnCommandAdded(weave::Command* command);

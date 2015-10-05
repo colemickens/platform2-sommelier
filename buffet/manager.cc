@@ -119,8 +119,8 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   device_->AddSettingsChangedCallback(
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  command_dispatcher_.reset(new DBusCommandDispacher{
-      dbus_object_.GetObjectManager(), device_->GetCommands()});
+  command_dispatcher_.reset(
+      new DBusCommandDispacher{dbus_object_.GetObjectManager(), device_.get()});
 
   device_->AddStateChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
@@ -208,7 +208,7 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
 
   std::string id;
   weave::ErrorPtr error;
-  if (!device_->GetCommands()->AddCommand(*command, &id, &error)) {
+  if (!device_->AddCommand(*command, &id, &error)) {
     chromeos::ErrorPtr chromeos_error;
     ConvertError(*error, &chromeos_error);
     return response->ReplyWithError(chromeos_error.get());
@@ -219,7 +219,7 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
 
 void Manager::GetCommand(DBusMethodResponsePtr<std::string> response,
                          const std::string& id) {
-  const weave::Command* command = device_->GetCommands()->FindCommand(id);
+  const weave::Command* command = device_->FindCommand(id);
   if (!command) {
     response->ReplyWithError(FROM_HERE, kErrorDomain, "unknown_command",
                              "Can't find command with id: " + id);
@@ -250,7 +250,7 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
 
   std::string id;
   weave::ErrorPtr weave_error;
-  if (!device_->GetCommands()->AddCommand(command, &id, &weave_error)) {
+  if (!device_->AddCommand(command, &id, &weave_error)) {
     ConvertError(*weave_error, chromeos_error);
     return false;
   }

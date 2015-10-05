@@ -17,7 +17,6 @@
 #include <weave/command.h>
 #include <weave/enum_to_string.h>
 #include <weave/test/mock_command.h>
-#include <weave/test/mock_commands.h>
 #include <weave/test/unittest_utils.h>
 
 #include "buffet/dbus_constants.h"
@@ -37,7 +36,6 @@ using weave::test::IsEqualValue;
 
 namespace {
 
-const char kTestCommandCategoty[] = "test_command_category";
 const char kTestCommandId[] = "cmd_1";
 
 MATCHER_P(EqualToJson, json, "") {
@@ -65,8 +63,6 @@ class DBusCommandProxyTest : public ::testing::Test {
     // Use WillRepeatedly becase GetName is used for logging.
     EXPECT_CALL(command_, GetName())
         .WillRepeatedly(ReturnRefOfCopy<std::string>("robot.jump"));
-    EXPECT_CALL(command_, GetCategory())
-        .WillOnce(ReturnRefOfCopy<std::string>(kTestCommandCategoty));
     EXPECT_CALL(command_, GetStatus())
         .WillOnce(Return(weave::CommandStatus::kQueued));
     EXPECT_CALL(command_, GetOrigin())
@@ -137,7 +133,6 @@ TEST_F(DBusCommandProxyTest, Init) {
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetResults());
   EXPECT_EQ("robot.jump", GetCommandAdaptor()->GetName());
-  EXPECT_EQ(kTestCommandCategoty, GetCommandAdaptor()->GetCategory());
   EXPECT_EQ(kTestCommandId, GetCommandAdaptor()->GetId());
 }
 

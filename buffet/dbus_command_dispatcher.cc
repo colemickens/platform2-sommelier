@@ -6,6 +6,7 @@
 
 #include <chromeos/dbus/exported_object_manager.h>
 #include <weave/command.h>
+#include <weave/device.h>
 
 #include "buffet/dbus_command_proxy.h"
 #include "buffet/dbus_constants.h"
@@ -17,9 +18,9 @@ namespace buffet {
 
 DBusCommandDispacher::DBusCommandDispacher(
     const base::WeakPtr<ExportedObjectManager>& object_manager,
-    weave::Commands* command_manager)
+    weave::Device* device)
     : object_manager_{object_manager} {
-  command_manager->AddOnCommandAddedCallback(base::Bind(
+  device->AddCommandAddedCallback(base::Bind(
       &DBusCommandDispacher::OnCommandAdded, weak_ptr_factory_.GetWeakPtr()));
 }
 

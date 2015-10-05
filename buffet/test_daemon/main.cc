@@ -22,7 +22,6 @@
 #include "buffet/dbus-proxies.h"
 
 namespace {
-const char kTestCommandCategory[] = "test";
 
 std::unique_ptr<base::DictionaryValue> DictionaryToJson(
     const chromeos::VariantDictionary& dictionary);
@@ -125,17 +124,14 @@ void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
 
 void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   // "Handle" only commands that belong to this daemon's category.
-  if (command->category() != kTestCommandCategory ||
-      command->status() == "done") {
+  if (command->status() == "done")
     return;
-  }
 
   command->SetPropertyChangedCallback(base::Bind(&Daemon::OnPropertyChange,
                                                  base::Unretained(this)));
   printf("++++++++++++++++++++++++++++++++++++++++++++++++\n");
   printf("Command received: %s\n", command->name().c_str());
   printf("DBus Object Path: %s\n", command->GetObjectPath().value().c_str());
-  printf("        category: %s\n", command->category().c_str());
   printf("              ID: %s\n", command->id().c_str());
   printf("          status: %s\n", command->status().c_str());
   printf("          origin: %s\n", command->origin().c_str());

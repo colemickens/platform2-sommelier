@@ -31,7 +31,6 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <property name="Name" type="s" access="read"/>
-    <property name="Category" type="s" access="read"/>
     <property name="Id" type="s" access="read"/>
     <property name="Status" type="s" access="read"/>
     <property name="Parameters" type="a{sv}" access="read"/>

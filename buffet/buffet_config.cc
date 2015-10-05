@@ -98,8 +98,8 @@ bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   return result;
 }
 
-std::map<std::string, std::string> BuffetConfig::LoadCommandDefs() {
-  std::map<std::string, std::string> result;
+std::vector<std::string> BuffetConfig::LoadCommandDefs() {
+  std::vector<std::string> result;
   auto load_packages = [&result](const base::FilePath& root,
                                  const base::FilePath::StringType& pattern) {
     base::FilePath dir{root.Append("commands")};
@@ -109,8 +109,9 @@ std::map<std::string, std::string> BuffetConfig::LoadCommandDefs() {
     for (base::FilePath path = enumerator.Next(); !path.empty();
          path = enumerator.Next()) {
       LOG(INFO) << "Loading command schema from " << path.value();
-      std::string category = path.BaseName().RemoveExtension().value();
-      CHECK(LoadFile(path, &result[category], nullptr));
+      std::string json;
+      CHECK(LoadFile(path, &json, nullptr));
+      result.emplace_back(std::move(json));
     }
   };
   load_packages(options_.definitions, FILE_PATH_LITERAL("*.json"));
@@ -118,17 +119,18 @@ std::map<std::string, std::string> BuffetConfig::LoadCommandDefs() {
   return result;
 }
 
-std::map<std::string, std::string> BuffetConfig::LoadStateDefs() {
+std::vector<std::string> BuffetConfig::LoadStateDefs() {
   // Load component-specific device state definitions.
   base::FilePath dir{options_.definitions.Append("states")};
   base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
                                   FILE_PATH_LITERAL("*.schema.json"));
-  std::map<std::string, std::string> result;
+  std::vector<std::string> result;
   for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {
     LOG(INFO) << "Loading state definition from " << path.value();
-    std::string category = path.BaseName().RemoveExtension().value();
-    CHECK(LoadFile(path, &result[category], nullptr));
+    std::string json;
+    CHECK(LoadFile(path, &json, nullptr));
+    result.emplace_back(std::move(json));
   }
   return result;
 }
