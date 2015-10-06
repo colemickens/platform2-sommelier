@@ -34,6 +34,7 @@
 #include "shill/resolver.h"
 #else
 #include "shill/dns_server_proxy.h"
+#include "shill/dns_server_proxy_factory.h"
 #endif  // __ANDROID__
 
 using base::Bind;
@@ -131,6 +132,8 @@ Connection::Connection(int interface_index,
       device_info_(device_info),
 #if !defined(__ANDROID__)
       resolver_(Resolver::GetInstance()),
+#else
+      dns_server_proxy_factory_(DNSServerProxyFactory::GetInstance()),
 #endif  // __ANDROID__
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -362,7 +365,8 @@ void Connection::PushDNSConfig() {
 #if !defined(__ANDROID__)
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
 #else
-  dns_server_proxy_.reset(new DNSServerProxy(dns_servers_));
+  dns_server_proxy_.reset(
+      dns_server_proxy_factory_->CreateDNSServerProxy(dns_servers_));
   dns_server_proxy_->Start();
 #endif  // __ANDROID__
 }

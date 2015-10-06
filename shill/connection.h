@@ -40,6 +40,7 @@ class RTNLHandler;
 class Resolver;
 #else
 class DNSServerProxy;
+class DNSServerProxyFactory;
 #endif  // __ANDROID__
 class RoutingTable;
 struct RoutingTableEntry;
@@ -231,6 +232,7 @@ class Connection : public base::RefCounted<Connection> {
 #if !defined(__ANDROID__)
   Resolver* resolver_;
 #else
+  DNSServerProxyFactory* dns_server_proxy_factory_;
   std::unique_ptr<DNSServerProxy> dns_server_proxy_;
 #endif  // __ANDROID__;
   RoutingTable* routing_table_;

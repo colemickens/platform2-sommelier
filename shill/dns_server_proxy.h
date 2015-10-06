@@ -35,7 +35,7 @@ class DNSServerProxy {
   virtual ~DNSServerProxy();
 
   // Start dnsmasq process for serving local DNS requests.
-  bool Start();
+  virtual bool Start();
 
  private:
   // Stop dnsmasq process.

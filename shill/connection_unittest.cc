@@ -34,6 +34,9 @@
 #include "shill/mock_firewall_proxy.h"
 #if !defined(__ANDROID__)
 #include "shill/mock_resolver.h"
+#else
+#include "shill/mock_dns_server_proxy.h"
+#include "shill/mock_dns_server_proxy_factory.h"
 #endif  // __ANDROID__
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -123,6 +126,8 @@ class ConnectionTest : public Test {
   void ReplaceSingletons(ConnectionRefPtr connection) {
 #if !defined(__ANDROID__)
     connection->resolver_ = &resolver_;
+#else
+    connection->dns_server_proxy_factory_ = &dns_server_proxy_factory_;
 #endif  // __ANDROID__
     connection->routing_table_ = &routing_table_;
     connection->rtnl_handler_ = &rtnl_handler_;
@@ -165,6 +170,23 @@ class ConnectionTest : public Test {
   void SetLocal(const IPAddress& local) {
     connection_->local_ = local;
   }
+
+#if defined(__ANDROID__)
+  // Setting expectations for creating/starting DNS server proxy.
+  void ExpectDNSServerProxyCreation(const vector<string>& dns_servers,
+                                    bool verify_servers) {
+    MockDNSServerProxy* dns_server_proxy = new MockDNSServerProxy();
+    if (verify_servers) {
+      EXPECT_CALL(dns_server_proxy_factory_,
+                  CreateDNSServerProxy(dns_servers))
+          .WillOnce(Return(dns_server_proxy));
+    } else {
+      EXPECT_CALL(dns_server_proxy_factory_, CreateDNSServerProxy(_))
+          .WillOnce(Return(dns_server_proxy));
+    }
+    EXPECT_CALL(*dns_server_proxy, Start());
+  }
+#endif  // __ANDROID__
 
  protected:
   class DisconnectCallbackTarget {
@@ -213,6 +235,8 @@ class ConnectionTest : public Test {
   IPAddress local_ipv6_address_;
 #if !defined(__ANDROID__)
   StrictMock<MockResolver> resolver_;
+#else
+  StrictMock<MockDNSServerProxyFactory> dns_server_proxy_factory_;
 #endif  // __ANDROID__
   StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
@@ -305,6 +329,8 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_CALL(resolver_, SetDNSFromLists(
       ipconfig_->properties().dns_servers,
       ipconfig_->properties().domain_search));
+#else
+  ExpectDNSServerProxyCreation(ipconfig_->properties().dns_servers, true);
 #endif  // __ANDROID__
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
@@ -422,6 +448,8 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
+#else
+  ExpectDNSServerProxyCreation(ipconfig_->properties().dns_servers, true);
 #endif  // __ANDROID__
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_, nullptr, nullptr, nullptr, kTestDeviceName0, string(),
@@ -538,6 +566,8 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   vector<string> empty_list;
 #if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
+#else
+  ExpectDNSServerProxyCreation(empty_list, true);
 #endif  // __ANDROID__
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
@@ -578,6 +608,8 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
+#else
+  ExpectDNSServerProxyCreation(ipconfig_->properties().dns_servers, true);
 #endif  // __ANDROID__
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
@@ -602,6 +634,8 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   domain_search_list.push_back(kDomainName + ".");
 #if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list));
+#else
+  ExpectDNSServerProxyCreation(vector<string>(), false);
 #endif  // __ANDROID__
   DeviceRefPtr device;
   EXPECT_CALL(*device_info_, GetDevice(_)).WillOnce(Return(device));
@@ -645,20 +679,28 @@ TEST_F(ConnectionTest, UpdateDNSServers) {
   connection_->is_default_ = false;
 #if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
+#else
+  EXPECT_CALL(dns_server_proxy_factory_, CreateDNSServerProxy(_)).Times(0);
 #endif  // __ANDROID__
   connection_->UpdateDNSServers(dns_servers);
 #if !defined(__ANDROID__)
   Mock::VerifyAndClearExpectations(&resolver_);
+#else
+  Mock::VerifyAndClearExpectations(&dns_server_proxy_factory_);
 #endif  // __ANDROID__
 
   // Default connection.
   connection_->is_default_ = true;
 #if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(dns_servers, _));
+#else
+  ExpectDNSServerProxyCreation(dns_servers, true);
 #endif  // __ANDROID__
   connection_->UpdateDNSServers(dns_servers);
 #if !defined(__ANDROID__)
   Mock::VerifyAndClearExpectations(&resolver_);
+#else
+  Mock::VerifyAndClearExpectations(&dns_server_proxy_factory_);
 #endif  // __ANDROID__
 }
 
@@ -698,6 +740,8 @@ TEST_F(ConnectionTest, Destructor) {
                                              &control_));
 #if !defined(__ANDROID__)
   connection->resolver_ = &resolver_;
+#else
+  connection->dns_server_proxy_factory_ = &dns_server_proxy_factory_;
 #endif  // __ANDROID__
   connection->routing_table_ = &routing_table_;
   connection->rtnl_handler_ = &rtnl_handler_;
