@@ -34,6 +34,7 @@
 #include "tpm_manager/server/tpm2_status_impl.h"
 #else
 #include "tpm_manager/server/tpm_initializer_impl.h"
+#include "tpm_manager/server/tpm_nvram_impl.h"
 #include "tpm_manager/server/tpm_status_impl.h"
 #endif
 
@@ -59,6 +60,7 @@ class TpmManagerDaemon : public brillo::DBusServiceDaemon {
     tpm_initializer_.reset(new tpm_manager::TpmInitializerImpl(
         local_data_store_.get(),
         tpm_status_.get()));
+    tpm_nvram_.reset(new tpm_manager::TpmNvramImpl(local_data_store_.get()));
 #endif
     tpm_manager_service_.reset(new tpm_manager::TpmManagerService(
         command_line->HasSwitch(kWaitForOwnershipTriggerSwitch),
