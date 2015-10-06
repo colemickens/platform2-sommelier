@@ -126,12 +126,12 @@ string DHCPServer::GenerateConfigFile() {
   // terminated. Configure dnsmasq to run in "foreground" so no extra process
   // will be spawned.
   config += "keep-in-foreground\n";
-  // Explicitly set the user to apmanager. If not set, dnsmasq will default to
-  // run as "nobody".
-  base::StringAppendF(&config, "user=%s\n", Daemon::kAPManagerUserName);
   base::StringAppendF(
       &config, "dhcp-range=%s,%s\n", address_low.c_str(), address_high.c_str());
   base::StringAppendF(&config, "interface=%s\n", interface_name_.c_str());
+  // Explicitly set the user to apmanager. If not set, dnsmasq will default to
+  // run as "nobody".
+  base::StringAppendF(&config, "user=%s\n", Daemon::kAPManagerUserName);
   base::StringAppendF(&config, "dhcp-leasefile=%s\n", lease_file_path.c_str());
   return config;
 }

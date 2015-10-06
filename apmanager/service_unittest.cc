@@ -37,7 +37,11 @@ namespace {
   const char kHostapdConfig[] = "ssid=test\n";
   const char kBinSleep[] = "/bin/sleep";
   const char kHostapdConfigFilePath[] =
+#if !defined(__ANDROID__)
       "/var/run/apmanager/hostapd/hostapd-1.conf";
+#else
+      "/data/misc/apmanager/hostapd/hostapd-1.conf";
+#endif  // __ANDROID__
 }  // namespace
 
 namespace apmanager {

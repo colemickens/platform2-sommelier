@@ -33,12 +33,22 @@ namespace {
       "bind-interfaces\n"
       "log-dhcp\n"
       "keep-in-foreground\n"
-      "user=apmanager\n"
       "dhcp-range=192.168.1.1,192.168.1.128\n"
       "interface=test_interface\n"
+#if !defined(__ANDROID__)
+      "user=apmanager\n"
       "dhcp-leasefile=/var/run/apmanager/dnsmasq/dhcpd-1.leases\n";
+#else
+      "user=system\n"
+      "dhcp-leasefile=/data/misc/apmanager/dnsmasq/dhcpd-1.leases\n";
+#endif  // __ANDROID__
+
   const char kDnsmasqConfigFilePath[] =
+#if !defined(__ANDROID__)
       "/var/run/apmanager/dnsmasq/dhcpd-1.conf";
+#else
+      "/data/misc/apmanager/dnsmasq/dhcpd-1.conf";
+#endif  // __ANDROID__
 }  // namespace
 
 namespace apmanager {
