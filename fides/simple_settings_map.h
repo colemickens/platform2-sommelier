@@ -5,11 +5,12 @@
 #ifndef FIDES_SIMPLE_SETTINGS_MAP_H_
 #define FIDES_SIMPLE_SETTINGS_MAP_H_
 
-#include <base/macros.h>
 #include <map>
 #include <memory>
 #include <set>
 #include <vector>
+
+#include <base/macros.h>
 
 #include "fides/settings_map.h"
 #include "fides/version_stamp.h"

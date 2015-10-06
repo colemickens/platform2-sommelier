@@ -5,8 +5,9 @@
 #ifndef FIDES_DBUS_SETTINGS_SERVICE_IMPL_H_
 #define FIDES_DBUS_SETTINGS_SERVICE_IMPL_H_
 
-#include <set>
 #include <stdint.h>
+
+#include <set>
 #include <string>
 #include <vector>
 

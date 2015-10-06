@@ -4,8 +4,9 @@
 
 #include "fides/crypto.h"
 
-#include <memory>
 #include <stdint.h>
+
+#include <memory>
 
 #include <base/logging.h>
 

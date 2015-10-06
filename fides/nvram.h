@@ -6,6 +6,7 @@
 #define FIDES_NVRAM_H_
 
 #include <stdint.h>
+
 #include <vector>
 
 #include <base/macros.h>

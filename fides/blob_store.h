@@ -6,6 +6,7 @@
 #define FIDES_BLOB_STORE_H_
 
 #include <stdint.h>
+
 #include <string>
 #include <vector>
 

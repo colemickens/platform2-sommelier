@@ -4,11 +4,12 @@
 
 #include "fides/cros_install_attributes.h"
 
-#include <algorithm>
 #include <arpa/inet.h>
+#include <stddef.h>
+
+#include <algorithm>
 #include <map>
 #include <set>
-#include <stddef.h>
 #include <string>
 #include <vector>
 
