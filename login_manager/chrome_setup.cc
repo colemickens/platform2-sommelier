@@ -269,12 +269,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*ui/display/chromeos*=1");
   builder->AddVmodulePattern("*ash/display*=1");
 
-  // The login screen will sometimes fail to display, but it is very difficult
-  // to reproduce. Add verbose logging so we can have actionable feedback
-  // reports.
-  builder->AddVmodulePattern("chrome/browser/webui/chromeos/login*=1");
-  builder->AddVmodulePattern("chrome/browser/chromeos/login/ui*=1");
-
   // Turn on basic logging for Ozone platform implementations.
   builder->AddVmodulePattern("*ui/ozone*=1");
 
