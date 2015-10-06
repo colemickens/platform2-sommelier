@@ -44,7 +44,7 @@ void Daemon::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 
 std::unique_ptr<const SettingsDocument> Daemon::LoadTrustedDocument() const {
   // TODO(cschuet): Implement trusted document parsing.
-  return std::unique_ptr<const SettingsDocument>();
+  return nullptr;
 }
 
 }  // namespace fides

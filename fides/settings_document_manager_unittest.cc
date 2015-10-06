@@ -46,11 +46,11 @@ class MockSettingsBlobParser {
   std::unique_ptr<LockedSettingsContainer> operator()(const std::string& format,
                                                       BlobRef data) {
     if (!data.valid())
-      return std::unique_ptr<LockedSettingsContainer>();
+      return nullptr;
     auto entry = containers_.find(data.ToString());
     if (entry != containers_.end())
       return entry->second->Clone();
-    return std::unique_ptr<LockedSettingsContainer>();
+    return nullptr;
   }
 
   // Registers a LockedSettingsContainer with the parser. Returns the BlobRef
@@ -545,7 +545,7 @@ TEST_F(SettingsDocumentManagerTest, InsertBlobValidationErrorNoDelegate) {
   source_delegate_factory_.RegisterFunction(
       kTestSource1,
       [](const std::string& source_id, const SettingsService& settings) {
-        return std::unique_ptr<SourceDelegate>();
+        return nullptr;
       });
   ConfigureTrustedSource(kTestSource1);
   MockLockedSettingsContainer* container =

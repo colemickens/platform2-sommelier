@@ -210,12 +210,12 @@ std::unique_ptr<SourceDelegate> CrosInstallAttributesSourceDelegate::Create(
   BlobRef nvram_index_value = settings.GetValue(
       MakeSourceKey(source_id).Extend({keys::sources::kNVRamIndex}));
   if (!nvram_index_value.valid())
-    return std::unique_ptr<SourceDelegate>();
+    return nullptr;
 
   size_t pos = 0;
   uint32_t nvram_index = std::stoul(nvram_index_value.ToString(), &pos, 0);
   if (pos == 0 || pos != nvram_index_value.size())
-    return std::unique_ptr<SourceDelegate>();
+    return nullptr;
 
   return std::unique_ptr<SourceDelegate>(
       new CrosInstallAttributesSourceDelegate(nvram, nvram_index));

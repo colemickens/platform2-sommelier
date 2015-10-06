@@ -23,7 +23,7 @@ std::unique_ptr<LockedSettingsContainer> SettingsBlobParserRegistry::operator()(
   if (entry != parsers_.end())
     return entry->second(format, data);
 
-  return std::unique_ptr<LockedSettingsContainer>();
+  return nullptr;
 }
 
 }  // namespace fides
