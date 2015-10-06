@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "shill/net/wifi_driver_hal.h"
+#include "shill/wifi/wifi_driver_hal.h"
 
 #include <base/logging.h>
 #include <hardware_brillo/wifi_driver_hal.h>
@@ -99,4 +99,3 @@ string WiFiDriverHal::SetupApModeInterface() {
 }
 
 }  // namespace shill
-

@@ -42,7 +42,7 @@
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #if defined(__BRILLO__)
-#include "shill/net/mock_wifi_driver_hal.h"
+#include "shill/wifi/mock_wifi_driver_hal.h"
 #endif  // __BRILLO
 #endif  // DISABLE_WIFI
 

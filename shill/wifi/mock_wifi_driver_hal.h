@@ -14,19 +14,18 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_NET_MOCK_WIFI_DRIVER_HAL_H_
-#define SHILL_NET_MOCK_WIFI_DRIVER_HAL_H_
+#ifndef SHILL_WIFI_MOCK_WIFI_DRIVER_HAL_H_
+#define SHILL_WIFI_MOCK_WIFI_DRIVER_HAL_H_
 
 #include <string>
 
 #include <base/macros.h>
 
-#include "shill/net/shill_export.h"
-#include "shill/net/wifi_driver_hal.h"
+#include "shill/wifi/wifi_driver_hal.h"
 
 namespace shill {
 
-class SHILL_EXPORT MockWiFiDriverHal : public WiFiDriverHal {
+class MockWiFiDriverHal : public WiFiDriverHal {
  public:
   MockWiFiDriverHal() {}
   ~MockWiFiDriverHal() override {}
@@ -40,4 +39,4 @@ class SHILL_EXPORT MockWiFiDriverHal : public WiFiDriverHal {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_MOCK_WIFI_DRIVER_HAL_H_
+#endif  // SHILL_WIFI_MOCK_WIFI_DRIVER_HAL_H_

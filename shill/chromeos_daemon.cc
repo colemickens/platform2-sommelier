@@ -41,7 +41,7 @@
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #if defined(__BRILLO__)
-#include "shill/net/wifi_driver_hal.h"
+#include "shill/wifi/wifi_driver_hal.h"
 #endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 

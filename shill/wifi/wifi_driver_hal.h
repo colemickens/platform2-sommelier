@@ -14,21 +14,19 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_NET_WIFI_DRIVER_HAL_H_
-#define SHILL_NET_WIFI_DRIVER_HAL_H_
+#ifndef SHILL_WIFI_WIFI_DRIVER_HAL_H_
+#define SHILL_WIFI_WIFI_DRIVER_HAL_H_
 
 #include <string>
 
 #include <base/lazy_instance.h>
 #include <base/macros.h>
 
-#include "shill/net/shill_export.h"
-
 namespace shill {
 
 // This is a singleton class for invoking calls to WiFi driver HAL,
 // mainly for configuring device operation mode (station vs AP mode).
-class SHILL_EXPORT WiFiDriverHal {
+class WiFiDriverHal {
  public:
   virtual ~WiFiDriverHal();
 
@@ -60,4 +58,4 @@ class SHILL_EXPORT WiFiDriverHal {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_WIFI_DRIVER_HAL_H_
+#endif  // SHILL_WIFI_WIFI_DRIVER_HAL_H_
