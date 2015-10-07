@@ -146,7 +146,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
   // Don't use DropRoot or UseCapabilities on Android since they do not work
   // yet.
   // TODO(jorgelo): call these two functions again once they are working on
-  // Android.
+  // Android, and restore expectations in unit tests.
   if (!minijail_->DropRoot(jail, user.c_str(), group.c_str())) {
     LOG(ERROR) << "Minijail failed to drop root privileges?";
     return -1;
