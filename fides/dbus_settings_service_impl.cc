@@ -4,7 +4,6 @@
 
 #include "fides/dbus_settings_service_impl.h"
 
-#include <base/json/json_writer.h>
 #include <base/logging.h>
 
 #include "fides/settings_document_manager.h"

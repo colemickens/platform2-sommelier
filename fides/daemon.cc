@@ -28,7 +28,7 @@ bool Daemon::Init() {
   std::unique_ptr<SimpleSettingsMap> settings_map(new SimpleSettingsMap);
   system_settings_document_manager_.reset(new SettingsDocumentManager(
       parser_function_, delegate_factory_function_,
-      config_paths_.system_storage.value(), std::move(settings_map),
+      config_paths_.system_storage, std::move(settings_map),
       std::move(trusted_document)));
 
   // Instantiate the DBusSettingsServiceImpl for system configuration.

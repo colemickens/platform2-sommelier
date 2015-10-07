@@ -6,7 +6,6 @@
 
 #include <set>
 
-#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 

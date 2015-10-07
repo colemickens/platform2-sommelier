@@ -17,7 +17,7 @@ namespace fides {
 namespace {
 
 // Defines the maximum length of source ids. This requirement stems from the
-// constraints on the maximum length of file sytem entries from the underlying
+// constraints on the maximum length of file system entries from the underlying
 // operating system.
 const unsigned int kMaxSourceIdLength = 255u;
 

@@ -15,7 +15,6 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
-#include <base/values.h>
 #include <gtest/gtest.h>
 
 #include "bindings/install_attributes.pb.h"

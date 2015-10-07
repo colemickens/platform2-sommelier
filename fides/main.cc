@@ -29,8 +29,8 @@ int main(int argc, char* argv[]) {
     FLAGS_trusted_document_path = kDefaultTrustedDocumentPath;
 
   fides::ConfigPaths config_paths;
-  config_paths.system_storage = base::FilePath{FLAGS_system_storage_path};
-  config_paths.trusted_document = base::FilePath{kDefaultTrustedDocumentPath};
+  config_paths.system_storage = FLAGS_system_storage_path;
+  config_paths.trusted_document = FLAGS_trusted_document_path;
 
   fides::Daemon daemon{config_paths};
   return daemon.Run();

@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <chromeos/daemons/dbus_daemon.h>
 
@@ -17,18 +16,18 @@
 #include "fides/settings_document_manager.h"
 #include "fides/source_delegate.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::DBusServiceDaemon;
+using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace fides {
 
 struct ConfigPaths {
   // Path to directory where settings blobs for system-wide configuration are
   // stored.
-  base::FilePath system_storage;
+  std::string system_storage;
 
   // Path to file containing the initial trusted document.
-  base::FilePath trusted_document;
+  std::string trusted_document;
 };
 
 class Daemon : public DBusServiceDaemon {
