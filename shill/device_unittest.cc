@@ -80,6 +80,7 @@ using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::DefaultValue;
 using ::testing::DoAll;
+using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -621,7 +622,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
   SelectService(service);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP,
                                               _,
-                                              StrEq("OnIPConfigFailure")));
+                                              HasSubstr("OnIPConfigFailure")));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   EXPECT_CALL(*ipconfig, ResetProperties());
   OnIPConfigFailed(ipconfig.get());

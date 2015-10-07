@@ -2853,7 +2853,7 @@ TEST_F(ManagerTest, Stop) {
   EXPECT_CALL(*profile.get(), UpdateWiFiProvider(_)).WillOnce(Return(true));
 #endif  // DISABLE_WIFI
   EXPECT_CALL(*profile.get(), Save()).WillOnce(Return(true));
-  EXPECT_CALL(*service.get(), Disconnect(_, StrEq("Stop"))).Times(1);
+  EXPECT_CALL(*service.get(), Disconnect(_, HasSubstr("Stop"))).Times(1);
   manager()->Stop();
   EXPECT_FALSE(manager()->power_manager());
 }

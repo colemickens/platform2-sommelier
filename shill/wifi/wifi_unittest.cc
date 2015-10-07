@@ -99,6 +99,7 @@ using std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
+using ::testing::ContainsRegex;
 using ::testing::DefaultValue;
 using ::testing::DoAll;
 using ::testing::EndsWith;
@@ -2263,9 +2264,11 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnected) {
   NiceScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(2);
-  EXPECT_CALL(log, Log(_, _,
-                       HasSubstr("DisconnectFromIfActive service"))).Times(1);
-  EXPECT_CALL(log, Log(_, _, HasSubstr("DisconnectFrom service"))).Times(1);
+  EXPECT_CALL(log, Log(_, _, ContainsRegex("DisconnectFromIfActive.*service")))
+      .Times(1);
+  EXPECT_CALL(log,
+              Log(_, _, ContainsRegex("DisconnectFrom[^a-zA-Z].*service")))
+      .Times(1);
   EXPECT_CALL(*service0, IsActive(_)).Times(0);
   InitiateDisconnectIfActive(service0);
 
@@ -2285,12 +2288,13 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceIdle) {
   NiceScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(2);
-  EXPECT_CALL(log, Log(_, _,
-                       HasSubstr("DisconnectFromIfActive service"))).Times(1);
+  EXPECT_CALL(log, Log(_, _, ContainsRegex("DisconnectFromIfActive.*service")))
+      .Times(1);
   EXPECT_CALL(*service0, IsActive(_)).WillOnce(Return(false));
   EXPECT_CALL(log, Log(_, _, HasSubstr("is not active, no need"))).Times(1);
   EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
-                       HasSubstr("In DisconnectFrom():"))).Times(0);
+                       ContainsRegex("In .*DisconnectFrom\\(.*\\):")))
+      .Times(0);
   InitiateDisconnectIfActive(service0);
 
   Mock::VerifyAndClearExpectations(&log);
@@ -2308,12 +2312,14 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnectedInError) {
   NiceScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(2);
-  EXPECT_CALL(log, Log(_, _,
-                       HasSubstr("DisconnectFromIfActive service"))).Times(1);
+  EXPECT_CALL(log, Log(_, _, ContainsRegex("DisconnectFromIfActive.*service")))
+      .Times(1);
   EXPECT_CALL(*service0, IsActive(_)).WillOnce(Return(true));
-  EXPECT_CALL(log, Log(_, _, HasSubstr("DisconnectFrom service"))).Times(1);
+  EXPECT_CALL(log,
+              Log(_, _, ContainsRegex("DisconnectFrom[^a-zA-Z].*service")))
+      .Times(1);
   EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
-                       HasSubstr("In DisconnectFrom():"))).Times(1);
+                       ContainsRegex("In .*DisconnectFrom\\(.*\\):"))).Times(1);
   InitiateDisconnectIfActive(service0);
 
   Mock::VerifyAndClearExpectations(&log);
@@ -2333,9 +2339,9 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   EXPECT_FALSE(pending_timeout.IsCancelled());
   EXPECT_EQ(service, GetPendingService());
   // Simulate a service with a wifi_ reference calling DisconnectFrom().
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
-                                              _,
-                                              StrEq("PendingTimeoutHandler")))
+  EXPECT_CALL(*service,
+              DisconnectWithFailure(Service::kFailureOutOfRange, _,
+                                    HasSubstr("PendingTimeoutHandler")))
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::ResetPendingService));
   EXPECT_CALL(*service, HasEndpoints()).Times(0);
   // DisconnectFrom() should not be called directly from WiFi.
@@ -2373,7 +2379,7 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   // the service does nothing.
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
                                               _,
-                                              StrEq("PendingTimeoutHandler")));
+                                              HasSubstr("PendingTimeoutHandler")));
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(false));
   // DisconnectFrom() should be called directly from WiFi.
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
@@ -3331,7 +3337,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP,
                                               _,
-                                              StrEq("OnIPConfigFailure")));
+                                              HasSubstr("OnIPConfigFailure")));
   ReportIPConfigFailure();
   Mock::VerifyAndClearExpectations(service.get());
 
@@ -3341,7 +3347,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
       .WillOnce(Return(false));
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP,
                                               _,
-                                              StrEq("OnIPConfigFailure")));
+                                              HasSubstr("OnIPConfigFailure")));
   ReportIPConfigFailure();
   Mock::VerifyAndClearExpectations(service.get());
 
@@ -3352,7 +3358,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   EXPECT_CALL(*service,
               DisconnectWithFailure(Service::kFailureBadPassphrase,
                                     _,
-                                    StrEq("OnIPConfigFailure")));
+                                    HasSubstr("OnIPConfigFailure")));
   ReportIPConfigFailure();
 }
 
@@ -3819,7 +3825,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
                 Return(false)));
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
                                               _,
-                                              StrEq("EAPEventTask")));
+                                              HasSubstr("EAPEventTask")));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
   MockEapCredentials* eap = new MockEapCredentials();
@@ -3834,7 +3840,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kEmptyPin));
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailurePinMissing,
                                               _,
-                                              StrEq("EAPEventTask")));
+                                              HasSubstr("EAPEventTask")));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
@@ -4450,12 +4456,12 @@ TEST_F(WiFiMainTest, InitiateScan_Idle) {
   Device::ScanType scan_type = Device::kFullScan;
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, HasSubstr("Scan [full]")));
+  EXPECT_CALL(log, Log(_, _, ContainsRegex("Scan.* \\[full\\]")));
   InitiateScan(scan_type);
 
   scan_type = Device::kProgressiveScan;
   ASSERT_TRUE(wifi()->IsIdle());
-  EXPECT_CALL(log, Log(_, _, HasSubstr("Scan [progressive]")));
+  EXPECT_CALL(log, Log(_, _, ContainsRegex("Scan.* \\[progressive\\]")));
   InitiateScan(scan_type);
 }
 
