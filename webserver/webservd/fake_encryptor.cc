@@ -12,21 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "webservd/fake_encryptor.h"
+#include "webservd/encryptor.h"
 
 #include <chromeos/data_encoding.h>
 
 namespace webservd {
 
-bool FakeEncryptor::EncryptString(const std::string& plaintext,
-                                  std::string* ciphertext) {
-  *ciphertext = chromeos::data_encoding::Base64Encode(plaintext);
-  return true;
+// Encryptor which simply base64-encodes the plaintext to get the
+// ciphertext.  Obviously, this should be used only for testing.
+class FakeEncryptor : public Encryptor {
+ public:
+  bool EncryptWithAuthentication(const std::string& plaintext,
+                                 std::string* ciphertext) override {
+    *ciphertext = chromeos::data_encoding::Base64Encode(plaintext);
+    return true;
+  }
+
+  bool DecryptWithAuthentication(const std::string& ciphertext,
+                                 std::string* plaintext) override {
+    return chromeos::data_encoding::Base64Decode(ciphertext, plaintext);
+  }
+};
+
+std::unique_ptr<Encryptor> Encryptor::CreateDefaultEncryptor() {
+  return std::unique_ptr<Encryptor>{new FakeEncryptor};
 }
 
-bool FakeEncryptor::DecryptString(const std::string& ciphertext,
-                                  std::string* plaintext) {
-  return chromeos::data_encoding::Base64Decode(ciphertext, plaintext);
-}
 
 }  // namespace webservd

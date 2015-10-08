@@ -25,7 +25,7 @@
 #include <chromeos/dbus/async_event_sequencer.h>
 
 #include "webservd/dbus_protocol_handler.h"
-#include "webservd/fake_encryptor.h"
+#include "webservd/encryptor.h"
 #include "webservd/protocol_handler.h"
 #include "webservd/utils.h"
 
@@ -64,7 +64,7 @@ chromeos::SecureBlob LoadAndValidatePrivateKey(const base::FilePath& key_file,
   if (!base::ReadFileToString(key_file, &encrypted_key_data))
     return {};
   std::string key_data;
-  if (!encryptor->DecryptString(encrypted_key_data, &key_data))
+  if (!encryptor->DecryptWithAuthentication(encrypted_key_data, &key_data))
     return {};
   chromeos::SecureBlob key{key_data};
   if (!webservd::ValidateRSAPrivateKey(key))
@@ -81,8 +81,8 @@ Server::Server(ExportedObjectManager* object_manager, const Config& config,
     : dbus_object_{new DBusObject{
           object_manager, object_manager->GetBus(),
           org::chromium::WebServer::ServerAdaptor::GetObjectPath()}},
-      // TODO(avakulenko): Use a real encryptor here. See: b/24101323
-      encryptor_{new FakeEncryptor},
+      default_encryptor_{Encryptor::CreateDefaultEncryptor()},
+      encryptor_{default_encryptor_.get()},
       config_{config},
       firewall_{std::move(firewall)} {}
 
@@ -176,7 +176,7 @@ void Server::InitTlsData() {
 
   auto cert = LoadAndValidateCertificate(certificate_file);
   chromeos::SecureBlob private_key =
-      LoadAndValidatePrivateKey(key_file, encryptor_.get());
+      LoadAndValidatePrivateKey(key_file, encryptor_);
   if (!cert || private_key.empty()) {
     // Create the X509 certificate.
     LOG(INFO) << "Generating new certificate...";
@@ -205,7 +205,8 @@ void Server::InitTlsData() {
     // Save the certificate and private key to disk.
     StoreCertificate(cert.get(), certificate_file);
     std::string encrypted_key;
-    encryptor_->EncryptString(private_key.to_string(), &encrypted_key);
+    encryptor_->EncryptWithAuthentication(private_key.to_string(),
+                                          &encrypted_key);
     base::WriteFile(key_file, encrypted_key.data(), encrypted_key.size());
   }
 

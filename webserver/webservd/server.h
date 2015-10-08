@@ -61,6 +61,12 @@ class Server final : public org::chromium::WebServer::ServerInterface,
 
   scoped_refptr<dbus::Bus> GetBus() { return dbus_object_->GetBus(); }
 
+  // Allows injection of a non-default |encryptor| (used for testing). The
+  // caller retains ownership of the pointer.
+  void SetEncryptor(Encryptor* encryptor) {
+    encryptor_ = encryptor;
+  }
+
  private:
   void CreateProtocolHandler(Config::ProtocolHandler* handler_config);
   void InitTlsData();
@@ -69,7 +75,8 @@ class Server final : public org::chromium::WebServer::ServerInterface,
 
   org::chromium::WebServer::ServerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
-  std::unique_ptr<Encryptor> encryptor_;
+  std::unique_ptr<Encryptor> default_encryptor_;
+  Encryptor* encryptor_;
 
   Config config_;
   int last_protocol_handler_index_{0};
