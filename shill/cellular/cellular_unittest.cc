@@ -1292,7 +1292,7 @@ TEST_F(CellularTest, LinkEventWontDestroyService) {
 }
 
 TEST_F(CellularTest, UseNoArpGateway) {
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, _, false))
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, false, _))
       .WillOnce(Return(dhcp_config_));
   device_->AcquireIPConfig();
 }

@@ -207,7 +207,7 @@ TEST_F(WiMaxTest, OnStatusChanged) {
 }
 
 TEST_F(WiMaxTest, UseNoArpGateway) {
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestLinkName, _, _, false))
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestLinkName, _, false, _))
       .WillOnce(Return(dhcp_config_));
   device_->AcquireIPConfig();
 }

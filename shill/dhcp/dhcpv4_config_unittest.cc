@@ -34,9 +34,11 @@
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
+#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
+#include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/testing.h"
 
@@ -50,6 +52,7 @@ using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::ContainsRegex;
+using testing::DoAll;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
@@ -61,10 +64,13 @@ namespace shill {
 namespace {
 const char kDeviceName[] = "eth0";
 const char kHostName[] = "hostname";
+const char kVendorClass[] = "vendorclass";
 const char kLeaseFileSuffix[] = "leasefilesuffix";
 const bool kArpGateway = true;
 const bool kHasHostname = true;
+const bool kHasVendorClass = true;
 const bool kHasLeaseSuffix = true;
+const char kStorageID[] = "dhcp_service_id";
 }  // namespace
 
 typedef scoped_refptr<DHCPv4Config> DHCPv4ConfigRefPtr;
@@ -78,9 +84,9 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
                                  dispatcher(),
                                  &provider_,
                                  kDeviceName,
-                                 kHostName,
                                  kLeaseFileSuffix,
                                  kArpGateway,
+                                 dhcp_props_,
                                  &metrics_)) {}
 
   virtual void SetUp() {
@@ -96,9 +102,11 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
   }
 
   DHCPv4ConfigRefPtr CreateMockMinijailConfig(const string& hostname,
+                                              const string& vendorclass,
                                               const string& lease_suffix,
                                               bool arp_gateway);
   DHCPv4ConfigRefPtr CreateRunningConfig(const string& hostname,
+                                         const string& vendorclass,
                                          const string& lease_suffix,
                                          bool arp_gateway);
   void StopRunningConfigAndExpect(DHCPv4ConfigRefPtr config,
@@ -115,6 +123,7 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
   MockProcessManager process_manager_;
   MockMetrics metrics_;
   MockDHCPProvider provider_;
+  MockDhcpProperties dhcp_props_;
   DHCPv4ConfigRefPtr config_;
 };
 
@@ -122,15 +131,35 @@ const int DHCPv4ConfigTest::kPID = 123456;
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
     const string& hostname,
+    const string& vendorclass,
     const string& lease_suffix,
     bool arp_gateway) {
+  MockStore storage;
+  DhcpProperties dhcp_props;
+  if (!hostname.empty()) {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
+        .WillOnce(DoAll(SetArgumentPointee<2>(string(kHostName)),
+                        Return(true)));
+  } else {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
+        .WillOnce(Return(false));
+  }
+  if (!vendorclass.empty()) {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
+        .WillOnce(DoAll(SetArgumentPointee<2>(string(kVendorClass)),
+                        Return(true)));
+  } else {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
+        .WillOnce(Return(false));
+  }
+  dhcp_props.Load(&storage, kStorageID);
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,
-                                             hostname,
                                              lease_suffix,
                                              arp_gateway,
+                                             dhcp_props,
                                              &metrics_));
   config->process_manager_ = &process_manager_;
 
@@ -138,14 +167,34 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
 }
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
-    const string& hostname, const string& lease_suffix, bool arp_gateway) {
+    const string& hostname, const string& vendorclass,
+    const string& lease_suffix, bool arp_gateway) {
+  MockStore storage;
+  DhcpProperties dhcp_props;
+  if (!hostname.empty()) {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
+        .WillOnce(DoAll(SetArgumentPointee<2>(string(kHostName)),
+                        Return(true)));
+  } else {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
+        .WillOnce(Return(false));
+  }
+  if (!vendorclass.empty()) {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
+        .WillOnce(DoAll(SetArgumentPointee<2>(string(kVendorClass)),
+                        Return(true)));
+  } else {
+    EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
+        .WillOnce(Return(false));
+  }
+  dhcp_props.Load(&storage, kStorageID);
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
                                              dispatcher(),
                                              &provider_,
                                              kDeviceName,
-                                             hostname,
                                              lease_suffix,
                                              arp_gateway,
+                                             dhcp_props,
                                              &metrics_));
   config->process_manager_ = &process_manager_;
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
@@ -153,6 +202,8 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
   EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config)));
   EXPECT_TRUE(config->Start());
   EXPECT_EQ(kPID, config->pid_);
+  EXPECT_EQ(config->hostname_, hostname);
+  EXPECT_EQ(config->vendor_class_, vendorclass);
 
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
   config->root_ = temp_dir_.path();
@@ -322,7 +373,11 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   EXPECT_EQ(577, properties.mtu);
 }
 
-MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
+MATCHER_P4(IsDHCPCDArgs,
+           has_hostname,
+           has_vendorclass,
+           has_arp_gateway,
+           has_lease_suffix, "") {
   if (arg[0] != "-B" ||
       arg[1] != "-q" ||
       arg[2] != "-4") {
@@ -333,6 +388,14 @@ MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
   if (has_hostname) {
     if (arg[end_offset] != "-h" ||
         arg[end_offset + 1] != kHostName) {
+      return false;
+    }
+    end_offset += 2;
+  }
+
+  if (has_vendorclass){
+    if (arg[end_offset] != "-i" ||
+        arg[end_offset + 1] != kVendorClass) {
       return false;
     }
     end_offset += 2;
@@ -352,9 +415,11 @@ MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
 }
 
 TEST_F(DHCPv4ConfigTest, StartWithHostname) {
+  config_->hostname_ = kHostName;
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _,
                                      IsDHCPCDArgs(kHasHostname,
+                                                  !kHasVendorClass,
                                                   kArpGateway,
                                                   kHasLeaseSuffix), _, _, _, _))
       .WillOnce(Return(-1));
@@ -363,24 +428,72 @@ TEST_F(DHCPv4ConfigTest, StartWithHostname) {
 
 TEST_F(DHCPv4ConfigTest, StartWithoutHostname) {
   DHCPv4ConfigRefPtr config = CreateMockMinijailConfig("",
+                                                       "",
                                                        kLeaseFileSuffix,
                                                        kArpGateway);
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _,
                                      IsDHCPCDArgs(!kHasHostname,
+                                                  !kHasVendorClass,
                                                   kArpGateway,
                                                   kHasLeaseSuffix), _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config));
 }
 
+TEST_F(DHCPv4ConfigTest, StartWithEmptyHostname) {
+  DHCPv4ConfigRefPtr config = CreateMockMinijailConfig("",
+                                                       "",
+                                                       kLeaseFileSuffix,
+                                                       kArpGateway);
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _,
+                                     IsDHCPCDArgs(!kHasHostname,
+                                                  !kHasVendorClass,
+                                                  kArpGateway,
+                                                  kHasLeaseSuffix), _, _, _, _))
+      .WillOnce(Return(-1));
+  EXPECT_FALSE(StartInstance(config));
+}
+
+TEST_F(DHCPv4ConfigTest, StartWithVendorClass) {
+  config_->hostname_ = kHostName;
+  config_->vendor_class_ = kVendorClass;
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _,
+                                     IsDHCPCDArgs(kHasHostname,
+                                                  kHasVendorClass,
+                                                  kArpGateway,
+                                                  kHasLeaseSuffix), _, _, _, _))
+      .WillOnce(Return(-1));
+  EXPECT_FALSE(StartInstance(config_));
+}
+
+TEST_F(DHCPv4ConfigTest, StartWithoutVendorClass) {
+  DHCPv4ConfigRefPtr config = CreateMockMinijailConfig(kHostName,
+                                                       "",
+                                                       kLeaseFileSuffix,
+                                                       kArpGateway);
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _,
+                                     IsDHCPCDArgs(kHasHostname,
+                                                  !kHasVendorClass,
+                                                  kArpGateway,
+                                                  kHasLeaseSuffix), _, _, _, _))
+      .WillOnce(Return(-1));
+  EXPECT_FALSE(StartInstance(config));
+}
+
+
 TEST_F(DHCPv4ConfigTest, StartWithoutArpGateway) {
   DHCPv4ConfigRefPtr config = CreateMockMinijailConfig(kHostName,
+                                                       "",
                                                        kLeaseFileSuffix,
                                                        !kArpGateway);
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _,
                                      IsDHCPCDArgs(kHasHostname,
+                                                  !kHasVendorClass,
                                                   !kArpGateway,
                                                   kHasLeaseSuffix), _, _, _, _))
       .WillOnce(Return(-1));
@@ -539,13 +652,14 @@ TEST_F(DHCPv4ConfigTest, ProcessStatusChangeSingal) {
 
 TEST_F(DHCPv4ConfigTest, StartSuccessEphemeral) {
   DHCPv4ConfigRefPtr config =
-      CreateRunningConfig(kHostName, kDeviceName, kArpGateway);
+      CreateRunningConfig(kHostName, kVendorClass, kDeviceName, kArpGateway);
   StopRunningConfigAndExpect(config, false);
 }
 
 TEST_F(DHCPv4ConfigTest, StartSuccessPersistent) {
   DHCPv4ConfigRefPtr config =
-      CreateRunningConfig(kHostName, kLeaseFileSuffix, kArpGateway);
+      CreateRunningConfig(kHostName, kVendorClass,
+                          kLeaseFileSuffix, kArpGateway);
   StopRunningConfigAndExpect(config, true);
 }
 

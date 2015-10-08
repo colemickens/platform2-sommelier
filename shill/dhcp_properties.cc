@@ -45,16 +45,17 @@ namespace {
 // Prefix used for DhcpProperties in the PropertyStore.
 const char kStoragePrefix[] = "DHCPProperty.";
 
-const char kHostnameProp[] = "Hostname";
-const char kVendorClassProp[] = "VendorClass";
-
-const char* kPropertyNames[] = {kHostnameProp, kVendorClassProp};
+const char* kPropertyNames[] = {DhcpProperties::kHostnameProperty,
+                                DhcpProperties::kVendorClassProperty};
 
 std::string GetFullPropertyName(const std::string& property_name) {
   return kStoragePrefix + property_name;
 }
 
 }  // namespace
+
+const char DhcpProperties::kHostnameProperty[] = "Hostname";
+const char DhcpProperties::kVendorClassProperty[] = "VendorClass";
 
 DhcpProperties::DhcpProperties() {}
 
@@ -120,7 +121,8 @@ std::unique_ptr<DhcpProperties> DhcpProperties::Combine(
   return to_return;
 }
 
-bool DhcpProperties::GetValueForProperty(const string& name, string* value) {
+bool DhcpProperties::GetValueForProperty(const string& name,
+                                         string* value) const {
   if (properties_.ContainsString(name)) {
     *value = properties_.GetString(name);
     return true;

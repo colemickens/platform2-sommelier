@@ -24,6 +24,7 @@
 
 #include "shill/dhcp/dhcp_config.h"
 #include "shill/dhcp/dhcp_provider.h"
+#include "shill/dhcp_properties.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -37,9 +38,9 @@ class MockDHCPProvider : public DHCPProvider {
                void(ControlInterface*, EventDispatcher*, Metrics*));
   MOCK_METHOD4(CreateIPv4Config,
                DHCPConfigRefPtr(const std::string& device_name,
-                                const std::string& host_name,
                                 const std::string& storage_identifier,
-                                bool arp_gateway));
+                                bool arp_gateway,
+                                const DhcpProperties& dhcp_props));
   MOCK_METHOD2(CreateIPv6Config,
                DHCPConfigRefPtr(const std::string& device_name,
                                 const std::string& storage_identifier));

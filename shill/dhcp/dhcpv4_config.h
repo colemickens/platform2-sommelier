@@ -23,25 +23,27 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dhcp/dhcp_config.h"
+#include "shill/dhcp_properties.h"
 
 namespace shill {
 
 class Metrics;
 
 // DHCPv4 client instance.
-//
-// If |request_hostname| is non-empty, it asks the DHCP server to register
-// this hostname on our behalf, for purposes of administration or creating
-// a dynamic DNS entry.
+// |dhcp_props| may contain values for the request hostname and vendor class.
+// If these properties have non-empty values, they will be used in the DHCP
+// request.  If the Hostname property in dhcp_props is non-empty, it asks the
+// DHCP server to register this hostname on our behalf, for purposes of
+// administration or creating a dynamic DNS entry.
 class DHCPv4Config : public DHCPConfig {
  public:
   DHCPv4Config(ControlInterface* control_interface,
                EventDispatcher* dispatcher,
                DHCPProvider* provider,
                const std::string& device_name,
-               const std::string& request_hostname,
                const std::string& lease_file_suffix,
                bool arp_gateway,
+               const DhcpProperties& dhcp_props,
                Metrics* metrics);
   ~DHCPv4Config() override;
 
@@ -71,9 +73,12 @@ class DHCPv4Config : public DHCPConfig {
   FRIEND_TEST(DHCPv4ConfigTest, ParseConfiguration);
   FRIEND_TEST(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU);
   FRIEND_TEST(DHCPv4ConfigTest, ProcessStatusChangeSingal);
+  FRIEND_TEST(DHCPv4ConfigTest, StartWithEmptyHostname);
   FRIEND_TEST(DHCPv4ConfigTest, StartWithHostname);
+  FRIEND_TEST(DHCPv4ConfigTest, StartWithVendorClass);
   FRIEND_TEST(DHCPv4ConfigTest, StartWithoutArpGateway);
   FRIEND_TEST(DHCPv4ConfigTest, StartWithoutHostname);
+  FRIEND_TEST(DHCPv4ConfigTest, StartWithoutVendorClass);
 
   static const char kDHCPCDPathFormatPID[];
 
@@ -135,16 +140,20 @@ class DHCPv4Config : public DHCPConfig {
   // empty string on failure.
   static std::string GetIPv4AddressString(unsigned int address);
 
-  // Hostname to be used in the request.  This will be passed to the DHCP
-  // server in the request.
-  std::string request_hostname_;
-
   // Specifies whether to supply an argument to the DHCP client to validate
   // the acquired IP address using an ARP request to the gateway IP address.
   bool arp_gateway_;
 
   // Whether it is valid to retain the lease acquired via gateway ARP.
   bool is_gateway_arp_active_;
+
+  // Hostname to be used in DHCP request.  Set from DhcpProperties in
+  // constructor when present.
+  std::string hostname_;
+
+  // Vendor Class to be used in DHCP request.  Set from DhcpProperties in
+  // constructor when present.
+  std::string vendor_class_;
 
   Metrics* metrics_;
 
