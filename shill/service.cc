@@ -35,6 +35,7 @@
 
 #include "shill/connection.h"
 #include "shill/control_interface.h"
+#include "shill/dhcp_properties.h"
 #include "shill/error.h"
 #include "shill/http_proxy.h"
 #include "shill/logging.h"
@@ -164,6 +165,7 @@ Service::Service(ControlInterface* control_interface,
       endpoint_auth_(false),
       strength_(0),
       save_credentials_(true),
+      dhcp_properties_(new DhcpProperties()),
       technology_(technology),
       failed_time_(0),
       has_ever_connected_(false),
@@ -295,6 +297,8 @@ Service::Service(ControlInterface* control_interface,
 
   IgnoreParameterForConfigure(kTypeProperty);
   IgnoreParameterForConfigure(kProfileProperty);
+
+  dhcp_properties_->InitPropertyStore(&store_);
 
   LOG(INFO) << Technology::NameFromIdentifier(technology) << " service "
             << unique_name_ << " constructed.";
@@ -562,6 +566,7 @@ bool Service::Load(StoreInterface* storage) {
   // now that the credentials have been loaded.
   storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
 
+  dhcp_properties_->Load(storage, id);
   return true;
 }
 
@@ -646,6 +651,7 @@ bool Service::Save(StoreInterface* storage) {
     eap()->Save(storage, id, save_credentials_);
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+  dhcp_properties_->Save(storage, id);
   return true;
 }
 

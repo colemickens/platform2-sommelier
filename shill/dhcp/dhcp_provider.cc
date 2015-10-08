@@ -31,6 +31,7 @@
 #ifndef DISABLE_DHCPV6
 #include "shill/dhcp/dhcpv6_config.h"
 #endif
+#include "shill/dhcp_properties.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
@@ -100,17 +101,17 @@ void DHCPProvider::Stop() {
 
 DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
     const string& device_name,
-    const string& host_name,
     const string& lease_file_suffix,
-    bool arp_gateway) {
+    bool arp_gateway,
+    const DhcpProperties& dhcp_props) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
   return new DHCPv4Config(control_interface_,
                           dispatcher_,
                           this,
                           device_name,
-                          host_name,
                           lease_file_suffix,
                           arp_gateway,
+                          dhcp_props,
                           metrics_);
 }
 

@@ -38,6 +38,7 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -479,8 +480,11 @@ TEST_F(ServiceTest, Load) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap, Load(&storage, storage_id_));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  EXPECT_TRUE(service->Load(&storage));
+  MockDhcpProperties* dhcp_props = new MockDhcpProperties();
+  service->dhcp_properties_.reset(dhcp_props);
+  EXPECT_CALL(*dhcp_props, Load(&storage, storage_id_));
 
+  EXPECT_TRUE(service->Load(&storage));
   EXPECT_EQ(kCheckPortal, service->check_portal_);
   EXPECT_EQ(kGUID, service->guid_);
   EXPECT_TRUE(service->has_ever_connected_);
@@ -491,6 +495,7 @@ TEST_F(ServiceTest, Load) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   Mock::VerifyAndClearExpectations(eap_);
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+  Mock::VerifyAndClearExpectations(dhcp_props);
 
   // Assure that parameters are set to default if not available in the profile.
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
@@ -503,8 +508,9 @@ TEST_F(ServiceTest, Load) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap, Load(&storage, storage_id_));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  EXPECT_TRUE(service->Load(&storage));
+  EXPECT_CALL(*dhcp_props, Load(&storage, storage_id_));
 
+  EXPECT_TRUE(service->Load(&storage));
   EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
   EXPECT_EQ("", service->guid_);
   EXPECT_EQ("", service->proxy_config_);
@@ -537,6 +543,10 @@ TEST_F(ServiceTest, LoadAutoConnect) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Load(&storage, storage_id_)).Times(AnyNumber());
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
+  std::unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
+  EXPECT_CALL(*dhcp_props.get(), Load(&storage, storage_id_)).Times(AnyNumber());
+  service_->dhcp_properties_ = std::move(dhcp_props);
 
   // Three of each expectation so we can test Favorite == unset, false, true.
   EXPECT_CALL(storage, GetBool(storage_id_, Service::kStorageAutoConnect, _))
@@ -660,6 +670,9 @@ TEST_F(ServiceTest, Save) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+  std::unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
+  EXPECT_CALL(*dhcp_props.get(), Save(&storage, storage_id_));
+  service_->dhcp_properties_ = std::move(dhcp_props);
   EXPECT_TRUE(service_->Save(&storage));
 }
 
