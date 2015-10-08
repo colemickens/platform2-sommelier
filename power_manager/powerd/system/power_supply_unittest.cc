@@ -31,6 +31,7 @@ namespace {
 const char kAcType[] = "Mains";
 const char kBatteryType[] = "Battery";
 const char kUsbType[] = "USB";
+const char kUsbPdDrpType[] = "USB_PD_DRP";
 const char kUnknownType[] = "Unknown";
 
 const char kCharging[] = "Charging";
@@ -348,7 +349,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_TRUE(status.supports_dual_role_devices);
 
   // Start charging from the first power source at a high level.
-  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "type", kUsbPdDrpType);
   WriteValue(line1_dir, "online", "1");
   WriteValue(line1_dir, "status", kCharging);
   WriteDoubleValue(line1_dir, "current_max", kCurrentMax);
@@ -375,7 +376,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteValue(line1_dir, "type", kUnknownType);
   WriteValue(line1_dir, "online", "0");
   WriteValue(line1_dir, "status", kNotCharging);
-  WriteValue(line2_dir, "type", kUsbType);
+  WriteValue(line2_dir, "type", kUsbPdDrpType);
   WriteValue(line2_dir, "online", "1");
   WriteValue(line2_dir, "status", kCharging);
   const double kCurrentFactor = 0.5;
@@ -398,7 +399,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
 
   // Now discharge from the first power source (while still charging from the
   // second one) and check that it's ignored.
-  WriteValue(line1_dir, "type", kUsbType);
+  WriteValue(line1_dir, "type", kUsbPdDrpType);
   WriteValue(line1_dir, "online", "1");
   WriteValue(line1_dir, "status", kDischarging);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -452,13 +453,28 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_FALSE(power_supply_->SetPowerSource(line1_dir.value()));
 
   // If the kernel reports a dedicated charger by using the "Mains" type rather
-  // than "USB", powerd should report it as being active by default.
+  // than "USB_PD_DRP", powerd should report it as being active by default.
   WriteValue(line2_dir, "type", kAcType);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
   ASSERT_EQ(2u, status.available_external_power_sources.size());
   EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
+
+  // If the kernel reports a USB charger of any type that is not "USB_PD_DRP"
+  // powerd should report it as being active by default.
+  const char* kUsbTypes[] = { "USB", "USB_DCP", "USB_CDP", "USB_ACA",
+                              "USB_C", "USB_PD" };
+  for (size_t i = 0; i < arraysize(kUsbTypes); ++i) {
+    const char* kType = kUsbTypes[i];
+    SCOPED_TRACE(kType);
+    WriteValue(line2_dir, "type", kType);
+    ASSERT_TRUE(UpdateStatus(&status));
+    EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
+    ASSERT_EQ(2u, status.available_external_power_sources.size());
+    EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+    EXPECT_EQ(kLine2Id, status.external_power_source_id);
+  }
 
   // The maximum power should be checked even for dedicated chargers.
   WriteDoubleValue(line2_dir, "current_max", kCurrentMax);

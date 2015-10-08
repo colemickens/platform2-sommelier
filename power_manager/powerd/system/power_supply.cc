@@ -90,11 +90,18 @@ double ReadScaledDouble(const base::FilePath& directory,
 }
 
 // Returns true if |type|, a power supply type read from a "type" file in
-// sysfs, indicates USB.
-bool IsUsbChargerType(const std::string& type) {
+// sysfs, indicates USB BC1.2 types.
+bool IsLowPowerUsbChargerType(const std::string& type) {
   // These are defined in drivers/power/power_supply_sysfs.c in the kernel.
   return type == "USB" || type == "USB_DCP" || type == "USB_CDP" ||
       type == "USB_ACA";
+}
+
+// Returns true if |type|, a power supply type read from a "type" file in
+// sysfs, indicates USB_PD_DRP, meaning a USB Power Delivery Dual Role Port.
+bool IsDualRoleType(const std::string& type) {
+  // This is defined in drivers/power/power_supply_sysfs.c in the kernel.
+  return type == "USB_PD_DRP";
 }
 
 // Returns true if |path|, a sysfs directory, corresponds to an external
@@ -660,26 +667,29 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   if (is_dual_role_port)
     status->supports_dual_role_devices = true;
 
-  // If "online" is false, nothing is connected.
-  int64_t online_value = 0;
-  if (!ReadInt64(path, "online", &online_value) || !online_value)
-    return;
-
   // An "Unknown" type indicates a sink-only device that can't supply power.
   std::string type;
   ReadAndTrimString(path, "type", &type);
   if (type == kUnknownType)
     return;
 
+  // If "online" is false, nothing is connected unless it is USB_PD_DRP,
+  // in which case, an online of 0 indicates connected to a Dual Role device
+  // but not sinking power.
+  int64_t online_value = 0;
+  if ((!ReadInt64(path, "online", &online_value) || !online_value) &&
+      !IsDualRoleType(type))
+    return;
+
   // Okay, this is a potential power source. Add it to the list.
   const std::string id = GetIdForPath(path);
 
-  // Non-USB PD devices are always active by default. The USB PD kernel driver
-  // uses "Mains" for source-only devices (i.e. dedicated chargers) and "USB"
-  // for dual-role devices (which aren't active by default). See
+  // Chargers connect to non-dual-role Chromebook systems are always active
+  // by default. The USB PD kernel driver will report "USB_PD_DRP" for
+  // dual-role devices (which aren't active by default). See
   // http://crbug.com/459412 for additional discussion.
-  const bool is_usb_type = IsUsbChargerType(type);
-  const bool active_by_default = !is_dual_role_port || !is_usb_type;
+  const bool active_by_default = !is_dual_role_port ||
+                                 !IsDualRoleType(type);
 
   const auto port_it = port_names_.find(path.BaseName().value());
   const PowerSupplyProperties::PowerSource::Port port =
@@ -726,9 +736,9 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   const bool max_power_is_less_than_ac_min = max_power > 0.0 &&
       max_power < usb_min_ac_watts_;
 
-  if (!is_dual_role_port && is_usb_type) {
+  if (!is_dual_role_port && IsLowPowerUsbChargerType(type)) {
     // On spring, report all non-official chargers (which are reported as type
-    // USB rather than Mains) as being low-power.
+    // USB* rather than Mains) as being low-power.
     status->external_power = PowerSupplyProperties_ExternalPower_USB;
   } else if (is_dual_role_port && max_power_is_less_than_ac_min) {
     // For dual-role USB PD devices, check whether the maximum supported power
