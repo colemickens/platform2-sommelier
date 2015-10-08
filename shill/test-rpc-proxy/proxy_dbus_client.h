@@ -38,21 +38,13 @@
 #endif  // __ANDROID__
 #include <shill/dbus-proxies.h>
 
-typedef std::shared_ptr<org::chromium::flimflam::ManagerProxy> ManagerProxyPtr;
-typedef std::shared_ptr<org::chromium::flimflam::DeviceProxy> DeviceProxyPtr;
-typedef std::shared_ptr<org::chromium::flimflam::ServiceProxy> ServiceProxyPtr;
-typedef std::shared_ptr<org::chromium::flimflam::ProfileProxy> ProfileProxyPtr;
+using ManagerProxy = org::chromium::flimflam::ManagerProxy;
+using DeviceProxy = org::chromium::flimflam::DeviceProxy;
+using ServiceProxy = org::chromium::flimflam::ServiceProxy;
+using ProfileProxy = org::chromium::flimflam::ProfileProxy;
 
 class ProxyDbusClient {
  public:
-  ProxyDbusClient(scoped_refptr<dbus::Bus> bus) :
-    dbus_bus_(bus),
-    weak_ptr_factory_(this),
-    wait_for_change_property_name_("") {
-    shill_manager_proxy_.reset(
-        new org::chromium::flimflam::ManagerProxy(dbus_bus_));
-  }
-
   enum Technology {
     TECHNOLOGY_CELLULAR,
     TECHNOLOGY_ETHERNET,
@@ -60,80 +52,83 @@ class ProxyDbusClient {
     TECHNOLOGY_WIFI,
     TECHNOLOGY_WIMAX
   };
-
   static const char kCommonLogScopes[];
   static const int kLogLevel;
 
-  void SetLoggingForTest(Technology tech);
-  bool WaitForPropertyValueIn(ManagerProxyPtr proxy,
-                              const std::string property_name,
+  ProxyDbusClient(scoped_refptr<dbus::Bus> bus);
+  void SetLogging(Technology tech);
+  bool WaitForPropertyValueIn(ManagerProxy* proxy,
+                              const std::string& property_name,
                               const std::vector<chromeos::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any& final_value,
-                              int& time);
-  bool WaitForPropertyValueIn(DeviceProxyPtr proxy,
-                              const std::string property_name,
+                              chromeos::Any* final_value,
+                              int* elapsed_time_seconds);
+  bool WaitForPropertyValueIn(DeviceProxy* proxy,
+                              const std::string& property_name,
                               const std::vector<chromeos::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any& final_value,
-                              int& time);
-  bool WaitForPropertyValueIn(ServiceProxyPtr proxy,
-                              const std::string property_name,
+                              chromeos::Any* final_value,
+                              int* elapsed_time_seconds);
+  bool WaitForPropertyValueIn(ServiceProxy* proxy,
+                              const std::string& property_name,
                               const std::vector<chromeos::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any& final_value,
-                              int& time);
-  bool WaitForPropertyValueIn(ProfileProxyPtr proxy,
-                              const std::string property_name,
+                              chromeos::Any* final_value,
+                              int* elapsed_time_seconds);
+  bool WaitForPropertyValueIn(ProfileProxy* proxy,
+                              const std::string& property_name,
                               const std::vector<chromeos::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any& final_value,
-                              int& time);
-  DeviceProxyPtr GetDeviceProxy(std::string device_path);
-  ServiceProxyPtr GetServiceProxy(std::string service_path);
-  ProfileProxyPtr GetProfileProxy(std::string profile_path);
-  std::vector<DeviceProxyPtr> GetDeviceProxies();
-  std::vector<ServiceProxyPtr> GetServiceProxies();
-  std::vector<ProfileProxyPtr> GetProfileProxies();
-  ProfileProxyPtr GetActiveProfileProxy();
-  DeviceProxyPtr GetMatchingDeviceProxy(chromeos::VariantDictionary& params);
-  ServiceProxyPtr GetMatchingServiceProxy(chromeos::VariantDictionary& params);
-  ServiceProxyPtr ConfigureService(chromeos::VariantDictionary& config);
-  ServiceProxyPtr ConfigureServiceByGuid(std::string guid,
-                                         chromeos::VariantDictionary& config);
-  bool ConnectService(ServiceProxyPtr proxy, int timeout_seconds);
-  bool DisconnectService(ServiceProxyPtr proxy, int timeout_seconds);
-  bool CreateProfile(std::string profile_name);
-  bool RemoveProfile(std::string profile_name);
-  bool PushProfile(std::string profile_name);
-  bool PopProfile(std::string profile_name);
+                              chromeos::Any* final_value,
+                              int* elapsed_time_seconds);
+  std::unique_ptr<DeviceProxy> GetDeviceProxy(const std::string& device_path);
+  std::unique_ptr<ServiceProxy> GetServiceProxy(const std::string& service_path);
+  std::unique_ptr<ProfileProxy> GetProfileProxy(const std::string& profile_path);
+  std::vector<std::unique_ptr<DeviceProxy>> GetDeviceProxies();
+  std::vector<std::unique_ptr<ServiceProxy>> GetServiceProxies();
+  std::vector<std::unique_ptr<ProfileProxy>> GetProfileProxies();
+  std::unique_ptr<ProfileProxy> GetActiveProfileProxy();
+  std::unique_ptr<DeviceProxy> GetMatchingDeviceProxy(
+      const chromeos::VariantDictionary& params);
+  std::unique_ptr<ServiceProxy> GetMatchingServiceProxy(
+      const chromeos::VariantDictionary& params);
+  std::unique_ptr<ServiceProxy> ConfigureService(
+      const chromeos::VariantDictionary& config);
+  std::unique_ptr<ServiceProxy> ConfigureServiceByGuid(
+      const std::string& guid,
+      const chromeos::VariantDictionary& config);
+  bool ConnectService(ServiceProxy* proxy, int timeout_seconds);
+  bool DisconnectService(ServiceProxy* proxy, int timeout_seconds);
+  bool CreateProfile(const std::string& profile_name);
+  bool RemoveProfile(const std::string& profile_name);
+  bool PushProfile(const std::string& profile_name);
+  bool PopProfile(const std::string& profile_name);
   bool PopAnyProfile();
 
  private:
-  scoped_refptr<dbus::Bus> dbus_bus_;
-  base::WeakPtrFactory<ProxyDbusClient> weak_ptr_factory_;
-  std::string wait_for_change_property_name_;
-  ManagerProxyPtr shill_manager_proxy_;
-
-  bool GetManagerProperty(const std::string property_name,
-                          chromeos::Any& property_value);
+  bool GetManagerProperty(const std::string& property_name,
+                          chromeos::Any* property_value);
   void PropertyChangedSignalCallback(const std::string& property_name,
                                      const chromeos::Any& property_value);
   void PropertyChangedOnConnectedCallback(const std::string& interface,
                                           const std::string& signal_name,
                                           bool success);
-  bool ComparePropertyValue(chromeos::VariantDictionary& properties,
-                            const std::string property_name,
+  bool ComparePropertyValue(const chromeos::VariantDictionary& properties,
+                            const std::string& property_name,
                             const std::vector<chromeos::Any>& expected_values,
-                            chromeos::Any& final_value);
-  bool WaitForPropertyValueIn(chromeos::VariantDictionary& properties,
-                              const std::string property_name,
+                            chromeos::Any* final_value);
+  bool WaitForPropertyValueIn(const chromeos::VariantDictionary& properties,
+                              const std::string& property_name,
                               const std::vector<chromeos::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any& final_value,
-                              int& time);
+                              chromeos::Any* final_value,
+                              int* elapsed_time_seconds);
   std::string GetActiveProfilePath();
+  bool SetLogging(int level, const std::string& tags);
 
-  bool SetLogging(int level, std::string& tags);
+  scoped_refptr<dbus::Bus> dbus_bus_;
+  base::WeakPtrFactory<ProxyDbusClient> weak_ptr_factory_;
+  std::string wait_for_change_property_name_;
+  std::unique_ptr<ManagerProxy> shill_manager_proxy_;
 };
 #endif //PROXY_DBUS_CLIENT_H

@@ -21,9 +21,17 @@ const char ProxyDbusClient::kCommonLogScopes[] =
   "connection+dbus+device+link+manager+portal+service";
 const int ProxyDbusClient::kLogLevel = -4;
 
+ProxyDbusClient::ProxyDbusClient(
+    scoped_refptr<dbus::Bus> bus)
+  : dbus_bus_(bus),
+    weak_ptr_factory_(this),
+    wait_for_change_property_name_(""),
+    shill_manager_proxy_(new ManagerProxy(dbus_bus_)) {
+}
+
 bool ProxyDbusClient::GetManagerProperty(
-    const std::string property_name,
-    chromeos::Any& property_value) {
+    const std::string& property_name,
+    chromeos::Any* property_value) {
   chromeos::VariantDictionary props;
   chromeos::ErrorPtr error;
   if (!shill_manager_proxy_->GetProperties(&props, &error)) {
@@ -32,7 +40,7 @@ bool ProxyDbusClient::GetManagerProperty(
   if (props.find(property_name) == props.end()) {
     return false;
   }
-  property_value = props[property_name];
+  *property_value = props[property_name];
   return true;
 }
 
@@ -52,16 +60,17 @@ void ProxyDbusClient::PropertyChangedOnConnectedCallback(
 }
 
 bool ProxyDbusClient::ComparePropertyValue(
-    chromeos::VariantDictionary& properties,
-    const std::string property_name,
+    const chromeos::VariantDictionary& properties,
+    const std::string& property_name,
     const std::vector<chromeos::Any>& expected_values,
-    chromeos::Any& final_value) {
-  if (properties.find(property_name) == properties.end()) {
+    chromeos::Any* final_value) {
+  auto it = properties.find(property_name);
+  if (it == properties.end()) {
     return false;
   }
-  final_value = properties[property_name];
-  for (auto const& value : expected_values) {
-    if (value == final_value) {
+  *final_value = it->second;
+  for (const auto& value : expected_values) {
+    if (value == *final_value) {
       return true;
     }
   }
@@ -69,12 +78,12 @@ bool ProxyDbusClient::ComparePropertyValue(
 }
 
 bool ProxyDbusClient::WaitForPropertyValueIn(
-    chromeos::VariantDictionary& properties,
-    const std::string property_name,
+    const chromeos::VariantDictionary& properties,
+    const std::string& property_name,
     const std::vector<chromeos::Any>& expected_values,
     const int timeout_seconds,
-    chromeos::Any& final_value,
-    int& duration) {
+    chromeos::Any* final_value,
+    int* elapsed_time_seconds) {
   bool is_success = false;
   time_t start(time(NULL));
 
@@ -88,19 +97,19 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
 
  end:
   time_t end(time(NULL));
-  duration = difftime(start, end);
+  *elapsed_time_seconds = end - start;
   return is_success;
 }
 
 std::string ProxyDbusClient::GetActiveProfilePath() {
   chromeos::Any property_value;
-  if (!GetManagerProperty(shill::kActiveProfileProperty, property_value)) {
+  if (!GetManagerProperty(shill::kActiveProfileProperty, &property_value)) {
     return std::string();
   }
   return property_value.Get<std::string>();
 }
 
-bool ProxyDbusClient::SetLogging(int level, std::string& tags) {
+bool ProxyDbusClient::SetLogging(int level, const std::string& tags) {
   bool is_success = true;
   chromeos::ErrorPtr error;
   is_success &= shill_manager_proxy_->SetDebugLevel(level, &error);
@@ -108,7 +117,7 @@ bool ProxyDbusClient::SetLogging(int level, std::string& tags) {
   return is_success;
 }
 
-void ProxyDbusClient::SetLoggingForTest(Technology tech) {
+void ProxyDbusClient::SetLogging(Technology tech) {
   std::string log_scopes(kCommonLogScopes);
   switch (tech) {
     case TECHNOLOGY_CELLULAR:
@@ -131,12 +140,12 @@ void ProxyDbusClient::SetLoggingForTest(Technology tech) {
 }
 
 bool ProxyDbusClient::WaitForPropertyValueIn(
-    ManagerProxyPtr proxy,
-    const std::string property_name,
+    ManagerProxy* proxy,
+    const std::string& property_name,
     const std::vector<chromeos::Any>& expected_values,
     const int timeout_seconds,
-    chromeos::Any& final_value,
-    int& duration) {
+    chromeos::Any* final_value,
+    int* elapsed_time_seconds) {
   proxy->RegisterPropertyChangedSignalHandler(
        base::Bind(&ProxyDbusClient::PropertyChangedSignalCallback,
                    weak_ptr_factory_.GetWeakPtr()),
@@ -149,16 +158,16 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
   }
   return WaitForPropertyValueIn(
       props, property_name, expected_values, timeout_seconds,
-      final_value, duration);
+      final_value, elapsed_time_seconds);
 }
 
 bool ProxyDbusClient::WaitForPropertyValueIn(
-    DeviceProxyPtr proxy,
-    const std::string property_name,
+    DeviceProxy* proxy,
+    const std::string& property_name,
     const std::vector<chromeos::Any>& expected_values,
     const int timeout_seconds,
-    chromeos::Any& final_value,
-    int& duration) {
+    chromeos::Any* final_value,
+    int* elapsed_time_seconds) {
   proxy->RegisterPropertyChangedSignalHandler(
        base::Bind(&ProxyDbusClient::PropertyChangedSignalCallback,
                    weak_ptr_factory_.GetWeakPtr()),
@@ -171,16 +180,16 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
   }
   return WaitForPropertyValueIn(
       props, property_name, expected_values, timeout_seconds,
-      final_value, duration);
+      final_value, elapsed_time_seconds);
 }
 
 bool ProxyDbusClient::WaitForPropertyValueIn(
-    ServiceProxyPtr proxy,
-    const std::string property_name,
+    ServiceProxy* proxy,
+    const std::string& property_name,
     const std::vector<chromeos::Any>& expected_values,
     const int timeout_seconds,
-    chromeos::Any& final_value,
-    int& duration) {
+    chromeos::Any* final_value,
+    int* elapsed_time_seconds) {
   proxy->RegisterPropertyChangedSignalHandler(
        base::Bind(&ProxyDbusClient::PropertyChangedSignalCallback,
                    weak_ptr_factory_.GetWeakPtr()),
@@ -193,15 +202,15 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
   }
   return WaitForPropertyValueIn(
       props, property_name, expected_values, timeout_seconds,
-      final_value, duration);
+      final_value, elapsed_time_seconds);
 }
 bool ProxyDbusClient::WaitForPropertyValueIn(
-    ProfileProxyPtr proxy,
-    const std::string property_name,
+    ProfileProxy* proxy,
+    const std::string& property_name,
     const std::vector<chromeos::Any>& expected_values,
     const int timeout_seconds,
-    chromeos::Any& final_value,
-    int& duration) {
+    chromeos::Any* final_value,
+    int* elapsed_time_seconds) {
   proxy->RegisterPropertyChangedSignalHandler(
        base::Bind(&ProxyDbusClient::PropertyChangedSignalCallback,
                    weak_ptr_factory_.GetWeakPtr()),
@@ -214,110 +223,108 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
   }
   return WaitForPropertyValueIn(
       props, property_name, expected_values, timeout_seconds,
-      final_value, duration);
+      final_value, elapsed_time_seconds);
 }
 
-DeviceProxyPtr ProxyDbusClient::GetDeviceProxy(std::string device_path) {
+std::unique_ptr<DeviceProxy> ProxyDbusClient::GetDeviceProxy(
+    const std::string& device_path) {
   dbus::ObjectPath object_path(device_path);
-  return DeviceProxyPtr(
-      new org::chromium::flimflam::DeviceProxy(dbus_bus_, object_path));
+  return std::unique_ptr<DeviceProxy>(new DeviceProxy(dbus_bus_, object_path));
 }
 
-ServiceProxyPtr ProxyDbusClient::GetServiceProxy(std::string service_path) {
+std::unique_ptr<ServiceProxy> ProxyDbusClient::GetServiceProxy(
+    const std::string& service_path) {
   dbus::ObjectPath object_path(service_path);
-  return ServiceProxyPtr(
-      new org::chromium::flimflam::ServiceProxy(dbus_bus_, object_path));
+  return std::unique_ptr<ServiceProxy>(new ServiceProxy(dbus_bus_, object_path));
 }
 
-ProfileProxyPtr ProxyDbusClient::GetProfileProxy(std::string profile_path) {
+std::unique_ptr<ProfileProxy> ProxyDbusClient::GetProfileProxy(
+    const std::string& profile_path) {
   dbus::ObjectPath object_path(profile_path);
-  return ProfileProxyPtr(
-      new org::chromium::flimflam::ProfileProxy(dbus_bus_, object_path));
+  return std::unique_ptr<ProfileProxy>(new ProfileProxy(dbus_bus_, object_path));
 }
 
-std::vector<DeviceProxyPtr> ProxyDbusClient::GetDeviceProxies() {
+std::vector<std::unique_ptr<DeviceProxy>> ProxyDbusClient::GetDeviceProxies() {
   chromeos::Any property_value;
-  if (!GetManagerProperty(shill::kDevicesProperty, property_value)) {
-    return std::vector<DeviceProxyPtr>();
+  if (!GetManagerProperty(shill::kDevicesProperty, &property_value)) {
+    return std::vector<std::unique_ptr<DeviceProxy>>();
   }
   std::vector<std::string> device_paths =
     property_value.Get<std::vector<std::string>>();
-  std::vector<DeviceProxyPtr> proxies;
+  std::vector<std::unique_ptr<DeviceProxy>> proxies;
   for (const std::string& device_path : device_paths) {
-    proxies.push_back(GetDeviceProxy(device_path));
+    proxies.emplace_back(GetDeviceProxy(device_path));
   }
   return proxies;
 }
 
-std::vector<ServiceProxyPtr> ProxyDbusClient::GetServiceProxies() {
+std::vector<std::unique_ptr<ServiceProxy>> ProxyDbusClient::GetServiceProxies() {
   chromeos::Any property_value;
-  if (!GetManagerProperty(shill::kServicesProperty, property_value)) {
-    return std::vector<ServiceProxyPtr>();
+  if (!GetManagerProperty(shill::kServicesProperty, &property_value)) {
+    return std::vector<std::unique_ptr<ServiceProxy>>();
   }
   std::vector<std::string> service_paths =
     property_value.Get<std::vector<std::string>>();
-  std::vector<ServiceProxyPtr> proxies;
+  std::vector<std::unique_ptr<ServiceProxy>> proxies;
   for (const std::string& service_path : service_paths) {
-    proxies.push_back(GetServiceProxy(service_path));
+    proxies.emplace_back(GetServiceProxy(service_path));
   }
   return proxies;
 }
 
-std::vector<ProfileProxyPtr> ProxyDbusClient::GetProfileProxies() {
+std::vector<std::unique_ptr<ProfileProxy>> ProxyDbusClient::GetProfileProxies() {
   chromeos::Any property_value;
-  if (!GetManagerProperty(shill::kProfilesProperty, property_value)) {
-    return std::vector<ProfileProxyPtr>();
+  if (!GetManagerProperty(shill::kProfilesProperty, &property_value)) {
+    return std::vector<std::unique_ptr<ProfileProxy>>();
   }
   std::vector<std::string> profile_paths =
     property_value.Get<std::vector<std::string>>();
-  std::vector<ProfileProxyPtr> proxies;
+  std::vector<std::unique_ptr<ProfileProxy>> proxies;
   for (const std::string& profile_path : profile_paths) {
-    proxies.push_back(GetProfileProxy(profile_path));
+    proxies.emplace_back(GetProfileProxy(profile_path));
   }
   return proxies;
 }
 
-ProfileProxyPtr ProxyDbusClient::GetActiveProfileProxy() {
+std::unique_ptr<ProfileProxy> ProxyDbusClient::GetActiveProfileProxy() {
   return GetProfileProxy(GetActiveProfilePath());
 }
 
-DeviceProxyPtr ProxyDbusClient::GetMatchingDeviceProxy(
-    chromeos::VariantDictionary& params) {
-  std::vector <DeviceProxyPtr> device_proxies = GetDeviceProxies();
-  for (auto device_proxy : device_proxies) {
+std::unique_ptr<DeviceProxy> ProxyDbusClient::GetMatchingDeviceProxy(
+    const chromeos::VariantDictionary& params) {
+  for (auto& device_proxy : GetDeviceProxies()) {
     chromeos::VariantDictionary props;
     chromeos::ErrorPtr error;
     if (!device_proxy->GetProperties(&props, &error)) {
       continue;
     }
     bool all_params_matched = true;
-    for (auto const& param : params) {
+    for (const auto& param : params) {
       if (props[param.first] != param.second) {
         all_params_matched = false;
         break;
       }
     }
-    if (all_params_matched == true) {
-      return device_proxy;
+    if (all_params_matched) {
+      return std::move(device_proxy);
     }
   }
   return nullptr;
 }
 
-ServiceProxyPtr ProxyDbusClient::GetMatchingServiceProxy(
-    chromeos::VariantDictionary& params) {
+std::unique_ptr<ServiceProxy> ProxyDbusClient::GetMatchingServiceProxy(
+    const chromeos::VariantDictionary& params) {
   dbus::ObjectPath service_path;
   chromeos::ErrorPtr error;
   if (!shill_manager_proxy_->GetService(
       params, &service_path, &error)) {
     return nullptr;
   }
-  return ServiceProxyPtr(
-      new org::chromium::flimflam::ServiceProxy(dbus_bus_, service_path));
+  return std::unique_ptr<ServiceProxy>(new ServiceProxy(dbus_bus_, service_path));
 }
 
-ServiceProxyPtr ProxyDbusClient::ConfigureService(
-    chromeos::VariantDictionary& config) {
+std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureService(
+    const chromeos::VariantDictionary& config) {
   dbus::ObjectPath service_path;
   chromeos::ErrorPtr error;
   if(!shill_manager_proxy_->ConfigureService(
@@ -327,9 +334,9 @@ ServiceProxyPtr ProxyDbusClient::ConfigureService(
   return GetServiceProxy(service_path.value());
 }
 
-ServiceProxyPtr ProxyDbusClient::ConfigureServiceByGuid(
-    std::string guid,
-    chromeos::VariantDictionary& config) {
+std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureServiceByGuid(
+    const std::string& guid,
+    const chromeos::VariantDictionary& config) {
   dbus::ObjectPath service_path;
   chromeos::ErrorPtr error;
   chromeos::VariantDictionary guid_config(config);
@@ -342,68 +349,60 @@ ServiceProxyPtr ProxyDbusClient::ConfigureServiceByGuid(
 }
 
 bool ProxyDbusClient::ConnectService(
-    ServiceProxyPtr proxy,
+    ServiceProxy* proxy,
     int timeout_seconds) {
   chromeos::ErrorPtr error;
   if (!proxy->Connect(&error)) {
     return false;
   }
-  int duration;
+  int elapsed_time_seconds;
   chromeos::Any final_value;
-  std::vector<chromeos::Any> expected_values;
-  expected_values.push_back(chromeos::Any("portal"));
-  expected_values.push_back(chromeos::Any("online"));
+  const std::vector<chromeos::Any> expected_values = {
+    chromeos::Any(std::string(shill::kStatePortal)),
+    chromeos::Any(std::string(shill::kStateOnline)) };
   return WaitForPropertyValueIn(
       proxy, shill::kStateProperty, expected_values,
-      timeout_seconds, final_value, duration);
+      timeout_seconds, &final_value, &elapsed_time_seconds);
 }
 
 bool ProxyDbusClient::DisconnectService(
-    ServiceProxyPtr proxy,
+    ServiceProxy* proxy,
     int timeout_seconds) {
   chromeos::ErrorPtr error;
   if (!proxy->Disconnect(&error)) {
     return false;
   }
-  int duration;
+  int elapsed_time_seconds;
   chromeos::Any final_value;
-  std::vector<chromeos::Any> expected_values;
-  expected_values.push_back(chromeos::Any("idle"));
+  const std::vector<chromeos::Any> expected_values = {
+    chromeos::Any(std::string(shill::kStateIdle)) };
   return WaitForPropertyValueIn(
       proxy, shill::kStateProperty, expected_values,
-      timeout_seconds, final_value, duration);
+      timeout_seconds, &final_value, &elapsed_time_seconds);
 }
 
-bool ProxyDbusClient::CreateProfile(std::string profile_name) {
+bool ProxyDbusClient::CreateProfile(const std::string& profile_name) {
   dbus::ObjectPath profile_path;
   chromeos::ErrorPtr error;
   return shill_manager_proxy_->CreateProfile(
-      profile_name,
-      &profile_path,
-      &error);
+      profile_name, &profile_path, &error);
 }
 
-bool ProxyDbusClient::RemoveProfile(std::string profile_name) {
+bool ProxyDbusClient::RemoveProfile(const std::string& profile_name) {
   chromeos::ErrorPtr error;
-  return shill_manager_proxy_->RemoveProfile(
-      profile_name,
-      &error);
+  return shill_manager_proxy_->RemoveProfile(profile_name, &error);
 }
 
-bool ProxyDbusClient::PushProfile(std::string profile_name) {
+bool ProxyDbusClient::PushProfile(const std::string& profile_name) {
   dbus::ObjectPath profile_path;
   chromeos::ErrorPtr error;
   return shill_manager_proxy_->PushProfile(
-      profile_name,
-      &profile_path,
-      &error);
+      profile_name, &profile_path, &error);
 }
 
-bool ProxyDbusClient::PopProfile(std::string profile_name) {
+bool ProxyDbusClient::PopProfile(const std::string& profile_name) {
   chromeos::ErrorPtr error;
-  return shill_manager_proxy_->PopProfile(
-      profile_name,
-      &error);
+  return shill_manager_proxy_->PopProfile(profile_name, &error);
 }
 
 bool ProxyDbusClient::PopAnyProfile() {
