@@ -75,14 +75,6 @@ using std::set;
 using std::string;
 using std::vector;
 
-#if defined(__BRILLO__)
-namespace {
-// If the second-least-significant bit of the most significant byte of the MAC
-// address is set, this MAC address is locally administered.
-const unsigned char kLocallyManagedMacAddressMask = 0x02;
-}
-#endif  // __BRILLO__
-
 namespace shill {
 
 namespace Logging {
@@ -1217,20 +1209,6 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
               << " since it is not in station mode.";
     return;
   }
-#if defined(__BRILLO__)
-  unsigned char mac_addr_most_significant_byte = 0x00;
-  if (!info->mac_address.CopyData(sizeof(mac_addr_most_significant_byte),
-                                  &mac_addr_most_significant_byte)) {
-    LOG(ERROR) << "Could not copy most significant byte of device MAC address";
-  }
-  if ((mac_addr_most_significant_byte & kLocallyManagedMacAddressMask) != 0) {
-    // TODO(samueltan): remove this once the driver correctly reports the
-    // the |interface_type| of P2P interfaces.
-    LOG(INFO) << "Ignoring device " << info->name << " at interface index "
-              << interface_index << " with locally-managed address.";
-    return;
-  }
-#endif  // __BRILLO__
   LOG(INFO) << "Creating WiFi device for station mode interface "
               << info->name
               << " at interface index "
