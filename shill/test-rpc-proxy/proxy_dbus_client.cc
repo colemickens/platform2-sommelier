@@ -21,27 +21,30 @@ const char ProxyDbusClient::kCommonLogScopes[] =
   "connection+dbus+device+link+manager+portal+service";
 const int ProxyDbusClient::kLogLevel = -4;
 
+
+namespace {
+template<typename Proxy> bool GetPropertyValueFromProxy(
+    Proxy* proxy,
+    const std::string& property_name,
+    brillo::Any* property_value) {
+  CHECK(property_value);
+  brillo::VariantDictionary proxy_properties;
+  brillo::ErrorPtr error;
+  CHECK(proxy->GetProperties(&proxy_properties, &error));
+  if (proxy_properties.find(property_name) == proxy_properties.end()) {
+    return false;
+  }
+  *property_value = proxy_properties[property_name];
+  return true;
+}
+}
+
 ProxyDbusClient::ProxyDbusClient(
     scoped_refptr<dbus::Bus> bus)
   : dbus_bus_(bus),
     weak_ptr_factory_(this),
     wait_for_change_property_name_(""),
     shill_manager_proxy_(new ManagerProxy(dbus_bus_)) {
-}
-
-bool ProxyDbusClient::GetManagerProperty(
-    const std::string& property_name,
-    brillo::Any* property_value) {
-  brillo::VariantDictionary props;
-  brillo::ErrorPtr error;
-  if (!shill_manager_proxy_->GetProperties(&props, &error)) {
-    return false;
-  }
-  if (props.find(property_name) == props.end()) {
-    return false;
-  }
-  *property_value = props[property_name];
-  return true;
 }
 
 void ProxyDbusClient::PropertyChangedSignalCallback(
@@ -98,22 +101,6 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
  end:
   time_t end(time(NULL));
   *elapsed_time_seconds = end - start;
-  return is_success;
-}
-
-std::string ProxyDbusClient::GetActiveProfilePath() {
-  brillo::Any property_value;
-  if (!GetManagerProperty(shill::kActiveProfileProperty, &property_value)) {
-    return std::string();
-  }
-  return property_value.Get<std::string>();
-}
-
-bool ProxyDbusClient::SetLogging(int level, const std::string& tags) {
-  bool is_success = true;
-  brillo::ErrorPtr error;
-  is_success &= shill_manager_proxy_->SetDebugLevel(level, &error);
-  is_success &= shill_manager_proxy_->SetDebugTags(tags, &error);
   return is_success;
 }
 
@@ -204,6 +191,7 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
       props, property_name, expected_values, timeout_seconds,
       final_value, elapsed_time_seconds);
 }
+
 bool ProxyDbusClient::WaitForPropertyValueIn(
     ProfileProxy* proxy,
     const std::string& property_name,
@@ -226,101 +214,70 @@ bool ProxyDbusClient::WaitForPropertyValueIn(
       final_value, elapsed_time_seconds);
 }
 
-std::unique_ptr<DeviceProxy> ProxyDbusClient::GetDeviceProxy(
-    const std::string& device_path) {
-  dbus::ObjectPath object_path(device_path);
-  return std::unique_ptr<DeviceProxy>(new DeviceProxy(dbus_bus_, object_path));
-}
-
-std::unique_ptr<ServiceProxy> ProxyDbusClient::GetServiceProxy(
-    const std::string& service_path) {
-  dbus::ObjectPath object_path(service_path);
-  return std::unique_ptr<ServiceProxy>(new ServiceProxy(dbus_bus_, object_path));
-}
-
-std::unique_ptr<ProfileProxy> ProxyDbusClient::GetProfileProxy(
-    const std::string& profile_path) {
-  dbus::ObjectPath object_path(profile_path);
-  return std::unique_ptr<ProfileProxy>(new ProfileProxy(dbus_bus_, object_path));
-}
-
 std::vector<std::unique_ptr<DeviceProxy>> ProxyDbusClient::GetDeviceProxies() {
-  brillo::Any property_value;
-  if (!GetManagerProperty(shill::kDevicesProperty, &property_value)) {
-    return std::vector<std::unique_ptr<DeviceProxy>>();
-  }
-  std::vector<std::string> device_paths =
-    property_value.Get<std::vector<std::string>>();
-  std::vector<std::unique_ptr<DeviceProxy>> proxies;
-  for (const std::string& device_path : device_paths) {
-    proxies.emplace_back(GetDeviceProxy(device_path));
-  }
-  return proxies;
+  return GetProxies<DeviceProxy>(shill::kDevicesProperty);
 }
 
 std::vector<std::unique_ptr<ServiceProxy>> ProxyDbusClient::GetServiceProxies() {
-  brillo::Any property_value;
-  if (!GetManagerProperty(shill::kServicesProperty, &property_value)) {
-    return std::vector<std::unique_ptr<ServiceProxy>>();
-  }
-  std::vector<std::string> service_paths =
-    property_value.Get<std::vector<std::string>>();
-  std::vector<std::unique_ptr<ServiceProxy>> proxies;
-  for (const std::string& service_path : service_paths) {
-    proxies.emplace_back(GetServiceProxy(service_path));
-  }
-  return proxies;
+  return GetProxies<ServiceProxy>(shill::kServicesProperty);
 }
 
 std::vector<std::unique_ptr<ProfileProxy>> ProxyDbusClient::GetProfileProxies() {
-  brillo::Any property_value;
-  if (!GetManagerProperty(shill::kProfilesProperty, &property_value)) {
-    return std::vector<std::unique_ptr<ProfileProxy>>();
-  }
-  std::vector<std::string> profile_paths =
-    property_value.Get<std::vector<std::string>>();
-  std::vector<std::unique_ptr<ProfileProxy>> proxies;
-  for (const std::string& profile_path : profile_paths) {
-    proxies.emplace_back(GetProfileProxy(profile_path));
-  }
-  return proxies;
-}
-
-std::unique_ptr<ProfileProxy> ProxyDbusClient::GetActiveProfileProxy() {
-  return GetProfileProxy(GetActiveProfilePath());
+  return GetProxies<ProfileProxy>(shill::kProfilesProperty);
 }
 
 std::unique_ptr<DeviceProxy> ProxyDbusClient::GetMatchingDeviceProxy(
-    const brillo::VariantDictionary& params) {
-  for (auto& device_proxy : GetDeviceProxies()) {
-    brillo::VariantDictionary props;
-    brillo::ErrorPtr error;
-    if (!device_proxy->GetProperties(&props, &error)) {
-      continue;
-    }
-    bool all_params_matched = true;
-    for (const auto& param : params) {
-      if (props[param.first] != param.second) {
-        all_params_matched = false;
-        break;
-      }
-    }
-    if (all_params_matched) {
-      return std::move(device_proxy);
-    }
-  }
-  return nullptr;
+    const brillo::VariantDictionary& expected_properties) {
+  return GetMatchingProxy<DeviceProxy>(shill::kDevicesProperty, expected_properties);
 }
 
 std::unique_ptr<ServiceProxy> ProxyDbusClient::GetMatchingServiceProxy(
-    const brillo::VariantDictionary& params) {
+    const brillo::VariantDictionary& expected_properties) {
+  return GetMatchingProxy<ServiceProxy>(shill::kServicesProperty, expected_properties);
+}
+
+std::unique_ptr<ProfileProxy> ProxyDbusClient::GetMatchingProfileProxy(
+    const brillo::VariantDictionary& expected_properties) {
+  return GetMatchingProxy<ProfileProxy>(shill::kProfilesProperty, expected_properties);
+}
+
+bool ProxyDbusClient::GetPropertyValueFromDeviceProxy(
+    DeviceProxy* proxy,
+    const std::string& property_name,
+    brillo::Any* property_value) {
+  return GetPropertyValueFromProxy<DeviceProxy>(
+      proxy, property_name, property_value);
+}
+
+bool ProxyDbusClient::GetPropertyValueFromServiceProxy(
+    ServiceProxy* proxy,
+    const std::string& property_name,
+    brillo::Any* property_value) {
+  return GetPropertyValueFromProxy<ServiceProxy>(
+      proxy, property_name, property_value);
+}
+
+bool ProxyDbusClient::GetPropertyValueFromProfileProxy(
+    ProfileProxy* proxy,
+    const std::string& property_name,
+    brillo::Any* property_value) {
+  return GetPropertyValueFromProxy<ProfileProxy>(
+      proxy, property_name, property_value);
+}
+
+std::unique_ptr<ServiceProxy> ProxyDbusClient::GetServiceProxy(
+    const brillo::VariantDictionary& expected_properties) {
   dbus::ObjectPath service_path;
   brillo::ErrorPtr error;
   if (!shill_manager_proxy_->GetService(
-      params, &service_path, &error)) {
+          expected_properties, &service_path, &error)) {
     return nullptr;
   }
   return std::unique_ptr<ServiceProxy>(new ServiceProxy(dbus_bus_, service_path));
+}
+
+std::unique_ptr<ProfileProxy> ProxyDbusClient::GetActiveProfileProxy() {
+  return GetProxyForObjectPath<ProfileProxy>(GetObjectPathForActiveProfile());
 }
 
 std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureService(
@@ -331,7 +288,7 @@ std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureService(
       config, &service_path, &error)) {
     return nullptr;
   }
-  return GetServiceProxy(service_path.value());
+  return GetProxyForObjectPath<ServiceProxy>(service_path);
 }
 
 std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureServiceByGuid(
@@ -345,7 +302,7 @@ std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureServiceByGuid(
       guid_config, &service_path, &error)) {
     return nullptr;
   }
-  return GetServiceProxy(service_path.value());
+  return GetProxyForObjectPath<ServiceProxy>(service_path);
 }
 
 bool ProxyDbusClient::ConnectService(
@@ -408,4 +365,72 @@ bool ProxyDbusClient::PopProfile(const std::string& profile_name) {
 bool ProxyDbusClient::PopAnyProfile() {
   brillo::ErrorPtr error;
   return shill_manager_proxy_->PopAnyProfile(&error);
+}
+
+bool ProxyDbusClient::GetPropertyValueFromManager(
+    const std::string& property_name,
+    brillo::Any* property_value) {
+  return GetPropertyValueFromProxy(
+      shill_manager_proxy_.get(), property_name, property_value);
+}
+
+dbus::ObjectPath ProxyDbusClient::GetObjectPathForActiveProfile() {
+  brillo::Any property_value;
+  if (!GetPropertyValueFromManager(
+        shill::kActiveProfileProperty, &property_value)) {
+    return dbus::ObjectPath();
+  }
+  return dbus::ObjectPath(property_value.Get<std::string>());
+}
+
+bool ProxyDbusClient::SetLogging(int level, const std::string& tags) {
+  bool is_success = true;
+  brillo::ErrorPtr error;
+  is_success &= shill_manager_proxy_->SetDebugLevel(level, &error);
+  is_success &= shill_manager_proxy_->SetDebugTags(tags, &error);
+  return is_success;
+}
+
+template<typename Proxy>
+std::unique_ptr<Proxy> ProxyDbusClient::GetProxyForObjectPath(
+    const dbus::ObjectPath& object_path) {
+  return std::unique_ptr<Proxy>(new Proxy(dbus_bus_, object_path));
+}
+
+// Templated functions to return the object path property_name based on
+template<typename Proxy>
+std::vector<std::unique_ptr<Proxy>> ProxyDbusClient::GetProxies(
+    const std::string& object_paths_property_name) {
+  brillo::Any object_paths;
+  if (!GetPropertyValueFromManager(object_paths_property_name, &object_paths)) {
+    return std::vector<std::unique_ptr<Proxy>>();
+  }
+  std::vector<std::unique_ptr<Proxy>> proxies;
+  for (const auto& object_path :
+       object_paths.Get<std::vector<dbus::ObjectPath>>()) {
+    proxies.emplace_back(GetProxyForObjectPath<Proxy>(object_path));
+  }
+  return proxies;
+}
+
+template<typename Proxy>
+std::unique_ptr<Proxy> ProxyDbusClient::GetMatchingProxy(
+    const std::string& object_paths_property_name,
+    const brillo::VariantDictionary& expected_properties) {
+  for (auto& proxy : GetProxies<Proxy>(object_paths_property_name)) {
+    brillo::VariantDictionary proxy_properties;
+    brillo::ErrorPtr error;
+    CHECK(proxy->GetProperties(&proxy_properties, &error));
+    bool all_expected_properties_matched = true;
+    for (const auto& expected_property : expected_properties) {
+      if (proxy_properties[expected_property.first] != expected_property.second) {
+        all_expected_properties_matched = false;
+        break;
+      }
+    }
+    if (all_expected_properties_matched) {
+      return std::move(proxy);
+    }
+  }
+  return nullptr;
 }

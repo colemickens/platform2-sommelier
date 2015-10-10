@@ -17,17 +17,17 @@ LOCAL_CPPFLAGS := \
     -Wno-missing-field-initializers
 
 LOCAL_C_INCLUDES := \
-    external/cros/system_api \
+    external/cros/system_api/dbus \
     external/gtest/include \
     external/xmlrpcpp/src \
     system/connectivity \
-    system/update_engine/include
 
 LOCAL_SHARED_LIBRARIES := \
     libchrome \
     libchrome-dbus \
     libchromeos \
     libchromeos-dbus \
+    libshill-client \
     libxmlrpc++
 
 proxy_src_files := \
