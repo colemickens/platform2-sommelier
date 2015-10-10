@@ -52,6 +52,7 @@ class UserCollectorBase : public CrashCollector {
                             pid_t* pid,
                             int* signal,
                             uid_t* uid,
+                            gid_t* gid,
                             std::string* exec_name);
 
   bool ShouldDump(bool has_owner_consent,
@@ -118,6 +119,7 @@ class UserCollectorBase : public CrashCollector {
   ErrorType ConvertAndEnqueueCrash(pid_t pid,
                                    const std::string& exec,
                                    uid_t supplied_ruid,
+                                   gid_t supplied_rgid,
                                    const base::TimeDelta& crash_time,
                                    bool* out_of_capacity);
 

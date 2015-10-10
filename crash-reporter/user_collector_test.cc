@@ -90,7 +90,7 @@ class UserCollectorTest : public ::testing::Test {
 
 TEST_F(UserCollectorTest, EnableOK) {
   ASSERT_TRUE(collector_.Enable());
-  ExpectFileEquals("|/my/path --user=%P:%s:%u:%e",
+  ExpectFileEquals("|/my/path --user=%P:%s:%u:%g:%e",
                    FilePath("test/core_pattern"));
   ExpectFileEquals("4", FilePath("test/core_pipe_limit"));
   ASSERT_EQ(s_crashes, 0);
@@ -135,35 +135,40 @@ TEST_F(UserCollectorTest, ParseCrashAttributes) {
   pid_t pid;
   int signal;
   uid_t uid;
+  gid_t gid;
   std::string exec_name;
-  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:1000:foobar", &pid,
-                                              &signal, &uid, &exec_name));
+  EXPECT_TRUE(collector_.ParseCrashAttributes(
+      "123456:11:1000:2000:foobar", &pid, &signal, &uid, &gid, &exec_name));
   EXPECT_EQ(123456, pid);
   EXPECT_EQ(11, signal);
   EXPECT_EQ(1000, uid);
+  EXPECT_EQ(2000, gid);
   EXPECT_EQ("foobar", exec_name);
-  EXPECT_TRUE(collector_.ParseCrashAttributes("4321:6:0:barfoo", &pid, &signal,
-                                              &uid, &exec_name));
+  EXPECT_TRUE(collector_.ParseCrashAttributes("4321:6:0:0:barfoo", &pid,
+                                              &signal, &uid, &gid, &exec_name));
   EXPECT_EQ(4321, pid);
   EXPECT_EQ(6, signal);
   EXPECT_EQ(0, uid);
+  EXPECT_EQ(0, gid);
   EXPECT_EQ("barfoo", exec_name);
 
   EXPECT_FALSE(collector_.ParseCrashAttributes("123456:11:1000", &pid, &signal,
-                                               &uid, &exec_name));
+                                               &uid, &gid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes(
+      "123456:11:1000:100", &pid, &signal, &uid, &gid, &exec_name));
 
-  EXPECT_TRUE(collector_.ParseCrashAttributes("123456:11:1000:exec:extra", &pid,
-                                              &signal, &uid, &exec_name));
+  EXPECT_TRUE(collector_.ParseCrashAttributes(
+      "123456:11:1000:100:exec:extra", &pid, &signal, &uid, &gid, &exec_name));
   EXPECT_EQ("exec:extra", exec_name);
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("12345p:11:1000:foobar", &pid,
-                                               &signal, &uid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes(
+      "12345p:11:1000:100:foobar", &pid, &signal, &uid, &gid, &exec_name));
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:1 :1000:foobar", &pid,
-                                               &signal, &uid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes(
+      "123456:1 :1000:0:foobar", &pid, &signal, &uid, &gid, &exec_name));
 
-  EXPECT_FALSE(collector_.ParseCrashAttributes("123456:::foobar", &pid, &signal,
-                                               &uid, &exec_name));
+  EXPECT_FALSE(collector_.ParseCrashAttributes(
+      "123456::::foobar", &pid, &signal, &uid, &gid, &exec_name));
 }
 
 TEST_F(UserCollectorTest, ShouldDumpFiltering) {
@@ -248,21 +253,21 @@ TEST_F(UserCollectorTest, ShouldDumpUserConsentProductionImage) {
 
 TEST_F(UserCollectorTest, HandleCrashWithoutConsent) {
   s_metrics = false;
-  collector_.HandleCrash("20:10:1000:ignored", "foobar");
+  collector_.HandleCrash("20:10:1000:1000:ignored", "foobar");
   EXPECT_TRUE(FindLog("Received crash notification for foobar[20] sig 10"));
   ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   s_metrics = true;
-  collector_.HandleCrash("5:2:1000:ignored", "chromeos-wm");
+  collector_.HandleCrash("5:2:1000:1000:ignored", "chromeos-wm");
   EXPECT_TRUE(FindLog("Received crash notification for chromeos-wm[5] sig 2"));
   ASSERT_EQ(s_crashes, 1);
 }
 
 TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
   s_metrics = true;
-  collector_.HandleCrash("5:2:1000:ignored", "chrome");
+  collector_.HandleCrash("5:2:1000:1000:ignored", "chrome");
   EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
   ASSERT_EQ(s_crashes, 0);
@@ -270,7 +275,7 @@ TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
 
 TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
   s_metrics = true;
-  collector_.HandleCrash("0:2:1000:chrome", nullptr);
+  collector_.HandleCrash("0:2:1000:1000:chrome", nullptr);
   EXPECT_TRUE(
       FindLog("Received crash notification for supplied_chrome[0] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));

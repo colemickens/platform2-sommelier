@@ -62,10 +62,11 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
   pid_t pid;
   int signal;
   uid_t supplied_ruid;
+  gid_t supplied_rgid;
   std::string kernel_supplied_name;
 
   if (!ParseCrashAttributes(crash_attributes, &pid, &signal, &supplied_ruid,
-                            &kernel_supplied_name)) {
+                            &supplied_rgid, &kernel_supplied_name)) {
     LOG(ERROR) << "Invalid parameter: --user=" << crash_attributes;
     return false;
   }
@@ -93,9 +94,9 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
   std::string reason;
   bool dump = ShouldDump(pid, supplied_ruid, exec, &reason);
 
-  const auto message =
-      StringPrintf("Received crash notification for %s[%d] sig %d, user %u",
-                   exec.c_str(), pid, signal, supplied_ruid);
+  const auto message = StringPrintf(
+      "Received crash notification for %s[%d] sig %d, user %u group %u",
+      exec.c_str(), pid, signal, supplied_ruid, supplied_rgid);
 
   LogCrash(message, reason);
 
@@ -106,8 +107,9 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
 
     if (generate_diagnostics_) {
       bool out_of_capacity = false;
-      ErrorType error_type = ConvertAndEnqueueCrash(
-          pid, exec, supplied_ruid, crash_time, &out_of_capacity);
+      ErrorType error_type =
+          ConvertAndEnqueueCrash(pid, exec, supplied_ruid, supplied_rgid,
+                                 crash_time, &out_of_capacity);
       if (error_type != kErrorNone) {
         if (!out_of_capacity)
           EnqueueCollectionErrorLog(pid, error_type, exec);
@@ -124,9 +126,10 @@ bool UserCollectorBase::ParseCrashAttributes(
     pid_t* pid,
     int* signal,
     uid_t* uid,
+    gid_t* gid,
     std::string* exec_name) {
-  pcrecpp::RE re("(\\d+):(\\d+):(\\d+):(.*)");
-  return re.FullMatch(crash_attributes, pid, signal, uid, exec_name);
+  pcrecpp::RE re("(\\d+):(\\d+):(\\d+):(\\d+):(.*)");
+  return re.FullMatch(crash_attributes, pid, signal, uid, gid, exec_name);
 }
 
 bool UserCollectorBase::ShouldDump(bool has_owner_consent,
@@ -229,6 +232,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     pid_t pid,
     const std::string& exec,
     uid_t supplied_ruid,
+    gid_t supplied_rgid,
     const base::TimeDelta& crash_time,
     bool* out_of_capacity) {
   FilePath crash_path;
