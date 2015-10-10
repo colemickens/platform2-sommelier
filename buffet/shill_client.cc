@@ -65,7 +65,7 @@ Network::State ShillServiceStateToNetworkState(const string& state) {
   if ((state.compare(shill::kStateReady) == 0) ||
       (state.compare(shill::kStatePortal) == 0) ||
       (state.compare(shill::kStateOnline) == 0)) {
-    return Network::State::kConnected;
+    return Network::State::kOnline;
   }
   if ((state.compare(shill::kStateAssociation) == 0) ||
       (state.compare(shill::kStateConfiguration) == 0)) {
@@ -74,7 +74,7 @@ Network::State ShillServiceStateToNetworkState(const string& state) {
   if ((state.compare(shill::kStateFailure) == 0) ||
       (state.compare(shill::kStateActivationFailure) == 0)) {
     // TODO(wiley) Get error information off the service object.
-    return Network::State::kFailure;
+    return Network::State::kError;
   }
   if ((state.compare(shill::kStateIdle) == 0) ||
       (state.compare(shill::kStateOffline) == 0) ||
@@ -451,7 +451,7 @@ void ShillClient::OnServicePropertyChange(const ObjectPath& service_path,
 
 void ShillClient::OnStateChangeForConnectingService(const string& state) {
   switch (ShillServiceStateToNetworkState(state)) {
-    case Network::State::kConnected: {
+    case Network::State::kOnline: {
       auto callback = connect_success_callback_;
       CleanupConnectingService();
 
@@ -459,7 +459,7 @@ void ShillClient::OnStateChangeForConnectingService(const string& state) {
         callback.Run();
       break;
     }
-    case Network::State::kFailure: {
+    case Network::State::kError: {
       ConnectToServiceError(connecting_service_);
       break;
     }
@@ -538,7 +538,7 @@ void ShillClient::UpdateConnectivityState() {
       FROM_HERE,
       base::Bind(&ShillClient::NotifyConnectivityListeners,
                  weak_factory_.GetWeakPtr(),
-                 GetConnectionState() == Network::State::kConnected));
+                 GetConnectionState() == Network::State::kOnline));
 }
 
 void ShillClient::NotifyConnectivityListeners(bool am_online) {

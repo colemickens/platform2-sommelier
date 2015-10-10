@@ -115,7 +115,7 @@ void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
                               const std::string& property_name) {
   printf("Notification: property '%s' on command '%s' changed.\n",
          property_name.c_str(), command->id().c_str());
-  printf("  Current command status: '%s'\n", command->status().c_str());
+  printf("  Current command status: '%s'\n", command->state().c_str());
   std::string progress = DictionaryToString(command->progress());
   printf("  Current command progress: %s\n", progress.c_str());
   std::string results = DictionaryToString(command->results());
@@ -124,7 +124,7 @@ void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
 
 void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   // "Handle" only commands that belong to this daemon's category.
-  if (command->status() == "done")
+  if (command->state() == "done")
     return;
 
   command->SetPropertyChangedCallback(base::Bind(&Daemon::OnPropertyChange,
@@ -133,7 +133,7 @@ void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   printf("Command received: %s\n", command->name().c_str());
   printf("DBus Object Path: %s\n", command->GetObjectPath().value().c_str());
   printf("              ID: %s\n", command->id().c_str());
-  printf("          status: %s\n", command->status().c_str());
+  printf("          status: %s\n", command->state().c_str());
   printf("          origin: %s\n", command->origin().c_str());
   std::string param_names = DictionaryToString(command->parameters());
   printf(" parameters: %s\n", param_names.c_str());
@@ -149,7 +149,7 @@ void Daemon::OnCommandProgress(org::chromium::Buffet::CommandProxy* command,
   command->SetProgress(new_progress, nullptr);
 
   if (progress >= 100) {
-    command->Done(nullptr);
+    command->Complete({}, nullptr);
   } else {
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&Daemon::OnCommandProgress,

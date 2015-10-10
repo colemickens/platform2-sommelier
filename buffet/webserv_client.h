@@ -35,20 +35,22 @@ namespace buffet {
 class WebServClient : public weave::provider::HttpServer {
  public:
   WebServClient(const scoped_refptr<dbus::Bus>& bus,
-                chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+                chromeos::dbus_utils::AsyncEventSequencer* sequencer,
+                const base::Closure& server_available_callback);
   ~WebServClient() override;
 
   // HttpServer implementation.
-  void AddOnStateChangedCallback(
-      const OnStateChangedCallback& callback) override;
-  void AddRequestHandler(const std::string& path_prefix,
-                         const OnRequestCallback& callback) override;
+  void AddHttpRequestHandler(const std::string& path,
+                             const RequestHandlerCallback& callback) override;
+  void AddHttpsRequestHandler(const std::string& path,
+                              const RequestHandlerCallback& callback) override;
+
   uint16_t GetHttpPort() const override;
   uint16_t GetHttpsPort() const override;
-  const std::vector<uint8_t>& GetHttpsCertificateFingerprint() const override;
+  std::vector<uint8_t> GetHttpsCertificateFingerprint() const override;
 
  private:
-  void OnRequest(const OnRequestCallback& callback,
+  void OnRequest(const RequestHandlerCallback& callback,
                  std::unique_ptr<libwebserv::Request> request,
                  std::unique_ptr<libwebserv::Response> response);
 
@@ -67,9 +69,8 @@ class WebServClient : public weave::provider::HttpServer {
   uint16_t https_port_{0};
   std::vector<uint8_t> certificate_;
 
-  std::vector<OnStateChangedCallback> on_state_changed_callbacks_;
-
   std::unique_ptr<libwebserv::Server> web_server_;
+  base::Closure server_available_callback_;
 
   base::WeakPtrFactory<WebServClient> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(WebServClient);

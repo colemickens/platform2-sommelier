@@ -6,8 +6,12 @@
 
 namespace buffet {
 
+namespace dbus_constants {
+
 const char kServiceName[] = "org.chromium.Buffet";
 const char kRootServicePath[] = "/org/chromium/Buffet";
 const char kCommandServicePathPrefix[] = "/org/chromium/Buffet/commands/";
+
+}  // namespace dbus_constants
 
 }  // namespace buffet

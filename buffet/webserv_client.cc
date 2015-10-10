@@ -23,12 +23,13 @@ using weave::provider::HttpServer;
 
 class RequestImpl : public HttpServer::Request {
  public:
-  explicit RequestImpl(std::unique_ptr<libwebserv::Request> request)
-      : request_{std::move(request)} {}
+  explicit RequestImpl(std::unique_ptr<libwebserv::Request> request,
+                       std::unique_ptr<libwebserv::Response> response)
+      : request_{std::move(request)}, response_{std::move(response)} {}
   ~RequestImpl() override {}
 
   // HttpServer::Request implementation.
-  const std::string& GetPath() const override { return request_->GetPath(); }
+  std::string GetPath() const override { return request_->GetPath(); }
 
   std::string GetFirstHeader(const std::string& name) const override {
     return request_->GetFirstHeader(name);
@@ -36,27 +37,32 @@ class RequestImpl : public HttpServer::Request {
 
   // TODO(avakulenko): Remove this method and rewrite all call sites in libweave
   // to use GetDataStream() instead.
-  const std::vector<uint8_t>& GetData() const override {
+  std::string GetData() override {
     if (request_data_)
       return *request_data_;
 
-    request_data_.reset(new std::vector<uint8_t>);
+    request_data_.reset(new std::string);
     auto stream = request_->GetDataStream();
     if (stream) {
       if (stream->CanGetSize())
         request_data_->reserve(stream->GetRemainingSize());
-      std::vector<uint8_t> buffer(16 * 1024);  // 16K seems to be good enough.
+      std::vector<char> buffer(16 * 1024);  // 16K seems to be good enough.
       size_t sz = 0;
       while (stream->ReadBlocking(buffer.data(), buffer.size(), &sz, nullptr) &&
              sz > 0) {
-        request_data_->insert(request_data_->end(),
-                              buffer.data(), buffer.data() + sz);
+        request_data_->append(buffer.data(), buffer.data() + sz);
       }
     }
     return *request_data_;
   }
 
-  std::unique_ptr<weave::Stream> GetDataStream() const override {
+  void SendReply(int status_code,
+                 const std::string& data,
+                 const std::string& mime_type) override {
+    response_->ReplyWithText(status_code, data, mime_type);
+  }
+
+  std::unique_ptr<weave::Stream> GetDataStream() const {
     auto stream = std::unique_ptr<weave::Stream>{
         new SocketStream{request_->GetDataStream()}};
     return stream;
@@ -64,31 +70,51 @@ class RequestImpl : public HttpServer::Request {
 
  private:
   std::unique_ptr<libwebserv::Request> request_;
-  mutable std::unique_ptr<std::vector<uint8_t>> request_data_;
+  std::unique_ptr<libwebserv::Response> response_;
+  mutable std::unique_ptr<std::string> request_data_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestImpl);
 };
 
 }  // namespace
 
+WebServClient::WebServClient(
+    const scoped_refptr<dbus::Bus>& bus,
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer,
+    const base::Closure& server_available_callback)
+    : server_available_callback_{server_available_callback} {
+  web_server_.reset(new libwebserv::Server);
+  web_server_->OnProtocolHandlerConnected(
+      base::Bind(&WebServClient::OnProtocolHandlerConnected,
+                 weak_ptr_factory_.GetWeakPtr()));
+  web_server_->OnProtocolHandlerDisconnected(
+      base::Bind(&WebServClient::OnProtocolHandlerDisconnected,
+                 weak_ptr_factory_.GetWeakPtr()));
+
+  web_server_->Connect(bus, buffet::dbus_constants::kServiceName,
+                       sequencer->GetHandler("Server::Connect failed.", true),
+                       base::Bind(&base::DoNothing),
+                       base::Bind(&base::DoNothing));
+}
+
 WebServClient::~WebServClient() {
   web_server_->Disconnect();
 }
 
-void WebServClient::AddOnStateChangedCallback(
-    const OnStateChangedCallback& callback) {
-  on_state_changed_callbacks_.push_back(callback);
-  callback.Run(*this);
+void WebServClient::AddHttpRequestHandler(
+    const std::string& path,
+    const RequestHandlerCallback& callback) {
+  web_server_->GetDefaultHttpHandler()->AddHandlerCallback(
+      path, "", base::Bind(&WebServClient::OnRequest,
+                           weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
-void WebServClient::AddRequestHandler(const std::string& path_prefix,
-                                      const OnRequestCallback& callback) {
-  web_server_->GetDefaultHttpHandler()->AddHandlerCallback(
-      path_prefix, "", base::Bind(&WebServClient::OnRequest,
-                                  weak_ptr_factory_.GetWeakPtr(), callback));
+void WebServClient::AddHttpsRequestHandler(
+    const std::string& path,
+    const RequestHandlerCallback& callback) {
   web_server_->GetDefaultHttpsHandler()->AddHandlerCallback(
-      path_prefix, "", base::Bind(&WebServClient::OnRequest,
-                                  weak_ptr_factory_.GetWeakPtr(), callback));
+      path, "", base::Bind(&WebServClient::OnRequest,
+                           weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
 uint16_t WebServClient::GetHttpPort() const {
@@ -99,41 +125,16 @@ uint16_t WebServClient::GetHttpsPort() const {
   return https_port_;
 }
 
-const chromeos::Blob& WebServClient::GetHttpsCertificateFingerprint() const {
+chromeos::Blob WebServClient::GetHttpsCertificateFingerprint() const {
   return certificate_;
 }
 
-WebServClient::WebServClient(
-    const scoped_refptr<dbus::Bus>& bus,
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
-  web_server_.reset(new libwebserv::Server);
-  web_server_->OnProtocolHandlerConnected(
-      base::Bind(&WebServClient::OnProtocolHandlerConnected,
-                 weak_ptr_factory_.GetWeakPtr()));
-  web_server_->OnProtocolHandlerDisconnected(
-      base::Bind(&WebServClient::OnProtocolHandlerDisconnected,
-                 weak_ptr_factory_.GetWeakPtr()));
-
-  web_server_->Connect(bus, buffet::kServiceName,
-                       sequencer->GetHandler("Server::Connect failed.", true),
-                       base::Bind(&base::DoNothing),
-                       base::Bind(&base::DoNothing));
-}
-
-void WebServClient::OnRequest(const OnRequestCallback& callback,
+void WebServClient::OnRequest(const RequestHandlerCallback& callback,
                               std::unique_ptr<libwebserv::Request> request,
                               std::unique_ptr<libwebserv::Response> response) {
-  callback.Run(
-      RequestImpl{std::move(request)},
-      base::Bind(&WebServClient::OnResponse, weak_ptr_factory_.GetWeakPtr(),
-                 base::Passed(&response)));
-}
-
-void WebServClient::OnResponse(std::unique_ptr<libwebserv::Response> response,
-                               int status_code,
-                               const std::string& data,
-                               const std::string& mime_type) {
-  response->ReplyWithText(status_code, data, mime_type);
+  std::unique_ptr<Request> weave_request{
+      new RequestImpl{std::move(request), std::move(response)}};
+  callback.Run(std::move(weave_request));
 }
 
 void WebServClient::OnProtocolHandlerConnected(
@@ -145,8 +146,8 @@ void WebServClient::OnProtocolHandlerConnected(
     https_port_ = *protocol_handler->GetPorts().begin();
     certificate_ = protocol_handler->GetCertificateFingerprint();
   }
-  for (const auto& cb : on_state_changed_callbacks_)
-    cb.Run(*this);
+  if (https_port_ && https_port_)
+    server_available_callback_.Run();
 }
 
 void WebServClient::OnProtocolHandlerDisconnected(
@@ -158,8 +159,6 @@ void WebServClient::OnProtocolHandlerDisconnected(
     https_port_ = 0;
     certificate_.clear();
   }
-  for (const auto& cb : on_state_changed_callbacks_)
-    cb.Run(*this);
 }
 
 }  // namespace buffet

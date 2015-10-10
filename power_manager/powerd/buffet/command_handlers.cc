@@ -52,11 +52,11 @@ class CommandHandler final {
   // Command handler callback method. Called when a new command is available
   // on D-Bus from Buffet.
   void OnCommand(CommandProxy* command) {
-    if (command->status() != kCommandStatusDone &&
+    if (command->state() != kCommandStatusDone &&
         command->name() == kBaseRebootCommand) {
       // Right now powerd handles only 'base.reboot' command and ignores
       // everything else.
-      if (command->Done(nullptr)) {
+      if (command->Complete({}, nullptr)) {
         // Delay the reboot by a small amount to help mitigate a race where the
         // cloud status doesn't get updated and we get into a reboot loop.
         //

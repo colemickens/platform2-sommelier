@@ -7,7 +7,6 @@
 #include <map>
 #include <set>
 
-#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
@@ -18,26 +17,6 @@
 #include <weave/enum_to_string.h>
 
 namespace buffet {
-
-namespace {
-
-const char kErrorDomain[] = "buffet";
-const char kFileReadError[] = "file_read_error";
-
-bool LoadFile(const base::FilePath& file_path,
-              std::string* data,
-              chromeos::ErrorPtr* error) {
-  if (!base::ReadFileToString(file_path, data)) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                                 "Failed to read file '%s'",
-                                 file_path.value().c_str());
-    return false;
-  }
-  return true;
-}
-
-}  // namespace
 
 namespace config_keys {
 
@@ -95,59 +74,6 @@ bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   if (!options_.service_url.empty())
     settings->service_url = options_.service_url;
 
-  return result;
-}
-
-std::vector<std::string> BuffetConfig::LoadCommandDefs() {
-  std::vector<std::string> result;
-  auto load_packages = [&result](const base::FilePath& root,
-                                 const base::FilePath::StringType& pattern) {
-    base::FilePath dir{root.Append("commands")};
-    VLOG(2) << "Looking for commands in " << dir.value();
-    base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                    pattern);
-    for (base::FilePath path = enumerator.Next(); !path.empty();
-         path = enumerator.Next()) {
-      LOG(INFO) << "Loading command schema from " << path.value();
-      std::string json;
-      CHECK(LoadFile(path, &json, nullptr));
-      result.emplace_back(std::move(json));
-    }
-  };
-  load_packages(options_.definitions, FILE_PATH_LITERAL("*.json"));
-  load_packages(options_.test_definitions, FILE_PATH_LITERAL("*test.json"));
-  return result;
-}
-
-std::vector<std::string> BuffetConfig::LoadStateDefs() {
-  // Load component-specific device state definitions.
-  base::FilePath dir{options_.definitions.Append("states")};
-  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.schema.json"));
-  std::vector<std::string> result;
-  for (base::FilePath path = enumerator.Next(); !path.empty();
-       path = enumerator.Next()) {
-    LOG(INFO) << "Loading state definition from " << path.value();
-    std::string json;
-    CHECK(LoadFile(path, &json, nullptr));
-    result.emplace_back(std::move(json));
-  }
-  return result;
-}
-
-std::vector<std::string> BuffetConfig::LoadStateDefaults() {
-  // Load component-specific device state defaults.
-  base::FilePath dir{options_.definitions.Append("states")};
-  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.defaults.json"));
-  std::vector<std::string> result;
-  for (base::FilePath path = enumerator.Next(); !path.empty();
-       path = enumerator.Next()) {
-    LOG(INFO) << "Loading state defaults from " << path.value();
-    std::string json;
-    CHECK(LoadFile(path, &json, nullptr));
-    result.push_back(json);
-  }
   return result;
 }
 

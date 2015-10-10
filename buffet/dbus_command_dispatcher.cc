@@ -20,16 +20,19 @@ DBusCommandDispacher::DBusCommandDispacher(
     const base::WeakPtr<ExportedObjectManager>& object_manager,
     weave::Device* device)
     : object_manager_{object_manager} {
-  device->AddCommandAddedCallback(base::Bind(
+  device->AddCommandHandler("", base::Bind(
       &DBusCommandDispacher::OnCommandAdded, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void DBusCommandDispacher::OnCommandAdded(weave::Command* command) {
-  if (!object_manager_)
+void DBusCommandDispacher::OnCommandAdded(
+    const std::weak_ptr<weave::Command>& cmd) {
+  auto command = cmd.lock();
+  if (!object_manager_ || !command)
     return;
   std::unique_ptr<DBusCommandProxy> proxy{new DBusCommandProxy(
       object_manager_.get(), object_manager_->GetBus(), command,
-      buffet::kCommandServicePathPrefix + std::to_string(++next_id_))};
+      buffet::dbus_constants::kCommandServicePathPrefix +
+      std::to_string(++next_id_))};
   proxy->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   // DBusCommandProxy::DBusCommandProxy() subscribe itself to weave::Command
   // notifications. When weave::Command is being destroyed it sends

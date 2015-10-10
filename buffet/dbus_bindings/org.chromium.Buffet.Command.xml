@@ -6,33 +6,44 @@
       <arg name="progress" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <method name="SetResults">
+    <method name="Complete">
+      <tp:docstring>
+        Mark the command as successfully completed and specifies the command
+        results to be returned to the caller.
+      </tp:docstring>
       <arg name="results" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="Abort">
       <tp:docstring>
         Mark the command as aborted. This tells the cloud that the device did
-        not successfully complete executing the command.
+        not successfully complete executing the command. Option error
+        information is provided in |code| and |message| parameters.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <arg name="code" type="s" direction="in"/>
+      <arg name="message" type="s" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="SetError">
+      <tp:docstring>
+        Device encountered an error while executing the command and requires
+        user intervention to continue. Option error information is provided in
+        |code| and |message| parameters.
+      </tp:docstring>
+      <arg name="code" type="s" direction="in"/>
+      <arg name="message" type="s" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="Cancel">
       <tp:docstring>
         Mark the command as cancelled. Unlike Abort() this should be used when
         the device detects a user request to cancel a command.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
-    <method name="Done">
-      <tp:docstring>
-        Mark the command as successfully completed.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <property name="Name" type="s" access="read"/>
     <property name="Id" type="s" access="read"/>
-    <property name="Status" type="s" access="read"/>
+    <property name="State" type="s" access="read"/>
     <property name="Parameters" type="a{sv}" access="read"/>
     <property name="Progress" type="a{sv}" access="read"/>
     <property name="Results" type="a{sv}" access="read"/>

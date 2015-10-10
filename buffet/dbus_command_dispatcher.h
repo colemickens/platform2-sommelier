@@ -39,7 +39,7 @@ class DBusCommandDispacher final {
       weave::Device* device);
 
  private:
-  void OnCommandAdded(weave::Command* command);
+  void OnCommandAdded(const std::weak_ptr<weave::Command>& cmd);
 
   base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
   int next_id_{0};
