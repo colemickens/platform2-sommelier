@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/process/kill.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -43,6 +44,13 @@ static string ObjectID(DHCPProvider* d) { return "(dhcp_provider)"; }
 namespace {
 base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
 static const int kUnbindDelayMilliseconds = 2000;
+
+#if defined(__ANDROID__)
+const char kDHCPCDExecutableName[] = "dhcpcd-6.8.2";
+#else
+const char kDHCPCDExecutableName[] = "dhcpcd";
+#endif  // __ANDROID__
+
 }  // namespace
 
 constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
@@ -74,6 +82,9 @@ void DHCPProvider::Init(ControlInterface* control_interface,
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;
   metrics_ = metrics;
+
+  // Kill the dhcpcd processes accidentally left by previous run.
+  base::KillProcesses(kDHCPCDExecutableName, 0, NULL);
 }
 
 void DHCPProvider::Stop() {
