@@ -139,7 +139,7 @@ bool DBusCommandProxy::SetError(chromeos::ErrorPtr* error,
     return ReportDestroyedError(error);
 
   LOG(INFO) << "Received call to Command<" << command->GetName()
-    << ">::SetError()";
+            << ">::SetError()";
   weave::ErrorPtr cmd_error;
   if (!code.empty())
     weave::Error::AddTo(&cmd_error, FROM_HERE, "command_error", code, message);

@@ -9,6 +9,7 @@
 #include <chromeos/http/http_request.h>
 #include <chromeos/http/http_utils.h>
 #include <chromeos/streams/memory_stream.h>
+#include <weave/enum_to_string.h>
 
 #include "buffet/weave_error_conversion.h"
 
@@ -35,7 +36,7 @@ class ResponseImpl : public HttpClient::Response {
     return response_->GetContentType();
   }
 
-  const std::string& GetData() const override { return data_; }
+  std::string GetData() const override { return data_; }
 
  private:
   std::unique_ptr<chromeos::http::Response> response_;
@@ -46,15 +47,15 @@ class ResponseImpl : public HttpClient::Response {
 void OnSuccessCallback(const HttpClient::SuccessCallback& success_callback,
                        int id,
                        std::unique_ptr<chromeos::http::Response> response) {
-  success_callback.Run(id, ResponseImpl{std::move(response)});
+  success_callback.Run(ResponseImpl{std::move(response)});
 }
 
-void OnErrorCallback(const HttpClient::ErrorCallback& error_callback,
+void OnErrorCallback(const weave::ErrorCallback& error_callback,
                      int id,
                      const chromeos::Error* chromeos_error) {
   weave::ErrorPtr error;
   ConvertError(*chromeos_error, &error);
-  error_callback.Run(id, error.get());
+  error_callback.Run(error.get());
 }
 
 }  // anonymous namespace
@@ -67,40 +68,14 @@ HttpTransportClient::HttpTransportClient()
 
 HttpTransportClient::~HttpTransportClient() {}
 
-std::unique_ptr<HttpClient::Response> HttpTransportClient::SendRequestAndBlock(
-    const std::string& method,
+void HttpTransportClient::SendRequest(
+    Method method,
     const std::string& url,
     const Headers& headers,
     const std::string& data,
-    weave::ErrorPtr* error) {
-  chromeos::http::Request request(url, method, transport_);
-  request.AddHeaders(headers);
-  if (!data.empty()) {
-    chromeos::ErrorPtr cromeos_error;
-    if (!request.AddRequestBody(data.data(), data.size(), &cromeos_error)) {
-      ConvertError(*cromeos_error, error);
-      return nullptr;
-    }
-  }
-
-  chromeos::ErrorPtr cromeos_error;
-  auto response = request.GetResponseAndBlock(&cromeos_error);
-  if (!response) {
-    ConvertError(*cromeos_error, error);
-    return nullptr;
-  }
-
-  return std::unique_ptr<HttpClient::Response>{
-      new ResponseImpl{std::move(response)}};
-}
-
-int HttpTransportClient::SendRequest(const std::string& method,
-                                     const std::string& url,
-                                     const Headers& headers,
-                                     const std::string& data,
-                                     const SuccessCallback& success_callback,
-                                     const ErrorCallback& error_callback) {
-  chromeos::http::Request request(url, method, transport_);
+    const SuccessCallback& success_callback,
+    const weave::ErrorCallback& error_callback) {
+  chromeos::http::Request request(url, weave::EnumToString(method), transport_);
   request.AddHeaders(headers);
   if (!data.empty()) {
     auto stream = chromeos::MemoryStream::OpenCopyOf(data, nullptr);
@@ -110,13 +85,12 @@ int HttpTransportClient::SendRequest(const std::string& method,
       weave::ErrorPtr error;
       ConvertError(*cromeos_error, &error);
       transport_->RunCallbackAsync(
-          FROM_HERE,
-          base::Bind(error_callback, 0, base::Owned(error.release())));
-      return 0;
+          FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
+      return;
     }
   }
-  return request.GetResponse(base::Bind(&OnSuccessCallback, success_callback),
-                             base::Bind(&OnErrorCallback, error_callback));
+  request.GetResponse(base::Bind(&OnSuccessCallback, success_callback),
+                      base::Bind(&OnErrorCallback, error_callback));
 }
 
 }  // namespace buffet

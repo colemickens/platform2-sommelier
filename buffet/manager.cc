@@ -187,9 +187,9 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
     if (options_.enable_ping) {
       auto ping_handler = base::Bind(
           [](std::unique_ptr<weave::provider::HttpServer::Request> request) {
-        request->SendReply(chromeos::http::status_code::Ok, "Hello, world!",
-                           chromeos::mime::text::kPlain);
-      });
+            request->SendReply(chromeos::http::status_code::Ok, "Hello, world!",
+                               chromeos::mime::text::kPlain);
+          });
       http_server->AddHttpRequestHandler("/privet/ping", ping_handler);
       http_server->AddHttpsRequestHandler("/privet/ping", ping_handler);
     }
@@ -263,10 +263,9 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
   std::shared_ptr<DBusMethodResponse<std::string>> shared_response =
       std::move(response);
 
-  device_->Register(
-      ticket_id,
-      base::Bind(&RegisterDeviceSuccess, shared_response, device_.get()),
-      base::Bind(&RegisterDeviceError, shared_response));
+  device_->Register(ticket_id, base::Bind(&RegisterDeviceSuccess,
+                                          shared_response, device_.get()),
+                    base::Bind(&RegisterDeviceError, shared_response));
 }
 
 void Manager::UpdateState(DBusMethodResponsePtr<> response,

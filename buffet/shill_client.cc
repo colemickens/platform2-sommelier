@@ -535,10 +535,9 @@ void ShillClient::UpdateConnectivityState() {
   // underway.  Therefore, call our callbacks later, when we're in a good
   // state.
   base::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&ShillClient::NotifyConnectivityListeners,
-                 weak_factory_.GetWeakPtr(),
-                 GetConnectionState() == Network::State::kOnline));
+      FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
+                            weak_factory_.GetWeakPtr(),
+                            GetConnectionState() == Network::State::kOnline));
 }
 
 void ShillClient::NotifyConnectivityListeners(bool am_online) {

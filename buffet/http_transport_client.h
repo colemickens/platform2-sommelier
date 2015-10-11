@@ -24,20 +24,12 @@ class HttpTransportClient : public weave::provider::HttpClient {
 
   ~HttpTransportClient() override;
 
-  // weave::HttpClient implementation.
-  std::unique_ptr<Response> SendRequestAndBlock(
-      const std::string& method,
-      const std::string& url,
-      const Headers& headers,
-      const std::string& data,
-      weave::ErrorPtr* error) override;
-
-  int SendRequest(const std::string& method,
-                  const std::string& url,
-                  const Headers& headers,
-                  const std::string& data,
-                  const SuccessCallback& success_callback,
-                  const ErrorCallback& error_callback) override;
+  void SendRequest(Method method,
+                   const std::string& url,
+                   const Headers& headers,
+                   const std::string& data,
+                   const SuccessCallback& success_callback,
+                   const weave::ErrorCallback& error_callback) override;
 
  private:
   std::shared_ptr<chromeos::http::Transport> transport_;
