@@ -83,12 +83,6 @@ ChromeosPowerManagerProxy::ChromeosPowerManagerProxy(
       base::Bind(&ChromeosPowerManagerProxy::OnSignalConnected,
                  weak_factory_.GetWeakPtr()));
 
-  // Monitor service owner changes. This callback lives for the lifetime of
-  // the ObjectProxy.
-  proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
-      base::Bind(&ChromeosPowerManagerProxy::OnServiceOwnerChanged,
-                 weak_factory_.GetWeakPtr()));
-
   // One time callback when service becomes available.
   proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
       base::Bind(&ChromeosPowerManagerProxy::OnServiceAvailable,
@@ -309,25 +303,44 @@ void ChromeosPowerManagerProxy::DarkSuspendImminent(
 }
 
 void ChromeosPowerManagerProxy::OnServiceAvailable(bool available) {
-  LOG(INFO) << __func__ << ": " << available;
+  // The only time this function will ever be invoked with |available| set to
+  // false is when we failed to connect the signals, either bus is not setup
+  // yet or we failed to add match rules, and both of these errors are
+  // considered fatal.
+  CHECK(available);
+
+  // Service is available now, continuously monitor the service owner changes.
+  proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
+      base::Bind(&ChromeosPowerManagerProxy::OnServiceOwnerChanged,
+                 weak_factory_.GetWeakPtr()));
 
   // The callback might invoke calls to the ObjectProxy, so defer the callback
   // to event loop.
-  if (available && !service_appeared_callback_.is_null()) {
+  if (!service_appeared_callback_.is_null()) {
     dispatcher_->PostTask(service_appeared_callback_);
-  } else if (!available && !service_vanished_callback_.is_null()) {
-    dispatcher_->PostTask(service_vanished_callback_);
   }
-  service_available_ = available;
+
+  service_available_ = true;
 }
 
 void ChromeosPowerManagerProxy::OnServiceOwnerChanged(
     const string& old_owner, const string& new_owner) {
   LOG(INFO) << __func__ << "old: " << old_owner << " new: " << new_owner;
+
   if (new_owner.empty()) {
-    OnServiceAvailable(false);
+    // The callback might invoke calls to the ObjectProxy, so defer the
+    // callback to event loop.
+    if (!service_vanished_callback_.is_null()) {
+        dispatcher_->PostTask(service_vanished_callback_);
+    }
+    service_available_ = false;
   } else {
-    OnServiceAvailable(true);
+    // The callback might invoke calls to the ObjectProxy, so defer the
+    // callback to event loop.
+    if (!service_appeared_callback_.is_null()) {
+      dispatcher_->PostTask(service_appeared_callback_);
+    }
+    service_available_ = true;
   }
 }
 
