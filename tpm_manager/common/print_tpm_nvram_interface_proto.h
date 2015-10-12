@@ -16,30 +16,15 @@
 
 // THIS CODE IS GENERATED.
 
-#ifndef TPM_MANAGER_COMMON_PRINT_DBUS_INTERFACE_PROTO_H_
-#define TPM_MANAGER_COMMON_PRINT_DBUS_INTERFACE_PROTO_H_
+#ifndef TPM_MANAGER_COMMON_PRINT_TPM_NVRAM_INTERFACE_PROTO_H_
+#define TPM_MANAGER_COMMON_PRINT_TPM_NVRAM_INTERFACE_PROTO_H_
 
 #include <string>
 
-#include "tpm_manager/common/dbus_interface.pb.h"
+#include "tpm_manager/common/tpm_nvram_interface.pb.h"
 
 namespace tpm_manager {
 
-std::string GetProtoDebugStringWithIndent(TpmManagerStatus value,
-                                          int indent_size);
-std::string GetProtoDebugString(TpmManagerStatus value);
-std::string GetProtoDebugStringWithIndent(const GetTpmStatusRequest& value,
-                                          int indent_size);
-std::string GetProtoDebugString(const GetTpmStatusRequest& value);
-std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
-                                          int indent_size);
-std::string GetProtoDebugString(const GetTpmStatusReply& value);
-std::string GetProtoDebugStringWithIndent(const TakeOwnershipRequest& value,
-                                          int indent_size);
-std::string GetProtoDebugString(const TakeOwnershipRequest& value);
-std::string GetProtoDebugStringWithIndent(const TakeOwnershipReply& value,
-                                          int indent_size);
-std::string GetProtoDebugString(const TakeOwnershipReply& value);
 std::string GetProtoDebugStringWithIndent(const DefineNvramRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const DefineNvramRequest& value);
@@ -85,4 +70,4 @@ std::string GetProtoDebugString(const GetNvramSizeReply& value);
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_COMMON_PRINT_DBUS_INTERFACE_PROTO_H_
+#endif  // TPM_MANAGER_COMMON_PRINT_TPM_NVRAM_INTERFACE_PROTO_H_

@@ -29,8 +29,10 @@
 #include <brillo/syslog_logging.h>
 
 #include "tpm_manager/client/dbus_proxy.h"
-#include "tpm_manager/common/dbus_interface.pb.h"
-#include "tpm_manager/common/print_dbus_interface_proto.h"
+#include "tpm_manager/common/print_tpm_ownership_interface_proto.h"
+#include "tpm_manager/common/print_tpm_nvram_interface_proto.h"
+#include "tpm_manager/common/tpm_ownership_interface.pb.h"
+#include "tpm_manager/common/tpm_nvram_interface.pb.h"
 
 namespace tpm_manager {
 
