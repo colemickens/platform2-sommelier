@@ -32,7 +32,8 @@ Manager::~Manager() {
   }
 }
 
-void Manager::RegisterAsync(ExportedObjectManager* object_manager,
+void Manager::RegisterAsync(ControlInterface* control_interface,
+                            ExportedObjectManager* object_manager,
                             const scoped_refptr<dbus::Bus>& bus,
                             AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
@@ -46,8 +47,8 @@ void Manager::RegisterAsync(ExportedObjectManager* object_manager,
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
   bus_ = bus;
 
-  shill_manager_.Init(bus);
-  firewall_manager_.Init(bus);
+  shill_manager_.Init(control_interface);
+  firewall_manager_.Init(control_interface);
 }
 
 void Manager::Start() {

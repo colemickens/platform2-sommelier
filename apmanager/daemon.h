@@ -8,6 +8,7 @@
 #include <base/callback_forward.h>
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "apmanager/control_interface.h"
 #include "apmanager/manager.h"
 
 namespace apmanager {
@@ -30,6 +31,7 @@ class Daemon : public brillo::DBusServiceDaemon {
  private:
   friend class DaemonTest;
 
+  std::unique_ptr<ControlInterface> control_interface_;
   std::unique_ptr<Manager> manager_;
   base::Closure startup_callback_;
 

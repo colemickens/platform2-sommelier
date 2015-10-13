@@ -7,7 +7,7 @@
 #include <base/bind.h>
 #include <brillo/errors/error.h>
 
-#include "apmanager/shill_dbus_proxy.h"
+#include "apmanager/control_interface.h"
 
 using std::string;
 
@@ -17,15 +17,14 @@ ShillManager::ShillManager() {}
 
 ShillManager::~ShillManager() {}
 
-void ShillManager::Init(const scoped_refptr<dbus::Bus>& bus) {
+void ShillManager::Init(ControlInterface* control_interface) {
   CHECK(!shill_proxy_) << "Already init";
-  shill_proxy_.reset(
-      new ShillDBusProxy(
-          bus,
+  shill_proxy_ =
+      control_interface->CreateShillProxy(
           base::Bind(&ShillManager::OnShillServiceAppeared,
                      weak_factory_.GetWeakPtr()),
           base::Bind(&ShillManager::OnShillServiceVanished,
-                     weak_factory_.GetWeakPtr())));
+                     weak_factory_.GetWeakPtr()));
 }
 
 void ShillManager::ClaimInterface(const string& interface_name) {

@@ -7,11 +7,7 @@
 #include <base/bind.h>
 #include <brillo/errors/error.h>
 
-#if !defined(__ANDROID__)
-#include "apmanager/permission_broker_dbus_proxy.h"
-#else
-#include "apmanager/firewalld_dbus_proxy.h"
-#endif  // __ANDROID__
+#include "apmanager/control_interface.h"
 
 using std::string;
 
@@ -25,25 +21,14 @@ FirewallManager::FirewallManager() {}
 
 FirewallManager::~FirewallManager() {}
 
-void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
+void FirewallManager::Init(ControlInterface* control_interface) {
   CHECK(!firewall_proxy_) << "Already started";
-#if !defined(__ANDROID__)
-  firewall_proxy_.reset(
-      new PermissionBrokerDBusProxy(
-          bus,
+  firewall_proxy_ =
+      control_interface->CreateFirewallProxy(
           base::Bind(&FirewallManager::OnFirewallServiceAppeared,
                      weak_factory_.GetWeakPtr()),
           base::Bind(&FirewallManager::OnFirewallServiceVanished,
-                     weak_factory_.GetWeakPtr())));
-#else
-  firewall_proxy_.reset(
-      new FirewalldDBusProxy(
-          bus,
-          base::Bind(&FirewallManager::OnFirewallServiceAppeared,
-                     weak_factory_.GetWeakPtr()),
-          base::Bind(&FirewallManager::OnFirewallServiceVanished,
-                     weak_factory_.GetWeakPtr())));
-#endif  // __ANDROID__
+                     weak_factory_.GetWeakPtr()));
 }
 
 void FirewallManager::RequestDHCPPortAccess(const std::string& interface) {

@@ -9,21 +9,21 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <dbus/bus.h>
 
 #include "apmanager/firewall_proxy_interface.h"
 
 // Class for managing required firewall rules for apmanager.
 namespace apmanager {
 
+class ControlInterface;
+
 class FirewallManager final {
  public:
   FirewallManager();
   ~FirewallManager();
 
-  void Init(const scoped_refptr<dbus::Bus>& bus);
+  void Init(ControlInterface* control_interface);
 
   // Request/release DHCP port access for the specified interface.
   void RequestDHCPPortAccess(const std::string& interface);

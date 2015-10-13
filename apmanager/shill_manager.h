@@ -9,20 +9,20 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <dbus/bus.h>
 
 #include "apmanager/shill_proxy_interface.h"
 
 namespace apmanager {
+
+class ControlInterface;
 
 class ShillManager {
  public:
   ShillManager();
   virtual ~ShillManager();
 
-  void Init(const scoped_refptr<dbus::Bus>& bus);
+  void Init(ControlInterface* control_interface);
 
   // Claim the given interface |interface_name| from shill.
   virtual void ClaimInterface(const std::string& interface_name);

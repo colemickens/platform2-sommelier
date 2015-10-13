@@ -10,6 +10,8 @@
 #include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 
+#include "apmanager/dbus_control.h"
+
 namespace apmanager {
 
 namespace {
@@ -53,8 +55,14 @@ void Daemon::OnShutdown(int* return_code) {
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  control_interface_.reset(new DBusControl(bus_));
   manager_.reset(new apmanager::Manager());
-  manager_->RegisterAsync(object_manager_.get(), bus_, sequencer);
+  // TODO(zqiu): remove object_manager_ and bus_ references once we moved over
+  // to use control interface for creating adaptors.
+  manager_->RegisterAsync(control_interface_.get(),
+                          object_manager_.get(),
+                          bus_,
+                          sequencer);
 }
 
 }  // namespace apmanager
