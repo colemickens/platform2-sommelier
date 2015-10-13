@@ -91,13 +91,6 @@
       ],
     },
     {
-      'target_name': 'buffet_test_daemon',
-      'type': 'executable',
-      'sources': [
-        'test_daemon/main.cc',
-      ],
-    },
-    {
       'target_name': 'buffet_client',
       'type': 'executable',
       'sources': [
