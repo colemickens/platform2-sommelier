@@ -5,15 +5,15 @@
 #include "apmanager/device.h"
 
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 #include <shill/net/attribute_list.h>
 #include <shill/net/ieee80211.h>
 
 #include "apmanager/config.h"
 #include "apmanager/manager.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 using org::chromium::apmanager::ManagerAdaptor;
 using shill::ByteString;
 using std::string;
@@ -40,7 +40,7 @@ void Device::RegisterAsync(ExportedObjectManager* object_manager,
                          ManagerAdaptor::GetObjectPath().value().c_str(),
                          device_identifier));
   dbus_object_.reset(
-      new chromeos::dbus_utils::DBusObject(
+      new brillo::dbus_utils::DBusObject(
           object_manager,
           bus,
           dbus_path_));
@@ -278,7 +278,7 @@ bool Device::GetHTCapability(uint16_t channel, string* ht_cap) {
   }
 
   *ht_cap = base::StringPrintf("[%s]",
-      chromeos::string_utils::Join(" ", ht_capability).c_str());
+      brillo::string_utils::Join(" ", ht_capability).c_str());
   return true;
 }
 

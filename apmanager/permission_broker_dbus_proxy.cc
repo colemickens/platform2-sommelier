@@ -17,7 +17,7 @@
 #include "apmanager/permission_broker_dbus_proxy.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #include "apmanager/event_dispatcher.h"
 
@@ -71,7 +71,7 @@ bool PermissionBrokerDBusProxy::RequestUdpPortAccess(const string& interface,
   dbus::FileDescriptor fd(lifeline_read_fd_);
   fd.CheckValidity();
   bool allowed = false;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!proxy_->RequestUdpPortAccess(port, interface, fd, &allowed, &error)) {
     LOG(ERROR) << "Failed to request UDP port access: "
                << error->GetCode() << " " << error->GetMessage();
@@ -94,7 +94,7 @@ bool PermissionBrokerDBusProxy::ReleaseUdpPortAccess(const string& interface,
     return false;
   }
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   bool success;
   if (!proxy_->ReleaseUdpPort(port, interface, &success, &error)) {
     LOG(ERROR) << "Failed to release UDP port access: "

@@ -5,7 +5,7 @@
 #include "apmanager/shill_manager.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #include "apmanager/shill_dbus_proxy.h"
 

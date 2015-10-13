@@ -6,13 +6,13 @@
 #define APMANAGER_DAEMON_H_
 
 #include <base/callback_forward.h>
-#include <chromeos/daemons/dbus_daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 
 #include "apmanager/manager.h"
 
 namespace apmanager {
 
-class Daemon : public chromeos::DBusServiceDaemon {
+class Daemon : public brillo::DBusServiceDaemon {
  public:
   // User and group to run the apmanager process.
   static const char kAPManagerGroupName[];
@@ -25,7 +25,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
   int OnInit() override;
   void OnShutdown(int* return_code) override;
   void RegisterDBusObjectsAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
   friend class DaemonTest;

@@ -45,7 +45,7 @@ class DHCPServer {
   uint16_t server_address_index_;
   std::string interface_name_;
   shill::IPAddress server_address_;
-  std::unique_ptr<chromeos::Process> dnsmasq_process_;
+  std::unique_ptr<brillo::Process> dnsmasq_process_;
   shill::RTNLHandler* rtnl_handler_;
   FileWriter* file_writer_;
   ProcessFactory* process_factory_;

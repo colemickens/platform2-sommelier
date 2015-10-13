@@ -129,7 +129,7 @@ class ConfigTest : public testing::Test {
 
 MATCHER_P(IsConfigErrorStartingWith, message, "") {
   return arg != nullptr &&
-         arg->GetDomain() == chromeos::errors::dbus::kDomain &&
+         arg->GetDomain() == brillo::errors::dbus::kDomain &&
          arg->GetCode() == kConfigError &&
          base::StartsWithASCII(arg->GetMessage(), message, false);
 }
@@ -158,7 +158,7 @@ TEST_F(ConfigTest, GetFrequencyFromChannel) {
 }
 
 TEST_F(ConfigTest, ValidateSsid) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   // SSID must contain between 1 and 32 characters.
   EXPECT_TRUE(config_.ValidateSsid(&error, "s"));
   EXPECT_TRUE(config_.ValidateSsid(&error, std::string(32, 'c')));
@@ -167,14 +167,14 @@ TEST_F(ConfigTest, ValidateSsid) {
 }
 
 TEST_F(ConfigTest, ValidateSecurityMode) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_TRUE(config_.ValidateSecurityMode(&error, kSecurityModeNone));
   EXPECT_TRUE(config_.ValidateSecurityMode(&error, kSecurityModeRSN));
   EXPECT_FALSE(config_.ValidateSecurityMode(&error, "InvalidSecurityMode"));
 }
 
 TEST_F(ConfigTest, ValidatePassphrase) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   // Passpharse must contain between 8 and 63 characters.
   EXPECT_TRUE(config_.ValidatePassphrase(&error, std::string(8, 'c')));
   EXPECT_TRUE(config_.ValidatePassphrase(&error, std::string(63, 'c')));
@@ -183,7 +183,7 @@ TEST_F(ConfigTest, ValidatePassphrase) {
 }
 
 TEST_F(ConfigTest, ValidateHwMode) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211a));
   EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211b));
   EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211g));
@@ -193,14 +193,14 @@ TEST_F(ConfigTest, ValidateHwMode) {
 }
 
 TEST_F(ConfigTest, ValidateOperationMode) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_TRUE(config_.ValidateOperationMode(&error, kOperationModeServer));
   EXPECT_TRUE(config_.ValidateOperationMode(&error, kOperationModeBridge));
   EXPECT_FALSE(config_.ValidateOperationMode(&error, "InvalidMode"));
 }
 
 TEST_F(ConfigTest, ValidateChannel) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_TRUE(config_.ValidateChannel(&error, 1));
   EXPECT_TRUE(config_.ValidateChannel(&error, 13));
   EXPECT_TRUE(config_.ValidateChannel(&error, 34));
@@ -217,7 +217,7 @@ TEST_F(ConfigTest, NoSsid) {
   config_.SetInterfaceName(kInterface);
 
   std::string config_content;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
   EXPECT_THAT(error, IsConfigErrorStartingWith("SSID not specified"));
 }
@@ -229,7 +229,7 @@ TEST_F(ConfigTest, NoInterface) {
   config_.SetHwMode(kHwMode80211g);
 
   // No device available, fail to generate config file.
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   std::string config_content;
   EXPECT_CALL(manager_, GetAvailableDevice()).WillOnce(Return(nullptr));
   EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
@@ -239,7 +239,7 @@ TEST_F(ConfigTest, NoInterface) {
   // Device available, config file should be generated without any problem.
   scoped_refptr<MockDevice> device = new MockDevice();
   device->SetPreferredApInterface(kInterface);
-  chromeos::ErrorPtr error1;
+  brillo::ErrorPtr error1;
   EXPECT_CALL(manager_, GetAvailableDevice()).WillOnce(Return(device));
   EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(
@@ -259,7 +259,7 @@ TEST_F(ConfigTest, InvalidInterface) {
   config_.SetInterfaceName(kInterface);
 
   // No device available, fail to generate config file.
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   std::string config_content;
   EXPECT_CALL(manager_, GetDeviceFromInterfaceName(kInterface))
       .WillOnce(Return(nullptr));
@@ -278,7 +278,7 @@ TEST_F(ConfigTest, BridgeMode) {
   config_.SetOperationMode(kOperationModeBridge);
 
   // Bridge interface required for bridge mode.
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   std::string config_content;
   EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
   EXPECT_THAT(error,
@@ -288,7 +288,7 @@ TEST_F(ConfigTest, BridgeMode) {
   config_.SetBridgeInterface(kBridgeInterface);
   // Setup mock device.
   SetupDevice(kInterface);
-  chromeos::ErrorPtr error1;
+  brillo::ErrorPtr error1;
   std::string config_content1;
   EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content1));
   EXPECT_NE(std::string::npos, config_content1.find(
@@ -309,7 +309,7 @@ TEST_F(ConfigTest, 80211gConfig) {
   SetupDevice(kInterface);
 
   std::string config_content;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_TRUE(config_.GenerateConfigFile(&error, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(
                                    kExpected80211gConfigContent))
@@ -330,7 +330,7 @@ TEST_F(ConfigTest, 80211gConfigWithControlInterface) {
   SetupDevice(kInterface);
 
   std::string config_content;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_TRUE(config_.GenerateConfigFile(&error, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(
                                    kExpected80211gCtrlIfaceConfigContent))
@@ -351,7 +351,7 @@ TEST_F(ConfigTest, 80211nConfig) {
   // 5GHz channel.
   config_.SetChannel(k5GHzChannel);
   std::string ghz5_config_content;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   std::string ht_capab_5ghz(k5GHzHTCapab);
   EXPECT_CALL(*device_.get(), GetHTCapability(k5GHzChannel, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(ht_capab_5ghz), Return(true)));
@@ -367,7 +367,7 @@ TEST_F(ConfigTest, 80211nConfig) {
   // 2.4GHz channel.
   config_.SetChannel(k24GHzChannel);
   std::string ghz24_config_content;
-  chromeos::ErrorPtr error1;
+  brillo::ErrorPtr error1;
   std::string ht_capab_24ghz(k24GHzHTCapab);
   EXPECT_CALL(*device_.get(), GetHTCapability(k24GHzChannel, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(ht_capab_24ghz), Return(true)));
@@ -393,13 +393,13 @@ TEST_F(ConfigTest, RsnConfig) {
 
   // Failed due to no passphrase specified.
   std::string config_content;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
   EXPECT_THAT(error, IsConfigErrorStartingWith(
       base::StringPrintf("Passphrase not set for security mode: %s",
                          kSecurityModeRSN)));
 
-  chromeos::ErrorPtr error1;
+  brillo::ErrorPtr error1;
   config_.SetPassphrase(kPassphrase);
   EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(

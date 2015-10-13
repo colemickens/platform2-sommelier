@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 #include "apmanager/config.h"
 #include "apmanager/dhcp_server_factory.h"
@@ -28,14 +28,14 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   virtual ~Service();
 
   // Implementation of ServiceInterface.
-  virtual bool Start(chromeos::ErrorPtr* error);
-  virtual bool Stop(chromeos::ErrorPtr* error);
+  virtual bool Start(brillo::ErrorPtr* error);
+  virtual bool Stop(brillo::ErrorPtr* error);
 
   // Register Service DBus object.
   void RegisterAsync(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      brillo::dbus_utils::ExportedObjectManager* object_manager,
       const scoped_refptr<dbus::Bus>& bus,
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+      brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
   const dbus::ObjectPath& dbus_path() const { return dbus_path_; }
 
@@ -75,8 +75,8 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   std::string service_path_;
   dbus::ObjectPath dbus_path_;
   std::unique_ptr<Config> config_;
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
-  std::unique_ptr<chromeos::Process> hostapd_process_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::Process> hostapd_process_;
   std::unique_ptr<DHCPServer> dhcp_server_;
   DHCPServerFactory* dhcp_server_factory_;
   FileWriter* file_writer_;

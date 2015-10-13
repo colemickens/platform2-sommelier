@@ -7,7 +7,7 @@
 #include <signal.h>
 
 #include <base/strings/stringprintf.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
@@ -17,8 +17,8 @@
 
 #include "apmanager/manager.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 using org::chromium::apmanager::ManagerAdaptor;
 using std::string;
 
@@ -79,7 +79,7 @@ void Service::RegisterAsync(ExportedObjectManager* object_manager,
                             AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
   dbus_object_.reset(
-      new chromeos::dbus_utils::DBusObject(
+      new brillo::dbus_utils::DBusObject(
           object_manager,
           bus,
           dbus_path_));
@@ -91,10 +91,10 @@ void Service::RegisterAsync(ExportedObjectManager* object_manager,
   config_->RegisterAsync(object_manager, bus, sequencer);
 }
 
-bool Service::Start(chromeos::ErrorPtr* error) {
+bool Service::Start(brillo::ErrorPtr* error) {
   if (IsHostapdRunning()) {
-    chromeos::Error::AddTo(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
         "Service already running");
     return false;
   }
@@ -105,8 +105,8 @@ bool Service::Start(chromeos::ErrorPtr* error) {
   // Generate hostapd configuration content.
   string config_str;
   if (!config_->GenerateConfigFile(error, &config_str)) {
-    chromeos::Error::AddTo(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
         "Failed to generate config file");
     return false;
   }
@@ -115,24 +115,24 @@ bool Service::Start(chromeos::ErrorPtr* error) {
   string config_file_name = base::StringPrintf(kHostapdConfigPathFormat,
                                                identifier_);
   if (!file_writer_->Write(config_file_name, config_str)) {
-    chromeos::Error::AddTo(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
         "Failed to write configuration to a file");
     return false;
   }
 
   // Claim the device needed for this ap service.
   if (!config_->ClaimDevice()) {
-    chromeos::Error::AddTo(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
         "Failed to claim the device for this service");
     return false;
   }
 
   // Start hostapd process.
   if (!StartHostapdProcess(config_file_name)) {
-    chromeos::Error::AddTo(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
         "Failed to start hostapd");
     // Release the device claimed for this service.
     config_->ReleaseDevice();
@@ -145,8 +145,8 @@ bool Service::Start(chromeos::ErrorPtr* error) {
         dhcp_server_factory_->CreateDHCPServer(config_->GetServerAddressIndex(),
                                                config_->selected_interface()));
     if (!dhcp_server_->Start()) {
-      chromeos::Error::AddTo(
-          error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+      brillo::Error::AddTo(
+          error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
           "Failed to start DHCP server");
       ReleaseResources();
       return false;
@@ -170,10 +170,10 @@ bool Service::Start(chromeos::ErrorPtr* error) {
   return true;
 }
 
-bool Service::Stop(chromeos::ErrorPtr* error) {
+bool Service::Stop(brillo::ErrorPtr* error) {
   if (!IsHostapdRunning()) {
-    chromeos::Error::AddTo(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
         "Service is not currently running");
     return false;
   }
@@ -185,7 +185,7 @@ bool Service::Stop(chromeos::ErrorPtr* error) {
 
 bool Service::IsHostapdRunning() {
   return hostapd_process_ && hostapd_process_->pid() != 0 &&
-         chromeos::Process::ProcessExists(hostapd_process_->pid());
+         brillo::Process::ProcessExists(hostapd_process_->pid());
 }
 
 bool Service::StartHostapdProcess(const string& config_file_path) {

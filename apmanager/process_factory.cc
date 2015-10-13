@@ -20,8 +20,8 @@ ProcessFactory* ProcessFactory::GetInstance() {
   return g_process_factory.Pointer();
 }
 
-chromeos::Process* ProcessFactory::CreateProcess() {
-  return new chromeos::ProcessImpl();
+brillo::Process* ProcessFactory::CreateProcess() {
+  return new brillo::ProcessImpl();
 }
 
 }  // namespace apmanager

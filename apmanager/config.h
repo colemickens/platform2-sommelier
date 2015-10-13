@@ -9,7 +9,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #include "dbus_bindings/org.chromium.apmanager.Config.h"
 
@@ -26,17 +26,17 @@ class Config
   virtual ~Config();
 
   // Override ConfigAdaptor Validate functions.
-  bool ValidateSsid(chromeos::ErrorPtr* error,
+  bool ValidateSsid(brillo::ErrorPtr* error,
                     const std::string& value) override;
-  bool ValidateSecurityMode(chromeos::ErrorPtr* error,
+  bool ValidateSecurityMode(brillo::ErrorPtr* error,
                             const std::string& value) override;
-  bool ValidatePassphrase(chromeos::ErrorPtr* error,
+  bool ValidatePassphrase(brillo::ErrorPtr* error,
                           const std::string& value) override;
-  bool ValidateHwMode(chromeos::ErrorPtr* error,
+  bool ValidateHwMode(brillo::ErrorPtr* error,
                       const std::string& value) override;
-  bool ValidateOperationMode(chromeos::ErrorPtr* error,
+  bool ValidateOperationMode(brillo::ErrorPtr* error,
                              const std::string& value) override;
-  bool ValidateChannel(chromeos::ErrorPtr* error,
+  bool ValidateChannel(brillo::ErrorPtr* error,
                        const uint16_t& value) override;
 
   // Calculate the frequency based on the given |channel|. Return true and set
@@ -45,14 +45,14 @@ class Config
 
   // Register Config DBus object.
   void RegisterAsync(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      brillo::dbus_utils::ExportedObjectManager* object_manager,
       const scoped_refptr<dbus::Bus>& bus,
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+      brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Generate a config file string for a hostapd instance. Raise appropriate
   // error when encounter invalid configuration. Return true if success,
   // false otherwise.
-  virtual bool GenerateConfigFile(chromeos::ErrorPtr* error,
+  virtual bool GenerateConfigFile(brillo::ErrorPtr* error,
                                   std::string* config_str);
 
   // Claim and release the device needed for this configuration.
@@ -123,24 +123,24 @@ class Config
   static const int kPassphraseMaxLength;
 
   // Append default hostapd configurations to the config file.
-  bool AppendHostapdDefaults(chromeos::ErrorPtr* error,
+  bool AppendHostapdDefaults(brillo::ErrorPtr* error,
                              std::string* config_str);
 
   // Append hardware mode related configurations to the config file.
-  bool AppendHwMode(chromeos::ErrorPtr* error, std::string* config_str);
+  bool AppendHwMode(brillo::ErrorPtr* error, std::string* config_str);
 
   // Determine/append interface configuration to the config file.
-  bool AppendInterface(chromeos::ErrorPtr* error, std::string* config_str);
+  bool AppendInterface(brillo::ErrorPtr* error, std::string* config_str);
 
   // Append security related configurations to the config file.
-  bool AppendSecurityMode(chromeos::ErrorPtr* error, std::string* config_str);
+  bool AppendSecurityMode(brillo::ErrorPtr* error, std::string* config_str);
 
   Manager* manager_;
   dbus::ObjectPath dbus_path_;
   std::string control_interface_;
   // Interface selected for hostapd.
   std::string selected_interface_;
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   scoped_refptr<Device> device_;
 
   DISALLOW_COPY_AND_ASSIGN(Config);

@@ -16,9 +16,9 @@
 #include "apmanager/device.h"
 #include "apmanager/manager.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
-using chromeos::ErrorPtr;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
+using brillo::ErrorPtr;
 using std::string;
 
 namespace apmanager {
@@ -112,8 +112,8 @@ bool Config::GetFrequencyFromChannel(uint16_t channel, uint32_t* freq) {
 
 bool Config::ValidateSsid(ErrorPtr* error, const string& value) {
   if (value.length() < kSsidMinLength || value.length() > kSsidMaxLength) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
         "SSID must contain between %d and %d characters",
         kSsidMinLength, kSsidMaxLength);
     return false;
@@ -123,8 +123,8 @@ bool Config::ValidateSsid(ErrorPtr* error, const string& value) {
 
 bool Config::ValidateSecurityMode(ErrorPtr* error, const string& value) {
   if (value != kSecurityModeNone && value != kSecurityModeRSN) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
         "Invalid/unsupported security mode [%s]", value.c_str());
     return false;
   }
@@ -134,8 +134,8 @@ bool Config::ValidateSecurityMode(ErrorPtr* error, const string& value) {
 bool Config::ValidatePassphrase(ErrorPtr* error, const string& value) {
   if (value.length() < kPassphraseMinLength ||
       value.length() > kPassphraseMaxLength) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
         "Passphrase must contain between %d and %d characters",
         kPassphraseMinLength, kPassphraseMaxLength);
     return false;
@@ -147,8 +147,8 @@ bool Config::ValidateHwMode(ErrorPtr* error, const string& value) {
   if (value != kHwMode80211a && value != kHwMode80211b &&
       value != kHwMode80211g && value != kHwMode80211n &&
       value != kHwMode80211ac) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
         "Invalid HW mode [%s]", value.c_str());
     return false;
   }
@@ -157,8 +157,8 @@ bool Config::ValidateHwMode(ErrorPtr* error, const string& value) {
 
 bool Config::ValidateOperationMode(ErrorPtr* error, const string& value) {
   if (value != kOperationModeServer && value != kOperationModeBridge) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
         "Invalid operation mode [%s]", value.c_str());
     return false;
   }
@@ -170,8 +170,8 @@ bool Config::ValidateChannel(ErrorPtr* error, const uint16_t& value) {
       (value >= kBand5GHzChannelLow && value <= kBand5GHzChannelHigh)) {
     return true;
   }
-  chromeos::Error::AddToPrintf(
-      error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+  brillo::Error::AddToPrintf(
+      error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
       "Invalid channel [%d]", value);
   return false;
 }
@@ -181,7 +181,7 @@ void Config::RegisterAsync(ExportedObjectManager* object_manager,
                            AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
   dbus_object_.reset(
-      new chromeos::dbus_utils::DBusObject(
+      new brillo::dbus_utils::DBusObject(
           object_manager,
           bus,
           dbus_path_));
@@ -194,8 +194,8 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   // SSID.
   string ssid = GetSsid();
   if (ssid.empty()) {
-    chromeos::Error::AddTo(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
         "SSID not specified");
     return false;
   }
@@ -205,8 +205,8 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   // Bridge interface is required for bridge mode operation.
   if (GetOperationMode() == kOperationModeBridge) {
     if (GetBridgeInterface().empty()) {
-      chromeos::Error::AddTo(
-          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      brillo::Error::AddTo(
+          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
           "Bridge interface not specified, required for bridge mode");
       return false;
     }
@@ -292,8 +292,8 @@ bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
     // Get HT Capability.
     string ht_cap;
     if (!device_->GetHTCapability(GetChannel(), &ht_cap)) {
-      chromeos::Error::AddTo(
-          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      brillo::Error::AddTo(
+          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
           "Failed to get HT Capability");
       return false;
     }
@@ -311,8 +311,8 @@ bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
     // TODO(zqiu): Determine VHT Capabilities based on the interface PHY's
     // capababilites.
   } else {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
         "Invalid hardware mode: %s", hw_mode.c_str());
     return false;
   }
@@ -350,23 +350,23 @@ bool Config::AppendInterface(ErrorPtr* error,
     // Ask manager for unused ap capable device.
     device_ = manager_->GetAvailableDevice();
     if (!device_) {
-      chromeos::Error::AddTo(
-          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      brillo::Error::AddTo(
+          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
           "No device available");
       return false;
     }
   } else {
     device_ = manager_->GetDeviceFromInterfaceName(interface);
     if (!device_) {
-      chromeos::Error::AddToPrintf(
-          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
           "Unable to find device for the specified interface [%s]",
           interface.c_str());
       return false;
     }
     if (device_->GetInUse()) {
-      chromeos::Error::AddToPrintf(
-          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
           "Device [%s] for interface [%s] already in use",
           device_->GetDeviceName().c_str(),
           interface.c_str());
@@ -394,8 +394,8 @@ bool Config::AppendSecurityMode(ErrorPtr* error,
   if (security_mode == kSecurityModeRSN) {
     string passphrase = GetPassphrase();
     if (passphrase.empty()) {
-      chromeos::Error::AddToPrintf(
-          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
           "Passphrase not set for security mode: %s", security_mode.c_str());
       return false;
     }
@@ -416,8 +416,8 @@ bool Config::AppendSecurityMode(ErrorPtr* error,
     return true;
   }
 
-  chromeos::Error::AddToPrintf(
-      error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+  brillo::Error::AddToPrintf(
+      error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
       "Invalid security mode: %s", security_mode.c_str());
   return false;
 }

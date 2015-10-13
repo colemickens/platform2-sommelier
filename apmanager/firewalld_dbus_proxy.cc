@@ -17,7 +17,7 @@
 #include "apmanager/firewalld_dbus_proxy.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #include "apmanager/event_dispatcher.h"
 
@@ -56,7 +56,7 @@ bool FirewalldDBusProxy::RequestUdpPortAccess(const string& interface,
   }
 
   bool success = false;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!proxy_->PunchUdpHole(port, interface, &success, &error)) {
     LOG(ERROR) << "Failed to request UDP port access: "
                << error->GetCode() << " " << error->GetMessage();
@@ -79,7 +79,7 @@ bool FirewalldDBusProxy::ReleaseUdpPortAccess(const string& interface,
     return false;
   }
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   bool success;
   if (!proxy_->PlugUdpHole(port, interface, &success, &error)) {
     LOG(ERROR) << "Failed to release UDP port access: "

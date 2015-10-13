@@ -32,7 +32,7 @@ Daemon::Daemon(const base::Closure& startup_callback)
 }
 
 int Daemon::OnInit() {
-  int return_code = chromeos::DBusServiceDaemon::OnInit();
+  int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK) {
     return return_code;
   }
@@ -48,11 +48,11 @@ int Daemon::OnInit() {
 
 void Daemon::OnShutdown(int* return_code) {
   manager_.reset();
-  chromeos::DBusServiceDaemon::OnShutdown(return_code);
+  brillo::DBusServiceDaemon::OnShutdown(return_code);
 }
 
 void Daemon::RegisterDBusObjectsAsync(
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   manager_.reset(new apmanager::Manager());
   manager_->RegisterAsync(object_manager_.get(), bus_, sequencer);
 }

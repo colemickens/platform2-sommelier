@@ -12,9 +12,9 @@
 #include "dbus/apmanager/dbus-constants.h"
 #endif  // __ANDROID__
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
-using chromeos::dbus_utils::DBusMethodResponse;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::DBusMethodResponse;
 using std::string;
 
 namespace apmanager {
@@ -37,7 +37,7 @@ void Manager::RegisterAsync(ExportedObjectManager* object_manager,
                             AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
   dbus_object_.reset(
-      new chromeos::dbus_utils::DBusObject(
+      new brillo::dbus_utils::DBusObject(
           object_manager,
           bus,
           org::chromium::apmanager::ManagerAdaptor::GetObjectPath()));
@@ -83,7 +83,7 @@ void Manager::CreateService(
   service_identifier_++;
 }
 
-bool Manager::RemoveService(chromeos::ErrorPtr* error,
+bool Manager::RemoveService(brillo::ErrorPtr* error,
                             dbus::Message* message,
                             const dbus::ObjectPath& in_service) {
   for (auto it = services_.begin(); it != services_.end(); ++it) {
@@ -93,8 +93,8 @@ bool Manager::RemoveService(chromeos::ErrorPtr* error,
       CHECK(watcher != service_watchers_.end())
           << "DBus watcher not created for service: " << (*it)->identifier();
       if (watcher->second->connection_name() != message->GetSender()) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, chromeos::errors::dbus::kDomain, kManagerError,
+        brillo::Error::AddToPrintf(
+            error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerError,
             "Service %d is owned by another local process.",
             (*it)->identifier());
         return false;
@@ -106,8 +106,8 @@ bool Manager::RemoveService(chromeos::ErrorPtr* error,
     }
   }
 
-  chromeos::Error::AddTo(
-      error, FROM_HERE, chromeos::errors::dbus::kDomain, kManagerError,
+  brillo::Error::AddTo(
+      error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerError,
       "Service does not exist");
   return false;
 }

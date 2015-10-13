@@ -59,9 +59,9 @@ class Device : public base::RefCounted<Device>,
 
   // Register Device DBus object.
   void RegisterAsync(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      brillo::dbus_utils::ExportedObjectManager* object_manager,
       const scoped_refptr<dbus::Bus>& bus,
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer,
+      brillo::dbus_utils::AsyncEventSequencer* sequencer,
       int device_identifier);
 
   // Register/deregister WiFi interface on this device.
@@ -112,7 +112,7 @@ class Device : public base::RefCounted<Device>,
   std::vector<WiFiInterface> interface_list_;
 
   dbus::ObjectPath dbus_path_;
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   // Flag indicating if this device supports AP mode interface or not.
   bool supports_ap_mode_;

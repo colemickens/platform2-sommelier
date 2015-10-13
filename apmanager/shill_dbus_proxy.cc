@@ -17,7 +17,7 @@
 #include "apmanager/shill_dbus_proxy.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
@@ -59,7 +59,7 @@ bool ShillDBusProxy::ClaimInterface(const string& interface_name) {
     LOG(ERROR) << "ClaimInterface failed: service not available";
     return false;
   }
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!manager_proxy_->ClaimInterface(kServiceName, interface_name, &error)) {
     LOG(ERROR) << "Failed to claim interface from shill: "
                << error->GetCode() << " " << error->GetMessage();
@@ -73,7 +73,7 @@ bool ShillDBusProxy::ReleaseInterface(const string& interface_name) {
     LOG(ERROR) << "ReleaseInterface failed: service not available";
     return false;
   }
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!manager_proxy_->ReleaseInterface(kServiceName, interface_name, &error)) {
     LOG(ERROR) << "Failed to release interface from shill: "
                << error->GetCode() << " " << error->GetMessage();

@@ -5,7 +5,7 @@
 #include "apmanager/firewall_manager.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #if !defined(__ANDROID__)
 #include "apmanager/permission_broker_dbus_proxy.h"

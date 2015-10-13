@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <chromeos/dbus/dbus_service_watcher.h>
+#include <brillo/dbus/dbus_service_watcher.h>
 
 #include "apmanager/device_info.h"
 #include "apmanager/firewall_manager.h"
@@ -24,7 +24,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
                 public org::chromium::apmanager::ManagerInterface {
  public:
   template<typename T>
-  using DBusMethodResponse = chromeos::dbus_utils::DBusMethodResponse<T>;
+  using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<T>;
 
   Manager();
   virtual ~Manager();
@@ -37,15 +37,15 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
       std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
       dbus::Message* message);
   // Handles calls to org.chromium.apmanager.Manager.RemoveService().
-  virtual bool RemoveService(chromeos::ErrorPtr* error,
+  virtual bool RemoveService(brillo::ErrorPtr* error,
                              dbus::Message* message,
                              const dbus::ObjectPath& in_service);
 
   // Register DBus object.
   void RegisterAsync(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      brillo::dbus_utils::ExportedObjectManager* object_manager,
       const scoped_refptr<dbus::Bus>& bus,
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+      brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
   virtual void Start();
   virtual void Stop();
@@ -88,12 +88,12 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
 
   int service_identifier_;
   int device_identifier_;
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   scoped_refptr<dbus::Bus> bus_;
   std::vector<std::unique_ptr<Service>> services_;
   std::vector<scoped_refptr<Device>> devices_;
   // DBus service watchers for the owner of AP services.
-  using DBusServiceWatcher = chromeos::dbus_utils::DBusServiceWatcher;
+  using DBusServiceWatcher = brillo::dbus_utils::DBusServiceWatcher;
   std::map<int, std::unique_ptr<DBusServiceWatcher>> service_watchers_;
   DeviceInfo device_info_;
 

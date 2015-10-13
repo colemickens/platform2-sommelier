@@ -10,7 +10,7 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/process_mock.h>
+#include <brillo/process_mock.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <shill/net/mock_rtnl_handler.h>
@@ -18,7 +18,7 @@
 #include "apmanager/mock_file_writer.h"
 #include "apmanager/mock_process_factory.h"
 
-using chromeos::ProcessMock;
+using brillo::ProcessMock;
 using ::testing::_;
 using ::testing::Mock;
 using ::testing::Return;
@@ -74,7 +74,7 @@ class DHCPServerTest : public testing::Test {
   }
 
   void StartDummyProcess() {
-    dhcp_server_->dnsmasq_process_.reset(new chromeos::ProcessImpl);
+    dhcp_server_->dnsmasq_process_.reset(new brillo::ProcessImpl);
     dhcp_server_->dnsmasq_process_->AddArg(kBinSleep);
     dhcp_server_->dnsmasq_process_->AddArg("12345");
     CHECK(dhcp_server_->dnsmasq_process_->Start());

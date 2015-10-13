@@ -8,7 +8,7 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/process_mock.h>
+#include <brillo/process_mock.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -26,7 +26,7 @@
 #include "apmanager/mock_manager.h"
 #include "apmanager/mock_process_factory.h"
 
-using chromeos::ProcessMock;
+using brillo::ProcessMock;
 using ::testing::_;
 using ::testing::Mock;
 using ::testing::Return;
@@ -63,7 +63,7 @@ class ServiceTest : public testing::Test {
   }
 
   void StartDummyProcess() {
-    service_.hostapd_process_.reset(new chromeos::ProcessImpl);
+    service_.hostapd_process_.reset(new brillo::ProcessImpl);
     service_.hostapd_process_->AddArg(kBinSleep);
     service_.hostapd_process_->AddArg("12345");
     CHECK(service_.hostapd_process_->Start());
@@ -85,7 +85,7 @@ class ServiceTest : public testing::Test {
 
 MATCHER_P(IsServiceErrorStartingWith, message, "") {
   return arg != nullptr &&
-         arg->GetDomain() == chromeos::errors::dbus::kDomain &&
+         arg->GetDomain() == brillo::errors::dbus::kDomain &&
          arg->GetCode() == kServiceError &&
          base::EndsWith(arg->GetMessage(), message, false);
 }
@@ -93,7 +93,7 @@ MATCHER_P(IsServiceErrorStartingWith, message, "") {
 TEST_F(ServiceTest, StartWhenServiceAlreadyRunning) {
   StartDummyProcess();
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_FALSE(service_.Start(&error));
   EXPECT_THAT(error, IsServiceErrorStartingWith("Service already running"));
 }
@@ -102,7 +102,7 @@ TEST_F(ServiceTest, StartWhenConfigFileFailed) {
   MockConfig* config = new MockConfig();
   SetConfig(config);
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_CALL(*config, GenerateConfigFile(_, _)).WillOnce(Return(false));
   EXPECT_FALSE(service_.Start(&error));
   EXPECT_THAT(error, IsServiceErrorStartingWith(
@@ -119,7 +119,7 @@ TEST_F(ServiceTest, StartSuccess) {
   ProcessMock* process = new ProcessMock();
 
   std::string config_str(kHostapdConfig);
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_CALL(*config, GenerateConfigFile(_, _)).WillOnce(
       DoAll(SetArgPointee<1>(config_str), Return(true)));
   EXPECT_CALL(*file_writer_, Write(kHostapdConfigFilePath, kHostapdConfig))
@@ -137,7 +137,7 @@ TEST_F(ServiceTest, StartSuccess) {
 }
 
 TEST_F(ServiceTest, StopWhenServiceNotRunning) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_FALSE(service_.Stop(&error));
   EXPECT_THAT(error, IsServiceErrorStartingWith(
       "Service is not currently running"));
@@ -148,7 +148,7 @@ TEST_F(ServiceTest, StopSuccess) {
 
   MockConfig* config = new MockConfig();
   SetConfig(config);
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_CALL(*config, ReleaseDevice()).Times(1);
   EXPECT_TRUE(service_.Stop(&error));
 }
