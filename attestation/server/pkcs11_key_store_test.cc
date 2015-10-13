@@ -25,8 +25,8 @@
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
 #include <chaps/token_manager_client_mock.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/map_utils.h>
+#include <brillo/cryptohome.h>
+#include <brillo/map_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -99,10 +99,10 @@ std::string HexDecode(const std::string hex) {
 class ScopedFakeSalt {
  public:
   ScopedFakeSalt() : salt_(128, 0) {
-    chromeos::cryptohome::home::SetSystemSalt(&salt_);
+    brillo::cryptohome::home::SetSystemSalt(&salt_);
   }
   ~ScopedFakeSalt() {
-    chromeos::cryptohome::home::SetSystemSalt(nullptr);
+    brillo::cryptohome::home::SetSystemSalt(nullptr);
   }
 
  private:
@@ -168,14 +168,14 @@ class KeyStoreTest : public testing::Test {
     base::FilePath system_path("/var/lib/chaps");
     ON_CALL(token_manager_, GetTokenPath(_, 0, _))
         .WillByDefault(DoAll(SetArgumentPointee<2>(system_path), Return(true)));
-    base::FilePath user_path(chromeos::cryptohome::home::GetDaemonPath(
+    base::FilePath user_path(brillo::cryptohome::home::GetDaemonPath(
         kDefaultUser, "chaps"));
     ON_CALL(token_manager_, GetTokenPath(_, 1, _))
         .WillByDefault(DoAll(SetArgumentPointee<2>(user_path), Return(true)));
   }
 
   // Stores a new labeled object, only CKA_LABEL and CKA_VALUE are relevant.
-  virtual uint32_t CreateObject(const chromeos::SecureBlob& isolate,
+  virtual uint32_t CreateObject(const brillo::SecureBlob& isolate,
                                 uint64_t session_id,
                                 const std::vector<uint8_t>& attributes,
                                 uint64_t* new_object_handle) {
@@ -188,7 +188,7 @@ class KeyStoreTest : public testing::Test {
   }
 
   // Deletes a labeled object.
-  virtual uint32_t DestroyObject(const chromeos::SecureBlob& isolate,
+  virtual uint32_t DestroyObject(const brillo::SecureBlob& isolate,
                                  uint64_t session_id,
                                  uint64_t object_handle) {
     std::string label = handles_[object_handle];
@@ -199,7 +199,7 @@ class KeyStoreTest : public testing::Test {
   }
 
   // Supports reading CKA_VALUE.
-  virtual uint32_t GetAttributeValue(const chromeos::SecureBlob& isolate,
+  virtual uint32_t GetAttributeValue(const brillo::SecureBlob& isolate,
                                      uint64_t session_id,
                                      uint64_t object_handle,
                                      const std::vector<uint8_t>& attributes_in,
@@ -226,7 +226,7 @@ class KeyStoreTest : public testing::Test {
 
   // Supports writing CKA_VALUE.
   virtual uint32_t SetAttributeValue(
-      const chromeos::SecureBlob& isolate,
+      const brillo::SecureBlob& isolate,
       uint64_t session_id,
       uint64_t object_handle,
       const std::vector<uint8_t>& attributes) {
@@ -236,7 +236,7 @@ class KeyStoreTest : public testing::Test {
 
   // Finds stored objects by CKA_LABEL or CKA_VALUE. If no CKA_LABEL or
   // CKA_VALUE, find all objects.
-  virtual uint32_t FindObjectsInit(const chromeos::SecureBlob& isolate,
+  virtual uint32_t FindObjectsInit(const brillo::SecureBlob& isolate,
                                    uint64_t session_id,
                                    const std::vector<uint8_t>& attributes) {
     std::string label = GetValue(attributes, CKA_LABEL);
@@ -244,7 +244,7 @@ class KeyStoreTest : public testing::Test {
     found_objects_.clear();
     if (label.empty() && value.empty()) {
       // Find all objects.
-      found_objects_ = chromeos::GetMapKeysAsVector(handles_);
+      found_objects_ = brillo::GetMapKeysAsVector(handles_);
     } else if (!label.empty() && labels_.count(label) > 0) {
       // Find only the object with |label|.
       found_objects_.push_back(labels_[label]);
@@ -260,7 +260,7 @@ class KeyStoreTest : public testing::Test {
   }
 
   // Reports a 'found' object based on find_status_.
-  virtual uint32_t FindObjects(const chromeos::SecureBlob& isolate,
+  virtual uint32_t FindObjects(const brillo::SecureBlob& isolate,
                                uint64_t session_id,
                                uint64_t max_object_count,
                                std::vector<uint64_t>* object_list) {

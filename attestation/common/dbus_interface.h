@@ -19,7 +19,7 @@
 
 namespace attestation {
 
-// TODO(namnguyen): Move to chromeos/system_api once we're ready.
+// TODO(namnguyen): Move to brillo/system_api once we're ready.
 constexpr char kAttestationInterface[] = "org.chromium.Attestation";
 constexpr char kAttestationServicePath[] = "/org/chromium/Attestation";
 constexpr char kAttestationServiceName[] = "org.chromium.Attestation";

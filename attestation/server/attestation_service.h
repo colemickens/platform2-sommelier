@@ -26,8 +26,8 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/http/http_transport.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/http/http_transport.h>
 
 #include "attestation/common/crypto_utility.h"
 #include "attestation/common/crypto_utility_impl.h"
@@ -101,7 +101,7 @@ class AttestationService : public AttestationInterface {
   }
 
   void set_http_transport(
-      const std::shared_ptr<chromeos::http::Transport>& transport) {
+      const std::shared_ptr<brillo::http::Transport>& transport) {
     http_transport_ = transport;
   }
 
@@ -284,7 +284,7 @@ class AttestationService : public AttestationInterface {
   // worker thread.
   CryptoUtility* crypto_utility_{nullptr};
   Database* database_{nullptr};
-  std::shared_ptr<chromeos::http::Transport> http_transport_;
+  std::shared_ptr<brillo::http::Transport> http_transport_;
   KeyStore* key_store_{nullptr};
   TpmUtility* tpm_utility_{nullptr};
 

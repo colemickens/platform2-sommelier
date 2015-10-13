@@ -19,13 +19,13 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/bind_lambda.h>
+#include <brillo/bind_lambda.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 
 #include "attestation/common/dbus_interface.h"
 
-using chromeos::dbus_utils::DBusMethodResponse;
+using brillo::dbus_utils::DBusMethodResponse;
 
 namespace attestation {
 
@@ -36,7 +36,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
 }
 
 void DBusService::Register(const CompletionAction& callback) {
-  chromeos::dbus_utils::DBusInterface* dbus_interface =
+  brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kAttestationInterface);
 
   dbus_interface->AddMethodHandler(kCreateGoogleAttestedKey,

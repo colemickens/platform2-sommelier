@@ -19,8 +19,8 @@
 
 #include <memory>
 
-#include <chromeos/dbus/dbus_method_response.h>
-#include <chromeos/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_method_response.h>
+#include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
 #include "attestation/common/attestation_interface.h"
@@ -28,7 +28,7 @@
 namespace attestation {
 
 using CompletionAction =
-    chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction;
 
 // Handles D-Bus calls to the attestation daemon.
 class DBusService {
@@ -52,59 +52,59 @@ class DBusService {
 
   // Handles a CreateGoogleAttestedKey D-Bus call.
   void HandleCreateGoogleAttestedKey(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const CreateGoogleAttestedKeyReply&>> response,
       const CreateGoogleAttestedKeyRequest& request);
 
   // Handles a GetKeyInfo D-Bus call.
   void HandleGetKeyInfo(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const GetKeyInfoReply&>> response,
       const GetKeyInfoRequest& request);
 
   // Handles a GetEndorsementInfo D-Bus call.
   void HandleGetEndorsementInfo(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const GetEndorsementInfoReply&>> response,
       const GetEndorsementInfoRequest& request);
 
   // Handles a GetAttestationKeyInfo D-Bus call.
   void HandleGetAttestationKeyInfo(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const GetAttestationKeyInfoReply&>> response,
       const GetAttestationKeyInfoRequest& request);
 
   // Handles a ActivateAttestationKey D-Bus call.
   void HandleActivateAttestationKey(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const ActivateAttestationKeyReply&>> response,
       const ActivateAttestationKeyRequest& request);
 
   // Handles a CreateCertifiableKey D-Bus call.
   void HandleCreateCertifiableKey(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const CreateCertifiableKeyReply&>> response,
       const CreateCertifiableKeyRequest& request);
 
   // Handles a Decrypt D-Bus call.
   void HandleDecrypt(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const DecryptReply&>> response,
       const DecryptRequest& request);
 
   // Handles a Sign D-Bus call.
   void HandleSign(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const SignReply&>> response,
       const SignRequest& request);
 
   // Handles a RegisterKeyWithChapsToken D-Bus call.
   void HandleRegisterKeyWithChapsToken(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const RegisterKeyWithChapsTokenReply&>> response,
       const RegisterKeyWithChapsTokenRequest& request);
 
-  chromeos::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusService);

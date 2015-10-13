@@ -19,10 +19,10 @@
 #include <string>
 
 #include <base/callback.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/data_encoding.h>
-#include <chromeos/http/http_utils.h>
-#include <chromeos/mime_utils.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/data_encoding.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/mime_utils.h>
 #include <crypto/sha2.h>
 
 #include "attestation/common/attestation_ca.pb.h"
@@ -680,15 +680,15 @@ bool AttestationService::FinishCertificateRequest(
 bool AttestationService::SendACARequestAndBlock(ACARequestType request_type,
                                                 const std::string& request,
                                                 std::string* reply) {
-  std::shared_ptr<chromeos::http::Transport> transport = http_transport_;
+  std::shared_ptr<brillo::http::Transport> transport = http_transport_;
   if (!transport) {
-    transport = chromeos::http::Transport::CreateDefault();
+    transport = brillo::http::Transport::CreateDefault();
   }
-  std::unique_ptr<chromeos::http::Response> response = PostBinaryAndBlock(
+  std::unique_ptr<brillo::http::Response> response = PostBinaryAndBlock(
       GetACAURL(request_type),
       request.data(),
       request.size(),
-      chromeos::mime::application::kOctet_stream,
+      brillo::mime::application::kOctet_stream,
       {},  // headers
       transport,
       nullptr);  // error
@@ -856,7 +856,7 @@ std::string AttestationService::CreatePEMCertificate(
   const char kEndCertificate[] = "-----END CERTIFICATE-----";
 
   std::string pem = kBeginCertificate;
-  pem += chromeos::data_encoding::Base64EncodeWrapLines(certificate);
+  pem += brillo::data_encoding::Base64EncodeWrapLines(certificate);
   pem += kEndCertificate;
   return pem;
 }

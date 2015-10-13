@@ -28,7 +28,7 @@
 #include <chaps/isolate.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <chaps/token_manager_client.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -495,7 +495,7 @@ bool Pkcs11KeyStore::GetUserSlot(const std::string& username,
   const char kChapsSystemToken[] = "/var/lib/chaps";
   base::FilePath token_path = username.empty() ?
       base::FilePath(kChapsSystemToken) :
-      chromeos::cryptohome::home::GetDaemonPath(username, kChapsDaemonName);
+      brillo::cryptohome::home::GetDaemonPath(username, kChapsDaemonName);
   CK_RV rv;
   rv = C_Initialize(nullptr);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {

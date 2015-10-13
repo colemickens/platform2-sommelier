@@ -20,10 +20,10 @@
 #include <base/callback.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/data_encoding.h>
-#include <chromeos/http/http_transport_fake.h>
-#include <chromeos/mime_utils.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/data_encoding.h>
+#include <brillo/http/http_transport_fake.h>
+#include <brillo/mime_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -34,8 +34,8 @@
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
 
-using chromeos::http::fake::ServerRequest;
-using chromeos::http::fake::ServerResponse;
+using brillo::http::fake::ServerRequest;
+using brillo::http::fake::ServerResponse;
 using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
@@ -59,7 +59,7 @@ class AttestationServiceTest : public testing::Test {
     service_.reset(new AttestationService);
     service_->set_database(&mock_database_);
     service_->set_crypto_utility(&mock_crypto_utility_);
-    fake_http_transport_ = std::make_shared<chromeos::http::fake::Transport>();
+    fake_http_transport_ = std::make_shared<brillo::http::fake::Transport>();
     service_->set_http_transport(fake_http_transport_);
     service_->set_key_store(&mock_key_store_);
     service_->set_tpm_utility(&mock_tpm_utility_);
@@ -77,7 +77,7 @@ class AttestationServiceTest : public testing::Test {
   void SetupFakeCAEnroll(FakeCAState state) {
     fake_http_transport_->AddHandler(
         service_->attestation_ca_origin() + "/enroll",
-        chromeos::http::request_type::kPost,
+        brillo::http::request_type::kPost,
         base::Bind(&AttestationServiceTest::FakeCAEnroll,
                    base::Unretained(this),
                    state));
@@ -86,7 +86,7 @@ class AttestationServiceTest : public testing::Test {
   void SetupFakeCASign(FakeCAState state) {
     fake_http_transport_->AddHandler(
         service_->attestation_ca_origin() + "/sign",
-        chromeos::http::request_type::kPost,
+        brillo::http::request_type::kPost,
         base::Bind(&AttestationServiceTest::FakeCASign,
                    base::Unretained(this),
                    state));
@@ -96,11 +96,11 @@ class AttestationServiceTest : public testing::Test {
     const std::string kBeginCertificate = "-----BEGIN CERTIFICATE-----\n";
     const std::string kEndCertificate = "-----END CERTIFICATE-----";
     std::string pem = kBeginCertificate;
-    pem += chromeos::data_encoding::Base64EncodeWrapLines("fake_cert");
+    pem += brillo::data_encoding::Base64EncodeWrapLines("fake_cert");
     pem += kEndCertificate + "\n" + kBeginCertificate;
-    pem += chromeos::data_encoding::Base64EncodeWrapLines("fake_ca_cert");
+    pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert");
     pem += kEndCertificate + "\n" + kBeginCertificate;
-    pem += chromeos::data_encoding::Base64EncodeWrapLines("fake_ca_cert2");
+    pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert2");
     pem += kEndCertificate;
     return pem;
   }
@@ -128,7 +128,7 @@ class AttestationServiceTest : public testing::Test {
     run_loop_.Quit();
   }
 
-  std::shared_ptr<chromeos::http::fake::Transport> fake_http_transport_;
+  std::shared_ptr<brillo::http::fake::Transport> fake_http_transport_;
   NiceMock<MockCryptoUtility> mock_crypto_utility_;
   NiceMock<MockDatabase> mock_database_;
   NiceMock<MockKeyStore> mock_key_store_;
@@ -142,8 +142,8 @@ class AttestationServiceTest : public testing::Test {
     AttestationEnrollmentRequest request_pb;
     EXPECT_TRUE(request_pb.ParseFromString(request.GetDataAsString()));
     if (state == kHttpFailure) {
-      response->ReplyText(chromeos::http::status_code::NotFound, std::string(),
-                          chromeos::mime::application::kOctet_stream);
+      response->ReplyText(brillo::http::status_code::NotFound, std::string(),
+                          brillo::mime::application::kOctet_stream);
       return;
     }
     AttestationEnrollmentResponse response_pb;
@@ -162,8 +162,8 @@ class AttestationServiceTest : public testing::Test {
     }
     std::string tmp;
     response_pb.SerializeToString(&tmp);
-    response->ReplyText(chromeos::http::status_code::Ok, tmp,
-                        chromeos::mime::application::kOctet_stream);
+    response->ReplyText(brillo::http::status_code::Ok, tmp,
+                        brillo::mime::application::kOctet_stream);
   }
 
   void FakeCASign(FakeCAState state,
@@ -172,8 +172,8 @@ class AttestationServiceTest : public testing::Test {
     AttestationCertificateRequest request_pb;
     EXPECT_TRUE(request_pb.ParseFromString(request.GetDataAsString()));
     if (state == kHttpFailure) {
-      response->ReplyText(chromeos::http::status_code::NotFound, std::string(),
-                          chromeos::mime::application::kOctet_stream);
+      response->ReplyText(brillo::http::status_code::NotFound, std::string(),
+                          brillo::mime::application::kOctet_stream);
       return;
     }
     AttestationCertificateResponse response_pb;
@@ -192,8 +192,8 @@ class AttestationServiceTest : public testing::Test {
     }
     std::string tmp;
     response_pb.SerializeToString(&tmp);
-    response->ReplyText(chromeos::http::status_code::Ok, tmp,
-                        chromeos::mime::application::kOctet_stream);
+    response->ReplyText(brillo::http::status_code::Ok, tmp,
+                        brillo::mime::application::kOctet_stream);
   }
 
   base::MessageLoop message_loop_;

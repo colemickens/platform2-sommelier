@@ -28,7 +28,7 @@
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 using base::FilePath;
 
@@ -51,8 +51,8 @@ DatabaseImpl::DatabaseImpl(CryptoUtility* crypto) : io_(this), crypto_(crypto) {
 }
 
 DatabaseImpl::~DatabaseImpl() {
-  chromeos::SecureMemset(string_as_array(&database_key_), 0,
-                         database_key_.size());
+  brillo::SecureMemset(string_as_array(&database_key_), 0,
+                       database_key_.size());
 }
 
 void DatabaseImpl::Initialize() {

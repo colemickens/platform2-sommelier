@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include <chromeos/bind_lambda.h>
+#include <brillo/bind_lambda.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

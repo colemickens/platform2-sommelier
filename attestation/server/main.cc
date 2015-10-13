@@ -20,11 +20,11 @@
 #include <string>
 
 #include <base/command_line.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/minijail/minijail.h>
-#include <chromeos/syslog_logging.h>
-#include <chromeos/userdb_utils.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/minijail/minijail.h>
+#include <brillo/syslog_logging.h>
+#include <brillo/userdb_utils.h>
 
 #include "attestation/common/dbus_interface.h"
 #include "attestation/server/attestation_service.h"
@@ -43,12 +43,12 @@ const char kAttestationSeccompPath[] =
 void InitMinijailSandbox() {
   uid_t attestation_uid;
   gid_t attestation_gid;
-  CHECK(chromeos::userdb::GetUserInfo(kAttestationUser,
+  CHECK(brillo::userdb::GetUserInfo(kAttestationUser,
                                       &attestation_uid,
                                       &attestation_gid))
       << "Error getting attestation uid and gid.";
   CHECK_EQ(getuid(), kRootUID) << "AttestationDaemon not initialized as root.";
-  chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
+  brillo::Minijail* minijail = brillo::Minijail::GetInstance();
   struct minijail* jail = minijail->New();
 
   minijail->DropRoot(jail, kAttestationUser, kAttestationGroup);
@@ -63,12 +63,12 @@ void InitMinijailSandbox() {
 
 }  // namespace
 
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::AsyncEventSequencer;
 
-class AttestationDaemon : public chromeos::DBusServiceDaemon {
+class AttestationDaemon : public brillo::DBusServiceDaemon {
  public:
   AttestationDaemon()
-      : chromeos::DBusServiceDaemon(attestation::kAttestationServiceName) {
+      : brillo::DBusServiceDaemon(attestation::kAttestationServiceName) {
     attestation_service_.reset(new attestation::AttestationService);
     // Move initialize call down to OnInit
     CHECK(attestation_service_->Initialize());
@@ -76,7 +76,7 @@ class AttestationDaemon : public chromeos::DBusServiceDaemon {
 
  protected:
   int OnInit() override {
-    int result = chromeos::DBusServiceDaemon::OnInit();
+    int result = brillo::DBusServiceDaemon::OnInit();
     if (result != EX_OK) {
       LOG(ERROR) << "Error starting attestation dbus daemon.";
       return result;
@@ -100,7 +100,7 @@ class AttestationDaemon : public chromeos::DBusServiceDaemon {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   AttestationDaemon daemon;
   LOG(INFO) << "Attestation Daemon Started.";
   InitMinijailSandbox();

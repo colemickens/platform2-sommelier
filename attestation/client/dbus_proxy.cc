@@ -16,8 +16,8 @@
 
 #include "attestation/client/dbus_proxy.h"
 
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/dbus_method_invoker.h>
 
 #include "attestation/common/dbus_interface.h"
 
@@ -51,12 +51,12 @@ bool DBusProxy::Initialize() {
 void DBusProxy::CreateGoogleAttestedKey(
     const CreateGoogleAttestedKeyRequest& request,
     const CreateGoogleAttestedKeyCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     CreateGoogleAttestedKeyReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -68,12 +68,12 @@ void DBusProxy::CreateGoogleAttestedKey(
 
 void DBusProxy::GetKeyInfo(const GetKeyInfoRequest& request,
                            const GetKeyInfoCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     GetKeyInfoReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -85,12 +85,12 @@ void DBusProxy::GetKeyInfo(const GetKeyInfoRequest& request,
 
 void DBusProxy::GetEndorsementInfo(const GetEndorsementInfoRequest& request,
                                    const GetEndorsementInfoCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     GetEndorsementInfoReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -103,12 +103,12 @@ void DBusProxy::GetEndorsementInfo(const GetEndorsementInfoRequest& request,
 void DBusProxy::GetAttestationKeyInfo(
     const GetAttestationKeyInfoRequest& request,
     const GetAttestationKeyInfoCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     GetAttestationKeyInfoReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -121,12 +121,12 @@ void DBusProxy::GetAttestationKeyInfo(
 void DBusProxy::ActivateAttestationKey(
     const ActivateAttestationKeyRequest& request,
     const ActivateAttestationKeyCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     ActivateAttestationKeyReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -139,12 +139,12 @@ void DBusProxy::ActivateAttestationKey(
 void DBusProxy::CreateCertifiableKey(
     const CreateCertifiableKeyRequest& request,
     const CreateCertifiableKeyCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     CreateCertifiableKeyReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -156,12 +156,12 @@ void DBusProxy::CreateCertifiableKey(
 
 void DBusProxy::Decrypt(const DecryptRequest& request,
                         const DecryptCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     DecryptReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -172,12 +172,12 @@ void DBusProxy::Decrypt(const DecryptRequest& request,
 }
 
 void DBusProxy::Sign(const SignRequest& request, const SignCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     SignReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
@@ -190,12 +190,12 @@ void DBusProxy::Sign(const SignRequest& request, const SignCallback& callback) {
 void DBusProxy::RegisterKeyWithChapsToken(
     const RegisterKeyWithChapsTokenRequest& request,
     const RegisterKeyWithChapsTokenCallback& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     RegisterKeyWithChapsTokenReply reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
