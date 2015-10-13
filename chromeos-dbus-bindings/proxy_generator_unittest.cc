@@ -41,12 +41,12 @@ const char kExpectedContent[] = R"literal_string(
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/any.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/dbus_property.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_manager.h>
@@ -65,48 +65,48 @@ class TestInterfaceProxyInterface {
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       std::string* out_3,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void ElementsAsync(
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       const base::Callback<void(const std::string&)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual bool ReturnToPatagonia(
       int64_t* out_1,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void ReturnToPatagoniaAsync(
       const base::Callback<void(int64_t)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual bool NiceWeatherForDucks(
       bool in_1,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void NiceWeatherForDucksAsync(
       bool in_1,
       const base::Callback<void()>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   // Comment line1
   // line2
   virtual bool ExperimentNumberSix(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   // Comment line1
   // line2
   virtual void ExperimentNumberSixAsync(
       const base::Callback<void()>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void RegisterCloserSignalHandler(
@@ -143,7 +143,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
-    chromeos::dbus_utils::ConnectToSignal(
+    brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "Closer",
@@ -155,7 +155,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
       const base::Callback<void(const std::vector<std::string>&,
                                 uint8_t)>& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
-    chromeos::dbus_utils::ConnectToSignal(
+    brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "TheCurseOfKaZar",
@@ -177,9 +177,9 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       std::string* out_3,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -187,7 +187,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         error,
         in_space_walk,
         in_ramblin_man);
-    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
         response.get(), error, out_3);
   }
 
@@ -195,9 +195,9 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       const base::Callback<void(const std::string&)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    chromeos::dbus_utils::CallMethodWithTimeout(
+    brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -210,23 +210,23 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
 
   bool ReturnToPatagonia(
       int64_t* out_1,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ReturnToPatagonia",
         error);
-    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
         response.get(), error, out_1);
   }
 
   void ReturnToPatagoniaAsync(
       const base::Callback<void(int64_t)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    chromeos::dbus_utils::CallMethodWithTimeout(
+    brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -237,25 +237,25 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
 
   bool NiceWeatherForDucks(
       bool in_1,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "NiceWeatherForDucks",
         error,
         in_1);
-    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
         response.get(), error);
   }
 
   void NiceWeatherForDucksAsync(
       bool in_1,
       const base::Callback<void()>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    chromeos::dbus_utils::CallMethodWithTimeout(
+    brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -268,15 +268,15 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   // Comment line1
   // line2
   bool ExperimentNumberSix(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ExperimentNumberSix",
         error);
-    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
         response.get(), error);
   }
 
@@ -284,9 +284,9 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   // line2
   void ExperimentNumberSixAsync(
       const base::Callback<void()>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    chromeos::dbus_utils::CallMethodWithTimeout(
+    brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -318,12 +318,12 @@ class TestInterface2ProxyInterface {
   virtual bool GetPersonInfo(
       std::string* out_name,
       int32_t* out_age,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void GetPersonInfoAsync(
       const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 };
 
@@ -363,23 +363,23 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
   bool GetPersonInfo(
       std::string* out_name,
       int32_t* out_age,
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface2",
         "GetPersonInfo",
         error);
-    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
         response.get(), error, out_name, out_age);
   }
 
   void GetPersonInfoAsync(
       const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
-    chromeos::dbus_utils::CallMethodWithTimeout(
+    brillo::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface2",
@@ -411,12 +411,12 @@ const char kExpectedContentWithService[] = R"literal_string(
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/any.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/dbus_property.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_manager.h>
@@ -457,7 +457,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
-    chromeos::dbus_utils::ConnectToSignal(
+    brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "Closer",
@@ -550,12 +550,12 @@ const char kExpectedContentWithObjectManager[] = R"literal_string(
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/any.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/dbus_property.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_manager.h>
@@ -603,7 +603,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
       RegisterProperty(DataName(), &data);
     }
 
-    chromeos::dbus_utils::Property<std::string> data;
+    brillo::dbus_utils::Property<std::string> data;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -626,7 +626,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
-    chromeos::dbus_utils::ConnectToSignal(
+    brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.Itf1",
         "Closer",
@@ -932,12 +932,12 @@ const char kExpectedContentWithObjectManagerAndServiceName[] = R"literal_string(
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/any.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/dbus_property.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_manager.h>
@@ -998,7 +998,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
-    chromeos::dbus_utils::ConnectToSignal(
+    brillo::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.Itf1",
         "Closer",

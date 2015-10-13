@@ -10,7 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 
 using std::string;
 using std::vector;
@@ -53,7 +53,7 @@ const char XmlInterfaceParser::kMethodKindRaw[] = "raw";
 namespace {
 
 string GetElementPath(const vector<string>& path) {
-  return chromeos::string_utils::Join("/", path);
+  return brillo::string_utils::Join("/", path);
 }
 
 }  // anonymous namespace

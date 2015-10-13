@@ -9,7 +9,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
 #include "chromeos-dbus-bindings/indented_text.h"
@@ -43,10 +43,10 @@ bool AdaptorGenerator::GenerateAdaptors(
   text.AddBlankLine();
   text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <dbus/object_path.h>");
-  text.AddLine("#include <chromeos/any.h>");
-  text.AddLine("#include <chromeos/dbus/dbus_object.h>");
-  text.AddLine("#include <chromeos/dbus/exported_object_manager.h>");
-  text.AddLine("#include <chromeos/variant_dictionary.h>");
+  text.AddLine("#include <brillo/any.h>");
+  text.AddLine("#include <brillo/dbus/dbus_object.h>");
+  text.AddLine("#include <brillo/dbus/exported_object_manager.h>");
+  text.AddLine("#include <brillo/variant_dictionary.h>");
 
   for (const auto& interface : interfaces)
     GenerateInterfaceAdaptor(interface, &text);
@@ -136,9 +136,9 @@ void AdaptorGenerator::AddRegisterWithDBusObject(
     IndentedText *text) {
   text->AddBlankLine();
   text->AddLine(
-    "void RegisterWithDBusObject(chromeos::dbus_utils::DBusObject* object) {");
+    "void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {");
   text->PushOffset(kBlockOffset);
-  text->AddLine("chromeos::dbus_utils::DBusInterface* itf =");
+  text->AddLine("brillo::dbus_utils::DBusInterface* itf =");
   text->AddLineWithOffset(
       StringPrintf("object->AddOrGetInterface(\"%s\");",
                    interface.name.c_str()), kLineContinuationOffset);
@@ -213,7 +213,7 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
       text->PushOffset(kLineContinuationOffset);
       text->AddLine(
           StringPrintf(
-              "chromeos::dbus_utils::ExportedPropertyBase::Access::%s);",
+              "brillo::dbus_utils::ExportedPropertyBase::Access::%s);",
               write_access.c_str()));
       text->PopOffset();
       text->AddLine(StringPrintf("%s_.SetValidator(", variable_name.c_str()));
@@ -258,7 +258,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         }
         break;
       case Interface::Method::Kind::kNormal:
-        method_params.push_back("chromeos::ErrorPtr* error");
+        method_params.push_back("brillo::ErrorPtr* error");
         if (method.include_dbus_message)
           method_params.push_back("dbus::Message* message");
         return_type = "bool";
@@ -271,9 +271,9 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
           out_types.push_back(param_type);
         }
         method_params.push_back(base::StringPrintf(
-            "std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<%s>> "
+            "std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<%s>> "
             "response",
-             chromeos::string_utils::Join(", ", out_types).c_str()));
+             brillo::string_utils::Join(", ", out_types).c_str()));
         if (method.include_dbus_message)
           method_params.push_back("dbus::Message* message");
         output_arguments_copy.clear();
@@ -281,7 +281,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
       }
       case Interface::Method::Kind::kRaw:
         method_params.push_back("dbus::MethodCall* method_call");
-        method_params.push_back("chromeos::dbus_utils::ResponseSender sender");
+        method_params.push_back("brillo::dbus_utils::ResponseSender sender");
         // Raw methods don't take static parameters or return values directly.
         input_arguments_copy.clear();
         output_arguments_copy.clear();
@@ -361,7 +361,7 @@ void AdaptorGenerator::AddSendSignalMethods(
       block.PopOffset();
     }
 
-    string args = chromeos::string_utils::Join(", ", param_names);
+    string args = brillo::string_utils::Join(", ", param_names);
     block.PushOffset(kBlockOffset);
     block.AddLine(StringPrintf("auto signal = signal_%s_.lock();",
                                 signal.name.c_str()));
@@ -383,7 +383,7 @@ void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
   for (const auto& signal : interface.signals) {
     string signal_type_name = StringPrintf("Signal%sType", signal.name.c_str());
     string signal_type_alias_begin =
-        StringPrintf("using %s = chromeos::dbus_utils::DBusSignal<",
+        StringPrintf("using %s = brillo::dbus_utils::DBusSignal<",
                      signal_type_name.c_str());
     string signal_type_alias_end = ">;";
     vector<string> params;
@@ -464,7 +464,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
       // validator callback function signature.
       block.AddLine(
           StringPrintf(
-              "chromeos::ErrorPtr* /*error*/, const %s& /*value*/) {",
+              "brillo::ErrorPtr* /*error*/, const %s& /*value*/) {",
               type.c_str()));
       block.PopOffset();
       block.PushOffset(kBlockOffset);
@@ -488,7 +488,7 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
     string variable_name = NameParser{property.name}.MakeVariableName();
 
     block.AddLine(
-        StringPrintf("chromeos::dbus_utils::ExportedProperty<%s> %s_;",
+        StringPrintf("brillo::dbus_utils::ExportedProperty<%s> %s_;",
                      type.c_str(), variable_name.c_str()));
   }
   if (!interface.properties.empty())

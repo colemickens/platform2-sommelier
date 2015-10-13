@@ -8,7 +8,7 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/indented_text.h"
 
@@ -27,7 +27,7 @@ void AddCloseNamespace(IndentedText *text, const std::string& name) {
 }  // anonymous namespace
 
 NameParser::NameParser(const std::string& name)
-    : namespaces{chromeos::string_utils::Split(name, ".")} {
+    : namespaces{brillo::string_utils::Split(name, ".")} {
   CHECK(!namespaces.empty()) << "Empty name specified";
   type_name = namespaces.back();
   namespaces.pop_back();
@@ -36,7 +36,7 @@ NameParser::NameParser(const std::string& name)
 std::string NameParser::MakeFullyQualified(const std::string& name) const {
   std::vector<std::string> parts = namespaces;
   parts.push_back(name);
-  return chromeos::string_utils::Join("::", parts);
+  return brillo::string_utils::Join("::", parts);
 }
 
 std::string NameParser::MakeFullCppName() const {

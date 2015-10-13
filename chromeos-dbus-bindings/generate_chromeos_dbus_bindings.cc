@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "chromeos-dbus-bindings/adaptor_generator.h"
 #include "chromeos-dbus-bindings/method_name_generator.h"
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
   // Setup logging to stderr. This also parses some implicit flags using the
   // CommandLine singleton.
-  chromeos::InitLog(chromeos::kLogToStderr | chromeos::kLogHeader);
+  brillo::InitLog(brillo::kLogToStderr | brillo::kLogHeader);
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;

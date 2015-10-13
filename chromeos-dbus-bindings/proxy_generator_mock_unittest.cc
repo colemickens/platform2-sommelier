@@ -38,9 +38,9 @@ const char kExpectedContent[] = R"literal_string(
 #include <base/callback_forward.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <chromeos/any.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <gmock/gmock.h>
 
 #include "proxies.h"
@@ -57,37 +57,37 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                bool(const std::string& /*in_space_walk*/,
                     const std::vector<dbus::ObjectPath>& /*in_ramblin_man*/,
                     std::string*,
-                    chromeos::ErrorPtr* /*error*/,
+                    brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD5(ElementsAsync,
                void(const std::string& /*in_space_walk*/,
                     const std::vector<dbus::ObjectPath>& /*in_ramblin_man*/,
                     const base::Callback<void(const std::string&)>& /*success_callback*/,
-                    const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
+                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(ReturnToPatagonia,
                bool(int64_t*,
-                    chromeos::ErrorPtr* /*error*/,
+                    brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(ReturnToPatagoniaAsync,
                void(const base::Callback<void(int64_t)>& /*success_callback*/,
-                    const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
+                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(NiceWeatherForDucks,
                bool(bool,
-                    chromeos::ErrorPtr* /*error*/,
+                    brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD4(NiceWeatherForDucksAsync,
                void(bool,
                     const base::Callback<void()>& /*success_callback*/,
-                    const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
+                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
   MOCK_METHOD2(ExperimentNumberSix,
-               bool(chromeos::ErrorPtr* /*error*/,
+               bool(brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(ExperimentNumberSixAsync,
                void(const base::Callback<void()>& /*success_callback*/,
-                    const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
+                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
   bool AllTheWayUpToEleven(bool /*in_arg1*/,
                            bool /*in_arg2*/,
@@ -98,7 +98,7 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                            bool /*in_arg7*/,
                            bool /*in_arg8*/,
                            bool* /*out_arg9*/,
-                           chromeos::ErrorPtr* /*error*/,
+                           brillo::ErrorPtr* /*error*/,
                            int /*timeout_ms*/) override {
     LOG(WARNING) << "AllTheWayUpToEleven(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
     return false;
@@ -112,7 +112,7 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                                 bool /*in_arg7*/,
                                 bool /*in_arg8*/,
                                 const base::Callback<void(bool /*arg9*/)>& /*success_callback*/,
-                                const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
+                                const base::Callback<void(brillo::Error*)>& /*error_callback*/,
                                 int /*timeout_ms*/) override {
     LOG(WARNING) << "AllTheWayUpToElevenAsync(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
   }
@@ -141,11 +141,11 @@ class TestInterface2ProxyMock : public TestInterface2ProxyInterface {
   MOCK_METHOD4(GetPersonInfo,
                bool(std::string* /*out_name*/,
                     int32_t* /*out_age*/,
-                    chromeos::ErrorPtr* /*error*/,
+                    brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD3(GetPersonInfoAsync,
                void(const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& /*success_callback*/,
-                    const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
+                    const base::Callback<void(brillo::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
 
  private:

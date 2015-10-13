@@ -10,7 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 #include <gtest/gtest.h>
 
 using std::string;
@@ -28,7 +28,7 @@ string GetUnifiedDiff(const string& a, const string& b) {
   WriteFile(path_a, a.data(), a.size());
   WriteFile(path_b, b.data(), b.size());
 
-  chromeos::ProcessImpl proc;
+  brillo::ProcessImpl proc;
   proc.AddArg("diff");
   proc.AddArg("-u");
   proc.AddArg(path_a.value());

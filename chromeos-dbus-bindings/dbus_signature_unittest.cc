@@ -91,17 +91,17 @@ TEST_F(DbusSignatureTest, ParseSuccesses) {
     { "aay",            "std::vector<std::vector<uint8_t>>" },
     { "ao",             "std::vector<ObjectPathType>" },
     { "a{oa{sa{sv}}}",  "std::map<ObjectPathType, std::map<std::string, "
-                          "chromeos::VariantDictionary>>" },
+                          "brillo::VariantDictionary>>" },
     { "a{os}",          "std::map<ObjectPathType, std::string>" },
     { "as",             "std::vector<std::string>" },
     { "a{ss}",          "std::map<std::string, std::string>" },
     { "a{sa{ss}}",      "std::map<std::string, std::map<std::string, "
                           "std::string>>"},
-    { "a{sa{sv}}",      "std::map<std::string, chromeos::VariantDictionary>" },
-    { "a{sv}",          "chromeos::VariantDictionary" },
-    { "a{sv}Garbage",   "chromeos::VariantDictionary" },
+    { "a{sa{sv}}",      "std::map<std::string, brillo::VariantDictionary>" },
+    { "a{sv}",          "brillo::VariantDictionary" },
+    { "a{sv}Garbage",   "brillo::VariantDictionary" },
     { "at",             "std::vector<uint64_t>" },
-    { "a{iv}",          "std::map<int32_t, chromeos::Any>" },
+    { "a{iv}",          "std::map<int32_t, brillo::Any>" },
     { "(ib)",           "std::tuple<int32_t, bool>" },
     { "(ibs)",          "std::tuple<int32_t, bool, std::string>" },
   };

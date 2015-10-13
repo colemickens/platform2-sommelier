@@ -10,7 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/indented_text.h"
 

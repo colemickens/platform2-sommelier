@@ -10,7 +10,7 @@
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
 #include "chromeos-dbus-bindings/indented_text.h"
@@ -64,12 +64,12 @@ bool ProxyGenerator::GenerateProxies(
   text.AddLine("#include <base/logging.h>");
   text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <base/memory/ref_counted.h>");
-  text.AddLine("#include <chromeos/any.h>");
-  text.AddLine("#include <chromeos/dbus/dbus_method_invoker.h>");
-  text.AddLine("#include <chromeos/dbus/dbus_property.h>");
-  text.AddLine("#include <chromeos/dbus/dbus_signal_handler.h>");
-  text.AddLine("#include <chromeos/errors/error.h>");
-  text.AddLine("#include <chromeos/variant_dictionary.h>");
+  text.AddLine("#include <brillo/any.h>");
+  text.AddLine("#include <brillo/dbus/dbus_method_invoker.h>");
+  text.AddLine("#include <brillo/dbus/dbus_property.h>");
+  text.AddLine("#include <brillo/dbus/dbus_signal_handler.h>");
+  text.AddLine("#include <brillo/errors/error.h>");
+  text.AddLine("#include <brillo/variant_dictionary.h>");
   text.AddLine("#include <dbus/bus.h>");
   text.AddLine("#include <dbus/message.h>");
   text.AddLine("#include <dbus/object_manager.h>");
@@ -119,9 +119,9 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
   text.AddLine("#include <base/callback_forward.h>");
   text.AddLine("#include <base/logging.h>");
   text.AddLine("#include <base/macros.h>");
-  text.AddLine("#include <chromeos/any.h>");
-  text.AddLine("#include <chromeos/errors/error.h>");
-  text.AddLine("#include <chromeos/variant_dictionary.h>");
+  text.AddLine("#include <brillo/any.h>");
+  text.AddLine("#include <brillo/errors/error.h>");
+  text.AddLine("#include <brillo/variant_dictionary.h>");
   text.AddLine("#include <gmock/gmock.h>");
   text.AddBlankLine();
 
@@ -477,7 +477,7 @@ void ProxyGenerator::AddSignalHandlerRegistration(
   if (!declaration_only) {
     block.PopOffset();  // Method signature arguments
     block.PushOffset(kBlockOffset);
-    block.AddLine("chromeos::dbus_utils::ConnectToSignal(");
+    block.AddLine("brillo::dbus_utils::ConnectToSignal(");
     block.PushOffset(kLineContinuationOffset);
     block.AddLine("dbus_object_proxy_,");
     block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
@@ -529,7 +529,7 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
     string type;
     CHECK(signature.Parse(prop.type, &type));
     block.AddLine(
-        StringPrintf("chromeos::dbus_utils::Property<%s> %s;",
+        StringPrintf("brillo::dbus_utils::Property<%s> %s;",
                      type.c_str(),
                      NameParser{prop.name}.MakeVariableName().c_str()));
   }
@@ -619,7 +619,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
     block.AddLine(StringPrintf(
         "%s* %s,", argument_type.c_str(), argument_name.c_str()));
   }
-  block.AddLine("chromeos::ErrorPtr* error,");
+  block.AddLine("brillo::ErrorPtr* error,");
   block.AddLine(
       StringPrintf("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)%s",
                    declaration_only ? " = 0;" : " override {"));
@@ -628,7 +628,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
     block.PushOffset(kBlockOffset);
 
     block.AddLine(
-        "auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(");
+        "auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(");
     block.PushOffset(kLineContinuationOffset);
     block.AddLine("timeout_ms,");
     block.AddLine("dbus_object_proxy_,");
@@ -643,9 +643,9 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
     block.PopOffset();
 
     block.AddLine("return response && "
-                  "chromeos::dbus_utils::ExtractMethodCallResults(");
+                  "brillo::dbus_utils::ExtractMethodCallResults(");
     block.PushOffset(kLineContinuationOffset);
-    block.AddLine(chromeos::string_utils::Join(", ", out_param_names) + ");");
+    block.AddLine(brillo::string_utils::Join(", ", out_param_names) + ");");
     block.PopOffset();
     block.PopOffset();
     block.AddLine("}");
@@ -688,9 +688,9 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   }
   block.AddLine(StringPrintf(
       "const base::Callback<void(%s)>& success_callback,",
-      chromeos::string_utils::Join(", ", out_params).c_str()));
+      brillo::string_utils::Join(", ", out_params).c_str()));
   block.AddLine(
-      "const base::Callback<void(chromeos::Error*)>& error_callback,");
+      "const base::Callback<void(brillo::Error*)>& error_callback,");
   block.AddLine(
       StringPrintf("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)%s",
                    declaration_only ? " = 0;" : " override {"));
@@ -698,7 +698,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
   if (!declaration_only) {
     block.PushOffset(kBlockOffset);
 
-    block.AddLine("chromeos::dbus_utils::CallMethodWithTimeout(");
+    block.AddLine("brillo::dbus_utils::CallMethodWithTimeout(");
     block.PushOffset(kLineContinuationOffset);
     block.AddLine("timeout_ms,");
     block.AddLine("dbus_object_proxy_,");
@@ -741,7 +741,7 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
       base::StringAppendF(&argument_type, " /*out_%s*/", argument.name.c_str());
     arguments.push_back(argument_type);
   }
-  arguments.push_back("chromeos::ErrorPtr* /*error*/");
+  arguments.push_back("brillo::ErrorPtr* /*error*/");
   arguments.push_back("int /*timeout_ms*/");
   AddMockMethodDeclaration(method.name, "bool", arguments, text);
 }
@@ -771,9 +771,9 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
   }
   arguments.push_back(StringPrintf(
       "const base::Callback<void(%s)>& /*success_callback*/",
-      chromeos::string_utils::Join(", ", out_params).c_str()));
+      brillo::string_utils::Join(", ", out_params).c_str()));
   arguments.push_back(
-      "const base::Callback<void(chromeos::Error*)>& /*error_callback*/");
+      "const base::Callback<void(brillo::Error*)>& /*error_callback*/");
   arguments.push_back("int /*timeout_ms*/");
   AddMockMethodDeclaration(method.name + "Async", "void", arguments, text);
 }
@@ -813,7 +813,7 @@ void ProxyGenerator::AddMockMethodDeclaration(const string& method_name,
     block.AddLine("}");
   } else {
     block.AddLineAndPushOffsetTo(
-        StringPrintf("MOCK_METHOD%ju(%s,",
+        StringPrintf("MOCK_METHOD%zu(%s,",
                      arguments.size(), method_name.c_str()),
         1, '(');
     block.AddLineAndPushOffsetTo(

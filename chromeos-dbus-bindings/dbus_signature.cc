@@ -6,7 +6,7 @@
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 #include <dbus/dbus-protocol.h>
 
 using base::StringPrintf;
@@ -30,9 +30,8 @@ const char DbusSignature::kUnixFdTypename[] = "dbus::FileDescriptor";
 const char DbusSignature::kUnsigned16Typename[] = "uint16_t";
 const char DbusSignature::kUnsigned32Typename[] = "uint32_t";
 const char DbusSignature::kUnsigned64Typename[] = "uint64_t";
-const char DbusSignature::kVariantTypename[] = "chromeos::Any";
-const char DbusSignature::kVariantDictTypename[] =
-    "chromeos::VariantDictionary";
+const char DbusSignature::kVariantTypename[] = "brillo::Any";
+const char DbusSignature::kVariantDictTypename[] = "brillo::VariantDictionary";
 const char DbusSignature::kTupleTypename[] = "std::tuple";
 
 DbusSignature::DbusSignature()
@@ -231,9 +230,8 @@ bool DbusSignature::GetStructTypenameForSignature(
   DCHECK_EQ(DBUS_STRUCT_END_CHAR, *cur);
   ++cur;
 
-  *output = StringPrintf(
-      "%s<%s>", kTupleTypename,
-      chromeos::string_utils::Join(", ", children).c_str());
+  *output = StringPrintf("%s<%s>", kTupleTypename,
+                         brillo::string_utils::Join(", ", children).c_str());
 
   if (next) {
     *next = cur;

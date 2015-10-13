@@ -10,7 +10,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 
 using std::string;
 using std::vector;
@@ -61,7 +61,7 @@ void IndentedText::AddComments(const std::string& doc_string) {
   // For all subsequent lines, remove the same whitespace prefix as found
   // at the first line of the comment but keep any additional spaces to
   // maintain the comment layout.
-  auto lines = chromeos::string_utils::Split(doc_string, "\n", false, false);
+  auto lines = brillo::string_utils::Split(doc_string, "\n", false, false);
   vector<string> lines_out;
   lines_out.reserve(lines.size());
   bool first_nonempty_found = false;

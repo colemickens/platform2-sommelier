@@ -43,10 +43,10 @@ const char kExpectedContent[] = R"literal_string(
 
 #include <base/macros.h>
 #include <dbus/object_path.h>
-#include <chromeos/any.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/exported_object_manager.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/variant_dictionary.h>
 
 namespace org {
 namespace chromium {
@@ -57,19 +57,19 @@ class TestInterface {
   virtual ~TestInterface() = default;
 
   virtual bool Kaneda(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       dbus::Message* message,
       const std::string& in_iwata,
       const std::vector<dbus::ObjectPath>& in_clarke,
       std::string* out_3) = 0;
   virtual bool Tetsuo(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int32_t in_1,
       int64_t* out_2) = 0;
   virtual bool Kei(
-      chromeos::ErrorPtr* error) = 0;
+      brillo::ErrorPtr* error) = 0;
   virtual bool Kiyoko(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       int64_t* out_akira,
       std::string* out_2) = 0;
 };
@@ -79,8 +79,8 @@ class TestAdaptor {
  public:
   TestAdaptor(TestInterface* interface) : interface_(interface) {}
 
-  void RegisterWithDBusObject(chromeos::dbus_utils::DBusObject* object) {
-    chromeos::dbus_utils::DBusInterface* itf =
+  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
+    brillo::dbus_utils::DBusInterface* itf =
         object->AddOrGetInterface("org.chromium.Test");
 
     itf->AddSimpleMethodHandlerWithErrorAndMessage(
@@ -105,7 +105,7 @@ class TestAdaptor {
 
     itf->AddProperty(CharacterNameName(), &character_name_);
     write_property_.SetAccessMode(
-        chromeos::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
+        brillo::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
     write_property_.SetValidator(
         base::Bind(&TestAdaptor::ValidateWriteProperty,
                    base::Unretained(this)));
@@ -141,7 +141,7 @@ class TestAdaptor {
     write_property_.SetValue(write_property);
   }
   virtual bool ValidateWriteProperty(
-      chromeos::ErrorPtr* /*error*/, const std::string& /*value*/) {
+      brillo::ErrorPtr* /*error*/, const std::string& /*value*/) {
     return true;
   }
 
@@ -150,16 +150,16 @@ class TestAdaptor {
   }
 
  private:
-  using SignalUpdateType = chromeos::dbus_utils::DBusSignal<>;
+  using SignalUpdateType = brillo::dbus_utils::DBusSignal<>;
   std::weak_ptr<SignalUpdateType> signal_Update_;
 
-  using SignalMappingType = chromeos::dbus_utils::DBusSignal<
+  using SignalMappingType = brillo::dbus_utils::DBusSignal<
       std::string /*key*/,
       std::vector<dbus::ObjectPath>>;
   std::weak_ptr<SignalMappingType> signal_Mapping_;
 
-  chromeos::dbus_utils::ExportedProperty<std::string> character_name_;
-  chromeos::dbus_utils::ExportedProperty<std::string> write_property_;
+  brillo::dbus_utils::ExportedProperty<std::string> character_name_;
+  brillo::dbus_utils::ExportedProperty<std::string> write_property_;
 
   TestInterface* interface_;  // Owned by container of this adapter.
 
@@ -180,10 +180,10 @@ class Test2Interface {
   virtual std::string Kaneda2(
       const std::string& in_iwata) const = 0;
   virtual void Tetsuo2(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<int64_t>> response,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int64_t>> response,
       int32_t in_1) = 0;
   virtual void Kei2(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<bool>> response,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
       dbus::Message* message) = 0;
 };
 
@@ -192,8 +192,8 @@ class Test2Adaptor {
  public:
   Test2Adaptor(Test2Interface* interface) : interface_(interface) {}
 
-  void RegisterWithDBusObject(chromeos::dbus_utils::DBusObject* object) {
-    chromeos::dbus_utils::DBusInterface* itf =
+  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
+    brillo::dbus_utils::DBusInterface* itf =
         object->AddOrGetInterface("org.chromium.Test2");
 
     itf->AddSimpleMethodHandler(
