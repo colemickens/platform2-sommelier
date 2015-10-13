@@ -22,7 +22,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "trunks/error_codes.h"
 #include "trunks/hmac_session.h"
@@ -135,7 +135,7 @@ int DumpStatus(TrunksFactory* factory) {
 
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch("help")) {
     puts("Trunks Client: A command line tool to access the TPM.");

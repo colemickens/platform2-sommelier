@@ -17,12 +17,12 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
 
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToStderr);
   // Enable verbose logging while running unit tests.
   logging::SetMinLogLevel(logging::LOG_VERBOSE);
   base::AtExitManager exit_manager;

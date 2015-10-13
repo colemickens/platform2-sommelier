@@ -20,11 +20,10 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/threading/thread.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/libminijail.h>
-#include <chromeos/minijail/minijail.h>
-#include <chromeos/syslog_logging.h>
-#include <chromeos/userdb_utils.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/minijail/minijail.h>
+#include <brillo/syslog_logging.h>
+#include <brillo/userdb_utils.h>
 
 #include "trunks/background_command_transceiver.h"
 #include "trunks/dbus_interface.h"
@@ -35,7 +34,7 @@
 #include "trunks/trunks_ftdi_spi.h"
 #include "trunks/trunks_service.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace {
 
@@ -48,12 +47,10 @@ const char kBackgroundThreadName[] = "trunksd_background_thread";
 void InitMinijailSandbox() {
   uid_t trunks_uid;
   gid_t trunks_gid;
-  CHECK(chromeos::userdb::GetUserInfo(kTrunksUser,
-                                      &trunks_uid,
-                                      &trunks_gid))
+  CHECK(brillo::userdb::GetUserInfo(kTrunksUser, &trunks_uid, &trunks_gid))
       << "Error getting trunks uid and gid.";
   CHECK_EQ(getuid(), kRootUID) << "Trunks Daemon not initialized as root.";
-  chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
+  brillo::Minijail* minijail = brillo::Minijail::GetInstance();
   struct minijail* jail = minijail->New();
   minijail->DropRoot(jail, kTrunksUser, kTrunksGroup);
   minijail->UseSeccompFilter(jail, kTrunksSeccompPath);
@@ -67,10 +64,10 @@ void InitMinijailSandbox() {
 
 }  // namespace
 
-class TrunksDaemon : public chromeos::DBusServiceDaemon {
+class TrunksDaemon : public brillo::DBusServiceDaemon {
  public:
   explicit TrunksDaemon(trunks::CommandTransceiver* transceiver) :
-      chromeos::DBusServiceDaemon(trunks::kTrunksServiceName) {
+      brillo::DBusServiceDaemon(trunks::kTrunksServiceName) {
     transceiver_.reset(transceiver);
     background_thread_.reset(new base::Thread(kBackgroundThreadName));
     CHECK(background_thread_->Start());
@@ -115,7 +112,7 @@ class TrunksDaemon : public chromeos::DBusServiceDaemon {
 
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   trunks::CommandTransceiver *transceiver;
   if (cl->HasSwitch("ftdi")) {

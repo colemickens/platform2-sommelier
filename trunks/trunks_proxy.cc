@@ -17,8 +17,8 @@
 #include "trunks/trunks_proxy.h"
 
 #include <base/bind.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/dbus_method_invoker.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/dbus_interface.pb.h"
@@ -64,12 +64,12 @@ void TrunksProxy::SendCommand(const std::string& command,
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     SendCommandResponse response;
     response.set_response(CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED));
     callback.Run(response.response());
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusMaxTimeout,
       object_proxy_,
       trunks::kTrunksInterface,
@@ -87,9 +87,9 @@ std::string TrunksProxy::SendCommandAndWait(const std::string& command) {
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   std::unique_ptr<dbus::Response> dbus_response =
-      chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+      brillo::dbus_utils::CallMethodAndBlockWithTimeout(
           kDBusMaxTimeout,
           object_proxy_,
           trunks::kTrunksInterface,
@@ -97,7 +97,7 @@ std::string TrunksProxy::SendCommandAndWait(const std::string& command) {
           &error,
           tpm_command_proto);
   SendCommandResponse tpm_response_proto;
-  if (dbus_response.get() && chromeos::dbus_utils::ExtractMethodCallResults(
+  if (dbus_response.get() && brillo::dbus_utils::ExtractMethodCallResults(
       dbus_response.get(), &error, &tpm_response_proto)) {
     return tpm_response_proto.response();
   } else {

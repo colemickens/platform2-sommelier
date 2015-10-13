@@ -20,8 +20,8 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
-#include <chromeos/dbus/dbus_method_response.h>
-#include <chromeos/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_method_response.h>
+#include <brillo/dbus/dbus_object.h>
 
 #include "trunks/dbus_interface.pb.h"
 #include "trunks/tpm_handle.h"
@@ -29,7 +29,7 @@
 namespace trunks {
 
 using CompletionAction =
-    chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction;
 
 // TrunksService registers for and handles all incoming D-Bus messages for the
 // trunksd system daemon.
@@ -46,7 +46,7 @@ class TrunksService {
  private:
   // Handles calls to the 'SendCommand' method.
   void HandleSendCommand(
-      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const SendCommandResponse&>> response_sender,
       const SendCommandRequest& request);
 
@@ -54,7 +54,7 @@ class TrunksService {
     return weak_factory_.GetWeakPtr();
   }
 
-  chromeos::dbus_utils::DBusObject trunks_dbus_object_;
+  brillo::dbus_utils::DBusObject trunks_dbus_object_;
   CommandTransceiver* transceiver_;
 
   // Declared last so weak pointers are invalidated first on destruction.

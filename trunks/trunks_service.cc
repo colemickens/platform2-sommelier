@@ -17,7 +17,7 @@
 #include "trunks/trunks_service.h"
 
 #include <base/bind.h>
-#include <chromeos/bind_lambda.h>
+#include <brillo/bind_lambda.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/dbus_interface.pb.h"
@@ -25,7 +25,7 @@
 
 namespace trunks {
 
-using chromeos::dbus_utils::DBusMethodResponse;
+using brillo::dbus_utils::DBusMethodResponse;
 
 TrunksService::TrunksService(const scoped_refptr<dbus::Bus>& bus,
                              CommandTransceiver* transceiver)
@@ -34,7 +34,7 @@ TrunksService::TrunksService(const scoped_refptr<dbus::Bus>& bus,
       weak_factory_(this) {}
 
 void TrunksService::Register(const CompletionAction& callback) {
-  chromeos::dbus_utils::DBusInterface* dbus_interface =
+  brillo::dbus_utils::DBusInterface* dbus_interface =
       trunks_dbus_object_.AddOrGetInterface(kTrunksInterface);
   dbus_interface->AddMethodHandler(kSendCommand,
                                    base::Unretained(this),
