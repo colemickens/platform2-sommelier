@@ -92,20 +92,20 @@ class ChromeosModemProxy : public ModemProxyInterface {
   void OnCreateBearerSuccess(const RpcIdentifierCallback& callback,
                              const dbus::ObjectPath& path);
   void OnCreateBearerFailure(const RpcIdentifierCallback& callback,
-                             chromeos::Error* dbus_error);
+                             brillo::Error* dbus_error);
 
   // Callbacks for Command async call.
   void OnCommandSuccess(const StringCallback& callback,
                         const std::string& response);
   void OnCommandFailure(const StringCallback& callback,
-                        chromeos::Error* dbus_error);
+                        brillo::Error* dbus_error);
 
   // Callbacks for various async calls that uses ResultCallback.
   void OnOperationSuccess(const ResultCallback& callback,
                           const std::string& operation);
   void OnOperationFailure(const ResultCallback& callback,
                           const std::string& operation,
-                          chromeos::Error* dbus_error);
+                          brillo::Error* dbus_error);
 
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,

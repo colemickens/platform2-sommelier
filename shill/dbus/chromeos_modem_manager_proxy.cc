@@ -80,7 +80,7 @@ vector<string> ChromeosModemManagerProxy::EnumerateDevices() {
   }
 
   vector<dbus::ObjectPath> device_paths;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!proxy_->EnumerateDevices(&device_paths, &error)) {
     LOG(ERROR) << "Failed to enumerate devices: " << error->GetCode()
                << " " << error->GetMessage();

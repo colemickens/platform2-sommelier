@@ -167,7 +167,7 @@ bool ChromeosPowerManagerProxy::RecordDarkResumeWakeReason(
   vector<uint8_t> serialized_proto;
   CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!proxy_->RecordDarkResumeWakeReason(serialized_proto, &error)) {
     LOG(ERROR) << "Failed tp record dark resume wake reason: "
                << error->GetCode() << " " << error->GetMessage();
@@ -192,7 +192,7 @@ bool ChromeosPowerManagerProxy::RegisterSuspendDelayInternal(
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
   vector<uint8_t> serialized_reply;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (is_dark) {
     proxy_->RegisterDarkSuspendDelay(serialized_request,
                                      &serialized_reply,
@@ -227,7 +227,7 @@ bool ChromeosPowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,
   vector<uint8_t> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (is_dark) {
     proxy_->UnregisterDarkSuspendDelay(serialized_request, &error);
   } else {
@@ -255,7 +255,7 @@ bool ChromeosPowerManagerProxy::ReportSuspendReadinessInternal(
   vector<uint8_t> serialized_proto;
   CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (is_dark) {
     proxy_->HandleDarkSuspendReadiness(serialized_proto, &error);
   } else {

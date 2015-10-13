@@ -74,7 +74,7 @@ class ChromeosModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<uint32_t> access_technology;
+    brillo::dbus_utils::Property<uint32_t> access_technology;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -92,26 +92,26 @@ class ChromeosModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   // Callbacks for Register async call.
   void OnRegisterSuccess(const ResultCallback& callback);
   void OnRegisterFailure(const ResultCallback& callback,
-                         chromeos::Error* dbus_error);
+                         brillo::Error* dbus_error);
 
   // Callbacks for GetRegistrationInfo async call.
   void OnGetRegistrationInfoSuccess(
       const RegistrationInfoCallback& callback,
       const GSMRegistrationInfo& info);
   void OnGetRegistrationInfoFailure(
-      const RegistrationInfoCallback& callback, chromeos::Error* dbus_error);
+      const RegistrationInfoCallback& callback, brillo::Error* dbus_error);
 
   // Callbacks for GetSignalQuality async call.
   void OnGetSignalQualitySuccess(const SignalQualityCallback& callback,
                                  uint32_t quality);
   void OnGetSignalQualityFailure(const SignalQualityCallback& callback,
-                                 chromeos::Error* dbus_error);
+                                 brillo::Error* dbus_error);
 
   // Callbacks for Scan async call.
   void OnScanSuccess(const ScanResultsCallback& callback,
                      const GSMScanResults& results);
   void OnScanFailure(const ScanResultsCallback& callback,
-                     chromeos::Error* dbus_error);
+                     brillo::Error* dbus_error);
 
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,

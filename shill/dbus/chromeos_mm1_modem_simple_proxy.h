@@ -54,18 +54,18 @@ class ChromeosModemSimpleProxy : public ModemSimpleProxyInterface {
   void OnConnectSuccess(const RpcIdentifierCallback& callback,
                         const dbus::ObjectPath& path);
   void OnConnectFailure(const RpcIdentifierCallback& callback,
-                        chromeos::Error* error);
+                        brillo::Error* error);
 
   // Callbacks for Disconnect async call.
   void OnDisconnectSuccess(const ResultCallback& callback);
   void OnDisconnectFailure(const ResultCallback& callbac,
-                           chromeos::Error* dbus_error);
+                           brillo::Error* dbus_error);
 
   // Callbacks for GetStatus async call.
   void OnGetStatusSuccess(const KeyValueStoreCallback& callback,
-                          const chromeos::VariantDictionary& status);
+                          const brillo::VariantDictionary& status);
   void OnGetStatusFailure(const KeyValueStoreCallback& callback,
-                          chromeos::Error* error);
+                          brillo::Error* error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::SimpleProxy> proxy_;
 

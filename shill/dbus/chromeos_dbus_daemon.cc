@@ -44,7 +44,7 @@ void ChromeosDBusDaemon::RunMessageLoop() {
 
 int ChromeosDBusDaemon::OnInit() {
   // Manager DBus interface will get registered as part of this init call.
-  int return_code = chromeos::DBusServiceDaemon::OnInit();
+  int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK) {
     return return_code;
   }
@@ -61,23 +61,23 @@ void ChromeosDBusDaemon::OnShutdown(int* return_code) {
                      base::Unretained(this)))) {
     // Run a message loop to allow shill to complete its termination
     // procedures. This is different from the secondary loop in
-    // chromeos::Daemon. This loop will run until we explicitly
+    // brillo::Daemon. This loop will run until we explicitly
     // breakout of the loop, whereas the secondary loop in
-    // chromeos::Daemon will run until no more tasks are posted on the
+    // brillo::Daemon will run until no more tasks are posted on the
     // loop.  This allows asynchronous D-Bus method calls to complete
     // before exiting.
-    chromeos::MessageLoop::current()->Run();
+    brillo::MessageLoop::current()->Run();
   }
 
-  chromeos::DBusServiceDaemon::OnShutdown(return_code);
+  brillo::DBusServiceDaemon::OnShutdown(return_code);
 }
 
 void ChromeosDBusDaemon::RegisterDBusObjectsAsync(
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   // Put the Init call here instead of the constructor so that
   // ChromeosDBusControl initialization is performed after the |bus_| is
   // initialized.
-  // |bus_| is initialized in chromeos::DBusServiceDaemon::OnInit()
+  // |bus_| is initialized in brillo::DBusServiceDaemon::OnInit()
   Init(new ChromeosDBusControl(bus_, &dispatcher_), &dispatcher_);
 
   // Register "org.chromium.flimflam.Manager" interface.
@@ -106,7 +106,7 @@ void ChromeosDBusDaemon::OnDBusServiceRegistered(
 void ChromeosDBusDaemon::OnTerminationCompleted() {
   // Break out of the termination loop, to continue on with other shutdown
   // tasks.
-  chromeos::MessageLoop::current()->BreakLoop();
+  brillo::MessageLoop::current()->BreakLoop();
 }
 
 }  // namespace shill

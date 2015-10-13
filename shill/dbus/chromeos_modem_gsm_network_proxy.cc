@@ -187,7 +187,7 @@ void ChromeosModemGSMNetworkProxy::OnRegisterSuccess(
 }
 
 void ChromeosModemGSMNetworkProxy::OnRegisterFailure(
-    const ResultCallback& callback, chromeos::Error* dbus_error) {
+    const ResultCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -204,7 +204,7 @@ void ChromeosModemGSMNetworkProxy::OnGetRegistrationInfoSuccess(
 
 void ChromeosModemGSMNetworkProxy::OnGetRegistrationInfoFailure(
     const RegistrationInfoCallback& callback,
-    chromeos::Error* dbus_error) {
+    brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -218,7 +218,7 @@ void ChromeosModemGSMNetworkProxy::OnGetSignalQualitySuccess(
 }
 
 void ChromeosModemGSMNetworkProxy::OnGetSignalQualityFailure(
-    const SignalQualityCallback& callback, chromeos::Error* dbus_error) {
+    const SignalQualityCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -232,7 +232,7 @@ void ChromeosModemGSMNetworkProxy::OnScanSuccess(
 }
 
 void ChromeosModemGSMNetworkProxy::OnScanFailure(
-    const ScanResultsCallback& callback, chromeos::Error* dbus_error) {
+    const ScanResultsCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);

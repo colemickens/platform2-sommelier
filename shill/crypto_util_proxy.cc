@@ -24,7 +24,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/data_encoding.h>
+#include <brillo/data_encoding.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/file_io.h"
@@ -92,8 +92,7 @@ bool CryptoUtilProxy::VerifyDestination(
                                     public_key.c_str(),
                                     nonce.c_str()));
   string decoded_signed_data;
-  if (!chromeos::data_encoding::Base64Decode(
-          signed_data, &decoded_signed_data)) {
+  if (!brillo::data_encoding::Base64Decode(signed_data, &decoded_signed_data)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to decode signed data.");
     return false;
@@ -130,7 +129,7 @@ bool CryptoUtilProxy::EncryptData(
     const ResultStringCallback& result_callback,
     Error* error) {
   string decoded_public_key;
-  if (!chromeos::data_encoding::Base64Decode(public_key, &decoded_public_key)) {
+  if (!brillo::data_encoding::Base64Decode(public_key, &decoded_public_key)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Unable to decode public key.");
     return false;
@@ -404,7 +403,7 @@ void CryptoUtilProxy::HandleEncryptResult(
   }
 
   string encoded_data(
-      chromeos::data_encoding::Base64Encode(response.encrypted_data()));
+      brillo::data_encoding::Base64Encode(response.encrypted_data()));
   result_handler.Run(e, encoded_data);
 }
 

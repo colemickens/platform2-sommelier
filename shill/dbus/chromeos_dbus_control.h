@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/exported_object_manager.h>
 
 #include "shill/control_interface.h"
 

@@ -22,8 +22,8 @@
 #else
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
-#include <chromeos/errors/error.h>
-#include <chromeos/errors/error_codes.h>
+#include <brillo/errors/error.h>
+#include <brillo/errors/error_codes.h>
 
 #include "shill/logging.h"
 
@@ -103,13 +103,13 @@ void Error::CopyFrom(const Error& error) {
   Populate(error.type_, error.message_);
 }
 
-bool Error::ToChromeosError(chromeos::ErrorPtr* error) const {
+bool Error::ToChromeosError(brillo::ErrorPtr* error) const {
   if (IsFailure()) {
-    chromeos::Error::AddTo(error,
-                           location_,
-                           chromeos::errors::dbus::kDomain,
-                           kInfos[type_].dbus_result,
-                           message_);
+    brillo::Error::AddTo(error,
+                         location_,
+                         brillo::errors::dbus::kDomain,
+                         kInfos[type_].dbus_result,
+                         message_);
     return true;
   }
   return false;

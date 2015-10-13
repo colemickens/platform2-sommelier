@@ -72,7 +72,7 @@ void ChromeosModemModemCdmaProxy::ActivateManual(
     const ResultCallback& callback,
     int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::VariantDictionary properties_dict;
+  brillo::VariantDictionary properties_dict;
   KeyValueStore::ConvertToVariantDictionary(properties, &properties_dict);
   proxy_->ActivateManualAsync(
       properties_dict,
@@ -89,7 +89,7 @@ void ChromeosModemModemCdmaProxy::ActivateManual(
 void ChromeosModemModemCdmaProxy::ActivationStateChanged(
     uint32_t activation_state,
     uint32_t activation_error,
-    const chromeos::VariantDictionary& status_changes) {
+    const brillo::VariantDictionary& status_changes) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   if (activation_state_callback_.is_null()) {
     return;
@@ -110,7 +110,7 @@ void ChromeosModemModemCdmaProxy::OnOperationSuccess(
 void ChromeosModemModemCdmaProxy::OnOperationFailure(
     const ResultCallback& callback,
     const string& operation,
-    chromeos::Error* dbus_error) {
+    brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);

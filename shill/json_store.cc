@@ -68,8 +68,8 @@ static const char kRootPropertyDescription[] = "description";
 static const char kRootPropertySettings[] = "settings";
 
 bool DoesGroupContainProperties(
-    const chromeos::VariantDictionary& group,
-    const chromeos::VariantDictionary& required_properties) {
+    const brillo::VariantDictionary& group,
+    const brillo::VariantDictionary& required_properties) {
   for (const auto& required_property_name_and_value : required_properties) {
     const auto& required_key = required_property_name_and_value.first;
     const auto& required_value = required_property_name_and_value.second;
@@ -91,7 +91,7 @@ bool IsCoercedValue(const base::DictionaryValue& value) {
       value.HasKey(kCoercedValuePropertyEncodedValue);
 }
 
-unique_ptr<chromeos::Any> DecodeCoercedValue(
+unique_ptr<brillo::Any> DecodeCoercedValue(
     const base::DictionaryValue& coerced_value) {
   string native_type;
   if (!coerced_value.GetStringWithoutPathExpansion(
@@ -112,8 +112,8 @@ unique_ptr<chromeos::Any> DecodeCoercedValue(
   if (native_type == kNativeTypeNonAsciiString) {
     vector<uint8_t> native_value;
     if (base::HexStringToBytes(encoded_value, &native_value)) {
-      return unique_ptr<chromeos::Any>(
-          new chromeos::Any(string(native_value.begin(), native_value.end())));
+      return unique_ptr<brillo::Any>(
+          new brillo::Any(string(native_value.begin(), native_value.end())));
     } else {
       LOG(ERROR) << "Failed to decode hex data from |" << encoded_value << "|.";
       return nullptr;
@@ -121,7 +121,7 @@ unique_ptr<chromeos::Any> DecodeCoercedValue(
   } else if (native_type == kNativeTypeUint64) {
     uint64_t native_value;
     if (base::StringToUint64(encoded_value, &native_value)) {
-      return unique_ptr<chromeos::Any>(new chromeos::Any(native_value));
+      return unique_ptr<brillo::Any>(new brillo::Any(native_value));
     } else {
       LOG(ERROR) << "Failed to parse uint64 from |" << encoded_value << "|.";
       return nullptr;
@@ -142,7 +142,7 @@ unique_ptr<string> MakeStringFromValue(const base::Value& value) {
   } else if (value_type == base::Value::TYPE_DICTIONARY) {
     const base::DictionaryValue* dictionary_value;
     value.GetAsDictionary(&dictionary_value);
-    unique_ptr<chromeos::Any> decoded_value(
+    unique_ptr<brillo::Any> decoded_value(
         DecodeCoercedValue(*dictionary_value));
     if (!decoded_value) {
       LOG(ERROR) << "Failed to decode coerced value.";
@@ -195,12 +195,12 @@ unique_ptr<vector<string>> ConvertListValueToStringVector(
   return result;
 }
 
-unique_ptr<chromeos::VariantDictionary>
+unique_ptr<brillo::VariantDictionary>
 ConvertDictionaryValueToVariantDictionary(
     const base::DictionaryValue& dictionary_value) {
   base::DictionaryValue::Iterator it(dictionary_value);
-  unique_ptr<chromeos::VariantDictionary> variant_dictionary(
-      new chromeos::VariantDictionary());
+  unique_ptr<brillo::VariantDictionary> variant_dictionary(
+      new brillo::VariantDictionary());
   while (!it.IsAtEnd()) {
     const string& key = it.key();
     const base::Value& value = it.value();
@@ -240,7 +240,7 @@ ConvertDictionaryValueToVariantDictionary(
           LOG(ERROR) << "Key |" << key << "| has unsupported TYPE_DICTIONARY.";
           return nullptr;
         }
-        unique_ptr<chromeos::Any> decoded_coerced_value(
+        unique_ptr<brillo::Any> decoded_coerced_value(
             DecodeCoercedValue(*dictionary_value));
         if (!decoded_coerced_value) {
           LOG(ERROR) << "Key |" << key << "| could not be decoded.";
@@ -298,7 +298,7 @@ scoped_ptr<base::Value> MakeValueForString(const string& native_string) {
 }
 
 scoped_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
-    const chromeos::VariantDictionary& variant_dictionary) {
+    const brillo::VariantDictionary& variant_dictionary) {
   auto dictionary_value(make_scoped_ptr(new base::DictionaryValue()));
   for (const auto& key_and_value : variant_dictionary) {
     const auto& key = key_and_value.first;
@@ -406,7 +406,7 @@ bool JsonStore::Open() {
       return false;
     }
 
-    unique_ptr<chromeos::VariantDictionary> group_settings_as_variants =
+    unique_ptr<brillo::VariantDictionary> group_settings_as_variants =
         ConvertDictionaryValueToVariantDictionary(*group_settings_as_values);
     if (!group_settings_as_variants) {
       LOG(ERROR) << "Failed to convert group |" << group_name
@@ -500,7 +500,7 @@ set<string> JsonStore::GetGroupsWithKey(const string& key) const {
 set<string> JsonStore::GetGroupsWithProperties(const KeyValueStore& properties)
     const {
   set<string> matching_groups;
-  const chromeos::VariantDictionary& properties_dict(properties.properties());
+  const brillo::VariantDictionary& properties_dict(properties.properties());
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     const auto& group_name = group_name_and_settings.first;
     const auto& group_settings = group_name_and_settings.second;

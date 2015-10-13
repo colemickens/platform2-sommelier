@@ -50,7 +50,7 @@ const char* kErrorWrongState = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
 }  // namespace
 
 // static
-void CellularError::FromMM1ChromeosDBusError(chromeos::Error* dbus_error,
+void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
                                              Error* error) {
   if (!error)
     return;

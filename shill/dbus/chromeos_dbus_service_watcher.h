@@ -19,13 +19,13 @@
 
 #include <string>
 
-#include <chromeos/dbus/dbus_service_watcher.h>
+#include <brillo/dbus/dbus_service_watcher.h>
 
 #include "shill/rpc_service_watcher_interface.h"
 
 namespace shill {
 
-// Wrapper for chromeos::dbus::DBusServiceWatcher for monitoring remote
+// Wrapper for brillo::dbus::DBusServiceWatcher for monitoring remote
 // DBus service.
 class ChromeosDBusServiceWatcher : public RPCServiceWatcherInterface {
  public:
@@ -36,7 +36,7 @@ class ChromeosDBusServiceWatcher : public RPCServiceWatcherInterface {
   ~ChromeosDBusServiceWatcher() override;
 
  private:
-  std::unique_ptr<chromeos::dbus_utils::DBusServiceWatcher> watcher_;
+  std::unique_ptr<brillo::dbus_utils::DBusServiceWatcher> watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(ChromeosDBusServiceWatcher);
 };

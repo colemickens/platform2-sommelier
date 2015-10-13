@@ -46,7 +46,7 @@ class ChromeosUpstartProxy : public UpstartProxyInterface {
 
   // Callback for async call to EmitEvent.
   void OnEmitEventSuccess();
-  void OnEmitEventFailure(chromeos::Error* error);
+  void OnEmitEventFailure(brillo::Error* error);
 
   std::unique_ptr<com::ubuntu::Upstart0_6Proxy> upstart_proxy_;
 

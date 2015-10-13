@@ -518,7 +518,7 @@ TEST_F(WiFiPropertyTest, SetProperty) {
     Error error;
     EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
         kBgscanMethodProperty,
-        chromeos::Any(string(WPASupplicant::kNetworkBgscanMethodSimple)),
+        brillo::Any(string(WPASupplicant::kNetworkBgscanMethodSimple)),
         &error));
   }
 
@@ -526,7 +526,7 @@ TEST_F(WiFiPropertyTest, SetProperty) {
     Error error;
     EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
         kBgscanMethodProperty,
-        chromeos::Any(string("not a real scan method")),
+        brillo::Any(string("not a real scan method")),
         &error));
   }
 }
@@ -546,7 +546,7 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   Error error;
   EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
       kBgscanMethodProperty,
-      chromeos::Any(string(WPASupplicant::kNetworkBgscanMethodLearn)),
+      brillo::Any(string(WPASupplicant::kNetworkBgscanMethodLearn)),
       &error));
   EXPECT_EQ(WPASupplicant::kNetworkBgscanMethodLearn, device_->bgscan_method_);
   EXPECT_TRUE(device_->store().GetStringProperty(
@@ -1193,7 +1193,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   bool SetBgscanMethod(const string& method) {
     Error error;
     return wifi_->mutable_store()->SetAnyProperty(kBgscanMethodProperty,
-                                                  chromeos::Any(method),
+                                                  brillo::Any(method),
                                                   &error);
   }
 

@@ -23,7 +23,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <openssl/bio.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
@@ -409,7 +409,7 @@ bool ParseAndExecuteCommand(const string& command) {
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToStderr | chromeos::kLogHeader);
+  brillo::InitLog(brillo::kLogToStderr | brillo::kLogHeader);
   LOG(INFO) << "crypto-util in action";
 
   if (argc != 2) {

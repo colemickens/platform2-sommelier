@@ -90,7 +90,7 @@ bool ChromeosSupplicantNetworkProxy::SetEnabled(bool enabled) {
 }
 
 void ChromeosSupplicantNetworkProxy::PropertiesChanged(
-    const chromeos::VariantDictionary& /*properties*/) {
+    const brillo::VariantDictionary& /*properties*/) {
   SLOG(&network_proxy_->GetObjectPath(), 2) << __func__;
 }
 

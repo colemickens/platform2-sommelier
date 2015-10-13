@@ -81,12 +81,12 @@ class ChromeosSupplicantInterfaceProxy
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<bool> disable_high_bitrates;
-    chromeos::dbus_utils::Property<bool> fast_reauth;
-    chromeos::dbus_utils::Property<uint16_t> roam_threshold;
-    chromeos::dbus_utils::Property<bool> scan;
-    chromeos::dbus_utils::Property<int32_t> scan_interval;
-    chromeos::dbus_utils::Property<bool> sched_scan;
+    brillo::dbus_utils::Property<bool> disable_high_bitrates;
+    brillo::dbus_utils::Property<bool> fast_reauth;
+    brillo::dbus_utils::Property<uint16_t> roam_threshold;
+    brillo::dbus_utils::Property<bool> scan;
+    brillo::dbus_utils::Property<int32_t> scan_interval;
+    brillo::dbus_utils::Property<bool> sched_scan;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -104,16 +104,16 @@ class ChromeosSupplicantInterfaceProxy
   void BlobAdded(const std::string& blobname);
   void BlobRemoved(const std::string& blobname);
   void BSSAdded(const dbus::ObjectPath& BSS,
-                const chromeos::VariantDictionary& properties);
+                const brillo::VariantDictionary& properties);
   void BSSRemoved(const dbus::ObjectPath& BSS);
-  void Certification(const chromeos::VariantDictionary& properties);
+  void Certification(const brillo::VariantDictionary& properties);
   void EAP(const std::string& status, const std::string& parameter);
   void NetworkAdded(const dbus::ObjectPath& network,
-                    const chromeos::VariantDictionary& properties);
+                    const brillo::VariantDictionary& properties);
   void NetworkRemoved(const dbus::ObjectPath& network);
   void NetworkSelected(const dbus::ObjectPath& network);
   void PropertiesChanged(
-      const chromeos::VariantDictionary& properties);
+      const brillo::VariantDictionary& properties);
   void ScanDone(bool success);
   void TDLSDiscoverResponse(const std::string& peer_address);
 

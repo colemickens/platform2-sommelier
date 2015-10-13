@@ -65,7 +65,7 @@ void ChromeosModemGobiProxy::OnSetCarrierSuccess(
 }
 
 void ChromeosModemGobiProxy::OnSetCarrierFailure(
-    const ResultCallback& callback, chromeos::Error* dbus_error) {
+    const ResultCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);

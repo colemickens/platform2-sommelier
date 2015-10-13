@@ -56,7 +56,7 @@ ChromeosSupplicantBSSProxy::~ChromeosSupplicantBSSProxy() {
 }
 
 void ChromeosSupplicantBSSProxy::PropertiesChanged(
-    const chromeos::VariantDictionary& properties) {
+    const brillo::VariantDictionary& properties) {
   SLOG(&bss_proxy_->GetObjectPath(), 2) << __func__;
   KeyValueStore store;
   KeyValueStore::ConvertFromVariantDictionary(properties, &store);

@@ -306,7 +306,7 @@ TEST_F(DeviceTest, Contains) {
 }
 
 TEST_F(DeviceTest, GetProperties) {
-  chromeos::VariantDictionary props;
+  brillo::VariantDictionary props;
   Error error;
   device_->store().GetProperties(&props, &error);
   ASSERT_FALSE(props.find(kNameProperty) == props.end());

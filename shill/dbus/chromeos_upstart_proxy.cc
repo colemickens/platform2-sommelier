@@ -48,7 +48,7 @@ void ChromeosUpstartProxy::OnEmitEventSuccess() {
   VLOG(2) << "Event emitted successful";
 }
 
-void ChromeosUpstartProxy::OnEmitEventFailure(chromeos::Error* error) {
+void ChromeosUpstartProxy::OnEmitEventFailure(brillo::Error* error) {
   LOG(ERROR) << "Failed to emit event: " << error->GetCode()
       << " " << error->GetMessage();
 }

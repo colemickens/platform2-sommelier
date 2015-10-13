@@ -21,7 +21,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_method_invoker.h>
 #include <dbus/util.h>
 
 #include "shill/dhcp/dhcp_config.h"
@@ -116,13 +116,13 @@ DBusHandlerResult ChromeosDHCPCDListener::HandleMessage(
   if (member_name == kSignalEvent) {
     uint32_t pid;
     string reason;
-    chromeos::VariantDictionary configurations;
+    brillo::VariantDictionary configurations;
     // ExtracMessageParameters will log the error if it failed.
-    if (chromeos::dbus_utils::ExtractMessageParameters(&reader,
-                                                       nullptr,
-                                                       &pid,
-                                                       &reason,
-                                                       &configurations)) {
+    if (brillo::dbus_utils::ExtractMessageParameters(&reader,
+                                                     nullptr,
+                                                     &pid,
+                                                     &reason,
+                                                     &configurations)) {
       dispatcher_->PostTask(
           base::Bind(&ChromeosDHCPCDListener::EventSignal,
                      weak_factory_.GetWeakPtr(),
@@ -132,10 +132,10 @@ DBusHandlerResult ChromeosDHCPCDListener::HandleMessage(
     uint32_t pid;
     string status;
     // ExtracMessageParameters will log the error if it failed.
-    if (chromeos::dbus_utils::ExtractMessageParameters(&reader,
-                                                       nullptr,
-                                                       &pid,
-                                                       &status)) {
+    if (brillo::dbus_utils::ExtractMessageParameters(&reader,
+                                                     nullptr,
+                                                     &pid,
+                                                     &status)) {
       dispatcher_->PostTask(
           base::Bind(&ChromeosDHCPCDListener::StatusChangedSignal,
                      weak_factory_.GetWeakPtr(),
@@ -152,7 +152,7 @@ void ChromeosDHCPCDListener::EventSignal(
     const string& sender,
     uint32_t pid,
     const string& reason,
-    const chromeos::VariantDictionary& configuration) {
+    const brillo::VariantDictionary& configuration) {
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config.get()) {
     if (provider_->IsRecentlyUnbound(pid)) {

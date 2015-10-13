@@ -51,10 +51,10 @@ class ChromeosRPCTaskDBusAdaptor
   const std::string& GetRpcConnectionIdentifier() override;
 
   // Implementation of TaskAdaptor
-  bool getsec(chromeos::ErrorPtr* error,
+  bool getsec(brillo::ErrorPtr* error,
               std::string* user,
               std::string* password) override;
-  bool notify(chromeos::ErrorPtr* error,
+  bool notify(brillo::ErrorPtr* error,
               const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
 

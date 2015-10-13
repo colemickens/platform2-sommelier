@@ -38,8 +38,8 @@ class ChromeosDBusPropertiesProxy : public DBusPropertiesProxyInterface {
 
   // Inherited from DBusPropertiesProxyInterface.
   KeyValueStore GetAll(const std::string& interface_name) override;
-  chromeos::Any Get(const std::string& interface_name,
-                    const std::string& property) override;
+  brillo::Any Get(const std::string& interface_name,
+                  const std::string& property) override;
 
   void set_properties_changed_callback(
       const PropertiesChangedCallback& callback) override {
@@ -55,10 +55,10 @@ class ChromeosDBusPropertiesProxy : public DBusPropertiesProxyInterface {
   // Signal handlers.
   void MmPropertiesChanged(
       const std::string& interface,
-      const chromeos::VariantDictionary& properties);
+      const brillo::VariantDictionary& properties);
   void PropertiesChanged(
       const std::string& interface,
-      const chromeos::VariantDictionary& changed_properties,
+      const brillo::VariantDictionary& changed_properties,
       const std::vector<std::string>& invalidated_properties);
 
   // Called when signal is connected to the ObjectProxy.

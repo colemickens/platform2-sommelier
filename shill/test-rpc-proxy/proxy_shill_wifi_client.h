@@ -23,7 +23,7 @@
 
 #include <string>
 
-#include <chromeos/variant_dictionary.h>
+#include <brillo/variant_dictionary.h>
 // Abstract class which defines the interface for the RPC server to talk to Shill.
 // This helps in abstracting out the underlying protocol that Shill client
 // needs to use: Dbus, Binder, etc.
@@ -46,7 +46,7 @@ class ProxyShillWifiClient {
   virtual void RemoveAllWifiEntries() = 0;
   virtual void ConfigureWifiService(std::string ssid,
                                     std::string security,
-                                    chromeos::VariantDictionary& security_parameters,
+                                    brillo::VariantDictionary& security_parameters,
                                     bool save_credentials,
                                     StationType station_type,
                                     bool hidden_network,
@@ -54,7 +54,7 @@ class ProxyShillWifiClient {
                                     AutoConnectType autoconnect) = 0;
   virtual bool ConnectToWifiNetwork(std::string ssid,
                                     std::string security,
-                                    chromeos::VariantDictionary& security_parameters,
+                                    brillo::VariantDictionary& security_parameters,
                                     bool save_credentials,
                                     StationType station_type,
                                     bool hidden_network,

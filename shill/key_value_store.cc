@@ -49,7 +49,7 @@ bool KeyValueStore::operator!=(const KeyValueStore& rhs) const {
 }
 
 bool KeyValueStore::ContainsBool(const string& name) const {
-  // TODO(zqiu): Replace typeid comparison with chromeos::Any::IsTypeCompatible.
+  // TODO(zqiu): Replace typeid comparison with brillo::Any::IsTypeCompatible.
   return ContainsKey(properties_, name) &&
       properties_.find(name)->second.GetType() == typeid(bool);    // NOLINT
 }
@@ -132,7 +132,7 @@ bool KeyValueStore::Contains(const string& name) const {
 
 bool KeyValueStore::GetBool(const string& name) const {
   const auto it(properties_.find(name));
-  // TODO(zqiu): Replace typeid comparison with chromeos::Any::IsTypeCompatible.
+  // TODO(zqiu): Replace typeid comparison with brillo::Any::IsTypeCompatible.
   CHECK(it != properties_.end() && it->second.GetType() == typeid(bool))
       << "for bool property " << name;
   return it->second.Get<bool>();
@@ -242,36 +242,36 @@ const vector<uint32_t>& KeyValueStore::GetUint32s(const string& name) const {
   return it->second.Get<vector<uint32_t>>();
 }
 
-const chromeos::Any& KeyValueStore::Get(const string& name) const {
+const brillo::Any& KeyValueStore::Get(const string& name) const {
   const auto it(properties_.find(name));
   CHECK(it != properties_.end());
   return it->second;
 }
 
 void KeyValueStore::SetBool(const string& name, bool value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetByteArrays(const string& name,
                                   const vector<vector<uint8_t>>& value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetInt(const string& name, int32_t value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetInt16(const string& name, int16_t value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetKeyValueStore(const string& name,
                                      const KeyValueStore& value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetRpcIdentifier(const string& name, const string& value) {
-  properties_[name] = chromeos::Any(dbus::ObjectPath(value));
+  properties_[name] = brillo::Any(dbus::ObjectPath(value));
 }
 
 void KeyValueStore::SetRpcIdentifiers(const string& name,
@@ -280,46 +280,46 @@ void KeyValueStore::SetRpcIdentifiers(const string& name,
   for (const auto& rpcid : value) {
     paths.push_back(dbus::ObjectPath(rpcid));
   }
-  properties_[name] = chromeos::Any(paths);
+  properties_[name] = brillo::Any(paths);
 }
 
 void KeyValueStore::SetString(const string& name, const string& value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetStringmap(const string& name,
                                  const map<string, string>& value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetStrings(const string& name,
                                const vector<string>& value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetUint(const string& name, uint32_t value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetUint16(const string& name, uint16_t value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetUint8(const string& name, uint8_t value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetUint8s(const string& name,
                               const vector<uint8_t>& value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
 void KeyValueStore::SetUint32s(const string& name,
                                const vector<uint32_t>& value) {
-  properties_[name] = chromeos::Any(value);
+  properties_[name] = brillo::Any(value);
 }
 
-void KeyValueStore::Set(const string& name, const chromeos::Any& value) {
+void KeyValueStore::Set(const string& name, const brillo::Any& value) {
   properties_[name] = value;
 }
 
@@ -405,12 +405,12 @@ string KeyValueStore::LookupString(const string& name,
 
 // static.
 void KeyValueStore::ConvertToVariantDictionary(
-    const KeyValueStore& in_store, chromeos::VariantDictionary* out_dict) {
+    const KeyValueStore& in_store, brillo::VariantDictionary* out_dict) {
   for (const auto& key_value_pair : in_store.properties_) {
     if (key_value_pair.second.IsTypeCompatible<KeyValueStore>()) {
       // Special handling for nested KeyValueStore (convert it to
-      // nested chromeos::VariantDictionary).
-      chromeos::VariantDictionary dict;
+      // nested brillo::VariantDictionary).
+      brillo::VariantDictionary dict;
       ConvertToVariantDictionary(
           key_value_pair.second.Get<KeyValueStore>(), &dict);
       out_dict->emplace(key_value_pair.first, dict);
@@ -422,14 +422,14 @@ void KeyValueStore::ConvertToVariantDictionary(
 
 // static.
 void KeyValueStore::ConvertFromVariantDictionary(
-    const chromeos::VariantDictionary& in_dict, KeyValueStore* out_store) {
+    const brillo::VariantDictionary& in_dict, KeyValueStore* out_store) {
   for (const auto& key_value_pair : in_dict) {
-    if (key_value_pair.second.IsTypeCompatible<chromeos::VariantDictionary>()) {
-      // Special handling for nested chromeos::VariantDictionary (convert it to
+    if (key_value_pair.second.IsTypeCompatible<brillo::VariantDictionary>()) {
+      // Special handling for nested brillo::VariantDictionary (convert it to
       // nested KeyValueStore).
       KeyValueStore store;
       ConvertFromVariantDictionary(
-          key_value_pair.second.Get<chromeos::VariantDictionary>(), &store);
+          key_value_pair.second.Get<brillo::VariantDictionary>(), &store);
       out_store->properties_.emplace(key_value_pair.first, store);
     } else {
       out_store->properties_.insert(key_value_pair);

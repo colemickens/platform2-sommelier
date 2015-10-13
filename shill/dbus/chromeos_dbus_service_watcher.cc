@@ -23,7 +23,7 @@ ChromeosDBusServiceWatcher::ChromeosDBusServiceWatcher(
       const std::string& connection_name,
       const base::Closure& on_connection_vanished)
     : watcher_(
-        new chromeos::dbus_utils::DBusServiceWatcher(
+        new brillo::dbus_utils::DBusServiceWatcher(
             bus, connection_name, on_connection_vanished)) {}
 
 ChromeosDBusServiceWatcher::~ChromeosDBusServiceWatcher() {}

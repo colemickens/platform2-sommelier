@@ -23,7 +23,7 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
-#include <chromeos/any.h>
+#include <brillo/any.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -37,7 +37,7 @@
 
 namespace shill {
 
-class PropertyStoreTest : public testing::TestWithParam<chromeos::Any> {
+class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
  public:
   typedef ::testing::Types<bool, int16_t, int32_t, std::string, Stringmap,
                            Stringmaps, Strings, uint8_t, uint16_t, Uint16s,
@@ -48,19 +48,19 @@ class PropertyStoreTest : public testing::TestWithParam<chromeos::Any> {
   // These constructors don't, and declaring these as static lets me
   // autogenerate a bunch of unit test code that I would otherwise need to
   // copypaste.  So I think it's safe and worth it.
-  static const chromeos::Any kBoolV;
-  static const chromeos::Any kByteV;
-  static const chromeos::Any kInt16V;
-  static const chromeos::Any kInt32V;
-  static const chromeos::Any kKeyValueStoreV;
-  static const chromeos::Any kStringV;
-  static const chromeos::Any kStringmapV;
-  static const chromeos::Any kStringmapsV;
-  static const chromeos::Any kStringsV;
-  static const chromeos::Any kUint16V;
-  static const chromeos::Any kUint16sV;
-  static const chromeos::Any kUint32V;
-  static const chromeos::Any kUint64V;
+  static const brillo::Any kBoolV;
+  static const brillo::Any kByteV;
+  static const brillo::Any kInt16V;
+  static const brillo::Any kInt32V;
+  static const brillo::Any kKeyValueStoreV;
+  static const brillo::Any kStringV;
+  static const brillo::Any kStringmapV;
+  static const brillo::Any kStringmapsV;
+  static const brillo::Any kStringsV;
+  static const brillo::Any kUint16V;
+  static const brillo::Any kUint16sV;
+  static const brillo::Any kUint32V;
+  static const brillo::Any kUint64V;
 
   PropertyStoreTest();
   ~PropertyStoreTest() override;

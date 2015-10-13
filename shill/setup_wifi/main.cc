@@ -22,8 +22,8 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <chromeos/any.h>
-#include <chromeos/daemons/dbus_daemon.h>
+#include <brillo/any.h>
+#include <brillo/daemons/dbus_daemon.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -50,7 +50,7 @@ static const char kHelpMessage[] = "\n"
 
 }  // namespace
 
-class MyClient : public chromeos::DBusDaemon {
+class MyClient : public brillo::DBusDaemon {
  public:
   MyClient(std::string ssid, bool is_hex_ssid, std::string psk)
       : ssid_(ssid), is_hex_ssid_(is_hex_ssid), psk_(psk) {}
@@ -72,14 +72,14 @@ class MyClient : public chromeos::DBusDaemon {
         new org::chromium::flimflam::ManagerProxy(bus_));
 
     dbus::ObjectPath created_service;
-    chromeos::ErrorPtr configure_error;
+    brillo::ErrorPtr configure_error;
     if (!shill_manager_proxy->ConfigureService(
             GetServiceConfig(), &created_service, &configure_error)) {
       LOG(ERROR) << "Configure service failed";
       return false;
     }
 
-    chromeos::ErrorPtr connect_error;
+    brillo::ErrorPtr connect_error;
     std::unique_ptr<org::chromium::flimflam::ServiceProxy> shill_service_proxy(
         new org::chromium::flimflam::ServiceProxy(bus_,
                                                   created_service));
@@ -93,8 +93,8 @@ class MyClient : public chromeos::DBusDaemon {
     return true;
   }
 
-  std::map<std::string, chromeos::Any> GetServiceConfig() {
-    std::map<std::string, chromeos::Any> configure_dict;
+  std::map<std::string, brillo::Any> GetServiceConfig() {
+    std::map<std::string, brillo::Any> configure_dict;
     configure_dict[shill::kTypeProperty] = shill::kTypeWifi;
     if (is_hex_ssid_) {
       configure_dict[shill::kWifiHexSsid] = ssid_;

@@ -102,7 +102,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
 
   Error error(Error::kInvalidProperty, "");
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     profile_->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
@@ -111,7 +111,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
   }
   properties_.offline_mode = true;
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     profile_->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());

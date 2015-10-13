@@ -59,15 +59,15 @@ class ChromeosIPConfigDBusAdaptor
                           const std::vector<std::string>& value) override;
 
   // Implementation of IPConfigAdaptor
-  bool GetProperties(chromeos::ErrorPtr* error,
-                     chromeos::VariantDictionary* properties) override;
-  bool SetProperty(chromeos::ErrorPtr* error,
+  bool GetProperties(brillo::ErrorPtr* error,
+                     brillo::VariantDictionary* properties) override;
+  bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
-                   const chromeos::Any& value) override;
-  bool ClearProperty(chromeos::ErrorPtr* error,
+                   const brillo::Any& value) override;
+  bool ClearProperty(brillo::ErrorPtr* error,
                      const std::string& name) override;
-  bool Remove(chromeos::ErrorPtr* error) override;
-  bool Refresh(chromeos::ErrorPtr* error) override;
+  bool Remove(brillo::ErrorPtr* error) override;
+  bool Refresh(brillo::ErrorPtr* error) override;
 
  private:
   IPConfig* ipconfig_;

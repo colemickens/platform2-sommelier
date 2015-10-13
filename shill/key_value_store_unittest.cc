@@ -37,7 +37,7 @@ TEST_F(KeyValueStoreTest, Any) {
   const string kKey("foo");
   const string kValue("baz");
   EXPECT_FALSE(store_.Contains(kKey));
-  store_.Set(kKey, chromeos::Any(kValue));
+  store_.Set(kKey, brillo::Any(kValue));
   EXPECT_TRUE(store_.Contains(kKey));
   EXPECT_EQ(kValue, store_.Get(kKey).Get<string>());
   store_.Remove(kKey);
@@ -623,7 +623,7 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
   store.SetUint32s(kUint32sKey, kUint32sValue);
   store.SetKeyValueStore(kKeyValueStoreKey, nested_store);
 
-  chromeos::VariantDictionary dict;
+  brillo::VariantDictionary dict;
   KeyValueStore::ConvertToVariantDictionary(store, &dict);
   EXPECT_EQ(13, dict.size());
   EXPECT_EQ(kStringValue, dict[kStringKey].Get<string>());
@@ -642,8 +642,8 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
   EXPECT_EQ(kUint16Value, dict[kUint16Key].Get<uint16_t>());
   EXPECT_EQ(kUint8sValue, dict[kUint8sKey].Get<vector<uint8_t>>());
   EXPECT_EQ(kUint32sValue, dict[kUint32sKey].Get<vector<uint32_t>>());
-  chromeos::VariantDictionary nested_dict =
-      dict[kKeyValueStoreKey].Get<chromeos::VariantDictionary>();
+  brillo::VariantDictionary nested_dict =
+      dict[kKeyValueStoreKey].Get<brillo::VariantDictionary>();
   EXPECT_EQ(kNestedInt32Value, nested_dict[kNestedInt32Key].Get<int32_t>());
 }
 
@@ -676,23 +676,23 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   static const char kNestedInt32Key[] = "NestedKey32Key";
   const int32_t kNestedInt32Value = 1;
 
-  chromeos::VariantDictionary dict;
-  dict[kStringKey] = chromeos::Any(string(kStringValue));
-  dict[kStringmapKey] = chromeos::Any(kStringmapValue);
-  dict[kStringsKey] = chromeos::Any(kStringsValue);
-  dict[kBoolKey] = chromeos::Any(kBoolValue);
-  dict[kInt32Key] = chromeos::Any(kInt32Value);
-  dict[kUint32Key] = chromeos::Any(kUint32Value);
-  dict[kByteArraysKey] = chromeos::Any(kByteArraysValue);
-  dict[kInt16Key] = chromeos::Any(kInt16Value);
+  brillo::VariantDictionary dict;
+  dict[kStringKey] = brillo::Any(string(kStringValue));
+  dict[kStringmapKey] = brillo::Any(kStringmapValue);
+  dict[kStringsKey] = brillo::Any(kStringsValue);
+  dict[kBoolKey] = brillo::Any(kBoolValue);
+  dict[kInt32Key] = brillo::Any(kInt32Value);
+  dict[kUint32Key] = brillo::Any(kUint32Value);
+  dict[kByteArraysKey] = brillo::Any(kByteArraysValue);
+  dict[kInt16Key] = brillo::Any(kInt16Value);
   dict[kRpcIdentifierKey] =
-      chromeos::Any(dbus::ObjectPath(kRpcIdentifierValue));
-  dict[kUint16Key] = chromeos::Any(kUint16Value);
-  dict[kUint8sKey] = chromeos::Any(kUint8sValue);
-  dict[kUint32sKey] = chromeos::Any(kUint32sValue);
-  chromeos::VariantDictionary nested_dict;
-  nested_dict[kNestedInt32Key] = chromeos::Any(kNestedInt32Value);
-  dict[kKeyValueStoreKey] = chromeos::Any(nested_dict);
+      brillo::Any(dbus::ObjectPath(kRpcIdentifierValue));
+  dict[kUint16Key] = brillo::Any(kUint16Value);
+  dict[kUint8sKey] = brillo::Any(kUint8sValue);
+  dict[kUint32sKey] = brillo::Any(kUint32sValue);
+  brillo::VariantDictionary nested_dict;
+  nested_dict[kNestedInt32Key] = brillo::Any(kNestedInt32Value);
+  dict[kKeyValueStoreKey] = brillo::Any(nested_dict);
 
   KeyValueStore store;
   KeyValueStore::ConvertFromVariantDictionary(dict, &store);

@@ -50,34 +50,34 @@ using ::testing::Values;
 namespace shill {
 
 // static
-const chromeos::Any PropertyStoreTest::kBoolV = chromeos::Any(false);
+const brillo::Any PropertyStoreTest::kBoolV = brillo::Any(false);
 // static
-const chromeos::Any PropertyStoreTest::kByteV =
-    chromeos::Any(uint8_t(0));
+const brillo::Any PropertyStoreTest::kByteV =
+    brillo::Any(uint8_t(0));
 // static
-const chromeos::Any PropertyStoreTest::kInt16V = chromeos::Any(int16_t(0));
+const brillo::Any PropertyStoreTest::kInt16V = brillo::Any(int16_t(0));
 // static
-const chromeos::Any PropertyStoreTest::kInt32V = chromeos::Any(int32_t(0));
+const brillo::Any PropertyStoreTest::kInt32V = brillo::Any(int32_t(0));
 // static
-const chromeos::Any PropertyStoreTest::kKeyValueStoreV =
-    chromeos::Any(chromeos::VariantDictionary());
+const brillo::Any PropertyStoreTest::kKeyValueStoreV =
+    brillo::Any(brillo::VariantDictionary());
 // static
-const chromeos::Any PropertyStoreTest::kStringV = chromeos::Any(string());
+const brillo::Any PropertyStoreTest::kStringV = brillo::Any(string());
 // static
-const chromeos::Any PropertyStoreTest::kStringmapV = chromeos::Any(Stringmap());
+const brillo::Any PropertyStoreTest::kStringmapV = brillo::Any(Stringmap());
 // static
-const chromeos::Any PropertyStoreTest::kStringmapsV =
-    chromeos::Any(Stringmaps());
+const brillo::Any PropertyStoreTest::kStringmapsV =
+    brillo::Any(Stringmaps());
 // static
-const chromeos::Any PropertyStoreTest::kStringsV = chromeos::Any(Strings());
+const brillo::Any PropertyStoreTest::kStringsV = brillo::Any(Strings());
 // static
-const chromeos::Any PropertyStoreTest::kUint16V = chromeos::Any(uint16_t(0));
+const brillo::Any PropertyStoreTest::kUint16V = brillo::Any(uint16_t(0));
 // static
-const chromeos::Any PropertyStoreTest::kUint16sV = chromeos::Any(Uint16s());
+const brillo::Any PropertyStoreTest::kUint16sV = brillo::Any(Uint16s());
 // static
-const chromeos::Any PropertyStoreTest::kUint32V = chromeos::Any(uint32_t(0));
+const brillo::Any PropertyStoreTest::kUint32V = brillo::Any(uint32_t(0));
 // static
-const chromeos::Any PropertyStoreTest::kUint64V = chromeos::Any(uint64_t(0));
+const brillo::Any PropertyStoreTest::kUint64V = brillo::Any(uint64_t(0));
 
 PropertyStoreTest::PropertyStoreTest()
     : internal_error_(kErrorResultInternalError),
@@ -542,7 +542,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
 }
 
 TEST_F(PropertyStoreTest, SetAnyProperty) {
-  // Test that registered properties can be set using chromeos::Any variant
+  // Test that registered properties can be set using brillo::Any variant
   // type.
   PropertyStore store;
   {
@@ -557,9 +557,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetBoolProperty(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     bool new_value = false;
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetBoolProperty(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -575,9 +575,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetInt16Property(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     int16_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetInt16Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -593,9 +593,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetInt32Property(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     int32_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetInt32Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -611,9 +611,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetStringProperty(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     string new_value = "yesss";
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetStringProperty(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -630,10 +630,10 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetStringmapProperty(key, &test_value, &error));
     EXPECT_TRUE(value == test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     Stringmap new_value;
     new_value["yesss"] = "noooo";
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetStringmapProperty(key, &test_value, &error));
     EXPECT_TRUE(new_value == test_value);
   }
@@ -652,12 +652,12 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetStringsProperty(key, &test_value, &error));
     EXPECT_TRUE(value == test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     Strings new_value;
     string new_element;
     new_element = "yesss";
     new_value.push_back(new_element);
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetStringsProperty(key, &test_value, &error));
     EXPECT_TRUE(new_value == test_value);
   }
@@ -673,9 +673,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetUint8Property(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     uint8_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetUint8Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -691,9 +691,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetUint16Property(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     uint16_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetUint16Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -709,9 +709,9 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     EXPECT_TRUE(store.GetUint32Property(key, &test_value, &error));
     EXPECT_EQ(value, test_value);
 
-    // Set property using chromeos::Any variant type.
+    // Set property using brillo::Any variant type.
     uint32_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
     EXPECT_TRUE(store.GetUint32Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -728,10 +728,10 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
                 this, &PropertyStoreTest::GetKeyValueStoreCallback,
                 &PropertyStoreTest::SetKeyValueStoreCallback)));
 
-    chromeos::VariantDictionary value;
+    brillo::VariantDictionary value;
     EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
     Error error;
-    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(value), &error));
+    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(value), &error));
   }
 }
 
@@ -783,7 +783,7 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
 
   // Update properties.
   bool new_bool_value = false;
-  chromeos::VariantDictionary new_key_value_store_value;
+  brillo::VariantDictionary new_key_value_store_value;
   int16_t new_int16_value = 17;
   int32_t new_int32_value = 33;
   string new_string_value = "strings";
@@ -795,19 +795,19 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   uint16_t new_uint16_value = 17;
   uint32_t new_uint32_value = 33;
 
-  chromeos::VariantDictionary dict;
-  dict.insert(std::make_pair(kBoolKey, chromeos::Any(new_bool_value)));
+  brillo::VariantDictionary dict;
+  dict.insert(std::make_pair(kBoolKey, brillo::Any(new_bool_value)));
   dict.insert(std::make_pair(kKeyValueStoreKey,
-                             chromeos::Any(new_key_value_store_value)));
-  dict.insert(std::make_pair(kInt16Key, chromeos::Any(new_int16_value)));
-  dict.insert(std::make_pair(kInt32Key, chromeos::Any(new_int32_value)));
-  dict.insert(std::make_pair(kStringKey, chromeos::Any(new_string_value)));
+                             brillo::Any(new_key_value_store_value)));
+  dict.insert(std::make_pair(kInt16Key, brillo::Any(new_int16_value)));
+  dict.insert(std::make_pair(kInt32Key, brillo::Any(new_int32_value)));
+  dict.insert(std::make_pair(kStringKey, brillo::Any(new_string_value)));
   dict.insert(std::make_pair(kStringmapKey,
-                             chromeos::Any(new_stringmap_value)));
-  dict.insert(std::make_pair(kStringsKey, chromeos::Any(new_strings_value)));
-  dict.insert(std::make_pair(kUint8Key, chromeos::Any(new_uint8_value)));
-  dict.insert(std::make_pair(kUint16Key, chromeos::Any(new_uint16_value)));
-  dict.insert(std::make_pair(kUint32Key, chromeos::Any(new_uint32_value)));
+                             brillo::Any(new_stringmap_value)));
+  dict.insert(std::make_pair(kStringsKey, brillo::Any(new_strings_value)));
+  dict.insert(std::make_pair(kUint8Key, brillo::Any(new_uint8_value)));
+  dict.insert(std::make_pair(kUint16Key, brillo::Any(new_uint16_value)));
+  dict.insert(std::make_pair(kUint32Key, brillo::Any(new_uint32_value)));
 
   EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
   Error error;
@@ -816,7 +816,7 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   // Retrieve properties.
   EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
       .WillOnce(Return(KeyValueStore()));
-  chromeos::VariantDictionary result_dict;
+  brillo::VariantDictionary result_dict;
   EXPECT_TRUE(store.GetProperties(&result_dict, &error));
 
   // Verify property values.

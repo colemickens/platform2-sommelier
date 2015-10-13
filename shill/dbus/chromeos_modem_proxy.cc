@@ -99,7 +99,7 @@ void ChromeosModemProxy::OnEnableSuccess(const ResultCallback& callback) {
 }
 
 void ChromeosModemProxy::OnEnableFailure(const ResultCallback& callback,
-                                         chromeos::Error* dbus_error) {
+                                         brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -114,7 +114,7 @@ void ChromeosModemProxy::OnGetInfoSuccess(const ModemInfoCallback& callback,
 }
 
 void ChromeosModemProxy::OnGetInfoFailure(const ModemInfoCallback& callback,
-                                          chromeos::Error* dbus_error) {
+                                          brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -127,7 +127,7 @@ void ChromeosModemProxy::OnDisconnectSuccess(const ResultCallback& callback) {
 }
 
 void ChromeosModemProxy::OnDisconnectFailure(const ResultCallback& callback,
-                                             chromeos::Error* dbus_error) {
+                                             brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);

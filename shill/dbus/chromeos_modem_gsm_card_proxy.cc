@@ -229,7 +229,7 @@ void ChromeosModemGSMCardProxy::OnGetGSMIdentifierSuccess(
 void ChromeosModemGSMCardProxy::OnGetGSMIdentifierFailure(
     const GSMIdentifierCallback& callback,
     const string& identifier_name,
-    chromeos::Error* dbus_error) {
+    brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << identifier_name;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -246,7 +246,7 @@ void ChromeosModemGSMCardProxy::OnOperationSuccess(
 void ChromeosModemGSMCardProxy::OnOperationFailure(
     const ResultCallback& callback,
     const string& operation_name,
-    chromeos::Error* dbus_error) {
+    brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation_name;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);

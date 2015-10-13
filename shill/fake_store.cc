@@ -39,8 +39,8 @@ static string ObjectID(const FakeStore* j) {
 namespace {
 
 bool DoesGroupContainProperties(
-    const chromeos::VariantDictionary& group,
-    const chromeos::VariantDictionary& required_properties) {
+    const brillo::VariantDictionary& group,
+    const brillo::VariantDictionary& required_properties) {
   for (const auto& required_property_name_and_value : required_properties) {
     const auto& required_key = required_property_name_and_value.first;
     const auto& required_value = required_property_name_and_value.second;
@@ -105,7 +105,7 @@ set<string> FakeStore::GetGroupsWithKey(const string& key) const {
 set<string> FakeStore::GetGroupsWithProperties(const KeyValueStore& properties)
     const {
   set<string> matching_groups;
-  const chromeos::VariantDictionary& properties_dict(properties.properties());
+  const brillo::VariantDictionary& properties_dict(properties.properties());
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     const auto& group_name = group_name_and_settings.first;
     const auto& group_settings = group_name_and_settings.second;

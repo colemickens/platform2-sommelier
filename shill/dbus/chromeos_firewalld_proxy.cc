@@ -42,7 +42,7 @@ bool ChromeosFirewalldProxy::RequestVpnSetup(
   }
 
   bool success = false;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!proxy_->RequestVpnSetup(user_names, interface, &success, &error)) {
     LOG(ERROR) << "Failed to request VPN setup: " << error->GetCode()
                << " " << error->GetMessage();
@@ -56,7 +56,7 @@ bool ChromeosFirewalldProxy::RemoveVpnSetup() {
     return true;
   }
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   bool success = false;
   if (!proxy_->RemoveVpnSetup(user_names_, interface_name_, &success, &error)) {
     LOG(ERROR) << "Failed to remove VPN setup: " << error->GetCode()

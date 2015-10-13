@@ -39,7 +39,7 @@ class ChromeosSupplicantBSSProxy
 
  private:
   // Signal handlers.
-  void PropertiesChanged(const chromeos::VariantDictionary& properties);
+  void PropertiesChanged(const brillo::VariantDictionary& properties);
 
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,

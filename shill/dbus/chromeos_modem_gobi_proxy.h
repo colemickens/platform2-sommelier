@@ -46,7 +46,7 @@ class ChromeosModemGobiProxy : public ModemGobiProxyInterface {
   // Callbacks for SetCarrier async call.
   void OnSetCarrierSuccess(const ResultCallback& callback);
   void OnSetCarrierFailure(const ResultCallback& callback,
-                           chromeos::Error* dbus_error);
+                           brillo::Error* dbus_error);
 
   std::unique_ptr<org::chromium::ModemManager::Modem::GobiProxy> proxy_;
 

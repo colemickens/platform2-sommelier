@@ -16,7 +16,7 @@
 
 #include "shill/cellular/cellular_error.h"
 
-#include <chromeos/errors/error_codes.h>
+#include <brillo/errors/error_codes.h>
 #include <gtest/gtest.h>
 
 namespace shill {
@@ -66,56 +66,56 @@ TEST_F(CellularErrorTest, FromDBusError) {
   EXPECT_TRUE(shill_error.IsSuccess());
 
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorIncorrectPasswordMM,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorIncorrectPasswordMM,
+                              kErrorMessage);
     CellularError::FromChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kIncorrectPin, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorSimPinRequiredMM,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorSimPinRequiredMM,
+                              kErrorMessage);
     CellularError::FromChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kPinRequired, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorSimPukRequiredMM,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorSimPukRequiredMM,
+                              kErrorMessage);
     CellularError::FromChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kPinBlocked, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorGprsNotSubscribedMM,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorGprsNotSubscribedMM,
+                              kErrorMessage);
     CellularError::FromChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kInvalidApn, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorIncorrectPasswordMM1,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorIncorrectPasswordMM1,
+                              kErrorMessage);
     CellularError::FromChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kOperationFailed, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                "Some random error name.",
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              "Some random error name.",
+                              kErrorMessage);
     CellularError::FromChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kOperationFailed, shill_error.type());
   }
@@ -128,65 +128,65 @@ TEST_F(CellularErrorTest, FromMM1DBusError) {
   EXPECT_TRUE(shill_error.IsSuccess());
 
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorIncorrectPasswordMM1,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorIncorrectPasswordMM1,
+                              kErrorMessage);
     CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kIncorrectPin, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorSimPinMM1,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorSimPinMM1,
+                              kErrorMessage);
     CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kPinRequired, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorSimPukMM1,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorSimPukMM1,
+                              kErrorMessage);
     CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kPinBlocked, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorGprsNotSubscribedMM1,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorGprsNotSubscribedMM1,
+                              kErrorMessage);
     CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kInvalidApn, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorWrongStateMM1,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorWrongStateMM1,
+                              kErrorMessage);
     CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kWrongState, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                kErrorIncorrectPasswordMM,
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              kErrorIncorrectPasswordMM,
+                              kErrorMessage);
     CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kOperationFailed, shill_error.type());
   }
   {
-    chromeos::ErrorPtr dbus_error =
-        chromeos::Error::Create(FROM_HERE,
-                                chromeos::errors::dbus::kDomain,
-                                "Some random error name.",
-                                kErrorMessage);
+    brillo::ErrorPtr dbus_error =
+        brillo::Error::Create(FROM_HERE,
+                              brillo::errors::dbus::kDomain,
+                              "Some random error name.",
+                              kErrorMessage);
     CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
     EXPECT_EQ(Error::kOperationFailed, shill_error.type());
   }

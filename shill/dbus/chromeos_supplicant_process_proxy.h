@@ -59,11 +59,11 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<std::string> debug_level;
-    chromeos::dbus_utils::Property<bool> debug_timestamp;
-    chromeos::dbus_utils::Property<bool> debug_show_keys;
-    chromeos::dbus_utils::Property<std::vector<dbus::ObjectPath>> interfaces;
-    chromeos::dbus_utils::Property<std::vector<std::string>> eap_methods;
+    brillo::dbus_utils::Property<std::string> debug_level;
+    brillo::dbus_utils::Property<bool> debug_timestamp;
+    brillo::dbus_utils::Property<bool> debug_show_keys;
+    brillo::dbus_utils::Property<std::vector<dbus::ObjectPath>> interfaces;
+    brillo::dbus_utils::Property<std::vector<std::string>> eap_methods;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -78,9 +78,9 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
 
   // Signal handlers.
   void InterfaceAdded(const dbus::ObjectPath& path,
-                      const chromeos::VariantDictionary& properties);
+                      const brillo::VariantDictionary& properties);
   void InterfaceRemoved(const dbus::ObjectPath& path);
-  void PropertiesChanged(const chromeos::VariantDictionary& properties);
+  void PropertiesChanged(const brillo::VariantDictionary& properties);
 
   // Called when service appeared or vanished.
   void OnServiceAvailable(bool available);

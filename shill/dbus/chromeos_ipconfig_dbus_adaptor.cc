@@ -26,8 +26,8 @@
 #include "shill/logging.h"
 
 using base::StringPrintf;
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 using std::vector;
 
@@ -68,35 +68,35 @@ ChromeosIPConfigDBusAdaptor::~ChromeosIPConfigDBusAdaptor() {
 void ChromeosIPConfigDBusAdaptor::EmitBoolChanged(const string& name,
                                                   bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosIPConfigDBusAdaptor::EmitUintChanged(const string& name,
                                                   uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosIPConfigDBusAdaptor::EmitIntChanged(const string& name,
                                                  int value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosIPConfigDBusAdaptor::EmitStringChanged(const string& name,
                                                     const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosIPConfigDBusAdaptor::EmitStringsChanged(
     const string& name, const vector<string>& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 bool ChromeosIPConfigDBusAdaptor::GetProperties(
-    chromeos::ErrorPtr* error, chromeos::VariantDictionary* properties) {
+    brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;
   return ChromeosDBusAdaptor::GetProperties(ipconfig_->store(),
                                             properties,
@@ -104,7 +104,7 @@ bool ChromeosIPConfigDBusAdaptor::GetProperties(
 }
 
 bool ChromeosIPConfigDBusAdaptor::SetProperty(
-    chromeos::ErrorPtr* error, const string& name, const chromeos::Any& value) {
+    brillo::ErrorPtr* error, const string& name, const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   return ChromeosDBusAdaptor::SetProperty(ipconfig_->mutable_store(),
                                           name,
@@ -113,19 +113,19 @@ bool ChromeosIPConfigDBusAdaptor::SetProperty(
 }
 
 bool ChromeosIPConfigDBusAdaptor::ClearProperty(
-    chromeos::ErrorPtr* error, const string& name) {
+    brillo::ErrorPtr* error, const string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   return ChromeosDBusAdaptor::ClearProperty(ipconfig_->mutable_store(),
                                             name,
                                             error);
 }
 
-bool ChromeosIPConfigDBusAdaptor::Remove(chromeos::ErrorPtr* error) {
+bool ChromeosIPConfigDBusAdaptor::Remove(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   return !Error(Error::kNotSupported).ToChromeosError(error);
 }
 
-bool ChromeosIPConfigDBusAdaptor::Refresh(chromeos::ErrorPtr* error) {
+bool ChromeosIPConfigDBusAdaptor::Refresh(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
   ipconfig_->Refresh(&e);

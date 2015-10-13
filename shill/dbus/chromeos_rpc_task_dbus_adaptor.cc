@@ -22,8 +22,8 @@
 #include "shill/logging.h"
 #include "shill/rpc_task.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 using std::map;
 using std::string;
 
@@ -65,13 +65,13 @@ const string& ChromeosRPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {
 }
 
 bool ChromeosRPCTaskDBusAdaptor::getsec(
-    chromeos::ErrorPtr* /*error*/, string* user, string* password) {
+    brillo::ErrorPtr* /*error*/, string* user, string* password) {
   SLOG(this, 2) << __func__ << ": " << user;
   task_->GetLogin(user, password);
   return true;
 }
 
-bool ChromeosRPCTaskDBusAdaptor::notify(chromeos::ErrorPtr* /*error*/,
+bool ChromeosRPCTaskDBusAdaptor::notify(brillo::ErrorPtr* /*error*/,
                                         const string& reason,
                                         const map<string, string>& dict) {
   SLOG(this, 2) << __func__ << ": " << reason;

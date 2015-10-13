@@ -20,9 +20,9 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 using std::vector;
 
@@ -67,62 +67,62 @@ const string& ChromeosDeviceDBusAdaptor::GetRpcConnectionIdentifier() {
 void ChromeosDeviceDBusAdaptor::EmitBoolChanged(const string& name,
                                                 bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitUintChanged(const string& name,
                                                 uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitUint16Changed(const string& name,
                                                   uint16_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitIntChanged(const string& name, int value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitStringChanged(const string& name,
                                                   const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitStringmapChanged(const string& name,
                                                      const Stringmap& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitStringmapsChanged(const string& name,
                                                       const Stringmaps& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitStringsChanged(const string& name,
                                                    const Strings& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitKeyValueStoreChanged(
     const string& name, const KeyValueStore& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  chromeos::VariantDictionary dict;
+  brillo::VariantDictionary dict;
   KeyValueStore::ConvertToVariantDictionary(value, &dict);
-  SendPropertyChangedSignal(name, chromeos::Any(dict));
+  SendPropertyChangedSignal(name, brillo::Any(dict));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierChanged(
     const std::string& name, const std::string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(dbus::ObjectPath(value)));
+  SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
@@ -134,20 +134,20 @@ void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
     paths.push_back(dbus::ObjectPath(element));
   }
 
-  SendPropertyChangedSignal(name, chromeos::Any(paths));
+  SendPropertyChangedSignal(name, brillo::Any(paths));
 }
 
 bool ChromeosDeviceDBusAdaptor::GetProperties(
-    chromeos::ErrorPtr* error, chromeos::VariantDictionary* out_properties) {
+    brillo::ErrorPtr* error, brillo::VariantDictionary* out_properties) {
   SLOG(this, 2) << __func__;
   return ChromeosDBusAdaptor::GetProperties(device_->store(),
                                             out_properties,
                                             error);
 }
 
-bool ChromeosDeviceDBusAdaptor::SetProperty(chromeos::ErrorPtr* error,
+bool ChromeosDeviceDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
                                             const string& name,
-                                            const chromeos::Any& value) {
+                                            const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   return ChromeosDBusAdaptor::SetProperty(device_->mutable_store(),
                                           name,
@@ -155,7 +155,7 @@ bool ChromeosDeviceDBusAdaptor::SetProperty(chromeos::ErrorPtr* error,
                                           error);
 }
 
-bool ChromeosDeviceDBusAdaptor::ClearProperty(chromeos::ErrorPtr* error,
+bool ChromeosDeviceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
                                               const string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   return ChromeosDBusAdaptor::ClearProperty(device_->mutable_store(),
@@ -179,7 +179,7 @@ void ChromeosDeviceDBusAdaptor::Disable(DBusMethodResponsePtr<> response) {
   ReturnResultOrDefer(callback, e);
 }
 
-bool ChromeosDeviceDBusAdaptor::ProposeScan(chromeos::ErrorPtr* error) {
+bool ChromeosDeviceDBusAdaptor::ProposeScan(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
   // User scan requests, which are the likely source of DBus requests, probably
@@ -190,7 +190,7 @@ bool ChromeosDeviceDBusAdaptor::ProposeScan(chromeos::ErrorPtr* error) {
   return !e.ToChromeosError(error);
 }
 
-bool ChromeosDeviceDBusAdaptor::AddIPConfig(chromeos::ErrorPtr* error,
+bool ChromeosDeviceDBusAdaptor::AddIPConfig(brillo::ErrorPtr* error,
                                             const string& /*method*/,
                                             dbus::ObjectPath* out_path) {
   SLOG(this, 2) << __func__;
@@ -258,7 +258,7 @@ void ChromeosDeviceDBusAdaptor::Reset(DBusMethodResponsePtr<> response) {
   ReturnResultOrDefer(callback, e);
 }
 
-bool ChromeosDeviceDBusAdaptor::PerformTDLSOperation(chromeos::ErrorPtr* error,
+bool ChromeosDeviceDBusAdaptor::PerformTDLSOperation(brillo::ErrorPtr* error,
                                                      const string& operation,
                                                      const string& peer,
                                                      string* out_state) {
@@ -269,7 +269,7 @@ bool ChromeosDeviceDBusAdaptor::PerformTDLSOperation(chromeos::ErrorPtr* error,
   return !e.ToChromeosError(error);
 }
 
-bool ChromeosDeviceDBusAdaptor::ResetByteCounters(chromeos::ErrorPtr* error) {
+bool ChromeosDeviceDBusAdaptor::ResetByteCounters(brillo::ErrorPtr* error) {
   device_->ResetByteCounters();
   return true;
 }
@@ -284,7 +284,7 @@ void ChromeosDeviceDBusAdaptor::SetCarrier(DBusMethodResponsePtr<> response,
   ReturnResultOrDefer(callback, e);
 }
 
-bool ChromeosDeviceDBusAdaptor::RequestRoam(chromeos::ErrorPtr* error,
+bool ChromeosDeviceDBusAdaptor::RequestRoam(brillo::ErrorPtr* error,
                                             const std::string& addr) {
   SLOG(this, 2) << __func__ << ": " << addr;
   Error e;
@@ -293,7 +293,7 @@ bool ChromeosDeviceDBusAdaptor::RequestRoam(chromeos::ErrorPtr* error,
 }
 
 bool ChromeosDeviceDBusAdaptor::AddWakeOnPacketConnection(
-    chromeos::ErrorPtr* error, const string& ip_endpoint) {
+    brillo::ErrorPtr* error, const string& ip_endpoint) {
   SLOG(this, 2) << __func__;
 
   Error e;
@@ -302,7 +302,7 @@ bool ChromeosDeviceDBusAdaptor::AddWakeOnPacketConnection(
 }
 
 bool ChromeosDeviceDBusAdaptor::RemoveWakeOnPacketConnection(
-    chromeos::ErrorPtr* error, const string& ip_endpoint) {
+    brillo::ErrorPtr* error, const string& ip_endpoint) {
   SLOG(this, 2) << __func__;
 
   Error e;
@@ -311,7 +311,7 @@ bool ChromeosDeviceDBusAdaptor::RemoveWakeOnPacketConnection(
 }
 
 bool ChromeosDeviceDBusAdaptor::RemoveAllWakeOnPacketConnections(
-    chromeos::ErrorPtr* error) {
+    brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
 
   Error e;

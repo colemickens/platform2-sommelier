@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/variant_dictionary.h>
+#include <brillo/variant_dictionary.h>
 
 namespace shill {
 
@@ -43,7 +43,7 @@ class KeyValueStore {
   KeyValueStore();
 
   // Required for equality comparison when KeyValueStore is wrapped inside a
-  // chromeos::Any object.
+  // brillo::Any object.
   bool operator==(const KeyValueStore& rhs) const;
   bool operator!=(const KeyValueStore& rhs) const;
 
@@ -85,7 +85,7 @@ class KeyValueStore {
   uint8_t GetUint8(const std::string& name) const;
   const std::vector<uint8_t>& GetUint8s(const std::string& name) const;
   const std::vector<uint32_t>& GetUint32s(const std::string& name) const;
-  const chromeos::Any& Get(const std::string& name) const;
+  const brillo::Any& Get(const std::string& name) const;
 
   // TODO(zqiu): remove type specific set functions and add a generic set
   // function instead.  This way, we don't need to add new functions every
@@ -109,7 +109,7 @@ class KeyValueStore {
   void SetUint8(const std::string& name, uint8_t value);
   void SetUint8s(const std::string& name, const std::vector<uint8_t>& value);
   void SetUint32s(const std::string& name, const std::vector<uint32_t>& value);
-  void Set(const std::string& name, const chromeos::Any& value);
+  void Set(const std::string& name, const brillo::Any& value);
 
   // TODO(zqiu): remove type specific remove functions and add a generic remove
   // function instead.
@@ -134,25 +134,25 @@ class KeyValueStore {
   std::string LookupString(const std::string& name,
                            const std::string& default_value) const;
 
-  const chromeos::VariantDictionary& properties() const {
+  const brillo::VariantDictionary& properties() const {
     return properties_;
   }
 
-  // Conversion function between KeyValueStore and chromeos::VariantDictionary.
-  // Since we already use chromeos::VariantDictionary for storing key value
+  // Conversion function between KeyValueStore and brillo::VariantDictionary.
+  // Since we already use brillo::VariantDictionary for storing key value
   // pairs, all conversions will be trivial except nested KeyValueStore and
-  // nested chromeos::VariantDictionary.
+  // nested brillo::VariantDictionary.
   static void ConvertToVariantDictionary(const KeyValueStore& in_store,
-                                         chromeos::VariantDictionary* out_dict);
+                                         brillo::VariantDictionary* out_dict);
   static void ConvertFromVariantDictionary(
-      const chromeos::VariantDictionary& in_dict, KeyValueStore* out_store);
+      const brillo::VariantDictionary& in_dict, KeyValueStore* out_store);
 
   static void ConvertPathsToRpcIdentifiers(
       const std::vector<dbus::ObjectPath>& paths,
       std::vector<std::string>* rpc_identifiers);
 
  private:
-  chromeos::VariantDictionary properties_;
+  brillo::VariantDictionary properties_;
 };
 
 }  // namespace shill

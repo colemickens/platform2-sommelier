@@ -20,7 +20,7 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
-#include <chromeos/data_encoding.h>
+#include <brillo/data_encoding.h>
 
 using base::FilePath;
 using std::string;
@@ -56,7 +56,7 @@ bool CryptoDESCBC::Decrypt(const string& ciphertext, string* plaintext) {
   }
 
   string decoded_data;
-  if (!chromeos::data_encoding::Base64Decode(b64_ciphertext, &decoded_data)) {
+  if (!brillo::data_encoding::Base64Decode(b64_ciphertext, &decoded_data)) {
     LOG(ERROR) << "Unable to base64-decode DEC-CBC ciphertext.";
     return false;
   }

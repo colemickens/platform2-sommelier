@@ -63,18 +63,18 @@ class ChromeosModemProxy : public ModemProxyInterface {
   // Callbacks for Enable async call.
   void OnEnableSuccess(const ResultCallback& callback);
   void OnEnableFailure(const ResultCallback& callback,
-                       chromeos::Error* dbus_error);
+                       brillo::Error* dbus_error);
 
   // Callback for GetInfo async call.
   void OnGetInfoSuccess(const ModemInfoCallback& callback,
                         const ModemHardwareInfo& info);
   void OnGetInfoFailure(const ModemInfoCallback& callback,
-                        chromeos::Error* dbus_error);
+                        brillo::Error* dbus_error);
 
   // Callback for Disconnect async call.
   void OnDisconnectSuccess(const ResultCallback& callback);
   void OnDisconnectFailure(const ResultCallback& callback,
-                           chromeos::Error* dbus_error);
+                           brillo::Error* dbus_error);
 
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,

@@ -56,14 +56,14 @@ class ChromeosModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   void ActivationStateChanged(
         uint32_t activation_state,
         uint32_t activation_error,
-        const chromeos::VariantDictionary& status_changes);
+        const brillo::VariantDictionary& status_changes);
 
   // Callbacks for async calls that uses ResultCallback.
   void OnOperationSuccess(const ResultCallback& callback,
                           const std::string& operation);
   void OnOperationFailure(const ResultCallback& callback,
                           const std::string& operation,
-                          chromeos::Error* dbus_error);
+                          brillo::Error* dbus_error);
 
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,

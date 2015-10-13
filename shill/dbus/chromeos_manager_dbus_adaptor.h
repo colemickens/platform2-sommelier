@@ -66,66 +66,66 @@ class ChromeosManagerDBusAdaptor
   void EmitStateChanged(const std::string& new_state) override;
 
   // Implementation of Manager_adaptor
-  bool GetProperties(chromeos::ErrorPtr* error,
-                     chromeos::VariantDictionary* properties) override;
-  bool SetProperty(chromeos::ErrorPtr* error,
+  bool GetProperties(brillo::ErrorPtr* error,
+                     brillo::VariantDictionary* properties) override;
+  bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
-                   const chromeos::Any& value) override;
-  bool GetState(chromeos::ErrorPtr* error, std::string* state) override;
-  bool CreateProfile(chromeos::ErrorPtr* error,
+                   const brillo::Any& value) override;
+  bool GetState(brillo::ErrorPtr* error, std::string* state) override;
+  bool CreateProfile(brillo::ErrorPtr* error,
                      const std::string& name,
                      dbus::ObjectPath* profile_path) override;
-  bool RemoveProfile(chromeos::ErrorPtr* error,
+  bool RemoveProfile(brillo::ErrorPtr* error,
                      const std::string& name) override;
-  bool PushProfile(chromeos::ErrorPtr* error,
+  bool PushProfile(brillo::ErrorPtr* error,
                    const std::string& name,
                    dbus::ObjectPath* profile_path) override;
-  bool InsertUserProfile(chromeos::ErrorPtr* error,
+  bool InsertUserProfile(brillo::ErrorPtr* error,
                          const std::string& name,
                          const std::string& user_hash,
                          dbus::ObjectPath* profile_path) override;
-  bool PopProfile(chromeos::ErrorPtr* error, const std::string& name) override;
-  bool PopAnyProfile(chromeos::ErrorPtr* error) override;
-  bool PopAllUserProfiles(chromeos::ErrorPtr* error) override;
-  bool RecheckPortal(chromeos::ErrorPtr* error) override;
-  bool RequestScan(chromeos::ErrorPtr* error,
+  bool PopProfile(brillo::ErrorPtr* error, const std::string& name) override;
+  bool PopAnyProfile(brillo::ErrorPtr* error) override;
+  bool PopAllUserProfiles(brillo::ErrorPtr* error) override;
+  bool RecheckPortal(brillo::ErrorPtr* error) override;
+  bool RequestScan(brillo::ErrorPtr* error,
                    const std::string& technology) override;
   void EnableTechnology(DBusMethodResponsePtr<> response,
                         const std::string& technology_namer) override;
   void DisableTechnology(DBusMethodResponsePtr<> response,
                          const std::string& technology_name) override;
-  bool GetService(chromeos::ErrorPtr* error,
-                  const chromeos::VariantDictionary& args,
+  bool GetService(brillo::ErrorPtr* error,
+                  const brillo::VariantDictionary& args,
                   dbus::ObjectPath* service_path) override;
-  bool GetVPNService(chromeos::ErrorPtr* error,
-                     const chromeos::VariantDictionary& args,
+  bool GetVPNService(brillo::ErrorPtr* error,
+                     const brillo::VariantDictionary& args,
                      dbus::ObjectPath* service_path) override;
-  bool GetWifiService(chromeos::ErrorPtr* error,
-                      const chromeos::VariantDictionary& args,
+  bool GetWifiService(brillo::ErrorPtr* error,
+                      const brillo::VariantDictionary& args,
                       dbus::ObjectPath* service_path) override;
-  bool ConfigureService(chromeos::ErrorPtr* error,
-                        const chromeos::VariantDictionary& args,
+  bool ConfigureService(brillo::ErrorPtr* error,
+                        const brillo::VariantDictionary& args,
                         dbus::ObjectPath* service_path) override;
-  bool ConfigureServiceForProfile(chromeos::ErrorPtr* error,
+  bool ConfigureServiceForProfile(brillo::ErrorPtr* error,
                                   const dbus::ObjectPath& profile_rpcid,
-                                  const chromeos::VariantDictionary& args,
+                                  const brillo::VariantDictionary& args,
                                   dbus::ObjectPath* service_path) override;
-  bool FindMatchingService(chromeos::ErrorPtr* error,
-                           const chromeos::VariantDictionary& args,
+  bool FindMatchingService(brillo::ErrorPtr* error,
+                           const brillo::VariantDictionary& args,
                            dbus::ObjectPath* service_path) override;
-  bool GetDebugLevel(chromeos::ErrorPtr* error,
+  bool GetDebugLevel(brillo::ErrorPtr* error,
                      int32_t* level) override;
-  bool SetDebugLevel(chromeos::ErrorPtr* error, int32_t level) override;
-  bool GetServiceOrder(chromeos::ErrorPtr* error, std::string* order) override;
-  bool SetServiceOrder(chromeos::ErrorPtr* error,
+  bool SetDebugLevel(brillo::ErrorPtr* error, int32_t level) override;
+  bool GetServiceOrder(brillo::ErrorPtr* error, std::string* order) override;
+  bool SetServiceOrder(brillo::ErrorPtr* error,
                        const std::string& order) override;
-  bool GetDebugTags(chromeos::ErrorPtr* error, std::string* tags) override;
-  bool SetDebugTags(chromeos::ErrorPtr* error,
+  bool GetDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
+  bool SetDebugTags(brillo::ErrorPtr* error,
                     const std::string& tags) override;
-  bool ListDebugTags(chromeos::ErrorPtr* error, std::string* tags) override;
+  bool ListDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
   bool GetNetworksForGeolocation(
-      chromeos::ErrorPtr* error,
-      chromeos::VariantDictionary* networks) override;
+      brillo::ErrorPtr* error,
+      brillo::VariantDictionary* networks) override;
   void VerifyDestination(DBusMethodResponsePtr<bool> response,
                          const std::string& certificate,
                          const std::string& public_key,
@@ -152,17 +152,17 @@ class ChromeosManagerDBusAdaptor
                             const std::string& hotspot_ssid,
                             const std::string& hotspot_bssid,
                             const std::string& data) override;
-  bool ConnectToBestServices(chromeos::ErrorPtr* error) override;
-  bool CreateConnectivityReport(chromeos::ErrorPtr* error) override;
-  bool ClaimInterface(chromeos::ErrorPtr* error,
+  bool ConnectToBestServices(brillo::ErrorPtr* error) override;
+  bool CreateConnectivityReport(brillo::ErrorPtr* error) override;
+  bool ClaimInterface(brillo::ErrorPtr* error,
                       dbus::Message* message,
                       const std::string& claimer_name,
                       const std::string& interface_name) override;
-  bool ReleaseInterface(chromeos::ErrorPtr* error,
+  bool ReleaseInterface(brillo::ErrorPtr* error,
                         dbus::Message* message,
                         const std::string& claimer_name,
                         const std::string& interface_name) override;
-  bool SetSchedScan(chromeos::ErrorPtr* error, bool enable) override;
+  bool SetSchedScan(brillo::ErrorPtr* error, bool enable) override;
 
  private:
   Manager* manager_;

@@ -27,10 +27,10 @@ namespace DBus {
 class Error;
 }  // namespace DBus
 
-namespace chromeos {
+namespace brillo {
 class Error;
 using ErrorPtr = std::unique_ptr<Error>;
-}  // namespace chromeos
+}  // namespace brillo
 
 namespace shill {
 
@@ -84,7 +84,7 @@ class Error {
 
   // Sets the Chromeos |error| and returns true if Error represents failure.
   // Leaves error unchanged, and returns false otherwise.
-  bool ToChromeosError(chromeos::ErrorPtr* error) const;
+  bool ToChromeosError(brillo::ErrorPtr* error) const;
 
   Type type() const { return type_; }
   const std::string& message() const { return message_; }

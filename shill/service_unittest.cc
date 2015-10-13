@@ -275,7 +275,7 @@ TEST_F(ServiceTest, CalculateTechnology) {
 
 TEST_F(ServiceTest, GetProperties) {
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     string expected("true");
     service_->mutable_store()->SetStringProperty(kCheckPortalProperty,
@@ -287,7 +287,7 @@ TEST_F(ServiceTest, GetProperties) {
     EXPECT_EQ(props[kCheckPortalProperty].Get<string>(), expected);
   }
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     bool expected = true;
     service_->mutable_store()->SetBoolProperty(kAutoConnectProperty,
@@ -299,7 +299,7 @@ TEST_F(ServiceTest, GetProperties) {
     EXPECT_EQ(props[kAutoConnectProperty].Get<bool>(), expected);
   }
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kConnectableProperty) == props.end());
@@ -307,7 +307,7 @@ TEST_F(ServiceTest, GetProperties) {
     EXPECT_EQ(props[kConnectableProperty].Get<bool>(), false);
   }
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     int32_t expected = 127;
     service_->mutable_store()->SetInt32Property(kPriorityProperty,
@@ -319,7 +319,7 @@ TEST_F(ServiceTest, GetProperties) {
     EXPECT_EQ(props[kPriorityProperty].Get<int32_t>(), expected);
   }
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     service_->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kDeviceProperty) == props.end());
@@ -339,13 +339,13 @@ TEST_F(ServiceTest, SetProperty) {
     Error error;
     const int32_t priority = 1;
     EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-        kPriorityProperty, chromeos::Any(priority), &error));
+        kPriorityProperty, brillo::Any(priority), &error));
   }
   {
     Error error;
     const string guid("not default");
     EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-        kGuidProperty, chromeos::Any(guid), &error));
+        kGuidProperty, brillo::Any(guid), &error));
   }
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Ensure that EAP properties cannot be set on services with no EAP
@@ -355,13 +355,13 @@ TEST_F(ServiceTest, SetProperty) {
     Error error;
     string eap("eap eep eip!");
     EXPECT_FALSE(service2_->mutable_store()->SetAnyProperty(
-        kEapMethodProperty, chromeos::Any(eap), &error));
+        kEapMethodProperty, brillo::Any(eap), &error));
     ASSERT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kInvalidProperty, error.type());
     // Now plumb in eap credentials, and try again.
     service2_->SetEapCredentials(new EapCredentials());
     EXPECT_TRUE(service2_->mutable_store()->SetAnyProperty(
-        kEapMethodProperty, chromeos::Any(eap), &error));
+        kEapMethodProperty, brillo::Any(eap), &error));
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
@@ -376,7 +376,7 @@ TEST_F(ServiceTest, SetProperty) {
     bool auto_connect = true;
     Error error;
     EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-        kAutoConnectProperty, chromeos::Any(auto_connect), &error));
+        kAutoConnectProperty, brillo::Any(auto_connect), &error));
   }
   // Ensure that we can perform a trivial set of the Name property (to its
   // current value) but an attempt to set the property to a different value
@@ -384,7 +384,7 @@ TEST_F(ServiceTest, SetProperty) {
   {
     Error error;
     EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
-        kNameProperty, chromeos::Any(GetFriendlyName()), &error));
+        kNameProperty, brillo::Any(GetFriendlyName()), &error));
     EXPECT_FALSE(error.IsFailure());
   }
   {
@@ -1534,8 +1534,8 @@ INSTANTIATE_TEST_CASE_P(
     WriteOnlyServicePropertyTestInstance,
     WriteOnlyServicePropertyTest,
     Values(
-        chromeos::Any(string(kEapPrivateKeyPasswordProperty)),
-        chromeos::Any(string(kEapPasswordProperty))));
+        brillo::Any(string(kEapPrivateKeyPasswordProperty)),
+        brillo::Any(string(kEapPasswordProperty))));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {

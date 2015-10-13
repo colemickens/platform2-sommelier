@@ -41,7 +41,7 @@ ChromeosDHCPCDProxy::~ChromeosDHCPCDProxy() {
 
 void ChromeosDHCPCDProxy::Rebind(const string& interface) {
   SLOG(DBus, nullptr, 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Rebind(interface, &error)) {
     LogDBusError(error, __func__, interface);
   }
@@ -49,13 +49,13 @@ void ChromeosDHCPCDProxy::Rebind(const string& interface) {
 
 void ChromeosDHCPCDProxy::Release(const string& interface) {
   SLOG(DBus, nullptr, 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Release(interface, &error)) {
     LogDBusError(error, __func__, interface);
   }
 }
 
-void ChromeosDHCPCDProxy::LogDBusError(const chromeos::ErrorPtr& error,
+void ChromeosDHCPCDProxy::LogDBusError(const brillo::ErrorPtr& error,
                                        const string& method,
                                        const string& interface) {
   if (error->GetCode() == DBUS_ERROR_SERVICE_UNKNOWN ||

@@ -24,8 +24,8 @@
 #include "shill/profile.h"
 #include "shill/service.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 using std::vector;
 
@@ -61,28 +61,28 @@ ChromeosProfileDBusAdaptor::~ChromeosProfileDBusAdaptor() {
 void ChromeosProfileDBusAdaptor::EmitBoolChanged(const string& name,
                                                  bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosProfileDBusAdaptor::EmitUintChanged(const string& name,
                                                  uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosProfileDBusAdaptor::EmitIntChanged(const string& name, int value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosProfileDBusAdaptor::EmitStringChanged(const string& name,
                                                    const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 bool ChromeosProfileDBusAdaptor::GetProperties(
-    chromeos::ErrorPtr* error, chromeos::VariantDictionary* properties) {
+    brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;
   return ChromeosDBusAdaptor::GetProperties(profile_->store(),
                                             properties,
@@ -90,7 +90,7 @@ bool ChromeosProfileDBusAdaptor::GetProperties(
 }
 
 bool ChromeosProfileDBusAdaptor::SetProperty(
-    chromeos::ErrorPtr* error, const string& name, const chromeos::Any& value) {
+    brillo::ErrorPtr* error, const string& name, const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   return ChromeosDBusAdaptor::SetProperty(profile_->mutable_store(),
                                           name,
@@ -99,9 +99,9 @@ bool ChromeosProfileDBusAdaptor::SetProperty(
 }
 
 bool ChromeosProfileDBusAdaptor::GetEntry(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::string& name,
-    chromeos::VariantDictionary* entry_properties) {
+    brillo::VariantDictionary* entry_properties) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   ServiceRefPtr service = profile_->GetServiceFromEntry(name, &e);
@@ -113,7 +113,7 @@ bool ChromeosProfileDBusAdaptor::GetEntry(
                                             error);
 }
 
-bool ChromeosProfileDBusAdaptor::DeleteEntry(chromeos::ErrorPtr* error,
+bool ChromeosProfileDBusAdaptor::DeleteEntry(brillo::ErrorPtr* error,
                                              const std::string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   Error e;

@@ -27,8 +27,8 @@
 #include "shill/service.h"
 #include "shill/vpn/third_party_vpn_driver.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 
 namespace shill {
 
@@ -90,7 +90,7 @@ void ChromeosThirdPartyVpnDBusAdaptor::EmitPlatformMessage(uint32_t message) {
 }
 
 bool ChromeosThirdPartyVpnDBusAdaptor::SetParameters(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::map<std::string, std::string>& parameters,
     std::string* warning_message) {
   SLOG(this, 2) << __func__;
@@ -104,7 +104,7 @@ bool ChromeosThirdPartyVpnDBusAdaptor::SetParameters(
 }
 
 bool ChromeosThirdPartyVpnDBusAdaptor::UpdateConnectionState(
-    chromeos::ErrorPtr* error, uint32_t connection_state) {
+    brillo::ErrorPtr* error, uint32_t connection_state) {
   SLOG(this, 2) << __func__ << "(" << connection_state << ")";
   // Externally supported states are from Service::kStateConnected to
   // Service::kStateOnline.
@@ -124,7 +124,7 @@ bool ChromeosThirdPartyVpnDBusAdaptor::UpdateConnectionState(
 }
 
 bool ChromeosThirdPartyVpnDBusAdaptor::SendPacket(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::vector<uint8_t>& ip_packet) {
   SLOG(this, 2) << __func__;
   std::string error_message;

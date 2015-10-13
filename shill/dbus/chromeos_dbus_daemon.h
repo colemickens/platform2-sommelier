@@ -18,14 +18,14 @@
 #define SHILL_DBUS_CHROMEOS_DBUS_DAEMON_H_
 
 #include <base/callback.h>
-#include <chromeos/daemons/dbus_daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 
 #include "shill/chromeos_daemon.h"
 #include "shill/event_dispatcher.h"
 
 namespace shill {
 
-class ChromeosDBusDaemon : public chromeos::DBusServiceDaemon,
+class ChromeosDBusDaemon : public brillo::DBusServiceDaemon,
                            public ChromeosDaemon {
  public:
   ChromeosDBusDaemon(const base::Closure& startup_callback,
@@ -37,11 +37,11 @@ class ChromeosDBusDaemon : public chromeos::DBusServiceDaemon,
   void RunMessageLoop() override;
 
  protected:
-  // Implementation of chromeos::DBusServiceDaemon.
+  // Implementation of brillo::DBusServiceDaemon.
   int OnInit() override;
   void OnShutdown(int* return_code) override;
   void RegisterDBusObjectsAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
   // Invoked when DBus service is registered with the bus.  This function will

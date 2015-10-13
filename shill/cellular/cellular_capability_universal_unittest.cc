@@ -167,7 +167,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                              kAccessTechnologies);
     std::tuple<uint32_t, bool> signal_signal { 90, true };
     modem_properties.Set(MM_MODEM_PROPERTY_SIGNALQUALITY,
-                         chromeos::Any(signal_signal));
+                         brillo::Any(signal_signal));
 
     // Set up mock modem 3gpp properties.
     KeyValueStore modem3gpp_properties;
@@ -1974,7 +1974,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   // Unlock retries changed, but the SIM wasn't locked.
   CellularCapabilityUniversal::LockRetryData retry_data;
   retry_data[MM_MODEM_LOCK_SIM_PIN] = 3;
-  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, chromeos::Any(retry_data));
+  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, brillo::Any(retry_data));
 
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
@@ -1990,7 +1990,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   // Only unlock retries changed.
   changed.Remove(MM_MODEM_PROPERTY_UNLOCKREQUIRED);
   retry_data[MM_MODEM_LOCK_SIM_PIN] = 2;
-  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, chromeos::Any(retry_data));
+  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, brillo::Any(retry_data));
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);
@@ -1999,7 +1999,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   // lock type. Default to whatever count is available.
   retry_data.clear();
   retry_data[MM_MODEM_LOCK_SIM_PIN2] = 2;
-  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, chromeos::Any(retry_data));
+  changed.Set(MM_MODEM_PROPERTY_UNLOCKRETRIES, brillo::Any(retry_data));
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);

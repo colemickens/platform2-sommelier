@@ -148,7 +148,7 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
   properties_.address_family = IPAddress::kFamilyIPv6;
   for (const auto it :  configuration.properties()) {
     const string& key = it.first;
-    const chromeos::Any& value = it.second;
+    const brillo::Any& value = it.second;
     SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
       properties_.address = value.Get<string>();

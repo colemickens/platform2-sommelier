@@ -457,7 +457,7 @@ TEST_F(JsonStoreTest, GetGroupsWithPropertiesChecksValuesForBoolIntAndString) {
   //
   // This should be fine, as StoreInterface clients currently only use
   // String value filtering.
-  const chromeos::VariantDictionary exact_matcher({
+  const brillo::VariantDictionary exact_matcher({
       {"knob_1", string("good-string")},
       {"knob_2", bool{true}},
       {"knob_3", int{1}},
@@ -474,7 +474,7 @@ TEST_F(JsonStoreTest, GetGroupsWithPropertiesChecksValuesForBoolIntAndString) {
               store_->GetGroupsWithProperties(correct_properties));
   }
 
-  const vector<pair<string, chromeos::Any>> bad_matchers({
+  const vector<pair<string, brillo::Any>> bad_matchers({
       {"knob_1", string("bad-string")},
       {"knob_2", bool{false}},
       {"knob_3", int{2}},
@@ -482,7 +482,7 @@ TEST_F(JsonStoreTest, GetGroupsWithPropertiesChecksValuesForBoolIntAndString) {
   for (const auto& match_key_and_value : bad_matchers) {
     const auto& match_key = match_key_and_value.first;
     const auto& match_value = match_key_and_value.second;
-    chromeos::VariantDictionary bad_matcher_dict(exact_matcher);
+    brillo::VariantDictionary bad_matcher_dict(exact_matcher);
     KeyValueStore bad_properties;
     bad_matcher_dict[match_key] = match_value;
     KeyValueStore::ConvertFromVariantDictionary(

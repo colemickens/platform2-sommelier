@@ -27,9 +27,9 @@
 #include <base/lazy_instance.h>
 #include <base/memory/weak_ptr.h>
 #include <base/tracked_objects.h>
-#include <chromeos/minijail/minijail.h>
-#include <chromeos/process.h>
-#include <chromeos/process_reaper.h>
+#include <brillo/minijail/minijail.h>
+#include <brillo/process.h>
+#include <brillo/process_reaper.h>
 
 namespace shill {
 
@@ -141,11 +141,11 @@ class ProcessManager {
   bool TerminateProcess(pid_t pid, bool kill_signal);
 
   // Used to watch processes.
-  std::unique_ptr<chromeos::AsynchronousSignalHandler> async_signal_handler_;
-  chromeos::ProcessReaper process_reaper_;
+  std::unique_ptr<brillo::AsynchronousSignalHandler> async_signal_handler_;
+  brillo::ProcessReaper process_reaper_;
 
   EventDispatcher* dispatcher_;
-  chromeos::Minijail* minijail_;
+  brillo::Minijail* minijail_;
 
   // Processes to watch for the caller.
   std::map<pid_t, base::Callback<void(int)>> watched_processes_;

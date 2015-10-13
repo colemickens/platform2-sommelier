@@ -71,7 +71,7 @@ void ChromeosModemProxy::CreateBearer(
     const RpcIdentifierCallback& callback,
     int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::VariantDictionary properties_dict;
+  brillo::VariantDictionary properties_dict;
   KeyValueStore::ConvertToVariantDictionary(properties, &properties_dict);
   proxy_->CreateBearerAsync(
       properties_dict,
@@ -232,7 +232,7 @@ void ChromeosModemProxy::OnCreateBearerSuccess(
 }
 
 void ChromeosModemProxy::OnCreateBearerFailure(
-    const RpcIdentifierCallback& callback, chromeos::Error* dbus_error) {
+    const RpcIdentifierCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
@@ -246,7 +246,7 @@ void ChromeosModemProxy::OnCommandSuccess(const StringCallback& callback,
 }
 
 void ChromeosModemProxy::OnCommandFailure(const StringCallback& callback,
-                                          chromeos::Error* dbus_error) {
+                                          brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
@@ -261,7 +261,7 @@ void ChromeosModemProxy::OnOperationSuccess(const ResultCallback& callback,
 
 void ChromeosModemProxy::OnOperationFailure(const ResultCallback& callback,
                                             const string& operation,
-                                            chromeos::Error* dbus_error) {
+                                            brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);

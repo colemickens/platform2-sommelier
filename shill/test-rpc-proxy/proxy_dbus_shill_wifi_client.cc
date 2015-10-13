@@ -26,7 +26,7 @@ void ProxyDbusShillWifiClient::RemoveAllWifiEntries() {
 void ProxyDbusShillWifiClient::ConfigureWifiService(
     std::string ssid,
     std::string security,
-    chromeos::VariantDictionary& security_parameters,
+    brillo::VariantDictionary& security_parameters,
     bool save_credentials,
     StationType station_type,
     bool hidden_network,
@@ -37,7 +37,7 @@ void ProxyDbusShillWifiClient::ConfigureWifiService(
 bool ProxyDbusShillWifiClient::ConnectToWifiNetwork(
     std::string ssid,
     std::string security,
-    chromeos::VariantDictionary& security_parameters,
+    brillo::VariantDictionary& security_parameters,
     bool save_credentials,
     StationType station_type,
     bool hidden_network,

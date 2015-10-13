@@ -22,8 +22,8 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/exported_object_manager.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"
@@ -34,7 +34,7 @@ namespace shill {
 
 template<typename... Types>
 using DBusMethodResponsePtr =
-    std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<Types...>>;
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>;
 
 // Superclass for all DBus-backed Adaptor objects
 class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
@@ -89,7 +89,7 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
   //
   void ReturnResultOrDefer(const ResultCallback& callback, const Error& error);
 
-  chromeos::dbus_utils::DBusObject* dbus_object() const {
+  brillo::dbus_utils::DBusObject* dbus_object() const {
     return dbus_object_.get();
   }
 
@@ -99,11 +99,11 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
   // unchanged.
   static bool SetProperty(PropertyStore* store,
                           const std::string& name,
-                          const chromeos::Any& value,
-                          chromeos::ErrorPtr* error);
+                          const brillo::Any& value,
+                          brillo::ErrorPtr* error);
   static bool GetProperties(const PropertyStore& store,
-                            chromeos::VariantDictionary* out_properties,
-                            chromeos::ErrorPtr* error);
+                            brillo::VariantDictionary* out_properties,
+                            brillo::ErrorPtr* error);
   // Look for a property with |name| in |store|. If found, reset the
   // property to its "factory" value. If the property can not be
   // found, or if it can not be cleared (e.g., because it is
@@ -113,7 +113,7 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
   // otherwise.
   static bool ClearProperty(PropertyStore* store,
                             const std::string& name,
-                            chromeos::ErrorPtr* error);
+                            brillo::ErrorPtr* error);
 
   // Returns an object path fragment that conforms to D-Bus specifications.
   static std::string SanitizePathElement(const std::string& object_path);
@@ -134,7 +134,7 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
                                 const T& returned);
 
   dbus::ObjectPath dbus_path_;
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(ChromeosDBusAdaptor);
 };

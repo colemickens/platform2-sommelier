@@ -49,8 +49,8 @@ class DBusPropertiesProxyInterface {
   virtual ~DBusPropertiesProxyInterface() {}
 
   virtual KeyValueStore GetAll(const std::string& interface_name) = 0;
-  virtual chromeos::Any Get(const std::string& interface_name,
-                            const std::string& property) = 0;
+  virtual brillo::Any Get(const std::string& interface_name,
+                          const std::string& property) = 0;
 
   virtual void set_properties_changed_callback(
       const PropertiesChangedCallback& callback) = 0;

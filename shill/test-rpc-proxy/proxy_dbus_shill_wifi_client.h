@@ -32,7 +32,7 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   void RemoveAllWifiEntries() override;
   void ConfigureWifiService(std::string ssid,
                             std::string security,
-                            chromeos::VariantDictionary& security_parameters,
+                            brillo::VariantDictionary& security_parameters,
                             bool save_credentials,
                             StationType station_type,
                             bool hidden_network,
@@ -40,7 +40,7 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
                             AutoConnectType autoconnect) override;
   bool ConnectToWifiNetwork(std::string ssid,
                             std::string security,
-                            chromeos::VariantDictionary& security_parameters,
+                            brillo::VariantDictionary& security_parameters,
                             bool save_credentials,
                             StationType station_type,
                             bool hidden_network,

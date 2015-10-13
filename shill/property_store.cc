@@ -64,7 +64,7 @@ bool PropertyStore::Contains(const string& prop) const {
 }
 
 bool PropertyStore::SetAnyProperty(const string& name,
-                                   const chromeos::Any& value,
+                                   const brillo::Any& value,
                                    Error* error) {
   bool ret = false;
   if (typeid(bool) == value.GetType()) {     // NOLINT
@@ -95,10 +95,10 @@ bool PropertyStore::SetAnyProperty(const string& name,
     ret = SetUint32Property(name, value.Get<uint32_t>(), error);
   } else if (typeid(uint64_t) == value.GetType()) {
     ret = SetUint64Property(name, value.Get<uint64_t>(), error);
-  } else if (typeid(chromeos::VariantDictionary) == value.GetType()) {
+  } else if (typeid(brillo::VariantDictionary) == value.GetType()) {
     KeyValueStore store;
     KeyValueStore::ConvertFromVariantDictionary(
-        value.Get<chromeos::VariantDictionary>(), &store);
+        value.Get<brillo::VariantDictionary>(), &store);
     ret = SetKeyValueStoreProperty(name, store, error);
   } else {
     NOTREACHED() << " unknown type: " << value.GetType().name();
@@ -107,7 +107,7 @@ bool PropertyStore::SetAnyProperty(const string& name,
   return ret;
 }
 
-bool PropertyStore::SetProperties(const chromeos::VariantDictionary& in,
+bool PropertyStore::SetProperties(const brillo::VariantDictionary& in,
                                   Error* error) {
   for (const auto& kv : in) {
     if (!SetAnyProperty(kv.first, kv.second, error)) {
@@ -117,24 +117,24 @@ bool PropertyStore::SetProperties(const chromeos::VariantDictionary& in,
   return true;
 }
 
-bool PropertyStore::GetProperties(chromeos::VariantDictionary* out,
+bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
                                   Error* error) const {
   {
     ReadablePropertyConstIterator<bool> it = GetBoolPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<int16_t> it = GetInt16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<int32_t> it = GetInt32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
@@ -143,7 +143,7 @@ bool PropertyStore::GetProperties(chromeos::VariantDictionary* out,
     for ( ; !it.AtEnd(); it.Advance()) {
       out->insert(
           std::make_pair(it.Key(),
-                         chromeos::Any(dbus::ObjectPath(it.value()))));
+                         brillo::Any(dbus::ObjectPath(it.value()))));
     }
   }
   {
@@ -155,69 +155,69 @@ bool PropertyStore::GetProperties(chromeos::VariantDictionary* out,
         rpc_identifiers_as_paths.push_back(dbus::ObjectPath(path));
       }
       out->insert(
-          std::make_pair(it.Key(), chromeos::Any(rpc_identifiers_as_paths)));
+          std::make_pair(it.Key(), brillo::Any(rpc_identifiers_as_paths)));
     }
   }
   {
     ReadablePropertyConstIterator<string> it = GetStringPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<Stringmap> it = GetStringmapPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<Stringmaps> it =
         GetStringmapsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<Strings> it = GetStringsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<uint8_t> it = GetUint8PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<uint16_t> it = GetUint16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<Uint16s> it = GetUint16sPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<uint32_t> it = GetUint32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<uint64_t> it = GetUint64PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
   }
   {
     ReadablePropertyConstIterator<KeyValueStore> it =
         GetKeyValueStorePropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      chromeos::VariantDictionary dict;
+      brillo::VariantDictionary dict;
       KeyValueStore::ConvertToVariantDictionary(it.value(), &dict);
       out->insert(std::make_pair(it.Key(), dict));
     }

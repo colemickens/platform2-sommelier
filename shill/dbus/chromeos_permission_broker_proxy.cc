@@ -58,7 +58,7 @@ bool ChromeosPermissionBrokerProxy::RequestVpnSetup(
 
   dbus::FileDescriptor dbus_fd(lifeline_read_fd_);
   dbus_fd.CheckValidity();
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   bool success = false;
   if (!proxy_->RequestVpnSetup(
       user_names, interface, dbus_fd, &success, &error)) {
@@ -78,7 +78,7 @@ bool ChromeosPermissionBrokerProxy::RemoveVpnSetup() {
   close(lifeline_write_fd_);
   lifeline_read_fd_ = kInvalidHandle;
   lifeline_write_fd_ = kInvalidHandle;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   bool success = false;
   if (!proxy_->RemoveVpnSetup(&success, &error)) {
     LOG(ERROR) << "Failed to remove VPN setup: " << error->GetCode()

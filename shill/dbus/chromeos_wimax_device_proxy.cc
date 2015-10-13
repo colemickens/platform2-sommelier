@@ -247,7 +247,7 @@ void ChromeosWiMaxDeviceProxy::OnSuccess(const ResultCallback& callback,
 
 void ChromeosWiMaxDeviceProxy::OnFailure(const ResultCallback& callback,
                                          const string& method,
-                                         chromeos::Error* dbus_error) {
+                                         brillo::Error* dbus_error) {
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kOperationFailed,

@@ -143,10 +143,10 @@ ChromeosSupplicantInterfaceProxy::~ChromeosSupplicantInterfaceProxy() {
 bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
                                                   string* network) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::VariantDictionary dict;
+  brillo::VariantDictionary dict;
   KeyValueStore::ConvertToVariantDictionary(args, &dict);
   dbus::ObjectPath path;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->AddNetwork(dict, &path, &error)) {
     LOG(ERROR) << "Failed to add network: "
                << error->GetCode() << " " << error->GetMessage();
@@ -159,7 +159,7 @@ bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
 bool ChromeosSupplicantInterfaceProxy::EnableHighBitrates() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
 #if !defined(__ANDROID__)
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->EnableHighBitrates(&error)) {
     LOG(ERROR) << "Failed to enable high bitrates: "
                << error->GetCode() << " " << error->GetMessage();
@@ -171,7 +171,7 @@ bool ChromeosSupplicantInterfaceProxy::EnableHighBitrates() {
 
 bool ChromeosSupplicantInterfaceProxy::EAPLogoff() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->EAPLogoff(&error)) {
     LOG(ERROR) << "Failed to EPA logoff "
                << error->GetCode() << " " << error->GetMessage();
@@ -182,7 +182,7 @@ bool ChromeosSupplicantInterfaceProxy::EAPLogoff() {
 
 bool ChromeosSupplicantInterfaceProxy::EAPLogon() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->EAPLogon(&error)) {
     LOG(ERROR) << "Failed to EAP logon: "
                << error->GetCode() << " " << error->GetMessage();
@@ -193,7 +193,7 @@ bool ChromeosSupplicantInterfaceProxy::EAPLogon() {
 
 bool ChromeosSupplicantInterfaceProxy::Disconnect() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->Disconnect(&error)) {
     LOG(ERROR) << "Failed to disconnect: "
                << error->GetCode() << " " << error->GetMessage();
@@ -204,7 +204,7 @@ bool ChromeosSupplicantInterfaceProxy::Disconnect() {
 
 bool ChromeosSupplicantInterfaceProxy::FlushBSS(const uint32_t& age) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->FlushBSS(age, &error)) {
     LOG(ERROR) << "Failed to flush BSS: "
                << error->GetCode() << " " << error->GetMessage();
@@ -218,7 +218,7 @@ bool ChromeosSupplicantInterfaceProxy::NetworkReply(const string& network,
                                                     const string& value) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
       << " network: " << network << " field: " << field << " value: " << value;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->NetworkReply(dbus::ObjectPath(network),
                                       field,
                                       value,
@@ -233,7 +233,7 @@ bool ChromeosSupplicantInterfaceProxy::NetworkReply(const string& network,
 bool ChromeosSupplicantInterfaceProxy::Roam(const string& addr) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
 #if !defined(__ANDROID__)
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->Roam(addr, &error)) {
     LOG(ERROR) << "Failed to Roam: "
                << error->GetCode() << " " << error->GetMessage();
@@ -245,7 +245,7 @@ bool ChromeosSupplicantInterfaceProxy::Roam(const string& addr) {
 
 bool ChromeosSupplicantInterfaceProxy::Reassociate() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->Reassociate(&error)) {
     LOG(ERROR) << "Failed to reassociate: "
                << error->GetCode() << " " << error->GetMessage();
@@ -256,7 +256,7 @@ bool ChromeosSupplicantInterfaceProxy::Reassociate() {
 
 bool ChromeosSupplicantInterfaceProxy::Reattach() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->Reattach(&error)) {
     LOG(ERROR) << "Failed to reattach: "
                << error->GetCode() << " " << error->GetMessage();
@@ -267,7 +267,7 @@ bool ChromeosSupplicantInterfaceProxy::Reattach() {
 
 bool ChromeosSupplicantInterfaceProxy::RemoveAllNetworks() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->RemoveAllNetworks(&error)) {
     LOG(ERROR) << "Failed to remove all networks: "
                << error->GetCode() << " " << error->GetMessage();
@@ -278,7 +278,7 @@ bool ChromeosSupplicantInterfaceProxy::RemoveAllNetworks() {
 
 bool ChromeosSupplicantInterfaceProxy::RemoveNetwork(const string& network) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << network;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->RemoveNetwork(dbus::ObjectPath(network),
                                        &error)) {
     LOG(ERROR) << "Failed to remove network: "
@@ -302,9 +302,9 @@ bool ChromeosSupplicantInterfaceProxy::RemoveNetwork(const string& network) {
 
 bool ChromeosSupplicantInterfaceProxy::Scan(const KeyValueStore& args) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::VariantDictionary dict;
+  brillo::VariantDictionary dict;
   KeyValueStore::ConvertToVariantDictionary(args, &dict);
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->Scan(dict, &error)) {
     LOG(ERROR) << "Failed to scan: "
                << error->GetCode() << " " << error->GetMessage();
@@ -315,7 +315,7 @@ bool ChromeosSupplicantInterfaceProxy::Scan(const KeyValueStore& args) {
 
 bool ChromeosSupplicantInterfaceProxy::SelectNetwork(const string& network) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << network;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->SelectNetwork(dbus::ObjectPath(network), &error)) {
     LOG(ERROR) << "Failed to select network: "
                << error->GetCode() << " " << error->GetMessage();
@@ -329,7 +329,7 @@ bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(const string& network,
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
       << " network: " << network << " enable: " << enable;
 #if defined(__ANDROID__)
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->SetHT40Enable(dbus::ObjectPath(network),
                                        enable,
                                        &error)) {
@@ -343,7 +343,7 @@ bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(const string& network,
 
 bool ChromeosSupplicantInterfaceProxy::TDLSDiscover(const string& peer) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << peer;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->TDLSDiscover(peer, &error)) {
     LOG(ERROR) << "Failed to perform TDLS discover: "
                << error->GetCode() << " " << error->GetMessage();
@@ -354,7 +354,7 @@ bool ChromeosSupplicantInterfaceProxy::TDLSDiscover(const string& peer) {
 
 bool ChromeosSupplicantInterfaceProxy::TDLSSetup(const string& peer) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << peer;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->TDLSSetup(peer, &error)) {
     LOG(ERROR) << "Failed to perform TDLS setup: "
                << error->GetCode() << " " << error->GetMessage();
@@ -366,7 +366,7 @@ bool ChromeosSupplicantInterfaceProxy::TDLSSetup(const string& peer) {
 bool ChromeosSupplicantInterfaceProxy::TDLSStatus(const string& peer,
                                                   string* status) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << peer;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->TDLSStatus(peer, status, &error)) {
     LOG(ERROR) << "Failed to retrieve TDLS status: "
                << error->GetCode() << " " << error->GetMessage();
@@ -377,7 +377,7 @@ bool ChromeosSupplicantInterfaceProxy::TDLSStatus(const string& peer,
 
 bool ChromeosSupplicantInterfaceProxy::TDLSTeardown(const string& peer) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << peer;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!interface_proxy_->TDLSTeardown(peer, &error)) {
     LOG(ERROR) << "Failed to perform TDLS teardown: "
                << error->GetCode() << " " << error->GetMessage();
@@ -467,7 +467,7 @@ void ChromeosSupplicantInterfaceProxy::BlobRemoved(const string& /*blobname*/) {
 
 void ChromeosSupplicantInterfaceProxy::BSSAdded(
     const dbus::ObjectPath& BSS,
-    const chromeos::VariantDictionary& properties) {
+    const brillo::VariantDictionary& properties) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   KeyValueStore store;
   KeyValueStore::ConvertFromVariantDictionary(properties, &store);
@@ -475,7 +475,7 @@ void ChromeosSupplicantInterfaceProxy::BSSAdded(
 }
 
 void ChromeosSupplicantInterfaceProxy::Certification(
-    const chromeos::VariantDictionary& properties) {
+    const brillo::VariantDictionary& properties) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   KeyValueStore store;
   KeyValueStore::ConvertFromVariantDictionary(properties, &store);
@@ -496,7 +496,7 @@ void ChromeosSupplicantInterfaceProxy::BSSRemoved(const dbus::ObjectPath& BSS) {
 
 void ChromeosSupplicantInterfaceProxy::NetworkAdded(
     const dbus::ObjectPath& /*network*/,
-    const chromeos::VariantDictionary& /*properties*/) {
+    const brillo::VariantDictionary& /*properties*/) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   // XXX
 }
@@ -515,7 +515,7 @@ void ChromeosSupplicantInterfaceProxy::NetworkSelected(
 }
 
 void ChromeosSupplicantInterfaceProxy::PropertiesChanged(
-    const chromeos::VariantDictionary& properties) {
+    const brillo::VariantDictionary& properties) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   KeyValueStore store;
   KeyValueStore::ConvertFromVariantDictionary(properties, &store);

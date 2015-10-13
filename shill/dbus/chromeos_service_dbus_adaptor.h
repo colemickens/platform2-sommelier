@@ -65,26 +65,26 @@ class ChromeosServiceDBusAdaptor
                             const Stringmap& value) override;
 
   // Implementation of ServiceAdaptor
-  bool GetProperties(chromeos::ErrorPtr* error,
-                     chromeos::VariantDictionary* properties) override;
-  bool SetProperty(chromeos::ErrorPtr* error,
+  bool GetProperties(brillo::ErrorPtr* error,
+                     brillo::VariantDictionary* properties) override;
+  bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
-                   const chromeos::Any& value) override;
-  bool SetProperties(chromeos::ErrorPtr* error,
-                     const chromeos::VariantDictionary& properties) override;
-  bool ClearProperty(chromeos::ErrorPtr* error,
+                   const brillo::Any& value) override;
+  bool SetProperties(brillo::ErrorPtr* error,
+                     const brillo::VariantDictionary& properties) override;
+  bool ClearProperty(brillo::ErrorPtr* error,
                      const std::string& name) override;
-  bool ClearProperties(chromeos::ErrorPtr* error,
+  bool ClearProperties(brillo::ErrorPtr* error,
                        const std::vector<std::string>& names,
                        std::vector<bool>* results) override;
-  bool Connect(chromeos::ErrorPtr* error) override;
-  bool Disconnect(chromeos::ErrorPtr* error) override;
-  bool Remove(chromeos::ErrorPtr* error) override;
+  bool Connect(brillo::ErrorPtr* error) override;
+  bool Disconnect(brillo::ErrorPtr* error) override;
+  bool Remove(brillo::ErrorPtr* error) override;
   void ActivateCellularModem(DBusMethodResponsePtr<> response,
                              const std::string& carrier) override;
-  bool CompleteCellularActivation(chromeos::ErrorPtr* error) override;
+  bool CompleteCellularActivation(brillo::ErrorPtr* error) override;
   bool GetLoadableProfileEntries(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       std::map<dbus::ObjectPath, std::string>* entries) override;
 
   Service* service() const { return service_; }

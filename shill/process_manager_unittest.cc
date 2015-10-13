@@ -20,7 +20,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <chromeos/minijail/mock_minijail.h>
+#include <brillo/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -106,7 +106,7 @@ class ProcessManagerTest : public testing::Test {
   };
 
   MockEventDispatcher dispatcher_;
-  chromeos::MockMinijail minijail_;
+  brillo::MockMinijail minijail_;
   ProcessManager* process_manager_;
 };
 

@@ -335,7 +335,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
   bool default_gateway_parse_error = false;
   for (const auto it :  configuration.properties()) {
     const string& key = it.first;
-    const chromeos::Any& value = it.second;
+    const brillo::Any& value = it.second;
     SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
       properties->address = GetIPv4AddressString(value.Get<uint32_t>());

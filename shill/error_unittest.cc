@@ -21,8 +21,8 @@
 #else
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
-#include <chromeos/errors/error.h>
-#include <chromeos/errors/error_codes.h>
+#include <brillo/errors/error.h>
+#include <brillo/errors/error_codes.h>
 #include <gtest/gtest.h>
 
 using testing::Test;
@@ -81,14 +81,14 @@ TEST_F(ErrorTest, CopyFrom) {
 }
 
 TEST_F(ErrorTest, ToChromeosError) {
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr chromeos_error;
   EXPECT_EQ(nullptr, chromeos_error.get());
   Error().ToChromeosError(&chromeos_error);
   EXPECT_EQ(nullptr, chromeos_error.get());
   static const std::string kMessage = "Test error message";
   Error(Error::kPermissionDenied, kMessage).ToChromeosError(&chromeos_error);
   EXPECT_NE(nullptr, chromeos_error.get());
-  EXPECT_EQ(chromeos::errors::dbus::kDomain, chromeos_error->GetDomain());
+  EXPECT_EQ(brillo::errors::dbus::kDomain, chromeos_error->GetDomain());
   EXPECT_EQ(kErrorResultPermissionDenied, chromeos_error->GetCode());
   EXPECT_EQ(kMessage, chromeos_error->GetMessage());
 }

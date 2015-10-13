@@ -76,7 +76,7 @@ void ChromeosModemModem3gppProxy::OnRegisterSuccess(
 }
 
 void ChromeosModemModem3gppProxy::OnRegisterFailure(
-    const ResultCallback& callback, chromeos::Error* dbus_error) {
+    const ResultCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
@@ -85,7 +85,7 @@ void ChromeosModemModem3gppProxy::OnRegisterFailure(
 
 void ChromeosModemModem3gppProxy::OnScanSuccess(
     const KeyValueStoresCallback& callback,
-    const std::vector<chromeos::VariantDictionary>& results) {
+    const std::vector<brillo::VariantDictionary>& results) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::vector<KeyValueStore> result_stores;
   for (const auto& result : results) {
@@ -97,7 +97,7 @@ void ChromeosModemModem3gppProxy::OnScanSuccess(
 }
 
 void ChromeosModemModem3gppProxy::OnScanFailure(
-    const KeyValueStoresCallback& callback, chromeos::Error* dbus_error) {
+    const KeyValueStoresCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);

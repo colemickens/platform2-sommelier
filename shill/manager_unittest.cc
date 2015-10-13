@@ -761,7 +761,7 @@ TEST_F(ManagerTest, DeregisterUnregisteredService) {
 TEST_F(ManagerTest, GetProperties) {
   AddMockProfileToManager(manager());
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     string expected("portal_list");
     manager()->mutable_store()->SetStringProperty(
@@ -774,7 +774,7 @@ TEST_F(ManagerTest, GetProperties) {
     EXPECT_EQ(props[kCheckPortalListProperty].Get<string>(), expected);
   }
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     bool expected = true;
     manager()->mutable_store()->SetBoolProperty(kOfflineModeProperty,
@@ -792,7 +792,7 @@ TEST_F(ManagerTest, GetDevicesProperty) {
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   {
-    chromeos::VariantDictionary props;
+    brillo::VariantDictionary props;
     Error error;
     manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kDevicesProperty) == props.end());
@@ -806,7 +806,7 @@ TEST_F(ManagerTest, GetDevicesProperty) {
 
 TEST_F(ManagerTest, GetServicesProperty) {
   AddMockProfileToManager(manager());
-  chromeos::VariantDictionary props;
+  brillo::VariantDictionary props;
   Error error;
   manager()->store().GetProperties(&props, &error);
   ASSERT_FALSE(props.find(kServicesProperty) == props.end());
@@ -1571,13 +1571,13 @@ TEST_F(ManagerTest, SetProperty) {
     Error error;
     const bool offline_mode = true;
     EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
-        kOfflineModeProperty, chromeos::Any(offline_mode), &error));
+        kOfflineModeProperty, brillo::Any(offline_mode), &error));
   }
   {
     Error error;
     const string country("a_country");
     EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
-        kCountryProperty, chromeos::Any(country), &error));
+        kCountryProperty, brillo::Any(country), &error));
   }
   // Attempt to write with value of wrong type should return InvalidArgs.
   {

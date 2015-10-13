@@ -48,7 +48,7 @@ void ChromeosModemSimpleProxy::Connect(
     const RpcIdentifierCallback& callback,
     int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  chromeos::VariantDictionary properties_dict;
+  brillo::VariantDictionary properties_dict;
   KeyValueStore::ConvertToVariantDictionary(properties, &properties_dict);
   proxy_->ConnectAsync(properties_dict,
                        base::Bind(&ChromeosModemSimpleProxy::OnConnectSuccess,
@@ -94,7 +94,7 @@ void ChromeosModemSimpleProxy::OnConnectSuccess(
 }
 
 void ChromeosModemSimpleProxy::OnConnectFailure(
-    const RpcIdentifierCallback& callback, chromeos::Error* dbus_error) {
+    const RpcIdentifierCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
@@ -108,7 +108,7 @@ void ChromeosModemSimpleProxy::OnDisconnectSuccess(
 }
 
 void ChromeosModemSimpleProxy::OnDisconnectFailure(
-    const ResultCallback& callback, chromeos::Error* dbus_error) {
+    const ResultCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
@@ -117,7 +117,7 @@ void ChromeosModemSimpleProxy::OnDisconnectFailure(
 
 void ChromeosModemSimpleProxy::OnGetStatusSuccess(
     const KeyValueStoreCallback& callback,
-    const chromeos::VariantDictionary& status) {
+    const brillo::VariantDictionary& status) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   KeyValueStore status_store;
   KeyValueStore::ConvertFromVariantDictionary(status, &status_store);
@@ -125,7 +125,7 @@ void ChromeosModemSimpleProxy::OnGetStatusSuccess(
 }
 
 void ChromeosModemSimpleProxy::OnGetStatusFailure(
-    const KeyValueStoreCallback& callback, chromeos::Error* dbus_error) {
+    const KeyValueStoreCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);

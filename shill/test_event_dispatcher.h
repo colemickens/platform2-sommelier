@@ -19,7 +19,7 @@
 
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
-#include <chromeos/message_loops/base_message_loop.h>
+#include <brillo/message_loops/base_message_loop.h>
 
 #include "shill/event_dispatcher.h"
 
@@ -37,7 +37,7 @@ class EventDispatcherForTest : public EventDispatcher {
   // Message loop for testing.
   base::MessageLoopForIO message_loop_;
   // The chromeos wrapper for the main message loop.
-  chromeos::BaseMessageLoop chromeos_message_loop_{&message_loop_};
+  brillo::BaseMessageLoop chromeos_message_loop_{&message_loop_};
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcherForTest);
 };

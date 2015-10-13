@@ -69,17 +69,17 @@ class ChromeosDeviceDBusAdaptor
       const std::string& name, const std::vector<std::string>& value) override;
 
   // Implementation of DeviceAdaptor.
-  bool GetProperties(chromeos::ErrorPtr* error,
-                     chromeos::VariantDictionary* out_properties) override;
-  bool SetProperty(chromeos::ErrorPtr* error,
+  bool GetProperties(brillo::ErrorPtr* error,
+                     brillo::VariantDictionary* out_properties) override;
+  bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
-                   const chromeos::Any& value) override;
-  bool ClearProperty(chromeos::ErrorPtr* error,
+                   const brillo::Any& value) override;
+  bool ClearProperty(brillo::ErrorPtr* error,
                      const std::string& name) override;
   void Enable(DBusMethodResponsePtr<> response) override;
   void Disable(DBusMethodResponsePtr<> response) override;
-  bool ProposeScan(chromeos::ErrorPtr* error) override;
-  bool AddIPConfig(chromeos::ErrorPtr* error,
+  bool ProposeScan(brillo::ErrorPtr* error) override;
+  bool AddIPConfig(brillo::ErrorPtr* error,
                    const std::string& method,
                    dbus::ObjectPath* out_path) override;
   void Register(DBusMethodResponsePtr<> response,
@@ -95,21 +95,21 @@ class ChromeosDeviceDBusAdaptor
   void ChangePin(DBusMethodResponsePtr<> response,
                  const std::string& old_pin,
                  const std::string& new_pin) override;
-  bool PerformTDLSOperation(chromeos::ErrorPtr* error,
+  bool PerformTDLSOperation(brillo::ErrorPtr* error,
                             const std::string& operation,
                             const std::string& peer,
                             std::string* out_state) override;
   void Reset(DBusMethodResponsePtr<> response) override;
-  bool ResetByteCounters(chromeos::ErrorPtr* error) override;
-  bool RequestRoam(chromeos::ErrorPtr* error,
+  bool ResetByteCounters(brillo::ErrorPtr* error) override;
+  bool RequestRoam(brillo::ErrorPtr* error,
                    const std::string& addr) override;
   void SetCarrier(DBusMethodResponsePtr<> response,
                   const std::string& carrierr) override;
-  bool AddWakeOnPacketConnection(chromeos::ErrorPtr* error,
+  bool AddWakeOnPacketConnection(brillo::ErrorPtr* error,
                                  const std::string& ip_endpoint) override;
-  bool RemoveWakeOnPacketConnection(chromeos::ErrorPtr* error,
+  bool RemoveWakeOnPacketConnection(brillo::ErrorPtr* error,
                                     const std::string& ip_endpoint) override;
-  bool RemoveAllWakeOnPacketConnections(chromeos::ErrorPtr* error) override;
+  bool RemoveAllWakeOnPacketConnections(brillo::ErrorPtr* error) override;
 
   Device* device() const { return device_; }
 

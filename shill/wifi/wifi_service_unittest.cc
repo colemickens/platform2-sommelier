@@ -474,7 +474,7 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
                                                    kModeManaged,
                                                    kSecurityNone,
                                                    false);
-  chromeos::VariantDictionary properties;
+  brillo::VariantDictionary properties;
   // if service doesn't propertly sanitize SSID, this will generate SIGABRT.
   EXPECT_TRUE(wifi_service->store().GetProperties(&properties, nullptr));
 }
@@ -1423,7 +1423,7 @@ TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
   const string kPassphrase = "0:abcde";
   EXPECT_TRUE(
       wifi_service->mutable_store()->SetAnyProperty(kPassphraseProperty,
-                                                    chromeos::Any(kPassphrase),
+                                                    brillo::Any(kPassphrase),
                                                     &error));
   EXPECT_EQ(kPassphrase, wifi_service->passphrase_);
 

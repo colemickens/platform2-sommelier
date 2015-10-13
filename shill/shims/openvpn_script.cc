@@ -21,7 +21,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "shill/rpc_task.h"
 #include "shill/shims/environment.h"
@@ -34,7 +34,7 @@ using std::string;
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
   Environment* environment = Environment::GetInstance();
   string service, path, reason;

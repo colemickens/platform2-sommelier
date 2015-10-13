@@ -26,8 +26,8 @@
 
 using base::Bind;
 using base::Passed;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 
 namespace shill {
@@ -56,8 +56,8 @@ ChromeosDBusAdaptor::~ChromeosDBusAdaptor() {}
 // static
 bool ChromeosDBusAdaptor::SetProperty(PropertyStore* store,
                                       const std::string& name,
-                                      const chromeos::Any& value,
-                                      chromeos::ErrorPtr* error) {
+                                      const brillo::Any& value,
+                                      brillo::ErrorPtr* error) {
   Error e;
   store->SetAnyProperty(name, value, &e);
   return !e.ToChromeosError(error);
@@ -66,8 +66,8 @@ bool ChromeosDBusAdaptor::SetProperty(PropertyStore* store,
 // static
 bool ChromeosDBusAdaptor::GetProperties(
     const PropertyStore& store,
-    chromeos::VariantDictionary* out_properties,
-    chromeos::ErrorPtr* error) {
+    brillo::VariantDictionary* out_properties,
+    brillo::ErrorPtr* error) {
   Error e;
   store.GetProperties(out_properties, &e);
   return !e.ToChromeosError(error);
@@ -76,7 +76,7 @@ bool ChromeosDBusAdaptor::GetProperties(
 // static
 bool ChromeosDBusAdaptor::ClearProperty(PropertyStore* store,
                                         const std::string& name,
-                                        chromeos::ErrorPtr* error) {
+                                        brillo::ErrorPtr* error) {
   Error e;
   store->ClearProperty(name, &e);
   return !e.ToChromeosError(error);
@@ -135,7 +135,7 @@ void ChromeosDBusAdaptor::ReturnResultOrDefer(
 
 void ChromeosDBusAdaptor::MethodReplyCallback(DBusMethodResponsePtr<> response,
                                               const Error& error) {
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr chromeos_error;
   if (error.ToChromeosError(&chromeos_error)) {
     response->ReplyWithError(chromeos_error.get());
   } else {
@@ -146,7 +146,7 @@ void ChromeosDBusAdaptor::MethodReplyCallback(DBusMethodResponsePtr<> response,
 template<typename T>
 void ChromeosDBusAdaptor::TypedMethodReplyCallback(
     DBusMethodResponsePtr<T> response, const Error& error, const T& returned) {
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr chromeos_error;
   if (error.ToChromeosError(&chromeos_error)) {
     response->ReplyWithError(chromeos_error.get());
   } else {

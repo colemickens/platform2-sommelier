@@ -23,7 +23,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/variant_dictionary.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/store_interface.h"
@@ -110,7 +110,7 @@ class JsonStore : public StoreInterface {
 
   const base::FilePath path_;
   std::string file_description_;
-  std::map<std::string, chromeos::VariantDictionary> group_name_to_settings_;
+  std::map<std::string, brillo::VariantDictionary> group_name_to_settings_;
 
   DISALLOW_COPY_AND_ASSIGN(JsonStore);
 };

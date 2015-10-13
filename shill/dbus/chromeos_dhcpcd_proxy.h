@@ -38,7 +38,7 @@ class ChromeosDHCPCDProxy : public DHCPProxyInterface {
   void Release(const std::string& interface) override;
 
  private:
-  void LogDBusError(const chromeos::ErrorPtr& error,
+  void LogDBusError(const brillo::ErrorPtr& error,
                     const std::string& method,
                     const std::string& interface);
 

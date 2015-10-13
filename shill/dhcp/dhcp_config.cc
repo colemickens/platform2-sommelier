@@ -30,7 +30,7 @@
 #else
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
-#include <chromeos/minijail/minijail.h>
+#include <brillo/minijail/minijail.h>
 
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_provider.h"

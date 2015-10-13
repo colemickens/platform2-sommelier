@@ -30,7 +30,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
-#include <chromeos/any.h>
+#include <brillo/any.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -59,27 +59,27 @@ class ProxyDbusClient {
   void SetLogging(Technology tech);
   bool WaitForPropertyValueIn(ManagerProxy* proxy,
                               const std::string& property_name,
-                              const std::vector<chromeos::Any>& expected_values,
+                              const std::vector<brillo::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any* final_value,
+                              brillo::Any* final_value,
                               int* elapsed_time_seconds);
   bool WaitForPropertyValueIn(DeviceProxy* proxy,
                               const std::string& property_name,
-                              const std::vector<chromeos::Any>& expected_values,
+                              const std::vector<brillo::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any* final_value,
+                              brillo::Any* final_value,
                               int* elapsed_time_seconds);
   bool WaitForPropertyValueIn(ServiceProxy* proxy,
                               const std::string& property_name,
-                              const std::vector<chromeos::Any>& expected_values,
+                              const std::vector<brillo::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any* final_value,
+                              brillo::Any* final_value,
                               int* elapsed_time_seconds);
   bool WaitForPropertyValueIn(ProfileProxy* proxy,
                               const std::string& property_name,
-                              const std::vector<chromeos::Any>& expected_values,
+                              const std::vector<brillo::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any* final_value,
+                              brillo::Any* final_value,
                               int* elapsed_time_seconds);
   std::unique_ptr<DeviceProxy> GetDeviceProxy(const std::string& device_path);
   std::unique_ptr<ServiceProxy> GetServiceProxy(const std::string& service_path);
@@ -89,14 +89,14 @@ class ProxyDbusClient {
   std::vector<std::unique_ptr<ProfileProxy>> GetProfileProxies();
   std::unique_ptr<ProfileProxy> GetActiveProfileProxy();
   std::unique_ptr<DeviceProxy> GetMatchingDeviceProxy(
-      const chromeos::VariantDictionary& params);
+      const brillo::VariantDictionary& params);
   std::unique_ptr<ServiceProxy> GetMatchingServiceProxy(
-      const chromeos::VariantDictionary& params);
+      const brillo::VariantDictionary& params);
   std::unique_ptr<ServiceProxy> ConfigureService(
-      const chromeos::VariantDictionary& config);
+      const brillo::VariantDictionary& config);
   std::unique_ptr<ServiceProxy> ConfigureServiceByGuid(
       const std::string& guid,
-      const chromeos::VariantDictionary& config);
+      const brillo::VariantDictionary& config);
   bool ConnectService(ServiceProxy* proxy, int timeout_seconds);
   bool DisconnectService(ServiceProxy* proxy, int timeout_seconds);
   bool CreateProfile(const std::string& profile_name);
@@ -107,21 +107,21 @@ class ProxyDbusClient {
 
  private:
   bool GetManagerProperty(const std::string& property_name,
-                          chromeos::Any* property_value);
+                          brillo::Any* property_value);
   void PropertyChangedSignalCallback(const std::string& property_name,
-                                     const chromeos::Any& property_value);
+                                     const brillo::Any& property_value);
   void PropertyChangedOnConnectedCallback(const std::string& interface,
                                           const std::string& signal_name,
                                           bool success);
-  bool ComparePropertyValue(const chromeos::VariantDictionary& properties,
+  bool ComparePropertyValue(const brillo::VariantDictionary& properties,
                             const std::string& property_name,
-                            const std::vector<chromeos::Any>& expected_values,
-                            chromeos::Any* final_value);
-  bool WaitForPropertyValueIn(const chromeos::VariantDictionary& properties,
+                            const std::vector<brillo::Any>& expected_values,
+                            brillo::Any* final_value);
+  bool WaitForPropertyValueIn(const brillo::VariantDictionary& properties,
                               const std::string& property_name,
-                              const std::vector<chromeos::Any>& expected_values,
+                              const std::vector<brillo::Any>& expected_values,
                               const int timeout_seconds,
-                              chromeos::Any* final_value,
+                              brillo::Any* final_value,
                               int* elapsed_time_seconds);
   std::string GetActiveProfilePath();
   bool SetLogging(int level, const std::string& tags);

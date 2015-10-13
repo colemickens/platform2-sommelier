@@ -41,7 +41,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "shill/shims/netfilter_queue_processor.h"
 
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
   shill::shims::NetfilterQueueProcessor processor(input_queue, output_queue);
 

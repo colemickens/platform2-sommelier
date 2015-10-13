@@ -58,20 +58,20 @@ class ChromeosProfileDBusAdaptor
                          const std::string& value) override;
 
   // Implementation of ProfileAdaptor
-  bool GetProperties(chromeos::ErrorPtr* error,
-                     chromeos::VariantDictionary* properties) override;
-  bool SetProperty(chromeos::ErrorPtr* error,
+  bool GetProperties(brillo::ErrorPtr* error,
+                     brillo::VariantDictionary* properties) override;
+  bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
-                   const chromeos::Any& value) override;
+                   const brillo::Any& value) override;
 
   // Gets an "Entry", which is apparently a different set of properties than
   // those returned by GetProperties.
-  bool GetEntry(chromeos::ErrorPtr* error,
+  bool GetEntry(brillo::ErrorPtr* error,
                 const std::string& name,
-                chromeos::VariantDictionary* entry_properties) override;
+                brillo::VariantDictionary* entry_properties) override;
 
   // Deletes an Entry.
-  bool DeleteEntry(chromeos::ErrorPtr* error, const std::string& name) override;
+  bool DeleteEntry(brillo::ErrorPtr* error, const std::string& name) override;
 
  private:
   Profile* profile_;

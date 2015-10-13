@@ -27,7 +27,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
-#include <chromeos/variant_dictionary.h>
+#include <brillo/variant_dictionary.h>
 
 #include "shill/dhcp/dhcpcd_listener_interface.h"
 
@@ -64,7 +64,7 @@ class ChromeosDHCPCDListener final : public DHCPCDListenerInterface {
   void EventSignal(const std::string& sender,
                    uint32_t pid,
                    const std::string& reason,
-                   const chromeos::VariantDictionary& configurations);
+                   const brillo::VariantDictionary& configurations);
   void StatusChangedSignal(const std::string& sender,
                            uint32_t pid,
                            const std::string& status);

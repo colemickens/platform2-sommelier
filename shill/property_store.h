@@ -23,8 +23,8 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <chromeos/any.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/variant_dictionary.h>
 
 #include "shill/accessor_interface.h"
 #include "shill/property_iterator.h"
@@ -42,15 +42,15 @@ class PropertyStore {
 
   virtual bool Contains(const std::string& property) const;
 
-  // Setting properties using chromeos::Any variant type.
+  // Setting properties using brillo::Any variant type.
   bool SetAnyProperty(const std::string& name,
-                      const chromeos::Any& value,
+                      const brillo::Any& value,
                       Error* error);
-  bool SetProperties(const chromeos::VariantDictionary& in, Error* error);
+  bool SetProperties(const brillo::VariantDictionary& in, Error* error);
 
-  // Retrieve all properties and store them in a chromeos::VariantDictionary
-  // (std::map<std::string, chromeos::Any>).
-  bool GetProperties(chromeos::VariantDictionary* out, Error* error) const;
+  // Retrieve all properties and store them in a brillo::VariantDictionary
+  // (std::map<std::string, brillo::Any>).
+  bool GetProperties(brillo::VariantDictionary* out, Error* error) const;
 
   // Methods to allow the getting of properties stored in the referenced
   // |store_| by name. Upon success, these methods return true and return the

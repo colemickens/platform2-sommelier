@@ -62,7 +62,7 @@ class ChromeosSimProxy : public SimProxyInterface {
                           const std::string& operation);
   void OnOperationFailure(const ResultCallback& callback,
                           const std::string& operation,
-                          chromeos::Error* dbus_error);
+                          brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::SimProxy> proxy_;
 

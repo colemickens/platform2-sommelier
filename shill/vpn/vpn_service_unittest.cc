@@ -319,7 +319,7 @@ TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
   Error error;
   // A null change returns false, but with error set to success.
   EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
-      kNameProperty, chromeos::Any(service_->friendly_name()), &error));
+      kNameProperty, brillo::Any(service_->friendly_name()), &error));
   EXPECT_FALSE(error.IsFailure());
 }
 
@@ -335,7 +335,7 @@ TEST_F(VPNServiceTest, SetNameProperty) {
   EXPECT_CALL(*profile, UpdateService(_));
   service_->set_profile(profile);
   EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-      kNameProperty, chromeos::Any(kName), &error));
+      kNameProperty, brillo::Any(kName), &error));
   EXPECT_NE(service_->GetStorageIdentifier(), kOldId);
   EXPECT_EQ(kName, service_->friendly_name());
 }

@@ -24,7 +24,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/data_encoding.h>
+#include <brillo/data_encoding.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -303,8 +303,8 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string& tag) {
     // Don't reuse token.
     driver_->args()->RemoveString(kOpenVPNTokenProperty);
   } else {
-    string b64_password(chromeos::data_encoding::Base64Encode(password));
-    string b64_otp(chromeos::data_encoding::Base64Encode(otp));
+    string b64_password(brillo::data_encoding::Base64Encode(password));
+    string b64_otp(brillo::data_encoding::Base64Encode(otp));
     password_encoded = StringPrintf("SCRV1:%s:%s",
                                     b64_password.c_str(),
                                     b64_otp.c_str());

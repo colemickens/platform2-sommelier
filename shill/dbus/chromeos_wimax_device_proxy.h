@@ -66,9 +66,9 @@ class ChromeosWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<uint8_t> index;
-    chromeos::dbus_utils::Property<std::string> name;
-    chromeos::dbus_utils::Property<std::vector<dbus::ObjectPath>> networks;
+    brillo::dbus_utils::Property<uint8_t> index;
+    brillo::dbus_utils::Property<std::string> name;
+    brillo::dbus_utils::Property<std::vector<dbus::ObjectPath>> networks;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -86,7 +86,7 @@ class ChromeosWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   void OnSuccess(const ResultCallback& callback, const std::string& method);
   void OnFailure(const ResultCallback& callback,
                  const std::string& method,
-                 chromeos::Error* error);
+                 brillo::Error* error);
 
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);

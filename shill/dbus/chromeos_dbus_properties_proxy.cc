@@ -53,8 +53,8 @@ ChromeosDBusPropertiesProxy::~ChromeosDBusPropertiesProxy() {}
 KeyValueStore ChromeosDBusPropertiesProxy::GetAll(
     const string& interface_name) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface_name << ")";
-  chromeos::VariantDictionary properties_dict;
-  chromeos::ErrorPtr error;
+  brillo::VariantDictionary properties_dict;
+  brillo::ErrorPtr error;
   if (!proxy_->GetAll(interface_name, &properties_dict, &error)) {
     LOG(ERROR) << __func__ << " failed on " << interface_name
                << ": " << error->GetCode() << " " << error->GetMessage();
@@ -66,12 +66,12 @@ KeyValueStore ChromeosDBusPropertiesProxy::GetAll(
   return properties_store;
 }
 
-chromeos::Any ChromeosDBusPropertiesProxy::Get(const string& interface_name,
-                                               const string& property) {
+brillo::Any ChromeosDBusPropertiesProxy::Get(const string& interface_name,
+                                             const string& property) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface_name
       << ", " << property << ")";
-  chromeos::Any value;
-  chromeos::ErrorPtr error;
+  brillo::Any value;
+  brillo::ErrorPtr error;
   if (!proxy_->Get(interface_name, property, &value, &error)) {
     LOG(ERROR) << __func__ << " failed for " << interface_name
                << " " << property << ": "
@@ -82,7 +82,7 @@ chromeos::Any ChromeosDBusPropertiesProxy::Get(const string& interface_name,
 
 void ChromeosDBusPropertiesProxy::MmPropertiesChanged(
     const string& interface,
-    const chromeos::VariantDictionary& properties) {
+    const brillo::VariantDictionary& properties) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface << ")";
   KeyValueStore properties_store;
   KeyValueStore::ConvertFromVariantDictionary(properties, &properties_store);
@@ -91,7 +91,7 @@ void ChromeosDBusPropertiesProxy::MmPropertiesChanged(
 
 void ChromeosDBusPropertiesProxy::PropertiesChanged(
     const string& interface,
-    const chromeos::VariantDictionary& changed_properties,
+    const brillo::VariantDictionary& changed_properties,
     const vector<string>& invalidated_properties) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface << ")";
   KeyValueStore properties_store;

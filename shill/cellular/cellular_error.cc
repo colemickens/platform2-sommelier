@@ -37,7 +37,7 @@ static const char* kErrorGprsNotSubscribed =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_GPRSNOTSUBSCRIBED);
 
 // static
-void CellularError::FromChromeosDBusError(chromeos::Error* dbus_error,
+void CellularError::FromChromeosDBusError(brillo::Error* dbus_error,
                                           Error* error) {
   if (!error)
     return;

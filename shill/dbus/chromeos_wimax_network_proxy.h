@@ -50,12 +50,12 @@ class ChromeosWiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<uint32_t> identifier;
-    chromeos::dbus_utils::Property<std::string> name;
-    chromeos::dbus_utils::Property<int32_t> type;
-    chromeos::dbus_utils::Property<int32_t> cinr;
-    chromeos::dbus_utils::Property<int32_t> rssi;
-    chromeos::dbus_utils::Property<int32_t> signal_strength;
+    brillo::dbus_utils::Property<uint32_t> identifier;
+    brillo::dbus_utils::Property<std::string> name;
+    brillo::dbus_utils::Property<int32_t> type;
+    brillo::dbus_utils::Property<int32_t> cinr;
+    brillo::dbus_utils::Property<int32_t> rssi;
+    brillo::dbus_utils::Property<int32_t> signal_strength;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);

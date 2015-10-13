@@ -66,7 +66,7 @@ class ChromeosModemCDMAProxy : public ModemCDMAProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<std::string> meid;
+    brillo::dbus_utils::Property<std::string> meid;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -78,7 +78,7 @@ class ChromeosModemCDMAProxy : public ModemCDMAProxyInterface {
   void ActivationStateChanged(
       uint32_t activation_state,
       uint32_t activation_error,
-      const chromeos::VariantDictionary& status_changes);
+      const brillo::VariantDictionary& status_changes);
   void SignalQuality(uint32_t quality);
   void RegistrationStateChanged(uint32_t cdma_1x_state,
                                 uint32_t evdo_state);
@@ -87,20 +87,20 @@ class ChromeosModemCDMAProxy : public ModemCDMAProxyInterface {
   void OnActivateSuccess(const ActivationResultCallback& callback,
                          uint32_t status);
   void OnActivateFailure(const ActivationResultCallback& callback,
-                         chromeos::Error* dbus_error);
+                         brillo::Error* dbus_error);
 
   // Callbacks for GetRegistrationState async call.
   void OnGetRegistrationStateSuccess(const RegistrationStateCallback& callback,
                                      uint32_t state_1x,
                                      uint32_t state_evdo);
   void OnGetRegistrationStateFailure(const RegistrationStateCallback& callback,
-                                     chromeos::Error* dbus_error);
+                                     brillo::Error* dbus_error);
 
   // Callbacks for GetSignalQuality async call.
   void OnGetSignalQualitySuccess(const SignalQualityCallback& callback,
                                  uint32_t quality);
   void OnGetSignalQualityFailure(const SignalQualityCallback& callback,
-                                 chromeos::Error* dbus_error);
+                                 brillo::Error* dbus_error);
 
   // Called when signal is connected to the ObjectProxy.
   void OnSignalConnected(const std::string& interface_name,

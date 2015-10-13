@@ -124,7 +124,7 @@ void ChromeosSimProxy::OnOperationSuccess(const ResultCallback& callback,
 
 void ChromeosSimProxy::OnOperationFailure(const ResultCallback& callback,
                                           const string& operation,
-                                          chromeos::Error* dbus_error) {
+                                          brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);

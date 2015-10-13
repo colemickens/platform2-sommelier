@@ -25,7 +25,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/minijail/minijail.h>
+#include <brillo/minijail/minijail.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"

@@ -49,7 +49,7 @@ class ChromeosWiMaxManagerProxy : public WiMaxManagerProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<std::vector<dbus::ObjectPath>> devices;
+    brillo::dbus_utils::Property<std::vector<dbus::ObjectPath>> devices;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);

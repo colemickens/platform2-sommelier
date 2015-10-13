@@ -48,7 +48,7 @@ class ChromeosSupplicantNetworkProxy
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<bool> enabled;
+    brillo::dbus_utils::Property<bool> enabled;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -59,7 +59,7 @@ class ChromeosSupplicantNetworkProxy
   static const char kPropertyProperties[];
 
   // Signal handlers.
-  void PropertiesChanged(const chromeos::VariantDictionary& properties);
+  void PropertiesChanged(const brillo::VariantDictionary& properties);
 
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);

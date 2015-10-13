@@ -55,7 +55,7 @@ class ChromeosDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   }
 
  private:
-  typedef std::map<std::string, chromeos::VariantDictionary>
+  typedef std::map<std::string, brillo::VariantDictionary>
       DBusInterfaceToProperties;
   typedef std::map<dbus::ObjectPath, DBusInterfaceToProperties>
       DBusObjectsWithProperties;
@@ -72,7 +72,7 @@ class ChromeosDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
       const ManagedObjectsCallback& callback,
       const DBusObjectsWithProperties& objects_with_properties);
   void OnGetManagedObjectsFailure(const ManagedObjectsCallback& callback,
-                                  chromeos::Error* error);
+                                  brillo::Error* error);
 
   // Called when service appeared or vanished.
   void OnServiceAvailable(bool available);

@@ -53,12 +53,12 @@ class ChromeosThirdPartyVpnDBusAdaptor
 
   // Implementation of org::chromium::flimflam::ThirdPartyVpnAdaptor
   bool SetParameters(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::map<std::string, std::string>& parameters,
       std::string* warning_message) override;
-  bool UpdateConnectionState(chromeos::ErrorPtr* error,
+  bool UpdateConnectionState(brillo::ErrorPtr* error,
                              uint32_t connection_state) override;
-  bool SendPacket(chromeos::ErrorPtr* error,
+  bool SendPacket(brillo::ErrorPtr* error,
                   const std::vector<uint8_t>& ip_packet) override;
 
  private:

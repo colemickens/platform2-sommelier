@@ -70,7 +70,7 @@
 #include "shill/dbus/chromeos_wimax_network_proxy.h"
 #endif  // DISABLE_WIMAX
 
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 
 namespace shill {

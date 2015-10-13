@@ -48,13 +48,13 @@ class ChromeosModemModem3gppProxy : public ModemModem3gppProxyInterface {
   // Callbacks for Register async call.
   void OnRegisterSuccess(const ResultCallback& callback);
   void OnRegisterFailure(const ResultCallback& callback,
-                         chromeos::Error* dbus_error);
+                         brillo::Error* dbus_error);
 
   // Callbacks for Scan async call.
   void OnScanSuccess(const KeyValueStoresCallback& callback,
-                     const std::vector<chromeos::VariantDictionary>& results);
+                     const std::vector<brillo::VariantDictionary>& results);
   void OnScanFailure(const KeyValueStoresCallback& callback,
-                     chromeos::Error* dbus_error);
+                     brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::Modem3gppProxy>
       proxy_;

@@ -68,11 +68,11 @@ ProcessManager* ProcessManager::GetInstance() {
 void ProcessManager::Init(EventDispatcher* dispatcher) {
   SLOG(this, 2) << __func__;
   CHECK(!async_signal_handler_);
-  async_signal_handler_.reset(new chromeos::AsynchronousSignalHandler());
+  async_signal_handler_.reset(new brillo::AsynchronousSignalHandler());
   async_signal_handler_->Init();
   process_reaper_.Register(async_signal_handler_.get());
   dispatcher_ = dispatcher;
-  minijail_ = chromeos::Minijail::GetInstance();
+  minijail_ = brillo::Minijail::GetInstance();
 }
 
 void ProcessManager::Stop() {
@@ -92,7 +92,7 @@ pid_t ProcessManager::StartProcess(
   SLOG(this, 2) << __func__ << "(" << program.value() << ")";
 
   // Setup/create child process.
-  std::unique_ptr<chromeos::Process> process(new chromeos::ProcessImpl());
+  std::unique_ptr<brillo::Process> process(new brillo::ProcessImpl());
   process->AddArg(program.value());
   for (const auto& option : arguments) {
     process->AddArg(option);

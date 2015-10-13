@@ -35,7 +35,7 @@ TaskProxy::~TaskProxy() {}
 void TaskProxy::Notify(const string& reason, const map<string, string>& dict) {
   LOG(INFO) << __func__ << "(" << reason
             << ", argcount: " << dict.size() << ")";
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!proxy_.notify(reason, dict, &error)) {
     LOG(ERROR) << "DBus error: " << error->GetCode() << ": "
                << error->GetMessage();
@@ -44,7 +44,7 @@ void TaskProxy::Notify(const string& reason, const map<string, string>& dict) {
 
 bool TaskProxy::GetSecret(string* username, string* password) {
   LOG(INFO) << __func__;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!proxy_.getsec(username, password, &error)) {
     LOG(ERROR) << "DBus error: " << error->GetCode() << ": "
                << error->GetMessage();

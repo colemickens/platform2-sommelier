@@ -140,7 +140,7 @@ const string ChromeosModemCDMAProxy::MEID() {
 void ChromeosModemCDMAProxy::ActivationStateChanged(
     uint32_t activation_state,
     uint32_t activation_error,
-    const chromeos::VariantDictionary& status_changes) {
+    const brillo::VariantDictionary& status_changes) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << activation_state
                                     << ", " << activation_error << ")";
   if (activation_state_callback_.is_null()) {
@@ -180,7 +180,7 @@ void ChromeosModemCDMAProxy::OnActivateSuccess(
 }
 
 void ChromeosModemCDMAProxy::OnActivateFailure(
-    const ActivationResultCallback& callback, chromeos::Error* dbus_error) {
+    const ActivationResultCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -197,7 +197,7 @@ void ChromeosModemCDMAProxy::OnGetRegistrationStateSuccess(
 }
 
 void ChromeosModemCDMAProxy::OnGetRegistrationStateFailure(
-    const RegistrationStateCallback& callback, chromeos::Error* dbus_error) {
+    const RegistrationStateCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);
@@ -211,7 +211,7 @@ void ChromeosModemCDMAProxy::OnGetSignalQualitySuccess(
 }
 
 void ChromeosModemCDMAProxy::OnGetSignalQualityFailure(
-    const SignalQualityCallback& callback, chromeos::Error* dbus_error) {
+    const SignalQualityCallback& callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromChromeosDBusError(dbus_error, &error);

@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/variant_dictionary.h>
+#include <brillo/variant_dictionary.h>
 
 #include "shill/store_interface.h"
 
@@ -95,7 +95,7 @@ class FakeStore : public StoreInterface {
   template<typename T> bool WriteSetting(
       const std::string& group, const std::string& key, const T& new_value);
 
-  std::map<std::string, chromeos::VariantDictionary> group_name_to_settings_;
+  std::map<std::string, brillo::VariantDictionary> group_name_to_settings_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeStore);
 };

@@ -121,10 +121,10 @@ bool ChromeosSupplicantProcessProxy::CreateInterface(
     LOG(ERROR) << "Supplicant process not present";
     return false;
   }
-  chromeos::VariantDictionary dict;
+  brillo::VariantDictionary dict;
   KeyValueStore::ConvertToVariantDictionary(args, &dict);
   dbus::ObjectPath path;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!supplicant_proxy_->CreateInterface(dict, &path, &error)) {
     // Interface might already been created by wpasupplicant.
     LOG(ERROR) << "Failed to create interface: "
@@ -144,7 +144,7 @@ bool ChromeosSupplicantProcessProxy::RemoveInterface(
     return false;
   }
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!supplicant_proxy_->RemoveInterface(dbus::ObjectPath(rpc_identifier),
                                           &error)) {
     LOG(FATAL) << "Failed to remove interface " << rpc_identifier << ": "
@@ -163,7 +163,7 @@ bool ChromeosSupplicantProcessProxy::GetInterface(
   }
 
   dbus::ObjectPath path;
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!supplicant_proxy_->GetInterface(ifname, &path, &error)) {
     LOG(FATAL) << "Failed to get interface " << ifname << ": "
                << error->GetCode() << " " << error->GetMessage();
@@ -207,14 +207,14 @@ bool ChromeosSupplicantProcessProxy::ExpectDisconnect() {
     LOG(ERROR) << "Supplicant process not present";
     return false;
   }
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   supplicant_proxy_->ExpectDisconnect(&error);
   return true;
 }
 
 void ChromeosSupplicantProcessProxy::InterfaceAdded(
     const dbus::ObjectPath& /*path*/,
-    const chromeos::VariantDictionary& /*properties*/) {
+    const brillo::VariantDictionary& /*properties*/) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__;
 }
 
@@ -224,7 +224,7 @@ void ChromeosSupplicantProcessProxy::InterfaceRemoved(
 }
 
 void ChromeosSupplicantProcessProxy::PropertiesChanged(
-    const chromeos::VariantDictionary& /*properties*/) {
+    const brillo::VariantDictionary& /*properties*/) {
   SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__;
 }
 

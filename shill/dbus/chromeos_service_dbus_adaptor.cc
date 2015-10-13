@@ -23,8 +23,8 @@
 #include "shill/logging.h"
 #include "shill/service.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 using std::map;
 using std::string;
 using std::vector;
@@ -60,58 +60,58 @@ ChromeosServiceDBusAdaptor::~ChromeosServiceDBusAdaptor() {
 void ChromeosServiceDBusAdaptor::EmitBoolChanged(const string& name,
                                                  bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosServiceDBusAdaptor::EmitUint8Changed(const string& name,
                                                   uint8_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosServiceDBusAdaptor::EmitUint16Changed(const string& name,
                                                    uint16_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosServiceDBusAdaptor::EmitUint16sChanged(const string& name,
                                                     const Uint16s& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosServiceDBusAdaptor::EmitUintChanged(const string& name,
                                                  uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosServiceDBusAdaptor::EmitIntChanged(const string& name, int value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosServiceDBusAdaptor::EmitRpcIdentifierChanged(const string& name,
                                                           const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(dbus::ObjectPath(value)));
+  SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosServiceDBusAdaptor::EmitStringChanged(const string& name,
                                                    const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosServiceDBusAdaptor::EmitStringmapChanged(const string& name,
                                                       const Stringmap& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  SendPropertyChangedSignal(name, chromeos::Any(value));
+  SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 bool ChromeosServiceDBusAdaptor::GetProperties(
-    chromeos::ErrorPtr* error, chromeos::VariantDictionary* properties) {
+    brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;
   return ChromeosDBusAdaptor::GetProperties(service_->store(),
                                             properties,
@@ -119,7 +119,7 @@ bool ChromeosServiceDBusAdaptor::GetProperties(
 }
 
 bool ChromeosServiceDBusAdaptor::SetProperty(
-    chromeos::ErrorPtr* error, const string& name, const chromeos::Any& value) {
+    brillo::ErrorPtr* error, const string& name, const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   return ChromeosDBusAdaptor::SetProperty(service_->mutable_store(),
                                           name,
@@ -128,7 +128,7 @@ bool ChromeosServiceDBusAdaptor::SetProperty(
 }
 
 bool ChromeosServiceDBusAdaptor::SetProperties(
-    chromeos::ErrorPtr* error, const chromeos::VariantDictionary& args) {
+    brillo::ErrorPtr* error, const brillo::VariantDictionary& args) {
   SLOG(this, 2) << __func__;
   KeyValueStore args_store;
   KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
@@ -137,7 +137,7 @@ bool ChromeosServiceDBusAdaptor::SetProperties(
   return !configure_error.ToChromeosError(error);
 }
 
-bool ChromeosServiceDBusAdaptor::ClearProperty(chromeos::ErrorPtr* error,
+bool ChromeosServiceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
                                               const string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   bool status = ChromeosDBusAdaptor::ClearProperty(service_->mutable_store(),
@@ -149,7 +149,7 @@ bool ChromeosServiceDBusAdaptor::ClearProperty(chromeos::ErrorPtr* error,
   return status;
 }
 
-bool ChromeosServiceDBusAdaptor::ClearProperties(chromeos::ErrorPtr* /*error*/,
+bool ChromeosServiceDBusAdaptor::ClearProperties(brillo::ErrorPtr* /*error*/,
                                                  const vector<string>& names,
                                                  vector<bool>* results) {
   SLOG(this, 2) << __func__;
@@ -160,21 +160,21 @@ bool ChromeosServiceDBusAdaptor::ClearProperties(chromeos::ErrorPtr* /*error*/,
   return true;
 }
 
-bool ChromeosServiceDBusAdaptor::Connect(chromeos::ErrorPtr* error) {
+bool ChromeosServiceDBusAdaptor::Connect(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
   service_->UserInitiatedConnect(&e);
   return !e.ToChromeosError(error);
 }
 
-bool ChromeosServiceDBusAdaptor::Disconnect(chromeos::ErrorPtr* error) {
+bool ChromeosServiceDBusAdaptor::Disconnect(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
   service_->UserInitiatedDisconnect(&e);
   return !e.ToChromeosError(error);
 }
 
-bool ChromeosServiceDBusAdaptor::Remove(chromeos::ErrorPtr* error) {
+bool ChromeosServiceDBusAdaptor::Remove(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
   service_->Remove(&e);
@@ -191,7 +191,7 @@ void ChromeosServiceDBusAdaptor::ActivateCellularModem(
 }
 
 bool ChromeosServiceDBusAdaptor::CompleteCellularActivation(
-    chromeos::ErrorPtr* error) {
+    brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
   service_->CompleteCellularActivation(&e);
@@ -199,7 +199,7 @@ bool ChromeosServiceDBusAdaptor::CompleteCellularActivation(
 }
 
 bool ChromeosServiceDBusAdaptor::GetLoadableProfileEntries(
-    chromeos::ErrorPtr* /*error*/, map<dbus::ObjectPath, string>* entries) {
+    brillo::ErrorPtr* /*error*/, map<dbus::ObjectPath, string>* entries) {
   SLOG(this, 2) << __func__;
   map<string, string> profile_entry_strings =
       service_->GetLoadableProfileEntries();

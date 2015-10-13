@@ -76,7 +76,7 @@ class ChromeosModemGSMCardProxy : public ModemGSMCardProxyInterface {
     PropertySet(dbus::ObjectProxy* object_proxy,
                 const std::string& interface_name,
                 const PropertyChangedCallback& callback);
-    chromeos::dbus_utils::Property<uint32_t> enabled_facility_locks;
+    brillo::dbus_utils::Property<uint32_t> enabled_facility_locks;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -90,12 +90,12 @@ class ChromeosModemGSMCardProxy : public ModemGSMCardProxyInterface {
                                  const std::string& identifier_value);
   void OnGetGSMIdentifierFailure(const GSMIdentifierCallback& callback,
                                  const std::string& identifier_name,
-                                 chromeos::Error* dbus_error);
+                                 brillo::Error* dbus_error);
   void OnOperationSuccess(const ResultCallback& callback,
                           const std::string& operation_name);
   void OnOperationFailure(const ResultCallback& callback,
                           const std::string& operation_name,
-                          chromeos::Error* dbus_error);
+                          brillo::Error* dbus_error);
 
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);
