@@ -28,8 +28,7 @@ class HttpTransportClient : public weave::provider::HttpClient {
                    const std::string& url,
                    const Headers& headers,
                    const std::string& data,
-                   const SuccessCallback& success_callback,
-                   const weave::ErrorCallback& error_callback) override;
+                   const SendRequestCallback& callback) override;
 
  private:
   std::shared_ptr<chromeos::http::Transport> transport_;

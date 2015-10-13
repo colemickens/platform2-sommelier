@@ -44,18 +44,20 @@ class ResponseImpl : public HttpClient::Response {
   DISALLOW_COPY_AND_ASSIGN(ResponseImpl);
 };
 
-void OnSuccessCallback(const HttpClient::SuccessCallback& success_callback,
+void OnSuccessCallback(const HttpClient::SendRequestCallback& callback,
                        int id,
                        std::unique_ptr<chromeos::http::Response> response) {
-  success_callback.Run(ResponseImpl{std::move(response)});
+  callback.Run(std::unique_ptr<HttpClient::Response>{new ResponseImpl{
+                   std::move(response)}},
+               nullptr);
 }
 
-void OnErrorCallback(const weave::ErrorCallback& error_callback,
+void OnErrorCallback(const HttpClient::SendRequestCallback& callback,
                      int id,
                      const chromeos::Error* chromeos_error) {
   weave::ErrorPtr error;
   ConvertError(*chromeos_error, &error);
-  error_callback.Run(error.get());
+  callback.Run(nullptr, std::move(error));
 }
 
 }  // anonymous namespace
@@ -68,13 +70,11 @@ HttpTransportClient::HttpTransportClient()
 
 HttpTransportClient::~HttpTransportClient() {}
 
-void HttpTransportClient::SendRequest(
-    Method method,
-    const std::string& url,
-    const Headers& headers,
-    const std::string& data,
-    const SuccessCallback& success_callback,
-    const weave::ErrorCallback& error_callback) {
+void HttpTransportClient::SendRequest(Method method,
+                                      const std::string& url,
+                                      const Headers& headers,
+                                      const std::string& data,
+                                      const SendRequestCallback& callback) {
   chromeos::http::Request request(url, weave::EnumToString(method), transport_);
   request.AddHeaders(headers);
   if (!data.empty()) {
@@ -85,12 +85,12 @@ void HttpTransportClient::SendRequest(
       weave::ErrorPtr error;
       ConvertError(*cromeos_error, &error);
       transport_->RunCallbackAsync(
-          FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
+          FROM_HERE, base::Bind(callback, nullptr, base::Passed(&error)));
       return;
     }
   }
-  request.GetResponse(base::Bind(&OnSuccessCallback, success_callback),
-                      base::Bind(&OnErrorCallback, error_callback));
+  request.GetResponse(base::Bind(&OnSuccessCallback, callback),
+                      base::Bind(&OnErrorCallback, callback));
 }
 
 }  // namespace buffet

@@ -123,21 +123,6 @@ void LoadStateDefaults(const BuffetConfig::Options& options,
   }
 }
 
-void RegisterDeviceSuccess(
-    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-    weave::Device* device) {
-  LOG(INFO) << "Device registered: " << device->GetSettings().cloud_id;
-  response->Return(device->GetSettings().cloud_id);
-}
-
-void RegisterDeviceError(
-    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-    const weave::Error* weave_error) {
-  chromeos::ErrorPtr error;
-  ConvertError(*weave_error, &error);
-  response->ReplyWithError(error.get());
-}
-
 }  // anonymous namespace
 
 class Manager::TaskRunner : public weave::provider::TaskRunner {
@@ -260,12 +245,20 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
                              const std::string& ticket_id) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
-  std::shared_ptr<DBusMethodResponse<std::string>> shared_response =
-      std::move(response);
+  device_->Register(ticket_id, base::Bind(&Manager::RegisterDeviceDone,
+                                          weak_ptr_factory_.GetWeakPtr(),
+                                          base::Passed(&response)));
+}
 
-  device_->Register(ticket_id, base::Bind(&RegisterDeviceSuccess,
-                                          shared_response, device_.get()),
-                    base::Bind(&RegisterDeviceError, shared_response));
+void Manager::RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
+                                 weave::ErrorPtr error) {
+  if (error) {
+    chromeos::ErrorPtr cros_error;
+    ConvertError(*error, &cros_error);
+    return response->ReplyWithError(cros_error.get());
+  }
+  LOG(INFO) << "Device registered: " << device_->GetSettings().cloud_id;
+  response->Return(device_->GetSettings().cloud_id);
 }
 
 void Manager::UpdateState(DBusMethodResponsePtr<> response,

@@ -10,6 +10,7 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <chromeos/streams/stream.h>
+#include <weave/provider/network.h>
 #include <weave/stream.h>
 
 namespace buffet {
@@ -22,24 +23,21 @@ class SocketStream : public weave::Stream {
 
   void Read(void* buffer,
             size_t size_to_read,
-            const ReadSuccessCallback& success_callback,
-            const weave::ErrorCallback& error_callback) override;
+            const ReadCallback& callback) override;
 
   void Write(const void* buffer,
              size_t size_to_write,
-             const weave::SuccessCallback& success_callback,
-             const weave::ErrorCallback& error_callback) override;
+             const WriteCallback& callback) override;
 
   void CancelPendingOperations() override;
 
   static std::unique_ptr<weave::Stream> ConnectBlocking(const std::string& host,
                                                         uint16_t port);
 
-  static void TlsConnect(std::unique_ptr<weave::Stream> socket,
-                         const std::string& host,
-                         const base::Callback<void(
-                             std::unique_ptr<weave::Stream>)>& success_callback,
-                         const weave::ErrorCallback& error_callback);
+  static void TlsConnect(
+      std::unique_ptr<weave::Stream> socket,
+      const std::string& host,
+      const weave::provider::Network::OpenSslSocketCallback& callback);
 
  private:
   chromeos::StreamPtr ptr_;

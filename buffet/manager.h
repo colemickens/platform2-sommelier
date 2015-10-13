@@ -106,6 +106,9 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
+  void RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
+                          weave::ErrorPtr error);
+
   Options options_;
 
   org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
