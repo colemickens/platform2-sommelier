@@ -25,8 +25,8 @@
 #include <base/files/file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/streams/stream.h>
+#include <brillo/errors/error.h>
+#include <brillo/streams/stream.h>
 #include <libwebserv/export.h>
 
 struct MHD_Connection;
@@ -45,8 +45,8 @@ class LIBWEBSERV_EXPORT FileInfo final {
   const std::string& GetContentType() const { return content_type_; }
   const std::string& GetTransferEncoding() const { return transfer_encoding_; }
   void GetData(
-      const base::Callback<void(chromeos::StreamPtr)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback) const;
+      const base::Callback<void(brillo::StreamPtr)>& success_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback) const;
 
  private:
   friend class Server;
@@ -81,7 +81,7 @@ class LIBWEBSERV_EXPORT Request final {
   // The stream returned is valid for as long as the Request object itself is
   // alive. Accessing the stream after the Request object is destroyed will lead
   // to an undefined behavior (will likely just crash).
-  chromeos::StreamPtr GetDataStream();
+  brillo::StreamPtr GetDataStream();
 
   // Returns the request path (e.g. "/path/document").
   const std::string& GetPath() const { return url_; }

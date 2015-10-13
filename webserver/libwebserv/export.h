@@ -16,7 +16,7 @@
 #define WEBSERVER_LIBWEBSERV_EXPORT_H_
 
 // See detailed explanation of the purpose of LIBWEBSERV_EXPORT in
-// chromeos/chromeos_export.h for similar attribute - CHROMEOS_EXPORT.
+// brillo/brillo_export.h for similar attribute - BRILLO_EXPORT.
 #define LIBWEBSERV_EXPORT __attribute__((__visibility__("default")))
 #define LIBWEBSERV_PRIVATE __attribute__((__visibility__("hidden")))
 

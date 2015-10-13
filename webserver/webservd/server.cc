@@ -22,16 +22,16 @@
 #include <base/files/file_util.h>
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/dbus/async_event_sequencer.h>
+#include <brillo/dbus/async_event_sequencer.h>
 
 #include "webservd/dbus_protocol_handler.h"
 #include "webservd/encryptor.h"
 #include "webservd/protocol_handler.h"
 #include "webservd/utils.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::ExportedObjectManager;
 
 namespace {
 
@@ -55,18 +55,18 @@ void OnFirewallSuccess(const std::string& itf_name,
   }
 }
 
-void IgnoreFirewallDBusMethodError(chromeos::Error* error) {
+void IgnoreFirewallDBusMethodError(brillo::Error* error) {
 }
 
-chromeos::SecureBlob LoadAndValidatePrivateKey(const base::FilePath& key_file,
-                                               webservd::Encryptor* encryptor) {
+brillo::SecureBlob LoadAndValidatePrivateKey(const base::FilePath& key_file,
+                                             webservd::Encryptor* encryptor) {
   std::string encrypted_key_data;
   if (!base::ReadFileToString(key_file, &encrypted_key_data))
     return {};
   std::string key_data;
   if (!encryptor->DecryptWithAuthentication(encrypted_key_data, &key_data))
     return {};
-  chromeos::SecureBlob key{key_data};
+  brillo::SecureBlob key{key_data};
   if (!webservd::ValidateRSAPrivateKey(key))
     key.clear();
   return key;
@@ -175,7 +175,7 @@ void Server::InitTlsData() {
   const base::FilePath key_file{kKeyFile};
 
   auto cert = LoadAndValidateCertificate(certificate_file);
-  chromeos::SecureBlob private_key =
+  brillo::SecureBlob private_key =
       LoadAndValidatePrivateKey(key_file, encryptor_);
   if (!cert || private_key.empty()) {
     // Create the X509 certificate.

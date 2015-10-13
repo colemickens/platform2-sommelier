@@ -93,7 +93,7 @@ std::unique_ptr<RSA, void(*)(RSA*)> GenerateRSAKeyPair(int key_length_bits) {
   return rsa_key_pair;
 }
 
-chromeos::SecureBlob StoreRSAPrivateKey(RSA* rsa_key_pair) {
+brillo::SecureBlob StoreRSAPrivateKey(RSA* rsa_key_pair) {
   auto bio =
       std::unique_ptr<BIO, void(*)(BIO*)>{BIO_new(BIO_s_mem()), BIO_vfree};
   CHECK(bio);
@@ -103,12 +103,12 @@ chromeos::SecureBlob StoreRSAPrivateKey(RSA* rsa_key_pair) {
   size_t size = BIO_get_mem_data(bio.get(), reinterpret_cast<char**>(&buffer));
   CHECK_GT(size, 0u);
   CHECK(buffer);
-  chromeos::SecureBlob key_blob(buffer, buffer + size);
-  chromeos::SecureMemset(buffer, 0, size);
+  brillo::SecureBlob key_blob(buffer, buffer + size);
+  brillo::SecureMemset(buffer, 0, size);
   return key_blob;
 }
 
-bool ValidateRSAPrivateKey(const chromeos::SecureBlob& key) {
+bool ValidateRSAPrivateKey(const brillo::SecureBlob& key) {
   std::unique_ptr<BIO, void(*)(BIO*)> bio{
       BIO_new_mem_buf(const_cast<uint8_t*>(key.data()), key.size()), BIO_vfree};
   std::unique_ptr<RSA, void(*)(RSA*)> rsa_key{
@@ -117,7 +117,7 @@ bool ValidateRSAPrivateKey(const chromeos::SecureBlob& key) {
   return rsa_key.get() != nullptr;
 }
 
-chromeos::Blob StoreCertificate(X509* cert) {
+brillo::Blob StoreCertificate(X509* cert) {
   auto bio =
       std::unique_ptr<BIO, void(*)(BIO*)>{BIO_new(BIO_s_mem()), BIO_vfree};
   CHECK(bio);
@@ -126,7 +126,7 @@ chromeos::Blob StoreCertificate(X509* cert) {
   size_t size = BIO_get_mem_data(bio.get(), reinterpret_cast<char**>(&buffer));
   CHECK_GT(size, 0u);
   CHECK(buffer);
-  return chromeos::Blob(buffer, buffer + size);
+  return brillo::Blob(buffer, buffer + size);
 }
 
 bool StoreCertificate(X509* cert, const base::FilePath& file) {
@@ -155,8 +155,8 @@ X509Ptr LoadAndValidateCertificate(const base::FilePath& file) {
 }
 
 // Same as openssl x509 -fingerprint -sha256.
-chromeos::Blob GetSha256Fingerprint(X509* cert) {
-  chromeos::Blob fingerprint(256 / 8);
+brillo::Blob GetSha256Fingerprint(X509* cert) {
+  brillo::Blob fingerprint(256 / 8);
   uint32_t len = 0;
   CHECK(X509_digest(cert, EVP_sha256(), fingerprint.data(), &len));
   CHECK_EQ(len, fingerprint.size());

@@ -14,7 +14,7 @@
 
 #include "webservd/encryptor.h"
 
-#include <chromeos/data_encoding.h>
+#include <brillo/data_encoding.h>
 
 namespace webservd {
 
@@ -24,13 +24,13 @@ class FakeEncryptor : public Encryptor {
  public:
   bool EncryptWithAuthentication(const std::string& plaintext,
                                  std::string* ciphertext) override {
-    *ciphertext = chromeos::data_encoding::Base64Encode(plaintext);
+    *ciphertext = brillo::data_encoding::Base64Encode(plaintext);
     return true;
   }
 
   bool DecryptWithAuthentication(const std::string& ciphertext,
                                  std::string* plaintext) override {
-    return chromeos::data_encoding::Base64Decode(ciphertext, plaintext);
+    return brillo::data_encoding::Base64Decode(ciphertext, plaintext);
   }
 };
 

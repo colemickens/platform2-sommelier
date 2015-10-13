@@ -33,7 +33,7 @@ void FirewalldFirewall::PunchTcpHoleAsync(
     uint16_t port,
     const std::string& interface_name,
     const base::Callback<void(bool)>& success_cb,
-    const base::Callback<void(chromeos::Error*)>& failure_cb) {
+    const base::Callback<void(brillo::Error*)>& failure_cb) {
   proxy_->PunchTcpHoleAsync(port, interface_name, success_cb, failure_cb);
 }
 

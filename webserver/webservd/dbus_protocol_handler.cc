@@ -15,17 +15,17 @@
 #include "webservd/dbus_protocol_handler.h"
 
 #include <base/bind.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
 
 #include "webservd/dbus_request_handler.h"
 #include "webservd/protocol_handler.h"
 #include "webservd/request.h"
 #include "webservd/server.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::ExportedObjectManager;
 
 namespace webservd {
 
@@ -96,17 +96,17 @@ std::string DBusProtocolHandler::AddRequestHandler(
 }
 
 bool DBusProtocolHandler::RemoveRequestHandler(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::string& in_handler_id) {
 
   auto p = handler_to_service_name_map_.find(in_handler_id);
   if (p == handler_to_service_name_map_.end()) {
-    chromeos::Error::AddToPrintf(error,
-                                 FROM_HERE,
-                                 chromeos::errors::dbus::kDomain,
-                                 DBUS_ERROR_FAILED,
-                                 "Handler with ID %s does not exist",
-                                 in_handler_id.c_str());
+    brillo::Error::AddToPrintf(error,
+                               FROM_HERE,
+                               brillo::errors::dbus::kDomain,
+                               DBUS_ERROR_FAILED,
+                               "Handler with ID %s does not exist",
+                               in_handler_id.c_str());
     return false;
   }
   std::string service_name = p->second;
@@ -143,7 +143,7 @@ void DBusProtocolHandler::OnClientDisconnected(
 }
 
 bool DBusProtocolHandler::GetRequestFileData(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::string& in_request_id,
     int32_t in_file_id,
     dbus::FileDescriptor* out_contents) {
@@ -158,17 +158,17 @@ bool DBusProtocolHandler::GetRequestFileData(
     return true;
   }
 
-  chromeos::Error::AddToPrintf(error,
-                               FROM_HERE,
-                               chromeos::errors::dbus::kDomain,
-                               DBUS_ERROR_FAILED,
-                               "File with ID %d does not exist",
-                               in_file_id);
+  brillo::Error::AddToPrintf(error,
+                             FROM_HERE,
+                             brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED,
+                             "File with ID %d does not exist",
+                             in_file_id);
   return false;
 }
 
 bool DBusProtocolHandler::CompleteRequest(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::string& in_request_id,
     int32_t in_status_code,
     const std::vector<std::tuple<std::string, std::string>>& in_headers,
@@ -184,21 +184,21 @@ bool DBusProtocolHandler::CompleteRequest(
     out_response_stream->CheckValidity();
     return true;
   }
-  chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::dbus::kDomain,
-                         DBUS_ERROR_FAILED, "Response already received");
+  brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                       DBUS_ERROR_FAILED, "Response already received");
   return false;
 }
 
 Request* DBusProtocolHandler::GetRequest(const std::string& request_id,
-                                         chromeos::ErrorPtr* error) {
+                                         brillo::ErrorPtr* error) {
   Request* request = protocol_handler_->GetRequest(request_id);
   if (!request) {
-    chromeos::Error::AddToPrintf(error,
-                                 FROM_HERE,
-                                 chromeos::errors::dbus::kDomain,
-                                 DBUS_ERROR_FAILED,
-                                 "Unknown request ID: %s",
-                                 request_id.c_str());
+    brillo::Error::AddToPrintf(error,
+                               FROM_HERE,
+                               brillo::errors::dbus::kDomain,
+                               DBUS_ERROR_FAILED,
+                               "Unknown request ID: %s",
+                               request_id.c_str());
   }
   return request;
 }

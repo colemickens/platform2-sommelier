@@ -23,7 +23,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_piece.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "webservd/config.h"
 
@@ -72,7 +72,7 @@ class ProtocolHandler final {
 
   // Returns the SHA-256 fingerprint of the TLS certificate used for https
   // connection. Returns an empty byte array if this handler is serving http.
-  const chromeos::Blob& GetCertificateFingerprint() const {
+  const brillo::Blob& GetCertificateFingerprint() const {
     return certificate_fingerprint_;
   }
 
@@ -125,7 +125,7 @@ class ProtocolHandler final {
   // The protocol name ("http" or "https").
   std::string protocol_;
   // TLS certificate fingerprint (if any).
-  chromeos::Blob certificate_fingerprint_;
+  brillo::Blob certificate_fingerprint_;
   // File descriptor watchers for current active sockets.
   std::vector<std::unique_ptr<Watcher>> watchers_;
   // Set to true when a timer request is scheduled.

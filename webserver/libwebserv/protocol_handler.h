@@ -24,9 +24,9 @@
 #include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/secure_blob.h>
-#include <chromeos/streams/stream.h>
+#include <brillo/errors/error.h>
+#include <brillo/secure_blob.h>
+#include <brillo/streams/stream.h>
 #include <dbus/object_path.h>
 
 #include <libwebserv/export.h>
@@ -79,7 +79,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   // byte buffer if this handler does not serve the HTTPS protocol.
   // If the handler is not connected to the server, this will return an empty
   // array.
-  chromeos::Blob GetCertificateFingerprint() const;
+  brillo::Blob GetCertificateFingerprint() const;
 
   // Adds a request handler for given |url|. If the |url| ends with a '/', this
   // makes the handler respond to any URL beneath this path.
@@ -153,21 +153,21 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
       ProtocolHandlerProxy* proxy,
       const std::string& remote_handler_id);
   LIBWEBSERV_PRIVATE void AddHandlerError(int handler_id,
-                                          chromeos::Error* error);
+                                          brillo::Error* error);
 
   // Called by Server when an incoming request is dispatched.
   LIBWEBSERV_PRIVATE bool ProcessRequest(const std::string& protocol_handler_id,
                                          const std::string& remote_handler_id,
                                          const std::string& request_id,
                                          std::unique_ptr<Request> request,
-                                         chromeos::ErrorPtr* error);
+                                         brillo::ErrorPtr* error);
 
   // Called by Response object to finish the request and send response data.
   LIBWEBSERV_PRIVATE void CompleteRequest(
       const std::string& request_id,
       int status_code,
       const std::multimap<std::string, std::string>& headers,
-      chromeos::StreamPtr data_stream);
+      brillo::StreamPtr data_stream);
 
   // Makes a call to the (remote) web server request handler over D-Bus to
   // obtain the file content of uploaded file (identified by |file_id|) during
@@ -175,8 +175,8 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   LIBWEBSERV_PRIVATE void GetFileData(
       const std::string& request_id,
       int file_id,
-      const base::Callback<void(chromeos::StreamPtr)>& success_callback,
-      const base::Callback<void(chromeos::Error*)>& error_callback);
+      const base::Callback<void(brillo::StreamPtr)>& success_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback);
 
   // A helper method to obtain a corresponding protocol handler D-Bus proxy for
   // outstanding request with ID |request_id|.

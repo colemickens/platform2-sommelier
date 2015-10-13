@@ -19,10 +19,10 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/http/http_request.h>
-#include <chromeos/mime_utils.h>
-#include <chromeos/streams/memory_stream.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/http/http_request.h>
+#include <brillo/mime_utils.h>
+#include <brillo/streams/memory_stream.h>
+#include <brillo/strings/string_utils.h>
 #include <libwebserv/protocol_handler.h>
 
 namespace libwebserv {
@@ -33,7 +33,7 @@ Response::Response(ProtocolHandler* handler, const std::string& request_id)
 
 Response::~Response() {
   if (!reply_sent_) {
-    ReplyWithError(chromeos::http::status_code::InternalServerError,
+    ReplyWithError(brillo::http::status_code::InternalServerError,
                    "Internal server error");
   }
 }
@@ -49,19 +49,19 @@ void Response::AddHeaders(
 }
 
 void Response::Reply(int status_code,
-                     chromeos::StreamPtr data_stream,
+                     brillo::StreamPtr data_stream,
                      const std::string& mime_type) {
   CHECK(data_stream);
   status_code_ = status_code;
   data_stream_ = std::move(data_stream);
-  AddHeader(chromeos::http::response_header::kContentType, mime_type);
+  AddHeader(brillo::http::response_header::kContentType, mime_type);
   SendResponse();
 }
 
 void Response::ReplyWithText(int status_code,
                              const std::string& text,
                              const std::string& mime_type) {
-  Reply(status_code, chromeos::MemoryStream::OpenCopyOf(text, nullptr),
+  Reply(status_code, brillo::MemoryStream::OpenCopyOf(text, nullptr),
         mime_type);
 }
 
@@ -69,9 +69,9 @@ void Response::ReplyWithJson(int status_code, const base::Value* json) {
   std::string text;
   base::JSONWriter::WriteWithOptions(
       *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
-  std::string mime_type = chromeos::mime::AppendParameter(
-      chromeos::mime::application::kJson,
-      chromeos::mime::parameters::kCharset,
+  std::string mime_type = brillo::mime::AppendParameter(
+      brillo::mime::application::kJson,
+      brillo::mime::parameters::kCharset,
       "utf-8");
   ReplyWithText(status_code, text, mime_type);
 }
@@ -86,18 +86,18 @@ void Response::ReplyWithJson(int status_code,
 }
 
 void Response::Redirect(int status_code, const std::string& redirect_url) {
-  AddHeader(chromeos::http::response_header::kLocation, redirect_url);
+  AddHeader(brillo::http::response_header::kLocation, redirect_url);
   ReplyWithError(status_code, "");
 }
 
 void Response::ReplyWithError(int status_code, const std::string& error_text) {
   status_code_ = status_code;
-  data_stream_ = chromeos::MemoryStream::OpenCopyOf(error_text, nullptr);
+  data_stream_ = brillo::MemoryStream::OpenCopyOf(error_text, nullptr);
   SendResponse();
 }
 
 void Response::ReplyWithErrorNotFound() {
-  ReplyWithError(chromeos::http::status_code::NotFound, "Not Found");
+  ReplyWithError(brillo::http::status_code::NotFound, "Not Found");
 }
 
 void Response::SendResponse() {

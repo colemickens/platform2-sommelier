@@ -24,7 +24,7 @@
 #include <base/files/file_util.h>
 #include <base/lazy_instance.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/strings/string_utils.h>
 
 namespace webservd {
 
@@ -143,7 +143,7 @@ class FileLogger final : public LogManager::LoggerInterface {
   // Returns true if the file has been successfully renamed.
   bool ArchiveLogFile(const std::string& file_name) {
     char suffix = 'a';
-    auto pair = chromeos::string_utils::SplitAtFirst(file_name, ".");
+    auto pair = brillo::string_utils::SplitAtFirst(file_name, ".");
     // If we try all the suffixes from 'a' to 'z' and still can't find a name,
     // abandon this strategy and keep appending to the current file.
     while (suffix <= 'z') {

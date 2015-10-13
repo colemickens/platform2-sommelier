@@ -17,7 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
-#include <chromeos/errors/error_codes.h>
+#include <brillo/errors/error_codes.h>
 #include <gtest/gtest.h>
 
 #include "webservd/error_codes.h"
@@ -164,17 +164,17 @@ TEST(Config, MultipleHandlers) {
 }
 
 TEST(Config, ParseError_ProtocolHandlersNotDict) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   Config config;
   ASSERT_FALSE(LoadConfigFromString(kInvalidConfig_NotDict, &config, &error));
-  EXPECT_EQ(chromeos::errors::json::kDomain, error->GetDomain());
-  EXPECT_EQ(chromeos::errors::json::kObjectExpected, error->GetCode());
+  EXPECT_EQ(brillo::errors::json::kDomain, error->GetDomain());
+  EXPECT_EQ(brillo::errors::json::kObjectExpected, error->GetCode());
   EXPECT_EQ("Protocol handler definition must be a JSON object",
             error->GetMessage());
 }
 
 TEST(Config, ParseError_NoName) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   Config config;
   ASSERT_FALSE(LoadConfigFromString(kInvalidConfig_NoName, &config, &error));
   EXPECT_EQ(webservd::errors::kDomain, error->GetDomain());
@@ -184,7 +184,7 @@ TEST(Config, ParseError_NoName) {
 }
 
 TEST(Config, ParseError_NoPort) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   Config config;
   ASSERT_FALSE(LoadConfigFromString(kInvalidConfig_NoPort, &config, &error));
   EXPECT_EQ(webservd::errors::kDomain, error->GetDomain());
@@ -198,7 +198,7 @@ TEST(Config, ParseError_NoPort) {
 }
 
 TEST(Config, ParseError_InvalidPort) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   Config config;
   ASSERT_FALSE(LoadConfigFromString(kInvalidConfig_InvalidPort, &config,
                &error));

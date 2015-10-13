@@ -21,8 +21,8 @@
 
 #include <base/macros.h>
 #include <dbus/bus.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/dbus_object.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/dbus_object.h>
 #include <libwebserv/export.h>
 #include <libwebserv/request_handler_interface.h>
 
@@ -59,7 +59,7 @@ class LIBWEBSERV_EXPORT Server final {
   void Connect(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
-      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
       const base::Closure& on_server_online,
       const base::Closure& on_server_offline);
 
@@ -128,7 +128,7 @@ class LIBWEBSERV_EXPORT Server final {
   std::unique_ptr<org::chromium::WebServer::RequestHandlerAdaptor>
       dbus_adaptor_;
   // D-Bus object to handler registration of RequestHandlerInterface.
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   // A mapping of protocol handler name to the associated object.
   std::map<std::string, std::unique_ptr<ProtocolHandler>>

@@ -19,7 +19,7 @@
 #include <vector>
 
 #include <base/callback_forward.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 #include <libwebserv/export.h>
 
 namespace libwebserv {
@@ -35,7 +35,7 @@ using GetRequestDataSuccessCallback =
 using GetRequestDataErrorCallback =
     base::Callback<void(std::unique_ptr<Request> request,
                         std::unique_ptr<Response> response,
-                        const chromeos::Error* error)>;
+                        const brillo::Error* error)>;
 
 // Reads the request data from |request| asynchronously and returns the data
 // by calling |success_callback|. If an error occurred, |error_callback| is

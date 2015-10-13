@@ -242,8 +242,8 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
 
   // libmicrohttpd expects both the key and certificate to be zero-terminated
   // strings. Make sure they are terminated properly.
-  chromeos::SecureBlob private_key_copy = config->private_key;
-  chromeos::Blob certificate_copy = config->certificate;
+  brillo::SecureBlob private_key_copy = config->private_key;
+  brillo::Blob certificate_copy = config->certificate;
   private_key_copy.push_back(0);
   certificate_copy.push_back(0);
 

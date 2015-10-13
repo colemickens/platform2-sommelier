@@ -17,9 +17,9 @@
 #include <tuple>
 
 #include <base/logging.h>
-#include <chromeos/map_utils.h>
-#include <chromeos/streams/file_stream.h>
-#include <chromeos/streams/stream_utils.h>
+#include <brillo/map_utils.h>
+#include <brillo/streams/file_stream.h>
+#include <brillo/streams/stream_utils.h>
 
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "libwebserv/request.h"
@@ -33,22 +33,22 @@ namespace libwebserv {
 namespace {
 
 // Dummy callback for async D-Bus errors.
-void IgnoreDBusError(chromeos::Error* error) {}
+void IgnoreDBusError(brillo::Error* error) {}
 
 // Copies the data from |src_stream| to the destination stream represented
 // by a file descriptor |fd|.
-void WriteResponseData(chromeos::StreamPtr src_stream,
+void WriteResponseData(brillo::StreamPtr src_stream,
                        const dbus::FileDescriptor& fd) {
   int dupfd = dup(fd.value());
   auto dest_stream =
-      chromeos::FileStream::FromFileDescriptor(dupfd, true, nullptr);
+      brillo::FileStream::FromFileDescriptor(dupfd, true, nullptr);
   CHECK(dest_stream);
   // Dummy callbacks for success/error of data-copy operation. We ignore both
   // notifications here.
-  auto on_success = [](chromeos::StreamPtr, chromeos::StreamPtr, uint64_t) {};
-  auto on_error = [](chromeos::StreamPtr, chromeos::StreamPtr,
-                     const chromeos::Error*) {};
-  chromeos::stream_utils::CopyData(
+  auto on_success = [](brillo::StreamPtr, brillo::StreamPtr, uint64_t) {};
+  auto on_error = [](brillo::StreamPtr, brillo::StreamPtr,
+                     const brillo::Error*) {};
+  brillo::stream_utils::CopyData(
       std::move(src_stream), std::move(dest_stream), base::Bind(on_success),
       base::Bind(on_error));
 }
@@ -68,7 +68,7 @@ ProtocolHandler::~ProtocolHandler() {
 
   // We need to get a copy of the map keys since removing the handlers will
   // modify the map in the middle of the loop and that's not a good thing.
-  auto handler_ids = chromeos::GetMapKeys(request_handlers_);
+  auto handler_ids = brillo::GetMapKeys(request_handlers_);
   for (int handler_id : handler_ids) {
     RemoveHandler(handler_id);
   }
@@ -92,8 +92,8 @@ std::set<std::string> ProtocolHandler::GetProtocols() const {
   return protocols;
 }
 
-chromeos::Blob ProtocolHandler::GetCertificateFingerprint() const {
-  chromeos::Blob fingerprint;
+brillo::Blob ProtocolHandler::GetCertificateFingerprint() const {
+  brillo::Blob fingerprint;
   for (const auto& pair : proxies_) {
     fingerprint = pair.second->certificate_fingerprint();
     if (!fingerprint.empty())
@@ -190,7 +190,7 @@ void ProtocolHandler::AddHandlerSuccess(int handler_id,
   remote_handler_id_map_.emplace(remote_handler_id, handler_id);
 }
 
-void ProtocolHandler::AddHandlerError(int handler_id, chromeos::Error* error) {
+void ProtocolHandler::AddHandlerError(int handler_id, brillo::Error* error) {
   // Nothing to do at the moment.
 }
 
@@ -198,24 +198,24 @@ bool ProtocolHandler::ProcessRequest(const std::string& protocol_handler_id,
                                      const std::string& remote_handler_id,
                                      const std::string& request_id,
                                      std::unique_ptr<Request> request,
-                                     chromeos::ErrorPtr* error) {
+                                     brillo::ErrorPtr* error) {
   request_id_map_.emplace(request_id, protocol_handler_id);
   auto id_iter = remote_handler_id_map_.find(remote_handler_id);
   if (id_iter == remote_handler_id_map_.end()) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 chromeos::errors::dbus::kDomain,
-                                 DBUS_ERROR_FAILED,
-                                 "Unknown request handler '%s'",
-                                 remote_handler_id.c_str());
+    brillo::Error::AddToPrintf(error, FROM_HERE,
+                               brillo::errors::dbus::kDomain,
+                               DBUS_ERROR_FAILED,
+                               "Unknown request handler '%s'",
+                               remote_handler_id.c_str());
     return false;
   }
   auto handler_iter = request_handlers_.find(id_iter->second);
   if (handler_iter == request_handlers_.end()) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 chromeos::errors::dbus::kDomain,
-                                 DBUS_ERROR_FAILED,
-                                 "Handler # %d is no longer available",
-                                 id_iter->second);
+    brillo::Error::AddToPrintf(error, FROM_HERE,
+                               brillo::errors::dbus::kDomain,
+                               DBUS_ERROR_FAILED,
+                               "Handler # %d is no longer available",
+                               id_iter->second);
     return false;
   }
   handler_iter->second.handler->HandleRequest(
@@ -228,7 +228,7 @@ void ProtocolHandler::CompleteRequest(
     const std::string& request_id,
     int status_code,
     const std::multimap<std::string, std::string>& headers,
-    chromeos::StreamPtr data_stream) {
+    brillo::StreamPtr data_stream) {
   ProtocolHandlerProxy* proxy = GetRequestProtocolHandlerProxy(request_id);
   if (!proxy)
     return;
@@ -250,8 +250,8 @@ void ProtocolHandler::CompleteRequest(
 void ProtocolHandler::GetFileData(
     const std::string& request_id,
     int file_id,
-    const base::Callback<void(chromeos::StreamPtr)>& success_callback,
-    const base::Callback<void(chromeos::Error*)>& error_callback) {
+    const base::Callback<void(brillo::StreamPtr)>& success_callback,
+    const base::Callback<void(brillo::Error*)>& error_callback) {
   ProtocolHandlerProxy* proxy = GetRequestProtocolHandlerProxy(request_id);
   CHECK(proxy);
 
@@ -262,24 +262,24 @@ void ProtocolHandler::GetFileData(
   // constant). So, here we move both callbacks to |Callbacks| structure and
   // use a shared pointer to it in both success and error callback wrappers.
   struct Callbacks {
-    base::Callback<void(chromeos::StreamPtr)> on_success;
-    base::Callback<void(chromeos::Error*)> on_error;
+    base::Callback<void(brillo::StreamPtr)> on_success;
+    base::Callback<void(brillo::Error*)> on_error;
   };
   auto callbacks = std::make_shared<Callbacks>();
   callbacks->on_success = success_callback;
   callbacks->on_error = error_callback;
 
   auto on_success = [callbacks](const dbus::FileDescriptor& fd) {
-    chromeos::ErrorPtr error;
+    brillo::ErrorPtr error;
     // Unfortunately there is no way to take ownership of the file descriptor
     // since |fd| is a const reference, so duplicate the descriptor.
     int dupfd = dup(fd.value());
-    auto stream = chromeos::FileStream::FromFileDescriptor(dupfd, true, &error);
+    auto stream = brillo::FileStream::FromFileDescriptor(dupfd, true, &error);
     if (!stream)
       return callbacks->on_error.Run(error.get());
     callbacks->on_success.Run(std::move(stream));
   };
-  auto on_error = [callbacks](chromeos::Error* error) {
+  auto on_error = [callbacks](brillo::Error* error) {
     callbacks->on_error.Run(error);
   };
 

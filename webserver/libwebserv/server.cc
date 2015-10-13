@@ -30,7 +30,7 @@ class Server::RequestHandler final
  public:
   explicit RequestHandler(Server* server) : server_{server} {}
   bool ProcessRequest(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::tuple<std::string, std::string, std::string, std::string,
                        std::string>& in_request_info,
       const std::vector<std::tuple<std::string, std::string>>& in_headers,
@@ -45,7 +45,7 @@ class Server::RequestHandler final
 };
 
 bool Server::RequestHandler::ProcessRequest(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::tuple<std::string, std::string, std::string, std::string,
                      std::string>& in_request_info,
     const std::vector<std::tuple<std::string, std::string>>& in_headers,
@@ -61,11 +61,11 @@ bool Server::RequestHandler::ProcessRequest(
   ProtocolHandler* protocol_handler =
       server_->GetProtocolHandlerByID(protocol_handler_id);
   if (!protocol_handler) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 chromeos::errors::dbus::kDomain,
-                                 DBUS_ERROR_FAILED,
-                                 "Unknown protocol handler '%s'",
-                                 protocol_handler_id.c_str());
+    brillo::Error::AddToPrintf(error, FROM_HERE,
+                               brillo::errors::dbus::kDomain,
+                               DBUS_ERROR_FAILED,
+                               "Unknown protocol handler '%s'",
+                               protocol_handler_id.c_str());
     return false;
   }
   std::unique_ptr<Request> request{new Request{protocol_handler, url, method}};
@@ -113,11 +113,11 @@ Server::~Server() {
 void Server::Connect(
     const scoped_refptr<dbus::Bus>& bus,
     const std::string& service_name,
-    const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
     const base::Closure& on_server_online,
     const base::Closure& on_server_offline) {
   service_name_ = service_name;
-  dbus_object_.reset(new chromeos::dbus_utils::DBusObject{
+  dbus_object_.reset(new brillo::dbus_utils::DBusObject{
       nullptr, bus, dbus_adaptor_->GetObjectPath()});
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(cb);

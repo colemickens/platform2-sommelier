@@ -18,7 +18,7 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/errors/error_codes.h>
+#include <brillo/errors/error_codes.h>
 
 #include "webservd/error_codes.h"
 
@@ -57,22 +57,22 @@ const char kDefaultConfig[] = R"({
 
 bool LoadHandlerConfig(const base::DictionaryValue* handler_value,
                        Config::ProtocolHandler* handler_config,
-                       chromeos::ErrorPtr* error) {
+                       brillo::ErrorPtr* error) {
   int port = 0;
   if (!handler_value->GetInteger(kPortKey, &port)) {
-    chromeos::Error::AddTo(error,
-                           FROM_HERE,
-                           webservd::errors::kDomain,
-                           webservd::errors::kInvalidConfig,
-                           "Port is missing");
+    brillo::Error::AddTo(error,
+                         FROM_HERE,
+                         webservd::errors::kDomain,
+                         webservd::errors::kInvalidConfig,
+                         "Port is missing");
     return false;
   }
   if (port < 1 || port > 0xFFFF) {
-    chromeos::Error::AddToPrintf(error,
-                                 FROM_HERE,
-                                 webservd::errors::kDomain,
-                                 webservd::errors::kInvalidConfig,
-                                 "Invalid port value: %d", port);
+    brillo::Error::AddToPrintf(error,
+                               FROM_HERE,
+                               webservd::errors::kDomain,
+                               webservd::errors::kInvalidConfig,
+                               "Invalid port value: %d", port);
     return false;
   }
   handler_config->port = port;
@@ -111,7 +111,7 @@ bool LoadConfigFromFile(const base::FilePath& json_file_path, Config* config) {
 
 bool LoadConfigFromString(const std::string& config_json,
                           Config* config,
-                          chromeos::ErrorPtr* error) {
+                          brillo::ErrorPtr* error) {
   std::string error_msg;
   std::unique_ptr<const base::Value> value{
       base::JSONReader::ReadAndReturnError(
@@ -119,21 +119,21 @@ bool LoadConfigFromString(const std::string& config_json,
           .release()};
 
   if (!value) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 chromeos::errors::json::kDomain,
-                                 chromeos::errors::json::kParseError,
-                                 "Error parsing server configuration: %s",
-                                 error_msg.c_str());
+    brillo::Error::AddToPrintf(error, FROM_HERE,
+                               brillo::errors::json::kDomain,
+                               brillo::errors::json::kParseError,
+                               "Error parsing server configuration: %s",
+                               error_msg.c_str());
     return false;
   }
 
   const base::DictionaryValue* dict_value = nullptr;  // Owned by |value|
   if (!value->GetAsDictionary(&dict_value)) {
-    chromeos::Error::AddTo(error,
-                           FROM_HERE,
-                           chromeos::errors::json::kDomain,
-                           chromeos::errors::json::kObjectExpected,
-                           "JSON object is expected.");
+    brillo::Error::AddTo(error,
+                         FROM_HERE,
+                         brillo::errors::json::kDomain,
+                         brillo::errors::json::kObjectExpected,
+                         "JSON object is expected.");
     return false;
   }
 
@@ -145,18 +145,18 @@ bool LoadConfigFromString(const std::string& config_json,
     for (base::Value* handler_value : *protocol_handlers) {
       const base::DictionaryValue* handler_dict = nullptr;  // Owned by |value|
       if (!handler_value->GetAsDictionary(&handler_dict)) {
-        chromeos::Error::AddTo(
+        brillo::Error::AddTo(
             error,
             FROM_HERE,
-            chromeos::errors::json::kDomain,
-            chromeos::errors::json::kObjectExpected,
+            brillo::errors::json::kDomain,
+            brillo::errors::json::kObjectExpected,
             "Protocol handler definition must be a JSON object");
         return false;
       }
 
       std::string name;
       if (!handler_dict->GetString(kNameKey, &name)) {
-        chromeos::Error::AddTo(
+        brillo::Error::AddTo(
             error,
             FROM_HERE,
             errors::kDomain,
@@ -168,7 +168,7 @@ bool LoadConfigFromString(const std::string& config_json,
       Config::ProtocolHandler handler_config;
       handler_config.name = name;
       if (!LoadHandlerConfig(handler_dict, &handler_config, error)) {
-        chromeos::Error::AddToPrintf(
+        brillo::Error::AddToPrintf(
             error,
             FROM_HERE,
             errors::kDomain,

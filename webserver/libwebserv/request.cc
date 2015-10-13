@@ -15,8 +15,8 @@
 #include <libwebserv/request.h>
 
 #include <base/callback.h>
-#include <chromeos/http/http_utils.h>
-#include <chromeos/streams/file_stream.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/streams/file_stream.h>
 
 #include <libwebserv/protocol_handler.h>
 
@@ -37,8 +37,8 @@ FileInfo::FileInfo(ProtocolHandler* handler,
 }
 
 void FileInfo::GetData(
-    const base::Callback<void(chromeos::StreamPtr)>& success_callback,
-    const base::Callback<void(chromeos::Error*)>& error_callback) const {
+    const base::Callback<void(brillo::StreamPtr)>& success_callback,
+    const base::Callback<void(brillo::Error*)>& error_callback) const {
   handler_->GetFileData(request_id_,
                         file_id_,
                         success_callback,
@@ -54,8 +54,8 @@ Request::Request(ProtocolHandler* handler,
 Request::~Request() {
 }
 
-chromeos::StreamPtr Request::GetDataStream() {
-  return chromeos::FileStream::FromFileDescriptor(
+brillo::StreamPtr Request::GetDataStream() {
+  return brillo::FileStream::FromFileDescriptor(
       raw_data_fd_.GetPlatformFile(), false, nullptr);
 }
 
@@ -138,7 +138,7 @@ std::vector<PairOfStrings> Request::GetHeaders() const {
 std::vector<std::string> Request::GetHeader(const std::string& name) const {
   std::vector<std::string> data;
   auto range =
-      headers_.equal_range(chromeos::http::GetCanonicalHeaderName(name));
+      headers_.equal_range(brillo::http::GetCanonicalHeaderName(name));
   while (range.first != range.second) {
     data.push_back(range.first->second);
     ++range.first;
@@ -147,7 +147,7 @@ std::vector<std::string> Request::GetHeader(const std::string& name) const {
 }
 
 std::string Request::GetFirstHeader(const std::string& name) const {
-  auto p = headers_.find(chromeos::http::GetCanonicalHeaderName(name));
+  auto p = headers_.find(brillo::http::GetCanonicalHeaderName(name));
   return (p != headers_.end()) ? p->second : std::string{};
 }
 

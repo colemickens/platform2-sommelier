@@ -37,7 +37,7 @@ class FirewalldFirewall : public FirewallInterface {
   void PunchTcpHoleAsync(
       uint16_t port, const std::string& interface_name,
       const base::Callback<void(bool)>& success_cb,
-      const base::Callback<void(chromeos::Error*)>& failure_cb) override;
+      const base::Callback<void(brillo::Error*)>& failure_cb) override;
 
  private:
   void OnFirewalldOnline(org::chromium::FirewalldProxy* proxy);

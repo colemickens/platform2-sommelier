@@ -21,7 +21,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <chromeos/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_object.h>
 
 namespace webservd {
 
@@ -38,7 +38,7 @@ class FirewallInterface {
       uint16_t port,
       const std::string& interface_name,
       const base::Callback<void(bool)>& success_cb,
-      const base::Callback<void(chromeos::Error*)>& failure_cb) = 0;
+      const base::Callback<void(brillo::Error*)>& failure_cb) = 0;
 
  protected:
   FirewallInterface() = default;

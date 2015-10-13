@@ -18,8 +18,8 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <chromeos/http/http_request.h>
-#include <chromeos/mime_utils.h>
+#include <brillo/http/http_request.h>
+#include <brillo/mime_utils.h>
 
 #include "libwebserv/dbus-proxies.h"
 #include "webservd/request.h"
@@ -31,13 +31,13 @@ namespace {
 
 void OnError(Request* request,
              bool debug,
-             chromeos::Error* error) {
+             brillo::Error* error) {
   std::string error_msg{"Internal Server Error"};
   if (debug) {
     error_msg += "\r\n" + error->GetMessage();
   }
-  request->Complete(chromeos::http::status_code::InternalServerError, {},
-                    chromeos::mime::text::kPlain, error_msg);
+  request->Complete(brillo::http::status_code::InternalServerError, {},
+                    brillo::mime::text::kPlain, error_msg);
 }
 
 }  // anonymous namespace

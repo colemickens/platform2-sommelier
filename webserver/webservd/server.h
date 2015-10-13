@@ -22,9 +22,9 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/exported_object_manager.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/secure_blob.h>
 
 #include "dbus_bindings/org.chromium.WebServer.Server.h"
 #include "webservd/encryptor.h"
@@ -41,14 +41,14 @@ class DBusServerRequest;
 class Server final : public org::chromium::WebServer::ServerInterface,
                      public ServerInterface {
  public:
-  Server(chromeos::dbus_utils::ExportedObjectManager* object_manager,
+  Server(brillo::dbus_utils::ExportedObjectManager* object_manager,
          const Config& config, std::unique_ptr<FirewallInterface> firewall);
   // Need to off-line the destructor to allow |protocol_handler_map_| to contain
   // a forward-declared pointer to DBusProtocolHandler.
   ~Server();
 
   void RegisterAsync(
-      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
   // Overrides from org::chromium::WebServer::ServerInterface.
   std::string Ping() override;
@@ -74,15 +74,15 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   base::FilePath GetUploadDirectory() const;
 
   org::chromium::WebServer::ServerAdaptor dbus_adaptor_{this};
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<Encryptor> default_encryptor_;
   Encryptor* encryptor_;
 
   Config config_;
   int last_protocol_handler_index_{0};
-  chromeos::Blob TLS_certificate_;
-  chromeos::Blob TLS_certificate_fingerprint_;
-  chromeos::SecureBlob TLS_private_key_;
+  brillo::Blob TLS_certificate_;
+  brillo::Blob TLS_certificate_fingerprint_;
+  brillo::SecureBlob TLS_private_key_;
 
   std::map<ProtocolHandler*,
            std::unique_ptr<DBusProtocolHandler>> protocol_handler_map_;

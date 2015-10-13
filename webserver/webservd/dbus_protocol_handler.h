@@ -24,17 +24,17 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
 #include "libwebserv/dbus-proxies.h"
 #include "dbus_bindings/org.chromium.WebServer.ProtocolHandler.h"
 
-namespace chromeos {
+namespace brillo {
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // dbus_utils
-}  // chromeos
+}  // brillo
 
 namespace webservd {
 
@@ -47,17 +47,17 @@ class DBusProtocolHandler final
     : public org::chromium::WebServer::ProtocolHandlerInterface {
  public:
   DBusProtocolHandler(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      brillo::dbus_utils::ExportedObjectManager* object_manager,
       const dbus::ObjectPath& object_path,
       ProtocolHandler* protocol_handler,
       Server* server);
   ~DBusProtocolHandler();
 
   void RegisterAsync(
-      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
   // Returns the instance of D-Bus exported object manager.
-  chromeos::dbus_utils::ExportedObjectManager* GetObjectManager() const;
+  brillo::dbus_utils::ExportedObjectManager* GetObjectManager() const;
 
   // Overrides from org::chromium::WebServer::DBusProtocolHandlerInterface.
   std::string AddRequestHandler(
@@ -65,16 +65,16 @@ class DBusProtocolHandler final
       const std::string& in_method,
       const std::string& in_service_name) override;
 
-  bool RemoveRequestHandler(chromeos::ErrorPtr* error,
+  bool RemoveRequestHandler(brillo::ErrorPtr* error,
                             const std::string& in_request_handler_id) override;
 
-  bool GetRequestFileData(chromeos::ErrorPtr* error,
+  bool GetRequestFileData(brillo::ErrorPtr* error,
                           const std::string& in_request_id,
                           int32_t in_file_id,
                           dbus::FileDescriptor* out_contents) override;
 
   bool CompleteRequest(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::string& in_request_id,
       int32_t in_status_code,
       const std::vector<std::tuple<std::string, std::string>>& in_headers,
@@ -99,7 +99,7 @@ class DBusProtocolHandler final
 
   // Looks up a request with |request_id|.
   // Returns nullptr and sets additional |error| information, if not found.
-  Request* GetRequest(const std::string& request_id, chromeos::ErrorPtr* error);
+  Request* GetRequest(const std::string& request_id, brillo::ErrorPtr* error);
 
   // Callback invoked when a client owning |service_name| is changed.
   void OnClientDisconnected(const std::string& service_name,
@@ -107,7 +107,7 @@ class DBusProtocolHandler final
 
   // D-Bus object adaptor for ProtocolHandler D-Bus object.
   org::chromium::WebServer::ProtocolHandlerAdaptor dbus_adaptor_{this};
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   // Reference back to the real ProtocolHandler object.
   ProtocolHandler* protocol_handler_{nullptr};

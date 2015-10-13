@@ -19,8 +19,8 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/errors/error.h>
+#include <brillo/secure_blob.h>
 
 namespace webservd {
 
@@ -45,9 +45,9 @@ struct Config final {
     // For HTTPS handlers, these specify the certificates/private keys used
     // during TLS handshake and communication session. For HTTP protocol
     // handlers these fields are not used and are empty.
-    chromeos::SecureBlob private_key;
-    chromeos::Blob certificate;
-    chromeos::Blob certificate_fingerprint;
+    brillo::SecureBlob private_key;
+    brillo::Blob certificate;
+    brillo::Blob certificate_fingerprint;
 
     // Custom socket created for protocol handlers that are bound to specific
     // network interfaces only. SO_BINDTODEVICE option on a socket does exactly
@@ -91,7 +91,7 @@ bool LoadConfigFromFile(const base::FilePath& json_file_path, Config* config);
 // specifies the reason for the failure in |error| object.
 bool LoadConfigFromString(const std::string& config_json,
                           Config* config,
-                          chromeos::ErrorPtr* error);
+                          brillo::ErrorPtr* error);
 
 }  // namespace webservd
 

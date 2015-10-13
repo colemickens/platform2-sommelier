@@ -25,7 +25,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/streams/stream.h>
+#include <brillo/streams/stream.h>
 
 struct MHD_Connection;
 struct MHD_PostProcessor;
@@ -56,7 +56,7 @@ class FileInfo final {
   // was specified.
   std::string transfer_encoding;
   // The file content data.
-  chromeos::StreamPtr data_stream;
+  brillo::StreamPtr data_stream;
   // The temporary file containing the file part data.
   base::FilePath temp_file_name;
 
@@ -167,7 +167,7 @@ class Request final {
   bool AppendPostFieldData(const char* key, const char* data, size_t size);
 
   // Callback to be called when data can be written to the output pipe again.
-  void OnPipeAvailable(chromeos::Stream::AccessMode mode);
+  void OnPipeAvailable(brillo::Stream::AccessMode mode);
 
   // Forwards the request to the request handler.
   void ForwardRequestToHandler();
@@ -188,7 +188,7 @@ class Request final {
   // Data pipe for request body data (output/read end of the pipe).
   base::File request_data_pipe_out_;
   // Data stream for the input/write end of the request data pipe.
-  chromeos::StreamPtr request_data_stream_;
+  brillo::StreamPtr request_data_stream_;
 
   bool last_posted_data_was_file_{false};
   bool request_forwarded_{false};
@@ -206,7 +206,7 @@ class Request final {
   // Data size of response, -1 if unknown.
   int64_t response_data_size_{-1};
   // Data stream for the output/read end of the response data pipe.
-  chromeos::StreamPtr response_data_stream_;
+  brillo::StreamPtr response_data_stream_;
   std::vector<PairOfStrings> response_headers_;
   ProtocolHandler* protocol_handler_;
 

@@ -19,14 +19,14 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/flag_helper.h>
 #if !defined(__ANDROID__)
-#include <chromeos/minijail/minijail.h>
+#include <brillo/minijail/minijail.h>
 #endif  // !defined(__ANDROID__)
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "webservd/config.h"
 #include "webservd/log_manager.h"
@@ -41,7 +41,7 @@ using FirewallImpl = webservd::FirewalldFirewall;
 using FirewallImpl = webservd::PermissionBrokerFirewall;
 #endif  // defined(__ANDROID__)
 
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace {
 
@@ -51,7 +51,7 @@ const char kRootServicePath[] = "/org/chromium/WebServer";
 const char kWebServerUserName[] = "webservd";
 const char kWebServerGroupName[] = "webservd";
 
-class Daemon final : public chromeos::DBusServiceDaemon {
+class Daemon final : public brillo::DBusServiceDaemon {
  public:
   explicit Daemon(webservd::Config config)
       : DBusServiceDaemon{kServiceName, kRootServicePath},
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(debug, false,
               "return debug error information in web requests");
   DEFINE_bool(ipv6, true, "enable IPv6 support");
-  chromeos::FlagHelper::Init(argc, argv, "Brillo web server daemon");
+  brillo::FlagHelper::Init(argc, argv, "Brillo web server daemon");
 
   // From libmicrohttpd documentation, section 1.5 SIGPIPE:
   // ... portable code using MHD must install a SIGPIPE handler or explicitly
@@ -97,10 +97,10 @@ int main(int argc, char* argv[]) {
   // sockets/pipes correctly, so SIGPIPE is just a pest.
   signal(SIGPIPE, SIG_IGN);
 
-  int flags = chromeos::kLogToSyslog;
+  int flags = brillo::kLogToSyslog;
   if (FLAGS_log_to_stderr)
-    flags |= chromeos::kLogToStderr;
-  chromeos::InitLog(flags | chromeos::kLogHeader);
+    flags |= brillo::kLogToStderr;
+  brillo::InitLog(flags | brillo::kLogHeader);
 
   webservd::Config config;
   config.use_ipv6 = FLAGS_ipv6;
@@ -141,8 +141,8 @@ int main(int argc, char* argv[]) {
 #if !defined(__ANDROID__)
   // Drop privileges and use 'webservd' user. We need to do this after Daemon
   // object is constructed since it creates an instance of base::AtExitManager
-  // which is required for chromeos::Minijail::GetInstance() to work.
-  chromeos::Minijail* minijail_instance = chromeos::Minijail::GetInstance();
+  // which is required for brillo::Minijail::GetInstance() to work.
+  brillo::Minijail* minijail_instance = brillo::Minijail::GetInstance();
   minijail* jail = minijail_instance->New();
   minijail_instance->DropRoot(jail, kWebServerUserName, kWebServerGroupName);
   // Permissions needed for the daemon to allow it to bind to ports like TCP

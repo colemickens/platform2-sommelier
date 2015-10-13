@@ -19,11 +19,11 @@
 #include <base/bind.h>
 #include <base/files/file.h>
 #include <base/guid.h>
-#include <chromeos/http/http_request.h>
-#include <chromeos/http/http_utils.h>
-#include <chromeos/mime_utils.h>
-#include <chromeos/streams/file_stream.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/http/http_request.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/mime_utils.h>
+#include <brillo/streams/file_stream.h>
+#include <brillo/strings/string_utils.h>
 #include "webservd/log_manager.h"
 #include "webservd/protocol_handler.h"
 #include "webservd/request_handler_interface.h"
@@ -59,7 +59,7 @@ class RequestHelper {
     if (value)
       data = value;
     if (kind == MHD_HEADER_KIND) {
-      self->headers_.emplace_back(chromeos::http::GetCanonicalHeaderName(key),
+      self->headers_.emplace_back(brillo::http::GetCanonicalHeaderName(key),
                                   data);
     } else if (kind == MHD_COOKIE_KIND) {
       // TODO(avakulenko): add support for cookies...
@@ -102,7 +102,7 @@ Request::Request(
   CHECK_EQ(0, pipe(pipe_fds));
   request_data_pipe_out_ = base::File{pipe_fds[0]};
   CHECK(request_data_pipe_out_.IsValid());
-  request_data_stream_ = chromeos::FileStream::FromFileDescriptor(
+  request_data_stream_ = brillo::FileStream::FromFileDescriptor(
       pipe_fds[1], true, nullptr);
   CHECK(request_data_stream_);
 
@@ -146,7 +146,7 @@ base::File Request::Complete(
   CHECK_EQ(0, pipe(pipe_fds));
   file = base::File{pipe_fds[1]};
   CHECK(file.IsValid());
-  response_data_stream_ = chromeos::FileStream::FromFileDescriptor(
+  response_data_stream_ = brillo::FileStream::FromFileDescriptor(
       pipe_fds[0], true, nullptr);
   CHECK(response_data_stream_);
 
@@ -168,7 +168,7 @@ bool Request::Complete(
     const std::string& mime_type,
     const std::string& data) {
   std::vector<std::tuple<std::string, std::string>> headers_copy;
-  headers_copy.emplace_back(chromeos::http::response_header::kContentType,
+  headers_copy.emplace_back(brillo::http::response_header::kContentType,
                             mime_type);
   base::File file = Complete(status_code, headers_copy, data.size());
   bool success = false;
@@ -256,8 +256,8 @@ void Request::ForwardRequestToHandler() {
   } else {
     // There was no handler found when request was made, respond with
     // 404 Page Not Found.
-    Complete(chromeos::http::status_code::NotFound, {},
-             chromeos::mime::text::kPlain, "Not Found");
+    Complete(brillo::http::status_code::NotFound, {},
+             brillo::mime::text::kPlain, "Not Found");
   }
 }
 
@@ -305,7 +305,7 @@ bool Request::AddRawRequestData(const void* data, size_t* size) {
   // Now, just monitor the pipe and figure out when we can resume sending data
   // over it.
   waiting_for_data_ = request_data_stream_->WaitForData(
-      chromeos::Stream::AccessMode::WRITE,
+      brillo::Stream::AccessMode::WRITE,
       base::Bind(&Request::OnPipeAvailable, weak_ptr_factory_.GetWeakPtr()),
       nullptr);
 
@@ -337,7 +337,7 @@ ssize_t Request::ResponseDataCallback(void *cls, uint64_t pos, char *buf,
   MHD_suspend_connection(self->connection_);
 
   self->waiting_for_data_ = self->response_data_stream_->WaitForData(
-      chromeos::Stream::AccessMode::READ,
+      brillo::Stream::AccessMode::READ,
       base::Bind(&Request::OnPipeAvailable,
                  self->weak_ptr_factory_.GetWeakPtr()),
       nullptr);
@@ -349,7 +349,7 @@ ssize_t Request::ResponseDataCallback(void *cls, uint64_t pos, char *buf,
   return 0;
 }
 
-void Request::OnPipeAvailable(chromeos::Stream::AccessMode mode) {
+void Request::OnPipeAvailable(brillo::Stream::AccessMode mode) {
   MHD_resume_connection(connection_);
   waiting_for_data_ = false;
   protocol_handler_->ScheduleWork();
@@ -366,9 +366,9 @@ bool Request::AddPostFieldData(const char* key,
         new FileInfo{key, filename, content_type ? content_type : "",
                      transfer_encoding ? transfer_encoding : ""}};
     file_info->temp_file_name = GetTempFileManager()->CreateTempFileName(id_);
-    file_info->data_stream = chromeos::FileStream::Open(
-        file_info->temp_file_name, chromeos::Stream::AccessMode::READ_WRITE,
-        chromeos::FileStream::Disposition::CREATE_ALWAYS, nullptr);
+    file_info->data_stream = brillo::FileStream::Open(
+        file_info->temp_file_name, brillo::Stream::AccessMode::READ_WRITE,
+        brillo::FileStream::Disposition::CREATE_ALWAYS, nullptr);
     if (!file_info->data_stream ||
         !file_info->data_stream->WriteAllBlocking(data, size, nullptr)) {
       return false;
