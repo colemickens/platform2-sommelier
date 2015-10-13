@@ -18,7 +18,7 @@
 
 #include <base/callback.h>
 #include <base/command_line.h>
-#include <chromeos/bind_lambda.h>
+#include <brillo/bind_lambda.h>
 
 namespace tpm_manager {
 

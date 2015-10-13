@@ -19,17 +19,17 @@
 
 #include <memory>
 
-#include <chromeos/dbus/dbus_method_response.h>
-#include <chromeos/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_method_response.h>
+#include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
 #include "tpm_manager/common/tpm_manager_interface.h"
 
 namespace tpm_manager {
 
-using chromeos::dbus_utils::DBusMethodResponse;
+using brillo::dbus_utils::DBusMethodResponse;
 using CompletionAction =
-    chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction;
 
 // Handles D-Bus communtion with the TpmManager daemon.
 class DBusService {
@@ -61,7 +61,7 @@ class DBusService {
       std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
       const RequestProtobufType& request);
 
-  chromeos::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::DBusObject dbus_object_;
   TpmManagerInterface* service_;
   DISALLOW_COPY_AND_ASSIGN(DBusService);
 };

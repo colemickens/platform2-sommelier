@@ -16,8 +16,8 @@
 
 #include <string>
 
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/dbus_object_test_helpers.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/dbus_object_test_helpers.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
@@ -48,7 +48,7 @@ class DBusServiceTest : public testing::Test {
     ON_CALL(*mock_bus_, GetExportedObject(path))
         .WillByDefault(Return(mock_exported_object_.get()));
     dbus_service_.reset(new DBusService(mock_bus_, &mock_service_));
-    dbus_service_->Register(chromeos::dbus_utils::AsyncEventSequencer::
+    dbus_service_->Register(brillo::dbus_utils::AsyncEventSequencer::
                                 GetDefaultCompletionAction());
   }
 
@@ -66,7 +66,7 @@ class DBusServiceTest : public testing::Test {
 
  protected:
   std::unique_ptr<dbus::Response> CallMethod(dbus::MethodCall* method_call) {
-    return chromeos::dbus_utils::testing::CallMethod(
+    return brillo::dbus_utils::testing::CallMethod(
         dbus_service_->dbus_object_, method_call);
   }
 

@@ -25,7 +25,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
-#include <chromeos/bind_lambda.h>
+#include <brillo/bind_lambda.h>
 
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_initializer.h"

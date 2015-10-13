@@ -18,11 +18,11 @@
 #include <string>
 
 #include <base/command_line.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/minijail/minijail.h>
-#include <chromeos/syslog_logging.h>
-#include <chromeos/userdb_utils.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/minijail/minijail.h>
+#include <brillo/syslog_logging.h>
+#include <brillo/userdb_utils.h>
 
 #include "tpm_manager/common/dbus_interface.h"
 #include "tpm_manager/server/dbus_service.h"
@@ -37,16 +37,16 @@
 #include "tpm_manager/server/tpm_status_impl.h"
 #endif
 
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace {
 
 const char kWaitForOwnershipTriggerSwitch[] = "wait_for_ownership_trigger";
 
-class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
+class TpmManagerDaemon : public brillo::DBusServiceDaemon {
  public:
   TpmManagerDaemon()
-      : chromeos::DBusServiceDaemon(tpm_manager::kTpmManagerServiceName) {
+      : brillo::DBusServiceDaemon(tpm_manager::kTpmManagerServiceName) {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     local_data_store_.reset(new tpm_manager::LocalDataStoreImpl());
 #if USE_TPM2
@@ -70,7 +70,7 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
 
  protected:
   int OnInit() override {
-    int result = chromeos::DBusServiceDaemon::OnInit();
+    int result = brillo::DBusServiceDaemon::OnInit();
     if (result != EX_OK) {
       LOG(ERROR) << "Error starting tpm_manager dbus daemon.";
       return result;
@@ -100,7 +100,7 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   TpmManagerDaemon daemon;
   LOG(INFO) << "TpmManager Daemon Started.";
   return daemon.Run();

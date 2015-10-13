@@ -24,9 +24,9 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/daemons/daemon.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/daemons/daemon.h>
+#include <brillo/syslog_logging.h>
 
 #include "tpm_manager/client/dbus_proxy.h"
 #include "tpm_manager/common/dbus_interface.pb.h"
@@ -78,7 +78,7 @@ Arguments (used as switches):
       Data to write to NV space.
 )";
 
-using ClientLoopBase = chromeos::Daemon;
+using ClientLoopBase = brillo::Daemon;
 class ClientLoop : public ClientLoopBase {
  public:
   ClientLoop() = default;
@@ -298,7 +298,7 @@ class ClientLoop : public ClientLoopBase {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   tpm_manager::ClientLoop loop;
   return loop.Run();
 }

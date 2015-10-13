@@ -16,8 +16,8 @@
 
 #include "tpm_manager/client/dbus_proxy.h"
 
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/dbus_method_invoker.h>
 
 #include "tpm_manager/common/dbus_interface.h"
 
@@ -102,12 +102,12 @@ template<typename ReplyProtobufType,
 void DBusProxy::CallMethod(const std::string& method_name,
                            const RequestProtobufType& request,
                            const CallbackType& callback) {
-  auto on_error = [callback](chromeos::Error* error) {
+  auto on_error = [callback](brillo::Error* error) {
     ReplyProtobufType reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
     callback.Run(reply);
   };
-  chromeos::dbus_utils::CallMethodWithTimeout(
+  brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
       tpm_manager::kTpmManagerInterface,

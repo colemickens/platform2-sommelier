@@ -19,7 +19,7 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/bind_lambda.h>
+#include <brillo/bind_lambda.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 
@@ -33,7 +33,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       service_(service) {}
 
 void DBusService::Register(const CompletionAction& callback) {
-  chromeos::dbus_utils::DBusInterface* dbus_interface =
+  brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kTpmManagerInterface);
 
   dbus_interface->AddMethodHandler(
