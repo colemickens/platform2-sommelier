@@ -54,6 +54,7 @@
       'sources': [
         'config.cc',
         'daemon.cc',
+        'dbus_control.cc',
         'device.cc',
         'device_info.cc',
         'dhcp_server.cc',
