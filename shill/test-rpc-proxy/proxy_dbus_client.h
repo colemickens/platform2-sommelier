@@ -29,11 +29,7 @@
 #include <base/logging.h>
 #include <base/timer/timer.h>
 #include <brillo/any.h>
-#if defined(__ANDROID__)
 #include <service_constants.h>
-#else
-#include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 #include <shill/dbus-proxies.h>
 
 using ManagerProxy = org::chromium::flimflam::ManagerProxy;
@@ -109,12 +105,10 @@ class ProxyDbusClient {
       const std::string& service_type,
       int timeout_seconds,
       int rescan_interval_milliseconds,
-      int* elapsed_time_seconds);
-  std::unique_ptr<ServiceProxy> ConfigureService(
-      const brillo::VariantDictionary& config);
-  std::unique_ptr<ServiceProxy> ConfigureServiceByGuid(
-      const std::string& guid,
-      const brillo::VariantDictionary& config);
+      int *elapsed_time_seconds);
+  bool ConfigureService(const brillo::VariantDictionary& config_params);
+  bool ConfigureServiceByGuid(const std::string& guid,
+                              const brillo::VariantDictionary& config_params);
   bool ConnectService(const dbus::ObjectPath& object_path,
                       int timeout_seconds);
   bool DisconnectService(const dbus::ObjectPath& object_path,
@@ -125,6 +119,9 @@ class ProxyDbusClient {
   bool PopProfile(const std::string& profile_name);
   bool PopAnyProfile();
   bool RequestServiceScan(const std::string& service_type);
+  bool GetServiceOrder(std::string* order);
+  bool SetServiceOrder(const std::string& order);
+  bool SetSchedScan(bool enable);
 
  private:
   bool GetPropertyValueFromManager(const std::string& property_name,

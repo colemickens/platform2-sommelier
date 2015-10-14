@@ -307,29 +307,23 @@ std::unique_ptr<ServiceProxy> ProxyDbusClient::WaitForMatchingServiceProxy(
   return service_proxy;
 }
 
-std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureService(
-    const brillo::VariantDictionary& config) {
+bool ProxyDbusClient::ConfigureService(
+    const brillo::VariantDictionary& config_params) {
   dbus::ObjectPath service_path;
   brillo::ErrorPtr error;
-  if(!shill_manager_proxy_.ConfigureService(
-      config, &service_path, &error)) {
-    return nullptr;
-  }
-  return GetProxyForObjectPath<ServiceProxy>(service_path);
+  return shill_manager_proxy_.ConfigureService(
+      config_params, &service_path, &error);
 }
 
-std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureServiceByGuid(
+bool ProxyDbusClient::ConfigureServiceByGuid(
     const std::string& guid,
-    const brillo::VariantDictionary& config) {
+    const brillo::VariantDictionary& config_params) {
   dbus::ObjectPath service_path;
   brillo::ErrorPtr error;
-  brillo::VariantDictionary guid_config(config);
-  guid_config[shill::kGuidProperty] = guid;
-  if(!shill_manager_proxy_.ConfigureService(
-      guid_config, &service_path, &error)) {
-    return nullptr;
-  }
-  return GetProxyForObjectPath<ServiceProxy>(service_path);
+  brillo::VariantDictionary guid_config_params(config_params);
+  guid_config_params[shill::kGuidProperty] = guid;
+  return shill_manager_proxy_.ConfigureService(
+      guid_config_params, &service_path, &error);
 }
 
 bool ProxyDbusClient::ConnectService(
@@ -395,6 +389,21 @@ bool ProxyDbusClient::PopAnyProfile() {
 bool ProxyDbusClient::RequestServiceScan(const std::string& service_type) {
   brillo::ErrorPtr error;
   return shill_manager_proxy_.RequestScan(service_type, &error);
+}
+
+bool ProxyDbusClient::GetServiceOrder(std::string* order) {
+  brillo::ErrorPtr error;
+  return shill_manager_proxy_.GetServiceOrder(order, &error);
+}
+
+bool ProxyDbusClient::SetServiceOrder(const std::string& order) {
+  brillo::ErrorPtr error;
+  return shill_manager_proxy_.SetServiceOrder(order, &error);
+}
+
+bool ProxyDbusClient::SetSchedScan(bool enable) {
+  brillo::ErrorPtr error;
+  return shill_manager_proxy_.SetSchedScan(enable, &error);
 }
 
 bool ProxyDbusClient::GetPropertyValueFromManager(
