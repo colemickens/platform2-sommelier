@@ -17,6 +17,8 @@
 #ifndef SHILL_NET_IP_ADDRESS_H_
 #define SHILL_NET_IP_ADDRESS_H_
 
+#include <netinet/in.h>
+
 #include <string>
 
 #include "shill/net/byte_string.h"
@@ -35,9 +37,14 @@ class SHILL_EXPORT IPAddress {
   static const char kFamilyNameIPv6[];
 
   explicit IPAddress(Family family);
-  // Constructs an IPAdress object given a standard string representation of an
+  // Constructs an IPAddress object given a standard string representation of an
   // IP address (e.g. "192.144.30.54").
   explicit IPAddress(std::string ip_string);
+
+  // Constructs an IPAddress object from a sockaddr_in or sockaddr_in6
+  // structure, depending on the family specified in |address_struct|.  |size|
+  // specifies the actual size of the structure backing |address_struct|.
+  explicit IPAddress(const sockaddr* address_struct, size_t size);
 
   IPAddress(Family family, const ByteString& address);
   IPAddress(Family family, const ByteString& address, unsigned int prefix);
@@ -113,6 +120,13 @@ class SHILL_EXPORT IPAddress {
   bool IntoString(std::string* address_string) const;
   // Similar to IntoString, but returns by value. Convenient for logging.
   std::string ToString() const;
+
+  // Populates the address and family portion of a sockaddr_in or
+  // sockaddr_in6 structure, depending on the IPAddress family.  Returns true
+  // if the specified |size| is large enough to accommodate the address family,
+  // and a valid address and family are written to the structure.  Otherwise,
+  // false is returned and the memory at |address_struct| is unmodified.
+  bool IntoSockAddr(sockaddr* address_struct, size_t size) const;
 
   // Returns whether |b| has the same family, address and prefix as |this|.
   bool Equals(const IPAddress& b) const;
