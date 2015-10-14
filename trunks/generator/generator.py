@@ -81,11 +81,21 @@ _BASIC_TYPES = ['uint8_t', 'int8_t', 'int', 'uint16_t', 'int16_t',
 _OUTPUT_FILE_H = 'tpm_generated.h'
 _OUTPUT_FILE_CC = 'tpm_generated.cc'
 _COPYRIGHT_HEADER = (
-    '// Copyright 2014 The Chromium OS Authors. All rights reserved.\n'
-    '// Use of this source code is governed by a BSD-style license that can '
-    'be\n'
-    '// found in the LICENSE file.\n'
-    '\n'
+    '// \n'
+    '// Copyright (C) 2015 The Android Open Source Project \n'
+    '// \n'
+    '// Licensed under the Apache License, Version 2.0 (the "License"); \n'
+    '// you may not use this file except in compliance with the License. \n'
+    '// \n'
+    '//      http://www.apache.org/licenses/LICENSE-2.0 \n'
+    '// \n'
+    '// Unless required by applicable law or agreed to in writing, software \n'
+    '// distributed under the License is distributed on an "AS IS" BASIS, \n'
+    '// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or '
+    'implied. \n'
+    '// See the License for the specific language governing permissions and \n'
+    '// limitations under the License. \n'
+    '// \n'
     '// THIS CODE IS GENERATED - DO NOT MODIFY!\n')
 _HEADER_FILE_GUARD_HEADER = """
 #ifndef %(name)s
@@ -1737,11 +1747,20 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     """Splits a list of args into handles and parameters."""
     handles = []
     parameters = []
+    # These commands have handles that are serialized into the parameter
+    # section.
+    command_handle_parameters = {
+        'TPM_CC_FlushContext': 'TPMI_DH_CONTEXT',
+        'TPM_CC_Hash': 'TPMI_RH_HIERARCHY',
+        'TPM_CC_LoadExternal': 'TPMI_RH_HIERARCHY',
+        'TPM_CC_SequenceComplete': 'TPMI_RH_HIERARCHY',
+    }
+    # Handle type that appears in the handle section.
     always_handle = set(['TPM_HANDLE'])
-    # Handle types that appear as command parameters.
+    # Handle types that always appear as command parameters.
     always_parameter = set(['TPMI_RH_ENABLES', 'TPMI_DH_PERSISTENT'])
-    if self.command_code == 'TPM_CC_FlushContext':
-      always_parameter.add('TPMI_DH_CONTEXT')
+    if self.command_code in command_handle_parameters:
+      always_parameter.add(command_handle_parameters[self.command_code])
     for arg in args:
       if (arg['type'] in always_handle or
           (self._HANDLE_RE.search(arg['type']) and

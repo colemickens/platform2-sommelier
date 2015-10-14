@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2014 The Android Open Source Project
+// Copyright (C) 2015 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -3966,10 +3966,9 @@ class TRUNKS_EXPORT Tpm {
       const TPM_HANDLE& object_handle,
       const TPM2B_NAME& name)> LoadExternalResponse;
   static TPM_RC SerializeCommand_LoadExternal(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_SENSITIVE& in_private,
       const TPM2B_PUBLIC& in_public,
+      const TPMI_RH_HIERARCHY& hierarchy,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate);
   static TPM_RC ParseResponse_LoadExternal(
@@ -3978,17 +3977,15 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate);
   virtual void LoadExternal(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_SENSITIVE& in_private,
       const TPM2B_PUBLIC& in_public,
+      const TPMI_RH_HIERARCHY& hierarchy,
       AuthorizationDelegate* authorization_delegate,
       const LoadExternalResponse& callback);
   virtual TPM_RC LoadExternalSync(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_SENSITIVE& in_private,
       const TPM2B_PUBLIC& in_public,
+      const TPMI_RH_HIERARCHY& hierarchy,
       TPM_HANDLE* object_handle,
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate);
@@ -4465,10 +4462,9 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_DIGEST& out_hash,
       const TPMT_TK_HASHCHECK& validation)> HashResponse;
   static TPM_RC SerializeCommand_Hash(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& data,
       const TPMI_ALG_HASH& hash_alg,
+      const TPMI_RH_HIERARCHY& hierarchy,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate);
   static TPM_RC ParseResponse_Hash(
@@ -4477,17 +4473,15 @@ class TRUNKS_EXPORT Tpm {
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate);
   virtual void Hash(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& data,
       const TPMI_ALG_HASH& hash_alg,
+      const TPMI_RH_HIERARCHY& hierarchy,
       AuthorizationDelegate* authorization_delegate,
       const HashResponse& callback);
   virtual TPM_RC HashSync(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& data,
       const TPMI_ALG_HASH& hash_alg,
+      const TPMI_RH_HIERARCHY& hierarchy,
       TPM2B_DIGEST* out_hash,
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate);
@@ -4633,9 +4627,8 @@ class TRUNKS_EXPORT Tpm {
   static TPM_RC SerializeCommand_SequenceComplete(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& buffer,
+      const TPMI_RH_HIERARCHY& hierarchy,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate);
   static TPM_RC ParseResponse_SequenceComplete(
@@ -4646,17 +4639,15 @@ class TRUNKS_EXPORT Tpm {
   virtual void SequenceComplete(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& buffer,
+      const TPMI_RH_HIERARCHY& hierarchy,
       AuthorizationDelegate* authorization_delegate,
       const SequenceCompleteResponse& callback);
   virtual TPM_RC SequenceCompleteSync(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& buffer,
+      const TPMI_RH_HIERARCHY& hierarchy,
       TPM2B_DIGEST* result,
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate);

@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2014 The Android Open Source Project
+// Copyright (C) 2015 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ size_t GetNumberOfRequestHandles(TPM_CC command_code) {
     case TPM_CC_PolicyRestart: return 1;
     case TPM_CC_Create: return 1;
     case TPM_CC_Load: return 1;
-    case TPM_CC_LoadExternal: return 1;
+    case TPM_CC_LoadExternal: return 0;
     case TPM_CC_ReadPublic: return 1;
     case TPM_CC_ActivateCredential: return 2;
     case TPM_CC_MakeCredential: return 1;
@@ -63,14 +63,14 @@ size_t GetNumberOfRequestHandles(TPM_CC command_code) {
     case TPM_CC_ECC_Parameters: return 0;
     case TPM_CC_ZGen_2Phase: return 1;
     case TPM_CC_EncryptDecrypt: return 1;
-    case TPM_CC_Hash: return 1;
+    case TPM_CC_Hash: return 0;
     case TPM_CC_HMAC: return 1;
     case TPM_CC_GetRandom: return 0;
     case TPM_CC_StirRandom: return 0;
     case TPM_CC_HMAC_Start: return 1;
     case TPM_CC_HashSequenceStart: return 0;
     case TPM_CC_SequenceUpdate: return 1;
-    case TPM_CC_SequenceComplete: return 2;
+    case TPM_CC_SequenceComplete: return 1;
     case TPM_CC_EventSequenceComplete: return 2;
     case TPM_CC_Certify: return 2;
     case TPM_CC_CertifyCreation: return 2;
@@ -12004,10 +12004,9 @@ TPM_RC Tpm::LoadSync(
 }
 
 TPM_RC Tpm::SerializeCommand_LoadExternal(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_SENSITIVE& in_private,
       const TPM2B_PUBLIC& in_public,
+      const TPMI_RH_HIERARCHY& hierarchy,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
@@ -12059,10 +12058,6 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
                command_code_bytes.size());
-  hash->Update(hierarchy_name.data(),
-               hierarchy_name.size());
-  handle_section_bytes += hierarchy_bytes;
-  command_size += hierarchy_bytes.size();
   hash->Update(in_private_bytes.data(),
                in_private_bytes.size());
   parameter_section_bytes += in_private_bytes;
@@ -12071,6 +12066,10 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
                in_public_bytes.size());
   parameter_section_bytes += in_public_bytes;
   command_size += in_public_bytes.size();
+  hash->Update(hierarchy_bytes.data(),
+               hierarchy_bytes.size());
+  parameter_section_bytes += hierarchy_bytes;
+  command_size += hierarchy_bytes.size();
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
@@ -12273,10 +12272,9 @@ void LoadExternalResponseParser(
 }
 
 void Tpm::LoadExternal(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_SENSITIVE& in_private,
       const TPM2B_PUBLIC& in_public,
+      const TPMI_RH_HIERARCHY& hierarchy,
       AuthorizationDelegate* authorization_delegate,
       const LoadExternalResponse& callback) {
   VLOG(1) << __func__;
@@ -12288,10 +12286,9 @@ void Tpm::LoadExternal(
                  authorization_delegate);
   std::string command;
   TPM_RC rc = SerializeCommand_LoadExternal(
-      hierarchy,
-      hierarchy_name,
       in_private,
       in_public,
+      hierarchy,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -12302,20 +12299,18 @@ void Tpm::LoadExternal(
 }
 
 TPM_RC Tpm::LoadExternalSync(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_SENSITIVE& in_private,
       const TPM2B_PUBLIC& in_public,
+      const TPMI_RH_HIERARCHY& hierarchy,
       TPM_HANDLE* object_handle,
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
   TPM_RC rc = SerializeCommand_LoadExternal(
-      hierarchy,
-      hierarchy_name,
       in_private,
       in_public,
+      hierarchy,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -17169,10 +17164,9 @@ TPM_RC Tpm::EncryptDecryptSync(
 }
 
 TPM_RC Tpm::SerializeCommand_Hash(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& data,
       const TPMI_ALG_HASH& hash_alg,
+      const TPMI_RH_HIERARCHY& hierarchy,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
@@ -17224,10 +17218,6 @@ TPM_RC Tpm::SerializeCommand_Hash(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
                command_code_bytes.size());
-  hash->Update(hierarchy_name.data(),
-               hierarchy_name.size());
-  handle_section_bytes += hierarchy_bytes;
-  command_size += hierarchy_bytes.size();
   hash->Update(data_bytes.data(),
                data_bytes.size());
   parameter_section_bytes += data_bytes;
@@ -17236,6 +17226,10 @@ TPM_RC Tpm::SerializeCommand_Hash(
                hash_alg_bytes.size());
   parameter_section_bytes += hash_alg_bytes;
   command_size += hash_alg_bytes.size();
+  hash->Update(hierarchy_bytes.data(),
+               hierarchy_bytes.size());
+  parameter_section_bytes += hierarchy_bytes;
+  command_size += hierarchy_bytes.size();
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
@@ -17438,10 +17432,9 @@ void HashResponseParser(
 }
 
 void Tpm::Hash(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& data,
       const TPMI_ALG_HASH& hash_alg,
+      const TPMI_RH_HIERARCHY& hierarchy,
       AuthorizationDelegate* authorization_delegate,
       const HashResponse& callback) {
   VLOG(1) << __func__;
@@ -17453,10 +17446,9 @@ void Tpm::Hash(
                  authorization_delegate);
   std::string command;
   TPM_RC rc = SerializeCommand_Hash(
-      hierarchy,
-      hierarchy_name,
       data,
       hash_alg,
+      hierarchy,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -17467,20 +17459,18 @@ void Tpm::Hash(
 }
 
 TPM_RC Tpm::HashSync(
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& data,
       const TPMI_ALG_HASH& hash_alg,
+      const TPMI_RH_HIERARCHY& hierarchy,
       TPM2B_DIGEST* out_hash,
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
   TPM_RC rc = SerializeCommand_Hash(
-      hierarchy,
-      hierarchy_name,
       data,
       hash_alg,
+      hierarchy,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -19157,9 +19147,8 @@ TPM_RC Tpm::SequenceUpdateSync(
 TPM_RC Tpm::SerializeCommand_SequenceComplete(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& buffer,
+      const TPMI_RH_HIERARCHY& hierarchy,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
@@ -19215,14 +19204,14 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
                sequence_handle_name.size());
   handle_section_bytes += sequence_handle_bytes;
   command_size += sequence_handle_bytes.size();
-  hash->Update(hierarchy_name.data(),
-               hierarchy_name.size());
-  handle_section_bytes += hierarchy_bytes;
-  command_size += hierarchy_bytes.size();
   hash->Update(buffer_bytes.data(),
                buffer_bytes.size());
   parameter_section_bytes += buffer_bytes;
   command_size += buffer_bytes.size();
+  hash->Update(hierarchy_bytes.data(),
+               hierarchy_bytes.size());
+  parameter_section_bytes += hierarchy_bytes;
+  command_size += hierarchy_bytes.size();
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
@@ -19427,9 +19416,8 @@ void SequenceCompleteResponseParser(
 void Tpm::SequenceComplete(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& buffer,
+      const TPMI_RH_HIERARCHY& hierarchy,
       AuthorizationDelegate* authorization_delegate,
       const SequenceCompleteResponse& callback) {
   VLOG(1) << __func__;
@@ -19443,9 +19431,8 @@ void Tpm::SequenceComplete(
   TPM_RC rc = SerializeCommand_SequenceComplete(
       sequence_handle,
       sequence_handle_name,
-      hierarchy,
-      hierarchy_name,
       buffer,
+      hierarchy,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -19458,9 +19445,8 @@ void Tpm::SequenceComplete(
 TPM_RC Tpm::SequenceCompleteSync(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
-      const TPMI_RH_HIERARCHY& hierarchy,
-      const std::string& hierarchy_name,
       const TPM2B_MAX_BUFFER& buffer,
+      const TPMI_RH_HIERARCHY& hierarchy,
       TPM2B_DIGEST* result,
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate) {
@@ -19469,9 +19455,8 @@ TPM_RC Tpm::SequenceCompleteSync(
   TPM_RC rc = SerializeCommand_SequenceComplete(
       sequence_handle,
       sequence_handle_name,
-      hierarchy,
-      hierarchy_name,
       buffer,
+      hierarchy,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
