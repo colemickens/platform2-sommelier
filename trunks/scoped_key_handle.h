@@ -49,8 +49,12 @@ class TRUNKS_EXPORT ScopedKeyHandle {
   // is injected.
   virtual void reset();
 
+  // This method returns a pointer to the handle associated with this class.
+  // This method does not transfer ownership.
+  virtual TPM_HANDLE* ptr();
+
   // This method returns the handle currectly associated with the class.
-  // This method does not transfew ownership, therefore the handle returned
+  // This method does not transfer ownership, therefore the handle returned
   // might be stale.
   virtual TPM_HANDLE get() const;
 

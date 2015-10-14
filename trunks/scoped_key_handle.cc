@@ -61,6 +61,10 @@ void ScopedKeyHandle::reset() {
   reset(kInvalidHandle);
 }
 
+TPM_HANDLE* ScopedKeyHandle::ptr() {
+  return &handle_;
+}
+
 TPM_HANDLE ScopedKeyHandle::get() const {
   return handle_;
 }
