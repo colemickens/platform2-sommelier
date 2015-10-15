@@ -49,7 +49,7 @@ class SHILL_EXPORT NetlinkPacket {
   uint16_t GetMessageType() const;
 
   // Get the sequence number from the header.
-  uint16_t GetMessageSequence() const;
+  uint32_t GetMessageSequence() const;
 
   // Returns the remaining (un-consumed) payload length.
   size_t GetRemainingLength() const;
@@ -117,7 +117,7 @@ class SHILL_EXPORT MutableNetlinkPacket : public NetlinkPacket {
   void SetMessageType(uint16_t type);
 
   // Set the sequence number in the header.
-  void SetMessageSequence(uint16_t sequence);
+  void SetMessageSequence(uint32_t sequence);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MutableNetlinkPacket);
