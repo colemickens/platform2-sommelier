@@ -16,9 +16,12 @@
 
 #include "shill/dhcp/dhcp_provider.h"
 
+#include <signal.h>
+
 #include <base/bind.h>
 #include <base/files/file_util.h>
-#include <base/process/kill.h>
+#include <base/process/process.h>
+#include <base/process/process_iterator.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -84,7 +87,11 @@ void DHCPProvider::Init(ControlInterface* control_interface,
   metrics_ = metrics;
 
   // Kill the dhcpcd processes accidentally left by previous run.
-  base::KillProcesses(kDHCPCDExecutableName, 0, NULL);
+  base::NamedProcessIterator iter(kDHCPCDExecutableName, NULL);
+  while (const base::ProcessEntry* entry = iter.NextProcessEntry()) {
+    base::Process process = base::Process::Open(entry->pid());
+    kill(process.Pid(),SIGKILL);
+  }
 }
 
 void DHCPProvider::Stop() {
