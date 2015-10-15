@@ -159,8 +159,8 @@ bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string& enabled,
     return false;
   }
   if (enabled != kWakeOnWiFiFeaturesEnabledPacket &&
-      enabled != kWakeOnWiFiFeaturesEnabledSSID &&
-      enabled != kWakeOnWiFiFeaturesEnabledPacketSSID &&
+      enabled != kWakeOnWiFiFeaturesEnabledDarkConnect &&
+      enabled != kWakeOnWiFiFeaturesEnabledPacketDarkConnect &&
       enabled != kWakeOnWiFiFeaturesEnabledNone) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid Wake on WiFi feature");
@@ -1040,7 +1040,7 @@ bool WakeOnWiFi::WakeOnPacketEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
       wake_on_wifi_features_enabled_ ==
           kWakeOnWiFiFeaturesEnabledNotSupported ||
-      wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID) {
+      wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledDarkConnect) {
     return false;
   }
   if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
@@ -1073,11 +1073,12 @@ void WakeOnWiFi::ReportMetrics() {
   } else if (wake_on_wifi_features_enabled_ ==
              kWakeOnWiFiFeaturesEnabledPacket) {
     reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStatePacket;
-  } else if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID) {
-    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStateSSID;
   } else if (wake_on_wifi_features_enabled_ ==
-             kWakeOnWiFiFeaturesEnabledPacketSSID) {
-    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStatePacketSSID;
+             kWakeOnWiFiFeaturesEnabledDarkConnect) {
+    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStateDarkConnect;
+  } else if (wake_on_wifi_features_enabled_ ==
+             kWakeOnWiFiFeaturesEnabledPacketDarkConnect) {
+    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStatePacketDarkConnect;
   } else {
     LOG(ERROR) << __func__ << ": "
                << "Invalid wake on WiFi features state";

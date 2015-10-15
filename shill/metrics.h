@@ -457,8 +457,8 @@ class Metrics {
   enum WakeOnWiFiFeaturesEnabledState {
     kWakeOnWiFiFeaturesEnabledStateNone = 0,
     kWakeOnWiFiFeaturesEnabledStatePacket = 1,
-    kWakeOnWiFiFeaturesEnabledStateSSID = 2,
-    kWakeOnWiFiFeaturesEnabledStatePacketSSID = 3,
+    kWakeOnWiFiFeaturesEnabledStateDarkConnect = 2,
+    kWakeOnWiFiFeaturesEnabledStatePacketDarkConnect = 3,
     kWakeOnWiFiFeaturesEnabledStateMax
   };
 

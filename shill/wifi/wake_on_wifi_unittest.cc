@@ -645,14 +645,14 @@ class WakeOnWiFiTest : public ::testing::Test {
         kWakeOnWiFiFeaturesEnabledPacket;
   }
 
-  void EnableWakeOnWiFiFeaturesSSID() {
+  void EnableWakeOnWiFiFeaturesDarkConnect() {
     wake_on_wifi_->wake_on_wifi_features_enabled_ =
-        kWakeOnWiFiFeaturesEnabledSSID;
+        kWakeOnWiFiFeaturesEnabledDarkConnect;
   }
 
-  void EnableWakeOnWiFiFeaturesPacketSSID() {
+  void EnableWakeOnWiFiFeaturesPacketDarkConnect() {
     wake_on_wifi_->wake_on_wifi_features_enabled_ =
-        kWakeOnWiFiFeaturesEnabledPacketSSID;
+        kWakeOnWiFiFeaturesEnabledPacketDarkConnect;
   }
 
   void SetWakeOnWiFiFeaturesNotSupported() {
@@ -900,7 +900,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   void InitStateForDarkResume() {
     SetInDarkResume(true);
     GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
-    EnableWakeOnWiFiFeaturesPacketSSID();
+    EnableWakeOnWiFiFeaturesPacketDarkConnect();
     SetDarkResumeActionsTimeoutMilliseconds(0);
   }
 
@@ -1864,7 +1864,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 
   // No triggers supported, so no triggers programmed.
   SetSuspendActionsDoneCallback();
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   GetWakeOnWiFiTriggersSupported()->clear();
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerPattern);
   AddResultToLastSSIDResults();
@@ -1892,7 +1892,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_TRUE(GetLastSSIDMatchFreqs().empty());
 
   // Only wake on SSID feature supported.
-  EnableWakeOnWiFiFeaturesSSID();
+  EnableWakeOnWiFiFeaturesDarkConnect();
   GetWakeOnPacketConnections()->Clear();
   GetWakeOnWiFiTriggersSupported()->clear();
   GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kWakeTriggerDisconnect);
@@ -1918,7 +1918,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1),
                      GetWakeOnSSIDWhitelist());
   SetSuspendActionsDoneCallback();
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
 
   SetInDarkResume(true);
@@ -1955,7 +1955,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   AddSSIDToWhitelist(kSSIDBytes2, sizeof(kSSIDBytes2),
                      GetWakeOnSSIDWhitelist());
   SetSuspendActionsDoneCallback();
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
 
   // Do not start wake to scan timer if there are less whitelisted SSIDs (2)
   // than net detect SSIDs we support (10).
@@ -2158,7 +2158,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketConnection) {
 
   // Add operation will fail if pattern matching is supported but the max number
   // of IP address patterns have already been registered.
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kWakeTriggerPattern);
   SetWakeOnWiFiMaxPatterns(1);
   GetWakeOnPacketConnections()->AddUnique(IPAddress(ip_string1));
@@ -2187,7 +2187,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketConnection) {
   // Normal functioning of add/remove operations when wake on WiFi features
   // are enabled, the NIC supports pattern matching, and the max number
   // of patterns have not been registered yet.
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   GetWakeOnPacketConnections()->Clear();
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   AddWakeOnPacketConnection(ip_string1, &e);
@@ -2843,7 +2843,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnDHCPLeaseObtained) {
 TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   // At least one wake on WiFi trigger supported and Wake on WiFi features
   // are enabled, so disable Wake on WiFi on resume.]
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kWakeTriggerPattern);
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
@@ -2878,19 +2878,19 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
 TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiFeaturesEnabled) {
   const string bad_feature("blahblah");
   Error e;
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
-               kWakeOnWiFiFeaturesEnabledPacketSSID);
-  EXPECT_FALSE(
-      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledPacketSSID, &e));
+               kWakeOnWiFiFeaturesEnabledPacketDarkConnect);
+  EXPECT_FALSE(SetWakeOnWiFiFeaturesEnabled(
+      kWakeOnWiFiFeaturesEnabledPacketDarkConnect, &e));
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
-               kWakeOnWiFiFeaturesEnabledPacketSSID);
+               kWakeOnWiFiFeaturesEnabledPacketDarkConnect);
 
   EXPECT_FALSE(SetWakeOnWiFiFeaturesEnabled(bad_feature, &e));
   EXPECT_EQ(e.type(), Error::kInvalidArguments);
   EXPECT_STREQ(e.message().c_str(), "Invalid Wake on WiFi feature");
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
-               kWakeOnWiFiFeaturesEnabledPacketSSID);
+               kWakeOnWiFiFeaturesEnabledPacketDarkConnect);
 
   EXPECT_TRUE(
       SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledPacket, &e));
@@ -2901,14 +2901,14 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiFeaturesEnabled) {
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        ReportConnectedToServiceAfterWake_WakeOnSSIDEnabledAndConnected) {
   const bool is_connected = true;
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   EXPECT_CALL(
       metrics_,
       NotifyConnectedToServiceAfterWake(
           Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected));
   ReportConnectedToServiceAfterWake(is_connected);
 
-  EnableWakeOnWiFiFeaturesSSID();
+  EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_CALL(
       metrics_,
       NotifyConnectedToServiceAfterWake(
@@ -2919,14 +2919,14 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        ReportConnectedToServiceAfterWake_WakeOnSSIDEnabledAndNotConnected) {
   const bool is_connected = false;
-  EnableWakeOnWiFiFeaturesPacketSSID();
+  EnableWakeOnWiFiFeaturesPacketDarkConnect();
   EXPECT_CALL(
       metrics_,
       NotifyConnectedToServiceAfterWake(
           Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeNotConnected));
   ReportConnectedToServiceAfterWake(is_connected);
 
-  EnableWakeOnWiFiFeaturesSSID();
+  EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_CALL(
       metrics_,
       NotifyConnectedToServiceAfterWake(
@@ -2976,7 +2976,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        OnNoAutoConnectableServicesAfterScan_InDarkResume) {
   vector<ByteString> whitelist;
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
-  EnableWakeOnWiFiFeaturesSSID();
+  EnableWakeOnWiFiFeaturesDarkConnect();
   SetInDarkResume(true);
 
   // Perform disconnect before suspend actions if we are in dark resume.
@@ -2995,7 +2995,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        OnNoAutoConnectableServicesAfterScan_NotInDarkResume) {
   vector<ByteString> whitelist;
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
-  EnableWakeOnWiFiFeaturesSSID();
+  EnableWakeOnWiFiFeaturesDarkConnect();
   SetInDarkResume(false);
 
   // If we are not in dark resume, do nothing.
@@ -3011,7 +3011,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        OnNoAutoConnectableServicesAfterScan_Retry) {
   vector<ByteString> whitelist;
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
-  EnableWakeOnWiFiFeaturesSSID();
+  EnableWakeOnWiFiFeaturesDarkConnect();
   SetInDarkResume(true);
   SetDarkResumeScanRetriesLeft(1);
 
