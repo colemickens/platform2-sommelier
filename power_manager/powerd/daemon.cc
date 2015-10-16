@@ -628,14 +628,16 @@ bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
   DCHECK(wakeup_count);
   base::FilePath path(kWakeupCountPath);
   std::string buf;
+  LOG(INFO) << "Reading wakeup count from " << kWakeupCountPath;
   if (base::ReadFileToString(path, &buf)) {
     base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-    if (base::StringToUint64(buf, wakeup_count))
+    if (base::StringToUint64(buf, wakeup_count)) {
+      LOG(INFO) << "Read wakeup count " << wakeup_count;
       return true;
-
+    }
     LOG(ERROR) << "Could not parse wakeup count from \"" << buf << "\"";
   } else {
-    LOG(ERROR) << "Could not read " << kWakeupCountPath;
+    PLOG(ERROR) << "Could not read " << kWakeupCountPath;
   }
   return false;
 }
