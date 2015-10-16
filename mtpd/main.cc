@@ -22,7 +22,7 @@
 #include "service_constants.h"
 
 #if defined(CROS_BUILD)
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #endif
 
 using base::CommandLine;
@@ -33,7 +33,7 @@ static const char kMinLogLevelSwitch[] = "minloglevel";
 
 void SetupLogging() {
 #if defined(CROS_BUILD)
-  chromeos::InitLog(chromeos::kLogToSyslog);
+  brillo::InitLog(brillo::kLogToSyslog);
 #endif
 
   std::string log_level_str =
