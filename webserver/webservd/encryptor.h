@@ -15,6 +15,7 @@
 #ifndef WEBSERVER_WEBSERVD_ENCRYPTOR_H_
 #define WEBSERVER_WEBSERVD_ENCRYPTOR_H_
 
+#include <memory>
 #include <string>
 
 namespace webservd {
