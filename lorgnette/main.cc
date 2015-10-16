@@ -13,8 +13,8 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <chromeos/minijail/minijail.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/minijail/minijail.h>
+#include <brillo/syslog_logging.h>
 
 #include "lorgnette/daemon.h"
 
@@ -45,16 +45,16 @@ const char* kLoggerUser = "syslog";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
-void SetupLogging(chromeos::Minijail* minijail,
+void SetupLogging(brillo::Minijail* minijail,
                   bool foreground,
                   const char* daemon_name) {
   int log_flags = 0;
-  log_flags |= chromeos::kLogToSyslog;
-  log_flags |= chromeos::kLogHeader;
+  log_flags |= brillo::kLogToSyslog;
+  log_flags |= brillo::kLogHeader;
   if (foreground) {
-    log_flags |= chromeos::kLogToStderr;
+    log_flags |= brillo::kLogToStderr;
   }
-  chromeos::InitLog(log_flags);
+  brillo::InitLog(log_flags);
 
   if (!foreground) {
     vector<char*> logger_command_line;
@@ -86,14 +86,14 @@ void SetupLogging(chromeos::Minijail* minijail,
 }
 
 // Enter a sanboxed vfs namespace.
-void EnterVFSNamespace(chromeos::Minijail* minijail) {
+void EnterVFSNamespace(brillo::Minijail* minijail) {
   struct minijail* jail = minijail->New();
   minijail_namespace_vfs(jail);
   minijail_enter(jail);
   minijail->Destroy(jail);
 }
 
-void DropPrivileges(chromeos::Minijail* minijail) {
+void DropPrivileges(brillo::Minijail* minijail) {
   struct minijail* jail = minijail->New();
   minijail->DropRoot(jail, lorgnette::Daemon::kScanUserName,
                      lorgnette::Daemon::kScanGroupName);
@@ -102,7 +102,7 @@ void DropPrivileges(chromeos::Minijail* minijail) {
 }
 
 void OnStartup(const char* daemon_name, base::CommandLine* cl) {
-  chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
+  brillo::Minijail* minijail = brillo::Minijail::GetInstance();
   SetupLogging(minijail, cl->HasSwitch(switches::kForeground), daemon_name);
 
   LOG(INFO) << __func__ << ": Dropping privileges";

@@ -23,13 +23,13 @@ class PamHelperMock : public PamHelper {
 
   MOCK_METHOD3(GetPamPassword, bool(pam_handle_t*,
                                     bool old_password,
-                                    chromeos::SecureBlob*));
+                                    brillo::SecureBlob*));
   MOCK_METHOD3(SaveUserAndPassword, bool(pam_handle_t*,
                                          const std::string&,
-                                         const chromeos::SecureBlob&));
+                                         const brillo::SecureBlob&));
   MOCK_METHOD3(RetrieveUserAndPassword, bool(pam_handle_t*,
                                              std::string*,
-                                             chromeos::SecureBlob*));
+                                             brillo::SecureBlob*));
   MOCK_METHOD3(PutEnvironmentVariable, bool(pam_handle_t*,
                                             const std::string&,
                                             const std::string&));

@@ -13,7 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 #include <leveldb/db.h>
 #include <leveldb/env.h>
@@ -34,7 +34,7 @@ class ObjectStoreImpl : public ObjectStore {
   // ObjectStore methods.
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
-  virtual bool SetEncryptionKey(const chromeos::SecureBlob& key);
+  virtual bool SetEncryptionKey(const brillo::SecureBlob& key);
   virtual bool InsertObjectBlob(const ObjectBlob& blob, int* handle);
   virtual bool DeleteObjectBlob(int handle);
   virtual bool DeleteAllObjectBlobs();
@@ -62,11 +62,11 @@ class ObjectStoreImpl : public ObjectStore {
 
   // Computes an HMAC and appends it to the given input.
   std::string AppendHMAC(const std::string& input,
-                         const chromeos::SecureBlob& key);
+                         const brillo::SecureBlob& key);
 
   // Verifies an appended HMAC and strips it from the given input.
   bool VerifyAndStripHMAC(const std::string& input,
-                          const chromeos::SecureBlob& key,
+                          const brillo::SecureBlob& key,
                           std::string* stripped);
 
   // Creates and returns a unique database key for a blob.
@@ -119,7 +119,7 @@ class ObjectStoreImpl : public ObjectStore {
   // The current blob format version.
   static const int kBlobVersion;
 
-  chromeos::SecureBlob key_;
+  brillo::SecureBlob key_;
   scoped_ptr<leveldb::Env> env_;
   scoped_ptr<leveldb::DB> db_;
   std::map<int, BlobType> blob_type_map_;

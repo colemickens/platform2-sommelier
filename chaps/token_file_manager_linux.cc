@@ -15,7 +15,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
@@ -23,7 +23,7 @@
 
 using std::string;
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace chaps {
 

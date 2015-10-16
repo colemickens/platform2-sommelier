@@ -19,7 +19,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 extern "C" {
 #include <scrypt/crypto_scrypt.h>
 #include <scrypt/scryptenc.h>
@@ -40,7 +40,7 @@ extern "C" {
 #include <keyutils.h>
 }
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 namespace cryptohome {
@@ -121,7 +121,7 @@ Crypto::CryptoError Crypto::EnsureTpm(bool reload_key) const {
   return result;
 }
 
-bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
+bool Crypto::PasskeyToTokenAuthData(const brillo::Blob& passkey,
                                     const base::FilePath& salt_file,
                                     SecureBlob* auth_data) const {
   // Use the scrypt algorithm to derive auth data from the passkey.
@@ -250,7 +250,7 @@ bool Crypto::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
 }
 
 void Crypto::PasswordToPasskey(const char* password,
-                               const chromeos::Blob& salt,
+                               const brillo::Blob& salt,
                                SecureBlob* passkey) {
   CHECK(password);
 
@@ -296,7 +296,7 @@ bool Crypto::IsTPMPubkeyHash(const string& hash,
     return false;
   }
   if ((hash.size() != pub_key_hash.size()) ||
-      (chromeos::SecureMemcmp(hash.data(),
+      (brillo::SecureMemcmp(hash.data(),
                               pub_key_hash.data(),
                               pub_key_hash.size()))) {
     if (error)
@@ -553,8 +553,8 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
   memcpy(included_hash.data(), &decrypted[decrypted.size() - SHA_DIGEST_LENGTH],
          SHA_DIGEST_LENGTH);
   decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
-  chromeos::Blob hash = CryptoLib::Sha1(decrypted);
-  if (chromeos::SecureMemcmp(hash.data(), included_hash.data(), hash.size())) {
+  brillo::Blob hash = CryptoLib::Sha1(decrypted);
+  if (brillo::SecureMemcmp(hash.data(), included_hash.data(), hash.size())) {
     LOG(ERROR) << "Scrypt hash verification failed";
     if (error) {
       *error = CE_SCRYPT_CRYPTO;
@@ -849,8 +849,8 @@ bool Crypto::UnsealKey(const string& encrypted_data,
 }
 
 bool Crypto::DecryptData(const string& encrypted_data,
-                         const chromeos::SecureBlob& aes_key,
-                         chromeos::SecureBlob* data) const {
+                         const brillo::SecureBlob& aes_key,
+                         brillo::SecureBlob* data) const {
   EncryptedData encrypted_pb;
   if (!encrypted_pb.ParseFromString(encrypted_data)) {
     LOG(ERROR) << "Could not decrypt data as it was not an EncryptedData "
@@ -862,7 +862,7 @@ bool Crypto::DecryptData(const string& encrypted_data,
     LOG(ERROR) << "Corrupted data in encrypted pb.";
     return false;
   }
-  if (0 != chromeos::SecureMemcmp(mac.data(), encrypted_pb.mac().data(),
+  if (0 != brillo::SecureMemcmp(mac.data(), encrypted_pb.mac().data(),
                                   mac.length())) {
     LOG(ERROR) << "Corrupted data in encrypted pb.";
     return false;

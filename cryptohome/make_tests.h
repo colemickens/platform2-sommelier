@@ -53,7 +53,7 @@ class MakeTests {
   void TearDownSystemSalt();
 
   std::vector<TestUser> users;
-  chromeos::Blob system_salt;
+  brillo::Blob system_salt;
  private:
   DISALLOW_COPY_AND_ASSIGN(MakeTests);
 };
@@ -96,9 +96,9 @@ class TestUser {
   std::string root_mount_path;
   std::string user_mount_prefix;
   std::string root_mount_prefix;
-  chromeos::Blob credentials;
-  chromeos::Blob user_salt;
-  chromeos::SecureBlob passkey;
+  brillo::Blob credentials;
+  brillo::Blob user_salt;
+  brillo::SecureBlob passkey;
   bool use_key_data;
   KeyData key_data;
 };

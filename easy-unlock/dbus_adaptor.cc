@@ -79,7 +79,7 @@ DBusAdaptor::DBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
 DBusAdaptor::~DBusAdaptor() {}
 
 void DBusAdaptor::Register(const CompletionAction& callback) {
-  chromeos::dbus_utils::DBusInterface* interface =
+  brillo::dbus_utils::DBusInterface* interface =
       dbus_object_.AddOrGetInterface(kEasyUnlockServiceInterface);
 
   interface->AddSimpleMethodHandler(kGenerateEcP256KeyPairMethod,

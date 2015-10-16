@@ -36,7 +36,7 @@ class LockboxCache {
   bool loaded_;
   Tpm* tpm_;
   Platform* platform_;
-  chromeos::Blob contents_;
+  brillo::Blob contents_;
 };
 }  // namespace cryptohome
 

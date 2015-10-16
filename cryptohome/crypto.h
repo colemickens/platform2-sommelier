@@ -16,7 +16,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
@@ -59,7 +59,7 @@ class Crypto {
   //   error (OUT) - The specific error code on failure
   //   vault_keyset (OUT) - The decrypted vault keyset on success
   virtual bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
-                                  const chromeos::SecureBlob& vault_key,
+                                  const brillo::SecureBlob& vault_key,
                                   unsigned int* crypt_flags, CryptoError* error,
                                   VaultKeyset* vault_keyset) const;
 
@@ -72,8 +72,8 @@ class Crypto {
   //                    when encrypting the keyset
   //   encrypted_keyset - On success, the encrypted vault keyset
   virtual bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
-                                  const chromeos::SecureBlob& vault_key,
-                                  const chromeos::SecureBlob& vault_key_salt,
+                                  const brillo::SecureBlob& vault_key,
+                                  const brillo::SecureBlob& vault_key_salt,
                                   SerializedVaultKeyset* serialized) const;
 
   // Converts the passkey to authorization data for a TPM-backed crypto token.
@@ -82,9 +82,9 @@ class Crypto {
   //   passkey - The passkey from which to derive the authorization data.
   //   salt - The salt file used in deriving the authorization data.
   //   auth_data (OUT) - The token authorization data.
-  virtual bool PasskeyToTokenAuthData(const chromeos::Blob& passkey,
+  virtual bool PasskeyToTokenAuthData(const brillo::Blob& passkey,
                                       const base::FilePath& salt_file,
-                                      chromeos::SecureBlob* auth_data) const;
+                                      brillo::SecureBlob* auth_data) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -96,7 +96,7 @@ class Crypto {
   virtual bool GetOrCreateSalt(const base::FilePath& path,
                                size_t length,
                                bool force,
-                               chromeos::SecureBlob* salt) const;
+                               brillo::SecureBlob* salt) const;
 
   // Adds the specified key to the ecryptfs keyring so that the cryptohome can
   // be mounted.  Clears the user keyring first.
@@ -122,8 +122,8 @@ class Crypto {
   //   salt - The salt used during hashing
   //   passkey (OUT) - The passkey
   static void PasswordToPasskey(const char* password,
-                                const chromeos::Blob& salt,
-                                chromeos::SecureBlob* passkey);
+                                const brillo::Blob& salt,
+                                brillo::SecureBlob* passkey);
 
   // Ensures that the TPM is connected
   CryptoError EnsureTpm(bool reload_key) const;
@@ -133,7 +133,7 @@ class Crypto {
   //   data - Data to encrypt with tpm.
   //   encrypted_data (OUT) - Encrypted data as a string.
   // Returns true if we succeeded in creating the encrypted data blob.
-  virtual bool EncryptWithTpm(const chromeos::SecureBlob& data,
+  virtual bool EncryptWithTpm(const brillo::SecureBlob& data,
                               std::string* encrypted_data) const;
 
   // Decrypts data previously sealed to the TPM's PCR0.
@@ -142,7 +142,7 @@ class Crypto {
   //   data (OUT) - Decrypted data as a blob.
   // Returns true if we succeeded to decrypt the data blob.
   virtual bool DecryptWithTpm(const std::string& encrypted_data,
-                              chromeos::SecureBlob* data) const;
+                              brillo::SecureBlob* data) const;
 
   // Note the following 4 methods are only to be used if there is a strong
   // reason to avoid talking to the TPM e.g. needing to flush some encrypted
@@ -150,25 +150,25 @@ class Crypto {
   // Otherwise, a user should use Encrypt/DecryptWithTpm.
 
   // Creates a randomly generated aes key and seals it to the TPM's PCR0.
-  virtual bool CreateSealedKey(chromeos::SecureBlob* aes_key,
-                               chromeos::SecureBlob* sealed_key) const;
+  virtual bool CreateSealedKey(brillo::SecureBlob* aes_key,
+                               brillo::SecureBlob* sealed_key) const;
 
   // Encrypts the given data using the aes_key. Sealed key is necessary to
   // wrap into the returned data to allow for decryption.
-  virtual bool EncryptData(const chromeos::SecureBlob& data,
-                           const chromeos::SecureBlob& aes_key,
-                           const chromeos::SecureBlob& sealed_key,
+  virtual bool EncryptData(const brillo::SecureBlob& data,
+                           const brillo::SecureBlob& aes_key,
+                           const brillo::SecureBlob& sealed_key,
                            std::string* encrypted_data) const;
 
   // Returns the sealed and unsealed aes_key wrapped in the encrypted_data.
   virtual bool UnsealKey(const std::string& encrypted_data,
-                         chromeos::SecureBlob* aes_key,
-                         chromeos::SecureBlob* sealed_key) const;
+                         brillo::SecureBlob* aes_key,
+                         brillo::SecureBlob* sealed_key) const;
 
   // Decrypts encrypted_data using the aes_key.
   virtual bool DecryptData(const std::string& encrypted_data,
-                           const chromeos::SecureBlob& aes_key,
-                           chromeos::SecureBlob* data) const;
+                           const brillo::SecureBlob& aes_key,
+                           brillo::SecureBlob* data) const;
 
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
@@ -222,26 +222,26 @@ class Crypto {
   //   key - The key to add
   //   key_sig - The key's (ascii) signature
   //   salt - The salt
-  bool PushVaultKey(const chromeos::SecureBlob& key,
+  bool PushVaultKey(const brillo::SecureBlob& key,
                     const std::string& key_sig,
-                    const chromeos::SecureBlob& salt) const;
+                    const brillo::SecureBlob& salt) const;
 
   bool EncryptTPM(const VaultKeyset& vault_keyset,
-                  const chromeos::SecureBlob& key,
-                  const chromeos::SecureBlob& salt,
+                  const brillo::SecureBlob& key,
+                  const brillo::SecureBlob& salt,
                   SerializedVaultKeyset* serialized) const;
 
   bool EncryptScrypt(const VaultKeyset& vault_keyset,
-                     const chromeos::SecureBlob& key,
+                     const brillo::SecureBlob& key,
                      SerializedVaultKeyset* serialized) const;
 
   bool DecryptTPM(const SerializedVaultKeyset& serialized,
-                  const chromeos::SecureBlob& key,
+                  const brillo::SecureBlob& key,
                   CryptoError* error,
                   VaultKeyset* vault_keyset) const;
 
   bool DecryptScrypt(const SerializedVaultKeyset& serialized,
-                     const chromeos::SecureBlob& key,
+                     const brillo::SecureBlob& key,
                      CryptoError* error,
                      VaultKeyset* keyset) const;
 

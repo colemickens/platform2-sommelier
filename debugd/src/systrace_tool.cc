@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <base/strings/string_split.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 #include "debugd/src/process_with_output.h"
 

@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
 #include "attestation.pb.h"  // NOLINT(build/include)
@@ -26,11 +26,11 @@ class MockCrypto : public Crypto {
   MOCK_CONST_METHOD4(GetOrCreateSalt, bool(const base::FilePath&,
                                            size_t,
                                            bool,
-                                           chromeos::SecureBlob*));
-  MOCK_CONST_METHOD2(EncryptWithTpm, bool(const chromeos::SecureBlob&,
+                                           brillo::SecureBlob*));
+  MOCK_CONST_METHOD2(EncryptWithTpm, bool(const brillo::SecureBlob&,
                                           std::string*));
   MOCK_CONST_METHOD2(DecryptWithTpm, bool(const std::string&,
-                                          chromeos::SecureBlob*));
+                                          brillo::SecureBlob*));
 };
 
 }  // namespace cryptohome

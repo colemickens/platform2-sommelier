@@ -12,8 +12,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/flag_helper.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/chrome_collector.h"
@@ -155,10 +155,10 @@ static int HandleUserCrash(UserCollector *user_collector,
   }
 
   // Accumulate logs to help in diagnosing failures during user collection.
-  chromeos::LogToString(true);
+  brillo::LogToString(true);
   // Handle the crash, get the name of the process from procfs.
   bool handled = user_collector->HandleCrash(user, nullptr);
-  chromeos::LogToString(false);
+  brillo::LogToString(false);
   if (!handled)
     return 1;
   return 0;
@@ -174,10 +174,10 @@ static int HandleChromeCrash(ChromeCollector *chrome_collector,
   CHECK(!uid.empty()) << "--uid= must be set";
   CHECK(!exe.empty()) << "--exe= must be set";
 
-  chromeos::LogToString(true);
+  brillo::LogToString(true);
   bool handled = chrome_collector->HandleCrash(FilePath(chrome_dump_file),
                                                pid, uid, exe);
-  chromeos::LogToString(false);
+  brillo::LogToString(false);
   if (!handled)
     return 1;
   return 0;
@@ -189,9 +189,9 @@ static int HandleUdevCrash(UdevCollector *udev_collector,
   CHECK(!udev_event.empty()) << "--udev= must be set";
 
   // Accumulate logs to help in diagnosing failures during user collection.
-  chromeos::LogToString(true);
+  brillo::LogToString(true);
   bool handled = udev_collector->HandleCrash(udev_event);
-  chromeos::LogToString(false);
+  brillo::LogToString(false);
   if (!handled)
     return 1;
   return 0;
@@ -200,9 +200,9 @@ static int HandleUdevCrash(UdevCollector *udev_collector,
 static int HandleKernelWarning(KernelWarningCollector
                                *kernel_warning_collector) {
   // Accumulate logs to help in diagnosing failures during collection.
-  chromeos::LogToString(true);
+  brillo::LogToString(true);
   bool handled = kernel_warning_collector->Collect();
-  chromeos::LogToString(false);
+  brillo::LogToString(false);
   if (!handled)
     return 1;
   return 0;
@@ -270,9 +270,9 @@ int main(int argc, char *argv[]) {
   OpenStandardFileDescriptors();
   FilePath my_path = base::MakeAbsoluteFilePath(FilePath(argv[0]));
   s_metrics_lib.Init();
-  chromeos::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
-  chromeos::OpenLog(my_path.BaseName().value().c_str(), true);
-  chromeos::InitLog(chromeos::kLogToSyslog);
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Reporter");
+  brillo::OpenLog(my_path.BaseName().value().c_str(), true);
+  brillo::InitLog(brillo::kLogToSyslog);
 
   KernelCollector kernel_collector;
   kernel_collector.Initialize(CountKernelCrash, IsFeedbackAllowed);

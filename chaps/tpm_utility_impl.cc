@@ -13,7 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
@@ -21,7 +21,7 @@
 #include "chaps/chaps_utility.h"
 
 using base::AutoLock;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssObject;
@@ -791,7 +791,7 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
                                    TSS_SECRET_MODE_SHA1,
                                    kSha1OutputBytes,
                                    discard);
-    chromeos::SecureMemset(discard, 0, kSha1OutputBytes);
+    brillo::SecureMemset(discard, 0, kSha1OutputBytes);
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
       return false;

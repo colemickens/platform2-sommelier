@@ -16,7 +16,7 @@
 #include "peerd/mock_published_peer.h"
 #include "peerd/service.h"
 
-using chromeos::dbus_utils::DBusObject;
+using brillo::dbus_utils::DBusObject;
 using dbus::MockBus;
 using dbus::ObjectPath;
 using peerd::constants::kSerbusServiceId;
@@ -78,7 +78,7 @@ class ManagerTest : public testing::Test {
     return manager_->dbus_adaptor_.GetMonitoredTechnologies();
   }
 
-  const std::map<std::string, chromeos::Any> kNoOptions;
+  const std::map<std::string, brillo::Any> kNoOptions;
   const std::vector<std::string> kOnlyMdns{technologies::kMDNSText};
   scoped_refptr<EspeciallyMockedBus>
       mock_bus_{new EspeciallyMockedBus{dbus::Bus::Options{}}};
@@ -89,7 +89,7 @@ class ManagerTest : public testing::Test {
 };
 
 TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   dbus::MethodCall method_call{"org.chromium.peerd.Manager", "ExposeService"};
   EXPECT_FALSE(manager_->ExposeService(
       &error, &method_call, kSerbusServiceId, {}, {}));
@@ -97,14 +97,14 @@ TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldRejectEmptyTechnologies) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   string token;
   EXPECT_FALSE(manager_->StartMonitoring(&error, {}, kNoOptions, &token));
   EXPECT_NE(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldRejectInvalidTechnologies) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   string token;
   EXPECT_FALSE(manager_->StartMonitoring(
       &error, {"hot air balloon"}, kNoOptions, &token));
@@ -113,7 +113,7 @@ TEST_F(ManagerTest, StartMonitoring_ShouldRejectInvalidTechnologies) {
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldAcceptMDNS) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_CALL(*avahi_client_, StartMonitoring());
   string token;
   EXPECT_TRUE(manager_->StartMonitoring(
@@ -124,13 +124,13 @@ TEST_F(ManagerTest, StartMonitoring_ShouldAcceptMDNS) {
 }
 
 TEST_F(ManagerTest, StopMonitoring_HandlesInvalidToken) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_FALSE(manager_->StopMonitoring(&error, "invalid_token"));
   EXPECT_NE(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, StopMonitoring_HandlesSingleSubscription) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_CALL(*avahi_client_, StartMonitoring());
   string token;
   EXPECT_TRUE(manager_->StartMonitoring(
@@ -146,7 +146,7 @@ TEST_F(ManagerTest, StopMonitoring_HandlesSingleSubscription) {
 }
 
 TEST_F(ManagerTest, StopMonitoring_HandlesMultipleSubscriptions) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   // We don't bother to figure out if we're already monitoring on a technology.
   EXPECT_CALL(*avahi_client_, StartMonitoring()).Times(2);
   string token1;

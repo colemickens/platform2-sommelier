@@ -33,13 +33,13 @@ class TPM2UtilityImpl : public TPMUtility {
   bool Init() override;
   bool IsTPMAvailable() override;
   bool Authenticate(int slot_id,
-                    const chromeos::SecureBlob& auth_data,
+                    const brillo::SecureBlob& auth_data,
                     const std::string& auth_key_blob,
                     const std::string& encrypted_master_key,
-                    chromeos::SecureBlob* master_key) override;
+                    brillo::SecureBlob* master_key) override;
   bool ChangeAuthData(int slot_id,
-                      const chromeos::SecureBlob& old_auth_data,
-                      const chromeos::SecureBlob& new_auth_data,
+                      const brillo::SecureBlob& old_auth_data,
+                      const brillo::SecureBlob& new_auth_data,
                       const std::string& old_auth_key_blob,
                       std::string* new_auth_key_blob) override;
   bool GenerateRandom(int num_bytes, std::string* random_data) override;
@@ -47,7 +47,7 @@ class TPM2UtilityImpl : public TPMUtility {
   bool GenerateKey(int slot,
                    int modulus_bits,
                    const std::string& public_exponent,
-                   const chromeos::SecureBlob& auth_data,
+                   const brillo::SecureBlob& auth_data,
                    std::string* key_blob,
                    int* key_handle) override;
   bool GetPublicKey(int key_handle,
@@ -57,16 +57,16 @@ class TPM2UtilityImpl : public TPMUtility {
                const std::string& public_exponent,
                const std::string& modulus,
                const std::string& prime_factor,
-               const chromeos::SecureBlob& auth_data,
+               const brillo::SecureBlob& auth_data,
                std::string* key_blob,
                int* key_handle) override;
   bool LoadKey(int slot,
                const std::string& key_blob,
-               const chromeos::SecureBlob& auth_data,
+               const brillo::SecureBlob& auth_data,
                int* key_handle) override;
   bool LoadKeyWithParent(int slot,
                          const std::string& key_blob,
-                         const chromeos::SecureBlob& auth_data,
+                         const brillo::SecureBlob& auth_data,
                          int parent_key_handle,
                          int* key_handle) override;
   void UnloadKeysForSlot(int slot) override;
@@ -93,7 +93,7 @@ class TPM2UtilityImpl : public TPMUtility {
   scoped_ptr<trunks::HmacSession> session_;
   scoped_ptr<trunks::TpmUtility> trunks_tpm_utility_;
   std::map<int, std::set<int>> slot_handles_;
-  std::map<int, chromeos::SecureBlob> handle_auth_data_;
+  std::map<int, brillo::SecureBlob> handle_auth_data_;
   std::map<int, std::string> handle_name_;
 
   FRIEND_TEST(TPM2UtilityTest, IsTPMAvailable);

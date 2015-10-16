@@ -8,8 +8,8 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/string_split.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
                 "available external power sources; active_by_default is 1 if "
                 "true");
 
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Emits a fake D-Bus signal describing the current power supply status.\n"
       "Run this as the \"power\" user after stopping powerd.");
   base::AtExitManager at_exit_manager;

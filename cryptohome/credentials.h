@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "key.pb.h"  // NOLINT(build/include)
 
@@ -31,14 +31,14 @@ class Credentials {
   // containing the user's stateful data (and maybe used for other reasons
   // at some point.)
   virtual std::string GetObfuscatedUsername(
-      const chromeos::Blob &system_salt) const = 0;
+      const brillo::Blob &system_salt) const = 0;
 
   // Returns the user's passkey
   //
   // Parameters
   //  passkey - A SecureBlob containing the passkey
   //
-  virtual void GetPasskey(chromeos::SecureBlob* passkey) const = 0;
+  virtual void GetPasskey(brillo::SecureBlob* passkey) const = 0;
 
   // Returns the associated KeyData for the passkey, if defined.
   virtual const KeyData& key_data() const = 0;

@@ -13,7 +13,7 @@
 #include <base/strings/stringprintf.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 #include <errno.h>
 #include <glib.h>
 
@@ -54,7 +54,7 @@ std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
   // Use a truncated sanitized username in the token label so a label collision
   // is extremely unlikely.
   return std::string(kDefaultUserLabelPrefix) +
-         chromeos::cryptohome::home::SanitizeUserName(username).substr(0, 16);
+         brillo::cryptohome::home::SanitizeUserName(username).substr(0, 16);
 }
 
 bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,

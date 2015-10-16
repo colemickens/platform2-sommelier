@@ -14,7 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
-#include <chromeos/message_loops/fake_message_loop.h>
+#include <brillo/message_loops/fake_message_loop.h>
 #include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -251,7 +251,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   std::vector<uint8_t> fake_key_vector_;
   std::string new_fake_sig_;
 
-  chromeos::FakeMessageLoop fake_loop_{nullptr};
+  brillo::FakeMessageLoop fake_loop_{nullptr};
 
   base::ScopedTempDir tmpdir_;
   base::FilePath serial_recovery_flag_file_;

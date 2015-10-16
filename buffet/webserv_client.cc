@@ -80,7 +80,7 @@ class RequestImpl : public HttpServer::Request {
 
 WebServClient::WebServClient(
     const scoped_refptr<dbus::Bus>& bus,
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer,
+    brillo::dbus_utils::AsyncEventSequencer* sequencer,
     const base::Closure& server_available_callback)
     : server_available_callback_{server_available_callback} {
   web_server_.reset(new libwebserv::Server);
@@ -125,7 +125,7 @@ uint16_t WebServClient::GetHttpsPort() const {
   return https_port_;
 }
 
-chromeos::Blob WebServClient::GetHttpsCertificateFingerprint() const {
+brillo::Blob WebServClient::GetHttpsCertificateFingerprint() const {
   return certificate_;
 }
 

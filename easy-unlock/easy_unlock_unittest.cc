@@ -9,8 +9,8 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/dbus_object.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
@@ -42,7 +42,7 @@ class MethodCallHandlers {
       const std::string& interface,
       const std::string& method,
       Handler handler,
-      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
+      brillo::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     generate_ec_p256_key_pair_handler_ = handler;
     export_handler.Run(interface, method, true);
   }
@@ -51,7 +51,7 @@ class MethodCallHandlers {
       const std::string& interface,
       const std::string& method,
       Handler handler,
-      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
+      brillo::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     wrap_public_key_handler_ = handler;
     export_handler.Run(interface, method, true);
   }
@@ -60,7 +60,7 @@ class MethodCallHandlers {
       const std::string& interface,
       const std::string& method,
       Handler handler,
-      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
+      brillo::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     perform_ecdh_key_agreement_handler_ = handler;
     export_handler.Run(interface, method, true);
   }
@@ -69,7 +69,7 @@ class MethodCallHandlers {
       const std::string& interface,
       const std::string& method,
       Handler handler,
-      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
+      brillo::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     create_secure_message_handler_ = handler;
     export_handler.Run(interface, method, true);
   }
@@ -78,7 +78,7 @@ class MethodCallHandlers {
       const std::string& interface,
       const std::string& method,
       Handler handler,
-      chromeos::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
+      brillo::dbus_utils::AsyncEventSequencer::ExportHandler export_handler) {
     unwrap_secure_message_handler_ = handler;
     export_handler.Run(interface, method, true);
   }
@@ -145,7 +145,7 @@ class EasyUnlockTest : public ::testing::Test {
 
     adaptor_.reset(new easy_unlock::DBusAdaptor(bus_, service_impl_.get()));
     adaptor_->Register(
-        chromeos::dbus_utils::AsyncEventSequencer::
+        brillo::dbus_utils::AsyncEventSequencer::
             GetDefaultCompletionAction());
   }
 
@@ -263,7 +263,7 @@ class EasyUnlockTest : public ::testing::Test {
   scoped_refptr<dbus::MockExportedObject> exported_object_;
 
   std::unique_ptr<easy_unlock::Service> service_impl_;
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<easy_unlock::DBusAdaptor> adaptor_;
 };
 

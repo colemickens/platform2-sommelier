@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <chromeos/dbus/mock_dbus_object.h>
+#include <brillo/dbus/mock_dbus_object.h>
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
 #include <dbus/message.h>
@@ -23,7 +23,7 @@ MATCHER_P2(IsDBusMethodCallTo, interface, method, "") {
          arg->GetMember() == method;
 }
 
-std::unique_ptr<chromeos::dbus_utils::MockDBusObject> MakeMockDBusObject();
+std::unique_ptr<brillo::dbus_utils::MockDBusObject> MakeMockDBusObject();
 
 CompletionAction MakeMockCompletionAction();
 

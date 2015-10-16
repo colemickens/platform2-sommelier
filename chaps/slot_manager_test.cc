@@ -25,7 +25,7 @@
 #include "chaps/tpm_utility_mock.h"
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -578,7 +578,7 @@ class SoftwareOnlyTest : public TestSlotManager {
     return pool_write_result_;
   }
 
-  bool FakeSetEncryptionKey(const chromeos::SecureBlob& key) {
+  bool FakeSetEncryptionKey(const brillo::SecureBlob& key) {
     set_encryption_key_num_calls_++;
     return pool_write_result_;
   }

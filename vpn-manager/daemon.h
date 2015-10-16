@@ -10,11 +10,11 @@
 
 #include <base/macros.h>
 
-namespace chromeos {
+namespace brillo {
 
 class Process;
 
-}  // namespace chromeos
+}  // namespace brillo
 
 namespace vpn_manager {
 
@@ -34,7 +34,7 @@ class Daemon {
   // Replace the current process with a new process instance.  Returns
   // the new process.  The process pointer returned is still owned by
   // this object.
-  virtual chromeos::Process* CreateProcess();
+  virtual brillo::Process* CreateProcess();
 
   // Find a process associated with the process-id file.  If one is found,
   // replace the current |process_| instance with this result.  Returns
@@ -57,14 +57,14 @@ class Daemon {
 
   // Replace the current process with |process|.  Any previous process
   // will be terminated if it is not the same process id as |process|.
-  void SetProcess(chromeos::Process* process);
+  void SetProcess(brillo::Process* process);
 
   // Give daemon time to shut down cleanly after a SIGTERM before killing it
   // in a more decisive fashion.
   static const int kTerminationTimeoutSeconds;
 
   // Process instance associated with this process.
-  std::unique_ptr<chromeos::Process> process_;
+  std::unique_ptr<brillo::Process> process_;
 
   // File name where the process id for this daemon is held.
   std::string pid_file_;

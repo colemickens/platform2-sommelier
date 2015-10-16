@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 #include <base/files/file_path.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 
 int main(int argc, char **argv) {
   if (argc != 3 || (strcmp(argv[1], "system") && strcmp(argv[1], "user"))) {
@@ -14,9 +14,9 @@ int main(int argc, char **argv) {
   }
   base::FilePath fp;
   if (!strcmp(argv[1], "system"))
-    fp = chromeos::cryptohome::home::GetRootPath(argv[2]);
+    fp = brillo::cryptohome::home::GetRootPath(argv[2]);
   else
-    fp = chromeos::cryptohome::home::GetUserPath(argv[2]);
+    fp = brillo::cryptohome::home::GetUserPath(argv[2]);
   printf("%s\n", fp.value().c_str());
   return 0;
 }

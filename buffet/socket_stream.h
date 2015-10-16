@@ -9,7 +9,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <chromeos/streams/stream.h>
+#include <brillo/streams/stream.h>
 #include <weave/provider/network.h>
 #include <weave/stream.h>
 
@@ -17,7 +17,7 @@ namespace buffet {
 
 class SocketStream : public weave::Stream {
  public:
-  explicit SocketStream(chromeos::StreamPtr ptr) : ptr_{std::move(ptr)} {}
+  explicit SocketStream(brillo::StreamPtr ptr) : ptr_{std::move(ptr)} {}
 
   ~SocketStream() override = default;
 
@@ -40,7 +40,7 @@ class SocketStream : public weave::Stream {
       const weave::provider::Network::OpenSslSocketCallback& callback);
 
  private:
-  chromeos::StreamPtr ptr_;
+  brillo::StreamPtr ptr_;
   DISALLOW_COPY_AND_ASSIGN(SocketStream);
 };
 

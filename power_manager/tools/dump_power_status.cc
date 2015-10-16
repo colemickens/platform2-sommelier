@@ -8,7 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -17,7 +17,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 
 int main(int argc, char** argv) {
-  chromeos::FlagHelper::Init(argc, argv, "Print power information for tests.");
+  brillo::FlagHelper::Init(argc, argv, "Print power information for tests.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 

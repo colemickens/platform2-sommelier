@@ -18,7 +18,7 @@ namespace peerd {
 class DiscoveredPeer : public Peer {
  public:
   DiscoveredPeer(const scoped_refptr<dbus::Bus>& bus,
-                 chromeos::dbus_utils::ExportedObjectManager* object_manager,
+                 brillo::dbus_utils::ExportedObjectManager* object_manager,
                  const dbus::ObjectPath& path,
                  technologies::Technology technology);
   ~DiscoveredPeer() override = default;

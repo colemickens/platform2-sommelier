@@ -8,8 +8,8 @@
 #include <base/guid.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
 #include <dbus/object_path.h>
 
 #include "peerd/constants.h"
@@ -19,15 +19,15 @@
 #include "peerd/service.h"
 #include "peerd/technologies.h"
 
-using chromeos::Any;
-using chromeos::Error;
-using chromeos::ErrorPtr;
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::DBusParamReader;
-using chromeos::dbus_utils::DBusParamWriter;
-using chromeos::dbus_utils::DBusServiceWatcher;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::Any;
+using brillo::Error;
+using brillo::ErrorPtr;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::DBusParamReader;
+using brillo::dbus_utils::DBusParamWriter;
+using brillo::dbus_utils::DBusServiceWatcher;
+using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 using peerd::constants::kSerbusServiceId;
 using peerd::dbus_constants::kPingResponse;
@@ -163,7 +163,7 @@ bool Manager::StartMonitoring(
   return true;
 }
 
-bool Manager::StopMonitoring(chromeos::ErrorPtr* error,
+bool Manager::StopMonitoring(brillo::ErrorPtr* error,
                              const string& monitoring_token) {
   auto it = monitoring_requests_.find(monitoring_token);
   if (it == monitoring_requests_.end()) {
@@ -181,7 +181,7 @@ bool Manager::StopMonitoring(chromeos::ErrorPtr* error,
 }
 
 
-bool Manager::ExposeService(chromeos::ErrorPtr* error,
+bool Manager::ExposeService(brillo::ErrorPtr* error,
                             dbus::Message* message,
                             const string& service_id,
                             const map<string, string>& service_info,
@@ -219,7 +219,7 @@ bool Manager::ExposeService(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Manager::RemoveExposedService(chromeos::ErrorPtr* error,
+bool Manager::RemoveExposedService(brillo::ErrorPtr* error,
                                    dbus::Message* message,
                                    const string& service_id) {
   auto it = exposed_services_.find(service_id);

@@ -14,8 +14,8 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/message_loops/message_loop.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -47,7 +47,7 @@ void LivenessCheckerImpl::Start() {
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(),
                  interval_));
-  chromeos::MessageLoop::current()->PostDelayedTask(
+  brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
       liveness_check_.callback(),
       interval_);
@@ -91,7 +91,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(), interval));
-  chromeos::MessageLoop::current()->PostDelayedTask(
+  brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
       liveness_check_.callback(),
       interval);

@@ -58,7 +58,7 @@ Response* ReturnsGroupPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
   scoped_ptr<Response> response = Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
-  chromeos::dbus_utils::AppendValueToWriter(&writer, ObjectPath(kGroupPath));
+  brillo::dbus_utils::AppendValueToWriter(&writer, ObjectPath(kGroupPath));
   // The mock wraps this back in a scoped_ptr in the function calling us.
   return response.release();
 }
@@ -105,7 +105,7 @@ class AvahiServicePublisherTest : public ::testing::Test {
                                             const Service::ServiceInfo& info) {
     unique_ptr<Service> new_service{new Service{mock_bus_, nullptr,
                                                 ObjectPath{kServicePath}}};
-    chromeos::ErrorPtr error;
+    brillo::ErrorPtr error;
     EXPECT_TRUE(new_service->RegisterAsync(
         &error, kTestPeerId, service_id, {}, info, {},
         MakeMockCompletionAction()));

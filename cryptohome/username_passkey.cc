@@ -8,17 +8,17 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 UsernamePasskey::UsernamePasskey(const char *username,
-                                 const chromeos::Blob& passkey)
+                                 const brillo::Blob& passkey)
     : username_(username, strlen(username)),
       passkey_() {
   passkey_.assign(passkey.begin(), passkey.end());
@@ -48,7 +48,7 @@ std::string UsernamePasskey::username() const {
 }
 
 string UsernamePasskey::GetObfuscatedUsername(
-    const chromeos::Blob &system_salt) const {
+    const brillo::Blob &system_salt) const {
   CHECK(!username_.empty());
 
   SHA_CTX ctx;
@@ -59,7 +59,7 @@ string UsernamePasskey::GetObfuscatedUsername(
   SHA1_Update(&ctx, username_.c_str(), username_.length());
   SHA1_Final(md_value, &ctx);
 
-  chromeos::Blob md_blob(md_value,
+  brillo::Blob md_blob(md_value,
                md_value + (SHA_DIGEST_LENGTH * sizeof(unsigned char)));
 
   return CryptoLib::BlobToHex(md_blob);

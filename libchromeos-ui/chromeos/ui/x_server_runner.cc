@@ -24,7 +24,7 @@
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/userdb_utils.h>
+#include <brillo/userdb_utils.h>
 #include <metrics/bootstat.h>
 
 #include "chromeos/ui/util.h"
@@ -239,7 +239,7 @@ bool XServerRunner::StartServer(const std::string& user,
                                 const base::FilePath& xauth_file) {
   uid_t uid = 0;
   gid_t gid = 0;
-  if (!userdb::GetUserInfo(user, &uid, &gid))
+  if (!brillo::userdb::GetUserInfo(user, &uid, &gid))
     return false;
 
   if (!CreateXauthFile(xauth_file, uid, gid))

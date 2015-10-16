@@ -12,17 +12,17 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/errors/error.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/errors/error.h>
 
 #include "fides/org.chromium.Fides.Settings.h"
 #include "fides/settings_service.h"
 
-namespace chromeos {
+namespace brillo {
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // namespace dbus_utils
-}  // namespace chromeos
+}  // namespace brillo
 
 namespace dbus {
 class ObjectPath;
@@ -43,7 +43,7 @@ class DBusSettingsServiceImpl
   // specifies the D-Bus object path under which this instance can be found.
   DBusSettingsServiceImpl(
       SettingsDocumentManager* settings_document_manager,
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+      const base::WeakPtr<brillo::dbus_utils::ExportedObjectManager>&
           object_manager,
       const dbus::ObjectPath& object_path);
   ~DBusSettingsServiceImpl() override;
@@ -51,17 +51,17 @@ class DBusSettingsServiceImpl
   // SettingsObserver:
   void OnSettingsChanged(const std::set<Key>& keys) override;
 
-  void Start(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+  void Start(brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
  private:
   // org::chromium::Fides::SettingsInterface:
-  bool Get(chromeos::ErrorPtr* error,
+  bool Get(brillo::ErrorPtr* error,
            const std::string& in_key,
            std::vector<uint8_t>* out_value) override;
-  bool Enumerate(chromeos::ErrorPtr* error,
+  bool Enumerate(brillo::ErrorPtr* error,
                  const std::string& in_prefix,
                  std::vector<std::string>* out_values) override;
-  bool Update(chromeos::ErrorPtr* error,
+  bool Update(brillo::ErrorPtr* error,
               const std::vector<uint8_t>& in_blob,
               const std::string& in_source_id) override;
 
@@ -69,7 +69,7 @@ class DBusSettingsServiceImpl
   SettingsDocumentManager* settings_document_manager_;
 
   org::chromium::Fides::SettingsAdaptor dbus_adaptor_{this};
-  chromeos::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::DBusObject dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusSettingsServiceImpl);
 };

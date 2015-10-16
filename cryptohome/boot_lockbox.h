@@ -6,7 +6,7 @@
 #define CRYPTOHOME_BOOT_LOCKBOX_H_
 
 #include <base/macros.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "boot_lockbox_key.pb.h"  // NOLINT(build/include)
 
@@ -39,13 +39,13 @@ class BootLockbox {
   // Signs |data| for boot-time tamper evidence.  This always fails after
   // FinalizeBoot() has been called.  On success returns true and sets the
   // |signature| value.  The signature scheme will be RSA-PKCS1-SHA256.
-  virtual bool Sign(const chromeos::SecureBlob& data,
-                    chromeos::SecureBlob* signature);
+  virtual bool Sign(const brillo::SecureBlob& data,
+                    brillo::SecureBlob* signature);
 
   // Verifies that |signature| is valid for |data| and that it was generated
   // before FinalizeBoot() on a current or prior boot.
-  virtual bool Verify(const chromeos::SecureBlob& data,
-                      const chromeos::SecureBlob& signature);
+  virtual bool Verify(const brillo::SecureBlob& data,
+                      const brillo::SecureBlob& signature);
 
   // Locks the key used by Sign() so it cannot be used again until the next
   // boot.  Returns true on success.
@@ -56,13 +56,13 @@ class BootLockbox {
 
  protected:
   // Returns the TPM |key_blob| for the lockbox key.  Returns true on success.
-  bool GetKeyBlob(chromeos::SecureBlob* key_blob);
+  bool GetKeyBlob(brillo::SecureBlob* key_blob);
 
   // Returns the DER-encoded lockbox |public_key|.  Returns true on success.
-  bool GetPublicKey(chromeos::SecureBlob* public_key);
+  bool GetPublicKey(brillo::SecureBlob* public_key);
 
   // Returns the |creation_blob| for the lockbox key.  Returns true on success.
-  bool GetCreationBlob(chromeos::SecureBlob* creation_blob);
+  bool GetCreationBlob(brillo::SecureBlob* creation_blob);
 
   // Loads the lockbox key protobuf from a file.  Returns true on success.
   bool LoadKey();
@@ -74,9 +74,9 @@ class BootLockbox {
   bool CreateKey();
 
   // Verifies an RSA-PKCS1-SHA256 signature as created by Sign().
-  bool VerifySignature(const chromeos::SecureBlob& public_key,
-                       const chromeos::SecureBlob& signed_data,
-                       const chromeos::SecureBlob& signature);
+  bool VerifySignature(const brillo::SecureBlob& public_key,
+                       const brillo::SecureBlob& signed_data,
+                       const brillo::SecureBlob& signature);
 
   Tpm* tpm_;
   Platform* platform_;

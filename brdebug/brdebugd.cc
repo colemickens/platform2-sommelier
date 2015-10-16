@@ -7,14 +7,14 @@
 
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/daemons/dbus_daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 
 #include "brdebug/device_property_watcher.h"
 #include "brdebug/peerd_client.h"
 
 namespace brdebug {
 
-class Daemon : public chromeos::DBusDaemon {
+class Daemon : public brillo::DBusDaemon {
  public:
   Daemon() {}
   ~Daemon() {}

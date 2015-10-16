@@ -11,9 +11,9 @@
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/errors/error_codes.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/errors/error.h>
+#include <brillo/errors/error_codes.h>
+#include <brillo/strings/string_utils.h>
 #include <weave/enum_to_string.h>
 
 namespace buffet {
@@ -56,7 +56,7 @@ bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   if (!base::PathExists(options_.defaults))
     return true;  // Nothing to load.
 
-  chromeos::KeyValueStore store;
+  brillo::KeyValueStore store;
   if (!store.Load(options_.defaults))
     return false;
   bool result = LoadDefaults(store, settings);
@@ -77,7 +77,7 @@ bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   return result;
 }
 
-bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
+bool BuffetConfig::LoadDefaults(const brillo::KeyValueStore& store,
                                 weave::Settings* settings) {
   store.GetString(config_keys::kClientId, &settings->client_id);
   store.GetString(config_keys::kClientSecret, &settings->client_secret);
@@ -89,7 +89,7 @@ bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
   store.GetString(config_keys::kModelId, &settings->model_id);
 
   base::FilePath lsb_release_path("/etc/lsb-release");
-  chromeos::KeyValueStore lsb_release_store;
+  brillo::KeyValueStore lsb_release_store;
   if (lsb_release_store.Load(lsb_release_path) &&
       lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
                                   &settings->firmware_version)) {
@@ -106,7 +106,7 @@ bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
   if (store.GetString(config_keys::kPairingModes, &modes_str)) {
     std::set<weave::PairingType> pairing_modes;
     for (const std::string& mode :
-         chromeos::string_utils::Split(modes_str, ",", true, true)) {
+         brillo::string_utils::Split(modes_str, ",", true, true)) {
       weave::PairingType pairing_mode;
       if (!StringToEnum(mode, &pairing_mode))
         return false;

@@ -11,7 +11,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 namespace chaps {
 
@@ -43,8 +43,8 @@ class TokenFileManager {
   //  auth_data: The authorization data to salt.
   //  salted_auth_data: Returns the salted authorization data.
   virtual bool SaltAuthData(const base::FilePath& token_path,
-                            const chromeos::SecureBlob& auth_data,
-                            chromeos::SecureBlob* salted_auth_data);
+                            const brillo::SecureBlob& auth_data,
+                            brillo::SecureBlob* salted_auth_data);
 
  private:
   uid_t chapsd_uid_;

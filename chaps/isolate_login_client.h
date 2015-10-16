@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <base/files/file_path.h>
 
 #include "chaps/isolate.h"
@@ -40,7 +40,7 @@ class IsolateLoginClient {
   // with access to their TPM protected keys.  Return true on success and
   // false on failure.
   virtual bool LoginUser(const std::string& user,
-                         const chromeos::SecureBlob& auth_data);
+                         const brillo::SecureBlob& auth_data);
 
   // Should be called whenever a user logs out of a session. If the user has
   // logged out of all sessions, this will close their isolate and unload
@@ -50,8 +50,8 @@ class IsolateLoginClient {
   // Change the authorization data used to secure the users token.
   // Return true on success and false on failure.
   virtual bool ChangeUserAuth(const std::string& user,
-                              const chromeos::SecureBlob& old_auth_data,
-                              const chromeos::SecureBlob& new_auth_data);
+                              const brillo::SecureBlob& old_auth_data,
+                              const brillo::SecureBlob& new_auth_data);
 
  private:
   IsolateCredentialManager* isolate_manager_;

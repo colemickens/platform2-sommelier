@@ -17,7 +17,7 @@
 
 using std::string;
 using std::vector;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Return;

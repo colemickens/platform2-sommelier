@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   service.Initialize();
   burner->InitSignalSender(&service);
 
-  service.Register(chromeos::dbus::GetSystemBusConnection());
+  service.Register(brillo::dbus::GetSystemBusConnection());
   service.Run();
   return 0;
 }

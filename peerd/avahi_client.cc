@@ -8,9 +8,9 @@
 
 #include <avahi-common/defs.h>
 #include <base/guid.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/strings/string_utils.h>
 #include <dbus/object_proxy.h>
 
 #include "peerd/dbus_constants.h"
@@ -18,10 +18,10 @@
 #include "peerd/technologies.h"
 
 using dbus::ObjectPath;
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::CallMethodAndBlock;
-using chromeos::dbus_utils::ExtractMethodCallResults;
-using chromeos::string_utils::SplitAtFirst;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::CallMethodAndBlock;
+using brillo::dbus_utils::ExtractMethodCallResults;
+using brillo::string_utils::SplitAtFirst;
 using std::string;
 
 namespace peerd {
@@ -54,7 +54,7 @@ void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
                  weak_ptr_factory_.GetWeakPtr()));
   // Reconnect to our signals on a new Avahi instance.
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  chromeos::dbus_utils::ConnectToSignal(
+  brillo::dbus_utils::ConnectToSignal(
       server_,
       dbus_constants::avahi::kServerInterface,
       dbus_constants::avahi::kServerSignalStateChanged,

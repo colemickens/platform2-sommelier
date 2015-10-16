@@ -20,11 +20,11 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <brillo/cryptohome.h>
+#include <brillo/glib/dbus.h>
+#include <brillo/secure_blob.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/glib/dbus.h>
-#include <chromeos/secure_blob.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -49,7 +49,7 @@
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -185,7 +185,7 @@ Service::Service()
       reply_factory_(default_reply_factory_.get()),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
-      guest_user_(chromeos::cryptohome::home::kGuestUserName),
+      guest_user_(brillo::cryptohome::home::kGuestUserName),
       legacy_mount_(true),
       public_mount_salt_(),
       default_chaps_client_(new chaps::TokenManagerClient()),
@@ -401,7 +401,7 @@ bool Service::Initialize() {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
     attestation_->CacheEndorsementData();
-    chromeos::SecureBlob password;
+    brillo::SecureBlob password;
     if (tpm_init_->IsTpmReady() && tpm_init_->GetTpmPassword(&password)) {
       attestation_->PrepareForEnrollmentAsync();
     }
@@ -606,7 +606,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
         RemoveMount(result->mount().get());
       }
     } else {
-      chromeos::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
+      brillo::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
       g_array_append_vals(tmp_array.get(),
                           result->return_data()->data(),
                           result->return_data()->size());
@@ -616,7 +616,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
                     result->sequence_id(),
                     result->return_status(),
                     tmp_array.get());
-      chromeos::SecureMemset(tmp_array.get()->data, 0, tmp_array.get()->len);
+      brillo::SecureMemset(tmp_array.get()->data, 0, tmp_array.get()->len);
     }
     if (result->pkcs11_init()) {
       LOG(INFO) << "An asynchronous mount request with sequence id: "
@@ -1336,7 +1336,7 @@ gboolean Service::UpdateKeyEx(GArray* account_id,
 gboolean Service::Remove(gchar *userid,
                          gboolean *OUT_result,
                          GError **error) {
-  UsernamePasskey credentials(userid, chromeos::Blob());
+  UsernamePasskey credentials(userid, brillo::Blob());
   scoped_refptr<cryptohome::Mount> user_mount = GetMountForUser(userid);
   if (user_mount.get() && user_mount->IsMounted()) {
     *OUT_result = FALSE;
@@ -1371,7 +1371,7 @@ gboolean Service::AsyncRemove(gchar *userid,
     mount_thread_.message_loop()->PostTask(FROM_HERE,
         base::Bind(&MountTaskNop::Run, mount_task.get()));
   } else {
-    UsernamePasskey credentials(userid, chromeos::Blob());
+    UsernamePasskey credentials(userid, brillo::Blob());
     scoped_refptr<MountTaskRemove> mount_task =
         new MountTaskRemove(bridge, NULL, credentials, homedirs_);
     *OUT_async_id = mount_task->sequence_id();
@@ -1397,7 +1397,7 @@ gboolean Service::GetSanitizedUsername(gchar *username,
   // return the same value, but login_manager is already relying on
   // SanitizeUserName() and that's the value that chrome should see.
   std::string sanitized =
-      chromeos::cryptohome::home::SanitizeUserName(username);
+      brillo::cryptohome::home::SanitizeUserName(username);
   if (sanitized.empty())
     return FALSE;
   *OUT_sanitized = g_strndup(sanitized.data(), sanitized.size());
@@ -1657,7 +1657,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
 
   // Provide an authoritative filesystem-sanitized username.
   mount_reply->set_sanitized_username(
-      chromeos::cryptohome::home::SanitizeUserName(identifier->email()));
+      brillo::cryptohome::home::SanitizeUserName(identifier->email()));
 
   // While it would be cleaner to implement the privilege enforcement
   // here, that can only be done if a label was supplied.  If a wildcard
@@ -2169,7 +2169,7 @@ gboolean Service::TpmAttestationCreateEnrollRequest(gint pca_type,
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   if (attestation_->CreateEnrollRequest(GetPCAType(pca_type), &blob))
     g_array_append_vals(*OUT_pca_request, blob.data(), blob.size());
   return TRUE;
@@ -2194,7 +2194,7 @@ gboolean Service::TpmAttestationEnroll(gint pca_type,
                                        GArray* pca_response,
                                        gboolean* OUT_success,
                                        GError** error) {
-  chromeos::SecureBlob blob(pca_response->data,
+  brillo::SecureBlob blob(pca_response->data,
                             pca_response->data + pca_response->len);
   *OUT_success = attestation_->Enroll(GetPCAType(pca_type), blob);
   return TRUE;
@@ -2204,7 +2204,7 @@ gboolean Service::AsyncTpmAttestationEnroll(gint pca_type,
                                             GArray* pca_response,
                                             gint* OUT_async_id,
                                             GError** error) {
-  chromeos::SecureBlob blob(pca_response->data,
+  brillo::SecureBlob blob(pca_response->data,
                             pca_response->data + pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -2226,7 +2226,7 @@ gboolean Service::TpmAttestationCreateCertRequest(gint pca_type,
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   if (attestation_->CreateCertRequest(GetPCAType(pca_type),
                                       GetProfile(certificate_profile),
                                       username,
@@ -2269,9 +2269,9 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
   *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob response_blob(pca_response->data,
+  brillo::SecureBlob response_blob(pca_response->data,
                                      pca_response->data + pca_response->len);
-  chromeos::SecureBlob cert_blob;
+  brillo::SecureBlob cert_blob;
   *OUT_success = attestation_->FinishCertRequest(response_blob,
                                                  is_user_specific,
                                                  username,
@@ -2289,7 +2289,7 @@ gboolean Service::AsyncTpmAttestationFinishCertRequest(
     gchar* key_name,
     gint* OUT_async_id,
     GError** error) {
-  chromeos::SecureBlob blob(pca_response->data,
+  brillo::SecureBlob blob(pca_response->data,
                             pca_response->data + pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -2331,7 +2331,7 @@ gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
                                                gboolean* OUT_success,
                                                GError** error) {
   *OUT_certificate = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   *OUT_success = attestation_->GetCertificateChain(is_user_specific,
                                                    username,
                                                    key_name,
@@ -2348,7 +2348,7 @@ gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
                                              gboolean* OUT_success,
                                              GError** error) {
   *OUT_public_key = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   *OUT_success = attestation_->GetPublicKey(is_user_specific,
                                             username,
                                             key_name,
@@ -2388,9 +2388,9 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
-  chromeos::SecureBlob device_id_blob(device_id->data,
+  brillo::SecureBlob device_id_blob(device_id->data,
                                       device_id->data + device_id->len);
-  chromeos::SecureBlob challenge_blob(challenge->data,
+  brillo::SecureBlob challenge_blob(challenge->data,
                                       challenge->data + challenge->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -2418,7 +2418,7 @@ gboolean Service::TpmAttestationSignSimpleChallenge(
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
-  chromeos::SecureBlob challenge_blob(challenge->data,
+  brillo::SecureBlob challenge_blob(challenge->data,
                                       challenge->data + challenge->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -2445,7 +2445,7 @@ gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
   *OUT_payload = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   *OUT_success = attestation_->GetKeyPayload(is_user_specific,
                                              username,
                                              key_name,
@@ -2461,7 +2461,7 @@ gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
                                               GArray* payload,
                                               gboolean* OUT_success,
                                               GError** error) {
-  chromeos::SecureBlob blob(payload->data, payload->data + payload->len);
+  brillo::SecureBlob blob(payload->data, payload->data + payload->len);
   *OUT_success = attestation_->SetKeyPayload(is_user_specific,
                                              username,
                                              key_name,
@@ -2497,7 +2497,7 @@ gboolean Service::TpmAttestationResetIdentity(gchar* reset_token,
   // dbus-glib loops forever.
   *OUT_reset_request = g_array_new(false, false,
                                    sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob reset_request;
+  brillo::SecureBlob reset_request;
   *OUT_success = attestation_->GetIdentityResetRequest(
       std::string(reinterpret_cast<char*>(reset_token)),
       &reset_request);
@@ -2563,7 +2563,7 @@ gboolean Service::InstallAttributesGet(gchar* name,
                                        GArray** OUT_value,
                                        gboolean* OUT_successful,
                                        GError** error) {
-  chromeos::Blob value;
+  brillo::Blob value;
   *OUT_successful = install_attrs_->Get(name, &value);
   // We must set the GArray now because if we return without setting it,
   // dbus-glib loops forever.
@@ -2582,7 +2582,7 @@ gboolean Service::InstallAttributesSet(gchar* name,
                                        gboolean* OUT_successful,
                                        GError** error) {
   // Convert from GArray to vector
-  chromeos::Blob value_blob;
+  brillo::Blob value_blob;
   value_blob.assign(value->data, value->data + value->len);
   *OUT_successful = install_attrs_->Set(name, value_blob);
   return TRUE;
@@ -2600,7 +2600,7 @@ gboolean Service::InstallAttributesFinalize(gboolean* OUT_finalized,
 
 gboolean Service::InstallAttributesCount(gint* OUT_count, GError** error) {
   // TODO(wad) for all of these functions return error on uninit.
-  // Follow the CHROMEOS_LOGIN_ERROR quark example in chromeos/dbus/
+  // Follow the CHROMEOS_LOGIN_ERROR quark example in brillo/dbus/
   *OUT_count = install_attrs_->Count();
   return TRUE;
 }
@@ -2664,7 +2664,7 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
   // dbus-glib loops forever.
   *OUT_enrollment_state = g_array_new(false, false, 1);
   *OUT_success = false;
-  chromeos::Blob enrollment_blob;
+  brillo::Blob enrollment_blob;
   if (!platform_->ReadFile(kPreservedEnrollmentStatePath,
                            &enrollment_blob)) {
     LOG(ERROR) << "Failed to read out enrollment state from "
@@ -2685,7 +2685,7 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
   return TRUE;
 }
 
-void Service::DoSignBootLockbox(const chromeos::SecureBlob& request,
+void Service::DoSignBootLockbox(const brillo::SecureBlob& request,
                                 DBusGMethodInvocation* context) {
   SignBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size()) ||
@@ -2713,7 +2713,7 @@ gboolean Service::SignBootLockbox(const GArray* request,
   return TRUE;
 }
 
-void Service::DoVerifyBootLockbox(const chromeos::SecureBlob& request,
+void Service::DoVerifyBootLockbox(const brillo::SecureBlob& request,
                                   DBusGMethodInvocation* context) {
   VerifyBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size()) ||
@@ -2739,7 +2739,7 @@ gboolean Service::VerifyBootLockbox(const GArray* request,
   return TRUE;
 }
 
-void Service::DoFinalizeBootLockbox(const chromeos::SecureBlob& request,
+void Service::DoFinalizeBootLockbox(const brillo::SecureBlob& request,
                                     DBusGMethodInvocation* context) {
   FinalizeBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2762,7 +2762,7 @@ gboolean Service::FinalizeBootLockbox(const GArray* request,
   return TRUE;
 }
 
-void Service::DoGetBootAttribute(const chromeos::SecureBlob& request,
+void Service::DoGetBootAttribute(const brillo::SecureBlob& request,
                                  DBusGMethodInvocation* context) {
   GetBootAttributeRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2788,7 +2788,7 @@ gboolean Service::GetBootAttribute(const GArray* request,
   return TRUE;
 }
 
-void Service::DoSetBootAttribute(const chromeos::SecureBlob& request,
+void Service::DoSetBootAttribute(const brillo::SecureBlob& request,
                                  DBusGMethodInvocation* context) {
   SetBootAttributeRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2809,7 +2809,7 @@ gboolean Service::SetBootAttribute(const GArray* request,
   return TRUE;
 }
 
-void Service::DoFlushAndSignBootAttributes(const chromeos::SecureBlob& request,
+void Service::DoFlushAndSignBootAttributes(const brillo::SecureBlob& request,
                                            DBusGMethodInvocation* context) {
   FlushAndSignBootAttributesRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2832,7 +2832,7 @@ gboolean Service::FlushAndSignBootAttributes(const GArray* request,
   return TRUE;
 }
 
-void Service::DoGetLoginStatus(const chromeos::SecureBlob& request,
+void Service::DoGetLoginStatus(const brillo::SecureBlob& request,
                                DBusGMethodInvocation* context) {
   GetLoginStatusRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2859,7 +2859,7 @@ gboolean Service::GetLoginStatus(const GArray* request,
   return TRUE;
 }
 
-void Service::DoGetTpmStatus(const chromeos::SecureBlob& request,
+void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
                              DBusGMethodInvocation* context) {
   GetTpmStatusRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2913,7 +2913,7 @@ gboolean Service::GetTpmStatus(const GArray* request,
   return TRUE;
 }
 
-void Service::DoGetEndorsementInfo(const chromeos::SecureBlob& request,
+void Service::DoGetEndorsementInfo(const brillo::SecureBlob& request,
                                    DBusGMethodInvocation* context) {
   GetEndorsementInfoRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
@@ -2947,7 +2947,7 @@ gboolean Service::GetEndorsementInfo(const GArray* request,
   return TRUE;
 }
 
-void Service::DoInitializeCastKey(const chromeos::SecureBlob& request,
+void Service::DoInitializeCastKey(const brillo::SecureBlob& request,
                                   DBusGMethodInvocation* context) {
   const char kCastCertificateOrigin[] = "CAST";
   const char kCastKeyLabel[] = "CERTIFIED_CAST_KEY";
@@ -2966,14 +2966,14 @@ void Service::DoInitializeCastKey(const chromeos::SecureBlob& request,
     return;
   }
   if (!attestation_->IsEnrolled()) {
-    chromeos::SecureBlob enroll_request;
+    brillo::SecureBlob enroll_request;
     if (!attestation_->CreateEnrollRequest(Attestation::kDefaultPCA,
                                            &enroll_request)) {
       reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
       SendReply(context, reply);
       return;
     }
-    chromeos::SecureBlob enroll_reply;
+    brillo::SecureBlob enroll_reply;
     if (!attestation_->SendPCARequestAndBlock(Attestation::kDefaultPCA,
                                               Attestation::kEnroll,
                                               enroll_request,
@@ -2991,7 +2991,7 @@ void Service::DoInitializeCastKey(const chromeos::SecureBlob& request,
   if (!attestation_->DoesKeyExist(false,  // is_user_specific
                                   "",     // username
                                   kCastKeyLabel)) {
-    chromeos::SecureBlob certificate_request;
+    brillo::SecureBlob certificate_request;
     if (!attestation_->CreateCertRequest(Attestation::kDefaultPCA,
                                          CAST_CERTIFICATE,
                                          "",  // username
@@ -3001,7 +3001,7 @@ void Service::DoInitializeCastKey(const chromeos::SecureBlob& request,
       SendReply(context, reply);
       return;
     }
-    chromeos::SecureBlob certificate_reply;
+    brillo::SecureBlob certificate_reply;
     if (!attestation_->SendPCARequestAndBlock(Attestation::kDefaultPCA,
                                               Attestation::kGetCertificate,
                                               certificate_request,
@@ -3010,7 +3010,7 @@ void Service::DoInitializeCastKey(const chromeos::SecureBlob& request,
       SendReply(context, reply);
       return;
     }
-    chromeos::SecureBlob certificate_chain;
+    brillo::SecureBlob certificate_chain;
     if (!attestation_->FinishCertRequest(certificate_reply,
                                          false,  // is_user_specific
                                          "",     // username
@@ -3121,7 +3121,7 @@ void Service::ResetDictionaryAttackMitigation() {
     ReportDictionaryAttackResetStatus(kResetNotNecessary);
     return;
   }
-  chromeos::SecureBlob delegate_blob, delegate_secret;
+  brillo::SecureBlob delegate_blob, delegate_secret;
   bool has_reset_lock_permissions = false;
   if (!attestation_->GetDelegateCredentials(&delegate_blob,
                                             &delegate_secret,
@@ -3142,8 +3142,8 @@ void Service::ResetDictionaryAttackMitigation() {
 
 void Service::DetectEnterpriseOwnership() {
   static const char true_str[] = "true";
-  const chromeos::Blob true_value(true_str, true_str + arraysize(true_str));
-  chromeos::Blob value;
+  const brillo::Blob true_value(true_str, true_str + arraysize(true_str));
+  brillo::Blob value;
   if (install_attrs_->Get("enterprise.owned", &value) && value == true_value) {
     enterprise_owned_ = true;
     // Update any active mounts with the state.

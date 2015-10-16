@@ -13,7 +13,7 @@
 
 #include "cryptohome/cryptolib.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 

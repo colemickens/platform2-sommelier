@@ -9,7 +9,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"
@@ -18,7 +18,7 @@
 
 using std::string;
 using std::vector;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 typedef CK_RV (*GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR);
 

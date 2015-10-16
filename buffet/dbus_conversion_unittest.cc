@@ -12,7 +12,7 @@
 #include <base/guid.h>
 #include <base/rand_util.h>
 #include <base/values.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
 #include <weave/test/unittest_utils.h>
 
@@ -20,18 +20,18 @@ namespace buffet {
 
 namespace {
 
-using chromeos::Any;
-using chromeos::VariantDictionary;
+using brillo::Any;
+using brillo::VariantDictionary;
 using weave::test::CreateDictionaryValue;
 using weave::test::IsEqualValue;
 
-chromeos::VariantDictionary ToDBus(const base::DictionaryValue& object) {
+brillo::VariantDictionary ToDBus(const base::DictionaryValue& object) {
   return DictionaryToDBusVariantDictionary(object);
 }
 
 std::unique_ptr<base::DictionaryValue> FromDBus(
-    const chromeos::VariantDictionary& object) {
-  chromeos::ErrorPtr error;
+    const brillo::VariantDictionary& object) {
+  brillo::ErrorPtr error;
   auto result = DictionaryFromDBusVariantDictionary(object, &error);
   EXPECT_TRUE(result || error);
   return result;

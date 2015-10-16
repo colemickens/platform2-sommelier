@@ -4,15 +4,15 @@
 
 #include "buffet/dbus_command_proxy.h"
 
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
 #include <weave/enum_to_string.h>
 
 #include "buffet/dbus_conversion.h"
 #include "buffet/weave_error_conversion.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 
 namespace errors {
 namespace commands {
@@ -25,8 +25,8 @@ namespace buffet {
 
 namespace {
 
-bool ReportDestroyedError(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
+bool ReportDestroyedError(brillo::ErrorPtr* error) {
+  brillo::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
                          errors::commands::kCommandDestroyed,
                          "Command has been destroyed");
   return false;
@@ -66,8 +66,8 @@ void DBusCommandProxy::RegisterAsync(
 }
 
 bool DBusCommandProxy::SetProgress(
-    chromeos::ErrorPtr* error,
-    const chromeos::VariantDictionary& progress) {
+    brillo::ErrorPtr* error,
+    const brillo::VariantDictionary& progress) {
   auto command = command_.lock();
   if (!command)
     return ReportDestroyedError(error);
@@ -88,8 +88,8 @@ bool DBusCommandProxy::SetProgress(
   return true;
 }
 
-bool DBusCommandProxy::Complete(chromeos::ErrorPtr* error,
-                                const chromeos::VariantDictionary& results) {
+bool DBusCommandProxy::Complete(brillo::ErrorPtr* error,
+                                const brillo::VariantDictionary& results) {
   auto command = command_.lock();
   if (!command)
     return ReportDestroyedError(error);
@@ -110,7 +110,7 @@ bool DBusCommandProxy::Complete(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool DBusCommandProxy::Abort(chromeos::ErrorPtr* error,
+bool DBusCommandProxy::Abort(brillo::ErrorPtr* error,
                              const std::string& code,
                              const std::string& message) {
   auto command = command_.lock();
@@ -131,7 +131,7 @@ bool DBusCommandProxy::Abort(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool DBusCommandProxy::SetError(chromeos::ErrorPtr* error,
+bool DBusCommandProxy::SetError(brillo::ErrorPtr* error,
                                 const std::string& code,
                                 const std::string& message) {
   auto command = command_.lock();
@@ -152,7 +152,7 @@ bool DBusCommandProxy::SetError(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool DBusCommandProxy::Cancel(chromeos::ErrorPtr* error) {
+bool DBusCommandProxy::Cancel(brillo::ErrorPtr* error) {
   auto command = command_.lock();
   if (!command)
     return ReportDestroyedError(error);

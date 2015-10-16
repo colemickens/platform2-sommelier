@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include <chromeos/glib/abstract_dbus_service.h>
-#include <chromeos/glib/dbus.h>
+#include <brillo/glib/abstract_dbus_service.h>
+#include <brillo/glib/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "image-burner/image_burner_impl.h"
@@ -31,13 +31,13 @@ enum BurnSignals {
 // D-Bus and entering the glib run loop.
 //
 // ::g_type_init() must be called before this class is used.
-class ImageBurnService : public chromeos::dbus::AbstractDbusService,
+class ImageBurnService : public brillo::dbus::AbstractDbusService,
                          public SignalSender {
  public:
   explicit ImageBurnService(BurnerImpl* burner_impl);
   virtual ~ImageBurnService();
 
-  // chromeos::dbus::AbstractDbusService implementation.
+  // brillo::dbus::AbstractDbusService implementation.
   const char *service_name() const override;
   const char *service_path() const override;
   const char *service_interface() const override;

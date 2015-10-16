@@ -7,7 +7,7 @@
 #include "cryptohome/vault_keyset.h"
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -16,7 +16,7 @@
 #include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 using ::testing::_;
@@ -30,14 +30,14 @@ class VaultKeysetTest : public ::testing::Test {
   VaultKeysetTest() { }
   virtual ~VaultKeysetTest() { }
 
-  static bool FindBlobInBlob(const chromeos::Blob& haystack,
-                             const chromeos::Blob& needle) {
+  static bool FindBlobInBlob(const brillo::Blob& haystack,
+                             const brillo::Blob& needle) {
     if (needle.size() > haystack.size()) {
       return false;
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (chromeos::SecureMemcmp(&haystack[start], needle.data(),
+      if (brillo::SecureMemcmp(&haystack[start], needle.data(),
                                  needle.size()) == 0) {
         return true;
       }

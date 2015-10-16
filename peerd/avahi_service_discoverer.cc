@@ -9,11 +9,11 @@
 #include <avahi-common/defs.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/strings/string_utils.h>
 #include <dbus/object_proxy.h>
 
 #include "peerd/avahi_client.h"
@@ -22,11 +22,11 @@
 #include "peerd/peer_manager_interface.h"
 #include "peerd/service.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::CallMethodAndBlock;
-using chromeos::dbus_utils::ConnectToSignal;
-using chromeos::dbus_utils::ExtractMethodCallResults;
-using chromeos::string_utils::Join;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::CallMethodAndBlock;
+using brillo::dbus_utils::ConnectToSignal;
+using brillo::dbus_utils::ExtractMethodCallResults;
+using brillo::string_utils::Join;
 using dbus::ObjectPath;
 using dbus::ObjectProxy;
 using peerd::dbus_constants::avahi::kServiceBrowserInterface;
@@ -76,7 +76,7 @@ bool AvahiServiceDiscoverer::txt_list2service_info(const TxtList& txt_list,
   for (const vector<uint8_t>& label : txt_list) {
     string label_str{label.cbegin(), label.cend()};
     string key, value;
-    chromeos::string_utils::SplitAtFirst(label_str, "=", &key, &value, false);
+    brillo::string_utils::SplitAtFirst(label_str, "=", &key, &value, false);
     info->emplace(key, value);
   }
   return Service::IsValidServiceInfo(nullptr, *info);
@@ -365,10 +365,10 @@ void AvahiServiceDiscoverer::HandleFound(dbus::Signal* signal) {
       return;
     }
     vector<string> service_ids{
-        chromeos::string_utils::Split(it_services->second,
-                                      constants::mdns::kSerbusServiceDelimiter,
-                                      false,
-                                      false)};
+        brillo::string_utils::Split(it_services->second,
+                                    constants::mdns::kSerbusServiceDelimiter,
+                                    false,
+                                    false)};
     set<string> service_types{};
     for (string& service : service_ids) {
       // Validate the service id.

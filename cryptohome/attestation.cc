@@ -13,10 +13,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <chromeos/data_encoding.h>
-#include <chromeos/http/http_utils.h>
-#include <chromeos/mime_utils.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/data_encoding.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/mime_utils.h>
+#include <brillo/secure_blob.h>
 #include <google/protobuf/repeated_field.h>
 #include <openssl/aes.h>
 #include <openssl/evp.h>
@@ -35,7 +35,7 @@
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 namespace {
@@ -910,7 +910,7 @@ bool Attestation::GetPublicKey(bool is_user_specific,
     return false;
   }
   SecureBlob tmp(buffer, buffer + length);
-  chromeos::SecureMemset(buffer, 0, length);
+  brillo::SecureMemset(buffer, 0, length);
   OPENSSL_free(buffer);
   public_key->swap(tmp);
   return true;
@@ -1183,7 +1183,7 @@ bool Attestation::IsPCR0VerifiedMode() {
   settings_blob[1] = false;  // Recovery mode enabled.
   settings_blob[2] = kVerified;  // Firmware type.
   SecureBlob settings_digest = CryptoLib::Sha1(settings_blob);
-  chromeos::Blob extend_pcr_value(kDigestSize, 0);
+  brillo::Blob extend_pcr_value(kDigestSize, 0);
   extend_pcr_value.insert(extend_pcr_value.end(), settings_digest.begin(),
                           settings_digest.end());
   SecureBlob expected_pcr_value = CryptoLib::Sha1(extend_pcr_value);
@@ -1360,7 +1360,7 @@ bool Attestation::VerifyPCR0Quote(const SecureBlob& aik_public_key,
     settings_blob[1] = kKnownPCRValues[i].recovery_mode_enabled;
     settings_blob[2] = kKnownPCRValues[i].firmware_type;
     SecureBlob settings_digest = CryptoLib::Sha1(settings_blob);
-    chromeos::Blob extend_pcr_value(kDigestSize, 0);
+    brillo::Blob extend_pcr_value(kDigestSize, 0);
     extend_pcr_value.insert(extend_pcr_value.end(), settings_digest.begin(),
                             settings_digest.end());
     SecureBlob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
@@ -1439,7 +1439,7 @@ bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
     // Check if the PCR value matches the hint.
     SecureBlob hint_digest = CryptoLib::Sha256(
         SecureBlob(quote.pcr_source_hint()));
-    chromeos::Blob extend_pcr_value(kDigestSize, 0);
+    brillo::Blob extend_pcr_value(kDigestSize, 0);
     extend_pcr_value.insert(extend_pcr_value.end(),
                             hint_digest.begin(),
                             hint_digest.begin() + 20);
@@ -1565,7 +1565,7 @@ void Attestation::ClearIdentity(IdentityBinding* binding, IdentityKey* key) {
 }
 
 void Attestation::ClearString(string* s) {
-  chromeos::SecureMemset(string_as_array(s), 0, s->length());
+  brillo::SecureMemset(string_as_array(s), 0, s->length());
   s->clear();
 }
 
@@ -1632,7 +1632,7 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
     return false;
   }
   if (credential.size() != credential_out.size() ||
-      chromeos::SecureMemcmp(credential.data(), credential_out.data(),
+      brillo::SecureMemcmp(credential.data(), credential_out.data(),
                              credential.size()) != 0) {
     LOG(ERROR) << "Invalid identity credential.";
     return false;
@@ -1654,7 +1654,7 @@ bool Attestation::EncryptEndorsementCredential(
       break;
     case kAlternatePCA:
       {
-        chromeos::Blob pca_key;
+        brillo::Blob pca_key;
         if (!install_attributes_->Get(kAlternatePCAKeyAttributeName,
                                       &pca_key)) {
           LOG(ERROR) << __func__ << "Alternate PCA key does not exist.";
@@ -1662,7 +1662,7 @@ bool Attestation::EncryptEndorsementCredential(
         }
         const unsigned char* asn1_ptr = pca_key.data();
         rsa.reset(d2i_RSA_PUBKEY(NULL, &asn1_ptr, pca_key.size()));
-        chromeos::SecureBlob key_id_blob;
+        brillo::SecureBlob key_id_blob;
         // Ignore result, an empty ID is ok.
         install_attributes_->Get(kAlternatePCAKeyIDAttributeName, &key_id_blob);
         key_id = key_id_blob.to_string();
@@ -1800,7 +1800,7 @@ string Attestation::CreatePEMCertificate(const string& certificate) {
   const char kEndCertificate[] = "-----END CERTIFICATE-----";
 
   string pem = kBeginCertificate;
-  pem += chromeos::data_encoding::Base64EncodeWrapLines(certificate);
+  pem += brillo::data_encoding::Base64EncodeWrapLines(certificate);
   pem += kEndCertificate;
   return pem;
 }
@@ -1942,7 +1942,7 @@ scoped_ptr<RSA, Attestation::RSADeleter> Attestation::CreateRSAFromHexModulus(
 
 bool Attestation::CreateSignedPublicKey(
     const CertifiedKey& key,
-    chromeos::SecureBlob* signed_public_key) {
+    brillo::SecureBlob* signed_public_key) {
   // Get the certified public key as an EVP_PKEY.
   const unsigned char* asn1_ptr =
     reinterpret_cast<const unsigned char*>(key.public_key().data());
@@ -2013,10 +2013,10 @@ bool Attestation::CreateSignedPublicKey(
   return true;
 }
 
-bool Attestation::AesEncrypt(const chromeos::SecureBlob& plaintext,
-                const chromeos::SecureBlob& key,
-                const chromeos::SecureBlob& iv,
-                chromeos::SecureBlob* ciphertext) {
+bool Attestation::AesEncrypt(const brillo::SecureBlob& plaintext,
+                const brillo::SecureBlob& key,
+                const brillo::SecureBlob& iv,
+                brillo::SecureBlob* ciphertext) {
   return CryptoLib::AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(),
                                                key, iv,
                                                CryptoLib::kPaddingStandard,
@@ -2024,10 +2024,10 @@ bool Attestation::AesEncrypt(const chromeos::SecureBlob& plaintext,
                                                ciphertext);
 }
 
-bool Attestation::AesDecrypt(const chromeos::SecureBlob& ciphertext,
-                const chromeos::SecureBlob& key,
-                const chromeos::SecureBlob& iv,
-                chromeos::SecureBlob* plaintext) {
+bool Attestation::AesDecrypt(const brillo::SecureBlob& ciphertext,
+                const brillo::SecureBlob& key,
+                const brillo::SecureBlob& iv,
+                brillo::SecureBlob* plaintext) {
   return CryptoLib::AesDecryptSpecifyBlockMode(ciphertext, 0, ciphertext.size(),
                                                key, iv,
                                                CryptoLib::kPaddingStandard,
@@ -2056,12 +2056,12 @@ bool Attestation::TssCompatibleEncrypt(const SecureBlob& key,
 }
 
 bool Attestation::TpmCompatibleOAEPEncrypt(RSA* key,
-                                           const chromeos::SecureBlob& input,
-                                           chromeos::SecureBlob* output) {
+                                           const brillo::SecureBlob& input,
+                                           brillo::SecureBlob* output) {
   CHECK(output);
   // The custom OAEP parameter as specified in TPM Main Part 1, Section 31.1.1.
   const unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
-  chromeos::SecureBlob padded_input(RSA_size(key));
+  brillo::SecureBlob padded_input(RSA_size(key));
   unsigned char* padded_buffer = padded_input.data();
   const unsigned char* input_buffer = input.data();
   int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
@@ -2169,8 +2169,8 @@ void Attestation::FinalizeEndorsementData() {
   }
 }
 
-bool Attestation::GetDelegateCredentials(chromeos::SecureBlob* blob,
-                                         chromeos::SecureBlob* secret,
+bool Attestation::GetDelegateCredentials(brillo::SecureBlob* blob,
+                                         brillo::SecureBlob* secret,
                                          bool* has_reset_lock_permissions) {
   if (!IsPreparedForEnrollment()) {
     return false;
@@ -2185,8 +2185,8 @@ bool Attestation::GetDelegateCredentials(chromeos::SecureBlob* blob,
 }
 
 bool Attestation::GetCachedEndorsementData(
-    chromeos::SecureBlob* ek_public_key,
-    chromeos::SecureBlob* ek_certificate) {
+    brillo::SecureBlob* ek_public_key,
+    brillo::SecureBlob* ek_certificate) {
   if (!database_pb_.has_credentials()) {
     return false;
   }
@@ -2236,7 +2236,7 @@ void Attestation::ExtendPCR1IfClear() {
     LOG(WARNING) << "Failed to read PCR1.";
     return;
   }
-  chromeos::Blob default_pcr_value(kDigestSize, 0);
+  brillo::Blob default_pcr_value(kDigestSize, 0);
   if (!std::equal(default_pcr_value.begin(), default_pcr_value.end(),
                   current_pcr_value.begin())) {
     // The PCR has already been extended.
@@ -2256,17 +2256,17 @@ void Attestation::ExtendPCR1IfClear() {
 
 bool Attestation::SendPCARequestAndBlock(PCAType pca_type,
                                          PCARequestType request_type,
-                                         const chromeos::SecureBlob& request,
-                                         chromeos::SecureBlob* reply) {
-  std::shared_ptr<chromeos::http::Transport> transport = http_transport_;
+                                         const brillo::SecureBlob& request,
+                                         brillo::SecureBlob* reply) {
+  std::shared_ptr<brillo::http::Transport> transport = http_transport_;
   if (!transport) {
-    transport = chromeos::http::Transport::CreateDefault();
+    transport = brillo::http::Transport::CreateDefault();
   }
-  std::unique_ptr<chromeos::http::Response> response = PostBinaryAndBlock(
+  std::unique_ptr<brillo::http::Response> response = PostBinaryAndBlock(
       GetPCAURL(pca_type, request_type),
       request.data(),
       request.size(),
-      chromeos::mime::application::kOctet_stream,
+      brillo::mime::application::kOctet_stream,
       {},  // headers
       transport,
       NULL);  // error
@@ -2289,7 +2289,7 @@ std::string Attestation::GetPCAURL(PCAType pca_type,
       break;
     case kAlternatePCA:
       {
-        chromeos::SecureBlob url_blob;
+        brillo::SecureBlob url_blob;
         if (!install_attributes_->Get(kAlternatePCAUrlAttributeName,
                                       &url_blob)) {
           LOG(ERROR) << "Cannot find alternate PCA URL.";

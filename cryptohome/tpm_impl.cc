@@ -26,7 +26,7 @@
 #include "cryptohome/cryptolib.h"
 
 using base::PlatformThread;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -281,7 +281,7 @@ bool TpmImpl::GetDictionaryAttackInfo(int* counter,
     LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
     return false;
   }
-  chromeos::Blob capability_data;
+  brillo::Blob capability_data;
   if (!GetCapability(context_handle,
                      tpm_handle,
                      TSS_TPMCAP_DA_LOGIC,
@@ -329,7 +329,7 @@ bool TpmImpl::GetDictionaryAttackInfo(int* counter,
   }
   const UINT32 kInfineon = 0x49465800;
   if (manufacturer == kInfineon) {
-    chromeos::Blob capability_data;
+    brillo::Blob capability_data;
     if (!GetCapability(context_handle,
                        tpm_handle,
                        TSS_TPMCAP_MFR,
@@ -356,8 +356,8 @@ bool TpmImpl::GetDictionaryAttackInfo(int* counter,
 }
 
 bool TpmImpl::ResetDictionaryAttackMitigation(
-    const chromeos::SecureBlob& delegate_blob,
-    const chromeos::SecureBlob& delegate_secret) {
+    const brillo::SecureBlob& delegate_blob,
+    const brillo::SecureBlob& delegate_secret) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsDelegate(delegate_blob, delegate_secret,
@@ -529,7 +529,7 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(TpmKeyHandle key_handle,
 
   plaintext->resize(dec_data_length);
   memcpy(plaintext->data(), dec_data.value(), dec_data_length);
-  chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
+  brillo::SecureMemset(dec_data.value(), 0, dec_data_length);
 
   return kTpmRetryNone;
 }
@@ -549,7 +549,7 @@ bool TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
 
   SecureBlob local_data(blob_size);
   memcpy(local_data.data(), blob.value(), blob_size);
-  chromeos::SecureMemset(blob.value(), 0, blob_size);
+  brillo::SecureMemset(blob.value(), 0, blob_size);
   data_out->swap(local_data);
   return true;
 }
@@ -897,7 +897,7 @@ bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
   return true;
 }
 
-bool TpmImpl::TestTpmAuth(const chromeos::SecureBlob& owner_password) {
+bool TpmImpl::TestTpmAuth(const brillo::SecureBlob& owner_password) {
   TSS_HTPM tpm_handle;
   if (!GetTpmWithAuth(tpm_context_.value(), owner_password, &tpm_handle)) {
     LOG(ERROR) << "Error getting Tpm with supplied owner password.";
@@ -915,7 +915,7 @@ bool TpmImpl::TestTpmAuth(const chromeos::SecureBlob& owner_password) {
   return true;
 }
 
-bool TpmImpl::GetOwnerPassword(chromeos::Blob* owner_password) {
+bool TpmImpl::GetOwnerPassword(brillo::Blob* owner_password) {
   bool result = false;
   if (password_sync_lock_.Try()) {
     if (owner_password_.size() != 0) {
@@ -927,7 +927,7 @@ bool TpmImpl::GetOwnerPassword(chromeos::Blob* owner_password) {
   return result;
 }
 
-bool TpmImpl::GetRandomData(size_t length, chromeos::Blob* data) {
+bool TpmImpl::GetRandomData(size_t length, brillo::Blob* data) {
   ScopedTssContext context_handle;
   if ((*(context_handle.ptr()) = ConnectContext()) == 0) {
     LOG(ERROR) << "Could not open the TPM";
@@ -949,7 +949,7 @@ bool TpmImpl::GetRandomData(size_t length, chromeos::Blob* data) {
     return false;
   }
   memcpy(random.data(), tpm_data.value(), random.size());
-  chromeos::SecureMemset(tpm_data.value(), 0, random.size());
+  brillo::SecureMemset(tpm_data.value(), 0, random.size());
   data->swap(random);
   return true;
 }
@@ -1542,18 +1542,18 @@ bool TpmImpl::DecryptIdentityRequest(RSA* pca_key,
 
   identity_binding->assign(&proof.identityBinding[0],
                            &proof.identityBinding[proof.identityBindingSize]);
-  chromeos::SecureMemset(proof.identityBinding, 0, proof.identityBindingSize);
+  brillo::SecureMemset(proof.identityBinding, 0, proof.identityBindingSize);
   endorsement_credential->assign(
       &proof.endorsementCredential[0],
       &proof.endorsementCredential[proof.endorsementSize]);
-  chromeos::SecureMemset(proof.endorsementCredential, 0, proof.endorsementSize);
+  brillo::SecureMemset(proof.endorsementCredential, 0, proof.endorsementSize);
   platform_credential->assign(&proof.platformCredential[0],
                               &proof.platformCredential[proof.platformSize]);
-  chromeos::SecureMemset(proof.platformCredential, 0, proof.platformSize);
+  brillo::SecureMemset(proof.platformCredential, 0, proof.platformSize);
   conformance_credential->assign(
       &proof.conformanceCredential[0],
       &proof.conformanceCredential[proof.conformanceSize]);
-  chromeos::SecureMemset(proof.conformanceCredential, 0, proof.conformanceSize);
+  brillo::SecureMemset(proof.conformanceCredential, 0, proof.conformanceSize);
   return true;
 }
 
@@ -1730,7 +1730,7 @@ bool TpmImpl::MakeIdentity(SecureBlob* identity_public_key_der,
     LOG(ERROR) << "MakeIdentity: Failed to decrypt the identity request.";
     return false;
   }
-  chromeos::SecureMemset(request.value(), 0, request_length);
+  brillo::SecureMemset(request.value(), 0, request_length);
 
   // We need the endorsement credential. If CollateIdentityRequest does not
   // provide it, read it manually.
@@ -1845,8 +1845,8 @@ bool TpmImpl::QuotePCR(int pcr_index,
   return true;
 }
 
-bool TpmImpl::SealToPCR0(const chromeos::Blob& value,
-                         chromeos::Blob* sealed_value) {
+bool TpmImpl::SealToPCR0(const brillo::Blob& value,
+                         brillo::Blob* sealed_value) {
   CHECK(sealed_value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -1925,8 +1925,8 @@ bool TpmImpl::SealToPCR0(const chromeos::Blob& value,
   return true;
 }
 
-bool TpmImpl::Unseal(const chromeos::Blob& sealed_value,
-                     chromeos::Blob* value) {
+bool TpmImpl::Unseal(const brillo::Blob& sealed_value,
+                     brillo::Blob* value) {
   CHECK(value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -1972,7 +1972,7 @@ bool TpmImpl::Unseal(const chromeos::Blob& sealed_value,
     return false;
   }
   value->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
-  chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
+  brillo::SecureMemset(dec_data.value(), 0, dec_data_length);
   return true;
 }
 
@@ -2264,7 +2264,7 @@ bool TpmImpl::ActivateIdentity(const SecureBlob& delegate_blob,
   }
   identity_credential->assign(&credential_buffer.value()[0],
                               &credential_buffer.value()[credential_length]);
-  chromeos::SecureMemset(credential_buffer.value(), 0, credential_length);
+  brillo::SecureMemset(credential_buffer.value(), 0, credential_length);
   return true;
 }
 
@@ -2337,16 +2337,16 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
     return false;
   }
   SecureBlob tmp(buffer.value(), buffer.value() + length);
-  chromeos::SecureMemset(buffer.value(), 0, length);
+  brillo::SecureMemset(buffer.value(), 0, length);
   signature->swap(tmp);
   return true;
 }
 
 bool TpmImpl::CreatePCRBoundKey(int pcr_index,
-                                const chromeos::SecureBlob& pcr_value,
-                                chromeos::SecureBlob* key_blob,
-                                chromeos::SecureBlob* public_key_der,
-                                chromeos::SecureBlob* creation_blob) {
+                                const brillo::SecureBlob& pcr_value,
+                                brillo::SecureBlob* key_blob,
+                                brillo::SecureBlob* public_key_der,
+                                brillo::SecureBlob* creation_blob) {
   CHECK(creation_blob) << "Error no creation_blob.";
   creation_blob->clear();
   ScopedTssContext context_handle;
@@ -2434,9 +2434,9 @@ bool TpmImpl::CreatePCRBoundKey(int pcr_index,
 }
 
 bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
-                                const chromeos::SecureBlob& pcr_value,
-                                const chromeos::SecureBlob& key_blob,
-                                const chromeos::SecureBlob& creation_blob) {
+                                const brillo::SecureBlob& pcr_value,
+                                const brillo::SecureBlob& key_blob,
+                                const brillo::SecureBlob& creation_blob) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2536,7 +2536,7 @@ bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
   return true;
 }
 
-bool TpmImpl::ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) {
+bool TpmImpl::ExtendPCR(int pcr_index, const brillo::SecureBlob& extension) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2562,7 +2562,7 @@ bool TpmImpl::ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) {
   return true;
 }
 
-bool TpmImpl::ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) {
+bool TpmImpl::ReadPCR(int pcr_index, brillo::SecureBlob* pcr_value) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2596,7 +2596,7 @@ bool TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
     return false;
   }
   SecureBlob tmp(buf.value(), buf.value() + length);
-  chromeos::SecureMemset(buf.value(), 0, length);
+  brillo::SecureMemset(buf.value(), 0, length);
   data->swap(tmp);
   return true;
 }
@@ -2605,7 +2605,7 @@ bool TpmImpl::GetCapability(TSS_HCONTEXT context_handle,
                             TSS_HTPM tpm_handle,
                             UINT32 capability,
                             UINT32 sub_capability,
-                            chromeos::Blob* data,
+                            brillo::Blob* data,
                             UINT32* value) const {
   UINT32 length = 0;
   ScopedTssMemory buf(context_handle);
@@ -2633,7 +2633,7 @@ bool TpmImpl::GetCapability(TSS_HCONTEXT context_handle,
   return true;
 }
 
-void TpmImpl::SetOwnerPassword(const chromeos::SecureBlob& owner_password) {
+void TpmImpl::SetOwnerPassword(const brillo::SecureBlob& owner_password) {
   base::AutoLock lock(password_sync_lock_);
   owner_password_.assign(owner_password.begin(), owner_password.end());
 }
@@ -2770,7 +2770,7 @@ bool TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
 }
 
 Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
-    const chromeos::SecureBlob& wrapped_key,
+    const brillo::SecureBlob& wrapped_key,
     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   TSS_RESULT result = TSS_SUCCESS;
@@ -2822,7 +2822,7 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
 }
 
 bool TpmImpl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                                      chromeos::SecureBlob* key_blob) {
+                                      brillo::SecureBlob* key_blob) {
   CHECK(key_handle);
   TSS_RESULT result = TSS_SUCCESS;
   TpmKeyHandle local_key_handle;

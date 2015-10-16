@@ -8,18 +8,18 @@
 #include <base/guid.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/exported_object_manager.h>
 
 #include "peerd/dbus_constants.h"
 #include "peerd/typedefs.h"
 
 using base::Time;
 using base::TimeDelta;
-using chromeos::Any;
-using chromeos::Error;
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::Any;
+using brillo::Error;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 using peerd::dbus_constants::kServicePathFragment;
 using std::map;
@@ -49,7 +49,7 @@ Peer::Peer(const scoped_refptr<dbus::Bus>& bus,
 }
 
 bool Peer::RegisterAsync(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::string& uuid,
     const Time& last_seen,
     const CompletionAction& completion_callback) {
@@ -68,7 +68,7 @@ bool Peer::RegisterAsync(
   return true;
 }
 
-bool Peer::SetLastSeen(chromeos::ErrorPtr* error, const Time& last_seen) {
+bool Peer::SetLastSeen(brillo::ErrorPtr* error, const Time& last_seen) {
   if (!IsValidUpdateTime(error, last_seen)) {
     return false;
   }
@@ -87,7 +87,7 @@ Time Peer::GetLastSeen() const {
          Time::UnixEpoch();
 }
 
-bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
+bool Peer::IsValidUpdateTime(brillo::ErrorPtr* error,
                              const base::Time& last_seen) const {
   uint64_t milliseconds_since_epoch = 0;
   if (!TimeToMillisecondsSinceEpoch(last_seen, &milliseconds_since_epoch)) {
@@ -109,7 +109,7 @@ bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Peer::AddService(chromeos::ErrorPtr* error,
+bool Peer::AddService(brillo::ErrorPtr* error,
                       const string& service_id,
                       const Service::IpAddresses& addresses,
                       const map<string, string>& service_info,
@@ -142,7 +142,7 @@ bool Peer::AddService(chromeos::ErrorPtr* error,
   return success;
 }
 
-bool Peer::RemoveService(chromeos::ErrorPtr* error,
+bool Peer::RemoveService(brillo::ErrorPtr* error,
                          const string& service_id) {
   if (services_.erase(service_id) == 0) {
     Error::AddTo(error,

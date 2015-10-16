@@ -4,7 +4,7 @@
 
 // based on pam_google_testrunner.cc
 
-#include <chromeos/test_helpers.h>
+#include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 
 int main(int argc, char** argv) {

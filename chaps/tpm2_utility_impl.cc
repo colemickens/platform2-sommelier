@@ -18,7 +18,7 @@
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory_impl.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::set;
 using trunks::kRSAStorageRootKey;

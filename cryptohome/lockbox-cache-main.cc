@@ -7,7 +7,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "cryptohome/lockbox.h"
 #include "cryptohome/lockbox-cache.h"
@@ -41,7 +41,7 @@ bool CacheLockbox(cryptohome::Platform* platform,
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
 
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   // Allow the commands to be configurable.
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();

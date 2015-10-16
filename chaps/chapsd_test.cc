@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <base/command_line.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
 #include "chaps/attributes.h"
@@ -16,7 +16,7 @@
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using std::vector;
 

@@ -11,12 +11,12 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_split.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;
-using chromeos::FindLog;
+using brillo::FindLog;
 
 namespace {
 
@@ -63,7 +63,7 @@ class UserCollectorTest : public ::testing::Test {
     collector_.set_core_pattern_file("test/core_pattern");
     collector_.set_core_pipe_limit_file("test/core_pipe_limit");
     pid_ = getpid();
-    chromeos::ClearLog();
+    brillo::ClearLog();
   }
 
  protected:
@@ -313,7 +313,7 @@ TEST_F(UserCollectorTest, GetExecutableBaseNameFromPid) {
       "GetSymlinkTarget failed - Path /proc/0 DirectoryExists: 0"));
   EXPECT_TRUE(FindLog("stat /proc/0/exe failed: -1 2"));
 
-  chromeos::ClearLog();
+  brillo::ClearLog();
   pid_t my_pid = getpid();
   EXPECT_TRUE(collector_.GetExecutableBaseNameFromPid(my_pid, &base_name));
   EXPECT_FALSE(FindLog("Readlink failed"));

@@ -11,7 +11,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -19,7 +19,7 @@
 #include "cryptohome/mock_pkcs11_init.h"
 
 using chaps::Attributes;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::string;
 using std::vector;
@@ -235,7 +235,7 @@ class KeyStoreTest : public testing::Test {
   NiceMock<Pkcs11Mock> pkcs11_;
   NiceMock<MockPkcs11Init> pkcs11_init_;
 
-  bool CompareBlob(const chromeos::SecureBlob& blob, const string& str) {
+  bool CompareBlob(const brillo::SecureBlob& blob, const string& str) {
     return (blob.to_string() == str);
   }
 

@@ -3,17 +3,17 @@
 // found in the LICENSE file.
 
 #include <base/files/scoped_temp_dir.h>
-#include <chromeos/process_mock.h>
-#include <chromeos/syslog_logging.h>
-#include <chromeos/test_helpers.h>
+#include <brillo/process_mock.h>
+#include <brillo/syslog_logging.h>
+#include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 
 #include "vpn-manager/l2tp_manager.h"
 
 using ::base::FilePath;
 using ::base::StringPrintf;
-using ::chromeos::FindLog;
-using ::chromeos::ProcessMock;
+using ::brillo::FindLog;
+using ::brillo::ProcessMock;
 using ::testing::_;
 using ::testing::InSequence;
 using ::testing::Return;

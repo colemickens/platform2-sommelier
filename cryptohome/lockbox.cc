@@ -16,12 +16,12 @@
 #include <base/strings/string_split.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 const uint32_t Lockbox::kNvramVersion1 = 1;
@@ -48,7 +48,7 @@ Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
   : tpm_(tpm),
     nvram_index_(nvram_index),
     nvram_version_(kNvramVersionDefault),
-    default_process_(new chromeos::ProcessImpl()),
+    default_process_(new brillo::ProcessImpl()),
     process_(default_process_.get()),
     contents_(new LockboxContents()),
     default_platform_(new Platform()),
@@ -80,7 +80,7 @@ bool Lockbox::HasAuthorization() const {
     return false;
   }
   // If we have a TPM owner password, we can reset.
-  chromeos::Blob owner_password;
+  brillo::Blob owner_password;
   if (tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0)
     return true;
   LOG(INFO) << "HasAuthorization: TPM Owner password not available.";
@@ -215,7 +215,7 @@ bool Lockbox::Load(ErrorId* error) {
   return true;
 }
 
-bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
+bool Lockbox::Verify(const brillo::Blob& blob, ErrorId* error) {
   CHECK(error);
   // It's not possible to verify without a locked space.
   if (!contents_->loaded) {
@@ -232,7 +232,7 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
   }
 
   // Append the salt to the data.
-  chromeos::Blob salty_blob(blob);
+  brillo::Blob salty_blob(blob);
   salty_blob.insert(salty_blob.end(),
                     contents_->salt,
                     contents_->salt + contents_->salt_size);
@@ -244,7 +244,7 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
 
   DCHECK(hash.size() == kReservedDigestBytes);
   // Validate the data hash versus the stored hash.
-  if (chromeos::SecureMemcmp(contents_->hash, hash.data(),
+  if (brillo::SecureMemcmp(contents_->hash, hash.data(),
                              sizeof(contents_->hash))) {
     LOG(ERROR) << "Verify() hash mismatch!";
     *error = kErrorIdHashMismatch;
@@ -255,7 +255,7 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
   return true;
 }
 
-bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
+bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
   unsigned int nvram_size;
 
   if (!TpmIsReady()) {
@@ -293,7 +293,7 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   }
 
   // Grab a salt from the TPM.
-  chromeos::Blob salt(0);
+  brillo::Blob salt(0);
   if (!tpm_->GetRandomData(contents_->salt_size, &salt)) {
     LOG(ERROR) << "Store() failed to get a salt from the TPM.";
     *error = kErrorIdTpmError;
@@ -305,7 +305,7 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   memcpy(contents_->salt, salt.data(), contents_->salt_size);
 
   // Get the size of the data blob
-  chromeos::Blob size_blob;
+  brillo::Blob size_blob;
   if (!GetSizeBlob(blob, &size_blob)) {
     LOG(ERROR) << "Store() data blob is too large.";
     *error = kErrorIdTooLarge;
@@ -314,7 +314,7 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   contents_->size = blob.size();
 
   // Append the salt to the data and hash.
-  chromeos::Blob salty_blob(blob);
+  brillo::Blob salty_blob(blob);
   salty_blob.insert(salty_blob.end(), salt.begin(), salt.end());
 
   // Insert the hash into the NVRAM.
@@ -365,8 +365,8 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   return true;
 }
 
-bool Lockbox::GetSizeBlob(const chromeos::Blob& data,
-                          chromeos::Blob* size_bytes) const {
+bool Lockbox::GetSizeBlob(const brillo::Blob& data,
+                          brillo::Blob* size_bytes) const {
   uint32_t serializable_size = 0;
   if (data.size() > UINT32_MAX)
     return false;
@@ -382,7 +382,7 @@ bool Lockbox::GetSizeBlob(const chromeos::Blob& data,
   return true;
 }
 
-bool Lockbox::ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const {
+bool Lockbox::ParseSizeBlob(const brillo::Blob& blob, uint32_t* size) const {
   CHECK(size);
   *size = 0;
   if (blob.size() < kReservedSizeBytes)
@@ -398,7 +398,7 @@ bool Lockbox::ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const {
 }
 
 // TODO(keescook) Write unittests for this.
-void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
+void Lockbox::FinalizeMountEncrypted(const brillo::Blob &entropy) const {
   std::string hex;
   std::string outfile_path;
   FILE *outfile;

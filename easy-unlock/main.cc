@@ -10,9 +10,9 @@
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/daemons/dbus_daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/syslog_logging.h>
 
 #include "easy-unlock/dbus_adaptor.h"
 #include "easy-unlock/easy_unlock_service.h"
@@ -60,11 +60,11 @@ int GetLogLevel(const std::string& log_level_value) {
 
 // Always logs to syslog and stderr when running in the foreground.
 void SetupLogging(bool foreground, int log_level) {
-  int log_flags = chromeos::kLogToSyslog;
+  int log_flags = brillo::kLogToSyslog;
   if (foreground)
-    log_flags |= chromeos::kLogToStderr;
+    log_flags |= brillo::kLogToStderr;
 
-  chromeos::InitLog(log_flags);
+  brillo::InitLog(log_flags);
   logging::SetMinLogLevel(log_level);
 }
 
@@ -72,17 +72,17 @@ void SetupLogging(bool foreground, int log_level) {
 
 namespace easy_unlock {
 
-class Daemon : public chromeos::DBusServiceDaemon {
+class Daemon : public brillo::DBusServiceDaemon {
  public:
   explicit Daemon(std::unique_ptr<easy_unlock::Service> service_impl)
-      : chromeos::DBusServiceDaemon(kEasyUnlockServiceName),
+      : brillo::DBusServiceDaemon(kEasyUnlockServiceName),
         service_impl_(std::move(service_impl)) {
   }
   ~Daemon() override {}
 
  protected:
   void RegisterDBusObjectsAsync(
-       chromeos::dbus_utils::AsyncEventSequencer* sequencer) override {
+       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
     adaptor_.reset(new DBusAdaptor(bus_, service_impl_.get()));
     adaptor_->Register(sequencer->GetHandler("Register dbus methods", true));
   }

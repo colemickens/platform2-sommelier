@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -21,11 +21,11 @@ class IsolateLoginClientMock : public IsolateLoginClient {
   IsolateLoginClientMock() : IsolateLoginClient(NULL, NULL, NULL) { }
 
   MOCK_METHOD2(LoginUser, bool(const std::string&,
-                               const chromeos::SecureBlob&));
+                               const brillo::SecureBlob&));
   MOCK_METHOD1(LogoutUser, bool(const std::string&));
   MOCK_METHOD3(ChangeUserAuth, bool(const std::string&,
-                                    const chromeos::SecureBlob&,
-                                    const chromeos::SecureBlob&));
+                                    const brillo::SecureBlob&,
+                                    const brillo::SecureBlob&));
 };
 
 }  // namespace chaps

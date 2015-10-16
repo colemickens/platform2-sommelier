@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/lockbox.h"
@@ -59,7 +59,7 @@ class InstallAttributesTest : public ::testing::Test {
   void GetAndCheck(InstallAttributes *install_attrs) {
     if (!install_attrs)
       install_attrs = &install_attrs_;
-    chromeos::Blob data;
+    brillo::Blob data;
     EXPECT_TRUE(install_attrs->Get(kTestName, &data));
     std::string data_str(reinterpret_cast<const char*>(data.data()),
                          data.size());
@@ -68,7 +68,7 @@ class InstallAttributesTest : public ::testing::Test {
 
   // Tests a normal OOBE and stashes the data in the ptr.
   void DoOobe(InstallAttributes *install_attrs,
-              chromeos::Blob *serialized_data) {
+              brillo::Blob *serialized_data) {
     if (install_attrs->is_secure()) {
       EXPECT_CALL(lockbox_, Destroy(_))
         .WillOnce(Return(true));
@@ -88,7 +88,7 @@ class InstallAttributesTest : public ::testing::Test {
     }
     EXPECT_TRUE(install_attrs->Init(&tpm_init_));
 
-    chromeos::Blob data;
+    brillo::Blob data;
     data.assign(kTestData, kTestData + strlen(kTestData));
     EXPECT_TRUE(install_attrs->Set(kTestName, data));
 
@@ -102,7 +102,7 @@ class InstallAttributesTest : public ::testing::Test {
                                        _, _))
       .Times(1)
       .WillOnce(DoAll(SaveArg<1>(serialized_data), Return(true)));
-    chromeos::Blob cached_data;
+    brillo::Blob cached_data;
     EXPECT_CALL(platform_, WriteFile(InstallAttributes::kDefaultCacheFile, _))
       .Times(1)
       .WillOnce(DoAll(SaveArg<1>(&cached_data), Return(true)));
@@ -117,7 +117,7 @@ class InstallAttributesTest : public ::testing::Test {
   }
 
   // Generate the data we'll need to load from.
-  void PopulateOobeData(chromeos::Blob *data) {
+  void PopulateOobeData(brillo::Blob *data) {
     InstallAttributes some_attrs(NULL);
     some_attrs.set_lockbox(&lockbox_);
     some_attrs.set_platform(&platform_);
@@ -130,7 +130,7 @@ class InstallAttributesTest : public ::testing::Test {
   static const char* kTestData;
 
   NiceMock<MockLockbox> lockbox_;
-  chromeos::Blob lockbox_data_;
+  brillo::Blob lockbox_data_;
   InstallAttributes install_attrs_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
@@ -148,7 +148,7 @@ const char* InstallAttributesTest::kTestData = "Duffle";
 
 // Normal bootup
 TEST_F(InstallAttributesTest, OobeWithTpm) {
-  chromeos::Blob serialized_data;
+  brillo::Blob serialized_data;
   DoOobe(&install_attrs_, &serialized_data);
 }
 
@@ -176,11 +176,11 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
     .WillOnce(Return(true));
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
-  chromeos::Blob data;
+  brillo::Blob data;
   data.assign(kTestData, kTestData + strlen(kTestData));
   EXPECT_TRUE(install_attrs_.Set(kTestName, data));
 
-  chromeos::Blob serialized_data;
+  brillo::Blob serialized_data;
   EXPECT_CALL(lockbox_, Store(_, _))
     .Times(1)
     .WillOnce(DoAll(SaveArg<0>(&serialized_data), Return(true)));
@@ -194,7 +194,7 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
 }
 
 TEST_F(InstallAttributesTest, NormalBootWithTpm) {
-  chromeos::Blob serialized_data;
+  brillo::Blob serialized_data;
   PopulateOobeData(&serialized_data);
 
   // Check the baseline.
@@ -222,7 +222,7 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
 }
 
 TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
-  chromeos::Blob serialized_data;
+  brillo::Blob serialized_data;
   PopulateOobeData(&serialized_data);
 
   EXPECT_CALL(lockbox_, set_tpm(NULL))
@@ -258,7 +258,7 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   // Normally, it should be impossible to populate the filesystem
   // with any data.  We put this here to show anything that may be
   // read in is ignored.
-  chromeos::Blob serialized_data;
+  brillo::Blob serialized_data;
   PopulateOobeData(&serialized_data);
   // Check the baseline.
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -286,7 +286,7 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
   // Normally, it should be impossible to populate the filesystem
   // with any data.  We put this here to show anything that may be
   // read in is ignored.
-  chromeos::Blob serialized_data;
+  brillo::Blob serialized_data;
   PopulateOobeData(&serialized_data);
   // Check the baseline.
   EXPECT_FALSE(install_attrs_.is_first_install());

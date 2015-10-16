@@ -13,8 +13,8 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/errors/error.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/errors/error.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 
@@ -31,20 +31,20 @@ class MockPublishedPeer : public PublishedPeer {
   ~MockPublishedPeer() override = default;
 
   MOCK_METHOD4(RegisterAsync,
-               bool(chromeos::ErrorPtr* error,
+               bool(brillo::ErrorPtr* error,
                     const std::string& uuid,
                     uint64_t last_seen,
                     const CompletionAction& completion_callback));
   MOCK_CONST_METHOD0(GetUUID, std::string());
-  MOCK_METHOD2(SetLastSeen, bool(chromeos::ErrorPtr* error,
+  MOCK_METHOD2(SetLastSeen, bool(brillo::ErrorPtr* error,
                                  const base::Time& last_seen));
 
   MOCK_METHOD4(AddPublishedService,
-               bool(chromeos::ErrorPtr* error,
+               bool(brillo::ErrorPtr* error,
                     const std::string& service_id,
                     const std::map<std::string, std::string>& service_info,
-                    const std::map<std::string, chromeos::Any>& options));
-  MOCK_METHOD2(RemoveService, bool(chromeos::ErrorPtr* error,
+                    const std::map<std::string, brillo::Any>& options));
+  MOCK_METHOD2(RemoveService, bool(brillo::ErrorPtr* error,
                                    const std::string& service_id));
   MOCK_METHOD1(RegisterServicePublisher,
                void(base::WeakPtr<ServicePublisherInterface> publisher));

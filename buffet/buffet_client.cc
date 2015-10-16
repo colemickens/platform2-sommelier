@@ -14,14 +14,14 @@
 #include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
-#include <chromeos/any.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/data_encoding.h>
-#include <chromeos/dbus/data_serialization.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/strings/string_utils.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/data_encoding.h>
+#include <brillo/dbus/data_serialization.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/errors/error.h>
+#include <brillo/strings/string_utils.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -30,8 +30,8 @@
 
 #include "buffet/dbus-proxies.h"
 
-using chromeos::Error;
-using chromeos::ErrorPtr;
+using brillo::Error;
+using brillo::ErrorPtr;
 using org::chromium::Buffet::ManagerProxy;
 
 namespace {
@@ -52,7 +52,7 @@ void usage() {
 
 // Helpers for JsonToAny().
 template<typename T>
-chromeos::Any GetJsonValue(const base::Value& json,
+brillo::Any GetJsonValue(const base::Value& json,
                            bool(base::Value::*fnc)(T*) const) {
   T val;
   CHECK((json.*fnc)(&val));
@@ -60,12 +60,12 @@ chromeos::Any GetJsonValue(const base::Value& json,
 }
 
 template<typename T>
-chromeos::Any GetJsonList(const base::ListValue& list);  // Prototype.
+brillo::Any GetJsonList(const base::ListValue& list);  // Prototype.
 
 // Converts a JSON value into an Any so it can be sent over D-Bus using
 // UpdateState D-Bus method from Buffet.
-chromeos::Any JsonToAny(const base::Value& json) {
-  chromeos::Any prop_value;
+brillo::Any JsonToAny(const base::Value& json) {
+  brillo::Any prop_value;
   switch (json.GetType()) {
     case base::Value::TYPE_NULL:
       prop_value = nullptr;
@@ -88,7 +88,7 @@ chromeos::Any JsonToAny(const base::Value& json) {
     case base::Value::TYPE_DICTIONARY: {
       const base::DictionaryValue* dict = nullptr;  // Still owned by |json|.
       CHECK(json.GetAsDictionary(&dict));
-      chromeos::VariantDictionary var_dict;
+      brillo::VariantDictionary var_dict;
       base::DictionaryValue::Iterator it(*dict);
       while (!it.IsAtEnd()) {
         var_dict.emplace(it.key(), JsonToAny(it.value()));
@@ -115,7 +115,7 @@ chromeos::Any JsonToAny(const base::Value& json) {
           prop_value = GetJsonList<std::string>(*list);
           break;
         case base::Value::TYPE_DICTIONARY:
-          prop_value = GetJsonList<chromeos::VariantDictionary>(*list);
+          prop_value = GetJsonList<brillo::VariantDictionary>(*list);
           break;
         default:
           LOG(FATAL) << "Unsupported JSON value type for list element: "
@@ -131,7 +131,7 @@ chromeos::Any JsonToAny(const base::Value& json) {
 }
 
 template<typename T>
-chromeos::Any GetJsonList(const base::ListValue& list) {
+brillo::Any GetJsonList(const base::ListValue& list) {
   std::vector<T> val;
   val.reserve(list.GetSize());
   for (const base::Value* v : list)
@@ -139,13 +139,13 @@ chromeos::Any GetJsonList(const base::ListValue& list) {
   return val;
 }
 
-class Daemon final : public chromeos::DBusDaemon {
+class Daemon final : public brillo::DBusDaemon {
  public:
   Daemon() = default;
 
  protected:
   int OnInit() override {
-    int return_code = chromeos::DBusDaemon::OnInit();
+    int return_code = brillo::DBusDaemon::OnInit();
     if (return_code != EX_OK)
       return return_code;
 
@@ -292,7 +292,7 @@ class Daemon final : public chromeos::DBusDaemon {
                           ManagerProxy* manager_proxy) {
     std::string ticket_id;
     if (!args.empty()) {
-      auto key_values = chromeos::data_encoding::WebParamsDecode(args);
+      auto key_values = brillo::data_encoding::WebParamsDecode(args);
       for (const auto& pair : key_values) {
         if (pair.first == "ticket_id")
           ticket_id = pair.second;
@@ -319,12 +319,12 @@ class Daemon final : public chromeos::DBusDaemon {
                                              nullptr, &error_message)
             .release());
     if (!json) {
-      Error::AddTo(&error, FROM_HERE, chromeos::errors::json::kDomain,
-                   chromeos::errors::json::kParseError, error_message);
+      Error::AddTo(&error, FROM_HERE, brillo::errors::json::kDomain,
+                   brillo::errors::json::kParseError, error_message);
       return ReportError(error.get());
     }
 
-    chromeos::VariantDictionary property_set{{prop, JsonToAny(*json)}};
+    brillo::VariantDictionary property_set{{prop, JsonToAny(*json)}};
     if (!manager_proxy->UpdateState(property_set, &error)) {
       return ReportError(error.get());
     }

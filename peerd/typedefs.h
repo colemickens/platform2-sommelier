@@ -5,12 +5,12 @@
 #ifndef PEERD_TYPEDEFS_H_
 #define PEERD_TYPEDEFS_H_
 
-#include <chromeos/dbus/async_event_sequencer.h>
+#include <brillo/dbus/async_event_sequencer.h>
 
 namespace peerd {
 
 using CompletionAction =
-    chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction;
 
 extern const char kPeerdErrorDomain[];
 

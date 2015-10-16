@@ -9,7 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 
@@ -38,21 +38,21 @@ class CryptoLib {
   };
 
   static void GetSecureRandom(unsigned char *bytes, size_t len);
-  static bool CreateRsaKey(size_t bits, chromeos::SecureBlob* n,
-                           chromeos::SecureBlob* p);
-  static chromeos::SecureBlob Sha1(const chromeos::Blob& data);
-  static chromeos::SecureBlob Sha256(const chromeos::Blob& data);
-  static chromeos::SecureBlob HmacSha512(const chromeos::SecureBlob& key,
-                                         const chromeos::Blob& data);
-  static chromeos::SecureBlob HmacSha256(const chromeos::SecureBlob& key,
-                                         const chromeos::Blob& data);
+  static bool CreateRsaKey(size_t bits, brillo::SecureBlob* n,
+                           brillo::SecureBlob* p);
+  static brillo::SecureBlob Sha1(const brillo::Blob& data);
+  static brillo::SecureBlob Sha256(const brillo::Blob& data);
+  static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
+                                         const brillo::Blob& data);
+  static brillo::SecureBlob HmacSha256(const brillo::SecureBlob& key,
+                                         const brillo::Blob& data);
 
   static size_t GetAesBlockSize();
-  static bool PasskeyToAesKey(const chromeos::Blob& passkey,
-                              const chromeos::Blob& salt,
+  static bool PasskeyToAesKey(const brillo::Blob& passkey,
+                              const brillo::Blob& salt,
                               unsigned int rounds,
-                              chromeos::SecureBlob* key,
-                              chromeos::SecureBlob* iv);
+                              brillo::SecureBlob* key,
+                              brillo::SecureBlob* iv);
 
   // Decrypts data encrypted with AesEncrypt.
   //
@@ -61,10 +61,10 @@ class CryptoLib {
   //   key - The AES key to use in decryption
   //   iv - The initialization vector to use
   //   plaintext - The unwrapped (decrypted) data
-  static bool AesDecrypt(const chromeos::Blob& ciphertext,
-                        const chromeos::SecureBlob& key,
-                        const chromeos::SecureBlob& iv,
-                        chromeos::SecureBlob* plaintext);
+  static bool AesDecrypt(const brillo::Blob& ciphertext,
+                        const brillo::SecureBlob& key,
+                        const brillo::SecureBlob& iv,
+                        brillo::SecureBlob* plaintext);
 
   // AES encrypts the plain text data using the specified key and IV.  This
   // method uses custom padding and is not inter-operable with other crypto
@@ -75,26 +75,26 @@ class CryptoLib {
   //   key - The AES key to use
   //   iv - The initialization vector to use
   //   ciphertext - On success, the encrypted data
-  static bool AesEncrypt(const chromeos::Blob& plaintext,
-                         const chromeos::SecureBlob& key,
-                         const chromeos::SecureBlob& iv,
-                         chromeos::SecureBlob* ciphertext);
+  static bool AesEncrypt(const brillo::Blob& plaintext,
+                         const brillo::SecureBlob& key,
+                         const brillo::SecureBlob& iv,
+                         brillo::SecureBlob* ciphertext);
 
   // Same as AesDecrypt, but allows using either CBC or ECB
-  static bool AesDecryptSpecifyBlockMode(const chromeos::Blob& ciphertext,
+  static bool AesDecryptSpecifyBlockMode(const brillo::Blob& ciphertext,
                                          unsigned int start, unsigned int count,
-                                         const chromeos::SecureBlob& key,
-                                         const chromeos::SecureBlob& iv,
+                                         const brillo::SecureBlob& key,
+                                         const brillo::SecureBlob& iv,
                                          PaddingScheme padding, BlockMode mode,
-                                         chromeos::SecureBlob* plaintext);
+                                         brillo::SecureBlob* plaintext);
 
   // Same as AesEncrypt, but allows using either CBC or ECB
-  static bool AesEncryptSpecifyBlockMode(const chromeos::Blob& plaintext,
+  static bool AesEncryptSpecifyBlockMode(const brillo::Blob& plaintext,
                                          unsigned int start, unsigned int count,
-                                         const chromeos::SecureBlob& key,
-                                         const chromeos::SecureBlob& iv,
+                                         const brillo::SecureBlob& key,
+                                         const brillo::SecureBlob& iv,
                                          PaddingScheme padding, BlockMode mode,
-                                         chromeos::SecureBlob* ciphertext);
+                                         brillo::SecureBlob* ciphertext);
 
   // Obscure an RSA message by encrypting part of it.
   // The TPM could _in theory_ produce an RSA message (as a response from Bind)
@@ -109,24 +109,24 @@ class CryptoLib {
   // (as far as the author knows, although no proof is known) indistinguishable
   // from random data, and hence the attack this would protect against is
   // infeasible.
-  static bool ObscureRSAMessage(const chromeos::SecureBlob& plaintext,
-                                const chromeos::SecureBlob& key,
-                                chromeos::SecureBlob* ciphertext);
-  static  bool UnobscureRSAMessage(const chromeos::SecureBlob& ciphertext,
-                                   const chromeos::SecureBlob& key,
-                                   chromeos::SecureBlob* plaintext);
+  static bool ObscureRSAMessage(const brillo::SecureBlob& plaintext,
+                                const brillo::SecureBlob& key,
+                                brillo::SecureBlob* ciphertext);
+  static  bool UnobscureRSAMessage(const brillo::SecureBlob& ciphertext,
+                                   const brillo::SecureBlob& key,
+                                   brillo::SecureBlob* plaintext);
 
   // Encodes a binary blob to hex-ascii. Similar to base::HexEncode but
   // produces lowercase letters for hex digits.
   //
   // Parameters
   //   blob - The binary blob to convert
-  static std::string BlobToHex(const chromeos::Blob& blob);
+  static std::string BlobToHex(const brillo::Blob& blob);
   // Parameters
   //   blob - The binary blob to convert
   //   buffer (IN/OUT) - Where to store the converted blob
   //   buffer_length - The size of the buffer
-  static void BlobToHexToBuffer(const chromeos::Blob& blob,
+  static void BlobToHexToBuffer(const brillo::Blob& blob,
                                 void* buffer,
                                 size_t buffer_length);
 
@@ -137,7 +137,7 @@ class CryptoLib {
   //   hmac_key - secret key to use in hmac computation.
   static std::string ComputeEncryptedDataHMAC(
       const EncryptedData& encrypted_data,
-      const chromeos::SecureBlob& hmac_key);
+      const brillo::SecureBlob& hmac_key);
 };
 
 }  // namespace cryptohome

@@ -9,17 +9,17 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/process_mock.h>
-#include <chromeos/test_helpers.h>
+#include <brillo/process_mock.h>
+#include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 
 #include "vpn-manager/daemon.h"
 
 using ::base::FilePath;
 using ::base::IntToString;
-using ::chromeos::Process;
-using ::chromeos::ProcessImpl;
-using ::chromeos::ProcessMock;
+using ::brillo::Process;
+using ::brillo::ProcessImpl;
+using ::brillo::ProcessMock;
 using ::std::string;
 using ::testing::_;
 using ::testing::InvokeWithoutArgs;

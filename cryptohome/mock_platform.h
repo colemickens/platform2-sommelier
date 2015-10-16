@@ -114,13 +114,13 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(CloseFile, bool(FILE*));  // NOLINT(readability/function)
   MOCK_METHOD1(CreateAndOpenTemporaryFile, FILE*(std::string*));
   MOCK_METHOD2(Stat, bool(const std::string&, struct stat*));
-  MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
+  MOCK_METHOD2(ReadFile, bool(const std::string&, brillo::Blob*));
   MOCK_METHOD2(ReadFileToString, bool(const std::string&, std::string*));
   MOCK_METHOD2(Rename, bool(const std::string&, const std::string&));
-  MOCK_METHOD2(WriteOpenFile, bool(FILE*, const chromeos::Blob&));
-  MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
+  MOCK_METHOD2(WriteOpenFile, bool(FILE*, const brillo::Blob&));
+  MOCK_METHOD2(WriteFile, bool(const std::string&, const brillo::Blob&));
   MOCK_METHOD3(WriteFileAtomicDurable, bool(const std::string&,
-                                            const chromeos::Blob&,
+                                            const brillo::Blob&,
                                             mode_t mode));
   MOCK_METHOD2(WriteStringToFile, bool(const std::string&, const std::string&));
   MOCK_METHOD3(WriteStringToFileAtomicDurable, bool(const std::string&,
@@ -145,9 +145,9 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(CreateDirectory, bool(const std::string&));
   MOCK_METHOD0(ClearUserKeyring, long(void));  // NOLINT(runtime/int)
   MOCK_METHOD3(AddEcryptfsAuthToken,
-               long(const chromeos::SecureBlob&,  // NOLINT(runtime/int)
+               long(const brillo::SecureBlob&,  // NOLINT(runtime/int)
                     const std::string&,
-                    const chromeos::SecureBlob&));
+                    const brillo::SecureBlob&));
   MOCK_METHOD3(GetFileEnumerator, FileEnumerator*(const std::string&,
                                                   bool,
                                                   int));

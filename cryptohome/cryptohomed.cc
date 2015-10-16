@@ -8,7 +8,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <chaps/pkcs11/cryptoki.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <dbus/dbus.h>
 #include <glib.h>
 
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
 
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   // Allow the commands to be configurable.
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (!service.Register(chromeos::dbus::GetSystemBusConnection())) {
+  if (!service.Register(brillo::dbus::GetSystemBusConnection())) {
     LOG(FATAL) << "DBUS service registration failed";
     return 1;
   }

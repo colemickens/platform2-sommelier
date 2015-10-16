@@ -15,9 +15,9 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <chromeos/data_encoding.h>
-#include <chromeos/process.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/data_encoding.h>
+#include <brillo/process.h>
+#include <brillo/syslog_logging.h>
 
 using base::FilePath;
 using base::StringPrintf;
@@ -52,7 +52,7 @@ bool GetDelimitedString(const std::string &str, char ch, size_t offset,
 // Returns true on success.
 bool GetDriErrorState(const FilePath &error_state_path,
                       org::chromium::debugdProxy *proxy) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   std::string error_state_str;
 
   proxy->GetLog("i915_error_state", &error_state_str, &error);
@@ -76,7 +76,7 @@ bool GetDriErrorState(const FilePath &error_state_path,
 
   std::string decoded_error_state;
 
-  if (!chromeos::data_encoding::Base64Decode(
+  if (!brillo::data_encoding::Base64Decode(
       error_state_str.c_str() + kBase64HeaderLength,
       &decoded_error_state)) {
     LOG(ERROR) << "Could not decode i915_error_state";
@@ -102,7 +102,7 @@ bool GetDriErrorState(const FilePath &error_state_path,
 // the new file. On failure, the original file is left alone and an empty path
 // is returned.
 FilePath GzipFile(const FilePath& path) {
-  chromeos::ProcessImpl proc;
+  brillo::ProcessImpl proc;
   proc.AddArg(kGzipPath);
   proc.AddArg(path.value());
   const int res = proc.Run();

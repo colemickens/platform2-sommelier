@@ -17,10 +17,10 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/process.h>
+#include <brillo/type_name_undecorate.h>
+#include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/process.h>
-#include <chromeos/type_name_undecorate.h>
-#include <chromeos/variant_dictionary.h>
 
 #include "lorgnette/daemon.h"
 #include "lorgnette/epson_probe.h"
@@ -53,12 +53,12 @@ Manager::Manager(base::Callback<void()> activity_callback)
 Manager::~Manager() {}
 
 void Manager::RegisterAsync(
-    chromeos::dbus_utils::ExportedObjectManager* object_manager,
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+    brillo::dbus_utils::ExportedObjectManager* object_manager,
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
   scoped_refptr<dbus::Bus> bus =
       object_manager ? object_manager->GetBus() : nullptr;
-  dbus_object_.reset(new chromeos::dbus_utils::DBusObject(
+  dbus_object_.reset(new brillo::dbus_utils::DBusObject(
         object_manager, bus, dbus::ObjectPath(kManagerServicePath)));
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
@@ -67,20 +67,20 @@ void Manager::RegisterAsync(
   firewall_manager_->Init(bus);
 }
 
-bool Manager::ListScanners(chromeos::ErrorPtr* error,
+bool Manager::ListScanners(brillo::ErrorPtr* error,
                            Manager::ScannerInfo* scanner_list) {
   base::FilePath output_path;
   FILE* output_file_handle;
   output_file_handle = base::CreateAndOpenTemporaryFile(&output_path);
   if (!output_file_handle) {
-    chromeos::Error::AddTo(error, FROM_HERE,
-                           chromeos::errors::dbus::kDomain,
+    brillo::Error::AddTo(error, FROM_HERE,
+                           brillo::errors::dbus::kDomain,
                            kManagerServiceError,
                            "Unable to create temporary file.");
     return false;
   }
 
-  chromeos::ProcessImpl process;
+  brillo::ProcessImpl process;
   firewall_manager_->RequestScannerPortAccess();
   RunListScannersProcess(fileno(output_file_handle), &process);
   fclose(output_file_handle);
@@ -90,8 +90,8 @@ bool Manager::ListScanners(chromeos::ErrorPtr* error,
   const bool recursive_delete = false;
   base::DeleteFile(output_path, recursive_delete);
   if (!read_status) {
-    chromeos::Error::AddTo(error, FROM_HERE,
-                           chromeos::errors::dbus::kDomain,
+    brillo::Error::AddTo(error, FROM_HERE,
+                           brillo::errors::dbus::kDomain,
                            kManagerServiceError,
                            "Unable to read scanner list output file");
     return false;
@@ -104,14 +104,14 @@ bool Manager::ListScanners(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Manager::ScanImage(chromeos::ErrorPtr* error,
+bool Manager::ScanImage(brillo::ErrorPtr* error,
                         const string& device_name,
                         const dbus::FileDescriptor& outfd,
-                        const chromeos::VariantDictionary& scan_properties) {
+                        const brillo::VariantDictionary& scan_properties) {
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
-    chromeos::Error::AddTo(error, FROM_HERE,
-                           chromeos::errors::dbus::kDomain,
+    brillo::Error::AddTo(error, FROM_HERE,
+                           brillo::errors::dbus::kDomain,
                            kManagerServiceError,
                            "Unable to create process pipe");
     return false;
@@ -119,8 +119,8 @@ bool Manager::ScanImage(chromeos::ErrorPtr* error,
 
   ScopedFD pipe_fd_input(pipe_fds[0]);
   ScopedFD pipe_fd_output(pipe_fds[1]);
-  chromeos::ProcessImpl scan_process;
-  chromeos::ProcessImpl convert_process;
+  brillo::ProcessImpl scan_process;
+  brillo::ProcessImpl convert_process;
 
   // Since the FileDescriptor object retains ownership of this file descriptor,
   // make a local copy.
@@ -138,7 +138,7 @@ bool Manager::ScanImage(chromeos::ErrorPtr* error,
 }
 
 // static
-void Manager::RunListScannersProcess(int fd, chromeos::Process* process) {
+void Manager::RunListScannersProcess(int fd, brillo::Process* process) {
   process->AddArg(kScanImagePath);
   process->AddArg(kScanImageFormattedDeviceListCmd);
   process->BindFd(fd, STDOUT_FILENO);
@@ -151,10 +151,10 @@ void Manager::RunScanImageProcess(
     int out_fd,
     ScopedFD* pipe_fd_input,
     ScopedFD* pipe_fd_output,
-    const chromeos::VariantDictionary& scan_properties,
-    chromeos::Process* scan_process,
-    chromeos::Process* convert_process,
-    chromeos::ErrorPtr* error) {
+    const brillo::VariantDictionary& scan_properties,
+    brillo::Process* scan_process,
+    brillo::Process* convert_process,
+    brillo::ErrorPtr* error) {
   scan_process->AddArg(kScanImagePath);
   scan_process->AddArg("-d");
   scan_process->AddArg(device_name);
@@ -168,8 +168,8 @@ void Manager::RunScanImageProcess(
       if (mode != kScanPropertyModeColor &&
           mode != kScanPropertyModeGray &&
           mode != kScanPropertyModeLineart) {
-        chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                     chromeos::errors::dbus::kDomain,
+        brillo::Error::AddToPrintf(error, FROM_HERE,
+                                     brillo::errors::dbus::kDomain,
                                      kManagerServiceError,
                                      "Invalid mode parameter %s",
                                      mode.c_str());
@@ -183,12 +183,12 @@ void Manager::RunScanImageProcess(
       scan_process->AddArg(base::UintToString(
           property_value.Get<unsigned int>()));
     } else {
-      chromeos::Error::AddToPrintf(
+      brillo::Error::AddToPrintf(
           error, FROM_HERE,
-          chromeos::errors::dbus::kDomain, kManagerServiceError,
+          brillo::errors::dbus::kDomain, kManagerServiceError,
           "Invalid scan parameter %s of type %s",
           property_name.c_str(),
-          chromeos::UndecorateTypeName(
+          brillo::UndecorateTypeName(
               property_value.GetType().name()).c_str());
       return;
     }
@@ -208,8 +208,8 @@ void Manager::RunScanImageProcess(
       scan_result == 0 ? kBooleanMetricSuccess : kBooleanMetricFailure,
       kBooleanMetricMax);
   if (scan_result != 0) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 chromeos::errors::dbus::kDomain,
+    brillo::Error::AddToPrintf(error, FROM_HERE,
+                                 brillo::errors::dbus::kDomain,
                                  kManagerServiceError,
                                  "Scan process exited with result %d",
                                  scan_result);
@@ -225,8 +225,8 @@ void Manager::RunScanImageProcess(
       converter_result == 0 ?  kBooleanMetricSuccess : kBooleanMetricFailure,
       kBooleanMetricMax);
   if (converter_result != 0) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, chromeos::errors::dbus::kDomain, kManagerServiceError,
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerServiceError,
         "Image converter process failed with result %d", converter_result);
     return;
   }

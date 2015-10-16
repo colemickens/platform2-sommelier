@@ -11,13 +11,13 @@
 #include <string>
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "chaps/chaps_utility.h"
 
 using std::string;
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace chaps {
 

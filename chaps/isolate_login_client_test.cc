@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -18,7 +18,7 @@
 #include "chaps/token_manager_client_mock.h"
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using std::vector;
 using ::testing::_;

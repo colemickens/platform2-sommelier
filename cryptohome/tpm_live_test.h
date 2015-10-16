@@ -10,9 +10,9 @@
 #include "cryptohome/tpm.h"
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 

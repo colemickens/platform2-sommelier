@@ -13,7 +13,7 @@
 
 #include "chaps/chaps.h"
 #include "chaps/token_manager_interface.h"
-#include "chromeos/secure_blob.h"
+#include "brillo/secure_blob.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -35,27 +35,27 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
   virtual ~TokenManagerClient();
 
   // TokenManagerInterface methods.
-  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential,
+  virtual bool OpenIsolate(brillo::SecureBlob* isolate_credential,
                            bool* new_isolate_created);
-  virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
-  virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
+  virtual void CloseIsolate(const brillo::SecureBlob& isolate_credential);
+  virtual bool LoadToken(const brillo::SecureBlob& isolate_credential,
                          const base::FilePath& path,
-                         const chromeos::SecureBlob& auth_data,
+                         const brillo::SecureBlob& auth_data,
                          const std::string& label,
                          int* slot_id);
-  virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
+  virtual void UnloadToken(const brillo::SecureBlob& isolate_credential,
                            const base::FilePath& path);
   virtual void ChangeTokenAuthData(const base::FilePath& path,
-                                   const chromeos::SecureBlob& old_auth_data,
-                                   const chromeos::SecureBlob& new_auth_data);
-  virtual bool GetTokenPath(const chromeos::SecureBlob& isolate_credential,
+                                   const brillo::SecureBlob& old_auth_data,
+                                   const brillo::SecureBlob& new_auth_data);
+  virtual bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
                             int slot_id,
                             base::FilePath* path);
 
   // Convenience method, not on TokenManagerInterface.
   // Returns true on success, false on failure. If it succeeds, stores a list of
   // the paths of all loaded tokens in |results|.
-  virtual bool GetTokenList(const chromeos::SecureBlob& isolate_credential,
+  virtual bool GetTokenList(const brillo::SecureBlob& isolate_credential,
                             std::vector<std::string>* results);
 
  private:

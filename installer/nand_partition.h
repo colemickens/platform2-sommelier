@@ -8,7 +8,7 @@
 #include <inttypes.h>
 #include <string>
 
-namespace chromeos {
+namespace brillo {
 
 namespace installer {
 
@@ -23,6 +23,6 @@ bool AddNandPartition(const std::string& dev,
 
 }  // namespace installer
 
-}  // namespace chromeos
+}  // namespace brillo
 
 #endif  // INSTALLER_NAND_PARTITION_H_

@@ -16,7 +16,7 @@
 using base::AutoLock;
 using base::FilePath;
 using base::Lock;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using std::vector;
 

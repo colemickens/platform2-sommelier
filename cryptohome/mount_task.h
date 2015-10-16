@@ -30,15 +30,15 @@
 #include <base/synchronization/cancellation_flag.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
-#include <chromeos/process.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/process.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/username_passkey.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 
@@ -360,7 +360,7 @@ class MountTaskMigratePasskey : public MountTask {
   virtual void Run();
 
  private:
-  chromeos::SecureBlob old_key_;
+  brillo::SecureBlob old_key_;
   HomeDirs* homedirs_;
 
   DISALLOW_COPY_AND_ASSIGN(MountTaskMigratePasskey);
@@ -382,7 +382,7 @@ class MountTaskAddPasskey : public MountTask {
   virtual void Run();
 
  private:
-  chromeos::SecureBlob new_key_;
+  brillo::SecureBlob new_key_;
   HomeDirs* homedirs_;
 
   DISALLOW_COPY_AND_ASSIGN(MountTaskAddPasskey);

@@ -21,7 +21,7 @@
 
 using base::PlatformThread;
 using base::PlatformThreadHandle;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 
@@ -151,7 +151,7 @@ bool TpmInit::HasInitializeBeenCalled() {
   return initialize_called_;
 }
 
-bool TpmInit::GetTpmPassword(chromeos::Blob* password) {
+bool TpmInit::GetTpmPassword(brillo::Blob* password) {
   return tpm_init_task_->get_tpm()->GetOwnerPassword(password);
 }
 
@@ -412,7 +412,7 @@ void TpmInit::CreateOwnerPassword(SecureBlob* password) {
 }
 
 bool TpmInit::LoadOwnerPassword(const TpmStatus& tpm_status,
-                                chromeos::Blob* owner_password) {
+                                brillo::Blob* owner_password) {
   if (!(tpm_status.flags() & TpmStatus::OWNED_BY_THIS_INSTALL)) {
     return false;
   }
@@ -439,7 +439,7 @@ bool TpmInit::LoadOwnerPassword(const TpmStatus& tpm_status,
   return true;
 }
 
-bool TpmInit::StoreOwnerPassword(const chromeos::Blob& owner_password,
+bool TpmInit::StoreOwnerPassword(const brillo::Blob& owner_password,
                                  TpmStatus* tpm_status) {
   // Use PCR0 when sealing the data so that the owner password is only
   // available in the current boot mode.  This helps protect the password from
@@ -499,7 +499,7 @@ bool TpmInit::CreateCryptohomeKey() {
     LOG(ERROR) << "Error creating RSA key";
     return false;
   }
-  chromeos::SecureBlob wrapped_key;
+  brillo::SecureBlob wrapped_key;
   if (!get_tpm()->WrapRsaKey(n, p, &wrapped_key)) {
     LOG(ERROR) << "Couldn't wrap cryptohome key";
     return false;
@@ -514,7 +514,7 @@ bool TpmInit::CreateCryptohomeKey() {
   return true;
 }
 
-bool TpmInit::SaveCryptohomeKey(const chromeos::SecureBlob& raw_key) {
+bool TpmInit::SaveCryptohomeKey(const brillo::SecureBlob& raw_key) {
   bool ok = platform_->WriteFileAtomicDurable(kDefaultCryptohomeKeyFile,
                                               raw_key, 0600);
   if (!ok)

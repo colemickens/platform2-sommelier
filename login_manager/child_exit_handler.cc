@@ -11,7 +11,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <chromeos/asynchronous_signal_handler.h>
+#include <brillo/asynchronous_signal_handler.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/job_manager.h"
@@ -24,7 +24,7 @@ ChildExitHandler::~ChildExitHandler() {
   Reset();
 }
 
-void ChildExitHandler::Init(chromeos::AsynchronousSignalHandler* signal_handler,
+void ChildExitHandler::Init(brillo::AsynchronousSignalHandler* signal_handler,
                             const std::vector<JobManagerInterface*>& managers) {
   signal_handler_ = signal_handler;
   managers_ = managers;

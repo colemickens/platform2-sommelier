@@ -67,21 +67,21 @@ class ShillClient final : public weave::provider::Network,
                                            const std::string& signal_name,
                                            bool success);
   void OnManagerPropertyChange(const std::string& property_name,
-                               const chromeos::Any& property_value);
+                               const brillo::Any& property_value);
   void OnDevicePropertyChangeRegistration(const dbus::ObjectPath& device_path,
                                           const std::string& interface,
                                           const std::string& signal_name,
                                           bool success);
   void OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                               const std::string& property_name,
-                              const chromeos::Any& property_value);
+                              const brillo::Any& property_value);
   void OnServicePropertyChangeRegistration(const dbus::ObjectPath& path,
                                            const std::string& interface,
                                            const std::string& signal_name,
                                            bool success);
   void OnServicePropertyChange(const dbus::ObjectPath& service_path,
                                const std::string& property_name,
-                               const chromeos::Any& property_value);
+                               const brillo::Any& property_value);
 
   void OnStateChangeForConnectingService(const std::string& state);
   void OnErrorChangeForConnectingService(const std::string& error);

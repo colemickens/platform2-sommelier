@@ -16,7 +16,7 @@
 
 using std::string;
 using std::vector;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace chaps {
 

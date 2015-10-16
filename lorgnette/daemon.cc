@@ -30,7 +30,7 @@ Daemon::Daemon(const base::Closure& startup_callback)
       startup_callback_(startup_callback) {}
 
 int Daemon::OnInit() {
-  int return_code = chromeos::DBusServiceDaemon::OnInit();
+  int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK) {
     return return_code;
   }
@@ -43,7 +43,7 @@ int Daemon::OnInit() {
 }
 
 void Daemon::RegisterDBusObjectsAsync(
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   manager_.reset(new Manager(base::Bind(&Daemon::PostponeShutdown,
                                         base::Unretained(this))));
   manager_->RegisterAsync(object_manager_.get(), sequencer);
@@ -51,11 +51,11 @@ void Daemon::RegisterDBusObjectsAsync(
 
 void Daemon::OnShutdown(int* return_code) {
   manager_.reset();
-  chromeos::DBusServiceDaemon::OnShutdown(return_code);
+  brillo::DBusServiceDaemon::OnShutdown(return_code);
 }
 
 void Daemon::PostponeShutdown() {
-  shutdown_callback_.Reset(base::Bind(&chromeos::Daemon::Quit,
+  shutdown_callback_.Reset(base::Bind(&brillo::Daemon::Quit,
                                       base::Unretained(this)));
   base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,

@@ -10,7 +10,7 @@
 
 #include "cryptohome/tpm.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 
@@ -41,7 +41,7 @@ class StubTpm : public Tpm {
   bool IsNvramDefined(uint32_t index) override { return false; }
   bool IsNvramLocked(uint32_t index) override { return false; }
   unsigned int GetNvramSize(uint32_t index) override { return 0; }
-  bool GetOwnerPassword(chromeos::Blob* owner_password) override
+  bool GetOwnerPassword(brillo::Blob* owner_password) override
     { return false; }
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override
     { return false; }
@@ -49,7 +49,7 @@ class StubTpm : public Tpm {
   void SetIsInitialized(bool done) override {}
   bool IsBeingOwned() const override { return false; }
   void SetIsBeingOwned(bool value) override {}
-  bool GetRandomData(size_t length, chromeos::Blob* data) override
+  bool GetRandomData(size_t length, brillo::Blob* data) override
     { return false; }
   bool DefineLockOnceNvram(uint32_t index, size_t length) override
     { return false; }
@@ -76,10 +76,10 @@ class StubTpm : public Tpm {
                 SecureBlob* pcr_value,
                 SecureBlob* quoted_data,
                 SecureBlob* quote) override { return false; }
-  bool SealToPCR0(const chromeos::Blob& value,
-                  chromeos::Blob* sealed_value) override { return false; }
-  bool Unseal(const chromeos::Blob& sealed_value,
-              chromeos::Blob* value) override { return false; }
+  bool SealToPCR0(const brillo::Blob& value,
+                  brillo::Blob* sealed_value) override { return false; }
+  bool Unseal(const brillo::Blob& sealed_value,
+              brillo::Blob* value) override { return false; }
   bool CreateCertifiedKey(const SecureBlob& identity_key_blob,
                           const SecureBlob& external_data,
                           SecureBlob* certified_public_key,

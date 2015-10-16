@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
 using ::testing::_;
@@ -25,11 +25,11 @@ class MockKeyStore : public KeyStore {
   MOCK_METHOD4(Read, bool(bool is_user_specific,
                           const std::string& username,
                           const std::string& name,
-                          chromeos::SecureBlob* key_data));
+                          brillo::SecureBlob* key_data));
   MOCK_METHOD4(Write, bool(bool is_user_specific,
                            const std::string& username,
                            const std::string& name,
-                           const chromeos::SecureBlob& key_data));
+                           const brillo::SecureBlob& key_data));
   MOCK_METHOD3(Delete, bool(bool is_user_specific,
                             const std::string& username,
                             const std::string& name));
@@ -39,13 +39,13 @@ class MockKeyStore : public KeyStore {
   MOCK_METHOD6(Register, bool(bool is_user_specific,
                               const std::string& username,
                               const std::string& label,
-                              const chromeos::SecureBlob& private_key_blob,
-                              const chromeos::SecureBlob& public_key_der,
-                              const chromeos::SecureBlob& certificate));
+                              const brillo::SecureBlob& private_key_blob,
+                              const brillo::SecureBlob& public_key_der,
+                              const brillo::SecureBlob& certificate));
   MOCK_METHOD3(RegisterCertificate,
                bool(bool is_user_specific,
                     const std::string& username,
-                    const chromeos::SecureBlob& certificate));
+                    const brillo::SecureBlob& certificate));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockKeyStore);

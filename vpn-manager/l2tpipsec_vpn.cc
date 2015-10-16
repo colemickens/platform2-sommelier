@@ -12,9 +12,9 @@
 #include <base/command_line.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <chromeos/flag_helper.h>
-#include <chromeos/process.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/flag_helper.h>
+#include <brillo/process.h>
+#include <brillo/syslog_logging.h>
 
 #include "vpn-manager/daemon.h"
 #include "vpn-manager/ipsec_manager.h"
@@ -141,11 +141,11 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(systemconfig, true, "enable ppp to configure IPs/routes/DNS");
 
   base::ScopedTempDir temp_dir;
-  chromeos::FlagHelper::Init(argc, argv, "Chromium OS l2tpipsec VPN");
-  int log_flags = chromeos::kLogToSyslog;
-  if (isatty(STDOUT_FILENO)) log_flags |= chromeos::kLogToStderr;
-  chromeos::InitLog(log_flags);
-  chromeos::OpenLog("l2tpipsec_vpn", true);
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS l2tpipsec VPN");
+  int log_flags = brillo::kLogToSyslog;
+  if (isatty(STDOUT_FILENO)) log_flags |= brillo::kLogToStderr;
+  brillo::InitLog(log_flags);
+  brillo::OpenLog("l2tpipsec_vpn", true);
   IpsecManager ipsec(FLAGS_esp, FLAGS_ike, FLAGS_ipsec_timeout,
                      FLAGS_leftprotoport, FLAGS_rekey, FLAGS_rightprotoport,
                      FLAGS_tunnel_group, FLAGS_type);

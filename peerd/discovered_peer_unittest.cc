@@ -11,7 +11,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/object_path.h>
-#include <chromeos/dbus/async_event_sequencer.h>
+#include <brillo/dbus/async_event_sequencer.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -19,7 +19,7 @@
 #include "peerd/test_util.h"
 
 using base::Time;
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::AsyncEventSequencer;
 using dbus::ObjectPath;
 using dbus::MockExportedObject;
 using peerd::technologies::kBT;

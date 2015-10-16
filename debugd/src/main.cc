@@ -8,9 +8,9 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <brillo/process.h>
+#include <brillo/syslog_logging.h>
 #include <chromeos/libminijail.h>
-#include <chromeos/process.h>
-#include <chromeos/syslog_logging.h>
 
 #include "debugd/src/debug_daemon.h"
 
@@ -50,7 +50,7 @@ void setup_dirs() {
 // @brief Launch all our helper programs.
 void launch_helpers() {
   for (int i = 0; kHelpers[i]; ++i) {
-    chromeos::ProcessImpl p;
+    brillo::ProcessImpl p;
     p.AddArg(kHelpers[i]);
     p.Start();
     p.Release();
@@ -72,7 +72,7 @@ void start() {
 
 int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   enter_vfs_namespace();
   make_tmpfs();
   setup_dirs();

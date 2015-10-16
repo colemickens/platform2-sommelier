@@ -23,19 +23,19 @@ class SlotManagerMock : public SlotManager {
   virtual ~SlotManagerMock();
 
   MOCK_METHOD0(GetSlotCount, int());
-  MOCK_CONST_METHOD2(IsTokenPresent, bool(const chromeos::SecureBlob&, int));
-  MOCK_CONST_METHOD2(IsTokenAccessible, bool(const chromeos::SecureBlob&,
+  MOCK_CONST_METHOD2(IsTokenPresent, bool(const brillo::SecureBlob&, int));
+  MOCK_CONST_METHOD2(IsTokenAccessible, bool(const brillo::SecureBlob&,
                                              int));
-  MOCK_CONST_METHOD3(GetSlotInfo, void(const chromeos::SecureBlob&, int,
+  MOCK_CONST_METHOD3(GetSlotInfo, void(const brillo::SecureBlob&, int,
                                        CK_SLOT_INFO*));
-  MOCK_CONST_METHOD3(GetTokenInfo, void(const chromeos::SecureBlob&, int,
+  MOCK_CONST_METHOD3(GetTokenInfo, void(const brillo::SecureBlob&, int,
                                         CK_TOKEN_INFO*));
   MOCK_CONST_METHOD2(GetMechanismInfo, MechanismMap* (
-      const chromeos::SecureBlob&, int));
-  MOCK_METHOD3(OpenSession, int(const chromeos::SecureBlob&, int, bool));
-  MOCK_METHOD2(CloseSession, bool(const chromeos::SecureBlob&, int));
-  MOCK_METHOD2(CloseAllSessions, void(const chromeos::SecureBlob&, int));
-  MOCK_CONST_METHOD3(GetSession, bool(const chromeos::SecureBlob&, int,
+      const brillo::SecureBlob&, int));
+  MOCK_METHOD3(OpenSession, int(const brillo::SecureBlob&, int, bool));
+  MOCK_METHOD2(CloseSession, bool(const brillo::SecureBlob&, int));
+  MOCK_METHOD2(CloseAllSessions, void(const brillo::SecureBlob&, int));
+  MOCK_CONST_METHOD3(GetSession, bool(const brillo::SecureBlob&, int,
                                       Session**));
 
  private:

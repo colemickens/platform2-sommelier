@@ -14,8 +14,8 @@
 
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
-#include <chromeos/asynchronous_signal_handler.h>
-#include <chromeos/message_loops/base_message_loop.h>
+#include <brillo/asynchronous_signal_handler.h>
+#include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/job_manager.h"
@@ -36,7 +36,7 @@ class FakeJobManager : public JobManagerInterface {
   bool IsManagedJob(pid_t pid) override { return true; }
   void HandleExit(const siginfo_t& s) override {
     last_status_ = s;
-    chromeos::MessageLoop::current()->BreakLoop();
+    brillo::MessageLoop::current()->BreakLoop();
   }
   void RequestJobExit() override {}
   void EnsureJobExit(base::TimeDelta timeout) override {}
@@ -53,7 +53,7 @@ class ChildExitHandlerTest : public ::testing::Test {
   ~ChildExitHandlerTest() override = default;
 
   void SetUp() override {
-    chromeos_loop_.SetAsCurrent();
+    brillo_loop_.SetAsCurrent();
     std::vector<JobManagerInterface*> managers;
     managers.push_back(&fake_manager_);
     signal_handler_.Init();
@@ -62,9 +62,9 @@ class ChildExitHandlerTest : public ::testing::Test {
 
  protected:
   base::MessageLoopForIO loop_;
-  chromeos::BaseMessageLoop chromeos_loop_{&loop_};
+  brillo::BaseMessageLoop brillo_loop_{&loop_};
   SystemUtilsImpl system_utils_;
-  chromeos::AsynchronousSignalHandler signal_handler_;
+  brillo::AsynchronousSignalHandler signal_handler_;
   ChildExitHandler handler_;
   FakeJobManager fake_manager_;
 
@@ -80,7 +80,7 @@ TEST_F(ChildExitHandlerTest, ChildExit) {
   }
 
   // Spin the message loop.
-  chromeos_loop_.Run();
+  brillo_loop_.Run();
 
   // Verify child termination has been reported to |fake_manager|.
   EXPECT_EQ(child_pid, fake_manager_.last_status().si_pid);

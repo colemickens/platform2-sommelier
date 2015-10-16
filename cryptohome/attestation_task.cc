@@ -8,11 +8,11 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/attestation.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 namespace cryptohome {

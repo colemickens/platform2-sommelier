@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/compiler_specific.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -58,7 +58,7 @@ class BootAttributesTest : public testing::Test {
     attr->set_name("test1");
     attr->set_value("1234");
 
-    chromeos::Blob blob(message.ByteSize());
+    brillo::Blob blob(message.ByteSize());
     message.SerializeWithCachedSizesToArray(blob.data());
     files_[BootAttributes::kAttributeFile] = blob;
 
@@ -66,25 +66,25 @@ class BootAttributesTest : public testing::Test {
     files_[BootAttributes::kSignatureFile] = blob;
   }
 
-  bool FakeReadFile(const std::string filename, chromeos::Blob* blob) {
+  bool FakeReadFile(const std::string filename, brillo::Blob* blob) {
     *blob = files_[filename];
     return true;
   }
 
-  bool FakeWriteFile(const std::string filename, chromeos::Blob blob) {
+  bool FakeWriteFile(const std::string filename, brillo::Blob blob) {
     files_[filename] = blob;
     return true;
   }
 
  protected:
-  const chromeos::SecureBlob fake_signature_;
+  const brillo::SecureBlob fake_signature_;
 
   NiceMock<MockBootLockbox> mock_boot_lockbox_;
   NiceMock<MockPlatform> mock_platform_;
 
   scoped_ptr<BootAttributes> boot_attributes_;
 
-  std::map<std::string, chromeos::Blob> files_;
+  std::map<std::string, brillo::Blob> files_;
 };
 
 TEST_F(BootAttributesTest, BasicOperations) {
@@ -114,7 +114,7 @@ TEST_F(BootAttributesTest, BasicOperations) {
   EXPECT_EQ("abcd", value);
 
   // Verify the attribute file content.
-  chromeos::Blob blob = files_[BootAttributes::kAttributeFile];
+  brillo::Blob blob = files_[BootAttributes::kAttributeFile];
   SerializedInstallAttributes message;
   message.ParseFromString(
       std::string(reinterpret_cast<char*>(blob.data()), blob.size()));

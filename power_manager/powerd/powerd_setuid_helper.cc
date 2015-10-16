@@ -18,7 +18,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 // Maximum number of arguments supported for internally-defined commands.
 const size_t kMaxArgs = 64;
@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
               "Should --suspend_wakeup_count be honored?");
   DEFINE_bool(suspend_to_idle, false,
               "Should the system suspend to idle (freeze)?");
-  chromeos::FlagHelper::Init(argc, argv, "powerd setuid helper");
+  brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
   if (FLAGS_action == "lock_vt") {
     SetVTSwitchingAllowed(false);

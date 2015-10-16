@@ -16,7 +16,7 @@
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/platform_thread.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <dbus-c++/dbus.h>
 
 #include "chaps/chaps_adaptor.h"
@@ -103,7 +103,7 @@ void RunDispatcher(Lock* lock,
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   chaps::ScopedOpenSSL openssl;
   chaps::g_dispatcher.reset(new DBus::BusDispatcher());
   CHECK(chaps::g_dispatcher.get());

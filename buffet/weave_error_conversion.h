@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 #include <weave/error.h>
 
 namespace buffet {

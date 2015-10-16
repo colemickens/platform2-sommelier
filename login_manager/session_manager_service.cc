@@ -20,8 +20,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/message_loops/message_loop.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
@@ -90,7 +90,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   } else {
     info.si_status = WTERMSIG(status);
   }
-  chromeos::MessageLoop::current()->PostTask(
+  brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::Bind(
           &SessionManagerService::HandleExit, session_manager_service_, info));
@@ -429,7 +429,7 @@ void SessionManagerService::ShutDownDBus() {
 void SessionManagerService::AllowGracefulExitOrRunForever() {
   if (exit_on_child_done_) {
     LOG(INFO) << "SessionManagerService set to exit on child done";
-    chromeos::MessageLoop::current()->PostTask(
+    brillo::MessageLoop::current()->PostTask(
         FROM_HERE,
         base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
                    this));
@@ -448,10 +448,10 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   CleanupChildren(GetKillTimeout());
   impl_->AnnounceSessionStopped();
 
-  chromeos::MessageLoop::current()->PostTask(
+  brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
-      base::Bind(&chromeos::MessageLoop::BreakLoop,
-                 base::Unretained(chromeos::MessageLoop::current())));
+      base::Bind(&brillo::MessageLoop::BreakLoop,
+                 base::Unretained(brillo::MessageLoop::current())));
   LOG(INFO) << "SessionManagerService quitting run loop";
 }
 

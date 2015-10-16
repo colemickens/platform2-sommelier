@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -22,7 +22,7 @@
 
 using std::string;
 using std::vector;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;

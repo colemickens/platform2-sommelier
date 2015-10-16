@@ -11,7 +11,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 #include <rootdev/rootdev.h>
 
 #include "debugd/src/process_with_output.h"
@@ -88,7 +88,7 @@ bool RemoveRootfsVerification() {
 
 int main(int argc, char** argv) {
   DEFINE_bool(q, false, "Query whether verification has been removed");
-  chromeos::FlagHelper::Init(argc, argv, kUsageMessage);
+  brillo::FlagHelper::Init(argc, argv, kUsageMessage);
 
   if (FLAGS_q) {
     return IsRootfsVerificationRemoved() ? EXIT_SUCCESS : EXIT_FAILURE;

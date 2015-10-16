@@ -5,10 +5,10 @@
 #include "peerd/test_util.h"
 
 #include <base/bind.h>
-#include <chromeos/dbus/mock_dbus_object.h>
+#include <brillo/dbus/mock_dbus_object.h>
 #include <dbus/mock_bus.h>
 
-using chromeos::dbus_utils::MockDBusObject;
+using brillo::dbus_utils::MockDBusObject;
 using dbus::Bus;
 using dbus::ExportedObject;
 using dbus::MockBus;

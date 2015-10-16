@@ -8,7 +8,7 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/tpm.h"
 
@@ -101,7 +101,7 @@ class TpmInit {
   //
   // Parameters
   //   password (OUT) - The owner password used for the TPM
-  virtual bool GetTpmPassword(chromeos::Blob* password);
+  virtual bool GetTpmPassword(brillo::Blob* password);
 
   // Clears the TPM password from memory and disk
   virtual void ClearStoredTpmPassword();
@@ -136,15 +136,15 @@ class TpmInit {
   //
   // Parameters
   //   password (OUT) - the generated password
-  void CreateOwnerPassword(chromeos::SecureBlob* password);
+  void CreateOwnerPassword(brillo::SecureBlob* password);
 
   // Stores the TPM owner password to the TpmStatus object
-  bool StoreOwnerPassword(const chromeos::Blob& owner_password,
+  bool StoreOwnerPassword(const brillo::Blob& owner_password,
                           TpmStatus* tpm_status);
 
   // Retrieves the TPM owner password
   bool LoadOwnerPassword(const TpmStatus& tpm_status,
-                         chromeos::Blob* owner_password);
+                         brillo::Blob* owner_password);
 
   // Migrate any TPM status files from old location to new location.
   void MigrateStatusFiles();
@@ -157,7 +157,7 @@ class TpmInit {
   // entry in /sys/class/misc
   bool IsOwnedCheckViaSysfs();
 
-  bool SaveCryptohomeKey(const chromeos::SecureBlob& wrapped_key);
+  bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
   bool LoadCryptohomeKey(ScopedKeyHandle* key_handle);
 

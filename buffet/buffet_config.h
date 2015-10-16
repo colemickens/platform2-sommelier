@@ -12,7 +12,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <chromeos/key_value_store.h>
+#include <brillo/key_value_store.h>
 #include <weave/provider/config_store.h>
 
 namespace buffet {
@@ -48,7 +48,7 @@ class BuffetConfig final : public weave::provider::ConfigStore {
   std::string LoadSettings() override;
   void SaveSettings(const std::string& settings) override;
 
-  bool LoadDefaults(const chromeos::KeyValueStore& store,
+  bool LoadDefaults(const brillo::KeyValueStore& store,
                     weave::Settings* settings);
 
  private:

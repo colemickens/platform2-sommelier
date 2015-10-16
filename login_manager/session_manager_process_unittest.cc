@@ -15,7 +15,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
-#include <chromeos/message_loops/fake_message_loop.h>
+#include <brillo/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -153,7 +153,7 @@ class SessionManagerProcessTest : public ::testing::Test {
  private:
   bool must_destroy_mocks_;
   base::ScopedTempDir tmpdir_;
-  chromeos::FakeMessageLoop fake_loop_{nullptr};
+  brillo::FakeMessageLoop fake_loop_{nullptr};
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProcessTest);
 };
@@ -183,12 +183,12 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
   EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
   EXPECT_CALL(*job, WaitAndAbort(_)).Times(1);
 
-  chromeos::MessageLoop::current()->PostTask(
+  brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::Bind(&SessionManagerService::RunBrowser,
                  manager_.get()));
 
-  chromeos::MessageLoop::current()->PostTask(
+  brillo::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::Bind(&SessionManagerService::ScheduleShutdown,
                  manager_.get()));

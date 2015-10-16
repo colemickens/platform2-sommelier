@@ -181,7 +181,7 @@ int MetricsDaemon::Run() {
     version_cumulative_cpu_use_->Set(0);
   }
 
-  return chromeos::DBusDaemon::Run();
+  return brillo::DBusDaemon::Run();
 }
 
 void MetricsDaemon::RunUploaderTest() {
@@ -290,7 +290,7 @@ void MetricsDaemon::Init(bool testing,
 }
 
 int MetricsDaemon::OnInit() {
-  int return_code = chromeos::DBusDaemon::OnInit();
+  int return_code = brillo::DBusDaemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
 
@@ -366,7 +366,7 @@ void MetricsDaemon::OnShutdown(int* return_code) {
           << error.name << ": " << error.message;
     }
   }
-  chromeos::DBusDaemon::OnShutdown(return_code);
+  brillo::DBusDaemon::OnShutdown(return_code);
 }
 
 // static

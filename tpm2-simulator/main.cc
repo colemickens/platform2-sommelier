@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <chromeos/streams/file_stream.h>
+#include <brillo/streams/file_stream.h>
 
 extern "C" {
 #include <tpm2/_TPM_Init_fp.h>
@@ -21,24 +21,24 @@ int main() {
   _plat__Signal_PowerOn();
   _TPM_Init();
   _plat__SetNvAvail();
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   // Create pipes.
   mkfifo("/dev/tpm-req", O_CREAT|O_RDWR);
   mkfifo("/dev/tpm-resp", O_CREAT|O_RDWR);
-  chromeos::StreamPtr request_stream = chromeos::FileStream::Open(
+  brillo::StreamPtr request_stream = brillo::FileStream::Open(
       base::FilePath("/dev/tpm-req"),
-      chromeos::Stream::AccessMode::READ_WRITE,
-      chromeos::FileStream::Disposition::CREATE_ALWAYS,
+      brillo::Stream::AccessMode::READ_WRITE,
+      brillo::FileStream::Disposition::CREATE_ALWAYS,
       &error);
   if (error.get()) {
     PLOG(ERROR) << "TPM simulator: Error opening /dev/tpm-req: "
                 << error->GetMessage();
     return -1;
   }
-  chromeos::StreamPtr response_stream = chromeos::FileStream::Open(
+  brillo::StreamPtr response_stream = brillo::FileStream::Open(
       base::FilePath("/dev/tpm-resp"),
-      chromeos::Stream::AccessMode::READ_WRITE,
-      chromeos::FileStream::Disposition::CREATE_ALWAYS,
+      brillo::Stream::AccessMode::READ_WRITE,
+      brillo::FileStream::Disposition::CREATE_ALWAYS,
       &error);
   if (error.get()) {
     PLOG(ERROR) << "TPM simulator: Error opening /dev/tpm-resp: "

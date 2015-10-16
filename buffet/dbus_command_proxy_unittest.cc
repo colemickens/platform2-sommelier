@@ -11,8 +11,8 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/property.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/dbus_object_test_helpers.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_object_test_helpers.h>
 #include <gtest/gtest.h>
 #include <weave/command.h>
 #include <weave/enum_to_string.h>
@@ -29,8 +29,8 @@ using ::testing::Return;
 using ::testing::ReturnRefOfCopy;
 using ::testing::StrictMock;
 
-using chromeos::VariantDictionary;
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::VariantDictionary;
+using brillo::dbus_utils::AsyncEventSequencer;
 using weave::test::CreateDictionaryValue;
 using weave::test::IsEqualValue;
 

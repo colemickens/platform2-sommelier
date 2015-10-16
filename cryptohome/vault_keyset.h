@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptohome_common.h"
 
@@ -32,25 +32,25 @@ class VaultKeyset {
 
   virtual void FromVaultKeyset(const VaultKeyset& vault_keyset);
   virtual void FromKeys(const VaultKeysetKeys& keys);
-  virtual bool FromKeysBlob(const chromeos::SecureBlob& keys_blob);
+  virtual bool FromKeysBlob(const brillo::SecureBlob& keys_blob);
   virtual bool ToKeys(VaultKeysetKeys* keys) const;
-  virtual bool ToKeysBlob(chromeos::SecureBlob* keys_blob) const;
+  virtual bool ToKeysBlob(brillo::SecureBlob* keys_blob) const;
   virtual void CreateRandomChapsKey();
   virtual void CreateRandom();
 
-  virtual const chromeos::SecureBlob& fek() const;
-  virtual const chromeos::SecureBlob& fek_sig() const;
-  virtual const chromeos::SecureBlob& fek_salt() const;
-  virtual const chromeos::SecureBlob& fnek() const;
-  virtual const chromeos::SecureBlob& fnek_sig() const;
-  virtual const chromeos::SecureBlob& fnek_salt() const;
+  virtual const brillo::SecureBlob& fek() const;
+  virtual const brillo::SecureBlob& fek_sig() const;
+  virtual const brillo::SecureBlob& fek_salt() const;
+  virtual const brillo::SecureBlob& fnek() const;
+  virtual const brillo::SecureBlob& fnek_sig() const;
+  virtual const brillo::SecureBlob& fnek_salt() const;
 
   virtual bool Load(const std::string& filename);
   // Load must be called first.
-  virtual bool Decrypt(const chromeos::SecureBlob& key);
+  virtual bool Decrypt(const brillo::SecureBlob& key);
   // Encrypt must be called first.
   virtual bool Save(const std::string& filename);
-  virtual bool Encrypt(const chromeos::SecureBlob& key);
+  virtual bool Encrypt(const brillo::SecureBlob& key);
   virtual const SerializedVaultKeyset& serialized() const {
     return serialized_;
   }
@@ -66,21 +66,21 @@ class VaultKeyset {
   virtual const int legacy_index() const {
     return legacy_index_;
   }
-  virtual const chromeos::SecureBlob& chaps_key() const {
+  virtual const brillo::SecureBlob& chaps_key() const {
     return chaps_key_;
   }
-  virtual void set_chaps_key(const chromeos::SecureBlob& chaps_key);
+  virtual void set_chaps_key(const brillo::SecureBlob& chaps_key);
   virtual void clear_chaps_key();
 
 
  private:
-  chromeos::SecureBlob fek_;
-  chromeos::SecureBlob fek_sig_;
-  chromeos::SecureBlob fek_salt_;
-  chromeos::SecureBlob fnek_;
-  chromeos::SecureBlob fnek_sig_;
-  chromeos::SecureBlob fnek_salt_;
-  chromeos::SecureBlob chaps_key_;
+  brillo::SecureBlob fek_;
+  brillo::SecureBlob fek_sig_;
+  brillo::SecureBlob fek_salt_;
+  brillo::SecureBlob fnek_;
+  brillo::SecureBlob fnek_sig_;
+  brillo::SecureBlob fnek_salt_;
+  brillo::SecureBlob chaps_key_;
 
   Platform* platform_;
   Crypto* crypto_;

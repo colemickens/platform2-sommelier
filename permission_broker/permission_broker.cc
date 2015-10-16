@@ -16,8 +16,8 @@
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/userdb_utils.h>
 
 #include "permission_broker/allow_group_tty_device_rule.h"
 #include "permission_broker/allow_hidraw_device_rule.h"
@@ -60,7 +60,7 @@ const char kOpenFailedError[] = "open_failed";
 namespace permission_broker {
 
 PermissionBroker::PermissionBroker(
-    chromeos::dbus_utils::ExportedObjectManager* object_manager,
+    brillo::dbus_utils::ExportedObjectManager* object_manager,
     org::chromium::FirewalldProxy* firewalld,
     const std::string& access_group_name,
     const std::string& udev_run_path,
@@ -73,7 +73,7 @@ PermissionBroker::PermissionBroker(
       // |firewalld_| is owned by Firewalld's object manager proxy,
       // the PortTracker object will only call D-Bus methods.
       port_tracker_(firewalld) {
-  CHECK(chromeos::userdb::GetGroupInfo(access_group_name, &access_group_))
+  CHECK(brillo::userdb::GetGroupInfo(access_group_name, &access_group_))
       << "You must specify a group name via the --access_group flag.";
   rule_engine_.AddRule(new AllowUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
@@ -94,7 +94,7 @@ PermissionBroker::PermissionBroker(
 PermissionBroker::~PermissionBroker() {}
 
 void PermissionBroker::RegisterAsync(
-    const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
   RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
 }
@@ -112,12 +112,12 @@ bool PermissionBroker::RequestPathAccess(const std::string& in_path,
   return false;
 }
 
-bool PermissionBroker::OpenPath(chromeos::ErrorPtr* error,
+bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
                                 const std::string& in_path,
                                 dbus::FileDescriptor* out_fd) {
   Rule::Result rule_result = rule_engine_.ProcessPath(in_path);
   if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN) {
-    chromeos::Error::AddToPrintf(
+    brillo::Error::AddToPrintf(
         error, FROM_HERE, kErrorDomainPermissionBroker, kPermissionDeniedError,
         "Permission to open '%s' denied", in_path.c_str());
     return false;
@@ -125,8 +125,8 @@ bool PermissionBroker::OpenPath(chromeos::ErrorPtr* error,
 
   int fd = HANDLE_EINTR(open(in_path.c_str(), O_RDWR));
   if (fd < 0) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
+    brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
                                  kOpenFailedError, "Failed to open path '%s'",
                                  in_path.c_str());
     return false;
@@ -138,8 +138,8 @@ bool PermissionBroker::OpenPath(chromeos::ErrorPtr* error,
 
   if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
     if (ioctl(fd, USBDEVFS_DROP_PRIVILEGES) < 0) {
-      chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
-      chromeos::Error::AddToPrintf(
+      brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
+      brillo::Error::AddToPrintf(
           error, FROM_HERE, kErrorDomainPermissionBroker, kOpenFailedError,
           "USBDEVFS_DROP_PRIVILEGES ioctl failed on '%s'", in_path.c_str());
       return false;

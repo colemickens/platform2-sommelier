@@ -117,7 +117,7 @@ class SignChallengeTask : public AttestationTask {
                     bool is_user_specific,
                     const std::string& username,
                     const std::string& key_name,
-                    const chromeos::SecureBlob& challenge);
+                    const brillo::SecureBlob& challenge);
   // Constructs a task for SignEnterpriseChallenge.
   SignChallengeTask(AttestationTaskObserver* observer,
                     Attestation* attestation,
@@ -125,9 +125,9 @@ class SignChallengeTask : public AttestationTask {
                     const std::string& username,
                     const std::string& key_name,
                     const std::string& domain,
-                    const chromeos::SecureBlob& device_id,
+                    const brillo::SecureBlob& device_id,
                     bool include_signed_public_key,
-                    const chromeos::SecureBlob& challenge);
+                    const brillo::SecureBlob& challenge);
   virtual ~SignChallengeTask();
 
   virtual void Run();
@@ -138,9 +138,9 @@ class SignChallengeTask : public AttestationTask {
   std::string username_;
   std::string key_name_;
   std::string domain_;
-  chromeos::SecureBlob device_id_;
+  brillo::SecureBlob device_id_;
   bool include_signed_public_key_;
-  chromeos::SecureBlob challenge_;
+  brillo::SecureBlob challenge_;
 
   DISALLOW_COPY_AND_ASSIGN(SignChallengeTask);
 };

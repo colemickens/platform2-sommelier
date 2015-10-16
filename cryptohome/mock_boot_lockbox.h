@@ -7,7 +7,7 @@
 
 #include "cryptohome/boot_lockbox.h"
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
 namespace cryptohome {
@@ -17,9 +17,9 @@ class MockBootLockbox : public BootLockbox {
   MockBootLockbox() : BootLockbox(NULL, NULL, NULL) {}
   virtual ~MockBootLockbox() {}
 
-  MOCK_METHOD2(Sign, bool(const chromeos::SecureBlob&, chromeos::SecureBlob*));
-  MOCK_METHOD2(Verify, bool(const chromeos::SecureBlob&,
-                            const chromeos::SecureBlob&));
+  MOCK_METHOD2(Sign, bool(const brillo::SecureBlob&, brillo::SecureBlob*));
+  MOCK_METHOD2(Verify, bool(const brillo::SecureBlob&,
+                            const brillo::SecureBlob&));
   MOCK_METHOD0(FinalizeBoot, bool());
   MOCK_METHOD0(IsFinalized, bool());
 };

@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 
 #include "components/feedback/feedback_report.h"
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
   // Some libchrome calls need this.
   base::AtExitManager at_exit_manager;
 
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   std::string url = args->GetSwitchValueASCII(kSwitchCustomServer);
   if (url.empty()) {

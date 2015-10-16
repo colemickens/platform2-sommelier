@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -17,11 +17,11 @@ namespace chaps {
 
 class IsolateCredentialManagerMock : public IsolateCredentialManager {
  public:
-  MOCK_METHOD1(GetCurrentUserIsolateCredential, bool(chromeos::SecureBlob*));
+  MOCK_METHOD1(GetCurrentUserIsolateCredential, bool(brillo::SecureBlob*));
   MOCK_METHOD2(GetUserIsolateCredential, bool(const std::string&,
-                                              chromeos::SecureBlob*));
+                                              brillo::SecureBlob*));
   MOCK_METHOD2(SaveIsolateCredential, bool(const std::string&,
-                                           const chromeos::SecureBlob&));
+                                           const brillo::SecureBlob&));
 };
 
 }  // namespace chaps

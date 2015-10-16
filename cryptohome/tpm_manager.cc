@@ -11,8 +11,8 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/secure_blob.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/secure_blob.h>
+#include <brillo/syslog_logging.h>
 
 #include "cryptohome/attestation.h"
 #include "cryptohome/boot_lockbox.h"
@@ -127,7 +127,7 @@ int DumpStatus() {
   cryptohome::GetTpmStatusReply status;
   status.set_enabled(tpm_init.IsTpmEnabled());
   status.set_owned(tpm_init.IsTpmOwned());
-  chromeos::SecureBlob owner_password;
+  brillo::SecureBlob owner_password;
   if (tpm_init.GetTpmPassword(&owner_password)) {
     status.set_initialized(false);
     status.set_owner_password(owner_password.to_string());
@@ -176,7 +176,7 @@ int DumpStatus() {
 
 int GetRandom(unsigned int random_bytes_count) {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
-  chromeos::SecureBlob random_bytes;
+  brillo::SecureBlob random_bytes;
   tpm->GetRandomData(random_bytes_count, &random_bytes);
   if (random_bytes_count != random_bytes.size())
     return -1;
@@ -192,7 +192,7 @@ int GetRandom(unsigned int random_bytes_count) {
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine *command_line = base::CommandLine::ForCurrentProcess();
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   OpenSSL_add_all_algorithms();
   cryptohome::ScopedMetricsInitializer metrics_initializer;
   base::CommandLine::StringVector arguments = command_line->GetArgs();

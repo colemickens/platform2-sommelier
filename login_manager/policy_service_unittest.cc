@@ -13,7 +13,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
-#include <chromeos/message_loops/fake_message_loop.h>
+#include <brillo/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -137,7 +137,7 @@ class PolicyServiceTest : public testing::Test {
   const uint8_t* policy_data_;
   uint32_t policy_len_;
 
-  chromeos::FakeMessageLoop fake_loop_{nullptr};
+  brillo::FakeMessageLoop fake_loop_{nullptr};
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.

@@ -15,7 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
@@ -26,7 +26,7 @@
 #include "chaps/token_manager_client.h"
 
 using std::string;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 #define PAM_EXPORT_SPEC EXPORT_SPEC PAM_EXTERN
 

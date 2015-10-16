@@ -17,7 +17,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace {
 
@@ -50,34 +50,34 @@ BootLockbox::BootLockbox(Tpm* tpm, Platform* platform, Crypto* crypto)
 
 BootLockbox::~BootLockbox() {}
 
-bool BootLockbox::Sign(const chromeos::SecureBlob& data,
-                       chromeos::SecureBlob* signature) {
+bool BootLockbox::Sign(const brillo::SecureBlob& data,
+                       brillo::SecureBlob* signature) {
   CHECK(signature);
-  chromeos::SecureBlob key_blob;
+  brillo::SecureBlob key_blob;
   if (!GetKeyBlob(&key_blob)) {
     return false;
   }
   return tpm_->Sign(key_blob, data, kPCRIndex, signature);
 }
 
-bool BootLockbox::Verify(const chromeos::SecureBlob& data,
-                         const chromeos::SecureBlob& signature) {
-  chromeos::SecureBlob public_key;
+bool BootLockbox::Verify(const brillo::SecureBlob& data,
+                         const brillo::SecureBlob& signature) {
+  brillo::SecureBlob public_key;
   if (!GetPublicKey(&public_key)) {
     return false;
   }
   if (!VerifySignature(public_key, data, signature)) {
     return false;
   }
-  chromeos::SecureBlob key_blob;
+  brillo::SecureBlob key_blob;
   if (!GetKeyBlob(&key_blob)) {
     return false;
   }
-  chromeos::SecureBlob creation_blob;
+  brillo::SecureBlob creation_blob;
   if (!GetCreationBlob(&creation_blob)) {
     return false;
   }
-  chromeos::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
+  brillo::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
   if (!tpm_->VerifyPCRBoundKey(kPCRIndex, pcr_value, key_blob, creation_blob)) {
     return false;
   }
@@ -90,18 +90,18 @@ bool BootLockbox::FinalizeBoot() {
       return true;
   }
   return tpm_->ExtendPCR(kPCRIndex, CryptoLib::Sha1(
-      chromeos::SecureBlob(std::begin(kPCRExtension),
+      brillo::SecureBlob(std::begin(kPCRExtension),
                            std::end(kPCRExtension))));
 }
 
 bool BootLockbox::IsFinalized() {
-  chromeos::SecureBlob actual_pcr_value;
+  brillo::SecureBlob actual_pcr_value;
   return tpm_->ReadPCR(kPCRIndex, &actual_pcr_value) &&
          actual_pcr_value.size() == arraysize(kPCRValue) &&
          memcmp(actual_pcr_value.data(), kPCRValue, arraysize(kPCRValue));
 }
 
-bool BootLockbox::GetKeyBlob(chromeos::SecureBlob* key_blob) {
+bool BootLockbox::GetKeyBlob(brillo::SecureBlob* key_blob) {
   if (!key_.has_key_blob() && !LoadKey() && !CreateKey()) {
     return false;
   }
@@ -112,7 +112,7 @@ bool BootLockbox::GetKeyBlob(chromeos::SecureBlob* key_blob) {
   return true;
 }
 
-bool BootLockbox::GetPublicKey(chromeos::SecureBlob* public_key) {
+bool BootLockbox::GetPublicKey(brillo::SecureBlob* public_key) {
   if (!key_.has_public_key_der() && !LoadKey()) {
     return false;
   }
@@ -124,7 +124,7 @@ bool BootLockbox::GetPublicKey(chromeos::SecureBlob* public_key) {
   return true;
 }
 
-bool BootLockbox::GetCreationBlob(chromeos::SecureBlob* creation_blob) {
+bool BootLockbox::GetCreationBlob(brillo::SecureBlob* creation_blob) {
   if (!key_.has_creation_blob() && !LoadKey()) {
     return false;
   }
@@ -140,7 +140,7 @@ bool BootLockbox::LoadKey() {
   if (!platform_->ReadFileToString(kKeyFilePath, &file_contents)) {
     return false;
   }
-  chromeos::SecureBlob protobuf;
+  brillo::SecureBlob protobuf;
   if (!crypto_->DecryptWithTpm(file_contents, &protobuf)) {
     LOG(WARNING) << "Failed to decrypt boot-lockbox key.";
     return false;
@@ -153,7 +153,7 @@ bool BootLockbox::LoadKey() {
 }
 
 bool BootLockbox::SaveKey() {
-  chromeos::SecureBlob protobuf(key_.ByteSize());
+  brillo::SecureBlob protobuf(key_.ByteSize());
   if (!key_.SerializeToArray(protobuf.data(), protobuf.size())) {
     LOG(ERROR) << "Failed to serialize boot-lockbox key.";
     return false;
@@ -174,10 +174,10 @@ bool BootLockbox::SaveKey() {
 
 bool BootLockbox::CreateKey() {
   LOG(INFO) <<  "Creating new boot-lockbox key.";
-  chromeos::SecureBlob key_blob;
-  chromeos::SecureBlob public_key;
-  chromeos::SecureBlob creation_blob;
-  chromeos::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
+  brillo::SecureBlob key_blob;
+  brillo::SecureBlob public_key;
+  brillo::SecureBlob creation_blob;
+  brillo::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
   if (!tpm_->CreatePCRBoundKey(kPCRIndex, pcr_value, &key_blob,
                                &public_key, &creation_blob)) {
     LOG(ERROR) << "Failed to create boot-lockbox key.";
@@ -189,9 +189,9 @@ bool BootLockbox::CreateKey() {
   return SaveKey();
 }
 
-bool BootLockbox::VerifySignature(const chromeos::SecureBlob& public_key,
-                                  const chromeos::SecureBlob& signed_data,
-                                  const chromeos::SecureBlob& signature) {
+bool BootLockbox::VerifySignature(const brillo::SecureBlob& public_key,
+                                  const brillo::SecureBlob& signed_data,
+                                  const brillo::SecureBlob& signature) {
   const unsigned char* asn1_ptr = public_key.data();
   scoped_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
@@ -199,7 +199,7 @@ bool BootLockbox::VerifySignature(const chromeos::SecureBlob& public_key,
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
-  chromeos::SecureBlob digest = CryptoLib::Sha256(signed_data);
+  brillo::SecureBlob digest = CryptoLib::Sha256(signed_data);
   if (!RSA_verify(NID_sha256, digest.data(), digest.size(),
                   signature.data(), signature.size(), rsa.get())) {
     LOG(ERROR) << "Failed to verify signature.";

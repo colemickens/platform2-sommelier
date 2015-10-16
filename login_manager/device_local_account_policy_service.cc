@@ -13,7 +13,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "login_manager/dbus_error_types.h"
@@ -163,12 +163,12 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
 
 std::string DeviceLocalAccountPolicyService::GetAccountKey(
     const std::string& account_id) {
-  return chromeos::cryptohome::home::SanitizeUserName(account_id);
+  return brillo::cryptohome::home::SanitizeUserName(account_id);
 }
 
 bool DeviceLocalAccountPolicyService::IsValidAccountKey(
     const std::string& str) {
-  return chromeos::cryptohome::home::IsSanitizedUserName(str);
+  return brillo::cryptohome::home::IsSanitizedUserName(str);
 }
 
 }  // namespace login_manager

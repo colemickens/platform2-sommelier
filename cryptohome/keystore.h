@@ -10,7 +10,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 namespace cryptohome {
 
@@ -25,7 +25,7 @@ class KeyStore {
   virtual bool Read(bool is_user_specific,
                     const std::string& username,
                     const std::string& key_name,
-                    chromeos::SecureBlob* key_data) = 0;
+                    brillo::SecureBlob* key_data) = 0;
 
   // Writes key data to the store for the key identified by |key_name| and by
   // |username| if |is_user_specific|. If such a key already exists the existing
@@ -33,7 +33,7 @@ class KeyStore {
   virtual bool Write(bool is_user_specific,
                      const std::string& username,
                      const std::string& key_name,
-                     const chromeos::SecureBlob& key_data) = 0;
+                     const brillo::SecureBlob& key_data) = 0;
 
   // Deletes key data for the key identified by |key_name| and by |username| if
   // |is_user_specific|. Returns false if key data exists but could not be
@@ -58,15 +58,15 @@ class KeyStore {
   virtual bool Register(bool is_user_specific,
                         const std::string& username,
                         const std::string& label,
-                        const chromeos::SecureBlob& private_key_blob,
-                        const chromeos::SecureBlob& public_key_der,
-                        const chromeos::SecureBlob& certificate) = 0;
+                        const brillo::SecureBlob& private_key_blob,
+                        const brillo::SecureBlob& public_key_der,
+                        const brillo::SecureBlob& certificate) = 0;
 
   // Registers a |certificate| that is not associated to a registered key. The
   // certificate will be associated with |username| if |is_user_specific|.
   virtual bool RegisterCertificate(bool is_user_specific,
                                    const std::string& username,
-                                   const chromeos::SecureBlob& certificate) = 0;
+                                   const brillo::SecureBlob& certificate) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyStore);

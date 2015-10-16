@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
@@ -23,7 +23,7 @@
 
 using base::FilePath;
 using chaps::IsolateCredentialManager;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using std::vector;
 
@@ -132,7 +132,7 @@ void ListTokens() {
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   bool ping = cl->HasSwitch("ping");
   bool load = (cl->HasSwitch("load") &&

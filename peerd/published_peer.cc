@@ -11,10 +11,10 @@ using base::WeakPtr;
 namespace peerd {
 
 bool PublishedPeer::AddPublishedService(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::string& service_id,
     const std::map<std::string, std::string>& service_info,
-    const std::map<std::string, chromeos::Any>& options) {
+    const std::map<std::string, brillo::Any>& options) {
   if (!Peer::AddService(error, service_id, {}, service_info, options)) {
     return false;
   }
@@ -22,7 +22,7 @@ bool PublishedPeer::AddPublishedService(
   return PublishService(error, *services_[service_id]);
 }
 
-bool PublishedPeer::RemoveService(chromeos::ErrorPtr* error,
+bool PublishedPeer::RemoveService(brillo::ErrorPtr* error,
                                   const std::string& service_id) {
   if (!Peer::RemoveService(error, service_id)) {
     // Didn't even have this service on this peer?
@@ -48,14 +48,14 @@ void PublishedPeer::RegisterServicePublisher(
 }
 
 bool PublishedPeer::UpdateService(
-    chromeos::ErrorPtr* error,
+    brillo::ErrorPtr* error,
     const std::string& service_id,
     const std::map<std::string, std::string>& service_info,
-    const std::map<std::string, chromeos::Any>& options) {
+    const std::map<std::string, brillo::Any>& options) {
   CleanPublishers();
   auto it = services_.find(service_id);
   if (it == services_.end()) {
-    chromeos::Error::AddToPrintf(
+    brillo::Error::AddToPrintf(
         error, FROM_HERE, kPeerdErrorDomain, errors::peer::kUnknownService,
         "Can't update service %s because it was not previously registered.",
         service_id.c_str());
@@ -74,7 +74,7 @@ void PublishedPeer::CleanPublishers() {
   publishers_.erase(first_null, publishers_.end());
 }
 
-bool PublishedPeer::PublishService(chromeos::ErrorPtr* error,
+bool PublishedPeer::PublishService(brillo::ErrorPtr* error,
                                    const Service& service) {
   bool success = true;
   for (const auto& publisher : publishers_) {

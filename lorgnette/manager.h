@@ -13,21 +13,21 @@
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <chromeos/variant_dictionary.h>
-#include <chromeos/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <brillo/errors/error.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 
-namespace chromeos {
+namespace brillo {
 class Process;
 
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // namespace dbus_utils
 
-}  // namespace chromeos
+}  // namespace brillo
 
 namespace lorgnette {
 
@@ -43,16 +43,16 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   virtual ~Manager();
 
   void RegisterAsync(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+      brillo::dbus_utils::ExportedObjectManager* object_manager,
+      brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Implementation of MethodInterface.
-  bool ListScanners(chromeos::ErrorPtr* error,
+  bool ListScanners(brillo::ErrorPtr* error,
                     ScannerInfo* scanner_list) override;
-  bool ScanImage(chromeos::ErrorPtr* error,
+  bool ScanImage(brillo::ErrorPtr* error,
                  const std::string& device_name,
                  const dbus::FileDescriptor& outfd,
-                 const chromeos::VariantDictionary& scan_properties) override;
+                 const brillo::VariantDictionary& scan_properties) override;
 
  private:
   friend class ManagerTest;
@@ -76,7 +76,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
 
   // Sets arguments to scan listing |process|, and runs it, returning its
   // output to |fd|.
-  static void RunListScannersProcess(int fd, chromeos::Process* process);
+  static void RunListScannersProcess(int fd, brillo::Process* process);
 
   // Starts a scan on |device_name|, outputting PNG image data to |out_fd|.
   // Uses the |pipe_fd_input| and |pipe_fd_output| to transport image data
@@ -88,10 +88,10 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                            int out_fd,
                            base::ScopedFD* pipe_fd_input,
                            base::ScopedFD* pipe_fd_output,
-                           const chromeos::VariantDictionary& scan_properties,
-                           chromeos::Process* scan_process,
-                           chromeos::Process* convert_process,
-                           chromeos::ErrorPtr* error);
+                           const brillo::VariantDictionary& scan_properties,
+                           brillo::Process* scan_process,
+                           brillo::Process* convert_process,
+                           brillo::ErrorPtr* error);
 
   // Converts the formatted output of "scanimage" to a map of attribute-data
   // mappings suitable for returning to a caller to the ListScanners DBus
@@ -99,7 +99,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   static ScannerInfo ScannerInfoFromString(
       const std::string& scanner_info_string);
 
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   base::Callback<void()> activity_callback_;
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
 

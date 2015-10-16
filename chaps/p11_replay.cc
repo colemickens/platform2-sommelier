@@ -21,7 +21,7 @@
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
@@ -607,7 +607,7 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::TimeTicks start_ticks = base::TimeTicks::Now();
   CK_SLOT_ID slot = Initialize();
   int tmp_slot = 0;

@@ -15,7 +15,7 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <chaps/pkcs11/cryptoki.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 namespace cryptohome {
 
@@ -44,11 +44,11 @@ class Pkcs11KeyStore : public KeyStore {
   virtual bool Read(bool is_user_specific,
                     const std::string& username,
                     const std::string& key_name,
-                    chromeos::SecureBlob* key_data);
+                    brillo::SecureBlob* key_data);
   virtual bool Write(bool is_user_specific,
                      const std::string& username,
                      const std::string& key_name,
-                     const chromeos::SecureBlob& key_data);
+                     const brillo::SecureBlob& key_data);
   virtual bool Delete(bool is_user_specific,
                       const std::string& username,
                       const std::string& key_name);
@@ -58,12 +58,12 @@ class Pkcs11KeyStore : public KeyStore {
   virtual bool Register(bool is_user_specific,
                         const std::string& username,
                         const std::string& label,
-                        const chromeos::SecureBlob& private_key_blob,
-                        const chromeos::SecureBlob& public_key_der,
-                        const chromeos::SecureBlob& certificate);
+                        const brillo::SecureBlob& private_key_blob,
+                        const brillo::SecureBlob& public_key_der,
+                        const brillo::SecureBlob& certificate);
   virtual bool RegisterCertificate(bool is_user_specific,
                                    const std::string& username,
-                                   const chromeos::SecureBlob& certificate);
+                                   const brillo::SecureBlob& certificate);
 
  private:
   typedef base::Callback<bool(const std::string& key_name,
@@ -105,12 +105,12 @@ class Pkcs11KeyStore : public KeyStore {
 
   // Extracts the subject information from an X.509 certificate. Returns false
   // if the subject cannot be determined.
-  bool GetCertificateSubject(const chromeos::SecureBlob& certificate,
-                             chromeos::SecureBlob* subject);
+  bool GetCertificateSubject(const brillo::SecureBlob& certificate,
+                             brillo::SecureBlob* subject);
 
   // Returns true iff the given certificate already exists in the token.
   bool DoesCertificateExist(CK_SESSION_HANDLE session_handle,
-                            const chromeos::SecureBlob& certificate);
+                            const brillo::SecureBlob& certificate);
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11KeyStore);
 };

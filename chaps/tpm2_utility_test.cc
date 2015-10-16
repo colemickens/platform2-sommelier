@@ -19,7 +19,7 @@
 
 #include "chaps/chaps_utility.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using testing::_;
 using testing::DoAll;
 using testing::SetArgPointee;

@@ -12,8 +12,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <chaps/pkcs11/cryptoki.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -21,7 +21,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/pkcs11_init.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 namespace cryptohome {
@@ -203,9 +203,9 @@ bool Pkcs11KeyStore::DeleteByPrefix(bool is_user_specific,
 bool Pkcs11KeyStore::Register(bool is_user_specific,
                               const string& username,
                               const string& label,
-                              const chromeos::SecureBlob& private_key_blob,
-                              const chromeos::SecureBlob& public_key_der,
-                              const chromeos::SecureBlob& certificate) {
+                              const brillo::SecureBlob& private_key_blob,
+                              const brillo::SecureBlob& public_key_der,
+                              const brillo::SecureBlob& certificate) {
   const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 
   CK_SLOT_ID slot;
@@ -300,7 +300,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
   }
 
   if (!certificate.empty()) {
-    chromeos::SecureBlob subject;
+    brillo::SecureBlob subject;
     if (!GetCertificateSubject(certificate, &subject)) {
       LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
     }
@@ -338,7 +338,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
 bool Pkcs11KeyStore::RegisterCertificate(
     bool is_user_specific,
     const string& username,
-    const chromeos::SecureBlob& certificate) {
+    const brillo::SecureBlob& certificate) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(is_user_specific, username, &slot))
     return false;
@@ -350,7 +350,7 @@ bool Pkcs11KeyStore::RegisterCertificate(
     LOG(INFO) << "Pkcs11KeyStore: Certificate already exists.";
     return true;
   }
-  chromeos::SecureBlob subject;
+  brillo::SecureBlob subject;
   if (!GetCertificateSubject(certificate, &subject)) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
   }
@@ -422,7 +422,7 @@ bool Pkcs11KeyStore::GetUserSlot(bool is_user_specific,
   const char kChapsDaemonName[] = "chaps";
   const char kChapsSystemToken[] = "/var/lib/chaps";
   base::FilePath token_path = is_user_specific ?
-      chromeos::cryptohome::home::GetDaemonPath(username, kChapsDaemonName) :
+      brillo::cryptohome::home::GetDaemonPath(username, kChapsDaemonName) :
       base::FilePath(kChapsSystemToken);
   return pkcs11_init_->GetTpmTokenSlotForPath(token_path, slot);
 }
@@ -509,8 +509,8 @@ bool Pkcs11KeyStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
 }
 
 bool Pkcs11KeyStore::GetCertificateSubject(
-    const chromeos::SecureBlob& certificate,
-    chromeos::SecureBlob* subject) {
+    const brillo::SecureBlob& certificate,
+    brillo::SecureBlob* subject) {
   const unsigned char* asn1_ptr = certificate.data();
   ScopedX509 x509(d2i_X509(NULL, &asn1_ptr, certificate.size()));
   if (!x509.get() || !x509->cert_info || !x509->cert_info->subject) {
@@ -531,7 +531,7 @@ bool Pkcs11KeyStore::GetCertificateSubject(
 
 bool Pkcs11KeyStore::DoesCertificateExist(
     CK_SESSION_HANDLE session_handle,
-    const chromeos::SecureBlob& certificate) {
+    const brillo::SecureBlob& certificate) {
   CK_OBJECT_CLASS object_class = CKO_CERTIFICATE;
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;

@@ -11,8 +11,8 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
                 "activity is observed while the screen is dimmed or soon after "
                 "it's been turned off (less than 1.0 means unset)");
 
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Configures powerd's power management policy.\n\n"
       "When called without any arguments, uses default settings.");
   base::AtExitManager at_exit_manager;

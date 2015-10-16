@@ -18,7 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <chromeos/userdb_utils.h>
+#include <brillo/userdb_utils.h>
 
 #include "chromeos/ui/util.h"
 
@@ -95,7 +95,7 @@ ChromiumCommandBuilder::ChromiumCommandBuilder()
 ChromiumCommandBuilder::~ChromiumCommandBuilder() {}
 
 bool ChromiumCommandBuilder::Init() {
-  if (!userdb::GetUserInfo(kUser, &uid_, &gid_))
+  if (!brillo::userdb::GetUserInfo(kUser, &uid_, &gid_))
     return false;
 
   // Read the list of USE flags that were set at build time.

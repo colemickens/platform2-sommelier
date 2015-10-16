@@ -17,7 +17,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/fake_child_process.h"
@@ -31,9 +31,9 @@
 #include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
-using chromeos::cryptohome::home::GetUserPathPrefix;
-using chromeos::cryptohome::home::SetUserHomePrefix;
-using chromeos::cryptohome::home::SetSystemSalt;
+using brillo::cryptohome::home::GetUserPathPrefix;
+using brillo::cryptohome::home::SetUserHomePrefix;
+using brillo::cryptohome::home::SetSystemSalt;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::StrEq;

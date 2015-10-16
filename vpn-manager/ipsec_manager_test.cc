@@ -7,17 +7,17 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/process_mock.h>
-#include <chromeos/syslog_logging.h>
-#include <chromeos/test_helpers.h>
+#include <brillo/process_mock.h>
+#include <brillo/syslog_logging.h>
+#include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 
 #include "vpn-manager/daemon_mock.h"
 #include "vpn-manager/ipsec_manager.h"
 
 using ::base::FilePath;
-using ::chromeos::FindLog;
-using ::chromeos::ProcessMock;
+using ::brillo::FindLog;
+using ::brillo::ProcessMock;
 using ::testing::_;
 using ::testing::InSequence;
 using ::testing::Return;
@@ -68,7 +68,7 @@ class IpsecManagerTest : public ::testing::Test {
     FilePath srcdir = srcvar ? FilePath(srcvar) : cwd;
     base::CopyFile(srcdir.Append("testdata/cacert.der"),
                    FilePath(server_ca_file_));
-    chromeos::ClearLog();
+    brillo::ClearLog();
     starter_daemon_ = new DaemonMock;
     charon_daemon_ = new DaemonMock;
     ipsec_.reset(new IpsecManager(

@@ -10,8 +10,8 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/syslog_logging.h>
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 
@@ -116,10 +116,10 @@ static void block_signals(void) {
 // Always logs to the syslog and stderr.
 void SetupLogging(void) {
   int log_flags = 0;
-  log_flags |= chromeos::kLogToSyslog;
-  log_flags |= chromeos::kLogToStderr;
-  log_flags |= chromeos::kLogHeader;
-  chromeos::InitLog(log_flags);
+  log_flags |= brillo::kLogToSyslog;
+  log_flags |= brillo::kLogToStderr;
+  log_flags |= brillo::kLogHeader;
+  brillo::InitLog(log_flags);
 }
 
 int main(int argc, char* argv[]) {

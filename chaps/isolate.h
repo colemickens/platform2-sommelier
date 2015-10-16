@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "chaps/chaps.h"
 
@@ -29,27 +29,27 @@ class IsolateCredentialManager {
   virtual ~IsolateCredentialManager();
 
   // Get the well known credential for the default isolate.
-  static chromeos::SecureBlob GetDefaultIsolateCredential() {
+  static brillo::SecureBlob GetDefaultIsolateCredential() {
     // Default isolate credential is all zeros.
-    return chromeos::SecureBlob(kIsolateCredentialBytes);
+    return brillo::SecureBlob(kIsolateCredentialBytes);
   }
 
   // Get the isolate credential for the current user, returning true if it
   // exists.
   virtual bool GetCurrentUserIsolateCredential(
-      chromeos::SecureBlob* isolate_credential);
+      brillo::SecureBlob* isolate_credential);
 
   // Get the isolate credential for the given user name, returning true if it
   // exists.
   virtual bool GetUserIsolateCredential(
       const std::string& user,
-      chromeos::SecureBlob* isolate_credential);
+      brillo::SecureBlob* isolate_credential);
 
   // Save the isolate credential such that it can be retrieved with
   // GetUserIsolateCredential. Return true on success and false on failure.
   virtual bool SaveIsolateCredential(
       const std::string& user,
-      const chromeos::SecureBlob& isolate_credential);
+      const brillo::SecureBlob& isolate_credential);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IsolateCredentialManager);

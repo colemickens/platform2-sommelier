@@ -9,10 +9,10 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <chromeos/data_encoding.h>
-#include <chromeos/http/http_transport_fake.h>
-#include <chromeos/mime_utils.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/data_encoding.h>
+#include <brillo/http/http_transport_fake.h>
+#include <brillo/mime_utils.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/rsa.h>
@@ -28,7 +28,7 @@
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using ::testing::_;
 using ::testing::DoAll;
@@ -60,7 +60,7 @@ class AttestationTest : public testing::Test {
   virtual void SetUp() {
     attestation_.set_database_path(kTestPath);
     attestation_.set_key_store(&key_store_);
-    http_transport_ = std::make_shared<chromeos::http::fake::Transport>();
+    http_transport_ = std::make_shared<brillo::http::fake::Transport>();
     attestation_.set_http_transport(http_transport_);
     // Fake up a single file by default.
     ON_CALL(platform_,
@@ -101,7 +101,7 @@ class AttestationTest : public testing::Test {
   Crypto crypto_;
   NiceMock<MockKeyStore> key_store_;
   NiceMock<MockInstallAttributes> install_attributes_;
-  std::shared_ptr<chromeos::http::fake::Transport> http_transport_;
+  std::shared_ptr<brillo::http::fake::Transport> http_transport_;
   Attestation attestation_;
   RSA* rsa_;  // Access with rsa().
 
@@ -157,11 +157,11 @@ class AttestationTest : public testing::Test {
 
   string EncodeCertChain(const string& cert1, const string& cert2) {
     string chain = "-----BEGIN CERTIFICATE-----\n";
-    chain += chromeos::data_encoding::Base64EncodeWrapLines(cert1);
+    chain += brillo::data_encoding::Base64EncodeWrapLines(cert1);
     chain += "-----END CERTIFICATE-----";
     if (!cert2.empty()) {
       chain += "\n-----BEGIN CERTIFICATE-----\n";
-      chain += chromeos::data_encoding::Base64EncodeWrapLines(cert2);
+      chain += brillo::data_encoding::Base64EncodeWrapLines(cert2);
       chain += "-----END CERTIFICATE-----";
     }
     return chain;
@@ -433,7 +433,7 @@ TEST_F(AttestationTest, SimpleChallenge) {
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
                             Return(true)));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
                                                &blob));
@@ -464,7 +464,7 @@ TEST_F(AttestationTest, EMKChallenge) {
   EXPECT_CALL(tpm_, Sign(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
                             Return(true)));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
                                                &blob));
@@ -511,7 +511,7 @@ TEST_F(AttestationTest, EUKChallenge) {
       .WillRepeatedly(DoAll(
           SetArgumentPointee<3>(GetCertifiedKeyBlob("", true)),
           Return(true)));
-  chromeos::SecureBlob blob;
+  brillo::SecureBlob blob;
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
   EXPECT_TRUE(attestation_.SignEnterpriseChallenge(true,
                                                    kTestUser,
@@ -773,10 +773,10 @@ TEST_F(AttestationTest, PCARequest_Enroll) {
   std::string expected_url = GetDefaultPCAWebOrigin() + "/enroll";
   http_transport_->AddSimpleReplyHandler(
       expected_url,
-      chromeos::http::request_type::kPost,
-      chromeos::http::status_code::Ok,
+      brillo::http::request_type::kPost,
+      brillo::http::status_code::Ok,
       "response",
-      chromeos::mime::application::kOctet_stream);
+      brillo::mime::application::kOctet_stream);
   SecureBlob response;
   EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kDefaultPCA,
                                                   Attestation::kEnroll,
@@ -789,10 +789,10 @@ TEST_F(AttestationTest, PCARequest_GetCertificate) {
   std::string expected_url = GetDefaultPCAWebOrigin() + "/sign";
   http_transport_->AddSimpleReplyHandler(
       expected_url,
-      chromeos::http::request_type::kPost,
-      chromeos::http::status_code::Ok,
+      brillo::http::request_type::kPost,
+      brillo::http::status_code::Ok,
       "response",
-      chromeos::mime::application::kOctet_stream);
+      brillo::mime::application::kOctet_stream);
   SecureBlob response;
   EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kDefaultPCA,
                                                   Attestation::kGetCertificate,
@@ -809,10 +809,10 @@ TEST_F(AttestationTest, AlternatePCARequest) {
   std::string expected_url = "https://alternate/enroll";
   http_transport_->AddSimpleReplyHandler(
       expected_url,
-      chromeos::http::request_type::kPost,
-      chromeos::http::status_code::Ok,
+      brillo::http::request_type::kPost,
+      brillo::http::status_code::Ok,
       "response",
-      chromeos::mime::application::kOctet_stream);
+      brillo::mime::application::kOctet_stream);
   SecureBlob response;
   EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kAlternatePCA,
                                                   Attestation::kEnroll,
@@ -825,10 +825,10 @@ TEST_F(AttestationTest, PCARequestWithServerError) {
   std::string expected_url = GetDefaultPCAWebOrigin() + "/enroll";
   http_transport_->AddSimpleReplyHandler(
       expected_url,
-      chromeos::http::request_type::kPost,
-      chromeos::http::status_code::BadRequest,
+      brillo::http::request_type::kPost,
+      brillo::http::status_code::BadRequest,
       "response",
-      chromeos::mime::application::kOctet_stream);
+      brillo::mime::application::kOctet_stream);
   SecureBlob response;
   EXPECT_FALSE(attestation_.SendPCARequestAndBlock(Attestation::kDefaultPCA,
                                                    Attestation::kEnroll,
@@ -848,7 +848,7 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
   EXPECT_CALL(tpm_, ReadPCR(1, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(default_pcr), Return(true)));
   std::string fake_hwid = "hwid";
-  chromeos::SecureBlob fake_hwid_expected_extension;
+  brillo::SecureBlob fake_hwid_expected_extension;
   // First 20 bytes of SHA-256.
   ASSERT_TRUE(base::HexStringToBytes("bc45e91a086497cd817cb3024ac5c0d733111a74",
                                      &fake_hwid_expected_extension));

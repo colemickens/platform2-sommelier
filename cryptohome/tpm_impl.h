@@ -19,16 +19,16 @@ class TpmImpl : public Tpm {
   virtual ~TpmImpl();
   // Tpm methods
   TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
-                             const chromeos::SecureBlob& plaintext,
-                             const chromeos::SecureBlob& key,
-                             chromeos::SecureBlob* ciphertext) override;
+                             const brillo::SecureBlob& plaintext,
+                             const brillo::SecureBlob& key,
+                             brillo::SecureBlob* ciphertext) override;
   TpmRetryAction DecryptBlob(TpmKeyHandle key_handle,
-                             const chromeos::SecureBlob& ciphertext,
-                             const chromeos::SecureBlob& key,
-                             chromeos::SecureBlob* plaintext) override;
+                             const brillo::SecureBlob& ciphertext,
+                             const brillo::SecureBlob& key,
+                             brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
-                                  chromeos::SecureBlob* hash) override;
-  bool GetOwnerPassword(chromeos::Blob* owner_password) override;
+                                  brillo::SecureBlob* hash) override;
+  bool GetOwnerPassword(brillo::Blob* owner_password) override;
   bool IsEnabled() const override { return !is_disabled_; }
   void SetIsEnabled(bool enabled) override { is_disabled_ = !enabled; }
   bool IsOwned() const override { return is_owned_; }
@@ -38,84 +38,84 @@ class TpmImpl : public Tpm {
   void SetIsInitialized(bool done) override { initialized_ = done; }
   bool IsBeingOwned() const override { return is_being_owned_; }
   void SetIsBeingOwned(bool value) override { is_being_owned_ = value; }
-  bool GetRandomData(size_t length, chromeos::Blob* data) override;
+  bool GetRandomData(size_t length, brillo::Blob* data) override;
   bool DefineLockOnceNvram(uint32_t index, size_t length) override;
   bool DestroyNvram(uint32_t index) override;
-  bool WriteNvram(uint32_t index, const chromeos::SecureBlob& blob) override;
-  bool ReadNvram(uint32_t index, chromeos::SecureBlob* blob) override;
+  bool WriteNvram(uint32_t index, const brillo::SecureBlob& blob) override;
+  bool ReadNvram(uint32_t index, brillo::SecureBlob* blob) override;
   bool IsNvramDefined(uint32_t index) override;
   bool IsNvramLocked(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
-  bool GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key) override;
-  bool GetEndorsementCredential(chromeos::SecureBlob* credential) override;
-  bool MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
-                    chromeos::SecureBlob* identity_public_key,
-                    chromeos::SecureBlob* identity_key_blob,
-                    chromeos::SecureBlob* identity_binding,
-                    chromeos::SecureBlob* identity_label,
-                    chromeos::SecureBlob* pca_public_key,
-                    chromeos::SecureBlob* endorsement_credential,
-                    chromeos::SecureBlob* platform_credential,
-                    chromeos::SecureBlob* conformance_credential) override;
+  bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) override;
+  bool GetEndorsementCredential(brillo::SecureBlob* credential) override;
+  bool MakeIdentity(brillo::SecureBlob* identity_public_key_der,
+                    brillo::SecureBlob* identity_public_key,
+                    brillo::SecureBlob* identity_key_blob,
+                    brillo::SecureBlob* identity_binding,
+                    brillo::SecureBlob* identity_label,
+                    brillo::SecureBlob* pca_public_key,
+                    brillo::SecureBlob* endorsement_credential,
+                    brillo::SecureBlob* platform_credential,
+                    brillo::SecureBlob* conformance_credential) override;
   bool QuotePCR(int pcr_index,
-                const chromeos::SecureBlob& identity_key_blob,
-                const chromeos::SecureBlob& external_data,
-                chromeos::SecureBlob* pcr_value,
-                chromeos::SecureBlob* quoted_data,
-                chromeos::SecureBlob* quote) override;
-  bool SealToPCR0(const chromeos::Blob& value,
-                  chromeos::Blob* sealed_value) override;
-  bool Unseal(const chromeos::Blob& sealed_value,
-              chromeos::Blob* value) override;
+                const brillo::SecureBlob& identity_key_blob,
+                const brillo::SecureBlob& external_data,
+                brillo::SecureBlob* pcr_value,
+                brillo::SecureBlob* quoted_data,
+                brillo::SecureBlob* quote) override;
+  bool SealToPCR0(const brillo::Blob& value,
+                  brillo::Blob* sealed_value) override;
+  bool Unseal(const brillo::Blob& sealed_value,
+              brillo::Blob* value) override;
   bool CreateCertifiedKey(
-      const chromeos::SecureBlob& identity_key_blob,
-      const chromeos::SecureBlob& external_data,
-      chromeos::SecureBlob* certified_public_key,
-      chromeos::SecureBlob* certified_public_key_der,
-      chromeos::SecureBlob* certified_key_blob,
-      chromeos::SecureBlob* certified_key_info,
-      chromeos::SecureBlob* certified_key_proof) override;
-  bool CreateDelegate(const chromeos::SecureBlob& identity_key_blob,
-                      chromeos::SecureBlob* delegate_blob,
-                      chromeos::SecureBlob* delegate_secret) override;
-  bool ActivateIdentity(const chromeos::SecureBlob& delegate_blob,
-                        const chromeos::SecureBlob& delegate_secret,
-                        const chromeos::SecureBlob& identity_key_blob,
-                        const chromeos::SecureBlob& encrypted_asym_ca,
-                        const chromeos::SecureBlob& encrypted_sym_ca,
-                        chromeos::SecureBlob* identity_credential) override;
-  bool Sign(const chromeos::SecureBlob& key_blob,
-            const chromeos::SecureBlob& input,
+      const brillo::SecureBlob& identity_key_blob,
+      const brillo::SecureBlob& external_data,
+      brillo::SecureBlob* certified_public_key,
+      brillo::SecureBlob* certified_public_key_der,
+      brillo::SecureBlob* certified_key_blob,
+      brillo::SecureBlob* certified_key_info,
+      brillo::SecureBlob* certified_key_proof) override;
+  bool CreateDelegate(const brillo::SecureBlob& identity_key_blob,
+                      brillo::SecureBlob* delegate_blob,
+                      brillo::SecureBlob* delegate_secret) override;
+  bool ActivateIdentity(const brillo::SecureBlob& delegate_blob,
+                        const brillo::SecureBlob& delegate_secret,
+                        const brillo::SecureBlob& identity_key_blob,
+                        const brillo::SecureBlob& encrypted_asym_ca,
+                        const brillo::SecureBlob& encrypted_sym_ca,
+                        brillo::SecureBlob* identity_credential) override;
+  bool Sign(const brillo::SecureBlob& key_blob,
+            const brillo::SecureBlob& input,
             int bound_pcr_index,
-            chromeos::SecureBlob* signature) override;
+            brillo::SecureBlob* signature) override;
   bool CreatePCRBoundKey(int pcr_index,
-                         const chromeos::SecureBlob& pcr_value,
-                         chromeos::SecureBlob* key_blob,
-                         chromeos::SecureBlob* public_key_der,
-                         chromeos::SecureBlob* creation_blob) override;
+                         const brillo::SecureBlob& pcr_value,
+                         brillo::SecureBlob* key_blob,
+                         brillo::SecureBlob* public_key_der,
+                         brillo::SecureBlob* creation_blob) override;
   bool VerifyPCRBoundKey(int pcr_index,
-                         const chromeos::SecureBlob& pcr_value,
-                         const chromeos::SecureBlob& key_blob,
-                         const chromeos::SecureBlob& creation_blob) override;
-  bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) override;
-  bool ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) override;
+                         const brillo::SecureBlob& pcr_value,
+                         const brillo::SecureBlob& key_blob,
+                         const brillo::SecureBlob& creation_blob) override;
+  bool ExtendPCR(int pcr_index, const brillo::SecureBlob& extension) override;
+  bool ReadPCR(int pcr_index, brillo::SecureBlob* pcr_value) override;
   bool IsEndorsementKeyAvailable() override;
   bool CreateEndorsementKey() override;
   bool TakeOwnership(int max_timeout_tries,
-                     const chromeos::SecureBlob& owner_password) override;
-  bool InitializeSrk(const chromeos::SecureBlob& owner_password) override;
-  bool ChangeOwnerPassword(const chromeos::SecureBlob& previous_owner_password,
-                           const chromeos::SecureBlob& owner_password) override;
-  bool TestTpmAuth(const chromeos::SecureBlob& owner_password) override;
-  void SetOwnerPassword(const chromeos::SecureBlob& owner_password) override;
+                     const brillo::SecureBlob& owner_password) override;
+  bool InitializeSrk(const brillo::SecureBlob& owner_password) override;
+  bool ChangeOwnerPassword(const brillo::SecureBlob& previous_owner_password,
+                           const brillo::SecureBlob& owner_password) override;
+  bool TestTpmAuth(const brillo::SecureBlob& owner_password) override;
+  void SetOwnerPassword(const brillo::SecureBlob& owner_password) override;
   bool IsTransient(TpmRetryAction retry_action) override;
-  bool WrapRsaKey(const chromeos::SecureBlob& public_modulus,
-                  const chromeos::SecureBlob& prime_factor,
-                  chromeos::SecureBlob* wrapped_key) override;
-  TpmRetryAction LoadWrappedKey(const chromeos::SecureBlob& wrapped_key,
+  bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
+                  const brillo::SecureBlob& prime_factor,
+                  brillo::SecureBlob* wrapped_key) override;
+  TpmRetryAction LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
                                 ScopedKeyHandle* key_handle) override;
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                               chromeos::SecureBlob* key_blob) override;
+                               brillo::SecureBlob* key_blob) override;
   void CloseHandle(TpmKeyHandle key_handle) override;
   void GetStatus(TpmKeyHandle key, TpmStatusInfo* status) override;
   bool GetDictionaryAttackInfo(int* counter,
@@ -123,8 +123,8 @@ class TpmImpl : public Tpm {
                                bool* lockout,
                                int* seconds_remaining) override;
   bool ResetDictionaryAttackMitigation(
-      const chromeos::SecureBlob& delegate_blob,
-      const chromeos::SecureBlob& delegate_secret) override;
+      const brillo::SecureBlob& delegate_blob,
+      const brillo::SecureBlob& delegate_secret) override;
 
  private:
   // Connects to the TPM and return its context at |context_handle|.
@@ -134,13 +134,13 @@ class TpmImpl : public Tpm {
   // Gets the Public Key blob associated with |key_handle|.
   bool GetPublicKeyBlob(TSS_HCONTEXT context_handle,
                         TSS_HKEY key_handle,
-                        chromeos::SecureBlob* data_out,
+                        brillo::SecureBlob* data_out,
                         TSS_RESULT* result) const;
 
   // Gets the key blob associated with |key_handle|.
   bool GetKeyBlob(TSS_HCONTEXT context_handle,
                   TSS_HKEY key_handle,
-                  chromeos::SecureBlob* data_out,
+                  brillo::SecureBlob* data_out,
                   TSS_RESULT* result) const;
 
   // Gets a handle to the SRK.
@@ -153,7 +153,7 @@ class TpmImpl : public Tpm {
   //   context_handle - The context handle for the TPM session
   //   owner_password - The owner password for the TPM
   bool ZeroSrkPassword(TSS_HCONTEXT context_handle,
-                       const chromeos::SecureBlob& owner_password);
+                       const brillo::SecureBlob& owner_password);
 
   // Removes usage restrictions on the SRK
   //
@@ -161,7 +161,7 @@ class TpmImpl : public Tpm {
   //   context_handle - The context handle for the TPM session
   //   owner_password - The owner password for the TPM
   bool UnrestrictSrk(TSS_HCONTEXT context_handle,
-                     const chromeos::SecureBlob& owner_password);
+                     const brillo::SecureBlob& owner_password);
 
   // Tries to connect to the TPM
   TSS_HCONTEXT ConnectContext();
@@ -174,8 +174,8 @@ class TpmImpl : public Tpm {
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object authorized by the given delegation.
-  bool ConnectContextAsDelegate(const chromeos::SecureBlob& delegate_blob,
-                                const chromeos::SecureBlob& delegate_secret,
+  bool ConnectContextAsDelegate(const brillo::SecureBlob& delegate_blob,
+                                const brillo::SecureBlob& delegate_secret,
                                 TSS_HCONTEXT* context, TSS_HTPM* tpm);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
@@ -210,7 +210,7 @@ class TpmImpl : public Tpm {
                            TSS_HTPM tpm_handle,
                            TSS_HPOLICY policy_handle,
                            uint32_t index,
-                           chromeos::SecureBlob* blob);
+                           brillo::SecureBlob* blob);
 
   // Gets a handle to the TPM from the specified context
   //
@@ -227,7 +227,7 @@ class TpmImpl : public Tpm {
   //   owner_password - The owner password to use when getting the handle
   //   tpm_handle (OUT) - The handle for the TPM on success
   bool GetTpmWithAuth(TSS_HCONTEXT context_handle,
-                      const chromeos::SecureBlob& owner_password,
+                      const brillo::SecureBlob& owner_password,
                       TSS_HTPM* tpm_handle);
 
   // Gets a handle to the TPM from the specified context with the given
@@ -239,8 +239,8 @@ class TpmImpl : public Tpm {
   //   delegate_secret - The delegate secret to use when getting the handle
   //   tpm_handle (OUT) - The handle for the TPM on success
   bool GetTpmWithDelegation(TSS_HCONTEXT context_handle,
-                            const chromeos::SecureBlob& delegate_blob,
-                            const chromeos::SecureBlob& delegate_secret,
+                            const brillo::SecureBlob& delegate_blob,
+                            const brillo::SecureBlob& delegate_secret,
                             TSS_HTPM* tpm_handle);
 
   // Decrypts and parses an identity request.
@@ -252,26 +252,26 @@ class TpmImpl : public Tpm {
   //   endorsementCredential - The endorsement credential.
   //   platformCredential - The platform credential.
   //   conformanceCredential - The conformance credential.
-  bool DecryptIdentityRequest(RSA* pca_key, const chromeos::SecureBlob& request,
-                              chromeos::SecureBlob* identity_binding,
-                              chromeos::SecureBlob* endorsement_credential,
-                              chromeos::SecureBlob* platform_credential,
-                              chromeos::SecureBlob* conformance_credential);
+  bool DecryptIdentityRequest(RSA* pca_key, const brillo::SecureBlob& request,
+                              brillo::SecureBlob* identity_binding,
+                              brillo::SecureBlob* endorsement_credential,
+                              brillo::SecureBlob* platform_credential,
+                              brillo::SecureBlob* conformance_credential);
 
   // Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
   //
   // Parameters
   //   public_key - A serialized TPM_PUBKEY as returned by Tspi_Key_GetPubKey.
   //   public_key_der - The same public key in DER encoded form.
-  bool ConvertPublicKeyToDER(const chromeos::SecureBlob& public_key,
-                             chromeos::SecureBlob* public_key_der);
+  bool ConvertPublicKeyToDER(const brillo::SecureBlob& public_key,
+                             brillo::SecureBlob* public_key_der);
 
   // Wrapper for Tspi_GetAttribData.
   bool GetDataAttribute(TSS_HCONTEXT context,
                         TSS_HOBJECT object,
                         TSS_FLAG flag,
                         TSS_FLAG sub_flag,
-                        chromeos::SecureBlob* data) const;
+                        brillo::SecureBlob* data) const;
 
   // Wrapper for Tspi_TPM_GetCapability. If |data| is not NULL, the raw
   // capability data will be assigned. If |value| is not NULL, the capability
@@ -280,15 +280,15 @@ class TpmImpl : public Tpm {
                      TSS_HTPM tpm_handle,
                      UINT32 capability,
                      UINT32 sub_capability,
-                     chromeos::Blob* data,
+                     brillo::Blob* data,
                      UINT32* value) const;
 
   // Member variables
   bool initialized_;
-  chromeos::SecureBlob srk_auth_;
+  brillo::SecureBlob srk_auth_;
 
   // If TPM ownership is taken, owner_password_ contains the password used
-  chromeos::SecureBlob owner_password_;
+  brillo::SecureBlob owner_password_;
 
   // Used to provide thread-safe access to owner_password_, as it is set in the
   // initialization background thread.

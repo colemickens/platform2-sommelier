@@ -15,9 +15,9 @@
 #include <base/files/file_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <chaps/token_manager_client_mock.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
@@ -40,7 +40,7 @@
 #include "cryptohome/username_passkey.h"
 
 using base::PlatformThread;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::EndsWith;
@@ -374,7 +374,7 @@ TEST_F(ServiceTest, GetSanitizedUsername) {
   ASSERT_TRUE(sanitized);
 
   const std::string expected(
-      chromeos::cryptohome::home::SanitizeUserName(username));
+      brillo::cryptohome::home::SanitizeUserName(username));
   EXPECT_FALSE(expected.empty());
 
   EXPECT_EQ(expected, sanitized);
@@ -543,16 +543,16 @@ TEST_F(ServiceTestNotInitialized,
 }
 
 TEST_F(ServiceTest, StoreEnrollmentState) {
-  chromeos::glib::ScopedArray test_array(g_array_new(FALSE, FALSE, 1));
+  brillo::glib::ScopedArray test_array(g_array_new(FALSE, FALSE, 1));
   std::string data = "123456";
   g_array_append_vals(test_array.get(), data.data(), data.length());
 
   // Helper strings for setting install attributes.
   static const char true_str[] = "true";
-  const chromeos::Blob true_value(true_str, true_str + arraysize(true_str));
+  const brillo::Blob true_value(true_str, true_str + arraysize(true_str));
 
   static const char false_str[] = "false";
-  const chromeos::Blob false_value(false_str, false_str + arraysize(false_str));
+  const brillo::Blob false_value(false_str, false_str + arraysize(false_str));
 
   gboolean success;
   GError* error = NULL;
@@ -592,11 +592,11 @@ TEST_F(ServiceTest, StoreEnrollmentState) {
 TEST_F(ServiceTest, LoadEnrollmentState) {
   gboolean success;
   GError* error = NULL;
-  chromeos::glib::ScopedArray output;
+  brillo::glib::ScopedArray output;
 
   // Convert to blob -- this is what we're reading from the file.
   std::string data = "123456";
-  const chromeos::Blob data_blob(data.c_str(), data.c_str() + data.length());
+  const brillo::Blob data_blob(data.c_str(), data.c_str() + data.length());
 
   SecureBlob decrypted_blob("decrypted");
 
@@ -609,7 +609,7 @@ TEST_F(ServiceTest, LoadEnrollmentState) {
       SetArgumentPointee<1>(decrypted_blob), Return(TRUE)));
 
   EXPECT_TRUE(service_.LoadEnrollmentState(
-      &(chromeos::Resetter(&output).lvalue()), &success, &error));
+      &(brillo::Resetter(&output).lvalue()), &success, &error));
   EXPECT_TRUE(success);
 
   // Convert output array to a blob for comparison.
@@ -622,7 +622,7 @@ TEST_F(ServiceTest, LoadEnrollmentState) {
       _)).WillOnce(Return(false));
 
   EXPECT_TRUE(service_.LoadEnrollmentState(
-      &(chromeos::Resetter(&output).lvalue()), &success, &error));
+      &(brillo::Resetter(&output).lvalue()), &success, &error));
   EXPECT_FALSE(success);
 }
 
@@ -690,10 +690,10 @@ class ServiceExTest : public ServiceTest {
   }
 
   template<class ProtoBuf>
-  chromeos::SecureBlob BlobFromProtobuf(const ProtoBuf& pb) {
+  brillo::SecureBlob BlobFromProtobuf(const ProtoBuf& pb) {
     std::string serialized;
     CHECK(pb.SerializeToString(&serialized));
-    return chromeos::SecureBlob(serialized);
+    return brillo::SecureBlob(serialized);
   }
 
  protected:

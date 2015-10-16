@@ -14,7 +14,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
-#include <chromeos/asynchronous_signal_handler.h>
+#include <brillo/asynchronous_signal_handler.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 
@@ -229,7 +229,7 @@ class SessionManagerService
   scoped_ptr<SessionManagerInterface> impl_;
   scoped_ptr<SessionManagerDBusAdaptor> adaptor_;
 
-  chromeos::AsynchronousSignalHandler signal_handler_;
+  brillo::AsynchronousSignalHandler signal_handler_;
   ChildExitHandler child_exit_handler_;
   bool shutting_down_;
   bool shutdown_already_;

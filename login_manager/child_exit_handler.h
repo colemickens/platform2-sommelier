@@ -15,7 +15,7 @@
 
 struct signalfd_siginfo;
 
-namespace chromeos {
+namespace brillo {
 class AsynchronousSignalHandler;
 }
 
@@ -29,7 +29,7 @@ class ChildExitHandler {
   ChildExitHandler();
   virtual ~ChildExitHandler();
 
-  void Init(chromeos::AsynchronousSignalHandler* signal_handler,
+  void Init(brillo::AsynchronousSignalHandler* signal_handler,
             const std::vector<JobManagerInterface*>& managers);
   void Reset();
  private:
@@ -39,7 +39,7 @@ class ChildExitHandler {
   void Dispatch(const siginfo_t& info);
 
   // Handler that notifies of signals. Owned by the caller.
-  chromeos::AsynchronousSignalHandler* signal_handler_;
+  brillo::AsynchronousSignalHandler* signal_handler_;
 
   // Objects that are managing a child job.
   std::vector<JobManagerInterface*> managers_;

@@ -26,8 +26,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
-#include <chromeos/message_loops/base_message_loop.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/message_loops/base_message_loop.h>
+#include <brillo/syslog_logging.h>
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
 
@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
   // Allow waiting for all descendants, not just immediate children
   if (::prctl(PR_SET_CHILD_SUBREAPER, 1))
@@ -192,8 +192,8 @@ int main(int argc, char* argv[]) {
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
   base::MessageLoopForIO message_loop;
-  chromeos::BaseMessageLoop chromeos_loop(&message_loop);
-  chromeos_loop.SetAsCurrent();
+  brillo::BaseMessageLoop brillo_loop(&message_loop);
+  brillo_loop.SetAsCurrent();
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
       browser_job.Pass(),
@@ -207,11 +207,11 @@ int main(int argc, char* argv[]) {
   if (manager->Initialize()) {
     // Allows devs to start/stop browser manually.
     if (should_run_browser) {
-      chromeos_loop.PostTask(
+      brillo_loop.PostTask(
           FROM_HERE, base::Bind(&SessionManagerService::RunBrowser, manager));
     }
-    // Returns when chromeos_loop.BreakLoop() is called.
-    chromeos_loop.Run();
+    // Returns when brillo_loop.BreakLoop() is called.
+    brillo_loop.Run();
   }
   manager->Finalize();
 

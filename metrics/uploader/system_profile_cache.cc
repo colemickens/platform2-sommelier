@@ -203,7 +203,7 @@ bool SystemProfileCache::GetHardwareId(std::string* hwid) {
 }
 
 bool SystemProfileCache::GetProductId(int* product_id) const {
-  chromeos::OsReleaseReader reader;
+  brillo::OsReleaseReader reader;
   if (testing_) {
     base::FilePath root(config_root_);
     reader.LoadTestingOnly(root);

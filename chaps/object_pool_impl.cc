@@ -24,7 +24,7 @@
 
 using base::AutoLock;
 using base::AutoUnlock;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::string;
 using std::shared_ptr;

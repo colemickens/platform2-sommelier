@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/async_event_sequencer.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/async_event_sequencer.h>
 
 namespace dbus {
 class MethodCall;
@@ -28,7 +28,7 @@ namespace easy_unlock {
 class DBusAdaptor {
  public:
   using CompletionAction =
-      chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+      brillo::dbus_utils::AsyncEventSequencer::CompletionAction;
 
   DBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
               easy_unlock::Service* service);
@@ -68,7 +68,7 @@ class DBusAdaptor {
   // The EasyUnlock service implementation to which DBus method calls
   // are forwarded.
   easy_unlock::Service* const service_impl_;
-  chromeos::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::DBusObject dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };

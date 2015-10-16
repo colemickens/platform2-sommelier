@@ -12,7 +12,7 @@
 namespace buffet {
 
 TEST(BuffetConfigTest, LoadConfig) {
-  chromeos::KeyValueStore config_store;
+  brillo::KeyValueStore config_store;
   config_store.SetString("client_id", "conf_client_id");
   config_store.SetString("client_secret", "conf_client_secret");
   config_store.SetString("api_key", "conf_api_key");

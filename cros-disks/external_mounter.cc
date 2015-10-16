@@ -8,7 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 using base::FilePath;
 using std::string;
@@ -40,7 +40,7 @@ MountErrorType ExternalMounter::MountImpl() {
     return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
 
-  chromeos::ProcessImpl mount_process;
+  brillo::ProcessImpl mount_process;
   mount_process.AddArg(mount_program);
   mount_process.AddArg("-t");
   mount_process.AddArg(filesystem_type());

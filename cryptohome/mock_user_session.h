@@ -8,7 +8,7 @@
 #include "cryptohome/user_session.h"
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include <gmock/gmock.h>
 
@@ -20,7 +20,7 @@ class MockUserSession : public UserSession {
  public:
   MockUserSession();
   ~MockUserSession();
-  MOCK_METHOD1(Init, void(const chromeos::SecureBlob&));
+  MOCK_METHOD1(Init, void(const brillo::SecureBlob&));
   MOCK_METHOD1(SetUser, bool(const Credentials&));
   MOCK_METHOD0(Reset, void(void));
   MOCK_CONST_METHOD1(CheckUser, bool(const Credentials&));

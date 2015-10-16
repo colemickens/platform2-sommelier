@@ -64,13 +64,13 @@ class BootLockboxTest : public testing::Test {
     lockbox2_.reset(new BootLockbox(&tpm_, &platform_, &crypto_));
   }
 
-  bool FakeSign(const chromeos::SecureBlob& input,
-                chromeos::SecureBlob* signature) {
+  bool FakeSign(const brillo::SecureBlob& input,
+                brillo::SecureBlob* signature) {
     if (is_fake_extended_)
       return false;
-    chromeos::SecureBlob der_header(std::begin(kSha256DigestInfo),
+    brillo::SecureBlob der_header(std::begin(kSha256DigestInfo),
                                     std::end(kSha256DigestInfo));
-    chromeos::SecureBlob der_encoded_input = chromeos::SecureBlob::Combine(
+    brillo::SecureBlob der_encoded_input = brillo::SecureBlob::Combine(
         der_header,
         CryptoLib::Sha256(input));
     unsigned char buffer[256];
@@ -78,12 +78,12 @@ class BootLockboxTest : public testing::Test {
           der_encoded_input.size(),
           der_encoded_input.data(),
           buffer, rsa(), RSA_PKCS1_PADDING);
-    chromeos::SecureBlob tmp(buffer, buffer + length);
+    brillo::SecureBlob tmp(buffer, buffer + length);
     signature->swap(tmp);
     return true;
   }
 
-  bool FakeCreate(chromeos::SecureBlob* public_key) {
+  bool FakeCreate(brillo::SecureBlob* public_key) {
     if (is_fake_extended_)
       return false;
     if (rsa_) {
@@ -94,7 +94,7 @@ class BootLockboxTest : public testing::Test {
     int length = i2d_RSAPublicKey(rsa(), &buffer);
     if (length <= 0)
       return false;
-    chromeos::SecureBlob tmp(buffer, buffer + length);
+    brillo::SecureBlob tmp(buffer, buffer + length);
     public_key->swap(tmp);
     OPENSSL_free(buffer);
     return true;
@@ -105,7 +105,7 @@ class BootLockboxTest : public testing::Test {
     return true;
   }
 
-  bool FakeReadPCR(chromeos::SecureBlob* pcr) {
+  bool FakeReadPCR(brillo::SecureBlob* pcr) {
     pcr->assign(20, is_fake_extended_ ? 0xAA : 0);
     return true;
   }
@@ -122,13 +122,13 @@ class BootLockboxTest : public testing::Test {
     return true;
   }
 
-  bool FakeEncrypt(const chromeos::SecureBlob& in, std::string* out) {
+  bool FakeEncrypt(const brillo::SecureBlob& in, std::string* out) {
     *out = in.to_string();
     return true;
   }
 
-  bool FakeDecrypt(const std::string& in, chromeos::SecureBlob* out) {
-    *out = chromeos::SecureBlob(in);
+  bool FakeDecrypt(const std::string& in, brillo::SecureBlob* out) {
+    *out = brillo::SecureBlob(in);
     return true;
   }
 
@@ -152,8 +152,8 @@ class BootLockboxTest : public testing::Test {
 };
 
 TEST_F(BootLockboxTest, NormalUse) {
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   EXPECT_LT(0, signature.size());
   ASSERT_TRUE(lockbox_->Verify(data, signature));
@@ -162,8 +162,8 @@ TEST_F(BootLockboxTest, NormalUse) {
 }
 
 TEST_F(BootLockboxTest, SignAfterFinalize) {
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   ASSERT_TRUE(lockbox_->FinalizeBoot());
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
@@ -171,8 +171,8 @@ TEST_F(BootLockboxTest, SignAfterFinalize) {
 
 TEST_F(BootLockboxTest, CreateAfterFinalize) {
   ASSERT_TRUE(lockbox_->FinalizeBoot());
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
 }
 
@@ -183,16 +183,16 @@ TEST_F(BootLockboxTest, VerifyIsFinalized) {
 }
 
 TEST_F(BootLockboxTest, LoadFromFile) {
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   // Verify in another instance which needs to load the key.
   ASSERT_TRUE(lockbox2_->Verify(data, signature));
 }
 
 TEST_F(BootLockboxTest, FileErrors) {
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
 
   EXPECT_CALL(platform_, WriteStringToFileAtomicDurable(_, _, _))
@@ -206,8 +206,8 @@ TEST_F(BootLockboxTest, FileErrors) {
 
 TEST_F(BootLockboxTest, SignError) {
   EXPECT_CALL(tpm_, Sign(_, _, _, _)).WillRepeatedly(Return(false));
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
 }
 
@@ -219,21 +219,21 @@ TEST_F(BootLockboxTest, ExtendPCRError) {
 TEST_F(BootLockboxTest, VerifyWithBadKey) {
   EXPECT_CALL(tpm_, VerifyPCRBoundKey(_, _, _, _))
       .WillRepeatedly(Return(false));
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   ASSERT_FALSE(lockbox_->Verify(data, signature));
 }
 
 TEST_F(BootLockboxTest, VerifyWithNoKey) {
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Verify(data, signature));
 }
 
 TEST_F(BootLockboxTest, VerifyWithBadSignature) {
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   ASSERT_TRUE(lockbox_->Verify(data, signature));
   signature.swap(data);
@@ -243,8 +243,8 @@ TEST_F(BootLockboxTest, VerifyWithBadSignature) {
 TEST_F(BootLockboxTest, EncryptError) {
   // Induce encryption failures; we expect a key cannot be successfully created.
   EXPECT_CALL(crypto_, EncryptWithTpm(_, _)).WillRepeatedly(Return(false));
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
 }
 
@@ -252,13 +252,13 @@ TEST_F(BootLockboxTest, DecryptError) {
   // Induce decryption failures; we expect keys can be created and written to
   // 'disk' but they cannot be loaded again.
   EXPECT_CALL(crypto_, DecryptWithTpm(_, _)).WillRepeatedly(Return(false));
-  chromeos::SecureBlob data(100);
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob data(100);
+  brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   EXPECT_TRUE(lockbox_->Verify(data, signature));
   // A second instance will not be able to load from disk.
   EXPECT_FALSE(lockbox2_->Verify(data, signature));
-  chromeos::SecureBlob signature2;
+  brillo::SecureBlob signature2;
   // Sign() should still succeed because it can create a new key.
   EXPECT_TRUE(lockbox2_->Sign(data, &signature2));
   EXPECT_TRUE(lockbox2_->Verify(data, signature2));

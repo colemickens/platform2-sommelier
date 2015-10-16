@@ -8,7 +8,7 @@
 #include <limits>
 #include <string>
 
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::ExportedObjectManager;
 using peerd::technologies::TechnologySet;
 using peerd::technologies::Technology;
 using std::bitset;

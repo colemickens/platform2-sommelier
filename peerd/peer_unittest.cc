@@ -7,8 +7,8 @@
 #include <string>
 
 #include <base/time/time.h>
-#include <chromeos/dbus/mock_dbus_object.h>
-#include <chromeos/errors/error.h>
+#include <brillo/dbus/mock_dbus_object.h>
+#include <brillo/errors/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
@@ -17,9 +17,9 @@
 #include "peerd/service.h"
 #include "peerd/test_util.h"
 
-using chromeos::ErrorPtr;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::ErrorPtr;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::ExportedObjectManager;
 using dbus::Bus;
 using dbus::MockBus;
 using dbus::MockExportedObject;
@@ -77,7 +77,7 @@ class PeerTest : public ::testing::Test {
 
   unique_ptr<Peer> MakePeer() {
     unique_ptr<Peer> peer{new Peer{mock_bus_, nullptr, ObjectPath{kPeerPath}}};
-    chromeos::ErrorPtr error;
+    brillo::ErrorPtr error;
     EXPECT_TRUE(peer->RegisterAsync(
         &error,
         kUUID,
@@ -88,7 +88,7 @@ class PeerTest : public ::testing::Test {
   }
 
   void AssertBadFactoryArgs(const string& uuid, const string& error_code) {
-    chromeos::ErrorPtr error;
+    brillo::ErrorPtr error;
     unique_ptr<Peer> peer{
         new Peer{mock_bus_, nullptr, ObjectPath{kPeerPath}}};
     EXPECT_FALSE(peer->RegisterAsync(
@@ -138,7 +138,7 @@ TEST_F(PeerTest, ShouldRegisterWithDBus) {
 
 TEST_F(PeerTest, ShouldRejectStaleUpdate) {
   auto peer = MakePeer();
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   EXPECT_FALSE(peer->SetLastSeen(&error, base::Time::UnixEpoch()));
   ASSERT_NE(nullptr, error.get());
   EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidTime));
@@ -146,7 +146,7 @@ TEST_F(PeerTest, ShouldRejectStaleUpdate) {
 
 TEST_F(PeerTest, ShouldRejectDuplicateServiceID) {
   auto peer = MakePeer();
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   const string service_id{"a-service"};
   EXPECT_TRUE(peer->AddService(&error, service_id, {}, {}, {}));
   EXPECT_FALSE(peer->AddService(&error, service_id, {}, {}, {}));

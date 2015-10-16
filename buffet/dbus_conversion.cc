@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/type_name_undecorate.h>
+#include <brillo/type_name_undecorate.h>
 
 namespace buffet {
 
@@ -16,17 +16,17 @@ namespace {
 
 // Helpers for JsonToAny().
 template <typename T>
-chromeos::Any ValueToAny(const base::Value& json,
+brillo::Any ValueToAny(const base::Value& json,
                          bool (base::Value::*fnc)(T*) const) {
   T val;
   CHECK((json.*fnc)(&val));
   return val;
 }
 
-chromeos::Any ValueToAny(const base::Value& json);
+brillo::Any ValueToAny(const base::Value& json);
 
 template <typename T>
-chromeos::Any ListToAny(const base::ListValue& list,
+brillo::Any ListToAny(const base::ListValue& list,
                         bool (base::Value::*fnc)(T*) const) {
   std::vector<T> result;
   result.reserve(list.GetSize());
@@ -38,8 +38,8 @@ chromeos::Any ListToAny(const base::ListValue& list,
   return result;
 }
 
-chromeos::Any DictListToAny(const base::ListValue& list) {
-  std::vector<chromeos::VariantDictionary> result;
+brillo::Any DictListToAny(const base::ListValue& list) {
+  std::vector<brillo::VariantDictionary> result;
   result.reserve(list.GetSize());
   for (const base::Value* v : list) {
     const base::DictionaryValue* dict = nullptr;
@@ -49,8 +49,8 @@ chromeos::Any DictListToAny(const base::ListValue& list) {
   return result;
 }
 
-chromeos::Any ListListToAny(const base::ListValue& list) {
-  std::vector<chromeos::Any> result;
+brillo::Any ListListToAny(const base::ListValue& list) {
+  std::vector<brillo::Any> result;
   result.reserve(list.GetSize());
   for (const base::Value* v : list)
     result.push_back(ValueToAny(*v));
@@ -59,8 +59,8 @@ chromeos::Any ListListToAny(const base::ListValue& list) {
 
 // Converts a JSON value into an Any so it can be sent over D-Bus using
 // UpdateState D-Bus method from Buffet.
-chromeos::Any ValueToAny(const base::Value& json) {
-  chromeos::Any prop_value;
+brillo::Any ValueToAny(const base::Value& json) {
+  brillo::Any prop_value;
   switch (json.GetType()) {
     case base::Value::TYPE_BOOLEAN:
       prop_value = ValueToAny<bool>(json, &base::Value::GetAsBoolean);
@@ -85,7 +85,7 @@ chromeos::Any ValueToAny(const base::Value& json) {
       CHECK(json.GetAsList(&list));
       if (list->empty()) {
         // We don't know type of objects this list intended for, so we just use
-        // vector<chromeos::Any>.
+        // vector<brillo::Any>.
         prop_value = ListListToAny(*list);
         break;
       }
@@ -130,27 +130,27 @@ chromeos::Any ValueToAny(const base::Value& json) {
 
 template <typename T>
 std::unique_ptr<base::Value> CreateValue(const T& value,
-                                         chromeos::ErrorPtr* error) {
+                                         brillo::ErrorPtr* error) {
   return std::unique_ptr<base::Value>{new base::FundamentalValue{value}};
 }
 
 template <>
 std::unique_ptr<base::Value> CreateValue<std::string>(
     const std::string& value,
-    chromeos::ErrorPtr* error) {
+    brillo::ErrorPtr* error) {
   return std::unique_ptr<base::Value>{new base::StringValue{value}};
 }
 
 template <>
-std::unique_ptr<base::Value> CreateValue<chromeos::VariantDictionary>(
-    const chromeos::VariantDictionary& value,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<base::Value> CreateValue<brillo::VariantDictionary>(
+    const brillo::VariantDictionary& value,
+    brillo::ErrorPtr* error) {
   return DictionaryFromDBusVariantDictionary(value, error);
 }
 
 template <typename T>
 std::unique_ptr<base::ListValue> CreateListValue(const std::vector<T>& value,
-                                                 chromeos::ErrorPtr* error) {
+                                                 brillo::ErrorPtr* error) {
   std::unique_ptr<base::ListValue> list{new base::ListValue};
 
   for (const T& i : value) {
@@ -166,9 +166,9 @@ std::unique_ptr<base::ListValue> CreateListValue(const std::vector<T>& value,
 // Returns false only in case of error. True can be returned if type is not
 // matched.
 template <typename T>
-bool TryCreateValue(const chromeos::Any& any,
+bool TryCreateValue(const brillo::Any& any,
                     std::unique_ptr<base::Value>* value,
-                    chromeos::ErrorPtr* error) {
+                    brillo::ErrorPtr* error) {
   if (any.IsTypeCompatible<T>()) {
     *value = CreateValue(any.Get<T>(), error);
     return *value != nullptr;
@@ -183,9 +183,9 @@ bool TryCreateValue(const chromeos::Any& any,
 }
 
 template <>
-std::unique_ptr<base::Value> CreateValue<chromeos::Any>(
-    const chromeos::Any& any,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<base::Value> CreateValue<brillo::Any>(
+    const brillo::Any& any,
+    brillo::ErrorPtr* error) {
   std::unique_ptr<base::Value> result;
   if (!TryCreateValue<bool>(any, &result, error) || result)
     return result;
@@ -199,18 +199,18 @@ std::unique_ptr<base::Value> CreateValue<chromeos::Any>(
   if (!TryCreateValue<std::string>(any, &result, error) || result)
     return result;
 
-  if (!TryCreateValue<chromeos::VariantDictionary>(any, &result, error) ||
+  if (!TryCreateValue<brillo::VariantDictionary>(any, &result, error) ||
       result) {
     return result;
   }
 
   // This will collapse Any{Any{T}} and vector{Any{T}}.
-  if (!TryCreateValue<chromeos::Any>(any, &result, error) || result)
+  if (!TryCreateValue<brillo::Any>(any, &result, error) || result)
     return result;
 
-  chromeos::Error::AddToPrintf(
+  brillo::Error::AddToPrintf(
       error, FROM_HERE, "buffet", "unknown_type", "Type '%s' is not supported.",
-      chromeos::UndecorateTypeName(any.GetType().name()).c_str());
+      brillo::UndecorateTypeName(any.GetType().name()).c_str());
 
   return nullptr;
 }
@@ -218,9 +218,9 @@ std::unique_ptr<base::Value> CreateValue<chromeos::Any>(
 }  // namespace
 
 // TODO(vitalybuka): Use in buffet_client.
-chromeos::VariantDictionary DictionaryToDBusVariantDictionary(
+brillo::VariantDictionary DictionaryToDBusVariantDictionary(
     const base::DictionaryValue& object) {
-  chromeos::VariantDictionary result;
+  brillo::VariantDictionary result;
 
   for (base::DictionaryValue::Iterator it(object); !it.IsAtEnd(); it.Advance())
     result.emplace(it.key(), ValueToAny(it.value()));
@@ -229,8 +229,8 @@ chromeos::VariantDictionary DictionaryToDBusVariantDictionary(
 }
 
 std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
-    const chromeos::VariantDictionary& object,
-    chromeos::ErrorPtr* error) {
+    const brillo::VariantDictionary& object,
+    brillo::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> result{new base::DictionaryValue};
 
   for (const auto& pair : object) {

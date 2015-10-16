@@ -21,7 +21,7 @@
 #include "pkcs11/cryptoki.h"
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::string;
 using std::vector;

@@ -7,8 +7,8 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <chromeos/any.h>
-#include <chromeos/errors/error.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
 
 #include "peerd/peer.h"
 #include "peerd/service_publisher_interface.h"
@@ -24,12 +24,12 @@ class PublishedPeer : public Peer {
   ~PublishedPeer() override = default;
   // Add a local service to publish over DBus.
   virtual bool AddPublishedService(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::string& service_id,
       const std::map<std::string, std::string>& service_info,
-      const std::map<std::string, chromeos::Any>& options);
+      const std::map<std::string, brillo::Any>& options);
   // Overloaded to add service publishing functionality.
-  bool RemoveService(chromeos::ErrorPtr* error,
+  bool RemoveService(brillo::ErrorPtr* error,
                      const std::string& service_id) override;
 
   // PublishedPeer objects will notify ServicePublishers when services are
@@ -45,17 +45,17 @@ class PublishedPeer : public Peer {
   // Updates an existing service by setting |service_info| and |options| to
   // these new values.
   virtual bool UpdateService(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::string& service_id,
       const std::map<std::string, std::string>& service_info,
-      const std::map<std::string, chromeos::Any>& options);
+      const std::map<std::string, brillo::Any>& options);
 
  private:
   // Removes invalid publishers.
   void CleanPublishers();
   // Notify all the publishers we know about that we have a new or updated
   // service.
-  bool PublishService(chromeos::ErrorPtr* error, const Service& service);
+  bool PublishService(brillo::ErrorPtr* error, const Service& service);
 
   std::vector<base::WeakPtr<ServicePublisherInterface>> publishers_;
 

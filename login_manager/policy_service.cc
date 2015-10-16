@@ -15,7 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
-#include <chromeos/message_loops/message_loop.h>
+#include <brillo/message_loops/message_loop.h>
 
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
@@ -90,19 +90,19 @@ bool PolicyService::PersistPolicySync() {
 }
 
 void PolicyService::PersistKey() {
-  chromeos::MessageLoop::current()->PostTask(
+  brillo::MessageLoop::current()->PostTask(
       FROM_HERE, base::Bind(&PolicyService::PersistKeyOnLoop,
                             weak_ptr_factory_.GetWeakPtr()));
 }
 
 void PolicyService::PersistPolicy() {
-  chromeos::MessageLoop::current()->PostTask(
+  brillo::MessageLoop::current()->PostTask(
       FROM_HERE, base::Bind(&PolicyService::PersistPolicyOnLoop,
                             weak_ptr_factory_.GetWeakPtr(), Completion()));
 }
 
 void PolicyService::PersistPolicyWithCompletion(Completion completion) {
-  chromeos::MessageLoop::current()->PostTask(
+  brillo::MessageLoop::current()->PostTask(
       FROM_HERE, base::Bind(&PolicyService::PersistPolicyOnLoop,
                             weak_ptr_factory_.GetWeakPtr(), completion));
 }

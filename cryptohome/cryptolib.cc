@@ -18,7 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 extern "C" {
 #include <scrypt/crypto_scrypt.h>
@@ -27,7 +27,7 @@ extern "C" {
 
 #include "cryptohome/platform.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 namespace cryptohome {
@@ -86,7 +86,7 @@ bool CryptoLib::CreateRsaKey(size_t key_bits,
   return true;
 }
 
-SecureBlob CryptoLib::Sha1(const chromeos::Blob& data) {
+SecureBlob CryptoLib::Sha1(const brillo::Blob& data) {
   SHA_CTX sha_context;
   unsigned char md_value[SHA_DIGEST_LENGTH];
   SecureBlob hash;
@@ -97,11 +97,11 @@ SecureBlob CryptoLib::Sha1(const chromeos::Blob& data) {
   hash.resize(sizeof(md_value));
   memcpy(hash.data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
-  chromeos::SecureMemset(md_value, 0, sizeof(md_value));
+  brillo::SecureMemset(md_value, 0, sizeof(md_value));
   return hash;
 }
 
-SecureBlob CryptoLib::Sha256(const chromeos::Blob& data) {
+SecureBlob CryptoLib::Sha256(const brillo::Blob& data) {
   SHA256_CTX sha_context;
   unsigned char md_value[SHA256_DIGEST_LENGTH];
   SecureBlob hash;
@@ -112,38 +112,38 @@ SecureBlob CryptoLib::Sha256(const chromeos::Blob& data) {
   hash.resize(sizeof(md_value));
   memcpy(hash.data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
-  chromeos::SecureMemset(md_value, 0, sizeof(md_value));
+  brillo::SecureMemset(md_value, 0, sizeof(md_value));
   return hash;
 }
 
-chromeos::SecureBlob CryptoLib::HmacSha512(const chromeos::SecureBlob& key,
-                                           const chromeos::Blob& data) {
+brillo::SecureBlob CryptoLib::HmacSha512(const brillo::SecureBlob& key,
+                                           const brillo::Blob& data) {
   const int kSha512OutputSize = 64;
   unsigned char mac[kSha512OutputSize];
   HMAC(EVP_sha512(),
        key.data(), key.size(),
        data.data(), data.size(),
        mac, NULL);
-  return chromeos::SecureBlob(std::begin(mac), std::end(mac));
+  return brillo::SecureBlob(std::begin(mac), std::end(mac));
 }
 
-chromeos::SecureBlob CryptoLib::HmacSha256(const chromeos::SecureBlob& key,
-                                           const chromeos::Blob& data) {
+brillo::SecureBlob CryptoLib::HmacSha256(const brillo::SecureBlob& key,
+                                           const brillo::Blob& data) {
   const int kSha256OutputSize = 32;
   unsigned char mac[kSha256OutputSize];
   HMAC(EVP_sha256(),
        key.data(), key.size(),
        data.data(), data.size(),
        mac, NULL);
-  return chromeos::SecureBlob(std::begin(mac), std::end(mac));
+  return brillo::SecureBlob(std::begin(mac), std::end(mac));
 }
 
 size_t CryptoLib::GetAesBlockSize() {
   return EVP_CIPHER_block_size(EVP_aes_256_cbc());
 }
 
-bool CryptoLib::PasskeyToAesKey(const chromeos::Blob& passkey,
-                                const chromeos::Blob& salt, unsigned int rounds,
+bool CryptoLib::PasskeyToAesKey(const brillo::Blob& passkey,
+                                const brillo::Blob& salt, unsigned int rounds,
                                 SecureBlob* key, SecureBlob* iv) {
   if (salt.size() != PKCS5_SALT_LEN) {
     LOG(ERROR) << "Bad salt size.";
@@ -175,7 +175,7 @@ bool CryptoLib::PasskeyToAesKey(const chromeos::Blob& passkey,
   return true;
 }
 
-bool CryptoLib::AesEncrypt(const chromeos::Blob& plaintext,
+bool CryptoLib::AesEncrypt(const brillo::Blob& plaintext,
                            const SecureBlob& key,
                            const SecureBlob& iv,
                            SecureBlob* ciphertext) {
@@ -184,7 +184,7 @@ bool CryptoLib::AesEncrypt(const chromeos::Blob& plaintext,
                                     ciphertext);
 }
 
-bool CryptoLib::AesDecrypt(const chromeos::Blob& ciphertext,
+bool CryptoLib::AesDecrypt(const brillo::Blob& ciphertext,
                            const SecureBlob& key,
                            const SecureBlob& iv,
                            SecureBlob* plaintext) {
@@ -202,7 +202,7 @@ bool CryptoLib::AesDecrypt(const chromeos::Blob& ciphertext,
 // will drastically alter the decryption.  And an incorrect PaddingScheme will
 // result in the padding verification failing, for which the method call fails,
 // even if the key and initialization vector were correct.
-bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
+bool CryptoLib::AesDecryptSpecifyBlockMode(const brillo::Blob& encrypted,
                                            unsigned int start,
                                            unsigned int count,
                                            const SecureBlob& key,
@@ -309,7 +309,7 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
 
     const unsigned char* md_ptr = local_plain_text.data();
     md_ptr += final_size;
-    if (chromeos::SecureMemcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
+    if (brillo::SecureMemcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
       LOG(ERROR) << "Digest verification failed.";
       EVP_CIPHER_CTX_cleanup(&decryption_context);
       return false;
@@ -350,7 +350,7 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
 // larger than the block size.  We use ECB only when mixing the user passkey
 // into the TPM-encrypted blob, since we only encrypt a single block of that
 // data.
-bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
+bool CryptoLib::AesEncryptSpecifyBlockMode(const brillo::Blob& plain_text,
                                            unsigned int start,
                                            unsigned int count,
                                            const SecureBlob& key,
@@ -565,13 +565,13 @@ bool CryptoLib::UnobscureRSAMessage(const SecureBlob& ciphertext,
   return true;
 }
 
-std::string CryptoLib::BlobToHex(const chromeos::Blob& blob) {
+std::string CryptoLib::BlobToHex(const brillo::Blob& blob) {
   std::string buffer(blob.size() * 2, '\x00');
   BlobToHexToBuffer(blob, &buffer[0], buffer.size());
   return buffer;
 }
 
-void CryptoLib::BlobToHexToBuffer(const chromeos::Blob& blob,
+void CryptoLib::BlobToHexToBuffer(const brillo::Blob& blob,
                                   void* buffer,
                                   size_t buffer_length) {
   static const char table[] = "0123456789abcdef";

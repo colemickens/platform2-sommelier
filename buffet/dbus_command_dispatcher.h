@@ -16,11 +16,11 @@ class Command;
 class Device;
 }
 
-namespace chromeos {
+namespace brillo {
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // namespace dbus_utils
-}  // namespace chromeos
+}  // namespace brillo
 
 namespace buffet {
 
@@ -34,14 +34,14 @@ namespace buffet {
 class DBusCommandDispacher final {
  public:
   explicit DBusCommandDispacher(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+      const base::WeakPtr<brillo::dbus_utils::ExportedObjectManager>&
           object_manager,
       weave::Device* device);
 
  private:
   void OnCommandAdded(const std::weak_ptr<weave::Command>& cmd);
 
-  base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
+  base::WeakPtr<brillo::dbus_utils::ExportedObjectManager> object_manager_;
   int next_id_{0};
 
   // Default constructor is used in special circumstances such as for testing.

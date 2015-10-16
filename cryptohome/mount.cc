@@ -22,8 +22,8 @@
 #include <base/values.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/boot_lockbox.h"
 #include "cryptohome/chaps_client_factory.h"
@@ -43,7 +43,7 @@
 using base::FilePath;
 using base::StringPrintf;
 using chaps::IsolateCredentialManager;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 namespace cryptohome {
@@ -501,7 +501,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     MountLegacyHome(user_home, mount_error);
 
   string user_multi_home =
-      chromeos::cryptohome::home::GetUserPath(username).value();
+      brillo::cryptohome::home::GetUserPath(username).value();
   if (!BindForUser(current_user_, user_home, user_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << user_multi_home;
@@ -526,7 +526,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   string root_home = GetMountedRootHomePath(obfuscated_username);
   string root_multi_home =
-      chromeos::cryptohome::home::GetRootPath(username).value();
+      brillo::cryptohome::home::GetRootPath(username).value();
   if (!BindForUser(current_user_, root_home, root_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << root_home << " -> "
                 << root_multi_home;
@@ -555,14 +555,14 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   string path = GetUserEphemeralPath(credentials.GetObfuscatedUsername(
       system_salt_));
   const string user_multi_home =
-      chromeos::cryptohome::home::GetUserPath(username).value();
+      brillo::cryptohome::home::GetUserPath(username).value();
   const string root_multi_home =
-      chromeos::cryptohome::home::GetRootPath(username).value();
+      brillo::cryptohome::home::GetRootPath(username).value();
 
   // If we're mounting as a guest, as source use just "guestfs" instead of an
   // actual path. We don't want the guest cryptohome to persist even between
   // logins during the same boot.
-  if (credentials.username() == chromeos::cryptohome::home::kGuestUserName)
+  if (credentials.username() == brillo::cryptohome::home::kGuestUserName)
     path = kGuestMountPath;
 
   if (!EnsureUserMountPoints(credentials))
@@ -904,7 +904,7 @@ void Mount::DoForEveryUnmountedCryptohome(
        it != entries.end(); ++it) {
     FilePath path(*it);
     const std::string dir_name = path.BaseName().value();
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name))
+    if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
       continue;
     std::string vault_path = path.Append(kVaultDir).value();
     std::string mount_path = path.Append(kMountDir).value();
@@ -1220,8 +1220,8 @@ bool Mount::MountGuestCryptohome() {
     LOG(WARNING) << "Failed to finalize boot lockbox.";
   }
 
-  std::string guest = chromeos::cryptohome::home::kGuestUserName;
-  UsernamePasskey guest_creds(guest.c_str(), chromeos::Blob(0));
+  std::string guest = brillo::cryptohome::home::kGuestUserName;
+  UsernamePasskey guest_creds(guest.c_str(), brillo::Blob(0));
   current_user_->Reset();
   return MountEphemeralCryptohome(guest_creds);
 }
@@ -1325,7 +1325,7 @@ string Mount::GetObfuscatedOwner() {
     policy_provider_->GetDevicePolicy().GetOwner(&owner);
 
   if (!owner.empty()) {
-    return UsernamePasskey(owner.c_str(), chromeos::Blob())
+    return UsernamePasskey(owner.c_str(), brillo::Blob())
         .GetObfuscatedUsername(system_salt_);
   }
   return "";
@@ -1720,8 +1720,8 @@ bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
 
 bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
   const std::string username = credentials.username();
-  FilePath root_path = chromeos::cryptohome::home::GetRootPath(username);
-  FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);
+  FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
+  FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
   FilePath temp_path(GetNewUserPath(username));
   if (!EnsureDirHasOwner(root_path, kMountOwnerUid, kMountOwnerGid)) {
     LOG(ERROR) << "Couldn't ensure root path: " << root_path.value();
@@ -1781,7 +1781,7 @@ base::Value* Mount::GetStatus() {
 
 std::string Mount::GetNewUserPath(const std::string& username) const {
   std::string sanitized =
-      chromeos::cryptohome::home::SanitizeUserName(username);
+      brillo::cryptohome::home::SanitizeUserName(username);
   return StringPrintf("/home/chronos/u-%s", sanitized.c_str());
 }
 

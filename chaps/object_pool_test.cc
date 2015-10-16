@@ -19,7 +19,7 @@
 #include "chaps/object_store_mock.h"
 #include "chaps/proto_bindings/attributes.pb.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::string;
 using std::vector;

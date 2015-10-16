@@ -16,15 +16,15 @@
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/http/http_transport.h>
-#include <chromeos/http/http_utils.h>
-#include <chromeos/key_value_store.h>
-#include <chromeos/message_loops/message_loop.h>
-#include <chromeos/mime_utils.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/errors/error.h>
+#include <brillo/http/http_transport.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/key_value_store.h>
+#include <brillo/message_loops/message_loop.h>
+#include <brillo/mime_utils.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -42,8 +42,8 @@
 #include "buffet/webserv_client.h"
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
 
@@ -58,10 +58,10 @@ const char kFileReadError[] = "file_read_error";
 
 bool LoadFile(const base::FilePath& file_path,
               std::string* data,
-              chromeos::ErrorPtr* error) {
+              brillo::ErrorPtr* error) {
   if (!base::ReadFileToString(file_path, data)) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+    brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
                                  "Failed to read file '%s'",
                                  file_path.value().c_str());
     return false;
@@ -130,7 +130,7 @@ class Manager::TaskRunner : public weave::provider::TaskRunner {
   void PostDelayedTask(const tracked_objects::Location& from_here,
                        const base::Closure& task,
                        base::TimeDelta delay) override {
-    chromeos::MessageLoop::current()->PostDelayedTask(from_here, task, delay);
+    brillo::MessageLoop::current()->PostDelayedTask(from_here, task, delay);
   }
 };
 
@@ -172,8 +172,8 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
     if (options_.enable_ping) {
       auto ping_handler = base::Bind(
           [](std::unique_ptr<weave::provider::HttpServer::Request> request) {
-            request->SendReply(chromeos::http::status_code::Ok, "Hello, world!",
-                               chromeos::mime::text::kPlain);
+            request->SendReply(brillo::http::status_code::Ok, "Hello, world!",
+                               brillo::mime::text::kPlain);
           });
       http_server->AddHttpRequestHandler("/privet/ping", ping_handler);
       http_server->AddHttpsRequestHandler("/privet/ping", ping_handler);
@@ -253,7 +253,7 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
 void Manager::RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
                                  weave::ErrorPtr error) {
   if (error) {
-    chromeos::ErrorPtr cros_error;
+    brillo::ErrorPtr cros_error;
     ConvertError(*error, &cros_error);
     return response->ReplyWithError(cros_error.get());
   }
@@ -262,22 +262,22 @@ void Manager::RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
 }
 
 void Manager::UpdateState(DBusMethodResponsePtr<> response,
-                          const chromeos::VariantDictionary& property_set) {
-  chromeos::ErrorPtr chromeos_error;
+                          const brillo::VariantDictionary& property_set) {
+  brillo::ErrorPtr brillo_error;
   auto properties =
-      DictionaryFromDBusVariantDictionary(property_set, &chromeos_error);
+      DictionaryFromDBusVariantDictionary(property_set, &brillo_error);
   if (!properties)
-    return response->ReplyWithError(chromeos_error.get());
+    return response->ReplyWithError(brillo_error.get());
 
   weave::ErrorPtr error;
   if (!device_->SetStateProperties(*properties, &error)) {
-    ConvertError(*error, &chromeos_error);
-    return response->ReplyWithError(chromeos_error.get());
+    ConvertError(*error, &brillo_error);
+    return response->ReplyWithError(brillo_error.get());
   }
   response->Return();
 }
 
-bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
+bool Manager::GetState(brillo::ErrorPtr* error, std::string* state) {
   auto json = device_->GetState();
   CHECK(json);
   base::JSONWriter::WriteWithOptions(
@@ -294,17 +294,17 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
           .release());
   const base::DictionaryValue* command{nullptr};
   if (!value || !value->GetAsDictionary(&command)) {
-    return response->ReplyWithError(FROM_HERE, chromeos::errors::json::kDomain,
-                                    chromeos::errors::json::kParseError,
+    return response->ReplyWithError(FROM_HERE, brillo::errors::json::kDomain,
+                                    brillo::errors::json::kParseError,
                                     error_message);
   }
 
   std::string id;
   weave::ErrorPtr error;
   if (!device_->AddCommand(*command, &id, &error)) {
-    chromeos::ErrorPtr chromeos_error;
-    ConvertError(*error, &chromeos_error);
-    return response->ReplyWithError(chromeos_error.get());
+    brillo::ErrorPtr brillo_error;
+    ConvertError(*error, &brillo_error);
+    return response->ReplyWithError(brillo_error.get());
   }
 
   response->Return(id);
@@ -315,7 +315,7 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
-bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
+bool Manager::UpdateDeviceInfo(brillo::ErrorPtr* brillo_error,
                                const std::string& name,
                                const std::string& description,
                                const std::string& location) {
@@ -330,7 +330,7 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
   std::string id;
   weave::ErrorPtr weave_error;
   if (!device_->AddCommand(command, &id, &weave_error)) {
-    ConvertError(*weave_error, chromeos_error);
+    ConvertError(*weave_error, brillo_error);
     return false;
   }
   // TODO(vitalybuka): Wait for command DONE. Currently we know that command
@@ -341,16 +341,16 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
   return true;
 }
 
-bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* chromeos_error,
+bool Manager::UpdateServiceConfig(brillo::ErrorPtr* brillo_error,
                                   const std::string& client_id,
                                   const std::string& client_secret,
                                   const std::string& api_key,
                                   const std::string& oauth_url,
                                   const std::string& service_url) {
   if (!dbus_adaptor_.GetDeviceId().empty()) {
-    chromeos::Error::AddTo(chromeos_error, FROM_HERE, kErrorDomain,
-                           "already_registered",
-                           "Unable to change config for registered device");
+    brillo::Error::AddTo(brillo_error, FROM_HERE, kErrorDomain,
+                         "already_registered",
+                         "Unable to change config for registered device");
     return false;
   }
 
@@ -393,7 +393,7 @@ void Manager::OnPairingStart(const std::string& session_id,
                              const std::vector<uint8_t>& code) {
   // For now, just overwrite the exposed PairInfo with
   // the most recent pairing attempt.
-  dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{
+  dbus_adaptor_.SetPairingInfo(brillo::VariantDictionary{
       {kPairingSessionIdKey, session_id},
       {kPairingModeKey, weave::EnumToString(pairing_type)},
       {kPairingCodeKey, code},
@@ -408,7 +408,7 @@ void Manager::OnPairingEnd(const std::string& session_id) {
   }
   std::string exposed_session{it->second.TryGet<std::string>()};
   if (exposed_session == session_id) {
-    dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{});
+    dbus_adaptor_.SetPairingInfo(brillo::VariantDictionary{});
   }
 }
 

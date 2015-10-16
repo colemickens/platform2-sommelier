@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
@@ -17,7 +17,7 @@
 
 using IpAddresses = peerd::Service::IpAddresses;
 using ServiceInfo = peerd::Service::ServiceInfo;
-using chromeos::Any;
+using brillo::Any;
 using dbus::Bus;
 using dbus::MockBus;
 using dbus::MockExportedObject;
@@ -72,7 +72,7 @@ class ServiceTest : public ::testing::Test {
                               const ServiceInfo& service_info,
                               const map<string, Any>& options,
                               const string& error_code) {
-    chromeos::ErrorPtr error;
+    brillo::ErrorPtr error;
     EXPECT_FALSE(service_.RegisterAsync(
           &error, kTestPeerId, service_id, addresses, service_info, options,
           MakeMockCompletionAction()));
@@ -85,7 +85,7 @@ class ServiceTest : public ::testing::Test {
       const IpAddresses& addresses,
       const ServiceInfo& service_info,
       const map<string, Any>& options) {
-    chromeos::ErrorPtr error;
+    brillo::ErrorPtr error;
     EXPECT_CALL(*bus_, GetExportedObject(_))
         .WillOnce(Return(service_object_.get()));
     EXPECT_TRUE(service_.RegisterAsync(

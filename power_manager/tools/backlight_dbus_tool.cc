@@ -8,8 +8,8 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   DEFINE_double(percent, 0, "Percent to set, in the range [0.0, 100.0]");
   DEFINE_bool(gradual, true, "Transition gradually");
 
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Query or change the panel backlight brightness via powerd.");
 
   CHECK_LE(FLAGS_decrease + FLAGS_increase + FLAGS_set, 1)

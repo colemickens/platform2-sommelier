@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #include "debugd/src/constants.h"
 
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(q,
               false,
               "Query whether Chrome remote debugging has been configured");
-  chromeos::FlagHelper::Init(argc, argv, kUsageMessage);
+  brillo::FlagHelper::Init(argc, argv, kUsageMessage);
 
   if (FLAGS_q) {
     return IsConfigured() ? EXIT_SUCCESS : EXIT_FAILURE;

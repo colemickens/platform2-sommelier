@@ -7,16 +7,16 @@
 #include <limits>
 
 #include <base/strings/string_util.h>
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/exported_object_manager.h>
 
 #include "peerd/constants.h"
 #include "peerd/dbus_constants.h"
 
-using chromeos::Any;
-using chromeos::Error;
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusObject;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::Any;
+using brillo::Error;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 using peerd::constants::options::service::kMDNSPort;
 using peerd::constants::options::service::kMDNSSectionName;
@@ -49,12 +49,12 @@ const char kInvalidServiceOptions[] = "service.options";
 }  // namespace errors
 
 Service::Service(const scoped_refptr<dbus::Bus>& bus,
-                 chromeos::dbus_utils::ExportedObjectManager* object_manager,
+                 brillo::dbus_utils::ExportedObjectManager* object_manager,
                  const dbus::ObjectPath& path)
     : dbus_object_(new DBusObject{object_manager, bus, path}) {
 }
 
-bool Service::RegisterAsync(chromeos::ErrorPtr* error,
+bool Service::RegisterAsync(brillo::ErrorPtr* error,
                             const string& peer_id,
                             const string& service_id,
                             const IpAddresses& addresses,
@@ -85,7 +85,7 @@ const Service::MDnsOptions& Service::GetMDnsOptions() const {
   return parsed_mdns_options_;
 }
 
-bool Service::Update(chromeos::ErrorPtr* error,
+bool Service::Update(brillo::ErrorPtr* error,
                      const IpAddresses& addresses,
                      const ServiceInfo& info,
                      const map<string, Any>& options) {
@@ -98,7 +98,7 @@ bool Service::Update(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
+bool Service::IsValidServiceId(brillo::ErrorPtr* error,
                                const std::string& service_id) {
   // From RFC 6335 (mDNS service names):
   // Valid service names are hereby normatively defined as follows:
@@ -145,7 +145,7 @@ bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Service::IsValidServiceInfo(chromeos::ErrorPtr* error,
+bool Service::IsValidServiceInfo(brillo::ErrorPtr* error,
                                  const ServiceInfo& service_info) {
   for (const auto& kv : service_info) {
     if (kv.first.length() + kv.second.length() > kMaxServiceInfoPairLength) {
@@ -168,7 +168,7 @@ bool Service::IsValidServiceInfo(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Service::ParseOptions(chromeos::ErrorPtr* error,
+bool Service::ParseOptions(brillo::ErrorPtr* error,
                            const map<string, Any>& orig_options,
                            MDnsOptions* mdns_options_out) {
   map<string, Any> options{orig_options};
@@ -190,7 +190,7 @@ bool Service::ParseOptions(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
+bool Service::ExtractMDnsOptions(brillo::ErrorPtr* error,
                                  Any* maybe_mdns_options,
                                  MDnsOptions* mdns_options_out) {
   map<string, Any>* mdns_options =

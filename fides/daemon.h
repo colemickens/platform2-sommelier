@@ -9,15 +9,15 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/daemons/dbus_daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 
 #include "fides/dbus_settings_service_impl.h"
 #include "fides/settings_blob_parser.h"
 #include "fides/settings_document_manager.h"
 #include "fides/source_delegate.h"
 
-using chromeos::DBusServiceDaemon;
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::DBusServiceDaemon;
+using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace fides {
 

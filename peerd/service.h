@@ -11,9 +11,9 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/exported_property_set.h>
-#include <chromeos/errors/error.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/exported_property_set.h>
+#include <brillo/errors/error.h>
 
 #include "peerd/org.chromium.peerd.Service.h"
 #include "peerd/typedefs.h"
@@ -41,9 +41,9 @@ class Service : public org::chromium::peerd::ServiceInterface {
     uint16_t port = 0;
   };
 
-  static bool IsValidServiceId(chromeos::ErrorPtr* error,
+  static bool IsValidServiceId(brillo::ErrorPtr* error,
                                const std::string& service_id);
-  static bool IsValidServiceInfo(chromeos::ErrorPtr* error,
+  static bool IsValidServiceInfo(brillo::ErrorPtr* error,
                                  const ServiceInfo& service_info);
 
   // For mDNS we'll encode each key/value pair as an entry in the TXT
@@ -54,15 +54,15 @@ class Service : public org::chromium::peerd::ServiceInterface {
   static const size_t kMaxServiceIdLength = 15;
 
   Service(const scoped_refptr<dbus::Bus>& bus,
-          chromeos::dbus_utils::ExportedObjectManager* object_manager,
+          brillo::dbus_utils::ExportedObjectManager* object_manager,
           const dbus::ObjectPath& path);
   bool RegisterAsync(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::string& peer_id,
       const std::string& service_id,
       const IpAddresses& addresses,
       const ServiceInfo& service_info,
-      const std::map<std::string, chromeos::Any>& options,
+      const std::map<std::string, brillo::Any>& options,
       const CompletionAction& completion_callback);
   virtual ~Service() = default;
 
@@ -74,26 +74,26 @@ class Service : public org::chromium::peerd::ServiceInterface {
 
   // Update fields of this service.  If any field is found to be invalid, the
   // entire update is discarded.  Returns true if update is applied.
-  bool Update(chromeos::ErrorPtr* error,
+  bool Update(brillo::ErrorPtr* error,
               const IpAddresses& addresses,
               const ServiceInfo& info,
-              const std::map<std::string, chromeos::Any>& options);
+              const std::map<std::string, brillo::Any>& options);
 
  private:
   // Parses options for services being published by this device.
-  bool ParseOptions(chromeos::ErrorPtr* error,
-                    const std::map<std::string, chromeos::Any>& options,
+  bool ParseOptions(brillo::ErrorPtr* error,
+                    const std::map<std::string, brillo::Any>& options,
                     MDnsOptions* mdns_options_out);
   // Checks that |maybe_mdns_options| is a map<string, Any> and then removes
   // values from that dictionary.  Stores the appropriate parsed values into
   // |mdns_options_|.
-  bool ExtractMDnsOptions(chromeos::ErrorPtr* error,
-                          chromeos::Any* maybe_mdns_options,
+  bool ExtractMDnsOptions(brillo::ErrorPtr* error,
+                          brillo::Any* maybe_mdns_options,
                           MDnsOptions* mdns_options_out);
 
 
   org::chromium::peerd::ServiceAdaptor dbus_adaptor_{this};
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   MDnsOptions parsed_mdns_options_;
 
   friend class AvahiServicePublisherTest;

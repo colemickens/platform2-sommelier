@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 namespace chaps {
 
@@ -37,16 +37,16 @@ class TPMUtility {
   //   master_key - Will be populated with the decrypted master key.
   // Returns true on success.
   virtual bool Authenticate(int slot_id,
-                            const chromeos::SecureBlob& auth_data,
+                            const brillo::SecureBlob& auth_data,
                             const std::string& auth_key_blob,
                             const std::string& encrypted_master_key,
-                            chromeos::SecureBlob* master_key) = 0;
+                            brillo::SecureBlob* master_key) = 0;
 
   // Changes authorization data for a user's authorization key. Returns true on
   // success.
   virtual bool ChangeAuthData(int slot_id,
-                              const chromeos::SecureBlob& old_auth_data,
-                              const chromeos::SecureBlob& new_auth_data,
+                              const brillo::SecureBlob& old_auth_data,
+                              const brillo::SecureBlob& new_auth_data,
                               const std::string& old_auth_key_blob,
                               std::string* new_auth_key_blob) = 0;
 
@@ -75,7 +75,7 @@ class TPMUtility {
   virtual bool GenerateKey(int slot,
                            int modulus_bits,
                            const std::string& public_exponent,
-                           const chromeos::SecureBlob& auth_data,
+                           const brillo::SecureBlob& auth_data,
                            std::string* key_blob,
                            int* key_handle) = 0;
 
@@ -102,7 +102,7 @@ class TPMUtility {
                        const std::string& public_exponent,
                        const std::string& modulus,
                        const std::string& prime_factor,
-                       const chromeos::SecureBlob& auth_data,
+                       const brillo::SecureBlob& auth_data,
                        std::string* key_blob,
                        int* key_handle) = 0;
 
@@ -115,7 +115,7 @@ class TPMUtility {
   // Returns true on success.
   virtual bool LoadKey(int slot,
                        const std::string& key_blob,
-                       const chromeos::SecureBlob& auth_data,
+                       const brillo::SecureBlob& auth_data,
                        int* key_handle) = 0;
 
   // Loads a key by blob into the TPM that has a parent key that is not the SRK.
@@ -128,7 +128,7 @@ class TPMUtility {
   // Returns true on success.
   virtual bool LoadKeyWithParent(int slot,
                                  const std::string& key_blob,
-                                 const chromeos::SecureBlob& auth_data,
+                                 const brillo::SecureBlob& auth_data,
                                  int parent_key_handle,
                                  int* key_handle) = 0;
 

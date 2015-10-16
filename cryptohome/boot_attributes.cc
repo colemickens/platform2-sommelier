@@ -5,7 +5,7 @@
 #include "cryptohome/boot_attributes.h"
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/boot_lockbox.h"
 #include "cryptohome/platform.h"
@@ -31,7 +31,7 @@ BootAttributes::~BootAttributes() {
 }
 
 bool BootAttributes::Load() {
-  chromeos::SecureBlob data, signature;
+  brillo::SecureBlob data, signature;
   if (!platform_->ReadFile(kAttributeFile, &data) ||
       !platform_->ReadFile(kSignatureFile, &signature)) {
     LOG(INFO) << "Cannot read boot lockbox files.";
@@ -86,11 +86,11 @@ bool BootAttributes::FlushAndSign() {
     attr->set_value(it->second);
   }
 
-  chromeos::SecureBlob content;
+  brillo::SecureBlob content;
   content.resize(message.ByteSize());
   message.SerializeWithCachedSizesToArray(content.data());
 
-  chromeos::SecureBlob signature;
+  brillo::SecureBlob signature;
   if (!boot_lockbox_->Sign(content, &signature)) {
     return false;
   }

@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -18,22 +18,22 @@ namespace chaps {
 
 class TokenManagerClientMock : public TokenManagerClient {
  public:
-  MOCK_METHOD2(OpenIsolate, bool(chromeos::SecureBlob*, bool*));
-  MOCK_METHOD1(CloseIsolate, void(const chromeos::SecureBlob&));
-  MOCK_METHOD5(LoadToken, bool(const chromeos::SecureBlob&,
+  MOCK_METHOD2(OpenIsolate, bool(brillo::SecureBlob*, bool*));
+  MOCK_METHOD1(CloseIsolate, void(const brillo::SecureBlob&));
+  MOCK_METHOD5(LoadToken, bool(const brillo::SecureBlob&,
                                const base::FilePath&,
-                               const chromeos::SecureBlob&,
+                               const brillo::SecureBlob&,
                                const std::string&,
                                int*));
-  MOCK_METHOD2(UnloadToken, void(const chromeos::SecureBlob&,
+  MOCK_METHOD2(UnloadToken, void(const brillo::SecureBlob&,
                                  const base::FilePath&));
   MOCK_METHOD3(ChangeTokenAuthData, void(const base::FilePath&,
-                                         const chromeos::SecureBlob&,
-                                         const chromeos::SecureBlob&));
-  MOCK_METHOD3(GetTokenPath, bool(const chromeos::SecureBlob&,
+                                         const brillo::SecureBlob&,
+                                         const brillo::SecureBlob&));
+  MOCK_METHOD3(GetTokenPath, bool(const brillo::SecureBlob&,
                                   int,
                                   base::FilePath*));
-  MOCK_METHOD2(GetTokenList, bool(const chromeos::SecureBlob&,
+  MOCK_METHOD2(GetTokenList, bool(const brillo::SecureBlob&,
                                   std::vector<std::string>*));
 };
 

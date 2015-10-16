@@ -9,7 +9,7 @@
 #include <base/auto_reset.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -62,7 +62,7 @@ class ChromeCollectorTest : public ::testing::Test {
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
     collector_.Initialize(CountCrash, IsMetrics);
-    chromeos::ClearLog();
+    brillo::ClearLog();
   }
 };
 
@@ -102,7 +102,7 @@ TEST_F(ChromeCollectorTest, BadValues) {
   };
 
   for (size_t i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
-    chromeos::ClearLog();
+    brillo::ClearLog();
     EXPECT_FALSE(collector_.ParseCrashLog(list[i].data,
                                           dir, dir.Append("minidump.dmp"),
                                           "base"));

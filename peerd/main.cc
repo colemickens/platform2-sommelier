@@ -6,15 +6,15 @@
 #include <sysexits.h>
 
 #include <base/command_line.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/syslog_logging.h>
 
 #include "peerd/dbus_constants.h"
 #include "peerd/manager.h"
 
-using chromeos::DBusServiceDaemon;
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::DBusServiceDaemon;
+using brillo::dbus_utils::AsyncEventSequencer;
 using peerd::Manager;
 using peerd::dbus_constants::kRootServicePath;
 using peerd::dbus_constants::kServiceName;
@@ -67,12 +67,12 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << kHelpMessage;
     return EX_USAGE;
   }
-  chromeos::InitFlags flags = chromeos::kLogToSyslog;
+  brillo::InitFlags flags = brillo::kLogToSyslog;
   if (cl->HasSwitch(kLogToStdErrFlag)) {
-    flags = chromeos::kLogToStderr;
+    flags = brillo::kLogToStderr;
   }
   std::string initial_mdns_prefix(cl->GetSwitchValueASCII(kInitialMDnsPrefix));
-  chromeos::InitLog(flags | chromeos::kLogHeader);
+  brillo::InitLog(flags | brillo::kLogHeader);
   Daemon daemon(initial_mdns_prefix);
   return daemon.Run();
 }

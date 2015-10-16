@@ -50,7 +50,7 @@ void ApManagerClient::Stop() {
 
 void ApManagerClient::RemoveService(const dbus::ObjectPath& object_path) {
   CHECK(object_path.IsValid());
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!manager_proxy_->RemoveService(object_path, &error)) {
     LOG(ERROR) << "RemoveService failed: " << error->GetMessage();
   }
@@ -63,7 +63,7 @@ void ApManagerClient::OnManagerAdded(ManagerProxy* manager_proxy) {
   if (service_path_.IsValid())
     return;
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!manager_proxy_->CreateService(&service_path_, &error)) {
     LOG(ERROR) << "CreateService failed: " << error->GetMessage();
   }
@@ -91,7 +91,7 @@ void ApManagerClient::OnSsidSet(bool success) {
   }
   VLOG(1) << "SSID is set: " << ssid_;
 
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!service_proxy_->Start(&error)) {
     LOG(ERROR) << "Service start failed: " << error->GetMessage();
   }

@@ -13,7 +13,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "mist/context.h"
 #include "mist/event_dispatcher.h"
@@ -88,13 +88,13 @@ int Mist::Run(base::CommandLine* command_line) {
 
   const string& command = arguments[0];
 
-  int log_flags = chromeos::kLogToSyslog;
+  int log_flags = brillo::kLogToSyslog;
   if (command_line->HasSwitch(kSwitchDaemon)) {
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Could not create a daemon.";
   } else {
-    log_flags |= chromeos::kLogToStderr;
+    log_flags |= brillo::kLogToStderr;
   }
-  chromeos::InitLog(log_flags);
+  brillo::InitLog(log_flags);
   logging::SetMinLogLevel(log_level);
 
   Context context;

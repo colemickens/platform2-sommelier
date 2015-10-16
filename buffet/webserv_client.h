@@ -16,7 +16,7 @@ namespace dbus {
 class Bus;
 }
 
-namespace chromeos {
+namespace brillo {
 namespace dbus_utils {
 class AsyncEventSequencer;
 }
@@ -35,7 +35,7 @@ namespace buffet {
 class WebServClient : public weave::provider::HttpServer {
  public:
   WebServClient(const scoped_refptr<dbus::Bus>& bus,
-                chromeos::dbus_utils::AsyncEventSequencer* sequencer,
+                brillo::dbus_utils::AsyncEventSequencer* sequencer,
                 const base::Closure& server_available_callback);
   ~WebServClient() override;
 

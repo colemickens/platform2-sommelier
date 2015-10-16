@@ -19,7 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
@@ -27,8 +27,8 @@
 
 using ::base::FilePath;
 using ::base::StringPrintf;
-using ::chromeos::Process;
-using ::chromeos::ProcessImpl;
+using ::brillo::Process;
+using ::brillo::ProcessImpl;
 
 namespace vpn_manager {
 

@@ -18,7 +18,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
 namespace base {
@@ -301,7 +301,7 @@ class Platform {
   // Parameters
   //  path              - Path of the file to read
   //  blob/string (OUT) - blob/string to populate
-  virtual bool ReadFile(const std::string& path, chromeos::Blob* blob);
+  virtual bool ReadFile(const std::string& path, brillo::Blob* blob);
   virtual bool ReadFileToString(const std::string& path, std::string* string);
 
   // Writes to the open file pointer.
@@ -309,7 +309,7 @@ class Platform {
   // Parameters
   //   fp   - pointer to the FILE*
   //   blob - data to write
-  virtual bool WriteOpenFile(FILE* fp, const chromeos::Blob& blob);
+  virtual bool WriteOpenFile(FILE* fp, const brillo::Blob& blob);
 
   // Writes the entirety of the given data to |path| with 0640 permissions
   // (modulo umask).  If missing, parent (and parent of parent etc.) directories
@@ -319,7 +319,7 @@ class Platform {
   //  path      - Path of the file to write
   //  blob/data - blob/string/array to populate from
   // (size      - array size)
-  virtual bool WriteFile(const std::string& path, const chromeos::Blob& blob);
+  virtual bool WriteFile(const std::string& path, const brillo::Blob& blob);
   virtual bool WriteStringToFile(const std::string& path,
                                  const std::string& data);
   virtual bool WriteArrayToFile(const std::string& path, const char* data,
@@ -337,7 +337,7 @@ class Platform {
   //   data - Blob to populate from
   //   mode - File permission bit-pattern, eg. 0644 for rw-r--r--
   bool WriteFileAtomic(const std::string& path,
-                       const chromeos::Blob& blob,
+                       const brillo::Blob& blob,
                        mode_t mode);
   bool WriteStringToFileAtomic(const std::string& path,
                                const std::string& data,
@@ -355,7 +355,7 @@ class Platform {
   //  blob/data - blob/string to populate from
   //  mode      - File permission bit-pattern, eg. 0644 for rw-r--r--
   virtual bool WriteFileAtomicDurable(const std::string& path,
-                                      const chromeos::Blob& blob,
+                                      const brillo::Blob& blob,
                                       mode_t mode);
   virtual bool WriteStringToFileAtomicDurable(const std::string& path,
                                               const std::string& data,
@@ -471,9 +471,9 @@ class Platform {
   //   key - The key to add
   //   key_sig - The key's (ascii) signature
   //   salt - The salt
-  virtual long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,  // NOLINT
+  virtual long AddEcryptfsAuthToken(const brillo::SecureBlob& key,  // NOLINT
                                     const std::string& key_sig,
-                                    const chromeos::SecureBlob& salt);
+                                    const brillo::SecureBlob& salt);
 
   // Override the location of the mtab file used. Default is kMtab.
   virtual void set_mtab_path(const std::string &mtab_path) {

@@ -12,9 +12,9 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/secure_blob.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/cryptolib.h"
@@ -28,7 +28,7 @@
 #include "signed_secret.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 
@@ -388,13 +388,13 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
     return false;
   }
   // Compute the HMAC
-  chromeos::SecureBlob hmac_key(secret->symmetric_key());
-  chromeos::SecureBlob data(changes_str.begin(), changes_str.end());
+  brillo::SecureBlob hmac_key(secret->symmetric_key());
+  brillo::SecureBlob data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, data);
 
   // Check the HMAC
   if (signature.length() != hmac.size() ||
-      chromeos::SecureMemcmp(signature.data(), hmac.data(),
+      brillo::SecureMemcmp(signature.data(), hmac.data(),
                              std::min(signature.size(), hmac.size()))) {
     LOG(ERROR) << "Supplied authorization signature was invalid.";
     return false;
@@ -708,8 +708,8 @@ void HomeDirs::RemoveNonOwnerCryptohomes() {
       base::Unretained(this)));
   // TODO(ellyjones): is this valuable? These two directories should just be
   // mountpoints.
-  RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetUserPathPrefix());
-  RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetRootPathPrefix());
+  RemoveNonOwnerDirectories(brillo::cryptohome::home::GetUserPathPrefix());
+  RemoveNonOwnerDirectories(brillo::cryptohome::home::GetRootPathPrefix());
 }
 
 void HomeDirs::DoForEveryUnmountedCryptohome(
@@ -722,7 +722,7 @@ void HomeDirs::DoForEveryUnmountedCryptohome(
        it != entries.end(); ++it) {
     FilePath path(*it);
     const std::string dir_name = path.BaseName().value();
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name)) {
+    if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name)) {
       continue;
     }
     std::string vault_path = path.Append(kVaultDir).value();
@@ -747,7 +747,7 @@ int HomeDirs::CountMountedCryptohomes() const {
        it != entries.end(); ++it) {
     FilePath path(*it);
     const std::string dir_name = path.BaseName().value();
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name)) {
+    if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name)) {
       continue;
     }
     std::string vault_path = path.Append(kVaultDir).value();
@@ -790,7 +790,7 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
     const std::string basename = path.BaseName().value();
     if (!enterprise_owned_ && !strcasecmp(basename.c_str(), owner.c_str()))
       continue;  // Skip the owner's directory.
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(basename))
+    if (!brillo::cryptohome::home::IsSanitizedUserName(basename))
       continue;  // Skip any directory whose name is not an obfuscated user
                  // name.
     if (platform_->IsDirectoryMounted(path.value()))
@@ -870,7 +870,7 @@ bool HomeDirs::GetOwner(std::string* owner) {
 
   if (!GetSystemSalt(NULL))
     return false;
-  *owner = UsernamePasskey(plain_owner.c_str(), chromeos::Blob())
+  *owner = UsernamePasskey(plain_owner.c_str(), brillo::Blob())
       .GetObfuscatedUsername(system_salt_);
   return true;
 }
@@ -891,8 +891,8 @@ bool HomeDirs::Remove(const std::string& username) {
   UsernamePasskey passkey(username.c_str(), SecureBlob());
   std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
   FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
-  FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);
-  FilePath root_path = chromeos::cryptohome::home::GetRootPath(username);
+  FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
+  FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
   return platform_->DeleteFile(user_dir.value(), true) &&
          platform_->DeleteFile(user_path.value(), true) &&
          platform_->DeleteFile(root_path.value(), true);
@@ -1003,11 +1003,11 @@ namespace {
 }
 
 FilePath HomeDirs::GetChapsTokenDir(const std::string& user) const {
-  return chromeos::cryptohome::home::GetDaemonPath(user, kChapsDaemonName);
+  return brillo::cryptohome::home::GetDaemonPath(user, kChapsDaemonName);
 }
 
 FilePath HomeDirs::GetLegacyChapsTokenDir(const std::string& user) const {
-  return chromeos::cryptohome::home::GetUserPath(user).Append(kChapsDirName);
+  return brillo::cryptohome::home::GetUserPath(user).Append(kChapsDirName);
 }
 
 FilePath HomeDirs::GetChapsTokenSaltPath(const std::string& user) const {

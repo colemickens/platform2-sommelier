@@ -22,8 +22,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/secure_blob.h>
 #include <gtest/gtest_prod.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
@@ -603,7 +603,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   key_index - key index the salt is associated with
   //   salt (OUT) - The user's salt
   void GetUserSalt(const Credentials& credentials, bool force_new,
-                   int key_index, chromeos::SecureBlob* salt) const;
+                   int key_index, brillo::SecureBlob* salt) const;
 
   // Ensures that the numth component of path is owned by uid/gid and is a
   // directory.
@@ -690,7 +690,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Derives PKCS #11 token authorization data from a passkey. This may take up
   // to ~100ms (dependant on CPU / memory performance). Returns true on success.
-  bool DeriveTokenAuthData(const chromeos::SecureBlob& passkey,
+  bool DeriveTokenAuthData(const brillo::SecureBlob& passkey,
                            std::string* auth_data);
 
   // Mount the legacy home directory.
@@ -725,7 +725,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   std::string skel_source_;
 
   // Stores the global system salt
-  chromeos::SecureBlob system_salt_;
+  brillo::SecureBlob system_salt_;
 
   // The platform-specific calls
   scoped_ptr<Platform> default_platform_;
@@ -760,12 +760,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Used to track the user's passkey. PKCS #11 initialization consumes and
   // clears this value.
-  chromeos::SecureBlob pkcs11_token_auth_data_;
+  brillo::SecureBlob pkcs11_token_auth_data_;
 
   // Used to track the user's old passkey during passkey migration. PKCS #11
   // initialization consumes and clears this value. This value is valid only if
   // is_pkcs11_passkey_migration_required_ is set to true.
-  chromeos::SecureBlob legacy_pkcs11_passkey_;
+  brillo::SecureBlob legacy_pkcs11_passkey_;
 
   // Used to track whether passkey migration has occurred and PKCS #11 migration
   // of authorization data based on the passkey needs to be performed also.

@@ -7,11 +7,11 @@
 
 #include <string>
 
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 namespace debugd {
 
-class SandboxedProcess : public chromeos::ProcessImpl {
+class SandboxedProcess : public brillo::ProcessImpl {
  public:
   SandboxedProcess();
   ~SandboxedProcess() override = default;

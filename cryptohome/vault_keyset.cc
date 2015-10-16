@@ -7,14 +7,14 @@
 #include <sys/types.h>
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace {
 const mode_t kVaultFilePermissions = 0600;
@@ -81,12 +81,12 @@ bool VaultKeyset::FromKeysBlob(const SecureBlob& keys_blob) {
 
   FromKeys(keys);
 
-  chromeos::SecureMemset(&keys, 0, sizeof(keys));
+  brillo::SecureMemset(&keys, 0, sizeof(keys));
   return true;
 }
 
 bool VaultKeyset::ToKeys(VaultKeysetKeys* keys) const {
-  chromeos::SecureMemset(keys, 0, sizeof(VaultKeysetKeys));
+  brillo::SecureMemset(keys, 0, sizeof(VaultKeysetKeys));
   if (fek_.size() != sizeof(keys->fek)) {
     return false;
   }

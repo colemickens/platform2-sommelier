@@ -13,8 +13,8 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/synchronization/waitable_event.h"
-#include "chromeos/process.h"
-#include "chromeos/syslog_logging.h"
+#include "brillo/process.h"
+#include "brillo/syslog_logging.h"
 #include "components/feedback/feedback_common.h"
 #include "feedback/feedback_service_interface.h"
 
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
   // Some libchrome calls need this.
   base::AtExitManager at_exit_manager;
 
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   scoped_refptr<FeedbackServiceInterface> itf =
       new DBusFeedbackServiceInterface();
   scoped_refptr<FeedbackCommon> report = new FeedbackCommon();

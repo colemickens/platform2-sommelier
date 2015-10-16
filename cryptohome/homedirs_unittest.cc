@@ -8,10 +8,10 @@
 
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/cryptohome.h>
+#include <brillo/data_encoding.h>
+#include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/data_encoding.h>
-#include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
@@ -30,7 +30,7 @@
 
 using base::FilePath;
 using base::StringPrintf;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using ::testing::DoAll;
 using ::testing::EndsWith;
@@ -169,8 +169,8 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
     .WillOnce(
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
-  FilePath user_prefix = chromeos::cryptohome::home::GetUserPathPrefix();
-  FilePath root_prefix = chromeos::cryptohome::home::GetRootPathPrefix();
+  FilePath user_prefix = brillo::cryptohome::home::GetUserPathPrefix();
+  FilePath root_prefix = brillo::cryptohome::home::GetRootPathPrefix();
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(user_prefix.value(), _, _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(root_prefix.value(), _, _))
@@ -627,14 +627,14 @@ TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
               Return(true)));
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(
-          chromeos::cryptohome::home::GetUserPathPrefix().value(),
+          brillo::cryptohome::home::GetUserPathPrefix().value(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(
-          chromeos::cryptohome::home::GetRootPathPrefix().value(),
+          brillo::cryptohome::home::GetRootPathPrefix().value(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -675,14 +675,14 @@ TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
               Return(true)));
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(
-          chromeos::cryptohome::home::GetUserPathPrefix().value(),
+          brillo::cryptohome::home::GetUserPathPrefix().value(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(
-          chromeos::cryptohome::home::GetRootPathPrefix().value(),
+          brillo::cryptohome::home::GetRootPathPrefix().value(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -819,7 +819,7 @@ class KeysetManagementTest : public HomeDirsTest {
     active_vk_ = NULL;
   }
 
-  virtual bool VkDecrypt0(const chromeos::SecureBlob& key) {
+  virtual bool VkDecrypt0(const brillo::SecureBlob& key) {
     return memcmp(key.data(), keys_[0].data(), key.size()) == 0;
   }
 
@@ -901,7 +901,7 @@ class KeysetManagementTest : public HomeDirsTest {
   MockVaultKeyset* active_vk_;
   MockVaultKeyset* active_vks_[MAX_VKS];
   std::vector<std::string> keyset_paths_;
-  std::vector<chromeos::SecureBlob> keys_;
+  std::vector<brillo::SecureBlob> keys_;
   scoped_ptr<UsernamePasskey> up_;
   SecureBlob system_salt_;
   SerializedVaultKeyset serialized_;
@@ -1077,8 +1077,8 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   new_secret.set_secret(new_key.secret());
   ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
 
-  chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
+  brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
+  brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
             homedirs_.UpdateKeyset(*up_,
@@ -1121,14 +1121,14 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   // Add an encryption secret to ensure later upgrades are viable.
   auth_secret->mutable_usage()->set_encrypt(true);
   std::string cipher_key;
-  ASSERT_TRUE(chromeos::data_encoding::Base64Decode(kB64CipherKey,
+  ASSERT_TRUE(brillo::data_encoding::Base64Decode(kB64CipherKey,
                                                     &cipher_key));
   auth_secret->set_symmetric_key(cipher_key);
   // Add the signing key
   auth_secret = auth_data->add_secrets();
   auth_secret->mutable_usage()->set_sign(true);
   std::string signing_key;
-  ASSERT_TRUE(chromeos::data_encoding::Base64Decode(kB64SigningKey,
+  ASSERT_TRUE(brillo::data_encoding::Base64Decode(kB64SigningKey,
                                                     &signing_key));
   auth_secret->set_symmetric_key(signing_key);
 
@@ -1141,7 +1141,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
     .WillOnce(Return(true));
 
   std::string signature;
-  ASSERT_TRUE(chromeos::data_encoding::Base64Decode(kB64Signature, &signature));
+  ASSERT_TRUE(brillo::data_encoding::Base64Decode(kB64Signature, &signature));
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),
@@ -1176,8 +1176,8 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
   new_secret.set_revision(new_key.data().revision());
   new_secret.set_secret(new_key.secret());
   ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
-  chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
+  brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
+  brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
   EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
             homedirs_.UpdateKeyset(*up_,
@@ -1215,8 +1215,8 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
   new_secret.set_secret(new_key.secret());
   ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
 
-  chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
+  brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
+  brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
   EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
             homedirs_.UpdateKeyset(*up_,
@@ -1252,8 +1252,8 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
   bad_secret.set_secret("something else");
   ASSERT_TRUE(bad_secret.SerializeToString(&changes_str));
 
-  chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
+  brillo::SecureBlob hmac_key(auth_secret->symmetric_key());
+  brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
   EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
             homedirs_.UpdateKeyset(*up_,

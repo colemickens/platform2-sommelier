@@ -7,8 +7,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
+#include <brillo/message_loops/fake_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/message_loops/fake_message_loop.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -60,11 +60,11 @@ class LivenessCheckerImplTest : public ::testing::Test {
         .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
         .WillOnce(Return())
         .WillOnce(
-            InvokeWithoutArgs(chromeos::MessageLoop::current(),
-                              &chromeos::MessageLoop::BreakLoop));
+            InvokeWithoutArgs(brillo::MessageLoop::current(),
+                              &brillo::MessageLoop::BreakLoop));
   }
 
-  chromeos::FakeMessageLoop fake_loop_{nullptr};
+  brillo::FakeMessageLoop fake_loop_{nullptr};
   scoped_refptr<MockObjectProxy> object_proxy_;
   scoped_ptr<StrictMock<MockProcessManagerService>> manager_;
 

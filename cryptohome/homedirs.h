@@ -19,7 +19,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <chaps/token_manager_client.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -59,7 +59,7 @@ class HomeDirs {
 
   // Returns the system salt, creating a new one if necessary. If loading the
   // system salt fails, returns false, and blob is unchanged.
-  virtual bool GetSystemSalt(chromeos::SecureBlob *blob);
+  virtual bool GetSystemSalt(brillo::SecureBlob *blob);
 
   // Returns the owner's obfuscated username.
   virtual bool GetOwner(std::string* owner);
@@ -114,7 +114,7 @@ class HomeDirs {
   // nothing.  If there is an identically labeled key, it will overwrite it.
   virtual CryptohomeErrorCode AddKeyset(
                          const Credentials& existing_credentials,
-                         const chromeos::SecureBlob& new_passkey,
+                         const brillo::SecureBlob& new_passkey,
                          const KeyData* new_data,
                          bool clobber,
                          int* index);
@@ -154,7 +154,7 @@ class HomeDirs {
   // Migrates the cryptohome for the supplied obfuscated username from the
   // supplied old key to the supplied new key.
   virtual bool Migrate(const Credentials& newcreds,
-                       const chromeos::SecureBlob& oldkey);
+                       const brillo::SecureBlob& oldkey);
 
   // Returns the path to the user's chaps token directory.
   virtual base::FilePath GetChapsTokenDir(const std::string& username) const;
@@ -244,7 +244,7 @@ class HomeDirs {
   //           some pointers.
   scoped_ptr<VaultKeysetFactory> default_vault_keyset_factory_;
   VaultKeysetFactory* vault_keyset_factory_;
-  chromeos::SecureBlob system_salt_;
+  brillo::SecureBlob system_salt_;
   chaps::TokenManagerClient chaps_client_;
 
   friend class HomeDirsTest;

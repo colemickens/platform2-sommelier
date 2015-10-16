@@ -24,7 +24,7 @@
 #include <string>
 
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/glib/dbus.h>
+#include <brillo/glib/dbus.h>
 
 #include "cryptohome/cryptohome_event_source.h"
 
@@ -65,7 +65,7 @@ class DBusReply : public CryptohomeEventBase {
     return kDBusReplyEventType;
   }
   virtual void Run() {
-    chromeos::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(tmp_array.get(),
                         reply_->c_str(),
                         reply_->size());

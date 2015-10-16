@@ -11,7 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 #include "cros-disks/format_manager_observer_interface.h"
 
@@ -72,7 +72,7 @@ FormatErrorType FormatManager::StartFormatting(const string& device_path,
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
 
-  chromeos::ProcessImpl* process = &format_process_[device_path];
+  brillo::ProcessImpl* process = &format_process_[device_path];
   process->AddArg(format_program);
 
   // Allow to create filesystem across the entire device.

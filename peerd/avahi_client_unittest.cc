@@ -6,7 +6,7 @@
 
 #include <avahi-common/defs.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/dbus/dbus_param_writer.h>
+#include <brillo/dbus/dbus_param_writer.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -19,7 +19,7 @@
 #include "peerd/mock_peer_manager.h"
 #include "peerd/test_util.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::AsyncEventSequencer;
 using dbus::MockBus;
 using dbus::ObjectPath;
 using dbus::Response;
@@ -55,7 +55,7 @@ Response* ReturnsDiscovererPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
   scoped_ptr<Response> response = Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
-  chromeos::dbus_utils::AppendValueToWriter(
+  brillo::dbus_utils::AppendValueToWriter(
       &writer, ObjectPath{string{kDiscovererPath}});
   return response.release();
 }
@@ -121,8 +121,8 @@ class AvahiClientTest : public ::testing::Test {
     method_call->SetSerial(87);
     scoped_ptr<Response> response = Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
-    chromeos::dbus_utils::AppendValueToWriter(&writer,
-                                              int32_t{current_avahi_state_});
+    brillo::dbus_utils::AppendValueToWriter(&writer,
+                                            int32_t{current_avahi_state_});
     // The mock wraps this back in a scoped_ptr in the function calling us.
     return response.release();
   }
@@ -131,9 +131,9 @@ class AvahiClientTest : public ::testing::Test {
     dbus::Signal signal(kServerInterface, kServerSignalStateChanged);
     dbus::MessageWriter writer(&signal);
     // No error message to report cap'n.
-    chromeos::dbus_utils::DBusParamWriter::Append(&writer,
-                                                  int32_t{state},
-                                                  string{});
+    brillo::dbus_utils::DBusParamWriter::Append(&writer,
+                                                int32_t{state},
+                                                string{});
     ASSERT_FALSE(state_changed_signal_callback_.is_null());
     state_changed_signal_callback_.Run(&signal);
   }

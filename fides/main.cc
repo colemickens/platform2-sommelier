@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #include "fides/daemon.h"
 
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(trusted_document_path, "",
                 "Path to file containing the initial trusted document.");
 
-  chromeos::FlagHelper::Init(argc, argv, "Fides daemon");
+  brillo::FlagHelper::Init(argc, argv, "Fides daemon");
   if (FLAGS_system_storage_path.empty())
     FLAGS_system_storage_path = kDefaultSystemStoragePath;
   if (FLAGS_trusted_document_path.empty())

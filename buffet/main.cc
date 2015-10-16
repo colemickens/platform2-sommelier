@@ -7,19 +7,19 @@
 #include <signal.h>
 
 #include <base/files/file_path.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
-#include <chromeos/flag_helper.h>
-#include <chromeos/strings/string_utils.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/flag_helper.h>
+#include <brillo/strings/string_utils.h>
+#include <brillo/syslog_logging.h>
 
 #include "buffet/buffet_config.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/manager.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::DBusServiceDaemon;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::DBusServiceDaemon;
 using buffet::dbus_constants::kServiceName;
 using buffet::dbus_constants::kRootServicePath;
 
@@ -76,18 +76,18 @@ int main(int argc, char* argv[]) {
                 "Path to directory containing additional command "
                 "and state definitions. For test only.");
 
-  chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
+  brillo::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
   if (FLAGS_config_path.empty())
     FLAGS_config_path = kDefaultConfigFilePath;
   if (FLAGS_state_path.empty())
     FLAGS_state_path = kDefaultStateFilePath;
-  int flags = chromeos::kLogToSyslog | chromeos::kLogHeader;
+  int flags = brillo::kLogToSyslog | brillo::kLogHeader;
   if (FLAGS_log_to_stderr)
-    flags |= chromeos::kLogToStderr;
-  chromeos::InitLog(flags);
+    flags |= brillo::kLogToStderr;
+  brillo::InitLog(flags);
 
   auto device_whitelist =
-      chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
+      brillo::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
 
   // We are handling write errors on closed sockets correctly and not relying on
   // (nor handling) SIGPIPE signal, which just kills the process.

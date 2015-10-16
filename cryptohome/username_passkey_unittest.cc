@@ -9,11 +9,11 @@
 #include <string.h>  // For memset(), memcpy()
 
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <string>
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 
@@ -43,7 +43,7 @@ TEST(UsernamePasskeyTest, UsernameTest) {
 TEST(UsernamePasskeyTest, GetObfuscatedUsernameTest) {
   UsernamePasskey up(kFakeUser, SecureBlob(kFakePasskey));
 
-  chromeos::Blob fake_salt;
+  brillo::Blob fake_salt;
   EXPECT_TRUE(base::HexStringToBytes(kFakeSystemSalt, &fake_salt));
 
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
@@ -55,7 +55,7 @@ TEST(UsernamePasskeyTest, GetPasskeyTest) {
   SecureBlob passkey;
   up.GetPasskey(&passkey);
   EXPECT_EQ(strlen(kFakePasskey), passkey.size());
-  EXPECT_EQ(0, chromeos::SecureMemcmp(kFakePasskey,
+  EXPECT_EQ(0, brillo::SecureMemcmp(kFakePasskey,
                                       passkey.data(), passkey.size()));
 }
 

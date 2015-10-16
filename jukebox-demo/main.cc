@@ -9,8 +9,8 @@
 
 #include <base/bind.h>
 #include <base/command_line.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/syslog_logging.h>
 
 #include "buffet/dbus-proxies.h"
 
@@ -23,7 +23,7 @@ namespace {
 // or "" for std::string) if the parameter with the given name is not found or
 // it is of incorrect type.
 template <typename T>
-T GetParameter(const chromeos::VariantDictionary& parameters,
+T GetParameter(const brillo::VariantDictionary& parameters,
                const std::string& name) {
   T value{};
   auto p = parameters.find(name);
@@ -33,7 +33,7 @@ T GetParameter(const chromeos::VariantDictionary& parameters,
 }
 }  // anonymous namespace
 
-class Daemon final : public chromeos::DBusDaemon {
+class Daemon final : public brillo::DBusDaemon {
  public:
   Daemon() = default;
 
@@ -68,7 +68,7 @@ class Daemon final : public chromeos::DBusDaemon {
 };
 
 int Daemon::OnInit() {
-  int return_code = chromeos::DBusDaemon::OnInit();
+  int return_code = brillo::DBusDaemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
 
@@ -84,7 +84,7 @@ int Daemon::OnInit() {
 
 void Daemon::OnCommand(CommandProxy* command) {
   // Handle only commands that belong to this daemon's category.
-  if (command->category() != "jukebox-demo" || command->status() != "queued")
+  if (command->state() != "queued")
     return;
 
   LOG(INFO) << "Command: " << command->name();
@@ -103,32 +103,31 @@ void Daemon::OnPlay(CommandProxy* command) {
   song_name_ = GetParameter<std::string>(command->parameters(), "_songName");
   status_ = "playing";
   NotifyDeviceStateChanged();
-  CHECK(command->Done(nullptr));
+  CHECK(command->Complete({}, nullptr));
 }
 
 void Daemon::OnStop(CommandProxy* command) {
   song_name_.clear();
   status_ = "idle";
   NotifyDeviceStateChanged();
-  CHECK(command->Done(nullptr));
+  CHECK(command->Complete({}, nullptr));
 }
 
 void Daemon::OnSetVolume(CommandProxy* command) {
   volume_ = GetParameter<int>(command->parameters(), "_volume");
   NotifyDeviceStateChanged();
-  CHECK(command->Done(nullptr));
+  CHECK(command->Complete({}, nullptr));
 }
 
 void Daemon::OnChangeVolume(CommandProxy* command) {
   volume_ += GetParameter<int>(command->parameters(), "_delta");
-  chromeos::VariantDictionary results{{"_currentVolume", volume_}};
-  CHECK(command->SetResults(results, nullptr));
   NotifyDeviceStateChanged();
-  CHECK(command->Done(nullptr));
+  brillo::VariantDictionary results{{"_currentVolume", volume_}};
+  CHECK(command->Complete(results, nullptr));
 }
 
 void Daemon::UpdateDeviceState(ManagerProxy* manager) {
-  chromeos::VariantDictionary state_change{
+  brillo::VariantDictionary state_change{
     {"_jukebox._volume", volume_},
     {"_jukebox._status", status_},
     {"_jukebox._songName", song_name_},
@@ -144,8 +143,8 @@ void Daemon::NotifyDeviceStateChanged() {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog |
-                    chromeos::kLogHeader);
+  brillo::InitLog(brillo::kLogToSyslog |
+                    brillo::kLogHeader);
   Daemon daemon;
   return daemon.Run();
 }

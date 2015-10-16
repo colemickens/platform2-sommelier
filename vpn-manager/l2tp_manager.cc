@@ -13,11 +13,11 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 using ::base::FilePath;
 using ::base::StringPrintf;
-using ::chromeos::ProcessImpl;
+using ::brillo::ProcessImpl;
 
 namespace vpn_manager {
 

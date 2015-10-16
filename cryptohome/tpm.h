@@ -10,7 +10,7 @@
 // TODO(wad) make more functions virtual for use in mock_tpm.h.
 
 #include <base/synchronization/lock.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <openssl/rsa.h>
 
 #include "tpm_status.pb.h"  // NOLINT(build/include)
@@ -82,9 +82,9 @@ class Tpm {
   //   key - AES key to encrypt with
   //   ciphertext (OUT) - Encrypted blob
   virtual TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
-                                     const chromeos::SecureBlob& plaintext,
-                                     const chromeos::SecureBlob& key,
-                                     chromeos::SecureBlob* ciphertext) = 0;
+                                     const brillo::SecureBlob& plaintext,
+                                     const brillo::SecureBlob& key,
+                                     brillo::SecureBlob* ciphertext) = 0;
 
   // Decrypts a data blob using the provided RSA key. Returns a TpmRetryAction
   // struct
@@ -95,20 +95,20 @@ class Tpm {
   //   key - AES key to encrypt with
   //   plaintext (OUT) - Decrypted blob
   virtual TpmRetryAction DecryptBlob(TpmKeyHandle key_handle,
-                                     const chromeos::SecureBlob& ciphertext,
-                                     const chromeos::SecureBlob& key,
-                                     chromeos::SecureBlob* plaintext) = 0;
+                                     const brillo::SecureBlob& ciphertext,
+                                     const brillo::SecureBlob& key,
+                                     brillo::SecureBlob* plaintext) = 0;
 
   // Retrieves the sha1sum of the public key component of the RSA key
   virtual TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
-                                          chromeos::SecureBlob* hash) = 0;
+                                          brillo::SecureBlob* hash) = 0;
 
   // Returns the owner password if this instance was used to take ownership.
   // This will only occur when the TPM is unowned, which will be on OOBE
   //
   // Parameters
   //   owner_password (OUT) - The random owner password used
-  virtual bool GetOwnerPassword(chromeos::Blob* owner_password) = 0;
+  virtual bool GetOwnerPassword(brillo::Blob* owner_password) = 0;
 
 
   // Returns whether or not the TPM is enabled.  This method call returns a
@@ -150,7 +150,7 @@ class Tpm {
   // Parameters
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
-  virtual bool GetRandomData(size_t length, chromeos::Blob* data) = 0;
+  virtual bool GetRandomData(size_t length, brillo::Blob* data) = 0;
 
   // Creates a lockable NVRAM space in the TPM
   //
@@ -180,7 +180,7 @@ class Tpm {
   // Returns false if the index is invalid or the request lacks the required
   // authorization.
   virtual bool WriteNvram(uint32_t index,
-                          const chromeos::SecureBlob& blob) = 0;
+                          const brillo::SecureBlob& blob) = 0;
 
   // Reads from the NVRAM index to the given blob
   //
@@ -189,7 +189,7 @@ class Tpm {
   //  blob - the data to read
   // Returns false if the index is invalid or the request lacks the required
   // authorization.
-  virtual bool ReadNvram(uint32_t index, chromeos::SecureBlob* blob) = 0;
+  virtual bool ReadNvram(uint32_t index, brillo::SecureBlob* blob) = 0;
 
   // Determines if the given index is defined in the TPM
   //
@@ -221,7 +221,7 @@ class Tpm {
   //   ek_public_key - The EK public key in DER encoded form.
   //
   // Returns true on success.
-  virtual bool GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key) = 0;
+  virtual bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) = 0;
 
   // Get the endorsement credential. This method requires TPM owner privilege.
   //
@@ -229,7 +229,7 @@ class Tpm {
   //   credential - The EK credential as it is stored in NVRAM.
   //
   // Returns true on success.
-  virtual bool GetEndorsementCredential(chromeos::SecureBlob* credential) = 0;
+  virtual bool GetEndorsementCredential(brillo::SecureBlob* credential) = 0;
 
   // Creates an Attestation Identity Key (AIK). This method requires TPM owner
   // privilege.
@@ -247,15 +247,15 @@ class Tpm {
   //   conformance_credential - The conformance credential.
   //
   // Returns true on success.
-  virtual bool MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
-                            chromeos::SecureBlob* identity_public_key,
-                            chromeos::SecureBlob* identity_key_blob,
-                            chromeos::SecureBlob* identity_binding,
-                            chromeos::SecureBlob* identity_label,
-                            chromeos::SecureBlob* pca_public_key,
-                            chromeos::SecureBlob* endorsement_credential,
-                            chromeos::SecureBlob* platform_credential,
-                            chromeos::SecureBlob* conformance_credential) = 0;
+  virtual bool MakeIdentity(brillo::SecureBlob* identity_public_key_der,
+                            brillo::SecureBlob* identity_public_key,
+                            brillo::SecureBlob* identity_key_blob,
+                            brillo::SecureBlob* identity_binding,
+                            brillo::SecureBlob* identity_label,
+                            brillo::SecureBlob* pca_public_key,
+                            brillo::SecureBlob* endorsement_credential,
+                            brillo::SecureBlob* platform_credential,
+                            brillo::SecureBlob* conformance_credential) = 0;
 
   // Generates a quote of a given PCR with the given identity key.
   // - PCR0 is used to differentiate normal mode from developer mode.
@@ -275,11 +275,11 @@ class Tpm {
   //
   // Returns true on success.
   virtual bool QuotePCR(int pcr_index,
-                        const chromeos::SecureBlob& identity_key_blob,
-                        const chromeos::SecureBlob& external_data,
-                        chromeos::SecureBlob* pcr_value,
-                        chromeos::SecureBlob* quoted_data,
-                        chromeos::SecureBlob* quote) = 0;
+                        const brillo::SecureBlob& identity_key_blob,
+                        const brillo::SecureBlob& external_data,
+                        brillo::SecureBlob* pcr_value,
+                        brillo::SecureBlob* quoted_data,
+                        brillo::SecureBlob* quote) = 0;
 
   // Seals a secret to PCR0 with the SRK.
   //
@@ -288,8 +288,8 @@ class Tpm {
   //   sealed_value - The sealed value.
   //
   // Returns true on success.
-  virtual bool SealToPCR0(const chromeos::Blob& value,
-                          chromeos::Blob* sealed_value) = 0;
+  virtual bool SealToPCR0(const brillo::Blob& value,
+                          brillo::Blob* sealed_value) = 0;
 
   // Unseals a secret previously sealed with the SRK.
   //
@@ -298,8 +298,8 @@ class Tpm {
   //   value - The original value.
   //
   // Returns true on success.
-  virtual bool Unseal(const chromeos::Blob& sealed_value,
-                      chromeos::Blob* value) = 0;
+  virtual bool Unseal(const brillo::Blob& sealed_value,
+                      brillo::Blob* value) = 0;
 
   // Creates a certified non-migratable signing key.
   //
@@ -311,13 +311,13 @@ class Tpm {
   //   certified_key_info - The key info that was signed (TPM_CERTIFY_INFO).
   //   certified_key_proof - The signature of the certified key info by the AIK.
   virtual bool CreateCertifiedKey(
-      const chromeos::SecureBlob& identity_key_blob,
-      const chromeos::SecureBlob& external_data,
-      chromeos::SecureBlob* certified_public_key,
-      chromeos::SecureBlob* certified_public_key_der,
-      chromeos::SecureBlob* certified_key_blob,
-      chromeos::SecureBlob* certified_key_info,
-      chromeos::SecureBlob* certified_key_proof) = 0;
+      const brillo::SecureBlob& identity_key_blob,
+      const brillo::SecureBlob& external_data,
+      brillo::SecureBlob* certified_public_key,
+      brillo::SecureBlob* certified_public_key_der,
+      brillo::SecureBlob* certified_key_blob,
+      brillo::SecureBlob* certified_key_info,
+      brillo::SecureBlob* certified_key_proof) = 0;
 
   // Creates a TPM owner delegate for future use.
   //
@@ -326,9 +326,9 @@ class Tpm {
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret that will be required to perform
   //                     privileged operations in the future.
-  virtual bool CreateDelegate(const chromeos::SecureBlob& identity_key_blob,
-                              chromeos::SecureBlob* delegate_blob,
-                              chromeos::SecureBlob* delegate_secret) = 0;
+  virtual bool CreateDelegate(const brillo::SecureBlob& identity_key_blob,
+                              brillo::SecureBlob* delegate_blob,
+                              brillo::SecureBlob* delegate_secret) = 0;
 
   // Activates an AIK by using the EK to decrypt the AIK credential.
   //
@@ -340,12 +340,12 @@ class Tpm {
   //   encrypted_asym_ca - Encrypted TPM_ASYM_CA_CONTENTS from the CA.
   //   encrypted_sym_ca - Encrypted TPM_SYM_CA_CONTENTS from the CA.
   //   identity_credential - The AIK credential created by the CA.
-  virtual bool ActivateIdentity(const chromeos::SecureBlob& delegate_blob,
-                                const chromeos::SecureBlob& delegate_secret,
-                                const chromeos::SecureBlob& identity_key_blob,
-                                const chromeos::SecureBlob& encrypted_asym_ca,
-                                const chromeos::SecureBlob& encrypted_sym_ca,
-                                chromeos::SecureBlob* identity_credential) = 0;
+  virtual bool ActivateIdentity(const brillo::SecureBlob& delegate_blob,
+                                const brillo::SecureBlob& delegate_secret,
+                                const brillo::SecureBlob& identity_key_blob,
+                                const brillo::SecureBlob& encrypted_asym_ca,
+                                const brillo::SecureBlob& encrypted_sym_ca,
+                                brillo::SecureBlob* identity_credential) = 0;
 
   // Signs data using the TPM_SS_RSASSAPKCS1v15_DER scheme.  This method will
   // work with any signing key that has been assigned this scheme.  This
@@ -358,10 +358,10 @@ class Tpm {
   //                     is the pcr to which it was bound. Else it is
   //                     kNotBoundToPCR.
   //   signature - On success, will be populated with the signature.
-  virtual bool Sign(const chromeos::SecureBlob& key_blob,
-                    const chromeos::SecureBlob& input,
+  virtual bool Sign(const brillo::SecureBlob& key_blob,
+                    const brillo::SecureBlob& input,
                     int bound_pcr_index,
-                    chromeos::SecureBlob* signature) = 0;
+                    brillo::SecureBlob* signature) = 0;
 
   // Creates an SRK-wrapped signing key that has both create attributes and
   // usage policy bound to the given |pcr_index| and |pcr_value|.  On success
@@ -369,27 +369,27 @@ class Tpm {
   // |public_key_der| with the DER-encoded public key. |creation_blob| is an
   // opaque blob that must be passed back as an input into VerifyPCRBoundKey.
   virtual bool CreatePCRBoundKey(int pcr_index,
-                                 const chromeos::SecureBlob& pcr_value,
-                                 chromeos::SecureBlob* key_blob,
-                                 chromeos::SecureBlob* public_key_der,
-                                 chromeos::SecureBlob* creation_blob) = 0;
+                                 const brillo::SecureBlob& pcr_value,
+                                 brillo::SecureBlob* key_blob,
+                                 brillo::SecureBlob* public_key_der,
+                                 brillo::SecureBlob* creation_blob) = 0;
 
   // Returns true iff the given |key_blob| represents a SRK-wrapped key which
   // has both create attributes and usage policy bound to |pcr_value| for
   // |pcr_index|. |creation_blob| is the blob containing creation data, that
   // was generated by CreatePCRBoundKey.
   virtual bool VerifyPCRBoundKey(int pcr_index,
-                                 const chromeos::SecureBlob& pcr_value,
-                                 const chromeos::SecureBlob& key_blob,
-                                 const chromeos::SecureBlob& creation_blob) = 0;
+                                 const brillo::SecureBlob& pcr_value,
+                                 const brillo::SecureBlob& key_blob,
+                                 const brillo::SecureBlob& creation_blob) = 0;
 
   // Extends the PCR given by |pcr_index| with |extension|. The |extension| must
   // be exactly 20 bytes in length.
   virtual bool ExtendPCR(int pcr_index,
-                         const chromeos::SecureBlob& extension) = 0;
+                         const brillo::SecureBlob& extension) = 0;
 
   // Reads the current |pcr_value| of the PCR given by |pcr_index|.
-  virtual bool ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) = 0;
+  virtual bool ReadPCR(int pcr_index, brillo::SecureBlob* pcr_value) = 0;
 
   // Checks to see if the endorsement key is available by attempting to get its
   // public key
@@ -404,13 +404,13 @@ class Tpm {
   //   max_timeout_tries - The maximum number of attempts to make if the call
   //                       times out, which it may occasionally do
   virtual bool TakeOwnership(int max_timeout_tries,
-                             const chromeos::SecureBlob& owner_password) = 0;
+                             const brillo::SecureBlob& owner_password) = 0;
 
   // Initializes the SRK by Zero-ing its password and unrestricting it.
   //
   // Parameters
   //   owner_password - The owner password for the TPM
-  virtual bool InitializeSrk(const chromeos::SecureBlob& owner_password) = 0;
+  virtual bool InitializeSrk(const brillo::SecureBlob& owner_password) = 0;
 
   // Changes the owner password
   //
@@ -418,20 +418,20 @@ class Tpm {
   //   previous_owner_password - The previous owner password for the TPM
   //   owner_password - The owner password for the TPM
   virtual bool ChangeOwnerPassword(
-      const chromeos::SecureBlob& previous_owner_password,
-      const chromeos::SecureBlob& owner_password) = 0;
+      const brillo::SecureBlob& previous_owner_password,
+      const brillo::SecureBlob& owner_password) = 0;
 
   // Test the TPM auth by calling Tspi_TPM_GetStatus
   //
   // Parameters
   //   owner_password - The owner password to use when getting the handle
-  virtual bool TestTpmAuth(const chromeos::SecureBlob& owner_password) = 0;
+  virtual bool TestTpmAuth(const brillo::SecureBlob& owner_password) = 0;
 
   // Sets the TPM owner password to be used in subsequent commands
   //
   // Parameters
   //   owner_password - The owner password for the TPM
-  virtual void SetOwnerPassword(const chromeos::SecureBlob& owner_password) = 0;
+  virtual void SetOwnerPassword(const brillo::SecureBlob& owner_password) = 0;
 
   virtual bool IsTransient(TpmRetryAction retry_action) = 0;
 
@@ -441,16 +441,16 @@ class Tpm {
   //   public_modulus - the public modulus of the provided Rsa key
   //   prime_factor - one of the prime factors of the Rsa key to wrap
   //   wrapped_key (OUT) - A blob representing the wrapped key
-  virtual bool WrapRsaKey(const chromeos::SecureBlob& public_modulus,
-                          const chromeos::SecureBlob& prime_factor,
-                          chromeos::SecureBlob* wrapped_key) = 0;
+  virtual bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
+                          const brillo::SecureBlob& prime_factor,
+                          brillo::SecureBlob* wrapped_key) = 0;
 
   // Loads an SRK-wrapped key into the TPM.
   //
   // Parameters
   //   wrapped_key - The blob (as produced by WrapRsaKey).
   //   key_handle (OUT) - A handle to the key loaded into the TPM.
-  virtual TpmRetryAction LoadWrappedKey(const chromeos::SecureBlob& wrapped_key,
+  virtual TpmRetryAction LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
                                         ScopedKeyHandle* key_handle) = 0;
 
   // Loads the Cryptohome Key using a pre-defined UUID. This method does
@@ -460,7 +460,7 @@ class Tpm {
   //   key_handle (OUT) - A handle to the key loaded into the TPM.
   //   key_blob (OUT) - If non-null, the blob representing this loaded key.
   virtual bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                                       chromeos::SecureBlob* key_blob) = 0;
+                                       brillo::SecureBlob* key_blob) = 0;
 
   // Closes the TPM state associated with the given |key_handle|.
   virtual void CloseHandle(TpmKeyHandle key_handle) = 0;
@@ -484,8 +484,8 @@ class Tpm {
   // Requires owner permissions so a |delegate_blob| and |delegate_secret| for
   // an owner delegate must be provided.
   virtual bool ResetDictionaryAttackMitigation(
-      const chromeos::SecureBlob& delegate_blob,
-      const chromeos::SecureBlob& delegate_secret) = 0;
+      const brillo::SecureBlob& delegate_blob,
+      const brillo::SecureBlob& delegate_secret) = 0;
 
  private:
   static Tpm* singleton_;

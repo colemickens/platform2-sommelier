@@ -12,14 +12,14 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/variant_dictionary.h>
+#include <brillo/process_mock.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/variant_dictionary.h>
-#include <chromeos/process_mock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
 using base::ScopedFD;
-using chromeos::VariantDictionary;
+using brillo::VariantDictionary;
 using std::map;
 using std::string;
 using testing::_;
@@ -56,7 +56,7 @@ class ManagerTest : public testing::Test {
   static const int kOutputPipeFd;
   static const int kResolution;
 
-  static void RunListScannersProcess(int fd, chromeos::Process* process) {
+  static void RunListScannersProcess(int fd, brillo::Process* process) {
     Manager::RunListScannersProcess(fd, process);
   }
 
@@ -65,9 +65,9 @@ class ManagerTest : public testing::Test {
                            base::ScopedFD* input_scoped_fd,
                            base::ScopedFD* output_scoped_fd,
                            const VariantDictionary& scan_properties,
-                           chromeos::Process* scan_process,
-                           chromeos::Process* convert_process,
-                           chromeos::ErrorPtr* error) {
+                           brillo::Process* scan_process,
+                           brillo::Process* convert_process,
+                           brillo::ErrorPtr* error) {
     manager_.RunScanImageProcess(device_name,
                                  out_fd,
                                  input_scoped_fd,
@@ -80,8 +80,8 @@ class ManagerTest : public testing::Test {
 
   static void ExpectStartScan(const char* mode,
                               int resolution,
-                              chromeos::ProcessMock* scan_process,
-                              chromeos::ProcessMock* convert_process) {
+                              brillo::ProcessMock* scan_process,
+                              brillo::ProcessMock* convert_process) {
     EXPECT_CALL(*scan_process, AddArg(GetScanImagePath()));
     EXPECT_CALL(*scan_process, AddArg("-d"));
     EXPECT_CALL(*scan_process, AddArg(kDeviceName));
@@ -132,13 +132,13 @@ const char ManagerTest::kMode[] = "Color";
 
 MATCHER_P(IsDbusErrorStartingWith, message, "") {
   return arg != nullptr &&
-         arg->GetDomain() == chromeos::errors::dbus::kDomain &&
+         arg->GetDomain() == brillo::errors::dbus::kDomain &&
          arg->GetCode() == kManagerServiceError &&
          base::StartsWithASCII(arg->GetMessage(), message, false);
 }
 
 TEST_F(ManagerTest, RunListScannersProcess) {
-  chromeos::ProcessMock process;
+  brillo::ProcessMock process;
   const int kFd = 123;
   InSequence seq;
   EXPECT_CALL(process, AddArg(GetScanImagePath()));
@@ -153,8 +153,8 @@ TEST_F(ManagerTest, RunScanImageProcessSuccess) {
       {"Mode", string{kMode}},
       {"Resolution", uint32_t{kResolution}}
   };
-  chromeos::ProcessMock scan_process;
-  chromeos::ProcessMock convert_process;
+  brillo::ProcessMock scan_process;
+  brillo::ProcessMock convert_process;
   InSequence seq;
   ExpectStartScan(kMode,
                   kResolution,
@@ -170,7 +170,7 @@ TEST_F(ManagerTest, RunScanImageProcessSuccess) {
               SendEnumToUMA(Manager::kMetricConverterResult,
                             Manager::kBooleanMetricSuccess,
                             Manager::kBooleanMetricMax));
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,
@@ -187,14 +187,14 @@ TEST_F(ManagerTest, RunScanImageProcessSuccess) {
 TEST_F(ManagerTest, RunScanImageProcessInvalidArgument) {
   const char kInvalidArgument[] = "InvalidArgument";
   VariantDictionary props{{kInvalidArgument, ""}};
-  chromeos::ProcessMock scan_process;
-  chromeos::ProcessMock convert_process;
+  brillo::ProcessMock scan_process;
+  brillo::ProcessMock convert_process;
   // For "scanimage", "-d", "<device name>".
   EXPECT_CALL(scan_process, AddArg(_)).Times(3);
   EXPECT_CALL(convert_process, AddArg(_)).Times(0);
   EXPECT_CALL(convert_process, Start()).Times(0);
   EXPECT_CALL(scan_process, Start()).Times(0);
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   RunScanImageProcess("", 0, nullptr, nullptr, props, &scan_process,
                       &convert_process, &error);
 
@@ -209,14 +209,14 @@ TEST_F(ManagerTest, RunScanImageProcessInvalidArgument) {
 TEST_F(ManagerTest, RunScanImageInvalidModeArgument) {
   const char kBadMode[] = "Raytrace";
   VariantDictionary props{{"Mode", string{kBadMode}}};
-  chromeos::ProcessMock scan_process;
-  chromeos::ProcessMock convert_process;
+  brillo::ProcessMock scan_process;
+  brillo::ProcessMock convert_process;
   // For "scanimage", "-d", "<device name>".
   EXPECT_CALL(scan_process, AddArg(_)).Times(3);
   EXPECT_CALL(convert_process, AddArg(_)).Times(0);
   EXPECT_CALL(convert_process, Start()).Times(0);
   EXPECT_CALL(scan_process, Start()).Times(0);
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,
@@ -239,8 +239,8 @@ TEST_F(ManagerTest, RunScanImageProcessCaptureFailure) {
       {"Mode", string{kMode}},
       {"Resolution", uint32_t{kResolution}}
   };
-  chromeos::ProcessMock scan_process;
-  chromeos::ProcessMock convert_process;
+  brillo::ProcessMock scan_process;
+  brillo::ProcessMock convert_process;
   InSequence seq;
   ExpectStartScan(kMode,
                   kResolution,
@@ -254,7 +254,7 @@ TEST_F(ManagerTest, RunScanImageProcessCaptureFailure) {
                             Manager::kBooleanMetricMax));
   EXPECT_CALL(convert_process, Kill(SIGKILL, 1));
   EXPECT_CALL(convert_process, Wait()).Times(0);
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,
@@ -274,8 +274,8 @@ TEST_F(ManagerTest, RunScanImageProcessConvertFailure) {
       {"Mode", string{kMode}},
       {"Resolution", uint32_t{kResolution}}
   };
-  chromeos::ProcessMock scan_process;
-  chromeos::ProcessMock convert_process;
+  brillo::ProcessMock scan_process;
+  brillo::ProcessMock convert_process;
   InSequence seq;
   ExpectStartScan(kMode,
                   kResolution,
@@ -292,7 +292,7 @@ TEST_F(ManagerTest, RunScanImageProcessConvertFailure) {
               SendEnumToUMA(Manager::kMetricConverterResult,
                             Manager::kBooleanMetricFailure,
                             Manager::kBooleanMetricMax));
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,

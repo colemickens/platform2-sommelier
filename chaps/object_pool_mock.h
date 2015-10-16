@@ -24,7 +24,7 @@ class ObjectPoolMock : public ObjectPool {
 
   MOCK_METHOD2(GetInternalBlob, bool(int, std::string*));
   MOCK_METHOD2(SetInternalBlob, bool(int, const std::string&));
-  MOCK_METHOD1(SetEncryptionKey, bool(const chromeos::SecureBlob&));
+  MOCK_METHOD1(SetEncryptionKey, bool(const brillo::SecureBlob&));
   MOCK_METHOD1(Insert, bool(Object*));  // NOLINT(readability/function)
   MOCK_METHOD1(Import, bool(Object*));  // NOLINT(readability/function)
   MOCK_METHOD1(Delete, bool(const Object*));

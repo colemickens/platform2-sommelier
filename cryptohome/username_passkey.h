@@ -13,7 +13,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 namespace cryptohome {
 
@@ -22,7 +22,7 @@ class UsernamePasskey : public Credentials {
   UsernamePasskey() { }
 
   // Constructs UsernamePasskey from username strings and passkeys and passwords
-  UsernamePasskey(const char* username, const chromeos::Blob& passkey);
+  UsernamePasskey(const char* username, const brillo::Blob& passkey);
 
   ~UsernamePasskey();
 
@@ -33,13 +33,13 @@ class UsernamePasskey : public Credentials {
   // Overridden from cryptohome::Credentials
   std::string username() const;
   const KeyData& key_data() const;
-  std::string GetObfuscatedUsername(const chromeos::Blob &system_salt) const;
-  void GetPasskey(chromeos::SecureBlob* passkey) const;
+  std::string GetObfuscatedUsername(const brillo::Blob &system_salt) const;
+  void GetPasskey(brillo::SecureBlob* passkey) const;
 
  private:
   std::string username_;
   KeyData key_data_;
-  chromeos::SecureBlob passkey_;
+  brillo::SecureBlob passkey_;
 
   DISALLOW_COPY_AND_ASSIGN(UsernamePasskey);
 };

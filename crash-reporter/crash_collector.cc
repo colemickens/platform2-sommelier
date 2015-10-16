@@ -23,9 +23,9 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/key_value_store.h>
-#include <chromeos/process.h>
+#include <brillo/cryptohome.h>
+#include <brillo/key_value_store.h>
+#include <brillo/process.h>
 
 namespace {
 
@@ -165,7 +165,7 @@ FilePath CrashCollector::GetCrashPath(const FilePath &crash_directory,
 
 bool CrashCollector::GetActiveUserSessions(
     std::map<std::string, std::string> *sessions) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   session_manager_proxy_->RetrieveActiveSessions(sessions, &error);
 
   if (error) {
@@ -189,7 +189,7 @@ FilePath CrashCollector::GetUserCrashPath() {
     return user_path;
   }
 
-  user_path = chromeos::cryptohome::home::GetHashedUserPath(
+  user_path = brillo::cryptohome::home::GetHashedUserPath(
       active_sessions.begin()->second).Append("crash");
 
   return user_path;
@@ -402,7 +402,7 @@ bool CrashCollector::CheckHasCapacity(const FilePath &crash_directory) {
 bool CrashCollector::GetLogContents(const FilePath &config_path,
                                     const std::string &exec_name,
                                     const FilePath &output_file) {
-  chromeos::KeyValueStore store;
+  brillo::KeyValueStore store;
   if (!store.Load(config_path)) {
     LOG(INFO) << "Unable to read log configuration file "
               << config_path.value();
@@ -413,7 +413,7 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
   if (!store.GetString(exec_name, &command))
     return false;
 
-  chromeos::ProcessImpl diag_process;
+  brillo::ProcessImpl diag_process;
   diag_process.AddArg(kShellPath);
   diag_process.AddStringOption("-c", command);
   diag_process.RedirectOutput(output_file.value());
@@ -446,7 +446,7 @@ void CrashCollector::AddCrashMetaUploadData(const std::string &key,
 void CrashCollector::WriteCrashMetaData(const FilePath &meta_path,
                                         const std::string &exec_name,
                                         const std::string &payload_path) {
-  chromeos::KeyValueStore store;
+  brillo::KeyValueStore store;
   if (!store.Load(FilePath(lsb_release_))) {
     LOG(ERROR) << "Problem parsing " << lsb_release_;
     // Even though there was some failure, take as much as we could read.

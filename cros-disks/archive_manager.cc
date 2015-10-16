@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_info.h"
@@ -96,7 +96,7 @@ bool ArchiveManager::CanMount(const string& source_path) const {
     //   '/', 'home', 'chronos', 'u-<userid>', 'GCache', ..., 'doc.zip'
     if (components.size() > 5 &&
         (base::StartsWithASCII(components[3], "u-", false) &&
-         chromeos::cryptohome::home::IsSanitizedUserName(
+         brillo::cryptohome::home::IsSanitizedUserName(
              components[3].substr(2))) &&
         (components[4] == "Downloads" || components[4] == "GCache")) {
       return true;

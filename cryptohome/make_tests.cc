@@ -16,8 +16,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 #include <gmock/gmock.h>
@@ -33,7 +33,7 @@
 #include "cryptohome/vault_keyset.h"
 
 using base::StringPrintf;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using ::testing::AnyOf;
 using ::testing::DoAll;
 using ::testing::InSequence;
@@ -91,18 +91,18 @@ void MakeTests::SetUpSystemSalt() {
   std::string* salt = new std::string(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'A');
   system_salt.resize(salt->size());
   memcpy(&system_salt[0], salt->data(), salt->size());
-  chromeos::cryptohome::home::SetSystemSalt(salt);
+  brillo::cryptohome::home::SetSystemSalt(salt);
 }
 
 void MakeTests::TearDownSystemSalt() {
-  std::string* salt = chromeos::cryptohome::home::GetSystemSalt();
-  chromeos::cryptohome::home::SetSystemSalt(NULL);
+  std::string* salt = brillo::cryptohome::home::GetSystemSalt();
+  brillo::cryptohome::home::SetSystemSalt(NULL);
   delete salt;
 }
 
 void MakeTests::InjectSystemSalt(MockPlatform* platform,
                                  const std::string& path) {
-  CHECK(chromeos::cryptohome::home::GetSystemSalt());
+  CHECK(brillo::cryptohome::home::GetSystemSalt());
   EXPECT_CALL(*platform, FileExists(path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, GetFileSize(path, _))
@@ -140,14 +140,14 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   // Stub system salt must already be in place. See MountTest::SetUp().
   // Sanitized usernames and obfuscated ones differ by case. Accomodate both.
   // TODO(ellyjones) fix this discrepancy!
-  sanitized_username = chromeos::cryptohome::home::SanitizeUserName(username);
+  sanitized_username = brillo::cryptohome::home::SanitizeUserName(username);
   obfuscated_username = sanitized_username;
   std::transform(obfuscated_username.begin(),
                  obfuscated_username.end(),
                  obfuscated_username.begin(),
                  ::tolower);
   // Both pass this check though.
-  DCHECK(chromeos::cryptohome::home::IsSanitizedUserName(
+  DCHECK(brillo::cryptohome::home::IsSanitizedUserName(
            obfuscated_username));
   shadow_root = image_dir;
   skel_dir = StringPrintf("%s/skel", image_dir);
@@ -161,21 +161,21 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   salt_path = StringPrintf("%s/master.0.salt", base_path.c_str());
   user_salt.assign('A', PKCS5_SALT_LEN);
   mount_prefix =
-    chromeos::cryptohome::home::GetUserPathPrefix().DirName().value();
+    brillo::cryptohome::home::GetUserPathPrefix().DirName().value();
   legacy_user_mount_path = "/home/chronos/user";
-  user_mount_path = chromeos::cryptohome::home::GetUserPath(username)
+  user_mount_path = brillo::cryptohome::home::GetUserPath(username)
     .StripTrailingSeparators().value();
-  user_mount_prefix = chromeos::cryptohome::home::GetUserPathPrefix()
+  user_mount_prefix = brillo::cryptohome::home::GetUserPathPrefix()
     .StripTrailingSeparators().value();
-  root_mount_path = chromeos::cryptohome::home::GetRootPath(username)
+  root_mount_path = brillo::cryptohome::home::GetRootPath(username)
     .StripTrailingSeparators().value();
-  root_mount_prefix = chromeos::cryptohome::home::GetRootPathPrefix()
+  root_mount_prefix = brillo::cryptohome::home::GetRootPathPrefix()
     .StripTrailingSeparators().value();
 }
 
 void TestUser::GenerateCredentials() {
-  std::string* system_salt = chromeos::cryptohome::home::GetSystemSalt();
-  chromeos::Blob salt;
+  std::string* system_salt = brillo::cryptohome::home::GetSystemSalt();
+  brillo::Blob salt;
   salt.resize(system_salt->size());
   memcpy(&salt.at(0), system_salt->c_str(), system_salt->size());
   NiceMock<MockTpm> tpm;
@@ -226,9 +226,9 @@ void TestUser::GenerateCredentials() {
   EXPECT_CALL(platform,
       Stat(AnyOf("/home",
                  "/home/root",
-                 chromeos::cryptohome::home::GetRootPath(username).value(),
+                 brillo::cryptohome::home::GetRootPath(username).value(),
                  "/home/user",
-                 chromeos::cryptohome::home::GetUserPath(username).value()),
+                 brillo::cryptohome::home::GetUserPath(username).value()),
            _))
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform,

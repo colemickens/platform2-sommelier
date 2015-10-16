@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "chromeos/cryptohome.h"
+#include "brillo/cryptohome.h"
 
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
@@ -62,7 +62,7 @@ UserPolicyServiceFactory::~UserPolicyServiceFactory() {
 }
 
 PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
-  using chromeos::cryptohome::home::GetDaemonPath;
+  using brillo::cryptohome::home::GetDaemonPath;
   base::FilePath policy_dir(
       GetDaemonPath(username, kDaemonName).Append(kPolicyDir));
   if (!base::CreateDirectory(policy_dir)) {
@@ -84,7 +84,7 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
   if (!policy_success)  // Non-fatal, so log, and keep going.
     LOG(WARNING) << "Failed to load user policy data, continuing anyway.";
 
-  using chromeos::cryptohome::home::SanitizeUserName;
+  using brillo::cryptohome::home::SanitizeUserName;
   const std::string sanitized(SanitizeUserName(username));
   const base::FilePath key_copy_file(base::StringPrintf("%s/%s/%s",
                                                   kPolicyKeyCopyDir,

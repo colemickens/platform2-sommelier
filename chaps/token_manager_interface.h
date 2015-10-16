@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 namespace chaps {
 
@@ -35,7 +35,7 @@ class TokenManagerInterface {
   //                        case isolate_credential will be set to the new
   //                        isolate's credential), or false if the call
   //                        succeeded in opening the existing isolate.
-  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential,
+  virtual bool OpenIsolate(brillo::SecureBlob* isolate_credential,
                            bool* new_isolate_created) = 0;
 
   // Close a given isolate. If all outstanding OpenIsolate calls have been
@@ -43,7 +43,7 @@ class TokenManagerInterface {
   // will be destroyed.
   //
   //  isolate_credential - The isolate into which they are logging out from.
-  virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential) = 0;
+  virtual void CloseIsolate(const brillo::SecureBlob& isolate_credential) = 0;
 
   // Loads a token into the given isolate.  Returns true on success.
   //
@@ -51,9 +51,9 @@ class TokenManagerInterface {
   //  path - The path to the token directory.
   //  auth_data - Authorization data to unlock the token.
   //  slot_id - On success, will be set to the loaded token's slot ID.
-  virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
+  virtual bool LoadToken(const brillo::SecureBlob& isolate_credential,
                          const base::FilePath& path,
-                         const chromeos::SecureBlob& auth_data,
+                         const brillo::SecureBlob& auth_data,
                          const std::string& label,
                          int* slot_id) = 0;
 
@@ -61,7 +61,7 @@ class TokenManagerInterface {
   //
   //  isolate_credential - The isolate from which the token should be unloaded.
   //  path - The path to the token directory.
-  virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
+  virtual void UnloadToken(const brillo::SecureBlob& isolate_credential,
                            const base::FilePath& path) = 0;
 
   // Changes authorization data for a token.
@@ -71,8 +71,8 @@ class TokenManagerInterface {
   //  new_auth_data - The new authorization data.
   virtual void ChangeTokenAuthData(
       const base::FilePath& path,
-      const chromeos::SecureBlob& old_auth_data,
-      const chromeos::SecureBlob& new_auth_data) = 0;
+      const brillo::SecureBlob& old_auth_data,
+      const brillo::SecureBlob& new_auth_data) = 0;
 
   // Provides the token path associated with the given slot.  Returns true on
   // success.  Returns false if the slot does not exist in the given isolate or
@@ -81,7 +81,7 @@ class TokenManagerInterface {
   // isolate_credentials - The isolate associated with the slot.
   // slot_id - Identifies the slot.
   // path - On success, will be set to the token path for the slot.
-  virtual bool GetTokenPath(const chromeos::SecureBlob& isolate_credential,
+  virtual bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
                             int slot_id,
                             base::FilePath* path) = 0;
 };

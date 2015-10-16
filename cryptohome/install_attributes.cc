@@ -149,7 +149,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   }
 
   // Load the file from disk.
-  chromeos::Blob blob;
+  brillo::Blob blob;
   if (!platform_->ReadFile(data_file_, &blob)) {
     LOG(WARNING) << "Init() failed to read attributes file.";
     // If this is an insecure install, then we can just start the
@@ -194,7 +194,7 @@ int InstallAttributes::FindIndexByName(const std::string& name) const {
 }
 
 bool InstallAttributes::Get(const std::string& name,
-                            chromeos::Blob* value) const {
+                            brillo::Blob* value) const {
   int index = FindIndexByName(name);
   if (index == -1)
     return false;
@@ -203,7 +203,7 @@ bool InstallAttributes::Get(const std::string& name,
 
 bool InstallAttributes::GetByIndex(int index,
                                    std::string* name,
-                                   chromeos::Blob* value) const {
+                                   brillo::Blob* value) const {
   if (index < 0 || index >= attributes_->attributes_size()) {
     LOG(ERROR) << "GetByIndex called with invalid index.";
     return false;
@@ -221,7 +221,7 @@ bool InstallAttributes::GetByIndex(int index,
 }
 
 bool InstallAttributes::Set(const std::string& name,
-                            const chromeos::Blob& value) {
+                            const brillo::Blob& value) {
   if (!is_first_install()) {
     LOG(ERROR) << "Set() called on immutable attributes.";
     return false;
@@ -266,7 +266,7 @@ bool InstallAttributes::Finalize() {
   attributes_->set_version(version_);
 
   // Serialize the bytestream
-  chromeos::Blob attr_bytes;
+  brillo::Blob attr_bytes;
   if (!SerializeAttributes(&attr_bytes)) {
     LOG(ERROR) << "Finalize() failed to serialize the attributes.";
     return false;
@@ -305,7 +305,7 @@ int InstallAttributes::Count() const {
   return attributes_->attributes_size();
 }
 
-bool InstallAttributes::SerializeAttributes(chromeos::Blob* out_bytes) {
+bool InstallAttributes::SerializeAttributes(brillo::Blob* out_bytes) {
   out_bytes->resize(attributes_->ByteSize());
   attributes_->SerializeWithCachedSizesToArray(
     static_cast<google::protobuf::uint8*>(out_bytes->data()));
@@ -325,7 +325,7 @@ base::Value* InstallAttributes::GetStatus() {
   if (Count()) {
     base::DictionaryValue* attrs = new base::DictionaryValue();
     std::string key;
-    chromeos::Blob value;
+    brillo::Blob value;
     for (int i = 0; i < Count(); i++) {
       GetByIndex(i, &key, &value);
       std::string value_str(reinterpret_cast<const char*>(value.data()));

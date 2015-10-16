@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 namespace chaps {
 
@@ -34,7 +34,7 @@ class PamHelper {
   //  data: Returns the users password.
   virtual bool GetPamPassword(pam_handle_t* pam_handle,
                               bool old_password,
-                              chromeos::SecureBlob* data);
+                              brillo::SecureBlob* data);
 
   // Saves the username and password in the pam_handle such that it can be
   // retrieved by RetrieveUserAndPassword() at a later point.
@@ -43,7 +43,7 @@ class PamHelper {
   //  password: Password to save.
   virtual bool SaveUserAndPassword(pam_handle_t* pam_handle,
                                    const std::string& user,
-                                   const chromeos::SecureBlob& password);
+                                   const brillo::SecureBlob& password);
 
   // Retrieves the username and password previously saved in the pam_handle.
   // Returns true on success.
@@ -52,7 +52,7 @@ class PamHelper {
   //  password: Returns the saved password.
   virtual bool RetrieveUserAndPassword(pam_handle_t* pam_handle,
                                        std::string* user,
-                                       chromeos::SecureBlob* password);
+                                       brillo::SecureBlob* password);
 
   // Updates the PAM environment to add an environment variable with the given
   // value.

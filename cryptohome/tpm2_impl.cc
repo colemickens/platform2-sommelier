@@ -23,7 +23,7 @@
 
 #include "cryptohome/cryptolib.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using trunks::GetErrorString;
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
@@ -43,7 +43,7 @@ Tpm2Impl::Tpm2Impl(TrunksFactory* factory)
 
 Tpm2Impl::~Tpm2Impl() {}
 
-bool Tpm2Impl::GetOwnerPassword(chromeos::Blob* owner_password) {
+bool Tpm2Impl::GetOwnerPassword(brillo::Blob* owner_password) {
   if (!owner_password_.empty()) {
     owner_password->assign(owner_password_.begin(), owner_password_.end());
   } else {
@@ -79,7 +79,7 @@ bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
   return true;
 }
 
-bool Tpm2Impl::GetRandomData(size_t length, chromeos::Blob* data) {
+bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
   CHECK(data);
   std::string random_data;
   TPM_RC result = trunks_utility_->GenerateRandom(length,
@@ -264,8 +264,8 @@ bool Tpm2Impl::QuotePCR(int pcr_index,
   return false;
 }
 
-bool Tpm2Impl::SealToPCR0(const chromeos::Blob& value,
-                          chromeos::Blob* sealed_value) {
+bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
+                          brillo::Blob* sealed_value) {
   std::string policy_digest;
   TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValue(0, "",
                                                               &policy_digest);
@@ -292,8 +292,8 @@ bool Tpm2Impl::SealToPCR0(const chromeos::Blob& value,
   return true;
 }
 
-bool Tpm2Impl::Unseal(const chromeos::Blob& sealed_value,
-                      chromeos::Blob* value) {
+bool Tpm2Impl::Unseal(const brillo::Blob& sealed_value,
+                      brillo::Blob* value) {
   scoped_ptr<trunks::PolicySession> policy_session =
       trunks_factory_->GetPolicySession();
   TPM_RC result = policy_session->StartUnboundSession(false);
@@ -740,7 +740,7 @@ bool Tpm2Impl::ResetDictionaryAttackMitigation(
 }
 
 bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
-                                        chromeos::SecureBlob* public_key_der) {
+                                        brillo::SecureBlob* public_key_der) {
   crypto::ScopedRSA rsa(RSA_new());
   rsa.get()->e = BN_new();
   CHECK(rsa.get()->e) << "Error setting exponent for RSA.";

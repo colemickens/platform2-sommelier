@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 #include <gtest/gtest_prod.h>
 
 #include "peerd/service.h"
@@ -43,9 +43,9 @@ class AvahiServicePublisher : public ServicePublisherInterface {
   base::WeakPtr<AvahiServicePublisher> GetWeakPtr();
 
   // See comments in ServicePublisherInterface.
-  bool OnServiceUpdated(chromeos::ErrorPtr* error,
+  bool OnServiceUpdated(brillo::ErrorPtr* error,
                         const Service& service) override;
-  bool OnServiceRemoved(chromeos::ErrorPtr* error,
+  bool OnServiceRemoved(brillo::ErrorPtr* error,
                         const std::string& service_id) override;
 
  private:
@@ -60,23 +60,23 @@ class AvahiServicePublisher : public ServicePublisherInterface {
   // bindings.
   static TxtRecord GetTxtRecord(const Service::ServiceInfo& service);
 
-  bool UpdateGroup(chromeos::ErrorPtr* error,
+  bool UpdateGroup(brillo::ErrorPtr* error,
                    const std::string& service_id,
                    const Service::ServiceInfo& service_info,
                    const Service::MDnsOptions& mdns_options);
   // Attempts to add the given |service_id|/|service_info| pair to the
   // given |group_proxy|.  Returns true on success, false otherwise.
   // Does no cleanup.
-  bool AddServiceToGroup(chromeos::ErrorPtr* error,
+  bool AddServiceToGroup(brillo::ErrorPtr* error,
                          const std::string& service_id,
                          const Service::ServiceInfo& service_info,
                          const Service::MDnsOptions& mdns_options,
                          dbus::ObjectProxy* group_proxy);
   // Removes all records corresponding to the provided |group_proxy| and
   // detaches from any related signals.
-  bool FreeGroup(chromeos::ErrorPtr* error, dbus::ObjectProxy* group_proxy);
+  bool FreeGroup(brillo::ErrorPtr* error, dbus::ObjectProxy* group_proxy);
   // Update the master service listing to include the given |service_id|.
-  bool UpdateRootService(chromeos::ErrorPtr* error);
+  bool UpdateRootService(brillo::ErrorPtr* error);
   // We get notified when a service in the group encounters a name collision,
   // and other more innocuous events (like service publishing finishing).
   // We must react to name collisions and other failures however and pick a

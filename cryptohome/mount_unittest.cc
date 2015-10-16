@@ -19,8 +19,8 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
@@ -45,7 +45,7 @@
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::StringPrintf;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using ::testing::AllOf;
 using ::testing::AnyNumber;
@@ -164,7 +164,7 @@ class MountTest : public ::testing::Test {
     return mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get());
   }
 
-  bool LoadSerializedKeyset(const chromeos::Blob& contents,
+  bool LoadSerializedKeyset(const brillo::Blob& contents,
                             cryptohome::SerializedVaultKeyset* serialized) {
     CHECK_NE(contents.size(), 0U);
     return serialized->ParseFromArray(contents.data(), contents.size());
@@ -655,7 +655,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
     .Times(2)
     .WillRepeatedly(Return(true));
 
-  chromeos::Blob creds;
+  brillo::Blob creds;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
@@ -761,12 +761,12 @@ TEST_F(MountTest, GoodReDecryptTest) {
   // Create the "TPM-wrapped" value by letting it save the plaintext.
   EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
-  chromeos::SecureBlob fake_pub_key("A");
+  brillo::SecureBlob fake_pub_key("A");
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(fake_pub_key),
                           Return(Tpm::kTpmRetryNone)));
 
-  chromeos::Blob migrated_keyset;
+  brillo::Blob migrated_keyset;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
   int key_index = 0;
@@ -919,7 +919,7 @@ TEST_F(MountTest, MountCryptohomeChapsKey) {
 
   // Compare the pre mount chaps key to the post mount key.
   ASSERT_EQ(local_chaps.size(), vault_keyset.chaps_key().size());
-  ASSERT_EQ(0, chromeos::SecureMemcmp(local_chaps.data(),
+  ASSERT_EQ(0, brillo::SecureMemcmp(local_chaps.data(),
     vault_keyset.chaps_key().data(), local_chaps.size()));
 }
 
@@ -1046,7 +1046,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   SecureBlob rhs;
   GetKeysetBlob(new_serialized, &rhs);
   ASSERT_EQ(lhs.size(), rhs.size());
-  ASSERT_EQ(0, chromeos::SecureMemcmp(lhs.data(), rhs.data(), lhs.size()));
+  ASSERT_EQ(0, brillo::SecureMemcmp(lhs.data(), rhs.data(), lhs.size()));
 }
 
 TEST_F(MountTest, MountCryptohomeNoCreate) {
@@ -1096,7 +1096,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
 
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  chromeos::Blob creds;
+  brillo::Blob creds;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)))
     .WillRepeatedly(Return(true));
@@ -1161,7 +1161,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
   // background but here in the test we must call it manually.
   static const int kMagicTimestamp = 123;
-  chromeos::Blob updated_keyset;
+  brillo::Blob updated_keyset;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&updated_keyset), Return(true)));
   EXPECT_CALL(platform_, GetCurrentTime())
@@ -1919,10 +1919,10 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
-                 chromeos::cryptohome::home::GetRootPath(
+                 brillo::cryptohome::home::GetRootPath(
                      user->username).value(),
                  "/home/user",
-                 chromeos::cryptohome::home::GetUserPath(
+                 brillo::cryptohome::home::GetUserPath(
                      user->username).value()),
            _))
     .WillRepeatedly(Return(false));
@@ -2014,10 +2014,10 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
-                 chromeos::cryptohome::home::GetRootPath(
+                 brillo::cryptohome::home::GetRootPath(
                    user->username).value(),
                  "/home/user",
-                 chromeos::cryptohome::home::GetUserPath(
+                 brillo::cryptohome::home::GetUserPath(
                    user->username).value()),
            _))
     .WillRepeatedly(Return(false));
@@ -2174,10 +2174,10 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
-                 chromeos::cryptohome::home::GetRootPath(
+                 brillo::cryptohome::home::GetRootPath(
                    user->username).value(),
                  "/home/user",
-                 chromeos::cryptohome::home::GetUserPath(
+                 brillo::cryptohome::home::GetUserPath(
                    user->username).value()),
            _))
     .WillRepeatedly(Return(false));
@@ -2259,10 +2259,10 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
-                 chromeos::cryptohome::home::GetRootPath(
+                 brillo::cryptohome::home::GetRootPath(
                      user->username).value(),
                  "/home/user",
-                 chromeos::cryptohome::home::GetUserPath(
+                 brillo::cryptohome::home::GetUserPath(
                      user->username).value()),
            _))
     .WillRepeatedly(Return(false));

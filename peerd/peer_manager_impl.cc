@@ -10,8 +10,8 @@
 
 #include "peerd/dbus_constants.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 using peerd::technologies::Technology;
 using std::string;
 using std::to_string;

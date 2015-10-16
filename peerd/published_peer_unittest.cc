@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
@@ -16,8 +16,8 @@
 #include "peerd/service.h"
 #include "peerd/test_util.h"
 
-using chromeos::Any;
-using chromeos::ErrorPtr;
+using brillo::Any;
+using brillo::ErrorPtr;
 using dbus::MockBus;
 using dbus::ObjectPath;
 using std::map;

@@ -11,10 +11,10 @@
 
 #include <stdint.h>
 
-#include <chromeos/any.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/exported_property_set.h>
-#include <chromeos/errors/error.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/exported_property_set.h>
+#include <brillo/errors/error.h>
 #include <dbus/bus.h>
 #include <gtest/gtest_prod.h>
 
@@ -41,11 +41,11 @@ extern const char kDuplicateServiceID[];
 class Peer : public org::chromium::peerd::PeerInterface {
  public:
   Peer(const scoped_refptr<dbus::Bus>& bus,
-       chromeos::dbus_utils::ExportedObjectManager* object_manager,
+       brillo::dbus_utils::ExportedObjectManager* object_manager,
        const dbus::ObjectPath& path);
   ~Peer() override = default;
   bool RegisterAsync(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::string& uuid,
       const base::Time& last_seen,
       const CompletionAction& completion_callback);
@@ -53,7 +53,7 @@ class Peer : public org::chromium::peerd::PeerInterface {
   virtual std::string GetUUID() const;
   virtual base::Time GetLastSeen() const;
   // Returns false on failure.
-  virtual bool SetLastSeen(chromeos::ErrorPtr* error,
+  virtual bool SetLastSeen(brillo::ErrorPtr* error,
                            const base::Time& last_seen);
 
  protected:
@@ -63,17 +63,17 @@ class Peer : public org::chromium::peerd::PeerInterface {
   // Returns false on error, and can optionally provide detailed error
   // information in |error|.
   virtual bool AddService(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::string& service_id,
       const Service::IpAddresses& addresses,
       const std::map<std::string, std::string>& service_info,
-      const std::map<std::string, chromeos::Any>& options);
+      const std::map<std::string, brillo::Any>& options);
   // Remove a service advertised by this peer.  Can fail if no service with id
   // |service_id| is in this peer.
-  virtual bool RemoveService(chromeos::ErrorPtr* error,
+  virtual bool RemoveService(brillo::ErrorPtr* error,
                              const std::string& service_id);
 
-  bool IsValidUpdateTime(chromeos::ErrorPtr* error,
+  bool IsValidUpdateTime(brillo::ErrorPtr* error,
                          const base::Time& last_seen) const;
   std::map<std::string, std::unique_ptr<Service>> services_;
 
@@ -83,7 +83,7 @@ class Peer : public org::chromium::peerd::PeerInterface {
   scoped_refptr<dbus::Bus> bus_;
   size_t services_added_{0};
   org::chromium::peerd::PeerAdaptor dbus_adaptor_{this};
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   dbus::ObjectPath service_path_prefix_;
 
   friend class PeerTest;

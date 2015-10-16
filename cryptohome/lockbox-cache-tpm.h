@@ -44,7 +44,7 @@ class LockboxCacheTpm : public StubTpm {
   // Populates |blob| with the prepared contents if the |index|
   // matches.  If |blob| is unpopulated, it returns false.  On
   // success, it returns true.
-  virtual bool ReadNvram(uint32_t index, chromeos::SecureBlob* blob) {
+  virtual bool ReadNvram(uint32_t index, brillo::SecureBlob* blob) {
     if (index == index_) {
       blob->clear();
       blob->resize(nvram_data_.size());
@@ -81,7 +81,7 @@ class LockboxCacheTpm : public StubTpm {
  private:
   uint32_t index_;
   const std::string nvram_path_;
-  chromeos::Blob nvram_data_;
+  brillo::Blob nvram_data_;
 };
 
 }  // namespace cryptohome

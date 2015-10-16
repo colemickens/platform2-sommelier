@@ -9,8 +9,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
                "Milliseconds to wait before reporting suspend readiness");
   DEFINE_int32(timeout_ms, 7000, "Suspend timeout in milliseconds");
 
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Exercise powerd's functionality that permits other processes to\n"
       "perform last-minute work before the system suspends.");
   base::AtExitManager at_exit_manager;

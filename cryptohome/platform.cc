@@ -37,8 +37,8 @@
 #include <base/sys_info.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
-#include <chromeos/process.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/process.h>
+#include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 
 // Uses libvboot_host for accessing crossystem variables.
@@ -485,13 +485,13 @@ bool Platform::CloseFile(FILE* fp) {
   return base::CloseFile(fp);
 }
 
-bool Platform::WriteOpenFile(FILE* fp, const chromeos::Blob& blob) {
+bool Platform::WriteOpenFile(FILE* fp, const brillo::Blob& blob) {
   return (fwrite(static_cast<const void*>(&blob.at(0)), 1, blob.size(), fp)
             != blob.size());
 }
 
 bool Platform::WriteFile(const std::string& path,
-                         const chromeos::Blob& blob) {
+                         const brillo::Blob& blob) {
   return WriteArrayToFile(path,
                           reinterpret_cast<const char*>(blob.data()),
                           blob.size());
@@ -511,7 +511,7 @@ bool Platform::WriteArrayToFile(const std::string& path, const char* data,
       return false;
     }
   }
-  // chromeos::Blob::size_type is std::vector::size_type and is unsigned.
+  // brillo::Blob::size_type is std::vector::size_type and is unsigned.
   if (size > static_cast<std::string::size_type>(INT_MAX)) {
     LOG(ERROR) << "Cannot write to " << path
                << ". Data is too large: " << size << " bytes.";
@@ -543,7 +543,7 @@ std::string Platform::GetRandomSuffix() {
 }
 
 bool Platform::WriteFileAtomic(const std::string& path,
-                               const chromeos::Blob& blob,
+                               const brillo::Blob& blob,
                                mode_t mode) {
   const std::string data(reinterpret_cast<const char*>(blob.data()),
                          blob.size());
@@ -613,7 +613,7 @@ bool Platform::WriteStringToFileAtomic(const std::string& path,
 }
 
 bool Platform::WriteFileAtomicDurable(const std::string& path,
-                                      const chromeos::Blob& blob,
+                                      const brillo::Blob& blob,
                                       mode_t mode) {
   const std::string data(reinterpret_cast<const char*>(blob.data()),
                          blob.size());
@@ -629,13 +629,13 @@ bool Platform::WriteStringToFileAtomicDurable(const std::string& path,
 }
 
 bool Platform::TouchFileDurable(const std::string& path) {
-  chromeos::Blob empty_blob(0);
+  brillo::Blob empty_blob(0);
   if (!WriteFile(path, empty_blob))
     return false;
   return SyncDirectory(FilePath(path).DirName().value());
 }
 
-bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
+bool Platform::ReadFile(const std::string& path, brillo::Blob* blob) {
   int64_t file_size;
   FilePath file_path(path);
   if (!base::PathExists(file_path)) {
@@ -651,7 +651,7 @@ bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
                << file_size << " bytes.";
     return false;
   }
-  chromeos::Blob buf(file_size);
+  brillo::Blob buf(file_size);
   int data_read = base::ReadFile(file_path,
                                  reinterpret_cast<char*>(buf.data()),
                                  file_size);
@@ -867,7 +867,7 @@ bool Platform::FindFilesystemDevice(const std::string &filesystem_in,
 
 bool Platform::ReportFilesystemDetails(const std::string &filesystem,
                                        const std::string &logfile) {
-  chromeos::ProcessImpl process;
+  brillo::ProcessImpl process;
   int rc;
   std::string device;
   if (!FindFilesystemDevice(filesystem, &device)) {
@@ -953,8 +953,8 @@ long ClearUserKeyring() {  // NOLINT(runtime/int)
 }
 
 long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
-    const chromeos::SecureBlob& key, const std::string& key_sig,
-    const chromeos::SecureBlob& salt) {
+    const brillo::SecureBlob& key, const std::string& key_sig,
+    const brillo::SecureBlob& salt) {
   DCHECK_EQ(static_cast<size_t>(ECRYPTFS_MAX_KEY_BYTES),
             key.size());
   DCHECK_EQ(static_cast<size_t>(ECRYPTFS_SIG_SIZE) * 2, key_sig.length());
@@ -976,8 +976,8 @@ long Platform::ClearUserKeyring() {  // NOLINT(runtime/int)
 }
 
 long Platform::AddEcryptfsAuthToken(  // NOLINT(runtime/int)
-    const chromeos::SecureBlob& key, const std::string& key_sig,
-    const chromeos::SecureBlob& salt) {
+    const brillo::SecureBlob& key, const std::string& key_sig,
+    const brillo::SecureBlob& salt) {
   return ecryptfs::AddEcryptfsAuthToken(key, key_sig, salt);
 }
 

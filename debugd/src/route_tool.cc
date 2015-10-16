@@ -5,7 +5,7 @@
 #include "debugd/src/route_tool.h"
 
 #include <base/files/file_util.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 #include "debugd/src/process_with_output.h"
 

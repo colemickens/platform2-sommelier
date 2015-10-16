@@ -18,8 +18,8 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -63,8 +63,8 @@ int main(int argc, char* argv[]) {
                "alarm that fires after the given interval.  Useful "
                "to ensure that device resumes while testing remotely.");
 
-  chromeos::FlagHelper::Init(argc, argv,
-                             "Instruct powerd to suspend the system.");
+  brillo::FlagHelper::Init(argc, argv,
+                           "Instruct powerd to suspend the system.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 

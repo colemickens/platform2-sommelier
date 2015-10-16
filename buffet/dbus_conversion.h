@@ -6,20 +6,20 @@
 #define BUFFET_DBUS_CONVERSION_H_
 
 #include <base/values.h>
-#include <chromeos/any.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 
 namespace buffet {
 
 // Converts DictionaryValue to D-Bus variant dictionary.
-chromeos::VariantDictionary DictionaryToDBusVariantDictionary(
+brillo::VariantDictionary DictionaryToDBusVariantDictionary(
     const base::DictionaryValue& object);
 
 // Converts D-Bus variant dictionary to DictionaryValue.
 std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
-    const chromeos::VariantDictionary& object,
-    chromeos::ErrorPtr* error);
+    const brillo::VariantDictionary& object,
+    brillo::ErrorPtr* error);
 
 }  // namespace buffet
 

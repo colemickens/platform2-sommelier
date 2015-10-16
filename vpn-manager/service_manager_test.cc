@@ -7,17 +7,17 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <chromeos/syslog_logging.h>
-#include <chromeos/test_helpers.h>
+#include <brillo/syslog_logging.h>
+#include <brillo/test_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "vpn-manager/service_manager.h"
 
 using ::base::FilePath;
-using ::chromeos::ClearLog;
-using ::chromeos::FindLog;
-using ::chromeos::GetLog;
+using ::brillo::ClearLog;
+using ::brillo::FindLog;
+using ::brillo::GetLog;
 using ::testing::InSequence;
 using ::testing::Return;
 
@@ -44,7 +44,7 @@ class ServiceManagerTest : public ::testing::Test {
     ServiceManager::temp_base_path_ = temp_path_.value().c_str();
     ServiceManager::temp_path_ = &temp_path_;
     ServiceManager::SetLayerOrder(&outer_service_, &inner_service_);
-    chromeos::ClearLog();
+    brillo::ClearLog();
   }
 
   void TearDown() override {

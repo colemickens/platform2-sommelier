@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -27,7 +27,7 @@
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using std::stringstream;
 using std::vector;
@@ -539,7 +539,7 @@ SecureBlob Sha1(const SecureBlob& input) {
   unsigned char digest[SHA_DIGEST_LENGTH];
   SHA1(input.data(), input.size(), digest);
   SecureBlob hash(std::begin(digest), std::end(digest));
-  chromeos::SecureMemset(digest, 0, SHA_DIGEST_LENGTH);
+  brillo::SecureMemset(digest, 0, SHA_DIGEST_LENGTH);
   return hash;
 }
 
@@ -547,7 +547,7 @@ SecureBlob Sha256(const SecureBlob& input) {
   unsigned char digest[SHA256_DIGEST_LENGTH];
   SHA256(input.data(), input.size(), digest);
   SecureBlob hash(std::begin(digest), std::end(digest));
-  chromeos::SecureMemset(digest, 0, SHA256_DIGEST_LENGTH);
+  brillo::SecureMemset(digest, 0, SHA256_DIGEST_LENGTH);
   return hash;
 }
 
@@ -555,7 +555,7 @@ SecureBlob Sha512(const SecureBlob& input) {
   unsigned char digest[SHA512_DIGEST_LENGTH];
   SHA512(input.data(), input.size(), digest);
   SecureBlob hash(std::begin(digest), std::end(digest));
-  chromeos::SecureMemset(digest, 0, SHA512_DIGEST_LENGTH);
+  brillo::SecureMemset(digest, 0, SHA512_DIGEST_LENGTH);
   return hash;
 }
 
@@ -580,7 +580,7 @@ std::string GetOpenSSLError() {
 }
 
 std::string HmacSha512(const std::string& input,
-                       const chromeos::SecureBlob& key) {
+                       const brillo::SecureBlob& key) {
   const int kSha512OutputSize = 64;
   unsigned char mac[kSha512OutputSize];
   HMAC(EVP_sha512(),

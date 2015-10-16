@@ -16,7 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
@@ -29,7 +29,7 @@
 
 using base::AutoLock;
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::string;
 using std::shared_ptr;

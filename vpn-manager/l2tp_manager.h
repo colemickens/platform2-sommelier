@@ -16,7 +16,7 @@
 
 #include "vpn-manager/service_manager.h"
 
-namespace chromeos {
+namespace brillo {
 class Process;
 }
 
@@ -136,7 +136,7 @@ class L2tpManager : public ServiceManager {
   // Path to l2tp daemon's control file.
   base::FilePath l2tpd_control_path_;
   // Running l2tp process.
-  std::unique_ptr<chromeos::Process> l2tpd_;
+  std::unique_ptr<brillo::Process> l2tpd_;
 };
 
 }  // namespace vpn_manager

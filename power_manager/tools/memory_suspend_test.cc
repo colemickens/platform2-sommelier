@@ -19,7 +19,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
 #define SIZE_2_9_GB (2900LL * 1024LL * 1024LL)
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int64(size, 0, "Amount of memory to allocate");
   DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Test memory retention across suspend/resume.\n\n"
       "  Fills memory with 0x55/0xAA patterns, performs a suspend, and checks\n"
       "  those patterns after resume. Will return 0 on success, 1 when the\n"

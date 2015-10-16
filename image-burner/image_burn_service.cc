@@ -93,7 +93,7 @@ bool ImageBurnService::Reset() {
 }
 
 bool ImageBurnService::Shutdown() {
-  return chromeos::dbus::AbstractDbusService::Shutdown();
+  return brillo::dbus::AbstractDbusService::Shutdown();
 }
 
 gboolean ImageBurnService::BurnImageAsync(gchar* from_path, gchar* to_path,

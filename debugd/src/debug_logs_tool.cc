@@ -5,7 +5,7 @@
 #include "debugd/src/debug_logs_tool.h"
 
 #include <base/files/file_util.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
 
 namespace debugd {
@@ -16,7 +16,7 @@ const char* const kSystemLogs = "/var/log";
 void DebugLogsTool::GetDebugLogs(bool is_compressed,
                                  const DBus::FileDescriptor& fd,
                                  DBus::Error* error) {
-  chromeos::ProcessImpl p;
+  brillo::ProcessImpl p;
   p.AddArg(kTar);
   p.AddArg("-c");
   if (is_compressed)

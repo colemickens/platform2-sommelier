@@ -11,7 +11,7 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
@@ -194,13 +194,13 @@ class PreservedByteVector {
 
 // Computes and returns a SHA-1 hash of the given input.
 std::string Sha1(const std::string& input);
-chromeos::SecureBlob Sha1(const chromeos::SecureBlob& input);
+brillo::SecureBlob Sha1(const brillo::SecureBlob& input);
 
 // Computes and returns a SHA-256 hash of the given input.
-chromeos::SecureBlob Sha256(const chromeos::SecureBlob& input);
+brillo::SecureBlob Sha256(const brillo::SecureBlob& input);
 
 // Computes and returns a SHA-512 hash of the given input.
-chromeos::SecureBlob Sha512(const chromeos::SecureBlob& input);
+brillo::SecureBlob Sha512(const brillo::SecureBlob& input);
 
 // Initializes the OpenSSL library on construction and terminates the library on
 // destruction.
@@ -215,7 +215,7 @@ std::string GetOpenSSLError();
 
 // Computes a message authentication code using HMAC and SHA-512.
 std::string HmacSha512(const std::string& input,
-                       const chromeos::SecureBlob& key);
+                       const brillo::SecureBlob& key);
 
 // Sets the user and group for the current process. If 'real' is set to true,
 // the supplementary group list is initialized before changing the uid. The real
@@ -232,7 +232,7 @@ bool SetProcessUserAndGroup(const char* user, const char* group, bool real);
 // 'iv' is left empty, a random IV will be generated and appended to the cipher-
 // text on encryption.
 bool RunCipher(bool is_encrypt,
-               const chromeos::SecureBlob& key,
+               const brillo::SecureBlob& key,
                const std::string& iv,
                const std::string& input,
                std::string* output);
@@ -241,11 +241,11 @@ bool RunCipher(bool is_encrypt,
 bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type);
 
 inline void ClearString(std::string* str) {
-  chromeos::SecureMemset(string_as_array(str), 0, str->length());
+  brillo::SecureMemset(string_as_array(str), 0, str->length());
 }
 
 inline void ClearVector(std::vector<uint8_t>* vector) {
-  chromeos::SecureMemset(vector->data(), 0, vector->size());
+  brillo::SecureMemset(vector->data(), 0, vector->size());
 }
 
 }  // namespace chaps

@@ -2,24 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <chromeos/flag_helper.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/memory/weak_ptr.h"
-#include "chromeos/daemons/dbus_daemon.h"
+#include "brillo/daemons/dbus_daemon.h"
 #include "chromeos/dbus/service_constants.h"
 #include "permission_broker/permission_broker.h"
 
 namespace permission_broker {
 
 namespace Firewalld = org::chromium::Firewalld;
-using chromeos::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::AsyncEventSequencer;
 const char kObjectServicePath[] =
     "/org/chromium/PermissionBroker/ObjectManager";
 
-class Daemon : public chromeos::DBusServiceDaemon {
+class Daemon : public brillo::DBusServiceDaemon {
  public:
   Daemon(std::string access_group, std::string udev_run_path, int poll_interval)
       : DBusServiceDaemon(kPermissionBrokerServiceName,
@@ -74,8 +74,8 @@ int main(int argc, char** argv) {
   DEFINE_string(udev_run_path, "/run/udev",
                 "The path to udev's run directory.");
 
-  chromeos::FlagHelper::Init(argc, argv, "Chromium OS Permission Broker");
-  chromeos::InitLog(chromeos::kLogToSyslog);
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS Permission Broker");
+  brillo::InitLog(brillo::kLogToSyslog);
 
   permission_broker::Daemon daemon(FLAGS_access_group, FLAGS_udev_run_path,
                                    FLAGS_poll_interval);

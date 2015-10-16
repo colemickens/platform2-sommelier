@@ -13,7 +13,7 @@
 #include <openssl/rand.h>
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::string;
 

@@ -4,8 +4,8 @@
 
 #include "feedback/feedback_uploader_http.h"
 
-#include <chromeos/http/http_utils.h>
-#include <chromeos/mime_utils.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/mime_utils.h>
 
 namespace feedback {
 
@@ -15,10 +15,10 @@ FeedbackUploaderHttp::FeedbackUploaderHttp(
     const std::string& url) : FeedbackUploader(path, pool, url) {}
 
 void FeedbackUploaderHttp::DispatchReport(const std::string& data) {
-  chromeos::ErrorPtr error;
-  auto response = chromeos::http::PostBinaryAndBlock(
-      url_, data.data(), data.size(), chromeos::mime::application::kProtobuf,
-      {}, chromeos::http::Transport::CreateDefault(), &error);
+  brillo::ErrorPtr error;
+  auto response = brillo::http::PostBinaryAndBlock(
+      url_, data.data(), data.size(), brillo::mime::application::kProtobuf,
+      {}, brillo::http::Transport::CreateDefault(), &error);
   if (response) {
     LOG(INFO) << "Sending feedback: successful";
     UpdateUploadTimer();

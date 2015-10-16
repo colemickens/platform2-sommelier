@@ -39,7 +39,7 @@ static bool g_is_initialized = false;
 
 // Set to the user's isolate credential (if it exists) in C_Initialize in order
 // to provide access to the user's private slots.
-static chromeos::SecureBlob* g_user_isolate = NULL;
+static brillo::SecureBlob* g_user_isolate = NULL;
 
 // Tear down helper.
 static void TearDown() {
@@ -87,7 +87,7 @@ namespace chaps {
 
 // Helpers to support a mock proxy and isolate credential (useful in testing).
 EXPORT_SPEC void EnableMockProxy(ChapsInterface* proxy,
-                                 chromeos::SecureBlob* isolate_credential,
+                                 brillo::SecureBlob* isolate_credential,
                                  bool is_initialized) {
   g_proxy = proxy;
   g_user_isolate = isolate_credential;
@@ -138,7 +138,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
       LOG_CK_RV_AND_RETURN(CKR_GENERAL_ERROR);
     g_proxy = proxy.release();
 
-    g_user_isolate = new chromeos::SecureBlob();
+    g_user_isolate = new brillo::SecureBlob();
     chaps::IsolateCredentialManager isolate_manager;
     if (!isolate_manager.GetCurrentUserIsolateCredential(g_user_isolate))
       *g_user_isolate = isolate_manager.GetDefaultIsolateCredential();

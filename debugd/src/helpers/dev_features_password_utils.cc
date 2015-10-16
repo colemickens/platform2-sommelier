@@ -16,7 +16,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <chromeos/file_utils.h>
+#include <brillo/file_utils.h>
 
 #include "debugd/src/process_with_output.h"
 
@@ -66,7 +66,7 @@ bool DevFeaturesPasswordUtils::SetPassword(
     const base::FilePath& password_file) {
   std::string hashed_password;
   if (!HashPassword(password, &hashed_password) ||
-      !chromeos::TouchFile(password_file)) {
+      !brillo::TouchFile(password_file)) {
     return false;
   }
 

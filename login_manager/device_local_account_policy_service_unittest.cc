@@ -11,8 +11,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/run_loop.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/message_loops/fake_message_loop.h>
+#include <brillo/cryptohome.h>
+#include <brillo/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -37,11 +37,11 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    chromeos::cryptohome::home::SetSystemSalt(&salt_);
+    brillo::cryptohome::home::SetSystemSalt(&salt_);
 
     fake_account_policy_path_ =
         temp_dir_.path()
-            .Append(chromeos::cryptohome::home::SanitizeUserName(fake_account_))
+            .Append(brillo::cryptohome::home::SanitizeUserName(fake_account_))
             .Append(DeviceLocalAccountPolicyService::kPolicyDir)
             .Append(DeviceLocalAccountPolicyService::kPolicyFileName);
 
@@ -77,7 +77,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   std::string salt_;
   std::string policy_blob_;
 
-  chromeos::FakeMessageLoop fake_loop_{nullptr};
+  brillo::FakeMessageLoop fake_loop_{nullptr};
   base::ScopedTempDir temp_dir_;
 
   MockPolicyKey key_;

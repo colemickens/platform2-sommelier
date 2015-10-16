@@ -7,7 +7,7 @@
 
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
 namespace cryptohome {

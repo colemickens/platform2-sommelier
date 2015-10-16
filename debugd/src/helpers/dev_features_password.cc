@@ -7,7 +7,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #include "debugd/src/helpers/dev_features_password_utils.h"
 
@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(q, false, "Query whether a password exists for the given user");
   DEFINE_bool(system, false, "Use the system password instead of dev mode");
   DEFINE_string(user, "chronos", "User name");
-  chromeos::FlagHelper::Init(argc, argv, kUsageMessage);
+  brillo::FlagHelper::Init(argc, argv, kUsageMessage);
 
   debugd::DevFeaturesPasswordUtils utils;
 

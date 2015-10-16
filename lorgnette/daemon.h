@@ -9,13 +9,13 @@
 #include <string>
 
 #include <base/cancelable_callback.h>
-#include <chromeos/daemons/dbus_daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 
 #include "lorgnette/manager.h"
 
 namespace lorgnette {
 
-class Daemon : public chromeos::DBusServiceDaemon {
+class Daemon : public brillo::DBusServiceDaemon {
  public:
   // User and group to run the lorgnette process.
   static const char kScanGroupName[];
@@ -27,7 +27,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
  protected:
   int OnInit() override;
   void RegisterDBusObjectsAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
   void OnShutdown(int* return_code) override;
 
  private:

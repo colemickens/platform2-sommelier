@@ -15,9 +15,9 @@
 #include <base/files/file_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/streams/file_stream.h>
-#include <chromeos/streams/tls_stream.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/streams/file_stream.h>
+#include <brillo/streams/tls_stream.h>
 
 #include "buffet/socket_stream.h"
 #include "buffet/weave_error_conversion.h"
@@ -83,16 +83,16 @@ int ConnectSocket(const std::string& host, uint16_t port) {
 }
 
 void OnSuccess(const Network::OpenSslSocketCallback& callback,
-               chromeos::StreamPtr tls_stream) {
+               brillo::StreamPtr tls_stream) {
   callback.Run(
       std::unique_ptr<weave::Stream>{new SocketStream{std::move(tls_stream)}},
       nullptr);
 }
 
 void OnError(const weave::DoneCallback& callback,
-             const chromeos::Error* chromeos_error) {
+             const brillo::Error* brillo_error) {
   weave::ErrorPtr error;
-  ConvertError(*chromeos_error, &error);
+  ConvertError(*brillo_error, &error);
   callback.Run(std::move(error));
 }
 
@@ -101,15 +101,15 @@ void OnError(const weave::DoneCallback& callback,
 void SocketStream::Read(void* buffer,
                         size_t size_to_read,
                         const ReadCallback& callback) {
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr brillo_error;
   if (!ptr_->ReadAsync(
           buffer, size_to_read,
           base::Bind([](const ReadCallback& callback,
                         size_t size) { callback.Run(size, nullptr); },
                      callback),
-          base::Bind(&OnError, base::Bind(callback, 0)), &chromeos_error)) {
+          base::Bind(&OnError, base::Bind(callback, 0)), &brillo_error)) {
     weave::ErrorPtr error;
-    ConvertError(*chromeos_error, &error);
+    ConvertError(*brillo_error, &error);
     base::MessageLoop::current()->PostTask(
         FROM_HERE, base::Bind(callback, 0, base::Passed(&error)));
   }
@@ -118,11 +118,11 @@ void SocketStream::Read(void* buffer,
 void SocketStream::Write(const void* buffer,
                          size_t size_to_write,
                          const WriteCallback& callback) {
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr brillo_error;
   if (!ptr_->WriteAllAsync(buffer, size_to_write, base::Bind(callback, nullptr),
-                           base::Bind(&OnError, callback), &chromeos_error)) {
+                           base::Bind(&OnError, callback), &brillo_error)) {
     weave::ErrorPtr error;
-    ConvertError(*chromeos_error, &error);
+    ConvertError(*brillo_error, &error);
     base::MessageLoop::current()->PostTask(
         FROM_HERE, base::Bind(callback, base::Passed(&error)));
   }
@@ -140,7 +140,7 @@ std::unique_ptr<weave::Stream> SocketStream::ConnectBlocking(
     return nullptr;
 
   auto ptr_ =
-      chromeos::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
+      brillo::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
   if (ptr_)
     return std::unique_ptr<Stream>{new SocketStream{std::move(ptr_)}};
 
@@ -152,7 +152,7 @@ void SocketStream::TlsConnect(std::unique_ptr<Stream> socket,
                               const std::string& host,
                               const Network::OpenSslSocketCallback& callback) {
   SocketStream* stream = static_cast<SocketStream*>(socket.get());
-  chromeos::TlsStream::Connect(
+  brillo::TlsStream::Connect(
       std::move(stream->ptr_), host, base::Bind(&OnSuccess, callback),
       base::Bind(&OnError, base::Bind(callback, nullptr)));
 }

@@ -11,8 +11,8 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
-#include <chromeos/process.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/process.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
@@ -115,7 +115,7 @@ class Lockbox {
   // Returns
   // - true if verified
   // - false if the data could not be validated.
-  virtual bool Verify(const chromeos::Blob& blob, ErrorId* error);
+  virtual bool Verify(const brillo::Blob& blob, ErrorId* error);
 
   // Hashes, salts, sizes, and stores metadata required for verifying |data|
   // in TPM NVRAM for later verification.
@@ -126,7 +126,7 @@ class Lockbox {
   // Returns
   // - true if written to disk and NVRAM (if there is a tpm).
   // - false if the data could not be persisted.
-  virtual bool Store(const chromeos::Blob& data, ErrorId* error);
+  virtual bool Store(const brillo::Blob& data, ErrorId* error);
 
   // Replaces the tpm implementation.
   // Does NOT take ownership of the pointer.
@@ -134,7 +134,7 @@ class Lockbox {
 
   // Replaces the process spawning implementation.
   // Does NOT take ownership of the pointer.
-  virtual void set_process(chromeos::Process* p) { process_ = p; }
+  virtual void set_process(brillo::Process* p) { process_ = p; }
 
   // Replaces the Platform class (only used for mount-encrypted).
   // Does NOT take ownership of the pointer.
@@ -179,21 +179,21 @@ class Lockbox {
   virtual bool TpmIsReady() const;
 
   // Serialize the size of data to a Blob.
-  virtual bool GetSizeBlob(const chromeos::Blob& data,
-                           chromeos::Blob* size_bytes) const;
+  virtual bool GetSizeBlob(const brillo::Blob& data,
+                           brillo::Blob* size_bytes) const;
 
   // Parse a serialized size from the front of |blob|.
-  virtual bool ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const;
+  virtual bool ParseSizeBlob(const brillo::Blob& blob, uint32_t* size) const;
 
   // Call out to the mount-encrypted helper to encrypt the key.
-  virtual void FinalizeMountEncrypted(const chromeos::Blob &entropy) const;
+  virtual void FinalizeMountEncrypted(const brillo::Blob &entropy) const;
 
  private:
   Tpm* tpm_;
   uint32_t nvram_index_;
   uint32_t nvram_version_;
-  scoped_ptr<chromeos::Process> default_process_;
-  chromeos::Process* process_;
+  scoped_ptr<brillo::Process> default_process_;
+  brillo::Process* process_;
   scoped_ptr<LockboxContents> contents_;
   scoped_ptr<Platform> default_platform_;
   Platform* platform_;

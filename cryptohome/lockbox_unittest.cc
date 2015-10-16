@@ -11,8 +11,8 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <chromeos/process_mock.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/process_mock.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/mock_lockbox.h"
@@ -20,7 +20,7 @@
 #include "cryptohome/mock_tpm.h"
 
 namespace cryptohome {
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 using ::testing::_;
 using ::testing::DoAll;
@@ -96,7 +96,7 @@ class LockboxTest : public ::testing::Test {
         .WillOnce(Return(false));
       EXPECT_CALL(tpm_, GetNvramSize(0xdeadbeef))
         .WillOnce(Return(defined_nvram_size));
-      chromeos::Blob salt(salt_size, 'A');
+      brillo::Blob salt(salt_size, 'A');
       EXPECT_CALL(tpm_, GetRandomData(salt_size, _))
         .Times(1)
         .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
@@ -104,7 +104,7 @@ class LockboxTest : public ::testing::Test {
         .Times(1)
         .WillOnce(DoAll(SaveArg<1>(nvram_data), Return(true)));
       // size==0 locks.
-      chromeos::Blob empty_data(0);
+      brillo::Blob empty_data(0);
       EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, Eq(empty_data)))
         .Times(1)
         .WillRepeatedly(Return(true));
@@ -133,8 +133,8 @@ class LockboxTest : public ::testing::Test {
   static const char* kFileData;
   Lockbox lockbox_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<chromeos::ProcessMock> process_;
-  chromeos::Blob file_data_;
+  NiceMock<brillo::ProcessMock> process_;
+  brillo::Blob file_data_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LockboxTest);
@@ -158,7 +158,7 @@ TEST_F(LockboxTest, CreateFirstInstall) {
     .Times(2)
     .WillRepeatedly(Return(true));
   static const char* kOwnerPassword = "sup";
-  chromeos::Blob pw;
+  brillo::Blob pw;
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(2)
@@ -186,7 +186,7 @@ TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
     .Times(2)
     .WillRepeatedly(Return(true));
   static const char* kOwnerPassword = "sup";
-  chromeos::Blob pw;
+  brillo::Blob pw;
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(2)
@@ -231,7 +231,7 @@ TEST_F(LockboxTest, DestroyPristine) {
     .Times(1)
     .WillRepeatedly(Return(true));
   static const char* kOwnerPassword = "sup";
-  chromeos::Blob pw;
+  brillo::Blob pw;
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(1)
@@ -254,7 +254,7 @@ TEST_F(LockboxTest, DestroyWithOldData) {
     .Times(1)
     .WillRepeatedly(Return(true));
   static const char* kOwnerPassword = "sup";
-  chromeos::Blob pw;
+  brillo::Blob pw;
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(1)

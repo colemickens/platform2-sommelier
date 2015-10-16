@@ -13,7 +13,7 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/sequenced_task_runner.h>
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/exported_object_manager.h>
 
 #include "firewalld/dbus-proxies.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
@@ -28,7 +28,7 @@ namespace permission_broker {
 class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
-  PermissionBroker(chromeos::dbus_utils::ExportedObjectManager* object_manager,
+  PermissionBroker(brillo::dbus_utils::ExportedObjectManager* object_manager,
                    org::chromium::FirewalldProxy* firewalld,
                    const std::string& access_group,
                    const std::string& udev_run_path,
@@ -37,14 +37,14 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
-      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:
   // D-Bus methods.
   bool CheckPathAccess(const std::string& in_path) override;
   bool RequestPathAccess(const std::string& in_path,
                          int32_t in_interface_id) override;
-  bool OpenPath(chromeos::ErrorPtr* error,
+  bool OpenPath(brillo::ErrorPtr* error,
                 const std::string& in_path,
                 dbus::FileDescriptor* out_fd) override;
   bool RequestTcpPortAccess(uint16_t in_port,
@@ -67,7 +67,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   virtual bool GrantAccess(const std::string& path);
 
   RuleEngine rule_engine_;
-  chromeos::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::DBusObject dbus_object_;
   gid_t access_group_;
   PortTracker port_tracker_;
 

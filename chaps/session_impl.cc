@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <openssl/bio.h>
 #include <openssl/des.h>
 #include <openssl/err.h>
@@ -27,7 +27,7 @@
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::hex;
 using std::map;
 using std::set;
@@ -416,7 +416,7 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
     // recomputed and literally compared.
     if (signature.length() != data_out.length())
       return CKR_SIGNATURE_LEN_RANGE;
-    if (0 != chromeos::SecureMemcmp(signature.data(),
+    if (0 != brillo::SecureMemcmp(signature.data(),
                                     data_out.data(),
                                     signature.length()))
       return CKR_SIGNATURE_INVALID;
@@ -1311,7 +1311,7 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
   }
   string signed_data = GetDERDigestInfo(context->mechanism_) + digest;
   if (static_cast<size_t>(length) != signed_data.length() ||
-      0 != chromeos::SecureMemcmp(buffer, signed_data.data(), length))
+      0 != brillo::SecureMemcmp(buffer, signed_data.data(), length))
     return CKR_SIGNATURE_INVALID;
   return CKR_OK;
 }

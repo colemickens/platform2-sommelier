@@ -4,15 +4,15 @@
 
 #include "buffet/dbus_command_dispatcher.h"
 
-#include <chromeos/dbus/exported_object_manager.h>
+#include <brillo/dbus/exported_object_manager.h>
 #include <weave/command.h>
 #include <weave/device.h>
 
 #include "buffet/dbus_command_proxy.h"
 #include "buffet/dbus_constants.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
 

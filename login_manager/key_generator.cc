@@ -9,7 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 
 #include "login_manager/generator_job.h"
 #include "login_manager/system_utils.h"
@@ -37,7 +37,7 @@ KeyGenerator::~KeyGenerator() {}
 
 bool KeyGenerator::Start(const string& username) {
   DCHECK(!generating_) << "Must call Reset() between calls to Start()!";
-  base::FilePath user_path(chromeos::cryptohome::home::GetUserPath(username));
+  base::FilePath user_path(brillo::cryptohome::home::GetUserPath(username));
   base::FilePath temporary_key_path(
       user_path.AppendASCII(kTemporaryKeyFilename));
   if (!base::DeleteFile(temporary_key_path, false)) {

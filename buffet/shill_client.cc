@@ -8,17 +8,17 @@
 
 #include <base/message_loop/message_loop.h>
 #include <base/stl_util.h>
-#include <chromeos/any.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/errors/error.h>
 #include <weave/enum_to_string.h>
 
 #include "buffet/ap_manager_client.h"
 #include "buffet/socket_stream.h"
 #include "buffet/weave_error_conversion.h"
 
-using chromeos::Any;
-using chromeos::VariantDictionary;
+using brillo::Any;
+using brillo::VariantDictionary;
 using dbus::ObjectPath;
 using org::chromium::flimflam::DeviceProxy;
 using org::chromium::flimflam::ServiceProxy;
@@ -148,12 +148,12 @@ void ShillClient::Connect(const string& ssid,
   service_properties[shill::kSaveCredentialsProperty] = Any{true};
   service_properties[shill::kAutoConnectProperty] = Any{true};
   ObjectPath service_path;
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr brillo_error;
   if (!manager_proxy_.ConfigureService(service_properties, &service_path,
-                                       &chromeos_error) ||
-      !manager_proxy_.RequestScan(shill::kTypeWifi, &chromeos_error)) {
+                                       &brillo_error) ||
+      !manager_proxy_.RequestScan(shill::kTypeWifi, &brillo_error)) {
     weave::ErrorPtr weave_error;
-    ConvertError(*chromeos_error, &weave_error);
+    ConvertError(*brillo_error, &weave_error);
     base::MessageLoop::current()->PostTask(
         FROM_HERE, base::Bind(callback, base::Passed(&weave_error)));
     return;
@@ -561,8 +561,8 @@ void ShillClient::OpenSslSocket(const std::string& host,
   std::unique_ptr<weave::Stream> raw_stream{
       SocketStream::ConnectBlocking(host, port)};
   if (!raw_stream) {
-    chromeos::ErrorPtr error;
-    chromeos::errors::system::AddSystemError(&error, FROM_HERE, errno);
+    brillo::ErrorPtr error;
+    brillo::errors::system::AddSystemError(&error, FROM_HERE, errno);
     weave::ErrorPtr weave_error;
     ConvertError(*error.get(), &weave_error);
     base::MessageLoop::current()->PostTask(

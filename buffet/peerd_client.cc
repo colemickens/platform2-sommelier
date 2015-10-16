@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <base/message_loop/message_loop.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/errors/error.h>
+#include <brillo/strings/string_utils.h>
 
 using org::chromium::peerd::PeerProxy;
 
@@ -22,7 +22,7 @@ namespace {
 // updates relevant for a short amount of time.
 const int kCommitTimeoutSeconds = 1;
 
-void OnError(const std::string& operation, chromeos::Error* error) {
+void OnError(const std::string& operation, brillo::Error* error) {
   LOG(ERROR) << operation << " failed:" << error->GetMessage();
 }
 
@@ -89,13 +89,13 @@ void PeerdClient::ExposeService() {
   VLOG(1) << "Starting peerd advertising.";
   CHECK_NE(port_, 0);
   CHECK(!txt_.empty());
-  std::map<std::string, chromeos::Any> mdns_options{
-      {"port", chromeos::Any{port_}},
+  std::map<std::string, brillo::Any> mdns_options{
+      {"port", brillo::Any{port_}},
   };
 
   std::map<std::string, std::string> txt;
   for (const auto& record : txt_) {
-    auto name_value = chromeos::string_utils::SplitAtFirst(record, "=");
+    auto name_value = brillo::string_utils::SplitAtFirst(record, "=");
     CHECK(!name_value.second.empty());
     txt.emplace(std::move(name_value));
   }

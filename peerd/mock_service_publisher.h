@@ -18,13 +18,13 @@ class MockServicePublisher : public ServicePublisherInterface {
  public:
   MockServicePublisher() = default;
 
-  MOCK_METHOD2(OnServiceUpdated, bool(chromeos::ErrorPtr* error,
+  MOCK_METHOD2(OnServiceUpdated, bool(brillo::ErrorPtr* error,
                                       const Service& service));
-  MOCK_METHOD2(OnServiceRemoved, bool(chromeos::ErrorPtr* error,
+  MOCK_METHOD2(OnServiceRemoved, bool(brillo::ErrorPtr* error,
                                       const std::string& service_id));
-  MOCK_METHOD2(OnFriendlyNameChanged, bool(chromeos::ErrorPtr* error,
+  MOCK_METHOD2(OnFriendlyNameChanged, bool(brillo::ErrorPtr* error,
                                            const std::string& name));
-  MOCK_METHOD2(OnNoteChanged, bool(chromeos::ErrorPtr* error,
+  MOCK_METHOD2(OnNoteChanged, bool(brillo::ErrorPtr* error,
                                    const std::string& note));
 
   // Must be last member of MockServicePublisher.

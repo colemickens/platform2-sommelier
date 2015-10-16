@@ -10,10 +10,10 @@
 #include <avahi-common/address.h>
 #include <base/message_loop/message_loop.h>
 #include <base/callback.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/strings/string_utils.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/strings/string_utils.h>
 #include <dbus/bus.h>
 
 #include "peerd/avahi_client.h"
@@ -21,11 +21,11 @@
 #include "peerd/dbus_constants.h"
 #include "peerd/service.h"
 
-using chromeos::Error;
-using chromeos::ErrorPtr;
-using chromeos::dbus_utils::CallMethodAndBlock;
-using chromeos::dbus_utils::ExtractMethodCallResults;
-using chromeos::string_utils::Join;
+using brillo::Error;
+using brillo::ErrorPtr;
+using brillo::dbus_utils::CallMethodAndBlock;
+using brillo::dbus_utils::ExtractMethodCallResults;
+using brillo::string_utils::Join;
 using peerd::constants::kSerbusServiceId;
 using peerd::constants::mdns::kSerbusServiceDelimiter;
 using std::vector;
@@ -113,7 +113,7 @@ bool AvahiServicePublisher::UpdateGroup(
                       "from EntryGroup.";
       base::MessageLoop::current()->PostTask(FROM_HERE, on_failure);
     };
-    chromeos::dbus_utils::ConnectToSignal(
+    brillo::dbus_utils::ConnectToSignal(
         group_proxy,
         dbus_constants::avahi::kGroupInterface,
         dbus_constants::avahi::kGroupSignalStateChanged,

@@ -9,7 +9,7 @@
 #include <string>
 
 #include <base/logging.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 #include <vboot/crossystem.h>
 
 #include "debugd/src/process_with_output.h"
@@ -74,7 +74,7 @@ bool EnableUsbBoot() {
 
 int main(int argc, char** argv) {
   DEFINE_bool(q, false, "Query whether USB booting is enabled");
-  chromeos::FlagHelper::Init(argc, argv, kUsageMessage);
+  brillo::FlagHelper::Init(argc, argv, kUsageMessage);
 
   if (FLAGS_q) {
     return IsUsbBootEnabled() ? EXIT_SUCCESS : EXIT_FAILURE;

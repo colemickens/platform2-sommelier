@@ -11,7 +11,7 @@
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/internal_backlight.h"
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
                 "Set resume brightness as linearly-calculated percent in "
                 "[0.0, 100.0]");
 
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Print or set the internal panel's backlight brightness.");
 
   CHECK_LT((FLAGS_get_brightness + FLAGS_get_max_brightness +

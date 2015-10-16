@@ -5,13 +5,13 @@
 #include "chaps/token_manager_client.h"
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::vector;
 using std::string;
 

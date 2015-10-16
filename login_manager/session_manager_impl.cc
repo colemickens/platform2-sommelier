@@ -19,7 +19,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
 #include <vboot/crossystem.h>
@@ -42,9 +42,9 @@
 #include "login_manager/user_policy_service_factory.h"
 
 using base::FilePath;
-using chromeos::cryptohome::home::GetUserPath;
-using chromeos::cryptohome::home::SanitizeUserName;
-using chromeos::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::GetUserPath;
+using brillo::cryptohome::home::SanitizeUserName;
+using brillo::cryptohome::home::kGuestUserName;
 
 namespace login_manager {  // NOLINT
 

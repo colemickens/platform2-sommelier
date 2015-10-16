@@ -10,10 +10,10 @@
 
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
-#include <chromeos/process.h>
+#include <brillo/process.h>
 
-using ::chromeos::Process;
-using ::chromeos::ProcessImpl;
+using ::brillo::Process;
+using ::brillo::ProcessImpl;
 
 namespace vpn_manager {
 
@@ -30,8 +30,8 @@ void Daemon::ClearProcess() {
   SetProcess(nullptr);
 }
 
-chromeos::Process* Daemon::CreateProcess() {
-  chromeos::Process* process = new ProcessImpl;
+brillo::Process* Daemon::CreateProcess() {
+  brillo::Process* process = new ProcessImpl;
   SetProcess(process);
   return process;
 }
@@ -40,7 +40,7 @@ bool Daemon::FindProcess() {
   if (!base::PathExists(base::FilePath(pid_file_)))
     return false;
 
-  std::unique_ptr<chromeos::Process> process(new ProcessImpl);
+  std::unique_ptr<brillo::Process> process(new ProcessImpl);
   process->ResetPidByFile(pid_file_);
   if (!Process::ProcessExists(process->pid())) {
     process->Release();
@@ -60,7 +60,7 @@ pid_t Daemon::GetPid() const {
   return process_ ? process_->pid() : 0;
 }
 
-void Daemon::SetProcess(chromeos::Process* process) {
+void Daemon::SetProcess(brillo::Process* process) {
   if (process_) {
     // If we are re-assigning the same pid, do not terminate the process.
     // Otherwise, we should kill the previous process if it is still running.

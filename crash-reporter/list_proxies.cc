@@ -16,8 +16,8 @@
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/syslog_logging.h>
 
 #include "libcrosservice/dbus-proxies.h"
 
@@ -99,7 +99,7 @@ std::vector<std::string> ParseProxyString(const std::string& input) {
 // must be called, which blocks on the D-Bus call to Chrome.  The call returns
 // after either the timeout or the proxy has been resolved.  The resolved
 // proxies can then be accessed through the proxies() function.
-class ProxyResolver : public chromeos::DBusDaemon {
+class ProxyResolver : public brillo::DBusDaemon {
  public:
   ProxyResolver(const std::string& source_url,
                 const std::string& signal_interface,
@@ -126,7 +126,7 @@ class ProxyResolver : public chromeos::DBusDaemon {
         timeout_callback_.callback(),
         timeout_);
 
-    return chromeos::DBusDaemon::Run();
+    return brillo::DBusDaemon::Run();
   }
 
  protected:
@@ -150,7 +150,7 @@ class ProxyResolver : public chromeos::DBusDaemon {
       return;
     }
 
-    chromeos::ErrorPtr error;
+    brillo::ErrorPtr error;
     call_proxy_->ResolveNetworkProxy(source_url_,
                                      signal_interface_,
                                      signal_name_,
@@ -177,7 +177,7 @@ class ProxyResolver : public chromeos::DBusDaemon {
   }
 
   int OnInit() override {
-    int return_code = chromeos::DBusDaemon::OnInit();
+    int return_code = brillo::DBusDaemon::OnInit();
     if (return_code != EX_OK)
       return return_code;
 
@@ -264,13 +264,13 @@ int main(int argc, char *argv[]) {
   }
 
   // Default to logging to syslog.
-  int init_flags = chromeos::kLogToSyslog;
+  int init_flags = brillo::kLogToSyslog;
   // Log to stderr if a TTY (and "-quiet" wasn't passed), or if "-verbose"
   // was passed.
 
   if ((!quiet && isatty(STDERR_FILENO)) || verbose)
-    init_flags |= chromeos::kLogToStderr;
-  chromeos::InitLog(init_flags);
+    init_flags |= brillo::kLogToStderr;
+  brillo::InitLog(init_flags);
 
   std::string url;
   base::CommandLine::StringVector urls = cl->GetArgs();

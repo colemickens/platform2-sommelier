@@ -8,7 +8,7 @@
 #include "cryptohome/lockbox.h"
 
 #include <base/logging.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include <gmock/gmock.h>
 
@@ -24,8 +24,8 @@ class MockLockbox : public Lockbox {
   MOCK_METHOD1(Create, bool(ErrorId*));  // NOLINT
   MOCK_METHOD1(Destroy, bool(ErrorId*));  // NOLINT
   MOCK_METHOD1(Load, bool(ErrorId*));  // NOLINT
-  MOCK_METHOD2(Verify, bool(const chromeos::Blob&, ErrorId*));
-  MOCK_METHOD2(Store, bool(const chromeos::Blob&, ErrorId*));
+  MOCK_METHOD2(Verify, bool(const brillo::Blob&, ErrorId*));
+  MOCK_METHOD2(Store, bool(const brillo::Blob&, ErrorId*));
 
   MOCK_METHOD1(set_tpm, void(Tpm*));  // NOLINT
   MOCK_METHOD0(tpm, Tpm*());
@@ -39,8 +39,8 @@ class MockLockbox : public Lockbox {
   // Formerly protected methods.
   MOCK_CONST_METHOD0(HasAuthorization, bool());
   MOCK_CONST_METHOD0(TpmIsReady, bool());
-  MOCK_CONST_METHOD2(GetSizeBlob, bool(const chromeos::Blob&, chromeos::Blob*));
-  MOCK_CONST_METHOD2(ParseSizeBlob, bool(const chromeos::Blob&, uint32_t*));
+  MOCK_CONST_METHOD2(GetSizeBlob, bool(const brillo::Blob&, brillo::Blob*));
+  MOCK_CONST_METHOD2(ParseSizeBlob, bool(const brillo::Blob&, uint32_t*));
 };
 }  // namespace cryptohome
 

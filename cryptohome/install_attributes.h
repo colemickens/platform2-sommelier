@@ -13,7 +13,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/values.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/lockbox.h"
@@ -71,7 +71,7 @@ class InstallAttributes {
   // - value: pointer to a Blob to populate with the value, if found.
   // Returns true if |name| exists in the store and |value| will be populated.
   // Returns false if the |name| does not exist.
-  virtual bool Get(const std::string& name, chromeos::Blob* value) const;
+  virtual bool Get(const std::string& name, brillo::Blob* value) const;
 
   // Populates |name| and |value| based on the content referenced by |index|.
   //
@@ -83,7 +83,7 @@ class InstallAttributes {
   // Returns false if the |index| does not exist.
   virtual bool GetByIndex(int index,
                           std::string* name,
-                          chromeos::Blob* value) const;
+                          brillo::Blob* value) const;
 
   // Appends |name| and |value| as an attribute pair to the internal store.
   //
@@ -92,7 +92,7 @@ class InstallAttributes {
   // - value: Blob of data to store with |name|.
   // Returns true if the association can be stored, and false if it can't.
   // If the given |name| already exists, it will be replaced.
-  virtual bool Set(const std::string& name, const chromeos::Blob& value);
+  virtual bool Set(const std::string& name, const brillo::Blob& value);
 
   // Finalizes the install-time attributes making them tamper-evident.
   virtual bool Finalize();
@@ -197,7 +197,7 @@ class InstallAttributes {
   virtual int FindIndexByName(const std::string& name) const;
   // Convert the current attributes to a byte stream and write it
   // to |out_bytes|.
-  virtual bool SerializeAttributes(chromeos::Blob* out_bytes);
+  virtual bool SerializeAttributes(brillo::Blob* out_bytes);
 
  private:
   bool is_first_install_;  // PrepareSystem sets this.

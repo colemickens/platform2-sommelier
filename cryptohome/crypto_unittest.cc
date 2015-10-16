@@ -14,7 +14,7 @@
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -26,8 +26,8 @@
 #include "attestation.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
-using chromeos::Blob;
-using chromeos::SecureBlob;
+using brillo::Blob;
+using brillo::SecureBlob;
 using std::string;
 using ::testing::_;
 using ::testing::AtLeast;
@@ -47,8 +47,8 @@ class ShaTestVectors {
   explicit ShaTestVectors(int type);
 
   ~ShaTestVectors() { }
-  const chromeos::Blob* input(int index) const { return &input_[index]; }
-  const chromeos::SecureBlob* output(int index) const { return &output_[index];}
+  const brillo::Blob* input(int index) const { return &input_[index]; }
+  const brillo::SecureBlob* output(int index) const { return &output_[index];}
   size_t count() const { return 3; }  // sizeof(input_); }
 
   static const char* kOneBlockMessage;
@@ -56,8 +56,8 @@ class ShaTestVectors {
   static const uint8_t kSha1Results[][SHA_DIGEST_LENGTH];
   static const uint8_t kSha256Results[][SHA256_DIGEST_LENGTH];
  private:
-  chromeos::Blob input_[3];
-  chromeos::SecureBlob output_[3];
+  brillo::Blob input_[3];
+  brillo::SecureBlob output_[3];
 };
 
 const char* ShaTestVectors::kMultiBlockMessage =
@@ -137,7 +137,7 @@ class CryptoTest : public ::testing::Test {
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (chromeos::SecureMemcmp(&haystack[start], needle.data(),
+      if (brillo::SecureMemcmp(&haystack[start], needle.data(),
                                  needle.size()) == 0) {
         return true;
       }
@@ -513,9 +513,9 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   string encrypted_data;
   SecureBlob output_blob;
 
-  chromeos::Blob aes_key(32, 'A');
-  chromeos::Blob sealed_key(32, 'S');
-  chromeos::Blob iv(16, 'I');
+  brillo::Blob aes_key(32, 'A');
+  brillo::Blob sealed_key(32, 'S');
+  brillo::Blob iv(16, 'I');
 
   // Setup the data from the above blobs.
   EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
@@ -556,9 +556,9 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   string encrypted_data;
   SecureBlob output_blob;
 
-  chromeos::Blob aes_key(32, 'A');
-  chromeos::Blob sealed_key(32, 'S');
-  chromeos::Blob iv(16, 'I');
+  brillo::Blob aes_key(32, 'A');
+  brillo::Blob sealed_key(32, 'S');
+  brillo::Blob iv(16, 'I');
 
   // Setup the data from the above blobs and fail to seal the key with the tpm.
   EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(

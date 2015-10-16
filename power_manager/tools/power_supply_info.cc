@@ -16,7 +16,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -87,7 +87,7 @@ class InfoDisplay {
 }  // namespace
 
 int main(int argc, char** argv) {
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Print information obtained from /sys about the power supply.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;

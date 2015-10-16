@@ -8,12 +8,12 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;
-using ::chromeos::FindLog;
+using ::brillo::FindLog;
 
 namespace {
 
@@ -53,7 +53,7 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
     base::DeleteFile(test_unclean_, true);
     // Set up an alternate power manager state file as well
     collector_.powerd_suspended_file_ = FilePath(kTestSuspended);
-    chromeos::ClearLog();
+    brillo::ClearLog();
   }
 
  protected:

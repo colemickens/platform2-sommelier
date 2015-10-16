@@ -14,11 +14,11 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/threading/thread.h>
-#include <chromeos/glib/abstract_dbus_service.h>
-#include <chromeos/glib/dbus.h>
+#include <brillo/glib/abstract_dbus_service.h>
+#include <brillo/glib/dbus.h>
+#include <brillo/glib/object.h>
+#include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/glib/object.h>
-#include <chromeos/secure_blob.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 
@@ -54,14 +54,14 @@ class TimerCollection;
 // D-Bus and entering the glib run loop.
 //
 // ::g_type_init() must be called before this class is used.
-class Service : public chromeos::dbus::AbstractDbusService,
+class Service : public brillo::dbus::AbstractDbusService,
                 public CryptohomeEventSourceSink,
                 public TpmInit::TpmInitCallback {
  public:
   Service();
   virtual ~Service();
 
-  // From chromeos::dbus::AbstractDbusService
+  // From brillo::dbus::AbstractDbusService
   // Setup the wrapped GObject and the GMainLoop
   virtual bool Initialize();
   virtual bool SeedUrandom();
@@ -495,53 +495,53 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                        gboolean* OUT_success,
                                        GError** error);
   // Runs on the mount thread.
-  virtual void DoSignBootLockbox(const chromeos::SecureBlob& request,
+  virtual void DoSignBootLockbox(const brillo::SecureBlob& request,
                                  DBusGMethodInvocation* context);
   virtual gboolean SignBootLockbox(const GArray* request,
                                    DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoVerifyBootLockbox(const chromeos::SecureBlob& request,
+  virtual void DoVerifyBootLockbox(const brillo::SecureBlob& request,
                                    DBusGMethodInvocation* context);
   virtual gboolean VerifyBootLockbox(const GArray* request,
                                      DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoFinalizeBootLockbox(const chromeos::SecureBlob& request,
+  virtual void DoFinalizeBootLockbox(const brillo::SecureBlob& request,
                                      DBusGMethodInvocation* context);
   virtual gboolean FinalizeBootLockbox(const GArray* request,
                                        DBusGMethodInvocation* context);
 
   // Runs on the mount thread.
-  virtual void DoGetBootAttribute(const chromeos::SecureBlob& request,
+  virtual void DoGetBootAttribute(const brillo::SecureBlob& request,
                                   DBusGMethodInvocation* context);
   virtual gboolean GetBootAttribute(const GArray* request,
                                     DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoSetBootAttribute(const chromeos::SecureBlob& request,
+  virtual void DoSetBootAttribute(const brillo::SecureBlob& request,
                                   DBusGMethodInvocation* context);
   virtual gboolean SetBootAttribute(const GArray* request,
                                     DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoFlushAndSignBootAttributes(const chromeos::SecureBlob& request,
+  virtual void DoFlushAndSignBootAttributes(const brillo::SecureBlob& request,
                                             DBusGMethodInvocation* context);
   virtual gboolean FlushAndSignBootAttributes(const GArray* request,
                                               DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoGetLoginStatus(const chromeos::SecureBlob& request,
+  virtual void DoGetLoginStatus(const brillo::SecureBlob& request,
                                 DBusGMethodInvocation* context);
   virtual gboolean GetLoginStatus(const GArray* request,
                                   DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoGetTpmStatus(const chromeos::SecureBlob& request,
+  virtual void DoGetTpmStatus(const brillo::SecureBlob& request,
                               DBusGMethodInvocation* context);
   virtual gboolean GetTpmStatus(const GArray* request,
                                 DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoGetEndorsementInfo(const chromeos::SecureBlob& request,
+  virtual void DoGetEndorsementInfo(const brillo::SecureBlob& request,
                                     DBusGMethodInvocation* context);
   virtual gboolean GetEndorsementInfo(const GArray* request,
                                       DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoInitializeCastKey(const chromeos::SecureBlob& request,
+  virtual void DoInitializeCastKey(const brillo::SecureBlob& request,
                                    DBusGMethodInvocation* context);
   virtual gboolean InitializeCastKey(const GArray* request,
                                      DBusGMethodInvocation* context);
@@ -645,7 +645,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   GMainLoop* loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome* cryptohome_;
-  chromeos::SecureBlob system_salt_;
+  brillo::SecureBlob system_salt_;
   scoped_ptr<cryptohome::Platform> default_platform_;
   cryptohome::Platform* platform_;
   scoped_ptr<cryptohome::Crypto> default_crypto_;
@@ -693,7 +693,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   HomeDirs* homedirs_;
   std::string guest_user_;
   bool legacy_mount_;
-  chromeos::SecureBlob public_mount_salt_;
+  brillo::SecureBlob public_mount_salt_;
   scoped_ptr<chaps::TokenManagerClient> default_chaps_client_;
   chaps::TokenManagerClient* chaps_client_;
   scoped_ptr<Attestation> default_attestation_;

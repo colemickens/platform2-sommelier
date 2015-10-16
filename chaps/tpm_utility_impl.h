@@ -25,13 +25,13 @@ class TPMUtilityImpl : public TPMUtility {
   virtual bool Init();
   virtual bool IsTPMAvailable();
   virtual bool Authenticate(int slot_id,
-                            const chromeos::SecureBlob& auth_data,
+                            const brillo::SecureBlob& auth_data,
                             const std::string& auth_key_blob,
                             const std::string& encrypted_master_key,
-                            chromeos::SecureBlob* master_key);
+                            brillo::SecureBlob* master_key);
   virtual bool ChangeAuthData(int slot_id,
-                              const chromeos::SecureBlob& old_auth_data,
-                              const chromeos::SecureBlob& new_auth_data,
+                              const brillo::SecureBlob& old_auth_data,
+                              const brillo::SecureBlob& new_auth_data,
                               const std::string& old_auth_key_blob,
                               std::string* new_auth_key_blob);
   virtual bool GenerateRandom(int num_bytes, std::string* random_data);
@@ -39,7 +39,7 @@ class TPMUtilityImpl : public TPMUtility {
   virtual bool GenerateKey(int slot,
                            int modulus_bits,
                            const std::string& public_exponent,
-                           const chromeos::SecureBlob& auth_data,
+                           const brillo::SecureBlob& auth_data,
                            std::string* key_blob,
                            int* key_handle);
   virtual bool GetPublicKey(int key_handle,
@@ -49,16 +49,16 @@ class TPMUtilityImpl : public TPMUtility {
                        const std::string& public_exponent,
                        const std::string& modulus,
                        const std::string& prime_factor,
-                       const chromeos::SecureBlob& auth_data,
+                       const brillo::SecureBlob& auth_data,
                        std::string* key_blob,
                        int* key_handle);
   virtual bool LoadKey(int slot,
                        const std::string& key_blob,
-                       const chromeos::SecureBlob& auth_data,
+                       const brillo::SecureBlob& auth_data,
                        int* key_handle);
   virtual bool LoadKeyWithParent(int slot,
                                  const std::string& key_blob,
-                                 const chromeos::SecureBlob& auth_data,
+                                 const brillo::SecureBlob& auth_data,
                                  int parent_key_handle,
                                  int* key_handle);
   virtual void UnloadKeysForSlot(int slot);
@@ -91,15 +91,15 @@ class TPMUtilityImpl : public TPMUtility {
   struct KeyInfo {
     TSS_HKEY tss_handle;
     std::string blob;
-    chromeos::SecureBlob auth_data;
+    brillo::SecureBlob auth_data;
   };
 
   int CreateHandle(int slot,
                    TSS_HKEY key,
                    const std::string& key_blob,
-                   const chromeos::SecureBlob& auth_data);
+                   const brillo::SecureBlob& auth_data);
   bool CreateKeyPolicy(TSS_HKEY key,
-                       const chromeos::SecureBlob& auth_data,
+                       const brillo::SecureBlob& auth_data,
                        bool auth_only);
   bool GetKeyAttributeData(TSS_HKEY key,
                            TSS_FLAG flag,
@@ -112,7 +112,7 @@ class TPMUtilityImpl : public TPMUtility {
   bool IsAlreadyLoaded(int slot, const std::string& key_blob, int* key_handle);
   bool LoadKeyInternal(TSS_HKEY parent,
                        const std::string& key_blob,
-                       const chromeos::SecureBlob& auth_data,
+                       const brillo::SecureBlob& auth_data,
                        TSS_HKEY* key);
   bool ReloadKey(int key_handle);
   bool InitSRK();

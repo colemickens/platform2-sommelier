@@ -11,7 +11,7 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/lockbox.h"
@@ -33,10 +33,10 @@ class MockInstallAttributes : public InstallAttributes {
 
   MOCK_CONST_METHOD0(IsReady, bool());
 
-  MOCK_CONST_METHOD2(Get, bool(const std::string&, chromeos::Blob*));
+  MOCK_CONST_METHOD2(Get, bool(const std::string&, brillo::Blob*));
 
-  MOCK_CONST_METHOD3(GetByIndex, bool(int, std::string*, chromeos::Blob*));
-  MOCK_METHOD2(Set, bool(const std::string&, const chromeos::Blob&));
+  MOCK_CONST_METHOD3(GetByIndex, bool(int, std::string*, brillo::Blob*));
+  MOCK_METHOD2(Set, bool(const std::string&, const brillo::Blob&));
 
   MOCK_METHOD0(Finalize, bool());
 
@@ -70,7 +70,7 @@ class MockInstallAttributes : public InstallAttributes {
   MOCK_METHOD1(set_is_first_install, void(bool));  // NOLINT
 
   MOCK_CONST_METHOD1(FindIndexByName, int(const std::string&));
-  MOCK_METHOD1(SerializeAttributes, bool(chromeos::Blob*));
+  MOCK_METHOD1(SerializeAttributes, bool(brillo::Blob*));
 };
 
 }  // namespace cryptohome

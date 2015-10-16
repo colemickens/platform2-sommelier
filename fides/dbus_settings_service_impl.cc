@@ -74,7 +74,7 @@ const char* InsertionStatusToErrorMsg(
 
 DBusSettingsServiceImpl::DBusSettingsServiceImpl(
     SettingsDocumentManager* settings_document_manager,
-    const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+    const base::WeakPtr<brillo::dbus_utils::ExportedObjectManager>&
         object_manager,
     const dbus::ObjectPath& object_path)
     : settings_document_manager_(settings_document_manager),
@@ -97,24 +97,24 @@ void DBusSettingsServiceImpl::OnSettingsChanged(const std::set<Key>& keys) {
 }
 
 void DBusSettingsServiceImpl::Start(
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(sequencer->GetHandler(
       "DBusSettingsServiceImpl.RegisterAsync() failed.", true));
 }
 
-bool DBusSettingsServiceImpl::Get(chromeos::ErrorPtr* error,
+bool DBusSettingsServiceImpl::Get(brillo::ErrorPtr* error,
                                   const std::string& in_key,
                                   std::vector<uint8_t>* out_value) {
   if (!Key::IsValidKey(in_key)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain,
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomain,
                                  kErrorInvalidKey, kErrorMsgInvalidKey,
                                  in_key.c_str());
     return false;
   }
   BlobRef value = settings_document_manager_->GetValue(Key(in_key));
   if (!value.valid()) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kErrorNoValue,
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kErrorNoValue,
                                  kErrorMsgNoValue, in_key.c_str());
     return false;
   }
@@ -122,11 +122,11 @@ bool DBusSettingsServiceImpl::Get(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool DBusSettingsServiceImpl::Enumerate(chromeos::ErrorPtr* error,
+bool DBusSettingsServiceImpl::Enumerate(brillo::ErrorPtr* error,
                                         const std::string& in_prefix,
                                         std::vector<std::string>* out_values) {
   if (!Key::IsValidKey(in_prefix)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain,
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomain,
                                  kErrorInvalidKey, kErrorMsgInvalidKey,
                                  in_prefix.c_str());
     return false;
@@ -139,14 +139,14 @@ bool DBusSettingsServiceImpl::Enumerate(chromeos::ErrorPtr* error,
 }
 
 bool DBusSettingsServiceImpl::Update(
-      chromeos::ErrorPtr* error,
+      brillo::ErrorPtr* error,
       const std::vector<uint8_t>& in_blob,
       const std::string& in_source_id) {
   SettingsDocumentManager::InsertionStatus insertion_status =
       settings_document_manager_->InsertBlob(
           in_source_id, BlobRef(&in_blob));
   if (insertion_status != SettingsDocumentManager::kInsertionStatusSuccess) {
-    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain,
+    brillo::Error::AddTo(error, FROM_HERE, kErrorDomain,
                            kErrorInsertionFailed,
                            InsertionStatusToErrorMsg(insertion_status));
     return false;

@@ -8,10 +8,10 @@
 
 #include <string>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 
 using std::string;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 
 namespace chaps {
 

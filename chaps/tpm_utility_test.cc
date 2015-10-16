@@ -11,7 +11,7 @@
 
 #include <memory>
 
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/rand.h>
@@ -65,7 +65,7 @@ class TestTPMUtility: public ::testing::Test {
     e_ = string("\x1\x0\x1", 3);
     unsigned char random[20];
     RAND_bytes(random, 20);
-    auth_ = chromeos::SecureBlob(std::begin(random), std::end(random));
+    auth_ = brillo::SecureBlob(std::begin(random), std::end(random));
     EXPECT_TRUE(tpm_->Init());
   }
 
@@ -98,7 +98,7 @@ class TestTPMUtility: public ::testing::Test {
   unique_ptr<TPMUtility> tpm_;
   int size_;
   string e_;
-  chromeos::SecureBlob auth_;
+  brillo::SecureBlob auth_;
   int key_ = 0;
   string blob_;
 };
@@ -110,14 +110,14 @@ TEST_F(TestTPMUtility, Authenticate) {
   string encrypted_master;
   EXPECT_TRUE(tpm_->Bind(key_, master, &encrypted_master));
   // Successful authentication.
-  chromeos::SecureBlob master2;
+  brillo::SecureBlob master2;
   EXPECT_TRUE(tpm_->Authenticate(0, auth_, blob_, encrypted_master, &master2));
   EXPECT_TRUE(master == master2.to_string());
   tpm_->UnloadKeysForSlot(0);
   // Change password.
   unsigned char random[20];
   RAND_bytes(random, 20);
-  chromeos::SecureBlob auth2(std::begin(random), std::end(random));
+  brillo::SecureBlob auth2(std::begin(random), std::end(random));
   string blob2;
   EXPECT_TRUE(tpm_->ChangeAuthData(0, auth_, auth2, blob_, &blob2));
   tpm_->UnloadKeysForSlot(0);
@@ -157,8 +157,8 @@ TEST_F(TestTPMUtility, WrappedKey) {
 
 TEST_F(TestTPMUtility, BadAuthSize) {
   EXPECT_TRUE(InjectKey());
-  chromeos::SecureBlob bad(48);
-  chromeos::SecureBlob tmp;
+  brillo::SecureBlob bad(48);
+  brillo::SecureBlob tmp;
   string master("master"), encrypted;
   EXPECT_TRUE(tpm_->Bind(key_, master, &encrypted));
   tpm_->UnloadKeysForSlot(0);

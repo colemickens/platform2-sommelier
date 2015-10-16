@@ -5,10 +5,10 @@
 #include "buffet/http_transport_client.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/http/http_request.h>
-#include <chromeos/http/http_utils.h>
-#include <chromeos/streams/memory_stream.h>
+#include <brillo/errors/error.h>
+#include <brillo/http/http_request.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/streams/memory_stream.h>
 #include <weave/enum_to_string.h>
 
 #include "buffet/weave_error_conversion.h"
@@ -25,7 +25,7 @@ const int kRequestTimeoutSeconds = 30;
 class ResponseImpl : public HttpClient::Response {
  public:
   ~ResponseImpl() override = default;
-  explicit ResponseImpl(std::unique_ptr<chromeos::http::Response> response)
+  explicit ResponseImpl(std::unique_ptr<brillo::http::Response> response)
       : response_{std::move(response)},
         data_{response_->ExtractDataAsString()} {}
 
@@ -39,14 +39,14 @@ class ResponseImpl : public HttpClient::Response {
   std::string GetData() const override { return data_; }
 
  private:
-  std::unique_ptr<chromeos::http::Response> response_;
+  std::unique_ptr<brillo::http::Response> response_;
   std::string data_;
   DISALLOW_COPY_AND_ASSIGN(ResponseImpl);
 };
 
 void OnSuccessCallback(const HttpClient::SendRequestCallback& callback,
                        int id,
-                       std::unique_ptr<chromeos::http::Response> response) {
+                       std::unique_ptr<brillo::http::Response> response) {
   callback.Run(std::unique_ptr<HttpClient::Response>{new ResponseImpl{
                    std::move(response)}},
                nullptr);
@@ -54,16 +54,16 @@ void OnSuccessCallback(const HttpClient::SendRequestCallback& callback,
 
 void OnErrorCallback(const HttpClient::SendRequestCallback& callback,
                      int id,
-                     const chromeos::Error* chromeos_error) {
+                     const brillo::Error* brillo_error) {
   weave::ErrorPtr error;
-  ConvertError(*chromeos_error, &error);
+  ConvertError(*brillo_error, &error);
   callback.Run(nullptr, std::move(error));
 }
 
 }  // anonymous namespace
 
 HttpTransportClient::HttpTransportClient()
-    : transport_{chromeos::http::Transport::CreateDefault()} {
+    : transport_{brillo::http::Transport::CreateDefault()} {
   transport_->SetDefaultTimeout(
       base::TimeDelta::FromSeconds(kRequestTimeoutSeconds));
 }
@@ -75,12 +75,12 @@ void HttpTransportClient::SendRequest(Method method,
                                       const Headers& headers,
                                       const std::string& data,
                                       const SendRequestCallback& callback) {
-  chromeos::http::Request request(url, weave::EnumToString(method), transport_);
+  brillo::http::Request request(url, weave::EnumToString(method), transport_);
   request.AddHeaders(headers);
   if (!data.empty()) {
-    auto stream = chromeos::MemoryStream::OpenCopyOf(data, nullptr);
+    auto stream = brillo::MemoryStream::OpenCopyOf(data, nullptr);
     CHECK(stream->GetRemainingSize());
-    chromeos::ErrorPtr cromeos_error;
+    brillo::ErrorPtr cromeos_error;
     if (!request.AddRequestBody(std::move(stream), &cromeos_error)) {
       weave::ErrorPtr error;
       ConvertError(*cromeos_error, &error);

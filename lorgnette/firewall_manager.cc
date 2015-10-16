@@ -5,7 +5,7 @@
 #include "lorgnette/firewall_manager.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 using std::string;
 
@@ -132,7 +132,7 @@ void FirewallManager::RequestUdpPortAccess(uint16_t port) {
   // process.
   dbus::FileDescriptor fd(lifeline_read_fd_);
   fd.CheckValidity();
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   if (!permission_broker_proxy_->RequestUdpPortAccess(port,
                                                       interface_,
                                                       fd,
@@ -153,7 +153,7 @@ void FirewallManager::RequestUdpPortAccess(uint16_t port) {
 }
 
 void FirewallManager::ReleaseUdpPortAccess(uint16_t port) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   bool success;
   if (requested_ports_.find(port) == requested_ports_.end()) {
     LOG(ERROR) << "UDP access has not been requested for port: "

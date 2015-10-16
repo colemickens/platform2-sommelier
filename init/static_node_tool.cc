@@ -17,10 +17,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 int main(int argc, char* argv[]) {
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "Chromium OS Static Node Tool\n\n"
       "  Parses through the kernel's modules.devname file and creates any\n"
       "  necessary static nodes.");

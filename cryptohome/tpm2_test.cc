@@ -22,7 +22,7 @@
 
 #include "cryptohome/cryptolib.h"
 
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
@@ -63,7 +63,7 @@ class Tpm2Test : public testing::Test {
 };
 
 TEST_F(Tpm2Test, GetOwnerPassword) {
-  chromeos::Blob owner_pass;
+  brillo::Blob owner_pass;
   EXPECT_TRUE(tpm_->GetOwnerPassword(&owner_pass));
   EXPECT_EQ(owner_pass.size(), 0);
   SecureBlob password("password");
@@ -114,7 +114,7 @@ TEST_F(Tpm2Test, EnabledOwnedNotOwned) {
 TEST_F(Tpm2Test, GetRandomDataSuccess) {
   std::string random_data("random_data");
   size_t num_bytes = random_data.size();
-  chromeos::Blob data;
+  brillo::Blob data;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(random_data),
                       Return(TPM_RC_SUCCESS)));
@@ -125,7 +125,7 @@ TEST_F(Tpm2Test, GetRandomDataSuccess) {
 }
 
 TEST_F(Tpm2Test, GetRandomDataFailure) {
-  chromeos::Blob data;
+  brillo::Blob data;
   size_t num_bytes = 5;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
@@ -134,7 +134,7 @@ TEST_F(Tpm2Test, GetRandomDataFailure) {
 
 TEST_F(Tpm2Test, GetRandomDataBadLength) {
   std::string random_data("random_data");
-  chromeos::Blob data;
+  brillo::Blob data;
   size_t num_bytes = random_data.size() + 1;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(random_data),

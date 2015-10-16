@@ -17,7 +17,7 @@ class DaemonMock : public Daemon {
   ~DaemonMock() override {}
 
   MOCK_METHOD0(ClearProcess, void());
-  MOCK_METHOD0(CreateProcess, chromeos::Process*());
+  MOCK_METHOD0(CreateProcess, brillo::Process*());
   MOCK_METHOD0(FindProcess, bool());
   MOCK_METHOD0(IsRunning, bool());
   MOCK_METHOD0(Terminate, bool());

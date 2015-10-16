@@ -5,7 +5,7 @@
 #include "brdebug/peerd_client.h"
 
 #include <base/bind.h>
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 using std::map;
 using std::string;
@@ -20,7 +20,7 @@ void OnSuccess(const std::string& operation) {
   LOG(INFO) << operation << " succeeded.";
 }
 
-void OnError(const std::string& operation, chromeos::Error* error) {
+void OnError(const std::string& operation, brillo::Error* error) {
   LOG(ERROR) << operation << " failed: " << error->GetMessage();
 }
 

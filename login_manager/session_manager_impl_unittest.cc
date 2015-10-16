@@ -21,7 +21,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
-#include <chromeos/cryptohome.h>
+#include <brillo/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
@@ -58,9 +58,9 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::_;
 
-using chromeos::cryptohome::home::SanitizeUserName;
-using chromeos::cryptohome::home::SetSystemSalt;
-using chromeos::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::SanitizeUserName;
+using brillo::cryptohome::home::SetSystemSalt;
+using brillo::cryptohome::home::kGuestUserName;
 
 using std::map;
 using std::string;

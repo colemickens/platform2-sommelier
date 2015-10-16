@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <chromeos/errors/error.h>
+#include <brillo/errors/error.h>
 
 #include "peerd/service.h"
 
@@ -22,14 +22,14 @@ class ServicePublisherInterface {
   // succeeded and false on error.  Note that while publishers
   // should make best efforts to inform peers of service changes in
   // a timely fashion, this is not guaranteed.
-  virtual bool OnServiceUpdated(chromeos::ErrorPtr* error,
+  virtual bool OnServiceUpdated(brillo::ErrorPtr* error,
                                 const Service& service) = 0;
   // Signals to a service publisher that we have remove a previously
   // added service (added via OnServiceUpdated()).  Returns true if
   // service was successfully removed.  Note that while publishers
   // should make best efforts to inform peers of service removal in
   // a timely fashion, this is not guaranteed.
-  virtual bool OnServiceRemoved(chromeos::ErrorPtr* error,
+  virtual bool OnServiceRemoved(brillo::ErrorPtr* error,
                                 const std::string& service_id) = 0;
 };
 

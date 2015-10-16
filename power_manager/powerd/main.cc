@@ -12,7 +12,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/flag_helper.h>
+#include <brillo/flag_helper.h>
 
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(vmodule, "",
                 "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
 
-  chromeos::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(argc, argv,
       "powerd, the Chromium OS userspace power manager.");
 
   CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";

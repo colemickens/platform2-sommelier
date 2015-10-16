@@ -23,12 +23,12 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/cryptohome.h>
+#include <brillo/glib/dbus.h>
+#include <brillo/secure_blob.h>
+#include <brillo/syslog_logging.h>
 #include <chromeos/constants/cryptohome.h>
-#include <chromeos/cryptohome.h>
-#include <chromeos/glib/dbus.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/secure_blob.h>
-#include <chromeos/syslog_logging.h>
 #include <google/protobuf/message_lite.h>
 
 #include "cryptohome/attestation.h"
@@ -50,7 +50,7 @@
 
 using base::FilePath;
 using base::StringPrintf;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::string;
 
 namespace {
@@ -213,17 +213,17 @@ typedef gboolean (*ProtoDBusMethod)(
 typedef DBusGProxyCall* (*ProtoDBusAsyncMethod)(
     DBusGProxy*, const GArray*, ProtoDBusReplyMethod, gpointer);
 
-chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
-  chromeos::glib::ScopedError error;
-  chromeos::glib::ScopedArray salt;
+brillo::Blob GetSystemSalt(const brillo::dbus::Proxy& proxy) {
+  brillo::glib::ScopedError error;
+  brillo::glib::ScopedArray salt;
   if (!org_chromium_CryptohomeInterface_get_system_salt(proxy.gproxy(),
-      &chromeos::Resetter(&salt).lvalue(),
-      &chromeos::Resetter(&error).lvalue())) {
+      &brillo::Resetter(&salt).lvalue(),
+      &brillo::Resetter(&error).lvalue())) {
     LOG(ERROR) << "GetSystemSalt failed: " << error->message;
-    return chromeos::Blob();
+    return brillo::Blob();
   }
 
-  chromeos::Blob system_salt;
+  brillo::Blob system_salt;
   system_salt.resize(salt->len);
   if (system_salt.size() == salt->len) {
     memcpy(system_salt.data(), static_cast<const void*>(salt->data), salt->len);
@@ -263,7 +263,7 @@ bool GetUsername(const base::CommandLine* cl, std::string* user_out) {
   return true;
 }
 
-bool GetPassword(const chromeos::dbus::Proxy& proxy,
+bool GetPassword(const brillo::dbus::Proxy& proxy,
                  const base::CommandLine* cl,
                  const std::string& cl_switch,
                  const std::string& prompt,
@@ -350,7 +350,7 @@ bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier *id) {
 }
 
 bool BuildAuthorization(base::CommandLine* cl,
-                        const chromeos::dbus::Proxy& proxy,
+                        const brillo::dbus::Proxy& proxy,
                         cryptohome::AuthorizationRequest* auth) {
   std::string password;
   GetPassword(proxy, cl, switches::kPasswordSwitch,
@@ -390,7 +390,7 @@ class ClientLoop {
     }
   }
 
-  void Initialize(chromeos::dbus::Proxy* proxy) {
+  void Initialize(brillo::dbus::Proxy* proxy) {
     dbus_g_object_register_marshaller(g_cclosure_marshal_generic,
                                       G_TYPE_NONE,
                                       G_TYPE_INT,
@@ -516,7 +516,7 @@ class TpmWaitLoop {
     }
   }
 
-  void Initialize(chromeos::dbus::Proxy* proxy) {
+  void Initialize(brillo::dbus::Proxy* proxy) {
     dbus_g_object_register_marshaller(g_cclosure_marshal_generic,
                                       G_TYPE_NONE,
                                       G_TYPE_BOOLEAN,
@@ -548,13 +548,13 @@ class TpmWaitLoop {
   GMainLoop *loop_;
 };
 
-bool WaitForTPMOwnership(chromeos::dbus::Proxy* proxy) {
+bool WaitForTPMOwnership(brillo::dbus::Proxy* proxy) {
   TpmWaitLoop client_loop;
   client_loop.Initialize(proxy);
   gboolean result;
-  chromeos::glib::ScopedError error;
+  brillo::glib::ScopedError error;
   if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(
-          proxy->gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+          proxy->gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
     printf("TpmIsBeingOwned call failed: %s.\n", error->message);
   }
   if (result) {
@@ -570,10 +570,10 @@ bool MakeProtoDBusCall(const std::string& name,
                        ProtoDBusMethod method,
                        ProtoDBusAsyncMethod async_method,
                        base::CommandLine* cl,
-                       chromeos::dbus::Proxy* proxy,
+                       brillo::dbus::Proxy* proxy,
                        const google::protobuf::MessageLite& request,
                        cryptohome::BaseReply* reply) {
-  chromeos::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
+  brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
   if (cl->HasSwitch(switches::kAsyncSwitch)) {
     ClientLoop loop;
     loop.Initialize(proxy);
@@ -588,12 +588,12 @@ bool MakeProtoDBusCall(const std::string& name,
     loop.Run();
     *reply = loop.reply();
   } else {
-    chromeos::glib::ScopedError error;
-    chromeos::glib::ScopedArray reply_ary;
+    brillo::glib::ScopedError error;
+    brillo::glib::ScopedArray reply_ary;
     if (!(*method)(proxy->gproxy(),
                    request_ary.get(),
-                   &chromeos::Resetter(&reply_ary).lvalue(),
-                   &chromeos::Resetter(&error).lvalue())) {
+                   &brillo::Resetter(&reply_ary).lvalue(),
+                   &brillo::Resetter(&error).lvalue())) {
       printf("Failed to call %s!\n", name.c_str());
       return false;
     }
@@ -611,14 +611,14 @@ int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch(switches::kSyslogSwitch))
-    chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+    brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   else
-    chromeos::InitLog(chromeos::kLogToStderr);
+    brillo::InitLog(brillo::kLogToStderr);
 
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
   g_type_init();
-  chromeos::dbus::BusConnection bus = chromeos::dbus::GetSystemBusConnection();
-  chromeos::dbus::Proxy proxy(bus,
+  brillo::dbus::BusConnection bus = brillo::dbus::GetSystemBusConnection();
+  brillo::dbus::Proxy proxy(bus,
                               cryptohome::kCryptohomeServiceName,
                               cryptohome::kCryptohomeServicePath,
                               cryptohome::kCryptohomeInterface);
@@ -641,7 +641,7 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     gint mount_error = 0;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_mount(proxy.gproxy(),
@@ -652,7 +652,7 @@ int main(int argc, char **argv) {
                NULL,
                &mount_error,
                &done,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("Mount call failed: %s, with reason code: %d.\n", error->message,
                mount_error);
       }
@@ -667,7 +667,7 @@ int main(int argc, char **argv) {
                cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                NULL,
                &async_id,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("Mount call failed: %s.\n", error->message);
       } else {
         client_loop.Run(async_id);
@@ -696,14 +696,14 @@ int main(int argc, char **argv) {
       create->set_copy_authorization_key(true);
     }
 
-    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(mount_req));
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(mount_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
     cryptohome::BaseReply reply;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
       ClientLoop loop;
       loop.Initialize(&proxy);
@@ -725,7 +725,7 @@ int main(int argc, char **argv) {
             auth_ary.get(),
             req_ary.get(),
             &out_reply,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
         printf("MountEx call failed: %s", error->message);
         return -1;
       }
@@ -740,13 +740,13 @@ int main(int argc, char **argv) {
                 action.c_str())) {
     gboolean done = false;
     gint mount_error = 0;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_mount_guest(proxy.gproxy(),
                &mount_error,
                &done,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("MountGuest call failed: %s, with reason code: %d.\n",
                error->message, mount_error);
       }
@@ -756,7 +756,7 @@ int main(int argc, char **argv) {
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_mount_guest(proxy.gproxy(),
                &async_id,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("Mount call failed: %s.\n", error->message);
       } else {
         client_loop.Run(async_id);
@@ -779,7 +779,7 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     gint mount_error = 0;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_mount_public(proxy.gproxy(),
@@ -788,7 +788,7 @@ int main(int argc, char **argv) {
                cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                &mount_error,
                &done,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("Mount call failed: %s, with reason code: %d.\n", error->message,
                mount_error);
       }
@@ -801,7 +801,7 @@ int main(int argc, char **argv) {
                cl->HasSwitch(switches::kCreateSwitch),
                cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                &async_id,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("Mount call failed: %s.\n", error->message);
       } else {
         client_loop.Run(async_id);
@@ -827,14 +827,14 @@ int main(int argc, char **argv) {
                 &password);
 
     gboolean done = false;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_check_key(proxy.gproxy(),
                user.c_str(),
                password.c_str(),
                &done,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("CheckKey call failed: %s.\n", error->message);
       }
     } else {
@@ -845,7 +845,7 @@ int main(int argc, char **argv) {
                user.c_str(),
                password.c_str(),
                &async_id,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("CheckKey call failed: %s.\n", error->message);
       } else {
         client_loop.Run(async_id);
@@ -870,14 +870,14 @@ int main(int argc, char **argv) {
     cryptohome::KeyData* data = remove_req.mutable_key()->mutable_data();
     data->set_label(cl->GetSwitchValueASCII(switches::kRemoveKeyLabelSwitch));
 
-    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(remove_req));
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(remove_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
     cryptohome::BaseReply reply;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
       ClientLoop loop;
       loop.Initialize(&proxy);
@@ -900,7 +900,7 @@ int main(int argc, char **argv) {
             auth_ary.get(),
             req_ary.get(),
             &out_reply,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
         printf("RemoveKeyEx call failed: %s", error->message);
         return -1;
       }
@@ -927,15 +927,15 @@ int main(int argc, char **argv) {
     }
     key_data_req.mutable_key()->mutable_data()->set_label(label);
 
-    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_data_req));
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_data_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get()) {
       return -1;
     }
 
     cryptohome::BaseReply reply;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
       ClientLoop loop;
       loop.Initialize(&proxy);
@@ -959,7 +959,7 @@ int main(int argc, char **argv) {
             auth_ary.get(),
             req_ary.get(),
             &out_reply,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
         printf("GetKeyDataEx call failed: %s", error->message);
         return -1;
       }
@@ -978,14 +978,14 @@ int main(int argc, char **argv) {
 
     cryptohome::ListKeysRequest list_keys_req;
 
-    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(list_keys_req));
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(list_keys_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
     cryptohome::BaseReply reply;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
       ClientLoop loop;
       loop.Initialize(&proxy);
@@ -1009,7 +1009,7 @@ int main(int argc, char **argv) {
             auth_ary.get(),
             req_ary.get(),
             &out_reply,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
         printf("ListKeysEx call failed: %s", error->message);
         return -1;
       }
@@ -1040,14 +1040,14 @@ int main(int argc, char **argv) {
     cryptohome::CheckKeyRequest check_req;
     // TODO(wad) Add a privileges cl interface
 
-    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(check_req));
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(check_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
     cryptohome::BaseReply reply;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
       ClientLoop loop;
       loop.Initialize(&proxy);
@@ -1070,7 +1070,7 @@ int main(int argc, char **argv) {
             auth_ary.get(),
             req_ary.get(),
             &out_reply,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
         printf("CheckKeyEx call failed: %s", error->message);
         return -1;
       }
@@ -1097,7 +1097,7 @@ int main(int argc, char **argv) {
                 &old_password);
 
     gboolean done = false;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_migrate_key(proxy.gproxy(),
@@ -1105,7 +1105,7 @@ int main(int argc, char **argv) {
                old_password.c_str(),
                password.c_str(),
                &done,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("MigrateKey call failed: %s.\n", error->message);
       }
     } else {
@@ -1117,7 +1117,7 @@ int main(int argc, char **argv) {
                old_password.c_str(),
                password.c_str(),
                &async_id,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("MigrateKey call failed: %s.\n", error->message);
       } else {
         client_loop.Run(async_id);
@@ -1146,7 +1146,7 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     gint key_index = -1;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_add_key(proxy.gproxy(),
@@ -1155,7 +1155,7 @@ int main(int argc, char **argv) {
                new_password.c_str(),
                &key_index,
                &done,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("AddKey call failed: %s.\n", error->message);
       }
     } else {
@@ -1167,7 +1167,7 @@ int main(int argc, char **argv) {
                password.c_str(),
                new_password.c_str(),
                &async_id,
-               &chromeos::Resetter(&error).lvalue())) {
+               &brillo::Resetter(&error).lvalue())) {
         printf("AddKey call failed: %s.\n", error->message);
       } else {
         client_loop.Run(async_id);
@@ -1223,14 +1223,14 @@ int main(int argc, char **argv) {
 
     // TODO(wad) Add a privileges cl interface
 
-    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
     cryptohome::BaseReply reply;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
       ClientLoop loop;
       loop.Initialize(&proxy);
@@ -1252,7 +1252,7 @@ int main(int argc, char **argv) {
             auth_ary.get(),
             req_ary.get(),
             &out_reply,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
         printf("AddKeyEx call failed: %s", error->message);
         return -1;
       }
@@ -1299,21 +1299,21 @@ int main(int argc, char **argv) {
       if (!new_secret.SerializeToString(&changes_str)) {
         LOG(FATAL) << "Failed to serialize Secret";
       }
-      chromeos::SecureBlob hmac_key(
+      brillo::SecureBlob hmac_key(
           cl->GetSwitchValueASCII(switches::kHmacSigningKeySwitch));
-      chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
+      brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
       SecureBlob hmac = cryptohome::CryptoLib::HmacSha256(hmac_key, hmac_data);
       key_req.set_authorization_signature(hmac.to_string());
     }
 
-    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
-    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
-    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    brillo::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    brillo::glib::ScopedArray req_ary(GArrayFromProtoBuf(key_req));
     if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
       return -1;
 
     cryptohome::BaseReply reply;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (cl->HasSwitch(switches::kAsyncSwitch)) {
       ClientLoop loop;
       loop.Initialize(&proxy);
@@ -1336,7 +1336,7 @@ int main(int argc, char **argv) {
             auth_ary.get(),
             req_ary.get(),
             &out_reply,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
         printf("Failed to call UpdateKeyEx!\n");
       }
       ParseBaseReply(out_reply, &reply);
@@ -1359,11 +1359,11 @@ int main(int argc, char **argv) {
     }
 
     gboolean done = false;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_remove(proxy.gproxy(),
         user.c_str(),
         &done,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("Remove call failed: %s.\n", error->message);
     }
     if (!done) {
@@ -1373,11 +1373,11 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_UNMOUNT],
                      action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean done = false;
     if (!org_chromium_CryptohomeInterface_unmount(proxy.gproxy(),
         &done,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("Unmount call failed: %s.\n", error->message);
     }
     if (!done) {
@@ -1387,11 +1387,11 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNTED],
                      action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean done = false;
     if (!org_chromium_CryptohomeInterface_is_mounted(proxy.gproxy(),
         &done,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("IsMounted call failed: %s.\n", error->message);
     }
     if (done) {
@@ -1487,7 +1487,7 @@ int main(int argc, char **argv) {
          it != user_dirs.end(); ++it) {
       FilePath path(*it);
       const std::string dir_name = path.BaseName().value();
-      if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name))
+      if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
         continue;
       // TODO(wad): change it so that it uses GetVaultKeysets().
       scoped_ptr<cryptohome::FileEnumerator> file_enumerator(
@@ -1525,11 +1525,11 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
                      action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean result = false;
     if (!org_chromium_CryptohomeInterface_tpm_is_enabled(proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsEnabled call failed: %s.\n", error->message);
     } else {
       printf("TPM Enabled: %s\n", (result ? "true" : "false"));
@@ -1537,21 +1537,21 @@ int main(int argc, char **argv) {
     result = false;
     if (!org_chromium_CryptohomeInterface_tpm_is_owned(proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsOwned call failed: %s.\n", error->message);
     } else {
       printf("TPM Owned: %s\n", (result ? "true" : "false"));
     }
     if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsBeingOwned call failed: %s.\n", error->message);
     } else {
       printf("TPM Being Owned: %s\n", (result ? "true" : "false"));
     }
     if (!org_chromium_CryptohomeInterface_tpm_is_ready(proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsReady call failed: %s.\n", error->message);
     } else {
       printf("TPM Ready: %s\n", (result ? "true" : "false"));
@@ -1559,7 +1559,7 @@ int main(int argc, char **argv) {
     gchar* password;
     if (!org_chromium_CryptohomeInterface_tpm_get_password(proxy.gproxy(),
         &password,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmGetPassword call failed: %s.\n", error->message);
     } else {
       printf("TPM Password: %s\n", password);
@@ -1582,11 +1582,11 @@ int main(int argc, char **argv) {
     printf("GetTpmStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
                      action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gchar* status;
     if (!org_chromium_CryptohomeInterface_get_status_string(proxy.gproxy(),
         &status,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("GetStatusString call failed: %s.\n", error->message);
     } else {
       printf("%s\n", status);
@@ -1594,14 +1594,14 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SET_CURRENT_USER_OLD],
                      action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
     if (!org_chromium_CryptohomeInterface_update_current_user_activity_timestamp(  // NOLINT
             proxy.gproxy(),
             base::TimeDelta::FromDays(
                 kSetCurrentUserOldOffsetInDays).InSeconds(),
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
       printf("UpdateCurrentUserActivityTimestamp call failed: %s.\n",
              error->message);
     } else {
@@ -1611,14 +1611,14 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_DO_FREE_DISK_SPACE_CONTROL],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
     gint async_id = -1;
     if (!org_chromium_CryptohomeInterface_async_do_automatic_free_disk_space_control(  // NOLINT
             proxy.gproxy(),
             &async_id,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
       printf("AsyncDoAutomaticFreeDiskSpaceControl call failed: %s.\n",
              error->message);
     } else {
@@ -1635,19 +1635,19 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_TAKE_OWNERSHIP],
                      action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_tpm_can_attempt_ownership(
         proxy.gproxy(),
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmCanAttemptOwnership call failed: %s.\n", error->message);
     }
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_CLEAR_STORED_PASSWORD],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_tpm_clear_stored_password(
         proxy.gproxy(),
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmClearStoredPassword call failed: %s.\n", error->message);
     }
   } else if (!strcmp(
@@ -1659,12 +1659,12 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean result;
     if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
         proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("IsReady call failed: %s.\n", error->message);
     }
     if (result == FALSE) {
@@ -1672,13 +1672,13 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    chromeos::glib::ScopedArray value;
+    brillo::glib::ScopedArray value;
     if (!org_chromium_CryptohomeInterface_install_attributes_get(
         proxy.gproxy(),
         name.c_str(),
-        &chromeos::Resetter(&value).lvalue(),
+        &brillo::Resetter(&value).lvalue(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
        printf("Get() failed: %s.\n", error->message);
     }
     std::string value_str(value->data, value->len);
@@ -1701,12 +1701,12 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean result;
     if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
         proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("IsReady call failed: %s.\n", error->message);
     }
 
@@ -1715,14 +1715,14 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    chromeos::glib::ScopedArray value_ary(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedArray value_ary(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(value_ary.get(), value.c_str(), value.size() + 1);
     if (!org_chromium_CryptohomeInterface_install_attributes_set(
         proxy.gproxy(),
         name.c_str(),
         value_ary.get(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
        printf("Set() failed: %s.\n", error->message);
     }
     if (result == FALSE)
@@ -1730,12 +1730,12 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_FINALIZE],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean result;
     if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
         proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("IsReady call failed: %s.\n", error->message);
     }
     if (result == FALSE) {
@@ -1745,7 +1745,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_install_attributes_finalize(
         proxy.gproxy(),
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("Finalize() failed: %s.\n", error->message);
     }
     printf("InstallAttributesFinalize(): %d\n", result);
@@ -1754,8 +1754,8 @@ int main(int argc, char **argv) {
       action.c_str())) {
     gboolean success;
     std::string random_data = "TEST DATA TO STORE";
-    chromeos::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedError error;
     g_array_append_vals(data.get(),
                         random_data.data(),
                         random_data.length());
@@ -1764,7 +1764,7 @@ int main(int argc, char **argv) {
         proxy.gproxy(),
         data.get(),
         &success,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("Store enrollment failed: %s.\n", error->message);
       return 1;
     }
@@ -1778,13 +1778,13 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_LOAD_ENROLLMENT],
       action.c_str())) {
     gboolean success;
-    chromeos::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_load_enrollment_state(
         proxy.gproxy(),
-        &chromeos::Resetter(&data).lvalue(),
+        &brillo::Resetter(&data).lvalue(),
         &success,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("Load enrollment failed: %s.\n", error->message);
       return 1;
     }
@@ -1805,7 +1805,7 @@ int main(int argc, char **argv) {
     // If no username is specified, proceed with the empty string.
     string user = cl->GetSwitchValueASCII(switches::kUserSwitch);
     if (!user.empty()) {
-      chromeos::glib::ScopedError error;
+      brillo::glib::ScopedError error;
       gchar* label = NULL;
       gchar* pin = NULL;
       int slot = 0;
@@ -1815,7 +1815,7 @@ int main(int argc, char **argv) {
               &label,
               &pin,
               &slot,
-              &chromeos::Resetter(&error).lvalue())) {
+              &brillo::Resetter(&error).lvalue())) {
         printf("PKCS #11 info call failed: %s.\n", error->message);
       } else {
         printf("Token properties for %s:\n", user.c_str());
@@ -1838,11 +1838,11 @@ int main(int argc, char **argv) {
     // If no username is specified, proceed with the empty string.
     string user;
     GetUsername(cl, &user);
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_pkcs11_terminate(
             proxy.gproxy(),
             user.c_str(),
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
       printf("PKCS #11 terminate call failed: %s.\n", error->message);
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_LIVE_TEST],
@@ -1855,13 +1855,13 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
       action.c_str())) {
     bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean result = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_verify_attestation_data(
         proxy.gproxy(),
         is_cros_core,
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmVerifyAttestationData call failed: %s.\n", error->message);
     }
     if (result == FALSE) {
@@ -1871,13 +1871,13 @@ int main(int argc, char **argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_VERIFY_EK],
                      action.c_str())) {
     bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean result = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_verify_ek(
         proxy.gproxy(),
         is_cros_core,
         &result,
-        &chromeos::Resetter(&error).lvalue())) {
+        &brillo::Resetter(&error).lvalue())) {
       printf("TpmVerifyEK call failed: %s.\n", error->message);
     }
     if (result == FALSE) {
@@ -1887,16 +1887,16 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_STATUS],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean result = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_is_attestation_prepared(
-        proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+        proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsAttestationPrepared call failed: %s.\n", error->message);
     } else {
       printf("Attestation Prepared: %s\n", (result ? "true" : "false"));
     }
     if (!org_chromium_CryptohomeInterface_tpm_is_attestation_enrolled(
-        proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+        proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsAttestationEnrolled call failed: %s.\n", error->message);
     } else {
       printf("Attestation Enrolled: %s\n", (result ? "true" : "false"));
@@ -1904,15 +1904,15 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_START_ENROLL],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     string response_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      chromeos::glib::ScopedArray data;
+      brillo::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(  // NOLINT
           proxy.gproxy(),
           cryptohome::Attestation::kDefaultPCA,
-          &chromeos::Resetter(&data).lvalue(),
-          &chromeos::Resetter(&error).lvalue())) {
+          &brillo::Resetter(&data).lvalue(),
+          &brillo::Resetter(&error).lvalue())) {
         printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
                error->message);
         return 1;
@@ -1926,7 +1926,7 @@ int main(int argc, char **argv) {
               proxy.gproxy(),
               cryptohome::Attestation::kDefaultPCA,
               &async_id,
-              &chromeos::Resetter(&error).lvalue())) {
+              &brillo::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationCreateEnrollRequest call failed: %s.\n",
                error->message);
         return 1;
@@ -1948,14 +1948,14 @@ int main(int argc, char **argv) {
       printf("Failed to read input file.\n");
       return 1;
     }
-    chromeos::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(data.get(), contents.data(), contents.length());
     gboolean success = FALSE;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
               proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
-              &success, &chromeos::Resetter(&error).lvalue())) {
+              &success, &brillo::Resetter(&error).lvalue())) {
         printf("TpmAttestationEnroll call failed: %s.\n", error->message);
         return 1;
       }
@@ -1965,7 +1965,7 @@ int main(int argc, char **argv) {
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_enroll(
               proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
-              &async_id, &chromeos::Resetter(&error).lvalue())) {
+              &async_id, &brillo::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationEnroll call failed: %s.\n", error->message);
         return 1;
       } else {
@@ -1980,17 +1980,17 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     string response_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      chromeos::glib::ScopedArray data;
+      brillo::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
           proxy.gproxy(),
           cryptohome::Attestation::kDefaultPCA,
           cryptohome::ENTERPRISE_USER_CERTIFICATE,
           "", "",
-          &chromeos::Resetter(&data).lvalue(),
-          &chromeos::Resetter(&error).lvalue())) {
+          &brillo::Resetter(&data).lvalue(),
+          &brillo::Resetter(&error).lvalue())) {
         printf("TpmAttestationCreateCertRequest call failed: %s.\n",
                error->message);
         return 1;
@@ -2006,7 +2006,7 @@ int main(int argc, char **argv) {
               cryptohome::ENTERPRISE_USER_CERTIFICATE,
               "", "",
               &async_id,
-              &chromeos::Resetter(&error).lvalue())) {
+              &brillo::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationCreateCertRequest call failed: %s.\n",
                error->message);
         return 1;
@@ -2036,22 +2036,22 @@ int main(int argc, char **argv) {
       return 1;
     }
     gboolean is_user_specific = (key_name != "attest-ent-machine");
-    chromeos::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(data.get(), contents.data(), contents.length());
     gboolean success = FALSE;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     string cert_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
-      chromeos::glib::ScopedArray cert;
+      brillo::glib::ScopedArray cert;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
           proxy.gproxy(),
           data.get(),
           is_user_specific,
           username.c_str(),
           key_name.c_str(),
-          &chromeos::Resetter(&cert).lvalue(),
+          &brillo::Resetter(&cert).lvalue(),
           &success,
-          &chromeos::Resetter(&error).lvalue())) {
+          &brillo::Resetter(&error).lvalue())) {
         printf("TpmAttestationFinishCertRequest call failed: %s.\n",
                error->message);
         return 1;
@@ -2068,7 +2068,7 @@ int main(int argc, char **argv) {
               username.c_str(),
               key_name.c_str(),
               &async_id,
-              &chromeos::Resetter(&error).lvalue())) {
+              &brillo::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationFinishCertRequest call failed: %s.\n",
                error->message);
         return 1;
@@ -2094,7 +2094,7 @@ int main(int argc, char **argv) {
       return 1;
     }
     gboolean is_user_specific = (key_name != "attest-ent-machine");
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean exists = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
           proxy.gproxy(),
@@ -2102,7 +2102,7 @@ int main(int argc, char **argv) {
           username.c_str(),
           key_name.c_str(),
           &exists,
-          &chromeos::Resetter(&error).lvalue())) {
+          &brillo::Resetter(&error).lvalue())) {
       printf("TpmAttestationDoesKeyExist call failed: %s.\n", error->message);
       return 1;
     }
@@ -2111,27 +2111,27 @@ int main(int argc, char **argv) {
       return 0;
     }
     gboolean success = FALSE;
-    chromeos::glib::ScopedArray cert;
+    brillo::glib::ScopedArray cert;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate(
           proxy.gproxy(),
           is_user_specific,
           username.c_str(),
           key_name.c_str(),
-          &chromeos::Resetter(&cert).lvalue(),
+          &brillo::Resetter(&cert).lvalue(),
           &success,
-          &chromeos::Resetter(&error).lvalue())) {
+          &brillo::Resetter(&error).lvalue())) {
       printf("TpmAttestationGetCertificate call failed: %s.\n", error->message);
       return 1;
     }
-    chromeos::glib::ScopedArray public_key;
+    brillo::glib::ScopedArray public_key;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_public_key(
           proxy.gproxy(),
           is_user_specific,
           username.c_str(),
           key_name.c_str(),
-          &chromeos::Resetter(&public_key).lvalue(),
+          &brillo::Resetter(&public_key).lvalue(),
           &success,
-          &chromeos::Resetter(&error).lvalue())) {
+          &brillo::Resetter(&error).lvalue())) {
       printf("TpmAttestationGetPublicKey call failed: %s.\n", error->message);
       return 1;
     }
@@ -2153,14 +2153,14 @@ int main(int argc, char **argv) {
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
     gint async_id = -1;
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_register_key(
           proxy.gproxy(),
           true,
           username.c_str(),
           key_name.c_str(),
           &async_id,
-          &chromeos::Resetter(&error).lvalue())) {
+          &brillo::Resetter(&error).lvalue())) {
       printf("TpmAttestationRegisterKey call failed: %s.\n", error->message);
       return 1;
     } else {
@@ -2184,14 +2184,14 @@ int main(int argc, char **argv) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
     }
-    chromeos::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(challenge.get(), contents.data(), contents.length());
-    chromeos::glib::ScopedArray device_id(g_array_new(FALSE, FALSE, 1));
+    brillo::glib::ScopedArray device_id(g_array_new(FALSE, FALSE, 1));
     string device_id_str = "fake_device_id";
     g_array_append_vals(device_id.get(),
                         device_id_str.data(),
                         device_id_str.length());
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     ClientLoop client_loop;
     client_loop.Initialize(&proxy);
     gint async_id = -1;
@@ -2205,7 +2205,7 @@ int main(int argc, char **argv) {
             TRUE,
             challenge.get(),
             &async_id,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
       printf("AsyncTpmAttestationSignEnterpriseChallenge call failed: %s.\n",
              error->message);
       return 1;
@@ -2230,7 +2230,7 @@ int main(int argc, char **argv) {
       return 1;
     }
     gboolean is_user_specific = (key_name != "attest-ent-machine");
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean success = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_delete_keys(
             proxy.gproxy(),
@@ -2238,7 +2238,7 @@ int main(int argc, char **argv) {
             username.c_str(),
             key_name.c_str(),
             &success,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
       printf("AsyncTpmAttestationDeleteKeys call failed: %s.\n",
              error->message);
       return 1;
@@ -2266,14 +2266,14 @@ int main(int argc, char **argv) {
       }
       printf("GetEndorsmentInfo (protobuf) success.\n");
     } else {
-      chromeos::glib::ScopedError error;
+      brillo::glib::ScopedError error;
       gboolean success = FALSE;
       gchar* ek_info = NULL;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_get_ek(
               proxy.gproxy(),
               &ek_info,
               &success,
-              &chromeos::Resetter(&error).lvalue())) {
+              &brillo::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationGetEK call failed: %s.\n", error->message);
         return 1;
       }
@@ -2288,16 +2288,16 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
+    brillo::glib::ScopedError error;
     gboolean success = FALSE;
     std::string token = cl->GetSwitchValueASCII(switches::kPasswordSwitch);
-    chromeos::glib::ScopedArray reset_request;
+    brillo::glib::ScopedArray reset_request;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_reset_identity(
             proxy.gproxy(),
             token.c_str(),
-            &chromeos::Resetter(&reset_request).lvalue(),
+            &brillo::Resetter(&reset_request).lvalue(),
             &success,
-            &chromeos::Resetter(&error).lvalue())) {
+            &brillo::Resetter(&error).lvalue())) {
       printf("TpmAttestationResetIdentity call failed: %s.\n", error->message);
       return 1;
     }

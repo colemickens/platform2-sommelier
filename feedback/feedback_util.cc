@@ -4,7 +4,7 @@
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include "chromeos/process.h"
+#include "brillo/process.h"
 
 namespace {
 
@@ -33,7 +33,7 @@ bool ZipString(const base::FilePath& filename,
                       data.c_str(), data.size()) == -1)
     return false;
 
-  chromeos::ProcessImpl zipprocess;
+  brillo::ProcessImpl zipprocess;
   zipprocess.AddArg(kZipProcess);
   zipprocess.AddArg(filename.value());
   zipprocess.RedirectOutput(temp_path.value());

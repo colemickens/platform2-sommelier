@@ -14,7 +14,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/secure_blob.h>
+#include <brillo/secure_blob.h>
 #include <leveldb/db.h>
 #include <leveldb/env.h>
 #ifndef NO_MEMENV
@@ -28,7 +28,7 @@
 #include "pkcs11/cryptoki.h"
 
 using base::FilePath;
-using chromeos::SecureBlob;
+using brillo::SecureBlob;
 using std::map;
 using std::string;
 using std::vector;
@@ -341,7 +341,7 @@ bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
   string hmac = input.substr(input.size() - kHMACSizeBytes);
   string computed_hmac = HmacSha512(*stripped, key);
   if ((hmac.size() != computed_hmac.size()) ||
-      (0 != chromeos::SecureMemcmp(hmac.data(),
+      (0 != brillo::SecureMemcmp(hmac.data(),
                                    computed_hmac.data(),
                                    hmac.size()))) {
     LOG(ERROR) << "Failed to verify blob integrity.";

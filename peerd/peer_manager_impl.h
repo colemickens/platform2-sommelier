@@ -21,7 +21,7 @@ namespace peerd {
 class PeerManagerImpl : public PeerManagerInterface {
  public:
   PeerManagerImpl(const scoped_refptr<dbus::Bus> bus,
-                  chromeos::dbus_utils::ExportedObjectManager* object_manager);
+                  brillo::dbus_utils::ExportedObjectManager* object_manager);
   ~PeerManagerImpl() override = default;
 
   // Inherited from PeerManagerInterface.  See comments there.
@@ -43,7 +43,7 @@ class PeerManagerImpl : public PeerManagerInterface {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
-  chromeos::dbus_utils::ExportedObjectManager* object_manager_;
+  brillo::dbus_utils::ExportedObjectManager* object_manager_;
   std::map<std::string, std::unique_ptr<DiscoveredPeer>> peers_;
   uint64_t peers_discovered_{0};
   DISALLOW_COPY_AND_ASSIGN(PeerManagerImpl);

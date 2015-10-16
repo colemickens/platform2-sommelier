@@ -10,7 +10,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/syslog_logging.h>
 
 #include "wimax_manager/event_dispatcher.h"
 #include "wimax_manager/manager.h"
@@ -59,11 +59,11 @@ int GetLogLevel(const string &log_level_value) {
 
 // Always logs to syslog and stderr when running in the foreground.
 void SetupLogging(bool foreground, int log_level) {
-  int log_flags = chromeos::kLogToSyslog;
+  int log_flags = brillo::kLogToSyslog;
   if (foreground)
-    log_flags |= chromeos::kLogToStderr;
+    log_flags |= brillo::kLogToStderr;
 
-  chromeos::InitLog(log_flags);
+  brillo::InitLog(log_flags);
   logging::SetMinLogLevel(log_level);
 }
 
