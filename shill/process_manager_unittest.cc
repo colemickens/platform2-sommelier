@@ -158,9 +158,9 @@ TEST_F(ProcessManagerTest,
   int stdout_fd;
   int stderr_fd;
 
-#if !defined(__ANDROID__)
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
+#if !defined(__ANDROID__)
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
 #endif  // __ANDROID__
   EXPECT_CALL(minijail_,
@@ -187,7 +187,6 @@ TEST_F(ProcessManagerTest,
   AssertNonEmptyWatchedProcesses();
 }
 
-#if !defined(__ANDROID__)
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesHandlesFailureOfDropRoot) {
   const string kProgram = "/usr/bin/dump";
@@ -216,7 +215,6 @@ TEST_F(ProcessManagerTest,
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }
-#endif  // __ANDROID__
 
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesHandlesFailureOfRunAndDestroy) {
@@ -226,9 +224,9 @@ TEST_F(ProcessManagerTest,
   const string kGroup = "group";
   const uint64_t kCapMask = 1;
 
-#if !defined(__ANDROID__)
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
+#if !defined(__ANDROID__)
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
 #endif  // __ANDROID__
   EXPECT_CALL(minijail_,
