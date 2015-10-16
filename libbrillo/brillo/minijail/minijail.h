@@ -63,7 +63,7 @@ class Minijail {
                        std::vector<char*> args,
                        int* status);
 
-  // minijail_run_pid_pipe
+  // minijail_run_pid_pipes, with |pstdout_fd| and |pstderr_fd| set to NULL.
   virtual bool RunPipe(struct minijail* jail,
                        std::vector<char*> args,
                        pid_t* pid,

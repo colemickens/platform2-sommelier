@@ -83,7 +83,13 @@ bool Minijail::RunPipe(struct minijail* jail,
                        vector<char*> args,
                        pid_t* pid,
                        int* stdin) {
-  return minijail_run_pid_pipe(jail, args[0], args.data(), pid, stdin) == 0;
+#if defined(__ANDROID__)
+  return minijail_run_pid_pipes_no_preload(jail, args[0], args.data(), pid,
+                                           stdin, NULL, NULL) == 0;
+#else
+  return minijail_run_pid_pipes(jail, args[0], args.data(), pid, stdin, NULL,
+                                NULL) == 0;
+#endif  // __ANDROID__
 }
 
 bool Minijail::RunPipes(struct minijail* jail,
@@ -92,8 +98,13 @@ bool Minijail::RunPipes(struct minijail* jail,
                         int* stdin,
                         int* stdout,
                         int* stderr) {
-  return minijail_run_pid_pipes(
-             jail, args[0], args.data(), pid, stdin, stdout, stderr) == 0;
+#if defined(__ANDROID__)
+  return minijail_run_pid_pipes_no_preload(jail, args[0], args.data(), pid,
+                                           stdin, stdout, stderr) == 0;
+#else
+  return minijail_run_pid_pipes(jail, args[0], args.data(), pid, stdin, stdout,
+                                stderr) == 0;
+#endif  // __ANDROID__
 }
 
 bool Minijail::RunAndDestroy(struct minijail* jail,
