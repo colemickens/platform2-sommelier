@@ -19,8 +19,8 @@ We test shill using two sets of tests: unit tests, and integration
 tests. The unit tests are built using Google Test [1] and Google Mock
 [2]; the integration tests use autotest [3].
 
-Running unit tests
-------------------
+Running unit tests for Chrome OS
+--------------------------------
 Here ${BOARD} is a valid board name, like link or x86-generic.
 - build the shill_unittest target
 - run the resulting shill_unittest binary
@@ -56,12 +56,34 @@ Here ${BOARD} is a valid board name, like link or x86-generic.
     (chroot)$ MAKEFLAGS="--stop" cros_workon_make --test --board=${BOARD} \
                 --reconf shill
 
-Running unit tests with the address sanitizer
----------------------------------------------
+Running unit tests for Chrome OS with the address sanitizer
+-----------------------------------------------------------
 USE="asan clang wimax" TEST_FILTER="shill::*" emerge-${BOARD} shill
 
 This also turns on "wimax" and its tests, since this is disabled on most
 platforms.
+
+Running unit tests for Android
+------------------------------
+Currently, only native unit tests are supported on Android, meaning that unit tests
+can only be run on the target device.
+
+The test binary is located at /data/nativetest/shill_test/shill_test.
+By default, it does not have the execute permissions due to inherited
+directory security policy. Consequently, before running the unit tests,
+you will need to grant execute permissions to the test binary using
+the following command:
+  chmod +x /data/nativetest/shill_test/shill_test
+
+To run all unit tests:
+  /data/nativetest/shill_test/shill_test
+
+To run specific unit tests using filter:
+  /data/nativetest/shill_test/shill_test --gtest_filter=<TestClassName>.<TestName>
+
+For example:
+  /data/nativetest/shill_test/shill_test --gtest_filter=WiFiMainTest.OnNewWiphy
+  /data/nativetest/shill_test/shill_test --gtest_filter=WiFiMainTest.*
 
 Running integration tests
 -------------------------
