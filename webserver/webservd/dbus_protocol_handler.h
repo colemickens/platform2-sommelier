@@ -60,10 +60,13 @@ class DBusProtocolHandler final
   brillo::dbus_utils::ExportedObjectManager* GetObjectManager() const;
 
   // Overrides from org::chromium::WebServer::DBusProtocolHandlerInterface.
-  std::string AddRequestHandler(
+  bool AddRequestHandler(
+      brillo::ErrorPtr* error,
+      dbus::Message* message,
       const std::string& in_url,
       const std::string& in_method,
-      const std::string& in_service_name) override;
+      const std::string& in_service_name,
+      std::string* out_request_handler_id) override;
 
   bool RemoveRequestHandler(brillo::ErrorPtr* error,
                             const std::string& in_request_handler_id) override;
@@ -86,6 +89,8 @@ class DBusProtocolHandler final
 
   // Information about a request handler D-Bus back-end client.
   struct DBusServiceData {
+    // D-Bus unique address of the process owning this service.
+    std::string owner;
     // A D-Bus proxy to the client's request handler object that actually
     // processes requests registered for this client.
     std::unique_ptr<RequestHandlerProxy> handler_proxy;

@@ -66,13 +66,17 @@ ExportedObjectManager* DBusProtocolHandler::GetObjectManager() const {
   return dbus_object_->GetObjectManager().get();
 }
 
-std::string DBusProtocolHandler::AddRequestHandler(
+bool DBusProtocolHandler::AddRequestHandler(
+    brillo::ErrorPtr* error,
+    dbus::Message* message,
     const std::string& in_url,
     const std::string& in_method,
-    const std::string& in_service_name) {
+    const std::string& in_service_name,
+    std::string* out_request_handler_id) {
   auto p = dbus_service_data_.find(in_service_name);
   if (p == dbus_service_data_.end()) {
     DBusServiceData dbus_service_data;
+    dbus_service_data.owner = message->GetSender();
     dbus_service_data.handler_proxy.reset(
         new RequestHandlerProxy{server_->GetBus(), in_service_name});
     dbus_service_data.on_client_disconnected_callback =
@@ -92,7 +96,8 @@ std::string DBusProtocolHandler::AddRequestHandler(
   p->second.handler_ids.insert(handler_id);
   handler_to_service_name_map_.emplace(handler_id, in_service_name);
 
-  return handler_id;
+  *out_request_handler_id = handler_id;
+  return true;
 }
 
 bool DBusProtocolHandler::RemoveRequestHandler(
@@ -129,8 +134,12 @@ void DBusProtocolHandler::OnClientDisconnected(
   // or is being replaced with another running instance.
   // In either case, we need to remove the old client's handlers since the
   // new client will register their own on start up anyway.
+  // However pay attention to the case where the service owner is the same as
+  // the sender, in which case we should not remove the handlers. This happens
+  // if the handling process claims D-Bus service after it registers request
+  // handlers with the web server.
   auto p = dbus_service_data_.find(service_name);
-  if (p == dbus_service_data_.end())
+  if (p == dbus_service_data_.end() || p->second.owner == service_owner)
     return;
 
   for (const std::string& handler_id : p->second.handler_ids) {

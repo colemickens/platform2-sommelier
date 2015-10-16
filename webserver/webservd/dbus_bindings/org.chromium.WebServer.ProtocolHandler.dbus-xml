@@ -12,7 +12,9 @@
       <arg name="method" type="s" direction="in"/>
       <arg name="service_name" type="s" direction="in"/>
       <arg name="request_handler_id" type="s" direction="out"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
+                  value="true"/>
     </method>
     <method name="RemoveRequestHandler">
       <tp:docstring>
