@@ -114,6 +114,26 @@ bool detect_video_acc_vp8(void) {
 }
 
 /* Helper function for detect_video_acc_vp9.
+ * Determine given |fd| is a VAAPI device supports VP9 decoding, i.e. it
+ * supports VP9 profile, has decoding entry point, and output YUV420
+ * formats.
+ */
+static bool is_vaapi_dec_vp9_device(int fd) {
+#ifdef HAS_VAAPI
+#if VA_CHECK_VERSION(0, 37, 1)
+  VAProfile va_profiles[] = {
+    VAProfileVP9Profile0,
+    VAProfileNone
+  };
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointVLD,
+        VA_RT_FORMAT_YUV420))
+    return true;
+#endif
+#endif
+  return false;
+}
+
+/* Helper function for detect_video_acc_vp9.
  * A V4L2 device supports VP9 decoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_VP9 as it's
@@ -130,7 +150,12 @@ static bool is_v4l2_dec_vp9_device(int fd) {
  * formats. Or there is a /dev/video* device supporting VP9 decoding.
  */
 bool detect_video_acc_vp9(void) {
-  return is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_device);
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_vp9_device))
+    return true;
+
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_device))
+    return true;
+  return false;
 }
 
 /* Helper function for detect_video_acc_enc_h264.
