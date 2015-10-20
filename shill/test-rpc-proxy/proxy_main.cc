@@ -23,6 +23,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/message_loop/message_loop.h>
 
 #include "proxy_dbus_shill_wifi_client.h"
 #include "proxy_shill_wifi_client.h"
@@ -55,6 +56,11 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
   xml_rpc_port = std::stoi(cl->GetSwitchValueASCII(switches::kPort));
+
+  // Create and instantiate a message loop so that we can use it
+  // to block for asynchronous dbus signal callbacks. This needs
+  // to be instantiated before we connect to dbus.
+  base::MessageLoopForIO message_loop;
 
   // Connect to dbus's system bus.
   dbus::Bus::Options options;

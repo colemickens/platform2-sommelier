@@ -22,14 +22,11 @@
 #include <sysexits.h>
 
 #include <iostream>
-#include <map>
-#include <memory>
+#include <vector>
 #include <string>
 
+#include <base/cancelable_callback.h>
 #include <base/logging.h>
-#include <base/memory/weak_ptr.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <brillo/any.h>
 #if defined(__ANDROID__)
 #include <service_constants.h>
@@ -42,6 +39,9 @@ using ManagerProxy = org::chromium::flimflam::ManagerProxy;
 using DeviceProxy = org::chromium::flimflam::DeviceProxy;
 using ServiceProxy = org::chromium::flimflam::ServiceProxy;
 using ProfileProxy = org::chromium::flimflam::ProfileProxy;
+
+typedef base::Callback<void(const std::string&,
+                            const brillo::Any&)> DbusPropertyChangeCallback;
 
 class ProxyDbusClient {
  public:
@@ -57,30 +57,6 @@ class ProxyDbusClient {
 
   ProxyDbusClient(scoped_refptr<dbus::Bus> bus);
   void SetLogging(Technology tech);
-  bool WaitForPropertyValueIn(ManagerProxy* proxy,
-                              const std::string& property_name,
-                              const std::vector<brillo::Any>& expected_values,
-                              const int timeout_seconds,
-                              brillo::Any* final_value,
-                              int* elapsed_time_seconds);
-  bool WaitForPropertyValueIn(DeviceProxy* proxy,
-                              const std::string& property_name,
-                              const std::vector<brillo::Any>& expected_values,
-                              const int timeout_seconds,
-                              brillo::Any* final_value,
-                              int* elapsed_time_seconds);
-  bool WaitForPropertyValueIn(ServiceProxy* proxy,
-                              const std::string& property_name,
-                              const std::vector<brillo::Any>& expected_values,
-                              const int timeout_seconds,
-                              brillo::Any* final_value,
-                              int* elapsed_time_seconds);
-  bool WaitForPropertyValueIn(ProfileProxy* proxy,
-                              const std::string& property_name,
-                              const std::vector<brillo::Any>& expected_values,
-                              const int timeout_seconds,
-                              brillo::Any* final_value,
-                              int* elapsed_time_seconds);
   std::vector<std::unique_ptr<DeviceProxy>> GetDeviceProxies();
   std::vector<std::unique_ptr<ServiceProxy>> GetServiceProxies();
   std::vector<std::unique_ptr<ProfileProxy>> GetProfileProxies();
@@ -99,6 +75,29 @@ class ProxyDbusClient {
   bool GetPropertyValueFromProfileProxy(ProfileProxy* proxy,
                                         const std::string& property_name,
                                         brillo::Any* property_value);
+  // Optional outparams: |final_value| & |elapsed_time_seconds|. Pass nullptr
+  // if not required. The outparams are only valid if return value is |true|.
+  bool WaitForDeviceProxyPropertyValueIn(
+      const dbus::ObjectPath& object_path,
+      const std::string& property_name,
+      const std::vector<brillo::Any>& expected_values,
+      int timeout_seconds,
+      brillo::Any* final_value,
+      int* elapsed_time_seconds);
+  bool WaitForServiceProxyPropertyValueIn(
+      const dbus::ObjectPath& object_path,
+      const std::string& property_name,
+      const std::vector<brillo::Any>& expected_values,
+      int timeout_seconds,
+      brillo::Any* final_value,
+      int* elapsed_time_seconds);
+  bool WaitForProfileProxyPropertyValueIn(
+      const dbus::ObjectPath& object_path,
+      const std::string& property_name,
+      const std::vector<brillo::Any>& expected_values,
+      int timeout_seconds,
+      brillo::Any* final_value,
+      int* elapsed_time_seconds);
   std::unique_ptr<ServiceProxy> GetServiceProxy(
       const brillo::VariantDictionary& expected_properties);
   std::unique_ptr<ProfileProxy> GetActiveProfileProxy();
@@ -107,8 +106,10 @@ class ProxyDbusClient {
   std::unique_ptr<ServiceProxy> ConfigureServiceByGuid(
       const std::string& guid,
       const brillo::VariantDictionary& config);
-  bool ConnectService(ServiceProxy* proxy, int timeout_seconds);
-  bool DisconnectService(ServiceProxy* proxy, int timeout_seconds);
+  bool ConnectService(const dbus::ObjectPath& object_path,
+                      int timeout_seconds);
+  bool DisconnectService(const dbus::ObjectPath& object_path,
+                         int timeout_seconds);
   bool CreateProfile(const std::string& profile_name);
   bool RemoveProfile(const std::string& profile_name);
   bool PushProfile(const std::string& profile_name);
@@ -118,23 +119,8 @@ class ProxyDbusClient {
  private:
   bool GetPropertyValueFromManager(const std::string& property_name,
                                    brillo::Any* property_value);
-  void PropertyChangedSignalCallback(const std::string& property_name,
-                                     const brillo::Any& property_value);
-  void PropertyChangedOnConnectedCallback(const std::string& interface,
-                                          const std::string& signal_name,
-                                          bool success);
-  bool ComparePropertyValue(const brillo::VariantDictionary& properties,
-                            const std::string& property_name,
-                            const std::vector<brillo::Any>& expected_values,
-                            brillo::Any* final_value);
-  bool WaitForPropertyValueIn(const brillo::VariantDictionary& properties,
-                              const std::string& property_name,
-                              const std::vector<brillo::Any>& expected_values,
-                              const int timeout_seconds,
-                              brillo::Any* final_value,
-                              int* elapsed_time_seconds);
   dbus::ObjectPath GetObjectPathForActiveProfile();
-  bool SetLogging(int level, const std::string& tags);
+  bool SetLoggingInternal(int level, const std::string& tags);
   template<typename Proxy> std::unique_ptr<Proxy> GetProxyForObjectPath(
       const dbus::ObjectPath& object_path);
   template<typename Proxy> std::vector<std::unique_ptr<Proxy>> GetProxies(
@@ -142,10 +128,15 @@ class ProxyDbusClient {
   template<typename Proxy> std::unique_ptr<Proxy> GetMatchingProxy(
       const std::string& object_paths_property_name,
       const brillo::VariantDictionary& expected_properties);
+  template<typename Proxy> bool WaitForProxyPropertyValueIn(
+      const dbus::ObjectPath& object_path,
+      const std::string& property_name,
+      const std::vector<brillo::Any>& expected_values,
+      int timeout_seconds,
+      brillo::Any* final_value,
+      int* elapsed_time_seconds);
 
   scoped_refptr<dbus::Bus> dbus_bus_;
-  base::WeakPtrFactory<ProxyDbusClient> weak_ptr_factory_;
-  std::string wait_for_change_property_name_;
-  std::unique_ptr<ManagerProxy> shill_manager_proxy_;
+  ManagerProxy shill_manager_proxy_;
 };
 #endif //PROXY_DBUS_CLIENT_H
