@@ -53,7 +53,8 @@
       'target_name': 'libtpm_manager',
       'type': 'shared_library',
       'sources': [
-        'client/dbus_proxy.cc',
+        'client/tpm_nvram_dbus_proxy.cc',
+        'client/tpm_ownership_dbus_proxy.cc',
       ],
       'dependencies': [
         'proto_library',
@@ -144,8 +145,10 @@
             ],
           },
           'sources': [
-            'client/dbus_proxy_test.cc',
-            'common/mock_tpm_manager_interface.cc',
+            'client/tpm_nvram_dbus_proxy_test.cc',
+            'client/tpm_ownership_dbus_proxy_test.cc',
+            'common/mock_tpm_nvram_interface.cc',
+            'common/mock_tpm_ownership_interface.cc',
             'server/dbus_service_test.cc',
             'server/mock_local_data_store.cc',
             'server/mock_openssl_crypto_util.cc',

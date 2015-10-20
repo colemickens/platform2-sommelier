@@ -17,8 +17,6 @@
 #ifndef TPM_MANAGER_SERVER_TPM_MANAGER_SERVICE_H_
 #define TPM_MANAGER_SERVER_TPM_MANAGER_SERVICE_H_
 
-#include "tpm_manager/common/tpm_manager_interface.h"
-
 #include <memory>
 
 #include <base/callback.h>
@@ -27,6 +25,8 @@
 #include <base/threading/thread.h>
 #include <brillo/bind_lambda.h>
 
+#include "tpm_manager/common/tpm_nvram_interface.h"
+#include "tpm_manager/common/tpm_ownership_interface.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_nvram.h"
@@ -37,7 +37,7 @@ namespace tpm_manager {
 // This class implements the core tpm_manager service. All Tpm access is
 // asynchronous, except for the initial setup in Initialize().
 // Usage:
-//   std::unique_ptr<TpmManagerInterface> tpm_manager = new TpmManagerService();
+//   std::unique_ptr<TpmManagerService> tpm_manager = new TpmManagerService();
 //   CHECK(tpm_manager->Initialize());
 //   tpm_manager->GetTpmStatus(...);
 //
@@ -52,7 +52,8 @@ namespace tpm_manager {
 // safe because the thread is owned by this class (so it is guaranteed not to
 // process a task after destruction). Weak pointers are used to post replies
 // back to the main thread.
-class TpmManagerService : public TpmManagerInterface {
+class TpmManagerService : public TpmNvramInterface,
+                          public TpmOwnershipInterface {
  public:
   // If |wait_for_ownership| is set, TPM initialization will be postponed until
   // an explicit TakeOwnership request is received. Does not take ownership of
@@ -64,12 +65,17 @@ class TpmManagerService : public TpmManagerInterface {
                              TpmNvram* tpm_nvram);
   ~TpmManagerService() override = default;
 
-  // TpmManagerInterface methods.
-  bool Initialize() override;
+  // Performs initialization tasks. This method must be called before calling
+  // any other method in this class. Returns true on success.
+  bool Initialize();
+
+  // TpmOwnershipInterface methods.
   void GetTpmStatus(const GetTpmStatusRequest& request,
                     const GetTpmStatusCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
+
+  // TpmNvramInterface methods.
   void DefineNvram(const DefineNvramRequest& request,
                    const DefineNvramCallback& callback) override;
   void DestroyNvram(const DestroyNvramRequest& request,

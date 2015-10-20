@@ -28,7 +28,8 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 
-#include "tpm_manager/client/dbus_proxy.h"
+#include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
+#include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
 #include "tpm_manager/common/print_tpm_ownership_interface_proto.h"
 #include "tpm_manager/common/print_tpm_nvram_interface_proto.h"
 #include "tpm_manager/common/tpm_ownership_interface.pb.h"
@@ -93,11 +94,18 @@ class ClientLoop : public ClientLoopBase {
       LOG(ERROR) << "Error initializing tpm_manager_client.";
       return exit_code;
     }
-    tpm_manager_.reset(new tpm_manager::DBusProxy());
-    if (!tpm_manager_->Initialize()) {
-      LOG(ERROR) << "Error initializing dbus proxy to tpm_managerd.";
+    TpmNvramDBusProxy* nvram_proxy = new TpmNvramDBusProxy();
+    if (!nvram_proxy->Initialize()) {
+      LOG(ERROR) << "Error initializing proxy to nvram interface.";
       return EX_UNAVAILABLE;
     }
+    TpmOwnershipDBusProxy* ownership_proxy = new TpmOwnershipDBusProxy();
+    if (!ownership_proxy->Initialize()) {
+      LOG(ERROR) << "Error initializing proxy to ownership interface.";
+      return EX_UNAVAILABLE;
+    }
+    tpm_nvram_.reset(nvram_proxy);
+    tpm_ownership_.reset(ownership_proxy);
     exit_code = ScheduleCommand();
     if (exit_code == EX_USAGE) {
       printf("%s", kUsage);
@@ -106,7 +114,8 @@ class ClientLoop : public ClientLoopBase {
   }
 
   void OnShutdown(int* exit_code) override {
-    tpm_manager_.reset();
+    tpm_nvram_.reset();
+    tpm_ownership_.reset();
     ClientLoopBase::OnShutdown(exit_code);
   }
 
@@ -208,7 +217,7 @@ class ClientLoop : public ClientLoopBase {
 
   void HandleGetTpmStatus() {
     GetTpmStatusRequest request;
-    tpm_manager_->GetTpmStatus(
+    tpm_ownership_->GetTpmStatus(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
                    weak_factory_.GetWeakPtr()));
@@ -216,7 +225,7 @@ class ClientLoop : public ClientLoopBase {
 
   void HandleTakeOwnership() {
     TakeOwnershipRequest request;
-    tpm_manager_->TakeOwnership(
+    tpm_ownership_->TakeOwnership(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<TakeOwnershipReply>,
                    weak_factory_.GetWeakPtr()));
@@ -226,7 +235,7 @@ class ClientLoop : public ClientLoopBase {
     DefineNvramRequest request;
     request.set_index(index);
     request.set_length(length);
-    tpm_manager_->DefineNvram(
+    tpm_nvram_->DefineNvram(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<DefineNvramReply>,
                    weak_factory_.GetWeakPtr()));
@@ -235,7 +244,7 @@ class ClientLoop : public ClientLoopBase {
   void HandleDestroyNvram(uint32_t index) {
     DestroyNvramRequest request;
     request.set_index(index);
-    tpm_manager_->DestroyNvram(
+    tpm_nvram_->DestroyNvram(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<DestroyNvramReply>,
                    weak_factory_.GetWeakPtr()));
@@ -245,7 +254,7 @@ class ClientLoop : public ClientLoopBase {
     WriteNvramRequest request;
     request.set_index(index);
     request.set_data(data);
-    tpm_manager_->WriteNvram(
+    tpm_nvram_->WriteNvram(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<WriteNvramReply>,
                    weak_factory_.GetWeakPtr()));
@@ -254,7 +263,7 @@ class ClientLoop : public ClientLoopBase {
   void HandleReadNvram(uint32_t index) {
     ReadNvramRequest request;
     request.set_index(index);
-    tpm_manager_->ReadNvram(
+    tpm_nvram_->ReadNvram(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<ReadNvramReply>,
                    weak_factory_.GetWeakPtr()));
@@ -263,7 +272,7 @@ class ClientLoop : public ClientLoopBase {
   void HandleIsNvramDefined(uint32_t index) {
     IsNvramDefinedRequest request;
     request.set_index(index);
-    tpm_manager_->IsNvramDefined(
+    tpm_nvram_->IsNvramDefined(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<IsNvramDefinedReply>,
                    weak_factory_.GetWeakPtr()));
@@ -272,7 +281,7 @@ class ClientLoop : public ClientLoopBase {
   void HandleIsNvramLocked(uint32_t index) {
     IsNvramLockedRequest request;
     request.set_index(index);
-    tpm_manager_->IsNvramLocked(
+    tpm_nvram_->IsNvramLocked(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<IsNvramLockedReply>,
                    weak_factory_.GetWeakPtr()));
@@ -281,14 +290,15 @@ class ClientLoop : public ClientLoopBase {
   void HandleGetNvramSize(uint32_t index) {
     GetNvramSizeRequest request;
     request.set_index(index);
-    tpm_manager_->GetNvramSize(
+    tpm_nvram_->GetNvramSize(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetNvramSizeReply>,
                    weak_factory_.GetWeakPtr()));
   }
 
   // Pointer to a DBus proxy to tpm_managerd.
-  std::unique_ptr<tpm_manager::TpmManagerInterface> tpm_manager_;
+  std::unique_ptr<tpm_manager::TpmNvramInterface> tpm_nvram_;
+  std::unique_ptr<tpm_manager::TpmOwnershipInterface> tpm_ownership_;
 
   // Declared last so that weak pointers will be destroyed first.
   base::WeakPtrFactory<ClientLoop> weak_factory_{this};

@@ -14,11 +14,17 @@
 // limitations under the License.
 //
 
-#include "tpm_manager/common/mock_tpm_manager_interface.h"
+#ifndef TPM_MANAGER_COMMON_TPM_OWNERSHIP_DBUS_INTERFACE_H_
+#define TPM_MANAGER_COMMON_TPM_OWNERSHIP_DBUS_INTERFACE_H_
 
 namespace tpm_manager {
 
-MockTpmManagerInterface::MockTpmManagerInterface() {}
-MockTpmManagerInterface::~MockTpmManagerInterface() {}
+constexpr char kTpmOwnershipInterface[] = "org.chromium.TpmOwnership";
+
+// Methods exported by tpm_manager ownership D-Bus interface.
+constexpr char kGetTpmStatus[] = "GetTpmStatus";
+constexpr char kTakeOwnership[] = "TakeOwnership";
 
 }  // namespace tpm_manager
+
+#endif  // TPM_MANAGER_COMMON_TPM_OWNERSHIP_DBUS_INTERFACE_H_

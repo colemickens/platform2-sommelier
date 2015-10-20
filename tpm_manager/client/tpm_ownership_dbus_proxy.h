@@ -14,13 +14,14 @@
 // limitations under the License.
 //
 
-#ifndef TPM_MANAGER_CLIENT_DBUS_PROXY_H_
-#define TPM_MANAGER_CLIENT_DBUS_PROXY_H_
+#ifndef TPM_MANAGER_CLIENT_TPM_OWNERSHIP_DBUS_PROXY_H_
+#define TPM_MANAGER_CLIENT_TPM_OWNERSHIP_DBUS_PROXY_H_
 
-#include "tpm_manager/common/tpm_manager_interface.h"
+#include "tpm_manager/common/tpm_ownership_interface.h"
 
 #include <string>
 
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
@@ -29,36 +30,25 @@
 
 namespace tpm_manager {
 
-// An implementation of TpmManagerInterface that forwards requests to
+// An implementation of TpmOwnershipInterface that forwards requests to
 // tpm_managerd over D-Bus.
 // Usage:
-// std::unique_ptr<TpmManagerInterface> tpm_manager = new DBusProxy();
-// tpm_manager->GetTpmStatus(...);
-class TPM_MANAGER_EXPORT DBusProxy : public TpmManagerInterface {
+// std::unique_ptr<TpmOwnershipInterface> tpm_ = new TpmOwnershipDBusProxy();
+// tpm_->GetTpmStatus(...);
+class TPM_MANAGER_EXPORT TpmOwnershipDBusProxy : public TpmOwnershipInterface {
  public:
-  DBusProxy();
-  virtual ~DBusProxy();
+  TpmOwnershipDBusProxy() = default;
+  virtual ~TpmOwnershipDBusProxy();
 
-  // TpmManagerInterface methods.
-  bool Initialize() override;
+  // Performs initialization tasks. This method must be called before calling
+  // any other method in this class. Returns true on success.
+  bool Initialize();
+
+  // TpmOwnershipInterface methods.
   void GetTpmStatus(const GetTpmStatusRequest& request,
                     const GetTpmStatusCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
-  void DefineNvram(const DefineNvramRequest& request,
-                   const DefineNvramCallback& callback) override;
-  void DestroyNvram(const DestroyNvramRequest& request,
-                    const DestroyNvramCallback& callback) override;
-  void WriteNvram(const WriteNvramRequest& request,
-                  const WriteNvramCallback& callback) override;
-  void ReadNvram(const ReadNvramRequest& request,
-                 const ReadNvramCallback& callback) override;
-  void IsNvramDefined(const IsNvramDefinedRequest& request,
-                      const IsNvramDefinedCallback& callback) override;
-  void IsNvramLocked(const IsNvramLockedRequest& request,
-                     const IsNvramLockedCallback& callback) override;
-  void GetNvramSize(const GetNvramSizeRequest& request,
-                    const GetNvramSizeCallback& callback) override;
 
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {
     object_proxy_ = object_proxy;
@@ -75,9 +65,9 @@ class TPM_MANAGER_EXPORT DBusProxy : public TpmManagerInterface {
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* object_proxy_;
-  DISALLOW_COPY_AND_ASSIGN(DBusProxy);
+  DISALLOW_COPY_AND_ASSIGN(TpmOwnershipDBusProxy);
 };
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_CLIENT_DBUS_PROXY_H_
+#endif  // TPM_MANAGER_CLIENT_TPM_OWNERSHIP_DBUS_PROXY_H_

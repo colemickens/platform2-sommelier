@@ -24,7 +24,7 @@
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 
-#include "tpm_manager/common/dbus_interface.h"
+#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_manager_service.h"
@@ -85,7 +85,7 @@ class TpmManagerDaemon : public brillo::DBusServiceDaemon {
 
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     dbus_service_.reset(new tpm_manager::DBusService(
-        bus_, tpm_manager_service_.get()));
+        bus_, tpm_manager_service_.get(), tpm_manager_service_.get()));
     dbus_service_->Register(sequencer->GetHandler("Register() failed.", true));
   }
 
@@ -94,7 +94,7 @@ class TpmManagerDaemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<tpm_manager::TpmStatus> tpm_status_;
   std::unique_ptr<tpm_manager::TpmInitializer> tpm_initializer_;
   std::unique_ptr<tpm_manager::TpmNvram> tpm_nvram_;
-  std::unique_ptr<tpm_manager::TpmManagerInterface> tpm_manager_service_;
+  std::unique_ptr<tpm_manager::TpmManagerService> tpm_manager_service_;
   std::unique_ptr<tpm_manager::DBusService> dbus_service_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmManagerDaemon);

@@ -14,18 +14,14 @@
 // limitations under the License.
 //
 
-#ifndef TPM_MANAGER_COMMON_DBUS_INTERFACE_H_
-#define TPM_MANAGER_COMMON_DBUS_INTERFACE_H_
+#ifndef TPM_MANAGER_COMMON_TPM_NVRAM_DBUS_INTERFACE_H_
+#define TPM_MANAGER_COMMON_TPM_NVRAM_DBUS_INTERFACE_H_
 
 namespace tpm_manager {
 
-constexpr char kTpmManagerInterface[] = "org.chromium.TpmManager";
-constexpr char kTpmManagerServicePath[] = "/org/chromium/TpmManager";
-constexpr char kTpmManagerServiceName[] = "org.chromium.TpmManager";
+constexpr char kTpmNvramInterface[] = "org.chromium.TpmNvram";
 
-// Methods exported by tpm_manager.
-constexpr char kGetTpmStatus[] = "GetTpmStatus";
-constexpr char kTakeOwnership[] = "TakeOwnership";
+// Methods exported by tpm_manager nvram D-Bus interface.
 constexpr char kDefineNvram[] = "DefineNvram";
 constexpr char kDestroyNvram[] = "DestroyNvram";
 constexpr char kWriteNvram[] = "WriteNvram";
@@ -36,4 +32,4 @@ constexpr char kGetNvramSize[] = "GetNvramSize";
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_COMMON_DBUS_INTERFACE_H_
+#endif  // TPM_MANAGER_COMMON_TPM_NVRAM_DBUS_INTERFACE_H_

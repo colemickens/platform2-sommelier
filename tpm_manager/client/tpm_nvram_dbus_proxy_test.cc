@@ -21,7 +21,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "tpm_manager/client/dbus_proxy.h"
+#include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
 
 using testing::_;
 using testing::Invoke;
@@ -30,9 +30,9 @@ using testing::WithArgs;
 
 namespace tpm_manager {
 
-class DBusProxyTest : public testing::Test {
+class TpmNvramDBusProxyTest : public testing::Test {
  public:
-  ~DBusProxyTest() override = default;
+  ~TpmNvramDBusProxyTest() override = default;
   void SetUp() override {
     mock_object_proxy_ = new StrictMock<dbus::MockObjectProxy>(
         nullptr, "", dbus::ObjectPath(""));
@@ -41,84 +41,10 @@ class DBusProxyTest : public testing::Test {
 
  protected:
   scoped_refptr<StrictMock<dbus::MockObjectProxy>> mock_object_proxy_;
-  DBusProxy proxy_;
+  TpmNvramDBusProxy proxy_;
 };
 
-TEST_F(DBusProxyTest, GetTpmStatus) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    GetTpmStatusRequest request;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    GetTpmStatusReply reply;
-    reply.set_status(STATUS_SUCCESS);
-    reply.set_enabled(true);
-    reply.set_owned(true);
-    reply.mutable_local_data()->set_owned_by_this_install(true);
-    reply.set_dictionary_attack_counter(3);
-    reply.set_dictionary_attack_threshold(4);
-    reply.set_dictionary_attack_lockout_in_effect(true);
-    reply.set_dictionary_attack_lockout_seconds_remaining(5);
-    writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
-  };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
-
-  // Set expectations on the outputs.
-  int callback_count = 0;
-  auto callback = [&callback_count](const GetTpmStatusReply& reply) {
-    callback_count++;
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_TRUE(reply.enabled());
-    EXPECT_TRUE(reply.owned());
-    EXPECT_TRUE(reply.local_data().owned_by_this_install());
-    EXPECT_EQ(3, reply.dictionary_attack_counter());
-    EXPECT_EQ(4, reply.dictionary_attack_threshold());
-    EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());
-    EXPECT_EQ(5, reply.dictionary_attack_lockout_seconds_remaining());
-  };
-  GetTpmStatusRequest request;
-  proxy_.GetTpmStatus(request, base::Bind(callback));
-  EXPECT_EQ(1, callback_count);
-}
-
-TEST_F(DBusProxyTest, TakeOwnership) {
-  auto fake_dbus_call = [](
-      dbus::MethodCall* method_call,
-      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
-    // Verify request protobuf.
-    dbus::MessageReader reader(method_call);
-    TakeOwnershipRequest request;
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
-    // Create reply protobuf.
-    auto response = dbus::Response::CreateEmpty();
-    dbus::MessageWriter writer(response.get());
-    TakeOwnershipReply reply;
-    reply.set_status(STATUS_SUCCESS);
-    writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
-  };
-  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
-      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
-
-  // Set expectations on the outputs.
-  int callback_count = 0;
-  auto callback = [&callback_count](const TakeOwnershipReply& reply) {
-    callback_count++;
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-  };
-  TakeOwnershipRequest request;
-  proxy_.TakeOwnership(request, base::Bind(callback));
-  EXPECT_EQ(1, callback_count);
-}
-
-TEST_F(DBusProxyTest, DefineNvram) {
+TEST_F(TpmNvramDBusProxyTest, DefineNvram) {
   uint32_t nvram_index = 5;
   size_t nvram_length = 32;
   auto fake_dbus_call = [nvram_index, nvram_length](
@@ -155,7 +81,7 @@ TEST_F(DBusProxyTest, DefineNvram) {
   EXPECT_EQ(1, callback_count);
 }
 
-TEST_F(DBusProxyTest, DestroyNvram) {
+TEST_F(TpmNvramDBusProxyTest, DestroyNvram) {
   uint32_t nvram_index = 5;
   auto fake_dbus_call = [nvram_index](
       dbus::MethodCall* method_call,
@@ -187,7 +113,7 @@ TEST_F(DBusProxyTest, DestroyNvram) {
   proxy_.DestroyNvram(request, base::Bind(callback));
   EXPECT_EQ(1, callback_count);
 }
-TEST_F(DBusProxyTest, WriteNvram) {
+TEST_F(TpmNvramDBusProxyTest, WriteNvram) {
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
   auto fake_dbus_call = [nvram_index, nvram_data](
@@ -224,7 +150,7 @@ TEST_F(DBusProxyTest, WriteNvram) {
   EXPECT_EQ(1, callback_count);
 }
 
-TEST_F(DBusProxyTest, ReadNvram) {
+TEST_F(TpmNvramDBusProxyTest, ReadNvram) {
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
   auto fake_dbus_call = [nvram_index, nvram_data](
@@ -261,7 +187,7 @@ TEST_F(DBusProxyTest, ReadNvram) {
   EXPECT_EQ(1, callback_count);
 }
 
-TEST_F(DBusProxyTest, IsNvramDefined) {
+TEST_F(TpmNvramDBusProxyTest, IsNvramDefined) {
   uint32_t nvram_index = 5;
   bool nvram_defined = true;
   auto fake_dbus_call = [nvram_index, nvram_defined](
@@ -299,7 +225,7 @@ TEST_F(DBusProxyTest, IsNvramDefined) {
   EXPECT_EQ(1, callback_count);
 }
 
-TEST_F(DBusProxyTest, IsNvramLocked) {
+TEST_F(TpmNvramDBusProxyTest, IsNvramLocked) {
   uint32_t nvram_index = 5;
   bool nvram_locked = true;
   auto fake_dbus_call = [nvram_index, nvram_locked](
@@ -337,7 +263,7 @@ TEST_F(DBusProxyTest, IsNvramLocked) {
   EXPECT_EQ(1, callback_count);
 }
 
-TEST_F(DBusProxyTest, GetNvramSize) {
+TEST_F(TpmNvramDBusProxyTest, GetNvramSize) {
   uint32_t nvram_index = 5;
   size_t nvram_size = 32;
   auto fake_dbus_call = [nvram_index, nvram_size](

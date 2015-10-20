@@ -14,12 +14,13 @@
 // limitations under the License.
 //
 
-#include "tpm_manager/client/dbus_proxy.h"
+#include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
 
 #include <brillo/bind_lambda.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 
-#include "tpm_manager/common/dbus_interface.h"
+#include "tpm_manager/common/tpm_manager_constants.h"
+#include "tpm_manager/common/tpm_nvram_dbus_interface.h"
 
 namespace {
 
@@ -30,15 +31,13 @@ const int kDBusTimeoutMS = 2 * 60 * 1000;
 
 namespace tpm_manager {
 
-DBusProxy::DBusProxy() {}
-
-DBusProxy::~DBusProxy() {
+TpmNvramDBusProxy::~TpmNvramDBusProxy() {
   if (bus_) {
     bus_->ShutdownAndBlock();
   }
 }
 
-bool DBusProxy::Initialize() {
+bool TpmNvramDBusProxy::Initialize() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   bus_ = new dbus::Bus(options);
@@ -48,60 +47,49 @@ bool DBusProxy::Initialize() {
   return (object_proxy_ != nullptr);
 }
 
-void DBusProxy::GetTpmStatus(const GetTpmStatusRequest& request,
-                             const GetTpmStatusCallback& callback) {
-  CallMethod<GetTpmStatusReply>(tpm_manager::kGetTpmStatus, request, callback);
-}
-
-void DBusProxy::TakeOwnership(const TakeOwnershipRequest& request,
-                              const TakeOwnershipCallback& callback) {
-  CallMethod<TakeOwnershipReply>(
-      tpm_manager::kTakeOwnership, request, callback);
-}
-
-void DBusProxy::DefineNvram(const DefineNvramRequest& request,
-                            const DefineNvramCallback& callback) {
+void TpmNvramDBusProxy::DefineNvram(const DefineNvramRequest& request,
+                                    const DefineNvramCallback& callback) {
   CallMethod<DefineNvramReply>(tpm_manager::kDefineNvram, request, callback);
 }
 
-void DBusProxy::DestroyNvram(const DestroyNvramRequest& request,
-                             const DestroyNvramCallback& callback) {
+void TpmNvramDBusProxy::DestroyNvram(const DestroyNvramRequest& request,
+                                     const DestroyNvramCallback& callback) {
   CallMethod<DestroyNvramReply>(tpm_manager::kDestroyNvram, request, callback);
 }
 
-void DBusProxy::WriteNvram(const WriteNvramRequest& request,
-                           const WriteNvramCallback& callback) {
+void TpmNvramDBusProxy::WriteNvram(const WriteNvramRequest& request,
+                                   const WriteNvramCallback& callback) {
   CallMethod<WriteNvramReply>(tpm_manager::kWriteNvram, request, callback);
 }
 
-void DBusProxy::ReadNvram(const ReadNvramRequest& request,
-                          const ReadNvramCallback& callback) {
+void TpmNvramDBusProxy::ReadNvram(const ReadNvramRequest& request,
+                                  const ReadNvramCallback& callback) {
   CallMethod<ReadNvramReply>(tpm_manager::kReadNvram, request, callback);
 }
 
-void DBusProxy::IsNvramDefined(const IsNvramDefinedRequest& request,
-                               const IsNvramDefinedCallback& callback) {
+void TpmNvramDBusProxy::IsNvramDefined(const IsNvramDefinedRequest& request,
+                                       const IsNvramDefinedCallback& callback) {
   CallMethod<IsNvramDefinedReply>(
       tpm_manager::kIsNvramDefined, request, callback);
 }
 
-void DBusProxy::IsNvramLocked(const IsNvramLockedRequest& request,
-                              const IsNvramLockedCallback& callback) {
+void TpmNvramDBusProxy::IsNvramLocked(const IsNvramLockedRequest& request,
+                                      const IsNvramLockedCallback& callback) {
   CallMethod<IsNvramLockedReply>(
       tpm_manager::kIsNvramLocked, request, callback);
 }
 
-void DBusProxy::GetNvramSize(const GetNvramSizeRequest& request,
-                             const GetNvramSizeCallback& callback) {
+void TpmNvramDBusProxy::GetNvramSize(const GetNvramSizeRequest& request,
+                                     const GetNvramSizeCallback& callback) {
   CallMethod<GetNvramSizeReply>(tpm_manager::kGetNvramSize, request, callback);
 }
 
 template<typename ReplyProtobufType,
          typename RequestProtobufType,
          typename CallbackType>
-void DBusProxy::CallMethod(const std::string& method_name,
-                           const RequestProtobufType& request,
-                           const CallbackType& callback) {
+void TpmNvramDBusProxy::CallMethod(const std::string& method_name,
+                                   const RequestProtobufType& request,
+                                   const CallbackType& callback) {
   auto on_error = [callback](brillo::Error* error) {
     ReplyProtobufType reply;
     reply.set_status(STATUS_NOT_AVAILABLE);
@@ -110,7 +98,7 @@ void DBusProxy::CallMethod(const std::string& method_name,
   brillo::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,
       object_proxy_,
-      tpm_manager::kTpmManagerInterface,
+      tpm_manager::kTpmNvramInterface,
       method_name,
       callback,
       base::Bind(on_error),
