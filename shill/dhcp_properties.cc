@@ -110,7 +110,7 @@ std::unique_ptr<DhcpProperties> DhcpProperties::Combine(
   to_return->properties_ = base.properties_;
   for (const auto& it : to_merge.properties_.properties()) {
     const string& name = it.first;
-    const chromeos::Any& value = it.second;
+    const brillo::Any& value = it.second;
     to_return->properties_.Set(name, value);
   }
   return to_return;
