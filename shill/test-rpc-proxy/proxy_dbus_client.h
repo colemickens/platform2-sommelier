@@ -27,6 +27,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/logging.h>
+#include <base/timer/timer.h>
 #include <brillo/any.h>
 #if defined(__ANDROID__)
 #include <service_constants.h>
@@ -76,7 +77,7 @@ class ProxyDbusClient {
                                         const std::string& property_name,
                                         brillo::Any* property_value);
   // Optional outparams: |final_value| & |elapsed_time_seconds|. Pass nullptr
-  // if not required. The outparams are only valid if return value is |true|.
+  // if not required.
   bool WaitForDeviceProxyPropertyValueIn(
       const dbus::ObjectPath& object_path,
       const std::string& property_name,
@@ -101,6 +102,14 @@ class ProxyDbusClient {
   std::unique_ptr<ServiceProxy> GetServiceProxy(
       const brillo::VariantDictionary& expected_properties);
   std::unique_ptr<ProfileProxy> GetActiveProfileProxy();
+  // Optional outparam: |elapsed_time_seconds|. Pass nullptr
+  // if not required.
+  std::unique_ptr<ServiceProxy> WaitForMatchingServiceProxy(
+      const brillo::VariantDictionary& service_properties,
+      const std::string& service_type,
+      int timeout_seconds,
+      int rescan_interval_milliseconds,
+      int* elapsed_time_seconds);
   std::unique_ptr<ServiceProxy> ConfigureService(
       const brillo::VariantDictionary& config);
   std::unique_ptr<ServiceProxy> ConfigureServiceByGuid(
@@ -115,6 +124,7 @@ class ProxyDbusClient {
   bool PushProfile(const std::string& profile_name);
   bool PopProfile(const std::string& profile_name);
   bool PopAnyProfile();
+  bool RequestServiceScan(const std::string& service_type);
 
  private:
   bool GetPropertyValueFromManager(const std::string& property_name,
@@ -134,9 +144,28 @@ class ProxyDbusClient {
       const std::vector<brillo::Any>& expected_values,
       int timeout_seconds,
       brillo::Any* final_value,
+      int* elapsed_time_secods);
+  void IsMatchingServicePresent(
+      const brillo::VariantDictionary& service_properties,
+      time_t wait_start_time,
+      bool* is_success,
+      std::unique_ptr<ServiceProxy>* service_proxy_out,
       int* elapsed_time_seconds);
+  // This is invoked periodically to check if a service mathching the required
+  // params are found.
+  void FindServiceOrRestartScan(
+    const brillo::VariantDictionary& service_properties,
+    const std::string& service_type);
+  void InitiateScanForService(
+    base::TimeDelta rescan_interval,
+    const std::string& service_type,
+    const base::Closure& timer_callback);
+  void RestartScanForService(
+    const std::string& service_type);
 
   scoped_refptr<dbus::Bus> dbus_bus_;
   ManagerProxy shill_manager_proxy_;
+  std::unique_ptr<base::Timer> wait_for_service_timer_;
+  base::WeakPtrFactory<ProxyDbusClient> weak_ptr_factory_;
 };
 #endif //PROXY_DBUS_CLIENT_H

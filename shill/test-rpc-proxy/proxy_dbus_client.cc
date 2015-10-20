@@ -39,26 +39,27 @@ template<typename Proxy> bool GetPropertyValueFromProxy(
   return true;
 }
 
-template<typename Proxy> bool IsProxyPropertyValueIn(
+template<typename Proxy> void IsProxyPropertyValueIn(
     Proxy* proxy,
     const std::string& property_name,
     const std::vector<brillo::Any>& expected_values,
     time_t wait_start_time,
+    bool* is_success,
     brillo::Any* final_value,
     int* elapsed_time_seconds) {
   brillo::Any property_value;
+  *is_success = false;
   if ((GetPropertyValueFromProxy<Proxy>(proxy, property_name, &property_value)) &&
       (std::find(expected_values.begin(), expected_values.end(),
                  property_value) != expected_values.end())) {
-    if (final_value) {
-      *final_value = property_value;
-    }
-    if (elapsed_time_seconds) {
-      *elapsed_time_seconds = time(nullptr) - wait_start_time;
-    }
-    return true;
+    *is_success = true;
   }
-  return false;
+  if (final_value) {
+    *final_value = property_value;
+  }
+  if (elapsed_time_seconds) {
+    *elapsed_time_seconds = time(nullptr) - wait_start_time;
+  }
 }
 
 // This is invoked when the dbus detects a change in one of
@@ -98,24 +99,27 @@ void HelpRegisterPropertyChangedSignalHandler(
       signal_callback, on_connected_callback);
 }
 
-template<typename EventValueType, typename ConditionChangeCallbackType>
-bool WaitForCondition(
-    base::Callback<bool(time_t, EventValueType*, int*)>
+template<typename OutValueType, typename ConditionChangeCallbackType>
+void WaitForCondition(
+    base::Callback<void(time_t, bool*, OutValueType*, int*)>
         condition_termination_checker,
     base::Callback<ConditionChangeCallbackType> condition_change_callback,
     base::Callback<void(const base::Callback<ConditionChangeCallbackType>&)>
         condition_change_callback_registrar,
     int timeout_seconds,
-    EventValueType* final_value,
-    int* elapsed_seconds) {
+    bool* is_success,
+    OutValueType* out_value,
+    int* elapsed_time_seconds) {
+  CHECK(is_success);
   const time_t start_time(time(nullptr));
   const base::TimeDelta timeout(base::TimeDelta::FromSeconds(timeout_seconds));
   base::CancelableClosure wait_timeout_callback;
   base::CancelableCallback<ConditionChangeCallbackType> change_callback;
 
-  if (condition_termination_checker.Run(
-          start_time, final_value, elapsed_seconds)) {
-    return true;
+  condition_termination_checker.Run(
+      start_time, is_success, out_value, elapsed_time_seconds);
+  if (*is_success) {
+    return;
   }
 
   wait_timeout_callback.Reset(base::MessageLoop::QuitClosure());
@@ -137,14 +141,15 @@ bool WaitForCondition(
 
   // We could have reached here either because we timed out or
   // because we reached the condition.
-  return condition_termination_checker.Run(
-      start_time, final_value, elapsed_seconds);
+  condition_termination_checker.Run(
+      start_time, is_success, out_value, elapsed_time_seconds);
 }
 } // namespace
 
 ProxyDbusClient::ProxyDbusClient(scoped_refptr<dbus::Bus> bus)
   : dbus_bus_(bus),
-    shill_manager_proxy_(dbus_bus_) {
+    shill_manager_proxy_(dbus_bus_),
+    weak_ptr_factory_(this) {
 }
 
 void ProxyDbusClient::SetLogging(Technology tech) {
@@ -272,6 +277,36 @@ std::unique_ptr<ProfileProxy> ProxyDbusClient::GetActiveProfileProxy() {
   return GetProxyForObjectPath<ProfileProxy>(GetObjectPathForActiveProfile());
 }
 
+std::unique_ptr<ServiceProxy> ProxyDbusClient::WaitForMatchingServiceProxy(
+    const brillo::VariantDictionary& service_properties,
+    const std::string& service_type,
+    int timeout_seconds,
+    int rescan_interval_milliseconds,
+    int* elapsed_time_seconds) {
+  auto condition_termination_checker =
+      base::Bind(&ProxyDbusClient::IsMatchingServicePresent,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 service_properties);
+  auto condition_change_callback =
+      base::Bind(&ProxyDbusClient::FindServiceOrRestartScan,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 service_properties,
+                 service_type);
+  auto condition_change_callback_registrar =
+      base::Bind(&ProxyDbusClient::InitiateScanForService,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 base::TimeDelta::FromMilliseconds(rescan_interval_milliseconds),
+                 service_type);
+
+  std::unique_ptr<ServiceProxy> service_proxy;
+  bool is_success;
+  WaitForCondition(
+      condition_termination_checker, condition_change_callback,
+      condition_change_callback_registrar,
+      timeout_seconds, &is_success, &service_proxy, elapsed_time_seconds);
+  return service_proxy;
+}
+
 std::unique_ptr<ServiceProxy> ProxyDbusClient::ConfigureService(
     const brillo::VariantDictionary& config) {
   dbus::ObjectPath service_path;
@@ -357,6 +392,11 @@ bool ProxyDbusClient::PopAnyProfile() {
   return shill_manager_proxy_.PopAnyProfile(&error);
 }
 
+bool ProxyDbusClient::RequestServiceScan(const std::string& service_type) {
+  brillo::ErrorPtr error;
+  return shill_manager_proxy_.RequestScan(service_type, &error);
+}
+
 bool ProxyDbusClient::GetPropertyValueFromManager(
     const std::string& property_name,
     brillo::Any* property_value) {
@@ -433,32 +473,76 @@ bool ProxyDbusClient::WaitForProxyPropertyValueIn(
     int timeout_seconds,
     brillo::Any* final_value,
     int* elapsed_time_seconds) {
-  base::Callback<bool(time_t, brillo::Any*, int*)>
-    condition_termination_checker;
-  DbusPropertyChangeCallback condition_change_callback;
-  base::Callback<void(const DbusPropertyChangeCallback&)>
-    condition_change_callback_registrar;
   // Creates a local proxy using |object_path| instead of accepting the proxy
   // from the caller since we cannot deregister the signal property change
   // callback associated.
   auto proxy = GetProxyForObjectPath<Proxy>(object_path);
-
-  condition_termination_checker =
+  auto condition_termination_checker =
       base::Bind(&IsProxyPropertyValueIn<Proxy>,
                  proxy.get(),
                  property_name,
                  expected_values);
-  condition_change_callback =
+  auto condition_change_callback =
       base::Bind(&PropertyChangedSignalCallback,
                  property_name,
                  expected_values);
-  condition_change_callback_registrar =
+  auto condition_change_callback_registrar =
       base::Bind(&HelpRegisterPropertyChangedSignalHandler<Proxy>,
                  base::Unretained(proxy.get()),
                  base::Bind(&PropertyChangedOnConnectedCallback,
                             property_name));
-  return WaitForCondition(
+  bool is_success;
+  WaitForCondition(
       condition_termination_checker, condition_change_callback,
       condition_change_callback_registrar,
-      timeout_seconds, final_value, elapsed_time_seconds);
+      timeout_seconds, &is_success, final_value, elapsed_time_seconds);
+  return is_success;
+}
+
+void ProxyDbusClient::IsMatchingServicePresent(
+    const brillo::VariantDictionary& service_properties,
+    time_t wait_start_time,
+    bool* is_success,
+    std::unique_ptr<ServiceProxy>* service_proxy_out,
+    int* elapsed_time_seconds) {
+  auto service_proxy = GetMatchingServiceProxy(service_properties);
+  *is_success = false;
+  if (service_proxy) {
+    *is_success = true;
+  }
+  if (service_proxy_out) {
+    *service_proxy_out = std::move(service_proxy);
+  }
+  if (elapsed_time_seconds) {
+    *elapsed_time_seconds = time(nullptr) - wait_start_time;
+  }
+}
+
+void ProxyDbusClient::FindServiceOrRestartScan(
+    const brillo::VariantDictionary& service_properties,
+    const std::string& service_type) {
+  if (GetMatchingServiceProxy(service_properties)) {
+    base::MessageLoop::current()->QuitNow();
+  } else {
+    RestartScanForService(service_type);
+  }
+}
+
+void ProxyDbusClient::InitiateScanForService(
+    base::TimeDelta rescan_interval,
+    const std::string& service_type,
+    const base::Closure& timer_callback) {
+  // Create a new timer instance for repeatedly calling the provided
+  // |timer_callback|. |WaitForCondition| will cancel |timer_callback|'s
+  // enclosing CancelableCallback when it exits and hence we need to
+  // use the same reference when we repeatedly schedule |timer_callback|.
+  wait_for_service_timer_.reset(
+      new base::Timer(FROM_HERE, rescan_interval, timer_callback, false));
+  RestartScanForService(service_type);
+}
+
+void ProxyDbusClient::RestartScanForService(
+    const std::string& service_type) {
+  RequestServiceScan(service_type);
+  wait_for_service_timer_->Reset();
 }
