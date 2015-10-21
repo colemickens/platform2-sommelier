@@ -62,6 +62,7 @@ class MockProcessManager : public ProcessManager {
                       int* stdout_fd,
                       int* stderr_fd));
   MOCK_METHOD1(StopProcess, bool(pid_t pid));
+  MOCK_METHOD1(StopProcessAndBlock, bool(pid_t pid));
   MOCK_METHOD2(UpdateExitCallback,
                bool(pid_t pid, const base::Callback<void(int)>& new_callback));
 

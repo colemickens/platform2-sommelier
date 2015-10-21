@@ -236,7 +236,7 @@ void DHCPConfig::KillClient() {
   // ProcessManager will try to terminate the process using SIGTERM, then
   // SIGKill signals.  It will log an error message if it is not able to
   // terminate the process in a timely manner.
-  process_manager_->StopProcess(pid_);
+  process_manager_->StopProcessAndBlock(pid_);
 }
 
 bool DHCPConfig::Restart() {

@@ -41,6 +41,10 @@ base::LazyInstance<ProcessManager> g_process_manager =
     LAZY_INSTANCE_INITIALIZER;
 
 static const int kTerminationTimeoutSeconds = 2;
+static const int kWaitpidPollTimesForSIGTERM = 10;
+static const int kWaitpidPollTimesForSIGKILL = 8;
+static const int kWaitpidPollIntervalUpperBoundMilliseconds = 2000;
+static const int kWaitpidPollInitialIntervalMilliseconds = 4;
 
 bool SetupChild(const map<string, string>& env, bool terminate_with_parent) {
   // Setup environment variables.
@@ -190,6 +194,90 @@ bool ProcessManager::StopProcess(pid_t pid) {
 
   // Attempt to send SIGTERM signal first.
   return TerminateProcess(pid, false);
+}
+
+bool ProcessManager::StopProcessAndBlock(pid_t pid) {
+  SLOG(this, 2) << __func__ << "(" << pid << ")";
+
+  auto terminated_process = pending_termination_processes_.find(pid);
+
+  if (terminated_process != pending_termination_processes_.end()) {
+    LOG(INFO) << "Process " << pid << " already being stopped.";
+    terminated_process->second->Cancel();
+    pending_termination_processes_.erase(terminated_process);
+  } else {
+    if (watched_processes_.find(pid) == watched_processes_.end()) {
+      LOG(ERROR) << "Process " << pid << " not being watched";
+      return false;
+    }
+    // Caller not interested in watching this process anymore, since the
+    // process termination is initiated by the caller.
+    watched_processes_.erase(pid);
+  }
+
+  // Try SIGTERM firstly.
+  // Send SIGKILL signal if SIGTERM was not handled in a timely manner.
+  if (KillProcessWithTimeout(pid, false) ||
+      KillProcessWithTimeout(pid, true)) {
+    return true;
+  }
+
+  // In case of killing failure.
+  LOG(ERROR) << "Timeout waiting for process " << pid << " to be killed.";
+
+  return false;
+}
+
+bool ProcessManager::KillProcessWithTimeout(pid_t pid, bool kill_signal) {
+  SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
+
+  if (KillProcess(pid, kill_signal ? SIGKILL : SIGTERM, &killed)) {
+    if (killed) {
+      return true;
+    }
+
+    int poll_times = kill_signal ? kWaitpidPollTimesForSIGKILL :
+        kWaitpidPollTimesForSIGTERM;
+
+    if (WaitpidWithTimeout(pid, kWaitpidPollInitialIntervalMilliseconds,
+                           kWaitpidPollIntervalUpperBoundMilliseconds,
+                           poll_times)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ProcessManager::KillProcess(pid_t pid, int signal, bool* killed) {
+  SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
+
+  *killed = false;
+  if (kill(pid, signal) < 0) {
+    if (errno == ESRCH) {
+      SLOG(this, 2) << "Process " << pid << " has exited.";
+      *killed = true;
+      return true;
+    }
+    PLOG(ERROR) << "Failed to send " << signal <<"signal to process " << pid;
+    return false;
+  }
+  return true;
+}
+
+bool ProcessManager::WaitpidWithTimeout(pid_t pid, unsigned sleep_ms,
+                                        int upper_bound_ms, int tries) {
+  SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
+
+  while (tries-- > 0) {
+    if (waitpid(pid, NULL, WNOHANG) == pid) {
+      return true;
+    }
+    usleep(sleep_ms * 1000);
+    if (2 * sleep_ms < upper_bound_ms) {
+      sleep_ms *= 2;
+    }
+  }
+  return false;
 }
 
 bool ProcessManager::UpdateExitCallback(

@@ -111,6 +111,9 @@ class ProcessManager {
   // time.
   virtual bool StopProcess(pid_t pid);
 
+  // Stop the given |pid| in a synchronous manner.
+  virtual bool StopProcessAndBlock(pid_t pid);
+
   // Replace the current exit callback for |pid| with |new_callback|.
   virtual bool UpdateExitCallback(
       pid_t pid,
@@ -139,6 +142,27 @@ class ProcessManager {
   // |pid| and timeout handler is added to |pending_termination_processes_|
   // list, to make sure process |pid| does exit in timely manner.
   bool TerminateProcess(pid_t pid, bool kill_signal);
+
+  // Kill process |pid|. If |kill_signal| is true it will send SIGKILL,
+  // otherwise it will send SIGTERM.
+  // It returns true when the process was already dead or killed within
+  // the timeout.
+  // It returns false when the process failed to exit within the timeout
+  // or the system failed to send kill singal.
+  bool KillProcessWithTimeout(pid_t pid, bool kill_signal);
+
+  // Kill process |pid| using signal |signal|.
+  // The |killed| will be set true when the process was already dead.
+  // It returns true when it sent the |signal| successfully or the
+  // process was already dead.
+  // It returns false when the system failed to send |signal|.
+  bool KillProcess(pid_t pid, int signal, bool* killed);
+
+  // Wait for process |pid| to exit. This function will check it for at most
+  // |tries| times. The interval of waiting time grows exponentially from
+  // |sleep_ms| and it has an |upper_bound_ms| upper bound.
+  bool WaitpidWithTimeout(pid_t pid, unsigned sleep_ms, int upper_bound_ms,
+                          int tries);
 
   // Used to watch processes.
   std::unique_ptr<brillo::AsynchronousSignalHandler> async_signal_handler_;
