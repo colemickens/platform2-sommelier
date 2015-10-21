@@ -1,4 +1,3 @@
-#!/bin/sh
 #
 #
 # Copyright (C) 2012 The Android Open Source Project
@@ -46,15 +45,15 @@ CMD_FLAG="<<cmd>>"
 
 WPA_CMD="dbus-send --system --dest=fi.w1.wpa_supplicant1 --print-reply /fi/w1/wpa_supplicant1 org.freedesktop.DBus.Properties.$CMD_FLAG string:fi.w1.wpa_supplicant1 string:DebugLevel"
 
-# Returns whether ot not $2 exists in $1 where $1 is a space
+# Returns whether or not $2 exists in $1 where $1 is a space
 # separated list of tags
 is_valid_tag(){
-  expr match " $1 " ".* $2 .*"> /dev/null
+  expr " $1 " : ".* $2 .*"> /dev/null
 }
 
 get_wpa_logging(){
   set_cmd="`echo $WPA_CMD | sed "s/$CMD_FLAG/Get/"`"
-  $set_cmd | awk '/string/ { print substr($3, 2, length($3)-2); }'
+  $set_cmd | sed -e '/string/!d; s/[[:space:]]\+/ /g' | cut -d "\"" -f 2
 }
 
 set_wpa_logging(){

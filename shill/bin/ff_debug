@@ -1,4 +1,3 @@
-#!/bin/sh
 #
 #
 # Copyright (C) 2012 The Android Open Source Project
@@ -22,7 +21,7 @@ FLIMFLAM="org.chromium.flimflam"
 MANAGER="${FLIMFLAM}.Manager"
 SEND_FF_CMD="dbus-send --system --dest=${FLIMFLAM} --print-reply / $MANAGER"
 
-FF_TAGLIST=`${SEND_FF_CMD}.ListDebugTags | awk '/string/ {print substr($2, 2, length($2)-2);}' | tr "+" " "`
+FF_TAGLIST=`${SEND_FF_CMD}.ListDebugTags | sed -e '/string/!d; s/[[:space:]]\+/ /g' | cut -d "\"" -f 2 | tr "+" " "`
 
 usage(){
   echo "
@@ -68,7 +67,7 @@ Usage: ff_debug [<tag_expression>]|[--reset]|[--help]|[--list_valid_tags]|[--lev
 }
 
 get_ff_debug_tags() {
-  ${SEND_FF_CMD}.GetDebugTags 2>/dev/null | awk '/string/ {print substr($2,2,length($2)-2);}'
+  ${SEND_FF_CMD}.GetDebugTags 2>/dev/null | sed -e '/string/!d; s/[[:space:]]\+/ /g' | cut -d "\"" -f 2
 }
 
 set_ff_debug_tags() {
@@ -76,7 +75,7 @@ set_ff_debug_tags() {
 }
 
 get_ff_debug_level() {
-  ${SEND_FF_CMD}.GetDebugLevel 2>/dev/null | awk '/int32/ {print $2}'
+  ${SEND_FF_CMD}.GetDebugLevel 2>/dev/null | sed -e '/int32/!d; s/[[:space:]]\+/ /g' | cut -d " " -f 3
 }
 
 set_ff_debug_level() {
@@ -87,10 +86,10 @@ starting_ff_tags=`get_ff_debug_tags`
 # Global strings
 ff_tags_to_set=$starting_ff_tags
 
-# Returns whether ot not $2 exists in $1 where $1 is a space
+# Returns whether or not $2 exists in $1 where $1 is a space
 # separated list of tags
 is_valid_tag(){
-  expr match " $1 " ".* $2 .*" > /dev/null
+  expr " $1 " : ".* $2 .*"> /dev/null
 }
 
 # Takes a boolean expression and changes
