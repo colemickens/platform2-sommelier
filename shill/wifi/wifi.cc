@@ -67,9 +67,6 @@
 #include "shill/wifi/scan_session.h"
 #include "shill/wifi/tdls_manager.h"
 #include "shill/wifi/wake_on_wifi.h"
-#if defined(__BRILLO__)
-#include "shill/wifi/wifi_driver_hal.h"
-#endif  // __BRILLO__
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
@@ -182,9 +179,6 @@ WiFi::WiFi(ControlInterface* control_interface,
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
       wiphy_index_(kDefaultWiphyIndex),
-#if defined(__BRILLO__)
-      wifi_driver_hal_(WiFiDriverHal::GetInstance()),
-#endif  // __BRILLO__
       wake_on_wifi_(new WakeOnWiFi(netlink_manager_,
                                    dispatcher,
                                    metrics,
@@ -270,9 +264,6 @@ void WiFi::Start(Error* error,
   // it when it appears.
   ConnectToSupplicant();
   wake_on_wifi_->StartMetricsTimer();
-#if defined(__BRILLO__)
-  wifi_driver_hal_->SetupStationModeInterface();
-#endif  // __BRILLO__
 }
 
 void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {

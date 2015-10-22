@@ -124,9 +124,6 @@ class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class TDLSManager;
 class WakeOnWiFi;
-#if defined(__BRILLO__)
-class  WiFiDriverHal;
-#endif  // __BRILLO__
 class WiFiProvider;
 class WiFiService;
 
@@ -717,10 +714,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Wiphy interface index of this WiFi device.
   uint32_t wiphy_index_;
-
-#if defined(__BRILLO__)
-  WiFiDriverHal* wifi_driver_hal_;
-#endif  // __BRILLO__
 
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
 
