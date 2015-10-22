@@ -269,6 +269,14 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   static bool HasSubdir(const base::FilePath& base_dir,
                         const base::FilePath& subdir);
 
+  // Returns true and sets |link_name| to the interface name contained
+  // in |msg| if one is provided.  Returns false otherwise.
+  bool GetLinkNameFromMessage(const RTNLMessage& msg, std::string* link_name);
+
+  // Returns true if |msg| pertains to a blacklisted device whose link name
+  // is now different from the name it was assigned before.
+  bool IsRenamedBlacklistedDevice(const RTNLMessage& msg);
+
   void AddLinkMsgHandler(const RTNLMessage& msg);
   void DelLinkMsgHandler(const RTNLMessage& msg);
   void LinkMsgHandler(const RTNLMessage& msg);

@@ -692,6 +692,69 @@ TEST_F(DeviceInfoTest, AddDeviceToBlackListWithManagerRunning) {
   EXPECT_TRUE(device->technology() == Technology::kBlacklisted);
 }
 
+TEST_F(DeviceInfoTest, RenamedBlacklistedDevice) {
+  device_info_.AddDeviceToBlackList(kTestDeviceName);
+  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  SendMessageToDeviceInfo(*message);
+
+  DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
+  ASSERT_TRUE(device.get());
+  EXPECT_TRUE(device->technology() == Technology::kBlacklisted);
+
+  // Rename the test device.
+  const char kRenamedDeviceName[] = "renamed-device";
+  unique_ptr<RTNLMessage> rename_message(
+      BuildLinkMessageWithInterfaceName(
+          RTNLMessage::kModeAdd, kRenamedDeviceName));
+  EXPECT_CALL(manager_, DeregisterDevice(_));
+  EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex));
+  SendMessageToDeviceInfo(*rename_message);
+
+  DeviceRefPtr renamed_device = device_info_.GetDevice(kTestDeviceIndex);
+  ASSERT_TRUE(renamed_device.get());
+
+  // Expect that a different device has been created.
+  EXPECT_NE(device.get(), renamed_device.get());
+
+  // Since we didn't create a uevent file for kRenamedDeviceName, its
+  // technology should be unknown.
+  EXPECT_TRUE(renamed_device->technology() == Technology::kUnknown);
+}
+
+TEST_F(DeviceInfoTest, RenamedNonBlacklistedDevice) {
+  const char kInitialDeviceName[] = "initial-device";
+  unique_ptr<RTNLMessage> initial_message(
+      BuildLinkMessageWithInterfaceName(
+          RTNLMessage::kModeAdd, kInitialDeviceName));
+  SendMessageToDeviceInfo(*initial_message);
+  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+
+  DeviceRefPtr initial_device = device_info_.GetDevice(kTestDeviceIndex);
+  ASSERT_TRUE(initial_device.get());
+
+  // Since we didn't create a uevent file for kInitialDeviceName, its
+  // technology should be unknown.
+  EXPECT_TRUE(initial_device->technology() == Technology::kUnknown);
+
+  // Rename the test device.
+  const char kRenamedDeviceName[] = "renamed-device";
+  device_info_.AddDeviceToBlackList(kRenamedDeviceName);
+  unique_ptr<RTNLMessage> rename_message(
+      BuildLinkMessageWithInterfaceName(
+          RTNLMessage::kModeAdd, kRenamedDeviceName));
+  EXPECT_CALL(manager_, DeregisterDevice(_)).Times(0);
+  EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(0);
+  SendMessageToDeviceInfo(*rename_message);
+
+  DeviceRefPtr renamed_device = device_info_.GetDevice(kTestDeviceIndex);
+  ASSERT_TRUE(renamed_device.get());
+
+  // Expect that the the presence of a renamed device does not cause a new
+  // Device entry to be created if the initial device was not blacklisted.
+  EXPECT_EQ(initial_device.get(), renamed_device.get());
+  EXPECT_TRUE(initial_device->technology() == Technology::kUnknown);
+}
+
 TEST_F(DeviceInfoTest, DeviceAddressList) {
   unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   SendMessageToDeviceInfo(*message);

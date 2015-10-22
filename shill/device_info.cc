@@ -576,6 +576,41 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
   return device;
 }
 
+// static
+bool DeviceInfo::GetLinkNameFromMessage(const RTNLMessage& msg,
+                                        string* link_name) {
+  if (!msg.HasAttribute(IFLA_IFNAME))
+    return false;
+
+  ByteString link_name_bytes(msg.GetAttribute(IFLA_IFNAME));
+  link_name->assign(reinterpret_cast<const char*>(
+      link_name_bytes.GetConstData()));
+
+  return true;
+}
+
+bool DeviceInfo::IsRenamedBlacklistedDevice(const RTNLMessage& msg) {
+  int interface_index = msg.interface_index();
+  const Info* info = GetInfo(interface_index);
+  if (!info)
+    return false;
+
+  if (!info->device || info->device->technology() != Technology::kBlacklisted)
+    return false;
+
+  string interface_name;
+  if (!GetLinkNameFromMessage(msg, &interface_name))
+    return false;
+
+  if (interface_name == info->name)
+    return false;
+
+  LOG(INFO) << __func__ << ": interface index " << interface_index
+            << " renamed from " << info->name << " to " << interface_name;
+  return true;
+}
+
+
 void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeAdd);
@@ -583,6 +618,12 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   Technology::Identifier technology = Technology::kUnknown;
   unsigned int flags = msg.link_status().flags;
   unsigned int change = msg.link_status().change;
+
+  if (IsRenamedBlacklistedDevice(msg)) {
+    // Treat renamed blacklisted devices as new devices.
+    RemoveInfo(dev_index);
+  }
+
   bool new_device =
       !ContainsKey(infos_, dev_index) || infos_[dev_index].has_addresses_only;
   SLOG(this, 2) << __func__ << "(index=" << dev_index
@@ -598,12 +639,11 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   DeviceRefPtr device = GetDevice(dev_index);
   if (new_device) {
     CHECK(!device);
-    if (!msg.HasAttribute(IFLA_IFNAME)) {
-      LOG(ERROR) << "Add Link message does not have IFLA_IFNAME!";
+    string link_name;
+    if (!GetLinkNameFromMessage(msg, &link_name)) {
+      LOG(ERROR) << "Add Link message does not contain a link name!";
       return;
     }
-    ByteString b(msg.GetAttribute(IFLA_IFNAME));
-    string link_name(reinterpret_cast<const char*>(b.GetConstData()));
     SLOG(this, 2) << "add link index "  << dev_index << " name " << link_name;
     infos_[dev_index].name = link_name;
     indices_[link_name] = dev_index;
