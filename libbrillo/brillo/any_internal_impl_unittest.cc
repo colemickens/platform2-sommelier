@@ -82,7 +82,7 @@ TEST(Buffer, Store_Objects) {
   EXPECT_STREQ(typeid(Small).name(), buffer.GetDataPtr()->GetTypeName());
 
   struct Large {
-    char c[10];
+    char c[20];
   } large = {};
   buffer.Assign(large);
   EXPECT_FALSE(buffer.IsEmpty());
