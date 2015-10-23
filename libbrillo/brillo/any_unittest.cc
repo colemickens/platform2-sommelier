@@ -245,7 +245,7 @@ TEST(Any, TypeMismatch) {
 
   val = std::string("123");
   EXPECT_DEATH(val.GetAsInteger(),
-               "Unable to convert value of type 'std::string' to integer");
+               "Unable to convert value of type 'std::.*' to integer");
 
   Any empty;
   EXPECT_DEATH(empty.GetAsInteger(), "Must not be called on an empty Any");
