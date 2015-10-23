@@ -149,11 +149,10 @@ unique_ptr<string> MakeStringFromValue(const base::Value& value) {
       return nullptr;
     }
 
-    const auto& desired_type = typeid(string);
-    const auto& available_type = decoded_value->GetType();
-    if (available_type != desired_type) {
-      LOG(ERROR) << "Can not read |" << desired_type.name() << "| from |"
-                 << available_type.name() << ".";
+    if (!decoded_value->IsTypeCompatible<string>()) {
+      LOG(ERROR) << "Can not read |" << brillo::GetUndecoratedTypeName<string>()
+                 << "| from |" << decoded_value->GetUndecoratedTypeName()
+                 << ".";
       return nullptr;
     }
     return unique_ptr<string>(new string(decoded_value->Get<string>()));
@@ -303,19 +302,19 @@ scoped_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
   for (const auto& key_and_value : variant_dictionary) {
     const auto& key = key_and_value.first;
     const auto& value = key_and_value.second;
-    if (value.GetType() == typeid(bool)) {    // NOLINT
+    if (value.IsTypeCompatible<bool>()) {
       dictionary_value->SetBooleanWithoutPathExpansion(key, value.Get<bool>());
-    } else if (value.GetType() == typeid(int32_t)) {
+    } else if (value.IsTypeCompatible<int32_t>()) {
       dictionary_value->SetIntegerWithoutPathExpansion(key, value.Get<int>());
-    } else if (value.GetType() == typeid(string)) {
+    } else if (value.IsTypeCompatible<string>()) {
       dictionary_value->SetWithoutPathExpansion(
           key, MakeValueForString(value.Get<string>()));
-    } else if (value.GetType() == typeid(uint64_t)) {
+    } else if (value.IsTypeCompatible<uint64_t>()) {
       const string encoded_value(
           base::StringPrintf("%" PRIu64, value.Get<uint64>()));
       dictionary_value->SetWithoutPathExpansion(
           key, MakeCoercedValue(kNativeTypeUint64, encoded_value).Pass());
-    } else if (value.GetType() == typeid(vector<string>)) {
+    } else if (value.IsTypeCompatible<vector<string>>()) {
       auto list_value(make_scoped_ptr(new base::ListValue()));
       for (const auto& string_list_item : value.Get<vector<string>>()) {
         list_value->Append(MakeValueForString(string_list_item).Pass());
@@ -650,13 +649,13 @@ bool JsonStore::ReadSetting(
     return false;
   }
 
-  const auto& desired_type = typeid(*out);
-  const auto& available_type = property_name_and_value->second.GetType();
-  if (available_type != desired_type) {
+  if (!property_name_and_value->second.IsTypeCompatible<T>()) {
     // We assume that the reader and the writer agree on the exact
     // type. So we do not allow implicit conversion.
-    LOG(ERROR) << "Can not read |" << desired_type.name() << "| from |"
-               << available_type.name() << "|.";
+    LOG(ERROR) << "Can not read |" << brillo::GetUndecoratedTypeName<T>()
+               << "| from |"
+               << property_name_and_value->second.GetUndecoratedTypeName()
+               << "|.";
     return false;
   }
 
@@ -683,11 +682,10 @@ bool JsonStore::WriteSetting(
     return true;
   }
 
-  const auto& new_type = typeid(new_value);
-  const auto& current_type = property_name_and_value->second.GetType();
-  if (new_type != current_type) {
-    SLOG(this, 10) << "New type |" << new_type.name()
-                   << "| differs from current type |" << current_type.name()
+  if (!property_name_and_value->second.IsTypeCompatible<T>()) {
+    SLOG(this, 10) << "New type |" << brillo::GetUndecoratedTypeName<T>()
+                   << "| differs from current type |"
+                   << property_name_and_value->second.GetUndecoratedTypeName()
                    << "|.";
     return false;
   } else {

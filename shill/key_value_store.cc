@@ -49,81 +49,80 @@ bool KeyValueStore::operator!=(const KeyValueStore& rhs) const {
 }
 
 bool KeyValueStore::ContainsBool(const string& name) const {
-  // TODO(zqiu): Replace typeid comparison with brillo::Any::IsTypeCompatible.
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(bool);    // NOLINT
+      properties_.find(name)->second.IsTypeCompatible<bool>();
 }
 
 bool KeyValueStore::ContainsByteArrays(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() ==
-          typeid(vector<vector<uint8_t>>);
+      properties_.find(name)->second
+          .IsTypeCompatible<vector<vector<uint8_t>>>();
 }
 
 bool KeyValueStore::ContainsInt(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(int32_t);
+      properties_.find(name)->second.IsTypeCompatible<int32_t>();
 }
 
 bool KeyValueStore::ContainsInt16(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(int16_t);
+      properties_.find(name)->second.IsTypeCompatible<int16_t>();
 }
 
 bool KeyValueStore::ContainsKeyValueStore(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(KeyValueStore);
+      properties_.find(name)->second.IsTypeCompatible<KeyValueStore>();
 }
 
 bool KeyValueStore::ContainsRpcIdentifier(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(dbus::ObjectPath);
+      properties_.find(name)->second.IsTypeCompatible<dbus::ObjectPath>();
 }
 
 bool KeyValueStore::ContainsRpcIdentifiers(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() ==
-          typeid(vector<dbus::ObjectPath>);
+      properties_.find(name)->second
+          .IsTypeCompatible<vector<dbus::ObjectPath>>();
 }
 
 bool KeyValueStore::ContainsString(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(string);
+      properties_.find(name)->second.IsTypeCompatible<string>();
 }
 
 bool KeyValueStore::ContainsStringmap(const std::string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(Stringmap);
+      properties_.find(name)->second.IsTypeCompatible<Stringmap>();
 }
 
 bool KeyValueStore::ContainsStrings(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(Strings);
+      properties_.find(name)->second.IsTypeCompatible<Strings>();
 }
 
 bool KeyValueStore::ContainsUint(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(uint32_t);
+      properties_.find(name)->second.IsTypeCompatible<uint32_t>();
 }
 
 bool KeyValueStore::ContainsUint8(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(uint8_t);
+      properties_.find(name)->second.IsTypeCompatible<uint8_t>();
 }
 
 bool KeyValueStore::ContainsUint16(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(uint16_t);
+      properties_.find(name)->second.IsTypeCompatible<uint16_t>();
 }
 
 bool KeyValueStore::ContainsUint8s(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(vector<uint8_t>);
+      properties_.find(name)->second.IsTypeCompatible<vector<uint8_t>>();
 }
 
 bool KeyValueStore::ContainsUint32s(const string& name) const {
   return ContainsKey(properties_, name) &&
-      properties_.find(name)->second.GetType() == typeid(vector<uint32_t>);
+      properties_.find(name)->second.IsTypeCompatible<vector<uint32_t>>();
 }
 
 bool KeyValueStore::Contains(const string& name) const {
@@ -132,8 +131,7 @@ bool KeyValueStore::Contains(const string& name) const {
 
 bool KeyValueStore::GetBool(const string& name) const {
   const auto it(properties_.find(name));
-  // TODO(zqiu): Replace typeid comparison with brillo::Any::IsTypeCompatible.
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(bool))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<bool>())
       << "for bool property " << name;
   return it->second.Get<bool>();
 }
@@ -141,43 +139,45 @@ bool KeyValueStore::GetBool(const string& name) const {
 const vector<vector<uint8_t>>& KeyValueStore::GetByteArrays(
     const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() ==
-      typeid(vector<vector<uint8_t>>)) << "for byte arrays property " << name;
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<vector<vector<uint8_t>>>())
+      << "for byte arrays property " << name;
   return it->second.Get<vector<vector<uint8_t>>>();
 }
 
 int32_t KeyValueStore::GetInt(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(int32_t))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<int32_t>())
       << "for int property " << name;
   return it->second.Get<int32_t>();
 }
 
 int16_t KeyValueStore::GetInt16(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(int16_t))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<int16_t>())
       << "for int16 property " << name;
   return it->second.Get<int16_t>();
 }
 
 const KeyValueStore& KeyValueStore::GetKeyValueStore(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() ==
-      typeid(KeyValueStore)) << "for key value store property " << name;
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<KeyValueStore>())
+      << "for key value store property " << name;
   return it->second.Get<KeyValueStore>();
 }
 
 const string& KeyValueStore::GetRpcIdentifier(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() ==
-      typeid(dbus::ObjectPath)) << "for rpc identifier property " << name;
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<dbus::ObjectPath>())
+      << "for rpc identifier property " << name;
   return it->second.Get<dbus::ObjectPath>().value();
 }
 
 vector<string> KeyValueStore::GetRpcIdentifiers(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() ==
-      typeid(vector<dbus::ObjectPath>))
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<vector<dbus::ObjectPath>>())
       << "for rpc identifier property " << name;
   RpcIdentifiers ids;
   KeyValueStore::ConvertPathsToRpcIdentifiers(
@@ -187,7 +187,7 @@ vector<string> KeyValueStore::GetRpcIdentifiers(const string& name) const {
 
 const string& KeyValueStore::GetString(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(string))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<string>())
       << "for string property " << name;
   return it->second.Get<string>();
 }
@@ -195,50 +195,52 @@ const string& KeyValueStore::GetString(const string& name) const {
 const map<string, string>& KeyValueStore::GetStringmap(
     const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(Stringmap))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<Stringmap>())
       << "for stringmap property " << name;
   return it->second.Get<Stringmap>();
 }
 
 const vector<string>& KeyValueStore::GetStrings(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(Strings))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<Strings>())
       << "for strings property " << name;
   return it->second.Get<Strings>();
 }
 
 uint32_t KeyValueStore::GetUint(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(uint32_t))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<uint32_t>())
       << "for uint32 property " << name;
   return it->second.Get<uint32_t>();
 }
 
 uint16_t KeyValueStore::GetUint16(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(uint16_t))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<uint16_t>())
       << "for uint16 property " << name;
   return it->second.Get<uint16_t>();
 }
 
 uint8_t KeyValueStore::GetUint8(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() == typeid(uint8_t))
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<uint8_t>())
       << "for uint8 property " << name;
   return it->second.Get<uint8_t>();
 }
 
 const vector<uint8_t>& KeyValueStore::GetUint8s(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() ==
-      typeid(vector<uint8_t>)) << "for uint8s property " << name;
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<vector<uint8_t>>())
+      << "for uint8s property " << name;
   return it->second.Get<vector<uint8_t>>();
 }
 
 const vector<uint32_t>& KeyValueStore::GetUint32s(const string& name) const {
   const auto it(properties_.find(name));
-  CHECK(it != properties_.end() && it->second.GetType() ==
-      typeid(vector<uint32_t>)) << "for uint32s property " << name;
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<vector<uint32_t>>())
+      << "for uint32s property " << name;
   return it->second.Get<vector<uint32_t>>();
 }
 
@@ -380,7 +382,7 @@ bool KeyValueStore::LookupBool(const string& name, bool default_value) const {
   if (it == properties_.end()) {
     return default_value;
   }
-  CHECK(it->second.GetType() == typeid(bool)) << "type mismatched";
+  CHECK(it->second.IsTypeCompatible<bool>()) << "type mismatched";
   return it->second.Get<bool>();
 }
 
@@ -389,7 +391,7 @@ int KeyValueStore::LookupInt(const string& name, int default_value) const {
   if (it == properties_.end()) {
     return default_value;
   }
-  CHECK(it->second.GetType() == typeid(int32_t)) << "type mismatched";
+  CHECK(it->second.IsTypeCompatible<int32_t>()) << "type mismatched";
   return it->second.Get<int32_t>();
 }
 
@@ -399,7 +401,7 @@ string KeyValueStore::LookupString(const string& name,
   if (it == properties_.end()) {
     return default_value;
   }
-  CHECK(it->second.GetType() == typeid(string)) << "type mismatched";
+  CHECK(it->second.IsTypeCompatible<string>()) << "type mismatched";
   return it->second.Get<string>();
 }
 

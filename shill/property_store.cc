@@ -67,41 +67,41 @@ bool PropertyStore::SetAnyProperty(const string& name,
                                    const brillo::Any& value,
                                    Error* error) {
   bool ret = false;
-  if (typeid(bool) == value.GetType()) {     // NOLINT
+  if (value.IsTypeCompatible<bool>()) {
     ret = SetBoolProperty(name, value.Get<bool>(), error);
-  } else if (typeid(uint8_t) == value.GetType()) {
+  } else if (value.IsTypeCompatible<uint8_t>()) {
     ret = SetUint8Property(name, value.Get<uint8_t>(), error);
-  } else if (typeid(int16_t) == value.GetType()) {
+  } else if (value.IsTypeCompatible<int16_t>()) {
     ret = SetInt16Property(name, value.Get<int16_t>(), error);
-  } else if (typeid(int32_t) == value.GetType()) {
+  } else if (value.IsTypeCompatible<int32_t>()) {
     ret = SetInt32Property(name, value.Get<int32_t>(), error);
-  } else if (typeid(dbus::ObjectPath) == value.GetType()) {
+  } else if (value.IsTypeCompatible<dbus::ObjectPath>()) {
     ret = SetStringProperty(name, value.Get<dbus::ObjectPath>().value(), error);
-  } else if (typeid(string) == value.GetType()) {
+  } else if (value.IsTypeCompatible<string>()) {
     ret = SetStringProperty(name, value.Get<string>(), error);
-  } else if (typeid(Stringmap) == value.GetType()) {
+  } else if (value.IsTypeCompatible<Stringmap>()) {
     ret = SetStringmapProperty(name, value.Get<Stringmap>(), error);
-  } else if (typeid(Stringmaps) == value.GetType()) {
+  } else if (value.IsTypeCompatible<Stringmaps>()) {
     SLOG(nullptr, 1) << " can't yet handle setting type "
-                     << value.GetType().name();
+                     << value.GetUndecoratedTypeName();
     error->Populate(Error::kInternalError);
-  } else if (typeid(Strings) == value.GetType()) {
+  } else if (value.IsTypeCompatible<Strings>()) {
     ret = SetStringsProperty(name, value.Get<Strings>(), error);
-  } else if (typeid(uint16_t) == value.GetType()) {
+  } else if (value.IsTypeCompatible<uint16_t>()) {
     ret = SetUint16Property(name, value.Get<uint16_t>(), error);
-  } else if (typeid(Uint16s) == value.GetType()) {
+  } else if (value.IsTypeCompatible<Uint16s>()) {
     ret = SetUint16sProperty(name, value.Get<Uint16s>(), error);
-  } else if (typeid(uint32_t) == value.GetType()) {
+  } else if (value.IsTypeCompatible<uint32_t>()) {
     ret = SetUint32Property(name, value.Get<uint32_t>(), error);
-  } else if (typeid(uint64_t) == value.GetType()) {
+  } else if (value.IsTypeCompatible<uint64_t>()) {
     ret = SetUint64Property(name, value.Get<uint64_t>(), error);
-  } else if (typeid(brillo::VariantDictionary) == value.GetType()) {
+  } else if (value.IsTypeCompatible<brillo::VariantDictionary>()) {
     KeyValueStore store;
     KeyValueStore::ConvertFromVariantDictionary(
         value.Get<brillo::VariantDictionary>(), &store);
     ret = SetKeyValueStoreProperty(name, store, error);
   } else {
-    NOTREACHED() << " unknown type: " << value.GetType().name();
+    NOTREACHED() << " unknown type: " << value.GetUndecoratedTypeName();
     error->Populate(Error::kInternalError);
   }
   return ret;

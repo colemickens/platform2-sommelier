@@ -225,13 +225,13 @@ bool FakeStore::ReadSetting(
     return false;
   }
 
-  const auto& desired_type = typeid(*out);
-  const auto& available_type = property_name_and_value->second.GetType();
-  if (available_type != desired_type) {
+  if (!property_name_and_value->second.IsTypeCompatible<T>()) {
     // We assume that the reader and the writer agree on the exact
     // type. So we do not allow implicit conversion.
-    LOG(ERROR) << "Can not read |" << desired_type.name() << "| from |"
-               << available_type.name() << "|.";
+    LOG(ERROR) << "Can not read |" << brillo::GetUndecoratedTypeName<T>()
+               << "| from |"
+               << property_name_and_value->second.GetUndecoratedTypeName()
+               << "|.";
     return false;
   }
 
@@ -258,11 +258,10 @@ bool FakeStore::WriteSetting(
     return true;
   }
 
-  const auto& new_type = typeid(new_value);
-  const auto& current_type = property_name_and_value->second.GetType();
-  if (new_type != current_type) {
-    SLOG(this, 10) << "New type |" << new_type.name()
-                   << "| differs from current type |" << current_type.name()
+  if (!property_name_and_value->second.IsTypeCompatible<T>()) {
+    SLOG(this, 10) << "New type |" << brillo::GetUndecoratedTypeName<T>()
+                   << "| differs from current type |"
+                   << property_name_and_value->second.GetUndecoratedTypeName()
                    << "|.";
     return false;
   } else {

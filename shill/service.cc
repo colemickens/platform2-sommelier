@@ -651,7 +651,7 @@ bool Service::Save(StoreInterface* storage) {
 
 void Service::Configure(const KeyValueStore& args, Error* error) {
   for (const auto it : args.properties()) {
-    if (it.second.GetType() == typeid(bool)) {    // NOLINT
+    if (it.second.IsTypeCompatible<bool>()) {
       if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring bool property: " << it.first;
         continue;
@@ -662,7 +662,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
-    } else if (it.second.GetType() == typeid(int32_t)) {
+    } else if (it.second.IsTypeCompatible<int32_t>()) {
       if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring int32_t property: " << it.first;
         continue;
@@ -673,7 +673,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
-    } else if (it.second.GetType() == typeid(KeyValueStore)) {
+    } else if (it.second.IsTypeCompatible<KeyValueStore>()) {
       if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring key value store property: " << it.first;
         continue;
@@ -686,7 +686,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
-    } else if (it.second.GetType() == typeid(string)) {
+    } else if (it.second.IsTypeCompatible<string>()) {
       if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring string property: " << it.first;
         continue;
@@ -697,7 +697,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
-    } else if (it.second.GetType() == typeid(Strings)) {
+    } else if (it.second.IsTypeCompatible<Strings>()) {
       if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring strings property: " << it.first;
         continue;
@@ -708,7 +708,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       if (error->IsSuccess() && set_error.IsFailure()) {
         error->CopyFrom(set_error);
       }
-    } else if (it.second.GetType() == typeid(Stringmap)) {
+    } else if (it.second.IsTypeCompatible<Stringmap>()) {
       if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
         SLOG(this, 5) << "Ignoring stringmap property: " << it.first;
         continue;
@@ -727,7 +727,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
 
 bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
   for (const auto& it : args.properties()) {
-    if (it.second.GetType() == typeid(bool)) {    // NOLINT
+    if (it.second.IsTypeCompatible<bool>()) {
       SLOG(this, 5) << "Checking bool property: " << it.first;
       Error get_error;
       bool value;
@@ -735,7 +735,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
           value != it.second.Get<bool>()) {
         return false;
       }
-    } else if (it.second.GetType() == typeid(int32_t)) {
+    } else if (it.second.IsTypeCompatible<int32_t>()) {
       SLOG(this, 5) << "Checking int32 property: " << it.first;
       Error get_error;
       int32_t value;
@@ -743,7 +743,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
           value != it.second.Get<int32_t>()) {
         return false;
       }
-    } else if (it.second.GetType() == typeid(string)) {
+    } else if (it.second.IsTypeCompatible<string>()) {
       SLOG(this, 5) << "Checking string property: " << it.first;
       Error get_error;
       string value;
@@ -751,7 +751,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
           value != it.second.Get<string>()) {
         return false;
       }
-    } else if (it.second.GetType() == typeid(Strings)) {
+    } else if (it.second.IsTypeCompatible<Strings>()) {
       SLOG(this, 5) << "Checking strings property: " << it.first;
       Error get_error;
       Strings value;
@@ -759,7 +759,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
           value != it.second.Get<Strings>()) {
         return false;
       }
-    } else if (it.second.GetType() == typeid(Stringmap)) {
+    } else if (it.second.IsTypeCompatible<Stringmap>()) {
       SLOG(this, 5) << "Checking stringmap property: " << it.first;
       Error get_error;
       Stringmap value;
@@ -767,7 +767,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
           value != it.second.Get<Stringmap>()) {
         return false;
       }
-    } else if (it.second.GetType() == typeid(KeyValueStore)) {
+    } else if (it.second.IsTypeCompatible<KeyValueStore>()) {
       SLOG(this, 5) << "Checking key value store property: " << it.first;
       Error get_error;
       KeyValueStore value;

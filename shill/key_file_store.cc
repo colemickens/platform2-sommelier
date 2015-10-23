@@ -390,19 +390,19 @@ bool KeyFileStore::SetCryptedString(const string& group,
 bool KeyFileStore::DoesGroupMatchProperties(
     const string& group, const KeyValueStore& properties) const {
   for (const auto& property : properties.properties()) {
-    if (property.second.GetType() == typeid(bool)) {    // NOLINT
+    if (property.second.IsTypeCompatible<bool>()) {
       bool value;
       if (!GetBool(group, property.first, &value) ||
           value != property.second.Get<bool>()) {
         return false;
       }
-    } else if (property.second.GetType() == typeid(int32_t)) {
+    } else if (property.second.IsTypeCompatible<int32_t>()) {
       int value;
       if (!GetInt(group, property.first, &value) ||
           value != property.second.Get<int32_t>()) {
         return false;
       }
-    } else if (property.second.GetType() == typeid(string)) {
+    } else if (property.second.IsTypeCompatible<string>()) {
       string value;
       if (!GetString(group, property.first, &value) ||
           value != property.second.Get<string>()) {
