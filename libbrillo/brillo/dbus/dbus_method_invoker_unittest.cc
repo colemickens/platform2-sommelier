@@ -13,7 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "unittests/test.pb.h"
+#include "brillo/dbus/test.pb.h"
 
 using testing::AnyNumber;
 using testing::InSequence;

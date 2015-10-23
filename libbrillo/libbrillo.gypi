@@ -281,7 +281,7 @@
               'libchrome-test-<(libbase_ver)',
             ],
             'proto_in_dir': 'brillo/dbus',
-            'proto_out_dir': 'include/unittests',
+            'proto_out_dir': 'include/brillo/dbus',
           },
           'includes': [
             '../common-mk/common_test.gypi',

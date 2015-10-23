@@ -9,7 +9,7 @@
 #include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
 
-#include "unittests/test.pb.h"
+#include "brillo/dbus/test.pb.h"
 
 using dbus::FileDescriptor;
 using dbus::Message;
