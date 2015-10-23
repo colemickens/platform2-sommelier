@@ -34,7 +34,7 @@ Any& Any::operator=(Any&& rhs) {
 
 bool Any::operator==(const Any& rhs) const {
   // Make sure both objects contain data of the same type.
-  if (GetType() != rhs.GetType())
+  if (strcmp(GetTypeNameInternal(), rhs.GetTypeNameInternal()) != 0)
     return false;
 
   if (IsEmpty())
@@ -43,12 +43,11 @@ bool Any::operator==(const Any& rhs) const {
   return data_buffer_.GetDataPtr()->CompareEqual(rhs.data_buffer_.GetDataPtr());
 }
 
-const std::type_info& Any::GetType() const {
+const char* Any::GetTypeNameInternal() const {
   if (!IsEmpty())
-    return data_buffer_.GetDataPtr()->GetType();
+    return data_buffer_.GetDataPtr()->GetTypeName();
 
-  struct NullType {};  // Special helper type representing an empty variant.
-  return typeid(NullType);
+  return "";
 }
 
 void Any::Swap(Any& other) {

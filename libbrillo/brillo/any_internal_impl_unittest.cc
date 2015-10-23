@@ -21,7 +21,7 @@ TEST(Buffer, Store_Int) {
   buffer.Assign(2);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kContained, buffer.storage_);
-  EXPECT_EQ(typeid(int), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(int).name(), buffer.GetDataPtr()->GetTypeName());
 }
 
 TEST(Buffer, Store_Double) {
@@ -29,7 +29,7 @@ TEST(Buffer, Store_Double) {
   buffer.Assign(2.3);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kContained, buffer.storage_);
-  EXPECT_EQ(typeid(double), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(double).name(), buffer.GetDataPtr()->GetTypeName());
 }
 
 TEST(Buffer, Store_Pointers) {
@@ -38,13 +38,14 @@ TEST(Buffer, Store_Pointers) {
   buffer.Assign(nullptr);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kContained, buffer.storage_);
-  EXPECT_EQ(typeid(std::nullptr_t), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(std::nullptr_t).name(),
+               buffer.GetDataPtr()->GetTypeName());
 
   // char *
   buffer.Assign("abcd");
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kContained, buffer.storage_);
-  EXPECT_EQ(typeid(const char*), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(const char*).name(), buffer.GetDataPtr()->GetTypeName());
 
   // pointer to non-trivial object
   class NonTrivial {
@@ -54,7 +55,7 @@ TEST(Buffer, Store_Pointers) {
   buffer.Assign(&non_trivial);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kContained, buffer.storage_);
-  EXPECT_EQ(typeid(NonTrivial*), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(NonTrivial*).name(), buffer.GetDataPtr()->GetTypeName());
 }
 
 TEST(Buffer, Store_NonTrivialObjects) {
@@ -66,7 +67,7 @@ TEST(Buffer, Store_NonTrivialObjects) {
   buffer.Assign(non_trivial);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kExternal, buffer.storage_);
-  EXPECT_EQ(typeid(NonTrivial), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(NonTrivial).name(), buffer.GetDataPtr()->GetTypeName());
 }
 
 TEST(Buffer, Store_Objects) {
@@ -78,7 +79,7 @@ TEST(Buffer, Store_Objects) {
   buffer.Assign(small);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kContained, buffer.storage_);
-  EXPECT_EQ(typeid(Small), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(Small).name(), buffer.GetDataPtr()->GetTypeName());
 
   struct Large {
     char c[10];
@@ -86,7 +87,7 @@ TEST(Buffer, Store_Objects) {
   buffer.Assign(large);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kExternal, buffer.storage_);
-  EXPECT_EQ(typeid(Large), buffer.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(Large).name(), buffer.GetDataPtr()->GetTypeName());
 }
 
 TEST(Buffer, Copy) {
@@ -97,8 +98,8 @@ TEST(Buffer, Copy) {
   buffer1.CopyTo(&buffer2);
   EXPECT_FALSE(buffer1.IsEmpty());
   EXPECT_FALSE(buffer2.IsEmpty());
-  EXPECT_EQ(typeid(int), buffer1.GetDataPtr()->GetType());
-  EXPECT_EQ(typeid(int), buffer2.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(int).name(), buffer1.GetDataPtr()->GetTypeName());
+  EXPECT_STREQ(typeid(int).name(), buffer2.GetDataPtr()->GetTypeName());
   EXPECT_EQ(30, buffer1.GetData<int>());
   EXPECT_EQ(30, buffer2.GetData<int>());
 
@@ -106,8 +107,8 @@ TEST(Buffer, Copy) {
   buffer1.CopyTo(&buffer2);
   EXPECT_FALSE(buffer1.IsEmpty());
   EXPECT_FALSE(buffer2.IsEmpty());
-  EXPECT_EQ(typeid(std::string), buffer1.GetDataPtr()->GetType());
-  EXPECT_EQ(typeid(std::string), buffer2.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(std::string).name(), buffer1.GetDataPtr()->GetTypeName());
+  EXPECT_STREQ(typeid(std::string).name(), buffer2.GetDataPtr()->GetTypeName());
   EXPECT_EQ("abc", buffer1.GetData<std::string>());
   EXPECT_EQ("abc", buffer2.GetData<std::string>());
 }
@@ -127,7 +128,7 @@ TEST(Buffer, Move) {
   // the data and any retains the actual type.
   EXPECT_FALSE(buffer1.IsEmpty());
   EXPECT_FALSE(buffer2.IsEmpty());
-  EXPECT_EQ(typeid(int), buffer2.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(int).name(), buffer2.GetDataPtr()->GetTypeName());
   EXPECT_EQ(30, buffer2.GetData<int>());
 
   buffer1.Assign(std::string("abc"));
@@ -136,6 +137,6 @@ TEST(Buffer, Move) {
   // This will make the source object effectively "Empty".
   EXPECT_TRUE(buffer1.IsEmpty());
   EXPECT_FALSE(buffer2.IsEmpty());
-  EXPECT_EQ(typeid(std::string), buffer2.GetDataPtr()->GetType());
+  EXPECT_STREQ(typeid(std::string).name(), buffer2.GetDataPtr()->GetTypeName());
   EXPECT_EQ("abc", buffer2.GetData<std::string>());
 }

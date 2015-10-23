@@ -304,3 +304,34 @@ TEST(Any, Compare_NonComparable) {
   EXPECT_NE(person1, person3);
   EXPECT_NE(person2, person3);
 }
+
+TEST(Any, GetTypeName) {
+  Any val;
+  EXPECT_TRUE(val.GetTypeName().empty());
+
+  val = 1;
+  EXPECT_EQ(typeid(int).name(), val.GetTypeName());
+
+  val = 3.1415926;
+  EXPECT_EQ(typeid(double).name(), val.GetTypeName());
+
+  val = std::string("blah");
+  EXPECT_EQ(typeid(std::string).name(), val.GetTypeName());
+}
+
+TEST(Any, GetUndecoratedTypeName) {
+  Any val;
+  EXPECT_TRUE(val.GetUndecoratedTypeName().empty());
+
+  val = 1;
+  EXPECT_EQ(brillo::GetUndecoratedTypeName<int>(),
+            val.GetUndecoratedTypeName());
+
+  val = 3.1415926;
+  EXPECT_EQ(brillo::GetUndecoratedTypeName<double>(),
+            val.GetUndecoratedTypeName());
+
+  val = std::string("blah");
+  EXPECT_EQ(brillo::GetUndecoratedTypeName<std::string>(),
+            val.GetUndecoratedTypeName());
+}

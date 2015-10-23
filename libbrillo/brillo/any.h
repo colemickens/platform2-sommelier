@@ -83,8 +83,8 @@ class BRILLO_EXPORT Any final {
     // to make sure the requested type matches the type of data actually stored,
     // so this "canonical" type is used for type checking below.
     using CanonicalDestType = typename std::decay<DestType>::type;
-    const std::type_info& ContainedTypeId = GetType();
-    if (typeid(CanonicalDestType) == ContainedTypeId)
+    const char* contained_type = GetTypeNameInternal();
+    if (strcmp(typeid(CanonicalDestType).name(), contained_type) == 0)
       return true;
 
     if (!std::is_pointer<CanonicalDestType>::value)
@@ -97,14 +97,18 @@ class BRILLO_EXPORT Any final {
     using NonPointer = typename std::remove_pointer<CanonicalDestType>::type;
     using CanonicalDestTypeNoConst = typename std::add_pointer<
         typename std::remove_const<NonPointer>::type>::type;
+    if (strcmp(typeid(CanonicalDestTypeNoConst).name(), contained_type) == 0)
+      return true;
+
     using CanonicalDestTypeNoVolatile = typename std::add_pointer<
         typename std::remove_volatile<NonPointer>::type>::type;
+    if (strcmp(typeid(CanonicalDestTypeNoVolatile).name(), contained_type) == 0)
+      return true;
+
     using CanonicalDestTypeNoConstOrVolatile = typename std::add_pointer<
         typename std::remove_cv<NonPointer>::type>::type;
-
-    return typeid(CanonicalDestTypeNoConst) == ContainedTypeId ||
-           typeid(CanonicalDestTypeNoVolatile) == ContainedTypeId ||
-           typeid(CanonicalDestTypeNoConstOrVolatile) == ContainedTypeId;
+    return strcmp(typeid(CanonicalDestTypeNoConstOrVolatile).name(),
+                  contained_type) == 0;
   }
 
   // Returns immutable data contained in Any.
@@ -113,8 +117,8 @@ class BRILLO_EXPORT Any final {
   template<typename T>
   const T& Get() const {
     CHECK(IsTypeCompatible<T>())
-        << "Requesting value of type '" << GetUndecoratedTypeName<T>()
-        << "' from variant containing '" << UndecorateTypeName(GetType().name())
+        << "Requesting value of type '" << brillo::GetUndecoratedTypeName<T>()
+        << "' from variant containing '" << GetUndecoratedTypeName()
         << "'";
     return data_buffer_.GetData<T>();
   }
@@ -158,9 +162,14 @@ class BRILLO_EXPORT Any final {
     return TryGet<T>(typename std::decay<T>::type());
   }
 
-  // Returns the type information about the contained data. For most cases,
-  // instead of using this function, you should be calling IsTypeCompatible<>().
-  const std::type_info& GetType() const;
+  // Returns the name of the type contained within Any. The string is a mangled
+  // type name returned by type_info::name(). For most cases, instead of using
+  // this function, you should be calling IsTypeCompatible<>().
+  inline std::string GetTypeName() const { return GetTypeNameInternal(); }
+  // Returns the undecorated name of the type contained within Any.
+  inline std::string GetUndecoratedTypeName() const {
+    return UndecorateTypeName(GetTypeNameInternal());
+  }
   // Swaps the value of this object with that of |other|.
   void Swap(Any& other);
   // Checks if Any is empty, that is, not containing a value of any type.
@@ -187,6 +196,10 @@ class BRILLO_EXPORT Any final {
   void AppendToDBusMessageWriter(dbus::MessageWriter* writer) const;
 
  private:
+  // Internal implementation of GetTypeName() which returns just a char* to
+  // static type name buffer.
+  const char* GetTypeNameInternal() const;
+
   // The data buffer for contained object.
   internal_details::Buffer data_buffer_;
 };
