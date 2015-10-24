@@ -1193,6 +1193,70 @@ cmd_dump_emk() (
                        --name=attest-ent-machine
 )
 
+USAGE_enroll_status='[--mode] [--domain] [--user]'
+HELP_enroll_status='
+  Displays device enrollment information.
+'
+cmd_enroll_status() (
+  if [ "$1" = "" ]; then
+    if check_enterprise_mode; then
+      echo "Enrollment mode:"
+      /usr/sbin/cryptohome --action=install_attributes_get \
+        --name=enterprise.mode
+    else
+      echo "This device is not enterprise enrolled."
+    fi
+  fi
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      "--mode")
+        if check_enterprise_mode; then
+          echo "Enrollment mode:"
+          /usr/sbin/cryptohome --action=install_attributes_get \
+            --name=enterprise.mode
+        else
+          echo "This device is not enterprise enrolled."
+        fi
+        ;;
+
+      "--domain")
+        if check_enterprise_mode; then
+          echo "Enrollment domain:"
+          /usr/sbin/cryptohome --action=install_attributes_get \
+            --name=enterprise.domain
+        else
+          echo "Enterprise enrollment domain not found."
+        fi
+        ;;
+
+      "--user")
+        if check_enterprise_mode; then
+          echo "Enrollment user:"
+          /usr/sbin/cryptohome --action=install_attributes_get \
+            --name=enterprise.user
+        else
+          echo "Enterprise enrollment user not found."
+        fi
+        ;;
+
+      *)
+        help "unknown option: $1"
+        return 1
+        ;;
+    esac
+
+    shift
+  done
+)
+
+check_enterprise_mode() {
+  if ! /usr/sbin/cryptohome --action=install_attributes_get \
+      --name=enterprise.mode 2>&1 | grep -q "enterprise"; then
+    return 1
+  fi
+}
+
 USAGE_tpm_status=''
 HELP_tpm_status='
   Prints TPM (Trusted Platform Module) status information.
