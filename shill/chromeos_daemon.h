@@ -42,9 +42,6 @@ class RTNLHandler;
 
 #if !defined(DISABLE_WIFI)
 class NetlinkManager;
-#if defined(__BRILLO__)
-class WiFiDriverHal;
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
 
@@ -117,9 +114,6 @@ class ChromeosDaemon {
   DHCPProvider* dhcp_provider_;
   ProcessManager* process_manager_;
 #if !defined(DISABLE_WIFI)
-#if defined(__BRILLO__)
-  WiFiDriverHal* wifi_driver_hal_;
-#endif  // __BRILLO__
   NetlinkManager* netlink_manager_;
   std::unique_ptr<Callback80211Metrics> callback80211_metrics_;
 #endif  // DISABLE_WIFI
