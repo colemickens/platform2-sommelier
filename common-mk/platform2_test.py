@@ -40,6 +40,8 @@ ENV_PASSTHRU_REGEX_LIST = [re.compile(x) for x in (
     '[AL]SAN_OPTIONS$',
     # Used by QEMU.
     'QEMU_',
+    # Used to select profiling output location for gcov.
+    'GCOV_',
 )]
 
 
