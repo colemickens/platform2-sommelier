@@ -230,7 +230,8 @@ bool ProcessManager::StopProcessAndBlock(pid_t pid) {
 
 bool ProcessManager::KillProcessWithTimeout(pid_t pid, bool kill_signal) {
   SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
-
+  
+  bool killed = false;
   if (KillProcess(pid, kill_signal ? SIGKILL : SIGTERM, &killed)) {
     if (killed) {
       return true;
@@ -251,7 +252,6 @@ bool ProcessManager::KillProcessWithTimeout(pid_t pid, bool kill_signal) {
 bool ProcessManager::KillProcess(pid_t pid, int signal, bool* killed) {
   SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
 
-  *killed = false;
   if (kill(pid, signal) < 0) {
     if (errno == ESRCH) {
       SLOG(this, 2) << "Process " << pid << " has exited.";
