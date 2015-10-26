@@ -172,6 +172,7 @@ class DeviceInfoTest : public Test {
   static const char kTestIPAddress4[];
   static const char kTestIPAddress5[];
   static const char kTestIPAddress6[];
+  static const char kTestIPAddress7[];
   static const int kReceiveByteCount;
   static const int kTransmitByteCount;
 
@@ -214,6 +215,7 @@ const char DeviceInfoTest::kTestIPAddress3[] = "fe80::1aa9:5ff:abcd:1236";
 const char DeviceInfoTest::kTestIPAddress4[] = "fe80::1aa9:5ff:abcd:1237";
 const char DeviceInfoTest::kTestIPAddress5[] = "192.168.1.2";
 const char DeviceInfoTest::kTestIPAddress6[] = "192.168.2.2";
+const char DeviceInfoTest::kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
 const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
 
@@ -1286,16 +1288,31 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   IPAddress ipv6_address4(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address4.SetAddressFromString(kTestIPAddress4));
   message.reset(BuildAddressMessage(
-      RTNLMessage::kModeAdd, ipv6_address4, IFA_F_TEMPORARY,
+      RTNLMessage::kModeAdd, ipv6_address4, IFA_F_TEMPORARY | IFA_F_DEPRECATED,
       RT_SCOPE_UNIVERSE));
 
-  // Another temporary address alerts the Device, and will override
-  // the primary address.
+  // Adding a temporary deprecated address alerts the Device, but does not
+  // override the primary address since the previous one was non-deprecated.
   EXPECT_CALL(*device, OnIPv6AddressChanged());
   SendMessageToDeviceInfo(*message);
   IPAddress address2(IPAddress::kFamilyUnknown);
   EXPECT_TRUE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, &address2));
-  EXPECT_TRUE(address2.Equals(ipv6_address4));
+  EXPECT_TRUE(address2.Equals(ipv6_address2));
+  Mock::VerifyAndClearExpectations(device.get());
+
+  IPAddress ipv6_address7(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(ipv6_address7.SetAddressFromString(kTestIPAddress7));
+  message.reset(BuildAddressMessage(
+      RTNLMessage::kModeAdd, ipv6_address7, IFA_F_TEMPORARY,
+      RT_SCOPE_UNIVERSE));
+
+  // Another temporary (non-deprecated) address alerts the Device, and will
+  // override the previous primary address.
+  EXPECT_CALL(*device, OnIPv6AddressChanged());
+  SendMessageToDeviceInfo(*message);
+  IPAddress address3(IPAddress::kFamilyUnknown);
+  EXPECT_TRUE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, &address3));
+  EXPECT_TRUE(address3.Equals(ipv6_address7));
 }
 
 

@@ -861,10 +861,19 @@ bool DeviceInfo::GetPrimaryIPv6Address(int interface_index,
     return false;
   }
   bool has_temporary_address = false;
+  bool has_current_address = false;
   bool has_address = false;
   for (const auto& local_address : info->ip_addresses) {
     if (local_address.address.family() != IPAddress::kFamilyIPv6 ||
         local_address.scope != RT_SCOPE_UNIVERSE) {
+      continue;
+    }
+
+    // Prefer non-deprecated addresses to deprecated addresses to match the
+    // kernel's preference.
+    bool is_current_address =
+        ((local_address.flags & IFA_F_DEPRECATED) == 0);
+    if (has_current_address && !is_current_address) {
       continue;
     }
 
@@ -877,6 +886,7 @@ bool DeviceInfo::GetPrimaryIPv6Address(int interface_index,
 
     *address = local_address.address;
     has_temporary_address = is_temporary_address;
+    has_current_address = is_current_address;
     has_address = true;
   }
 
