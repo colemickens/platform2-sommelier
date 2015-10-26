@@ -6,16 +6,7 @@
 
 namespace apmanager {
 
-namespace {
-base::LazyInstance<MockDHCPServerFactory> g_mock_dhcp_server_factory
-    = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 MockDHCPServerFactory::MockDHCPServerFactory() {}
 MockDHCPServerFactory::~MockDHCPServerFactory() {}
-
-MockDHCPServerFactory* MockDHCPServerFactory::GetInstance() {
-  return g_mock_dhcp_server_factory.Pointer();
-}
 
 }  // namespace apmanager

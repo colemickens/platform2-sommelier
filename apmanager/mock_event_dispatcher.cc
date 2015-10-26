@@ -6,16 +6,7 @@
 
 namespace apmanager {
 
-namespace {
-base::LazyInstance<MockEventDispatcher> g_mock_event_dispatcher
-    = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 MockEventDispatcher::MockEventDispatcher() {}
 MockEventDispatcher::~MockEventDispatcher() {}
-
-MockEventDispatcher* MockEventDispatcher::GetInstance() {
-  return g_mock_event_dispatcher.Pointer();
-}
 
 }  // namespace apmanager

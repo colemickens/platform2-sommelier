@@ -6,16 +6,7 @@
 
 namespace apmanager {
 
-namespace {
-base::LazyInstance<MockProcessFactory> g_mock_process_factory
-    = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 MockProcessFactory::MockProcessFactory() {}
 MockProcessFactory::~MockProcessFactory() {}
-
-MockProcessFactory* MockProcessFactory::GetInstance() {
-  return g_mock_process_factory.Pointer();
-}
 
 }  // namespace apmanager

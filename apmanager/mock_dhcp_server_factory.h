@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/lazy_instance.h>
 #include <gmock/gmock.h>
 
 #include "apmanager/dhcp_server_factory.h"
@@ -16,21 +15,14 @@ namespace apmanager {
 
 class MockDHCPServerFactory : public DHCPServerFactory {
  public:
+  MockDHCPServerFactory();
   ~MockDHCPServerFactory() override;
-
-  // This is a singleton. Use MockDHCPServerFactory::GetInstance()->Foo().
-  static MockDHCPServerFactory* GetInstance();
 
   MOCK_METHOD2(CreateDHCPServer,
                DHCPServer*(uint16_t server_address_index,
                            const std::string& interface_name));
 
- protected:
-  MockDHCPServerFactory();
-
  private:
-  friend struct base::DefaultLazyInstanceTraits<MockDHCPServerFactory>;
-
   DISALLOW_COPY_AND_ASSIGN(MockDHCPServerFactory);
 };
 

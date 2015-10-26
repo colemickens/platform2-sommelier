@@ -14,6 +14,7 @@
 using base::Bind;
 using base::Unretained;
 using ::testing::_;
+using ::testing::Mock;
 
 namespace {
   const char kStationMac[] = "00:11:22:33:44:55";
@@ -49,11 +50,10 @@ class HostapdEventCallbackObserver {
 class HostapdMonitorTest : public testing::Test {
  public:
   HostapdMonitorTest()
-      : hostapd_monitor_(observer_.event_callback(), "", ""),
-        event_dispatcher_(MockEventDispatcher::GetInstance()) {}
+      : hostapd_monitor_(observer_.event_callback(), "", "") {}
 
   virtual void SetUp() {
-    hostapd_monitor_.event_dispatcher_ = event_dispatcher_;
+    hostapd_monitor_.event_dispatcher_ = &event_dispatcher_;
   }
 
   void Start() {
@@ -67,16 +67,18 @@ class HostapdMonitorTest : public testing::Test {
  protected:
   HostapdEventCallbackObserver observer_;
   HostapdMonitor hostapd_monitor_;
-  MockEventDispatcher* event_dispatcher_;
+  MockEventDispatcher event_dispatcher_;
 };
 
 TEST_F(HostapdMonitorTest, Start) {
-  EXPECT_CALL(*event_dispatcher_, PostTask(_)).Times(1);
+  EXPECT_CALL(event_dispatcher_, PostTask(_)).Times(1);
   Start();
+  Mock::VerifyAndClearExpectations(&event_dispatcher_);
 
   // Monitor already started, nothing to be done.
-  EXPECT_CALL(*event_dispatcher_, PostTask(_)).Times(0);
+  EXPECT_CALL(event_dispatcher_, PostTask(_)).Times(0);
   Start();
+  Mock::VerifyAndClearExpectations(&event_dispatcher_);
 }
 
 TEST_F(HostapdMonitorTest, StationConnected) {

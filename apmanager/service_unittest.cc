@@ -35,11 +35,13 @@ using ::testing::SetArgPointee;
 namespace {
   const int kServiceIdentifier = 1;
   const char kHostapdConfig[] = "ssid=test\n";
+#if !defined(__ANDROID__)
   const char kBinSleep[] = "/bin/sleep";
   const char kHostapdConfigFilePath[] =
-#if !defined(__ANDROID__)
       "/var/run/apmanager/hostapd/hostapd-1.conf";
 #else
+  const char kBinSleep[] = "/system/bin/sleep";
+  const char kHostapdConfigFilePath[] =
       "/data/misc/apmanager/hostapd/hostapd-1.conf";
 #endif  // __ANDROID__
 }  // namespace
@@ -49,16 +51,13 @@ namespace apmanager {
 class ServiceTest : public testing::Test {
  public:
   ServiceTest()
-      : dhcp_server_factory_(MockDHCPServerFactory::GetInstance()),
-        file_writer_(MockFileWriter::GetInstance()),
-        process_factory_(MockProcessFactory::GetInstance()),
-        hostapd_monitor_(new MockHostapdMonitor()),
+      : hostapd_monitor_(new MockHostapdMonitor()),
         service_(&manager_, kServiceIdentifier) {}
 
   virtual void SetUp() {
-    service_.dhcp_server_factory_ = dhcp_server_factory_;
-    service_.file_writer_ = file_writer_;
-    service_.process_factory_ = process_factory_;
+    service_.dhcp_server_factory_ = &dhcp_server_factory_;
+    service_.file_writer_ = &file_writer_;
+    service_.process_factory_ = &process_factory_;
     service_.hostapd_monitor_.reset(hostapd_monitor_);
   }
 
@@ -76,9 +75,9 @@ class ServiceTest : public testing::Test {
 
  protected:
   MockManager manager_;
-  MockDHCPServerFactory* dhcp_server_factory_;
-  MockFileWriter* file_writer_;
-  MockProcessFactory* process_factory_;
+  MockDHCPServerFactory dhcp_server_factory_;
+  MockFileWriter file_writer_;
+  MockProcessFactory process_factory_;
   MockHostapdMonitor* hostapd_monitor_;
   Service service_;
 };
@@ -122,12 +121,12 @@ TEST_F(ServiceTest, StartSuccess) {
   brillo::ErrorPtr error;
   EXPECT_CALL(*config, GenerateConfigFile(_, _)).WillOnce(
       DoAll(SetArgPointee<1>(config_str), Return(true)));
-  EXPECT_CALL(*file_writer_, Write(kHostapdConfigFilePath, kHostapdConfig))
+  EXPECT_CALL(file_writer_, Write(kHostapdConfigFilePath, kHostapdConfig))
       .WillOnce(Return(true));
   EXPECT_CALL(*config, ClaimDevice()).WillOnce(Return(true));
-  EXPECT_CALL(*process_factory_, CreateProcess()).WillOnce(Return(process));
+  EXPECT_CALL(process_factory_, CreateProcess()).WillOnce(Return(process));
   EXPECT_CALL(*process, Start()).WillOnce(Return(true));
-  EXPECT_CALL(*dhcp_server_factory_, CreateDHCPServer(_, _))
+  EXPECT_CALL(dhcp_server_factory_, CreateDHCPServer(_, _))
       .WillOnce(Return(dhcp_server));
   EXPECT_CALL(*dhcp_server, Start()).WillOnce(Return(true));
   EXPECT_CALL(manager_, RequestDHCPPortAccess(_));
@@ -151,6 +150,7 @@ TEST_F(ServiceTest, StopSuccess) {
   brillo::ErrorPtr error;
   EXPECT_CALL(*config, ReleaseDevice()).Times(1);
   EXPECT_TRUE(service_.Stop(&error));
+  Mock::VerifyAndClearExpectations(config);
 }
 
 }  // namespace apmanager

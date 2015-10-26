@@ -5,7 +5,6 @@
 #ifndef APMANAGER_MOCK_PROCESS_FACTORY_H_
 #define APMANAGER_MOCK_PROCESS_FACTORY_H_
 
-#include <base/lazy_instance.h>
 #include <gmock/gmock.h>
 
 #include "apmanager/process_factory.h"
@@ -14,19 +13,12 @@ namespace apmanager {
 
 class MockProcessFactory : public ProcessFactory {
  public:
+  MockProcessFactory();
   ~MockProcessFactory() override;
-
-  // This is a singleton. Use MockDHCPServerFactory::GetInstance()->Foo().
-  static MockProcessFactory* GetInstance();
 
   MOCK_METHOD0(CreateProcess, brillo::Process*());
 
- protected:
-  MockProcessFactory();
-
  private:
-  friend struct base::DefaultLazyInstanceTraits<MockProcessFactory>;
-
   DISALLOW_COPY_AND_ASSIGN(MockProcessFactory);
 };
 

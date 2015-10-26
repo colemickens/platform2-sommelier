@@ -6,16 +6,7 @@
 
 namespace apmanager {
 
-namespace {
-base::LazyInstance<MockFileWriter> g_mock_file_writer
-    = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 MockFileWriter::MockFileWriter() {}
 MockFileWriter::~MockFileWriter() {}
-
-MockFileWriter* MockFileWriter::GetInstance() {
-  return g_mock_file_writer.Pointer();
-}
 
 }  // namespace apmanager
