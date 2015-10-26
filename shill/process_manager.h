@@ -161,7 +161,9 @@ class ProcessManager {
   // Wait for process |pid| to exit. This function will check it for at most
   // |tries| times. The interval of waiting time grows exponentially from
   // |sleep_ms| and it has an |upper_bound_ms| upper bound.
-  bool WaitpidWithTimeout(pid_t pid, unsigned sleep_ms, int upper_bound_ms,
+  bool WaitpidWithTimeout(pid_t pid,
+                          unsigned int sleep_ms,
+                          unsigned int upper_bound_ms,
                           int tries);
 
   // Used to watch processes.

@@ -43,8 +43,8 @@ base::LazyInstance<ProcessManager> g_process_manager =
 static const int kTerminationTimeoutSeconds = 2;
 static const int kWaitpidPollTimesForSIGTERM = 10;
 static const int kWaitpidPollTimesForSIGKILL = 8;
-static const int kWaitpidPollIntervalUpperBoundMilliseconds = 2000;
-static const int kWaitpidPollInitialIntervalMilliseconds = 4;
+static const unsigned int kWaitpidPollIntervalUpperBoundMilliseconds = 2000;
+static const unsigned int kWaitpidPollInitialIntervalMilliseconds = 4;
 
 bool SetupChild(const map<string, string>& env, bool terminate_with_parent) {
   // Setup environment variables.
@@ -264,8 +264,10 @@ bool ProcessManager::KillProcess(pid_t pid, int signal, bool* killed) {
   return true;
 }
 
-bool ProcessManager::WaitpidWithTimeout(pid_t pid, unsigned sleep_ms,
-                                        int upper_bound_ms, int tries) {
+bool ProcessManager::WaitpidWithTimeout(pid_t pid,
+                                        unsigned int sleep_ms,
+                                        unsigned int upper_bound_ms,
+                                        int tries) {
   SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
 
   while (tries-- > 0) {
