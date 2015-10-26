@@ -341,9 +341,12 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
                 << "use_sigkill: " << kill_signal << ")";
 
   int signal = (kill_signal) ? SIGKILL : SIGTERM;
-  if (kill(pid, signal) < 0) {
-    PLOG(ERROR) << "Failed to send " << signal << " signal to process " << pid;
+  bool killed = false;
+  if (!KillProcess(pid, signal, &killed)) {
     return false;
+  }
+  if (killed) {
+    return true;
   }
   std::unique_ptr<TerminationTimeoutCallback> termination_callback(
       new TerminationTimeoutCallback(
