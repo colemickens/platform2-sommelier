@@ -59,7 +59,6 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     reply.set_status(STATUS_SUCCESS);
     reply.set_enabled(true);
     reply.set_owned(true);
-    reply.mutable_local_data()->set_owned_by_this_install(true);
     reply.set_dictionary_attack_counter(3);
     reply.set_dictionary_attack_threshold(4);
     reply.set_dictionary_attack_lockout_in_effect(true);
@@ -77,7 +76,6 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.enabled());
     EXPECT_TRUE(reply.owned());
-    EXPECT_TRUE(reply.local_data().owned_by_this_install());
     EXPECT_EQ(3, reply.dictionary_attack_counter());
     EXPECT_EQ(4, reply.dictionary_attack_threshold());
     EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());

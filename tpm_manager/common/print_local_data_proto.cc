@@ -34,12 +34,6 @@ std::string GetProtoDebugStringWithIndent(const LocalData& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
-  if (value.has_owned_by_this_install()) {
-    output += indent + "  owned_by_this_install: ";
-    base::StringAppendF(&output, "%s",
-                        value.owned_by_this_install() ? "true" : "false");
-    output += "\n";
-  }
   if (value.has_owner_password()) {
     output += indent + "  owner_password: ";
     base::StringAppendF(&output, "%s",

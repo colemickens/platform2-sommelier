@@ -67,7 +67,7 @@ class DBusServiceTest : public testing::Test {
     dbus::MessageWriter writer(call.get());
     writer.AppendProtoAsArrayOfBytes(request);
     auto response = brillo::dbus_utils::testing::CallMethod(
-        dbus_service_->dbus_object_, method_call);
+        dbus_service_->dbus_object_, call.get());
     dbus::MessageReader reader(response.get());
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
   }
@@ -112,7 +112,6 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
         reply.set_status(STATUS_SUCCESS);
         reply.set_enabled(true);
         reply.set_owned(true);
-        reply.mutable_local_data()->set_owned_by_this_install(true);
         reply.set_dictionary_attack_counter(3);
         reply.set_dictionary_attack_threshold(4);
         reply.set_dictionary_attack_lockout_in_effect(true);
@@ -124,7 +123,6 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
   EXPECT_TRUE(reply.enabled());
   EXPECT_TRUE(reply.owned());
-  EXPECT_TRUE(reply.local_data().owned_by_this_install());
   EXPECT_EQ(3, reply.dictionary_attack_counter());
   EXPECT_EQ(4, reply.dictionary_attack_threshold());
   EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());

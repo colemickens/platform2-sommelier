@@ -24,7 +24,6 @@ package tpm_manager;
 // when all the clients have the owner password injected, this protobuf is
 // cleared of all passwords.
 message LocalData {
-  optional bool owned_by_this_install = 1;
   optional bytes owner_password = 2;
   repeated string owner_dependency = 3;
   optional bytes endorsement_password = 4;

@@ -23,6 +23,7 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "tpm_manager/common/local_data.pb.h"
+#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
 
 namespace {
@@ -56,10 +57,9 @@ bool Tpm2InitializerImpl::InitializeTpm() {
     VLOG(1) << "Tpm already owned.";
     return true;
   }
-  // First we read the local data. If the |owned_by_this_install| flag is set,
-  // either we did not finish removing owner dependencies or TakeOwnership
-  // failed. In either case, we want to retake ownership with the same
-  // passwords.
+  // First we read the local data. If we did not finish removing owner
+  // dependencies or if TakeOwnership failed, we want to retake ownership
+  // with the same passwords.
   LocalData local_data;
   if (!local_data_store_->Read(&local_data)) {
     LOG(ERROR) << "Error reading local data.";
@@ -68,9 +68,8 @@ bool Tpm2InitializerImpl::InitializeTpm() {
   std::string owner_password;
   std::string endorsement_password;
   std::string lockout_password;
-  // TODO(usanghi): Use owner dependency information rather than the
-  // |owned_by_this_install| flag here.
-  if (local_data.owned_by_this_install()) {
+  // If there are valid owner dependencies, we need to reuse the old passwords.
+  if (local_data.owner_dependency_size() > 0) {
     owner_password.assign(local_data.owner_password());
     endorsement_password.assign(local_data.endorsement_password());
     lockout_password.assign(local_data.lockout_password());
@@ -90,11 +89,13 @@ bool Tpm2InitializerImpl::InitializeTpm() {
   }
   // We write the passwords to disk, in case there is an error while taking
   // ownership.
-  local_data.set_owned_by_this_install(true);
+  local_data.clear_owner_dependency();
+  for (auto dependency: kInitialTpmOwnerDependencies) {
+    local_data.add_owner_dependency(dependency);
+  }
   local_data.set_owner_password(owner_password);
   local_data.set_endorsement_password(endorsement_password);
   local_data.set_lockout_password(lockout_password);
-  // TODO(usanghi): Add ownership dependencies here.
   if (!local_data_store_->Write(local_data)) {
     LOG(ERROR) << "Error saving local data.";
     return false;

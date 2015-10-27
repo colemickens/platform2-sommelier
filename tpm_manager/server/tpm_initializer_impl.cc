@@ -24,6 +24,7 @@
 
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_connection.h"
+#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/tpm_status.h"
 #include "tpm_manager/server/tpm_util.h"
 
@@ -63,9 +64,11 @@ bool TpmInitializerImpl::InitializeTpm() {
     return false;
   }
   LocalData local_data;
-  local_data.set_owned_by_this_install(true);
+  local_data.clear_owner_dependency();
+  for (auto value: kInitialTpmOwnerDependencies) {
+    local_data.add_owner_dependency(value);
+  }
   local_data.set_owner_password(owner_password);
-  // TODO(usanghi): Add ownership dependencies here.
   if (!local_data_store_->Write(local_data)) {
     LOG(ERROR) << "Error saving local data.";
     return false;

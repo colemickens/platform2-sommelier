@@ -23,6 +23,7 @@
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/trunks_factory_for_test.h>
 
+#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_openssl_crypto_util.h"
 #include "tpm_manager/server/mock_tpm_status.h"
@@ -107,7 +108,6 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
   std::string endorsement_password;
   std::string lockout_password;
   LocalData local_data;
-  local_data.set_owned_by_this_install(false);
   EXPECT_CALL(mock_data_store_, Read(_))
       .WillOnce(DoAll(SetArgPointee<0>(local_data),
                       Return(true)));
@@ -126,7 +126,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
   std::string endorsement_password("endorsement");
   std::string lockout_password("lockout");
   LocalData local_data;
-  local_data.set_owned_by_this_install(true);
+  local_data.add_owner_dependency(kTestDependency);
   local_data.set_owner_password(owner_password);
   local_data.set_endorsement_password(endorsement_password);
   local_data.set_lockout_password(lockout_password);
@@ -136,7 +136,8 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
   EXPECT_CALL(mock_data_store_, Write(_))
       .WillOnce(DoAll(SaveArg<0>(&local_data),
                       Return(true)));
-  EXPECT_EQ(true, local_data.owned_by_this_install());
+  EXPECT_EQ(1, local_data.owner_dependency_size());
+  EXPECT_EQ(kTestDependency, local_data.owner_dependency(0));
   EXPECT_EQ(owner_password, local_data.owner_password());
   EXPECT_EQ(endorsement_password, local_data.endorsement_password());
   EXPECT_EQ(lockout_password, local_data.lockout_password());
