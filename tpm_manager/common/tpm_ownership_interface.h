@@ -40,6 +40,13 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
   virtual void TakeOwnership(const TakeOwnershipRequest& request,
                              const TakeOwnershipCallback& callback) = 0;
 
+  // Processes a RemoveOwnerDependencyRequest and responds with a
+  // RemoveOwnerDependencyReply.
+  using RemoveOwnerDependencyCallback =
+      base::Callback<void(const RemoveOwnerDependencyReply&)>;
+  virtual void RemoveOwnerDependency(
+      const RemoveOwnerDependencyRequest& request,
+      const RemoveOwnerDependencyCallback& callback) = 0;
 };
 
 }  // namespace tpm_manager

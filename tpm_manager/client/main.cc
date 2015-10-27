@@ -39,6 +39,7 @@ namespace tpm_manager {
 
 const char kGetTpmStatusCommand[] = "status";
 const char kTakeOwnershipCommand[] = "take_ownership";
+const char kRemoveOwnerDependencyCommand[] = "remove_dependency";
 const char kDefineNvramCommand[] = "define_nvram";
 const char kDestroyNvramCommand[] = "destroy_nvram";
 const char kWriteNvramCommand[] = "write_nvram";
@@ -58,6 +59,8 @@ Commands (used as switches):
       Prints the current status of the Tpm.
   --take_ownership
       Takes ownership of the Tpm with a random password.
+  --remove_dependency=<owner_dependency>
+      Removes the provided Tpm owner dependency.
   --define_nvram
       Defines an NV space at |nvram_index| with length |nvram_length|.
   --destroy_nvram
@@ -132,6 +135,11 @@ class ClientLoop : public ClientLoopBase {
     } else if (command_line->HasSwitch(kTakeOwnershipCommand)) {
       task = base::Bind(&ClientLoop::HandleTakeOwnership,
                         weak_factory_.GetWeakPtr());
+    } else if (command_line->HasSwitch(kRemoveOwnerDependencyCommand)) {
+      task = base::Bind(
+          &ClientLoop::HandleRemoveOwnerDependency,
+          weak_factory_.GetWeakPtr(),
+          command_line->GetSwitchValueASCII(kRemoveOwnerDependencyCommand));
     } else if (command_line->HasSwitch(kDefineNvramCommand)) {
       if (!command_line->HasSwitch(kNvramIndexArg) ||
           !command_line->HasSwitch(kNvramLengthArg)) {
@@ -228,6 +236,15 @@ class ClientLoop : public ClientLoopBase {
     tpm_ownership_->TakeOwnership(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<TakeOwnershipReply>,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void HandleRemoveOwnerDependency(const std::string& owner_dependency) {
+    RemoveOwnerDependencyRequest request;
+    request.set_owner_dependency(owner_dependency);
+    tpm_ownership_->RemoveOwnerDependency(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<RemoveOwnerDependencyReply>,
                    weak_factory_.GetWeakPtr()));
   }
 

@@ -56,6 +56,14 @@ void DBusService::Register(const CompletionAction& callback) {
           TakeOwnershipReply,
           &TpmOwnershipInterface::TakeOwnership>);
 
+  ownership_dbus_interface->AddMethodHandler(
+      kRemoveOwnerDependency,
+      base::Unretained(this),
+      &DBusService::HandleOwnershipDBusMethod<
+          RemoveOwnerDependencyRequest,
+          RemoveOwnerDependencyReply,
+          &TpmOwnershipInterface::RemoveOwnerDependency>);
+
   brillo::dbus_utils::DBusInterface* nvram_dbus_interface =
       dbus_object_.AddOrGetInterface(kTpmNvramInterface);
 

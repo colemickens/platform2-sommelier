@@ -74,6 +74,9 @@ class TpmManagerService : public TpmNvramInterface,
                     const GetTpmStatusCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
+  void RemoveOwnerDependency(
+      const RemoveOwnerDependencyRequest& request,
+      const RemoveOwnerDependencyCallback& callback) override;
 
   // TpmNvramInterface methods.
   void DefineNvram(const DefineNvramRequest& request,
@@ -125,6 +128,12 @@ class TpmManagerService : public TpmNvramInterface,
   // background worker thread.
   void TakeOwnershipTask(const TakeOwnershipRequest& request,
                          const std::shared_ptr<TakeOwnershipReply>& result);
+
+  // Blocking implementation of RemoveOwnerDependency that can be executed on
+  // the background worker thread.
+  void RemoveOwnerDependencyTask(
+      const RemoveOwnerDependencyRequest& request,
+      const std::shared_ptr<RemoveOwnerDependencyReply>& result);
 
   // Blocking implementation of DefineNvram that can be executed on the
   // background worker thread.

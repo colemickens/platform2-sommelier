@@ -54,3 +54,13 @@ message TakeOwnershipRequest {
 message TakeOwnershipReply {
   optional TpmManagerStatus status = 1;
 }
+
+// Input for the RemoveOwnerDependency method.
+message RemoveOwnerDependencyRequest {
+  optional bytes owner_dependency = 1;
+}
+
+// Output for the RemoveOwnerDependency method.
+message RemoveOwnerDependencyReply {
+  optional TpmManagerStatus status = 1;
+}

@@ -111,6 +111,20 @@ void TpmManagerService::TakeOwnershipTask(
   result->set_status(STATUS_SUCCESS);
 }
 
+void TpmManagerService::RemoveOwnerDependency(
+    const RemoveOwnerDependencyRequest& request,
+    const RemoveOwnerDependencyCallback& callback) {
+  PostTaskToWorkerThread<RemoveOwnerDependencyReply>(
+      request, callback, &TpmManagerService::RemoveOwnerDependencyTask);
+}
+
+void TpmManagerService::RemoveOwnerDependencyTask(
+    const RemoveOwnerDependencyRequest& request,
+    const std::shared_ptr<RemoveOwnerDependencyReply>& result) {
+  VLOG(1) << __func__;
+  result->set_status(STATUS_NOT_AVAILABLE);
+}
+
 void TpmManagerService::DefineNvram(const DefineNvramRequest& request,
                                     const DefineNvramCallback& callback) {
   PostTaskToWorkerThread<DefineNvramReply>(

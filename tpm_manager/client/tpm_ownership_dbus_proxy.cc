@@ -60,6 +60,13 @@ void TpmOwnershipDBusProxy::TakeOwnership(
       tpm_manager::kTakeOwnership, request, callback);
 }
 
+void TpmOwnershipDBusProxy::RemoveOwnerDependency(
+    const RemoveOwnerDependencyRequest& request,
+    const RemoveOwnerDependencyCallback& callback) {
+  CallMethod<RemoveOwnerDependencyReply>(
+      tpm_manager::kRemoveOwnerDependency, request, callback);
+}
+
 template<typename ReplyProtobufType,
          typename RequestProtobufType,
          typename CallbackType>

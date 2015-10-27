@@ -37,6 +37,14 @@ std::string GetProtoDebugString(const TakeOwnershipRequest& value);
 std::string GetProtoDebugStringWithIndent(const TakeOwnershipReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const TakeOwnershipReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const RemoveOwnerDependencyRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const RemoveOwnerDependencyRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const RemoveOwnerDependencyReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const RemoveOwnerDependencyReply& value);
 
 }  // namespace tpm_manager
 

@@ -116,4 +116,38 @@ TEST_F(TpmOwnershipDBusProxyTest, TakeOwnership) {
   EXPECT_EQ(1, callback_count);
 }
 
+TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
+  const std::string owner_dependency("owner");
+  auto fake_dbus_call = [&owner_dependency](
+      dbus::MethodCall* method_call,
+      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+    // Verify request protobuf.
+    dbus::MessageReader reader(method_call);
+    RemoveOwnerDependencyRequest request;
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
+    EXPECT_TRUE(request.has_owner_dependency());
+    EXPECT_EQ(owner_dependency, request.owner_dependency());
+    // Create reply protobuf.
+    auto response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    RemoveOwnerDependencyReply reply;
+    reply.set_status(STATUS_SUCCESS);
+    writer.AppendProtoAsArrayOfBytes(reply);
+    response_callback.Run(response.release());
+  };
+  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
+
+  // Set expectations on the outputs.
+  int callback_count = 0;
+  auto callback = [&callback_count](const RemoveOwnerDependencyReply& reply) {
+    callback_count++;
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  };
+  RemoveOwnerDependencyRequest request;
+  request.set_owner_dependency(owner_dependency);
+  proxy_.RemoveOwnerDependency(request, base::Bind(callback));
+  EXPECT_EQ(1, callback_count);
+}
+
 }  // namespace tpm_manager

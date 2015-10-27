@@ -144,6 +144,29 @@ TEST_F(DBusServiceTest, TakeOwnership) {
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
 }
 
+TEST_F(DBusServiceTest, RemoveOwnerDependency) {
+  std::string owner_dependency("owner_dependency");
+  RemoveOwnerDependencyRequest request;
+  request.set_owner_dependency(owner_dependency);
+  EXPECT_CALL(mock_ownership_service_, RemoveOwnerDependency(_, _))
+      .WillOnce(Invoke([&owner_dependency](
+          const RemoveOwnerDependencyRequest& request,
+          const TpmOwnershipInterface::RemoveOwnerDependencyCallback& callback)
+      {
+        EXPECT_TRUE(request.has_owner_dependency());
+        EXPECT_EQ(owner_dependency, request.owner_dependency());
+        RemoveOwnerDependencyReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        callback.Run(reply);
+      }));
+  RemoveOwnerDependencyReply reply;
+  ExecuteMethod(kRemoveOwnerDependency,
+                request,
+                &reply,
+                kTpmOwnershipInterface);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
 TEST_F(DBusServiceTest, DefineNvram) {
   uint32_t nvram_index = 5;
   size_t nvram_length = 32;

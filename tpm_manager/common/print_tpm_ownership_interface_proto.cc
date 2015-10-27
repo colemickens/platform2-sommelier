@@ -138,4 +138,49 @@ std::string GetProtoDebugStringWithIndent(const TakeOwnershipReply& value,
   return output;
 }
 
+std::string GetProtoDebugString(const RemoveOwnerDependencyRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const RemoveOwnerDependencyRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_owner_dependency()) {
+    output += indent + "  owner_dependency: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.owner_dependency().data(),
+                                        value.owner_dependency().size())
+                            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const RemoveOwnerDependencyReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const RemoveOwnerDependencyReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
 }  // namespace tpm_manager
