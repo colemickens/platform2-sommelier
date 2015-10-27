@@ -19,8 +19,8 @@
     'includes': ['../common-mk/common.gypi'],
     'variables': {
       'deps': [  # This is a list of pkg-config dependencies
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
         'openssl',
         'protobuf-lite',
       ],
