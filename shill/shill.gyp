@@ -19,8 +19,8 @@
     'variables': {
       'deps': [
         'dbus-1',
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
       ],
       'enable_exceptions': 1,
     },
@@ -468,7 +468,7 @@
         'device.cc',
         'device_claimer.cc',
         'device_info.cc',
-	'dhcp_properties.cc',
+        'dhcp_properties.cc',
         'dhcp/dhcp_config.cc',
         'dhcp/dhcp_provider.cc',
         'dhcp/dhcpv4_config.cc',
@@ -695,7 +695,7 @@
             'dhcp/mock_dhcp_config.cc',
             'dhcp/mock_dhcp_provider.cc',
             'dhcp/mock_dhcp_proxy.cc',
-	    'dhcp_properties_unittest.cc',
+            'dhcp_properties_unittest.cc',
             'dns_client_unittest.cc',
             'dns_server_tester_unittest.cc',
             'error_unittest.cc',

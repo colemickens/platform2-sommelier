@@ -23,10 +23,10 @@ LOCAL_C_INCLUDES := \
     system/connectivity \
 
 LOCAL_SHARED_LIBRARIES := \
+    libbrillo \
+    libbrillo-dbus \
     libchrome \
     libchrome-dbus \
-    libchromeos \
-    libchromeos-dbus \
     libshill-client \
     libxmlrpc++
 
