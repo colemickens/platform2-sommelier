@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/process.h>
 
 #include "apmanager/config.h"
@@ -20,6 +21,10 @@
 namespace apmanager {
 
 class Manager;
+
+#if defined(__BRILLO__)
+class EventDispatcher;
+#endif  // __BRILLO__
 
 class Service : public org::chromium::apmanager::ServiceAdaptor,
                 public org::chromium::apmanager::ServiceInterface {
@@ -54,6 +59,21 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   static const char kStateStarted[];
   static const char kStateFailed[];
 
+#if defined(__BRILLO__)
+  static const int kAPInterfaceCheckIntervalMilliseconds;
+  static const int kAPInterfaceCheckMaxAttempts;
+
+  // Task to check enumeration status of the specified AP interface
+  // |interface_name|.
+  void APInterfaceCheckTask(
+      const std::string& interface_name,
+      int check_count,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
+
+  // Handle asynchronous service start failures.
+  void HandleStartFailure();
+#endif  // __BRILLO__
+
   bool StartInternal(brillo::ErrorPtr* error);
 
   // Return true if hostapd process is currently running.
@@ -85,7 +105,12 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   FileWriter* file_writer_;
   ProcessFactory* process_factory_;
   std::unique_ptr<HostapdMonitor> hostapd_monitor_;
+#if defined(__BRILLO__)
+  EventDispatcher* event_dispatcher_;
+  bool start_in_progress_;
+#endif  // __BRILLO__
 
+  base::WeakPtrFactory<Service> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

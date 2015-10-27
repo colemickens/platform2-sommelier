@@ -15,6 +15,12 @@
 #include "dbus/apmanager/dbus-constants.h"
 #endif  // __ANDROID__
 
+#if defined(__BRILLO__)
+#include <base/bind.h>
+
+#include "apmanager/event_dispatcher.h"
+#endif  // __BRILLO__
+
 #include "apmanager/manager.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
@@ -39,6 +45,11 @@ const char Service::kHostapdConfigPathFormat[] =
 const char Service::kHostapdControlInterfacePath[] =
     "/data/misc/apmanager/hostapd/ctrl_iface";
 #endif  // __ANDROID__
+
+#if defined(__BRILLO__)
+const int Service::kAPInterfaceCheckIntervalMilliseconds = 200;
+const int Service::kAPInterfaceCheckMaxAttempts = 5;
+#endif  // __BRILLO__
 
 const int Service::kTerminationTimeoutSeconds = 2;
 
@@ -66,6 +77,11 @@ Service::Service(Manager* manager, int service_identifier)
   // TODO(zqiu): come up with better server address management. This is good
   // enough for now.
   config_->SetServerAddressIndex(identifier_ & 0xFF);
+
+#if defined(__BRILLO__)
+  event_dispatcher_ = EventDispatcher::GetInstance();
+  start_in_progress_ = false;
+#endif
 }
 
 Service::~Service() {
@@ -159,7 +175,7 @@ bool Service::StartInternal(brillo::ErrorPtr* error) {
   if (!hostapd_monitor_) {
     hostapd_monitor_.reset(
         new HostapdMonitor(base::Bind(&Service::HostapdEventCallback,
-                                      base::Unretained(this)),
+                                      weak_factory_.GetWeakPtr()),
                            config_->control_interface(),
                            config_->selected_interface()));
   }
@@ -174,11 +190,38 @@ bool Service::StartInternal(brillo::ErrorPtr* error) {
 void Service::Start(std::unique_ptr<DBusMethodResponse<>> response) {
   brillo::ErrorPtr error;
 
+#if !defined(__BRILLO__)
   if (!StartInternal(&error)) {
     response->ReplyWithError(error.get());
   } else {
     response->Return();
   }
+#else
+  if (start_in_progress_) {
+    brillo::Error::AddTo(
+        &error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
+        "Start already in progress");
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  string interface_name;
+  if (!manager_->SetupApModeInterface(&interface_name)) {
+    brillo::Error::AddTo(
+        &error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
+        "Failed to setup AP mode interface");
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  event_dispatcher_->PostDelayedTask(
+      base::Bind(&Service::APInterfaceCheckTask,
+                 weak_factory_.GetWeakPtr(),
+                 interface_name,
+                 0,    // Initial check count.
+                 base::Passed(&response)),
+      kAPInterfaceCheckIntervalMilliseconds);
+#endif
 }
 
 bool Service::Stop(brillo::ErrorPtr* error) {
@@ -193,6 +236,55 @@ bool Service::Stop(brillo::ErrorPtr* error) {
   SetState(kStateIdle);
   return true;
 }
+
+#if defined(__BRILLO__)
+void Service::HandleStartFailure() {
+  // Restore station mode interface.
+  string station_mode_interface;
+  manager_->SetupStationModeInterface(&station_mode_interface);
+
+  // Reset state variables.
+  start_in_progress_ = false;
+}
+
+void Service::APInterfaceCheckTask(
+    const string& interface_name,
+    int check_count,
+    std::unique_ptr<DBusMethodResponse<>> response) {
+  brillo::ErrorPtr error;
+
+  // Check if the AP interface is enumerated.
+  if (manager_->GetDeviceFromInterfaceName(interface_name)) {
+    // Explicitly set the interface name to avoid picking other interface.
+    config_->SetInterfaceName(interface_name);
+    if (!StartInternal(&error)) {
+      HandleStartFailure();
+      response->ReplyWithError(error.get());
+    } else {
+      response->Return();
+    }
+    return;
+  }
+
+  check_count++;
+  if (check_count >= kAPInterfaceCheckMaxAttempts) {
+    brillo::Error::AddTo(
+        &error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
+        "Timeout waiting for AP interface to be enumerated");
+    HandleStartFailure();
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  event_dispatcher_->PostDelayedTask(
+      base::Bind(&Service::APInterfaceCheckTask,
+                 weak_factory_.GetWeakPtr(),
+                 interface_name,
+                 check_count,
+                 base::Passed(&response)),
+      kAPInterfaceCheckIntervalMilliseconds);
+}
+#endif  // __BRILLO__
 
 bool Service::IsHostapdRunning() {
   return hostapd_process_ && hostapd_process_->pid() != 0 &&
@@ -223,6 +315,11 @@ void Service::ReleaseResources() {
   dhcp_server_.reset();
   config_->ReleaseDevice();
   manager_->ReleaseDHCPPortAccess(config_->selected_interface());
+#if defined(__BRILLO__)
+  // Restore station mode interface.
+  string station_mode_interface;
+  manager_->SetupStationModeInterface(&station_mode_interface);
+#endif  // __BRILLO__
 }
 
 void Service::HostapdEventCallback(HostapdMonitor::Event event,
