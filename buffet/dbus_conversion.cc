@@ -210,7 +210,7 @@ std::unique_ptr<base::Value> CreateValue<brillo::Any>(
 
   brillo::Error::AddToPrintf(
       error, FROM_HERE, "buffet", "unknown_type", "Type '%s' is not supported.",
-      any.GetUndecoratedTypeName().c_str());
+      brillo::UndecorateTypeName(any.GetType().name()).c_str());
 
   return nullptr;
 }
