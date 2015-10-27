@@ -164,6 +164,7 @@ class ChromeosManagerDBusAdaptor
                         const std::string& interface_name) override;
   bool SetSchedScan(brillo::ErrorPtr* error, bool enable) override;
   bool SetupApModeInterface(brillo::ErrorPtr* error,
+                            dbus::Message* message,
                             std::string* out_interface_name) override;
   bool SetupStationModeInterface(brillo::ErrorPtr* error,
                                  std::string* out_interface_name) override;

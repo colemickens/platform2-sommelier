@@ -146,6 +146,9 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_WIFI)
       wifi_provider_(
           new WiFiProvider(control_interface, dispatcher, metrics, this)),
+#if defined(__BRILLO__)
+      wifi_driver_hal_(WiFiDriverHal::GetInstance()),
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
       wimax_provider_(
@@ -743,33 +746,49 @@ void Manager::OnDeviceClaimerVanished() {
   device_claimer_.reset();
 }
 
-#if defined(__BRILLO__)
-bool Manager::SetupApModeInterface(string* out_interface_name, Error* error) {
-  string interface_name = WiFiDriverHal::GetInstance()->SetupApModeInterface();
+#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
+void Manager::OnApModeSetterVanished() {
+  // Restore station mode interface.
+  string interface_name = wifi_driver_hal_->SetupStationModeInterface();
+  if (interface_name.empty()) {
+    LOG(ERROR) << "Failed to restore station mode interface";
+  }
+  watcher_for_ap_mode_setter_.reset();
+}
+
+bool Manager::SetupApModeInterface(
+    const string& sender_name, string* out_interface_name, Error* error) {
+  string interface_name = wifi_driver_hal_->SetupApModeInterface();
   if (interface_name.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to setup AP mode interface");
     return false;
   }
   *out_interface_name = interface_name;
-  // TODO(zqiu): Setup a service watcher for the caller. Restore interface
-  // mode back to station mode if the caller vanished.
+
+  // Setup a service watcher for the caller. This will restore interface mode
+  // back to station mode if the caller vanished.
+  watcher_for_ap_mode_setter_.reset(
+      control_interface_->CreateRPCServiceWatcher(
+          sender_name,
+          Bind(&Manager::OnApModeSetterVanished, AsWeakPtr())));
   return true;
 }
 
 bool Manager::SetupStationModeInterface(string* out_interface_name,
                                         Error* error) {
-  string interface_name =
-      WiFiDriverHal::GetInstance()->SetupStationModeInterface();
+  string interface_name = wifi_driver_hal_->SetupStationModeInterface();
   if (interface_name.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to setup station mode interface");
     return false;
   }
   *out_interface_name = interface_name;
+  // Remove the service watcher for the AP mode setter.
+  watcher_for_ap_mode_setter_.reset();
   return true;
 }
-#endif  // __BRILLO__
+#endif  // !DISABLE_WIFI && __BRILLO__
 
 void Manager::RemoveService(const ServiceRefPtr& service) {
   LOG(INFO) << __func__ << " for service " << service->unique_name();

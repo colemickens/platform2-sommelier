@@ -66,6 +66,10 @@ class VPNProvider;
 
 #if !defined(DISABLE_WIFI)
 class WiFiProvider;
+#if defined(__BRILLO__)
+class RPCServiceWatcherInterface;
+class WiFiDriverHal;
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
 #if !defined(DISABLE_WIRED_8021X)
@@ -240,8 +244,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Setup an AP mode interface using WiFi driver HAL.  The driver
   // may or may not teardown the station mode interface as a result
   // of this call.  This behavior will be driver specific.
+  // Service watcher will be set up for the requester |sender_name|, and
+  // restore back to station mode if the requester vanished.
   // Returns true and sets |interface_name| on success, false otherwise.
-  bool SetupApModeInterface(std::string* out_interface_name, Error* error);
+  bool SetupApModeInterface(const std::string& sender_name,
+                            std::string* out_interface_name,
+                            Error* error);
 
   // Setup a station mode interface using WiFi driver HAL.  The driver
   // may or may not teardown the AP mode interface as a result of this
@@ -583,6 +591,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
+  FRIEND_TEST(ManagerTest, OnApModeSetterVanished);
   FRIEND_TEST(ManagerTest, OnDeviceClaimerAppeared);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
@@ -590,6 +599,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ReleaseDevice);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
+  FRIEND_TEST(ManagerTest, SetupApModeInterface);
+  FRIEND_TEST(ManagerTest, SetupStationModeInterface);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
@@ -740,6 +751,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void VerifyToEncryptLink(std::string public_key, std::string data,
                            ResultStringCallback cb, const Error& error,
                            bool success);
+
+#if defined(__BRILLO__)
+  void OnApModeSetterVanished();
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
   // Return true if wifi device is enabled with no existing connection (pending
@@ -783,6 +798,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::unique_ptr<VPNProvider> vpn_provider_;
 #if !defined(DISABLE_WIFI)
   std::unique_ptr<WiFiProvider> wifi_provider_;
+#if defined(__BRILLO__)
+  WiFiDriverHal* wifi_driver_hal_;
+  std::unique_ptr<RPCServiceWatcherInterface> watcher_for_ap_mode_setter_;
+#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
   std::unique_ptr<WiMaxProvider> wimax_provider_;

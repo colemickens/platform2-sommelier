@@ -566,14 +566,15 @@ bool ChromeosManagerDBusAdaptor::SetSchedScan(brillo::ErrorPtr* error,
 
 bool ChromeosManagerDBusAdaptor::SetupApModeInterface(
     brillo::ErrorPtr* error,
+    dbus::Message* message,
     string* out_interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
-#if !defined(__BRILLO__)
-  e.Populate(Error::kNotSupported);
+#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
+  manager_->SetupApModeInterface(message->GetSender(), out_interface_name, &e);
 #else
-  manager_->SetupApModeInterface(out_interface_name, &e);
-#endif  // __BRILLO__
+  e.Populate(Error::kNotSupported);
+#endif  // !DISABLE_WIFI && __BRILLO__
   return !e.ToChromeosError(error);
 }
 
@@ -582,11 +583,11 @@ bool ChromeosManagerDBusAdaptor::SetupStationModeInterface(
     string* out_interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
-#if !defined(__BRILLO__)
-  e.Populate(Error::kNotSupported);
-#else
+#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
   manager_->SetupStationModeInterface(out_interface_name, &e);
-#endif  // __BRILLO__
+#else
+  e.Populate(Error::kNotSupported);
+#endif  // !DISABLE_WIFI && __BRILLO__
   return !e.ToChromeosError(error);
 }
 
