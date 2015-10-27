@@ -61,6 +61,10 @@ class ServiceTest : public testing::Test {
     service_.hostapd_monitor_.reset(hostapd_monitor_);
   }
 
+  bool StartService(brillo::ErrorPtr* error) {
+    return service_.StartInternal(error);
+  }
+
   void StartDummyProcess() {
     service_.hostapd_process_.reset(new brillo::ProcessImpl);
     service_.hostapd_process_->AddArg(kBinSleep);
@@ -93,7 +97,7 @@ TEST_F(ServiceTest, StartWhenServiceAlreadyRunning) {
   StartDummyProcess();
 
   brillo::ErrorPtr error;
-  EXPECT_FALSE(service_.Start(&error));
+  EXPECT_FALSE(StartService(&error));
   EXPECT_THAT(error, IsServiceErrorStartingWith("Service already running"));
 }
 
@@ -103,7 +107,7 @@ TEST_F(ServiceTest, StartWhenConfigFileFailed) {
 
   brillo::ErrorPtr error;
   EXPECT_CALL(*config, GenerateConfigFile(_, _)).WillOnce(Return(false));
-  EXPECT_FALSE(service_.Start(&error));
+  EXPECT_FALSE(StartService(&error));
   EXPECT_THAT(error, IsServiceErrorStartingWith(
       "Failed to generate config file"));
 }
@@ -131,7 +135,7 @@ TEST_F(ServiceTest, StartSuccess) {
   EXPECT_CALL(*dhcp_server, Start()).WillOnce(Return(true));
   EXPECT_CALL(manager_, RequestDHCPPortAccess(_));
   EXPECT_CALL(*hostapd_monitor_, Start());
-  EXPECT_TRUE(service_.Start(&error));
+  EXPECT_TRUE(StartService(&error));
   EXPECT_EQ(nullptr, error);
 }
 

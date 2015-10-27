@@ -18,6 +18,7 @@
 #include "apmanager/manager.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusMethodResponse;
 using brillo::dbus_utils::ExportedObjectManager;
 using org::chromium::apmanager::ManagerAdaptor;
 using std::string;
@@ -91,7 +92,7 @@ void Service::RegisterAsync(ExportedObjectManager* object_manager,
   config_->RegisterAsync(object_manager, bus, sequencer);
 }
 
-bool Service::Start(brillo::ErrorPtr* error) {
+bool Service::StartInternal(brillo::ErrorPtr* error) {
   if (IsHostapdRunning()) {
     brillo::Error::AddTo(
         error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
@@ -168,6 +169,16 @@ bool Service::Start(brillo::ErrorPtr* error) {
   SetState(kStateStarting);
 
   return true;
+}
+
+void Service::Start(std::unique_ptr<DBusMethodResponse<>> response) {
+  brillo::ErrorPtr error;
+
+  if (!StartInternal(&error)) {
+    response->ReplyWithError(error.get());
+  } else {
+    response->Return();
+  }
 }
 
 bool Service::Stop(brillo::ErrorPtr* error) {

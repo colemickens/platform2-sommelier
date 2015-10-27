@@ -27,9 +27,10 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   Service(Manager* manager, int service_identifier);
   virtual ~Service();
 
-  // Implementation of ServiceInterface.
-  virtual bool Start(brillo::ErrorPtr* error);
-  virtual bool Stop(brillo::ErrorPtr* error);
+  // Implementation of org::chromium::apmanager::ServiceInterface.
+  void Start(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
+  bool Stop(brillo::ErrorPtr* error);
 
   // Register Service DBus object.
   void RegisterAsync(
@@ -52,6 +53,8 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   static const char kStateStarting[];
   static const char kStateStarted[];
   static const char kStateFailed[];
+
+  bool StartInternal(brillo::ErrorPtr* error);
 
   // Return true if hostapd process is currently running.
   bool IsHostapdRunning();

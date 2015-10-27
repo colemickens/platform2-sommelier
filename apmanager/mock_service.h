@@ -17,9 +17,6 @@ class MockService : public Service {
   MockService();
   ~MockService() override;
 
-  MOCK_METHOD1(Start, bool(brillo::ErrorPtr *error));
-  MOCK_METHOD1(Stop, bool(brillo::ErrorPtr *error));
-
  private:
   DISALLOW_COPY_AND_ASSIGN(MockService);
 };

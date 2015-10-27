@@ -6,6 +6,7 @@
       <tp:docstring>
         Start the service.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
     <method name="Stop">
       <tp:docstring>
