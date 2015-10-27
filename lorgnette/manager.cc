@@ -188,8 +188,7 @@ void Manager::RunScanImageProcess(
           brillo::errors::dbus::kDomain, kManagerServiceError,
           "Invalid scan parameter %s of type %s",
           property_name.c_str(),
-          brillo::UndecorateTypeName(
-              property_value.GetType().name()).c_str());
+          property_value.GetUndecoratedTypeName().c_str());
       return;
     }
   }
