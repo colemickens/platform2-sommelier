@@ -135,6 +135,12 @@ class TpmManagerService : public TpmNvramInterface,
       const RemoveOwnerDependencyRequest& request,
       const std::shared_ptr<RemoveOwnerDependencyReply>& result);
 
+  // Removes a |owner_dependency| from the list of owner dependencies in
+  // |local_data|. If |owner_dependency| is not present in |local_data|,
+  // this method does nothing.
+  static void RemoveOwnerDependency(const std::string& owner_dependency,
+                                    LocalData* local_data);
+
   // Blocking implementation of DefineNvram that can be executed on the
   // background worker thread.
   void DefineNvramTask(const DefineNvramRequest& request,

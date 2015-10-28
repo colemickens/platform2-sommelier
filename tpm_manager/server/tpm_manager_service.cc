@@ -122,7 +122,35 @@ void TpmManagerService::RemoveOwnerDependencyTask(
     const RemoveOwnerDependencyRequest& request,
     const std::shared_ptr<RemoveOwnerDependencyReply>& result) {
   VLOG(1) << __func__;
-  result->set_status(STATUS_NOT_AVAILABLE);
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  RemoveOwnerDependency(request.owner_dependency(), &local_data);
+  if (!local_data_store_->Write(local_data)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::RemoveOwnerDependency(
+    const std::string& owner_dependency, LocalData* local_data) {
+  google::protobuf::RepeatedPtrField<std::string>* dependencies =
+      local_data->mutable_owner_dependency();
+  for (int i = 0; i < dependencies->size(); i++) {
+    if (dependencies->Get(i) == owner_dependency) {
+      dependencies->SwapElements(i, (dependencies->size() - 1));
+      dependencies->RemoveLast();
+      break;
+    }
+  }
+  if (dependencies->empty()) {
+    local_data->clear_owner_password();
+    local_data->clear_endorsement_password();
+    local_data->clear_lockout_password();
+  }
 }
 
 void TpmManagerService::DefineNvram(const DefineNvramRequest& request,
