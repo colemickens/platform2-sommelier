@@ -131,6 +131,7 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   AddEnvVar("SHELL", "/bin/sh");
   AddEnvVar("PATH", "/bin:/usr/bin");
   AddEnvVar("LC_ALL", "en_US.utf8");
+  AddEnvVar("XDG_RUNTIME_DIR", "/run/chrome");
 
   const base::FilePath data_dir(GetPath("/home").Append(kUser));
   AddEnvVar("DATA_DIR", data_dir.value());
@@ -199,6 +200,7 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   AddArg("--enable-logging");
   AddArg("--log-level=1");
   AddArg("--use-cras");
+  AddArg("--enable-wayland-server");
 
   return true;
 }
