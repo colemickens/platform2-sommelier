@@ -1036,7 +1036,7 @@ void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
   }
 }
 
-bool WakeOnWiFi::WakeOnPacketEnabledAndSupported() {
+bool WakeOnWiFi::WakeOnWiFiPacketEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
       wake_on_wifi_features_enabled_ ==
           kWakeOnWiFiFeaturesEnabledNotSupported ||
@@ -1050,7 +1050,7 @@ bool WakeOnWiFi::WakeOnPacketEnabledAndSupported() {
   return true;
 }
 
-bool WakeOnWiFi::WakeOnSSIDEnabledAndSupported() {
+bool WakeOnWiFi::WakeOnWiFiDarkConnectEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
       wake_on_wifi_features_enabled_ ==
           kWakeOnWiFiFeaturesEnabledNotSupported ||
@@ -1273,7 +1273,8 @@ void WakeOnWiFi::OnAfterResume() {
   SLOG(this, 1) << __func__;
   wake_to_scan_timer_.Stop();
   dhcp_lease_renewal_timer_.Stop();
-  if (WakeOnPacketEnabledAndSupported() || WakeOnSSIDEnabledAndSupported()) {
+  if (WakeOnWiFiPacketEnabledAndSupported() ||
+      WakeOnWiFiDarkConnectEnabledAndSupported()) {
     // Unconditionally disable wake on WiFi on resume if these features
     // were enabled before the last suspend.
     DisableWakeOnWiFi();
@@ -1403,12 +1404,12 @@ void WakeOnWiFi::BeforeSuspendActions(
   // Add relevant triggers to be programmed into the NIC.
   wake_on_wifi_triggers_.clear();
   if (!wake_on_packet_connections_.Empty() &&
-      WakeOnPacketEnabledAndSupported() && is_connected) {
+      WakeOnWiFiPacketEnabledAndSupported() && is_connected) {
     SLOG(this, 3) << __func__ << ": "
                   << "Enabling wake on pattern";
     wake_on_wifi_triggers_.insert(kWakeTriggerPattern);
   }
-  if (WakeOnSSIDEnabledAndSupported()) {
+  if (WakeOnWiFiDarkConnectEnabledAndSupported()) {
     if (is_connected) {
       SLOG(this, 3) << __func__ << ": "
                     << "Enabling wake on disconnect";
@@ -1568,7 +1569,7 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected) {
           : Metrics::
                 kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected);
 #else
-  if (WakeOnSSIDEnabledAndSupported()) {
+  if (WakeOnWiFiDarkConnectEnabledAndSupported()) {
     // Only logged if wake on WiFi is supported and wake on SSID was enabled to
     // maintain connectivity while suspended.
     metrics_->NotifyConnectedToServiceAfterWake(

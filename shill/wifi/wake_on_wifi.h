@@ -55,11 +55,26 @@ class SetWakeOnPacketConnMessage;
 // suspend/dark resume/resume logic, NIC wowlan programming via nl80211), and
 // stores the state necessary to perform these actions.
 //
-// One of the most significant roles of |WakeOnWiFi| is performing the correct
-// actions before suspend, during dark resume, and after resume in order to
-// maintain system connectivity (if the relevant wake on WiFi features  are
-// supported and enabled). The state machines determining which actions are
-// performed in these situations are described below:
+// Shill implements two wake on WiFi features:
+//   1) Dark connect: this feature allows the CrOS device to maintain WiFi
+//      connectivity while suspended, and to wake from suspend in a low-power
+//      state (dark resume) to maintain or re-establish WiFi connectivity.
+//   2) Packet: this feature allows the CrOS device to wake from suspend upon
+//      receiving network packets from any whitelisted hosts.
+// Either or both of these features can be enabled/disabled by assigning the
+// appropriate value to |wake_on_wifi_features_enabled_|.
+//
+// Note that wake on WiFi features are different from wake on WiFi triggers. The
+// former refers to shill's suspend/resume/dark resume handling logic, whereas
+// the latter refers to the NIC's  ability to wake the CPU on certain network
+// events (e.g. disconnects). In order for shill's wake on WiFi features to
+// work, the platform must be compiled with wake on WiFi support (i.e.
+// DISABLE_WAKE_ON_WIFI not set), and its NIC must support the triggers required
+// for the features to work (see WakeOnWiFi::WakeOnWiFiPacketEnabledAndSupported
+// and WakeOnWiFi::WakeOnWiFiDarkConnectEnabledAndSupported for more details).
+//
+// The logic shill uses before, during (i.e. during dark resume), and after
+// suspend when both wake on WiFi features are enabled are described below:
 //
 // OnBeforeSuspend
 // ================
@@ -116,21 +131,33 @@ class SetWakeOnPacketConnMessage;
 // to Manager. This is the common "exit path" taken by OnBeforeSuspend and
 // OnDarkResume before suspending.
 //
-//            Yes   +----------------------------+                   +---------+
-//          +-----> |Set Wake on Disconnect flag,+--+    +-------+   |Report   |
-//          |       |Start Lease Renewal Timer*  |  |    |Program|   |Suspend  |
-//          |       +----------------------------+  +--> |  NIC  |   |Readiness|
-// +--------+-+                                     |    +-+-----+   +---------+
+// +----------------------+
+// |Packet feature enabled|   Yes   +------------------------+
+// |    and supported?    +-------->|Set Wake on Pattern flag|
+// +-----+----------------+         +------------+-----------+
+//       |                                       |
+//    No |        +------------------------------+
+//       |        |
+// +-----v--------v-------+        No
+// | Dark connect feature +---------------------------------+
+// |enabled and supported?|                                 |
+// +--+-------------------+                                 |
+//    |                                                     |
+//    |Yes    Yes   +----------------------------+          |        +---------+
+//    |     +-----> |Set Wake on Disconnect flag,+--+    +--v----+   |Report   |
+//    |     |       |Start Lease Renewal Timer*  |  |    |Program|   |Suspend  |
+//    |     |       +----------------------------+  +--> |  NIC  |   |Readiness|
+// +--v-----+-+                                     |    +-+---+-+   +--+------+
 // |Connected?|                                     |      |   ^        ^
 // +--------+-+                                     |      |   |Failed  |
-//          |                                       |      v   |        |Success
-//          |       +----------------------------+  |  +-------+---+    |
+//          |                                       |      ^   |        |Success
+//          |       +----------------------------+  |  +---+---+---+    |
 //          +-----> |Set Wake on SSID flag,      +--+  |  Verify   +----+
 //            No    |Start Wake To Scan Timer**  |     |Programming|
 //                  +----------------------------+     +-----------+
 //
 // *  if necessary (as indicated by caller of BeforeSuspendActions).
-// ** if we want to whitelist more SSIDs than our NIC supports.
+// ** if we need to whitelist more SSIDs than our NIC supports.
 //
 // OnAfterResume
 // ==============
@@ -441,8 +468,8 @@ class WakeOnWiFi {
   // Utility functions to check which wake on WiFi features are currently
   // enabled based on the descriptor |wake_on_wifi_features_enabled_| and
   // are supported by the NIC.
-  bool WakeOnPacketEnabledAndSupported();
-  bool WakeOnSSIDEnabledAndSupported();
+  bool WakeOnWiFiPacketEnabledAndSupported();
+  bool WakeOnWiFiDarkConnectEnabledAndSupported();
   // Called by metrics_timer_ to reports metrics.
   void ReportMetrics();
   // Actions executed before normal suspend and dark resume suspend.

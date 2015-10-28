@@ -2899,7 +2899,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiFeaturesEnabled) {
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
-       ReportConnectedToServiceAfterWake_WakeOnSSIDEnabledAndConnected) {
+       ReportConnectedToServiceAfterWake_WakeOnDarkConnectEnabledAndConnected) {
   const bool is_connected = true;
   EnableWakeOnWiFiFeaturesPacketDarkConnect();
   EXPECT_CALL(
@@ -2916,8 +2916,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   ReportConnectedToServiceAfterWake(is_connected);
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher,
-       ReportConnectedToServiceAfterWake_WakeOnSSIDEnabledAndNotConnected) {
+TEST_F(
+    WakeOnWiFiTestWithMockDispatcher,
+    ReportConnectedToServiceAfterWake_WakeOnDarkConnectEnabledAndNotConnected) {
   const bool is_connected = false;
   EnableWakeOnWiFiFeaturesPacketDarkConnect();
   EXPECT_CALL(
@@ -2934,8 +2935,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   ReportConnectedToServiceAfterWake(is_connected);
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher,
-       ReportConnectedToServiceAfterWake_WakeOnSSIDDisabledAndConnected) {
+TEST_F(
+    WakeOnWiFiTestWithMockDispatcher,
+    ReportConnectedToServiceAfterWake_WakeOnDarkConnectDisabledAndConnected) {
   const bool is_connected = true;
   EnableWakeOnWiFiFeaturesPacket();
   EXPECT_CALL(
@@ -2952,8 +2954,10 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   ReportConnectedToServiceAfterWake(is_connected);
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher,
-       ReportConnectedToServiceAfterWake_WakeOnSSIDDisabledAndNotConnected) {
+TEST_F(
+    WakeOnWiFiTestWithMockDispatcher,
+    ReportConnectedToServiceAfterWake_WakeOnDarkConnectDisabledAndNotConnected)
+{
   const bool is_connected = false;
   EnableWakeOnWiFiFeaturesPacket();
   EXPECT_CALL(
