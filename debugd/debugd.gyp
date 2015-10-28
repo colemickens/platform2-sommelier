@@ -5,10 +5,10 @@
         'dbus-1',
         'dbus-c++-1',
         'glib-2.0',
-        'libpcrecpp',
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
         'libminijail',
+        'libpcrecpp',
       ],
       # debugd uses try/catch to interact with dbus-c++.
       'enable_exceptions': 1,

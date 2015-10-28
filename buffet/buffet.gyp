@@ -2,8 +2,8 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
         'system_api',
       ],
     },
@@ -109,8 +109,8 @@
           ],
           'variables': {
             'deps': [
+              'libbrillo-test-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
-              'libchromeos-test-<(libbase_ver)',
               'libweave-test-<(libbase_ver)',
             ],
           },

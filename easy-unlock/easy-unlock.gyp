@@ -3,8 +3,8 @@
     'variables': {
       'deps': [
         'easy-unlock-crypto',
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
       ],
     },
   },

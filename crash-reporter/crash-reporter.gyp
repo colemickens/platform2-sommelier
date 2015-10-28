@@ -5,7 +5,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'libchromeos-<(libbase_ver)',
+        'libbrillo-<(libbase_ver)',
       ],
     },
   },

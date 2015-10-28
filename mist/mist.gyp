@@ -2,8 +2,8 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
         'libudev',
         'libusb-1.0',

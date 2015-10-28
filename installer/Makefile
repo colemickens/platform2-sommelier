@@ -6,7 +6,7 @@ OUT ?= $(PWD)/build
 
 include common.mk
 
-PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_DEPS = libchrome-$(BASE_VER) libbrillo-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 

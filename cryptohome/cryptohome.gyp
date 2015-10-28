@@ -5,9 +5,9 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libbrillo-<(libbase_ver)',
+        'libbrillo-glib-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
-        'libchromeos-glib-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
       ],
     },
@@ -353,8 +353,8 @@
               'dbus-1',
               'dbus-glib-1',
               'glib-2.0',
+              'libbrillo-test-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
-              'libchromeos-test-<(libbase_ver)',
               'libecryptfs',
               'openssl',
               'protobuf',

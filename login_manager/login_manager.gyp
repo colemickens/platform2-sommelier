@@ -7,8 +7,8 @@
     'variables': {
       'deps': [
         'dbus-1',
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
         'libchromeos-ui-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
         'nss',
@@ -109,7 +109,7 @@
           'dependencies': ['libsession_manager'],
           'variables': {
             'deps': [
-              'libchromeos-test-<(libbase_ver)',
+              'libbrillo-test-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
             ],
           },

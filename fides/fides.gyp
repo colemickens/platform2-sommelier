@@ -66,7 +66,7 @@
       'type': 'executable',
       'variables': {
         'deps': [
-          'libchromeos-<(libbase_ver)',
+          'libbrillo-<(libbase_ver)',
         ],
       },
       'dependencies': [

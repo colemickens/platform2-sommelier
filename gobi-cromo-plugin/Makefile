@@ -63,7 +63,7 @@ $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 # Libraries that we normally get via the plugin host (cromo)
 %unittest : LDLIBS += -lgtest -lgmock -lcromo \
 	    $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 \
-	      dbus-c++-1 libchromeos-$(BASE_VER))
+	      dbus-c++-1 libbrillo-$(BASE_VER))
 
 # As few dependencies as possible
 gobi_handle_test : LDLIBS=-lGobiConnectionMgmt -lpthread -lrt

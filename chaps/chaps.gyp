@@ -5,8 +5,8 @@
         'dbus-c++-1',
         'protobuf-lite',
         'openssl',
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'libchromeos-<(libbase_ver)',
       ],
       # Chaps uses try/catch to interact with dbus-c++.
       'enable_exceptions': 1,
