@@ -179,7 +179,8 @@ class NetlinkU16Attribute : public NetlinkAttribute {
   DISALLOW_COPY_AND_ASSIGN(NetlinkU16Attribute);
 };
 
-class NetlinkU32Attribute : public NetlinkAttribute {
+// Set SHILL_EXPORT to allow unit tests to instantiate these.
+class SHILL_EXPORT NetlinkU32Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;

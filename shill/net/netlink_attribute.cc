@@ -448,7 +448,9 @@ const NetlinkAttribute::Type NetlinkU8Attribute::kType =
 bool NetlinkU8Attribute::InitFromValue(const ByteString& input) {
   uint8_t data;
   if (!input.CopyData(sizeof(data), &data)) {
-    LOG(ERROR) << "Invalid |input| parameter";
+    LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
+               << datatype_string() << ": expected " << sizeof(data)
+               << " bytes but only had " << input.GetLength() << ".";
     return false;
   }
   SetU8Value(data);
@@ -499,7 +501,9 @@ const NetlinkAttribute::Type NetlinkU16Attribute::kType =
 bool NetlinkU16Attribute::InitFromValue(const ByteString& input) {
   uint16_t data;
   if (!input.CopyData(sizeof(data), &data)) {
-    LOG(ERROR) << "Invalid |input| parameter";
+    LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
+               << datatype_string() << ": expected " << sizeof(data)
+               << " bytes but only had " << input.GetLength() << ".";
     return false;
   }
 
@@ -551,7 +555,9 @@ const NetlinkAttribute::Type NetlinkU32Attribute::kType =
 bool NetlinkU32Attribute::InitFromValue(const ByteString& input) {
   uint32_t data;
   if (!input.CopyData(sizeof(data), &data)) {
-    LOG(ERROR) << "Invalid |input| parameter";
+    LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
+               << datatype_string() << ": expected " << sizeof(data)
+               << " bytes but only had " << input.GetLength() << ".";
     return false;
   }
 
@@ -603,7 +609,9 @@ const NetlinkAttribute::Type NetlinkU64Attribute::kType =
 bool NetlinkU64Attribute::InitFromValue(const ByteString& input) {
   uint64_t data;
   if (!input.CopyData(sizeof(data), &data)) {
-    LOG(ERROR) << "Invalid |input| parameter";
+    LOG(ERROR) << "Invalid |input| for " << id_string() << " of type "
+               << datatype_string() << ": expected " << sizeof(data)
+               << " bytes but only had " << input.GetLength() << ".";
     return false;
   }
   SetU64Value(data);

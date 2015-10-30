@@ -269,11 +269,13 @@ class Nl80211AttributeProbeRespOffload : public NetlinkU32Attribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeProbeRespOffload);
 };
 
-class Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
+// Set SHILL_EXPORT to allow unit tests to instantiate these.
+class SHILL_EXPORT Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
  public:
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeRegInitiator() : NetlinkU32Attribute(kName, kNameString) {}
+  bool InitFromValue(const ByteString& data) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRegInitiator);

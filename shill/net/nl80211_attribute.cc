@@ -563,6 +563,23 @@ const int Nl80211AttributeRegInitiator::kName = NL80211_ATTR_REG_INITIATOR;
 const char Nl80211AttributeRegInitiator::kNameString[] =
     "NL80211_ATTR_REG_INITIATOR";
 
+// The RegInitiator type can be interpreted as either a U8 or U32 depending
+// on context.  Override the default InitFromValue implementation to be
+// flexible to either encoding.
+bool Nl80211AttributeRegInitiator::InitFromValue(const ByteString& input) {
+  uint8_t u8_data;
+  if (input.GetLength() != sizeof(u8_data))
+    return NetlinkU32Attribute::InitFromValue(input);
+
+  if (!input.CopyData(sizeof(u8_data), &u8_data)) {
+    LOG(ERROR) << "Invalid |input| parameter.";
+    return false;
+  }
+
+  SetU32Value(static_cast<uint32_t>(u8_data));
+  return NetlinkAttribute::InitFromValue(input);
+}
+
 const int Nl80211AttributeRegRules::kName = NL80211_ATTR_REG_RULES;
 const char Nl80211AttributeRegRules::kNameString[] = "NL80211_ATTR_REG_RULES";
 
