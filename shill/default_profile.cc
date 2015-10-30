@@ -115,8 +115,7 @@ DefaultProfile::DefaultProfile(ControlInterface* control,
 
 DefaultProfile::~DefaultProfile() {}
 
-void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
-                                           DhcpProperties* dhcp_properties) {
+void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props) {
   storage()->GetBool(kStorageId, kStorageArpGateway,
                      &manager_props->arp_gateway);
   storage()->GetString(kStorageId, kStorageHostName, &manager_props->host_name);
@@ -166,7 +165,6 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
                             &manager_props->prohibited_technologies)) {
     manager_props->prohibited_technologies = "";
   }
-  dhcp_properties->Load(storage(), kStorageId);
 }
 
 bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
@@ -212,7 +210,6 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageProhibitedTechnologies,
                        props_.prohibited_technologies);
-  manager()->dhcp_properties().Save(storage(), kStorageId);
   return Profile::Save();
 }
 

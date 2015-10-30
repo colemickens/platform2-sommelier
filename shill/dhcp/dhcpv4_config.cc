@@ -98,9 +98,9 @@ DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
                            EventDispatcher* dispatcher,
                            DHCPProvider* provider,
                            const string& device_name,
+                           const string& request_hostname,
                            const string& lease_file_suffix,
                            bool arp_gateway,
-                           const DhcpProperties& dhcp_props,
                            Metrics* metrics)
     : DHCPConfig(control_interface,
                  dispatcher,
@@ -108,12 +108,10 @@ DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
                  device_name,
                  kType,
                  lease_file_suffix),
+      request_hostname_(request_hostname),
       arp_gateway_(arp_gateway),
       is_gateway_arp_active_(false),
       metrics_(metrics) {
-  dhcp_props.GetValueForProperty(DhcpProperties::kHostnameProperty, &hostname_);
-  dhcp_props.GetValueForProperty(DhcpProperties::kVendorClassProperty,
-                                 &vendor_class_);
   SLOG(this, 2) << __func__ << ": " << device_name;
 }
 
@@ -238,17 +236,10 @@ vector<string> DHCPv4Config::GetFlags() {
   vector<string> flags = DHCPConfig::GetFlags();
 
   flags.push_back("-4");  // IPv4 only.
-
-  // Apply options from DhcpProperties when applicable.
-  if (!hostname_.empty()) {
-    flags.push_back("-h");  // Request hostname from server
-    flags.push_back(hostname_.c_str());
+  if (!request_hostname_.empty()) {
+    flags.push_back("-h");  // Request hostname from server.
+    flags.push_back(request_hostname_.c_str());
   }
-  if (!vendor_class_.empty()) {
-    flags.push_back("-i");
-    flags.push_back(vendor_class_.c_str());
-  }
-
   if (arp_gateway_) {
     flags.push_back("-R");  // ARP for default gateway.
     flags.push_back("-P");  // Enable unicast ARP on renew.

@@ -36,7 +36,6 @@
 
 #include "shill/cellular/modem_info.h"
 #include "shill/crypto_util_proxy.h"
-#include "shill/dhcp_properties.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
@@ -382,16 +381,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
 
   bool GetArpGateway() const { return props_.arp_gateway; }
+  const std::string& GetHostName() const { return props_.host_name; }
 
   virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
   virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
-
-  const DhcpProperties& dhcp_properties() const {
-    return *dhcp_properties_;
-  }
 
   // Writes the service |to_update| to persistant storage.  If the service's is
   // ephemeral, it is moved to the current profile.
@@ -551,11 +547,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               TerminationActionRemovedByStopModem);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
-  FRIEND_TEST(DefaultProfileTest, LoadManagerDefaultProperties);
-  FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
-  FRIEND_TEST(DefaultProfileTest, Save);
-  FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
-  FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
   FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ClaimDeviceWhenClaimerNotVerified);
@@ -884,9 +875,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // List of DHCPv6 enabled devices.
   std::vector<std::string> dhcpv6_enabled_devices_;
-
-  // DhcpProperties stored for the default profile.
-  std::unique_ptr<DhcpProperties> dhcp_properties_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

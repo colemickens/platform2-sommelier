@@ -22,16 +22,12 @@
 
 #include "shill/dhcp/dhcp_config.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_event_dispatcher.h"
 
 using base::FilePath;
 using base::ScopedTempDir;
 using testing::_;
-using testing::DoAll;
-using testing::Return;
 using testing::SaveArg;
-using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
 
@@ -39,6 +35,7 @@ namespace shill {
 
 namespace {
 const char kDeviceName[] = "testdevicename";
+const char kHostName[] = "testhostname";
 const char kStorageIdentifier[] = "teststorageidentifier";
 const bool kArpGateway = false;
 }  // namespace
@@ -67,12 +64,10 @@ class DHCPProviderTest : public Test {
 };
 
 TEST_F(DHCPProviderTest, CreateIPv4Config) {
-  DhcpProperties dhcp_props;
-
   DHCPConfigRefPtr config = provider_->CreateIPv4Config(kDeviceName,
+                                                        kHostName,
                                                         kStorageIdentifier,
-                                                        kArpGateway,
-                                                        dhcp_props);
+                                                        kArpGateway);
   EXPECT_TRUE(config.get());
   EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->configs_.empty());
@@ -97,12 +92,11 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   int kPid = 999;
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
-  DhcpProperties dhcp_props;
 
   DHCPConfigRefPtr config = provider_->CreateIPv4Config(kDeviceName,
+                                                        kHostName,
                                                         kStorageIdentifier,
-                                                        kArpGateway,
-                                                        dhcp_props);
+                                                        kArpGateway);
   provider_->BindPID(kPid, config);
   EXPECT_NE(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));

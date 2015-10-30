@@ -26,7 +26,6 @@
 #include <base/lazy_instance.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/dhcp_properties.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -42,9 +41,9 @@ class Metrics;
 // method. For example, a single DHCP configuration request can be initiated as:
 //
 // DHCPProvider::GetInstance()->CreateIPv4Config(device_name,
+//                                               host_name,
 //                                               lease_file_suffix,
-//                                               arp_gateway,
-//                                               dhcp_props)->Request();
+//                                               arp_gateway)->Request();
 class DHCPProvider {
  public:
   static constexpr char kDHCPCDPathFormatLease[] =
@@ -80,9 +79,9 @@ class DHCPProvider {
   // in-use by another station.
   virtual DHCPConfigRefPtr CreateIPv4Config(
       const std::string& device_name,
+      const std::string& host_name,
       const std::string& lease_file_suffix,
-      bool arp_gateway,
-      const DhcpProperties& dhcp_props);
+      bool arp_gateway);
 
 #ifndef DISABLE_DHCPV6
   // Create a new DHCPv6Config for |device_name|.

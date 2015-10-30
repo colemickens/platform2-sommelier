@@ -169,8 +169,7 @@ Manager::Manager(ControlInterface* control_interface,
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher)),
       health_checker_remote_ips_(new IPAddressStore()),
       suppress_autoconnect_(false),
-      is_connected_state_(false),
-      dhcp_properties_(new DhcpProperties()) {
+      is_connected_state_(false) {
   HelpRegisterDerivedString(kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             nullptr);
@@ -231,8 +230,6 @@ Manager::Manager(ControlInterface* control_interface,
                                   &Manager::ClaimedDevices);
 
   UpdateProviderMapping();
-
-  dhcp_properties_->InitPropertyStore(&store_);
 
   SLOG(this, 2) << "Manager initialized.";
 }
@@ -1447,7 +1444,7 @@ void Manager::SaveServiceToProfile(const ServiceRefPtr& to_update) {
 }
 
 void Manager::LoadProperties(const scoped_refptr<DefaultProfile>& profile) {
-  profile->LoadManagerProperties(&props_, dhcp_properties_.get());
+  profile->LoadManagerProperties(&props_);
   SetIgnoredDNSSearchPaths(props_.ignored_dns_search_paths, nullptr);
 }
 

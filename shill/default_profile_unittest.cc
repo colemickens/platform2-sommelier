@@ -36,7 +36,6 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
-#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"
@@ -56,7 +55,6 @@ using std::unique_ptr;
 using std::vector;
 using ::testing::_;
 using ::testing::DoAll;
-using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 
@@ -185,9 +183,6 @@ TEST_F(DefaultProfileTest, Save) {
 
   EXPECT_CALL(*device_.get(), Save(storage.get())).Times(0);
   profile_->set_storage(storage.release());
-  unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
-  EXPECT_CALL(*dhcp_props.get(), Save(_,_));
-  manager()->dhcp_properties_ = std::move(dhcp_props);
 
   manager()->RegisterDevice(device_);
   ASSERT_TRUE(profile_->Save());
@@ -242,13 +237,10 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                         DefaultProfile::kStoragePortalCheckInterval,
                         _))
       .WillOnce(Return(false));
-  unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
-  EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
-  manager()->dhcp_properties_ = std::move(dhcp_props);
+
   profile_->set_storage(storage.release());
 
-  profile_->LoadManagerProperties(&manager_props,
-                                  manager()->dhcp_properties_.get());
+  profile_->LoadManagerProperties(&manager_props);
   EXPECT_TRUE(manager_props.arp_gateway);
   EXPECT_EQ("", manager_props.host_name);
   EXPECT_FALSE(manager_props.offline_mode);
@@ -326,13 +318,9 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
       .WillOnce(DoAll(SetArgumentPointee<2>(prohibited_technologies),
                       Return(true)));
   profile_->set_storage(storage.release());
-  Manager::Properties manager_props;
-  unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
-  EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
-  manager()->dhcp_properties_ = std::move(dhcp_props);
 
-  profile_->LoadManagerProperties(&manager_props,
-                                  manager()->dhcp_properties_.get());
+  Manager::Properties manager_props;
+  profile_->LoadManagerProperties(&manager_props);
   EXPECT_FALSE(manager_props.arp_gateway);
   EXPECT_EQ(host_name, manager_props.host_name);
   EXPECT_TRUE(manager_props.offline_mode);

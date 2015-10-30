@@ -32,9 +32,6 @@ class StoreInterface;
 
 class DhcpProperties {
  public:
-  static const char kHostnameProperty[];
-  static const char kVendorClassProperty[];
-
   DhcpProperties();
 
   virtual ~DhcpProperties();
@@ -67,9 +64,7 @@ class DhcpProperties {
 
   // Retrieves the value for a property with |name| in |value| if it is set.
   // Returns true if the property was found.
-  bool GetValueForProperty(const std::string& name, std::string* value) const;
-
-  const KeyValueStore& properties() const { return properties_; };
+  bool GetValueForProperty(const std::string& name, std::string* value);
 
  private:
   FRIEND_TEST(DhcpPropertiesTest, ClearMappedStringPropertyNoExistingValue);

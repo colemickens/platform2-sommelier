@@ -573,30 +573,6 @@ Properties 	string ActiveProfile [readwrite]
 
 			List of device object paths.
 
-                string DHCPProperty.Hostname [readwrite]
-
-                        Optional setting to configure DHCP requests.  Some DHCP
-			servers may register a DNS entry on behalf of this
-			hostname; others may just make available a table for
-			administrators to tell what machines are on their
-			network.
-
-			The default for this name is empty, which means that the
-			system will not report a hostname.  When this property
-			is set it will be persisted in the default profile.
-
-                string DHCPProperty.VendorClass [readwrite]
-
-                        Optional setting to configure DHCP requests.  This
-			setting can be used to identify the vendor that
-			manufactured the client hardware, the software in use,
-			or an industry consortium to which the vendor belongs.
-
-			The default for this property is empty, which means the
-			system will not report a Vendor Class.  When set, this
-			property will override the default setting and be
-			persisted in the default profile.
-
 		bool DisableVHT [readwrite]
 
 			Disables 802.11ac Very High Throughput (VHT)
@@ -606,6 +582,17 @@ Properties 	string ActiveProfile [readwrite]
 
 			The list of enabled technologies. The strings
 			are the same as the ones from the service types.
+
+		string HostName [readwrite]
+
+			The hostname to be reported in DHCP requests.
+			Some DHCP servers may register a DNS entry on
+			behalf of this hostname; others may just make
+			available a table for administrators to tell
+			what machines are on their network.
+
+			The default for this name is empty, which
+			means that the system will not report a hostname.
 
 		string IgnoredDNSSearchPaths [readwrite]
 
