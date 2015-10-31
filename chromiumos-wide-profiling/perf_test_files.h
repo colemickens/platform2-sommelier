@@ -22,109 +22,108 @@ namespace perf_test_files {
 
 const char* kPerfDataFiles[] = {
   // Obtained with "perf record -- echo > /dev/null"
-  "perf.data.singleprocess",
+  "perf.data.singleprocess-3.4",
 
   // Obtained with "perf record -a -- sleep $N", for N in {0, 1, 5}.
-  "perf.data.systemwide.0",
-  "perf.data.systemwide.1",
-  "perf.data.systemwide.5",
+  "perf.data.systemwide.0-3.4",
+  "perf.data.systemwide.1-3.4",
+  "perf.data.systemwide.5-3.4",
 
   // Obtained with "perf record -a -- sleep $N", for N in {0, 1, 5}.
   // While in the background, this loop is running:
   //   while true; do ls > /dev/null; done
-  "perf.data.busy.0",
-  "perf.data.busy.1",
-  "perf.data.busy.5",
+  "perf.data.busy.0-3.4",
+  "perf.data.busy.1-3.4",
+  "perf.data.busy.5-3.4",
 
   // Obtained with "perf record -a -- sleep 2"
   // While in the background, this loop is running:
   //   while true; do restart powerd; sleep .2; done
-  "perf.data.forkexit",
+  "perf.data.forkexit-3.4",
 
 #ifdef TEST_CALLGRAPH
   // Obtained with "perf record -a -g -- sleep 2"
-  "perf.data.callgraph",
+  "perf.data.callgraph-3.4",
 #endif
   // Obtained with "perf record -a -b -- sleep 2"
-  "perf.data.branch",
+  "perf.data.branch-3.4",
 #ifdef TEST_CALLGRAPH
   // Obtained with "perf record -a -g -b -- sleep 2"
-  "perf.data.callgraph_and_branch",
+  "perf.data.callgraph_and_branch-3.4",
 #endif
 
   // Obtained with "perf record -a -R -- sleep 2"
-  "perf.data.raw",
+  "perf.data.raw-3.4",
 #ifdef TEST_CALLGRAPH
   // Obtained with "perf record -a -R -g -b -- sleep 2"
-  "perf.data.raw_callgraph_branch",
+  "perf.data.raw_callgraph_branch-3.4",
 #endif
 
   // Data from other architectures.
-  "perf.data.i686",     // 32-bit x86
-  "perf.data.armv7",    // ARM v7
-  "perf.data.armv7.perf_3.14",      // ARM v7 obtained using perf 3.14.
+  "perf.data.i686-3.4",     // 32-bit x86
+  "perf.data.armv7-3.4",    // ARM v7
 
-  // Same as above, obtained from a system running kernel-next.
-  "perf.data.singleprocess.next",
-  "perf.data.systemwide.0.next",
-  "perf.data.systemwide.1.next",
-  "perf.data.systemwide.5.next",
-  "perf.data.busy.0.next",
-  "perf.data.busy.1.next",
-  "perf.data.busy.5.next",
-  "perf.data.forkexit.next",
+  // Same as above, obtained from a system running kernel v3.8.
+  "perf.data.singleprocess-3.8",
+  "perf.data.systemwide.0-3.8",
+  "perf.data.systemwide.1-3.8",
+  "perf.data.systemwide.5-3.8",
+  "perf.data.busy.0-3.8",
+  "perf.data.busy.1-3.8",
+  "perf.data.busy.5-3.8",
+  "perf.data.forkexit-3.8",
 #ifdef TEST_CALLGRAPH
-  "perf.data.callgraph.next",
+  "perf.data.callgraph-3.8",
 #endif
-  "perf.data.branch.next",
+  "perf.data.branch-3.8",
 #ifdef TEST_CALLGRAPH
-  "perf.data.callgraph_and_branch.next",
+  "perf.data.callgraph_and_branch-3.8",
 #endif
+  "perf.data.armv7.perf_3.14-3.8",      // ARM v7 obtained using perf 3.14.
 
   // Obtained from a system that uses NUMA topology.
-  "perf.data.numatopology",
+  "perf.data.numatopology-3.2",
 
   // Perf data that contains hardware and software events.
   // Command:
   //    perf record -a -c 1000000 -e cycles,branch-misses,cpu-clock -- sleep 2
   // HW events are cycles and branch-misses, SW event is cpu-clock.
   // This also tests non-consecutive event types.
-  "perf.data.hw_and_sw",
+  "perf.data.hw_and_sw-3.4",
 
   // This test first mmap()s a DSO, then fork()s to copy the mapping to the
   // child and then modifies the mapping by mmap()ing a DSO on top of the old
   // one. It then records SAMPLEs events in the child. It ensures the SAMPLEs in
   // the child are attributed to the first DSO that was mmap()ed, not the second
   // one.
-  "perf.data.remmap",
+  "perf.data.remmap-3.2",
 
   // This is sample with a frequency higher than the max frequency, so it has
   // throttle and unthrottle events.
-  "perf.data.throttle.next",
+  "perf.data.throttle-3.8",
 };
 
 const char* kPerfPipedDataFiles[] = {
-  "perf.data.piped.host",
-  "perf.data.piped.target",
-  "perf.data.piped.target.throttled",
-  // From system running kernel-next.
-  "perf.data.piped.target.next",
+  "perf.data.piped.host-3.2",
+  "perf.data.piped.target-3.4",
+  "perf.data.piped.target.throttled-3.4",
+  "perf.data.piped.target-3.8",
 
   // Piped data that contains hardware and software events.
   // Command:
   //    perf record -a -c 1000000 -e cycles,branch-misses,cpu-clock -o -
   //        -- sleep 2
   // HW events are cycles and branch-misses, SW event is cpu-clock.
-  "perf.data.piped.hw_and_sw",
+  "perf.data.piped.hw_and_sw-3.4",
 
   // Piped data with extra data at end.
-  "perf.data.piped.extrabyte",
-  "perf.data.piped.extradata",
+  "perf.data.piped.extrabyte-3.4",
+  "perf.data.piped.extradata-3.4",
 };
 
 const char* kCorruptedPerfPipedDataFiles[] = {
   // Has a SAMPLE event with size set to zero. Don't go into an infinite loop!
-  "perf.data.piped.corrupted.zero_size_sample",
+  "perf.data.piped.corrupted.zero_size_sample-3.2",
 };
 
 const char* kPerfDataProtoFiles[] = {

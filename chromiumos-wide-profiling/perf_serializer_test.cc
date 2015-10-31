@@ -190,9 +190,12 @@ TEST(PerfSerializerTest, Test1Cycle) {
     input_perf_reader.ReadFile(input_perf_data);
 
     // Discard unused events for a pseudorandom selection of half the test data
-    // files. The selection is based on the Md5sum prefix, so that the files can
-    // be moved around in the |kPerfDataFiles| list.
-    bool discard = (Md5Prefix(test_file) % 2 == 0);
+    // files. The selection is based on the Md5sum prefix of the file contents,
+    // so that the files can be moved around in the |kPerfDataFiles| list or
+    // renamed.
+    std::vector<char> test_file_data;
+    ASSERT_TRUE(ReadFileToData(input_perf_data, &test_file_data));
+    bool discard = (Md5Prefix(test_file_data) % 2 == 0);
 
     SerializeAndDeserialize(input_perf_data, output_perf_data, false, discard);
     output_perf_reader.ReadFile(output_perf_data);
