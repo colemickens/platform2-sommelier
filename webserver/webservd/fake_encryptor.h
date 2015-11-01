@@ -25,11 +25,11 @@ namespace webservd {
 // ciphertext.  Obviously, this should be used only for testing.
 class FakeEncryptor : public Encryptor {
  public:
-  bool EncryptString(const std::string& plaintext,
-                     std::string* ciphertext) override;
+  bool EncryptWithAuthentication(const std::string& plaintext,
+                                 std::string* ciphertext) override;
 
-  bool DecryptString(const std::string& ciphertext,
-                     std::string* plaintext) override;
+  bool DecryptWithAuthentication(const std::string& ciphertext,
+                                 std::string* plaintext) override;
 };
 
 }  // namespace webservd
