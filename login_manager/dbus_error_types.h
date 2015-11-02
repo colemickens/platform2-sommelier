@@ -15,6 +15,7 @@ static const char kInitMachineInfoFail[] = INTERFACE ".InitMachineInfoFail";
 static const char kInvalidAccount[] = INTERFACE ".InvalidAccount";
 static const char kNoOwnerKey[] = INTERFACE ".NoOwnerKey";
 static const char kNoUserNssDb[] = INTERFACE ".NoUserNssDb";
+static const char kNotAvailable[] = INTERFACE ".NotAvailable";
 static const char kPolicyInitFail[] = INTERFACE ".PolicyInitFail";
 static const char kPubkeySetIllegal[] = INTERFACE ".PubkeySetIllegal";
 static const char kSessionDoesNotExist[] = INTERFACE ".SessionDoesNotExist";

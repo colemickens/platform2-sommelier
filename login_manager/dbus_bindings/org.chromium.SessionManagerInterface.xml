@@ -373,6 +373,43 @@
     <method name="InitMachineInfo">
       <arg type="s" name="data" direction="in" />
     </method>
+
+    <!--
+        CheckArcAvailability:
+        @available: True if ARC is available, false otherwise.
+
+        Queries the status of ARC in this platform. This method gets invoked
+        by Chrome.
+    -->
+    <method name="CheckArcAvailability">
+      <arg type="b" name="available" direction="out" />
+    </method>
+
+    <!--
+        StartArcInstance:
+        @socket_path: A string containing the path of the ARC IPC socket.
+
+        Starts an ARC instance. Only one instance of ARC can be executing at a
+        given point in time. This method is only available if
+        CheckArcAvailability returns successfully. This method gets invoked by
+        Chrome.
+    -->
+    <method name="StartArcInstance">
+      <arg type="s" name="socket_path" direction="in" />
+    </method>
+
+    <!--
+        StopArcInstance:
+
+        Stops the currently running ARC instance. Used to manually stop the ARC
+        instance. If the instance is not running, this will result in a no-op.
+        If this method is not called, session_manager will still stop the
+        instance when the user's session ends. This method is only available if
+        CheckArcAvailability returns successfully. This method gets invoked by
+        Chrome.
+    -->
+    <method name="StopArcInstance">
+    </method>
   </interface>
   <!-- ********************************************************************* -->
 </node>

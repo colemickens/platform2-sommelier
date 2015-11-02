@@ -73,7 +73,8 @@ class SessionManagerImplTest : public ::testing::Test {
   SessionManagerImplTest()
       : device_policy_service_(new MockDevicePolicyService),
         state_key_generator_(&utils_, &metrics_),
-        impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter),
+        impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter(
+                  &upstart_signal_emitter_delegate_)),
               &dbus_emitter_,
               base::Bind(&SessionManagerImplTest::FakeLockScreen,
                          base::Unretained(this)),
@@ -186,6 +187,7 @@ class SessionManagerImplTest : public ::testing::Test {
   map<string, MockPolicyService*> user_policy_services_;
 
   MockDBusSignalEmitter dbus_emitter_;
+  StubUpstartSignalEmitter::MockDelegate upstart_signal_emitter_delegate_;
   MockKeyGenerator key_gen_;
   ServerBackedStateKeyGenerator state_key_generator_;
   MockProcessManagerService manager_;
@@ -761,6 +763,30 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
 
   impl_.OnKeyGenerated(kSaneEmail, key_file_path);
   EXPECT_FALSE(base::PathExists(key_file_path));
+}
+
+TEST_F(SessionManagerImplTest, ArcInstanceStart) {
+  // An arbitrary path. Doesn't need to exist or be accessible.
+  const char kSocketPath[] = "/tmp/arc.sock";
+
+  ExpectAndRunStartSession(kSaneEmail);
+  bool available = impl_.CheckArcAvailability();
+#if USE_ARC
+  EXPECT_TRUE(available);
+  // TODO(lhchavez): Once session_manager controls the ARC instance process and
+  // upstart is not used, verify that the instance is killed when the session
+  // ends.
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq("start-arc-instance"),
+                      ElementsAre(std::string("SOCKET_PATH=") + kSocketPath)))
+      .Times(1);
+  impl_.StartArcInstance(kSocketPath, &error_);
+#else
+  EXPECT_FALSE(available);
+  impl_.StartArcInstance(kSocketPath, &error_);
+  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+#endif
 }
 
 class SessionManagerImplStaticTest : public ::testing::Test {

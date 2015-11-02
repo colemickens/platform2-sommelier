@@ -21,6 +21,7 @@
     # DON'T EDIT BELOW THIS LINE.
     # You can declare new variables, but you shouldn't be changing their
     # default settings.  The platform python build helpers set them up.
+    'USE_arc%': 0,
     'USE_attestation%': 0,
     'USE_buffet%': 0,
     'USE_cellular%': 0,

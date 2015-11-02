@@ -552,6 +552,54 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
     error->Set(dbus_error::kInitMachineInfoFail, "Missing parameters.");
 }
 
+bool SessionManagerImpl::CheckArcAvailability() {
+#if USE_ARC
+  return true;
+#else
+  return false;
+#endif  // USE_ARC
+}
+
+void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
+                                          Error* error) {
+#if USE_ARC
+  // TODO(lhchavez): Let session_manager control the ARC instance process
+  // instead of having upstart handle it.
+  scoped_ptr<dbus::Response> emit_response =
+      upstart_signal_emitter_->EmitSignal(
+          "start-arc-instance",
+          std::vector<std::string>(1, "SOCKET_PATH=" + socket_path));
+
+  if (!emit_response) {
+    const char msg[] = "Emitting start-arc-instance upstart signal failed.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kEmitFailed, msg);
+  }
+#else
+  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+#endif  // !USE_ARC
+}
+
+void SessionManagerImpl::StopArcInstance(Error* error) {
+#if USE_ARC
+  // TODO(lhchavez): Let session_manager control the ARC instance process
+  // instead of having upstart handle it.
+  dbus_emitter_->EmitSignal("arc-instance-stop");
+  scoped_ptr<dbus::Response> emit_response =
+      upstart_signal_emitter_->EmitSignal(
+          "stop-arc-instance",
+          std::vector<std::string>());
+
+  if (!emit_response) {
+    const char msg[] = "Emitting stop-arc-instance upstart signal failed.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kEmitFailed, msg);
+  }
+#else
+  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+#endif  // USE_ARC
+}
+
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());

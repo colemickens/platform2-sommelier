@@ -2,6 +2,7 @@
   'target_defaults': {
     'defines': [
       'OS_CHROMEOS',
+      'USE_ARC=<(USE_arc)',
       'USE_NSS_CERTS',
     ],
     'variables': {

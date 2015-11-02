@@ -81,6 +81,10 @@ class SessionManagerDBusAdaptor {
                                 dbus::ExportedObject::ResponseSender sender);
   scoped_ptr<dbus::Response> InitMachineInfo(dbus::MethodCall* call);
 
+  scoped_ptr<dbus::Response> CheckArcAvailability(dbus::MethodCall* call);
+  scoped_ptr<dbus::Response> StartArcInstance(dbus::MethodCall* call);
+  scoped_ptr<dbus::Response> StopArcInstance(dbus::MethodCall* call);
+
   scoped_ptr<dbus::Response> Introspect(dbus::MethodCall* call);
 
  private:

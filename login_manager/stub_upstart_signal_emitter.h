@@ -18,13 +18,41 @@ namespace login_manager {
 // Stub implementation of UpstartSignalEmitter that always reports success.
 class StubUpstartSignalEmitter : public UpstartSignalEmitter {
  public:
-  StubUpstartSignalEmitter() : UpstartSignalEmitter(NULL) {}
+  // Delegate to aid in testing since the UpstartSignalEmitter ownership is
+  // transferred, not shared.
+  class Delegate {
+   public:
+    virtual ~Delegate() {}
+
+    // Called when UpstartSignalEmitter::EmitSignal is called.
+    virtual void OnSignalEmitted(
+        const std::string& signal_name,
+        const std::vector<std::string>& args_keyvals) = 0;
+  };
+
+  // Mock implementation of Delegate.
+  class MockDelegate : public Delegate {
+   public:
+    MockDelegate() {}
+    ~MockDelegate() override {}
+
+    MOCK_METHOD2(OnSignalEmitted, void(const std::string&,
+                                       const std::vector<std::string>&));
+  };
+
+  explicit StubUpstartSignalEmitter(Delegate* delegate)
+      : UpstartSignalEmitter(NULL),
+        delegate_(delegate) {}
   virtual ~StubUpstartSignalEmitter() {}
   virtual scoped_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
       const std::vector<std::string>& args_keyvals) {
+    delegate_->OnSignalEmitted(signal_name, args_keyvals);
     return scoped_ptr<dbus::Response>(dbus::Response::CreateEmpty());
   }
+
+ private:
+  Delegate* delegate_;  // Owned by the caller.
 };
 
 }  // namespace login_manager

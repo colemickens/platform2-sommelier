@@ -274,6 +274,16 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerInitMachineInfo,
                        &SessionManagerDBusAdaptor::InitMachineInfo);
 
+  ExportSyncDBusMethod(object,
+                       kSessionManagerCheckArcAvailability,
+                       &SessionManagerDBusAdaptor::CheckArcAvailability);
+  ExportSyncDBusMethod(object,
+                       kSessionManagerStartArcInstance,
+                       &SessionManagerDBusAdaptor::StartArcInstance);
+  ExportSyncDBusMethod(object,
+                       kSessionManagerStopArcInstance,
+                       &SessionManagerDBusAdaptor::StopArcInstance);
+
   CHECK(object->ExportMethodAndBlock(
       kDBusIntrospectableInterface,
       kDBusIntrospectMethod,
@@ -542,6 +552,37 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(
 
   SessionManagerImpl::Error error;
   impl_->InitMachineInfo(data, &error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::CheckArcAvailability(
+    dbus::MethodCall* call) {
+  SessionManagerImpl::Error error;
+  bool available = impl_->CheckArcAvailability();
+  return CraftAppropriateResponseWithBool(call, error, available);
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
+    dbus::MethodCall* call) {
+  dbus::MessageReader reader(call);
+  std::string socket_path;
+  if (!reader.PopString(&socket_path))
+    return CreateInvalidArgsError(call, call->GetSignature());
+
+  SessionManagerImpl::Error error;
+  impl_->StartArcInstance(socket_path, &error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(
+    dbus::MethodCall* call) {
+  SessionManagerImpl::Error error;
+
+  impl_->StopArcInstance(&error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));

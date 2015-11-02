@@ -163,6 +163,10 @@ class SessionManagerImpl : public SessionManagerInterface,
       const ServerBackedStateKeyGenerator::StateKeyCallback& callback);
   void InitMachineInfo(const std::string& data, Error* error);
 
+  bool CheckArcAvailability();
+  void StartArcInstance(const std::string& socket_path, Error* error);
+  void StopArcInstance(Error* error);
+
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
   void OnKeyPersisted(bool success) override;
