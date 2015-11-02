@@ -1165,7 +1165,16 @@ TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
   TPMS_NV_PUBLIC public_data;
   public_data.nv_index = nv_index;
   public_data.name_alg = TPM_ALG_SHA256;
-  public_data.attributes = TPMA_NV_OWNERWRITE |
+  // We define the following attributes for NVSpaces created:
+  // TPMA_NV_NO_DA: Dictionary attack does not trigger on authorization errors.
+  // TPMA_NV_OWNERWRITE: Owner authorization must be provided on write actions.
+  // TPMA_NV_AUTHWRITE: Write authorizations can be provided by HMAC sessions.
+  // TPMA_NV_WRITEDEFINE: NVSpace is write lockable.
+  // TPMA_NV_AUTHREAD: The index authValue (default: "") can be used to
+  //                   authorize read actions.
+  public_data.attributes = TPMA_NV_NO_DA |
+                           TPMA_NV_OWNERWRITE |
+                           TPMA_NV_AUTHWRITE |
                            TPMA_NV_WRITEDEFINE |
                            TPMA_NV_AUTHREAD;
   public_data.auth_policy = Make_TPM2B_DIGEST("");

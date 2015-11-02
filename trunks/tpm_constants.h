@@ -34,9 +34,11 @@ const TPMA_OBJECT kSign = 1U << 18;
 
 // TPM NV Index Attributes, defined in TPM Spec Part 2 section 13.2.
 const TPMA_NV TPMA_NV_OWNERWRITE = 1U << 1;
+const TPMA_NV TPMA_NV_AUTHWRITE = 1U << 2;
 const TPMA_NV TPMA_NV_WRITELOCKED = 1U << 11;
 const TPMA_NV TPMA_NV_WRITEDEFINE = 1U << 13;
 const TPMA_NV TPMA_NV_AUTHREAD = 1U << 18;
+const TPMA_NV TPMA_NV_NO_DA = 1U << 25;
 const TPMA_NV TPMA_NV_WRITTEN = 1U << 29;
 
 }  // namespace trunks

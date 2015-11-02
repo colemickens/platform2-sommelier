@@ -826,7 +826,7 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
   std::string new_nvdata;
   session->SetEntityAuthorizationValue("");
   result = utility->ReadNVSpace(index, 0, nv_data.size(),
-                            &new_nvdata, session->GetDelegate());
+                                &new_nvdata, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading nvram: " << GetErrorString(result);
     return false;
