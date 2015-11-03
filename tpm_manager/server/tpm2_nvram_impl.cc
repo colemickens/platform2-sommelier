@@ -118,7 +118,6 @@ bool Tpm2NvramImpl::WriteNvram(uint32_t index, const std::string& data) {
     LOG(ERROR) << "Error writing to nvram space: " << GetErrorString(result);
     return false;
   }
-  trunks_session_->SetEntityAuthorizationValue("");
   result = trunks_utility_->LockNVSpace(index, trunks_session_->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error locking nvram space: " << GetErrorString(result);
