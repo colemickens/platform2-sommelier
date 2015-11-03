@@ -154,7 +154,6 @@ bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
     LOG(ERROR) << "Error writing to NVSpace: " << GetErrorString(result);
     return false;
   }
-  session->SetEntityAuthorizationValue("");
   result = trunks_utility_->LockNVSpace(index, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error locking NVSpace: " << GetErrorString(result);
@@ -170,7 +169,6 @@ bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
   }
-  session->SetEntityAuthorizationValue("");
   std::string nvram_data;
   result = trunks_utility_->ReadNVSpace(index,
                                         0,  // offset
