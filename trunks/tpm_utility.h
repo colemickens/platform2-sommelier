@@ -265,7 +265,7 @@ class TRUNKS_EXPORT TpmUtility {
 
   // This method locks the non-volatile space referred to by |index|. After a
   // non-volatile space has been locked, it cannot be written to. Locked spaces
-  // can still be freely read.
+  // can still be freely read. This command needs owner authorization.
   virtual TPM_RC LockNVSpace(uint32_t index,
                              AuthorizationDelegate* delegate) = 0;
 

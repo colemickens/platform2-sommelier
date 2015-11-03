@@ -835,11 +835,13 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
     LOG(ERROR) << "NV space had different data than was written.";
     return false;
   }
+  session->SetEntityAuthorizationValue(owner_password);
   result = utility->LockNVSpace(index, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error locking nvram: " << GetErrorString(result);
     return false;
   }
+  session->SetEntityAuthorizationValue("");
   result = utility->ReadNVSpace(index, 0, nv_data.size(),
                             &new_nvdata, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
