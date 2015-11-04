@@ -1265,6 +1265,57 @@ cmd_tpm_status() (
   /usr/sbin/cryptohome --action=tpm_more_status
 )
 
+USAGE_dmesg='[-d|-k|-r|-t|-u|-x]'
+HELP_dmesg='
+  Display kernel log buffer
+'
+cmd_dmesg() (
+  # We whitelist only a few options.
+  local opt
+  for opt in "$@"; do
+    if ! echo "${opt}" | grep -sqE "^-[dkrtux]+$"; then
+      help "unknown option: $*"
+      return 1
+    fi
+  done
+  dmesg "$@"
+)
+
+USAGE_free='[options]'
+HELP_free='
+  Display free/used memory info
+'
+cmd_free() (
+  # All options are harmless, so pass them through.
+  free "$@"
+)
+
+USAGE_meminfo=''
+HELP_meminfo='
+  Display detailed memory statistics
+'
+cmd_meminfo() (
+  if [ $# -eq 0 ]; then
+    cat /proc/meminfo
+  else
+    help "unknown option: $*"
+    return 1
+  fi
+)
+
+USAGE_uptime=''
+HELP_uptime='
+  Display uptime/load info
+'
+cmd_uptime() (
+  if [ $# -eq 0 ]; then
+    uptime
+  else
+    help "unknown option: $*"
+    return 1
+  fi
+)
+
 substr() {
   local str="$1"
   local start="$2"
