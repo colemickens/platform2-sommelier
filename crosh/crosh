@@ -367,7 +367,7 @@ cmd_swap() (
     echo "Presumably you know what you are doing."
     echo "Swap will be OFF at next reboot."
     ;;
-  "status")
+  "status"|"")
     /sbin/swapon -s
     ;;
   *)
