@@ -50,6 +50,7 @@ class ProxyDbusClient {
     TECHNOLOGY_WIMAX
   };
   static const char kCommonLogScopes[];
+  static const char kDbusErrorObjectUnknown[];
   static const int kLogLevel;
 
   ProxyDbusClient(scoped_refptr<dbus::Bus> bus);

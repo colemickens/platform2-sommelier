@@ -22,6 +22,8 @@
 const char ProxyDbusClient::kCommonLogScopes[] =
   "connection+dbus+device+link+manager+portal+service";
 const int ProxyDbusClient::kLogLevel = -4;
+const char ProxyDbusClient::kDbusErrorObjectUnknown[] =
+  "org.freedesktop.DBus.Error.UnknownObject";
 
 namespace {
 template<typename Proxy> bool GetPropertyValueFromProxy(
@@ -461,7 +463,12 @@ std::unique_ptr<Proxy> ProxyDbusClient::GetMatchingProxy(
   for (auto& proxy : GetProxies<Proxy>(object_paths_property_name)) {
     brillo::VariantDictionary proxy_properties;
     brillo::ErrorPtr error;
-    CHECK(proxy->GetProperties(&proxy_properties, &error));
+    if (!proxy->GetProperties(&proxy_properties, &error)) {
+      // Ignore unknown object path errors since we might be using some proxies
+      // for objects which may have been destroyed since.
+      CHECK(error->GetCode() == kDbusErrorObjectUnknown);
+      continue;
+    }
     bool all_expected_properties_matched = true;
     for (const auto& expected_property : expected_properties) {
       if (proxy_properties[expected_property.first] != expected_property.second) {
