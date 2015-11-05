@@ -43,10 +43,10 @@ template<typename Proxy> void IsProxyPropertyValueIn(
     Proxy* proxy,
     const std::string& property_name,
     const std::vector<brillo::Any>& expected_values,
-    time_t wait_start_time,
+    base::Time wait_start_time,
     bool* is_success,
     brillo::Any* final_value,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   brillo::Any property_value;
   *is_success = false;
   if ((GetPropertyValueFromProxy<Proxy>(proxy, property_name, &property_value)) &&
@@ -57,8 +57,9 @@ template<typename Proxy> void IsProxyPropertyValueIn(
   if (final_value) {
     *final_value = property_value;
   }
-  if (elapsed_time_seconds) {
-    *elapsed_time_seconds = time(nullptr) - wait_start_time;
+  if (elapsed_time_milliseconds) {
+    *elapsed_time_milliseconds =
+        (base::Time::Now() - wait_start_time).InMilliseconds();
   }
 }
 
@@ -101,23 +102,24 @@ void HelpRegisterPropertyChangedSignalHandler(
 
 template<typename OutValueType, typename ConditionChangeCallbackType>
 void WaitForCondition(
-    base::Callback<void(time_t, bool*, OutValueType*, int*)>
+    base::Callback<void(base::Time, bool*, OutValueType*, long*)>
         condition_termination_checker,
     base::Callback<ConditionChangeCallbackType> condition_change_callback,
     base::Callback<void(const base::Callback<ConditionChangeCallbackType>&)>
         condition_change_callback_registrar,
-    int timeout_seconds,
+    long timeout_milliseconds,
     bool* is_success,
     OutValueType* out_value,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   CHECK(is_success);
-  const time_t start_time(time(nullptr));
-  const base::TimeDelta timeout(base::TimeDelta::FromSeconds(timeout_seconds));
+  const base::Time wait_start_time(base::Time::Now());
+  const base::TimeDelta timeout(
+      base::TimeDelta::FromMilliseconds(timeout_milliseconds));
   base::CancelableClosure wait_timeout_callback;
   base::CancelableCallback<ConditionChangeCallbackType> change_callback;
 
   condition_termination_checker.Run(
-      start_time, is_success, out_value, elapsed_time_seconds);
+      wait_start_time, is_success, out_value, elapsed_time_milliseconds);
   if (*is_success) {
     return;
   }
@@ -133,7 +135,7 @@ void WaitForCondition(
       wait_timeout_callback.callback(),
       timeout);
 
-  // Wait for the condition to occur within |timeout_seconds|.
+  // Wait for the condition to occur within |timeout_milliseconds|.
   base::MessageLoop::current()->Run();
 
   wait_timeout_callback.Cancel();
@@ -142,7 +144,7 @@ void WaitForCondition(
   // We could have reached here either because we timed out or
   // because we reached the condition.
   condition_termination_checker.Run(
-      start_time, is_success, out_value, elapsed_time_seconds);
+      wait_start_time, is_success, out_value, elapsed_time_milliseconds);
 }
 } // namespace
 
@@ -229,36 +231,36 @@ bool ProxyDbusClient::WaitForDeviceProxyPropertyValueIn(
     const dbus::ObjectPath& object_path,
     const std::string& property_name,
     const std::vector<brillo::Any>& expected_values,
-    int timeout_seconds,
+    long timeout_milliseconds,
     brillo::Any* final_value,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   return WaitForProxyPropertyValueIn<DeviceProxy>(
-      object_path, property_name, expected_values, timeout_seconds,
-      final_value, elapsed_time_seconds);
+      object_path, property_name, expected_values, timeout_milliseconds,
+      final_value, elapsed_time_milliseconds);
 }
 
 bool ProxyDbusClient::WaitForServiceProxyPropertyValueIn(
     const dbus::ObjectPath& object_path,
     const std::string& property_name,
     const std::vector<brillo::Any>& expected_values,
-    int timeout_seconds,
+    long timeout_milliseconds,
     brillo::Any* final_value,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   return WaitForProxyPropertyValueIn<ServiceProxy>(
-      object_path, property_name, expected_values, timeout_seconds,
-      final_value, elapsed_time_seconds);
+      object_path, property_name, expected_values, timeout_milliseconds,
+      final_value, elapsed_time_milliseconds);
 }
 
 bool ProxyDbusClient::WaitForProfileProxyPropertyValueIn(
     const dbus::ObjectPath& object_path,
     const std::string& property_name,
     const std::vector<brillo::Any>& expected_values,
-    int timeout_seconds,
+    long timeout_milliseconds,
     brillo::Any* final_value,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   return WaitForProxyPropertyValueIn<ProfileProxy>(
-      object_path, property_name, expected_values, timeout_seconds,
-      final_value, elapsed_time_seconds);
+      object_path, property_name, expected_values, timeout_milliseconds,
+      final_value, elapsed_time_milliseconds);
 }
 
 std::unique_ptr<ServiceProxy> ProxyDbusClient::GetServiceProxy(
@@ -280,9 +282,9 @@ std::unique_ptr<ProfileProxy> ProxyDbusClient::GetActiveProfileProxy() {
 std::unique_ptr<ServiceProxy> ProxyDbusClient::WaitForMatchingServiceProxy(
     const brillo::VariantDictionary& service_properties,
     const std::string& service_type,
-    int timeout_seconds,
+    long timeout_milliseconds,
     int rescan_interval_milliseconds,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   auto condition_termination_checker =
       base::Bind(&ProxyDbusClient::IsMatchingServicePresent,
                  weak_ptr_factory_.GetWeakPtr(),
@@ -303,7 +305,7 @@ std::unique_ptr<ServiceProxy> ProxyDbusClient::WaitForMatchingServiceProxy(
   WaitForCondition(
       condition_termination_checker, condition_change_callback,
       condition_change_callback_registrar,
-      timeout_seconds, &is_success, &service_proxy, elapsed_time_seconds);
+      timeout_milliseconds, &is_success, &service_proxy, elapsed_time_milliseconds);
   return service_proxy;
 }
 
@@ -328,7 +330,7 @@ bool ProxyDbusClient::ConfigureServiceByGuid(
 
 bool ProxyDbusClient::ConnectService(
     const dbus::ObjectPath& object_path,
-    int timeout_seconds) {
+    long timeout_milliseconds) {
   auto proxy = GetProxyForObjectPath<ServiceProxy>(object_path);
   brillo::ErrorPtr error;
   if (!proxy->Connect(&error)) {
@@ -339,12 +341,12 @@ bool ProxyDbusClient::ConnectService(
     brillo::Any(std::string(shill::kStateOnline)) };
   return WaitForProxyPropertyValueIn<ServiceProxy>(
       object_path, shill::kStateProperty, expected_values,
-      timeout_seconds, nullptr, nullptr);
+      timeout_milliseconds, nullptr, nullptr);
 }
 
 bool ProxyDbusClient::DisconnectService(
     const dbus::ObjectPath& object_path,
-    int timeout_seconds) {
+    long timeout_milliseconds) {
   auto proxy = GetProxyForObjectPath<ServiceProxy>(object_path);
   brillo::ErrorPtr error;
   if (!proxy->Disconnect(&error)) {
@@ -354,7 +356,7 @@ bool ProxyDbusClient::DisconnectService(
     brillo::Any(std::string(shill::kStateIdle)) };
   return WaitForProxyPropertyValueIn<ServiceProxy>(
       object_path, shill::kStateProperty, expected_values,
-      timeout_seconds, nullptr, nullptr);
+      timeout_milliseconds, nullptr, nullptr);
 }
 
 bool ProxyDbusClient::CreateProfile(const std::string& profile_name) {
@@ -479,9 +481,9 @@ bool ProxyDbusClient::WaitForProxyPropertyValueIn(
     const dbus::ObjectPath& object_path,
     const std::string& property_name,
     const std::vector<brillo::Any>& expected_values,
-    int timeout_seconds,
+    long timeout_milliseconds,
     brillo::Any* final_value,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   // Creates a local proxy using |object_path| instead of accepting the proxy
   // from the caller since we cannot deregister the signal property change
   // callback associated.
@@ -504,16 +506,16 @@ bool ProxyDbusClient::WaitForProxyPropertyValueIn(
   WaitForCondition(
       condition_termination_checker, condition_change_callback,
       condition_change_callback_registrar,
-      timeout_seconds, &is_success, final_value, elapsed_time_seconds);
+      timeout_milliseconds, &is_success, final_value, elapsed_time_milliseconds);
   return is_success;
 }
 
 void ProxyDbusClient::IsMatchingServicePresent(
     const brillo::VariantDictionary& service_properties,
-    time_t wait_start_time,
+    base::Time wait_start_time,
     bool* is_success,
     std::unique_ptr<ServiceProxy>* service_proxy_out,
-    int* elapsed_time_seconds) {
+    long* elapsed_time_milliseconds) {
   auto service_proxy = GetMatchingServiceProxy(service_properties);
   *is_success = false;
   if (service_proxy) {
@@ -522,8 +524,9 @@ void ProxyDbusClient::IsMatchingServicePresent(
   if (service_proxy_out) {
     *service_proxy_out = std::move(service_proxy);
   }
-  if (elapsed_time_seconds) {
-    *elapsed_time_seconds = time(nullptr) - wait_start_time;
+  if (elapsed_time_milliseconds) {
+    *elapsed_time_milliseconds =
+        (base::Time::Now() - wait_start_time).InMilliseconds();
   }
 }
 

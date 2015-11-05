@@ -78,23 +78,23 @@ class ProxyDbusClient {
       const dbus::ObjectPath& object_path,
       const std::string& property_name,
       const std::vector<brillo::Any>& expected_values,
-      int timeout_seconds,
+      long timeout_milliseconds,
       brillo::Any* final_value,
-      int* elapsed_time_seconds);
+      long* elapsed_time_milliseconds);
   bool WaitForServiceProxyPropertyValueIn(
       const dbus::ObjectPath& object_path,
       const std::string& property_name,
       const std::vector<brillo::Any>& expected_values,
-      int timeout_seconds,
+      long timeout_milliseconds,
       brillo::Any* final_value,
-      int* elapsed_time_seconds);
+      long* elapsed_time_milliseconds);
   bool WaitForProfileProxyPropertyValueIn(
       const dbus::ObjectPath& object_path,
       const std::string& property_name,
       const std::vector<brillo::Any>& expected_values,
-      int timeout_seconds,
+      long timeout_milliseconds,
       brillo::Any* final_value,
-      int* elapsed_time_seconds);
+      long* elapsed_time_milliseconds);
   std::unique_ptr<ServiceProxy> GetServiceProxy(
       const brillo::VariantDictionary& expected_properties);
   std::unique_ptr<ProfileProxy> GetActiveProfileProxy();
@@ -103,16 +103,16 @@ class ProxyDbusClient {
   std::unique_ptr<ServiceProxy> WaitForMatchingServiceProxy(
       const brillo::VariantDictionary& service_properties,
       const std::string& service_type,
-      int timeout_seconds,
+      long timeout_milliseconds,
       int rescan_interval_milliseconds,
-      int *elapsed_time_seconds);
+      long* elapsed_time_milliseconds);
   bool ConfigureService(const brillo::VariantDictionary& config_params);
   bool ConfigureServiceByGuid(const std::string& guid,
                               const brillo::VariantDictionary& config_params);
   bool ConnectService(const dbus::ObjectPath& object_path,
-                      int timeout_seconds);
+                      long timeout_milliseconds);
   bool DisconnectService(const dbus::ObjectPath& object_path,
-                         int timeout_seconds);
+                         long timeout_milliseconds);
   bool CreateProfile(const std::string& profile_name);
   bool RemoveProfile(const std::string& profile_name);
   bool PushProfile(const std::string& profile_name);
@@ -139,15 +139,15 @@ class ProxyDbusClient {
       const dbus::ObjectPath& object_path,
       const std::string& property_name,
       const std::vector<brillo::Any>& expected_values,
-      int timeout_seconds,
+      long timeout_milliseconds,
       brillo::Any* final_value,
-      int* elapsed_time_secods);
+      long* elapsed_time_milliseconds);
   void IsMatchingServicePresent(
       const brillo::VariantDictionary& service_properties,
-      time_t wait_start_time,
+      base::Time wait_start_time,
       bool* is_success,
       std::unique_ptr<ServiceProxy>* service_proxy_out,
-      int* elapsed_time_seconds);
+      long* elapsed_time_milliseconds);
   // This is invoked periodically to check if a service mathching the required
   // params are found.
   void FindServiceOrRestartScan(
