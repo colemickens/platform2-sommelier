@@ -10,7 +10,7 @@
 #include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 
-#include "apmanager/dbus_control.h"
+#include "apmanager/dbus/dbus_control.h"
 
 namespace apmanager {
 

@@ -14,14 +14,14 @@
 // limitations under the License.
 //
 
-#include "apmanager/dbus_control.h"
+#include "apmanager/dbus/dbus_control.h"
 
-#include "apmanager/shill_dbus_proxy.h"
+#include "apmanager/dbus/shill_dbus_proxy.h"
 
 #if !defined(__ANDROID__)
-#include "apmanager/permission_broker_dbus_proxy.h"
+#include "apmanager/dbus/permission_broker_dbus_proxy.h"
 #else
-#include "apmanager/firewalld_dbus_proxy.h"
+#include "apmanager/dbus/firewalld_dbus_proxy.h"
 #endif  //__ANDROID__
 
 namespace apmanager {

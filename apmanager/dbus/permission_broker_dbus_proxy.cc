@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "apmanager/permission_broker_dbus_proxy.h"
+#include "apmanager/dbus/permission_broker_dbus_proxy.h"
 
 #include <base/bind.h>
 #include <brillo/errors/error.h>

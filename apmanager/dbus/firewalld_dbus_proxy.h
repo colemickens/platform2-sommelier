@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef APMANAGER_FIREWALLD_DBUS_PROXY_H_
-#define APMANAGER_FIREWALLD_DBUS_PROXY_H_
+#ifndef APMANAGER_DBUS_FIREWALLD_DBUS_PROXY_H_
+#define APMANAGER_DBUS_FIREWALLD_DBUS_PROXY_H_
 
 #include <string>
 
@@ -62,4 +62,4 @@ class FirewalldDBusProxy : public FirewallProxyInterface {
 
 }  // namespace apmanager
 
-#endif  // APMANAGER_FIREWALLD_DBUS_PROXY_H_
+#endif  // APMANAGER_DBUS_FIREWALLD_DBUS_PROXY_H_

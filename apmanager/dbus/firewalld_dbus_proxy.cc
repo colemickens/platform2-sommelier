@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "apmanager/firewalld_dbus_proxy.h"
+#include "apmanager/dbus/firewalld_dbus_proxy.h"
 
 #include <base/bind.h>
 #include <brillo/errors/error.h>

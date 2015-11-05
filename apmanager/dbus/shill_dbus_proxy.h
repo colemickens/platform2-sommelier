@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef APMANAGER_SHILL_DBUS_PROXY_H_
-#define APMANAGER_SHILL_DBUS_PROXY_H_
+#ifndef APMANAGER_DBUS_SHILL_DBUS_PROXY_H_
+#define APMANAGER_DBUS_SHILL_DBUS_PROXY_H_
 
 #include <string>
 
@@ -61,4 +61,4 @@ class ShillDBusProxy : public ShillProxyInterface {
 
 }  // namespace apmanager
 
-#endif  // APMANAGER_SHILL_DBUS_PROXY_H_
+#endif  // APMANAGER_DBUS_SHILL_DBUS_PROXY_H_

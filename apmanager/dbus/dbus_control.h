@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef APMANAGER_DBUS_CONTROL_H_
-#define APMANAGER_DBUS_CONTROL_H_
+#ifndef APMANAGER_DBUS_DBUS_CONTROL_H_
+#define APMANAGER_DBUS_DBUS_CONTROL_H_
 
 #include <base/macros.h>
 #include <dbus/bus.h>
@@ -49,4 +49,4 @@ class DBusControl : public ControlInterface {
 
 }  // namespace apmanager
 
-#endif  // APMANAGER_DBUS_CONTROL_H_
+#endif  // APMANAGER_DBUS_DBUS_CONTROL_H_

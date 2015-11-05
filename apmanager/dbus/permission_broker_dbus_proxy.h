@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef APMANAGER_PERMISSION_BROKER_DBUS_PROXY_H_
-#define APMANAGER_PERMISSION_BROKER_DBUS_PROXY_H_
+#ifndef APMANAGER_DBUS_PERMISSION_BROKER_DBUS_PROXY_H_
+#define APMANAGER_DBUS_PERMISSION_BROKER_DBUS_PROXY_H_
 
 #include <string>
 
@@ -69,4 +69,4 @@ class PermissionBrokerDBusProxy : public FirewallProxyInterface {
 
 }  // namespace apmanager
 
-#endif  // APMANAGER_PERMISSION_BROKER_DBUS_PROXY_H_
+#endif  // APMANAGER_DBUS_PERMISSION_BROKER_DBUS_PROXY_H_

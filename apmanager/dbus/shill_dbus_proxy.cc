@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "apmanager/shill_dbus_proxy.h"
+#include "apmanager/dbus/shill_dbus_proxy.h"
 
 #include <base/bind.h>
 #include <brillo/errors/error.h>
