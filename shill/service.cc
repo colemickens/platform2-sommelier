@@ -890,6 +890,8 @@ void Service::SetAutoConnect(bool connect) {
 }
 
 // static
+// Note: keep in sync with ERROR_* constants in
+// android/system/connectivity/shill/IService.aidl.
 const char* Service::ConnectFailureToString(const ConnectFailure& state) {
   switch (state) {
     case kFailureUnknown:
