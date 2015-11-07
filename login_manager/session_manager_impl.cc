@@ -584,7 +584,6 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
 #if USE_ARC
   // TODO(lhchavez): Let session_manager control the ARC instance process
   // instead of having upstart handle it.
-  dbus_emitter_->EmitSignal("arc-instance-stop");
   scoped_ptr<dbus::Response> emit_response =
       upstart_signal_emitter_->EmitSignal(
           "stop-arc-instance",
