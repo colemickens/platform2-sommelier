@@ -327,7 +327,7 @@ class ClientLoop : public ClientLoopBase {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  brillo::InitLog(brillo::kLogToStderr);
   tpm_manager::ClientLoop loop;
   return loop.Run();
 }
