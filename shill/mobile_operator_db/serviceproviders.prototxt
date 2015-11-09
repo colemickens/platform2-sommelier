@@ -12212,7 +12212,7 @@ mno {
     }
     mccmnc : "22610"
     mobile_apn {
-      apn : "internet"
+      apn : "net"
       plan : POSTPAID
       dns : "172.22.7.21"
       dns : "172.22.7.20"
