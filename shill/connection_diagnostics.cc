@@ -270,10 +270,10 @@ void ConnectionDiagnostics::ReportResultAndStop(const string& issue) {
 
   metrics_->NotifyConnectionDiagnosticsIssue(issue);
   if (!result_callback_.is_null()) {
-    SLOG(this, 4) << "Connection diagnostics events:";
+    LOG(INFO) << "Connection diagnostics events:";
     for (size_t i = 0; i < diagnostic_events_.size(); ++i) {
-      SLOG(this, 4) << "  #" << i << ": "
-                    << EventToString(diagnostic_events_[i]);
+      LOG(INFO) << "  #" << i << ": "
+                << EventToString(diagnostic_events_[i]);
     }
     LOG(INFO) << "Connection diagnostics completed. Connection issue: "
               << issue;
