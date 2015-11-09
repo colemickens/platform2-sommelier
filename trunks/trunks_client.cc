@@ -135,7 +135,7 @@ int DumpStatus(TrunksFactory* factory) {
 
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  brillo::InitLog(brillo::kLogToStderr);
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch("help")) {
     puts("Trunks Client: A command line tool to access the TPM.");
