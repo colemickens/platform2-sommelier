@@ -483,16 +483,18 @@ void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
   ByteString target_mac_address;
   if (device_info_->GetMACAddressOfPeer(connection_->interface_index(), address,
                                         &target_mac_address)) {
-    AddEvent(kTypeArpTableLookup, kPhaseEnd, kResultSuccess);
+    AddEventWithMessage(kTypeArpTableLookup, kPhaseEnd, kResultSuccess,
+                        StringPrintf("Found ARP table entry for %s",
+                                     address.ToString().c_str()));
     ReportResultAndStop(address.Equals(connection_->gateway())
                             ? kIssueGatewayNotResponding
                             : kIssueServerNotResponding);
     return;
   }
 
-  AddEventWithMessage(
-      kTypeArpTableLookup, kPhaseEnd, kResultFailure,
-      StringPrintf("Found ARP table entry for %s", address.ToString().c_str()));
+  AddEventWithMessage(kTypeArpTableLookup, kPhaseEnd, kResultFailure,
+                      StringPrintf("Could not find ARP table entry for %s",
+                                   address.ToString().c_str()));
   dispatcher_->PostTask(Bind(&ConnectionDiagnostics::CheckIpCollision,
                              weak_ptr_factory_.GetWeakPtr()));
 }
