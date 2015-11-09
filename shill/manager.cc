@@ -246,8 +246,11 @@ void Manager::RegisterAsync(const Callback<void(bool)>& completion_callback) {
   adaptor_->RegisterAsync(completion_callback);
 }
 
-void Manager::AddDeviceToBlackList(const string& device_name) {
-  device_info_.AddDeviceToBlackList(device_name);
+void Manager::SetBlacklistedDevices(const vector<string>& blacklisted_devices) {
+  for (const auto& device : blacklisted_devices) {
+    device_info_.AddDeviceToBlackList(device);
+  }
+  blacklisted_devices_ = blacklisted_devices;
 }
 
 void Manager::Start() {
@@ -673,6 +676,15 @@ void Manager::ClaimDevice(const string& claimer_name,
     return;
   }
 
+  // Check for blacklisted device.
+  if (std::find(blacklisted_devices_.begin(),
+                blacklisted_devices_.end(),
+                device_name) != blacklisted_devices_.end()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Not allowed to claim blacklisted device");
+    return;
+  }
+
   // Verify default claimer.
   if (claimer_name.empty() &&
       (!device_claimer_ || !device_claimer_->default_claimer())) {
@@ -714,6 +726,16 @@ void Manager::ReleaseDevice(const string& claimer_name,
                             const string& device_name,
                             Error* error) {
   SLOG(this, 2) << __func__;
+
+  // Check for blacklisted device.
+  if (std::find(blacklisted_devices_.begin(),
+                blacklisted_devices_.end(),
+                device_name) != blacklisted_devices_.end()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Not allowed to release blacklisted device");
+    return;
+  }
+
   if (!device_claimer_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Device claimer doesn't exist");

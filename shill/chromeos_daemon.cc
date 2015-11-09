@@ -84,9 +84,7 @@ void ChromeosDaemon::Init(ControlInterface* control,
 }
 
 void ChromeosDaemon::ApplySettings() {
-  for (const auto& device_name : settings_.device_blacklist) {
-    manager_->AddDeviceToBlackList(device_name);
-  }
+  manager_->SetBlacklistedDevices(settings_.device_blacklist);
   Error error;
   manager_->SetTechnologyOrder(settings_.default_technology_order, &error);
   CHECK(error.IsSuccess());  // Command line should have been validated.

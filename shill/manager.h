@@ -124,7 +124,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   void RegisterAsync(const base::Callback<void(bool)>& completion_callback);
 
-  virtual void AddDeviceToBlackList(const std::string& device_name);
+  virtual void SetBlacklistedDevices(
+      const std::vector<std::string>& blacklisted_devices);
 
   virtual void Start();
   virtual void Stop();
@@ -566,6 +567,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
   FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
+  FRIEND_TEST(ManagerTest, ClaimBlacklistedDevice);
   FRIEND_TEST(ManagerTest, ClaimDeviceWhenClaimerNotVerified);
   FRIEND_TEST(ManagerTest, ClaimDeviceWithoutClaimer);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
@@ -596,6 +598,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
+  FRIEND_TEST(ManagerTest, ReleaseBlacklistedDevice);
   FRIEND_TEST(ManagerTest, ReleaseDevice);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
@@ -900,6 +903,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Whether any of the services is in connected state or not.
   bool is_connected_state_;
+
+  // List of blacklisted devices specified from command line.
+  std::vector<std::string> blacklisted_devices_;
 
   // List of DHCPv6 enabled devices.
   std::vector<std::string> dhcpv6_enabled_devices_;

@@ -4866,6 +4866,39 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   EXPECT_EQ(Error::kPermissionDenied, enable_prohibited_error.type());
 }
 
+TEST_F(ManagerTest, ClaimBlacklistedDevice) {
+  const string kClaimerName = "test_claimer";
+  const string kDeviceName = "test_device";
+
+  // Set blacklisted devices.
+  vector<string> blacklisted_devices = { kDeviceName };
+  manager()->SetBlacklistedDevices(blacklisted_devices);
+
+  Error error;
+  manager()->ClaimDevice(kClaimerName, kDeviceName, &error);
+  EXPECT_TRUE(error.IsFailure());
+  EXPECT_EQ("Not allow to claim blacklisted device", error.message());
+  EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
+  // Verify device claimer is not created.
+  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
+}
+
+TEST_F(ManagerTest, ReleaseBlacklistedDevice) {
+  const string kClaimerName = "test_claimer";
+  const string kDeviceName = "test_device";
+
+  // Set blacklisted devices.
+  vector<string> blacklisted_devices = { kDeviceName };
+  manager()->SetBlacklistedDevices(blacklisted_devices);
+
+  Error error;
+  manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
+  EXPECT_TRUE(error.IsFailure());
+  EXPECT_EQ("Not allow to release blacklisted device", error.message());
+  // Verify device is still blacklisted.
+  EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
+}
+
 TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
   const char kClaimerName[] = "test_claimer1";
   const char kDeviceName[] = "test_device";

@@ -103,7 +103,8 @@ class MockManager : public Manager {
                      bool(const std::string& device_name));
   MOCK_CONST_METHOD1(IsDHCPv6EnabledForDevice,
                      bool(const std::string& device_name));
-  MOCK_METHOD1(AddDeviceToBlackList, void(const std::string& device_name));
+  MOCK_METHOD1(SetBlacklistedDevices,
+               void(const std::vector<std::string>& blacklisted_devices));
   MOCK_METHOD1(SetDHCPv6EnabledDevices,
                void(const std::vector<std::string>& device_list));
   MOCK_METHOD2(SetTechnologyOrder,

@@ -212,8 +212,8 @@ TEST_F(ChromeosDaemonTest, QuitWithoutTerminationActions) {
 
 TEST_F(ChromeosDaemonTest, ApplySettings) {
   ChromeosDaemon::Settings settings;
-  EXPECT_CALL(*manager_, AddDeviceToBlackList(_)).Times(0);
   vector<string> kEmptyStringList;
+  EXPECT_CALL(*manager_, SetBlacklistedDevices(kEmptyStringList));
   EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kEmptyStringList));
   EXPECT_CALL(*manager_, SetTechnologyOrder("", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
@@ -225,7 +225,8 @@ TEST_F(ChromeosDaemonTest, ApplySettings) {
   ApplySettings(settings);
   Mock::VerifyAndClearExpectations(manager_);
 
-  settings.device_blacklist = {"eth0", "eth1"};
+  vector<string> kBlacklistedDevices = {"eth0", "eth1"};
+  settings.device_blacklist = kBlacklistedDevices;
   settings.default_technology_order = "wifi,ethernet";
   vector<string> kDHCPv6EnabledDevices {"eth2", "eth3"};
   settings.dhcpv6_enabled_devices = kDHCPv6EnabledDevices;
@@ -236,8 +237,7 @@ TEST_F(ChromeosDaemonTest, ApplySettings) {
   settings.prepend_dns_servers = "8.8.8.8,8.8.4.4";
   settings.minimum_mtu = 256;
   settings.accept_hostname_from = "eth*";
-  EXPECT_CALL(*manager_, AddDeviceToBlackList("eth0"));
-  EXPECT_CALL(*manager_, AddDeviceToBlackList("eth1"));
+  EXPECT_CALL(*manager_, SetBlacklistedDevices(kBlacklistedDevices));
   EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kDHCPv6EnabledDevices));
   EXPECT_CALL(*manager_, SetTechnologyOrder("wifi,ethernet", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
