@@ -100,7 +100,12 @@ class AttestationDaemon : public brillo::DBusServiceDaemon {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
+  int flags = brillo::kLogToSyslog;
+  if (cl->HasSwitch("log_to_stderr")) {
+    flags |= brillo::kLogToStderr;
+  }
+  brillo::InitLog(flags);
   AttestationDaemon daemon;
   LOG(INFO) << "Attestation Daemon Started.";
   InitMinijailSandbox();
