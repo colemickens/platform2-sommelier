@@ -16,6 +16,8 @@
 
 #include "proxy_dbus_shill_wifi_client.h"
 
+static const int kRescanIntervalMilliseconds = 200;
+
 ProxyDbusShillWifiClient::ProxyDbusShillWifiClient(
     scoped_refptr<dbus::Bus> dbus_bus) {
   dbus_client_.reset(new ProxyDbusClient(dbus_bus));
@@ -98,21 +100,111 @@ bool ProxyDbusShillWifiClient::ConfigureWifiService(
 }
 
 bool ProxyDbusShillWifiClient::ConnectToWifiNetwork(
-    std::string ssid,
-    std::string security,
-    brillo::VariantDictionary& security_parameters,
+    const std::string& ssid,
+    const std::string& security,
+    const brillo::VariantDictionary& security_params,
     bool save_credentials,
     StationType station_type,
     bool hidden_network,
-    std::string guid,
+    const std::string& guid,
     AutoConnectType autoconnect,
-    int discovery_timeout_seconds,
-    int association_timeout_seconds,
-    int configuration_timeout_seconds,
-    int& discovery_time,
-    int& association_time,
-    int& configuration_time,
-    int& failure_reason) {
+    long discovery_timeout_milliseconds,
+    long association_timeout_milliseconds,
+    long configuration_timeout_milliseconds,
+    long* discovery_time_milliseconds,
+    long* association_time_milliseconds,
+    long* configuration_time_milliseconds,
+    std::string* failure_reason) {
+  *discovery_time_milliseconds = -1;
+  *association_time_milliseconds = -1;
+  *configuration_time_milliseconds = -1;
+  if (station_type != kStationTypeManaged &&
+      station_type != kStationTypeIBSS) {
+    *failure_reason = "FAIL(Invalid station type specified.)";
+    return false;
+  }
+  if (hidden_network && !ConfigureWifiService(
+          ssid, security, security_params, save_credentials, station_type,
+          hidden_network, guid,autoconnect)) {
+    *failure_reason = "FAIL(Failed to configure hidden SSID)";
+    return false;
+  }
+  brillo::VariantDictionary service_params;
+  service_params.insert(std::make_pair(
+      shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))));
+  service_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(ssid)));
+  service_params.insert(std::make_pair(
+      shill::kSecurityClassProperty, brillo::Any(security)));
+  service_params.insert(std::make_pair(
+      shill::kModeProperty, brillo::Any(GetModeFromStationType(station_type))));
+  for (const auto& param: service_params) {
+    LOG(INFO) << __func__ << ". Param: " << param.first << "="
+              << param.second.TryGet<bool>() << ","
+              << param.second.TryGet<int>() << ","
+              << param.second.TryGet<std::string>() << ".";
+  }
+  brillo::Any signal_strength;
+  auto service = dbus_client_->WaitForMatchingServiceProxy(
+      service_params, shill::kTypeWifi, discovery_timeout_milliseconds,
+      kRescanIntervalMilliseconds, discovery_time_milliseconds);
+  if (!service ||
+      !dbus_client_->GetPropertyValueFromServiceProxy(
+          service.get(), shill::kSignalStrengthProperty, &signal_strength) ||
+      (signal_strength.Get<uint8>() < 0)) {
+    *failure_reason = "FAIL(Discovery timed out)";
+    return false;
+  }
+
+  for (const auto& security_param : security_params) {
+    CHECK(service->SetProperty(security_param.first, security_param.second, nullptr));
+  }
+  if (!guid.empty()) {
+    CHECK(service->SetProperty(shill::kGuidProperty, brillo::Any(guid), nullptr));
+  }
+  if (autoconnect != kAutoConnectTypeUnspecified) {
+    CHECK(service->SetProperty(
+        shill::kAutoConnectProperty, brillo::Any(bool(autoconnect)), nullptr));
+  }
+
+  brillo::ErrorPtr error;
+  if (!service->Connect(&error) &&
+      error->GetCode() != shill::kErrorResultAlreadyConnected) {
+    *failure_reason = "FAIL(Failed to call connect)";
+    return false;
+  }
+
+  brillo::Any final_value;
+  std::vector<brillo::Any> associated_states = {
+    brillo::Any(std::string("configuration")),
+    brillo::Any(std::string("ready")),
+    brillo::Any(std::string("portal")),
+    brillo::Any(std::string("online")) };
+  if (!dbus_client_->WaitForServiceProxyPropertyValueIn(
+          service->GetObjectPath(), shill::kStateProperty, associated_states,
+          association_timeout_milliseconds, &final_value,
+          association_time_milliseconds)) {
+    *failure_reason = "FAIL(Association timed out)";
+    LOG(ERROR) << "FAIL(Association timed out). Final State: " <<
+      final_value.Get<std::string>();
+    return false;
+  }
+
+  std::vector<brillo::Any> configured_states = {
+    brillo::Any(std::string("ready")),
+    brillo::Any(std::string("portal")),
+    brillo::Any(std::string("online")) };
+  if (!dbus_client_->WaitForServiceProxyPropertyValueIn(
+          service->GetObjectPath(), shill::kStateProperty, configured_states,
+          configuration_timeout_milliseconds, nullptr,
+          configuration_time_milliseconds)) {
+    *failure_reason = "FAIL(Configuration timed out)";
+    LOG(ERROR) << "FAIL(Configuration timed out). Final State: " <<
+      final_value.Get<std::string>();
+    return false;
+  }
+
+  *failure_reason = "SUCCESS(Connection successful)";
   return true;
 }
 
