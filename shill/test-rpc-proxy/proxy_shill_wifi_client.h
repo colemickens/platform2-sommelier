@@ -23,6 +23,7 @@
 
 #include <string>
 
+#include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 // Abstract class which defines the interface for the RPC server to talk to Shill.
 // This helps in abstracting out the underlying protocol that Shill client
@@ -31,19 +32,21 @@
 class ProxyShillWifiClient {
  public:
   enum AutoConnectType {
-    AUTO_CONNECT_TYPE_UNSPECIFIED,
-    AUTO_CONNECT_TYPE_ENABLED,
-    AUTO_CONNECT_TYPE_DISABLED
+    kAutoConnectTypeDisabled = 0,
+    kAutoConnectTypeEnabled = 1,
+    kAutoConnectTypeUnspecified
   };
   enum StationType {
-    STATION_TYPE_IBSS,
-    STATION_TYPE_MANAGED,
-    STATION_TYPE_DEFAULT = STATION_TYPE_MANAGED
+    kStationTypeIBSS,
+    kStationTypeManaged,
+    kStationTypeUnknown,
+    kStationTypeDefault = kStationTypeManaged
   };
 
   ProxyShillWifiClient() = default;
-  virtual void SetLoggingForWifiTest() = 0;
-  virtual void RemoveAllWifiEntries() = 0;
+  virtual ~ProxyShillWifiClient() = default;
+  virtual bool SetLogging() = 0;
+  virtual bool RemoveAllWifiEntries() = 0;
   virtual void ConfigureWifiService(std::string ssid,
                                     std::string security,
                                     brillo::VariantDictionary& security_parameters,
@@ -110,7 +113,8 @@ class ProxyShillWifiClient {
   virtual bool RemoveWakePacketSource(std::string interface_name,
                                       std::string source_ip_address) = 0;
   virtual bool RemoveAllWakePacketSources(std::string interface_name) = 0;
-  virtual ~ProxyShillWifiClient() = default;
+
+  std::string GetModeFromStationType(StationType station_type);
 };
 
 #endif // PROXY_SHILL_WIFI_CLIENT_H

@@ -24,12 +24,10 @@
 // Client.
 class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
  public:
-  ProxyDbusShillWifiClient(scoped_refptr<dbus::Bus> dbus_bus) {
-    dbus_client_.reset(new ProxyDbusClient(dbus_bus));
-  }
-
-  void SetLoggingForWifiTest() override;
-  void RemoveAllWifiEntries() override;
+  ProxyDbusShillWifiClient(scoped_refptr<dbus::Bus> dbus_bus);
+  ~ProxyDbusShillWifiClient() override = default;
+  bool SetLogging() override;
+  bool RemoveAllWifiEntries() override;
   void ConfigureWifiService(std::string ssid,
                             std::string security,
                             brillo::VariantDictionary& security_parameters,
@@ -96,7 +94,6 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   bool RemoveWakePacketSource(std::string interface_name,
                               std::string source_ip_address) override;
   bool RemoveAllWakePacketSources(std::string interface_name) override;
-  ~ProxyDbusShillWifiClient() = default;
 
  private:
   std::unique_ptr<ProxyDbusClient> dbus_client_;

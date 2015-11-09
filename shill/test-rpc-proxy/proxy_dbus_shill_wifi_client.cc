@@ -16,11 +16,33 @@
 
 #include "proxy_dbus_shill_wifi_client.h"
 
-// TODO: Implementations. duh!
-void ProxyDbusShillWifiClient::SetLoggingForWifiTest() {
+ProxyDbusShillWifiClient::ProxyDbusShillWifiClient(
+    scoped_refptr<dbus::Bus> dbus_bus) {
+  dbus_client_.reset(new ProxyDbusClient(dbus_bus));
 }
 
-void ProxyDbusShillWifiClient::RemoveAllWifiEntries() {
+bool ProxyDbusShillWifiClient::SetLogging() {
+  dbus_client_->SetLogging(ProxyDbusClient::TECHNOLOGY_WIFI);
+  return true;
+}
+
+bool ProxyDbusShillWifiClient::RemoveAllWifiEntries() {
+  for (auto& profile_proxy : dbus_client_->GetProfileProxies()) {
+    brillo::Any property_value;
+    CHECK(dbus_client_->GetPropertyValueFromProfileProxy(
+          profile_proxy.get(), shill::kEntriesProperty, &property_value));
+    auto entry_ids = property_value.Get<std::vector<std::string>>();
+    for (const auto& entry_id : entry_ids) {
+      brillo::VariantDictionary entry_props;
+      if (profile_proxy->GetEntry(entry_id, &entry_props, nullptr)) {
+        if (entry_props[shill::kTypeProperty].Get<std::string>() ==
+            shill::kTypeWifi) {
+          profile_proxy->DeleteEntry(entry_id, nullptr);
+        }
+      }
+    }
+  }
+  return true;
 }
 
 void ProxyDbusShillWifiClient::ConfigureWifiService(
