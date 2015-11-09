@@ -28,13 +28,16 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   ~ProxyDbusShillWifiClient() override = default;
   bool SetLogging() override;
   bool RemoveAllWifiEntries() override;
-  void ConfigureWifiService(std::string ssid,
-                            std::string security,
-                            brillo::VariantDictionary& security_parameters,
+  bool ConfigureServiceByGuid(const std::string& guid,
+                              AutoConnectType autoconnect,
+                              const std::string& passphrase) override;
+  bool ConfigureWifiService(const std::string& ssid,
+                            const std::string& security,
+                            const brillo::VariantDictionary& security_params,
                             bool save_credentials,
                             StationType station_type,
                             bool hidden_network,
-                            std::string guid,
+                            const std::string& guid,
                             AutoConnectType autoconnect) override;
   bool ConnectToWifiNetwork(std::string ssid,
                             std::string security,
@@ -96,6 +99,8 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   bool RemoveAllWakePacketSources(std::string interface_name) override;
 
  private:
+  void SetAutoConnectInServiceParams(AutoConnectType autoconnect,
+                                     brillo::VariantDictionary* service_params);
   std::unique_ptr<ProxyDbusClient> dbus_client_;
 };
 

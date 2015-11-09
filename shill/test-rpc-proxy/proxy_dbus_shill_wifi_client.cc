@@ -45,15 +45,56 @@ bool ProxyDbusShillWifiClient::RemoveAllWifiEntries() {
   return true;
 }
 
-void ProxyDbusShillWifiClient::ConfigureWifiService(
-    std::string ssid,
-    std::string security,
-    brillo::VariantDictionary& security_parameters,
+bool ProxyDbusShillWifiClient::ConfigureServiceByGuid(
+    const std::string& guid,
+    AutoConnectType autoconnect,
+    const std::string& passphrase) {
+  brillo::VariantDictionary service_params;
+  if (guid.empty()) {
+    return false;
+  }
+  SetAutoConnectInServiceParams(autoconnect, &service_params);
+  if (!passphrase.empty()) {
+    service_params.insert(std::make_pair(
+        shill::kPassphraseProperty, brillo::Any(passphrase)));
+  }
+  return dbus_client_->ConfigureServiceByGuid(guid, service_params);
+}
+
+bool ProxyDbusShillWifiClient::ConfigureWifiService(
+    const std::string& ssid,
+    const std::string& security,
+    const brillo::VariantDictionary& security_params,
     bool save_credentials,
     StationType station_type,
     bool hidden_network,
-    std::string guid,
+    const std::string& guid,
     AutoConnectType autoconnect) {
+  brillo::VariantDictionary service_params;
+  // Create the configure params dictionary.
+  service_params.insert(std::make_pair(
+      shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))));
+  service_params.insert(std::make_pair(
+      shill::kWifiHiddenSsid, brillo::Any(hidden_network)));
+  service_params.insert(std::make_pair(
+      shill::kSSIDProperty, brillo::Any(ssid)));
+  service_params.insert(std::make_pair(
+      shill::kSecurityClassProperty, brillo::Any(security)));
+  service_params.insert(std::make_pair(
+      shill::kModeProperty, brillo::Any(GetModeFromStationType(station_type))));
+  SetAutoConnectInServiceParams(autoconnect, &service_params);
+  service_params.insert(security_params.begin(), security_params.end());
+  if (!guid.empty()) {
+    service_params.insert(std::make_pair(
+        shill::kGuidProperty, brillo::Any(guid)));
+  }
+  for (const auto& param: service_params) {
+    LOG(INFO) << __func__ << ". Param: " << param.first << "="
+              << param.second.TryGet<bool>() << ","
+              << param.second.TryGet<int>() << ","
+              << param.second.TryGet<std::string>() << ".";
+  }
+  return dbus_client_->ConfigureService(service_params);
 }
 
 bool ProxyDbusShillWifiClient::ConnectToWifiNetwork(
@@ -212,4 +253,14 @@ bool ProxyDbusShillWifiClient::RemoveWakePacketSource(
 bool ProxyDbusShillWifiClient::RemoveAllWakePacketSources(
     std::string interface_name) {
   return true;
+}
+
+void ProxyDbusShillWifiClient::SetAutoConnectInServiceParams(
+    AutoConnectType autoconnect,
+    brillo::VariantDictionary* service_params) {
+  if (autoconnect != kAutoConnectTypeUnspecified) {
+    service_params->insert(std::make_pair(
+        shill::kAutoConnectProperty,
+        brillo::Any(static_cast<bool>(autoconnect))));
+  }
 }

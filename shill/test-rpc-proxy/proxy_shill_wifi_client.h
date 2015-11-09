@@ -47,13 +47,16 @@ class ProxyShillWifiClient {
   virtual ~ProxyShillWifiClient() = default;
   virtual bool SetLogging() = 0;
   virtual bool RemoveAllWifiEntries() = 0;
-  virtual void ConfigureWifiService(std::string ssid,
-                                    std::string security,
-                                    brillo::VariantDictionary& security_parameters,
+  virtual bool ConfigureServiceByGuid(const std::string& guid,
+                                      AutoConnectType autoconnect,
+                                      const std::string& passphrase) = 0;
+  virtual bool ConfigureWifiService(const std::string& ssid,
+                                    const std::string& security,
+                                    const brillo::VariantDictionary& security_params,
                                     bool save_credentials,
                                     StationType station_type,
                                     bool hidden_network,
-                                    std::string guid,
+                                    const std::string& guid,
                                     AutoConnectType autoconnect) = 0;
   virtual bool ConnectToWifiNetwork(std::string ssid,
                                     std::string security,
