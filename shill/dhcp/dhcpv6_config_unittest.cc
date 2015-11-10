@@ -216,11 +216,12 @@ MATCHER_P(IsDHCPCDv6Args, has_lease_suffix, "") {
   if (arg[0] != "-B" ||
       arg[1] != "-q" ||
       arg[2] != "-6" ||
-      arg[3] != "-a") {
+      arg[3] != "-a" ||
+      arg[4] != "--ia_na") {
     return false;
   }
 
-  int end_offset = 4;
+  int end_offset = 5;
 
   string device_arg = has_lease_suffix ?
       string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
