@@ -154,7 +154,7 @@ TEST(PerfOptionParserTest, DontAllowOtherPerfSubcommands) {
 
 // Unsafe command lines for either perf command.
 TEST(PerfOptionParserTest, Ugly) {
-  for (const string &subcmd : { "record", "stat" }) {
+  for (const string &subcmd : { "record", "stat", "mem" }) {
     EXPECT_FALSE(ValidatePerfCommandLine(
         {"perf", subcmd, "rm", "-rf", "/"}));
     EXPECT_FALSE(ValidatePerfCommandLine(
@@ -164,6 +164,18 @@ TEST(PerfOptionParserTest, Ugly) {
     EXPECT_FALSE(ValidatePerfCommandLine(
         {"perf", subcmd, "-e", "cycles", "-o", "/root/haha.perf.data"}));
   }
+}
+
+// Regression test for correct past-the-end iteration.
+TEST(PerfOptionParserTest, ValueCommandAtEnd) {
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "record", "-c" /*missing value!*/}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "stat", "-e" /*missing value!*/}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "record" "-j" /*missing value!*/}));
+  EXPECT_FALSE(ValidatePerfCommandLine(
+      {"perf", "mem", "-t", "load", "record", "-e" /*missing value!*/}));
 }
 
 }  // namespace quipper

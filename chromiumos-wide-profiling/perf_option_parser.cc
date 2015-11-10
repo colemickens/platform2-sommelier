@@ -181,6 +181,9 @@ bool ValidatePerfCommandLineOptions(
     }
     if (it->second == OptionType::Value) {
       ++args_iter;
+      if (args_iter == end_arg) {
+        return false;  // missing value
+      }
     }
   }
   return true;

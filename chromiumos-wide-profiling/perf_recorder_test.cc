@@ -68,7 +68,7 @@ TEST_F(PerfRecorderTest, MemRecordToProtobuf) {
   if (!IsPerfMemRecordAvailable())
     return;
 
-  // Run perf stat and verify output.
+  // Run perf mem record and verify output.
   string output_string;
   EXPECT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
       {"perf", "mem", "record"}, 1, &output_string));
