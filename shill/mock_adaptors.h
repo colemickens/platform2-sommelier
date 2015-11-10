@@ -36,7 +36,6 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   DeviceMockAdaptor();
   ~DeviceMockAdaptor() override;
   const std::string& GetRpcIdentifier() override;
-  const std::string& GetRpcConnectionIdentifier() override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
   MOCK_METHOD2(EmitUintChanged, void(const std::string& name, uint32_t value));

@@ -1731,10 +1731,6 @@ vector<string> Device::AvailableIPConfigs(Error* /*error*/) {
   return ipconfigs;
 }
 
-string Device::GetRpcConnectionIdentifier() {
-  return adaptor_->GetRpcConnectionIdentifier();
-}
-
 uint64_t Device::GetLinkMonitorResponseTime(Error* error) {
   if (!link_monitor_.get()) {
     // It is not strictly an error that the link monitor does not

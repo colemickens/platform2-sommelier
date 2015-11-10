@@ -37,10 +37,6 @@ class DeviceAdaptorInterface {
   // RPC interface to which the implementation is adapting.
   virtual const std::string& GetRpcIdentifier() = 0;
 
-  // Getter for the opaque identifier that represents this object's
-  // connection to the RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcConnectionIdentifier() = 0;
-
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
   virtual void EmitUintChanged(const std::string& name, uint32_t value) = 0;
   virtual void EmitUint16Changed(const std::string& name, uint16_t value) = 0;

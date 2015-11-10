@@ -44,8 +44,7 @@ ChromeosDeviceDBusAdaptor::ChromeosDeviceDBusAdaptor(
     : org::chromium::flimflam::DeviceAdaptor(this),
       ChromeosDBusAdaptor(bus,
                           kPath + SanitizePathElement(device->UniqueName())),
-      device_(device),
-      connection_name_(bus->GetConnectionName()) {
+      device_(device) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
   dbus_object()->RegisterAndBlock();
@@ -58,10 +57,6 @@ ChromeosDeviceDBusAdaptor::~ChromeosDeviceDBusAdaptor() {
 
 const string& ChromeosDeviceDBusAdaptor::GetRpcIdentifier() {
   return dbus_path().value();
-}
-
-const string& ChromeosDeviceDBusAdaptor::GetRpcConnectionIdentifier() {
-  return connection_name_;
 }
 
 void ChromeosDeviceDBusAdaptor::EmitBoolChanged(const string& name,

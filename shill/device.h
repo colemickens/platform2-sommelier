@@ -741,7 +741,6 @@ class Device : public base::RefCounted<Device> {
 
   std::string GetSelectedServiceRpcIdentifier(Error* error);
   std::vector<std::string> AvailableIPConfigs(Error* error);
-  std::string GetRpcConnectionIdentifier();
 
   // Get the LinkMonitor's average response time.
   uint64_t GetLinkMonitorResponseTime(Error* error);

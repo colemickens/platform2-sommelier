@@ -36,10 +36,6 @@ DeviceMockAdaptor::~DeviceMockAdaptor() {}
 
 const string& DeviceMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
 
-const string& DeviceMockAdaptor::GetRpcConnectionIdentifier() {
-  return rpc_conn_id_;
-}
-
 // static
 const char IPConfigMockAdaptor::kRpcId[] = "/ipconfig_rpc";
 
