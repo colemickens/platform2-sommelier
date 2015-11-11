@@ -407,7 +407,6 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
       DhcpProperties::Combine(*manager_dhcp_properties,
                               *service_dhcp_properties);
   service->dhcp_properties_ = std::move(service_dhcp_properties);
-  device_->manager_->dhcp_properties_ = std::move(manager_dhcp_properties);
 #ifndef DISABLE_DHCPV6
   MockManager manager(control_interface(),
                       dispatcher(),
@@ -424,7 +423,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
       .WillOnce(Return(dhcpv6_config));
   EXPECT_CALL(*dhcpv6_config, RequestIP()).WillOnce(Return(true));
 #endif  // DISABLE_DHCPV6
-
+  device_->manager_->dhcp_properties_ = std::move(manager_dhcp_properties);
   EXPECT_CALL(*dhcp_provider,
               CreateIPv4Config(_, _, _,
                                IsCombinedDhcpProperties(
