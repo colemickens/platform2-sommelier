@@ -16,6 +16,7 @@
         'address_mapper.cc',
         'buffer_reader.cc',
         'buffer_writer.cc',
+        'compat/log_level.cc',
         'data_reader.cc',
         'data_writer.cc',
         'file_reader.cc',

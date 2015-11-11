@@ -11,6 +11,7 @@
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/compat/log_level.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/conversion_utils.h"
 
@@ -60,9 +61,7 @@ bool ParseArguments(int argc, char* argv[], FormatAndFile* input,
         break;
       }
       case 'v': {
-        // Negate the verbosity level to match the scale used within
-        // base/logging.h
-        logging::SetMinLogLevel(-atoi(optarg));
+        quipper::SetVerbosityLevel(atoi(optarg));
         break;
       }
       default:
