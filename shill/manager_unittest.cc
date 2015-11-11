@@ -4877,7 +4877,7 @@ TEST_F(ManagerTest, ClaimBlacklistedDevice) {
   Error error;
   manager()->ClaimDevice(kClaimerName, kDeviceName, &error);
   EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ("Not allow to claim blacklisted device", error.message());
+  EXPECT_EQ("Not allowed to claim blacklisted device", error.message());
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
   // Verify device claimer is not created.
   EXPECT_EQ(nullptr, manager()->device_claimer_.get());
@@ -4894,7 +4894,7 @@ TEST_F(ManagerTest, ReleaseBlacklistedDevice) {
   Error error;
   manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
   EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ("Not allow to release blacklisted device", error.message());
+  EXPECT_EQ("Not allowed to release blacklisted device", error.message());
   // Verify device is still blacklisted.
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
 }
