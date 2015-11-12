@@ -88,10 +88,10 @@ class ProxyShillWifiClient {
                                     long wait_timeout_milliseconds,
                                     std::string* final_state,
                                     long* wait_time_milliseconds) = 0;
-  virtual bool CreateProfile(std::string profile_name) = 0;
-  virtual bool PushProfile(std::string profile_name) = 0;
-  virtual bool PopProfile(std::string profile_name) = 0;
-  virtual bool RemoveProfile(std::string profile_name) = 0;
+  virtual bool CreateProfile(const std::string& profile_name) = 0;
+  virtual bool PushProfile(const std::string& profile_name) = 0;
+  virtual bool PopProfile(const std::string& profile_name) = 0;
+  virtual bool RemoveProfile(const std::string& profile_name) = 0;
   virtual bool CleanProfiles() = 0;
   virtual bool DeleteEntriesForSsid(std::string ssid) = 0;
   virtual std::vector<std::string> ListControlledWifiInterfaces() = 0;

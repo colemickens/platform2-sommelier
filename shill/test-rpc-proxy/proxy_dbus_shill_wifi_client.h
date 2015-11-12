@@ -69,10 +69,10 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
                             long wait_timeout_milliseconds,
                             std::string* final_state,
                             long* wait_time_milliseconds) override;
-  bool CreateProfile(std::string profile_name) override;
-  bool PushProfile(std::string profile_name) override;
-  bool PopProfile(std::string profile_name) override;
-  bool RemoveProfile(std::string profile_name) override;
+  bool CreateProfile(const std::string& profile_name) override;
+  bool PushProfile(const std::string& profile_name) override;
+  bool PopProfile(const std::string& profile_name) override;
+  bool RemoveProfile(const std::string& profile_name) override;
   bool CleanProfiles() override;
   bool DeleteEntriesForSsid(std::string ssid) override;
   std::vector<std::string> ListControlledWifiInterfaces() override;

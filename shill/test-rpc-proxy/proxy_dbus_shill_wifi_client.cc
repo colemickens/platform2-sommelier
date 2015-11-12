@@ -22,6 +22,7 @@ namespace {
 const int kRescanIntervalMilliseconds = 200;
 const int kServiceDisconnectTimeoutMilliseconds = 5000;
 const char kDefaultBgscanMethod[] = "default";
+const char kDefaultProfileName[] = "default";
 } // namespace
 
 ProxyDbusShillWifiClient::ProxyDbusShillWifiClient(
@@ -352,15 +353,15 @@ bool ProxyDbusShillWifiClient::WaitForServiceStates(
   return is_success;
 }
 
-bool ProxyDbusShillWifiClient::CreateProfile(std::string profile_name) {
+bool ProxyDbusShillWifiClient::CreateProfile(const std::string& profile_name) {
   return dbus_client_->CreateProfile(profile_name);
 }
 
-bool ProxyDbusShillWifiClient::PushProfile(std::string profile_name) {
+bool ProxyDbusShillWifiClient::PushProfile(const std::string& profile_name) {
   return dbus_client_->PushProfile(profile_name);
 }
 
-bool ProxyDbusShillWifiClient::PopProfile(std::string profile_name) {
+bool ProxyDbusShillWifiClient::PopProfile(const std::string& profile_name) {
   if (profile_name.empty()) {
     return dbus_client_->PopAnyProfile();
   } else {
@@ -368,12 +369,25 @@ bool ProxyDbusShillWifiClient::PopProfile(std::string profile_name) {
   }
 }
 
-bool ProxyDbusShillWifiClient::RemoveProfile(std::string profile_name) {
+bool ProxyDbusShillWifiClient::RemoveProfile(const std::string& profile_name) {
   return dbus_client_->RemoveProfile(profile_name);
 }
 
 bool ProxyDbusShillWifiClient::CleanProfiles() {
-  return true;
+  while (true) {
+    auto active_profile = dbus_client_->GetActiveProfileProxy();
+    brillo::Any profile_name;
+    if (!dbus_client_->GetPropertyValueFromProfileProxy(
+            active_profile.get(), shill::kNameProperty, &profile_name)) {
+      return false;
+    }
+    std::string profile_name_str = profile_name.Get<std::string>();
+    if (profile_name_str == kDefaultProfileName) {
+      return true;
+    }
+    dbus_client_->PopProfile(profile_name_str);
+    dbus_client_->RemoveProfile(profile_name_str);
+  }
 }
 
 bool ProxyDbusShillWifiClient::DeleteEntriesForSsid(std::string ssid) {
