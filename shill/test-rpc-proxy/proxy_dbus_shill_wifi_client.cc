@@ -438,18 +438,35 @@ bool ProxyDbusShillWifiClient::Disconnect(const std::string& ssid) {
       ssid, 0, &disconnect_time_milliseconds, &failure_reason);
 }
 
-std::string ProxyDbusShillWifiClient::GetServiceOrder() {
-  return std::string();
+bool ProxyDbusShillWifiClient::GetServiceOrder(std::string* service_order) {
+  return dbus_client_->GetServiceOrder(service_order);
 }
 
-bool ProxyDbusShillWifiClient::SetServiceOrder(std::string service_order) {
+bool ProxyDbusShillWifiClient::SetServiceOrder(const std::string& service_order) {
+  return dbus_client_->SetServiceOrder(service_order);
+}
+
+bool ProxyDbusShillWifiClient::GetServiceProperties(
+    const std::string& ssid,
+    brillo::VariantDictionary* properties) {
+  brillo::VariantDictionary service_params;
+  service_params.insert(std::make_pair(
+      shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))));
+  service_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(ssid)));
+  std::unique_ptr<ServiceProxy> service =
+      dbus_client_->GetMatchingServiceProxy(service_params);
+  if (!service) {
+    return false;
+  }
+  CHECK(service->GetProperties(properties, nullptr));
   return true;
 }
 
 bool ProxyDbusShillWifiClient::SetSchedScan(bool enable) {
-  return true;
-
+  return dbus_client_->SetSchedScan(enable);
 }
+
 std::string ProxyDbusShillWifiClient::GetPropertyOnDevice(
     std::string interface_name,
     std::string property_name) {

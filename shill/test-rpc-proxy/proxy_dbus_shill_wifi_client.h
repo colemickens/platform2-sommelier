@@ -77,8 +77,10 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   bool DeleteEntriesForSsid(const std::string& ssid) override;
   bool ListControlledWifiInterfaces(std::vector<std::string>* interface_names) override;
   bool Disconnect(const std::string& ssid) override;
-  std::string GetServiceOrder() override;
-  bool SetServiceOrder(std::string service_order) override;
+  bool GetServiceOrder(std::string* service_order) override;
+  bool SetServiceOrder(const std::string& service_order) override;
+  bool GetServiceProperties(const std::string& ssid,
+                            brillo::VariantDictionary* properties) override;
   bool SetSchedScan(bool enable) override;
   std::string GetPropertyOnDevice(std::string interface_name,
                                   std::string property_name) override;

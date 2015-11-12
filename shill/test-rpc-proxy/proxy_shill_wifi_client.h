@@ -96,8 +96,10 @@ class ProxyShillWifiClient {
   virtual bool DeleteEntriesForSsid(const std::string& ssid) = 0;
   virtual bool ListControlledWifiInterfaces(std::vector<std::string>* interface_names) = 0;
   virtual bool Disconnect(const std::string& ssid) = 0;
-  virtual std::string GetServiceOrder() = 0;
-  virtual bool SetServiceOrder(std::string service_order) = 0;
+  virtual bool GetServiceOrder(std::string* service_order) = 0;
+  virtual bool SetServiceOrder(const std::string& service_order) = 0;
+  virtual bool GetServiceProperties(const std::string& ssid,
+                                    brillo::VariantDictionary* properties) = 0;
   virtual bool SetSchedScan(bool enable) = 0;
   virtual std::string GetPropertyOnDevice(std::string interface_name,
                                           std::string property_name) = 0;
