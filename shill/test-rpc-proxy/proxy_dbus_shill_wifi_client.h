@@ -63,12 +63,12 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
                        uint16 short_interval,
                        uint16 long_interval,
                        int signal_threshold) override;
-  std::vector<std::string> GetActiveWifiSSIDs() override;
-  bool WaitForServiceStates(std::string ssid,
+  bool GetActiveWifiSsids(std::vector<std::string>* ssids) override;
+  bool WaitForServiceStates(const std::string& ssid,
                             const std::vector<std::string>& expected_states,
-                            const int timeout_seconds,
-                            std::string& final_state,
-                            int& time) override;
+                            long wait_timeout_milliseconds,
+                            std::string* final_state,
+                            long* wait_time_milliseconds) override;
   bool CreateProfile(std::string profile_name) override;
   bool PushProfile(std::string profile_name) override;
   bool PopProfile(std::string profile_name) override;

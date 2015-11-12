@@ -14,6 +14,8 @@
 // limitations under the License.
 //
 
+#include <base/strings/string_number_conversions.h>
+
 #include "proxy_dbus_shill_wifi_client.h"
 
 namespace {
@@ -288,18 +290,66 @@ bool ProxyDbusShillWifiClient::ConfigureBgScan(
       nullptr);
   return is_success;
 }
-std::vector<std::string> ProxyDbusShillWifiClient::GetActiveWifiSSIDs() {
 
-  return std::vector<std::string>();
+bool ProxyDbusShillWifiClient::GetActiveWifiSsids(
+    std::vector<std::string>* ssids) {
+  for (auto& service : dbus_client_->GetServiceProxies()) {
+    brillo::Any service_type, signal_strength, ssid_hex;
+    std::vector<uint8> ssid_bytes;
+    brillo::VariantDictionary proxy_properties;
+    brillo::ErrorPtr error;
+    if (service->GetProperties(&proxy_properties, &error)) {
+      service_type = proxy_properties[shill::kTypeProperty];
+      signal_strength = proxy_properties[shill::kSignalStrengthProperty];
+      ssid_hex = proxy_properties[shill::kWifiHexSsid];
+      if ((service_type.TryGet<std::string>() == shill::kTypeWifi) &&
+          (signal_strength.TryGet<uint8>() > 0) &&
+          !ssid_hex.TryGet<std::string>().empty() &&
+          base::HexStringToBytes(ssid_hex.Get<std::string>(), &ssid_bytes)) {
+        ssids->emplace_back(std::string(ssid_bytes.begin(), ssid_bytes.end()));
+      }
+    } else {
+      // Ignore unknown object path errors since we might be using some proxies
+      // for objects which may have been destroyed since.
+      CHECK(error->GetCode() == ProxyDbusClient::kDbusErrorObjectUnknown);
+    }
+  }
+  return true;
 }
 
 bool ProxyDbusShillWifiClient::WaitForServiceStates(
-    std::string ssid,
+    const std::string& ssid,
     const std::vector<std::string>& expected_states,
-    const int timeout_seconds,
-    std::string& final_state,
-    int& time) {
-  return true;
+    long wait_timeout_milliseconds,
+    std::string* final_state,
+    long* wait_time_milliseconds) {
+  *wait_time_milliseconds = -1;
+  brillo::VariantDictionary service_params;
+  service_params.insert(std::make_pair(
+      shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))));
+  service_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(ssid)));
+  long discovery_time_milliseconds;
+  auto service = dbus_client_->WaitForMatchingServiceProxy(
+      service_params, shill::kTypeWifi, wait_timeout_milliseconds,
+      kRescanIntervalMilliseconds, &discovery_time_milliseconds);
+  if (!service) {
+    *final_state = "unknown";
+    return false;
+  }
+  brillo::Any final_value;
+  std::vector<brillo::Any> expected_states_any;
+  for (auto& state : expected_states) {
+    expected_states_any.emplace_back(brillo::Any(state));
+  }
+  bool is_success =
+      dbus_client_->WaitForServiceProxyPropertyValueIn(
+          service->GetObjectPath(), shill::kStateProperty, expected_states_any,
+          wait_timeout_milliseconds - discovery_time_milliseconds,
+          &final_value, wait_time_milliseconds);
+  *wait_time_milliseconds += discovery_time_milliseconds;
+  *final_state = final_value.Get<std::string>();
+  return is_success;
 }
 
 bool ProxyDbusShillWifiClient::CreateProfile(std::string profile_name) {

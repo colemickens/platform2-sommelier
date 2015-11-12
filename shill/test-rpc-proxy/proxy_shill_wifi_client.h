@@ -82,12 +82,12 @@ class ProxyShillWifiClient {
                                uint16 short_interval,
                                uint16 long_interval,
                                int signal_threshold) = 0;
-  virtual std::vector<std::string> GetActiveWifiSSIDs() = 0;
-  virtual bool WaitForServiceStates(std::string ssid,
+  virtual bool GetActiveWifiSsids(std::vector<std::string>* ssids) = 0;
+  virtual bool WaitForServiceStates(const std::string& ssid,
                                     const std::vector<std::string>& expected_states,
-                                    const int timeout_seconds,
-                                    std::string& final_state,
-                                    int& time) = 0;
+                                    long wait_timeout_milliseconds,
+                                    std::string* final_state,
+                                    long* wait_time_milliseconds) = 0;
   virtual bool CreateProfile(std::string profile_name) = 0;
   virtual bool PushProfile(std::string profile_name) = 0;
   virtual bool PopProfile(std::string profile_name) = 0;
