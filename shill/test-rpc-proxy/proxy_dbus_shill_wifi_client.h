@@ -74,9 +74,9 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   bool PopProfile(const std::string& profile_name) override;
   bool RemoveProfile(const std::string& profile_name) override;
   bool CleanProfiles() override;
-  bool DeleteEntriesForSsid(std::string ssid) override;
-  std::vector<std::string> ListControlledWifiInterfaces() override;
-  bool Disconnect(std::string ssid) override;
+  bool DeleteEntriesForSsid(const std::string& ssid) override;
+  bool ListControlledWifiInterfaces(std::vector<std::string>* interface_names) override;
+  bool Disconnect(const std::string& ssid) override;
   std::string GetServiceOrder() override;
   bool SetServiceOrder(std::string service_order) override;
   bool SetSchedScan(bool enable) override;

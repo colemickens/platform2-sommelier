@@ -388,18 +388,54 @@ bool ProxyDbusShillWifiClient::CleanProfiles() {
     dbus_client_->PopProfile(profile_name_str);
     dbus_client_->RemoveProfile(profile_name_str);
   }
+  return false;
 }
 
-bool ProxyDbusShillWifiClient::DeleteEntriesForSsid(std::string ssid) {
+bool ProxyDbusShillWifiClient::DeleteEntriesForSsid(const std::string& ssid) {
+  auto profiles = dbus_client_->GetProfileProxies();
+  for (auto& profile : profiles) {
+    brillo::Any property_value;
+    if (!dbus_client_->GetPropertyValueFromProfileProxy(
+            profile.get(), shill::kEntriesProperty, &property_value)) {
+      continue;
+    }
+    auto entry_ids = property_value.Get<std::vector<std::string>>();
+    for (const auto& entry_id : entry_ids) {
+      brillo::VariantDictionary entry_props;
+      if ((profile->GetEntry(entry_id, &entry_props, nullptr)) && 
+          (entry_props[shill::kNameProperty].Get<std::string>() == ssid)) {
+        profile->DeleteEntry(entry_id, nullptr);
+      }
+    }
+  }
   return true;
 }
 
-std::vector<std::string> ProxyDbusShillWifiClient::ListControlledWifiInterfaces() {
-  return std::vector<std::string>();
+bool ProxyDbusShillWifiClient::ListControlledWifiInterfaces(
+    std::vector<std::string>* interface_names) {
+  for (auto& device : dbus_client_->GetDeviceProxies()) {
+    brillo::Any device_type;
+    brillo::Any device_name;
+    if (!dbus_client_->GetPropertyValueFromDeviceProxy(
+            device.get(), shill::kTypeProperty, &device_type)) {
+      return false;
+    }
+    if (device_type.Get<std::string>() == shill::kTypeWifi) {
+      if (!dbus_client_->GetPropertyValueFromDeviceProxy(
+              device.get(), shill::kNameProperty, &device_name)) {
+        return false;
+      }
+      interface_names->emplace_back(device_name.Get<std::string>());
+    }
+  }
+  return true;
 }
 
-bool ProxyDbusShillWifiClient::Disconnect(std::string ssid) {
-  return true;
+bool ProxyDbusShillWifiClient::Disconnect(const std::string& ssid) {
+  long disconnect_time_milliseconds;
+  std::string failure_reason;
+  return DisconnectFromWifiNetwork(
+      ssid, 0, &disconnect_time_milliseconds, &failure_reason);
 }
 
 std::string ProxyDbusShillWifiClient::GetServiceOrder() {

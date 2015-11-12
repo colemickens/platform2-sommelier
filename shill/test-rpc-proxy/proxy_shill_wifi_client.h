@@ -93,9 +93,9 @@ class ProxyShillWifiClient {
   virtual bool PopProfile(const std::string& profile_name) = 0;
   virtual bool RemoveProfile(const std::string& profile_name) = 0;
   virtual bool CleanProfiles() = 0;
-  virtual bool DeleteEntriesForSsid(std::string ssid) = 0;
-  virtual std::vector<std::string> ListControlledWifiInterfaces() = 0;
-  virtual bool Disconnect(std::string ssid) = 0;
+  virtual bool DeleteEntriesForSsid(const std::string& ssid) = 0;
+  virtual bool ListControlledWifiInterfaces(std::vector<std::string>* interface_names) = 0;
+  virtual bool Disconnect(const std::string& ssid) = 0;
   virtual std::string GetServiceOrder() = 0;
   virtual bool SetServiceOrder(std::string service_order) = 0;
   virtual bool SetSchedScan(bool enable) = 0;
