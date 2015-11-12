@@ -17,6 +17,7 @@
 #include "apmanager/dbus/dbus_control.h"
 
 #include "apmanager/dbus/shill_dbus_proxy.h"
+#include "apmanager/manager.h"
 
 #if !defined(__ANDROID__)
 #include "apmanager/dbus/permission_broker_dbus_proxy.h"
@@ -24,12 +25,67 @@
 #include "apmanager/dbus/firewalld_dbus_proxy.h"
 #endif  //__ANDROID__
 
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::ExportedObjectManager;
+
 namespace apmanager {
 
-DBusControl::DBusControl(const scoped_refptr<dbus::Bus>& bus)
-    : bus_(bus) {}
+namespace {
+const char kServiceName[] = "org.chromium.apmanager";
+const char kServicePath[] = "/org/chromium/apmanager";
+}  // namespace
+
+DBusControl::DBusControl() {}
 
 DBusControl::~DBusControl() {}
+
+void DBusControl::Init() {
+  // Setup bus connection.
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  bus_ = new dbus::Bus(options);
+  CHECK(bus_->Connect());
+
+  // Create and register ObjectManager.
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  object_manager_.reset(
+      new ExportedObjectManager(bus_, dbus::ObjectPath(kServicePath)));
+  object_manager_->RegisterAsync(
+      sequencer->GetHandler("ObjectManager.RegisterAsync() failed.", true));
+
+  // Create and register Manager.
+  manager_.reset(new Manager());
+  manager_->RegisterAsync(
+      this,
+      object_manager_.get(),
+      bus_,
+      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+
+  // Take over the service ownership once the objects registration is completed.
+  sequencer->OnAllTasksCompletedCall({
+    base::Bind(&DBusControl::OnObjectRegistrationCompleted,
+               base::Unretained(this))
+  });
+}
+
+void DBusControl::Shutdown() {
+  manager_.reset();
+  object_manager_.reset();
+  if (bus_) {
+    bus_->ShutdownAndBlock();
+  }
+}
+
+void DBusControl::OnObjectRegistrationCompleted(bool registration_success) {
+  // Success should always be true since we've said that failures are fatal.
+  CHECK(registration_success) << "Init of one or more objects has failed.";
+  CHECK(bus_->RequestOwnershipAndBlock(kServiceName,
+                                       dbus::Bus::REQUIRE_PRIMARY))
+      << "Unable to take ownership of " << kServiceName;
+
+  // D-Bus service is ready, now we can start the Manager.
+  manager_->Start();
+}
 
 std::unique_ptr<FirewallProxyInterface> DBusControl::CreateFirewallProxy(
     const base::Closure& service_appeared_callback,

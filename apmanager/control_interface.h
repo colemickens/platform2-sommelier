@@ -31,6 +31,9 @@ class ControlInterface {
  public:
   virtual ~ControlInterface() {}
 
+  virtual void Init() = 0;
+  virtual void Shutdown() = 0;
+
   // Proxy creation APIs.
   virtual std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy(
       const base::Closure& service_appeared_callback,

@@ -6,14 +6,13 @@
 #define APMANAGER_DAEMON_H_
 
 #include <base/callback_forward.h>
-#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/daemons/daemon.h>
 
 #include "apmanager/control_interface.h"
-#include "apmanager/manager.h"
 
 namespace apmanager {
 
-class Daemon : public brillo::DBusServiceDaemon {
+class Daemon : public brillo::Daemon {
  public:
   // User and group to run the apmanager process.
   static const char kAPManagerGroupName[];
@@ -25,14 +24,11 @@ class Daemon : public brillo::DBusServiceDaemon {
  protected:
   int OnInit() override;
   void OnShutdown(int* return_code) override;
-  void RegisterDBusObjectsAsync(
-      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
   friend class DaemonTest;
 
   std::unique_ptr<ControlInterface> control_interface_;
-  std::unique_ptr<Manager> manager_;
   base::Closure startup_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);

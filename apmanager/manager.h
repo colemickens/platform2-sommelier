@@ -48,7 +48,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
       ControlInterface* control_interface,
       brillo::dbus_utils::ExportedObjectManager* object_manager,
       const scoped_refptr<dbus::Bus>& bus,
-      brillo::dbus_utils::AsyncEventSequencer* sequencer);
+      const base::Callback<void(bool)>& completion_callback);
 
   virtual void Start();
   virtual void Stop();

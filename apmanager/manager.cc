@@ -32,10 +32,11 @@ Manager::~Manager() {
   }
 }
 
-void Manager::RegisterAsync(ControlInterface* control_interface,
-                            ExportedObjectManager* object_manager,
-                            const scoped_refptr<dbus::Bus>& bus,
-                            AsyncEventSequencer* sequencer) {
+void Manager::RegisterAsync(
+    ControlInterface* control_interface,
+    ExportedObjectManager* object_manager,
+    const scoped_refptr<dbus::Bus>& bus,
+    const base::Callback<void(bool)>& completion_callback) {
   CHECK(!dbus_object_) << "Already registered";
   dbus_object_.reset(
       new brillo::dbus_utils::DBusObject(
@@ -43,8 +44,7 @@ void Manager::RegisterAsync(ControlInterface* control_interface,
           bus,
           org::chromium::apmanager::ManagerAdaptor::GetObjectPath()));
   RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(
-      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+  dbus_object_->RegisterAsync(completion_callback);
   bus_ = bus;
 
   shill_manager_.Init(control_interface);
