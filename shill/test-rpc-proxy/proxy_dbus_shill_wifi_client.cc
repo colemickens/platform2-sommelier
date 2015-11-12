@@ -16,7 +16,11 @@
 
 #include "proxy_dbus_shill_wifi_client.h"
 
-static const int kRescanIntervalMilliseconds = 200;
+namespace {
+const int kRescanIntervalMilliseconds = 200;
+const int kServiceDisconnectTimeoutMilliseconds = 5000;
+const char kDefaultBgscanMethod[] = "default";
+} // namespace
 
 ProxyDbusShillWifiClient::ProxyDbusShillWifiClient(
     scoped_refptr<dbus::Bus> dbus_bus) {
@@ -209,21 +213,81 @@ bool ProxyDbusShillWifiClient::ConnectToWifiNetwork(
 }
 
 bool ProxyDbusShillWifiClient::DisconnectFromWifiNetwork(
-    std::string ssid,
-    int discovery_timeout_seconds,
-    int& disconnect_time) {
+    const std::string& ssid,
+    long disconnect_timeout_milliseconds,
+    long* disconnect_time_milliseconds,
+    std::string* failure_reason) {
+  *disconnect_time_milliseconds = -1;
+  if (disconnect_timeout_milliseconds == 0) {
+    disconnect_timeout_milliseconds = kServiceDisconnectTimeoutMilliseconds;
+  }
+  brillo::VariantDictionary service_params;
+  service_params.insert(std::make_pair(
+      shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))));
+  service_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(ssid)));
+  std::unique_ptr<ServiceProxy> service =
+      dbus_client_->GetMatchingServiceProxy(service_params);
+  if (!service) {
+    *failure_reason = "FAIL(Service not found)";
+    return false;
+  }
+  if (!service->Disconnect(nullptr)) {
+    *failure_reason = "FAIL(Failed to call disconnect)";
+    return false;
+  }
+  brillo::Any final_value;
+  std::vector<brillo::Any> disconnect_states = {
+    brillo::Any(std::string("idle")) };
+  if (!dbus_client_->WaitForServiceProxyPropertyValueIn(
+          service->GetObjectPath(), shill::kStateProperty, disconnect_states,
+          disconnect_timeout_milliseconds, &final_value,
+          disconnect_time_milliseconds)) {
+    *failure_reason = "FAIL(Disconnection timed out)";
+    return false;
+  }
+
+  *failure_reason = "SUCCESS(Disconnection successful)";
   return true;
 }
 
-bool ProxyDbusShillWifiClient::ConfigureBgSan(
-    std::string interface,
-    std::string method_name,
-    int short_interval,
-    int long_interval,
-    int signal) {
-  return true;
+bool ProxyDbusShillWifiClient::ConfigureBgScan(
+    const std::string& interface_name,
+    const std::string& method_name,
+    uint16 short_interval,
+    uint16 long_interval,
+    int signal_threshold) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  bool is_success = true;
+  if (method_name == kDefaultBgscanMethod) {
+    is_success &= device->ClearProperty(shill::kBgscanMethodProperty, nullptr);
+  } else {
+    is_success &= device->SetProperty(
+        shill::kBgscanMethodProperty,
+        brillo::Any(method_name),
+        nullptr);
+  }
+  is_success &= device->SetProperty(
+      shill::kBgscanShortIntervalProperty,
+      brillo::Any(short_interval),
+      nullptr);
+  is_success &= device->SetProperty(
+      shill::kScanIntervalProperty,
+      brillo::Any(long_interval),
+      nullptr);
+  is_success &= device->SetProperty(
+      shill::kBgscanSignalThresholdProperty,
+      brillo::Any(signal_threshold),
+      nullptr);
+  return is_success;
 }
-
 std::vector<std::string> ProxyDbusShillWifiClient::GetActiveWifiSSIDs() {
 
   return std::vector<std::string>();

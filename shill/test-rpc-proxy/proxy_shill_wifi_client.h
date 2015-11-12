@@ -73,14 +73,15 @@ class ProxyShillWifiClient {
                                     long* association_time_milliseconds,
                                     long* configuration_time_milliseconds,
                                     std::string* failure_reason) = 0;
-  virtual bool DisconnectFromWifiNetwork(std::string ssid,
-                                         int discovery_timeout_seconds,
-                                         int& disconnect_time) = 0;
-  virtual bool ConfigureBgSan(std::string interface,
-                              std::string method_name,
-                              int short_interval,
-                              int long_interval,
-                              int signal) = 0;
+  virtual bool DisconnectFromWifiNetwork(const std::string& ssid,
+                                         long disconnect_timeout_milliseconds,
+                                         long* disconnect_time_milliseconds,
+                                         std::string* failure_reason) = 0;
+  virtual bool ConfigureBgScan(const std::string& interface_name,
+                               const std::string& method_name,
+                               uint16 short_interval,
+                               uint16 long_interval,
+                               int signal_threshold) = 0;
   virtual std::vector<std::string> GetActiveWifiSSIDs() = 0;
   virtual bool WaitForServiceStates(std::string ssid,
                                     const std::vector<std::string>& expected_states,

@@ -54,14 +54,15 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
                             long* association_time_milliseconds,
                             long* configuration_time_milliseconds,
                             std::string* failure_reason) override;
-  bool DisconnectFromWifiNetwork(std::string ssid,
-                                 int discovery_timeout_seconds,
-                                 int& disconnect_time) override;
-  bool ConfigureBgSan(std::string interface,
-                      std::string method_name,
-                      int short_interval,
-                      int long_interval,
-                      int signal) override;
+  bool DisconnectFromWifiNetwork(const std::string& ssid,
+                                 long disconnect_timeout_milliseconds,
+                                 long* disconnect_time_milliseconds,
+                                 std::string* failure_reason) override;
+  bool ConfigureBgScan(const std::string& interface_name,
+                       const std::string& method_name,
+                       uint16 short_interval,
+                       uint16 long_interval,
+                       int signal_threshold) override;
   std::vector<std::string> GetActiveWifiSSIDs() override;
   bool WaitForServiceStates(std::string ssid,
                             const std::vector<std::string>& expected_states,
