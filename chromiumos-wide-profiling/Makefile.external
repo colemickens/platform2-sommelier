@@ -49,7 +49,7 @@ endif
 
 # Taken from:
 # http://www.gnu.org/software/make/manual/make.html#Automatic-Prerequisites
-%.d: %.cc
+%.d: %.cc $(GENERATED_HEADERS)
 	@set -e; rm -f $@; \
 	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
@@ -58,6 +58,10 @@ endif
 # Rule for compiling protobufs.
 %.pb.h %.pb.cc: %.proto
 	protoc --cpp_out=. $^
+
+# Do not remove protobuf headers that were generated as dependencies of other
+# modules.
+.SECONDARY: $(GENERATED_HEADERS)
 
 $(PROGRAMS): %: %.o $(COMMON_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
