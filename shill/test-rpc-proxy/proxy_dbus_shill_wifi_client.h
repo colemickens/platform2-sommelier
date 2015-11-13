@@ -90,12 +90,13 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
                            const brillo::Any& property_value) override;
   bool RequestRoam(const std::string& interface_name, const std::string& bssid) override;
   bool SetDeviceEnabled(const std::string& interface_name, bool enable) override;
-  bool DiscoverTDLSLink(std::string interface_name,
-                        std::string peer_mac_address) override;
-  bool EstablishTDLSLink(std::string interface_name,
-                         std::string peer_mac_address) override;
-  bool QueryTDLSLink(std::string interface_name,
-                     std::string peer_mac_address) override;
+  bool DiscoverTdlsLink(const std::string& interface_name,
+                        const std::string& peer_mac_address) override;
+  bool EstablishTdlsLink(const std::string& interface_name,
+                         const std::string& peer_mac_address) override;
+  bool QueryTdlsLink(const std::string& interface_name,
+                     const std::string& peer_mac_address,
+                     std::string* status) override;
   bool AddWakePacketSource(std::string interface_name,
                            std::string source_ip_address) override;
   bool RemoveWakePacketSource(std::string interface_name,
@@ -105,6 +106,10 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
  private:
   void SetAutoConnectInServiceParams(AutoConnectType autoconnect,
                                      brillo::VariantDictionary* service_params);
+  bool PerformTdlsOperation(const std::string& interface_name,
+                            const std::string& operation,
+                            const std::string& peer_mac_address,
+                            std::string* out_params);
   std::unique_ptr<ProxyDbusClient> dbus_client_;
 };
 

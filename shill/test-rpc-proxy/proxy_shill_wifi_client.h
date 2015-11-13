@@ -109,12 +109,13 @@ class ProxyShillWifiClient {
                                    const brillo::Any& property_value) = 0;
   virtual bool RequestRoam(const std::string& interface_name, const std::string& bssid) = 0;
   virtual bool SetDeviceEnabled(const std::string& interface_name, bool enable) = 0;
-  virtual bool DiscoverTDLSLink(std::string interface_name,
-                                std::string peer_mac_address) = 0;
-  virtual bool EstablishTDLSLink(std::string interface_name,
-                                 std::string peer_mac_address) = 0;
-  virtual bool QueryTDLSLink(std::string interface_name,
-                             std::string peer_mac_address) = 0;
+  virtual bool DiscoverTdlsLink(const std::string& interface_name,
+                                const std::string& peer_mac_address) = 0;
+  virtual bool EstablishTdlsLink(const std::string& interface_name,
+                                 const std::string& peer_mac_address) = 0;
+  virtual bool QueryTdlsLink(const std::string& interface_name,
+                             const std::string& peer_mac_address,
+                             std::string* status) = 0;
   virtual bool AddWakePacketSource(std::string interface_name,
                                    std::string source_ip_address) = 0;
   virtual bool RemoveWakePacketSource(std::string interface_name,

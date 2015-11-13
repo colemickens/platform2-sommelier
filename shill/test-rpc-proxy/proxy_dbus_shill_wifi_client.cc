@@ -531,22 +531,31 @@ bool ProxyDbusShillWifiClient::SetDeviceEnabled(
   }
 }
 
-bool ProxyDbusShillWifiClient::DiscoverTDLSLink(
-    std::string interface_name,
-    std::string peer_mac_address) {
-  return true;
+bool ProxyDbusShillWifiClient::DiscoverTdlsLink(
+    const std::string& interface_name,
+    const std::string& peer_mac_address) {
+  std::string out_params;
+  return PerformTdlsOperation(
+      interface_name, shill::kTDLSDiscoverOperation,
+      peer_mac_address, &out_params);
 }
 
-bool ProxyDbusShillWifiClient::EstablishTDLSLink(
-    std::string interface_name,
-    std::string peer_mac_address) {
-  return true;
+bool ProxyDbusShillWifiClient::EstablishTdlsLink(
+    const std::string& interface_name,
+    const std::string& peer_mac_address) {
+  std::string out_params;
+  return PerformTdlsOperation(
+      interface_name, shill::kTDLSSetupOperation,
+      peer_mac_address, &out_params);
 }
 
-bool ProxyDbusShillWifiClient::QueryTDLSLink(
-    std::string interface_name,
-    std::string peer_mac_address) {
-  return true;
+bool ProxyDbusShillWifiClient::QueryTdlsLink(
+    const std::string& interface_name,
+    const std::string& peer_mac_address,
+    std::string* status) {
+  return PerformTdlsOperation(
+      interface_name, shill::kTDLSStatusOperation,
+      peer_mac_address, status);
 }
 
 bool ProxyDbusShillWifiClient::AddWakePacketSource(
@@ -574,4 +583,21 @@ void ProxyDbusShillWifiClient::SetAutoConnectInServiceParams(
         shill::kAutoConnectProperty,
         brillo::Any(static_cast<bool>(autoconnect))));
   }
+}
+
+bool ProxyDbusShillWifiClient::PerformTdlsOperation(
+    const std::string& interface_name,
+    const std::string& operation,
+    const std::string& peer_mac_address,
+    std::string* out_params) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  return device->PerformTDLSOperation(
+      operation, peer_mac_address, out_params, nullptr);
 }
