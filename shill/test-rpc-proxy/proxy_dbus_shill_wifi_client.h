@@ -97,11 +97,11 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   bool QueryTdlsLink(const std::string& interface_name,
                      const std::string& peer_mac_address,
                      std::string* status) override;
-  bool AddWakePacketSource(std::string interface_name,
-                           std::string source_ip_address) override;
-  bool RemoveWakePacketSource(std::string interface_name,
-                              std::string source_ip_address) override;
-  bool RemoveAllWakePacketSources(std::string interface_name) override;
+  bool AddWakePacketSource(const std::string& interface_name,
+                           const std::string& source_ip_address) override;
+  bool RemoveWakePacketSource(const std::string& interface_name,
+                              const std::string& source_ip_address) override;
+  bool RemoveAllWakePacketSources(const std::string& interface_name) override;
 
  private:
   void SetAutoConnectInServiceParams(AutoConnectType autoconnect,

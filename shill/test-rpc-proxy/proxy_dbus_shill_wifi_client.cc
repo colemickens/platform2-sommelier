@@ -559,20 +559,44 @@ bool ProxyDbusShillWifiClient::QueryTdlsLink(
 }
 
 bool ProxyDbusShillWifiClient::AddWakePacketSource(
-    std::string interface_name,
-    std::string source_ip_address) {
-  return true;
+    const std::string& interface_name,
+    const std::string& source_ip_address) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  return device->AddWakeOnPacketConnection(source_ip_address, nullptr);
 }
 
 bool ProxyDbusShillWifiClient::RemoveWakePacketSource(
-    std::string interface_name,
-    std::string source_ip_address) {
-  return true;
+    const std::string& interface_name,
+    const std::string& source_ip_address) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  return device->RemoveWakeOnPacketConnection(source_ip_address, nullptr);
 }
 
 bool ProxyDbusShillWifiClient::RemoveAllWakePacketSources(
-    std::string interface_name) {
-  return true;
+    const std::string& interface_name) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  return device->RemoveAllWakeOnPacketConnections(nullptr);
 }
 
 void ProxyDbusShillWifiClient::SetAutoConnectInServiceParams(

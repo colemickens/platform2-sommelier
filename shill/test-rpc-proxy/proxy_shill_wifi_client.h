@@ -116,11 +116,11 @@ class ProxyShillWifiClient {
   virtual bool QueryTdlsLink(const std::string& interface_name,
                              const std::string& peer_mac_address,
                              std::string* status) = 0;
-  virtual bool AddWakePacketSource(std::string interface_name,
-                                   std::string source_ip_address) = 0;
-  virtual bool RemoveWakePacketSource(std::string interface_name,
-                                      std::string source_ip_address) = 0;
-  virtual bool RemoveAllWakePacketSources(std::string interface_name) = 0;
+  virtual bool AddWakePacketSource(const std::string& interface_name,
+                                   const std::string& source_ip_address) = 0;
+  virtual bool RemoveWakePacketSource(const std::string& interface_name,
+                                      const std::string& source_ip_address) = 0;
+  virtual bool RemoveAllWakePacketSources(const std::string& interface_name) = 0;
 
   std::string GetModeFromStationType(StationType station_type);
 };
