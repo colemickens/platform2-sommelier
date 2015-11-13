@@ -101,11 +101,12 @@ class ProxyShillWifiClient {
   virtual bool GetServiceProperties(const std::string& ssid,
                                     brillo::VariantDictionary* properties) = 0;
   virtual bool SetSchedScan(bool enable) = 0;
-  virtual std::string GetPropertyOnDevice(std::string interface_name,
-                                          std::string property_name) = 0;
-  virtual bool SetPropertyOnDevice(std::string interface_name,
-                                   std::string property_name,
-                                   std::string property_value) = 0;
+  virtual bool GetPropertyOnDevice(const std::string& interface_name,
+                                   const std::string& property_name,
+                                   brillo::Any* property_value) = 0;
+  virtual bool SetPropertyOnDevice(const std::string& interface_name,
+                                   const std::string& property_name,
+                                   const brillo::Any& property_value) = 0;
   virtual bool RequestRoam(std::string bssid, std::string interface_name) = 0;
   virtual bool SetDeviceEnabled(std::string interface_name, bool enable) = 0;
   virtual bool DiscoverTDLSLink(std::string interface_name,

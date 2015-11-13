@@ -82,11 +82,12 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
   bool GetServiceProperties(const std::string& ssid,
                             brillo::VariantDictionary* properties) override;
   bool SetSchedScan(bool enable) override;
-  std::string GetPropertyOnDevice(std::string interface_name,
-                                  std::string property_name) override;
-  bool SetPropertyOnDevice(std::string interface_name,
-                           std::string property_name,
-                           std::string property_value) override;
+  bool GetPropertyOnDevice(const std::string& interface_name,
+                           const std::string& property_name,
+                           brillo::Any* property_value) override;
+  bool SetPropertyOnDevice(const std::string& interface_name,
+                           const std::string& property_name,
+                           const brillo::Any& property_value) override;
   bool RequestRoam(std::string bssid, std::string interface_name) override;
   bool SetDeviceEnabled(std::string interface_name, bool enable) override;
   bool DiscoverTDLSLink(std::string interface_name,

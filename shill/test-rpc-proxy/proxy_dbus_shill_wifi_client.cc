@@ -467,17 +467,36 @@ bool ProxyDbusShillWifiClient::SetSchedScan(bool enable) {
   return dbus_client_->SetSchedScan(enable);
 }
 
-std::string ProxyDbusShillWifiClient::GetPropertyOnDevice(
-    std::string interface_name,
-    std::string property_name) {
-  return std::string();
+bool ProxyDbusShillWifiClient::GetPropertyOnDevice(
+    const std::string& interface_name,
+    const std::string& property_name,
+    brillo::Any* property_value) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  return dbus_client_->GetPropertyValueFromDeviceProxy(
+      device.get(), property_name, property_value);
 }
 
 bool ProxyDbusShillWifiClient::SetPropertyOnDevice(
-    std::string interface_name,
-    std::string property_name,
-    std::string property_value) {
-  return true;
+    const std::string& interface_name,
+    const std::string& property_name,
+    const brillo::Any& property_value) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  return device->SetProperty(
+      property_name, property_value, nullptr);
 }
 
 bool ProxyDbusShillWifiClient::RequestRoam(
