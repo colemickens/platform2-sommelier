@@ -500,16 +500,35 @@ bool ProxyDbusShillWifiClient::SetPropertyOnDevice(
 }
 
 bool ProxyDbusShillWifiClient::RequestRoam(
-    std::string bssid,
-    std::string interface_name) {
-
-  return true;
+    const std::string& interface_name,
+    const std::string& bssid) {
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  return device->RequestRoam(bssid, nullptr);
 }
 
 bool ProxyDbusShillWifiClient::SetDeviceEnabled(
-    std::string interface_name,
+    const std::string& interface_name,
     bool enable) {
-  return true;
+  brillo::VariantDictionary device_params;
+  device_params.insert(std::make_pair(
+      shill::kNameProperty, brillo::Any(interface_name)));
+  std::unique_ptr<DeviceProxy> device =
+      dbus_client_->GetMatchingDeviceProxy(device_params);
+  if (!device) {
+    return false;
+  }
+  if (enable) {
+    return device->Enable(nullptr);
+  } else {
+    return device->Disable(nullptr);
+  }
 }
 
 bool ProxyDbusShillWifiClient::DiscoverTDLSLink(

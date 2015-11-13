@@ -107,8 +107,8 @@ class ProxyShillWifiClient {
   virtual bool SetPropertyOnDevice(const std::string& interface_name,
                                    const std::string& property_name,
                                    const brillo::Any& property_value) = 0;
-  virtual bool RequestRoam(std::string bssid, std::string interface_name) = 0;
-  virtual bool SetDeviceEnabled(std::string interface_name, bool enable) = 0;
+  virtual bool RequestRoam(const std::string& interface_name, const std::string& bssid) = 0;
+  virtual bool SetDeviceEnabled(const std::string& interface_name, bool enable) = 0;
   virtual bool DiscoverTDLSLink(std::string interface_name,
                                 std::string peer_mac_address) = 0;
   virtual bool EstablishTDLSLink(std::string interface_name,
