@@ -19,6 +19,7 @@
 #include <shill/net/rtnl_listener.h>
 #include <shill/net/rtnl_message.h>
 
+#include "apmanager/control_interface.h"
 #include "apmanager/manager.h"
 
 using base::Bind;
@@ -43,7 +44,8 @@ DeviceInfo::DeviceInfo(Manager* manager)
       device_info_root_(kDeviceInfoRoot),
       manager_(manager),
       netlink_manager_(NetlinkManager::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+      rtnl_handler_(RTNLHandler::GetInstance()),
+      device_identifier_(0) {
 }
 
 DeviceInfo::~DeviceInfo() {}
@@ -109,7 +111,8 @@ void DeviceInfo::OnWiFiPhyInfoReceived(const shill::Nl80211Message& msg) {
     return;
   }
 
-  scoped_refptr<Device> device = new Device(manager_, device_name);
+  scoped_refptr<Device> device =
+      new Device(manager_, device_name, device_identifier_++);
   device->ParseWiphyCapability(msg);
 
   // Register device
@@ -290,7 +293,8 @@ void DeviceInfo::OnWiFiInterfacePhyInfoReceived(
   scoped_refptr<Device> device = GetDevice(device_name);
   // Create device if it is not enumerated yet.
   if (!device) {
-    device = new Device(manager_, device_name);
+    device =
+        new Device(manager_, device_name, device_identifier_++);
     device->ParseWiphyCapability(msg);
 
     // Register device

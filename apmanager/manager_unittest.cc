@@ -6,28 +6,35 @@
 
 #include <gtest/gtest.h>
 
+#include "apmanager/fake_device_adaptor.h"
+#include "apmanager/mock_control.h"
 #include "apmanager/mock_device.h"
 
 using ::testing::_;
 using ::testing::Return;
+using ::testing::ReturnNew;
 
 namespace apmanager {
 
 class ManagerTest : public testing::Test {
  public:
-  ManagerTest() : manager_() {}
+  ManagerTest() : manager_(&control_interface_) {
+    ON_CALL(control_interface_, CreateDeviceAdaptorRaw())
+        .WillByDefault(ReturnNew<FakeDeviceAdaptor>());
+  }
 
   void RegisterDevice(scoped_refptr<Device> device) {
     manager_.devices_.push_back(device);
   }
 
  protected:
+  MockControl control_interface_;
   Manager manager_;
 };
 
 TEST_F(ManagerTest, GetAvailableDevice) {
   // Register a device without AP support (no preferred AP interface).
-  scoped_refptr<MockDevice> device0 = new MockDevice();
+  scoped_refptr<MockDevice> device0 = new MockDevice(&manager_);
   RegisterDevice(device0);
 
   // No available device for AP operation.
@@ -40,7 +47,7 @@ TEST_F(ManagerTest, GetAvailableDevice) {
 
   // Register another device with AP support.
   const char kTestInterface1[] = "test-interface1";
-  scoped_refptr<MockDevice> device1 = new MockDevice();
+  scoped_refptr<MockDevice> device1 = new MockDevice(&manager_);
   device1->SetPreferredApInterface(kTestInterface1);
   RegisterDevice(device1);
 
@@ -58,8 +65,8 @@ TEST_F(ManagerTest, GetAvailableDevice) {
 
 TEST_F(ManagerTest, GetDeviceFromInterfaceName) {
   // Register two devices
-  scoped_refptr<MockDevice> device0 = new MockDevice();
-  scoped_refptr<MockDevice> device1 = new MockDevice();
+  scoped_refptr<MockDevice> device0 = new MockDevice(&manager_);
+  scoped_refptr<MockDevice> device1 = new MockDevice(&manager_);
   RegisterDevice(device0);
   RegisterDevice(device1);
 

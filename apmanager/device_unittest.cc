@@ -14,10 +14,13 @@
 #include <shill/net/nl80211_attribute.h>
 #include <shill/net/nl80211_message.h>
 
+#include "apmanager/fake_device_adaptor.h"
+#include "apmanager/mock_control.h"
 #include "apmanager/mock_manager.h"
 
 using ::testing::_;
 using ::testing::Mock;
+using ::testing::ReturnNew;
 using std::vector;
 
 namespace apmanager {
@@ -45,7 +48,11 @@ const Device::WiFiInterface kMonitorModeInterface = {
 
 class DeviceTest : public testing::Test {
  public:
-  DeviceTest() : device_(new Device(&manager_, kDeviceName)) {}
+  DeviceTest() : manager_(&control_interface_) {
+    ON_CALL(control_interface_, CreateDeviceAdaptorRaw())
+        .WillByDefault(ReturnNew<FakeDeviceAdaptor>());
+    device_ = new Device(&manager_, kDeviceName, 0);
+  }
 
   void VerifyInterfaceList(
       const vector<Device::WiFiInterface>& interface_list) {
@@ -109,6 +116,7 @@ class DeviceTest : public testing::Test {
   }
 
  protected:
+  MockControl control_interface_;
   MockManager manager_;
   scoped_refptr<Device> device_;
 };

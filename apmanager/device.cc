@@ -10,44 +10,26 @@
 #include <shill/net/ieee80211.h>
 
 #include "apmanager/config.h"
+#include "apmanager/control_interface.h"
 #include "apmanager/manager.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
-using org::chromium::apmanager::ManagerAdaptor;
 using shill::ByteString;
 using std::string;
 
 namespace apmanager {
 
-Device::Device(Manager* manager, const string& device_name)
-    : org::chromium::apmanager::DeviceAdaptor(this),
-      manager_(manager),
-      supports_ap_mode_(false) {
+Device::Device(Manager* manager,
+               const string& device_name,
+               int identifier)
+    : manager_(manager),
+      supports_ap_mode_(false),
+      identifier_(identifier),
+      adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)) {
   SetDeviceName(device_name);
   SetInUse(false);
 }
 
 Device::~Device() {}
-
-void Device::RegisterAsync(ExportedObjectManager* object_manager,
-                           const scoped_refptr<dbus::Bus>& bus,
-                           AsyncEventSequencer* sequencer,
-                           int device_identifier) {
-  CHECK(!dbus_object_) << "Already registered";
-  dbus_path_ = dbus::ObjectPath(
-      base::StringPrintf("%s/devices/%d",
-                         ManagerAdaptor::GetObjectPath().value().c_str(),
-                         device_identifier));
-  dbus_object_.reset(
-      new brillo::dbus_utils::DBusObject(
-          object_manager,
-          bus,
-          dbus_path_));
-  RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(
-      sequencer->GetHandler("Config.RegisterAsync() failed.", true));
-}
 
 void Device::RegisterInterface(const WiFiInterface& new_interface) {
   LOG(INFO) << "RegisteringInterface " << new_interface.iface_name
@@ -285,6 +267,30 @@ bool Device::GetHTCapability(uint16_t channel, string* ht_cap) {
 bool Device::GetVHTCapability(uint16_t channel, string* vht_cap) {
   // TODO(zqiu): to be implemented.
   return false;
+}
+
+void Device::SetDeviceName(const std::string& device_name) {
+  adaptor_->SetDeviceName(device_name);
+}
+
+string Device::GetDeviceName() const {
+  return adaptor_->GetDeviceName();
+}
+
+void Device::SetPreferredApInterface(const std::string& interface_name) {
+  adaptor_->SetPreferredApInterface(interface_name);
+}
+
+string Device::GetPreferredApInterface() const {
+  return adaptor_->GetPreferredApInterface();
+}
+
+void Device::SetInUse(bool in_use) {
+  return adaptor_->SetInUse(in_use);
+}
+
+bool Device::GetInUse() const {
+  return adaptor_->GetInUse();
 }
 
 // static

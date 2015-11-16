@@ -14,17 +14,16 @@
 #include <shill/net/byte_string.h>
 #include <shill/net/nl80211_message.h>
 
-#include "dbus_bindings/org.chromium.apmanager.Device.h"
+#include "apmanager/device_adaptor_interface.h"
 
 namespace apmanager {
 
+class ControlInterface;
 class Manager;
 
 // Abstraction for WiFi Device (PHY). Each device can have one or more
 // interfaces defined on it.
-class Device : public base::RefCounted<Device>,
-               public org::chromium::apmanager::DeviceAdaptor,
-               public org::chromium::apmanager::DeviceInterface {
+class Device : public base::RefCounted<Device> {
  public:
   struct WiFiInterface {
     WiFiInterface() : iface_index(0), iface_type(0) {}
@@ -54,15 +53,10 @@ class Device : public base::RefCounted<Device>,
     uint16_t vht_capability_mask;
   };
 
-  Device(Manager* manager, const std::string& device_name);
+  Device(Manager* manager,
+         const std::string& device_name,
+         int identifier);
   virtual ~Device();
-
-  // Register Device DBus object.
-  void RegisterAsync(
-      brillo::dbus_utils::ExportedObjectManager* object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      brillo::dbus_utils::AsyncEventSequencer* sequencer,
-      int device_identifier);
 
   // Register/deregister WiFi interface on this device.
   virtual void RegisterInterface(const WiFiInterface& interface);
@@ -89,6 +83,15 @@ class Device : public base::RefCounted<Device>,
   virtual bool GetHTCapability(uint16_t channel, std::string* ht_cap);
   virtual bool GetVHTCapability(uint16_t channel, std::string* vht_cap);
 
+  void SetDeviceName(const std::string& device_name);
+  std::string GetDeviceName() const;
+  void SetPreferredApInterface(const std::string& interface_name);
+  std::string GetPreferredApInterface() const;
+  void SetInUse(bool in_use);
+  bool GetInUse() const;
+
+  int identifier() const { return identifier_; }
+
  private:
   friend class DeviceTest;
 
@@ -111,9 +114,6 @@ class Device : public base::RefCounted<Device>,
   // List of WiFi interfaces live on this device (PHY).
   std::vector<WiFiInterface> interface_list_;
 
-  dbus::ObjectPath dbus_path_;
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-
   // Flag indicating if this device supports AP mode interface or not.
   bool supports_ap_mode_;
 
@@ -122,6 +122,12 @@ class Device : public base::RefCounted<Device>,
 
   // List of claimed interfaces.
   std::set<std::string> claimed_interfaces_;
+
+  // Unique device identifier.
+  int identifier_;
+
+  // Adaptor for communicating with remote clients.
+  std::unique_ptr<DeviceAdaptorInterface> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

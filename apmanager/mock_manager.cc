@@ -6,7 +6,8 @@
 
 namespace apmanager {
 
-MockManager::MockManager() : Manager() {}
+MockManager::MockManager(ControlInterface* control_interface)
+    : Manager(control_interface) {}
 
 MockManager::~MockManager() {}
 

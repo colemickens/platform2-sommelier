@@ -22,6 +22,8 @@
 #include "shill/net/nl80211_message.h"
 #include <shill/net/rtnl_message.h>
 
+#include "apmanager/fake_device_adaptor.h"
+#include "apmanager/mock_control.h"
 #include "apmanager/mock_device.h"
 #include "apmanager/mock_manager.h"
 
@@ -33,6 +35,7 @@ using std::string;
 using std::vector;
 using ::testing::_;
 using ::testing::Mock;
+using ::testing::ReturnNew;
 
 namespace apmanager {
 
@@ -48,7 +51,9 @@ const uint32_t kTestInterface1Index = 1001;
 
 class DeviceInfoTest : public testing::Test {
  public:
-  DeviceInfoTest() : device_info_(&manager_) {}
+  DeviceInfoTest()
+      : manager_(&control_interface_),
+        device_info_(&manager_) {}
   virtual ~DeviceInfoTest() {}
 
   virtual void SetUp() {
@@ -59,6 +64,9 @@ class DeviceInfoTest : public testing::Test {
 
     // Setup mock pointers;
     device_info_.netlink_manager_ = &netlink_manager_;
+
+    ON_CALL(control_interface_, CreateDeviceAdaptorRaw())
+      .WillByDefault(ReturnNew<FakeDeviceAdaptor>());
   }
 
   bool IsWifiInterface(const string& interface_name) {
@@ -133,11 +141,13 @@ class DeviceInfoTest : public testing::Test {
   }
 
  protected:
-  DeviceInfo device_info_;
+  MockControl control_interface_;
   MockManager manager_;
+
   shill::MockNetlinkManager netlink_manager_;
   base::ScopedTempDir temp_dir_;
   base::FilePath device_info_root_;
+  DeviceInfo device_info_;
 };
 
 MATCHER_P2(IsGetInfoMessage, command, index, "") {
@@ -305,7 +315,7 @@ TEST_F(DeviceInfoTest, ParseWifiInterfaceInfo) {
 
 TEST_F(DeviceInfoTest, ParsePhyInfoForWifiInterface) {
   // Register a mock device.
-  scoped_refptr<MockDevice> device = new MockDevice();
+  scoped_refptr<MockDevice> device = new MockDevice(&manager_);
   device->SetDeviceName(kTestDeviceName);
   EXPECT_CALL(manager_, RegisterDevice(_)).Times(1);
   RegisterDevice(device);
@@ -364,7 +374,7 @@ TEST_F(DeviceInfoTest, RegisterDevice) {
   VerifyDeviceList(device_list);
 
   // Register a device.
-  device_list.push_back(new Device(&manager_, kTestDeviceName));
+  device_list.push_back(new Device(&manager_, kTestDeviceName, 0));
   EXPECT_CALL(manager_, RegisterDevice(device_list[0]));
   RegisterDevice(device_list[0]);
   VerifyDeviceList(device_list);

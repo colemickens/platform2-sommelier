@@ -28,6 +28,7 @@ class RTNLListener;
 
 namespace apmanager {
 
+class ControlInterface;
 class Manager;
 
 // DeviceInfo will enumerate WiFi devices (PHYs) during startup and on-demand
@@ -92,11 +93,13 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   std::unique_ptr<shill::RTNLListener> link_listener_;
 
   base::FilePath device_info_root_;
-  Manager *manager_;
+  Manager* manager_;
 
   // Cache copy of singleton pointers.
   shill::NetlinkManager* netlink_manager_;
   shill::RTNLHandler* rtnl_handler_;
+
+  int device_identifier_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };

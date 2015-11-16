@@ -16,7 +16,7 @@ namespace apmanager {
 
 class MockDevice : public Device {
  public:
-  MockDevice();
+  explicit MockDevice(Manager* manager);
   ~MockDevice() override;
 
   MOCK_METHOD1(RegisterInterface,

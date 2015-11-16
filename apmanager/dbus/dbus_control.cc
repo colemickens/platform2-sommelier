@@ -16,6 +16,7 @@
 
 #include "apmanager/dbus/dbus_control.h"
 
+#include "apmanager/dbus/device_dbus_adaptor.h"
 #include "apmanager/dbus/shill_dbus_proxy.h"
 #include "apmanager/manager.h"
 
@@ -54,9 +55,8 @@ void DBusControl::Init() {
       sequencer->GetHandler("ObjectManager.RegisterAsync() failed.", true));
 
   // Create and register Manager.
-  manager_.reset(new Manager());
+  manager_.reset(new Manager(this));
   manager_->RegisterAsync(
-      this,
       object_manager_.get(),
       bus_,
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
@@ -85,6 +85,12 @@ void DBusControl::OnObjectRegistrationCompleted(bool registration_success) {
 
   // D-Bus service is ready, now we can start the Manager.
   manager_->Start();
+}
+
+std::unique_ptr<DeviceAdaptorInterface> DBusControl::CreateDeviceAdaptor(
+    Device* device) {
+  return std::unique_ptr<DeviceAdaptorInterface>(
+      new DeviceDBusAdaptor(bus_, object_manager_.get(), device));
 }
 
 std::unique_ptr<FirewallProxyInterface> DBusControl::CreateFirewallProxy(

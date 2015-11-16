@@ -16,7 +16,7 @@ namespace apmanager {
 
 class MockManager : public Manager {
  public:
-  MockManager();
+  explicit MockManager(ControlInterface* control_interface);
   ~MockManager() override;
 
   MOCK_METHOD0(Start, void());

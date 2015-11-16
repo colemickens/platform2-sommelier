@@ -19,10 +19,10 @@ using std::string;
 
 namespace apmanager {
 
-Manager::Manager()
+Manager::Manager(ControlInterface* control_interface)
     : org::chromium::apmanager::ManagerAdaptor(this),
+      control_interface_(control_interface),
       service_identifier_(0),
-      device_identifier_(0),
       device_info_(this) {}
 
 Manager::~Manager() {
@@ -33,7 +33,6 @@ Manager::~Manager() {
 }
 
 void Manager::RegisterAsync(
-    ControlInterface* control_interface,
     ExportedObjectManager* object_manager,
     const scoped_refptr<dbus::Bus>& bus,
     const base::Callback<void(bool)>& completion_callback) {
@@ -47,8 +46,8 @@ void Manager::RegisterAsync(
   dbus_object_->RegisterAsync(completion_callback);
   bus_ = bus;
 
-  shill_manager_.Init(control_interface);
-  firewall_manager_.Init(control_interface);
+  shill_manager_.Init(control_interface_);
+  firewall_manager_.Init(control_interface_);
 }
 
 void Manager::Start() {
@@ -136,17 +135,8 @@ scoped_refptr<Device> Manager::GetDeviceFromInterfaceName(
 void Manager::RegisterDevice(scoped_refptr<Device> device) {
   LOG(INFO) << "Manager::RegisterDevice: registering device "
             << device->GetDeviceName();
-  // Register device DBbus interfaces.
-  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  device->RegisterAsync(dbus_object_->GetObjectManager().get(),
-                        bus_,
-                        sequencer.get(),
-                        device_identifier_++);
-  sequencer->OnAllTasksCompletedCall({
-    base::Bind(&Manager::OnDeviceRegistered,
-               base::Unretained(this),
-               device)
-  });
+  devices_.push_back(device);
+  // TODO(zqiu): Property update for available devices.
 }
 
 void Manager::ClaimInterface(const string& interface_name) {
@@ -199,14 +189,6 @@ void Manager::OnServiceRegistered(
   dbus::ObjectPath service_path = service->dbus_path();
   services_.push_back(std::move(service));
   response->Return(service_path);
-}
-
-void Manager::OnDeviceRegistered(scoped_refptr<Device> device, bool success) {
-  // Success should always be true since we've said that failures are fatal.
-  CHECK(success) << "Init of one or more objects has failed.";
-
-  devices_.push_back(device);
-  // TODO(zqiu): Property update for available devices.
 }
 
 void Manager::OnAPServiceOwnerDisappeared(int service_identifier) {

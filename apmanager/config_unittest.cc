@@ -17,12 +17,15 @@
 #include "dbus/apmanager/dbus-constants.h"
 #endif
 
+#include "apmanager/fake_device_adaptor.h"
+#include "apmanager/mock_control.h"
 #include "apmanager/mock_device.h"
 #include "apmanager/mock_manager.h"
 
 using ::testing::_;
 using ::testing::Mock;
 using ::testing::Return;
+using ::testing::ReturnNew;
 using ::testing::SetArgumentPointee;
 namespace apmanager {
 
@@ -111,20 +114,26 @@ const char kExpectedRsnConfigContent[] = "ssid=TestSsid\n"
 
 class ConfigTest : public testing::Test {
  public:
-  ConfigTest() : config_(&manager_, kServicePath) {}
+  ConfigTest()
+      : manager_(&control_interface_),
+        config_(&manager_, kServicePath) {
+    ON_CALL(control_interface_, CreateDeviceAdaptorRaw())
+        .WillByDefault(ReturnNew<FakeDeviceAdaptor>());
+  }
 
   void SetupDevice(const std::string& interface) {
     // Setup mock device.
-    device_ = new MockDevice();
+    device_ = new MockDevice(&manager_);
     device_->SetPreferredApInterface(interface);
     EXPECT_CALL(manager_, GetDeviceFromInterfaceName(interface))
         .WillRepeatedly(Return(device_));
   }
 
  protected:
-  Config config_;
+  MockControl control_interface_;
   MockManager manager_;
   scoped_refptr<MockDevice> device_;
+  Config config_;
 };
 
 MATCHER_P(IsConfigErrorStartingWith, message, "") {
@@ -237,7 +246,7 @@ TEST_F(ConfigTest, NoInterface) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Device available, config file should be generated without any problem.
-  scoped_refptr<MockDevice> device = new MockDevice();
+  scoped_refptr<MockDevice> device = new MockDevice(&manager_);
   device->SetPreferredApInterface(kInterface);
   brillo::ErrorPtr error1;
   EXPECT_CALL(manager_, GetAvailableDevice()).WillOnce(Return(device));

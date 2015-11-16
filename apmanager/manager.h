@@ -28,7 +28,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   template<typename T>
   using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<T>;
 
-  Manager();
+  explicit Manager(ControlInterface* control_interface);
   virtual ~Manager();
 
   // Implementation of ManagerInterface.
@@ -45,7 +45,6 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
 
   // Register DBus object.
   void RegisterAsync(
-      ControlInterface* control_interface,
       brillo::dbus_utils::ExportedObjectManager* object_manager,
       const scoped_refptr<dbus::Bus>& bus,
       const base::Callback<void(bool)>& completion_callback);
@@ -80,6 +79,8 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   virtual void RequestDHCPPortAccess(const std::string& interface);
   virtual void ReleaseDHCPPortAccess(const std::string& interface);
 
+  ControlInterface* control_interface() const { return control_interface_; }
+
  private:
   friend class ManagerTest;
 
@@ -97,8 +98,8 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   // This is invoked when the owner of an AP service disappeared.
   void OnAPServiceOwnerDisappeared(int service_identifier);
 
+  ControlInterface* control_interface_;
   int service_identifier_;
-  int device_identifier_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   scoped_refptr<dbus::Bus> bus_;
   std::vector<std::unique_ptr<Service>> services_;

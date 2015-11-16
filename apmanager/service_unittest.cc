@@ -51,7 +51,8 @@ namespace apmanager {
 class ServiceTest : public testing::Test {
  public:
   ServiceTest()
-      : hostapd_monitor_(new MockHostapdMonitor()),
+      : manager_(nullptr),
+        hostapd_monitor_(new MockHostapdMonitor()),
         service_(&manager_, kServiceIdentifier) {}
 
   virtual void SetUp() {
