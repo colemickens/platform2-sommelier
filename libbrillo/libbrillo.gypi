@@ -4,9 +4,13 @@
       'deps': [
         'libchrome-<(libbase_ver)'
       ],
+      'USE_dbus%': '1',
     },
     'include_dirs': [
       '../libbrillo',
+    ],
+    'defines': [
+      'USE_DBUS=<(USE_dbus)',
     ],
   },
   'targets': [
@@ -45,6 +49,8 @@
         },
       },
       'libraries': ['-lmodp_b64'],
+      #TODO(deymo): Split DBus code from libbrillo-core the same way is split in
+      # the Android.mk, based on the <(USE_dbus) variable.
       'sources': [
         'brillo/any.cc',
         'brillo/asynchronous_signal_handler.cc',
