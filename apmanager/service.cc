@@ -313,13 +313,16 @@ void Service::ReleaseResources() {
   hostapd_monitor_.reset();
   StopHostapdProcess();
   dhcp_server_.reset();
-  config_->ReleaseDevice();
   manager_->ReleaseDHCPPortAccess(config_->selected_interface());
 #if defined(__BRILLO__)
   // Restore station mode interface.
   string station_mode_interface;
   manager_->SetupStationModeInterface(&station_mode_interface);
 #endif  // __BRILLO__
+  // Only release device after mode switching had completed, to
+  // make sure the station mode interface gets enumerated by
+  // shill.
+  config_->ReleaseDevice();
 }
 
 void Service::HostapdEventCallback(HostapdMonitor::Event event,
