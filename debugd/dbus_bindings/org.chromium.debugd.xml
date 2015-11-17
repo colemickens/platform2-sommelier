@@ -214,54 +214,6 @@
         </tp:docstring>
       </arg>
     </method>
-    <method name="GetRandomPerfOutput">
-      <tp:docstring>
-        Runs system-wide perf profiling. It can can profile events other than
-        cycles (example: iTLB-misses), and can collect branch profiles. It can
-        also return raw counter values. The exact profile or counters to be
-        collected is chosen at random and depends on what CPU is used by the
-        system (certain CPUs do not support certain profiling modes).
-      </tp:docstring>
-      <arg name="duration_sec" type="u" direction="in">
-        <tp:docstring>
-          Duration to run perf in seconds.
-        </tp:docstring>
-      </arg>
-      <arg name="status" type="i" direction="out">
-        <tp:docstring>
-          Status code from running perf and serializing the output.
-        </tp:docstring>
-      </arg>
-      <arg name="perf_data" type="ay" direction="out">
-        <tp:docstring>
-          Perf report output data as a protobuf.
-        </tp:docstring>
-      </arg>
-      <arg name="perf_stat" type="ay" direction="out">
-        <tp:docstring>
-          Perf stat output data as a protobuf.
-        </tp:docstring>
-      </arg>
-    </method>
-    <method name="GetRichPerfData">
-      <tp:docstring>
-        Returns perf event data. Does systemwide profiling. It can profile
-        events other than cycles (example: iTLB-misses), and can collect branch
-        profiles. The exact profile to be collected is chosen at random
-        and depends on what CPU is used by the system (certain CPUs do not
-        support certain profiling modes).
-      </tp:docstring>
-      <arg name="duration_sec" type="u" direction="in">
-        <tp:docstring>
-          Duration to run perf in seconds.
-        </tp:docstring>
-      </arg>
-      <arg name="status" type="ay" direction="out">
-        <tp:docstring>
-          Perf event data as a protobuf.
-        </tp:docstring>
-      </arg>
-    </method>
     <method name="GetDebugLogs">
       <tp:docstring>
         DEPRECATED: Use DumpDebugLogs instead.

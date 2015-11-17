@@ -146,21 +146,6 @@ void DebugDaemon::GetPerfOutput(
       duration_sec, perf_args, &perf_data, &perf_stat, &error);
 }
 
-void DebugDaemon::GetRandomPerfOutput(
-    const uint32_t& duration_sec,
-    int32_t& status,
-    std::vector<uint8_t>& perf_data,
-    std::vector<uint8_t>& perf_stat,
-    DBus::Error& error) {  // NOLINT
-  status = perf_tool_->GetRandomPerfOutput(
-      duration_sec, &perf_data, &perf_stat, &error);
-}
-
-std::vector<uint8_t> DebugDaemon::GetRichPerfData(
-    const uint32_t& duration_sec, DBus::Error& error) {  // NOLINT
-  return perf_tool_->GetRichPerfData(duration_sec, &error);
-}
-
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
                                DBus::Error& error) {  // NOLINT
   debug_logs_tool_->GetDebugLogs(true,  // is_compressed,
