@@ -19,78 +19,64 @@
 #include "proxy_rpc_server.h"
 
 namespace {
-// Return values for the RPC calls.
-enum RpcMethodReturnValue {
-  kRpcMethodReturnInvalidArgs = -1,
-  kRpcMethodReturnFailure = 0,
-  kRpcMethodReturnSuccess = 1
-};
 // XmlRpc library verbosity level.
 static const int kDefaultXmlRpcVerbosity = 5;
 }
 
 /*************** RPC Method implementations **********/
-XmlRpcValue CreateProfile(XmlRpcValue params_in,
-                          ProxyShillWifiClient* shill_wifi_client) {
-  XmlRpcValue result;
+XmlRpc::XmlRpcValue CreateProfile(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
   if (params_in.size() != 1) {
-    result[0] = kRpcMethodReturnInvalidArgs;
-    return result;
+    return false;
   }
   const std::string& profile_name(params_in[0]);
-  result[0] = shill_wifi_client->CreateProfile(profile_name);
-  return result;
+  return shill_wifi_client->CreateProfile(profile_name);
 }
 
-XmlRpcValue RemoveProfile(XmlRpcValue params_in,
-                          ProxyShillWifiClient* shill_wifi_client) {
-  XmlRpcValue result;
+XmlRpc::XmlRpcValue RemoveProfile(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
   if (params_in.size() != 1) {
-    result[0] = kRpcMethodReturnInvalidArgs;
-    return result;
+    return false;
   }
   const std::string& profile_name(params_in[0]);
-  result[0] = shill_wifi_client->RemoveProfile(profile_name);
-  return result;
+  return shill_wifi_client->RemoveProfile(profile_name);
 }
 
-XmlRpcValue PushProfile(XmlRpcValue params_in,
-                        ProxyShillWifiClient* shill_wifi_client) {
-  XmlRpcValue result;
+XmlRpc::XmlRpcValue PushProfile(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
   if (params_in.size() != 1) {
-    result[0] = kRpcMethodReturnInvalidArgs;
-    return result;
+    return false;
   }
   const std::string& profile_name(params_in[0]);
-  result[0] = shill_wifi_client->PushProfile(profile_name);
-  return result;
+  return shill_wifi_client->PushProfile(profile_name);
 }
 
-XmlRpcValue PopProfile(XmlRpcValue params_in,
-                       ProxyShillWifiClient* shill_wifi_client) {
-  XmlRpcValue result;
+XmlRpc::XmlRpcValue PopProfile(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
   if (params_in.size() != 1) {
-    result[0] = kRpcMethodReturnInvalidArgs;
-    return result;
+    return false;
   }
   const std::string& profile_name(params_in[0]);
-  result[0] = shill_wifi_client->PopProfile(profile_name);
-  return result;
+  return shill_wifi_client->PopProfile(profile_name);
 }
 
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
     ProxyShillWifiClient* shill_wifi_client,
-    XmlRpcServer* server)
+    ProxyRpcServer* server)
   : XmlRpcServerMethod(method_name, server),
     handler_(handler),
     shill_wifi_client_(shill_wifi_client) {
 }
 
 void ProxyRpcServerMethod::execute(
-    XmlRpcValue& params_in,
-    XmlRpcValue& value_out) {
+    XmlRpc::XmlRpcValue& params_in,
+    XmlRpc::XmlRpcValue& value_out) {
   value_out = handler_.Run(params_in, shill_wifi_client_);
 }
 
@@ -118,16 +104,16 @@ void ProxyRpcServer::RegisterRpcMethod(
 
 void ProxyRpcServer::Run() {
   XmlRpc::setVerbosity(kDefaultXmlRpcVerbosity);
-  if (!XmlRpcServer::bindAndListen(server_port_)) {
+  if (!XmlRpc::XmlRpcServer::bindAndListen(server_port_)) {
     LOG(ERROR) << "Failed to bind to port " << server_port_ << ".";
     return;
   }
-  XmlRpcServer::enableIntrospection(true);
+  XmlRpc::XmlRpcServer::enableIntrospection(true);
 
   RegisterRpcMethod("create_profile", base::Bind(&CreateProfile));
   RegisterRpcMethod("remove_profile", base::Bind(&RemoveProfile));
   RegisterRpcMethod("push_profile", base::Bind(&PushProfile));
   RegisterRpcMethod("pop_profile", base::Bind(&PopProfile));
 
-  XmlRpcServer::work(-1.0);
+  XmlRpc::XmlRpcServer::work(-1.0);
 }

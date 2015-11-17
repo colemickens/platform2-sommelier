@@ -31,20 +31,19 @@
 
 #include "proxy_shill_wifi_client.h"
 
-using namespace XmlRpc;
+typedef const base::Callback<XmlRpc::XmlRpcValue(
+    XmlRpc::XmlRpcValue, ProxyShillWifiClient*)> RpcServerMethodHandler;
 
-typedef const base::Callback<XmlRpcValue(
-    XmlRpcValue, ProxyShillWifiClient*)> RpcServerMethodHandler;
-
-class ProxyRpcServerMethod : public XmlRpcServerMethod {
+class ProxyRpcServer;
+class ProxyRpcServerMethod : public XmlRpc::XmlRpcServerMethod {
  public:
   ProxyRpcServerMethod(const std::string& method_name,
                        const RpcServerMethodHandler& handler,
                        ProxyShillWifiClient* shill_wifi_client,
-                       XmlRpcServer* server);
+                       ProxyRpcServer* server);
   // This is the function signature exposed by the XmlRpc++ library
   // that we depend on and hence the non-const references.
-  void execute(XmlRpcValue& params_in, XmlRpcValue& value_out);
+  void execute(XmlRpc::XmlRpcValue& params_in, XmlRpc::XmlRpcValue& value_out);
   std::string help(void);
 
  private:
@@ -56,7 +55,7 @@ class ProxyRpcServerMethod : public XmlRpcServerMethod {
   DISALLOW_COPY_AND_ASSIGN(ProxyRpcServerMethod);
 };
 
-class ProxyRpcServer : public XmlRpcServer {
+class ProxyRpcServer : public XmlRpc::XmlRpcServer {
  public:
   ProxyRpcServer(int server_port,
                  std::unique_ptr<ProxyShillWifiClient> shill_wifi_client);
