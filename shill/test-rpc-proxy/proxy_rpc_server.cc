@@ -188,6 +188,50 @@ XmlRpc::XmlRpcValue SetServiceOrder(
   return shill_wifi_client->SetServiceOrder(order);
 }
 
+XmlRpc::XmlRpcValue GetServiceProperties(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  const std::string& ssid(params_in[0]);
+  brillo::VariantDictionary properties;
+  if (!shill_wifi_client->GetServiceProperties(ssid, &properties)) {
+    return false;
+  }
+  XmlRpc::XmlRpcValue result;
+  GetXmlRpcValueFromBrilloAnyValue(properties, &result);
+  return result;
+}
+
+XmlRpc::XmlRpcValue GetActiveWifiSsids(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 0)) {
+    return false;
+  }
+  std::vector<std::string> ssids;
+  if (!shill_wifi_client->GetActiveWifiSsids(&ssids)) {
+    return false;
+  }
+  XmlRpc::XmlRpcValue result;
+  int array_pos = 0;
+  for (const auto& ssid : ssids) {
+    result[array_pos++] = ssid;
+  }
+  return result;
+}
+
+XmlRpc::XmlRpcValue SetSchedScan(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  bool enable(params_in[0]);
+  return shill_wifi_client->SetSchedScan(enable);
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -248,6 +292,9 @@ void ProxyRpcServer::Run() {
                     base::Bind(&WaitForServiceStates));
   RegisterRpcMethod("get_service_order", base::Bind(&GetServiceOrder));
   RegisterRpcMethod("set_service_order", base::Bind(&SetServiceOrder));
+  RegisterRpcMethod("get_service_properties", base::Bind(&GetServiceProperties));
+  RegisterRpcMethod("get_active_wifi_SSIDs", base::Bind(&GetActiveWifiSsids));
+  RegisterRpcMethod("set_sched_scan", base::Bind(&SetSchedScan));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
