@@ -289,6 +289,43 @@ XmlRpc::XmlRpcValue SetDeviceEnabled(
   return shill_wifi_client->SetDeviceEnabled(interface_name, enable);
 }
 
+XmlRpc::XmlRpcValue DiscoverTdlsLink(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  const std::string& peer_mac_address(params_in[1]);
+  return shill_wifi_client->DiscoverTdlsLink(interface_name, peer_mac_address);
+}
+
+XmlRpc::XmlRpcValue EstablishTdlsLink(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  const std::string& peer_mac_address(params_in[1]);
+  return shill_wifi_client->EstablishTdlsLink(interface_name, peer_mac_address);
+}
+
+XmlRpc::XmlRpcValue QueryTdlsLink(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  const std::string& peer_mac_address(params_in[1]);
+  std::string status;
+  if (!shill_wifi_client->QueryTdlsLink(
+          interface_name, peer_mac_address, &status)) {
+    return false;
+  }
+  return status;
+}
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -358,6 +395,9 @@ void ProxyRpcServer::Run() {
                     base::Bind(&SetDbusPropertyOnDevice));
   RegisterRpcMethod("request_roam_dbus", base::Bind(&RequestRoamDbus));
   RegisterRpcMethod("set_device_enabled", base::Bind(&SetDeviceEnabled));
+  RegisterRpcMethod("discover_tdls_link", base::Bind(&DiscoverTdlsLink));
+  RegisterRpcMethod("establish_tdls_link", base::Bind(&EstablishTdlsLink));
+  RegisterRpcMethod("query_tdls_link", base::Bind(&QueryTdlsLink));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
