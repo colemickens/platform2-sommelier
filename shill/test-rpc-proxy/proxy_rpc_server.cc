@@ -264,6 +264,31 @@ XmlRpc::XmlRpcValue SetDbusPropertyOnDevice(
       interface_name, property_name, property_value);
 }
 
+XmlRpc::XmlRpcValue RequestRoamDbus(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& bssid(params_in[0]);
+  const std::string& interface_name(params_in[1]);
+  // |interface_name| is the first argument in ProxyShillWifiClient method
+  // to keep it symmetric with other methods defined in the interface even
+  // though it is reversed in the RPC call.
+  return shill_wifi_client->RequestRoam(interface_name, bssid);
+}
+
+XmlRpc::XmlRpcValue SetDeviceEnabled(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  bool enable(params_in[1]);
+  return shill_wifi_client->SetDeviceEnabled(interface_name, enable);
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -331,6 +356,8 @@ void ProxyRpcServer::Run() {
                     base::Bind(&GetDbusPropertyOnDevice));
   RegisterRpcMethod("set_dbus_property_on_device",
                     base::Bind(&SetDbusPropertyOnDevice));
+  RegisterRpcMethod("request_roam_dbus", base::Bind(&RequestRoamDbus));
+  RegisterRpcMethod("set_device_enabled", base::Bind(&SetDeviceEnabled));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
