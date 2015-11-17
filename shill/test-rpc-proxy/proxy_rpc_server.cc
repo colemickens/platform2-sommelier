@@ -359,6 +359,29 @@ XmlRpc::XmlRpcValue RemoveAllWakePacketSources(
   return shill_wifi_client->RemoveAllWakePacketSources(interface_name);
 }
 
+XmlRpc::XmlRpcValue SyncTimeTo(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  double epoch_seconds(params_in[0]);
+  double seconds;
+  double microseconds = modf(epoch_seconds, &seconds) * 1000000;
+  struct timeval tv;
+  tv.tv_sec = seconds;
+  tv.tv_usec = microseconds;
+  return settimeofday(&tv, nullptr);
+}
+
+// Dummy method to be used for rpc methods not implemented yet.
+XmlRpc::XmlRpcValue NotImplementedRpcMethod(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  LOG(ERROR) << "RPC Method not implemented.";
+  return true;
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -436,6 +459,20 @@ void ProxyRpcServer::Run() {
                     base::Bind(&RemoveWakePacketSource));
   RegisterRpcMethod("remove_all_wake_packet_sources",
                     base::Bind(&RemoveAllWakePacketSources));
+  RegisterRpcMethod("sync_time_to",
+                    base::Bind(&SyncTimeTo));
+  RegisterRpcMethod("request_roam",
+                    base::Bind(&NotImplementedRpcMethod));
+  RegisterRpcMethod("enable_ui",
+                    base::Bind(&NotImplementedRpcMethod));
+  RegisterRpcMethod("do_suspend",
+                    base::Bind(&NotImplementedRpcMethod));
+  RegisterRpcMethod("do_suspend_bg",
+                    base::Bind(&NotImplementedRpcMethod));
+  RegisterRpcMethod("clear_supplicant_blacklist",
+                    base::Bind(&NotImplementedRpcMethod));
+  RegisterRpcMethod("ready",
+                    base::Bind(&NotImplementedRpcMethod));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
