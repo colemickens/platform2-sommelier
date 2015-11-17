@@ -33,4 +33,10 @@ void GetBrilloAnyValueFromXmlRpcValue(
     XmlRpc::XmlRpcValue* xml_rpc_value_in,
     brillo::Any* any_value_out);
 
+inline long GetMillisecondsFromSeconds(int time_seconds) {
+  return time_seconds * 1000;
+}
+inline double GetSecondsFromMilliseconds(long time_milliseconds) {
+  return static_cast<double>(time_milliseconds) / 1000;
+}
 #endif // PROXY_UTIL_H

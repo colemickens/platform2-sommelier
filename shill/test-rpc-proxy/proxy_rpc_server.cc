@@ -17,6 +17,7 @@
 #include <base/bind.h>
 
 #include "proxy_rpc_server.h"
+#include "proxy_util.h"
 
 namespace {
 // XmlRpc library verbosity level.
@@ -138,6 +139,32 @@ XmlRpc::XmlRpcValue Disconnect(
   return shill_wifi_client->Disconnect(ssid);
 }
 
+XmlRpc::XmlRpcValue WaitForServiceStates(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 3)) {
+    return false;
+  }
+  const std::string& ssid(params_in[0]);
+  XmlRpc::XmlRpcValue states_as_xmlrpcvalue(params_in[1]);
+  int timeout(params_in[2]);
+  int num_states = states_as_xmlrpcvalue.size();
+  std::vector<std::string> states;
+  for (int array_pos = 0; array_pos < num_states; array_pos++) {
+    states.emplace_back(std::string(states_as_xmlrpcvalue[array_pos]));
+  }
+  std::string final_state;
+  long wait_time;
+  bool is_success = shill_wifi_client->WaitForServiceStates(
+    ssid, states, GetMillisecondsFromSeconds(timeout),
+    &final_state, &wait_time);
+  XmlRpc::XmlRpcValue result;
+  result[0] = is_success;
+  result[1] = final_state;
+  result[2] = GetSecondsFromMilliseconds(wait_time);
+  return result;
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -194,6 +221,8 @@ void ProxyRpcServer::Run() {
   RegisterRpcMethod("list_controlled_wifi_interfaces",
                     base::Bind(&ListControlledWifiInterfaces));
   RegisterRpcMethod("disconnect", base::Bind(&Disconnect));
+  RegisterRpcMethod("wait_for_service_states",
+                    base::Bind(&WaitForServiceStates));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
