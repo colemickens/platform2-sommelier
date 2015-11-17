@@ -16,6 +16,7 @@
 
 #include "apmanager/dbus/dbus_control.h"
 
+#include "apmanager/dbus/config_dbus_adaptor.h"
 #include "apmanager/dbus/device_dbus_adaptor.h"
 #include "apmanager/dbus/shill_dbus_proxy.h"
 #include "apmanager/manager.h"
@@ -85,6 +86,13 @@ void DBusControl::OnObjectRegistrationCompleted(bool registration_success) {
 
   // D-Bus service is ready, now we can start the Manager.
   manager_->Start();
+}
+
+std::unique_ptr<ConfigAdaptorInterface> DBusControl::CreateConfigAdaptor(
+    Config* config, int service_identifier) {
+  return std::unique_ptr<ConfigAdaptorInterface>(
+      new ConfigDBusAdaptor(
+          bus_, object_manager_.get(), config, service_identifier));
 }
 
 std::unique_ptr<DeviceAdaptorInterface> DBusControl::CreateDeviceAdaptor(

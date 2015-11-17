@@ -35,6 +35,8 @@ class DBusControl : public ControlInterface {
   // Inheritted from ControlInterface.
   void Init() override;
   void Shutdown() override;
+  std::unique_ptr<ConfigAdaptorInterface> CreateConfigAdaptor(
+      Config* config, int service_identifier) override;
   std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
       Device* device) override;
   std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy(

@@ -54,6 +54,7 @@
       'sources': [
         'config.cc',
         'daemon.cc',
+        'dbus/config_dbus_adaptor.cc',
         'dbus/dbus_control.cc',
         'dbus/device_dbus_adaptor.cc',
         'dbus/permission_broker_dbus_proxy.cc',

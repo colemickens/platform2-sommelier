@@ -22,6 +22,11 @@ MockControl::MockControl() {}
 
 MockControl::~MockControl() {}
 
+std::unique_ptr<ConfigAdaptorInterface> MockControl::CreateConfigAdaptor(
+      Config* /* config */, int /* service_identifier */) {
+  return std::unique_ptr<ConfigAdaptorInterface>(CreateConfigAdaptorRaw());
+}
+
 std::unique_ptr<DeviceAdaptorInterface> MockControl::CreateDeviceAdaptor(
       Device* /* device */) {
   return std::unique_ptr<DeviceAdaptorInterface>(CreateDeviceAdaptorRaw());

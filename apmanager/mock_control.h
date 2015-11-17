@@ -36,12 +36,15 @@ class MockControl : public ControlInterface {
   // This allows us to set expectations for adaptor/proxy creation
   // functions, since mock methods only support copyable return values,
   // and unique_ptr is not copyable.
+  MOCK_METHOD0(CreateConfigAdaptorRaw, ConfigAdaptorInterface*());
   MOCK_METHOD0(CreateDeviceAdaptorRaw, DeviceAdaptorInterface*());
   MOCK_METHOD0(CreateFirewallProxyRaw, FirewallProxyInterface*());
   MOCK_METHOD0(CreateShillProxyRaw, ShillProxyInterface*());
 
   // These functions use the mock methods above for creating
   // raw object.
+  std::unique_ptr<ConfigAdaptorInterface> CreateConfigAdaptor(
+      Config* config, int service_identifier) override;
   std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
       Device* device) override;
   std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy(
