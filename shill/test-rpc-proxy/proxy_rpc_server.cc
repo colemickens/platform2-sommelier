@@ -232,6 +232,38 @@ XmlRpc::XmlRpcValue SetSchedScan(
   return shill_wifi_client->SetSchedScan(enable);
 }
 
+XmlRpc::XmlRpcValue GetDbusPropertyOnDevice(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  const std::string& property_name(params_in[1]);
+  brillo::Any property_value;
+  if (!shill_wifi_client->GetPropertyOnDevice(
+          interface_name, property_name, &property_value)) {
+    return false;
+  }
+  XmlRpc::XmlRpcValue result;
+  GetXmlRpcValueFromBrilloAnyValue(property_value, &result);
+  return result;
+}
+
+XmlRpc::XmlRpcValue SetDbusPropertyOnDevice(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 3)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  const std::string& property_name(params_in[1]);
+  brillo::Any property_value;
+  GetBrilloAnyValueFromXmlRpcValue(&params_in[2], &property_value);
+  return shill_wifi_client->SetPropertyOnDevice(
+      interface_name, property_name, property_value);
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -295,6 +327,10 @@ void ProxyRpcServer::Run() {
   RegisterRpcMethod("get_service_properties", base::Bind(&GetServiceProperties));
   RegisterRpcMethod("get_active_wifi_SSIDs", base::Bind(&GetActiveWifiSsids));
   RegisterRpcMethod("set_sched_scan", base::Bind(&SetSchedScan));
+  RegisterRpcMethod("get_dbus_property_on_device",
+                    base::Bind(&GetDbusPropertyOnDevice));
+  RegisterRpcMethod("set_dbus_property_on_device",
+                    base::Bind(&SetDbusPropertyOnDevice));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
