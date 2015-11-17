@@ -21,13 +21,24 @@
 namespace {
 // XmlRpc library verbosity level.
 static const int kDefaultXmlRpcVerbosity = 5;
+// Profile name to be used for all the tests.
+static const char kTestProfileName[] = "test";
+
+bool ValidateNumOfElements(const XmlRpc::XmlRpcValue& value, int expected_num) {
+  if (expected_num != 0) {
+    return (value.valid() && value.size() == expected_num);
+  } else {
+    // |value| will be marked invalid when there are no elements.
+    return !value.valid();
+  }
 }
+}// namespace
 
 /*************** RPC Method implementations **********/
 XmlRpc::XmlRpcValue CreateProfile(
     XmlRpc::XmlRpcValue params_in,
     ProxyShillWifiClient* shill_wifi_client) {
-  if (params_in.size() != 1) {
+  if (!ValidateNumOfElements(params_in, 1)) {
     return false;
   }
   const std::string& profile_name(params_in[0]);
@@ -37,7 +48,7 @@ XmlRpc::XmlRpcValue CreateProfile(
 XmlRpc::XmlRpcValue RemoveProfile(
     XmlRpc::XmlRpcValue params_in,
     ProxyShillWifiClient* shill_wifi_client) {
-  if (params_in.size() != 1) {
+  if (!ValidateNumOfElements(params_in, 1)) {
     return false;
   }
   const std::string& profile_name(params_in[0]);
@@ -47,7 +58,7 @@ XmlRpc::XmlRpcValue RemoveProfile(
 XmlRpc::XmlRpcValue PushProfile(
     XmlRpc::XmlRpcValue params_in,
     ProxyShillWifiClient* shill_wifi_client) {
-  if (params_in.size() != 1) {
+  if (!ValidateNumOfElements(params_in, 1)) {
     return false;
   }
   const std::string& profile_name(params_in[0]);
@@ -57,11 +68,46 @@ XmlRpc::XmlRpcValue PushProfile(
 XmlRpc::XmlRpcValue PopProfile(
     XmlRpc::XmlRpcValue params_in,
     ProxyShillWifiClient* shill_wifi_client) {
-  if (params_in.size() != 1) {
+  if (!ValidateNumOfElements(params_in, 1)) {
     return false;
   }
   const std::string& profile_name(params_in[0]);
   return shill_wifi_client->PopProfile(profile_name);
+}
+
+XmlRpc::XmlRpcValue CleanProfiles(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 0)) {
+    return false;
+  }
+  return shill_wifi_client->CleanProfiles();
+}
+
+XmlRpc::XmlRpcValue DeleteEntriesForSsid(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  const std::string& ssid(params_in[0]);
+  return shill_wifi_client->DeleteEntriesForSsid(ssid);
+}
+
+XmlRpc::XmlRpcValue InitTestNetworkState(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 0)) {
+    return false;
+  }
+  shill_wifi_client->CleanProfiles();
+  shill_wifi_client->RemoveAllWifiEntries();
+  shill_wifi_client->RemoveProfile(kTestProfileName);
+  bool is_success = shill_wifi_client->CreateProfile(kTestProfileName);
+  if (is_success) {
+    shill_wifi_client->PushProfile(kTestProfileName);
+  }
+  return is_success;
 }
 
 ProxyRpcServerMethod::ProxyRpcServerMethod(
@@ -114,6 +160,9 @@ void ProxyRpcServer::Run() {
   RegisterRpcMethod("remove_profile", base::Bind(&RemoveProfile));
   RegisterRpcMethod("push_profile", base::Bind(&PushProfile));
   RegisterRpcMethod("pop_profile", base::Bind(&PopProfile));
+  RegisterRpcMethod("clean_profiles", base::Bind(&CleanProfiles));
+  RegisterRpcMethod("delete_entries_for_ssid", base::Bind(&DeleteEntriesForSsid));
+  RegisterRpcMethod("init_test_network_state", base::Bind(&InitTestNetworkState));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
