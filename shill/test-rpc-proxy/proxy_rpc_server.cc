@@ -326,6 +326,39 @@ XmlRpc::XmlRpcValue QueryTdlsLink(
   }
   return status;
 }
+
+XmlRpc::XmlRpcValue AddWakePacketSource(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  const std::string& source_ip(params_in[1]);
+  return shill_wifi_client->AddWakePacketSource(interface_name, source_ip);
+}
+
+XmlRpc::XmlRpcValue RemoveWakePacketSource(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 2)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  const std::string& source_ip(params_in[1]);
+  return shill_wifi_client->RemoveWakePacketSource(interface_name, source_ip);
+}
+
+XmlRpc::XmlRpcValue RemoveAllWakePacketSources(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  const std::string& interface_name(params_in[0]);
+  return shill_wifi_client->RemoveAllWakePacketSources(interface_name);
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -398,6 +431,11 @@ void ProxyRpcServer::Run() {
   RegisterRpcMethod("discover_tdls_link", base::Bind(&DiscoverTdlsLink));
   RegisterRpcMethod("establish_tdls_link", base::Bind(&EstablishTdlsLink));
   RegisterRpcMethod("query_tdls_link", base::Bind(&QueryTdlsLink));
+  RegisterRpcMethod("add_wake_packet_source", base::Bind(&AddWakePacketSource));
+  RegisterRpcMethod("remove_wake_packet_source",
+                    base::Bind(&RemoveWakePacketSource));
+  RegisterRpcMethod("remove_all_wake_packet_sources",
+                    base::Bind(&RemoveAllWakePacketSources));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
