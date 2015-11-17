@@ -165,6 +165,29 @@ XmlRpc::XmlRpcValue WaitForServiceStates(
   return result;
 }
 
+XmlRpc::XmlRpcValue GetServiceOrder(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 0)) {
+    return false;
+  }
+  std::string order;
+  if (!shill_wifi_client->GetServiceOrder(&order)) {
+    return false;
+  }
+  return order;
+}
+
+XmlRpc::XmlRpcValue SetServiceOrder(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  const std::string& order(params_in[0]);
+  return shill_wifi_client->SetServiceOrder(order);
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -223,6 +246,8 @@ void ProxyRpcServer::Run() {
   RegisterRpcMethod("disconnect", base::Bind(&Disconnect));
   RegisterRpcMethod("wait_for_service_states",
                     base::Bind(&WaitForServiceStates));
+  RegisterRpcMethod("get_service_order", base::Bind(&GetServiceOrder));
+  RegisterRpcMethod("set_service_order", base::Bind(&SetServiceOrder));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
