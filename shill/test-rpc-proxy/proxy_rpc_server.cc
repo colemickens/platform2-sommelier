@@ -110,6 +110,34 @@ XmlRpc::XmlRpcValue InitTestNetworkState(
   return is_success;
 }
 
+XmlRpc::XmlRpcValue ListControlledWifiInterfaces(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 0)) {
+    return false;
+  }
+  std::vector<std::string> interfaces;
+  if (!shill_wifi_client->ListControlledWifiInterfaces(&interfaces)) {
+    return false;
+  }
+  XmlRpc::XmlRpcValue result;
+  int array_pos = 0;
+  for (const auto& interface : interfaces) {
+    result[array_pos++] = interface;
+  }
+  return result;
+}
+
+XmlRpc::XmlRpcValue Disconnect(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  const std::string& ssid = params_in[0];
+  return shill_wifi_client->Disconnect(ssid);
+}
+
 ProxyRpcServerMethod::ProxyRpcServerMethod(
     const std::string& method_name,
     const RpcServerMethodHandler& handler,
@@ -163,6 +191,9 @@ void ProxyRpcServer::Run() {
   RegisterRpcMethod("clean_profiles", base::Bind(&CleanProfiles));
   RegisterRpcMethod("delete_entries_for_ssid", base::Bind(&DeleteEntriesForSsid));
   RegisterRpcMethod("init_test_network_state", base::Bind(&InitTestNetworkState));
+  RegisterRpcMethod("list_controlled_wifi_interfaces",
+                    base::Bind(&ListControlledWifiInterfaces));
+  RegisterRpcMethod("disconnect", base::Bind(&Disconnect));
 
   XmlRpc::XmlRpcServer::work(-1.0);
 }
