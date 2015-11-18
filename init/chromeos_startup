@@ -56,7 +56,7 @@ mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
 # Initialize kernel sysctl settings early so that they take effect for boot
 # processes.
-sysctl -q -p /etc/sysctl.conf
+sysctl -q --system
 
 # CROS_DEBUG equals one if we've booted in developer mode or we've
 # booted a developer image.
