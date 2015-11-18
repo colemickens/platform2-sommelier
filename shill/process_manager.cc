@@ -215,6 +215,11 @@ bool ProcessManager::StopProcessAndBlock(pid_t pid) {
     watched_processes_.erase(pid);
   }
 
+  // We are no longer interested in tracking the exit of this process.
+  // Also, we will hopefully reap this process ourselves, so remove any
+  // record of this pid from process_reaper_.
+  process_reaper_.ForgetChild(pid);
+
   // Try SIGTERM firstly.
   // Send SIGKILL signal if SIGTERM was not handled in a timely manner.
   if (KillProcessWithTimeout(pid, false) ||
