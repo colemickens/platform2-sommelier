@@ -44,6 +44,13 @@ class BRILLO_EXPORT ProcessReaper final {
                      pid_t pid,
                      const ChildCallback& callback);
 
+  // Stop watching child process |pid|.  This is useful in situations
+  // where the child process may have been reaped outside of the signal
+  // handler, or the caller is no longer interested in being notified about
+  // this child process anymore.  Returns true if a child was removed from
+  // the watchlist.
+  bool ForgetChild(pid_t pid);
+
  private:
   // SIGCHLD handler for the AsynchronousSignalHandler. Always returns false
   // (meaning that the signal handler should not be unregistered).

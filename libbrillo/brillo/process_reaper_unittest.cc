@@ -118,4 +118,24 @@ TEST_F(ProcessReaperTest, ReapKilledChild) {
   brillo_loop_.Run();
 }
 
+TEST_F(ProcessReaperTest, ReapKilledAndForgottenChild) {
+  pid_t pid = ForkChildAndExit(0);
+  EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::Bind(
+      [this](const siginfo_t& info) {
+        ADD_FAILURE() << "Child process was still tracked.";
+        this->brillo_loop_.BreakLoop();
+      })));
+  EXPECT_TRUE(process_reaper_.ForgetChild(pid));
+
+  // A second call should return failure.
+  EXPECT_FALSE(process_reaper_.ForgetChild(pid));
+
+  // Run the loop with a timeout, as the BreakLoop() above is not expected.
+  brillo_loop_.PostDelayedTask(FROM_HERE,
+                               base::Bind(&MessageLoop::BreakLoop,
+                                          base::Unretained(&brillo_loop_)),
+                               base::TimeDelta::FromMilliseconds(100));
+  brillo_loop_.Run();
+}
+
 }  // namespace brillo
