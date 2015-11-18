@@ -183,9 +183,14 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
   flags |= MHD_USE_TCP_FASTOPEN;  // Use TCP Fast Open (see RFC 7413).
   flags |= MHD_USE_SUSPEND_RESUME;  // Allow suspending/resuming connections.
 
+  // MHD uses timeout of 0 to mean there is no timeout.
+  int timeout = server_interface_->GetConfig().default_request_timeout_seconds;
+  if (timeout < 0)
+    timeout = 0;
+
   std::vector<MHD_OptionItem> options{
     {MHD_OPTION_CONNECTION_LIMIT, 10, nullptr},
-    {MHD_OPTION_CONNECTION_TIMEOUT, 60, nullptr},
+    {MHD_OPTION_CONNECTION_TIMEOUT, timeout, nullptr},
     {MHD_OPTION_NOTIFY_COMPLETED, callback_addr, nullptr},
   };
 

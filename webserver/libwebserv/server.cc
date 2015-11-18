@@ -234,4 +234,11 @@ void Server::OnProtocolHandlerDisconnected(
   on_protocol_handler_disconnected_ = callback;
 }
 
+base::TimeDelta Server::GetDefaultRequestTimeout() const {
+  int timeout_seconds = proxy_ ? proxy_->default_request_timeout() : -1;
+  if (timeout_seconds <= 0)
+    return base::TimeDelta::Max();
+  return base::TimeDelta::FromSeconds(timeout_seconds);
+}
+
 }  // namespace libwebserv

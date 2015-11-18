@@ -98,6 +98,12 @@ class LIBWEBSERV_EXPORT Server final {
   void OnProtocolHandlerDisconnected(
       const base::Callback<void(ProtocolHandler*)>& callback);
 
+  // Returns the default request timeout used to process incoming requests.
+  // The reply to an incoming request should be sent within this timeout or
+  // else the web server will automatically abort the connection. If the timeout
+  // is not set, the returned value will be base::TimeDelta::Max().
+  base::TimeDelta GetDefaultRequestTimeout() const;
+
  private:
   friend class ProtocolHandler;
   class RequestHandler;

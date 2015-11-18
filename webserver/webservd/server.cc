@@ -84,7 +84,10 @@ Server::Server(ExportedObjectManager* object_manager, const Config& config,
       default_encryptor_{Encryptor::CreateDefaultEncryptor()},
       encryptor_{default_encryptor_.get()},
       config_{config},
-      firewall_{std::move(firewall)} {}
+      firewall_{std::move(firewall)} {
+  dbus_adaptor_.SetDefaultRequestTimeout(
+      config_.default_request_timeout_seconds);
+}
 
 Server::~Server() {}
 

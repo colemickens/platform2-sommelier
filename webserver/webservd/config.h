@@ -74,6 +74,9 @@ struct Config final {
   // general logging messages from the webserver, which still go to the standard
   // system log.
   std::string log_directory{kDefaultLogDirectory};
+
+  // Default request timeout (in seconds).
+  int default_request_timeout_seconds{60};
 };
 
 // Initializes the config with default preset settings (two handlers, one for

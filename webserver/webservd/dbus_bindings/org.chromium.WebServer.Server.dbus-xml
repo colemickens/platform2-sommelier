@@ -8,5 +8,10 @@
       <arg name="message" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <property name="DefaultRequestTimeout" type="i" access="read">
+      <tp:docstring>
+        Default timeout (in seconds) for request.
+      </tp:docstring>
+    </property>
   </interface>
 </node>
