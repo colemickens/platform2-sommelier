@@ -9,16 +9,14 @@
 #if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
 #else
-#include "dbus/apmanager/dbus-constants.h"
+#include <dbus/apmanager/dbus-constants.h>
 #endif  // __ANDROID__
 
+#include "apmanager/error.h"
 #include "apmanager/daemon.h"
 #include "apmanager/device.h"
 #include "apmanager/manager.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
-using brillo::ErrorPtr;
 using std::string;
 
 namespace apmanager {
@@ -79,11 +77,11 @@ const int Config::kSsidMaxLength = 32;
 const int Config::kPassphraseMinLength = 8;
 const int Config::kPassphraseMaxLength = 63;
 
-Config::Config(Manager* manager, const string& service_path)
-    : org::chromium::apmanager::ConfigAdaptor(this),
-      manager_(manager),
-      dbus_path_(dbus::ObjectPath(
-          base::StringPrintf("%s/config", service_path.c_str()))) {
+Config::Config(Manager* manager, int service_identifier)
+    : manager_(manager),
+      adaptor_(
+          manager->control_interface()->CreateConfigAdaptor(
+              this, service_identifier)) {
   // Initialize default configuration values.
   SetSecurityMode(kSecurityModeNone);
   SetHwMode(kHwMode80211g);
@@ -110,93 +108,93 @@ bool Config::GetFrequencyFromChannel(uint16_t channel, uint32_t* freq) {
   return ret_value;
 }
 
-bool Config::ValidateSsid(ErrorPtr* error, const string& value) {
+bool Config::ValidateSsid(Error* error, const string& value) {
   if (value.length() < kSsidMinLength || value.length() > kSsidMaxLength) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-        "SSID must contain between %d and %d characters",
-        kSsidMinLength, kSsidMaxLength);
+    Error::PopulateAndLog(
+        error,
+        Error::kInvalidArguments,
+        base::StringPrintf("SSID must contain between %d and %d characters",
+                           kSsidMinLength, kSsidMaxLength),
+        FROM_HERE);
     return false;
   }
   return true;
 }
 
-bool Config::ValidateSecurityMode(ErrorPtr* error, const string& value) {
+bool Config::ValidateSecurityMode(Error* error, const string& value) {
   if (value != kSecurityModeNone && value != kSecurityModeRSN) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-        "Invalid/unsupported security mode [%s]", value.c_str());
+    Error::PopulateAndLog(
+        error,
+        Error::kInvalidArguments,
+        base::StringPrintf("Invalid/unsupported security mode [%s]",
+                           value.c_str()),
+        FROM_HERE);
     return false;
   }
   return true;
 }
 
-bool Config::ValidatePassphrase(ErrorPtr* error, const string& value) {
+bool Config::ValidatePassphrase(Error* error, const string& value) {
   if (value.length() < kPassphraseMinLength ||
       value.length() > kPassphraseMaxLength) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-        "Passphrase must contain between %d and %d characters",
-        kPassphraseMinLength, kPassphraseMaxLength);
+    Error::PopulateAndLog(
+        error,
+        Error::kInvalidArguments,
+        base::StringPrintf("Passphrase must contain between %d and %d characters",
+                           kPassphraseMinLength, kPassphraseMaxLength),
+        FROM_HERE);
+
     return false;
   }
   return true;
 }
 
-bool Config::ValidateHwMode(ErrorPtr* error, const string& value) {
+bool Config::ValidateHwMode(Error* error, const string& value) {
   if (value != kHwMode80211a && value != kHwMode80211b &&
       value != kHwMode80211g && value != kHwMode80211n &&
       value != kHwMode80211ac) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-        "Invalid HW mode [%s]", value.c_str());
+    Error::PopulateAndLog(
+        error,
+        Error::kInvalidArguments,
+        base::StringPrintf("Invalid HW mode [%s]", value.c_str()),
+        FROM_HERE);
     return false;
   }
   return true;
 }
 
-bool Config::ValidateOperationMode(ErrorPtr* error, const string& value) {
+bool Config::ValidateOperationMode(Error* error, const string& value) {
   if (value != kOperationModeServer && value != kOperationModeBridge) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-        "Invalid operation mode [%s]", value.c_str());
+    Error::PopulateAndLog(
+        error,
+        Error::kInvalidArguments,
+        base::StringPrintf("Invalid operation mode [%s]", value.c_str()),
+        FROM_HERE);
     return false;
   }
   return true;
 }
 
-bool Config::ValidateChannel(ErrorPtr* error, const uint16_t& value) {
+bool Config::ValidateChannel(Error* error, const uint16_t& value) {
   if ((value >= kBand24GHzChannelLow && value <= kBand24GHzChannelHigh) ||
       (value >= kBand5GHzChannelLow && value <= kBand5GHzChannelHigh)) {
     return true;
   }
-  brillo::Error::AddToPrintf(
-      error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-      "Invalid channel [%d]", value);
+  Error::PopulateAndLog(error,
+                        Error::kInvalidArguments,
+                        base::StringPrintf("Invalid channel [%d]", value),
+                        FROM_HERE);
   return false;
 }
 
-void Config::RegisterAsync(ExportedObjectManager* object_manager,
-                           const scoped_refptr<dbus::Bus>& bus,
-                           AsyncEventSequencer* sequencer) {
-  CHECK(!dbus_object_) << "Already registered";
-  dbus_object_.reset(
-      new brillo::dbus_utils::DBusObject(
-          object_manager,
-          bus,
-          dbus_path_));
-  RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(
-      sequencer->GetHandler("Config.RegisterAsync() failed.", true));
-}
-
-bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
+bool Config::GenerateConfigFile(Error* error, string* config_str) {
   // SSID.
   string ssid = GetSsid();
   if (ssid.empty()) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-        "SSID not specified");
+    Error::PopulateAndLog(error,
+                          Error::kInvalidConfiguration,
+                          "SSID not specified",
+                          FROM_HERE);
     return false;
   }
   base::StringAppendF(
@@ -205,9 +203,11 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   // Bridge interface is required for bridge mode operation.
   if (GetOperationMode() == kOperationModeBridge) {
     if (GetBridgeInterface().empty()) {
-      brillo::Error::AddTo(
-          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-          "Bridge interface not specified, required for bridge mode");
+      Error::PopulateAndLog(
+          error,
+          Error::kInvalidConfiguration,
+          "Bridge interface not specified, required for bridge mode",
+          FROM_HERE);
       return false;
     }
     base::StringAppendF(config_str,
@@ -271,7 +271,95 @@ bool Config::ReleaseDevice() {
   return device_->ReleaseDevice();
 }
 
-bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
+void Config::SetSsid(const string& ssid) {
+  adaptor_->SetSsid(ssid);
+}
+
+string Config::GetSsid() const {
+  return adaptor_->GetSsid();
+}
+
+void Config::SetInterfaceName(const std::string& interface_name) {
+  adaptor_->SetInterfaceName(interface_name);
+}
+
+string Config::GetInterfaceName() const {
+  return adaptor_->GetInterfaceName();
+}
+
+void Config::SetSecurityMode(const std::string& mode) {
+  adaptor_->SetSecurityMode(mode);
+}
+
+string Config::GetSecurityMode() const {
+  return adaptor_->GetSecurityMode();
+}
+
+void Config::SetPassphrase(const std::string& passphrase) {
+  adaptor_->SetPassphrase(passphrase);
+}
+
+string Config::GetPassphrase() const {
+  return adaptor_->GetPassphrase();
+}
+
+void Config::SetHwMode(const std::string& hw_mode) {
+  adaptor_->SetHwMode(hw_mode);
+}
+
+string Config::GetHwMode() const {
+  return adaptor_->GetHwMode();
+}
+
+void Config::SetOperationMode(const std::string& op_mode) {
+  adaptor_->SetOperationMode(op_mode);
+}
+
+string Config::GetOperationMode() const {
+  return adaptor_->GetOperationMode();
+}
+
+void Config::SetChannel(uint16_t channel) {
+  adaptor_->SetChannel(channel);
+}
+
+uint16_t Config::GetChannel() const {
+  return adaptor_->GetChannel();
+}
+
+void Config::SetHiddenNetwork(bool hidden_network) {
+  adaptor_->SetHiddenNetwork(hidden_network);
+}
+
+bool Config::GetHiddenNetwork() const {
+  return adaptor_->GetHiddenNetwork();
+}
+
+void Config::SetBridgeInterface(const std::string& interface_name) {
+  adaptor_->SetBridgeInterface(interface_name);
+}
+
+string Config::GetBridgeInterface() const {
+  return adaptor_->GetBridgeInterface();
+}
+
+void Config::SetServerAddressIndex(uint16_t index) {
+  adaptor_->SetServerAddressIndex(index);
+}
+
+uint16_t Config::GetServerAddressIndex() const {
+  return adaptor_->GetServerAddressIndex();
+}
+
+void Config::SetFullDeviceControl(bool full_control) {
+  adaptor_->SetFullDeviceControl(full_control);
+}
+
+bool Config::GetFullDeviceControl() const {
+  return adaptor_->GetFullDeviceControl();
+}
+
+bool Config::AppendHwMode(Error* error, string* config_str) {
   string hw_mode = GetHwMode();
   string hostapd_hw_mode;
   if (hw_mode == kHwMode80211a) {
@@ -292,9 +380,10 @@ bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
     // Get HT Capability.
     string ht_cap;
     if (!device_->GetHTCapability(GetChannel(), &ht_cap)) {
-      brillo::Error::AddTo(
-          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-          "Failed to get HT Capability");
+      Error::PopulateAndLog(error,
+                            Error::kInvalidConfiguration,
+                            "Failed to get HT Capability",
+                            FROM_HERE);
       return false;
     }
     base::StringAppendF(config_str, "%s=%s\n",
@@ -311,9 +400,11 @@ bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
     // TODO(zqiu): Determine VHT Capabilities based on the interface PHY's
     // capababilites.
   } else {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-        "Invalid hardware mode: %s", hw_mode.c_str());
+    Error::PopulateAndLog(
+        error,
+        Error::kInvalidConfiguration,
+        base::StringPrintf("Invalid hardware mode: %s", hw_mode.c_str()),
+        FROM_HERE);
     return false;
   }
 
@@ -322,8 +413,7 @@ bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
   return true;
 }
 
-bool Config::AppendHostapdDefaults(ErrorPtr* error,
-                                   std::string* config_str) {
+bool Config::AppendHostapdDefaults(Error* error, string* config_str) {
   // Driver: NL80211.
   base::StringAppendF(
       config_str, "%s=%s\n", kHostapdConfigKeyDriver, kHostapdDefaultDriver);
@@ -343,33 +433,36 @@ bool Config::AppendHostapdDefaults(ErrorPtr* error,
   return true;
 }
 
-bool Config::AppendInterface(ErrorPtr* error,
-                             std::string* config_str) {
+bool Config::AppendInterface(Error* error, string* config_str) {
   string interface = GetInterfaceName();
   if (interface.empty()) {
     // Ask manager for unused ap capable device.
     device_ = manager_->GetAvailableDevice();
     if (!device_) {
-      brillo::Error::AddTo(
-          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-          "No device available");
+      Error::PopulateAndLog(
+          error, Error::kInternalError, "No device available", FROM_HERE);
       return false;
     }
   } else {
     device_ = manager_->GetDeviceFromInterfaceName(interface);
     if (!device_) {
-      brillo::Error::AddToPrintf(
-          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-          "Unable to find device for the specified interface [%s]",
-          interface.c_str());
+      Error::PopulateAndLog(
+          error,
+          Error::kInvalidConfiguration,
+          base::StringPrintf(
+              "Unable to find device for the specified interface [%s]",
+              interface.c_str()),
+          FROM_HERE);
       return false;
     }
     if (device_->GetInUse()) {
-      brillo::Error::AddToPrintf(
-          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-          "Device [%s] for interface [%s] already in use",
-          device_->GetDeviceName().c_str(),
-          interface.c_str());
+      Error::PopulateAndLog(
+          error,
+          Error::kInvalidConfiguration,
+          base::StringPrintf("Device [%s] for interface [%s] already in use",
+                             device_->GetDeviceName().c_str(),
+                             interface.c_str()),
+          FROM_HERE);
       return false;
     }
   }
@@ -383,8 +476,7 @@ bool Config::AppendInterface(ErrorPtr* error,
   return true;
 }
 
-bool Config::AppendSecurityMode(ErrorPtr* error,
-                                std::string* config_str) {
+bool Config::AppendSecurityMode(Error* error, string* config_str) {
   string security_mode = GetSecurityMode();
   if (security_mode == kSecurityModeNone) {
     // Nothing need to be done for open network.
@@ -394,9 +486,12 @@ bool Config::AppendSecurityMode(ErrorPtr* error,
   if (security_mode == kSecurityModeRSN) {
     string passphrase = GetPassphrase();
     if (passphrase.empty()) {
-      brillo::Error::AddToPrintf(
-          error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-          "Passphrase not set for security mode: %s", security_mode.c_str());
+      Error::PopulateAndLog(
+          error,
+          Error::kInvalidConfiguration,
+          base::StringPrintf("Passphrase not set for security mode: %s",
+                             security_mode.c_str()),
+          FROM_HERE);
       return false;
     }
 
@@ -416,9 +511,11 @@ bool Config::AppendSecurityMode(ErrorPtr* error,
     return true;
   }
 
-  brillo::Error::AddToPrintf(
-      error, FROM_HERE, brillo::errors::dbus::kDomain, kConfigError,
-      "Invalid security mode: %s", security_mode.c_str());
+  Error::PopulateAndLog(
+      error,
+      Error::kInvalidConfiguration,
+      base::StringPrintf("Invalid security mode: %s", security_mode.c_str()),
+      FROM_HERE);
   return false;
 }
 

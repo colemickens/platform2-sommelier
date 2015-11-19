@@ -17,6 +17,8 @@
 #include "dbus/apmanager/dbus-constants.h"
 #endif
 
+#include "apmanager/error.h"
+#include "apmanager/fake_config_adaptor.h"
 #include "apmanager/fake_device_adaptor.h"
 #include "apmanager/mock_control.h"
 #include "apmanager/mock_device.h"
@@ -31,7 +33,6 @@ namespace apmanager {
 
 namespace {
 
-const char kServicePath[] = "/manager/services/0";
 const char kSsid[] = "TestSsid";
 const char kInterface[] = "uap0";
 const char kBridgeInterface[] = "br0";
@@ -115,10 +116,14 @@ const char kExpectedRsnConfigContent[] = "ssid=TestSsid\n"
 class ConfigTest : public testing::Test {
  public:
   ConfigTest()
-      : manager_(&control_interface_),
-        config_(&manager_, kServicePath) {
+      : manager_(&control_interface_) {
     ON_CALL(control_interface_, CreateDeviceAdaptorRaw())
         .WillByDefault(ReturnNew<FakeDeviceAdaptor>());
+    ON_CALL(control_interface_, CreateConfigAdaptorRaw())
+        .WillByDefault(ReturnNew<FakeConfigAdaptor>());
+    // Defer creation of Config object to allow ControlInterface to setup
+    // expectations for generating fake adaptors.
+    config_.reset(new Config(&manager_, 0));
   }
 
   void SetupDevice(const std::string& interface) {
@@ -129,19 +134,20 @@ class ConfigTest : public testing::Test {
         .WillRepeatedly(Return(device_));
   }
 
+  void VerifyError(const Error& error,
+                   Error::Type expected_type,
+                   const std::string& expected_message_start) {
+    EXPECT_EQ(expected_type, error.type());
+    EXPECT_TRUE(
+        base::StartsWithASCII(error.message(), expected_message_start, false));
+  }
+
  protected:
   MockControl control_interface_;
   MockManager manager_;
   scoped_refptr<MockDevice> device_;
-  Config config_;
+  std::unique_ptr<Config> config_;
 };
-
-MATCHER_P(IsConfigErrorStartingWith, message, "") {
-  return arg != nullptr &&
-         arg->GetDomain() == brillo::errors::dbus::kDomain &&
-         arg->GetCode() == kConfigError &&
-         base::StartsWithASCII(arg->GetMessage(), message, false);
-}
 
 TEST_F(ConfigTest, GetFrequencyFromChannel) {
   uint32_t frequency;
@@ -167,256 +173,258 @@ TEST_F(ConfigTest, GetFrequencyFromChannel) {
 }
 
 TEST_F(ConfigTest, ValidateSsid) {
-  brillo::ErrorPtr error;
+  Error error;
   // SSID must contain between 1 and 32 characters.
-  EXPECT_TRUE(config_.ValidateSsid(&error, "s"));
-  EXPECT_TRUE(config_.ValidateSsid(&error, std::string(32, 'c')));
-  EXPECT_FALSE(config_.ValidateSsid(&error, ""));
-  EXPECT_FALSE(config_.ValidateSsid(&error, std::string(33, 'c')));
+  EXPECT_TRUE(config_->ValidateSsid(&error, "s"));
+  EXPECT_TRUE(config_->ValidateSsid(&error, std::string(32, 'c')));
+  EXPECT_FALSE(config_->ValidateSsid(&error, ""));
+  EXPECT_FALSE(config_->ValidateSsid(&error, std::string(33, 'c')));
 }
 
 TEST_F(ConfigTest, ValidateSecurityMode) {
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(config_.ValidateSecurityMode(&error, kSecurityModeNone));
-  EXPECT_TRUE(config_.ValidateSecurityMode(&error, kSecurityModeRSN));
-  EXPECT_FALSE(config_.ValidateSecurityMode(&error, "InvalidSecurityMode"));
+  Error error;
+  EXPECT_TRUE(config_->ValidateSecurityMode(&error, kSecurityModeNone));
+  EXPECT_TRUE(config_->ValidateSecurityMode(&error, kSecurityModeRSN));
+  EXPECT_FALSE(config_->ValidateSecurityMode(&error, "InvalidSecurityMode"));
 }
 
 TEST_F(ConfigTest, ValidatePassphrase) {
-  brillo::ErrorPtr error;
+  Error error;
   // Passpharse must contain between 8 and 63 characters.
-  EXPECT_TRUE(config_.ValidatePassphrase(&error, std::string(8, 'c')));
-  EXPECT_TRUE(config_.ValidatePassphrase(&error, std::string(63, 'c')));
-  EXPECT_FALSE(config_.ValidatePassphrase(&error, std::string(7, 'c')));
-  EXPECT_FALSE(config_.ValidatePassphrase(&error, std::string(64, 'c')));
+  EXPECT_TRUE(config_->ValidatePassphrase(&error, std::string(8, 'c')));
+  EXPECT_TRUE(config_->ValidatePassphrase(&error, std::string(63, 'c')));
+  EXPECT_FALSE(config_->ValidatePassphrase(&error, std::string(7, 'c')));
+  EXPECT_FALSE(config_->ValidatePassphrase(&error, std::string(64, 'c')));
 }
 
 TEST_F(ConfigTest, ValidateHwMode) {
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211a));
-  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211b));
-  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211g));
-  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211n));
-  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211ac));
-  EXPECT_FALSE(config_.ValidateSecurityMode(&error, "InvalidHwMode"));
+  Error error;
+  EXPECT_TRUE(config_->ValidateHwMode(&error, kHwMode80211a));
+  EXPECT_TRUE(config_->ValidateHwMode(&error, kHwMode80211b));
+  EXPECT_TRUE(config_->ValidateHwMode(&error, kHwMode80211g));
+  EXPECT_TRUE(config_->ValidateHwMode(&error, kHwMode80211n));
+  EXPECT_TRUE(config_->ValidateHwMode(&error, kHwMode80211ac));
+  EXPECT_FALSE(config_->ValidateSecurityMode(&error, "InvalidHwMode"));
 }
 
 TEST_F(ConfigTest, ValidateOperationMode) {
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(config_.ValidateOperationMode(&error, kOperationModeServer));
-  EXPECT_TRUE(config_.ValidateOperationMode(&error, kOperationModeBridge));
-  EXPECT_FALSE(config_.ValidateOperationMode(&error, "InvalidMode"));
+  Error error;
+  EXPECT_TRUE(config_->ValidateOperationMode(&error, kOperationModeServer));
+  EXPECT_TRUE(config_->ValidateOperationMode(&error, kOperationModeBridge));
+  EXPECT_FALSE(config_->ValidateOperationMode(&error, "InvalidMode"));
 }
 
 TEST_F(ConfigTest, ValidateChannel) {
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(config_.ValidateChannel(&error, 1));
-  EXPECT_TRUE(config_.ValidateChannel(&error, 13));
-  EXPECT_TRUE(config_.ValidateChannel(&error, 34));
-  EXPECT_TRUE(config_.ValidateChannel(&error, 165));
-  EXPECT_FALSE(config_.ValidateChannel(&error, 0));
-  EXPECT_FALSE(config_.ValidateChannel(&error, 14));
-  EXPECT_FALSE(config_.ValidateChannel(&error, 33));
-  EXPECT_FALSE(config_.ValidateChannel(&error, 166));
+  Error error;
+  EXPECT_TRUE(config_->ValidateChannel(&error, 1));
+  EXPECT_TRUE(config_->ValidateChannel(&error, 13));
+  EXPECT_TRUE(config_->ValidateChannel(&error, 34));
+  EXPECT_TRUE(config_->ValidateChannel(&error, 165));
+  EXPECT_FALSE(config_->ValidateChannel(&error, 0));
+  EXPECT_FALSE(config_->ValidateChannel(&error, 14));
+  EXPECT_FALSE(config_->ValidateChannel(&error, 33));
+  EXPECT_FALSE(config_->ValidateChannel(&error, 166));
 }
 
 TEST_F(ConfigTest, NoSsid) {
-  config_.SetChannel(k24GHzChannel);
-  config_.SetHwMode(kHwMode80211g);
-  config_.SetInterfaceName(kInterface);
+  config_->SetChannel(k24GHzChannel);
+  config_->SetHwMode(kHwMode80211g);
+  config_->SetInterfaceName(kInterface);
 
   std::string config_content;
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
-  EXPECT_THAT(error, IsConfigErrorStartingWith("SSID not specified"));
+  Error error;
+  EXPECT_FALSE(config_->GenerateConfigFile(&error, &config_content));
+  VerifyError(error, Error::kInvalidConfiguration, "SSID not specified");
 }
 
 TEST_F(ConfigTest, NoInterface) {
   // Basic 80211.g configuration.
-  config_.SetSsid(kSsid);
-  config_.SetChannel(k24GHzChannel);
-  config_.SetHwMode(kHwMode80211g);
+  config_->SetSsid(kSsid);
+  config_->SetChannel(k24GHzChannel);
+  config_->SetHwMode(kHwMode80211g);
 
   // No device available, fail to generate config file.
-  brillo::ErrorPtr error;
+  Error error;
   std::string config_content;
   EXPECT_CALL(manager_, GetAvailableDevice()).WillOnce(Return(nullptr));
-  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
-  EXPECT_THAT(error, IsConfigErrorStartingWith("No device available"));
+  EXPECT_FALSE(config_->GenerateConfigFile(&error, &config_content));
+  VerifyError(error, Error::kInternalError, "No device available");
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Device available, config file should be generated without any problem.
   scoped_refptr<MockDevice> device = new MockDevice(&manager_);
   device->SetPreferredApInterface(kInterface);
-  brillo::ErrorPtr error1;
+  error.Reset();
   EXPECT_CALL(manager_, GetAvailableDevice()).WillOnce(Return(device));
-  EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content));
+  EXPECT_TRUE(config_->GenerateConfigFile(&error, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(
                                    kExpected80211gConfigContent))
       << "Expected to find the following config...\n"
       << kExpected80211gConfigContent << "..within content...\n"
       << config_content;
-  EXPECT_EQ(nullptr, error1.get());
+  EXPECT_TRUE(error.IsSuccess());
   Mock::VerifyAndClearExpectations(&manager_);
 }
 
 TEST_F(ConfigTest, InvalidInterface) {
   // Basic 80211.g configuration.
-  config_.SetSsid(kSsid);
-  config_.SetChannel(k24GHzChannel);
-  config_.SetHwMode(kHwMode80211g);
-  config_.SetInterfaceName(kInterface);
+  config_->SetSsid(kSsid);
+  config_->SetChannel(k24GHzChannel);
+  config_->SetHwMode(kHwMode80211g);
+  config_->SetInterfaceName(kInterface);
 
-  // No device available, fail to generate config file.
-  brillo::ErrorPtr error;
+  // Unable to find the device, fail to generate config file.
+  Error error;
   std::string config_content;
   EXPECT_CALL(manager_, GetDeviceFromInterfaceName(kInterface))
       .WillOnce(Return(nullptr));
-  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
-  EXPECT_THAT(error,
-              IsConfigErrorStartingWith(
-                  "Unable to find device for the specified interface"));
+  EXPECT_FALSE(config_->GenerateConfigFile(&error, &config_content));
+  VerifyError(error,
+              Error::kInvalidConfiguration,
+              "Unable to find device for the specified interface");
   Mock::VerifyAndClearExpectations(&manager_);
 }
 
 TEST_F(ConfigTest, BridgeMode) {
-  config_.SetSsid(kSsid);
-  config_.SetChannel(k24GHzChannel);
-  config_.SetHwMode(kHwMode80211g);
-  config_.SetInterfaceName(kInterface);
-  config_.SetOperationMode(kOperationModeBridge);
+  config_->SetSsid(kSsid);
+  config_->SetChannel(k24GHzChannel);
+  config_->SetHwMode(kHwMode80211g);
+  config_->SetInterfaceName(kInterface);
+  config_->SetOperationMode(kOperationModeBridge);
 
   // Bridge interface required for bridge mode.
-  brillo::ErrorPtr error;
+  Error error;
   std::string config_content;
-  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
-  EXPECT_THAT(error,
-              IsConfigErrorStartingWith("Bridge interface not specified"));
+  EXPECT_FALSE(config_->GenerateConfigFile(&error, &config_content));
+  VerifyError(
+      error, Error::kInvalidConfiguration, "Bridge interface not specified");
 
   // Set bridge interface, config file should be generated without error.
-  config_.SetBridgeInterface(kBridgeInterface);
+  config_->SetBridgeInterface(kBridgeInterface);
   // Setup mock device.
   SetupDevice(kInterface);
-  brillo::ErrorPtr error1;
+  error.Reset();
   std::string config_content1;
-  EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content1));
+  EXPECT_TRUE(config_->GenerateConfigFile(&error, &config_content1));
   EXPECT_NE(std::string::npos, config_content1.find(
                                    kExpected80211gBridgeConfigContent))
       << "Expected to find the following config...\n"
       << kExpected80211gBridgeConfigContent << "..within content...\n"
       << config_content1;
-  EXPECT_EQ(nullptr, error1.get());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ConfigTest, 80211gConfig) {
-  config_.SetSsid(kSsid);
-  config_.SetChannel(k24GHzChannel);
-  config_.SetHwMode(kHwMode80211g);
-  config_.SetInterfaceName(kInterface);
+  config_->SetSsid(kSsid);
+  config_->SetChannel(k24GHzChannel);
+  config_->SetHwMode(kHwMode80211g);
+  config_->SetInterfaceName(kInterface);
 
   // Setup mock device.
   SetupDevice(kInterface);
 
   std::string config_content;
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(config_.GenerateConfigFile(&error, &config_content));
+  Error error;
+  EXPECT_TRUE(config_->GenerateConfigFile(&error, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(
                                    kExpected80211gConfigContent))
       << "Expected to find the following config...\n"
       << kExpected80211gConfigContent << "..within content...\n"
       << config_content;
-  EXPECT_EQ(nullptr, error.get());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ConfigTest, 80211gConfigWithControlInterface) {
-  config_.SetSsid(kSsid);
-  config_.SetChannel(k24GHzChannel);
-  config_.SetHwMode(kHwMode80211g);
-  config_.SetInterfaceName(kInterface);
-  config_.set_control_interface(kControlInterfacePath);
+  config_->SetSsid(kSsid);
+  config_->SetChannel(k24GHzChannel);
+  config_->SetHwMode(kHwMode80211g);
+  config_->SetInterfaceName(kInterface);
+  config_->set_control_interface(kControlInterfacePath);
 
   // Setup mock device.
   SetupDevice(kInterface);
 
   std::string config_content;
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(config_.GenerateConfigFile(&error, &config_content));
+  Error error;
+  EXPECT_TRUE(config_->GenerateConfigFile(&error, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(
                                    kExpected80211gCtrlIfaceConfigContent))
       << "Expected to find the following config...\n"
       << kExpected80211gCtrlIfaceConfigContent << "..within content...\n"
       << config_content;
-  EXPECT_EQ(nullptr, error.get());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ConfigTest, 80211nConfig) {
-  config_.SetSsid(kSsid);
-  config_.SetHwMode(kHwMode80211n);
-  config_.SetInterfaceName(kInterface);
+  config_->SetSsid(kSsid);
+  config_->SetHwMode(kHwMode80211n);
+  config_->SetInterfaceName(kInterface);
 
   // Setup mock device.
   SetupDevice(kInterface);
 
   // 5GHz channel.
-  config_.SetChannel(k5GHzChannel);
+  config_->SetChannel(k5GHzChannel);
   std::string ghz5_config_content;
-  brillo::ErrorPtr error;
+  Error error;
   std::string ht_capab_5ghz(k5GHzHTCapab);
   EXPECT_CALL(*device_.get(), GetHTCapability(k5GHzChannel, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(ht_capab_5ghz), Return(true)));
-  EXPECT_TRUE(config_.GenerateConfigFile(&error, &ghz5_config_content));
+  EXPECT_TRUE(config_->GenerateConfigFile(&error, &ghz5_config_content));
   EXPECT_NE(std::string::npos, ghz5_config_content.find(
                                    kExpected80211n5GHzConfigContent))
       << "Expected to find the following config...\n"
       << kExpected80211n5GHzConfigContent << "..within content...\n"
       << ghz5_config_content;
-  EXPECT_EQ(nullptr, error.get());
+  EXPECT_TRUE(error.IsSuccess());
   Mock::VerifyAndClearExpectations(device_.get());
 
   // 2.4GHz channel.
-  config_.SetChannel(k24GHzChannel);
+  config_->SetChannel(k24GHzChannel);
   std::string ghz24_config_content;
-  brillo::ErrorPtr error1;
+  error.Reset();
   std::string ht_capab_24ghz(k24GHzHTCapab);
   EXPECT_CALL(*device_.get(), GetHTCapability(k24GHzChannel, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(ht_capab_24ghz), Return(true)));
-  EXPECT_TRUE(config_.GenerateConfigFile(&error1, &ghz24_config_content));
+  EXPECT_TRUE(config_->GenerateConfigFile(&error, &ghz24_config_content));
   EXPECT_NE(std::string::npos, ghz24_config_content.find(
                                    kExpected80211n24GHzConfigContent))
       << "Expected to find the following config...\n"
       << kExpected80211n24GHzConfigContent << "..within content...\n"
       << ghz24_config_content;
-  EXPECT_EQ(nullptr, error.get());
+  EXPECT_TRUE(error.IsSuccess());
   Mock::VerifyAndClearExpectations(device_.get());
 }
 
 TEST_F(ConfigTest, RsnConfig) {
-  config_.SetSsid(kSsid);
-  config_.SetChannel(k24GHzChannel);
-  config_.SetHwMode(kHwMode80211g);
-  config_.SetInterfaceName(kInterface);
-  config_.SetSecurityMode(kSecurityModeRSN);
+  config_->SetSsid(kSsid);
+  config_->SetChannel(k24GHzChannel);
+  config_->SetHwMode(kHwMode80211g);
+  config_->SetInterfaceName(kInterface);
+  config_->SetSecurityMode(kSecurityModeRSN);
 
   // Setup mock device.
   SetupDevice(kInterface);
 
   // Failed due to no passphrase specified.
   std::string config_content;
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
-  EXPECT_THAT(error, IsConfigErrorStartingWith(
+  Error error;
+  EXPECT_FALSE(config_->GenerateConfigFile(&error, &config_content));
+  VerifyError(
+      error,
+      Error::kInvalidConfiguration,
       base::StringPrintf("Passphrase not set for security mode: %s",
-                         kSecurityModeRSN)));
+                         kSecurityModeRSN));
 
-  brillo::ErrorPtr error1;
-  config_.SetPassphrase(kPassphrase);
-  EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content));
+  error.Reset();
+  config_->SetPassphrase(kPassphrase);
+  EXPECT_TRUE(config_->GenerateConfigFile(&error, &config_content));
   EXPECT_NE(std::string::npos, config_content.find(
                                    kExpectedRsnConfigContent))
       << "Expected to find the following config...\n"
       << kExpectedRsnConfigContent << "..within content...\n"
       << config_content;
-  EXPECT_EQ(nullptr, error1.get());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 }  // namespace apmanager

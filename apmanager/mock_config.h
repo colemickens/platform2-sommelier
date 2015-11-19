@@ -16,12 +16,11 @@ namespace apmanager {
 
 class MockConfig : public Config {
  public:
-  MockConfig();
+  MockConfig(Manager* manager);
   ~MockConfig() override;
 
   MOCK_METHOD2(GenerateConfigFile,
-               bool(brillo::ErrorPtr *error,
-                    std::string* config_str));
+               bool(Error* error, std::string* config_str));
   MOCK_METHOD0(ClaimDevice, bool());
   MOCK_METHOD0(ReleaseDevice, bool());
 

@@ -9,55 +9,65 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
 #include <brillo/errors/error.h>
 
-#include "dbus_bindings/org.chromium.apmanager.Config.h"
+#include "apmanager/config_adaptor_interface.h"
 
 namespace apmanager {
 
+class Error;
 class Device;
 class Manager;
 
-class Config
-    : public org::chromium::apmanager::ConfigAdaptor,
-      public org::chromium::apmanager::ConfigInterface {
+class Config {
  public:
-  Config(Manager* manager, const std::string& service_path);
+  Config(Manager* manager, int service_identifier);
   virtual ~Config();
 
-  // Override ConfigAdaptor Validate functions.
-  bool ValidateSsid(brillo::ErrorPtr* error,
-                    const std::string& value) override;
-  bool ValidateSecurityMode(brillo::ErrorPtr* error,
-                            const std::string& value) override;
-  bool ValidatePassphrase(brillo::ErrorPtr* error,
-                          const std::string& value) override;
-  bool ValidateHwMode(brillo::ErrorPtr* error,
-                      const std::string& value) override;
-  bool ValidateOperationMode(brillo::ErrorPtr* error,
-                             const std::string& value) override;
-  bool ValidateChannel(brillo::ErrorPtr* error,
-                       const uint16_t& value) override;
+  bool ValidateSsid(Error* error, const std::string& value);
+  bool ValidateSecurityMode(Error* error, const std::string& value);
+  bool ValidatePassphrase(Error* error, const std::string& value);
+  bool ValidateHwMode(Error* error, const std::string& value);
+  bool ValidateOperationMode(Error* error, const std::string& value);
+  bool ValidateChannel(Error* error, const uint16_t& value);
 
   // Calculate the frequency based on the given |channel|. Return true and set
   // the output |frequency| if is valid channel, false otherwise.
   static bool GetFrequencyFromChannel(uint16_t channel, uint32_t* freq);
 
-  // Register Config DBus object.
-  void RegisterAsync(
-      brillo::dbus_utils::ExportedObjectManager* object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      brillo::dbus_utils::AsyncEventSequencer* sequencer);
-
-  // Generate a config file string for a hostapd instance. Raise appropriate
-  // error when encounter invalid configuration. Return true if success,
+  // Generate a config file string for a hostapd instance. Populate
+  // |error| when encounter invalid configuration. Return true if success,
   // false otherwise.
-  virtual bool GenerateConfigFile(brillo::ErrorPtr* error,
-                                  std::string* config_str);
+  virtual bool GenerateConfigFile(Error* error, std::string* config_str);
 
   // Claim and release the device needed for this configuration.
   virtual bool ClaimDevice();
   virtual bool ReleaseDevice();
+
+  // Getter and setter for configuration properties.
+  void SetSsid(const std::string& ssid);
+  std::string GetSsid() const;
+  void SetInterfaceName(const std::string& interface_name);
+  std::string GetInterfaceName() const;
+  void SetSecurityMode(const std::string& security_mode);
+  std::string GetSecurityMode() const;
+  void SetPassphrase(const std::string& passphrase);
+  std::string GetPassphrase() const;
+  void SetHwMode(const std::string& hw_mode);
+  std::string GetHwMode() const;
+  void SetOperationMode(const std::string& op_mode);
+  std::string GetOperationMode() const;
+  void SetChannel(uint16_t channel);
+  uint16_t GetChannel() const;
+  void SetHiddenNetwork(bool hidden);
+  bool GetHiddenNetwork() const;
+  void SetBridgeInterface(const std::string& interface_name);
+  std::string GetBridgeInterface() const;
+  void SetServerAddressIndex(uint16_t);
+  uint16_t GetServerAddressIndex() const;
+  void SetFullDeviceControl(bool full_control);
+  bool GetFullDeviceControl() const;
 
   const std::string& control_interface() const { return control_interface_; }
   void set_control_interface(const std::string& control_interface) {
@@ -66,7 +76,7 @@ class Config
 
   const std::string& selected_interface() const { return selected_interface_; }
 
-  const dbus::ObjectPath& dbus_path() const { return dbus_path_; }
+  ConfigAdaptorInterface* adaptor() const { return adaptor_.get(); }
 
  private:
   // Keys used in hostapd config file.
@@ -123,25 +133,24 @@ class Config
   static const int kPassphraseMaxLength;
 
   // Append default hostapd configurations to the config file.
-  bool AppendHostapdDefaults(brillo::ErrorPtr* error,
-                             std::string* config_str);
+  bool AppendHostapdDefaults(Error* error, std::string* config_str);
 
   // Append hardware mode related configurations to the config file.
-  bool AppendHwMode(brillo::ErrorPtr* error, std::string* config_str);
+  bool AppendHwMode(Error* error, std::string* config_str);
 
   // Determine/append interface configuration to the config file.
-  bool AppendInterface(brillo::ErrorPtr* error, std::string* config_str);
+  bool AppendInterface(Error* error, std::string* config_str);
 
   // Append security related configurations to the config file.
-  bool AppendSecurityMode(brillo::ErrorPtr* error, std::string* config_str);
+  bool AppendSecurityMode(Error* error, std::string* config_str);
 
   Manager* manager_;
-  dbus::ObjectPath dbus_path_;
   std::string control_interface_;
   // Interface selected for hostapd.
   std::string selected_interface_;
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   scoped_refptr<Device> device_;
+
+  std::unique_ptr<ConfigAdaptorInterface> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(Config);
 };

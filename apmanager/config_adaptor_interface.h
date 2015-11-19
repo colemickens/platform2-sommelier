@@ -19,11 +19,18 @@
 
 #include <string>
 
+#include "apmanager/rpc_interface.h"
+
 namespace apmanager {
 
 class ConfigAdaptorInterface {
  public:
   virtual ~ConfigAdaptorInterface() {}
+
+  // Returns an identifier/handle that represents this object over
+  // the IPC interface (e.g. dbus::ObjectPath for D-Bus, IBinder
+  // for Binder).
+  virtual RPCObjectIdentifier GetRpcObjectIdentifier() = 0;
 
   // Getter/setter for configuration properties.
   virtual void SetSsid(const std::string& ssid) = 0;

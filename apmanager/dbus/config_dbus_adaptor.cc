@@ -26,6 +26,7 @@
 #endif  // __ANDROID__
 
 #include "apmanager/config.h"
+#include "apmanager/error.h"
 
 using brillo::dbus_utils::ExportedObjectManager;
 using brillo::ErrorPtr;
@@ -48,43 +49,54 @@ ConfigDBusAdaptor::ConfigDBusAdaptor(
       dbus_object_(object_manager, bus, dbus_path_),
       config_(config) {
   // Register D-Bus object.
+  RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAndBlock();
 }
 
 ConfigDBusAdaptor::~ConfigDBusAdaptor() {}
 
 bool ConfigDBusAdaptor::ValidateSsid(ErrorPtr* error, const string& value) {
-  // TODO(zqiu): To be implemented.
-  return true;
+  Error internal_error;
+  config_->ValidateSsid(&internal_error, value);
+  return !internal_error.ToDBusError(error);
 }
 
 bool ConfigDBusAdaptor::ValidateSecurityMode(ErrorPtr* error,
                                              const string& value) {
-  // TODO(zqiu): To be implemented.
-  return true;
+  Error internal_error;
+  config_->ValidateSecurityMode(&internal_error, value);
+  return !internal_error.ToDBusError(error);
 }
 
 bool ConfigDBusAdaptor::ValidatePassphrase(ErrorPtr* error,
                                            const string& value) {
-  // TODO(zqiu): To be implemented.
-  return true;
+  Error internal_error;
+  config_->ValidatePassphrase(&internal_error, value);
+  return !internal_error.ToDBusError(error);
 }
 
 bool ConfigDBusAdaptor::ValidateHwMode(ErrorPtr* error, const string& value) {
-  // TODO(zqiu): To be implemented.
-  return true;
+  Error internal_error;
+  config_->ValidateHwMode(&internal_error, value);
+  return !internal_error.ToDBusError(error);
 }
 
 bool ConfigDBusAdaptor::ValidateOperationMode(ErrorPtr* error,
                                               const string& value) {
-  // TODO(zqiu): To be implemented.
-  return true;
+  Error internal_error;
+  config_->ValidateOperationMode(&internal_error, value);
+  return !internal_error.ToDBusError(error);
 }
 
 bool ConfigDBusAdaptor::ValidateChannel(ErrorPtr* error,
                                         const uint16_t& value) {
-  // TODO(zqiu): To be implemented.
-  return true;
+  Error internal_error;
+  config_->ValidateChannel(&internal_error, value);
+  return !internal_error.ToDBusError(error);
+}
+
+RPCObjectIdentifier ConfigDBusAdaptor::GetRpcObjectIdentifier() {
+  return dbus_path_;
 }
 
 void ConfigDBusAdaptor::SetSsid(const string& ssid) {

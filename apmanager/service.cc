@@ -21,6 +21,7 @@
 #include "apmanager/event_dispatcher.h"
 #endif  // __BRILLO__
 
+#include "apmanager/error.h"
 #include "apmanager/manager.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
@@ -68,11 +69,11 @@ Service::Service(Manager* manager, int service_identifier)
                              ManagerAdaptor::GetObjectPath().value().c_str(),
                              service_identifier)),
       dbus_path_(dbus::ObjectPath(service_path_)),
-      config_(new Config(manager, service_path_)),
+      config_(new Config(manager, service_identifier)),
       dhcp_server_factory_(DHCPServerFactory::GetInstance()),
       file_writer_(FileWriter::GetInstance()),
       process_factory_(ProcessFactory::GetInstance()) {
-  SetConfig(config_->dbus_path());
+  SetConfig(config_->adaptor()->GetRpcObjectIdentifier());
   SetState(kStateIdle);
   // TODO(zqiu): come up with better server address management. This is good
   // enough for now.
@@ -103,9 +104,6 @@ void Service::RegisterAsync(ExportedObjectManager* object_manager,
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Service.RegisterAsync() failed.", true));
-
-  // Register Config DBus object.
-  config_->RegisterAsync(object_manager, bus, sequencer);
 }
 
 bool Service::StartInternal(brillo::ErrorPtr* error) {
@@ -121,10 +119,10 @@ bool Service::StartInternal(brillo::ErrorPtr* error) {
 
   // Generate hostapd configuration content.
   string config_str;
-  if (!config_->GenerateConfigFile(error, &config_str)) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Failed to generate config file");
+  Error internal_error;
+  if (!config_->GenerateConfigFile(&internal_error, &config_str)) {
+    // TODO(zqiu): temporary until D-Bus is decoupled from this class.
+    internal_error.ToDBusError(error);
     return false;
   }
 

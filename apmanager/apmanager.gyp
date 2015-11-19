@@ -126,6 +126,7 @@
             'device_unittest.cc',
             'dhcp_server_unittest.cc',
             'error_unittest.cc',
+            'fake_config_adaptor.cc',
             'fake_device_adaptor.cc',
             'hostapd_monitor_unittest.cc',
             'manager_unittest.cc',

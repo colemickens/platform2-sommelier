@@ -6,7 +6,7 @@
 
 namespace apmanager {
 
-MockConfig::MockConfig() : Config(nullptr, std::string()) {}
+MockConfig::MockConfig(Manager* manager) : Config(manager, 0) {}
 
 MockConfig::~MockConfig() {}
 

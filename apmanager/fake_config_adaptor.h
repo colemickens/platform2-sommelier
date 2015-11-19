@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2015 The Android Open Source Project
+// Copyright 2015 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,47 +14,22 @@
 // limitations under the License.
 //
 
-#ifndef APMANAGER_DBUS_CONFIG_DBUS_ADAPTOR_H_
-#define APMANAGER_DBUS_CONFIG_DBUS_ADAPTOR_H_
+#ifndef APMANAGER_FAKE_CONFIG_ADAPTOR_H_
+#define APMANAGER_FAKE_CONFIG_ADAPTOR_H_
 
 #include <string>
 
 #include <base/macros.h>
-#include <brillo/errors/error.h>
-#include <dbus_bindings/org.chromium.apmanager.Config.h>
 
 #include "apmanager/config_adaptor_interface.h"
 
 namespace apmanager {
 
-class Config;
-
-class ConfigDBusAdaptor
-    : public org::chromium::apmanager::ConfigAdaptor,
-      public org::chromium::apmanager::ConfigInterface,
-      public ConfigAdaptorInterface {
+class FakeConfigAdaptor : public ConfigAdaptorInterface {
  public:
-  ConfigDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
-                    brillo::dbus_utils::ExportedObjectManager* object_manager,
-                    Config* config,
-                    int service_identifier);
-  virtual ~ConfigDBusAdaptor();
+  FakeConfigAdaptor();
+  ~FakeConfigAdaptor() override;
 
-  // Implementation of org::chromium::apmanager::ConfigAdaptor.
-  bool ValidateSsid(brillo::ErrorPtr* error,
-                    const std::string& value) override;
-  bool ValidateSecurityMode(brillo::ErrorPtr* error,
-                            const std::string& value) override;
-  bool ValidatePassphrase(brillo::ErrorPtr* error,
-                          const std::string& value) override;
-  bool ValidateHwMode(brillo::ErrorPtr* error,
-                      const std::string& value) override;
-  bool ValidateOperationMode(brillo::ErrorPtr* error,
-                             const std::string& value) override;
-  bool ValidateChannel(brillo::ErrorPtr* error,
-                       const uint16_t& value) override;
-
-  // Implementation of ConfigAdaptorInterface.
   RPCObjectIdentifier GetRpcObjectIdentifier() override;
   void SetSsid(const std::string& ssid) override;
   std::string GetSsid() override;
@@ -80,13 +55,21 @@ class ConfigDBusAdaptor
   bool GetFullDeviceControl() override;
 
  private:
-  dbus::ObjectPath dbus_path_;
-  brillo::dbus_utils::DBusObject dbus_object_;
-  Config* config_;
+  std::string ssid_;
+  std::string interface_name_;
+  std::string security_mode_;
+  std::string passphrase_;
+  std::string hw_mode_;
+  std::string op_mode_;
+  std::string bridge_interface_;
+  bool hidden_network_;
+  bool full_device_control_;
+  uint16_t channel_;
+  uint16_t server_address_index_;
 
-  DISALLOW_COPY_AND_ASSIGN(ConfigDBusAdaptor);
+  DISALLOW_COPY_AND_ASSIGN(FakeConfigAdaptor);
 };
 
 }  // namespace apmanager
 
-#endif  // APMANAGER_DBUS_CONFIG_DBUS_ADAPTOR_H_
+#endif  // APMANAGER_FAKE_CONFIG_ADAPTOR_H_
