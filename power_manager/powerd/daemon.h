@@ -218,6 +218,8 @@ class Daemon : public policy::BacklightControllerObserver,
       dbus::MethodCall* method_call);
   scoped_ptr<dbus::Response> HandleAcquireOrReleaseDisplayWakeLock(
       dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleReleaseAllDisplayWakeLocks(
+      dbus::MethodCall* method_call);
 
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);

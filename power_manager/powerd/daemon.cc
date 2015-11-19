@@ -965,6 +965,8 @@ void Daemon::InitDBus() {
                    &Daemon::HandleAcquireOrReleaseDisplayWakeLock);
   ExportDBusMethod(kReleaseDisplayWakeLockMethod,
                    &Daemon::HandleAcquireOrReleaseDisplayWakeLock);
+  ExportDBusMethod(kReleaseAllDisplayWakeLocksMethod,
+                   &Daemon::HandleReleaseAllDisplayWakeLocks);
   CHECK(powerd_dbus_object_->ExportMethodAndBlock(
       kPowerManagerInterface, kRegisterSuspendDelayMethod,
       base::Bind(&policy::Suspender::RegisterSuspendDelay,
@@ -1506,6 +1508,14 @@ scoped_ptr<dbus::Response> Daemon::HandleAcquireOrReleaseDisplayWakeLock(
   } else {
     NOTREACHED() << "Unexpected method " << method_call->GetMember();
   }
+  return scoped_ptr<dbus::Response>();
+}
+
+scoped_ptr<dbus::Response> Daemon::HandleReleaseAllDisplayWakeLocks(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << method_call->GetSender()
+            << " requested the release of all wake locks";
+  state_controller_->ReleaseAllDisplayWakeLocks();
   return scoped_ptr<dbus::Response>();
 }
 

@@ -1728,5 +1728,28 @@ TEST_F(StateControllerTest, InvalidDisplayWakeLocks) {
   ASSERT_FALSE(controller_.ReleaseDisplayWakeLock(WAKE_LOCK_DIM));
 }
 
+TEST_F(StateControllerTest, ReleaseAllDisplayWakeLocks) {
+  Init();
+
+  // Take one of each lock.
+  ASSERT_TRUE(controller_.AcquireDisplayWakeLock(WAKE_LOCK_BRIGHT));
+  ASSERT_TRUE(controller_.AcquireDisplayWakeLock(WAKE_LOCK_DIM));
+
+  // Release all locks.
+  controller_.ReleaseAllDisplayWakeLocks();
+
+  // We should suspend normally.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // Further release calls should fail.
+  ASSERT_FALSE(controller_.ReleaseDisplayWakeLock(WAKE_LOCK_BRIGHT));
+  ASSERT_FALSE(controller_.ReleaseDisplayWakeLock(WAKE_LOCK_DIM));
+}
+
 }  // namespace policy
 }  // namespace power_manager

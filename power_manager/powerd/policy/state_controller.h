@@ -148,6 +148,7 @@ class StateController : public PrefsObserver {
   void HandlePolicyChange(const PowerManagementPolicy& policy);
   bool AcquireDisplayWakeLock(DisplayWakeLockType type);
   bool ReleaseDisplayWakeLock(DisplayWakeLockType type);
+  void ReleaseAllDisplayWakeLocks();
 
   // Handles notification of different types of activity.
   void HandleUserActivity();
