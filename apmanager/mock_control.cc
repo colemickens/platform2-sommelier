@@ -32,6 +32,11 @@ std::unique_ptr<DeviceAdaptorInterface> MockControl::CreateDeviceAdaptor(
   return std::unique_ptr<DeviceAdaptorInterface>(CreateDeviceAdaptorRaw());
 }
 
+std::unique_ptr<ServiceAdaptorInterface> MockControl::CreateServiceAdaptor(
+      Service* /* service */) {
+  return std::unique_ptr<ServiceAdaptorInterface>(CreateServiceAdaptorRaw());
+}
+
 std::unique_ptr<FirewallProxyInterface> MockControl::CreateFirewallProxy(
       const base::Closure& /* service_appeared_callback */,
       const base::Closure& /* service_vanished_callback */) {

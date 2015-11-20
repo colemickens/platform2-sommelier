@@ -39,6 +39,8 @@ class DBusControl : public ControlInterface {
       Config* config, int service_identifier) override;
   std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
       Device* device) override;
+  std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
+      Service* device) override;
   std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy(
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;

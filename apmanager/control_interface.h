@@ -23,12 +23,14 @@
 #include "apmanager/config_adaptor_interface.h"
 #include "apmanager/device_adaptor_interface.h"
 #include "apmanager/firewall_proxy_interface.h"
+#include "apmanager/service_adaptor_interface.h"
 #include "apmanager/shill_proxy_interface.h"
 
 namespace apmanager {
 
 class Config;
 class Device;
+class Service;
 
 // This is the Interface for an object factory that creates adaptor/proxy
 // objects
@@ -44,6 +46,8 @@ class ControlInterface {
       Config* config, int service_identifier) = 0;
   virtual std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
       Device* device) = 0;
+  virtual std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
+      Service* service) = 0;
 
   // Proxy creation APIs.
   virtual std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy(

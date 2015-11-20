@@ -58,6 +58,7 @@
         'dbus/dbus_control.cc',
         'dbus/device_dbus_adaptor.cc',
         'dbus/permission_broker_dbus_proxy.cc',
+        'dbus/service_dbus_adaptor.cc',
         'dbus/shill_dbus_proxy.cc',
         'device.cc',
         'device_info.cc',
