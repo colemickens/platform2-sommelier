@@ -6,28 +6,23 @@
 
 #include <signal.h>
 
+#include <base/bind.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/errors/error.h>
 
 #if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
 #else
-#include "dbus/apmanager/dbus-constants.h"
+#include <dbus/apmanager/dbus-constants.h>
 #endif  // __ANDROID__
 
 #if defined(__BRILLO__)
-#include <base/bind.h>
-
 #include "apmanager/event_dispatcher.h"
 #endif  // __BRILLO__
 
-#include "apmanager/error.h"
+#include "apmanager/control_interface.h"
 #include "apmanager/manager.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::DBusMethodResponse;
-using brillo::dbus_utils::ExportedObjectManager;
-using org::chromium::apmanager::ManagerAdaptor;
 using std::string;
 
 namespace apmanager {
@@ -61,20 +56,15 @@ const char Service::kStateStarted[] = "Started";
 const char Service::kStateFailed[] = "Failed";
 
 Service::Service(Manager* manager, int service_identifier)
-    : org::chromium::apmanager::ServiceAdaptor(this),
-      manager_(manager),
+    : manager_(manager),
       identifier_(service_identifier),
-      service_path_(
-          base::StringPrintf("%s/services/%d",
-                             ManagerAdaptor::GetObjectPath().value().c_str(),
-                             service_identifier)),
-      dbus_path_(dbus::ObjectPath(service_path_)),
       config_(new Config(manager, service_identifier)),
+      adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       dhcp_server_factory_(DHCPServerFactory::GetInstance()),
       file_writer_(FileWriter::GetInstance()),
       process_factory_(ProcessFactory::GetInstance()) {
-  SetConfig(config_->adaptor()->GetRpcObjectIdentifier());
-  SetState(kStateIdle);
+  adaptor_->SetConfig(config_.get());
+  adaptor_->SetState(kStateIdle);
   // TODO(zqiu): come up with better server address management. This is good
   // enough for now.
   config_->SetServerAddressIndex(identifier_ & 0xFF);
@@ -92,25 +82,10 @@ Service::~Service() {
   }
 }
 
-void Service::RegisterAsync(ExportedObjectManager* object_manager,
-                            const scoped_refptr<dbus::Bus>& bus,
-                            AsyncEventSequencer* sequencer) {
-  CHECK(!dbus_object_) << "Already registered";
-  dbus_object_.reset(
-      new brillo::dbus_utils::DBusObject(
-          object_manager,
-          bus,
-          dbus_path_));
-  RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(
-      sequencer->GetHandler("Service.RegisterAsync() failed.", true));
-}
-
-bool Service::StartInternal(brillo::ErrorPtr* error) {
+bool Service::StartInternal(Error* error) {
   if (IsHostapdRunning()) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Service already running");
+    Error::PopulateAndLog(
+        error, Error::kInternalError, "Service already running", FROM_HERE);
     return false;
   }
 
@@ -119,10 +94,7 @@ bool Service::StartInternal(brillo::ErrorPtr* error) {
 
   // Generate hostapd configuration content.
   string config_str;
-  Error internal_error;
-  if (!config_->GenerateConfigFile(&internal_error, &config_str)) {
-    // TODO(zqiu): temporary until D-Bus is decoupled from this class.
-    internal_error.ToDBusError(error);
+  if (!config_->GenerateConfigFile(error, &config_str)) {
     return false;
   }
 
@@ -130,25 +102,26 @@ bool Service::StartInternal(brillo::ErrorPtr* error) {
   string config_file_name = base::StringPrintf(kHostapdConfigPathFormat,
                                                identifier_);
   if (!file_writer_->Write(config_file_name, config_str)) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Failed to write configuration to a file");
+    Error::PopulateAndLog(error,
+                          Error::kInternalError,
+                          "Failed to write configuration to a file",
+                          FROM_HERE);
     return false;
   }
 
   // Claim the device needed for this ap service.
   if (!config_->ClaimDevice()) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Failed to claim the device for this service");
+    Error::PopulateAndLog(error,
+                          Error::kInternalError,
+                          "Failed to claim the device for this service",
+                          FROM_HERE);
     return false;
   }
 
   // Start hostapd process.
   if (!StartHostapdProcess(config_file_name)) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Failed to start hostapd");
+    Error::PopulateAndLog(
+        error, Error::kInternalError, "Failed to start hostapd", FROM_HERE);
     // Release the device claimed for this service.
     config_->ReleaseDevice();
     return false;
@@ -160,9 +133,10 @@ bool Service::StartInternal(brillo::ErrorPtr* error) {
         dhcp_server_factory_->CreateDHCPServer(config_->GetServerAddressIndex(),
                                                config_->selected_interface()));
     if (!dhcp_server_->Start()) {
-      brillo::Error::AddTo(
-          error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-          "Failed to start DHCP server");
+      Error::PopulateAndLog(error,
+                            Error::kInternalError,
+                            "Failed to start DHCP server",
+                            FROM_HERE);
       ReleaseResources();
       return false;
     }
@@ -180,35 +154,32 @@ bool Service::StartInternal(brillo::ErrorPtr* error) {
   hostapd_monitor_->Start();
 
   // Update service state.
-  SetState(kStateStarting);
+  adaptor_->SetState(kStateStarting);
 
   return true;
 }
 
-void Service::Start(std::unique_ptr<DBusMethodResponse<>> response) {
-  brillo::ErrorPtr error;
+void Service::Start(const base::Callback<void(const Error&)>& result_callback) {
+  Error error;
 
 #if !defined(__BRILLO__)
-  if (!StartInternal(&error)) {
-    response->ReplyWithError(error.get());
-  } else {
-    response->Return();
-  }
+  StartInternal(&error);
+  result_callback.Run(error);
 #else
   if (start_in_progress_) {
-    brillo::Error::AddTo(
-        &error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Start already in progress");
-    response->ReplyWithError(error.get());
+    Error::PopulateAndLog(
+        &error, Error::kInternalError, "Start already in progress", FROM_HERE);
+    result_callback.Run(error);
     return;
   }
 
   string interface_name;
   if (!manager_->SetupApModeInterface(&interface_name)) {
-    brillo::Error::AddTo(
-        &error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Failed to setup AP mode interface");
-    response->ReplyWithError(error.get());
+    Error::PopulateAndLog(&error,
+                          Error::kInternalError,
+                          "Failed to setup AP mode interface",
+                          FROM_HERE);
+    result_callback.Run(error);
     return;
   }
 
@@ -217,21 +188,21 @@ void Service::Start(std::unique_ptr<DBusMethodResponse<>> response) {
                  weak_factory_.GetWeakPtr(),
                  interface_name,
                  0,    // Initial check count.
-                 base::Passed(&response)),
+                 result_callback),
       kAPInterfaceCheckIntervalMilliseconds);
 #endif
 }
 
-bool Service::Stop(brillo::ErrorPtr* error) {
+bool Service::Stop(Error* error) {
   if (!IsHostapdRunning()) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Service is not currently running");
+    Error::PopulateAndLog(error,
+                          Error::kInternalError,
+                          "Service is not currently running", FROM_HERE);
     return false;
   }
 
   ReleaseResources();
-  SetState(kStateIdle);
+  adaptor_->SetState(kStateIdle);
   return true;
 }
 
@@ -248,8 +219,8 @@ void Service::HandleStartFailure() {
 void Service::APInterfaceCheckTask(
     const string& interface_name,
     int check_count,
-    std::unique_ptr<DBusMethodResponse<>> response) {
-  brillo::ErrorPtr error;
+    const base::Callback<void(const Error&)>& result_callback) {
+  Error error;
 
   // Check if the AP interface is enumerated.
   if (manager_->GetDeviceFromInterfaceName(interface_name)) {
@@ -257,20 +228,19 @@ void Service::APInterfaceCheckTask(
     config_->SetInterfaceName(interface_name);
     if (!StartInternal(&error)) {
       HandleStartFailure();
-      response->ReplyWithError(error.get());
-    } else {
-      response->Return();
     }
+    result_callback.Run(error);
     return;
   }
 
   check_count++;
   if (check_count >= kAPInterfaceCheckMaxAttempts) {
-    brillo::Error::AddTo(
-        &error, FROM_HERE, brillo::errors::dbus::kDomain, kServiceError,
-        "Timeout waiting for AP interface to be enumerated");
+    Error::PopulateAndLog(&error,
+                          Error::kInternalError,
+                          "Timeout waiting for AP interface to be enumerated",
+                          FROM_HERE);
     HandleStartFailure();
-    response->ReplyWithError(error.get());
+    result_callback.Run(error);
     return;
   }
 
@@ -279,7 +249,7 @@ void Service::APInterfaceCheckTask(
                  weak_factory_.GetWeakPtr(),
                  interface_name,
                  check_count,
-                 base::Passed(&response)),
+                 result_callback),
       kAPInterfaceCheckIntervalMilliseconds);
 }
 #endif  // __BRILLO__
@@ -327,10 +297,10 @@ void Service::HostapdEventCallback(HostapdMonitor::Event event,
                                    const std::string& data) {
   switch (event) {
     case HostapdMonitor::kHostapdFailed:
-      SetState(kStateFailed);
+      adaptor_->SetState(kStateFailed);
       break;
     case HostapdMonitor::kHostapdStarted:
-      SetState(kStateStarted);
+      adaptor_->SetState(kStateStarted);
       break;
     case HostapdMonitor::kStationConnected:
       LOG(INFO) << "Station connected: " << data;

@@ -33,11 +33,9 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
 
   // Implementation of ManagerInterface.
   // Handles calls to org.chromium.apmanager.Manager.CreateService().
-  // This is an asynchronous call, response is invoked when Service and Config
-  // dbus objects complete the DBus service registration.
-  virtual void CreateService(
-      std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
-      dbus::Message* message);
+  virtual bool CreateService(brillo::ErrorPtr* error,
+                             dbus::Message* message,
+                             dbus::ObjectPath* out_service);
   // Handles calls to org.chromium.apmanager.Manager.RemoveService().
   virtual bool RemoveService(brillo::ErrorPtr* error,
                              dbus::Message* message,
@@ -83,17 +81,6 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
 
  private:
   friend class ManagerTest;
-
-  // A callback that will be called when the Service/Config D-Bus
-  // objects/interfaces are exported successfully and ready to be used.
-  void OnServiceRegistered(
-      std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
-      std::unique_ptr<Service> service,
-      bool success);
-
-  // A callback that will be called when a Device D-Bus object/interface is
-  // exported successfully and ready to be used.
-  void OnDeviceRegistered(scoped_refptr<Device> device, bool success);
 
   // This is invoked when the owner of an AP service disappeared.
   void OnAPServiceOwnerDisappeared(int service_identifier);

@@ -142,6 +142,7 @@
             'mock_manager.cc',
             'mock_process_factory.cc',
             'mock_service.cc',
+            'mock_service_adaptor.cc',
             'service_unittest.cc',
             'testrunner.cc',
           ],

@@ -39,6 +39,7 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(
                              device->identifier())),
       dbus_object_(object_manager, bus, object_path_) {
   // Register D-Bus object.
+  adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAndBlock();
 }
 

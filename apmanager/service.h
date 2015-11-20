@@ -7,16 +7,18 @@
 
 #include <string>
 
+#include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/process.h>
 
 #include "apmanager/config.h"
 #include "apmanager/dhcp_server_factory.h"
+#include "apmanager/error.h"
 #include "apmanager/file_writer.h"
 #include "apmanager/hostapd_monitor.h"
 #include "apmanager/process_factory.h"
-#include "dbus_bindings/org.chromium.apmanager.Service.h"
+#include "apmanager/service_adaptor_interface.h"
 
 namespace apmanager {
 
@@ -26,26 +28,19 @@ class Manager;
 class EventDispatcher;
 #endif  // __BRILLO__
 
-class Service : public org::chromium::apmanager::ServiceAdaptor,
-                public org::chromium::apmanager::ServiceInterface {
+class Service {
  public:
   Service(Manager* manager, int service_identifier);
   virtual ~Service();
 
-  // Implementation of org::chromium::apmanager::ServiceInterface.
-  void Start(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
-  bool Stop(brillo::ErrorPtr* error);
-
-  // Register Service DBus object.
-  void RegisterAsync(
-      brillo::dbus_utils::ExportedObjectManager* object_manager,
-      const scoped_refptr<dbus::Bus>& bus,
-      brillo::dbus_utils::AsyncEventSequencer* sequencer);
-
-  const dbus::ObjectPath& dbus_path() const { return dbus_path_; }
+  void Start(const base::Callback<void(const Error&)>& result_callback);
+  bool Stop(Error* error);
 
   int identifier() const { return identifier_; }
+
+  ServiceAdaptorInterface* adaptor() const { return adaptor_.get(); }
+
+  Config* config() const { return config_.get(); }
 
  private:
   friend class ServiceTest;
@@ -68,13 +63,13 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   void APInterfaceCheckTask(
       const std::string& interface_name,
       int check_count,
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
+      const base::Callback<void(const Error&)>& result_callback);
 
   // Handle asynchronous service start failures.
   void HandleStartFailure();
 #endif  // __BRILLO__
 
-  bool StartInternal(brillo::ErrorPtr* error);
+  bool StartInternal(Error* error);
 
   // Return true if hostapd process is currently running.
   bool IsHostapdRunning();
@@ -95,10 +90,8 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
 
   Manager* manager_;
   int identifier_;
-  std::string service_path_;
-  dbus::ObjectPath dbus_path_;
   std::unique_ptr<Config> config_;
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<ServiceAdaptorInterface> adaptor_;
   std::unique_ptr<brillo::Process> hostapd_process_;
   std::unique_ptr<DHCPServer> dhcp_server_;
   DHCPServerFactory* dhcp_server_factory_;

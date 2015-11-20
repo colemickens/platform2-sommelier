@@ -16,6 +16,7 @@
 
 #include "apmanager/dbus/service_dbus_adaptor.h"
 
+#include <base/bind.h>
 #include <base/strings/stringprintf.h>
 #include <dbus_bindings/org.chromium.apmanager.Manager.h>
 
@@ -40,6 +41,9 @@ ServiceDBusAdaptor::ServiceDBusAdaptor(
                              service->identifier())),
       dbus_object_(object_manager, bus, object_path_),
       service_(service) {
+  // Need to initialize Config property with a valid path before registering
+  // to the bus.
+  SetConfig(service_->config());
   // Register D-Bus object.
   adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAndBlock();
@@ -49,12 +53,16 @@ ServiceDBusAdaptor::~ServiceDBusAdaptor() {}
 
 void ServiceDBusAdaptor::Start(
     std::unique_ptr<DBusMethodResponse<>> response) {
-  // TODO(zqiu): to be implemented.
+  service_->Start(
+      base::Bind(&ServiceDBusAdaptor::OnStartCompleted,
+                 base::Unretained(this),
+                 base::Passed(&response)));
 }
 
-bool ServiceDBusAdaptor::Stop(brillo::ErrorPtr* error) {
-  // TODO(zqiu): to be implemented.
-  return false;
+bool ServiceDBusAdaptor::Stop(brillo::ErrorPtr* dbus_error) {
+  Error error;
+  service_->Stop(&error);
+  return !error.ToDBusError(dbus_error);
 }
 
 RPCObjectIdentifier ServiceDBusAdaptor::GetRpcObjectIdentifier() {
@@ -67,6 +75,16 @@ void ServiceDBusAdaptor::SetConfig(Config* config) {
 
 void ServiceDBusAdaptor::SetState(const string& state) {
   adaptor_.SetState(state);
+}
+
+void ServiceDBusAdaptor::OnStartCompleted(
+    std::unique_ptr<DBusMethodResponse<>> response, const Error& error) {
+  brillo::ErrorPtr dbus_error;
+  if (error.ToDBusError(&dbus_error)) {
+    response->ReplyWithError(dbus_error.get());
+  } else {
+    response->Return();
+  }
 }
 
 }  // namespace apmanager

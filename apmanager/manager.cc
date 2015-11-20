@@ -58,21 +58,13 @@ void Manager::Stop() {
   device_info_.Stop();
 }
 
-void Manager::CreateService(
-    std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
-    dbus::Message* message) {
+bool Manager::CreateService(brillo::ErrorPtr* error,
+                            dbus::Message* message,
+                            dbus::ObjectPath* out_service) {
   LOG(INFO) << "Manager::CreateService";
-  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   std::unique_ptr<Service> service(new Service(this, service_identifier_));
-
-  service->RegisterAsync(
-      dbus_object_->GetObjectManager().get(), bus_, sequencer.get());
-  sequencer->OnAllTasksCompletedCall({
-      base::Bind(&Manager::OnServiceRegistered,
-                 base::Unretained(this),
-                 base::Passed(&response),
-                 base::Passed(&service))
-  });
+  *out_service = service->adaptor()->GetRpcObjectIdentifier();
+  services_.push_back(std::move(service));
 
   base::Closure on_connection_vanish = base::Bind(
       &Manager::OnAPServiceOwnerDisappeared,
@@ -81,13 +73,15 @@ void Manager::CreateService(
   service_watchers_[service_identifier_].reset(
       new DBusServiceWatcher{bus_, message->GetSender(), on_connection_vanish});
   service_identifier_++;
+
+  return true;
 }
 
 bool Manager::RemoveService(brillo::ErrorPtr* error,
                             dbus::Message* message,
                             const dbus::ObjectPath& in_service) {
   for (auto it = services_.begin(); it != services_.end(); ++it) {
-    if ((*it)->dbus_path() == in_service) {
+    if ((*it)->adaptor()->GetRpcObjectIdentifier() == in_service) {
       // Verify the owner.
       auto watcher = service_watchers_.find((*it)->identifier());
       CHECK(watcher != service_watchers_.end())
@@ -163,32 +157,6 @@ void Manager::RequestDHCPPortAccess(const string& interface) {
 
 void Manager::ReleaseDHCPPortAccess(const string& interface) {
   firewall_manager_.ReleaseDHCPPortAccess(interface);
-}
-
-void Manager::OnServiceRegistered(
-    std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
-    std::unique_ptr<Service> service,
-    bool success) {
-  LOG(INFO) << "ServiceRegistered";
-  // Success should always be true since we've said that failures are fatal.
-  CHECK(success) << "Init of one or more objects has failed.";
-
-  // Remove this service if the owner doesn't exist anymore. It is theoretically
-  // possible to have the owner disappear before the AP service complete its
-  // registration with DBus.
-  if (service_watchers_.find(service->identifier()) ==
-      service_watchers_.end()) {
-    LOG(INFO) << "Service " << service->identifier()
-              << ": owner doesn't exist anymore";
-    service.reset();
-    return;
-  }
-
-  // Add service to the service list and return the service dbus path for the
-  // CreateService call.
-  dbus::ObjectPath service_path = service->dbus_path();
-  services_.push_back(std::move(service));
-  response->Return(service_path);
 }
 
 void Manager::OnAPServiceOwnerDisappeared(int service_identifier) {
