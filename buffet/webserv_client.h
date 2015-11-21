@@ -47,17 +47,13 @@ class WebServClient : public weave::provider::HttpServer {
 
   uint16_t GetHttpPort() const override;
   uint16_t GetHttpsPort() const override;
+  base::TimeDelta GetRequestTimeout() const override;
   std::vector<uint8_t> GetHttpsCertificateFingerprint() const override;
 
  private:
   void OnRequest(const RequestHandlerCallback& callback,
                  std::unique_ptr<libwebserv::Request> request,
                  std::unique_ptr<libwebserv::Response> response);
-
-  void OnResponse(std::unique_ptr<libwebserv::Response> response,
-                  int status_code,
-                  const std::string& data,
-                  const std::string& mime_type);
 
   void OnProtocolHandlerConnected(
       libwebserv::ProtocolHandler* protocol_handler);

@@ -125,6 +125,12 @@ uint16_t WebServClient::GetHttpsPort() const {
   return https_port_;
 }
 
+base::TimeDelta WebServClient::GetRequestTimeout() const {
+  // TODO(avakulenko): obtain the timeout from web server.
+  // The current timeout is set to 1 minute.
+  return base::TimeDelta::FromSeconds(60);
+}
+
 brillo::Blob WebServClient::GetHttpsCertificateFingerprint() const {
   return certificate_;
 }

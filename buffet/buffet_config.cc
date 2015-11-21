@@ -45,9 +45,13 @@ BuffetConfig::BuffetConfig(const Options& options) : options_(options) {}
 bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   // Keep this hardcoded default for sometime. This previously was set by
   // libweave. It should be set by overlay's buffet.conf.
-  settings->client_id = "58855907228.apps.googleusercontent.com";
-  settings->client_secret = "eHSAREAHrIqPsHBxCE9zPPBi";
-  settings->api_key = "AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA";
+  // Keys owners: avakulenko, gene, vitalybuka.
+  settings->client_id =
+      "338428340000-vkb4p6h40c7kja1k3l70kke8t615cjit.apps.googleusercontent."
+      "com";
+  settings->client_secret = "LS_iPYo_WIOE0m2VnLdduhnx";
+  settings->api_key = "AIzaSyACK3oZtmIylUKXiTMqkZqfuRiCgQmQSAQ";
+
   settings->name = "Developer device";
   settings->oem_name = "Chromium";
   settings->model_name = "Brillo";
