@@ -18,6 +18,7 @@
 
 #include "apmanager/dbus/config_dbus_adaptor.h"
 #include "apmanager/dbus/device_dbus_adaptor.h"
+#include "apmanager/dbus/manager_dbus_adaptor.h"
 #include "apmanager/dbus/service_dbus_adaptor.h"
 #include "apmanager/dbus/shill_dbus_proxy.h"
 #include "apmanager/manager.h"
@@ -100,6 +101,12 @@ std::unique_ptr<DeviceAdaptorInterface> DBusControl::CreateDeviceAdaptor(
     Device* device) {
   return std::unique_ptr<DeviceAdaptorInterface>(
       new DeviceDBusAdaptor(bus_, object_manager_.get(), device));
+}
+
+std::unique_ptr<ManagerAdaptorInterface> DBusControl::CreateManagerAdaptor(
+    Manager* manager) {
+  return std::unique_ptr<ManagerAdaptorInterface>(
+      new ManagerDBusAdaptor(bus_, object_manager_.get(), manager));
 }
 
 std::unique_ptr<ServiceAdaptorInterface> DBusControl::CreateServiceAdaptor(

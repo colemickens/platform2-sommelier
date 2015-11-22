@@ -39,6 +39,7 @@ class MockControl : public ControlInterface {
   MOCK_METHOD0(CreateConfigAdaptorRaw, ConfigAdaptorInterface*());
   MOCK_METHOD0(CreateDeviceAdaptorRaw, DeviceAdaptorInterface*());
   MOCK_METHOD0(CreateFirewallProxyRaw, FirewallProxyInterface*());
+  MOCK_METHOD0(CreateManagerAdaptorRaw, ManagerAdaptorInterface*());
   MOCK_METHOD0(CreateServiceAdaptorRaw, ServiceAdaptorInterface*());
   MOCK_METHOD0(CreateShillProxyRaw, ShillProxyInterface*());
 
@@ -48,6 +49,8 @@ class MockControl : public ControlInterface {
       Config* config, int service_identifier) override;
   std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
       Device* device) override;
+  std::unique_ptr<ManagerAdaptorInterface> CreateManagerAdaptor(
+      Manager* manager) override;
   std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
       Service* service) override;
   std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy(

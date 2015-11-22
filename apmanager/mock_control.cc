@@ -32,6 +32,11 @@ std::unique_ptr<DeviceAdaptorInterface> MockControl::CreateDeviceAdaptor(
   return std::unique_ptr<DeviceAdaptorInterface>(CreateDeviceAdaptorRaw());
 }
 
+std::unique_ptr<ManagerAdaptorInterface> MockControl::CreateManagerAdaptor(
+      Manager* /* manager */) {
+  return std::unique_ptr<ManagerAdaptorInterface>(CreateManagerAdaptorRaw());
+}
+
 std::unique_ptr<ServiceAdaptorInterface> MockControl::CreateServiceAdaptor(
       Service* /* service */) {
   return std::unique_ptr<ServiceAdaptorInterface>(CreateServiceAdaptorRaw());
