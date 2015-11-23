@@ -21,7 +21,7 @@ class MockManager : public Manager {
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
-  MOCK_METHOD1(RegisterDevice, void(scoped_refptr<Device> device));
+  MOCK_METHOD1(RegisterDevice, void(const scoped_refptr<Device>& device));
   MOCK_METHOD0(GetAvailableDevice, scoped_refptr<Device>());
   MOCK_METHOD1(GetDeviceFromInterfaceName,
                scoped_refptr<Device>(const std::string& interface_name));

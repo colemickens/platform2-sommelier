@@ -9,6 +9,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/process.h>
 
@@ -28,7 +29,7 @@ class Manager;
 class EventDispatcher;
 #endif  // __BRILLO__
 
-class Service {
+class Service : public base::RefCounted<Service> {
  public:
   Service(Manager* manager, int service_identifier);
   virtual ~Service();

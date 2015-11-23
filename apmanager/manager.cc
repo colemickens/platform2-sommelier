@@ -6,51 +6,29 @@
 
 #include <base/bind.h>
 
-#if !defined(__ANDROID__)
-#include <chromeos/dbus/service_constants.h>
-#else
-#include "dbus/apmanager/dbus-constants.h"
-#endif  // __ANDROID__
+#include "apmanager/control_interface.h"
+#include "apmanager/manager.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
-using brillo::dbus_utils::DBusMethodResponse;
 using std::string;
 
 namespace apmanager {
 
 Manager::Manager(ControlInterface* control_interface)
-    : org::chromium::apmanager::ManagerAdaptor(this),
-      control_interface_(control_interface),
+    : control_interface_(control_interface),
       service_identifier_(0),
-      device_info_(this) {}
+      device_info_(this),
+      adaptor_(control_interface->CreateManagerAdaptor(this)) {}
 
-Manager::~Manager() {
-  // Terminate all services before cleanup other resources.
-  for (auto& service : services_) {
-    service.reset();
-  }
-}
+Manager::~Manager() {}
 
 void Manager::RegisterAsync(
-    ExportedObjectManager* object_manager,
-    const scoped_refptr<dbus::Bus>& bus,
     const base::Callback<void(bool)>& completion_callback) {
-  CHECK(!dbus_object_) << "Already registered";
-  dbus_object_.reset(
-      new brillo::dbus_utils::DBusObject(
-          object_manager,
-          bus,
-          org::chromium::apmanager::ManagerAdaptor::GetObjectPath()));
-  RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(completion_callback);
-  bus_ = bus;
-
-  shill_manager_.Init(control_interface_);
-  firewall_manager_.Init(control_interface_);
+  adaptor_->RegisterAsync(completion_callback);
 }
 
 void Manager::Start() {
+  shill_manager_.Init(control_interface_);
+  firewall_manager_.Init(control_interface_);
   device_info_.Start();
 }
 
@@ -58,51 +36,26 @@ void Manager::Stop() {
   device_info_.Stop();
 }
 
-bool Manager::CreateService(brillo::ErrorPtr* error,
-                            dbus::Message* message,
-                            dbus::ObjectPath* out_service) {
+scoped_refptr<Service> Manager::CreateService() {
   LOG(INFO) << "Manager::CreateService";
-  std::unique_ptr<Service> service(new Service(this, service_identifier_));
-  *out_service = service->adaptor()->GetRpcObjectIdentifier();
-  services_.push_back(std::move(service));
-
-  base::Closure on_connection_vanish = base::Bind(
-      &Manager::OnAPServiceOwnerDisappeared,
-      base::Unretained(this),
-      service_identifier_);
-  service_watchers_[service_identifier_].reset(
-      new DBusServiceWatcher{bus_, message->GetSender(), on_connection_vanish});
-  service_identifier_++;
-
-  return true;
+  scoped_refptr<Service> service = new Service(this, service_identifier_++);
+  services_.push_back(service);
+  return service;
 }
 
-bool Manager::RemoveService(brillo::ErrorPtr* error,
-                            dbus::Message* message,
-                            const dbus::ObjectPath& in_service) {
+bool Manager::RemoveService(const scoped_refptr<Service>& service,
+                            Error* error) {
   for (auto it = services_.begin(); it != services_.end(); ++it) {
-    if ((*it)->adaptor()->GetRpcObjectIdentifier() == in_service) {
-      // Verify the owner.
-      auto watcher = service_watchers_.find((*it)->identifier());
-      CHECK(watcher != service_watchers_.end())
-          << "DBus watcher not created for service: " << (*it)->identifier();
-      if (watcher->second->connection_name() != message->GetSender()) {
-        brillo::Error::AddToPrintf(
-            error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerError,
-            "Service %d is owned by another local process.",
-            (*it)->identifier());
-        return false;
-      }
-      service_watchers_.erase(watcher);
-
+    if (*it == service) {
       services_.erase(it);
       return true;
     }
   }
 
-  brillo::Error::AddTo(
-      error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerError,
-      "Service does not exist");
+  Error::PopulateAndLog(error,
+                        Error::kInvalidArguments,
+                        "Service does not exist",
+                        FROM_HERE);
   return false;
 }
 
@@ -126,7 +79,7 @@ scoped_refptr<Device> Manager::GetDeviceFromInterfaceName(
   return nullptr;
 }
 
-void Manager::RegisterDevice(scoped_refptr<Device> device) {
+void Manager::RegisterDevice(const scoped_refptr<Device>& device) {
   LOG(INFO) << "Manager::RegisterDevice: registering device "
             << device->GetDeviceName();
   devices_.push_back(device);
@@ -157,25 +110,6 @@ void Manager::RequestDHCPPortAccess(const string& interface) {
 
 void Manager::ReleaseDHCPPortAccess(const string& interface) {
   firewall_manager_.ReleaseDHCPPortAccess(interface);
-}
-
-void Manager::OnAPServiceOwnerDisappeared(int service_identifier) {
-  LOG(INFO) << "Owner for service " << service_identifier << " disappeared";
-  // Remove service watcher.
-  auto watcher = service_watchers_.find(service_identifier);
-  CHECK(watcher != service_watchers_.end())
-      << "Owner disappeared without watcher setup";
-  service_watchers_.erase(watcher);
-
-  // Remove the service.
-  for (auto it = services_.begin(); it != services_.end(); ++it) {
-    if ((*it)->identifier() == service_identifier) {
-      services_.erase(it);
-      return;
-    }
-  }
-  LOG(INFO) << "Owner for service " << service_identifier
-            << " disappeared before it is registered";
 }
 
 }  // namespace apmanager

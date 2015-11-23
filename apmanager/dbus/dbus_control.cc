@@ -60,8 +60,6 @@ void DBusControl::Init() {
   // Create and register Manager.
   manager_.reset(new Manager(this));
   manager_->RegisterAsync(
-      object_manager_.get(),
-      bus_,
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 
   // Take over the service ownership once the objects registration is completed.
