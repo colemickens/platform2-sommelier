@@ -88,7 +88,7 @@ class MockHttpServerListener : public HttpServerListener {
 
 // ------------------------------------------------------------------------
 
-static const int kMultipleTestNumFiles = 5;
+static const int kMultipleTestNumFiles = 3;
 
 class ClientThread : public base::SimpleThread {
  public:
@@ -165,15 +165,11 @@ TEST(HttpServer, Basic) {
   // Now set the expectations for the number of connections. We'll
   // climb all the way up to N and then go back to 0. So we'll
   // get to each integer in the open interval twice and each
-  // of the boundary points just once, e.g. for N=5
+  // of the boundary points just once, e.g. for N=3
   //
   // 0 -> 1  (twice)
   // 1 -> 2  (twice)
-  // 2 -> 3  (twice)
-  // 3 -> 4  (twice)
-  // 4 -> 5  (once)
-  // 5 -> 4  (twice)
-  // 4 -> 3  (twice)
+  // 2 -> 3  (once)
   // 3 -> 2  (twice)
   // 2 -> 1  (twice)
   // 1 -> 0  (once)
@@ -206,7 +202,7 @@ TEST(HttpServer, Basic) {
 
   // Allow clients to start - this ensures that the server reaches
   // the number of connections kMultipleTestNumFiles.
-  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
+  RunGMainLoopUntil(3 * kDefaultMainLoopTimeoutMs,
                     Bind(&MockHttpServerListener::NumCallsReached,
                          base::Unretained(&listener),
                          kMultipleTestNumFiles /* num_calls */));
@@ -218,7 +214,7 @@ TEST(HttpServer, Basic) {
                  testdir.value().c_str());
 
   // Catch again all the disconnection events.
-  RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
+  RunGMainLoopUntil(3 * kDefaultMainLoopTimeoutMs,
                     Bind(&MockHttpServerListener::NumCallsReached,
                          base::Unretained(&listener),
                          2 * kMultipleTestNumFiles /* num_calls */));
