@@ -2925,8 +2925,8 @@ void WiFi::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
     uint32_t time_to_next_lease_renewal;
     bool have_dhcp_lease =
         TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
-    wake_on_wifi_->OnDHCPLeaseObtained(have_dhcp_lease,
-                                       time_to_next_lease_renewal);
+    wake_on_wifi_->OnConnectedAndReachable(have_dhcp_lease,
+                                           time_to_next_lease_renewal);
   } else {
     SLOG(this, 3) << __func__ << ": "
                   << "Gateway ARP received";
@@ -2942,8 +2942,8 @@ void WiFi::OnIPv6ConfigUpdated() {
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
-  wake_on_wifi_->OnDHCPLeaseObtained(have_dhcp_lease,
-                                     time_to_next_lease_renewal);
+  wake_on_wifi_->OnConnectedAndReachable(have_dhcp_lease,
+                                         time_to_next_lease_renewal);
 }
 
 bool WiFi::IsConnectedToCurrentService() {

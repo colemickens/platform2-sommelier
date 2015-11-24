@@ -828,10 +828,10 @@ class WakeOnWiFiTest : public ::testing::Test {
     EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   }
 
-  void OnDHCPLeaseObtained(bool start_lease_renewal_timer,
-                           uint32_t time_to_next_lease_renewal) {
-    wake_on_wifi_->OnDHCPLeaseObtained(start_lease_renewal_timer,
-                                       time_to_next_lease_renewal);
+  void OnConnectedAndReachable(bool start_lease_renewal_timer,
+                               uint32_t time_to_next_lease_renewal) {
+    wake_on_wifi_->OnConnectedAndReachable(start_lease_renewal_timer,
+                                           time_to_next_lease_renewal);
   }
 
   void SetInDarkResume(bool val) { wake_on_wifi_->in_dark_resume_ = val; }
@@ -2402,7 +2402,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnDHCPLeaseObtained(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   VerifyStateConnectedBeforeSuspend();
@@ -2490,7 +2490,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnDHCPLeaseObtained(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   VerifyStateConnectedBeforeSuspend();
@@ -2601,7 +2601,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnDHCPLeaseObtained(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
@@ -2688,7 +2688,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnDHCPLeaseObtained(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
@@ -2822,7 +2822,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_TRUE(GetLastSSIDMatchFreqs().empty());
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher, OnDHCPLeaseObtained) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, OnConnectedAndReachable) {
   const bool start_lease_renewal_timer = true;
   ScopedMockLog log;
 
@@ -2831,11 +2831,13 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnDHCPLeaseObtained) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_CALL(log, Log(_, _, HasSubstr("BeforeSuspendActions")));
-  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+  OnConnectedAndReachable(start_lease_renewal_timer,
+                          kTimeToNextLeaseRenewalLong);
 
   SetInDarkResume(false);
   EXPECT_CALL(log, Log(_, _, HasSubstr("Not in dark resume, so do nothing")));
-  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+  OnConnectedAndReachable(start_lease_renewal_timer,
+                          kTimeToNextLeaseRenewalLong);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
@@ -3274,7 +3276,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
-       WakeOnWiFiDisabled_OnDHCPLeaseObtained) {
+       WakeOnWiFiDisabled_OnConnectedAndReachable) {
   ScopedMockLog log;
   const bool start_lease_renewal_timer = true;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
@@ -3284,11 +3286,13 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   SetInDarkResume(true);
   EXPECT_CALL(
       log, Log(_, _, HasSubstr("Wake on WiFi not supported, so do nothing")));
-  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+  OnConnectedAndReachable(start_lease_renewal_timer,
+                          kTimeToNextLeaseRenewalLong);
 
   SetInDarkResume(false);
   EXPECT_CALL(log, Log(_, _, HasSubstr("Not in dark resume, so do nothing")));
-  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+  OnConnectedAndReachable(start_lease_renewal_timer,
+                          kTimeToNextLeaseRenewalLong);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }

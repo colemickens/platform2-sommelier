@@ -1543,8 +1543,8 @@ void WakeOnWiFi::InitiateScanInDarkResume(
   initiate_scan_callback.Run(freqs);
 }
 
-void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
-                                     uint32_t time_to_next_lease_renewal) {
+void WakeOnWiFi::OnConnectedAndReachable(bool start_lease_renewal_timer,
+                                         uint32_t time_to_next_lease_renewal) {
   SLOG(this, 3) << __func__;
   if (in_dark_resume_) {
 #if defined(DISABLE_WAKE_ON_WIFI)

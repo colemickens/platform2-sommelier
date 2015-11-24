@@ -267,10 +267,11 @@ class WakeOnWiFi {
       const base::Closure& renew_dhcp_lease_callback,
       const InitiateScanCallback& initiate_scan_callback,
       const base::Closure& remove_supplicant_networks_callback);
-  // Wrapper around WakeOnWiFi::BeforeSuspendActions that checks if shill is
-  // currently in dark resume before invoking the function.
-  virtual void OnDHCPLeaseObtained(bool start_lease_renewal_timer,
-                                   uint32_t time_to_next_lease_renewal);
+  // Called when we the current service is connected, and we have IP
+  // reachability. Calls WakeOnWiFi::BeforeSuspendActions if we are in dark
+  // resume to end the current dark resume. Otherwise, does nothing.
+  virtual void OnConnectedAndReachable(bool start_lease_renewal_timer,
+                                       uint32_t time_to_next_lease_renewal);
   // Callback invoked to report whether this WiFi device is connected to
   // a service after waking from suspend.
   virtual void ReportConnectedToServiceAfterWake(bool is_connected);
