@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <libwebserv/request.h>
+#include <libwebserv/request_impl.h>
 
 #include <base/callback.h>
 #include <brillo/http/http_utils.h>
@@ -45,16 +45,13 @@ void FileInfo::GetData(
                         error_callback);
 }
 
-Request::Request(ProtocolHandler* handler,
-                 const std::string& url,
-                 const std::string& method)
-    : handler_{handler}, url_{url}, method_{method} {
+RequestImpl::RequestImpl(ProtocolHandler* handler,
+                         const std::string& url,
+                         const std::string& method)
+    : Request{url, method}, handler_{handler} {
 }
 
-Request::~Request() {
-}
-
-brillo::StreamPtr Request::GetDataStream() {
+brillo::StreamPtr RequestImpl::GetDataStream() {
   return brillo::FileStream::FromFileDescriptor(
       raw_data_fd_.GetPlatformFile(), false, nullptr);
 }

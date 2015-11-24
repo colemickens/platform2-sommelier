@@ -24,7 +24,7 @@
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "libwebserv/request.h"
 #include "libwebserv/request_handler_callback.h"
-#include "libwebserv/response.h"
+#include "libwebserv/response_impl.h"
 #include "libwebserv/server.h"
 #include "webservd/dbus-proxies.h"
 
@@ -220,7 +220,7 @@ bool ProtocolHandler::ProcessRequest(const std::string& protocol_handler_id,
   }
   handler_iter->second.handler->HandleRequest(
       std::move(request),
-      std::unique_ptr<Response>{new Response{this, request_id}});
+      std::unique_ptr<Response>{new ResponseImpl{this, request_id}});
   return true;
 }
 

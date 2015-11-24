@@ -69,9 +69,11 @@ class LIBWEBSERV_EXPORT FileInfo final {
 };
 
 // A class that represents the HTTP request data.
-class LIBWEBSERV_EXPORT Request final {
+class LIBWEBSERV_EXPORT Request {
  public:
-  ~Request();
+  Request(const std::string& url, const std::string& method)
+    : url_{url}, method_{method} {}
+  virtual ~Request() = default;
 
   // Gets the request body data stream. Note that the stream is available
   // only for requests that provided data and if this data is not already
@@ -81,7 +83,7 @@ class LIBWEBSERV_EXPORT Request final {
   // The stream returned is valid for as long as the Request object itself is
   // alive. Accessing the stream after the Request object is destroyed will lead
   // to an undefined behavior (will likely just crash).
-  brillo::StreamPtr GetDataStream();
+  virtual brillo::StreamPtr GetDataStream() = 0;
 
   // Returns the request path (e.g. "/path/document").
   const std::string& GetPath() const { return url_; }
@@ -131,25 +133,13 @@ class LIBWEBSERV_EXPORT Request final {
   // An empty string is returned if the header does not exist in the request.
   std::string GetFirstHeader(const std::string& name) const;
 
- private:
-  friend class Server;
-
-  LIBWEBSERV_PRIVATE Request(ProtocolHandler* handler,
-                             const std::string& url,
-                             const std::string& method);
-
-  ProtocolHandler* handler_{nullptr};
+ protected:
   std::string url_;
   std::string method_;
-  base::File raw_data_fd_;
-  bool last_posted_data_was_file_{false};
-
   std::multimap<std::string, std::string> post_data_;
   std::multimap<std::string, std::string> get_data_;
   std::multimap<std::string, std::unique_ptr<FileInfo>> file_info_;
   std::multimap<std::string, std::string> headers_;
-
-  DISALLOW_COPY_AND_ASSIGN(Request);
 };
 
 }  // namespace libwebserv

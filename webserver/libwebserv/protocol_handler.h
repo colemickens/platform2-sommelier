@@ -127,7 +127,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
  private:
   friend class FileInfo;
   friend class Server;
-  friend class Response;
+  friend class ResponseImpl;
 
   using ProtocolHandlerProxy = org::chromium::WebServer::ProtocolHandlerProxy;
 

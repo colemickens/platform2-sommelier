@@ -18,7 +18,7 @@
 #include <vector>
 
 #include <libwebserv/protocol_handler.h>
-#include <libwebserv/request.h>
+#include <libwebserv/request_impl.h>
 
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
 #include "webservd/dbus-proxies.h"
@@ -68,7 +68,8 @@ bool Server::RequestHandler::ProcessRequest(
                                protocol_handler_id.c_str());
     return false;
   }
-  std::unique_ptr<Request> request{new Request{protocol_handler, url, method}};
+  std::unique_ptr<RequestImpl> request{
+    new RequestImpl{protocol_handler, url, method}};
   // Convert request data into format required by the Request object.
   for (const auto& tuple : in_params) {
     if (std::get<0>(tuple))

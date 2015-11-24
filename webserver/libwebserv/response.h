@@ -35,63 +35,48 @@ class ProtocolHandler;
 
 // Response class is a proxy for HTTP response used by the request handler
 // to provide response HTTP headers and data.
-class LIBWEBSERV_EXPORT Response final {
+class LIBWEBSERV_EXPORT Response {
  public:
-  ~Response();
+  virtual ~Response() = default;
 
   // Adds a single HTTP response header to the response.
-  void AddHeader(const std::string& header_name, const std::string& value);
+  virtual void AddHeader(const std::string& header_name,
+                         const std::string& value) = 0;
 
   // Adds number of HTTP response headers to the response.
-  void AddHeaders(
-      const std::vector<std::pair<std::string, std::string>>& headers);
+  virtual void AddHeaders(
+      const std::vector<std::pair<std::string, std::string>>& headers) = 0;
 
   // Generic reply method for sending arbitrary binary data response.
-  void Reply(int status_code,
-             brillo::StreamPtr data_stream,
-             const std::string& mime_type);
+  virtual void Reply(int status_code,
+                     brillo::StreamPtr data_stream,
+                     const std::string& mime_type) = 0;
 
   // Reply with text body.
-  void ReplyWithText(int status_code,
-                     const std::string& text,
-                     const std::string& mime_type);
+  virtual void ReplyWithText(int status_code,
+                             const std::string& text,
+                             const std::string& mime_type) = 0;
 
   // Reply with JSON object. The content type will be "application/json".
-  void ReplyWithJson(int status_code, const base::Value* json);
+  virtual void ReplyWithJson(int status_code, const base::Value* json) = 0;
 
   // Special form for JSON response for simple objects that have a flat
   // list of key-value pairs of string type.
-  void ReplyWithJson(int status_code,
-                     const std::map<std::string, std::string>& json);
+  virtual void ReplyWithJson(
+      int status_code, const std::map<std::string, std::string>& json) = 0;
 
   // Issue a redirect response, so the client browser loads a page at
   // the URL specified in |redirect_url|. If this is not an external URL,
   // it must be an absolute path starting at the root "/...".
-  void Redirect(int status_code, const std::string& redirect_url);
+  virtual void Redirect(int status_code, const std::string& redirect_url) = 0;
 
   // Send a plain text response (with no Content-Type header).
   // Usually used with error responses. |error_text| must be plain text.
-  void ReplyWithError(int status_code, const std::string& error_text);
+  virtual void ReplyWithError(int status_code,
+                              const std::string& error_text) = 0;
 
   // Send "404 Not Found" response.
-  void ReplyWithErrorNotFound();
-
- private:
-  friend class ProtocolHandler;
-
-  LIBWEBSERV_PRIVATE Response(ProtocolHandler* handler,
-                              const std::string& request_id);
-
-  LIBWEBSERV_PRIVATE void SendResponse();
-
-  ProtocolHandler* handler_{nullptr};
-  std::string request_id_;
-  int status_code_{0};
-  brillo::StreamPtr data_stream_;
-  std::multimap<std::string, std::string> headers_;
-  bool reply_sent_{false};
-
-  DISALLOW_COPY_AND_ASSIGN(Response);
+  virtual void ReplyWithErrorNotFound() = 0;
 };
 
 }  // namespace libwebserv
