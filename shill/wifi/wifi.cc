@@ -2938,7 +2938,11 @@ void WiFi::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
 
 void WiFi::OnIPv6ConfigUpdated() {
   Device::OnIPv6ConfigUpdated();
-  SLOG(this, 3) << __func__ << ": " << "IPv6 configuration obtained";
+  if (!IsConnectedToCurrentService()) {
+    return;
+  }
+  SLOG(this, 3) << __func__ << ": "
+                << "IPv6 configuration obtained";
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);

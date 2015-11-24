@@ -4389,6 +4389,17 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
   EXPECT_CALL(*manager(), device_info()).WillOnce(Return(device_info()));
   ReportIPConfigComplete();
 
+  // We should not call WakeOnWiFi::OnConnectedAndReachable if we are not
+  // actually connected to a service.
+  SetCurrentService(nullptr);
+  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _)).Times(0);
+  ReportIPv6ConfigComplete();
+
+  // If we are actually connected to a service when our IPv6 configuration is
+  // updated, we should call WakeOnWiFi::OnConnectedAndReachable.
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurity8021x);
+  EXPECT_CALL(*service, IsConnected()).WillOnce(Return(true));
+  SetCurrentService(service);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _));
   ReportIPv6ConfigComplete();
