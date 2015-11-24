@@ -32,7 +32,8 @@ namespace trunks {
 
 // TrunksProxy is a CommandTransceiver implementation that forwards all commands
 // to the trunksd D-Bus daemon. See TrunksService for details on how the
-// commands are handled once they reach trunksd.
+// commands are handled once they reach trunksd. TrunksProxy must be used in
+// only one thread.
 class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
  public:
   TrunksProxy();

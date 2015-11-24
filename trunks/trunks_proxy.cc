@@ -57,9 +57,8 @@ bool TrunksProxy::Init() {
 
 void TrunksProxy::SendCommand(const std::string& command,
                               const ResponseCallback& callback) {
-  if ((origin_thread_id_ != base::PlatformThread::CurrentId()) &&
-      (!Init())) {
-    LOG(ERROR) << "Error intializing trunks dbus proxy object.";
+  if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
+    LOG(ERROR) << "Error TrunksProxy cannot be shared by multiple threads.";
     callback.Run(CreateErrorResponse(TRUNKS_RC_IPC_ERROR));
   }
   SendCommandRequest tpm_command_proto;
@@ -80,9 +79,8 @@ void TrunksProxy::SendCommand(const std::string& command,
 }
 
 std::string TrunksProxy::SendCommandAndWait(const std::string& command) {
-  if ((origin_thread_id_ != base::PlatformThread::CurrentId()) &&
-      (!Init())) {
-    LOG(ERROR) << "Error intializing trunks dbus proxy object.";
+  if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
+    LOG(ERROR) << "Error TrunksProxy cannot be shared by multiple threads.";
     return CreateErrorResponse(TRUNKS_RC_IPC_ERROR);
   }
   SendCommandRequest tpm_command_proto;
