@@ -193,6 +193,9 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   SetUpPepperPlugins();
   AddUiFlags();
 
+  if (UseFlagIsSet("arc"))
+    AddArg("--enable-arc");
+
   AddArg("--enable-logging");
   AddArg("--log-level=1");
   AddArg("--use-cras");
