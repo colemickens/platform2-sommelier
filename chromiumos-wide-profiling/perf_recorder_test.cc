@@ -49,7 +49,6 @@ TEST_F(PerfRecorderTest, RecordToProtobuf) {
 
   quipper::PerfDataProto perf_data_proto;
   EXPECT_TRUE(perf_data_proto.ParseFromString(output_string));
-  EXPECT_GT(perf_data_proto.build_ids_size(), 0);
 }
 
 TEST_F(PerfRecorderTest, StatToProtobuf) {
@@ -76,7 +75,6 @@ TEST_F(PerfRecorderTest, MemRecordToProtobuf) {
   EXPECT_GT(output_string.size(), 0);
   quipper::PerfDataProto perf_data_proto;
   ASSERT_TRUE(perf_data_proto.ParseFromString(output_string));
-  EXPECT_GT(perf_data_proto.build_ids_size(), 0);
 }
 
 TEST_F(PerfRecorderTest, StatSingleEvent) {
