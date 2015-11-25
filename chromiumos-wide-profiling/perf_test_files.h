@@ -26,6 +26,7 @@ const char* kPerfDataFiles[] = {
 
   // Obtained with "perf record -a -- sleep $N", for N in {0, 1, 5}.
   "perf.data.systemwide.0-3.4",
+#ifdef TEST_LARGE_PERF_DATA
   "perf.data.systemwide.1-3.4",
   "perf.data.systemwide.5-3.4",
 
@@ -35,6 +36,7 @@ const char* kPerfDataFiles[] = {
   "perf.data.busy.0-3.4",
   "perf.data.busy.1-3.4",
   "perf.data.busy.5-3.4",
+#endif  // defined(TEST_LARGE_PERF_DATA)
 
   // Obtained with "perf record -a -- sleep 2"
   // While in the background, this loop is running:
@@ -66,11 +68,14 @@ const char* kPerfDataFiles[] = {
   // Same as above, obtained from a system running kernel v3.8.
   "perf.data.singleprocess-3.8",
   "perf.data.systemwide.0-3.8",
+#ifdef TEST_LARGE_PERF_DATA
   "perf.data.systemwide.1-3.8",
   "perf.data.systemwide.5-3.8",
   "perf.data.busy.0-3.8",
   "perf.data.busy.1-3.8",
   "perf.data.busy.5-3.8",
+#endif  // defined(TEST_LARGE_PERF_DATA)
+
   "perf.data.forkexit-3.8",
 #ifdef TEST_CALLGRAPH
   "perf.data.callgraph-3.8",
