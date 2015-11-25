@@ -17,7 +17,7 @@ namespace {
 
 const char kCACertificatePath[] =
 #ifdef __ANDROID__
-    "/system/etc/security/cacerts";
+    "/system/etc/security/cacerts_google";
 #else
     "/usr/share/brillo-ca-certificates";
 #endif

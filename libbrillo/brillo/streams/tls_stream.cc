@@ -58,7 +58,7 @@ int ssl_ctx_private_data_index = -1;
 // Default trusted certificate store location.
 const char kCACertificatePath[] =
 #ifdef __ANDROID__
-    "/system/etc/security/cacerts";
+    "/system/etc/security/cacerts_google";
 #else
     "/usr/share/chromeos-ca-certificates";
 #endif
