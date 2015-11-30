@@ -679,19 +679,10 @@ TEST_F(MetricsTest, CellularDrop) {
 }
 
 TEST_F(MetricsTest, CellularDeviceFailure) {
-  const char kErrorMessage[] =
-      "org.chromium.flimflam.Error.Failure:"
-      "$NWQMISTATUS: QMI_RESULT_FAILURE:QMI_ERR_CALL_FAILED#015#012#011"
-      "QMI State: DISCONNECTED#015#012#011Call End Reason:1016#015#012#011"
-      "Call Duration: 0 seconds#015#015#012"
-      "$NWQMISTATUS: QMI_RESULT_SUCCESS:QMI_ERR_NONE#015#012#011"
-      "QMI State: DISCONNECTED#015#012#011Call End Reason:0#015#012#011"
-      "Call Duration: 0 seconds";
-  string expected_message =
-      string(Metrics::kMetricCellularFailureReason) + kErrorMessage;
-  EXPECT_CALL(library_, SendUserActionToUMA(expected_message));
-  Error error(Error::kOperationFailed, kErrorMessage);
-  metrics_.NotifyCellularDeviceFailure(error);
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCellularFailure,
+                                      Metrics::kMetricCellularConnectionFailure,
+                                      Metrics::kMetricCellularMaxFailure));
+  metrics_.NotifyCellularDeviceConnectionFailure();
 }
 
 TEST_F(MetricsTest, CellularOutOfCreditsReason) {

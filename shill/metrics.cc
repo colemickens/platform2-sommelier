@@ -287,11 +287,15 @@ const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 0;
 const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 const char Metrics::kMetricCellularDrop[] =
     "Network.Shill.Cellular.Drop";
-// The format of FailureReason is different to other metrics because this
-// name is prepended to the error message before the entire string is sent
-// via SendUserActionToUMA.
-const char Metrics::kMetricCellularFailureReason[] =
-    "Network.Shill.Cellular.FailureReason: ";
+
+// static
+const char Metrics::kMetricCellularFailure[] =
+    "Network.Shill.Cellular.Failure";
+const int Metrics::kMetricCellularConnectionFailure = 0;
+const int Metrics::kMetricCellularDisconnectionFailure = 1;
+const int Metrics::kMetricCellularMaxFailure =
+    kMetricCellularDisconnectionFailure + 1;
+
 const char Metrics::kMetricCellularOutOfCreditsReason[] =
     "Network.Shill.Cellular.OutOfCreditsReason";
 const char Metrics::kMetricCellularSignalStrengthBeforeDrop[] =
@@ -1272,9 +1276,16 @@ void Metrics::NotifyCellularDeviceDrop(const string& network_technology,
             kMetricCellularSignalStrengthBeforeDropNumBuckets);
 }
 
-void Metrics::NotifyCellularDeviceFailure(const Error& error) {
-  library_->SendUserActionToUMA(
-      kMetricCellularFailureReason + error.message());
+void Metrics::NotifyCellularDeviceConnectionFailure() {
+  library_->SendEnumToUMA(
+      kMetricCellularFailure, kMetricCellularConnectionFailure,
+      kMetricCellularMaxFailure);
+}
+
+void Metrics::NotifyCellularDeviceDisconnectionFailure() {
+  library_->SendEnumToUMA(
+      kMetricCellularFailure, kMetricCellularDisconnectionFailure,
+      kMetricCellularMaxFailure);
 }
 
 void Metrics::NotifyCellularOutOfCredits(

@@ -720,7 +720,7 @@ void Cellular::OnConnectReply(const Error& error) {
     metrics()->NotifyDeviceConnectFinished(interface_index());
     OnConnected();
   } else {
-    metrics()->NotifyCellularDeviceFailure(error);
+    metrics()->NotifyCellularDeviceConnectionFailure();
     OnConnectFailed(error);
   }
 }
@@ -786,7 +786,7 @@ void Cellular::OnDisconnectReply(const Error& error) {
   if (error.IsSuccess()) {
     OnDisconnected();
   } else {
-    metrics()->NotifyCellularDeviceFailure(error);
+    metrics()->NotifyCellularDeviceDisconnectionFailure();
     OnDisconnectFailed();
   }
 }

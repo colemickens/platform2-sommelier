@@ -680,7 +680,10 @@ class Metrics {
   static const int kMetricCellularDropsPerHourMax;
   static const int kMetricCellularDropsPerHourMin;
   static const int kMetricCellularDropsPerHourNumBuckets;
-  static const char kMetricCellularFailureReason[];
+  static const char kMetricCellularFailure[];
+  static const int kMetricCellularConnectionFailure;
+  static const int kMetricCellularDisconnectionFailure;
+  static const int kMetricCellularMaxFailure;
   static const char kMetricCellularOutOfCreditsReason[];
   static const char kMetricCellularSignalStrengthBeforeDrop[];
   static const int kMetricCellularSignalStrengthBeforeDropMax;
@@ -966,8 +969,11 @@ class Metrics {
   virtual void Notify3GPPRegistrationDelayedDropPosted();
   virtual void Notify3GPPRegistrationDelayedDropCanceled();
 
-  // Notifies this object about a cellular device failure code.
-  void NotifyCellularDeviceFailure(const Error& error);
+  // Notifies this object about a cellular connection failure.
+  void NotifyCellularDeviceConnectionFailure();
+
+  // Notifies this object about a cellular disconnection failure.
+  void NotifyCellularDeviceDisconnectionFailure();
 
   // Notifies this object that a cellular service has been marked as
   // out-of-credits.
