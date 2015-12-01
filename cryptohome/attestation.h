@@ -416,6 +416,7 @@ class Attestation : public base::PlatformThread::Delegate,
   static const size_t kNonceSize;
   static const size_t kDigestSize;
   static const mode_t kDatabasePermissions;
+  static const char kDatabaseOwner[];
   static const char kDefaultDatabasePath[];
   static const char kDefaultPCAPublicKey[];
   static const char kDefaultPCAPublicKeyID[];
@@ -465,6 +466,9 @@ class Attestation : public base::PlatformThread::Delegate,
   bool retain_endorsement_data_;
   // Can be used to override the default transport (e.g. during testing).
   std::shared_ptr<brillo::http::Transport> http_transport_;
+  // User and group for ownership of the database file.
+  uid_t attestation_user_;
+  gid_t attestation_group_;
 
   // Serializes and encrypts an attestation database.
   bool EncryptDatabase(const AttestationDatabase& db,

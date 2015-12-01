@@ -60,6 +60,7 @@ const size_t Attestation::kCipherKeySize = 32;
 const size_t Attestation::kNonceSize = 20;  // As per TPM_NONCE definition.
 const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
 const mode_t Attestation::kDatabasePermissions = 0600;
+const char Attestation::kDatabaseOwner[] = "attestation";
 const char Attestation::kDefaultDatabasePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 
@@ -257,7 +258,9 @@ Attestation::Attestation()
       install_attributes_observer_(this),
       is_tpm_ready_(false),
       is_prepare_in_progress_(false),
-      retain_endorsement_data_(false) {
+      retain_endorsement_data_(false),
+      attestation_user_(0),
+      attestation_group_(0) {
 }
 
 Attestation::~Attestation() {
@@ -285,6 +288,10 @@ void Attestation::Initialize(Tpm* tpm,
   retain_endorsement_data_ = retain_endorsement_data;
 
   if (tpm_) {
+    if (!platform_->GetUserId(kDatabaseOwner, &attestation_user_,
+                              &attestation_group_)) {
+      LOG(WARNING) << "Attestation: Falling back to root.";
+    }
     ExtendPCR1IfClear();
     string serial_encrypted_db;
     if (!LoadDatabase(&serial_encrypted_db)) {
@@ -1269,6 +1276,11 @@ bool Attestation::StoreDatabase(const string& serial_encrypted_db) {
     LOG(ERROR) << "Failed to write db.";
     return false;
   }
+  if (!platform_->SetOwnership(database_path_.value(), attestation_user_,
+                               attestation_group_)) {
+    PLOG(ERROR) << "Failed to set db ownership";
+    return false;
+  }
   return true;
 }
 
@@ -1276,6 +1288,7 @@ bool Attestation::LoadDatabase(string* serial_encrypted_db) {
   CheckDatabasePermissions();
   if (!platform_->ReadFileToString(database_path_.value(),
                                    serial_encrypted_db)) {
+    PLOG(ERROR) << "Failed to read db";
     return false;
   }
   return true;
@@ -1292,11 +1305,29 @@ void Attestation::CheckDatabasePermissions() {
   const mode_t kMask = 0007;  // No permissions for 'others'.
   CHECK(platform_);
   mode_t permissions = 0;
-  if (!platform_->GetPermissions(database_path_.value(), &permissions))
+  uid_t user = 0;
+  gid_t group = 0;
+  if (!platform_->GetPermissions(database_path_.value(), &permissions) ||
+      !platform_->GetOwnership(database_path_.value(), &user, &group)) {
+    if (errno != ENOENT) {
+      PLOG(WARNING) << "Failed to read database permissions";
+    }
     return;
-  if ((permissions & kMask) == 0)
-    return;
-  platform_->SetPermissions(database_path_.value(), permissions & ~kMask);
+  }
+  if ((permissions & kMask) != 0) {
+    LOG(WARNING) << "Fixing database permissions.";
+    if (!platform_->SetPermissions(database_path_.value(),
+                                   permissions & ~kMask)) {
+      PLOG(WARNING) << "Failed to fix database permissions";
+    }
+  }
+  if (user != attestation_user_ || group != attestation_group_) {
+    LOG(WARNING) << "Fixing database ownership.";
+    if (!platform_->SetOwnership(database_path_.value(), attestation_user_,
+                                 attestation_group_)) {
+      PLOG(WARNING) << "Failed to fix database ownership";
+    }
+  }
 }
 
 bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
