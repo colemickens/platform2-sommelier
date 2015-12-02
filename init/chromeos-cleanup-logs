@@ -6,9 +6,10 @@
 
 # This script should be called daily to clean up log files.
 
+. /usr/share/cros/disk_utils.sh
+
 CLEANUP_PAUSED_FILE="/var/lib/cleanup_logs_paused"
 NUM_DAYS_TO_PRESERVE=7
-STATEFUL="/mnt/stateful_partition"
 # Threshold for additional histogram reporting (in 1KB blocks), 1GB in total.
 ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
 SHADOW="/home/.shadow"
@@ -16,21 +17,6 @@ SHADOW="/home/.shadow"
 # Paths for the CRX cache. Shared with installer/crx-import.conf
 UNVALIDATED_CRX_CACHE=${STATEFUL}/unencrypted/import_extensions
 VALIDATED_CRX_CACHE=/var/cache/external_cache
-
-# Get the percentage of space used on the stateful partition.
-get_stateful_usage_percent() {
-  local stateful_space="$(df -P ${STATEFUL} | grep -m 1 ${STATEFUL})"
-  # Remove everything after and including the "%"
-  stateful_space="${stateful_space%%%*}"
-  # Remove all fields except the last one.
-  stateful_space="${stateful_space##* }"
-  echo $stateful_space
-}
-
-# Get the free space on the stateful partition, in 1KB blocks.
-get_stateful_free_space_blocks() {
-  df -P ${STATEFUL} | grep -m 1 ${STATEFUL} | awk '{print $4}'
-}
 
 report_additional_statistics() {
   # Number of users on device.
