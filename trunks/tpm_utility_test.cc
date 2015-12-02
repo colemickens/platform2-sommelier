@@ -1654,7 +1654,8 @@ TEST_F(TpmUtilityTest, DefineNVSpaceSuccess) {
   EXPECT_EQ(public_data.nv_public.nv_index, nvram_index);
   EXPECT_EQ(public_data.nv_public.name_alg, TPM_ALG_SHA256);
   EXPECT_EQ(public_data.nv_public.attributes,
-            TPMA_NV_OWNERWRITE | TPMA_NV_WRITEDEFINE | TPMA_NV_AUTHREAD);
+            TPMA_NV_NO_DA | TPMA_NV_OWNERWRITE | TPMA_NV_WRITEDEFINE |
+                TPMA_NV_AUTHREAD);
   EXPECT_EQ(public_data.nv_public.data_size, length);
 }
 
@@ -1715,7 +1716,7 @@ TEST_F(TpmUtilityTest, DestroyNVSpaceFailure) {
 TEST_F(TpmUtilityTest, LockNVSpaceSuccess) {
   uint32_t index = 53;
   uint32_t nvram_index = NV_INDEX_FIRST + index;
-  EXPECT_CALL(mock_tpm_, NV_WriteLockSync(nvram_index, _, nvram_index, _, _))
+  EXPECT_CALL(mock_tpm_, NV_WriteLockSync(TPM_RH_OWNER, _, nvram_index, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.LockNVSpace(index, &mock_authorization_delegate_));
@@ -1737,7 +1738,7 @@ TEST_F(TpmUtilityTest, LockNVSpaceBadSession) {
 TEST_F(TpmUtilityTest, LockNVSpaceFailure) {
   uint32_t index = 53;
   uint32_t nvram_index = NV_INDEX_FIRST + index;
-  EXPECT_CALL(mock_tpm_, NV_WriteLockSync(nvram_index, _, nvram_index, _, _))
+  EXPECT_CALL(mock_tpm_, NV_WriteLockSync(TPM_RH_OWNER, _, nvram_index, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.LockNVSpace(index, &mock_authorization_delegate_));
