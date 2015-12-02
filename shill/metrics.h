@@ -104,7 +104,7 @@ class Metrics {
     kWiFiNetworkPhyMode11n = 4,      // 802.11n
     kWiFiNetworkPhyModeHalf = 5,     // PSB Half-width
     kWiFiNetworkPhyModeQuarter = 6,  // PSB Quarter-width
-    kWiFiNetworkPhyModeTurbo = 7,    // Atheros Turbo mode
+    kWiFiNetworkPhyMode11ac = 7,     // 802.11ac
 
     kWiFiNetworkPhyModeMax
   };

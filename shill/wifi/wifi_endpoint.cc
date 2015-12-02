@@ -427,6 +427,7 @@ bool WiFiEndpoint::ParseIEs(
   // +------+--------+----------------+
   *phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
   bool found_ht = false;
+  bool found_vht = false;
   bool found_erp = false;
   int ie_len = 0;
   vector<uint8_t>::iterator it;
@@ -445,15 +446,15 @@ bool WiFiEndpoint::ParseIEs(
           *country_code = string(it + 2, it + 4);
         }
       case IEEE_80211::kElemIdErp:
-        if (!found_ht) {
-          *phy_mode = Metrics::kWiFiNetworkPhyMode11g;
-        }
         found_erp = true;
         break;
       case IEEE_80211::kElemIdHTCap:
       case IEEE_80211::kElemIdHTInfo:
-        *phy_mode = Metrics::kWiFiNetworkPhyMode11n;
         found_ht = true;
+        break;
+      case IEEE_80211::kElemIdVHTCap:
+      case IEEE_80211::kElemIdVHTOperation:
+        found_vht = true;
         break;
       case IEEE_80211::kElemIdRSN:
         ParseWPACapabilities(it + 2, it + ie_len, ieee80211w_required);
@@ -464,7 +465,16 @@ bool WiFiEndpoint::ParseIEs(
         break;
     }
   }
-  return found_ht || found_erp;
+  if (found_vht) {
+    *phy_mode = Metrics::kWiFiNetworkPhyMode11ac;
+  } else if (found_ht) {
+    *phy_mode = Metrics::kWiFiNetworkPhyMode11n;
+  } else if (found_erp) {
+    *phy_mode = Metrics::kWiFiNetworkPhyMode11g;
+  } else {
+    return false;
+  }
+  return true;
 }
 
 // static
