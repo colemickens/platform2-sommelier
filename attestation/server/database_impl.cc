@@ -101,9 +101,14 @@ bool DatabaseImpl::Read(std::string* data) {
   int permissions = 0;
   if (base::GetPosixFilePermissions(path, &permissions) &&
       (permissions & kMask) != 0) {
+    LOG(WARNING) << "Attempting to fix permissions on attestation database.";
     base::SetPosixFilePermissions(path, permissions & ~kMask);
   }
-  return base::ReadFileToString(path, data);
+  if (!base::ReadFileToString(path, data)) {
+    PLOG(ERROR) << "Failed to read attestation database";
+    return false;
+  }
+  return true;
 }
 
 bool DatabaseImpl::Write(const std::string& data) {
