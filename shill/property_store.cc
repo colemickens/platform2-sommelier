@@ -722,6 +722,14 @@ void PropertyStore::RegisterUint32(const std::string& name, uint32_t* prop) {
       Uint32Accessor(new PropertyAccessor<uint32_t>(prop));
 }
 
+void PropertyStore::RegisterConstUint32(const string& name,
+                                        const uint32_t* prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint32_properties_, name))
+      << "(Already registered " << name << ")";
+  uint32_properties_[name] =
+      Uint32Accessor(new ConstPropertyAccessor<uint32_t>(prop));
+}
+
 void PropertyStore::RegisterConstUint16(const string& name,
                                         const uint16_t* prop) {
   DCHECK(!Contains(name) || ContainsKey(uint16_properties_, name))

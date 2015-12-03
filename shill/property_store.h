@@ -210,6 +210,7 @@ class PropertyStore {
   void RegisterConstInt32(const std::string& name, const int32_t* prop);
   void RegisterWriteOnlyInt32(const std::string& name, int32_t* prop);
   void RegisterUint32(const std::string& name, uint32_t* prop);
+  void RegisterConstUint32(const std::string& name, const uint32_t* prop);
   void RegisterString(const std::string& name, std::string* prop);
   void RegisterConstString(const std::string& name, const std::string* prop);
   void RegisterWriteOnlyString(const std::string& name, std::string* prop);
