@@ -138,8 +138,7 @@ vector<string> DHCPv6Config::GetFlags() {
   vector<string> flags = DHCPConfig::GetFlags();
 
   flags.push_back("-6");  // IPv6 only.
-  flags.push_back("-a");  // Request ia_pd.
-  flags.push_back("--ia_na");  // Request ia_na.
+  flags.push_back("-a");  // Request ia_na and ia_pd.
   return flags;
 }
 
