@@ -65,6 +65,7 @@ const char kCacheDir[] = "Cache";
 const char kDownloadsDir[] = "Downloads";
 const char kGCacheDir[] = "GCache";
 const char kGCacheVersionDir[] = "v1";
+const char kGCacheBlobsDir[] = "blobs";
 const char kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
@@ -821,7 +822,8 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
     FilePath(kDownloadsDir),
     FilePath(kGCacheDir),
     FilePath(kGCacheDir).Append(kGCacheVersionDir),
-    FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheTmpDir),
+    FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheBlobsDir),
+    FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheTmpDir)
   };
 
   // The call is allowed to partially fail if directory creation fails, but we
