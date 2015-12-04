@@ -52,6 +52,7 @@ void InitMinijailSandbox() {
   struct minijail* jail = minijail->New();
 
   minijail->DropRoot(jail, kAttestationUser, kAttestationGroup);
+  minijail_inherit_usergroups(jail);
   minijail->UseSeccompFilter(jail, kAttestationSeccompPath);
   minijail->Enter(jail);
   minijail->Destroy(jail);
