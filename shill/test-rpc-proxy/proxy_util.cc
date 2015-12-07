@@ -107,6 +107,74 @@ void GetBrilloAnyVectorFromXmlRpcArray(
                  << (*xml_rpc_value_in)[0].getType();
   }
 }
+
+template<typename ValueType> XmlRpc::XmlRpcValue::Type GetXmlRpcType();
+template<> XmlRpc::XmlRpcValue::Type GetXmlRpcType<bool>() {
+  return XmlRpc::XmlRpcValue::TypeBoolean;
+}
+template<> XmlRpc::XmlRpcValue::Type GetXmlRpcType<int>() {
+  return XmlRpc::XmlRpcValue::TypeInt;
+}
+template<> XmlRpc::XmlRpcValue::Type GetXmlRpcType<double>() {
+  return XmlRpc::XmlRpcValue::TypeDouble;
+}
+template<> XmlRpc::XmlRpcValue::Type GetXmlRpcType<std::string>() {
+  return XmlRpc::XmlRpcValue::TypeString;
+}
+
+template<typename ValueType> bool IsMemberValuePresent(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name) {
+  if (xml_rpc_value_in->hasMember(member_name) &&
+      ((*xml_rpc_value_in)[member_name].getType() ==
+       GetXmlRpcType<ValueType>())) {
+    return true;
+  }
+  return false;
+}
+
+template<typename ValueType> bool GetValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    ValueType default_value,
+    ValueType* value_out) {
+  if (!IsMemberValuePresent<ValueType>(xml_rpc_value_in, member_name)) {
+    *value_out = default_value;
+    return false;
+  }
+  *value_out = ValueType((*xml_rpc_value_in)[member_name]);
+  return true;
+}
+
+template<typename ElementType> bool IsMemberVectorPresent(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name) {
+  if (xml_rpc_value_in->hasMember(member_name) &&
+      ((*xml_rpc_value_in)[member_name].getType() ==
+       XmlRpc::XmlRpcValue::TypeArray) &&
+      ((*xml_rpc_value_in)[member_name][0].getType() ==
+       GetXmlRpcType<ElementType>())) {
+    return true;
+  }
+  return false;
+}
+
+template<typename ElementType> bool GetVectorFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    std::vector<ElementType> default_value,
+    std::vector<ElementType>* value_out) {
+  if (!IsMemberVectorPresent<ElementType>(xml_rpc_value_in, member_name)) {
+    *value_out = default_value;
+    return false;
+  }
+  XmlRpc::XmlRpcValue& xml_rpc_member_array = (*xml_rpc_value_in)[member_name];
+  int array_size = xml_rpc_member_array.size();
+  for (int array_pos = 0; array_pos < array_size; ++array_pos) {
+    value_out->push_back(ElementType(xml_rpc_member_array[array_pos]));
+  }
+  return true;
+}
 } // namespace
 
 void GetXmlRpcValueFromBrilloAnyValue(
@@ -213,4 +281,49 @@ void GetBrilloAnyValueFromXmlRpcValue(
     default:
       LOG(FATAL) << __func__ << ". Unhandled type: " << xml_rpc_value_in->getType();
   }
+}
+
+bool GetBoolValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    bool default_value,
+    bool* value_out) {
+  return GetValueFromXmlRpcValueStructMember(
+      xml_rpc_value_in, member_name, default_value, value_out);
+}
+
+bool GetIntValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    int default_value,
+    int* value_out) {
+  return GetValueFromXmlRpcValueStructMember(
+      xml_rpc_value_in, member_name, default_value, value_out);
+}
+
+bool GetDoubleValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    double default_value,
+    double* value_out){
+  return GetValueFromXmlRpcValueStructMember(
+      xml_rpc_value_in, member_name, default_value, value_out);
+}
+
+bool GetStringValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    const std::string& default_value,
+    std::string* value_out) {
+  return GetValueFromXmlRpcValueStructMember(
+      xml_rpc_value_in, member_name, default_value, value_out);
+}
+
+bool GetStringVectorFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    const std::vector<std::string>& default_value,
+    std::vector<std::string>* value_out) {
+  return GetVectorFromXmlRpcValueStructMember(
+      xml_rpc_value_in, member_name, default_value, value_out);
 }

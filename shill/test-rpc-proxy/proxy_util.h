@@ -17,6 +17,9 @@
 #ifndef PROXY_UTIL_H
 #define PROXY_UTIL_H
 
+#include <string>
+#include <vector>
+
 #include <XmlRpcValue.h>
 
 #include <brillo/any.h>
@@ -32,6 +35,34 @@ void GetXmlRpcValueFromBrilloAnyValue(
 void GetBrilloAnyValueFromXmlRpcValue(
     XmlRpc::XmlRpcValue* xml_rpc_value_in,
     brillo::Any* any_value_out);
+// Functions to access members of structs sent over XmlRpc and need to be converted
+// to corresponding objects. Returns |true| if the value is found in the incoming data
+// or |false| if the value was taken from the default supplied.
+bool GetBoolValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    bool default_value,
+    bool* value_out);
+bool GetIntValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    int default_value,
+    int* value_out);
+bool GetDoubleValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    double default_value,
+    double* value_out);
+bool GetStringValueFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    const std::string& default_value,
+    std::string* value_out);
+bool GetStringVectorFromXmlRpcValueStructMember(
+    XmlRpc::XmlRpcValue* xml_rpc_value_in,
+    const std::string& member_name,
+    const std::vector<std::string>& default_value,
+    std::vector<std::string>* value_out);
 
 inline long GetMillisecondsFromSeconds(int time_seconds) {
   return time_seconds * 1000;
