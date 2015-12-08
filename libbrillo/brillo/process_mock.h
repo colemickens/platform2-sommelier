@@ -36,6 +36,7 @@ class ProcessMock : public Process {
   MOCK_METHOD1(Reset, void(pid_t));
   MOCK_METHOD1(ResetPidByFile, bool(const std::string& pid_file));
   MOCK_METHOD0(Release, pid_t());
+  MOCK_METHOD1(SetCloseUnusedFileDescriptors, void(bool close_unused_fds));
 };
 
 }  // namespace brillo

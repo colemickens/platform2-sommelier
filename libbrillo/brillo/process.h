@@ -60,6 +60,12 @@ class BRILLO_EXPORT Process {
   // descriptor in the child.
   virtual void BindFd(int parent_fd, int child_fd) = 0;
 
+  // Set a flag |close_unused_fds| to indicate if the child process
+  // should close all unused file descriptors inherited from the
+  // parent process.  This will not close the file descriptors for
+  // the standard streams (stdin, stdout, and stderr).
+  virtual void SetCloseUnusedFileDescriptors(bool close_unused_fds) = 0;
+
   // Set the real/effective/saved user ID of the child process.
   virtual void SetUid(uid_t uid) = 0;
 
@@ -141,6 +147,7 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   virtual void RedirectOutput(const std::string& output_file);
   virtual void RedirectUsingPipe(int child_fd, bool is_input);
   virtual void BindFd(int parent_fd, int child_fd);
+  virtual void SetCloseUnusedFileDescriptors(bool close_unused_fds);
   virtual void SetUid(uid_t uid);
   virtual void SetGid(gid_t gid);
   virtual void SetInheritParentSignalMask(bool inherit);
@@ -176,6 +183,9 @@ class BRILLO_EXPORT ProcessImpl : public Process {
  private:
   FRIEND_TEST(ProcessTest, ResetPidByFile);
 
+  bool IsFileDescriptorInPipeMap(int fd) const;
+  void CloseUnusedFileDescriptors();
+
   // Pid of currently managed process or 0 if no currently managed
   // process.  pid must not be modified except by calling
   // UpdatePid(new_pid).
@@ -193,6 +203,10 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   // is set to false by default, which means by default the child process
   // will not inherit signal mask from the parent process.
   bool inherit_parent_signal_mask_;
+  // Flag indicating to close unused file descriptors inherited from the
+  // parent process when starting the child process, which avoids leaking
+  // unnecessary file descriptors to the child process.
+  bool close_unused_file_descriptors_;
 };
 
 }  // namespace brillo

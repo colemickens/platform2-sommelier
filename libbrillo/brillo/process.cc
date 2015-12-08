@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/process/process_metrics.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -49,7 +50,8 @@ ProcessImpl::ProcessImpl()
       gid_(-1),
       pre_exec_(base::Bind(&ReturnTrue)),
       search_path_(false),
-      inherit_parent_signal_mask_(false) {
+      inherit_parent_signal_mask_(false),
+      close_unused_file_descriptors_(false) {
 }
 
 ProcessImpl::~ProcessImpl() {
@@ -82,6 +84,10 @@ void ProcessImpl::BindFd(int parent_fd, int child_fd) {
   info.child_fd_ = parent_fd;
   info.parent_fd_ = -1;
   pipe_map_[child_fd] = info;
+}
+
+void ProcessImpl::SetCloseUnusedFileDescriptors(bool close_unused_fds) {
+  close_unused_file_descriptors_ = close_unused_fds;
 }
 
 void ProcessImpl::SetUid(uid_t uid) {
@@ -150,6 +156,39 @@ bool ProcessImpl::PopulatePipeMap() {
   return true;
 }
 
+bool ProcessImpl::IsFileDescriptorInPipeMap(int fd) const {
+  for (const auto& pipe : pipe_map_) {
+    if (fd == pipe.second.parent_fd_ ||
+        fd == pipe.second.child_fd_ ||
+        fd == pipe.first) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void ProcessImpl::CloseUnusedFileDescriptors() {
+  size_t max_fds = base::GetMaxFds();
+  for (size_t i = 0; i < max_fds; i++) {
+    const int fd = static_cast<int>(i);
+
+    // Ignore STD file descriptors.
+    if (fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO) {
+      continue;
+    }
+
+    // Ignore file descriptors used by the PipeMap, they will be handled
+    // by this process later on.
+    if (IsFileDescriptorInPipeMap(fd)) {
+      continue;
+    }
+
+    // Since we're just trying to close anything we can find,
+    // ignore any error return values of close().
+    IGNORE_EINTR(close(fd));
+ }
+}
+
 bool ProcessImpl::Start() {
   // If no arguments are provided, fail.
   if (arguments_.empty()) {
@@ -177,6 +216,10 @@ bool ProcessImpl::Start() {
 
   if (pid == 0) {
     // Executing inside the child process.
+    // Close unused file descriptors.
+    if (close_unused_file_descriptors_) {
+      CloseUnusedFileDescriptors();
+    }
     // Close parent's side of the child pipes. dup2 ours into place and
     // then close our ends.
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
