@@ -101,6 +101,7 @@ pid_t ProcessManager::StartProcess(
   for (const auto& option : arguments) {
     process->AddArg(option);
   }
+  process->SetCloseUnusedFileDescriptors(true);
   process->SetPreExecCallback(
       base::Bind(&SetupChild, environment, terminate_with_parent));
   if (!process->Start()) {
