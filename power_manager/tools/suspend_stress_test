@@ -17,6 +17,7 @@ DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
 DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
+DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
 
 # Minimum value for --suspend_min when --memory_check is true.
 readonly MEMORY_TEST_SUSPEND_MIN_DELAY=10
@@ -29,6 +30,22 @@ MUTABLE_PREF_FILE=
 
 get_success_count() {
   awk '$1 == "success:" { print $2 }' /sys/kernel/debug/suspend_stats
+}
+
+# Return the current event count for the wakeup source.
+get_wakeup_source_event_count() {
+  local wakeup_source=$1
+  local event_count=0
+
+  if [ "${wakeup_source}" -a "none" != "${wakeup_source}" ]; then
+    # Get the event count field for the wakeup source.
+    event_count=$(awk '$1 == "'"${wakeup_source}"'" { print $3 }' \
+                  /sys/kernel/debug/wakeup_sources)
+    if [ -z "$event_count" ]; then
+      event_count=0
+    fi
+  fi
+  echo "$event_count"
 }
 
 random() {
@@ -123,6 +140,7 @@ echo "  bugs fatal:  $(boolean_value ${FLAGS_bug_fatal})"
 echo "  warnings fatal:  $(boolean_value ${FLAGS_warn_fatal})"
 echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
 echo "  suspend command: ${suspend_cmd}"
+echo "  wakeup source to ignore: ${FLAGS_ignore_wakeup_source}"
 
 initial_successes=$(get_success_count)
 suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
@@ -138,6 +156,8 @@ cur=0
 firmware_errors=0
 last_successes=${initial_successes}
 exit_loop=0
+cur_ignore_count=0
+last_ignore_count=0
 
 while true; do
   : $(( cur += 1 ))
@@ -145,6 +165,8 @@ while true; do
 
   sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
   printf "sleep for %2d seconds..." "${sus_time}"
+  last_ignore_count=$(get_wakeup_source_event_count \
+                      ${FLAGS_ignore_wakeup_source})
   wakeup_count=$(cat /sys/power/wakeup_count)
   echo 0 > /sys/class/rtc/rtc0/wakealarm
   echo "+${sus_time}" > /sys/class/rtc/rtc0/wakealarm
@@ -169,7 +191,10 @@ while true; do
   fi
   # Make sure suspend succeeded
   cur_successes=$(get_success_count)
-  if [ ${cur_successes} -eq ${last_successes} ]; then
+  cur_ignore_count=$(get_wakeup_source_event_count \
+                     ${FLAGS_ignore_wakeup_source})
+  if [ ${cur_successes} -eq ${last_successes} -a \
+       ${cur_ignore_count} -eq ${last_ignore_count} ]; then
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       echo "Suspend failed."
       exit_loop=1
