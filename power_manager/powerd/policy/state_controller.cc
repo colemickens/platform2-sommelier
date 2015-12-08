@@ -399,14 +399,6 @@ bool StateController::ReleaseDisplayWakeLock(DisplayWakeLockType type) {
   return true;
 }
 
-void StateController::ReleaseAllDisplayWakeLocks() {
-  for (int i = 0; i < WAKE_LOCK_TYPES; ++i) {
-    wake_lock_count_[i] = 0;
-  }
-
-  UpdateSettingsAndState();
-}
-
 void StateController::HandleUserActivity() {
   CHECK(initialized_);
 
