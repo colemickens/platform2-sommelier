@@ -961,10 +961,6 @@ void Daemon::InitDBus() {
                    &Daemon::HandleSetPowerSourceMethod);
   ExportDBusMethod(kHandlePowerButtonAcknowledgmentMethod,
                    &Daemon::HandlePowerButtonAcknowledgment);
-  ExportDBusMethod(kAcquireDisplayWakeLockMethod,
-                   &Daemon::HandleAcquireOrReleaseDisplayWakeLock);
-  ExportDBusMethod(kReleaseDisplayWakeLockMethod,
-                   &Daemon::HandleAcquireOrReleaseDisplayWakeLock);
   CHECK(powerd_dbus_object_->ExportMethodAndBlock(
       kPowerManagerInterface, kRegisterSuspendDelayMethod,
       base::Bind(&policy::Suspender::RegisterSuspendDelay,
@@ -1477,35 +1473,6 @@ scoped_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
   }
   input_controller_->HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(timestamp_internal));
-  return scoped_ptr<dbus::Response>();
-}
-
-scoped_ptr<dbus::Response> Daemon::HandleAcquireOrReleaseDisplayWakeLock(
-    dbus::MethodCall* method_call) {
-  int32_t lock_type;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopInt32(&lock_type)) {
-    LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    return CreateInvalidArgsError(method_call, "Expected int32_t lock type");
-  }
-
-  if (method_call->GetMember() == kAcquireDisplayWakeLockMethod) {
-    LOG(INFO) << method_call->GetSender()
-              << " is acquiring display wake lock of type " << lock_type;
-    if (!state_controller_->AcquireDisplayWakeLock(
-            static_cast<DisplayWakeLockType>(lock_type))) {
-      return CreateInvalidArgsError(method_call, "Invalid lock");
-    }
-  } else if (method_call->GetMember() == kReleaseDisplayWakeLockMethod) {
-    LOG(INFO) << method_call->GetSender()
-              << " is releasing display wake lock of type " << lock_type;
-    if (!state_controller_->ReleaseDisplayWakeLock(
-            static_cast<DisplayWakeLockType>(lock_type))) {
-      return CreateInvalidArgsError(method_call, "Invalid lock");
-    }
-  } else {
-    NOTREACHED() << "Unexpected method " << method_call->GetMember();
-  }
   return scoped_ptr<dbus::Response>();
 }
 

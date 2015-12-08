@@ -221,7 +221,6 @@ StateController::StateController()
       session_state_(SESSION_STOPPED),
       updater_state_(UPDATER_IDLE),
       display_mode_(DISPLAY_NORMAL),
-      wake_lock_count_{0},
       screen_dimmed_(false),
       screen_turned_off_(false),
       requested_screen_lock_(false),
@@ -367,36 +366,6 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
     MaybeStopInitialStateTimer();
   }
   UpdateSettingsAndState();
-}
-
-bool StateController::AcquireDisplayWakeLock(DisplayWakeLockType type) {
-  if (type < 0 || type >= WAKE_LOCK_TYPES) {
-    LOG(ERROR) << "Attempted to acquire invalid display wake lock of type "
-               << type;
-    return false;
-  }
-
-  wake_lock_count_[type]++;
-  UpdateSettingsAndState();
-  return true;
-}
-
-bool StateController::ReleaseDisplayWakeLock(DisplayWakeLockType type) {
-  if (type < 0 || type >= WAKE_LOCK_TYPES) {
-    LOG(ERROR) << "Attempted to release invalid display wake lock of type "
-               << type;
-    return false;
-  }
-
-  if (wake_lock_count_[type] == 0) {
-    LOG(ERROR) << "Attempted to release display wake lock of type "
-               << type << " which was not held";
-    return false;
-  }
-
-  wake_lock_count_[type]--;
-  UpdateSettingsAndState();
-  return true;
 }
 
 void StateController::HandleUserActivity() {
@@ -728,21 +697,6 @@ void StateController::UpdateSettingsAndState() {
     ScaleDelays(&delays_, presentation_factor);
   else if (saw_user_activity_soon_after_screen_dim_or_off_)
     ScaleDelays(&delays_, user_activity_factor);
-
-  // Avoid suspending or shutting down due to inactivity when someone is
-  // holding a wake lock, and modify delays to inhibit screen off/dimming
-  // if necessary.
-  const bool inhibit_dimming = wake_lock_count_[WAKE_LOCK_BRIGHT] > 0;
-  const bool inhibit_screen_off = inhibit_dimming ||
-      wake_lock_count_[WAKE_LOCK_DIM] > 0;
-  if (inhibit_screen_off) {
-    delays_.screen_off = base::TimeDelta();
-    delays_.screen_lock = base::TimeDelta();
-    if (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN)
-      idle_action_ = DO_NOTHING;
-  }
-  if (inhibit_dimming)
-    delays_.screen_dim = base::TimeDelta();
 
   // The disable-idle-suspend pref overrides |policy_|. Note that it also
   // prevents the system from shutting down on idle if no session has been

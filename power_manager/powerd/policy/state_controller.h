@@ -12,7 +12,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
@@ -146,8 +145,6 @@ class StateController : public PrefsObserver {
   void HandleDisplayModeChange(DisplayMode mode);
   void HandleResume();
   void HandlePolicyChange(const PowerManagementPolicy& policy);
-  bool AcquireDisplayWakeLock(DisplayWakeLockType type);
-  bool ReleaseDisplayWakeLock(DisplayWakeLockType type);
 
   // Handles notification of different types of activity.
   void HandleUserActivity();
@@ -318,9 +315,6 @@ class StateController : public PrefsObserver {
 
   // Whether the system is presenting or not.
   DisplayMode display_mode_;
-
-  // Number of each type of display wake lock held.
-  int wake_lock_count_[WAKE_LOCK_TYPES];
 
   // These track whether various actions have already been performed by
   // UpdateState().
