@@ -31,9 +31,9 @@ namespace chromium {
 namespace WebServer {
 
 class ObjectManagerProxy;
-class ProtocolHandlerProxy;
+class ProtocolHandlerProxyInterface;
 class RequestHandlerAdaptor;
-class ServerProxy;
+class ServerProxyInterface;
 
 }  // namespace WebServer
 }  // namespace chromium
@@ -109,7 +109,8 @@ class LIBWEBSERV_EXPORT Server final {
   class RequestHandler;
 
   // Handler invoked when a connection is established to web server daemon.
-  LIBWEBSERV_PRIVATE void Online(org::chromium::WebServer::ServerProxy* server);
+  LIBWEBSERV_PRIVATE void Online(
+      org::chromium::WebServer::ServerProxyInterface* server);
 
   // Handler invoked when the web server daemon connection is dropped.
   LIBWEBSERV_PRIVATE void Offline(const dbus::ObjectPath& object_path);
@@ -117,7 +118,7 @@ class LIBWEBSERV_EXPORT Server final {
   // Handler invoked when a new protocol handler D-Bus proxy object becomes
   // available.
   LIBWEBSERV_PRIVATE void ProtocolHandlerAdded(
-      org::chromium::WebServer::ProtocolHandlerProxy* handler);
+      org::chromium::WebServer::ProtocolHandlerProxyInterface* handler);
 
   // Handler invoked when a protocol handler D-Bus proxy object disappears.
   LIBWEBSERV_PRIVATE void ProtocolHandlerRemoved(
@@ -156,7 +157,7 @@ class LIBWEBSERV_EXPORT Server final {
   std::unique_ptr<org::chromium::WebServer::ObjectManagerProxy> object_manager_;
 
   // D-Bus proxy for the web server main object.
-  org::chromium::WebServer::ServerProxy* proxy_{nullptr};
+  org::chromium::WebServer::ServerProxyInterface* proxy_{nullptr};
 
   // D-Bus service name used by the daemon hosting this object.
   std::string service_name_;

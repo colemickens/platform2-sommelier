@@ -109,7 +109,7 @@ int ProtocolHandler::AddHandler(
   request_handlers_.emplace(
       ++last_handler_id_,
       HandlerMapEntry{url, method,
-                      std::map<ProtocolHandlerProxy*, std::string>{},
+                      std::map<ProtocolHandlerProxyInterface*, std::string>{},
                       std::move(handler)});
   // For each instance of remote protocol handler object sharing the same name,
   // add the request handler.
@@ -155,7 +155,7 @@ bool ProtocolHandler::RemoveHandler(int handler_id) {
   return true;
 }
 
-void ProtocolHandler::Connect(ProtocolHandlerProxy* proxy) {
+void ProtocolHandler::Connect(ProtocolHandlerProxyInterface* proxy) {
   proxies_.emplace(proxy->GetObjectPath(), proxy);
   for (const auto& pair : request_handlers_) {
     proxy->AddRequestHandlerAsync(
@@ -181,7 +181,7 @@ void ProtocolHandler::Disconnect(const dbus::ObjectPath& object_path) {
 }
 
 void ProtocolHandler::AddHandlerSuccess(int handler_id,
-                                        ProtocolHandlerProxy* proxy,
+                                        ProtocolHandlerProxyInterface* proxy,
                                         const std::string& remote_handler_id) {
   auto p = request_handlers_.find(handler_id);
   CHECK(p != request_handlers_.end());
@@ -229,7 +229,8 @@ void ProtocolHandler::CompleteRequest(
     int status_code,
     const std::multimap<std::string, std::string>& headers,
     brillo::StreamPtr data_stream) {
-  ProtocolHandlerProxy* proxy = GetRequestProtocolHandlerProxy(request_id);
+  ProtocolHandlerProxyInterface* proxy =
+      GetRequestProtocolHandlerProxy(request_id);
   if (!proxy)
     return;
 
@@ -252,7 +253,8 @@ void ProtocolHandler::GetFileData(
     int file_id,
     const base::Callback<void(brillo::StreamPtr)>& success_callback,
     const base::Callback<void(brillo::Error*)>& error_callback) {
-  ProtocolHandlerProxy* proxy = GetRequestProtocolHandlerProxy(request_id);
+  ProtocolHandlerProxyInterface* proxy =
+      GetRequestProtocolHandlerProxy(request_id);
   CHECK(proxy);
 
   // Store the success/error callback in a shared object so it can be referenced
@@ -287,7 +289,7 @@ void ProtocolHandler::GetFileData(
                                  base::Bind(on_error));
 }
 
-ProtocolHandler::ProtocolHandlerProxy*
+ProtocolHandler::ProtocolHandlerProxyInterface*
 ProtocolHandler::GetRequestProtocolHandlerProxy(
     const std::string& request_id) const {
   auto iter = request_id_map_.find(request_id);

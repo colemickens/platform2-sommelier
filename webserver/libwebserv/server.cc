@@ -147,7 +147,7 @@ void Server::Disconnect() {
   dbus_object_.reset();
 }
 
-void Server::Online(org::chromium::WebServer::ServerProxy* server) {
+void Server::Online(org::chromium::WebServer::ServerProxyInterface* server) {
   VLOG(1) << "Web server is on-line.";
   proxy_ = server;
   if (!on_server_online_.is_null())
@@ -162,7 +162,7 @@ void Server::Offline(const dbus::ObjectPath& object_path) {
 }
 
 void Server::ProtocolHandlerAdded(
-    org::chromium::WebServer::ProtocolHandlerProxy* handler) {
+    org::chromium::WebServer::ProtocolHandlerProxyInterface* handler) {
   VLOG(1) << "Server-side protocol handler with ID '" << handler->id()
           << "' is on-line (" << handler->name() << ")";
 

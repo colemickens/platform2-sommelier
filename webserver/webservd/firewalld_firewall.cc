@@ -38,7 +38,7 @@ void FirewalldFirewall::PunchTcpHoleAsync(
 }
 
 void FirewalldFirewall::OnFirewalldOnline(
-    org::chromium::FirewalldProxy* proxy) {
+    org::chromium::FirewalldProxyInterface* proxy) {
   proxy_ = proxy;
   service_online_cb_.Run();
 }

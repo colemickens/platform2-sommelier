@@ -40,12 +40,12 @@ class FirewalldFirewall : public FirewallInterface {
       const base::Callback<void(brillo::Error*)>& failure_cb) override;
 
  private:
-  void OnFirewalldOnline(org::chromium::FirewalldProxy* proxy);
+  void OnFirewalldOnline(org::chromium::FirewalldProxyInterface* proxy);
 
   std::unique_ptr<org::chromium::Firewalld::ObjectManagerProxy> object_manager_;
 
   // Proxy to the firewall DBus service. Owned by the DBus bindings module.
-  org::chromium::FirewalldProxy* proxy_;
+  org::chromium::FirewalldProxyInterface* proxy_;
 
   // Callback to use when firewall service comes online.
   base::Closure service_online_cb_;

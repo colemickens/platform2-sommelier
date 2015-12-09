@@ -36,7 +36,7 @@ namespace org {
 namespace chromium {
 namespace WebServer {
 
-class ProtocolHandlerProxy;
+class ProtocolHandlerProxyInterface;
 
 }  // namespace WebServer
 }  // namespace chromium
@@ -129,19 +129,20 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   friend class Server;
   friend class ResponseImpl;
 
-  using ProtocolHandlerProxy = org::chromium::WebServer::ProtocolHandlerProxy;
+  using ProtocolHandlerProxyInterface =
+      org::chromium::WebServer::ProtocolHandlerProxyInterface;
 
   struct LIBWEBSERV_PRIVATE HandlerMapEntry {
     std::string url;
     std::string method;
-    std::map<ProtocolHandlerProxy*, std::string> remote_handler_ids;
+    std::map<ProtocolHandlerProxyInterface*, std::string> remote_handler_ids;
     std::unique_ptr<RequestHandlerInterface> handler;
   };
 
   // Called by the Server class when the D-Bus proxy object gets connected
   // to the web server daemon.
 
-  LIBWEBSERV_PRIVATE void Connect(ProtocolHandlerProxy* proxy);
+  LIBWEBSERV_PRIVATE void Connect(ProtocolHandlerProxyInterface* proxy);
   // Called by the Server class when the D-Bus proxy object gets disconnected
   // from the web server daemon.
   LIBWEBSERV_PRIVATE void Disconnect(const dbus::ObjectPath& object_path);
@@ -150,7 +151,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   // registration over D-Bus.
   LIBWEBSERV_PRIVATE void AddHandlerSuccess(
       int handler_id,
-      ProtocolHandlerProxy* proxy,
+      ProtocolHandlerProxyInterface* proxy,
       const std::string& remote_handler_id);
   LIBWEBSERV_PRIVATE void AddHandlerError(int handler_id,
                                           brillo::Error* error);
@@ -180,8 +181,8 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
 
   // A helper method to obtain a corresponding protocol handler D-Bus proxy for
   // outstanding request with ID |request_id|.
-  LIBWEBSERV_PRIVATE ProtocolHandlerProxy* GetRequestProtocolHandlerProxy(
-      const std::string& request_id) const;
+  LIBWEBSERV_PRIVATE ProtocolHandlerProxyInterface*
+      GetRequestProtocolHandlerProxy(const std::string& request_id) const;
 
   // Protocol Handler name.
   std::string name_;
@@ -199,7 +200,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   // Remote D-Bus proxies for the server protocol handler objects.
   // There could be multiple protocol handlers with the same name (to make
   // it possible to server the same requests on different ports, for example).
-  std::map<dbus::ObjectPath, ProtocolHandlerProxy*> proxies_;
+  std::map<dbus::ObjectPath, ProtocolHandlerProxyInterface*> proxies_;
   // A map of request ID to protocol handler ID. Used to locate the appropriate
   // protocol handler D-Bus proxy for given request.
   std::map<std::string, std::string> request_id_map_;
