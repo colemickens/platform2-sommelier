@@ -40,13 +40,14 @@ class PermissionBrokerFirewall : public FirewallInterface {
       const base::Callback<void(brillo::Error*)>& failure_cb) override;
 
  private:
-  void OnPermissionBrokerOnline(org::chromium::PermissionBrokerProxy* proxy);
+  void OnPermissionBrokerOnline(
+      org::chromium::PermissionBrokerProxyInterface* proxy);
 
   std::unique_ptr<org::chromium::PermissionBroker::ObjectManagerProxy>
       object_manager_;
 
   // Proxy to the firewall DBus service. Owned by the DBus bindings module.
-  org::chromium::PermissionBrokerProxy* proxy_;
+  org::chromium::PermissionBrokerProxyInterface* proxy_;
 
   // Callback to use when firewall service comes online.
   base::Closure service_online_cb_;

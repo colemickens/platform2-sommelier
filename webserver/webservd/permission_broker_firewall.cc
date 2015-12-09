@@ -58,7 +58,7 @@ void PermissionBrokerFirewall::PunchTcpHoleAsync(
 }
 
 void PermissionBrokerFirewall::OnPermissionBrokerOnline(
-    org::chromium::PermissionBrokerProxy* proxy) {
+    org::chromium::PermissionBrokerProxyInterface* proxy) {
   proxy_ = proxy;
   service_online_cb_.Run();
 }
