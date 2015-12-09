@@ -8,17 +8,19 @@
 #include "chaps/tpm_utility.h"
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/sequenced_task_runner.h>
+#include <base/synchronization/lock.h>
 #include <gtest/gtest_prod.h>
-
-#include "trunks/hmac_session.h"
-#include "trunks/tpm_generated.h"
-#include "trunks/tpm_utility.h"
-#include "trunks/trunks_factory.h"
+#include <trunks/hmac_session.h>
+#include <trunks/tpm_generated.h>
+#include <trunks/tpm_utility.h>
+#include <trunks/trunks_factory.h>
 
 namespace chaps {
 
@@ -27,6 +29,11 @@ const uint32_t kMinModulusSize = 256;
 class TPM2UtilityImpl : public TPMUtility {
  public:
   TPM2UtilityImpl();
+  // This c'tor allows us to specify a task_runner to use to perform TPM
+  // operations. This class will not hold a reference to task_runner, but it is
+  // required to be valid for the lifetime of the object.
+  explicit TPM2UtilityImpl(
+      const scoped_refptr<base::SequencedTaskRunner>& task_runner);
   // Does not take ownership of |factory|.
   explicit TPM2UtilityImpl(trunks::TrunksFactory* factory);
   virtual ~TPM2UtilityImpl();
@@ -85,11 +92,30 @@ class TPM2UtilityImpl : public TPMUtility {
   bool IsSRKReady() override;
 
  private:
-  scoped_ptr<trunks::TrunksFactory> default_factory_;
+  // These internal methods implement the LoadKeyWithParent and Unbind methods.
+  // They are implemented with no locking to allow the public methods above to
+  // implement synchronization.
+  bool LoadKeyWithParentInternal(int slot,
+                                 const std::string& key_blob,
+                                 const brillo::SecureBlob& auth_data,
+                                 int parent_key_handle,
+                                 int* key_handle);
+  bool UnbindInternal(int key_handle,
+                      const std::string& input,
+                      std::string* output);
+
+  // This method flushes the provided |key_handle| from internal structures. If
+  // |key_handle| is not tracked, this method does nothing.
+  void FlushHandle(int key_handle);
+
+  std::unique_ptr<trunks::CommandTransceiver> default_trunks_proxy_;
+  std::unique_ptr<trunks::CommandTransceiver> default_background_transceiver_;
+  std::unique_ptr<trunks::TrunksFactory> default_factory_;
   trunks::TrunksFactory* factory_;
   bool is_initialized_;
   bool is_enabled_ready_;
   bool is_enabled_;
+  base::Lock lock_;
   scoped_ptr<trunks::HmacSession> session_;
   scoped_ptr<trunks::TpmUtility> trunks_tpm_utility_;
   std::map<int, std::set<int>> slot_handles_;

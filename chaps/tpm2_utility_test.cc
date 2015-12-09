@@ -10,12 +10,11 @@
 #include <gtest/gtest.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-
-#include "trunks/mock_hmac_session.h"
-#include "trunks/mock_tpm.h"
-#include "trunks/mock_tpm_state.h"
-#include "trunks/mock_tpm_utility.h"
-#include "trunks/trunks_factory_for_test.h"
+#include <trunks/mock_hmac_session.h>
+#include <trunks/mock_tpm.h>
+#include <trunks/mock_tpm_state.h>
+#include <trunks/mock_tpm_utility.h>
+#include <trunks/trunks_factory_for_test.h>
 
 #include "chaps/chaps_utility.h"
 

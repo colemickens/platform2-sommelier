@@ -7,8 +7,10 @@
 
 #include <signal.h>
 
+#include <memory>
 #include <string>
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
@@ -16,6 +18,7 @@
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/platform_thread.h>
+#include <base/threading/thread.h>
 #include <brillo/syslog_logging.h>
 #include <dbus-c++/dbus.h>
 
@@ -39,6 +42,14 @@ using base::PlatformThread;
 using base::PlatformThreadHandle;
 using base::WaitableEvent;
 using std::string;
+
+namespace {
+
+#if USE_TPM2
+const char kTpmThreadName[] = "tpm_background_thread";
+#endif
+
+}  // namespace
 
 namespace chaps {
 
@@ -130,8 +141,12 @@ int main(int argc, char** argv) {
       }
     }
 #if USE_TPM2
-    // Instantiate a TPM2 Utility.
-    chaps::TPM2UtilityImpl tpm;
+    base::AtExitManager at_exit_manager;
+    base::Thread tpm_background_thread(kTpmThreadName);
+    CHECK(tpm_background_thread.StartWithOptions(
+        base::Thread::Options(base::MessageLoop::TYPE_IO,
+                              0 /* use default stack size */)));
+    chaps::TPM2UtilityImpl tpm(tpm_background_thread.message_loop_proxy());
 #else
     // Instantiate a TPM1.2 Utility.
     chaps::TPMUtilityImpl tpm(srk_auth_data);
@@ -150,6 +165,9 @@ int main(int argc, char** argv) {
     LOG(INFO) << "Starting D-Bus dispatcher.";
     RunDispatcher(&lock, &service, &slot_manager);
     PlatformThread::Join(init_thread_handle);
+#if USE_TPM2
+    tpm_background_thread.Stop();
+#endif
   } else {
     // We're passing through to another PKCS #11 library.
     string lib = cl->GetSwitchValueASCII("lib");

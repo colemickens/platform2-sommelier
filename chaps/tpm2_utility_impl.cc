@@ -4,20 +4,26 @@
 
 #include "chaps/tpm2_utility_impl.h"
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
 #include <base/sha1.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
+#include <trunks/background_command_transceiver.h>
+#include <trunks/command_transceiver.h>
+#include <trunks/error_codes.h>
+#include <trunks/tpm_generated.h>
+#include <trunks/tpm_state.h>
+#include <trunks/trunks_factory_impl.h>
+#include <trunks/trunks_proxy.h>
 
-#include "trunks/error_codes.h"
-#include "trunks/tpm_generated.h"
-#include "trunks/tpm_state.h"
-#include "trunks/trunks_factory_impl.h"
-
+using base::AutoLock;
 using brillo::SecureBlob;
 using std::map;
 using std::set;
@@ -37,6 +43,12 @@ uint32_t GetIntegerExponent(const std::string& public_exponent) {
   return exponent;
 }
 
+void InitTransceiver(trunks::CommandTransceiver* transceiver) {
+  if (!transceiver->Init()) {
+    LOG(ERROR) << "Error initializing transceiver.";
+  }
+}
+
 }  // namespace
 
 namespace chaps {
@@ -49,6 +61,30 @@ TPM2UtilityImpl::TPM2UtilityImpl()
       is_enabled_(false),
       session_(factory_->GetHmacSession()),
       trunks_tpm_utility_(factory_->GetTpmUtility()) {}
+
+TPM2UtilityImpl::TPM2UtilityImpl(
+    const scoped_refptr<base::SequencedTaskRunner>& task_runner)
+        : default_trunks_proxy_(new trunks::TrunksProxy),
+          is_initialized_(false),
+          is_enabled_ready_(false),
+          is_enabled_(false) {
+  task_runner->PostNonNestableTask(
+      FROM_HERE,
+      base::Bind(&InitTransceiver,
+                 base::Unretained(default_trunks_proxy_.get())));
+  // We stitch the transceivers together. The call chain is:
+  // ChapsTPMUtility --> TrunksFactory --> BackgroundCommandTransceiver -->
+  // TrunksProxy
+  default_background_transceiver_.reset(
+      new trunks::BackgroundCommandTransceiver(
+          default_trunks_proxy_.get(),
+          task_runner));
+  default_factory_.reset(
+      new trunks::TrunksFactoryImpl(default_background_transceiver_.get()));
+  factory_ = default_factory_.get();
+  session_ = factory_->GetHmacSession();
+  trunks_tpm_utility_ = factory_->GetTpmUtility();
+}
 
 TPM2UtilityImpl::TPM2UtilityImpl(TrunksFactory* factory)
     : factory_(factory),
@@ -70,6 +106,7 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
 }
 
 bool TPM2UtilityImpl::Init() {
+  AutoLock lock(lock_);
   scoped_ptr<trunks::TpmState> tpm_state = factory_->GetTpmState();
   TPM_RC result;
   result = tpm_state->Initialize();
@@ -101,6 +138,7 @@ bool TPM2UtilityImpl::Init() {
 }
 
 bool TPM2UtilityImpl::IsTPMAvailable() {
+  AutoLock lock(lock_);
   if (is_enabled_ready_) {
     return is_enabled_;
   }
@@ -128,12 +166,14 @@ bool TPM2UtilityImpl::Authenticate(int slot_id,
                                    const std::string& encrypted_master_key,
                                    SecureBlob* master_key) {
   CHECK(master_key);
+  AutoLock lock(lock_);
   int key_handle = 0;
-  if (!LoadKey(slot_id, auth_key_blob, auth_data, &key_handle)) {
+  if (!LoadKeyWithParentInternal(slot_id, auth_key_blob, auth_data,
+                                 kRSAStorageRootKey, &key_handle)) {
     return false;
   }
   std::string master_key_str;
-  if (!Unbind(key_handle, encrypted_master_key, &master_key_str)) {
+  if (!UnbindInternal(key_handle, encrypted_master_key, &master_key_str)) {
     return false;
   }
   *master_key = SecureBlob(master_key_str);
@@ -146,12 +186,14 @@ bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
                                      const SecureBlob& new_auth_data,
                                      const std::string& old_auth_key_blob,
                                      std::string* new_auth_key_blob) {
+  AutoLock lock(lock_);
   int key_handle;
   if (new_auth_data.size() > SHA256_DIGEST_SIZE) {
     LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
     return false;
   }
-  if (!LoadKey(slot_id, old_auth_key_blob, old_auth_data, &key_handle)) {
+  if (!LoadKeyWithParentInternal(slot_id, old_auth_key_blob, old_auth_data,
+                                 kRSAStorageRootKey, &key_handle)) {
     LOG(ERROR) << "Error loading key under old authorization data.";
     return false;
   }
@@ -172,10 +214,13 @@ bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
                << trunks::GetErrorString(result);
     return false;
   }
+  slot_handles_[slot_id].erase(key_handle);
+  FlushHandle(key_handle);
   return true;
 }
 
 bool TPM2UtilityImpl::GenerateRandom(int num_bytes, std::string* random_data) {
+  AutoLock lock(lock_);
   TPM_RC result = trunks_tpm_utility_->GenerateRandom(num_bytes,
                                                       nullptr,
                                                       random_data);
@@ -188,6 +233,7 @@ bool TPM2UtilityImpl::GenerateRandom(int num_bytes, std::string* random_data) {
 }
 
 bool TPM2UtilityImpl::StirRandom(const std::string& entropy_data) {
+  AutoLock lock(lock_);
   TPM_RC result = trunks_tpm_utility_->StirRandom(entropy_data, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error seeding TPM random number generator: "
@@ -203,6 +249,7 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
                                   const SecureBlob& auth_data,
                                   std::string* key_blob,
                                   int* key_handle) {
+  AutoLock lock(lock_);
   if (public_exponent.size() > 4) {
     LOG(ERROR) << "Incorrectly formatted public_exponent.";
     return false;
@@ -231,7 +278,8 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!LoadKey(slot, *key_blob, auth_data, key_handle)) {
+  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data,
+                                 kRSAStorageRootKey, key_handle)) {
     return false;
   }
   return true;
@@ -240,6 +288,7 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
 bool TPM2UtilityImpl::GetPublicKey(int key_handle,
                                    std::string* public_exponent,
                                    std::string* modulus) {
+  AutoLock lock(lock_);
   trunks::TPMT_PUBLIC public_data;
   TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(key_handle,
                                                         &public_data);
@@ -265,6 +314,7 @@ bool TPM2UtilityImpl::WrapKey(int slot,
                               const SecureBlob& auth_data,
                               std::string* key_blob,
                               int* key_handle) {
+  AutoLock lock(lock_);
   if (public_exponent.size() > 4) {
     LOG(ERROR) << "Incorrectly formatted public_exponent.";
     return false;
@@ -291,7 +341,8 @@ bool TPM2UtilityImpl::WrapKey(int slot,
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!LoadKey(slot, *key_blob, auth_data, key_handle)) {
+  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data,
+                                 kRSAStorageRootKey, key_handle)) {
     return false;
   }
   return true;
@@ -301,11 +352,12 @@ bool TPM2UtilityImpl::LoadKey(int slot,
                               const std::string& key_blob,
                               const SecureBlob& auth_data,
                               int* key_handle) {
-  return LoadKeyWithParent(slot,
-                           key_blob,
-                           auth_data,
-                           kRSAStorageRootKey,
-                           key_handle);
+  AutoLock lock(lock_);
+  return LoadKeyWithParentInternal(slot,
+                                   key_blob,
+                                   auth_data,
+                                   kRSAStorageRootKey,
+                                   key_handle);
 }
 
 bool TPM2UtilityImpl::LoadKeyWithParent(int slot,
@@ -313,38 +365,21 @@ bool TPM2UtilityImpl::LoadKeyWithParent(int slot,
                                         const SecureBlob& auth_data,
                                         int parent_key_handle,
                                         int* key_handle) {
-  CHECK_EQ(parent_key_handle, static_cast<int>(kRSAStorageRootKey))
-      << "Chaps with TPM2.0 only loads keys under the RSA SRK.";
-  if (auth_data.size() > SHA256_DIGEST_SIZE) {
-    LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
-    return false;
-  }
-  session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
-  TPM_RC result = trunks_tpm_utility_->LoadKey(
-      key_blob, session_->GetDelegate(),
-      reinterpret_cast<trunks::TPM_HANDLE*>(key_handle));
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error loading key into TPM: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  std::string key_name;
-  result = trunks_tpm_utility_->GetKeyName(*key_handle, &key_name);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting key name: " << trunks::GetErrorString(result);
-    return false;
-  }
-  handle_auth_data_[*key_handle] = auth_data;
-  handle_name_[*key_handle] = key_name;
-  slot_handles_[slot].insert(*key_handle);
-  return true;
+  AutoLock lock(lock_);
+  return LoadKeyWithParentInternal(slot,
+                                   key_blob,
+                                   auth_data,
+                                   parent_key_handle,
+                                   key_handle);
 }
 
 void TPM2UtilityImpl::UnloadKeysForSlot(int slot) {
+  AutoLock Lock(lock_);
   for (const auto& it : slot_handles_[slot]) {
     if (factory_->GetTpm()->FlushContextSync(it, NULL) != TPM_RC_SUCCESS) {
       LOG(WARNING) << "Error flushing handle: " << it;
     }
+    FlushHandle(it);
   }
   slot_handles_.erase(slot);
 }
@@ -391,30 +426,14 @@ bool TPM2UtilityImpl::Bind(int key_handle,
 bool TPM2UtilityImpl::Unbind(int key_handle,
                              const std::string& input,
                              std::string* output) {
-  // Max input size is the size of smallest allowed modulus.
-  if (input.size() > kMinModulusSize) {
-    LOG(ERROR) << "RSA decrypt ciphertext is larger than modulus.";
-    return false;
-  }
-  std::string auth_data = handle_auth_data_[key_handle].to_string();
-  session_->SetEntityAuthorizationValue(auth_data);
-  TPM_RC result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
-                                              trunks::TPM_ALG_RSAES,
-                                              trunks::TPM_ALG_SHA1,
-                                              input,
-                                              session_->GetDelegate(),
-                                              output);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error performing unbind operation: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  return true;
+  AutoLock lock(lock_);
+  return UnbindInternal(key_handle, input, output);
 }
 
 bool TPM2UtilityImpl::Sign(int key_handle,
                            const std::string& input,
                            std::string* signature) {
+  AutoLock Lock(lock_);
   std::string auth_data = handle_auth_data_[key_handle].to_string();
   session_->SetEntityAuthorizationValue(auth_data);
   TPM_RC result = trunks_tpm_utility_->Sign(key_handle,
@@ -463,6 +482,68 @@ bool TPM2UtilityImpl::Verify(int key_handle,
 
 bool TPM2UtilityImpl::IsSRKReady() {
   return IsTPMAvailable() && Init();
+}
+
+bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
+                                                const std::string& key_blob,
+                                                const SecureBlob& auth_data,
+                                                int parent_key_handle,
+                                                int* key_handle) {
+  CHECK_EQ(parent_key_handle, static_cast<int>(kRSAStorageRootKey))
+      << "Chaps with TPM2.0 only loads keys under the RSA SRK.";
+  if (auth_data.size() > SHA256_DIGEST_SIZE) {
+    LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
+    return false;
+  }
+  session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
+  TPM_RC result = trunks_tpm_utility_->LoadKey(
+      key_blob,
+      session_->GetDelegate(),
+      reinterpret_cast<trunks::TPM_HANDLE*>(key_handle));
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading key into TPM: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  std::string key_name;
+  result = trunks_tpm_utility_->GetKeyName(*key_handle, &key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting key name: " << trunks::GetErrorString(result);
+    return false;
+  }
+  handle_auth_data_[*key_handle] = auth_data;
+  handle_name_[*key_handle] = key_name;
+  slot_handles_[slot].insert(*key_handle);
+  return true;
+}
+
+bool TPM2UtilityImpl::UnbindInternal(int key_handle,
+                                     const std::string& input,
+                                     std::string* output) {
+  // Max input size is the size of smallest allowed modulus.
+  if (input.size() > kMinModulusSize) {
+    LOG(ERROR) << "RSA decrypt ciphertext is larger than modulus.";
+    return false;
+  }
+  std::string auth_data = handle_auth_data_[key_handle].to_string();
+  session_->SetEntityAuthorizationValue(auth_data);
+  TPM_RC result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
+                                              trunks::TPM_ALG_RSAES,
+                                              trunks::TPM_ALG_SHA1,
+                                              input,
+                                              session_->GetDelegate(),
+                                              output);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error performing unbind operation: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  return true;
+}
+
+void TPM2UtilityImpl::FlushHandle(int key_handle) {
+  handle_auth_data_.erase(key_handle);
+  handle_name_.erase(key_handle);
 }
 
 }  // namespace chaps
