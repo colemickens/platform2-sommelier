@@ -341,7 +341,14 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
     string name = NameParser{prop.name}.MakeVariableName();
     text->AddLine(StringPrintf("MOCK_CONST_METHOD0(%s, %s());",
                                name.c_str(), type.c_str()));
+    if (prop.access == "readwrite") {
+      text->AddLine(StringPrintf("MOCK_METHOD2(set_%s, void(%s, "
+                                 "const base::Callback<bool>&));",
+                                 name.c_str(), type.c_str()));
+    }
   }
+  text->AddLine(
+      "MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());");
 
   text->PopOffset();
   text->AddBlankLine();
@@ -586,23 +593,25 @@ void ProxyGenerator::AddProperties(const ServiceConfig& config,
           kBlockOffset);
       text->AddLine("}");
     }
-    if (!declaration_only)
-      text->AddBlankLine();
-    text->AddLineAndPushOffsetTo(
-        StringPrintf("%svoid set_%s(%s value,",
-                     declaration_only ? "virtual " : "",
-                     name.c_str(),
-                     type.c_str()),
-        1, '(');
-    text->AddLine(
-        StringPrintf("const base::Callback<void(bool)>& callback)%s",
-                     declaration_only ? " = 0;" : " override {"));
-    text->PopOffset();
-    if (!declaration_only) {
-      text->AddLineWithOffset(
-          StringPrintf("property_set_->%s.Set(value, callback);", name.c_str()),
-          kBlockOffset);
-      text->AddLine("}");
+    if (prop.access == "readwrite") {
+      if (!declaration_only)
+        text->AddBlankLine();
+      text->AddLineAndPushOffsetTo(
+          StringPrintf("%svoid set_%s(%s value,",
+                       declaration_only ? "virtual " : "",
+                       name.c_str(),
+                       type.c_str()),
+          1, '(');
+      text->AddLine(
+          StringPrintf("const base::Callback<void(bool)>& callback)%s",
+                       declaration_only ? " = 0;" : " override {"));
+      text->PopOffset();
+      if (!declaration_only) {
+        text->AddLineWithOffset(
+            StringPrintf("property_set_->%s.Set(value, callback);", name.c_str()),
+            kBlockOffset);
+        text->AddLine("}");
+      }
     }
   }
 }

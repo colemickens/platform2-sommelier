@@ -590,7 +590,9 @@ class Itf1ProxyInterface {
 
   static const char* DataName() { return "Data"; }
   virtual const std::string& data() const = 0;
-  virtual void set_data(const std::string& value,
+  static const char* NameName() { return "Name"; }
+  virtual const std::string& name() const = 0;
+  virtual void set_name(const std::string& value,
                         const base::Callback<void(bool)>& callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
@@ -613,9 +615,11 @@ class Itf1Proxy final : public Itf1ProxyInterface {
                             "org.chromium.Itf1",
                             callback} {
       RegisterProperty(DataName(), &data);
+      RegisterProperty(NameName(), &name);
     }
 
     brillo::dbus_utils::Property<std::string> data;
+    brillo::dbus_utils::Property<std::string> name;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
@@ -668,9 +672,13 @@ class Itf1Proxy final : public Itf1ProxyInterface {
     return property_set_->data.value();
   }
 
-  void set_data(const std::string& value,
+  const std::string& name() const override {
+    return property_set_->name.value();
+  }
+
+  void set_name(const std::string& value,
                 const base::Callback<void(bool)>& callback) override {
-    property_set_->data.Set(value, callback);
+    property_set_->name.Set(value, callback);
   }
 
  private:
@@ -1371,6 +1379,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
   interface.path = "/org/chromium/Test/Object";
   interface.signals.emplace_back("Closer");
   interface.properties.emplace_back("Data", "s", "read");
+  interface.properties.emplace_back("Name", "s", "readwrite");
   Interface interface2;
   interface2.name = "org.chromium.Itf2";
   vector<Interface> interfaces{interface, interface2};

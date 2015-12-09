@@ -123,6 +123,7 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                void(const base::Callback<void(const std::vector<std::string>&,
                                               uint8_t)>& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TestInterfaceProxyMock);
@@ -147,6 +148,10 @@ class TestInterface2ProxyMock : public TestInterface2ProxyInterface {
                void(const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& /*success_callback*/,
                     const base::Callback<void(brillo::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
+  MOCK_CONST_METHOD0(data, const std::string&());
+  MOCK_CONST_METHOD0(name, const std::string&());
+  MOCK_METHOD2(set_name, void(const std::string&, const base::Callback<bool>&));
+  MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TestInterface2ProxyMock);
@@ -224,6 +229,8 @@ TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
       vector<Interface::Argument>{
           {"name", kDBusTypeString},
           {"age", kDBusTypeInt32}});
+  interface2.properties.emplace_back("Data", "s", "read");
+  interface2.properties.emplace_back("Name", "s", "readwrite");
   vector<Interface> interfaces{interface, interface2};
   base::FilePath output_path = temp_dir_.path().Append("output.h");
   base::FilePath proxy_path = temp_dir_.path().Append("proxies.h");
