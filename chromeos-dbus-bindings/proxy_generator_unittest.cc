@@ -117,6 +117,8 @@ class TestInterfaceProxyInterface {
       const base::Callback<void(const std::vector<std::string>&,
                                 uint8_t)>& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -167,7 +169,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
@@ -325,6 +327,8 @@ class TestInterface2ProxyInterface {
       const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
       const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -354,7 +358,7 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
@@ -434,6 +438,8 @@ class TestInterfaceProxyInterface {
   virtual void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -469,7 +475,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
@@ -494,6 +500,8 @@ namespace chromium {
 class TestInterface2ProxyInterface {
  public:
   virtual ~TestInterface2ProxyInterface() = default;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -521,7 +529,7 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
@@ -582,6 +590,10 @@ class Itf1ProxyInterface {
 
   static const char* DataName() { return "Data"; }
   virtual const std::string& data() const = 0;
+  virtual void set_data(const std::string& value,
+                        const base::Callback<void(bool)>& callback) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -638,14 +650,14 @@ class Itf1Proxy final : public Itf1ProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
   dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
 
   void SetPropertyChangedCallback(
-      const base::Callback<void(Itf1Proxy*, const std::string&)>& callback) {
+      const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) {
     on_property_changed_ = callback;
   }
 
@@ -654,6 +666,11 @@ class Itf1Proxy final : public Itf1ProxyInterface {
 
   const std::string& data() const override {
     return property_set_->data.value();
+  }
+
+  void set_data(const std::string& value,
+                const base::Callback<void(bool)>& callback) override {
+    property_set_->data.Set(value, callback);
   }
 
  private:
@@ -666,7 +683,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   std::string service_name_;
   const dbus::ObjectPath object_path_{"/org/chromium/Test/Object"};
   PropertySet* property_set_;
-  base::Callback<void(Itf1Proxy*, const std::string&)> on_property_changed_;
+  base::Callback<void(Itf1ProxyInterface*, const std::string&)> on_property_changed_;
   dbus::ObjectProxy* dbus_object_proxy_;
 
   friend class org::chromium::ObjectManagerProxy;
@@ -683,6 +700,8 @@ namespace chromium {
 class Itf2ProxyInterface {
  public:
   virtual ~Itf2ProxyInterface() = default;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -726,7 +745,7 @@ class Itf2Proxy final : public Itf2ProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
@@ -769,20 +788,20 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-  org::chromium::Itf1Proxy* GetItf1Proxy() {
+  org::chromium::Itf1ProxyInterface* GetItf1Proxy() {
     if (itf1_instances_.empty())
       return nullptr;
     return itf1_instances_.begin()->second.get();
   }
-  std::vector<org::chromium::Itf1Proxy*> GetItf1Instances() const {
-    std::vector<org::chromium::Itf1Proxy*> values;
+  std::vector<org::chromium::Itf1ProxyInterface*> GetItf1Instances() const {
+    std::vector<org::chromium::Itf1ProxyInterface*> values;
     values.reserve(itf1_instances_.size());
     for (const auto& pair : itf1_instances_)
       values.push_back(pair.second.get());
     return values;
   }
   void SetItf1AddedCallback(
-      const base::Callback<void(org::chromium::Itf1Proxy*)>& callback) {
+      const base::Callback<void(org::chromium::Itf1ProxyInterface*)>& callback) {
     on_itf1_added_ = callback;
   }
   void SetItf1RemovedCallback(
@@ -790,22 +809,22 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     on_itf1_removed_ = callback;
   }
 
-  org::chromium::Itf2Proxy* GetItf2Proxy(
+  org::chromium::Itf2ProxyInterface* GetItf2Proxy(
       const dbus::ObjectPath& object_path) {
     auto p = itf2_instances_.find(object_path);
     if (p != itf2_instances_.end())
       return p->second.get();
     return nullptr;
   }
-  std::vector<org::chromium::Itf2Proxy*> GetItf2Instances() const {
-    std::vector<org::chromium::Itf2Proxy*> values;
+  std::vector<org::chromium::Itf2ProxyInterface*> GetItf2Instances() const {
+    std::vector<org::chromium::Itf2ProxyInterface*> values;
     values.reserve(itf2_instances_.size());
     for (const auto& pair : itf2_instances_)
       values.push_back(pair.second.get());
     return values;
   }
   void SetItf2AddedCallback(
-      const base::Callback<void(org::chromium::Itf2Proxy*)>& callback) {
+      const base::Callback<void(org::chromium::Itf2ProxyInterface*)>& callback) {
     on_itf2_added_ = callback;
   }
   void SetItf2RemovedCallback(
@@ -907,11 +926,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   dbus::ObjectManager* dbus_object_manager_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf1Proxy>> itf1_instances_;
-  base::Callback<void(org::chromium::Itf1Proxy*)> on_itf1_added_;
+  base::Callback<void(org::chromium::Itf1ProxyInterface*)> on_itf1_added_;
   base::Callback<void(const dbus::ObjectPath&)> on_itf1_removed_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf2Proxy>> itf2_instances_;
-  base::Callback<void(org::chromium::Itf2Proxy*)> on_itf2_added_;
+  base::Callback<void(org::chromium::Itf2ProxyInterface*)> on_itf2_added_;
   base::Callback<void(const dbus::ObjectPath&)> on_itf2_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 
@@ -961,6 +980,8 @@ class Itf1ProxyInterface {
   virtual void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -1010,7 +1031,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
@@ -1035,6 +1056,8 @@ namespace chromium {
 class Itf2ProxyInterface {
  public:
   virtual ~Itf2ProxyInterface() = default;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
 };
 
 }  // namespace chromium
@@ -1076,7 +1099,7 @@ class Itf2Proxy final : public Itf2ProxyInterface {
     bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
-  const dbus::ObjectPath& GetObjectPath() const {
+  const dbus::ObjectPath& GetObjectPath() const override {
     return object_path_;
   }
 
@@ -1117,20 +1140,20 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-  org::chromium::Itf1Proxy* GetItf1Proxy() {
+  org::chromium::Itf1ProxyInterface* GetItf1Proxy() {
     if (itf1_instances_.empty())
       return nullptr;
     return itf1_instances_.begin()->second.get();
   }
-  std::vector<org::chromium::Itf1Proxy*> GetItf1Instances() const {
-    std::vector<org::chromium::Itf1Proxy*> values;
+  std::vector<org::chromium::Itf1ProxyInterface*> GetItf1Instances() const {
+    std::vector<org::chromium::Itf1ProxyInterface*> values;
     values.reserve(itf1_instances_.size());
     for (const auto& pair : itf1_instances_)
       values.push_back(pair.second.get());
     return values;
   }
   void SetItf1AddedCallback(
-      const base::Callback<void(org::chromium::Itf1Proxy*)>& callback) {
+      const base::Callback<void(org::chromium::Itf1ProxyInterface*)>& callback) {
     on_itf1_added_ = callback;
   }
   void SetItf1RemovedCallback(
@@ -1138,22 +1161,22 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     on_itf1_removed_ = callback;
   }
 
-  org::chromium::Itf2Proxy* GetItf2Proxy(
+  org::chromium::Itf2ProxyInterface* GetItf2Proxy(
       const dbus::ObjectPath& object_path) {
     auto p = itf2_instances_.find(object_path);
     if (p != itf2_instances_.end())
       return p->second.get();
     return nullptr;
   }
-  std::vector<org::chromium::Itf2Proxy*> GetItf2Instances() const {
-    std::vector<org::chromium::Itf2Proxy*> values;
+  std::vector<org::chromium::Itf2ProxyInterface*> GetItf2Instances() const {
+    std::vector<org::chromium::Itf2ProxyInterface*> values;
     values.reserve(itf2_instances_.size());
     for (const auto& pair : itf2_instances_)
       values.push_back(pair.second.get());
     return values;
   }
   void SetItf2AddedCallback(
-      const base::Callback<void(org::chromium::Itf2Proxy*)>& callback) {
+      const base::Callback<void(org::chromium::Itf2ProxyInterface*)>& callback) {
     on_itf2_added_ = callback;
   }
   void SetItf2RemovedCallback(
@@ -1244,11 +1267,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   dbus::ObjectManager* dbus_object_manager_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf1Proxy>> itf1_instances_;
-  base::Callback<void(org::chromium::Itf1Proxy*)> on_itf1_added_;
+  base::Callback<void(org::chromium::Itf1ProxyInterface*)> on_itf1_added_;
   base::Callback<void(const dbus::ObjectPath&)> on_itf1_removed_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf2Proxy>> itf2_instances_;
-  base::Callback<void(org::chromium::Itf2Proxy*)> on_itf2_added_;
+  base::Callback<void(org::chromium::Itf2ProxyInterface*)> on_itf2_added_;
   base::Callback<void(const dbus::ObjectPath&)> on_itf2_removed_;
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 

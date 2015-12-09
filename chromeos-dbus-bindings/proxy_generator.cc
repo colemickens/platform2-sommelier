@@ -211,6 +211,8 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
     AddSignalHandlerRegistration(signal, interface.name, true, text);
   }
   AddProperties(config, interface, true, text);
+  text->AddBlankLine();
+  text->AddLine("virtual const dbus::ObjectPath& GetObjectPath() const = 0;");
 
   text->PopOffset();
   text->AddLine("};");
@@ -277,9 +279,10 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   }
   if (!config.object_manager.name.empty() && !interface.properties.empty()) {
     text->AddLine("PropertySet* property_set_;");
-    text->AddLine(StringPrintf("base::Callback<void(%s*, const std::string&)> "
-                               "on_property_changed_;",
-                               proxy_name.c_str()));
+    text->AddLine(
+        StringPrintf("base::Callback<void(%sInterface*, const std::string&)> "
+                     "on_property_changed_;",
+                     proxy_name.c_str()));
   }
   text->AddLine("dbus::ObjectProxy* dbus_object_proxy_;");
   text->AddBlankLine();
@@ -416,7 +419,7 @@ void ProxyGenerator::AddReleaseObjectProxy(IndentedText* text) {
 // static
 void ProxyGenerator::AddGetObjectPath(IndentedText* text) {
   text->AddBlankLine();
-  text->AddLine("const dbus::ObjectPath& GetObjectPath() const {");
+  text->AddLine("const dbus::ObjectPath& GetObjectPath() const override {");
   text->AddLineWithOffset("return object_path_;", kBlockOffset);
   text->AddLine("}");
 }
@@ -434,7 +437,7 @@ void ProxyGenerator::AddPropertyPublicMethods(const string& class_name,
   text->AddBlankLine();
   text->AddLine("void SetPropertyChangedCallback(");
   text->AddLineWithOffset(
-      StringPrintf("const base::Callback<void(%s*, "
+      StringPrintf("const base::Callback<void(%sInterface*, "
                    "const std::string&)>& callback) {", class_name.c_str()),
       kLineContinuationOffset);
   text->AddLineWithOffset("on_property_changed_ = callback;", kBlockOffset);
@@ -580,6 +583,24 @@ void ProxyGenerator::AddProperties(const ServiceConfig& config,
     if (!declaration_only) {
       text->AddLineWithOffset(
           StringPrintf("return property_set_->%s.value();", name.c_str()),
+          kBlockOffset);
+      text->AddLine("}");
+    }
+    if (!declaration_only)
+      text->AddBlankLine();
+    text->AddLineAndPushOffsetTo(
+        StringPrintf("%svoid set_%s(%s value,",
+                     declaration_only ? "virtual " : "",
+                     name.c_str(),
+                     type.c_str()),
+        1, '(');
+    text->AddLine(
+        StringPrintf("const base::Callback<void(bool)>& callback)%s",
+                     declaration_only ? " = 0;" : " override {"));
+    text->PopOffset();
+    if (!declaration_only) {
+      text->AddLineWithOffset(
+          StringPrintf("property_set_->%s.Set(value, callback);", name.c_str()),
           kBlockOffset);
       text->AddLine("}");
     }
@@ -1012,7 +1033,7 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
   // GetProxy().
   if (interface.path.empty()) {
     // We have no fixed path, so there could be multiple instances of this itf.
-    text->AddLine(StringPrintf("%s* Get%s(",
+    text->AddLine(StringPrintf("%sInterface* Get%s(",
                                 itf_name.MakeProxyName(true).c_str(),
                                 itf_name.MakeProxyName(false).c_str()));
     text->PushOffset(kLineContinuationOffset);
@@ -1031,7 +1052,7 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
   } else {
     // We have a fixed path, so the object could be considered a "singleton".
     // Skip the object_path parameter and return the first available instance.
-    text->AddLine(StringPrintf("%s* Get%s() {",
+    text->AddLine(StringPrintf("%sInterface* Get%s() {",
                                 itf_name.MakeProxyName(true).c_str(),
                                 itf_name.MakeProxyName(false).c_str()));
     text->PushOffset(kBlockOffset);
@@ -1044,11 +1065,12 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
   }
 
   // GetInstances().
-  text->AddLine(StringPrintf("std::vector<%s*> Get%sInstances() const {",
-                              itf_name.MakeProxyName(true).c_str(),
-                              itf_name.type_name.c_str()));
+  text->AddLine(
+      StringPrintf("std::vector<%sInterface*> Get%sInstances() const {",
+                   itf_name.MakeProxyName(true).c_str(),
+                   itf_name.type_name.c_str()));
   text->PushOffset(kBlockOffset);
-  text->AddLine(StringPrintf("std::vector<%s*> values;",
+  text->AddLine(StringPrintf("std::vector<%sInterface*> values;",
                              itf_name.MakeProxyName(true).c_str()));
   text->AddLine(StringPrintf("values.reserve(%s.size());", map_name.c_str()));
   text->AddLine(StringPrintf("for (const auto& pair : %s)", map_name.c_str()));
@@ -1062,18 +1084,18 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
                               itf_name.type_name.c_str()));
   text->PushOffset(kLineContinuationOffset);
   text->AddLine(
-      StringPrintf("const base::Callback<void(%s*)>& callback) {",
-                    itf_name.MakeProxyName(true).c_str()));
+      StringPrintf("const base::Callback<void(%sInterface*)>& callback) {",
+                   itf_name.MakeProxyName(true).c_str()));
   text->PopOffset();
   text->PushOffset(kBlockOffset);
   text->AddLine(StringPrintf("on_%s_added_ = callback;",
-                              itf_name.MakeVariableName().c_str()));
+                             itf_name.MakeVariableName().c_str()));
   text->PopOffset();
   text->AddLine("}");
 
   // SetRemovedCallback().
   text->AddLine(StringPrintf("void Set%sRemovedCallback(",
-                              itf_name.type_name.c_str()));
+                             itf_name.type_name.c_str()));
   text->PushOffset(kLineContinuationOffset);
   text->AddLine("const base::Callback<void(const dbus::ObjectPath&)>& "
                 "callback) {");
@@ -1284,9 +1306,10 @@ void ProxyGenerator::ObjectManager::AddDataMembers(
                                itf_name.MakeProxyName(true).c_str(),
                                var_name.c_str()));
     text->PopOffset();
-    text->AddLine(StringPrintf("base::Callback<void(%s*)> on_%s_added_;",
-                               itf_name.MakeProxyName(true).c_str(),
-                               var_name.c_str()));
+    text->AddLine(
+        StringPrintf("base::Callback<void(%sInterface*)> on_%s_added_;",
+                     itf_name.MakeProxyName(true).c_str(),
+                     var_name.c_str()));
     text->AddLine(StringPrintf("base::Callback<void(const dbus::ObjectPath&)> "
                                "on_%s_removed_;",
                                var_name.c_str()));
