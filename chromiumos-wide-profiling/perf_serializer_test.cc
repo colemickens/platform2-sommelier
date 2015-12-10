@@ -253,7 +253,7 @@ TEST(PerfSerializerTest, TestRemap) {
   }
 }
 
-TEST(PerfSerializeTest, TestCommMd5s) {
+TEST(PerfSerializerTest, TestCommMd5s) {
   ScopedTempDir output_dir;
   ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
@@ -294,7 +294,7 @@ TEST(PerfSerializeTest, TestCommMd5s) {
   }
 }
 
-TEST(PerfSerializeTest, TestMmapMd5s) {
+TEST(PerfSerializerTest, TestMmapMd5s) {
   ScopedTempDir output_dir;
   ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
