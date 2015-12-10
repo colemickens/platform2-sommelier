@@ -232,9 +232,6 @@ Device::Device(ControlInterface* control_interface,
                                    &Device::GetTransmitByteCountProperty);
   }
 
-  DisableArpFiltering();
-  EnableReversePathFilter();
-
   LOG(INFO) << "Device created: " << link_name_
             << " index " << interface_index_;
 }
@@ -242,6 +239,12 @@ Device::Device(ControlInterface* control_interface,
 Device::~Device() {
   LOG(INFO) << "Device destructed: " << link_name_
             << " index " << interface_index_;
+}
+
+void Device::Initialize() {
+  SLOG(this, 2) << "Initialized";
+  DisableArpFiltering();
+  EnableReversePathFilter();
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {

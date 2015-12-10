@@ -315,6 +315,15 @@ TEST_F(DeviceInfoTest, StartStop) {
   EXPECT_TRUE(device_info_.infos_.empty());
 }
 
+TEST_F(DeviceInfoTest, RegisterDevice) {
+  scoped_refptr<MockDevice> device0(new MockDevice(
+      &control_interface_, &dispatcher_, &metrics_, &manager_,
+      "null0", "addr0", kTestDeviceIndex));
+
+  EXPECT_CALL(*device0, Initialize());
+  device_info_.RegisterDevice(device0);
+}
+
 TEST_F(DeviceInfoTest, RequestLinkStatistics) {
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
   EXPECT_CALL(dispatcher_, PostDelayedTask(

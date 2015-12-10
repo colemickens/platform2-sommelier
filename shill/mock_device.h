@@ -39,6 +39,7 @@ class MockDevice : public Device {
              int interface_index);
   ~MockDevice() override;
 
+  MOCK_METHOD0(Initialize, void());
   MOCK_METHOD2(Start, void(Error* error,
                            const EnabledStateChangedCallback& callback));
   MOCK_METHOD2(Stop, void(Error* error,

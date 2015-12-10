@@ -82,6 +82,9 @@ class Device : public base::RefCounted<Device> {
          int interface_index,
          Technology::Identifier technology);
 
+  // Initialize type-specific network interface properties.
+  virtual void Initialize();
+
   // Enable or disable the device. This is a convenience method for
   // cases where we want to SetEnabledNonPersistent, but don't care
   // about the results.

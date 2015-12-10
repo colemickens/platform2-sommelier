@@ -202,6 +202,7 @@ vector<string> DeviceInfo::GetUninitializedTechnologies() const {
 void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   SLOG(this, 2) << __func__ << "(" << device->link_name() << ", "
                 << device->interface_index() << ")";
+  device->Initialize();
   delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;

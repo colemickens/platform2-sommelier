@@ -50,9 +50,10 @@ class DeviceStub : public Device {
       : Device(control_interface, dispatcher, metrics, manager, link_name,
                address, interface_index, technology) {}
   void Start(Error* /*error*/,
-             const EnabledStateChangedCallback& /*callback*/) {}
+             const EnabledStateChangedCallback& /*callback*/) override {}
   void Stop(Error* /*error*/,
-            const EnabledStateChangedCallback& /*callback*/) {}
+            const EnabledStateChangedCallback& /*callback*/) override {}
+  void Initialize() override {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);
