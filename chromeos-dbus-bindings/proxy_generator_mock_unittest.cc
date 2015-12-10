@@ -152,6 +152,8 @@ class TestInterface2ProxyMock : public TestInterface2ProxyInterface {
   MOCK_CONST_METHOD0(name, const std::string&());
   MOCK_METHOD2(set_name, void(const std::string&, const base::Callback<bool>&));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD1(SetPropertyChangedCallback,
+                     void(const base::Callback<void(TestInterface2ProxyInterface*, const std::string&)>&));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TestInterface2ProxyMock);
@@ -235,6 +237,7 @@ TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
   base::FilePath output_path = temp_dir_.path().Append("output.h");
   base::FilePath proxy_path = temp_dir_.path().Append("proxies.h");
   ServiceConfig config;
+  config.object_manager.name = "ObjectManager";
   EXPECT_TRUE(ProxyGenerator::GenerateMocks(config, interfaces, output_path,
                                             proxy_path, false));
   string contents;

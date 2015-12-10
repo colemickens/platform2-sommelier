@@ -213,6 +213,8 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
   AddProperties(config, interface, true, text);
   text->AddBlankLine();
   text->AddLine("virtual const dbus::ObjectPath& GetObjectPath() const = 0;");
+  if (!config.object_manager.name.empty() && !interface.properties.empty())
+    AddPropertyPublicMethods(proxy_name, true, text);
 
   text->PopOffset();
   text->AddLine("};");
@@ -250,7 +252,7 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   AddGetObjectPath(text);
   AddGetObjectProxy(text);
   if (!config.object_manager.name.empty() && !interface.properties.empty())
-    AddPropertyPublicMethods(proxy_name, text);
+    AddPropertyPublicMethods(proxy_name, false, text);
   for (const auto& method : interface.methods) {
     AddMethodProxy(method, interface.name, false, text);
     AddAsyncMethodProxy(method, interface.name, false, text);
@@ -349,6 +351,14 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
   }
   text->AddLine(
       "MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());");
+  if (!config.object_manager.name.empty() && !interface.properties.empty()) {
+    text->AddLineAndPushOffsetTo(
+        "MOCK_CONST_METHOD1(SetPropertyChangedCallback,", 1, '(');
+    text->AddLine(StringPrintf(
+        "void(const base::Callback<void(%sInterface*, const std::string&)>&));",
+        proxy_name.c_str()));
+    text->PopOffset();
+  }
 
   text->PopOffset();
   text->AddBlankLine();
@@ -440,20 +450,26 @@ void ProxyGenerator::AddGetObjectProxy(IndentedText* text) {
 
 // static
 void ProxyGenerator::AddPropertyPublicMethods(const string& class_name,
+                                              bool declaration_only,
                                               IndentedText* text) {
   text->AddBlankLine();
-  text->AddLine("void SetPropertyChangedCallback(");
+  text->AddLine(StringPrintf("%svoid SetPropertyChangedCallback(",
+                             declaration_only ? "virtual " : ""));
   text->AddLineWithOffset(
       StringPrintf("const base::Callback<void(%sInterface*, "
-                   "const std::string&)>& callback) {", class_name.c_str()),
+                   "const std::string&)>& callback) %s",
+                   class_name.c_str(),
+                   declaration_only ? "= 0;" : "override {"),
       kLineContinuationOffset);
-  text->AddLineWithOffset("on_property_changed_ = callback;", kBlockOffset);
-  text->AddLine("}");
-  text->AddBlankLine();
+  if (!declaration_only) {
+    text->AddLineWithOffset("on_property_changed_ = callback;", kBlockOffset);
+    text->AddLine("}");
+    text->AddBlankLine();
 
-  text->AddLine("const PropertySet* GetProperties() const "
-                "{ return property_set_; }");
-  text->AddLine("PropertySet* GetProperties() { return property_set_; }");
+    text->AddLine(
+        "const PropertySet* GetProperties() const { return property_set_; }");
+    text->AddLine("PropertySet* GetProperties() { return property_set_; }");
+  }
 }
 
 // static

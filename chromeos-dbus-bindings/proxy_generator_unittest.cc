@@ -596,6 +596,9 @@ class Itf1ProxyInterface {
                         const base::Callback<void(bool)>& callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+
+  virtual void SetPropertyChangedCallback(
+      const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) = 0;
 };
 
 }  // namespace chromium
@@ -661,7 +664,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
   dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
 
   void SetPropertyChangedCallback(
-      const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) {
+      const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) override {
     on_property_changed_ = callback;
   }
 

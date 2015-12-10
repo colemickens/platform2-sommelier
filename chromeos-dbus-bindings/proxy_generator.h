@@ -75,6 +75,7 @@ class ProxyGenerator : public HeaderGenerator {
 
   // Generates SetPropertyChangedCallback/GetProperties() methods.
   static void AddPropertyPublicMethods(const std::string& class_name,
+                                       bool declaration_only,
                                        IndentedText* text);
 
   // Generates OnPropertyChanged() method.
