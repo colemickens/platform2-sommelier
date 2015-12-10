@@ -32,7 +32,7 @@
 
 using brillo::Error;
 using brillo::ErrorPtr;
-using org::chromium::Buffet::ManagerProxy;
+using org::chromium::Buffet::ManagerProxyInterface;
 
 namespace {
 
@@ -169,7 +169,7 @@ class Daemon final : public brillo::DBusDaemon {
     // Pop the command off of the args list.
     std::string command = args.front();
     args.erase(args.begin());
-    base::Callback<void(ManagerProxy*)> job;
+    base::Callback<void(ManagerProxyInterface*)> job;
     if (command.compare("TestMethod") == 0) {
       if (!args.empty() && !CheckArgs(command, args, 1))
         return EX_USAGE;
@@ -266,7 +266,8 @@ class Daemon final : public brillo::DBusDaemon {
     return false;
   }
 
-  void CallTestMethod(const std::string& message, ManagerProxy* manager_proxy) {
+  void CallTestMethod(const std::string& message,
+                      ManagerProxyInterface* manager_proxy) {
     ErrorPtr error;
     std::string response_message;
     if (!manager_proxy->TestMethod(message, &response_message, &error)) {
@@ -276,7 +277,7 @@ class Daemon final : public brillo::DBusDaemon {
     OnJobComplete();
   }
 
-  void CallCheckDeviceRegistered(ManagerProxy* manager_proxy) {
+  void CallCheckDeviceRegistered(ManagerProxyInterface* manager_proxy) {
     ErrorPtr error;
     std::string device_id;
     if (!manager_proxy->CheckDeviceRegistered(&device_id, &error)) {
@@ -289,7 +290,7 @@ class Daemon final : public brillo::DBusDaemon {
   }
 
   void CallRegisterDevice(const std::string& args,
-                          ManagerProxy* manager_proxy) {
+                          ManagerProxyInterface* manager_proxy) {
     std::string ticket_id;
     if (!args.empty()) {
       auto key_values = brillo::data_encoding::WebParamsDecode(args);
@@ -311,7 +312,7 @@ class Daemon final : public brillo::DBusDaemon {
 
   void CallUpdateState(const std::string& prop,
                        const std::string& value,
-                       ManagerProxy* manager_proxy) {
+                       ManagerProxyInterface* manager_proxy) {
     ErrorPtr error;
     std::string error_message;
     std::unique_ptr<base::Value> json(
@@ -331,7 +332,7 @@ class Daemon final : public brillo::DBusDaemon {
     OnJobComplete();
   }
 
-  void CallGetState(ManagerProxy* manager_proxy) {
+  void CallGetState(ManagerProxyInterface* manager_proxy) {
     std::string json;
     ErrorPtr error;
     if (!manager_proxy->GetState(&json, &error)) {
@@ -341,7 +342,8 @@ class Daemon final : public brillo::DBusDaemon {
     OnJobComplete();
   }
 
-  void CallAddCommand(const std::string& command, ManagerProxy* manager_proxy) {
+  void CallAddCommand(const std::string& command,
+                      ManagerProxyInterface* manager_proxy) {
     ErrorPtr error;
     std::string id;
     if (!manager_proxy->AddCommand(command, &id, &error)) {

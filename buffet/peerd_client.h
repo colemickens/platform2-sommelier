@@ -34,7 +34,8 @@ class PeerdClient : public weave::provider::DnsServiceDiscovery {
   void StopPublishing(const std::string& service_type) override;
 
  private:
-  void OnPeerdOnline(org::chromium::peerd::ManagerProxy* manager_proxy);
+  void OnPeerdOnline(
+      org::chromium::peerd::ManagerProxyInterface* manager_proxy);
   void OnPeerdOffline(const dbus::ObjectPath& object_path);
 
   // Updates published information.  Removes service if HTTP is not alive.
@@ -47,7 +48,7 @@ class PeerdClient : public weave::provider::DnsServiceDiscovery {
 
   org::chromium::peerd::ObjectManagerProxy peerd_object_manager_proxy_;
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
-  org::chromium::peerd::ManagerProxy* peerd_manager_proxy_{nullptr};
+  org::chromium::peerd::ManagerProxyInterface* peerd_manager_proxy_{nullptr};
 
   bool published_{false};
   uint16_t port_{0};

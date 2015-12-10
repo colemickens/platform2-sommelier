@@ -21,7 +21,9 @@ using brillo::Any;
 using brillo::VariantDictionary;
 using dbus::ObjectPath;
 using org::chromium::flimflam::DeviceProxy;
+using org::chromium::flimflam::DeviceProxyInterface;
 using org::chromium::flimflam::ServiceProxy;
+using org::chromium::flimflam::ServiceProxyInterface;
 using std::map;
 using std::set;
 using std::string;
@@ -37,7 +39,7 @@ const char kErrorDomain[] = "buffet";
 
 void IgnoreDetachEvent() {}
 
-bool GetStateForService(ServiceProxy* service, string* state) {
+bool GetStateForService(ServiceProxyInterface* service, string* state) {
   CHECK(service) << "|service| was nullptr in GetStateForService()";
   VariantDictionary properties;
   if (!service->GetProperties(&properties, nullptr)) {
@@ -202,7 +204,7 @@ void ShillClient::AddConnectionChangedCallback(
   connectivity_listeners_.push_back(listener);
 }
 
-bool ShillClient::IsMonitoredDevice(DeviceProxy* device) {
+bool ShillClient::IsMonitoredDevice(DeviceProxyInterface* device) {
   if (device_whitelist_.empty()) {
     return true;
   }
@@ -302,7 +304,7 @@ void ShillClient::OnDevicePropertyChangeRegistration(
     return;
   }
   CHECK(success) << "Failed to subscribe to Device property changes.";
-  DeviceProxy* device = it->second.device.get();
+  DeviceProxyInterface* device = it->second.device.get();
   VariantDictionary properties;
   if (!device->GetProperties(&properties, nullptr)) {
     LOG(WARNING) << "Failed to get device properties?";

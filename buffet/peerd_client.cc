@@ -11,8 +11,6 @@
 #include <brillo/errors/error.h>
 #include <brillo/strings/string_utils.h>
 
-using org::chromium::peerd::PeerProxy;
-
 namespace buffet {
 
 namespace {
@@ -70,7 +68,7 @@ void PeerdClient::Update() {
 }
 
 void PeerdClient::OnPeerdOnline(
-    org::chromium::peerd::ManagerProxy* manager_proxy) {
+    org::chromium::peerd::ManagerProxyInterface* manager_proxy) {
   peerd_manager_proxy_ = manager_proxy;
   VLOG(1) << "Peerd manager is online at '"
           << manager_proxy->GetObjectPath().value() << "'.";

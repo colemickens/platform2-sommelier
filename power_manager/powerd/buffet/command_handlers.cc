@@ -14,7 +14,7 @@
 
 #include "buffet/dbus-proxies.h"
 
-using org::chromium::Buffet::CommandProxy;
+using org::chromium::Buffet::CommandProxyInterface;
 using org::chromium::Buffet::ObjectManagerProxy;
 
 namespace power_manager {
@@ -51,7 +51,7 @@ class CommandHandler final {
  private:
   // Command handler callback method. Called when a new command is available
   // on D-Bus from Buffet.
-  void OnCommand(CommandProxy* command) {
+  void OnCommand(CommandProxyInterface* command) {
     if (command->state() != kCommandStatusDone &&
         command->name() == kBaseRebootCommand) {
       // Right now powerd handles only 'base.reboot' command and ignores

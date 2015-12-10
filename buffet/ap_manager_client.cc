@@ -6,9 +6,9 @@
 
 namespace buffet {
 
-using org::chromium::apmanager::ConfigProxy;
-using org::chromium::apmanager::ManagerProxy;
-using org::chromium::apmanager::ServiceProxy;
+using org::chromium::apmanager::ConfigProxyInterface;
+using org::chromium::apmanager::ManagerProxyInterface;
+using org::chromium::apmanager::ServiceProxyInterface;
 
 ApManagerClient::ApManagerClient(const scoped_refptr<dbus::Bus>& bus)
     : bus_(bus) {}
@@ -56,7 +56,7 @@ void ApManagerClient::RemoveService(const dbus::ObjectPath& object_path) {
   }
 }
 
-void ApManagerClient::OnManagerAdded(ManagerProxy* manager_proxy) {
+void ApManagerClient::OnManagerAdded(ManagerProxyInterface* manager_proxy) {
   VLOG(1) << "manager added: " << manager_proxy->GetObjectPath().value();
   manager_proxy_ = manager_proxy;
 
@@ -69,7 +69,7 @@ void ApManagerClient::OnManagerAdded(ManagerProxy* manager_proxy) {
   }
 }
 
-void ApManagerClient::OnServiceAdded(ServiceProxy* service_proxy) {
+void ApManagerClient::OnServiceAdded(ServiceProxyInterface* service_proxy) {
   VLOG(1) << "service added: " << service_proxy->GetObjectPath().value();
   if (service_proxy->GetObjectPath() != service_path_) {
     RemoveService(service_proxy->GetObjectPath());
@@ -77,11 +77,10 @@ void ApManagerClient::OnServiceAdded(ServiceProxy* service_proxy) {
   }
   service_proxy_ = service_proxy;
 
-  ConfigProxy* config_proxy =
+  ConfigProxyInterface* config_proxy =
       object_manager_proxy_->GetConfigProxy(service_proxy->config());
-  ConfigProxy::PropertySet* properties = config_proxy->GetProperties();
-  properties->ssid.Set(ssid_, base::Bind(&ApManagerClient::OnSsidSet,
-                                         weak_ptr_factory_.GetWeakPtr()));
+  config_proxy->set_ssid(ssid_, base::Bind(&ApManagerClient::OnSsidSet,
+                                           weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ApManagerClient::OnSsidSet(bool success) {

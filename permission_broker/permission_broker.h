@@ -29,7 +29,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
   PermissionBroker(brillo::dbus_utils::ExportedObjectManager* object_manager,
-                   org::chromium::FirewalldProxy* firewalld,
+                   org::chromium::FirewalldProxyInterface* firewalld,
                    const std::string& access_group,
                    const std::string& udev_run_path,
                    int poll_interval_msecs);

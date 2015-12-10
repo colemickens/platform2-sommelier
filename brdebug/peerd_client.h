@@ -26,14 +26,15 @@ class PeerdClient {
   void UpdateServiceInfo(const std::map<std::string, std::string>& info);
 
  private:
-  void OnPeerdOnline(org::chromium::peerd::ManagerProxy* manager_proxy);
+  void OnPeerdOnline(
+      org::chromium::peerd::ManagerProxyInterface* manager_proxy);
   void OnPeerdOffline(const dbus::ObjectPath& object_path);
   void ExposeService();
   void RemoveService();
 
   org::chromium::peerd::ObjectManagerProxy peerd_object_manager_proxy_;
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
-  org::chromium::peerd::ManagerProxy* peerd_manager_proxy_{nullptr};
+  org::chromium::peerd::ManagerProxyInterface* peerd_manager_proxy_{nullptr};
 
   // The brdebug service info for peerd.
   std::map<std::string, std::string> service_info_;

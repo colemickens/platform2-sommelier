@@ -29,8 +29,10 @@ class ApManagerClient final {
  private:
   void RemoveService(const dbus::ObjectPath& object_path);
 
-  void OnManagerAdded(org::chromium::apmanager::ManagerProxy* manager_proxy);
-  void OnServiceAdded(org::chromium::apmanager::ServiceProxy* service_proxy);
+  void OnManagerAdded(
+      org::chromium::apmanager::ManagerProxyInterface* manager_proxy);
+  void OnServiceAdded(
+      org::chromium::apmanager::ServiceProxyInterface* service_proxy);
 
   void OnSsidSet(bool success);
 
@@ -41,10 +43,10 @@ class ApManagerClient final {
 
   std::unique_ptr<org::chromium::apmanager::ObjectManagerProxy>
       object_manager_proxy_;
-  org::chromium::apmanager::ManagerProxy* manager_proxy_{nullptr};
+  org::chromium::apmanager::ManagerProxyInterface* manager_proxy_{nullptr};
 
   dbus::ObjectPath service_path_;
-  org::chromium::apmanager::ServiceProxy* service_proxy_{nullptr};
+  org::chromium::apmanager::ServiceProxyInterface* service_proxy_{nullptr};
 
   std::string ssid_;
 

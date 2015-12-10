@@ -51,7 +51,7 @@ class ShillClient final : public weave::provider::Network,
 
  private:
   struct DeviceState {
-    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device;
+    std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device;
     // ServiceProxy objects are shared because the connecting service will
     // also be the selected service for a device, but is not always the selected
     // service (for instance, in the period between configuring a WiFi service
@@ -60,7 +60,7 @@ class ShillClient final : public weave::provider::Network,
     State service_state{State::kOffline};
   };
 
-  bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxy* device);
+  bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxyInterface* device);
   void OnShillServiceOwnerChange(const std::string& old_owner,
                                  const std::string& new_owner);
   void OnManagerPropertyChangeRegistration(const std::string& interface,

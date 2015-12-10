@@ -61,7 +61,7 @@ namespace permission_broker {
 
 PermissionBroker::PermissionBroker(
     brillo::dbus_utils::ExportedObjectManager* object_manager,
-    org::chromium::FirewalldProxy* firewalld,
+    org::chromium::FirewalldProxyInterface* firewalld,
     const std::string& access_group_name,
     const std::string& udev_run_path,
     int poll_interval_msecs)

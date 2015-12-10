@@ -38,7 +38,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   }
 
  private:
-  void OnFirewallUp(org::chromium::FirewalldProxy* firewalld) {
+  void OnFirewallUp(org::chromium::FirewalldProxyInterface* firewalld) {
     LOG(INFO) << "firewalld instance created. "
                  "Putting permission_broker object on D-Bus.";
     broker_.reset(new PermissionBroker{object_manager_.get(), firewalld,
