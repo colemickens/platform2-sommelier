@@ -16,6 +16,8 @@
 
 #include <base/bind.h>
 
+#include "proxy_rpc_in_data_types.h"
+#include "proxy_rpc_out_data_types.h"
 #include "proxy_rpc_server.h"
 #include "proxy_util.h"
 
@@ -85,6 +87,94 @@ XmlRpc::XmlRpcValue CleanProfiles(
   return shill_wifi_client->CleanProfiles();
 }
 
+XmlRpc::XmlRpcValue ConfigureServiceByGuid(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  ConfigureServiceParameters config_params(&params_in[0]);
+  return shill_wifi_client->ConfigureServiceByGuid(
+      config_params.guid_,
+      config_params.autoconnect_type_,
+      config_params.passphrase_);
+}
+
+XmlRpc::XmlRpcValue ConfigureWifiService(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+  AssociationParameters assoc_params(&params_in[0]);
+  brillo::VariantDictionary security_params;
+  assoc_params.security_config_->GetServiceProperties(&security_params);
+  return shill_wifi_client->ConfigureWifiService(
+      assoc_params.ssid_,
+      assoc_params.security_config_->security_,
+      security_params,
+      assoc_params.save_credentials_,
+      assoc_params.station_type_,
+      assoc_params.is_hidden_,
+      assoc_params.guid_,
+      assoc_params.autoconnect_type_);
+}
+
+XmlRpc::XmlRpcValue ConnectWifi(
+    XmlRpc::XmlRpcValue params_in,
+    ProxyShillWifiClient* shill_wifi_client) {
+  if (!ValidateNumOfElements(params_in, 1)) {
+    return false;
+  }
+
+  AssociationParameters assoc_params(&params_in[0]);
+  std::string wifi_interface = assoc_params.bgscan_config_->interface_;
+  if (wifi_interface.empty()) {
+    std::vector<std::string> interfaces;
+    if (!shill_wifi_client->ListControlledWifiInterfaces(&interfaces) ||
+        interfaces.empty()) {
+      return false;
+    }
+    wifi_interface = interfaces[0];
+  }
+  shill_wifi_client->ConfigureBgScan(
+      wifi_interface,
+      assoc_params.bgscan_config_->method_,
+      assoc_params.bgscan_config_->short_interval_,
+      assoc_params.bgscan_config_->long_interval_,
+      assoc_params.bgscan_config_->signal_threshold_);
+
+  brillo::VariantDictionary security_params;
+  assoc_params.security_config_->GetServiceProperties(&security_params);
+
+  long discovery_time, association_time, configuration_time;
+  std::string failure_reason;
+  bool is_success = shill_wifi_client->ConnectToWifiNetwork(
+      assoc_params.ssid_,
+      assoc_params.security_config_->security_,
+      security_params,
+      assoc_params.save_credentials_,
+      assoc_params.station_type_,
+      assoc_params.is_hidden_,
+      assoc_params.guid_,
+      assoc_params.autoconnect_type_,
+      GetMillisecondsFromSeconds(assoc_params.discovery_timeout_seconds_),
+      GetMillisecondsFromSeconds(assoc_params.association_timeout_seconds_),
+      GetMillisecondsFromSeconds(assoc_params.configuration_timeout_seconds_),
+      &discovery_time,
+      &association_time,
+      &configuration_time,
+      &failure_reason);
+
+  AssociationResult association_result(
+      is_success,
+      GetSecondsFromMilliseconds(discovery_time),
+      GetSecondsFromMilliseconds(association_time),
+      GetSecondsFromMilliseconds(configuration_time),
+      failure_reason);
+  return association_result.ConvertToXmlRpcValue();
+}
+
 XmlRpc::XmlRpcValue DeleteEntriesForSsid(
     XmlRpc::XmlRpcValue params_in,
     ProxyShillWifiClient* shill_wifi_client) {
@@ -101,6 +191,7 @@ XmlRpc::XmlRpcValue InitTestNetworkState(
   if (!ValidateNumOfElements(params_in, 0)) {
     return false;
   }
+  shill_wifi_client->SetLogging();
   shill_wifi_client->CleanProfiles();
   shill_wifi_client->RemoveAllWifiEntries();
   shill_wifi_client->RemoveProfile(kTestProfileName);
@@ -433,6 +524,10 @@ void ProxyRpcServer::Run() {
   RegisterRpcMethod("push_profile", base::Bind(&PushProfile));
   RegisterRpcMethod("pop_profile", base::Bind(&PopProfile));
   RegisterRpcMethod("clean_profiles", base::Bind(&CleanProfiles));
+  RegisterRpcMethod("configure_service_by_guid",
+                    base::Bind(&ConfigureServiceByGuid));
+  RegisterRpcMethod("configure_wifi_service", base::Bind(&ConfigureWifiService));
+  RegisterRpcMethod("connect_wifi", base::Bind(&ConnectWifi));
   RegisterRpcMethod("delete_entries_for_ssid", base::Bind(&DeleteEntriesForSsid));
   RegisterRpcMethod("init_test_network_state", base::Bind(&InitTestNetworkState));
   RegisterRpcMethod("list_controlled_wifi_interfaces",

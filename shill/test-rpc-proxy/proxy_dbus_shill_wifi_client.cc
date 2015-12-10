@@ -402,7 +402,7 @@ bool ProxyDbusShillWifiClient::DeleteEntriesForSsid(const std::string& ssid) {
     auto entry_ids = property_value.Get<std::vector<std::string>>();
     for (const auto& entry_id : entry_ids) {
       brillo::VariantDictionary entry_props;
-      if ((profile->GetEntry(entry_id, &entry_props, nullptr)) && 
+      if ((profile->GetEntry(entry_id, &entry_props, nullptr)) &&
           (entry_props[shill::kNameProperty].Get<std::string>() == ssid)) {
         profile->DeleteEntry(entry_id, nullptr);
       }
