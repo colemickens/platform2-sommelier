@@ -43,6 +43,7 @@
       'target_name': 'trunks',
       'type': 'shared_library',
       'sources': [
+        'background_command_transceiver.cc',
         'blob_parser.cc',
         'error_codes.cc',
         'hmac_authorization_delegate.cc',
@@ -109,7 +110,6 @@
       'target_name': 'trunksd_lib',
       'type': 'static_library',
       'sources': [
-        'background_command_transceiver.cc',
         'resource_manager.cc',
         'tpm_handle.cc',
         'tpm_simulator_handle.cc',

@@ -63,6 +63,9 @@ void TrunksProxy::SendCommand(const std::string& command,
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
+  auto on_success = [callback](const SendCommandResponse& response) {
+    callback.Run(response.response());
+  };
   auto on_error = [callback](brillo::Error* error) {
     SendCommandResponse response;
     response.set_response(CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED));
@@ -73,7 +76,7 @@ void TrunksProxy::SendCommand(const std::string& command,
       object_proxy_,
       trunks::kTrunksInterface,
       trunks::kSendCommand,
-      callback,
+      base::Bind(on_success),
       base::Bind(on_error),
       tpm_command_proto);
 }
