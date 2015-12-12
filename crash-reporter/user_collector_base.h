@@ -80,6 +80,7 @@ class UserCollectorBase : public CrashCollector {
 
  private:
   virtual bool ShouldDump(pid_t pid,
+                          uid_t uid,
                           const std::string &exec,
                           std::string *reason) = 0;
 

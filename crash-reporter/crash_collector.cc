@@ -333,7 +333,7 @@ bool CrashCollector::GetSymlinkTarget(const FilePath &symlink,
 }
 
 bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
-                                                 std::string *base_name) {
+                                                  std::string *base_name) {
   FilePath target;
   FilePath process_path = GetProcessPath(pid);
   FilePath exe_path = process_path.Append("exe");

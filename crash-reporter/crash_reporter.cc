@@ -5,6 +5,7 @@
 #include <fcntl.h>  // for open
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -16,6 +17,7 @@
 #include <brillo/syslog_logging.h>
 #include <metrics/metrics_library.h>
 
+#include "crash-reporter/arc_collector.h"
 #include "crash-reporter/chrome_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
@@ -164,6 +166,18 @@ static int HandleUserCrash(UserCollector *user_collector,
   return 0;
 }
 
+#if USE_ARC
+static int HandleArcCrash(ArcCollector *arc_collector,
+                          const std::string& user) {
+  brillo::LogToString(true);
+  bool handled = arc_collector->HandleCrash(user, nullptr);
+  brillo::LogToString(false);
+  if (!handled)
+    return 1;
+  return 0;
+}
+#endif
+
 static int HandleChromeCrash(ChromeCollector *chrome_collector,
                              const std::string& chrome_dump_file,
                              const std::string& pid,
@@ -277,13 +291,27 @@ int main(int argc, char *argv[]) {
   KernelCollector kernel_collector;
   kernel_collector.Initialize(CountKernelCrash, IsFeedbackAllowed);
   UserCollector user_collector;
+  UserCollector::FilterOutFunction filter_out = [](pid_t) { return false; };
+#if USE_ARC
+  ArcCollector arc_collector;
+  arc_collector.Initialize(CountUserCrash,
+                           IsFeedbackAllowed,
+                           true,  // generate_diagnostics
+                           FLAGS_directory_failure,
+                           FLAGS_filter_in);
+  // Filter out ARC processes.
+  if (ArcCollector::IsArcRunning())
+    filter_out = std::bind(&ArcCollector::IsArcProcess, &arc_collector,
+                           std::placeholders::_1);
+#endif
   user_collector.Initialize(CountUserCrash,
                             my_path.value(),
                             IsFeedbackAllowed,
                             true,  // generate_diagnostics
                             FLAGS_core2md_failure,
                             FLAGS_directory_failure,
-                            FLAGS_filter_in);
+                            FLAGS_filter_in,
+                            std::move(filter_out));
   UncleanShutdownCollector unclean_shutdown_collector;
   unclean_shutdown_collector.Initialize(CountUncleanShutdown,
                                         IsFeedbackAllowed);
@@ -330,5 +358,11 @@ int main(int argc, char *argv[]) {
                              FLAGS_exe);
   }
 
-  return HandleUserCrash(&user_collector, FLAGS_user, FLAGS_crash_test);
+  int exit_code = HandleUserCrash(&user_collector,
+                                  FLAGS_user, FLAGS_crash_test);
+#if USE_ARC
+  if (ArcCollector::IsArcRunning())
+    exit_code |= HandleArcCrash(&arc_collector, FLAGS_user);
+#endif
+  return exit_code;
 }

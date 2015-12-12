@@ -78,7 +78,7 @@ bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
   }
 
   std::string reason;
-  bool dump = ShouldDump(pid, exec, &reason);
+  bool dump = ShouldDump(pid, supplied_ruid, exec, &reason);
 
   LOG(WARNING) << "Received crash notification for " << exec << "[" << pid
                << "] sig " << signal << ", user " << supplied_ruid

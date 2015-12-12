@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include <unordered_set>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -52,7 +53,8 @@ void UserCollector::Initialize(
     bool generate_diagnostics,
     bool core2md_failure,
     bool directory_failure,
-    const std::string &filter_in) {
+    const std::string &filter_in,
+    FilterOutFunction filter_out) {
   UserCollectorBase::Initialize(count_crash_function,
                                 is_feedback_allowed_function,
                                 generate_diagnostics,
@@ -60,6 +62,7 @@ void UserCollector::Initialize(
                                 filter_in);
   our_path_ = our_path;
   core2md_failure_ = core2md_failure;
+  filter_out_ = std::move(filter_out);
 }
 
 UserCollector::~UserCollector() {
@@ -227,12 +230,18 @@ bool UserCollector::RunCoreToMinidump(const FilePath &core_path,
   return true;
 }
 
-bool UserCollector::ShouldDump(bool has_owner_consent,
+bool UserCollector::ShouldDump(pid_t pid,
+                               bool has_owner_consent,
                                bool is_developer,
                                bool handle_chrome_crashes,
                                const std::string &exec,
                                std::string *reason) {
   reason->clear();
+
+  if (filter_out_(pid)) {
+    *reason = "ignoring - PID filtered out";
+    return false;
+  }
 
   // Treat Chrome crashes as if the user opted-out.  We stop counting Chrome
   // crashes towards user crashes, so user crashes really mean non-Chrome
@@ -246,10 +255,12 @@ bool UserCollector::ShouldDump(bool has_owner_consent,
   return UserCollectorBase::ShouldDump(has_owner_consent, is_developer, reason);
 }
 
-bool UserCollector::ShouldDump(pid_t,
+bool UserCollector::ShouldDump(pid_t pid,
+                               uid_t,
                                const std::string &exec,
                                std::string *reason) {
-  return ShouldDump(is_feedback_allowed_function_(),
+  return ShouldDump(pid,
+                    is_feedback_allowed_function_(),
                     IsDeveloperImage(),
                     ShouldHandleChromeCrashes(),
                     exec,

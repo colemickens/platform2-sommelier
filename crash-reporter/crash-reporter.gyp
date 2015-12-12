@@ -39,6 +39,13 @@
         'user_collector.cc',
         'user_collector_base.cc',
       ],
+      'conditions': [
+        ['USE_arc == 1', {
+          'sources': [
+            'arc_collector.cc',
+          ],
+        }],
+      ],
     },
     {
       'target_name': 'crash_reporter',
@@ -51,6 +58,9 @@
       },
       'dependencies': [
         'libcrash',
+      ],
+      'defines': [
+        'USE_ARC=<(USE_arc)',
       ],
       'sources': [
         'crash_reporter.cc',
@@ -120,6 +130,13 @@
             'udev_collector_test.cc',
             'unclean_shutdown_collector_test.cc',
             'user_collector_test.cc',
+          ],
+          'conditions': [
+            ['USE_arc == 1', {
+              'sources': [
+                'arc_collector_test.cc',
+              ],
+            }],
           ],
         },
       ],

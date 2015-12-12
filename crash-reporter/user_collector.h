@@ -5,6 +5,7 @@
 #ifndef CRASH_REPORTER_USER_COLLECTOR_H_
 #define CRASH_REPORTER_USER_COLLECTOR_H_
 
+#include <functional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -16,6 +17,8 @@
 // User crash collector.
 class UserCollector : public UserCollectorBase {
  public:
+  typedef std::function<bool (pid_t)> FilterOutFunction;
+
   UserCollector();
 
   // Initialize the user crash collector for detection of crashes,
@@ -30,7 +33,8 @@ class UserCollector : public UserCollectorBase {
                   bool generate_diagnostics,
                   bool core2md_failure,
                   bool directory_failure,
-                  const std::string &filter_in);
+                  const std::string &filter_in,
+                  FilterOutFunction filter_out);
 
   ~UserCollector() override;
 
@@ -63,9 +67,10 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, GetSymlinkTarget);
   FRIEND_TEST(UserCollectorTest, GetUserInfoFromName);
   FRIEND_TEST(UserCollectorTest, ParseCrashAttributes);
+  FRIEND_TEST(UserCollectorTest, ShouldDumpFiltering);
   FRIEND_TEST(UserCollectorTest, ShouldDumpChromeOverridesDeveloperImage);
   FRIEND_TEST(UserCollectorTest, ShouldDumpDeveloperImageOverridesConsent);
-  FRIEND_TEST(UserCollectorTest, ShouldDumpUseConsentProductionImage);
+  FRIEND_TEST(UserCollectorTest, ShouldDumpUserConsentProductionImage);
   FRIEND_TEST(UserCollectorTest, ValidateProcFiles);
   FRIEND_TEST(UserCollectorTest, ValidateCoreFile);
 
@@ -93,7 +98,8 @@ class UserCollector : public UserCollectorBase {
                          const base::FilePath &minidump_path,
                          const base::FilePath &temp_directory);
 
-  bool ShouldDump(bool has_owner_consent,
+  bool ShouldDump(pid_t pid,
+                  bool has_owner_consent,
                   bool is_developer,
                   bool handle_chrome_crashes,
                   const std::string &exec,
@@ -101,6 +107,7 @@ class UserCollector : public UserCollectorBase {
 
   // UserCollectorBase overrides.
   bool ShouldDump(pid_t pid,
+                  uid_t uid,
                   const std::string &exec,
                   std::string *reason) override;
 
@@ -114,6 +121,8 @@ class UserCollector : public UserCollectorBase {
   std::string our_path_;
 
   bool core2md_failure_;
+
+  FilterOutFunction filter_out_;
 
   DISALLOW_COPY_AND_ASSIGN(UserCollector);
 };
