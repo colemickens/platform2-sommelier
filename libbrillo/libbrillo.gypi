@@ -351,6 +351,7 @@
             'brillo/streams/stream_unittest.cc',
             'brillo/streams/stream_utils_unittest.cc',
             'brillo/strings/string_utils_unittest.cc',
+            'brillo/unittest_utils.cc',
             'brillo/url_utils_unittest.cc',
             'brillo/variant_dictionary_unittest.cc',
             'testrunner.cc',

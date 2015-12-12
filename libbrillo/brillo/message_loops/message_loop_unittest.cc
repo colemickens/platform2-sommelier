@@ -9,11 +9,6 @@
 // implementation-specific tests see the particular implementation unittests in
 // the *_unittest.cc files.
 
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include <memory>
 #include <vector>
 
@@ -23,68 +18,13 @@
 #include <gtest/gtest.h>
 
 #include <brillo/bind_lambda.h>
+#include <brillo/unittest_utils.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/message_loops/glib_message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
 
 using base::Bind;
 using base::TimeDelta;
-
-namespace {
-// Helper class to create and close a unidirectional pipe. Used to provide valid
-// file descriptors when testing watching for a file descriptor.
-class ScopedPipe {
- public:
-  // The internal pipe size.
-  static const int kPipeSize;
-
-  ScopedPipe() {
-    int fds[2];
-    if (pipe(fds) != 0) {
-      PLOG(FATAL) << "Creating a pipe()";
-    }
-    reader = fds[0];
-    writer = fds[1];
-    EXPECT_EQ(kPipeSize, fcntl(writer, F_SETPIPE_SZ, kPipeSize));
-  }
-  ~ScopedPipe() {
-    if (reader != -1)
-      close(reader);
-    if (writer != -1)
-      close(writer);
-  }
-
-  // The reader and writer end of the pipe.
-  int reader{-1};
-  int writer{-1};
-};
-
-const int ScopedPipe::kPipeSize = 4096;
-
-class ScopedSocketPair {
- public:
-  ScopedSocketPair() {
-    int fds[2];
-    if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
-      PLOG(FATAL) << "Creating a socketpair()";
-    }
-    left = fds[0];
-    right = fds[1];
-  }
-  ~ScopedSocketPair() {
-    if (left != -1)
-      close(left);
-    if (right != -1)
-      close(right);
-  }
-
-  // The left and right sockets are bi-directional connected and
-  // indistinguishable file descriptor. We named them left/right for easier
-  // reading.
-  int left{-1};
-  int right{-1};
-};
-}  // namespace
 
 namespace brillo {
 

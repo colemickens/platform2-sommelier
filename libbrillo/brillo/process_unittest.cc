@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "brillo/process_mock.h"
+#include "brillo/unittest_utils.h"
 #include "brillo/test_helpers.h"
 
 using base::FilePath;
@@ -29,6 +30,7 @@ static const char kBinCp[] = SYSTEM_PREFIX "/bin/cp";
 static const char kBinEcho[] = SYSTEM_PREFIX "/bin/echo";
 static const char kBinFalse[] = SYSTEM_PREFIX "/bin/false";
 static const char kBinSleep[] = SYSTEM_PREFIX "/bin/sleep";
+static const char kBinStat[] = SYSTEM_PREFIX "/usr/bin/stat";
 static const char kBinTrue[] = SYSTEM_PREFIX "/bin/true";
 
 namespace brillo {
@@ -94,7 +96,6 @@ class ProcessTest : public ::testing::Test {
  protected:
   void CheckStderrCaptured();
   FilePath GetFdPath(int fd);
-  bool FileDescriptorExists(int pid, int fd);
 
   ProcessImpl process_;
   std::vector<const char*> args_;
@@ -166,11 +167,6 @@ TEST_F(ProcessTest, StderrCapturedWhenPreviouslyClosed) {
 
 FilePath ProcessTest::GetFdPath(int fd) {
   return FilePath(base::StringPrintf("/proc/self/fd/%d", fd));
-}
-
-bool ProcessTest::FileDescriptorExists(int pid, int fd) {
-  return base::PathExists(
-      FilePath(base::StringPrintf("/proc/%d/fd/%d", pid, fd)));
 }
 
 TEST_F(ProcessTest, RedirectStderrUsingPipe) {
@@ -341,35 +337,23 @@ TEST_F(ProcessTest, PreExecCallback) {
 }
 
 TEST_F(ProcessTest, LeakUnusedFileDescriptors) {
-  int fds[2];
-  EXPECT_EQ(0, pipe(fds));
-  process_.AddArg(kBinSleep);
-  process_.AddArg("10000");
+  ScopedPipe pipe;
+  process_.AddArg(kBinStat);
+  process_.AddArg(GetFdPath(pipe.reader).value());
+  process_.AddArg(GetFdPath(pipe.writer).value());
   process_.SetCloseUnusedFileDescriptors(false);
-  ASSERT_TRUE(process_.Start());
-  // Give child process a bit time to come up.
-  usleep(10 * 1000);
-  // Verify file descriptors are leaking to the child process.
-  EXPECT_TRUE(FileDescriptorExists(process_.pid(), fds[0]));
-  EXPECT_TRUE(FileDescriptorExists(process_.pid(), fds[1]));
-
-  EXPECT_TRUE(process_.Kill(SIGTERM, 1));
+  EXPECT_EQ(0, process_.Run());
 }
 
 TEST_F(ProcessTest, CloseUnusedFileDescriptors) {
-  int fds[2];
-  EXPECT_EQ(0, pipe(fds));
-  process_.AddArg(kBinSleep);
-  process_.AddArg("10000");
+  ScopedPipe pipe;
+  process_.AddArg(kBinStat);
+  process_.AddArg(GetFdPath(pipe.reader).value());
+  process_.AddArg(GetFdPath(pipe.writer).value());
   process_.SetCloseUnusedFileDescriptors(true);
-  ASSERT_TRUE(process_.Start());
-  // Give child process a bit time to come up.
-  usleep(10 * 1000);
-  // Verify file descriptors does not get leak to the child process.
-  EXPECT_FALSE(FileDescriptorExists(process_.pid(), fds[0]));
-  EXPECT_FALSE(FileDescriptorExists(process_.pid(), fds[1]));
-
-  EXPECT_TRUE(process_.Kill(SIGTERM, 1));
+  // Stat should fail when running on these file descriptor because the files
+  // should not be there.
+  EXPECT_EQ(1, process_.Run());
 }
 
 }  // namespace brillo
