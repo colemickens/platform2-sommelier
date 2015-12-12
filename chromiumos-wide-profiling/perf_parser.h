@@ -81,9 +81,15 @@ struct ParsedEvent {
 
     DSOAndOffset() : dso_info_(NULL),
                      offset_(0) {}
+
+    bool operator == (const DSOAndOffset& other) const {
+      return offset_ == other.offset_ &&
+             !dso_name().compare(other.dso_name()) &&
+             !build_id().compare(other.build_id());
+    }
   } dso_and_offset;
 
-  // DSO+offset info for callchain.
+  // DSO + offset info for callchain.
   std::vector<DSOAndOffset> callchain;
 
   // DSO + offset info for branch stack entries.
@@ -91,8 +97,23 @@ struct ParsedEvent {
     bool predicted;
     DSOAndOffset from;
     DSOAndOffset to;
+
+    bool operator == (const BranchEntry& other) const {
+      return predicted == other.predicted &&
+             from == other.from &&
+             to == other.to;
+    }
   };
   std::vector<BranchEntry> branch_stack;
+
+  // For comparing ParsedEvents.
+  bool operator == (const ParsedEvent& other) const {
+    return dso_and_offset == other.dso_and_offset &&
+           std::equal(callchain.begin(), callchain.end(),
+                      other.callchain.begin()) &&
+           std::equal(branch_stack.begin(), branch_stack.end(),
+                      other.branch_stack.begin());
+  }
 };
 
 struct PerfEventStats {
@@ -134,8 +155,13 @@ class PerfParser : public PerfReader {
   // Constructor that takes in options at PerfParser creation time.
   explicit PerfParser(const Options& options);
 
-  // Pass in a struct containing various options.
-  void set_options(const Options& options);
+  const Options& options() const {
+    return options_;
+  }
+
+  void set_options(const Options& options) {
+    options_ = options;
+  }
 
   // Gets parsed event/sample info from raw event data.
   bool ParseRawEvents();

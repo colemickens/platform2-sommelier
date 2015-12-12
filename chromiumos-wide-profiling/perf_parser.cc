@@ -61,12 +61,10 @@ PerfParser::PerfParser(const PerfParser::Options& options) {
   options_ = options;
 }
 
-void PerfParser::set_options(const PerfParser::Options& options) {
-  options_ = options;
-}
-
 bool PerfParser::ParseRawEvents() {
+  // Just in case there was data from a previous call.
   process_mappers_.clear();
+
   parsed_events_.resize(reader_.events().size());
   for (size_t i = 0; i < reader_.events().size(); ++i) {
     ParsedEvent& parsed_event = parsed_events_[i];
