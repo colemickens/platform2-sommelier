@@ -21,14 +21,14 @@ namespace quipper {
 // way to get information from the counters.
 bool IsPerfRecordAvailable() {
   return RunCommand(
-      {"perf", "record", "-a", "-o", "-", "--", "sleep", "1"}, NULL) == 0;
+      {"perf", "record", "-a", "-o", "-", "--", "sleep", "0.01"}, NULL) == 0;
 }
 
 // Runs "perf mem record" to see if the command is available on the current
 // system.
 bool IsPerfMemRecordAvailable() {
   return RunCommand(
-      {"perf", "mem", "record", "-a", "-e", "cycles", "--", "sleep", "1"},
+      {"perf", "mem", "record", "-a", "-e", "cycles", "--", "sleep", "0.01"},
       NULL) == 0;
 }
 
@@ -45,7 +45,7 @@ TEST_F(PerfRecorderTest, RecordToProtobuf) {
   // Read the protobuf, and reconstruct the perf data.
   string output_string;
   EXPECT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
-      {"perf", "record"}, 1, &output_string));
+      {"perf", "record"}, 0.2, &output_string));
 
   quipper::PerfDataProto perf_data_proto;
   EXPECT_TRUE(perf_data_proto.ParseFromString(output_string));
@@ -55,7 +55,7 @@ TEST_F(PerfRecorderTest, StatToProtobuf) {
   // Run perf stat and verify output.
   string output_string;
   EXPECT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
-      {"perf", "stat"}, 1, &output_string));
+      {"perf", "stat"}, 0.2, &output_string));
 
   EXPECT_GT(output_string.size(), 0);
   quipper::PerfStatProto stat;
@@ -70,7 +70,7 @@ TEST_F(PerfRecorderTest, MemRecordToProtobuf) {
   // Run perf mem record and verify output.
   string output_string;
   EXPECT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
-      {"perf", "mem", "record"}, 1, &output_string));
+      {"perf", "mem", "record"}, 0.2, &output_string));
 
   EXPECT_GT(output_string.size(), 0);
   quipper::PerfDataProto perf_data_proto;
@@ -81,7 +81,7 @@ TEST_F(PerfRecorderTest, StatSingleEvent) {
   string output_string;
   ASSERT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
       {"perf", "stat", "-a", "-e", "cycles"},
-      1, &output_string));
+      0.2, &output_string));
 
   EXPECT_GT(output_string.size(), 0);
 
@@ -89,7 +89,7 @@ TEST_F(PerfRecorderTest, StatSingleEvent) {
   ASSERT_TRUE(stat.ParseFromString(output_string));
   // Replace the placeholder "perf" with the actual perf path.
   string expected_command_line =
-      string("sudo ") + GetPerfPath() + " stat -a -e cycles -v -- sleep 1";
+      string("sudo ") + GetPerfPath() + " stat -a -e cycles -v -- sleep 0.2";
   EXPECT_EQ(expected_command_line, stat.command_line());
 
   // Make sure the event counter was read.
@@ -98,7 +98,7 @@ TEST_F(PerfRecorderTest, StatSingleEvent) {
   EXPECT_TRUE(stat.line(0).has_count());
   EXPECT_TRUE(stat.line(0).has_event_name());
   // Running for at least one second.
-  EXPECT_GE(stat.line(0).time_ms(), 1000);
+  EXPECT_GE(stat.line(0).time_ms(), 200);
   EXPECT_EQ("cycles", stat.line(0).event_name());
 }
 
@@ -110,7 +110,7 @@ TEST_F(PerfRecorderTest, StatMultipleEvents) {
         "-e", "instructions",
         "-e", "branches",
         "-e", "branch-misses" },
-      2, &output_string));
+      0.2, &output_string));
 
   EXPECT_GT(output_string.size(), 0);
 
@@ -124,7 +124,7 @@ TEST_F(PerfRecorderTest, StatMultipleEvents) {
           "-e branches "
           "-e branch-misses "
           "-v "
-          "-- sleep 2";
+          "-- sleep 0.2";
   EXPECT_TRUE(stat.has_command_line());
   EXPECT_EQ(command_line, stat.command_line());
 
@@ -138,25 +138,25 @@ TEST_F(PerfRecorderTest, StatMultipleEvents) {
   EXPECT_TRUE(stat.line(0).has_time_ms());
   EXPECT_TRUE(stat.line(0).has_count());
   EXPECT_TRUE(stat.line(0).has_event_name());
-  EXPECT_GE(stat.line(0).time_ms(), 2000);
+  EXPECT_GE(stat.line(0).time_ms(), 200);
   EXPECT_EQ("cycles", stat.line(0).event_name());
 
   EXPECT_TRUE(stat.line(1).has_time_ms());
   EXPECT_TRUE(stat.line(1).has_count());
   EXPECT_TRUE(stat.line(1).has_event_name());
-  EXPECT_GE(stat.line(1).time_ms(), 2000);
+  EXPECT_GE(stat.line(1).time_ms(), 200);
   EXPECT_EQ("instructions", stat.line(1).event_name());
 
   EXPECT_TRUE(stat.line(2).has_time_ms());
   EXPECT_TRUE(stat.line(2).has_count());
   EXPECT_TRUE(stat.line(2).has_event_name());
-  EXPECT_GE(stat.line(2).time_ms(), 2000);
+  EXPECT_GE(stat.line(2).time_ms(), 200);
   EXPECT_EQ("branches", stat.line(2).event_name());
 
   EXPECT_TRUE(stat.line(3).has_time_ms());
   EXPECT_TRUE(stat.line(3).has_count());
   EXPECT_TRUE(stat.line(3).has_event_name());
-  EXPECT_GE(stat.line(3).time_ms(), 2000);
+  EXPECT_GE(stat.line(3).time_ms(), 200);
   EXPECT_EQ("branch-misses", stat.line(3).event_name());
 }
 
@@ -164,17 +164,17 @@ TEST_F(PerfRecorderTest, DontAllowCommands) {
   string output_string;
   EXPECT_FALSE(perf_recorder_.RunCommandAndGetSerializedOutput(
       {"perf", "record", "--", "sh", "-c", "echo 'malicious'"},
-      1, &output_string));
+      0.2, &output_string));
   EXPECT_FALSE(perf_recorder_.RunCommandAndGetSerializedOutput(
       {"perf", "stat", "--", "sh", "-c", "echo 'malicious'"},
-      1, &output_string));
+      0.2, &output_string));
 }
 
 TEST(PerfRecorderNoPerfTest, FailsIfPerfDoesntExist) {
   string output_string;
   PerfRecorder perf_recorder({"sudo", "/doesnt-exist/usr/not-bin/not-perf"});
   EXPECT_FALSE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"perf", "record"}, 1, &output_string));
+      {"perf", "record"}, 0.2, &output_string));
 }
 
 }  // namespace quipper

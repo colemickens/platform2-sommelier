@@ -28,12 +28,6 @@ const char kPerfRecordCommand[] = "record";
 const char kPerfStatCommand[] = "stat";
 const char kPerfMemCommand[] = "mem";
 
-string IntToString(const int i) {
-  stringstream ss;
-  ss << i;
-  return ss.str();
-}
-
 // Reads a perf data file and converts it to a PerfDataProto, which is stored as
 // a serialized string in |output_string|. Returns true on success.
 bool ParsePerfDataFileToString(const string& filename, string* output_string) {
@@ -90,7 +84,7 @@ PerfRecorder::PerfRecorder(const std::vector<string>& perf_binary_command)
 
 bool PerfRecorder::RunCommandAndGetSerializedOutput(
     const std::vector<string>& perf_args,
-    const int time,
+    const double time_sec,
     string* output_string) {
   if (!ValidatePerfCommandLine(perf_args)) {
     LOG(ERROR) << "Perf arguments are not safe to run!";
@@ -125,9 +119,11 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
   if (perf_type == kPerfStatCommand)
     full_perf_args.emplace_back("-v");
 
-  // Append the sleep command to run perf for |time| seconds.
+  // Append the sleep command to run perf for |time_sec| seconds.
+  stringstream time_string;
+  time_string << time_sec;
   full_perf_args.insert(full_perf_args.end(),
-                        {"--", "sleep", IntToString(time)});
+                        {"--", "sleep", time_string.str()});
 
   // The perf command writes the output to a file, so ignore stdout.
   int status = RunCommand(full_perf_args, nullptr);

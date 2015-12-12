@@ -23,11 +23,11 @@ class PerfRecorder {
   // Security critical: No user-provided strings should be used!
   explicit PerfRecorder(const std::vector<string>& perf_binary_command);
 
-  // Runs the perf command specified in |perf_args| for |time| seconds. The
+  // Runs the perf command specified in |perf_args| for |time_sec| seconds. The
   // output is returned as a serialized protobuf in |output_string|. The
   // protobuf format depends on the provided perf command.
   bool RunCommandAndGetSerializedOutput(const std::vector<string>& perf_args,
-                                        const int time,
+                                        const double time_sec,
                                         string* output_string);
 
   // The command prefix for running perf. e.g., "perf", or "/usr/bin/perf",
