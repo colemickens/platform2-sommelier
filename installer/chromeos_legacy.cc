@@ -109,6 +109,7 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 }
 
 bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
+  bool result = true;
   printf("Running LegacyUBootPostInstall\n");
 
   string src_img = StringPrintf("%s/boot/boot-%s.scr.uimg",
@@ -122,11 +123,28 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
   // nothing.
   if (access(src_img.c_str(), R_OK) == 0) {
     printf("Copying '%s' to '%s'\n", src_img.c_str(), dst_img.c_str());
-    return CopyFile(src_img, dst_img);
+    result &= CopyFile(src_img, dst_img);
   } else {
     printf("Not present to install: '%s'\n", src_img.c_str());
-    return true;
   }
+
+  string src_env = StringPrintf("%s/boot/uEnv.%s.txt",
+                                install_config.root.mount().c_str(),
+                                install_config.slot.c_str());
+
+  string dst_env = StringPrintf("%s/uEnv.txt",
+                                install_config.boot.mount().c_str());
+
+  // If the source uenv file exists, copy it into place, else do
+  // nothing.
+  if (access(src_env.c_str(), R_OK) == 0) {
+    printf("Copying '%s' to '%s'\n", src_env.c_str(), dst_env.c_str());
+    result &= CopyFile(src_env, dst_env);
+  } else {
+    printf("Not present to install: '%s'\n", src_env.c_str());
+  }
+
+  return result;
 }
 
 bool RunEfiPostInstall(const InstallConfig& install_config) {
