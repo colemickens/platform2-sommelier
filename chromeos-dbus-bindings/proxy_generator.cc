@@ -353,7 +353,7 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
       "MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());");
   if (!config.object_manager.name.empty() && !interface.properties.empty()) {
     text->AddLineAndPushOffsetTo(
-        "MOCK_CONST_METHOD1(SetPropertyChangedCallback,", 1, '(');
+        "MOCK_METHOD1(SetPropertyChangedCallback,", 1, '(');
     text->AddLine(StringPrintf(
         "void(const base::Callback<void(%sInterface*, const std::string&)>&));",
         proxy_name.c_str()));
