@@ -20,8 +20,10 @@ using base::FilePath;
 // This test assumes the following standard binaries are installed.
 #if defined(__ANDROID__)
 # define SYSTEM_PREFIX "/system"
+static const char kBinStat[] = SYSTEM_PREFIX "/bin/stat";
 #else
 # define SYSTEM_PREFIX ""
+static const char kBinStat[] = "/usr/bin/stat";
 #endif
 
 static const char kBinSh[] = SYSTEM_PREFIX "/bin/sh";
@@ -30,7 +32,6 @@ static const char kBinCp[] = SYSTEM_PREFIX "/bin/cp";
 static const char kBinEcho[] = SYSTEM_PREFIX "/bin/echo";
 static const char kBinFalse[] = SYSTEM_PREFIX "/bin/false";
 static const char kBinSleep[] = SYSTEM_PREFIX "/bin/sleep";
-static const char kBinStat[] = SYSTEM_PREFIX "/usr/bin/stat";
 static const char kBinTrue[] = SYSTEM_PREFIX "/bin/true";
 
 namespace brillo {
