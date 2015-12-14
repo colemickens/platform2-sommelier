@@ -72,6 +72,25 @@ class BRILLO_EXPORT Process {
   // Set the real/effective/saved group ID of the child process.
   virtual void SetGid(gid_t gid) = 0;
 
+  // Set the capabilities assigned to the child process.
+  // NOTE: |capmask| is indeed a mask and should be passed in as the result of
+  // the CAP_TO_MASK(capability) macro, e.g.
+  //     my_process.SetCapabilities(CAP_TO_MASK(CAP_SETUID) |
+  //                                CAP_TO_MASK(CAP_SETGID));
+  // NOTE: supporting this sandboxing feature is optional (provide no-op
+  // implementation if your Process implementation does not support this).
+  virtual void SetCapabilities(uint64_t capmask) = 0;
+
+  // Apply a syscall filter to the process using the policy file at |path|.
+  // NOTE: supporting this sandboxing feature is optional (provide no-op
+  // implementation if your Process implementation does not support this).
+  virtual void ApplySyscallFilter(const std::string& path) = 0;
+
+  // Enter new PID namespace when this process is run.
+  // NOTE: supporting this sandboxing feature is optional (provide no-op
+  // implementation if your Process implementation does not support this).
+  virtual void EnterNewPidNamespace() = 0;
+
   // Set a flag |inherit| to indicate if the child process intend to
   // inherit signal mask from the parent process. When |inherit| is
   // set to true, the child process will inherit signal mask from the
@@ -150,6 +169,9 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   virtual void SetCloseUnusedFileDescriptors(bool close_unused_fds);
   virtual void SetUid(uid_t uid);
   virtual void SetGid(gid_t gid);
+  virtual void SetCapabilities(uint64_t capmask);
+  virtual void ApplySyscallFilter(const std::string& path);
+  virtual void EnterNewPidNamespace();
   virtual void SetInheritParentSignalMask(bool inherit);
   virtual void SetPreExecCallback(const PreExecCallback& cb);
   virtual void SetSearchPath(bool search_path);

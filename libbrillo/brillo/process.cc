@@ -98,6 +98,21 @@ void ProcessImpl::SetGid(gid_t gid) {
   gid_ = gid;
 }
 
+void ProcessImpl::SetCapabilities(uint64_t /*capmask*/) {
+  // No-op, since ProcessImpl does not support sandboxing.
+  return;
+}
+
+void ProcessImpl::ApplySyscallFilter(const std::string& /*path*/) {
+  // No-op, since ProcessImpl does not support sandboxing.
+  return;
+}
+
+void ProcessImpl::EnterNewPidNamespace() {
+  // No-op, since ProcessImpl does not support sandboxing.
+  return;
+}
+
 void ProcessImpl::SetInheritParentSignalMask(bool inherit) {
   inherit_parent_signal_mask_ = inherit;
 }
