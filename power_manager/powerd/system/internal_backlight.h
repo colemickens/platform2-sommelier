@@ -29,7 +29,6 @@ class InternalBacklight : public BacklightInterface {
   static const char kBrightnessFilename[];
   static const char kMaxBrightnessFilename[];
   static const char kActualBrightnessFilename[];
-  static const char kResumeBrightnessFilename[];
   static const char kBlPowerFilename[];
 
   InternalBacklight();
@@ -68,7 +67,6 @@ class InternalBacklight : public BacklightInterface {
   int64_t GetMaxBrightnessLevel() override;
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
-  bool SetResumeBrightnessLevel(int64_t level) override;
   bool TransitionInProgress() const override;
 
  private:
@@ -90,12 +88,11 @@ class InternalBacklight : public BacklightInterface {
   // Device directory.
   base::FilePath device_path_;
 
-  // Paths to the actual_brightness, brightness, max_brightness and
-  // resume_brightness files under /sys/class/backlight.
+  // Paths to the actual_brightness, brightness, and max_brightness files under
+  // /sys/class/backlight.
   base::FilePath actual_brightness_path_;
   base::FilePath brightness_path_;
   base::FilePath max_brightness_path_;
-  base::FilePath resume_brightness_path_;
 
   // Path to a bl_power file in sysfs that can be used to turn the backlight on
   // or off. Empty if the file isn't present. See http://crbug.com/396218 for

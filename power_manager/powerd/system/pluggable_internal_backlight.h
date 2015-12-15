@@ -44,7 +44,6 @@ class PluggableInternalBacklight : public BacklightInterface,
   int64_t GetMaxBrightnessLevel() override;
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
-  bool SetResumeBrightnessLevel(int64_t level) override;
   bool TransitionInProgress() const override;
 
   // UdevSubsystemObserver:

@@ -32,23 +32,16 @@ If the suspend attempt fails, `Suspender` waits for ten seconds before running
 `powerd_suspend` again to retry. After ten failed retries, the system is shut
 down.
 
-## Backlight
+## Display Suspend State
 
-The panel backlight brightness and display power are configured in a specific
-manner to minimize resume time:
+The display state for suspend is controlled by Chrome for suspend.
 
--   Before suspending, powerd first sets the backlight brightness to 0 and sets
-    the kernel's "resume brightness" to the panel's original, non-dimmed level.
--   Next, powerd emits the `SuspendImminent` signal; when Chrome sees it, it
-    turns the display on (that is not a typo).
--   powerd suspends the system.
--   After the system resumes, and before userspace is awake, the kernel restores
-    the display's previous (on) power state and the resume brightness.
-
-This sequence of events allows the kernel to restore the display's original
-state quickly when resuming, i.e. no need to wait for userspace processes like
-Chrome and powerd to restore the previous state. Note that when the system
-suspends, the display is actually on but the backlight is turned off.
+-  When the SuspendImminent signal is received by Chrome, it turns off the
+   display(s).
+-  powerd still controls the backlight level during suspend, even though
+   powering off the display will disable the backlight separately.
+-  Chrome will turn the display(s) back on when it receives the SuspendDone
+   signal.
 
 ## Wakeup Counts
 

@@ -154,9 +154,6 @@ class InternalBacklightController : public BacklightController,
                               Transition transition,
                               BrightnessChangeCause cause);
 
-  // Configures |backlight_| to resume from suspend at |resume_percent|.
-  bool ApplyResumeBrightnessPercent(double resume_percent);
-
   // Updates displays to |state| after |delay| if |state| doesn't match
   // |display_power_state_|.  If another change has already been scheduled,
   // it will be aborted.

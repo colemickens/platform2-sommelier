@@ -283,7 +283,6 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   EXPECT_EQ(0, display_power_setter_.num_power_calls());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
-  EXPECT_EQ(initial_level, backlight_.resume_level());
 
   controller_->SetSuspended(false);
   EXPECT_EQ(initial_level, backlight_.current_level());
@@ -292,13 +291,9 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 
   // Test idling into suspend state.  The backlight should be at 0% after the
-  // display is turned off, but it should be set back to the active level (with
-  // the screen still off) before suspending, so that the kernel driver can
-  // restore that level after resuming.
-  backlight_.clear_resume_level();
+  // display is turned off.
   controller_->SetDimmedForInactivity(true);
   EXPECT_LT(backlight_.current_level(), initial_level);
-  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
 
   // The displays are turned off for the idle-off state.
   controller_->SetOffForInactivity(true);
@@ -313,7 +308,6 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   controller_->SetSuspended(true);
   EXPECT_EQ(0, display_power_setter_.num_power_calls());
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(initial_level, backlight_.resume_level());
 
   // Test resume.
   controller_->SetDimmedForInactivity(false);

@@ -94,7 +94,6 @@ TEST_F(PluggableInternalBacklightTest, NoDevice) {
   EXPECT_EQ(-1, backlight_.GetMaxBrightnessLevel());
   EXPECT_EQ(-1, backlight_.GetCurrentBrightnessLevel());
   EXPECT_FALSE(backlight_.SetBrightnessLevel(128, base::TimeDelta()));
-  EXPECT_FALSE(backlight_.SetResumeBrightnessLevel(128));
   EXPECT_FALSE(backlight_.TransitionInProgress());
 }
 

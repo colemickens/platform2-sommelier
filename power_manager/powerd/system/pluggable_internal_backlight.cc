@@ -62,10 +62,6 @@ bool PluggableInternalBacklight::SetBrightnessLevel(int64_t level,
   return device_ ? device_->SetBrightnessLevel(level, interval) : false;
 }
 
-bool PluggableInternalBacklight::SetResumeBrightnessLevel(int64_t level) {
-  return device_ ? device_->SetResumeBrightnessLevel(level) : false;
-}
-
 bool PluggableInternalBacklight::TransitionInProgress() const {
   return device_ ? device_->TransitionInProgress() : false;
 }

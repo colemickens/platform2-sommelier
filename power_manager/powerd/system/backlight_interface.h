@@ -41,9 +41,6 @@ class BacklightInterface {
   // Sets the backlight to |level| over |interval|. Returns false on failure.
   virtual bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) = 0;
 
-  // Sets the resume backlight to |level|.  Returns false on failure.
-  virtual bool SetResumeBrightnessLevel(int64_t level) = 0;
-
   // Returns true if the brightness is currently being animated.
   virtual bool TransitionInProgress() const = 0;
 

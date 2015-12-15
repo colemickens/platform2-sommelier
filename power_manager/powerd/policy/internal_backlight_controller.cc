@@ -570,7 +570,6 @@ void InternalBacklightController::UpdateState() {
 
   double brightness_percent = 100.0;
   Transition brightness_transition = Transition::INSTANT;
-  double resume_percent = -1.0;
 
   chromeos::DisplayPowerState display_power = chromeos::DISPLAY_POWER_ALL_ON;
   Transition display_transition = Transition::INSTANT;
@@ -581,7 +580,6 @@ void InternalBacklightController::UpdateState() {
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
   } else if (suspended_) {
     brightness_percent = 0.0;
-    resume_percent = GetUndimmedBrightnessPercent();
     // Chrome puts displays into the correct power state before suspend.
     set_display_power = false;
   } else if (off_for_inactivity_) {
@@ -626,17 +624,12 @@ void InternalBacklightController::UpdateState() {
   ApplyBrightnessPercent(brightness_percent, brightness_transition,
                          BrightnessChangeCause::AUTOMATED);
 
-  if (resume_percent >= 0.0)
-    ApplyResumeBrightnessPercent(resume_percent);
-
   already_set_initial_state_ = true;
 }
 
 bool InternalBacklightController::UpdateUndimmedBrightness(
     Transition transition, BrightnessChangeCause cause) {
   const double percent = GetUndimmedBrightnessPercent();
-  if (suspended_)
-    ApplyResumeBrightnessPercent(percent);
 
   // Don't apply the change if we're in a state that overrides the new level.
   if (shutting_down_ || forced_off_ || suspended_ || docked_ ||
@@ -685,14 +678,6 @@ bool InternalBacklightController::ApplyBrightnessPercent(
   for (BacklightControllerObserver& observer : observers_)
     observer.OnBrightnessChange(percent, cause, this);
   return true;
-}
-
-bool InternalBacklightController::ApplyResumeBrightnessPercent(
-    double resume_percent) {
-  int64_t level = PercentToLevel(resume_percent);
-  LOG(INFO) << "Setting resume brightness to " << level << " ("
-            << resume_percent << "%)";
-  return backlight_->SetResumeBrightnessLevel(level);
 }
 
 void InternalBacklightController::SetDisplayPower(

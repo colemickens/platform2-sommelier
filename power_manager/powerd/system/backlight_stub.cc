@@ -52,13 +52,6 @@ bool BacklightStub::SetBrightnessLevel(int64_t level,
   return true;
 }
 
-bool BacklightStub::SetResumeBrightnessLevel(int64_t level) {
-  if (should_fail_)
-    return false;
-  resume_level_ = level;
-  return true;
-}
-
 bool BacklightStub::TransitionInProgress() const {
   return transition_in_progress_;
 }

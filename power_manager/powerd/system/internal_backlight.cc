@@ -32,7 +32,6 @@ const int kTransitionIntervalMs = 20;
 const char InternalBacklight::kBrightnessFilename[] = "brightness";
 const char InternalBacklight::kMaxBrightnessFilename[] = "max_brightness";
 const char InternalBacklight::kActualBrightnessFilename[] = "actual_brightness";
-const char InternalBacklight::kResumeBrightnessFilename[] = "resume_brightness";
 const char InternalBacklight::kBlPowerFilename[] = "bl_power";
 
 InternalBacklight::InternalBacklight()
@@ -87,8 +86,6 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
     actual_brightness_path_ = device_path.Append(kActualBrightnessFilename);
     if (!base::PathExists(actual_brightness_path_))
       actual_brightness_path_ = brightness_path_;
-
-    resume_brightness_path_ = device_path.Append(kResumeBrightnessFilename);
 
     const base::FilePath power_path = device_path.Append(kBlPowerFilename);
     if (base::PathExists(power_path))
@@ -152,15 +149,6 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
     transition_timer_start_time_ = transition_start_time_;
   }
   return true;
-}
-
-bool InternalBacklight::SetResumeBrightnessLevel(int64_t level) {
-  if (resume_brightness_path_.empty()) {
-    LOG(ERROR) << "Cannot find backlight resume brightness file.";
-    return false;
-  }
-
-  return util::WriteInt64File(resume_brightness_path_, level);
 }
 
 bool InternalBacklight::TransitionInProgress() const {

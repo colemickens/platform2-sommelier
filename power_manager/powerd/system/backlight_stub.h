@@ -31,10 +31,8 @@ class BacklightStub : public BacklightInterface {
     transition_in_progress_ = in_progress;
   }
   void set_should_fail(bool should_fail) { should_fail_ = should_fail; }
-  void clear_resume_level() { resume_level_ = -1; }
 
   int64_t current_level() const { return current_level_; }
-  int64_t resume_level() const { return resume_level_; }
   base::TimeDelta current_interval() const { return current_interval_; }
   base::TimeTicks last_set_brightness_level_time() const {
     return last_set_brightness_level_time_;
@@ -50,7 +48,6 @@ class BacklightStub : public BacklightInterface {
   int64_t GetMaxBrightnessLevel() override;
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
-  bool SetResumeBrightnessLevel(int64_t level) override;
   bool TransitionInProgress() const override;
 
  private:
@@ -68,9 +65,6 @@ class BacklightStub : public BacklightInterface {
 
   // Most-recently-set brightness level.
   int64_t current_level_ = -1;
-
-  // Most-recently-set resume level.
-  int64_t resume_level_ = -1;
 
   // |interval| parameter passed to most recent SetBrightnessLevel() call.
   base::TimeDelta current_interval_;

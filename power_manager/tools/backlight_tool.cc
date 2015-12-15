@@ -174,11 +174,6 @@ int main(int argc, char* argv[]) {
   DEFINE_double(set_brightness_percent, -1.0,
                 "Set brightness as "
                 "linearly-calculated percent in [0.0, 100.0]");
-  DEFINE_int64(set_resume_brightness, -2,
-               "Set brightness level on resume; -1 clears current level");
-  DEFINE_double(set_resume_brightness_percent, -1.0,
-                "Set resume brightness as linearly-calculated percent in "
-                "[0.0, 100.0]");
 
   // Other flags.
   DEFINE_bool(force_battery, false,
@@ -207,10 +202,6 @@ int main(int argc, char* argv[]) {
   }
   if (FLAGS_set_brightness >= 0 && FLAGS_set_brightness_percent >= 0.0)
     Abort("At most one of -set_brightness* may be passed.");
-  if (FLAGS_set_resume_brightness >= 0 &&
-      FLAGS_set_resume_brightness_percent >= 0.0) {
-    Abort("At most one of -set_resume_brightness* may be passed.");
-  }
 
   InternalBacklight backlight;
   base::FilePath path(FLAGS_keyboard ? power_manager::kKeyboardBacklightPath
@@ -270,12 +261,6 @@ int main(int argc, char* argv[]) {
     CHECK(backlight.SetBrightnessLevel(
         converter.LinearPercentToLevel(FLAGS_set_brightness_percent),
         base::TimeDelta()));
-  }
-  if (FLAGS_set_resume_brightness >= -1)  // -1 clears
-    CHECK(backlight.SetResumeBrightnessLevel(FLAGS_set_resume_brightness));
-  if (FLAGS_set_resume_brightness_percent >= 0.0) {
-    CHECK(backlight.SetResumeBrightnessLevel(
-        converter.LinearPercentToLevel(FLAGS_set_resume_brightness_percent)));
   }
 
   return 0;
