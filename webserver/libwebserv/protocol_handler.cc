@@ -22,10 +22,10 @@
 #include <brillo/streams/stream_utils.h>
 
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
+#include "libwebserv/dbus_server.h"
 #include "libwebserv/request.h"
 #include "libwebserv/request_handler_callback.h"
 #include "libwebserv/response_impl.h"
-#include "libwebserv/server.h"
 #include "webservd/dbus-proxies.h"
 
 namespace libwebserv {
@@ -58,7 +58,7 @@ void WriteResponseData(brillo::StreamPtr src_stream,
 const char ProtocolHandler::kHttp[] = "http";
 const char ProtocolHandler::kHttps[] = "https";
 
-ProtocolHandler::ProtocolHandler(const std::string& name, Server* server)
+ProtocolHandler::ProtocolHandler(const std::string& name, DBusServer* server)
     : name_{name}, server_{server} {
 }
 

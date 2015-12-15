@@ -31,7 +31,7 @@ class RequestImpl final : public Request {
   brillo::StreamPtr GetDataStream() override;
 
  private:
-  friend class Server;
+  friend class DBusServer;
 
   LIBWEBSERV_PRIVATE RequestImpl(ProtocolHandler* handler,
                                  const std::string& url,

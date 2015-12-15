@@ -44,7 +44,7 @@ class ProtocolHandlerProxyInterface;
 
 namespace libwebserv {
 
-class Server;
+class DBusServer;
 class Request;
 
 // Wrapper around a protocol handler (e.g. HTTP or HTTPs).
@@ -53,7 +53,7 @@ class Request;
 // information.
 class LIBWEBSERV_EXPORT ProtocolHandler final {
  public:
-  ProtocolHandler(const std::string& name, Server* server);
+  ProtocolHandler(const std::string& name, DBusServer* server);
   ~ProtocolHandler();
 
   // Returns true if the protocol handler object is connected to the web server
@@ -126,7 +126,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
 
  private:
   friend class FileInfo;
-  friend class Server;
+  friend class DBusServer;
   friend class ResponseImpl;
 
   using ProtocolHandlerProxyInterface =
@@ -139,12 +139,12 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
     std::unique_ptr<RequestHandlerInterface> handler;
   };
 
-  // Called by the Server class when the D-Bus proxy object gets connected
+  // Called by the DBusServer class when the D-Bus proxy object gets connected
   // to the web server daemon.
-
   LIBWEBSERV_PRIVATE void Connect(ProtocolHandlerProxyInterface* proxy);
-  // Called by the Server class when the D-Bus proxy object gets disconnected
-  // from the web server daemon.
+
+  // Called by the DBusServer class when the D-Bus proxy object gets
+  // disconnected from the web server daemon.
   LIBWEBSERV_PRIVATE void Disconnect(const dbus::ObjectPath& object_path);
 
   // Asynchronous callbacks to handle successful or failed request handler
@@ -156,7 +156,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   LIBWEBSERV_PRIVATE void AddHandlerError(int handler_id,
                                           brillo::Error* error);
 
-  // Called by Server when an incoming request is dispatched.
+  // Called by DBusServer when an incoming request is dispatched.
   LIBWEBSERV_PRIVATE bool ProcessRequest(const std::string& protocol_handler_id,
                                          const std::string& remote_handler_id,
                                          const std::string& request_id,
@@ -187,7 +187,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   // Protocol Handler name.
   std::string name_;
   // Back reference to the server object.
-  Server* server_{nullptr};
+  DBusServer* server_{nullptr};
   // Handler data map. The key is the client-facing request handler ID returned
   // by AddHandler() when registering the handler.
   std::map<int, HandlerMapEntry> request_handlers_;

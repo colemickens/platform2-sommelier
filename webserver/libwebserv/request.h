@@ -49,7 +49,7 @@ class LIBWEBSERV_EXPORT FileInfo final {
       const base::Callback<void(brillo::Error*)>& error_callback) const;
 
  private:
-  friend class Server;
+  friend class DBusServer;
 
   LIBWEBSERV_PRIVATE FileInfo(ProtocolHandler* handler,
                               int file_id,
