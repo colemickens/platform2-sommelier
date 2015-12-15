@@ -522,12 +522,11 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // Temporary while we do the migration involved in http://crbug.com/224291
-  // TODO(ellyjones): remove this to fix http://crbug.com/229411
-  std::string temp_multi_home = GetNewUserPath(username);
-  if (!BindForUser(current_user_, user_home, temp_multi_home)) {
+  // Mount /home/chronos/u<s_h_o_u>.
+  std::string multi_home = GetNewUserPath(username);
+  if (!BindForUser(current_user_, user_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
-                << temp_multi_home;
+                << multi_home;
     UnmountAllForUser(current_user_);
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
@@ -588,10 +587,10 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   if (legacy_mount_)
     MountLegacyHome(user_multi_home, NULL);
 
-  std::string temp_multi_home = GetNewUserPath(username);
-  if (!BindForUser(current_user_, user_multi_home, temp_multi_home)) {
+  std::string multi_home = GetNewUserPath(username);
+  if (!BindForUser(current_user_, user_multi_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_multi_home << " -> "
-                << temp_multi_home;
+                << multi_home;
     UnmountAllForUser(current_user_);
     return false;
   }
