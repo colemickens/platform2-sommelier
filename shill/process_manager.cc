@@ -157,6 +157,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
   // without LD_PRELOAD, which is not used on Android.
   minijail_->UseCapabilities(jail, capmask);
 #endif  // __ANDROID__
+  minijail_->ResetSignalMask(jail);
 
   pid_t pid;
   if (!minijail_->RunPipesAndDestroy(
