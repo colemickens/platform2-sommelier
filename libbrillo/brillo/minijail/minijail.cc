@@ -62,6 +62,10 @@ void Minijail::UseCapabilities(struct minijail* jail, uint64_t capmask) {
   minijail_use_caps(jail, capmask);
 }
 
+void Minijail::ResetSignalMask(struct minijail* jail) {
+  minijail_reset_signal_mask(jail);
+}
+
 void Minijail::Enter(struct minijail* jail) {
   minijail_enter(jail);
 }

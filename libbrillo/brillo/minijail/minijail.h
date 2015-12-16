@@ -52,6 +52,9 @@ class Minijail {
   // minijail_use_caps
   virtual void UseCapabilities(struct minijail* jail, uint64_t capmask);
 
+  // minijail_reset_signal_mask
+  virtual void ResetSignalMask(struct minijail* jail);
+
   // minijail_enter
   virtual void Enter(struct minijail* jail);
 

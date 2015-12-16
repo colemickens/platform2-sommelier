@@ -28,6 +28,7 @@ class MockMinijail : public brillo::Minijail {
                     const char* group));
   MOCK_METHOD2(UseSeccompFilter, void(struct minijail* jail, const char* path));
   MOCK_METHOD2(UseCapabilities, void(struct minijail* jail, uint64_t capmask));
+  MOCK_METHOD1(ResetSignalMask, void(struct minijail* jail));
   MOCK_METHOD1(Enter, void(struct minijail* jail));
   MOCK_METHOD3(Run,
                bool(struct minijail* jail,
