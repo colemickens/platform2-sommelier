@@ -16,7 +16,7 @@
 #include "base/macros.h"
 
 #include "chromiumos-wide-profiling/compat/string.h"
-#include "chromiumos-wide-profiling/kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/kernel/perf_event.h"
 #include "chromiumos-wide-profiling/sample_info_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -142,48 +142,92 @@ class PerfReader {
   bool WritePerfSampleInfo(const perf_sample& sample,
                            event_t* event) const;
 
-  // Accessor funcs.
-  const std::vector<PerfFileAttr>& attrs() const {
-    return attrs_;
-  }
+  // Check if |attrs_| has been given name strings. The raw attr data may not be
+  // read from the same location as the name strings in a perf data file.
+  bool HaveEventNames() const;
+
+  // Update internal fields when the PerfReader gets a new set of |attrs_|.
+  void UpdateOnNewAttrs();
+
+  // Accessors and mutators.
 
   uint64_t sample_type() const {
     return sample_type_;
   }
 
-  bool HaveEventNames() const {
-    for (const auto& attr : attrs_) {
-      if (attr.name.empty()) {
-        return false;
-      }
-    }
-    return true;
+  const std::vector<PerfFileAttr>& attrs() const {
+    return attrs_;
+  }
+  std::vector<PerfFileAttr>* mutable_attrs() {
+    return &attrs_;
   }
 
   const std::vector<malloced_unique_ptr<event_t>>& events() const {
     return events_;
+  }
+  std::vector<malloced_unique_ptr<event_t>>* mutable_events() {
+    return &events_;
   }
 
   const std::vector<malloced_unique_ptr<build_id_event>>&
       build_id_events() const {
     return build_id_events_;
   }
+  std::vector<malloced_unique_ptr<build_id_event>>* mutable_build_id_events() {
+    return &build_id_events_;
+  }
 
   const std::vector<char>& tracing_data() const {
     return tracing_data_;
+  }
+  std::vector<char>* mutable_tracing_data() {
+    return &tracing_data_;
   }
 
   uint64_t metadata_mask() const {
     return metadata_mask_;
   }
+  void set_metadata_mask(uint64_t mask) {
+    metadata_mask_ = mask;
+  }
 
   const std::vector<PerfStringMetadata>& string_metadata() const {
     return string_metadata_;
   }
+  std::vector<PerfStringMetadata>* mutable_string_metadata() {
+    return &string_metadata_;
+  }
 
- protected:
+  const std::vector<PerfUint32Metadata>& uint32_metadata() const {
+    return uint32_metadata_;
+  }
+  std::vector<PerfUint32Metadata>* mutable_uint32_metadata() {
+    return &uint32_metadata_;
+  }
+
+  const std::vector<PerfUint64Metadata>& uint64_metadata() const {
+    return uint64_metadata_;
+  }
+  std::vector<PerfUint64Metadata>* mutable_uint64_metadata() {
+    return &uint64_metadata_;
+  }
+
+  const PerfCPUTopologyMetadata& cpu_topology() const {
+    return cpu_topology_;
+  }
+  PerfCPUTopologyMetadata* mutable_cpu_topology() {
+    return &cpu_topology_;
+  }
+
+  const std::vector<PerfNodeTopologyMetadata>& numa_topology() const {
+    return numa_topology_;
+  }
+  std::vector<PerfNodeTopologyMetadata>* mutable_numa_topology() {
+    return &numa_topology_;
+  }
+
+ private:
   bool ReadHeader(DataReader* data);
-
   bool ReadAttrsSection(DataReader* data);
   bool ReadAttr(DataReader* data);
   bool ReadEventAttr(DataReader* data, perf_event_attr* attr);
@@ -274,6 +318,12 @@ class PerfReader {
   // This method does not change |build_id_events_|.
   bool LocalizeMMapFilenames(const std::map<string, string>& filename_map);
 
+  // The file header is either a normal header or a piped header.
+  union {
+    struct perf_file_header header_;
+    struct perf_pipe_file_header piped_header_;
+  };
+
   std::vector<PerfFileAttr> attrs_;
   std::vector<malloced_unique_ptr<event_t>> events_;
   std::vector<malloced_unique_ptr<build_id_event>> build_id_events_;
@@ -287,14 +337,11 @@ class PerfReader {
   uint64_t read_format_;
   uint64_t metadata_mask_;
 
+  // For reading sample info fields from raw perf events.
   std::unique_ptr<SampleInfoReader> sample_info_reader_;
 
- private:
-  // The file header is either a normal header or a piped header.
-  union {
-    struct perf_file_header header_;
-    struct perf_pipe_file_header piped_header_;
-  };
+  // When writing to a new perf data file, this is used to hold the generated
+  // file header, which may differ from the input file header, if any.
   struct perf_file_header out_header_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfReader);

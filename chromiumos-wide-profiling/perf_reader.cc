@@ -592,6 +592,34 @@ bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
   return sample_info_reader_->WritePerfSampleInfo(sample, event);
 }
 
+bool PerfReader::HaveEventNames() const {
+  for (const auto& attr : attrs_) {
+    if (attr.name.empty())
+      return false;
+  }
+  return true;
+}
+
+// Update internal fields when the PerfReader gets a new set of |attrs_|.
+void PerfReader::UpdateOnNewAttrs() {
+  if (attrs_.empty())
+    return;
+
+  // Make sure all attrs have the same sample type and read format.
+  for (const auto& attr : attrs_) {
+    CHECK_EQ(attrs_[0].attr.sample_type, attr.attr.sample_type);
+    CHECK_EQ(attrs_[0].attr.read_format, attr.attr.read_format);
+  }
+
+  const auto& attr = attrs_[0].attr;
+  sample_type_ = attr.sample_type;
+  read_format_ = attr.read_format;
+
+  // Generate a new SampleInfoReader with the new attrs.
+  sample_info_reader_.reset(
+      new SampleInfoReader(attr, false /* read_cross_endian */));
+}
+
 bool PerfReader::ReadHeader(DataReader* data) {
   CheckNoEventHeaderPadding();
   // The header is the first thing to be read. Don't use SeekSet(0) because it

@@ -13,6 +13,7 @@
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/perf_option_parser.h"
+#include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/perf_stat_parser.h"
 #include "chromiumos-wide-profiling/run_command.h"
@@ -32,17 +33,17 @@ const char kPerfMemCommand[] = "mem";
 // a serialized string in |output_string|. Returns true on success.
 bool ParsePerfDataFileToString(const string& filename, string* output_string) {
   // Now convert it into a protobuf.
-  PerfSerializer perf_serializer;
-  PerfParser::Options options;
+
+  PerfParserOptions options;
   // Make sure to remap address for security reasons.
   options.do_remap = true;
   // Discard unused perf events to reduce the protobuf size.
   options.discard_unused_events = true;
 
-  perf_serializer.set_options(options);
-
   PerfDataProto perf_data;
-  return perf_serializer.SerializeFromFile(filename, &perf_data) &&
+  PerfSerializer perf_serializer;
+  return perf_serializer.SerializeFromFileWithOptions(filename, options,
+                                                      &perf_data) &&
          perf_data.SerializeToString(output_string);
 }
 

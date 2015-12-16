@@ -15,6 +15,7 @@
 
 #include "base/macros.h"
 
+#include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -38,7 +39,7 @@ struct ParsedEvent {
   // TODO(sque): Turn this struct into a class to privatize member variables.
   ParsedEvent() : command_(NULL) {}
 
-  // Stores address of an event_t owned by the |PerfReader::events_| vector.
+  // Stores address of an event_t. Does not own the event.
   event_t* raw_event;
 
   // For mmap events, use this to count the number of samples that are in this
@@ -134,36 +135,36 @@ struct PerfEventStats {
   bool did_remap;
 };
 
-class PerfParser : public PerfReader {
+struct PerfParserOptions {
+  // For synthetic address mapping.
+  bool do_remap = false;
+  // Set this flag to discard non-sample events that don't have any associated
+  // sample events. e.g. MMAP regions with no samples in them.
+  bool discard_unused_events = false;
+  // When mapping perf sample events, at least this percentage of them must be
+  // successfully mapped in order for ProcessEvents() to return true.
+  // By default, most samples must be properly mapped in order for sample
+  // mapping to be considered successful.
+  float sample_mapping_percentage_threshold = 95.0f;
+};
+
+class PerfParser {
  public:
-  PerfParser();
+  explicit PerfParser(PerfReader* reader);
   ~PerfParser();
 
-  struct Options {
-    // For synthetic address mapping.
-    bool do_remap = false;
-    // Set this flag to discard non-sample events that don't have any associated
-    // sample events. e.g. MMAP regions with no samples in them.
-    bool discard_unused_events = false;
-    // When mapping perf sample events, at least this percentage of them must be
-    // successfully mapped in order for ProcessEvents() to return true.
-    // By default, most samples must be properly mapped in order for sample
-    // mapping to be considered successful.
-    float sample_mapping_percentage_threshold = 95.0f;
-  };
-
   // Constructor that takes in options at PerfParser creation time.
-  explicit PerfParser(const Options& options);
+  explicit PerfParser(PerfReader* reader, const PerfParserOptions& options);
 
-  const Options& options() const {
-    return options_;
-  }
-
-  void set_options(const Options& options) {
+  // Pass in a struct containing various options.
+  void set_options(const PerfParserOptions& options) {
     options_ = options;
   }
 
-  // Gets parsed event/sample info from raw event data.
+  // Gets parsed event/sample info from raw event data. Stores pointers to the
+  // raw events in an array of ParsedEvents. Does not own the raw events. It is
+  // up to the user of this class to keep track of when these event pointers are
+  // invalidated.
   bool ParseRawEvents();
 
   const std::vector<ParsedEvent>& parsed_events() const {
@@ -180,11 +181,11 @@ class PerfParser : public PerfReader {
   }
 
   // Use with caution. Deserialization uses this to restore stats from proto.
-  PerfEventStats& mutable_stats() {
-    return stats_;
+  PerfEventStats* mutable_stats() {
+    return &stats_;
   }
 
- protected:
+ private:
   // Defines a type for a pid:tid pair.
   typedef std::pair<uint32_t, uint32_t> PidTid;
 
@@ -207,25 +208,6 @@ class PerfParser : public PerfReader {
   // Does a sample event remap and then returns DSO name and offset of sample.
   bool MapSampleEvent(ParsedEvent* parsed_event);
 
-  std::vector<ParsedEvent> parsed_events_;
-  // See MaybeSortParsedEvents to see why this might not actually be sorted
-  // by time:
-  std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
-
-  Options options_;   // Store all option flags as one struct.
-
-  // Maps pid/tid to commands.
-  std::map<PidTid, const string*> pidtid_to_comm_map_;
-
-  // A set to store the actual command strings.
-  std::set<string> commands_;
-
-  PerfEventStats stats_;
-
-  // A set of unique DSOs that may be referenced by multiple events.
-  std::set<DSOInfo> dso_set_;
-
- private:
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
 
@@ -267,11 +249,33 @@ class PerfParser : public PerfReader {
   std::pair<AddressMapper*, bool> GetOrCreateProcessMapper(uint32_t pid,
                                                            uint32_t ppid = -1);
 
-  std::map<uint32_t, std::unique_ptr<AddressMapper>> process_mappers_;
+  // Points to a PerfReader that contains the input perf data to parse.
+  const PerfReader* const reader_;
 
-  // Transitional: Start referring to base-class fields using this reference.
-  // Then replace inheritance with composition.
-  PerfReader& reader_ = *this;
+  // Stores the output of ParseRawEvents(). Contains DSO + offset info for each
+  // event.
+  std::vector<ParsedEvent> parsed_events_;
+
+  // See MaybeSortParsedEvents to see why this might not actually be sorted
+  // by time:
+  std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
+
+  PerfParserOptions options_;   // Store all option flags as one struct.
+
+  // Maps pid/tid to commands.
+  std::map<PidTid, const string*> pidtid_to_comm_map_;
+
+  // A set to store the actual command strings.
+  std::set<string> commands_;
+
+  // ParseRawEvents() records some statistics here.
+  PerfEventStats stats_;
+
+  // A set of unique DSOs that may be referenced by multiple events.
+  std::set<DSOInfo> dso_set_;
+
+  // Maps process ID to an address mapper for that process.
+  std::map<uint32_t, std::unique_ptr<AddressMapper>> process_mappers_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfParser);
 };

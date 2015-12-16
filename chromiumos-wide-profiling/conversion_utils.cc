@@ -15,7 +15,9 @@
 
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/perf_protobuf_io.h"
+#include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -25,7 +27,7 @@ namespace {
 
 // Parse options from the format strings, set the options, and return the base
 // format. Returns the empty string if options are not recognized.
-string ParseFormatOptions(string format, PerfParser::Options* options) {
+string ParseFormatOptions(string format, PerfParserOptions* options) {
   auto dot = format.find('.');
   if (dot != string::npos) {
     string opt = format.substr(dot+1);
@@ -45,26 +47,31 @@ string ParseFormatOptions(string format, PerfParser::Options* options) {
   return format;
 }
 
-// ReadInput reads the input and stores it within |perf_serializer|.
-bool ReadInput(const FormatAndFile& input, PerfSerializer* perf_serializer) {
+// ReadInput reads the input and stores it within |reader|.
+bool ReadInput(const FormatAndFile& input,
+               PerfReader* reader,
+               PerfParserOptions* options) {
   LOG(INFO) << "Reading input.";
 
-  PerfParser::Options options;
-  string format = ParseFormatOptions(input.format, &options);
-  perf_serializer->set_options(options);
-
+  string format = ParseFormatOptions(input.format, options);
   if (format == kPerfFormat) {
-    return perf_serializer->ReadFile(input.filename);
+    return reader->ReadFile(input.filename);
   }
 
   if (format == kProtoTextFormat) {
     PerfDataProto perf_data_proto;
     std::vector<char> data;
-    if (!FileToBuffer(input.filename, &data)) return false;
+    if (!FileToBuffer(input.filename, &data))
+      return false;
     string text(data.begin(), data.end());
-    if (!TextFormat::ParseFromString(text, &perf_data_proto)) return false;
+    if (!TextFormat::ParseFromString(text, &perf_data_proto))
+      return false;
 
-    if (!perf_serializer->Deserialize(perf_data_proto)) return false;
+    PerfParser parser(reader, *options);
+
+    PerfSerializer serializer;
+    if (!serializer.Deserialize(perf_data_proto, reader, &parser))
+      return false;
     return true;
   }
 
@@ -72,18 +79,25 @@ bool ReadInput(const FormatAndFile& input, PerfSerializer* perf_serializer) {
   return false;
 }
 
-// WriteOutput reads from |perf_serializer| and writes the output to the file
+// WriteOutput reads from |reader| and writes the output to the file
 // within |output|.
-bool WriteOutput(const FormatAndFile& output, PerfSerializer* perf_serializer) {
+bool WriteOutput(const FormatAndFile& output,
+                 const PerfParserOptions& options,
+                 PerfReader* reader) {
   LOG(INFO) << "Writing output.";
   string output_string;
   if (output.format == kPerfFormat) {
-    return perf_serializer->WriteFile(output.filename);
+    return reader->WriteFile(output.filename);
   }
 
   if (output.format == kProtoTextFormat) {
+    PerfParser parser(reader, options);
+    if (!parser.ParseRawEvents())
+      return false;
+
+    PerfSerializer serializer;
     PerfDataProto perf_data_proto;
-    perf_serializer->Serialize(&perf_data_proto);
+    serializer.Serialize(*reader, &parser, &perf_data_proto);
     // Reset the timestamp field since it causes reproducability issues when
     // testing.
     perf_data_proto.set_timestamp_sec(0);
@@ -106,9 +120,12 @@ const char kPerfFormat[] = "perf";
 const char kProtoTextFormat[] = "text";
 
 bool ConvertFile(const FormatAndFile& input, const FormatAndFile& output) {
-  quipper::PerfSerializer perf_serializer;
-  if (!ReadInput(input, &perf_serializer)) return false;
-  if (!WriteOutput(output, &perf_serializer)) return false;
+  PerfReader reader;
+  PerfParserOptions options;
+  if (!ReadInput(input, &reader, &options))
+    return false;
+  if (!WriteOutput(output, options, &reader))
+    return false;
   return true;
 }
 

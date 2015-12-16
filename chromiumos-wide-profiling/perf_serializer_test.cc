@@ -81,28 +81,31 @@ void SerializeAndDeserialize(const string& input,
                              bool do_remap,
                              bool discard_unused_events) {
   PerfDataProto perf_data_proto;
-  PerfParser::Options options;
+  PerfParserOptions options;
   options.do_remap = do_remap;
   options.discard_unused_events = discard_unused_events;
   options.sample_mapping_percentage_threshold = 100.0f;
-  PerfSerializer serializer;
-  serializer.set_options(options);
-  EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));
 
+  PerfSerializer serializer;
+  EXPECT_TRUE(serializer.SerializeFromFileWithOptions(input, options,
+                                                      &perf_data_proto));
+
+  PerfReader reader;
+  PerfParser parser(&reader);
   PerfSerializer deserializer;
-  deserializer.set_options(options);
-  EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto, output));
+  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto, &reader, &parser));
+  EXPECT_TRUE(reader.WriteFile(output));
 
   // Check perf event stats.
-  const PerfEventStats& in_stats = serializer.stats();
-  const PerfEventStats& out_stats = deserializer.stats();
-  EXPECT_EQ(in_stats.num_sample_events, out_stats.num_sample_events);
-  EXPECT_EQ(in_stats.num_mmap_events, out_stats.num_mmap_events);
-  EXPECT_EQ(in_stats.num_fork_events, out_stats.num_fork_events);
-  EXPECT_EQ(in_stats.num_exit_events, out_stats.num_exit_events);
-  EXPECT_EQ(in_stats.num_sample_events_mapped,
+  const PerfDataProto_PerfEventStats& in_stats = perf_data_proto.stats();
+  const PerfEventStats& out_stats = parser.stats();
+  EXPECT_EQ(in_stats.num_sample_events(), out_stats.num_sample_events);
+  EXPECT_EQ(in_stats.num_mmap_events(), out_stats.num_mmap_events);
+  EXPECT_EQ(in_stats.num_fork_events(), out_stats.num_fork_events);
+  EXPECT_EQ(in_stats.num_exit_events(), out_stats.num_exit_events);
+  EXPECT_EQ(in_stats.num_sample_events_mapped(),
             out_stats.num_sample_events_mapped);
-  EXPECT_EQ(do_remap, in_stats.did_remap);
+  EXPECT_EQ(do_remap, in_stats.did_remap());
   EXPECT_EQ(do_remap, out_stats.did_remap);
 }
 
@@ -349,8 +352,9 @@ TEST(PerfSerializerTest, TestProtoFiles) {
     LOG(INFO) << perf_data_proto.file_attrs_size();
 
     // Test deserializing.
-    PerfSerializer perf_serializer;
-    EXPECT_TRUE(perf_serializer.Deserialize(perf_data_proto));
+    PerfReader reader;
+    PerfSerializer deserializer;
+    EXPECT_TRUE(deserializer.Deserialize(perf_data_proto, &reader, nullptr));
   }
 }
 
@@ -369,8 +373,9 @@ TEST(PerfSerializerTest, TestBuildIDs) {
     for (int i = 0; i < perf_data_proto.build_ids_size(); ++i) {
       perf_data_proto.mutable_build_ids(i)->clear_filename();
     }
-    PerfSerializer perf_serializer_build_ids;
-    EXPECT_TRUE(perf_serializer_build_ids.Deserialize(perf_data_proto));
+    PerfReader reader;
+    PerfSerializer deserializer;
+    EXPECT_TRUE(deserializer.Deserialize(perf_data_proto, &reader, nullptr));
   }
 }
 
@@ -402,14 +407,12 @@ TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
 
   // Parse and Serialize
 
+  PerfReader reader;
+  ASSERT_TRUE(reader.ReadFromString(input.str()));
+
   PerfSerializer perf_serializer;
-  // Disable mapping threshold--we have no mappable events.
-  PerfParser::Options options;
-  options.sample_mapping_percentage_threshold = 0.0;
-  perf_serializer.set_options(options);
   PerfDataProto perf_data_proto;
-  EXPECT_TRUE(perf_serializer.ReadFromString(input.str()));
-  EXPECT_TRUE(perf_serializer.Serialize(&perf_data_proto));
+  ASSERT_TRUE(perf_serializer.Serialize(reader, nullptr, &perf_data_proto));
 
   const std::vector<char> &tracing_metadata_value =
       tracing_metadata.data().value();
@@ -424,10 +427,10 @@ TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
 
   // Deserialize
 
+  PerfReader out_reader;
   PerfSerializer deserializer;
-  deserializer.set_options(options);
-  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
-  EXPECT_EQ(tracing_metadata_value, deserializer.tracing_data());
+  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto, &out_reader, nullptr));
+  EXPECT_EQ(tracing_metadata_value, out_reader.tracing_data());
 }
 
 TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {
@@ -456,14 +459,12 @@ TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {
 
   // Parse and Serialize
 
+  PerfReader reader;
+  ASSERT_TRUE(reader.ReadFromString(input.str()));
+
   PerfSerializer perf_serializer;
-  // Disable mapping threshold--we have no mappable events.
-  PerfParser::Options options;
-  options.sample_mapping_percentage_threshold = 0.0;
-  perf_serializer.set_options(options);
   PerfDataProto perf_data_proto;
-  EXPECT_TRUE(perf_serializer.ReadFromString(input.str()));
-  EXPECT_TRUE(perf_serializer.Serialize(&perf_data_proto));
+  ASSERT_TRUE(perf_serializer.Serialize(reader, nullptr, &perf_data_proto));
 
   EXPECT_EQ(2, perf_data_proto.events().size());
 
@@ -516,8 +517,8 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
                                               true /*sample_id_all*/)
       .WriteTo(&input);
 
-  PerfSerializer serializer;
-  EXPECT_TRUE(serializer.ReadFromString(input.str()));
+  PerfReader reader;
+  ASSERT_TRUE(reader.ReadFromString(input.str()));
 
   std::map<string, string> build_id_map;
   build_id_map["file1"] = "0123456789abcdef0123456789abcdef01234567";
@@ -529,10 +530,11 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   build_id_map["file7"] = "0123456789abcdef012345670000";
   build_id_map["file8"] = "0123456789abcdef01234567";
   build_id_map["file9"] = "00000000";
-  EXPECT_TRUE(serializer.InjectBuildIDs(build_id_map));
+  ASSERT_TRUE(reader.InjectBuildIDs(build_id_map));
 
+  PerfSerializer serializer;
   PerfDataProto perf_data_proto;
-  EXPECT_TRUE(serializer.Serialize(&perf_data_proto));
+  ASSERT_TRUE(serializer.Serialize(reader, nullptr, &perf_data_proto));
 
   // Verify that the build ID info was properly injected.
   EXPECT_EQ(9, perf_data_proto.build_ids_size());
@@ -579,10 +581,11 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   EXPECT_EQ("", BuildIDToString(perf_data_proto.build_ids(8).build_id_hash()));
 
   // Check deserialization.
+  PerfReader out_reader;
   PerfSerializer deserializer;
-  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
+  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto, &out_reader, nullptr));
   const std::vector<malloced_unique_ptr<build_id_event>>& build_id_events =
-      deserializer.build_id_events();
+      out_reader.build_id_events();
   EXPECT_EQ(9, build_id_events.size());
 
   // All trimmed build IDs should be padded to the full 20 byte length.
@@ -651,14 +654,14 @@ TEST(PerfSerializerTest, SerializesAndDeserializesForkAndExitEvents) {
           .WriteTo(&input);
 
   // Parse and serialize.
-  PerfSerializer serializer;
-  EXPECT_TRUE(serializer.ReadFromString(input.str()));
-  PerfDataProto perf_data_proto;
-  EXPECT_TRUE(serializer.Serialize(&perf_data_proto));
+  PerfReader reader;
+  ASSERT_TRUE(reader.ReadFromString(input.str()));
 
-  EXPECT_EQ(1, perf_data_proto.stats().num_fork_events());
-  EXPECT_EQ(1, perf_data_proto.stats().num_exit_events());
-  EXPECT_EQ(2, perf_data_proto.events_size());
+  PerfSerializer serializer;
+  PerfDataProto perf_data_proto;
+  ASSERT_TRUE(serializer.Serialize(reader, nullptr, &perf_data_proto));
+
+  ASSERT_EQ(2, perf_data_proto.events_size());
 
   {
     const PerfDataProto_PerfEvent& event = perf_data_proto.events(0);
@@ -697,13 +700,14 @@ TEST(PerfSerializerTest, SerializesAndDeserializesForkAndExitEvents) {
   }
 
   // Deserialize and verify raw events.
+  PerfReader out_reader;
   PerfSerializer deserializer;
-  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
+  ASSERT_TRUE(deserializer.Deserialize(perf_data_proto, &out_reader, nullptr));
 
-  EXPECT_EQ(2, deserializer.events().size());
+  EXPECT_EQ(2, out_reader.events().size());
 
   {
-    const event_t& event = *deserializer.events()[0].get();
+    const event_t& event = *out_reader.events()[0].get();
     EXPECT_EQ(PERF_RECORD_FORK, event.header.type);
 
     EXPECT_EQ(1010, event.fork.pid);
@@ -713,14 +717,14 @@ TEST(PerfSerializerTest, SerializesAndDeserializesForkAndExitEvents) {
     EXPECT_EQ(355ULL * 1000000000, event.fork.time);
 
     struct perf_sample sample_info;
-    EXPECT_TRUE(deserializer.ReadPerfSampleInfo(event, &sample_info));
+    EXPECT_TRUE(out_reader.ReadPerfSampleInfo(event, &sample_info));
     EXPECT_EQ(2010, sample_info.pid);
     EXPECT_EQ(2020, sample_info.tid);
     EXPECT_EQ(356ULL * 1000000000, sample_info.time);
   }
 
   {
-    const event_t& event = *deserializer.events()[1].get();
+    const event_t& event = *out_reader.events()[1].get();
     EXPECT_EQ(PERF_RECORD_EXIT, event.header.type);
 
     EXPECT_EQ(3010, event.fork.pid);
@@ -730,7 +734,7 @@ TEST(PerfSerializerTest, SerializesAndDeserializesForkAndExitEvents) {
     EXPECT_EQ(432ULL * 1000000000, event.fork.time);
 
     struct perf_sample sample_info;
-    EXPECT_TRUE(deserializer.ReadPerfSampleInfo(event, &sample_info));
+    EXPECT_TRUE(out_reader.ReadPerfSampleInfo(event, &sample_info));
     EXPECT_EQ(4010, sample_info.pid);
     EXPECT_EQ(4020, sample_info.tid);
     EXPECT_EQ(433ULL * 1000000000, sample_info.time);
@@ -759,14 +763,14 @@ TEST(PerfSerializerTest, DeserializeLegacyExitEvents) {
           .WriteTo(&input);
 
   // Parse and serialize.
+  PerfReader reader;
+  ASSERT_TRUE(reader.ReadFromString(input.str()));
+
   PerfSerializer serializer;
-  ASSERT_TRUE(serializer.ReadFromString(input.str()));
   PerfDataProto proto;
-  ASSERT_TRUE(serializer.Serialize(&proto));
+  ASSERT_TRUE(serializer.Serialize(reader, nullptr, &proto));
 
-  EXPECT_EQ(1, proto.stats().num_exit_events());
-  EXPECT_EQ(1, proto.events_size());
-
+  ASSERT_EQ(1, proto.events_size());
   ASSERT_TRUE(proto.events(0).has_exit_event());
   ASSERT_FALSE(proto.events(0).has_fork_event());
 
@@ -776,12 +780,13 @@ TEST(PerfSerializerTest, DeserializeLegacyExitEvents) {
       proto.mutable_events(0)->mutable_exit_event());
   proto.mutable_events(0)->clear_exit_event();
 
+  PerfReader out_reader;
   PerfSerializer deserializer;
-  ASSERT_TRUE(deserializer.Deserialize(proto));
+  ASSERT_TRUE(deserializer.Deserialize(proto, &out_reader, nullptr));
 
-  EXPECT_EQ(1U, deserializer.events().size());
+  EXPECT_EQ(1U, out_reader.events().size());
 
-  const event_t& event = *deserializer.events()[0].get();
+  const event_t& event = *out_reader.events()[0].get();
   EXPECT_EQ(PERF_RECORD_EXIT, event.header.type);
 
   EXPECT_EQ(3010, event.fork.pid);
@@ -791,7 +796,7 @@ TEST(PerfSerializerTest, DeserializeLegacyExitEvents) {
   EXPECT_EQ(432ULL * 1000000000, event.fork.time);
 
   struct perf_sample sample_info;
-  EXPECT_TRUE(deserializer.ReadPerfSampleInfo(event, &sample_info));
+  EXPECT_TRUE(out_reader.ReadPerfSampleInfo(event, &sample_info));
   EXPECT_EQ(4010, sample_info.pid);
   EXPECT_EQ(4020, sample_info.tid);
   EXPECT_EQ(433ULL * 1000000000, sample_info.time);

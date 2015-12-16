@@ -46,7 +46,7 @@ bool CheckPerfDataAgainstBaseline(const string& filename);
 bool ComparePerfBuildIDLists(const string& file1, const string& file2);
 
 // Returns options suitable for correctness tests.
-PerfParser::Options GetTestOptions();
+PerfParserOptions GetTestOptions();
 
 }  // namespace quipper
 

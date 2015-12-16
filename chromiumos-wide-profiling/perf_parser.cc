@@ -53,22 +53,22 @@ bool IsNullBranchStackEntry(const struct branch_entry& entry) {
 
 }  // namespace
 
-PerfParser::PerfParser() {}
+PerfParser::PerfParser(PerfReader* reader) : reader_(reader) {}
 
 PerfParser::~PerfParser() {}
 
-PerfParser::PerfParser(const PerfParser::Options& options) {
-  options_ = options;
-}
+PerfParser::PerfParser(PerfReader* reader, const PerfParserOptions& options)
+    : reader_(reader),
+      options_(options) {}
 
 bool PerfParser::ParseRawEvents() {
   // Just in case there was data from a previous call.
   process_mappers_.clear();
 
-  parsed_events_.resize(reader_.events().size());
-  for (size_t i = 0; i < reader_.events().size(); ++i) {
+  parsed_events_.resize(reader_->events().size());
+  for (size_t i = 0; i < reader_->events().size(); ++i) {
     ParsedEvent& parsed_event = parsed_events_[i];
-    parsed_event.raw_event = reader_.events()[i].get();
+    parsed_event.raw_event = reader_->events()[i].get();
   }
   ProcessEvents();
 
@@ -116,7 +116,7 @@ bool PerfParser::ProcessEvents() {
       &(*commands_.find(kSwapperCommandName));
 
   std::map<string, string> filenames_to_build_ids;
-  reader_.GetFilenamesToBuildIDs(&filenames_to_build_ids);
+  reader_->GetFilenamesToBuildIDs(&filenames_to_build_ids);
   const auto& build_id_for_filename =
       [&filenames_to_build_ids](const string& filename) -> string {
     const auto it = filenames_to_build_ids.find(filename);
@@ -221,7 +221,7 @@ bool PerfParser::ProcessEvents() {
 }
 
 void PerfParser::MaybeSortParsedEvents() {
-  if (!(reader_.sample_type() & PERF_SAMPLE_TIME)) {
+  if (!(reader_->sample_type() & PERF_SAMPLE_TIME)) {
     parsed_events_sorted_by_time_.resize(parsed_events_.size());
     for (size_t i = 0; i < parsed_events_.size(); ++i) {
       parsed_events_sorted_by_time_[i] = &parsed_events_[i];
@@ -243,7 +243,7 @@ void PerfParser::MaybeSortParsedEvents() {
     event_and_time->event = &parsed_event;
 
     struct perf_sample sample_info;
-    CHECK(reader_.ReadPerfSampleInfo(*parsed_event.raw_event, &sample_info));
+    CHECK(reader_->ReadPerfSampleInfo(*parsed_event.raw_event, &sample_info));
     event_and_time->time = sample_info.time;
 
     events_and_times.emplace_back(std::move(event_and_time));
@@ -263,11 +263,11 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   bool mapping_failed = false;
 
   // Find the associated command.
-  if (!(reader_.sample_type() & PERF_SAMPLE_IP &&
-        reader_.sample_type() & PERF_SAMPLE_TID))
+  if (!(reader_->sample_type() & PERF_SAMPLE_IP &&
+        reader_->sample_type() & PERF_SAMPLE_TID))
     return false;
   perf_sample sample_info;
-  if (!reader_.ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
+  if (!reader_->ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
     return false;
   PidTid pidtid = std::make_pair(sample_info.pid, sample_info.tid);
   const auto comm_iter = pidtid_to_comm_map_.find(pidtid);
@@ -304,7 +304,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   // Write the remapped data back to the raw event regardless of whether it was
   // entirely successfully remapped.  A single failed remap should not
   // invalidate all the other remapped entries.
-  if (!reader_.WritePerfSampleInfo(sample_info, parsed_event->raw_event)) {
+  if (!reader_->WritePerfSampleInfo(sample_info, parsed_event->raw_event)) {
     LOG(ERROR) << "Failed to write back remapped sample info.";
     return false;
   }

@@ -5,16 +5,31 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_PERF_SERIALIZER_H_
 #define CHROMIUMOS_WIDE_PROFILING_PERF_SERIALIZER_H_
 
-#include <string>
+#include <memory>
 #include <vector>
 
 #include "base/macros.h"
 
 #include "chromiumos-wide-profiling/compat/proto.h"
-#include "chromiumos-wide-profiling/perf_parser.h"
+#include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/sample_info_reader.h"
+#include "chromiumos-wide-profiling/utils.h"
+
+struct perf_event_attr;
 
 namespace quipper {
 
+struct ParsedEvent;
+struct PerfFileAttr;
+struct PerfNodeTopologyMetadata;
+struct PerfCPUTopologyMetadata;
+struct PerfEventStats;
+struct PerfParserOptions;
+struct PerfUint32Metadata;
+struct PerfUint64Metadata;
+
+class PerfParser;
+class PerfReader;
 class PerfSerializer;
 
 // Functor to serialize a vector of perf structs to a Proto repeated field,
@@ -59,25 +74,36 @@ struct VectorDeserializer {
   bool (PerfSerializer::*deserialize)(const Proto&, T*) const;
 };
 
-class PerfSerializer : public PerfParser {
+class PerfSerializer {
  public:
   PerfSerializer();
   ~PerfSerializer();
 
   // Converts raw perf file to protobuf.
   bool SerializeFromFile(const string& filename,
-                         quipper::PerfDataProto* perf_data_proto);
+                         PerfDataProto* perf_data_proto);
 
-  // Converts data inside PerfSerializer to protobuf.
-  bool Serialize(quipper::PerfDataProto* perf_data_proto);
+  // Converts raw perf file to protobuf, specifying options to pass to
+  // PerfParser.
+  bool SerializeFromFileWithOptions(const string& filename,
+                                    const PerfParserOptions& options,
+                                    PerfDataProto* perf_data_proto);
+
+  // Converts data inside PerfSerializer to protobuf. |parser| is optional, can
+  // be nullptr.
+  bool Serialize(const PerfReader& reader,
+                 const PerfParser* parser,
+                 PerfDataProto* proto);
 
   // Converts perf data protobuf to perf data file.
-  bool DeserializeToFile(const quipper::PerfDataProto& perf_data_proto,
+  bool DeserializeToFile(const PerfDataProto& perf_data_proto,
                          const string& filename);
 
-  // Reads in contents of protobuf to store locally.  Does not write to any
-  // output files.
-  bool Deserialize(const quipper::PerfDataProto& perf_data_proto);
+  // Reads in contents of protobuf to store locally. Does not write to any
+  // output files. |parser| is optional, can be nullptr.
+  bool Deserialize(const PerfDataProto& proto,
+                   PerfReader* reader,
+                   PerfParser* parser);
 
   void set_serialize_sorted_events(bool sorted) {
     serialize_sorted_events_ = sorted;
@@ -86,97 +112,88 @@ class PerfSerializer : public PerfParser {
  private:
   bool SerializePerfFileAttr(
       const PerfFileAttr& perf_file_attr,
-      quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto) const;
+      PerfDataProto_PerfFileAttr* perf_file_attr_proto) const;
   bool DeserializePerfFileAttr(
-      const quipper::PerfDataProto_PerfFileAttr& perf_file_attr_proto,
+      const PerfDataProto_PerfFileAttr& perf_file_attr_proto,
       PerfFileAttr* perf_file_attr) const;
 
   bool SerializePerfEventAttr(
       const perf_event_attr& perf_event_attr,
-      quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto) const;
+      PerfDataProto_PerfEventAttr* perf_event_attr_proto) const;
   bool DeserializePerfEventAttr(
-      const quipper::PerfDataProto_PerfEventAttr& perf_event_attr_proto,
+      const PerfDataProto_PerfEventAttr& perf_event_attr_proto,
       perf_event_attr* perf_event_attr) const;
 
   bool SerializePerfEventType(
       const PerfFileAttr& event_attr,
-      quipper::PerfDataProto_PerfEventType* event_type_proto) const;
+      PerfDataProto_PerfEventType* event_type_proto) const;
   bool DeserializePerfEventType(
-      const quipper::PerfDataProto_PerfEventType& event_type_proto,
+      const PerfDataProto_PerfEventType& event_type_proto,
       PerfFileAttr* event_attr) const;
 
-  bool SerializeEvent(const ParsedEvent& event,
-                      quipper::PerfDataProto_PerfEvent* event_proto) const;
-  bool SerializeEventPointer(
-      const ParsedEvent* event,
-      quipper::PerfDataProto_PerfEvent* event_proto) const;
-  bool DeserializeEvent(
-      const quipper::PerfDataProto_PerfEvent& event_proto,
-      malloced_unique_ptr<event_t>* event) const;
+  bool SerializeEvent(const malloced_unique_ptr<event_t>& event,
+                      PerfDataProto_PerfEvent* event_proto) const;
+  bool SerializeParsedEvent(const ParsedEvent& event,
+                            PerfDataProto_PerfEvent* event_proto) const;
+  bool SerializeParsedEventPointer(const ParsedEvent* event_ptr,
+                                   PerfDataProto_PerfEvent* event_proto) const;
+  bool SerializeRawEvent(const event_t& event,
+                         PerfDataProto_PerfEvent* event_proto) const;
 
-  bool SerializeEventHeader(
-      const perf_event_header& header,
-      quipper::PerfDataProto_EventHeader* header_proto) const;
-  bool DeserializeEventHeader(
-      const quipper::PerfDataProto_EventHeader& header_proto,
-      perf_event_header* header) const;
+  bool DeserializeEvent(const PerfDataProto_PerfEvent& event_proto,
+                        malloced_unique_ptr<event_t>* event) const;
+
+  bool SerializeEventHeader(const perf_event_header& header,
+                            PerfDataProto_EventHeader* header_proto) const;
+  bool DeserializeEventHeader(const PerfDataProto_EventHeader& header_proto,
+                              perf_event_header* header) const;
 
   bool SerializeRecordSample(const event_t& event,
-                             quipper::PerfDataProto_SampleEvent* sample) const;
-  bool DeserializeRecordSample(
-      const quipper::PerfDataProto_SampleEvent& sample,
-      event_t* event) const;
+                             PerfDataProto_SampleEvent* sample) const;
+  bool DeserializeRecordSample(const PerfDataProto_SampleEvent& sample,
+                               event_t* event) const;
 
   bool SerializeMMapSample(const event_t& event,
-                           quipper::PerfDataProto_MMapEvent* sample) const;
-  bool DeserializeMMapSample(
-      const quipper::PerfDataProto_MMapEvent& sample,
-      event_t* event) const;
+                           PerfDataProto_MMapEvent* sample) const;
+  bool DeserializeMMapSample(const PerfDataProto_MMapEvent& sample,
+                             event_t* event) const;
 
   bool SerializeMMap2Sample(const event_t& event,
-                           quipper::PerfDataProto_MMapEvent* sample) const;
-  bool DeserializeMMap2Sample(
-      const quipper::PerfDataProto_MMapEvent& sample,
-      event_t* event) const;
+                            PerfDataProto_MMapEvent* sample) const;
+  bool DeserializeMMap2Sample(const PerfDataProto_MMapEvent& sample,
+                              event_t* event) const;
 
-  bool SerializeCommSample(
-      const event_t& event,
-      quipper::PerfDataProto_CommEvent* sample) const;
-  bool DeserializeCommSample(
-      const quipper::PerfDataProto_CommEvent& sample,
-      event_t* event) const;
+  bool SerializeCommSample(const event_t& event,
+                           PerfDataProto_CommEvent* sample) const;
+  bool DeserializeCommSample(const PerfDataProto_CommEvent& sample,
+                             event_t* event) const;
 
   // These handle both fork and exit events, which use the same protobuf
   // message definition.
   bool SerializeForkExitSample(const event_t& event,
-                               quipper::PerfDataProto_ForkEvent* sample) const;
-  bool DeserializeForkExitSample(const quipper::PerfDataProto_ForkEvent& sample,
+                               PerfDataProto_ForkEvent* sample) const;
+  bool DeserializeForkExitSample(const PerfDataProto_ForkEvent& sample,
                                  event_t* event) const;
 
   bool SerializeLostSample(const event_t& event,
-                           quipper::PerfDataProto_LostEvent* sample) const;
-  bool DeserializeLostSample(
-      const quipper::PerfDataProto_LostEvent& sample,
-      event_t* event) const;
+                           PerfDataProto_LostEvent* sample) const;
+  bool DeserializeLostSample(const PerfDataProto_LostEvent& sample,
+                             event_t* event) const;
 
   bool SerializeThrottleSample(const event_t& event,
-                           quipper::PerfDataProto_ThrottleEvent* sample) const;
-  bool DeserializeThrottleSample(
-      const quipper::PerfDataProto_ThrottleEvent& sample,
-      event_t* event) const;
+                               PerfDataProto_ThrottleEvent* sample) const;
+  bool DeserializeThrottleSample(const PerfDataProto_ThrottleEvent& sample,
+                                 event_t* event) const;
 
   bool SerializeReadSample(const event_t& event,
-                           quipper::PerfDataProto_ReadEvent* sample) const;
-  bool DeserializeReadSample(
-      const quipper::PerfDataProto_ReadEvent& sample,
-      event_t* event) const;
+                           PerfDataProto_ReadEvent* sample) const;
+  bool DeserializeReadSample(const PerfDataProto_ReadEvent& sample,
+                             event_t* event) const;
 
-  bool SerializeSampleInfo(
-      const event_t& event,
-      quipper::PerfDataProto_SampleInfo* sample_info) const;
-  bool DeserializeSampleInfo(
-      const quipper::PerfDataProto_SampleInfo& info,
-      event_t* event) const;
+  bool SerializeSampleInfo(const event_t& event,
+                           PerfDataProto_SampleInfo* sample_info) const;
+  bool DeserializeSampleInfo(const PerfDataProto_SampleInfo& info,
+                             event_t* event) const;
 
   bool SerializeTracingMetadata(const std::vector<char>& from,
                                 PerfDataProto* to) const;
@@ -191,8 +208,8 @@ class PerfSerializer : public PerfParser {
       const RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
       std::vector<malloced_unique_ptr<build_id_event>>* to) const;
 
-  bool SerializeMetadata(PerfDataProto* to) const;
-  bool DeserializeMetadata(const PerfDataProto& from);
+  bool SerializeMetadata(const PerfReader& from, PerfDataProto* to) const;
+  bool DeserializeMetadata(const PerfDataProto& from, PerfReader* to);
 
   bool SerializeBuildIDEvent(const malloced_unique_ptr<build_id_event>& from,
                              PerfDataProto_PerfBuildID* to) const;
@@ -227,6 +244,10 @@ class PerfSerializer : public PerfParser {
       const PerfDataProto_PerfNodeTopologyMetadata& proto_metadata,
       PerfNodeTopologyMetadata* metadata) const;
 
+  static void SerializeParserStats(const PerfEventStats& stats,
+                                   PerfDataProto* perf_data_proto);
+  static void DeserializeParserStats(const PerfDataProto& perf_data_proto,
+                                     PerfEventStats* stats);
 
   const VectorSerializer<PerfDataProto_PerfFileAttr, PerfFileAttr>
       SerializePerfFileAttrs = {this, &PerfSerializer::SerializePerfFileAttr};
@@ -241,11 +262,14 @@ class PerfSerializer : public PerfParser {
         this, &PerfSerializer::DeserializePerfEventType};
 
   const VectorSerializer<PerfDataProto_PerfEvent, ParsedEvent>
-      SerializeEvents = {this, &PerfSerializer::SerializeEvent};
+      SerializeParsedEvents = {this, &PerfSerializer::SerializeParsedEvent};
   const VectorSerializer<PerfDataProto_PerfEvent,
                          ParsedEvent*, const ParsedEvent*>
-      SerializeEventPointers = {this, &PerfSerializer::SerializeEventPointer};
+      SerializeParsedEventPointers = {
+        this, &PerfSerializer::SerializeParsedEventPointer};
 
+  const VectorSerializer<PerfDataProto_PerfEvent, malloced_unique_ptr<event_t>>
+      SerializeEvents = {this, &PerfSerializer::SerializeEvent};
   const VectorDeserializer<PerfDataProto_PerfEvent,
                            malloced_unique_ptr<event_t>>
       DeserializeEvents = {this, &PerfSerializer::DeserializeEvent};
@@ -281,13 +305,17 @@ class PerfSerializer : public PerfParser {
       DeserializeNUMATopologyMetadata = {
         this, &PerfSerializer::DeserializeNodeTopologyMetadata};
 
-  // Transitional: Start referring to base-class fields using this reference.
-  // Then replace inheritance with composition.
-  PerfParser& parser_ = *this;
+  // Instantiate a new PerfSampleReader with the given parameters. If an old one
+  // exists, it is discarded.
+  void CreateSampleInfoReader(const struct perf_event_attr& event_attr,
+                              bool is_cross_endian);
 
   // Set this flag to serialize perf events in chronological order, rather than
   // the order in which they appear in the raw data.
   bool serialize_sorted_events_;
+
+  // Use this to serialize or deserialize sample info fields in events.
+  std::unique_ptr<SampleInfoReader> sample_info_reader_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

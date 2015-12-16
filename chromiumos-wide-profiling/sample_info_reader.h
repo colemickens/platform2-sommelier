@@ -43,6 +43,10 @@ class SampleInfoReader {
   // perf sample data is located.
   static uint64_t GetPerfSampleDataOffset(const event_t& event);
 
+  const perf_event_attr& event_attr() const {
+    return event_attr_;
+  }
+
  private:
   // Event attribute info, which determines the contents of some perf_sample
   // data.

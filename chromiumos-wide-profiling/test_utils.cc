@@ -247,8 +247,8 @@ bool ComparePerfBuildIDLists(const string& file1, const string& file2) {
   return output1 == output2;
 }
 
-PerfParser::Options GetTestOptions() {
-  PerfParser::Options options;
+PerfParserOptions GetTestOptions() {
+  PerfParserOptions options;
   options.sample_mapping_percentage_threshold = 100.0f;
   return options;
 }
