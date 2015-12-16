@@ -25,6 +25,8 @@
 
 namespace libwebserv {
 
+class DBusProtocolHandler;
+
 // Implementation of the Response interface.
 class ResponseImpl final : public Response {
  public:
@@ -49,14 +51,14 @@ class ResponseImpl final : public Response {
   void ReplyWithErrorNotFound() override;
 
  private:
-  friend class ProtocolHandler;
+  friend class DBusProtocolHandler;
 
-  LIBWEBSERV_PRIVATE ResponseImpl(ProtocolHandler* handler,
+  LIBWEBSERV_PRIVATE ResponseImpl(DBusProtocolHandler* handler,
                                   const std::string& request_id);
 
   LIBWEBSERV_PRIVATE void SendResponse();
 
-  ProtocolHandler* handler_{nullptr};
+  DBusProtocolHandler* handler_{nullptr};
   std::string request_id_;
   int status_code_{0};
   brillo::StreamPtr data_stream_;

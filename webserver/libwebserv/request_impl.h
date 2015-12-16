@@ -24,6 +24,8 @@
 
 namespace libwebserv {
 
+class DBusProtocolHandler;
+
 // Implementation of the Request interface.
 class RequestImpl final : public Request {
  public:
@@ -33,10 +35,10 @@ class RequestImpl final : public Request {
  private:
   friend class DBusServer;
 
-  LIBWEBSERV_PRIVATE RequestImpl(ProtocolHandler* handler,
+  LIBWEBSERV_PRIVATE RequestImpl(DBusProtocolHandler* handler,
                                  const std::string& url,
                                  const std::string& method);
-  ProtocolHandler* handler_{nullptr};
+  DBusProtocolHandler* handler_{nullptr};
   base::File raw_data_fd_;
   bool last_posted_data_was_file_{false};
 

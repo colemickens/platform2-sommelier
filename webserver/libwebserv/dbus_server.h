@@ -43,6 +43,8 @@ class ServerProxyInterface;
 
 namespace libwebserv {
 
+class DBusProtocolHandler;
+
 class LIBWEBSERV_PRIVATE DBusServer : public Server {
  public:
   DBusServer();
@@ -79,7 +81,7 @@ class LIBWEBSERV_PRIVATE DBusServer : public Server {
   base::TimeDelta GetDefaultRequestTimeout() const override;
 
  private:
-  friend class ProtocolHandler;
+  friend class DBusProtocolHandler;
   class RequestHandler;
 
   void Disconnect();
@@ -100,8 +102,11 @@ class LIBWEBSERV_PRIVATE DBusServer : public Server {
       const dbus::ObjectPath& object_path);
 
   // Looks up a protocol handler by ID. If not found, returns nullptr.
-  ProtocolHandler* GetProtocolHandlerByID(
+  DBusProtocolHandler* GetProtocolHandlerByID(
       const std::string& id) const;
+
+  // Like the public version, but returns our specific handler type.
+  DBusProtocolHandler* GetProtocolHandlerImpl(const std::string& name);
 
   // Private implementation of D-Bus RequestHandlerInterface called by the web
   // server daemon whenever a new request is available to be processed.
@@ -113,10 +118,10 @@ class LIBWEBSERV_PRIVATE DBusServer : public Server {
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   // A mapping of protocol handler name to the associated object.
-  std::map<std::string, std::unique_ptr<ProtocolHandler>>
+  std::map<std::string, std::unique_ptr<DBusProtocolHandler>>
       protocol_handlers_names_;
   // A mapping of protocol handler IDs to the associated object.
-  std::map<std::string, ProtocolHandler*> protocol_handlers_ids_;
+  std::map<std::string, DBusProtocolHandler*> protocol_handlers_ids_;
   // A map between D-Bus object path of protocol handler and remote protocol
   // handler ID.
   std::map<dbus::ObjectPath, std::string> protocol_handler_id_map_;

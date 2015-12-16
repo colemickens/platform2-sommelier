@@ -18,11 +18,11 @@
 #include <brillo/http/http_utils.h>
 #include <brillo/streams/file_stream.h>
 
-#include <libwebserv/protocol_handler.h>
+#include <libwebserv/dbus_protocol_handler.h>
 
 namespace libwebserv {
 
-FileInfo::FileInfo(ProtocolHandler* handler,
+FileInfo::FileInfo(DBusProtocolHandler* handler,
                    int file_id,
                    const std::string& request_id,
                    const std::string& file_name,
@@ -45,7 +45,7 @@ void FileInfo::GetData(
                         error_callback);
 }
 
-RequestImpl::RequestImpl(ProtocolHandler* handler,
+RequestImpl::RequestImpl(DBusProtocolHandler* handler,
                          const std::string& url,
                          const std::string& method)
     : Request{url, method}, handler_{handler} {

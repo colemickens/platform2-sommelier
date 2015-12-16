@@ -33,7 +33,7 @@ struct MHD_Connection;
 
 namespace libwebserv {
 
-class ProtocolHandler;
+class DBusProtocolHandler;
 
 using PairOfStrings = std::pair<std::string, std::string>;
 
@@ -51,14 +51,14 @@ class LIBWEBSERV_EXPORT FileInfo final {
  private:
   friend class DBusServer;
 
-  LIBWEBSERV_PRIVATE FileInfo(ProtocolHandler* handler,
+  LIBWEBSERV_PRIVATE FileInfo(DBusProtocolHandler* handler,
                               int file_id,
                               const std::string& request_id,
                               const std::string& file_name,
                               const std::string& content_type,
                               const std::string& transfer_encoding);
 
-  ProtocolHandler* handler_{nullptr};
+  DBusProtocolHandler* handler_{nullptr};
   int file_id_{0};
   std::string request_id_;
   std::string file_name_;

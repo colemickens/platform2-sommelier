@@ -17,7 +17,7 @@
 #include <tuple>
 #include <vector>
 
-#include <libwebserv/protocol_handler.h>
+#include <libwebserv/dbus_protocol_handler.h>
 #include <libwebserv/request_impl.h>
 
 #include "dbus_bindings/org.chromium.WebServer.RequestHandler.h"
@@ -58,7 +58,7 @@ bool DBusServer::RequestHandler::ProcessRequest(
   std::string request_id = std::get<2>(in_request_info);
   std::string url = std::get<3>(in_request_info);
   std::string method = std::get<4>(in_request_info);
-  ProtocolHandler* protocol_handler =
+  DBusProtocolHandler* protocol_handler =
       server_->GetProtocolHandlerByID(protocol_handler_id);
   if (!protocol_handler) {
     brillo::Error::AddToPrintf(error, FROM_HERE,
@@ -169,7 +169,8 @@ void DBusServer::ProtocolHandlerAdded(
           << "' is on-line (" << handler->name() << ")";
 
   protocol_handler_id_map_.emplace(handler->GetObjectPath(), handler->id());
-  ProtocolHandler* registered_handler = GetProtocolHandler(handler->name());
+  DBusProtocolHandler* registered_handler =
+      GetProtocolHandlerImpl(handler->name());
   if (registered_handler) {
     protocol_handlers_ids_.emplace(handler->id(), registered_handler);
     registered_handler->Connect(handler);
@@ -186,7 +187,7 @@ void DBusServer::ProtocolHandlerRemoved(const dbus::ObjectPath& object_path) {
   VLOG(1) << "Server-side protocol handler with ID '" << p->second
           << "' is off-line.";
 
-  ProtocolHandler* registered_handler = GetProtocolHandlerByID(p->second);
+  DBusProtocolHandler* registered_handler = GetProtocolHandlerByID(p->second);
   if (registered_handler) {
     if (!on_protocol_handler_disconnected_.is_null())
       on_protocol_handler_disconnected_.Run(registered_handler);
@@ -198,14 +199,19 @@ void DBusServer::ProtocolHandlerRemoved(const dbus::ObjectPath& object_path) {
 }
 
 ProtocolHandler* DBusServer::GetProtocolHandler(const std::string& name) {
+  return GetProtocolHandlerImpl(name);
+}
+
+DBusProtocolHandler* DBusServer::GetProtocolHandlerImpl(
+    const std::string& name) {
   auto p = protocol_handlers_names_.find(name);
   if (p == protocol_handlers_names_.end()) {
     VLOG(1) << "Creating a client-side instance of web server's protocol "
             << "handler with name '" << name << "'";
     p = protocol_handlers_names_.emplace(
         name,
-        std::unique_ptr<ProtocolHandler>{new ProtocolHandler{name, this}})
-            .first;
+        std::unique_ptr<DBusProtocolHandler>{
+            new DBusProtocolHandler{name, this}}).first;
   }
   return p->second.get();
 }
@@ -218,7 +224,8 @@ ProtocolHandler* DBusServer::GetDefaultHttpsHandler() {
   return GetProtocolHandler(ProtocolHandler::kHttps);
 }
 
-ProtocolHandler* DBusServer::GetProtocolHandlerByID(const std::string& id) const {
+DBusProtocolHandler* DBusServer::GetProtocolHandlerByID(
+    const std::string& id) const {
   auto p = protocol_handlers_ids_.find(id);
   if (p == protocol_handlers_ids_.end()) {
     LOG(ERROR) << "Unable to locate protocol handler with ID '" << id << "'";

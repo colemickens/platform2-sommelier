@@ -32,6 +32,7 @@
         '../common-mk/generate-dbus-adaptors.gypi'
       ],
       'sources': [
+        'libwebserv/dbus_protocol_handler.cc',
         'libwebserv/dbus_server.cc',
         'libwebserv/protocol_handler.cc',
         'libwebserv/request.cc',

@@ -23,11 +23,11 @@
 #include <brillo/mime_utils.h>
 #include <brillo/streams/memory_stream.h>
 #include <brillo/strings/string_utils.h>
-#include <libwebserv/protocol_handler.h>
+#include <libwebserv/dbus_protocol_handler.h>
 
 namespace libwebserv {
 
-ResponseImpl::ResponseImpl(ProtocolHandler* handler,
+ResponseImpl::ResponseImpl(DBusProtocolHandler* handler,
                            const std::string& request_id)
     : handler_{handler}, request_id_{request_id} {
 }
