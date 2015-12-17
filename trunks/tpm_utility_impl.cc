@@ -178,12 +178,46 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
 
 TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
   TPM_RC result;
+  TPMI_YES_NO more_data = YES;
+  TPMS_CAPABILITY_DATA capability_data;
+  result = factory_.GetTpm()->GetCapabilitySync(
+      TPM_CAP_PCRS, 0 /*property (not used)*/, 1 /*property_count*/, &more_data,
+      &capability_data, nullptr /*authorization_delegate*/);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error querying PCRs: " << GetErrorString(result);
+    return result;
+  }
+  TPML_PCR_SELECTION& existing_pcrs = capability_data.data.assigned_pcr;
+  bool sha256_needed = true;
+  std::vector<TPMI_ALG_HASH> pcr_banks_to_remove;
+  for (uint32_t i = 0; i < existing_pcrs.count; ++i) {
+    if (existing_pcrs.pcr_selections[i].hash == TPM_ALG_SHA256) {
+      sha256_needed = false;
+    } else {
+      pcr_banks_to_remove.push_back(existing_pcrs.pcr_selections[i].hash);
+    }
+  }
+  if (!sha256_needed && pcr_banks_to_remove.empty()) {
+    return TPM_RC_SUCCESS;
+  }
   TPML_PCR_SELECTION pcr_allocation;
-  pcr_allocation.count = 1;
-  pcr_allocation.pcr_selections[0].hash = TPM_ALG_SHA256;
-  pcr_allocation.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
-  pcr_allocation.pcr_selections[0].pcr_select[0] = 0xff;
-  pcr_allocation.pcr_selections[0].pcr_select[1] = 0xff;
+  memset(&pcr_allocation, 0, sizeof(pcr_allocation));
+  if (sha256_needed) {
+    pcr_allocation.pcr_selections[pcr_allocation.count].hash = TPM_ALG_SHA256;
+    pcr_allocation.pcr_selections[pcr_allocation.count].sizeof_select =
+        PCR_SELECT_MIN;
+    for (int i = 0; i < PCR_SELECT_MIN; ++i) {
+      pcr_allocation.pcr_selections[pcr_allocation.count].pcr_select[i] = 0xff;
+    }
+    ++pcr_allocation.count;
+  }
+  for (auto pcr_type : pcr_banks_to_remove) {
+    memset(&pcr_allocation, 0, sizeof(pcr_allocation));
+    pcr_allocation.pcr_selections[pcr_allocation.count].hash = pcr_type;
+    pcr_allocation.pcr_selections[pcr_allocation.count].sizeof_select =
+        PCR_SELECT_MAX;
+    ++pcr_allocation.count;
+  }
   scoped_ptr<AuthorizationDelegate> platform_delegate(
       factory_.GetPasswordAuthorization(platform_password));
   TPMI_YES_NO allocation_success;
@@ -199,7 +233,7 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
                                                &size_available,
                                                platform_delegate.get());
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error allocating pcr: " << GetErrorString(result);
+    LOG(ERROR) << "Error allocating PCRs: " << GetErrorString(result);
     return result;
   }
   if (allocation_success != YES) {
