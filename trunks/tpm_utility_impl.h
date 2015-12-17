@@ -194,6 +194,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                             TPM2B_PRIVATE* encrypted_private_data,
                             TPM2B_DATA* encryption_key);
 
+  // Looks for a given persistent |key_handle| and outputs whether or not it
+  // |exists|. Returns TPM_RC_SUCCESS on success.
+  TPM_RC DoesPersistentKeyExist(TPMI_DH_PERSISTENT key_handle, bool* exists);
+
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };
 
