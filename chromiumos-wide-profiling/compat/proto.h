@@ -12,6 +12,7 @@
 
 namespace quipper {
 
+using ::google::protobuf::RepeatedField;
 using ::google::protobuf::RepeatedPtrField;
 using ::google::protobuf::TextFormat;
 

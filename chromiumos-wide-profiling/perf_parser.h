@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <google/protobuf/repeated_field.h>
 #include <map>
 #include <set>
 #include <string>
@@ -22,6 +23,11 @@
 namespace quipper {
 
 class AddressMapper;
+class PerfDataProto_BranchStackEntry;
+class PerfDataProto_CommEvent;
+class PerfDataProto_ForkEvent;
+class PerfDataProto_MMapEvent;
+class PerfDataProto_PerfEvent;
 
 // A struct containing all relevant info for a mapped DSO, independent of any
 // samples.
@@ -39,8 +45,9 @@ struct ParsedEvent {
   // TODO(sque): Turn this struct into a class to privatize member variables.
   ParsedEvent() : command_(NULL) {}
 
-  // Stores address of an event_t. Does not own the event.
-  event_t* raw_event;
+  // Stores address of the original PerfDataProto_PerfEvent owned by a
+  // PerfReader object.
+  PerfDataProto_PerfEvent* event_ptr;
 
   // For mmap events, use this to count the number of samples that are in this
   // region.
@@ -146,6 +153,12 @@ struct PerfParserOptions {
   // By default, most samples must be properly mapped in order for sample
   // mapping to be considered successful.
   float sample_mapping_percentage_threshold = 95.0f;
+  // Set this to sort perf events by time, assuming they have timestamps.
+  // TODO(sque): This is to maintain the legacy feature of
+  // PerfSerializer::serialize_sorted_events_, which is used by
+  // PerfSerializerTest. However, we should look at restructuring PerfParser not
+  // to need it, while still providing some PerfParserStats.
+  bool sort_events_by_time = true;
 };
 
 class PerfParser {
@@ -171,11 +184,6 @@ class PerfParser {
     return parsed_events_;
   }
 
-  // Returns an array of pointers to |parsed_events_| sorted by sample time.
-  const std::vector<ParsedEvent*>& GetEventsSortedByTime() const {
-    return parsed_events_sorted_by_time_;
-  }
-
   const PerfEventStats& stats() const {
     return stats_;
   }
@@ -189,48 +197,37 @@ class PerfParser {
   // Defines a type for a pid:tid pair.
   typedef std::pair<uint32_t, uint32_t> PidTid;
 
-  template <typename MMapEventT>
-  bool MapMmapEvent(MMapEventT* event, uint64_t id) {
-    return MapMmapEvent(id,
-                        event->pid,
-                        &event->start,
-                        &event->len,
-                        &event->pgoff);
-  }
-  bool MapMmapEvent(uint64_t id,
-                    uint32_t pid,
-                    uint64_t* p_start,
-                    uint64_t* p_len,
-                    uint64_t* p_pgoff);
-  bool MapForkEvent(const struct fork_event& event);
-  bool MapCommEvent(const struct comm_event& event);
-
-  // Does a sample event remap and then returns DSO name and offset of sample.
-  bool MapSampleEvent(ParsedEvent* parsed_event);
-
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
 
-  // Sort |parsed_events_| by time, storing the results in
-  // |parsed_events_sorted_by_time_|.
+  // Sort |parsed_events_| by time, and updates the events in |reader_| in
+  // sorted order.
   // Events can not be sorted by time if PERF_SAMPLE_TIME is not set in
-  // attr.sample_type for all attrs. In that case,
-  // |parsed_events_sorted_by_time_| is not actually sorted, but has the same
-  // order as |parsed_events_|.
+  // attr.sample_type for all attrs.
   void MaybeSortParsedEvents();
+
+  // Updates |reader_->events| based on the contents of |parsed_events_|. For
+  // example, if |parsed_events_| had some events removed or reordered,
+  // |reader_| would be updated to contain the new sequence of events.
+  void UpdatePerfEventsFromParsedEvents();
+
+  // Does a sample event remap and then returns DSO name and offset of sample.
+  bool MapSampleEvent(ParsedEvent* parsed_event);
 
   // Calls MapIPAndPidAndGetNameAndOffset() on the callchain of a sample event.
   bool MapCallchain(const uint64_t ip,
                     const uint32_t pid,
                     uint64_t original_event_addr,
-                    struct ip_callchain* callchain,
+                    google::protobuf::RepeatedField<uint64_t>* callchain,
                     ParsedEvent* parsed_event);
 
   // Trims the branch stack for null entries and calls
   // MapIPAndPidAndGetNameAndOffset() on each entry.
-  bool MapBranchStack(const uint32_t pid,
-                      struct branch_stack* branch_stack,
-                      ParsedEvent* parsed_event);
+  bool MapBranchStack(
+      const uint32_t pid,
+      google::protobuf::RepeatedPtrField<PerfDataProto_BranchStackEntry>*
+          branch_stack,
+      ParsedEvent* parsed_event);
 
   // This maps a sample event and returns the mapped address, DSO name, and
   // offset within the DSO.  This is a private function because the API might
@@ -242,6 +239,19 @@ class PerfParser {
       uint64_t* new_ip,
       ParsedEvent::DSOAndOffset* dso_and_offset);
 
+  // Parses a MMAP event. Adds the mapping to the AddressMapper of the event's
+  // process. If |options_.do_remap| is set, will update |event| with the
+  // remapped address.
+  bool MapMmapEvent(PerfDataProto_MMapEvent* event, uint64_t id);
+
+  // Processes a COMM event. Creates a new AddressMapper for the new command's
+  // process.
+  bool MapCommEvent(const PerfDataProto_CommEvent& event);
+
+  // Processes a FORK event. Creates a new AddressMapper for the PID of the new
+  // process, if none already exists.
+  bool MapForkEvent(const PerfDataProto_ForkEvent& event);
+
   // Create a process mapper for a process. Optionally pass in a parent pid
   // |ppid| from which to copy mappings.
   // Returns (mapper, true) if a new AddressMapper was created, and
@@ -250,17 +260,14 @@ class PerfParser {
                                                            uint32_t ppid = -1);
 
   // Points to a PerfReader that contains the input perf data to parse.
-  const PerfReader* const reader_;
+  PerfReader* const reader_;
 
   // Stores the output of ParseRawEvents(). Contains DSO + offset info for each
   // event.
   std::vector<ParsedEvent> parsed_events_;
 
-  // See MaybeSortParsedEvents to see why this might not actually be sorted
-  // by time:
-  std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
-
-  PerfParserOptions options_;   // Store all option flags as one struct.
+  // Store all option flags as one struct.
+  PerfParserOptions options_;
 
   // Maps pid/tid to commands.
   std::map<PidTid, const string*> pidtid_to_comm_map_;

@@ -5,6 +5,10 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_PERF_SERIALIZER_H_
 #define CHROMIUMOS_WIDE_PROFILING_PERF_SERIALIZER_H_
 
+#include <stdint.h>
+#include <sys/types.h>
+
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -28,7 +32,6 @@ struct PerfParserOptions;
 struct PerfUint32Metadata;
 struct PerfUint64Metadata;
 
-class PerfParser;
 class PerfReader;
 class PerfSerializer;
 
@@ -79,37 +82,17 @@ class PerfSerializer {
   PerfSerializer();
   ~PerfSerializer();
 
-  // Converts raw perf file to protobuf.
-  bool SerializeFromFile(const string& filename,
-                         PerfDataProto* perf_data_proto);
+  // Convert directly from an input perf data file to a PerfDataProto and vice
+  // versa.
+  static bool SerializeFromFile(const string& filename, PerfDataProto* proto);
+  static bool SerializeFromFileWithOptions(const string& filename,
+                                           const PerfParserOptions& options,
+                                           PerfDataProto* proto);
+  static bool DeserializeToFile(const PerfDataProto& proto,
+                                const string& filename);
 
-  // Converts raw perf file to protobuf, specifying options to pass to
-  // PerfParser.
-  bool SerializeFromFileWithOptions(const string& filename,
-                                    const PerfParserOptions& options,
-                                    PerfDataProto* perf_data_proto);
-
-  // Converts data inside PerfSerializer to protobuf. |parser| is optional, can
-  // be nullptr.
-  bool Serialize(const PerfReader& reader,
-                 const PerfParser* parser,
-                 PerfDataProto* proto);
-
-  // Converts perf data protobuf to perf data file.
-  bool DeserializeToFile(const PerfDataProto& perf_data_proto,
-                         const string& filename);
-
-  // Reads in contents of protobuf to store locally. Does not write to any
-  // output files. |parser| is optional, can be nullptr.
-  bool Deserialize(const PerfDataProto& proto,
-                   PerfReader* reader,
-                   PerfParser* parser);
-
-  void set_serialize_sorted_events(bool sorted) {
-    serialize_sorted_events_ = sorted;
-  }
-
- private:
+  // The following functions convert between raw perf data structures and their
+  // equivalent PerfDataProto representations.
   bool SerializePerfFileAttr(
       const PerfFileAttr& perf_file_attr,
       PerfDataProto_PerfFileAttr* perf_file_attr_proto) const;
@@ -131,63 +114,58 @@ class PerfSerializer {
       const PerfDataProto_PerfEventType& event_type_proto,
       PerfFileAttr* event_attr) const;
 
-  bool SerializeEvent(const malloced_unique_ptr<event_t>& event,
+  bool SerializeEvent(const malloced_unique_ptr<event_t>& event_ptr,
                       PerfDataProto_PerfEvent* event_proto) const;
-  bool SerializeParsedEvent(const ParsedEvent& event,
-                            PerfDataProto_PerfEvent* event_proto) const;
-  bool SerializeParsedEventPointer(const ParsedEvent* event_ptr,
-                                   PerfDataProto_PerfEvent* event_proto) const;
-  bool SerializeRawEvent(const event_t& event,
-                         PerfDataProto_PerfEvent* event_proto) const;
-
   bool DeserializeEvent(const PerfDataProto_PerfEvent& event_proto,
-                        malloced_unique_ptr<event_t>* event) const;
+                        malloced_unique_ptr<event_t>* event_ptr) const;
 
+  // TODO(sque): The following events that serialize/deserialize members of
+  // PerfEvent should be made private.
   bool SerializeEventHeader(const perf_event_header& header,
                             PerfDataProto_EventHeader* header_proto) const;
   bool DeserializeEventHeader(const PerfDataProto_EventHeader& header_proto,
                               perf_event_header* header) const;
 
-  bool SerializeRecordSample(const event_t& event,
-                             PerfDataProto_SampleEvent* sample) const;
-  bool DeserializeRecordSample(const PerfDataProto_SampleEvent& sample,
-                               event_t* event) const;
-
-  bool SerializeMMapSample(const event_t& event,
-                           PerfDataProto_MMapEvent* sample) const;
-  bool DeserializeMMapSample(const PerfDataProto_MMapEvent& sample,
-                             event_t* event) const;
-
-  bool SerializeMMap2Sample(const event_t& event,
-                            PerfDataProto_MMapEvent* sample) const;
-  bool DeserializeMMap2Sample(const PerfDataProto_MMapEvent& sample,
+  bool SerializeSampleEvent(const event_t& event,
+                            PerfDataProto_SampleEvent* sample) const;
+  bool DeserializeSampleEvent(const PerfDataProto_SampleEvent& sample,
                               event_t* event) const;
 
-  bool SerializeCommSample(const event_t& event,
-                           PerfDataProto_CommEvent* sample) const;
-  bool DeserializeCommSample(const PerfDataProto_CommEvent& sample,
+  bool SerializeMMapEvent(const event_t& event,
+                          PerfDataProto_MMapEvent* sample) const;
+  bool DeserializeMMapEvent(const PerfDataProto_MMapEvent& sample,
+                            event_t* event) const;
+
+  bool SerializeMMap2Event(const event_t& event,
+                           PerfDataProto_MMapEvent* sample) const;
+  bool DeserializeMMap2Event(const PerfDataProto_MMapEvent& sample,
                              event_t* event) const;
+
+  bool SerializeCommEvent(const event_t& event,
+                          PerfDataProto_CommEvent* sample) const;
+  bool DeserializeCommEvent(const PerfDataProto_CommEvent& sample,
+                            event_t* event) const;
 
   // These handle both fork and exit events, which use the same protobuf
   // message definition.
-  bool SerializeForkExitSample(const event_t& event,
+  bool SerializeForkExitEvent(const event_t& event,
                                PerfDataProto_ForkEvent* sample) const;
-  bool DeserializeForkExitSample(const PerfDataProto_ForkEvent& sample,
+  bool DeserializeForkExitEvent(const PerfDataProto_ForkEvent& sample,
                                  event_t* event) const;
 
-  bool SerializeLostSample(const event_t& event,
+  bool SerializeLostEvent(const event_t& event,
                            PerfDataProto_LostEvent* sample) const;
-  bool DeserializeLostSample(const PerfDataProto_LostEvent& sample,
+  bool DeserializeLostEvent(const PerfDataProto_LostEvent& sample,
                              event_t* event) const;
 
-  bool SerializeThrottleSample(const event_t& event,
+  bool SerializeThrottleEvent(const event_t& event,
                                PerfDataProto_ThrottleEvent* sample) const;
-  bool DeserializeThrottleSample(const PerfDataProto_ThrottleEvent& sample,
+  bool DeserializeThrottleEvent(const PerfDataProto_ThrottleEvent& sample,
                                  event_t* event) const;
 
-  bool SerializeReadSample(const event_t& event,
+  bool SerializeReadEvent(const event_t& event,
                            PerfDataProto_ReadEvent* sample) const;
-  bool DeserializeReadSample(const PerfDataProto_ReadEvent& sample,
+  bool DeserializeReadEvent(const PerfDataProto_ReadEvent& sample,
                              event_t* event) const;
 
   bool SerializeSampleInfo(const event_t& event,
@@ -261,19 +239,6 @@ class PerfSerializer {
       DeserializePerfEventTypes = {
         this, &PerfSerializer::DeserializePerfEventType};
 
-  const VectorSerializer<PerfDataProto_PerfEvent, ParsedEvent>
-      SerializeParsedEvents = {this, &PerfSerializer::SerializeParsedEvent};
-  const VectorSerializer<PerfDataProto_PerfEvent,
-                         ParsedEvent*, const ParsedEvent*>
-      SerializeParsedEventPointers = {
-        this, &PerfSerializer::SerializeParsedEventPointer};
-
-  const VectorSerializer<PerfDataProto_PerfEvent, malloced_unique_ptr<event_t>>
-      SerializeEvents = {this, &PerfSerializer::SerializeEvent};
-  const VectorDeserializer<PerfDataProto_PerfEvent,
-                           malloced_unique_ptr<event_t>>
-      DeserializeEvents = {this, &PerfSerializer::DeserializeEvent};
-
   const VectorSerializer<PerfDataProto_PerfBuildID,
                          malloced_unique_ptr<build_id_event>>
       SerializeBuildIDEvents = {this, &PerfSerializer::SerializeBuildIDEvent};
@@ -305,17 +270,65 @@ class PerfSerializer {
       DeserializeNUMATopologyMetadata = {
         this, &PerfSerializer::DeserializeNodeTopologyMetadata};
 
-  // Instantiate a new PerfSampleReader with the given parameters. If an old one
-  // exists, it is discarded.
-  void CreateSampleInfoReader(const struct perf_event_attr& event_attr,
-                              bool is_cross_endian);
+  // Instantiate a new PerfSampleReader with the given attr type. If an old one
+  // exists for that attr type, it is discarded.
+  void CreateSampleInfoReader(const PerfFileAttr& event_attr,
+                              bool read_cross_endian);
 
-  // Set this flag to serialize perf events in chronological order, rather than
-  // the order in which they appear in the raw data.
-  bool serialize_sorted_events_;
+  bool SampleInfoReaderAvailable() const {
+    return !sample_info_reader_map_.empty();
+  }
 
-  // Use this to serialize or deserialize sample info fields in events.
-  std::unique_ptr<SampleInfoReader> sample_info_reader_;
+ private:
+  // Special values for the event/other_event_id_pos_ fields.
+  enum EventIdPosition {
+    Uninitialized = -2,
+    NotPresent = -1,
+  };
+
+  // Given a perf_event_attr, determines the offset of the ID field within an
+  // event, relative to the start of sample info within an event. All attrs must
+  // have the same ID field offset.
+  void UpdateEventIdPositions(const struct perf_event_attr& attr);
+
+  // Do non-SAMPLE events have a sample_id? Reflects the value of
+  // sample_id_all in the first attr, which should be consistent accross all
+  // attrs.
+  bool SampleIdAll() const;
+
+  // Find the event id in the event, and returns the corresponding
+  // SampleInfoReader. Returns nullptr if a SampleInfoReader could not be found.
+  const SampleInfoReader* GetSampleInfoReaderForEvent(
+      const event_t& event) const;
+
+  // Returns the SampleInfoReader associated with the given perf event ID, or
+  // nullptr if none exists. |id| == 0 means there is no attr ID for each event
+  // that associates it with a particular SampleInfoReader, in which case the
+  // first available SampleInfoReader is returned.
+  const SampleInfoReader* GetSampleInfoReaderForId(uint64_t id) const;
+
+  // Reads the sample info fields from |event| into |sample_info|. If more than
+  // one type of perf event attr is present, will pick the correct one. Also
+  // returns a bitfield of available sample info fields for the attr, in
+  // |sample_type|.
+  // Returns true if successfully read.
+  bool ReadPerfSampleInfoAndType(const event_t& event,
+                                 perf_sample* sample_info,
+                                 uint64_t* sample_type) const;
+
+  // For SAMPLE events, the position of the sample id,
+  // Or EventIdPosition::NotPresent if neither PERF_SAMPLE_ID(ENTIFIER) are set.
+  // (Corresponds to evsel->id_pos in perf)
+  ssize_t sample_event_id_pos_ = EventIdPosition::Uninitialized;
+  // For non-SAMPLE events, the position of the sample id, counting backwards
+  // from the end of the event.
+  // Or EventIdPosition::NotPresent if neither PERF_SAMPLE_ID(ENTIFIER) are set.
+  // (Corresponds to evsel->is_pos in perf)
+  ssize_t other_event_id_pos_ = EventIdPosition::Uninitialized;
+
+  // For each perf event attr ID, there is a SampleInfoReader to read events of
+  // the associated perf attr type.
+  std::map<uint64_t, std::unique_ptr<SampleInfoReader>> sample_info_reader_map_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

@@ -13,6 +13,7 @@
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_event.h"
 #include "chromiumos-wide-profiling/perf_parser.h"
@@ -21,19 +22,20 @@
 
 namespace quipper {
 
-PerfSerializer::PerfSerializer() : serialize_sorted_events_(true) {
+PerfSerializer::PerfSerializer() {
 }
 
 PerfSerializer::~PerfSerializer() {
 }
 
-
+// static
 bool PerfSerializer::SerializeFromFile(const string& filename,
                                        PerfDataProto* perf_data_proto) {
   return SerializeFromFileWithOptions(filename, PerfParserOptions(),
                                       perf_data_proto);
 }
 
+// static
 bool PerfSerializer::SerializeFromFileWithOptions(
     const string& filename,
     const PerfParserOptions& options,
@@ -42,109 +44,23 @@ bool PerfSerializer::SerializeFromFileWithOptions(
   if (!reader.ReadFile(filename))
     return false;
 
-  // TODO(sque): Make this step optional.
   PerfParser parser(&reader, options);
   if (!parser.ParseRawEvents())
     return false;
 
-  if (!Serialize(reader, &parser, perf_data_proto))
+  if (!reader.Serialize(perf_data_proto))
     return false;
-
-  return true;
-}
-
-bool PerfSerializer::Serialize(const PerfReader& reader,
-                               const PerfParser* parser,
-                               PerfDataProto* proto) {
-  const auto& attrs = reader.attrs();
-
-  CHECK(!attrs.empty());
-  CreateSampleInfoReader(attrs[0].attr, false /* is cross_endian */);
-
-  if (!SerializePerfFileAttrs(attrs, proto->mutable_file_attrs()))
-    return false;
-
-  if (reader.HaveEventNames() &&
-      !SerializePerfEventTypes(attrs, proto->mutable_event_types())) {
-    return false;
-  }
-
-  // Serialize events in either chronological (if possible) or raw data order.
-  if (serialize_sorted_events_ && parser) {
-    if (!SerializeParsedEventPointers(parser->GetEventsSortedByTime(),
-                                      proto->mutable_events()))
-      return false;
-  } else {
-    if (!SerializeEvents(reader.events(), proto->mutable_events()))
-      return false;
-  }
-
-  proto->add_metadata_mask(reader.metadata_mask());
-
-  if (!SerializeMetadata(reader, proto))
-    return false;
-
-  // Add a timestamp_sec to the protobuf.
-  struct timeval timestamp_sec;
-  if (!gettimeofday(&timestamp_sec, NULL))
-    proto->set_timestamp_sec(timestamp_sec.tv_sec);
 
   // Append parser stats to protobuf.
-  if (parser)
-    PerfSerializer::SerializeParserStats(parser->stats(), proto);
-
+  PerfSerializer::SerializeParserStats(parser.stats(), perf_data_proto);
   return true;
 }
 
+// static
 bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
                                        const string& filename) {
   PerfReader reader;
-  return Deserialize(perf_data_proto, &reader, nullptr) &&
-         reader.WriteFile(filename);
-}
-
-bool PerfSerializer::Deserialize(const PerfDataProto& proto,
-                                 PerfReader* reader,
-                                 PerfParser* parser) {
-  const auto attrs = reader->mutable_attrs();
-  if (!DeserializePerfFileAttrs(proto.file_attrs(), attrs))
-    return false;
-
-  if (static_cast<size_t>(proto.event_types().size()) == attrs->size() &&
-      attrs->size() &&
-      !DeserializePerfEventTypes(proto.event_types(), attrs)) {
-    return false;
-  }
-
-  // Make sure all event types (attrs) have the same sample type.
-  for (size_t i = 0; i < attrs->size(); ++i) {
-    CHECK_EQ((*attrs)[i].attr.sample_type, (*attrs)[0].attr.sample_type)
-        << "Sample type for attribute #" << i
-        << " (" << std::hex << (*attrs)[i].attr.sample_type << ")"
-        << " does not match that of attribute 0"
-        << " (" << std::hex << (*attrs)[0].attr.sample_type << ")";
-  }
-  CHECK_GT(attrs->size(), 0U);
-  CreateSampleInfoReader((*attrs)[0].attr, false /* read_cross_endian */);
-  reader->UpdateOnNewAttrs();
-
-  if (!DeserializeEvents(proto.events(), reader->mutable_events()))
-    return false;
-
-  if (parser && !parser->ParseRawEvents())
-    return false;
-
-  if (proto.metadata_mask_size())
-    reader->set_metadata_mask(proto.metadata_mask(0));
-
-  if (!DeserializeMetadata(proto, reader))
-    return false;
-
-  // Get stats from protobuf.
-  if (parser)
-    PerfSerializer::DeserializeParserStats(proto, parser->mutable_stats());
-
-  return true;
+  return reader.Deserialize(perf_data_proto) && reader.WriteFile(filename);
 }
 
 bool PerfSerializer::SerializePerfFileAttr(
@@ -299,77 +215,55 @@ bool PerfSerializer::DeserializePerfEventType(
 }
 
 bool PerfSerializer::SerializeEvent(
-    const malloced_unique_ptr<event_t>& event,
+    const malloced_unique_ptr<event_t>& event_ptr,
     PerfDataProto_PerfEvent* event_proto) const {
-  return SerializeRawEvent(*event.get(), event_proto);
-}
+  const event_t& event = *event_ptr;
 
-bool PerfSerializer::SerializeParsedEvent(
-    const ParsedEvent& event,
-    PerfDataProto_PerfEvent* event_proto) const {
-  return SerializeRawEvent(*event.raw_event, event_proto);
-}
-
-bool PerfSerializer::SerializeParsedEventPointer(
-    const ParsedEvent* event_ptr,
-    PerfDataProto_PerfEvent* event_proto) const {
-  const ParsedEvent& event = *event_ptr;
-  return SerializeParsedEvent(event, event_proto);
-}
-
-bool PerfSerializer::SerializeRawEvent(
-    const event_t& raw_event,
-    PerfDataProto_PerfEvent* event_proto) const {
-  if (!SerializeEventHeader(raw_event.header, event_proto->mutable_header()))
+  if (!SerializeEventHeader(event.header, event_proto->mutable_header()))
     return false;
-  switch (raw_event.header.type) {
+
+  switch (event.header.type) {
     case PERF_RECORD_SAMPLE:
-      if (!SerializeRecordSample(raw_event,
-                                 event_proto->mutable_sample_event())) {
+      if (!SerializeSampleEvent(event, event_proto->mutable_sample_event()))
         return false;
-      }
       break;
     case PERF_RECORD_MMAP:
-      if (!SerializeMMapSample(raw_event, event_proto->mutable_mmap_event()))
+      if (!SerializeMMapEvent(event, event_proto->mutable_mmap_event()))
         return false;
       break;
     case PERF_RECORD_MMAP2:
-      if (!SerializeMMap2Sample(raw_event, event_proto->mutable_mmap_event()))
+      if (!SerializeMMap2Event(event, event_proto->mutable_mmap_event()))
         return false;
       break;
     case PERF_RECORD_COMM:
-      if (!SerializeCommSample(raw_event, event_proto->mutable_comm_event()))
+      if (!SerializeCommEvent(event, event_proto->mutable_comm_event()))
         return false;
       break;
     case PERF_RECORD_EXIT:
-      if (!SerializeForkExitSample(raw_event,
-                                   event_proto->mutable_exit_event())) {
+      if (!SerializeForkExitEvent(event, event_proto->mutable_exit_event()))
         return false;
-      }
       break;
     case PERF_RECORD_FORK:
-      if (!SerializeForkExitSample(raw_event,
-                                   event_proto->mutable_fork_event())) {
+      if (!SerializeForkExitEvent(event, event_proto->mutable_fork_event()))
         return false;
-      }
       break;
     case PERF_RECORD_LOST:
-      if (!SerializeLostSample(raw_event, event_proto->mutable_lost_event()))
+      if (!SerializeLostEvent(event, event_proto->mutable_lost_event()))
         return false;
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-      if (!SerializeThrottleSample(raw_event,
-                                   event_proto->mutable_throttle_event())) {
+      if (!SerializeThrottleEvent(event,
+                                  event_proto->mutable_throttle_event())) {
         return false;
       }
       break;
     case PERF_RECORD_READ:
-      if (!SerializeReadSample(raw_event, event_proto->mutable_read_event()))
+      if (!SerializeReadEvent(event, event_proto->mutable_read_event()))
         return false;
       break;
     default:
-      LOG(ERROR) << "Unknown event type: " << raw_event.header.type;
+      LOG(ERROR) << "Unknown event type: " << event.header.type;
       break;
   }
   return true;
@@ -377,75 +271,56 @@ bool PerfSerializer::SerializeRawEvent(
 
 bool PerfSerializer::DeserializeEvent(
     const PerfDataProto_PerfEvent& event_proto,
-    malloced_unique_ptr<event_t>* event) const {
-  // The deserialized header.size should not be completely trusted, because the
-  // event content may have been changed (eg, md5 string replacement).
-  // Since we don't know how much memory to allocate, use an oversized event_t
-  // until the final size is known.
-  // TODO(dhsharp): Come up with a better size prediction. We don't want to
-  // overrun the allocated space. sizeof(event_t) is almost meaningless wrt the
-  // space necessary for the event--it is the size of the largest member of the
-  // union. For better or worse, this is dominated by the PATH_MAX-sized array
-  // in struct mmap2_event. However, events also have a "sample id" placed
-  // immediately after the struct. Previously to this, an on-stack event_t was
-  // used, which is dangerous because the stack could have been overrun. Since
-  // no issues were reported, we can presume that amount of space was
-  // sufficient.
-  perf_event_header header = {};
-  if (!DeserializeEventHeader(event_proto.header(), &header))
+    malloced_unique_ptr<event_t>* event_ptr) const {
+  event_ptr->reset(CallocMemoryForEvent(event_proto.header().size()));
+  event_t* event = event_ptr->get();
+
+  if (!DeserializeEventHeader(event_proto.header(), &event->header))
     return false;
-  const size_t alloc_event_size = header.size + 4096;
-  malloced_unique_ptr<event_t> temp_event(
-      CallocMemoryForEvent(alloc_event_size));
-  temp_event->header = header;
+
   bool event_deserialized = false;
   switch (event_proto.header().type()) {
     case PERF_RECORD_SAMPLE:
-      if (DeserializeRecordSample(event_proto.sample_event(), temp_event.get()))
+      if (DeserializeSampleEvent(event_proto.sample_event(), event))
         event_deserialized = true;
       break;
     case PERF_RECORD_MMAP:
-      if (DeserializeMMapSample(event_proto.mmap_event(), temp_event.get()))
+      if (DeserializeMMapEvent(event_proto.mmap_event(), event))
         event_deserialized = true;
       break;
     case PERF_RECORD_MMAP2:
-      if (DeserializeMMap2Sample(event_proto.mmap_event(), temp_event.get()))
+      if (DeserializeMMap2Event(event_proto.mmap_event(), event))
         event_deserialized = true;
       break;
     case PERF_RECORD_COMM:
-      if (DeserializeCommSample(event_proto.comm_event(), temp_event.get()))
+      if (DeserializeCommEvent(event_proto.comm_event(), event))
         event_deserialized = true;
       break;
     case PERF_RECORD_EXIT:
       if (event_proto.has_exit_event() &&
-          DeserializeForkExitSample(event_proto.exit_event(),
-                                    temp_event.get())) {
+          DeserializeForkExitEvent(event_proto.exit_event(), event)) {
         event_deserialized = true;
       } else if (event_proto.has_fork_event() &&
-                 DeserializeForkExitSample(event_proto.fork_event(),
-                                           temp_event.get())) {
+                 DeserializeForkExitEvent(event_proto.fork_event(), event)) {
         // Some older protobufs use the |fork_event| field to store exit events.
         event_deserialized = true;
       }
       break;
     case PERF_RECORD_FORK:
-      if (DeserializeForkExitSample(event_proto.fork_event(),
-                                    temp_event.get())) {
+      if (DeserializeForkExitEvent(event_proto.fork_event(), event))
         event_deserialized = true;
-      }
       break;
     case PERF_RECORD_LOST:
-      if (DeserializeLostSample(event_proto.lost_event(), temp_event.get()))
+      if (DeserializeLostEvent(event_proto.lost_event(), event))
         event_deserialized = true;
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-      if (DeserializeThrottleSample(event_proto.throttle_event(),
-                                    temp_event.get()))
+      if (DeserializeThrottleEvent(event_proto.throttle_event(), event))
         event_deserialized = true;
       break;
     case PERF_RECORD_READ:
-      if (DeserializeReadSample(event_proto.read_event(), temp_event.get()))
+      if (DeserializeReadEvent(event_proto.read_event(), event))
         event_deserialized = true;
       break;
     case PERF_RECORD_MAX:
@@ -455,17 +330,9 @@ bool PerfSerializer::DeserializeEvent(
   if (!event_deserialized) {
     LOG(ERROR) << "Could not deserialize event of type "
                << event_proto.header().type();
-    event->reset();
     return false;
   }
-  // Reallocate the event down to its final size.
-  const size_t final_event_size = temp_event->header.size;
-  CHECK_LE(final_event_size, alloc_event_size)
-      << "Likely overran the event buffer.";
-  temp_event.reset(ReallocMemoryForEvent(temp_event.release(),
-                                         final_event_size));
 
-  *event = std::move(temp_event);
   return true;
 }
 
@@ -487,15 +354,14 @@ bool PerfSerializer::DeserializeEventHeader(
   return true;
 }
 
-bool PerfSerializer::SerializeRecordSample(
+bool PerfSerializer::SerializeSampleEvent(
     const event_t& event,
     PerfDataProto_SampleEvent* sample) const {
   perf_sample sample_info;
-  CHECK(sample_info_reader_);
-  if (!sample_info_reader_->ReadPerfSampleInfo(event, &sample_info))
+  uint64_t sample_type = 0;
+  if (!ReadPerfSampleInfoAndType(event, &sample_info, &sample_type))
     return false;
 
-  auto sample_type = sample_info_reader_->event_attr().sample_type;
   if (sample_type & PERF_SAMPLE_IP)
     sample->set_ip(sample_info.ip);
   if (sample_type & PERF_SAMPLE_TID) {
@@ -506,7 +372,7 @@ bool PerfSerializer::SerializeRecordSample(
     sample->set_sample_time_ns(sample_info.time);
   if (sample_type & PERF_SAMPLE_ADDR)
     sample->set_addr(sample_info.addr);
-  if (sample_type & PERF_SAMPLE_ID)
+  if ((sample_type & PERF_SAMPLE_ID) || (sample_type & PERF_SAMPLE_IDENTIFIER))
     sample->set_id(sample_info.id);
   if (sample_type & PERF_SAMPLE_STREAM_ID)
     sample->set_stream_id(sample_info.stream_id);
@@ -542,7 +408,7 @@ bool PerfSerializer::SerializeRecordSample(
   return true;
 }
 
-bool PerfSerializer::DeserializeRecordSample(
+bool PerfSerializer::DeserializeSampleEvent(
     const PerfDataProto_SampleEvent& sample,
     event_t* event) const {
   perf_sample sample_info;
@@ -602,11 +468,12 @@ bool PerfSerializer::DeserializeRecordSample(
   if (sample.has_transaction())
     sample_info.transaction = sample.transaction();
 
-  CHECK(sample_info_reader_);
-  return sample_info_reader_->WritePerfSampleInfo(sample_info, event);
+  const SampleInfoReader* writer = GetSampleInfoReaderForId(sample.id());
+  CHECK(writer);
+  return writer->WritePerfSampleInfo(sample_info, event);
 }
 
-bool PerfSerializer::SerializeMMapSample(
+bool PerfSerializer::SerializeMMapEvent(
     const event_t& event,
     PerfDataProto_MMapEvent* sample) const {
   const struct mmap_event& mmap = event.mmap;
@@ -621,7 +488,7 @@ bool PerfSerializer::SerializeMMapSample(
   return SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
-bool PerfSerializer::DeserializeMMapSample(
+bool PerfSerializer::DeserializeMMapEvent(
     const PerfDataProto_MMapEvent& sample,
     event_t* event) const {
   struct mmap_event& mmap = event->mmap;
@@ -635,7 +502,7 @@ bool PerfSerializer::DeserializeMMapSample(
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
-bool PerfSerializer::SerializeMMap2Sample(
+bool PerfSerializer::SerializeMMap2Event(
     const event_t& event,
     PerfDataProto_MMapEvent* sample) const {
   const struct mmap2_event& mmap = event.mmap2;
@@ -656,7 +523,7 @@ bool PerfSerializer::SerializeMMap2Sample(
   return SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
-bool PerfSerializer::DeserializeMMap2Sample(
+bool PerfSerializer::DeserializeMMap2Event(
     const PerfDataProto_MMapEvent& sample,
     event_t* event) const {
   struct mmap2_event& mmap = event->mmap2;
@@ -676,7 +543,7 @@ bool PerfSerializer::DeserializeMMap2Sample(
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
-bool PerfSerializer::SerializeCommSample(
+bool PerfSerializer::SerializeCommEvent(
       const event_t& event,
       PerfDataProto_CommEvent* sample) const {
   const struct comm_event& comm = event.comm;
@@ -688,7 +555,7 @@ bool PerfSerializer::SerializeCommSample(
   return SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
-bool PerfSerializer::DeserializeCommSample(
+bool PerfSerializer::DeserializeCommEvent(
     const PerfDataProto_CommEvent& sample,
     event_t* event) const {
   struct comm_event& comm = event->comm;
@@ -701,18 +568,20 @@ bool PerfSerializer::DeserializeCommSample(
   // replacement comm string.  However, if the original was < 8 bytes (fit into
   // |sizeof(uint64_t)|), then the size is no longer correct.  This section
   // checks for the size difference and updates the size in the header.
-  CHECK(sample_info_reader_);
+  const SampleInfoReader* reader =
+      GetSampleInfoReaderForId(sample.sample_info().id());
+  CHECK(reader);
   uint64_t sample_fields =
       SampleInfoReader::GetSampleFieldsForEventType(
           comm.header.type,
-          sample_info_reader_->event_attr().sample_type);
+          reader->event_attr().sample_type);
   comm.header.size = SampleInfoReader::GetPerfSampleDataOffset(*event) +
                      GetNumBits(sample_fields) * sizeof(uint64_t);
 
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
-bool PerfSerializer::SerializeForkExitSample(
+bool PerfSerializer::SerializeForkExitEvent(
     const event_t& event,
     PerfDataProto_ForkEvent* sample) const {
   const struct fork_event& fork = event.fork;
@@ -725,7 +594,7 @@ bool PerfSerializer::SerializeForkExitSample(
   return SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
-bool PerfSerializer::DeserializeForkExitSample(
+bool PerfSerializer::DeserializeForkExitEvent(
     const PerfDataProto_ForkEvent& sample,
     event_t* event) const {
   struct fork_event& fork = event->fork;
@@ -738,7 +607,7 @@ bool PerfSerializer::DeserializeForkExitSample(
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
-bool PerfSerializer::SerializeLostSample(
+bool PerfSerializer::SerializeLostEvent(
     const event_t& event,
     PerfDataProto_LostEvent* sample) const {
   const struct lost_event& lost = event.lost;
@@ -748,7 +617,7 @@ bool PerfSerializer::SerializeLostSample(
   return SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
-bool PerfSerializer::DeserializeLostSample(
+bool PerfSerializer::DeserializeLostEvent(
     const PerfDataProto_LostEvent& sample,
     event_t* event) const {
   struct lost_event& lost = event->lost;
@@ -758,7 +627,7 @@ bool PerfSerializer::DeserializeLostSample(
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
-bool PerfSerializer::SerializeThrottleSample(
+bool PerfSerializer::SerializeThrottleEvent(
     const event_t& event,
     PerfDataProto_ThrottleEvent* sample) const {
   const struct throttle_event& throttle = event.throttle;
@@ -769,7 +638,7 @@ bool PerfSerializer::SerializeThrottleSample(
   return SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
-bool PerfSerializer::DeserializeThrottleSample(
+bool PerfSerializer::DeserializeThrottleEvent(
     const PerfDataProto_ThrottleEvent& sample,
     event_t* event) const {
   struct throttle_event& throttle = event->throttle;
@@ -780,7 +649,7 @@ bool PerfSerializer::DeserializeThrottleSample(
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
-bool PerfSerializer::SerializeReadSample(
+bool PerfSerializer::SerializeReadEvent(
     const event_t& event,
     PerfDataProto_ReadEvent* sample) const {
   const struct read_event& read = event.read;
@@ -794,7 +663,7 @@ bool PerfSerializer::SerializeReadSample(
   return true;
 }
 
-bool PerfSerializer::DeserializeReadSample(
+bool PerfSerializer::DeserializeReadEvent(
     const PerfDataProto_ReadEvent& sample,
     event_t* event) const {
   struct read_event& read = event->read;
@@ -811,55 +680,52 @@ bool PerfSerializer::DeserializeReadSample(
 bool PerfSerializer::SerializeSampleInfo(
     const event_t& event,
     PerfDataProto_SampleInfo* sample) const {
+  if (!SampleIdAll())
+    return true;
+
   perf_sample sample_info;
-  CHECK(sample_info_reader_);
-  if (!sample_info_reader_->ReadPerfSampleInfo(event, &sample_info))
+  uint64_t sample_type = 0;
+  if (!ReadPerfSampleInfoAndType(event, &sample_info, &sample_type))
     return false;
 
-  auto sample_type = sample_info_reader_->event_attr().sample_type;
   if (sample_type & PERF_SAMPLE_TID) {
     sample->set_pid(sample_info.pid);
     sample->set_tid(sample_info.tid);
   }
   if (sample_type & PERF_SAMPLE_TIME)
     sample->set_sample_time_ns(sample_info.time);
-  if (sample_type & PERF_SAMPLE_ID)
+  if ((sample_type & PERF_SAMPLE_ID) || (sample_type & PERF_SAMPLE_IDENTIFIER))
     sample->set_id(sample_info.id);
   if (sample_type & PERF_SAMPLE_CPU)
     sample->set_cpu(sample_info.cpu);
+  if (sample_type & PERF_SAMPLE_STREAM_ID)
+    sample->set_stream_id(sample_info.stream_id);
   return true;
 }
 
 bool PerfSerializer::DeserializeSampleInfo(
     const PerfDataProto_SampleInfo& sample,
     event_t* event) const {
+  if (!SampleIdAll())
+    return true;
+
   perf_sample sample_info;
-  size_t sample_info_size = 0;
   if (sample.has_tid()) {
     sample_info.pid = sample.pid();
     sample_info.tid = sample.tid();
-    sample_info_size += sizeof(uint64_t);
   }
-  if (sample.has_sample_time_ns()) {
+  if (sample.has_sample_time_ns())
     sample_info.time = sample.sample_time_ns();
-    sample_info_size += sizeof(uint64_t);
-  }
-  if (sample.has_id()) {
+  if (sample.has_id())
     sample_info.id = sample.id();
-    sample_info_size += sizeof(uint64_t);
-  }
-  if (sample.has_cpu()) {
+  if (sample.has_cpu())
     sample_info.cpu = sample.cpu();
-    sample_info_size += sizeof(uint64_t);
-  }
+  if (sample.has_stream_id())
+    sample_info.stream_id = sample.stream_id();
 
-  // The event info may have changed (e.g. strings replaced with Md5sum), so
-  // adjust the size accordingly.
-  event->header.size =
-      SampleInfoReader::GetPerfSampleDataOffset(*event) + sample_info_size;
-
-  CHECK(sample_info_reader_);
-  return sample_info_reader_->WritePerfSampleInfo(sample_info, event);
+  const SampleInfoReader* writer = GetSampleInfoReaderForId(sample.id());
+  CHECK(writer);
+  return writer->WritePerfSampleInfo(sample_info, event);
 }
 
 bool PerfSerializer::SerializeTracingMetadata(
@@ -1223,10 +1089,124 @@ void PerfSerializer::DeserializeParserStats(
   stats->did_remap = stats_pb.did_remap();
   stats->num_sample_events_mapped = stats_pb.num_sample_events_mapped();
 }
-void PerfSerializer::CreateSampleInfoReader(
-    const struct perf_event_attr& event_attr,
-    bool is_cross_endian) {
-  sample_info_reader_.reset(new SampleInfoReader(event_attr, is_cross_endian));
+
+void PerfSerializer::CreateSampleInfoReader(const PerfFileAttr& attr,
+                                            bool read_cross_endian) {
+  for (const auto& id :
+       (attr.ids.empty() ? std::initializer_list<u64>({0}) : attr.ids)) {
+    sample_info_reader_map_[id].reset(
+        new SampleInfoReader(attr.attr, read_cross_endian));
+  }
+  UpdateEventIdPositions(attr.attr);
+}
+
+void PerfSerializer::UpdateEventIdPositions(
+    const struct perf_event_attr& attr) {
+  const u64 sample_type = attr.sample_type;
+  ssize_t new_sample_event_id_pos = EventIdPosition::NotPresent;
+  ssize_t new_other_event_id_pos = EventIdPosition::NotPresent;
+  if (sample_type & PERF_SAMPLE_IDENTIFIER) {
+    new_sample_event_id_pos = 0;
+    new_other_event_id_pos = 1;
+  } else if (sample_type & PERF_SAMPLE_ID) {
+    // Increment for IP, TID, TIME, ADDR
+    new_sample_event_id_pos = 0;
+    if (sample_type & PERF_SAMPLE_IP) new_sample_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_TID) new_sample_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_TIME) new_sample_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_ADDR) new_sample_event_id_pos++;
+
+    // Increment for CPU, STREAM_ID
+    new_other_event_id_pos = 1;
+    if (sample_type & PERF_SAMPLE_CPU) new_other_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_STREAM_ID) new_other_event_id_pos++;
+  }
+
+  if (sample_event_id_pos_ == EventIdPosition::Uninitialized) {
+    sample_event_id_pos_ = new_sample_event_id_pos;
+  } else {
+    CHECK_EQ(new_sample_event_id_pos, sample_event_id_pos_)
+        << "Event ids must be in a consistent positition";
+  }
+  if (other_event_id_pos_ == EventIdPosition::Uninitialized) {
+    other_event_id_pos_ = new_other_event_id_pos;
+  } else {
+    CHECK_EQ(new_other_event_id_pos, other_event_id_pos_)
+        << "Event ids must be in a consistent positition";
+  }
+}
+
+bool PerfSerializer::SampleIdAll() const {
+  if (sample_info_reader_map_.empty()) {
+    return false;
+  }
+  return sample_info_reader_map_.begin()->second->event_attr().sample_id_all;
+}
+
+const SampleInfoReader* PerfSerializer::GetSampleInfoReaderForEvent(
+    const event_t& event) const {
+  // Where is the event id?
+  ssize_t event_id_pos = EventIdPosition::Uninitialized;
+  if (event.header.type == PERF_RECORD_SAMPLE) {
+    event_id_pos = sample_event_id_pos_;
+  } else if (SampleIdAll()) {
+    event_id_pos = other_event_id_pos_;
+  } else {
+    event_id_pos = EventIdPosition::NotPresent;
+  }
+
+  // What is the event id?
+  u64 event_id;
+  switch (event_id_pos) {
+  case EventIdPosition::Uninitialized:
+    LOG(FATAL) << "Position of the event id was not initialized!";
+    return nullptr;
+  case EventIdPosition::NotPresent:
+    event_id = 0;
+    break;
+  default:
+    if (event.header.type == PERF_RECORD_SAMPLE) {
+      event_id = event.sample.array[event_id_pos];
+    } else {
+      // Pretend this is a sample event--ie, an array of u64. Find the length
+      // of the array. The sample id is at the end of the array, and
+      // event_id_pos (aka other_event_id_pos_) counts from the end.
+      size_t event_end_pos =
+          (event.header.size - sizeof(event.header)) / sizeof(u64);
+      event_id = event.sample.array[event_end_pos - event_id_pos];
+    }
+    break;
+  }
+  return GetSampleInfoReaderForId(event_id);
+}
+
+const SampleInfoReader* PerfSerializer::GetSampleInfoReaderForId(
+    uint64_t id) const {
+  if (id) {
+    auto iter = sample_info_reader_map_.find(id);
+    if (iter == sample_info_reader_map_.end())
+      return nullptr;
+    return iter->second.get();
+  }
+
+  if (sample_info_reader_map_.empty())
+    return nullptr;
+  return sample_info_reader_map_.begin()->second.get();
+}
+
+bool PerfSerializer::ReadPerfSampleInfoAndType(const event_t& event,
+                                               perf_sample* sample_info,
+                                               uint64_t* sample_type) const {
+  const SampleInfoReader* reader = GetSampleInfoReaderForEvent(event);
+  if (!reader) {
+    LOG(ERROR) << "No SampleInfoReader available";
+    return false;
+  }
+
+  if (!reader->ReadPerfSampleInfo(event, sample_info))
+    return false;
+  *sample_type = reader->event_attr().sample_type;
+  return true;
 }
 
 }  // namespace quipper

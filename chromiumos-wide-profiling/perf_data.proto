@@ -182,7 +182,7 @@ message PerfDataProto {
 
   // This message contains information about a perf sample itself, as opposed to
   // a perf event captured by a sample.
-  // Next tag: 6
+  // Next tag: 7
   message SampleInfo {
     // Process ID / thread ID from which this sample was taken.
     optional uint32 pid = 1;
@@ -198,6 +198,9 @@ message PerfDataProto {
 
     // The CPU on which this sample was taken.
     optional uint32 cpu = 5;
+
+    // The stream id of the sample.
+    optional uint64 stream_id = 6;
   }
 
   // Next tag: 7

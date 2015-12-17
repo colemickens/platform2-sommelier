@@ -20,28 +20,13 @@
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
 #include "chromiumos-wide-profiling/test_perf_data.h"
 #include "chromiumos-wide-profiling/test_utils.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 
-namespace {
-
-void CheckChronologicalOrderOfEvents(const PerfReader& reader,
-                                     const std::vector<ParsedEvent*>& events) {
-  // Here a valid PerfReader is needed to read the sample info because
-  // the attr for an event needs to be looked up in ReadPerfSampleInfo()
-  // to determine which sample info fields are present.
-  struct perf_sample sample_info;
-  CHECK(reader.ReadPerfSampleInfo(*events[0]->raw_event, &sample_info));
-  uint64_t prev_time = sample_info.time;
-  for (unsigned int i = 1; i < events.size(); ++i) {
-    struct perf_sample sample_info;
-    CHECK(reader.ReadPerfSampleInfo(*events[i]->raw_event, &sample_info));
-    CHECK_LE(prev_time, sample_info.time);
-    prev_time = sample_info.time;
-  }
-}
-
-}  // namespace
+using SampleEvent = PerfDataProto_SampleEvent;
+using SampleInfo = PerfDataProto_SampleInfo;
+using PerfEvent = PerfDataProto_PerfEvent;
 
 namespace {
 
@@ -51,6 +36,18 @@ const char* kExpectedFilenameSubstrings[] = {
   "kernel",
   "libc",
 };
+
+void CheckChronologicalOrderOfEvents(const PerfReader& reader) {
+  if (reader.events().empty())
+    return;
+  const auto& events = reader.events();
+  uint64_t prev_time = GetTimeFromPerfEvent(events.Get(0));
+  for (int i = 1; i < events.size(); ++i) {
+    uint64_t new_time = GetTimeFromPerfEvent(events.Get(i));
+    CHECK_LE(prev_time, new_time);
+    prev_time = new_time;
+  }
+}
 
 void CheckNoDuplicates(const std::vector<string>& list) {
   std::set<string> list_as_set(list.begin(), list.end());
@@ -104,9 +101,11 @@ void CheckFilenameAndBuildIDMethods(PerfReader* reader,
 
   // Make sure all MMAP filenames are in the set.
   for (const auto& event : reader->events()) {
-    if (event->header.type == PERF_RECORD_MMAP) {
-      EXPECT_TRUE(filename_set.find(event->mmap.filename) != filename_set.end())
-          << event->mmap.filename << " is not present in the filename set";
+    if (event.header().type() == PERF_RECORD_MMAP) {
+      EXPECT_TRUE(filename_set.find(event.mmap_event().filename()) !=
+                                    filename_set.end())
+          << event.mmap_event().filename()
+          << " is not present in the filename set";
     }
   }
 
@@ -229,17 +228,19 @@ TEST(PerfParserTest, NormalPerfData) {
     PerfReader reader;
     ASSERT_TRUE(reader.ReadFile(input_perf_data));
 
-    PerfParser parser(&reader, GetTestOptions());
-    ASSERT_TRUE(parser.ParseRawEvents());
-
     // Test the PerfReader stage of the processing before continuing.
     string pr_output_perf_data = output_path + test_file + ".pr.out";
     ASSERT_TRUE(reader.WriteFile(pr_output_perf_data));
     EXPECT_TRUE(CheckPerfDataAgainstBaseline(pr_output_perf_data));
 
-//    parser.ParseRawEvents(&reader);
-    CHECK_GT(parser.GetEventsSortedByTime().size(), 0U);
-    CheckChronologicalOrderOfEvents(reader, parser.GetEventsSortedByTime());
+    // Run it through PerfParser.
+    PerfParserOptions options = GetTestOptions();
+    options.sort_events_by_time = true;
+    PerfParser parser(&reader, options);
+    ASSERT_TRUE(parser.ParseRawEvents());
+
+    CHECK_GT(parser.parsed_events().size(), 0U);
+    CheckChronologicalOrderOfEvents(reader);
 
     // Check perf event stats.
     const PerfEventStats& stats = parser.stats();
@@ -255,7 +256,7 @@ TEST(PerfParserTest, NormalPerfData) {
     EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, parsed_perf_data));
 
     // Run the event parsing again, this time with remapping.
-    PerfParserOptions options;
+    options = PerfParserOptions();
     options.do_remap = true;
     parser.set_options(options);
     ASSERT_TRUE(parser.ParseRawEvents());
@@ -285,6 +286,11 @@ TEST(PerfParserTest, NormalPerfData) {
     EXPECT_GT(remap_stats.num_sample_events_mapped, 0U);
     EXPECT_TRUE(remap_stats.did_remap);
 
+    ASSERT_EQ(stats.num_sample_events, remap_stats.num_sample_events);
+    ASSERT_EQ(stats.num_mmap_events, remap_stats.num_mmap_events);
+    ASSERT_EQ(stats.num_sample_events_mapped,
+              remap_stats.num_sample_events_mapped);
+
     string remapped_perf_data2 = output_path + test_file + ".parse.remap2.out";
     ASSERT_TRUE(remap_reader.WriteFile(remapped_perf_data2));
 
@@ -292,6 +298,7 @@ TEST(PerfParserTest, NormalPerfData) {
     // ParsedEvents.
     const auto& parser_events = parser.parsed_events();
     const auto& remap_parser_events = remap_parser.parsed_events();
+    EXPECT_EQ(parser_events.size(), remap_parser_events.size());
     EXPECT_TRUE(std::equal(parser_events.begin(), parser_events.end(),
                            remap_parser_events.begin()));
     EXPECT_TRUE(
@@ -324,6 +331,7 @@ TEST(PerfParserTest, PipedModePerfData) {
 
     PerfParserOptions options = GetTestOptions();
     options.do_remap = true;
+    options.sort_events_by_time = true;
     PerfParser parser(&reader, options);
     ASSERT_TRUE(parser.ParseRawEvents());
 
@@ -429,77 +437,77 @@ TEST(PerfParserTest, MapsSampleEventIp) {
 
   // MMAPs
 
-  EXPECT_EQ(PERF_RECORD_MMAP, events[0].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/foo.so", string(events[0].raw_event->mmap.filename));
-  EXPECT_EQ(0x0000, events[0].raw_event->mmap.start);
-  EXPECT_EQ(0x1000, events[0].raw_event->mmap.len);
-  EXPECT_EQ(0, events[0].raw_event->mmap.pgoff);
+  EXPECT_EQ(PERF_RECORD_MMAP, events[0].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/foo.so", events[0].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x0000, events[0].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x1000, events[0].event_ptr->mmap_event().len());
+  EXPECT_EQ(0, events[0].event_ptr->mmap_event().pgoff());
 
-  EXPECT_EQ(PERF_RECORD_MMAP, events[1].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/bar.so", string(events[1].raw_event->mmap.filename));
-  EXPECT_EQ(0x1000, events[1].raw_event->mmap.start);
-  EXPECT_EQ(0x2000, events[1].raw_event->mmap.len);
-  EXPECT_EQ(0x2000, events[1].raw_event->mmap.pgoff);
+  EXPECT_EQ(PERF_RECORD_MMAP, events[1].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/bar.so", events[1].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x1000, events[1].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x2000, events[1].event_ptr->mmap_event().len());
+  EXPECT_EQ(0x2000, events[1].event_ptr->mmap_event().pgoff());
 
-  EXPECT_EQ(PERF_RECORD_MMAP2, events[2].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/baz.so", string(events[2].raw_event->mmap2.filename));
-  EXPECT_EQ(0x0000, events[2].raw_event->mmap2.start);
-  EXPECT_EQ(0x2000, events[2].raw_event->mmap2.len);
-  EXPECT_EQ(0, events[2].raw_event->mmap2.pgoff);
+  EXPECT_EQ(PERF_RECORD_MMAP2, events[2].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/baz.so", events[2].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x0000, events[2].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x2000, events[2].event_ptr->mmap_event().len());
+  EXPECT_EQ(0, events[2].event_ptr->mmap_event().pgoff());
 
-  EXPECT_EQ(PERF_RECORD_MMAP2, events[3].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/xyz.so", string(events[3].raw_event->mmap2.filename));
-  EXPECT_EQ(0x2000, events[3].raw_event->mmap2.start);
-  EXPECT_EQ(0x1000, events[3].raw_event->mmap2.len);
-  EXPECT_EQ(0x3000, events[3].raw_event->mmap2.pgoff);
+  EXPECT_EQ(PERF_RECORD_MMAP2, events[3].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/xyz.so", events[3].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x2000, events[3].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x1000, events[3].event_ptr->mmap_event().len());
+  EXPECT_EQ(0x3000, events[3].event_ptr->mmap_event().pgoff());
 
   // SAMPLEs
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/foo.so", events[4].dso_and_offset.dso_name());
   EXPECT_EQ(0x0, events[4].dso_and_offset.offset());
-  EXPECT_EQ(0x0, events[4].raw_event->sample.array[0]);
+  EXPECT_EQ(0x0, events[4].event_ptr->sample_event().ip());
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/foo.so", events[5].dso_and_offset.dso_name());
   EXPECT_EQ(0xa, events[5].dso_and_offset.offset());
-  EXPECT_EQ(0xa, events[5].raw_event->sample.array[0]);
+  EXPECT_EQ(0xa, events[5].event_ptr->sample_event().ip());
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[6].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[6].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/bar.so", events[6].dso_and_offset.dso_name());
   EXPECT_EQ(0x2fff, events[6].dso_and_offset.offset());
-  EXPECT_EQ(0x1fff, events[6].raw_event->sample.array[0]);
+  EXPECT_EQ(0x1fff, events[6].event_ptr->sample_event().ip());
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[7].raw_event->header.type);
-  EXPECT_EQ(0x00000000001c2bad, events[7].raw_event->sample.array[0]);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[7].event_ptr->header().type());
+  EXPECT_EQ(0x00000000001c2bad, events[7].event_ptr->sample_event().ip());
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[8].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[8].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/baz.so", events[8].dso_and_offset.dso_name());
   EXPECT_EQ(0xa, events[8].dso_and_offset.offset());
-  EXPECT_EQ(0xa, events[8].raw_event->sample.array[0]);
+  EXPECT_EQ(0xa, events[8].event_ptr->sample_event().ip());
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[9].raw_event->header.type);
-  EXPECT_EQ(0x00000000002c5bad, events[9].raw_event->sample.array[0]);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[9].event_ptr->header().type());
+  EXPECT_EQ(0x00000000002c5bad, events[9].event_ptr->sample_event().ip());
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[10].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[10].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/xyz.so", events[10].dso_and_offset.dso_name());
   EXPECT_EQ(0x300b, events[10].dso_and_offset.offset());
-  EXPECT_EQ(0x200b, events[10].raw_event->sample.array[0]);
+  EXPECT_EQ(0x200b, events[10].event_ptr->sample_event().ip());
 
   // not mapped yet:
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[11].raw_event->header.type);
-  EXPECT_EQ(0x00000000002c400b, events[11].raw_event->sample.array[0]);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[11].event_ptr->header().type());
+  EXPECT_EQ(0x00000000002c400b, events[11].event_ptr->sample_event().ip());
 
-  EXPECT_EQ(PERF_RECORD_MMAP2, events[12].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/new.so", string(events[12].raw_event->mmap2.filename));
-  EXPECT_EQ(0x3000, events[12].raw_event->mmap2.start);
-  EXPECT_EQ(0x1000, events[12].raw_event->mmap2.len);
-  EXPECT_EQ(0, events[12].raw_event->mmap2.pgoff);
+  EXPECT_EQ(PERF_RECORD_MMAP2, events[12].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/new.so", events[12].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x3000, events[12].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x1000, events[12].event_ptr->mmap_event().len());
+  EXPECT_EQ(0, events[12].event_ptr->mmap_event().pgoff());
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[13].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[13].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/new.so", events[13].dso_and_offset.dso_name());
   EXPECT_EQ(0xb, events[13].dso_and_offset.offset());
-  EXPECT_EQ(0x300b, events[13].raw_event->sample.array[0]);
+  EXPECT_EQ(0x300b, events[13].event_ptr->sample_event().ip());
 }
 
 TEST(PerfParserTest, DsoInfoHasBuildId) {
@@ -631,6 +639,7 @@ TEST(PerfParserTest, HandlesFinishedRoundEventsAndSortsByTime) {
 
   PerfParserOptions options;
   options.sample_mapping_percentage_threshold = 0;
+  options.sort_events_by_time = true;
   PerfParser parser(&reader, options);
   EXPECT_TRUE(parser.ParseRawEvents());
 
@@ -641,39 +650,15 @@ TEST(PerfParserTest, HandlesFinishedRoundEventsAndSortsByTime) {
   const std::vector<ParsedEvent>& events = parser.parsed_events();
   ASSERT_EQ(5, events.size());
 
-  struct perf_sample sample;
-
-  EXPECT_EQ(PERF_RECORD_MMAP, events[0].raw_event->header.type);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[1].raw_event->header.type);
-  reader.ReadPerfSampleInfo(*events[1].raw_event, &sample);
-  EXPECT_EQ(12300020, sample.time);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].raw_event->header.type);
-  reader.ReadPerfSampleInfo(*events[2].raw_event, &sample);
-  EXPECT_EQ(12300030, sample.time);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].raw_event->header.type);
-  reader.ReadPerfSampleInfo(*events[3].raw_event, &sample);
-  EXPECT_EQ(12300050, sample.time);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].raw_event->header.type);
-  reader.ReadPerfSampleInfo(*events[4].raw_event, &sample);
-  EXPECT_EQ(12300040, sample.time);
-
-  const std::vector<ParsedEvent*>& sorted_events =
-      parser.GetEventsSortedByTime();
-  ASSERT_EQ(5, sorted_events.size());
-
-  EXPECT_EQ(PERF_RECORD_MMAP, sorted_events[0]->raw_event->header.type);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[1]->raw_event->header.type);
-  reader.ReadPerfSampleInfo(*sorted_events[1]->raw_event, &sample);
-  EXPECT_EQ(12300020, sample.time);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[2]->raw_event->header.type);
-  reader.ReadPerfSampleInfo(*sorted_events[2]->raw_event, &sample);
-  EXPECT_EQ(12300030, sample.time);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[3]->raw_event->header.type);
-  reader.ReadPerfSampleInfo(*sorted_events[3]->raw_event, &sample);
-  EXPECT_EQ(12300040, sample.time);
-  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[4]->raw_event->header.type);
-  reader.ReadPerfSampleInfo(*sorted_events[4]->raw_event, &sample);
-  EXPECT_EQ(12300050, sample.time);
+  EXPECT_EQ(PERF_RECORD_MMAP, events[0].event_ptr->header().type());
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[1].event_ptr->header().type());
+  EXPECT_EQ(12300020, events[1].event_ptr->sample_event().sample_time_ns());
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].event_ptr->header().type());
+  EXPECT_EQ(12300030, events[2].event_ptr->sample_event().sample_time_ns());
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].event_ptr->header().type());
+  EXPECT_EQ(12300040, events[3].event_ptr->sample_event().sample_time_ns());
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].event_ptr->header().type());
+  EXPECT_EQ(12300050, events[4].event_ptr->sample_event().sample_time_ns());
 }
 
 TEST(PerfParserTest, MmapCoversEntireAddressSpace) {
@@ -735,29 +720,30 @@ TEST(PerfParserTest, MmapCoversEntireAddressSpace) {
   const std::vector<ParsedEvent>& events = parser.parsed_events();
   ASSERT_EQ(6, events.size());
 
-  EXPECT_EQ(PERF_RECORD_MMAP, events[0].raw_event->header.type);
-  EXPECT_EQ(string("[kernel.kallsyms]_text"),
-            events[0].raw_event->mmap.filename);
-  EXPECT_EQ(PERF_RECORD_MMAP, events[1].raw_event->header.type);
-  EXPECT_EQ(string("/usr/lib/libfoo.so"), events[1].raw_event->mmap.filename);
+  EXPECT_EQ(PERF_RECORD_MMAP, events[0].event_ptr->header().type());
+  EXPECT_EQ("[kernel.kallsyms]_text",
+            events[0].event_ptr->mmap_event().filename());
+  EXPECT_EQ(PERF_RECORD_MMAP, events[1].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/libfoo.so",
+            events[1].event_ptr->mmap_event().filename());
 
   // Sample from library.
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/libfoo.so", events[2].dso_and_offset.dso_name());
   EXPECT_EQ(0x123456, events[2].dso_and_offset.offset());
 
   // Sample from kernel.
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].event_ptr->header().type());
   EXPECT_EQ("[kernel.kallsyms]_text", events[3].dso_and_offset.dso_name());
   EXPECT_EQ(0x8000819e, events[3].dso_and_offset.offset());
 
   // Sample from library.
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].event_ptr->header().type());
   EXPECT_EQ("/usr/lib/libfoo.so", events[4].dso_and_offset.dso_name());
   EXPECT_EQ(0x1deadbe, events[4].dso_and_offset.offset());
 
   // Sample from kernel.
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].event_ptr->header().type());
   EXPECT_EQ("[kernel.kallsyms]_text", events[5].dso_and_offset.dso_name());
   EXPECT_EQ(0xffffffff8100cafe, events[5].dso_and_offset.offset());
 }

@@ -18,7 +18,6 @@
 #include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/perf_protobuf_io.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
-#include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
@@ -67,12 +66,7 @@ bool ReadInput(const FormatAndFile& input,
     if (!TextFormat::ParseFromString(text, &perf_data_proto))
       return false;
 
-    PerfParser parser(reader, *options);
-
-    PerfSerializer serializer;
-    if (!serializer.Deserialize(perf_data_proto, reader, &parser))
-      return false;
-    return true;
+    return reader->Deserialize(perf_data_proto);
   }
 
   LOG(ERROR) << "Unimplemented read format: " << input.format;
@@ -95,9 +89,12 @@ bool WriteOutput(const FormatAndFile& output,
     if (!parser.ParseRawEvents())
       return false;
 
-    PerfSerializer serializer;
     PerfDataProto perf_data_proto;
-    serializer.Serialize(*reader, &parser, &perf_data_proto);
+    reader->Serialize(&perf_data_proto);
+
+    // Serialize the parser stats as well.
+    PerfSerializer::SerializeParserStats(parser.stats(), &perf_data_proto);
+
     // Reset the timestamp field since it causes reproducability issues when
     // testing.
     perf_data_proto.set_timestamp_sec(0);

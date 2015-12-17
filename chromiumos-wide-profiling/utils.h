@@ -22,6 +22,9 @@
 
 namespace quipper {
 
+class PerfDataProto_PerfEvent;
+class PerfDataProto_SampleInfo;
+
 struct FreeDeleter {
   inline void operator()(void* pointer) {
     free(pointer);
@@ -132,6 +135,14 @@ void TrimWhitespace(string* str);
 void SplitString(const string& str,
                  char delimiter,
                  std::vector<string>* tokens);
+
+// If |event| is not of type PERF_RECORD_SAMPLE, returns the SampleInfo field
+// within it. Otherwise returns nullptr.
+const PerfDataProto_SampleInfo* GetSampleInfoForEvent(
+    const PerfDataProto_PerfEvent& event);
+
+// Returns the correct |sample_time_ns| field of a PerfEvent.
+uint64_t GetTimeFromPerfEvent(const PerfDataProto_PerfEvent& event);
 
 }  // namespace quipper
 

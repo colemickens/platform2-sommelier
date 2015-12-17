@@ -15,8 +15,10 @@
 
 #include "base/macros.h"
 
+#include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_event.h"
+#include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/sample_info_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -78,6 +80,11 @@ class PerfReader {
   PerfReader();
   ~PerfReader();
 
+  // Dump contents to a protobuf.
+  bool Serialize(PerfDataProto* perf_data_proto) const;
+  // Read in contents from a protobuf.
+  bool Deserialize(const PerfDataProto& perf_data_proto);
+
   // Makes |build_id| fit the perf format, by either truncating it or adding
   // zeros to the end so that it has length kBuildIDStringLength.
   static void PerfizeBuildIDString(string* build_id);
@@ -127,38 +134,9 @@ class PerfReader {
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
 
-  // Do non-SAMPLE events have a sample_id? Reflects the value of
-  // sample_id_all in the first attr, which should be consistent accross all
-  // attrs.
-  bool SampleIdAll() const;
-
-  // Find the event id in the event, and lookup the corresponding attr.
-  // Returns nullptr if the attr cannot be identified.
-  const struct perf_event_attr* GetAttrForEvent(const event_t* event) const;
-  const struct perf_event_attr* GetAttrForSample(
-      const struct perf_sample* sample, const event_t *event) const;
-  const struct perf_event_attr* GetAttrForEventId(u64 event_id) const;
-
-  // If a program using PerfReader calls events(), it could work with the
-  // resulting events by importing kernel/perf_internals.h.  This would also
-  // apply to other forms of data (attributes, event types, build ids, etc.)
-  // However, there is no easy way to work with the sample info within events.
-  // The following two methods have been added for this purpose.
-
-  // Extracts from a perf event |event| info about the perf sample that
-  // contains the event.  Stores info in |sample|.
-  bool ReadPerfSampleInfo(const event_t& event,
-                          struct perf_sample* sample) const;
-  // Writes |sample| info back to a perf event |event|.
-  bool WritePerfSampleInfo(const perf_sample& sample,
-                           event_t* event) const;
-
   // Check if |attrs_| has been given name strings. The raw attr data may not be
   // read from the same location as the name strings in a perf data file.
   bool HaveEventNames() const;
-
-  // Update internal fields when the PerfReader gets a new set of |attrs_|.
-  void UpdateOnNewAttrs();
 
   // Accessors and mutators.
 
@@ -169,11 +147,15 @@ class PerfReader {
     return &attrs_;
   }
 
-  const std::vector<malloced_unique_ptr<event_t>>& events() const {
-    return events_;
+  const RepeatedPtrField<PerfDataProto_PerfEvent>& events() const {
+    return proto_.events();
   }
-  std::vector<malloced_unique_ptr<event_t>>* mutable_events() {
-    return &events_;
+  // WARNING: Modifications to the protobuf events may change the amount of
+  // space required to store the corresponding raw event. If that happens, the
+  // caller is responsible for correctly updating the size in the event header.
+  // TODO(sque): Remove this restriction.
+  RepeatedPtrField<PerfDataProto_PerfEvent>* mutable_events() {
+    return proto_.mutable_events();
   }
 
   const std::vector<malloced_unique_ptr<build_id_event>>&
@@ -234,18 +216,11 @@ class PerfReader {
   }
 
  private:
-  // Special values for the event/other_event_id_pos_ fields.
-  enum EventIdPosition {
-    Uninitialized = -2,
-    NotPresent = -1,
-  };
-
   bool ReadHeader(DataReader* data);
   bool ReadAttrsSection(DataReader* data);
   bool ReadAttr(DataReader* data);
   bool ReadEventAttr(DataReader* data, perf_event_attr* attr);
   bool ReadUniqueIDs(DataReader* data, size_t num_ids, std::vector<u64>* ids);
-  void UpdateEventIdPositions(const perf_event_attr& attr);
 
   bool ReadEventTypesSection(DataReader* data);
   // if event_size == 0, then not in an event.
@@ -332,14 +307,20 @@ class PerfReader {
   // This method does not change |build_id_events_|.
   bool LocalizeMMapFilenames(const std::map<string, string>& filename_map);
 
+  // Update internal fields when the PerfReader gets a new attr.
+  void UpdateOnNewAttr(const PerfFileAttr& attr);
+
   // The file header is either a normal header or a piped header.
   union {
     struct perf_file_header header_;
     struct perf_pipe_file_header piped_header_;
   };
 
+  // Store the perf data as a protobuf.
+  // TODO(sque): Store all fields in here, not just events.
+  PerfDataProto proto_;
+
   std::vector<PerfFileAttr> attrs_;
-  std::vector<malloced_unique_ptr<event_t>> events_;
   std::vector<malloced_unique_ptr<build_id_event>> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;
@@ -349,19 +330,17 @@ class PerfReader {
   std::vector<char> tracing_data_;
   uint64_t metadata_mask_;
 
+  // Whether the incoming data is from a machine with a different endianness. We
+  // got rid of this flag in the past but now we need to store this so it can be
+  // passed to |serializer_|.
+  bool is_cross_endian_;
+
+  // For serializing individual events.
+  PerfSerializer serializer_;
+
   // When writing to a new perf data file, this is used to hold the generated
   // file header, which may differ from the input file header, if any.
   struct perf_file_header out_header_;
-
-  // For SAMPLE events, the position of the sample id,
-  // Or EventIdPosition::NotPresent if neither PERF_SAMPLE_ID(ENTIFIER) are set.
-  // (Corresponds to evsel->id_pos in perf)
-  ssize_t sample_event_id_pos_ = EventIdPosition::Uninitialized;
-  // For non-SAMPLE events, the position of the sample id, counting backwards
-  // from the end of the event.
-  // Or EventIdPosition::NotPresent if neither PERF_SAMPLE_ID(ENTIFIER) are set.
-  // (Corresponds to evsel->is_pos in perf)
-  ssize_t other_event_id_pos_ = EventIdPosition::Uninitialized;
 
   DISALLOW_COPY_AND_ASSIGN(PerfReader);
 };

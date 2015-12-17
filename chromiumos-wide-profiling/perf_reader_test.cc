@@ -23,6 +23,10 @@
 
 namespace quipper {
 
+using PerfEvent = PerfDataProto_PerfEvent;
+using SampleEvent = PerfDataProto_SampleEvent;
+using SampleInfo = PerfDataProto_SampleInfo;
+
 TEST(PerfReaderTest, PipedData_IncompleteEventHeader) {
   std::stringstream input;
 
@@ -59,7 +63,7 @@ TEST(PerfReaderTest, PipedData_IncompleteEventHeader) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
@@ -116,7 +120,7 @@ TEST(PerfReaderTest, PipedData_IncompleteEventData) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
@@ -232,7 +236,7 @@ TEST(PerfReaderTest, ReadsAndWritesTraceMetadata) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
   EXPECT_EQ(tracing_metadata.data().value(), pr.tracing_data());
 
   // Write it out and read it in again, it should still be good:
@@ -270,7 +274,7 @@ TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
   EXPECT_EQ(trace_metadata, pr.tracing_data());
 
   // Write it out and read it in again, tracing_data() should still be correct.
@@ -321,7 +325,7 @@ TEST(PerfReaderTest, BranchStackMetadataIndexHasZeroSize) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Write it out again.
   // Initialize the buffer to a non-zero sentinel value so that the bytes
@@ -411,12 +415,20 @@ TEST(PerfReaderTest, CorrectlyReadsPerfEventAttrSize) {
       .size = sizeof(perf_event_header) + 5*sizeof(u64),
     }
   };
+  // We don't care about the contents of the SAMPLE events, except for the ID,
+  // which is needed to determine the attr for reading sample info.
+  const u64 sample_event_array[] = {
+    0,                                     // IP
+    0,                                     // TID
+    0,                                     // TIME
+    308,                                   // ID
+    0,                                     // CPU
+  };
 
   for (int i = 0; i < 20; i++) {
     input.write(reinterpret_cast<const char*>(&sample), sizeof(sample));
-    u64 qword = 0;
-    for (int j = 0; j < 5; j++)
-      input.write(reinterpret_cast<const char*>(&qword), sizeof(qword));
+    input.write(reinterpret_cast<const char*>(sample_event_array),
+                sizeof(sample_event_array));
   }
 
   //
@@ -424,7 +436,7 @@ TEST(PerfReaderTest, CorrectlyReadsPerfEventAttrSize) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
   ASSERT_EQ(pr.attrs().size(), 1);
   const PerfFileAttr& actual_attr = pr.attrs()[0];
   ASSERT_EQ(8, actual_attr.ids.size());
@@ -514,7 +526,7 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
   const u64 mmap_sample_id[] = {
     PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
     1415911367*1000000000ULL,              // TIME
-    0,                                     // ID
+    401,                                   // ID
     2,                                     // STREAM_ID
     9,                                     // CPU
   };
@@ -533,43 +545,47 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
   // Parse input.
   //
 
-  struct perf_sample sample;
-
   PerfReader pr1;
-  EXPECT_TRUE(pr1.ReadFromString(input.str()));
+  ASSERT_TRUE(pr1.ReadFromString(input.str()));
   // Write it out and read it in again, the two should have the same data.
   std::vector<char> output_perf_data;
-  EXPECT_TRUE(pr1.WriteToVector(&output_perf_data));
+  ASSERT_TRUE(pr1.WriteToVector(&output_perf_data));
   PerfReader pr2;
-  EXPECT_TRUE(pr2.ReadFromVector(output_perf_data));
+  ASSERT_TRUE(pr2.ReadFromVector(output_perf_data));
 
   // Test both versions:
   for (PerfReader* pr : {&pr1, &pr2}) {
     // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
     EXPECT_EQ(2, pr->events().size());
 
-    const event_t* sample_event = pr->events()[0].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
-    EXPECT_TRUE(pr->ReadPerfSampleInfo(*sample_event, &sample));
-    EXPECT_EQ(0xffffffff01234567, sample.ip);
-    EXPECT_EQ(0x68d, sample.pid);
-    EXPECT_EQ(0x68e, sample.tid);
-    EXPECT_EQ(1415837014*1000000000ULL, sample.time);
-    EXPECT_EQ(0x00007f999c38d15a, sample.addr);
-    EXPECT_EQ(401, sample.id);
-    EXPECT_EQ(1, sample.stream_id);
-    EXPECT_EQ(8, sample.cpu);
-    EXPECT_EQ(10001, sample.period);
+    {
+      const PerfEvent& event = pr->events().Get(0);
+      EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
 
-    const event_t* mmap_event = pr->events()[1].get();
-    EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
-    EXPECT_TRUE(pr->ReadPerfSampleInfo(*mmap_event, &sample));
-    EXPECT_EQ(0x68d, sample.pid);
-    EXPECT_EQ(0x68e, sample.tid);
-    EXPECT_EQ(1415911367*1000000000ULL, sample.time);
-    EXPECT_EQ(0, sample.id);
-    EXPECT_EQ(2, sample.stream_id);
-    EXPECT_EQ(9, sample.cpu);
+      const SampleEvent& sample = event.sample_event();
+      EXPECT_EQ(0xffffffff01234567, sample.ip());
+      EXPECT_EQ(0x68d, sample.pid());
+      EXPECT_EQ(0x68e, sample.tid());
+      EXPECT_EQ(1415837014*1000000000ULL, sample.sample_time_ns());
+      EXPECT_EQ(0x00007f999c38d15a, sample.addr());
+      EXPECT_EQ(401, sample.id());
+      EXPECT_EQ(1, sample.stream_id());
+      EXPECT_EQ(8, sample.cpu());
+      EXPECT_EQ(10001, sample.period());
+    }
+
+    {
+      const PerfEvent& event = pr->events().Get(1);
+      EXPECT_EQ(PERF_RECORD_MMAP, event.header().type());
+
+      const SampleInfo& sample = event.mmap_event().sample_info();
+      EXPECT_EQ(0x68d, sample.pid());
+      EXPECT_EQ(0x68e, sample.tid());
+      EXPECT_EQ(1415911367*1000000000ULL, sample.sample_time_ns());
+      EXPECT_EQ(401, sample.id());
+      EXPECT_EQ(2, sample.stream_id());
+      EXPECT_EQ(9, sample.cpu());
+    }
   }
 }
 
@@ -652,30 +668,26 @@ TEST(PerfReaderTest, ReadsAndWritesPerfSampleIdentifier) {
   // Parse input.
   //
 
-  struct perf_sample sample;
-
   PerfReader pr1;
-  EXPECT_TRUE(pr1.ReadFromString(input.str()));
+  ASSERT_TRUE(pr1.ReadFromString(input.str()));
   // Write it out and read it in again, the two should have the same data.
   std::vector<char> output_perf_data;
-  EXPECT_TRUE(pr1.WriteToVector(&output_perf_data));
+  ASSERT_TRUE(pr1.WriteToVector(&output_perf_data));
   PerfReader pr2;
-  EXPECT_TRUE(pr2.ReadFromVector(output_perf_data));
+  ASSERT_TRUE(pr2.ReadFromVector(output_perf_data));
 
   // Test both versions:
   for (PerfReader* pr : {&pr1, &pr2}) {
     // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
     EXPECT_EQ(2, pr->events().size());
 
-    const event_t* sample_event = pr->events()[0].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
-    EXPECT_TRUE(pr->ReadPerfSampleInfo(*sample_event, &sample));
-    EXPECT_EQ(0xdeadbeefULL, sample.id);
+    const PerfEvent& ip_event = pr->events().Get(0);
+    EXPECT_EQ(PERF_RECORD_SAMPLE, ip_event.header().type());
+    EXPECT_EQ(0xdeadbeefULL, ip_event.sample_event().id());
 
-    const event_t* mmap_event = pr->events()[1].get();
-    EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
-    EXPECT_TRUE(pr->ReadPerfSampleInfo(*mmap_event, &sample));
-    EXPECT_EQ(0xf00dbaadULL, sample.id);
+    const PerfEvent& mmap_event = pr->events().Get(1);
+    EXPECT_EQ(PERF_RECORD_MMAP, mmap_event.header().type());
+    EXPECT_EQ(0xf00dbaadULL, mmap_event.mmap_event().sample_info().id());
   }
 }
 
@@ -707,7 +719,7 @@ TEST(PerfReaderTest, ReadsAndWritesMmap2Events) {
     .pid = 0x68d, .tid = 0x68d,
     .start = 0x1d000,
     .len = 0x1000,
-    .pgoff = 0,
+    .pgoff = 0x2000,
     .maj = 6,
     .min = 7,
     .ino = 8,
@@ -731,31 +743,31 @@ TEST(PerfReaderTest, ReadsAndWritesMmap2Events) {
   //
 
   PerfReader pr1;
-  EXPECT_TRUE(pr1.ReadFromString(input.str()));
+  ASSERT_TRUE(pr1.ReadFromString(input.str()));
   // Write it out and read it in again, the two should have the same data.
   std::vector<char> output_perf_data;
-  EXPECT_TRUE(pr1.WriteToVector(&output_perf_data));
+  ASSERT_TRUE(pr1.WriteToVector(&output_perf_data));
   PerfReader pr2;
-  EXPECT_TRUE(pr2.ReadFromVector(output_perf_data));
+  ASSERT_TRUE(pr2.ReadFromVector(output_perf_data));
 
   // Test both versions:
   for (PerfReader* pr : {&pr1, &pr2}) {
     // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
     EXPECT_EQ(1, pr->events().size());
 
-    const event_t* mmap2_event = pr->events()[0].get();
-    EXPECT_EQ(PERF_RECORD_MMAP2, mmap2_event->header.type);
-    EXPECT_EQ(0x68d, mmap2_event->mmap2.pid);
-    EXPECT_EQ(0x68d, mmap2_event->mmap2.tid);
-    EXPECT_EQ(0x1d000, mmap2_event->mmap2.start);
-    EXPECT_EQ(0x1000, mmap2_event->mmap2.len);
-    EXPECT_EQ(0, mmap2_event->mmap2.pgoff);
-    EXPECT_EQ(6, mmap2_event->mmap2.maj);
-    EXPECT_EQ(7, mmap2_event->mmap2.min);
-    EXPECT_EQ(8, mmap2_event->mmap2.ino);
-    EXPECT_EQ(9, mmap2_event->mmap2.ino_generation);
-    EXPECT_EQ(1|2, mmap2_event->mmap2.prot);
-    EXPECT_EQ(2, mmap2_event->mmap2.flags);
+    const PerfEvent& event = pr->events().Get(0);
+    EXPECT_EQ(PERF_RECORD_MMAP2, event.header().type());
+    EXPECT_EQ(0x68d, event.mmap_event().pid());
+    EXPECT_EQ(0x68d, event.mmap_event().tid());
+    EXPECT_EQ(0x1d000, event.mmap_event().start());
+    EXPECT_EQ(0x1000, event.mmap_event().len());
+    EXPECT_EQ(0x2000, event.mmap_event().pgoff());
+    EXPECT_EQ(6, event.mmap_event().maj());
+    EXPECT_EQ(7, event.mmap_event().min());
+    EXPECT_EQ(8, event.mmap_event().ino());
+    EXPECT_EQ(9, event.mmap_event().ino_generation());
+    EXPECT_EQ(1|2, event.mmap_event().prot());
+    EXPECT_EQ(2, event.mmap_event().flags());
   }
 }
 
@@ -819,7 +831,7 @@ TEST(PerfReaderTest, ReadsAllAvailableMetadataTypes) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   const auto& string_metadata = pr.string_metadata();
 
@@ -870,7 +882,7 @@ TEST(PerfReaderTest, ReadsAllAvailableMetadataTypesPiped) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   const auto& string_metadata = pr.string_metadata();
 
@@ -980,41 +992,36 @@ TEST(PerfReaderTest, AttrsWithDifferentSampleTypes) {
   // Verify events were read properly.
   ASSERT_EQ(3, pr.events().size());
   {
-    const event_t* event = pr.events()[0].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+    const PerfEvent& event = pr.events().Get(0);
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
 
-    perf_sample sample_info;
-    sample_info.time = 9999;
-    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
-    EXPECT_EQ(51, sample_info.id);
-    EXPECT_EQ(0x00000000002c100a, sample_info.ip);
-    EXPECT_EQ(1002, sample_info.tid);
-    // This event doesn't have a timestamp. Verify it was not changed.
-    EXPECT_EQ(9999, sample_info.time);
+    const SampleEvent& sample = event.sample_event();
+    EXPECT_EQ(51, sample.id());
+    EXPECT_EQ(0x00000000002c100a, sample.ip());
+    EXPECT_EQ(1002, sample.tid());
+    // This event doesn't have a timestamp.
+    EXPECT_FALSE(sample.has_sample_time_ns());
   }
   {
-    const event_t* event = pr.events()[1].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+    const PerfEvent& event = pr.events().Get(1);
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
 
-    perf_sample sample_info;
-    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
-    EXPECT_EQ(61, sample_info.id);
-    EXPECT_EQ(0x00000000002c100b, sample_info.ip);
-    EXPECT_EQ(1002, sample_info.tid);
-    EXPECT_EQ(1000006, sample_info.time);
+    const SampleEvent& sample = event.sample_event();
+    EXPECT_EQ(61, sample.id());
+    EXPECT_EQ(0x00000000002c100b, sample.ip());
+    EXPECT_EQ(1002, sample.tid());
+    EXPECT_EQ(1000006, sample.sample_time_ns());
   }
   {
-    const event_t* event = pr.events()[2].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+    const PerfEvent& event = pr.events().Get(2);
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
 
-    perf_sample sample_info;
-    sample_info.time = 9999;
-    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
-    EXPECT_EQ(52, sample_info.id);
-    EXPECT_EQ(0x00000000002c100c, sample_info.ip);
-    EXPECT_EQ(1002, sample_info.tid);
-    // This event doesn't have a timestamp. Verify it was not changed.
-    EXPECT_EQ(9999, sample_info.time);
+    const SampleEvent& sample = event.sample_event();
+    EXPECT_EQ(52, sample.id());
+    EXPECT_EQ(0x00000000002c100c, sample.ip());
+    EXPECT_EQ(1002, sample.tid());
+    // This event doesn't have a timestamp.
+    EXPECT_FALSE(sample.has_sample_time_ns());
   }
 }
 
@@ -1068,14 +1075,12 @@ TEST(PerfReaderTest, NoSampleIdField) {
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
-  const event_t& event = *pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
-  EXPECT_EQ(data_size, event.header.size);
+  const PerfEvent& event = pr.events().Get(0);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
+  EXPECT_EQ(data_size, event.header().size());
 
-  perf_sample sample_info;
-  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
-  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
-  EXPECT_EQ(1002, sample_info.tid);
+  EXPECT_EQ(0x00000000002c100a, event.sample_event().ip());
+  EXPECT_EQ(1002, event.sample_event().tid());
 }
 
 // When sample_id_all == false, non-sample events should not look for sample_id.
@@ -1143,28 +1148,22 @@ TEST(PerfReaderTest, SampleIdFalseMeansDontReadASampleId) {
   // Verify events were read properly.
   ASSERT_EQ(2, pr.events().size());
   {
-    const event_t* event = pr.events()[0].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+    const PerfEvent& event = pr.events().Get(0);
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
 
-    perf_sample sample_info;
-    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
-    EXPECT_EQ(0x00000000002c100a, sample_info.ip);
-    EXPECT_EQ(1002, sample_info.tid);
-    EXPECT_EQ(48, sample_info.id);
+    EXPECT_EQ(0x00000000002c100a, event.sample_event().ip());
+    EXPECT_EQ(1002, event.sample_event().tid());
+    EXPECT_EQ(48, event.sample_event().id());
   }
 
   {
-    const event_t* event = pr.events()[1].get();
-    EXPECT_EQ(PERF_RECORD_MMAP, event->header.type);
+    const PerfEvent& event = pr.events().Get(1);
+    EXPECT_EQ(PERF_RECORD_MMAP, event.header().type());
 
-    perf_sample sample_info;
-    sample_info.tid = 9999;
-    sample_info.id = 8888;
-    // This event is malformed: it has junk at the end.
-    ASSERT_FALSE(pr.ReadPerfSampleInfo(*event, &sample_info));
-    // ... Therefore, sample_info should still be their original values.
-    EXPECT_EQ(9999, sample_info.tid);
-    EXPECT_EQ(8888, sample_info.id);
+    // This event is malformed: it has junk at the end. Therefore, sample_info
+    // should not have TID or ID fields.
+    EXPECT_FALSE(event.mmap_event().sample_info().has_tid());
+    EXPECT_FALSE(event.mmap_event().sample_info().has_id());
   }
 }
 
@@ -1208,7 +1207,7 @@ TEST(PerfReaderTest, LargePerfEventAttr) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
@@ -1216,14 +1215,14 @@ TEST(PerfReaderTest, LargePerfEventAttr) {
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
-  const event_t& event = *pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
-  EXPECT_EQ(data_size, event.header.size);
 
-  perf_sample sample_info;
-  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
-  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
-  EXPECT_EQ(1002, sample_info.tid);
+  const PerfEvent& event = pr.events().Get(0);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
+  EXPECT_EQ(data_size, event.header().size());
+
+  const SampleEvent& sample_info = event.sample_event();
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip());
+  EXPECT_EQ(1002, sample_info.tid());
 }
 
 // Regression test for http://crbug.com/496441
@@ -1265,7 +1264,7 @@ TEST(PerfReaderTest, LargePerfEventAttrPiped) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
@@ -1274,14 +1273,14 @@ TEST(PerfReaderTest, LargePerfEventAttrPiped) {
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
-  const event_t& event = *pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
-  EXPECT_EQ(sample_event.GetSize(), event.header.size);
 
-  perf_sample sample_info;
-  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
-  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
-  EXPECT_EQ(1002, sample_info.tid);
+  const PerfEvent& event = pr.events().Get(0);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
+  EXPECT_EQ(sample_event.GetSize(), event.header().size());
+
+  const SampleEvent& sample_info = event.sample_event();
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip());
+  EXPECT_EQ(1002, sample_info.tid());
 }
 
 // Regression test for http://crbug.com/496441
@@ -1325,7 +1324,7 @@ TEST(PerfReaderTest, SmallPerfEventAttr) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
@@ -1333,14 +1332,14 @@ TEST(PerfReaderTest, SmallPerfEventAttr) {
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
-  const event_t& event = *pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
-  EXPECT_EQ(data_size, event.header.size);
 
-  perf_sample sample_info;
-  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
-  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
-  EXPECT_EQ(1002, sample_info.tid);
+  const PerfEvent& event = pr.events().Get(0);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
+  EXPECT_EQ(data_size, event.header().size());
+
+  const SampleEvent& sample_info = event.sample_event();
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip());
+  EXPECT_EQ(1002, sample_info.tid());
 }
 
 // Regression test for http://crbug.com/496441
@@ -1382,7 +1381,7 @@ TEST(PerfReaderTest, SmallPerfEventAttrPiped) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
@@ -1391,14 +1390,14 @@ TEST(PerfReaderTest, SmallPerfEventAttrPiped) {
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
-  const event_t& event = *pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
-  EXPECT_EQ(sample_event.GetSize(), event.header.size);
 
-  perf_sample sample_info;
-  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
-  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
-  EXPECT_EQ(1002, sample_info.tid);
+  const PerfEvent& event = pr.events().Get(0);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
+  EXPECT_EQ(sample_event.GetSize(), event.header().size());
+
+  const SampleEvent& sample_info = event.sample_event();
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip());
+  EXPECT_EQ(1002, sample_info.tid());
 }
 
 TEST(PerfReaderTest, CrossEndianAttrs) {
@@ -1442,7 +1441,7 @@ TEST(PerfReaderTest, CrossEndianAttrs) {
     // Read data.
 
     PerfReader pr;
-    EXPECT_TRUE(pr.ReadFromString(input.str()));
+    ASSERT_TRUE(pr.ReadFromString(input.str()));
 
     // Make sure the attr was recorded properly.
     EXPECT_EQ(3, pr.attrs().size());
@@ -1552,7 +1551,7 @@ TEST(PerfReaderTest, CrossEndianNormalPerfData) {
   //
 
   PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
@@ -1563,46 +1562,44 @@ TEST(PerfReaderTest, CrossEndianNormalPerfData) {
   ASSERT_EQ(4, pr.events().size());
 
   {
-    const event_t& event = *pr.events()[0].get();
-    EXPECT_EQ(PERF_RECORD_MMAP, event.header.type);
-    EXPECT_EQ(1234, event.mmap.pid);
-    EXPECT_EQ(1234, event.mmap.tid);
-    EXPECT_EQ(string("/usr/lib/foo.so"), event.mmap.filename);
-    EXPECT_EQ(0x0000000000810000, event.mmap.start);
-    EXPECT_EQ(0x10000, event.mmap.len);
-    EXPECT_EQ(0x2000, event.mmap.pgoff);
+    const PerfEvent& event = pr.events().Get(0);
+    EXPECT_EQ(PERF_RECORD_MMAP, event.header().type());
+    EXPECT_EQ(1234, event.mmap_event().pid());
+    EXPECT_EQ(1234, event.mmap_event().tid());
+    EXPECT_EQ(string("/usr/lib/foo.so"), event.mmap_event().filename());
+    EXPECT_EQ(0x0000000000810000, event.mmap_event().start());
+    EXPECT_EQ(0x10000, event.mmap_event().len());
+    EXPECT_EQ(0x2000, event.mmap_event().pgoff());
   }
 
   {
-    const event_t& event = *pr.events()[1].get();
-    EXPECT_EQ(PERF_RECORD_FORK, event.header.type);
-    EXPECT_EQ(1236, event.fork.pid);
-    EXPECT_EQ(1234, event.fork.ppid);
-    EXPECT_EQ(1237, event.fork.tid);
-    EXPECT_EQ(1235, event.fork.ptid);
-    EXPECT_EQ(30ULL * 1000000000, event.fork.time);
+    const PerfEvent& event = pr.events().Get(1);
+    EXPECT_EQ(PERF_RECORD_FORK, event.header().type());
+    EXPECT_EQ(1236, event.fork_event().pid());
+    EXPECT_EQ(1234, event.fork_event().ppid());
+    EXPECT_EQ(1237, event.fork_event().tid());
+    EXPECT_EQ(1235, event.fork_event().ptid());
+    EXPECT_EQ(30ULL * 1000000000, event.fork_event().fork_time_ns());
   }
 
   {
-    const event_t& event = *pr.events()[2].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+    const PerfEvent& event = pr.events().Get(2);
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
 
-    perf_sample sample_info;
-    ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
-    EXPECT_EQ(0x0000000000810100, sample_info.ip);
-    EXPECT_EQ(1234, sample_info.pid);
-    EXPECT_EQ(1235, sample_info.tid);
+    const SampleEvent& sample_info = event.sample_event();
+    EXPECT_EQ(0x0000000000810100, sample_info.ip());
+    EXPECT_EQ(1234, sample_info.pid());
+    EXPECT_EQ(1235, sample_info.tid());
   }
 
   {
-    const event_t& event = *pr.events()[3].get();
-    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+    const PerfEvent& event = pr.events().Get(3);
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header().type());
 
-    perf_sample sample_info;
-    ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
-    EXPECT_EQ(0x000000000081ff00, sample_info.ip);
-    EXPECT_EQ(1236, sample_info.pid);
-    EXPECT_EQ(1237, sample_info.tid);
+    const SampleEvent& sample_info = event.sample_event();
+    EXPECT_EQ(0x000000000081ff00, sample_info.ip());
+    EXPECT_EQ(1236, sample_info.pid());
+    EXPECT_EQ(1237, sample_info.tid());
   }
 }
 
