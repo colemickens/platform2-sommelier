@@ -24,6 +24,7 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <crypto/openssl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/bn.h>
@@ -40,9 +41,25 @@
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_factory_impl.h"
 
+namespace {
+
+std::string GetOpenSSLError() {
+  BIO* bio = BIO_new(BIO_s_mem());
+  ERR_print_errors(bio);
+  char* data = nullptr;
+  int data_len = BIO_get_mem_data(bio, &data);
+  std::string error_string(data, data_len);
+  BIO_free(bio);
+  return error_string;
+}
+
+}  // namespace
+
 namespace trunks {
 
-TrunksClientTest::TrunksClientTest() : factory_(new TrunksFactoryImpl()) {}
+TrunksClientTest::TrunksClientTest() : factory_(new TrunksFactoryImpl()) {
+  crypto::EnsureOpenSSLInit();
+}
 
 TrunksClientTest::TrunksClientTest(scoped_ptr<TrunksFactory> factory)
     : factory_(factory.Pass()) {}
@@ -970,8 +987,16 @@ bool TrunksClientTest::PerformRSAEncrpytAndDecrpyt(
 void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
                                           std::string* prime_factor,
                                           std::string* public_key) {
+#ifdef OPENSSL_IS_BORINGSSL
+  crypto::ScopedRSA rsa(RSA_new());
+  crypto::ScopedBIGNUM exponent(BN_new());
+  CHECK(BN_set_word(exponent.get(), RSA_F4));
+  CHECK(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr))
+      << "Failed to generate RSA key: " << GetOpenSSLError();
+#else
   crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, nullptr, nullptr));
   CHECK(rsa.get());
+#endif
   modulus->resize(BN_num_bytes(rsa.get()->n), 0);
   BN_bn2bin(rsa.get()->n,
             reinterpret_cast<unsigned char*>(string_as_array(modulus)));
@@ -1049,7 +1074,7 @@ bool TrunksClientTest::SignAndVerify(const ScopedKeyHandle& key_handle,
     return false;
   }
   if (!VerifyRSASignature(public_key, data_to_sign, signature)) {
-    LOG(ERROR) << "Signature verification failed.";
+    LOG(ERROR) << "Signature verification failed: " << GetOpenSSLError();
     return false;
   }
   return true;

@@ -20,8 +20,10 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <crypto/openssl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 
@@ -31,13 +33,25 @@
 
 namespace {
 const size_t kWellKnownExponent = 0x10001;
+
+std::string GetOpenSSLError() {
+  BIO* bio = BIO_new(BIO_s_mem());
+  ERR_print_errors(bio);
+  char* data = nullptr;
+  int data_len = BIO_get_mem_data(bio, &data);
+  std::string error_string(data, data_len);
+  BIO_free(bio);
+  return error_string;
+}
 }  // namespace
 
 namespace trunks {
 
 SessionManagerImpl::SessionManagerImpl(const TrunksFactory& factory)
     : factory_(factory),
-      session_handle_(kUninitializedHandle) {}
+      session_handle_(kUninitializedHandle) {
+  crypto::EnsureOpenSSLInit();
+}
 
 SessionManagerImpl::~SessionManagerImpl() {
   CloseSession();
@@ -75,7 +89,7 @@ TPM_RC SessionManagerImpl::StartSession(
   std::string encrypted_salt;
   TPM_RC salt_result = EncryptSalt(salt, &encrypted_salt);
   if (salt_result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error encrypting salt.";
+    LOG(ERROR) << "Error encrypting salt: " << GetErrorString(salt_result);
     return salt_result;
   }
 
@@ -139,71 +153,64 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
   TPM2B_NAME qualified_name;
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa.size = 0;
-  // The TPM2 Command below needs no authorization. Therefore we can simply
-  // use the empty string for all the Key names, and pullptr for the
-  // authorization delegate.
   TPM_RC result = factory_.GetTpm()->ReadPublicSync(
-      kSaltingKey, "",  // SaltingKey name.
-      &public_data, &out_name, &qualified_name, nullptr);  // No authorization
+      kSaltingKey, "" /*object_handle_name (not used)*/, &public_data,
+      &out_name, &qualified_name, nullptr /*authorization_delegate*/);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error fetching salting key public info.";
+    LOG(ERROR) << "Error fetching salting key public info: "
+               << GetErrorString(result);
     return result;
   }
-  crypto::ScopedRSA salting_rsa(RSA_new());
-  salting_rsa.get()->e = BN_new();
-  if (!salting_rsa.get()->e) {
-    LOG(ERROR) << "Error creating exponent for RSA.";
-    return TPM_RC_FAILURE;
+  crypto::ScopedRSA salting_key_rsa(RSA_new());
+  salting_key_rsa->e = BN_new();
+  if (!salting_key_rsa->e) {
+    LOG(ERROR) << "Error creating exponent for RSA: " << GetOpenSSLError();
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
-  BN_set_word(salting_rsa.get()->e, kWellKnownExponent);
-  salting_rsa.get()->n = BN_bin2bn(public_data.public_area.unique.rsa.buffer,
-                                   public_data.public_area.unique.rsa.size,
-                                   nullptr);
-  if (!salting_rsa.get()->n) {
-    LOG(ERROR) << "Error setting public area of rsa key.";
-    return TPM_RC_FAILURE;
+  BN_set_word(salting_key_rsa->e, kWellKnownExponent);
+  salting_key_rsa->n =
+      BN_bin2bn(public_data.public_area.unique.rsa.buffer,
+                public_data.public_area.unique.rsa.size, nullptr);
+  if (!salting_key_rsa->n) {
+    LOG(ERROR) << "Error setting public area of rsa key: " << GetOpenSSLError();
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
+  }
+  crypto::ScopedEVP_PKEY salting_key(EVP_PKEY_new());
+  if (!EVP_PKEY_set1_RSA(salting_key.get(), salting_key_rsa.get())) {
+    LOG(ERROR) << "Error setting up EVP_PKEY: " << GetOpenSSLError();
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
   // Label for RSAES-OAEP. Defined in TPM2.0 Part1 Architecture,
   // Appendix B.10.2.
-  unsigned char oaep_param[7] = {'S', 'E', 'C', 'R', 'E', 'T', '\0'};
-  const EVP_MD* sha256_md = EVP_sha256();
-  std::string padded_input(RSA_size(salting_rsa.get()), 0);
-  int rsa_result = RSA_padding_add_PKCS1_OAEP_mgf1(
-      reinterpret_cast<unsigned char*>(string_as_array(&padded_input)),
-      padded_input.size(),
-      reinterpret_cast<const unsigned char*>(salt.c_str()),
-      salt.size(),
-      oaep_param,
-      arraysize(oaep_param),
-      sha256_md,
-      sha256_md);
-  if (!rsa_result) {
-    unsigned long err = ERR_get_error();  // NOLINT openssl types
-    ERR_load_ERR_strings();
-    ERR_load_crypto_strings();
-    LOG(ERROR) << "EncryptSalt Error: " << err
-               << ": " << ERR_lib_error_string(err)
-               << ", " << ERR_func_error_string(err)
-               << ", " << ERR_reason_error_string(err);
-    return TPM_RC_FAILURE;
+  const size_t kOaepLabelSize = 7;
+  const char kOaepLabelValue[] = "SECRET\0";
+  // EVP_PKEY_CTX_set0_rsa_oaep_label takes ownership so we need to malloc.
+  uint8_t* oaep_label = static_cast<uint8_t*>(OPENSSL_malloc(kOaepLabelSize));
+  memcpy(oaep_label, kOaepLabelValue, kOaepLabelSize);
+  crypto::ScopedEVP_PKEY_CTX salt_encrypt_context(
+      EVP_PKEY_CTX_new(salting_key.get(), nullptr));
+  if (!EVP_PKEY_encrypt_init(salt_encrypt_context.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(salt_encrypt_context.get(),
+                                    RSA_PKCS1_OAEP_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_oaep_md(salt_encrypt_context.get(), EVP_sha256()) ||
+      !EVP_PKEY_CTX_set_rsa_mgf1_md(salt_encrypt_context.get(), EVP_sha256()) ||
+      !EVP_PKEY_CTX_set0_rsa_oaep_label(salt_encrypt_context.get(), oaep_label,
+                                        kOaepLabelSize)) {
+    LOG(ERROR) << "Error setting up salt encrypt context: "
+               << GetOpenSSLError();
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
-  encrypted_salt->resize(padded_input.size());
-  rsa_result = RSA_public_encrypt(
-      padded_input.size(),
-      reinterpret_cast<unsigned char*>(string_as_array(&padded_input)),
-      reinterpret_cast<unsigned char*>(string_as_array(encrypted_salt)),
-      salting_rsa.get(),
-      RSA_NO_PADDING);
-  if (rsa_result == -1) {
-    unsigned long err = ERR_get_error();  // NOLINT openssl types
-    ERR_load_ERR_strings();
-    ERR_load_crypto_strings();
-    LOG(ERROR) << "EncryptSalt Error: " << err
-               << ": " << ERR_lib_error_string(err)
-               << ", " << ERR_func_error_string(err)
-               << ", " << ERR_reason_error_string(err);
-    return TPM_RC_FAILURE;
+  size_t out_length = EVP_PKEY_size(salting_key.get());
+  encrypted_salt->resize(out_length);
+  if (!EVP_PKEY_encrypt(
+          salt_encrypt_context.get(),
+          reinterpret_cast<uint8_t*>(string_as_array(encrypted_salt)),
+          &out_length, reinterpret_cast<const uint8_t*>(salt.data()),
+          salt.size())) {
+    LOG(ERROR) << "Error encrypting salt: " << GetOpenSSLError();
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
+  encrypted_salt->resize(out_length);
   return TPM_RC_SUCCESS;
 }
 

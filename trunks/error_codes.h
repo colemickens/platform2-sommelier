@@ -40,6 +40,7 @@ const TPM_RC TRUNKS_RC_ENCRYPTION_FAILED = kTrunksErrorBase + 2;
 const TPM_RC TRUNKS_RC_READ_ERROR = kTrunksErrorBase + 3;
 const TPM_RC TRUNKS_RC_WRITE_ERROR = kTrunksErrorBase + 4;
 const TPM_RC TRUNKS_RC_IPC_ERROR = kTrunksErrorBase + 5;
+const TPM_RC TRUNKS_RC_SESSION_SETUP_ERROR = kTrunksErrorBase + 6;
 
 const TPM_RC TCTI_RC_TRY_AGAIN = kTctiErrorBase + 1;
 const TPM_RC TCTI_RC_GENERAL_FAILURE = kTctiErrorBase + 2;
