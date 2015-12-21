@@ -112,10 +112,10 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   }
 
   virtual void SetUp() {
-    capability_ = dynamic_cast<CellularCapabilityUniversal*>(
+    capability_ = static_cast<CellularCapabilityUniversal*>(
         cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
+        static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     cellular_->service_ = service_;
 
     // kStateUnknown leads to minimal extra work in maintaining

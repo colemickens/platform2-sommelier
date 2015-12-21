@@ -391,7 +391,7 @@ class CellularTest : public testing::Test {
 
   void ExpectPPPStopped() {
     auto mock_ppp_device =
-        dynamic_cast<MockPPPDevice*>(device_->ppp_device_.get());
+        static_cast<MockPPPDevice*>(device_->ppp_device_.get());
     EXPECT_CALL(*mock_ppp_device, DropConnection());
   }
 
@@ -408,7 +408,7 @@ class CellularTest : public testing::Test {
         .Times(AnyNumber());
     EXPECT_CALL(*modem_info_.mock_manager(), UpdateEnabledTechnologies())
         .Times(AnyNumber());
-    EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor*>(device_->adaptor()),
+    EXPECT_CALL(*static_cast<DeviceMockAdaptor*>(device_->adaptor()),
                 EmitBoolChanged(_, _)).Times(AnyNumber());
   }
 
@@ -562,20 +562,20 @@ class CellularTest : public testing::Test {
   }
 
   CellularCapabilityClassic* GetCapabilityClassic() {
-    return dynamic_cast<CellularCapabilityClassic*>(
+    return static_cast<CellularCapabilityClassic*>(
         device_->capability_.get());
   }
 
   CellularCapabilityCDMA* GetCapabilityCDMA() {
-    return dynamic_cast<CellularCapabilityCDMA*>(device_->capability_.get());
+    return static_cast<CellularCapabilityCDMA*>(device_->capability_.get());
   }
 
   CellularCapabilityGSM* GetCapabilityGSM() {
-    return dynamic_cast<CellularCapabilityGSM*>(device_->capability_.get());
+    return static_cast<CellularCapabilityGSM*>(device_->capability_.get());
   }
 
   CellularCapabilityUniversal* GetCapabilityUniversal() {
-    return dynamic_cast<CellularCapabilityUniversal*>(
+    return static_cast<CellularCapabilityUniversal*>(
         device_->capability_.get());
   }
 

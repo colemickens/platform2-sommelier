@@ -875,7 +875,7 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
       }
       if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
         const ErrorAckMessage* error_ack_message =
-            dynamic_cast<const ErrorAckMessage*>(raw_message);
+            static_cast<const ErrorAckMessage*>(raw_message);
         if (error_ack_message->error() == EOPNOTSUPP) {
           error.Populate(Error::kNotSupported);
         }

@@ -85,7 +85,7 @@ class IPConfigTest : public Test {
 
  protected:
   IPConfigMockAdaptor* GetAdaptor() {
-    return dynamic_cast<IPConfigMockAdaptor*>(ipconfig_->adaptor_.get());
+    return static_cast<IPConfigMockAdaptor*>(ipconfig_->adaptor_.get());
   }
 
   void UpdateProperties(const IPConfig::Properties& properties) {

@@ -1003,7 +1003,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->supplicant_process_proxy_.get();
   }
   MockSupplicantInterfaceProxy* GetSupplicantInterfaceProxyFromWiFi() {
-    return dynamic_cast<MockSupplicantInterfaceProxy*>(
+    return static_cast<MockSupplicantInterfaceProxy*>(
         wifi_->supplicant_interface_proxy_.get());
   }
   // This function returns the supplicant interface proxy whether

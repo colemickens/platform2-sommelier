@@ -90,9 +90,9 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   virtual void SetUp() {
     capability_ =
-        dynamic_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
+        static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
+        static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
   }
 
   void InvokeEnable(bool enable, Error* error,

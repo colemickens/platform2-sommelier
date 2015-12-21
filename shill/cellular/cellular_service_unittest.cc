@@ -67,7 +67,7 @@ class CellularServiceTest : public testing::Test {
 
   virtual void SetUp() {
     adaptor_ =
-        dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
+        static_cast<ServiceMockAdaptor*>(service_->adaptor());
     out_of_credits_detector_ =
         new MockOutOfCreditsDetector(nullptr, nullptr, nullptr, service_.get());
     // Passes ownership.
@@ -75,7 +75,7 @@ class CellularServiceTest : public testing::Test {
   }
 
   CellularCapabilityCDMA* GetCapabilityCDMA() {
-    return dynamic_cast<CellularCapabilityCDMA*>(device_->capability_.get());
+    return static_cast<CellularCapabilityCDMA*>(device_->capability_.get());
   }
 
  protected:

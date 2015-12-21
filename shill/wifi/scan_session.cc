@@ -246,7 +246,7 @@ void ScanSession::OnTriggerScanErrorResponse(
           break;
         }
         const ErrorAckMessage* error_ack_message =
-            dynamic_cast<const ErrorAckMessage*>(netlink_message);
+            static_cast<const ErrorAckMessage*>(netlink_message);
         if (error_ack_message->error()) {
           LOG(ERROR) << __func__ << ": Message failed: "
                      << error_ack_message->ToString();

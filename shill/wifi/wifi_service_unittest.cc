@@ -186,7 +186,7 @@ class WiFiServiceTest : public PropertyStoreTest {
                                   0);
   }
   ServiceMockAdaptor* GetAdaptor(WiFiService* service) {
-    return dynamic_cast<ServiceMockAdaptor*>(service->adaptor());
+    return static_cast<ServiceMockAdaptor*>(service->adaptor());
   }
   Error::Type TestConfigurePassphrase(const string& security,
                                       const char* passphrase) {

@@ -113,7 +113,7 @@ class VPNServiceTest : public testing::Test {
   }
 
   ServiceMockAdaptor* GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
+    return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   std::string interface_name_;

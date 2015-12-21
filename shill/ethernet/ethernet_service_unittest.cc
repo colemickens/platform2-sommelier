@@ -65,7 +65,7 @@ class EthernetServiceTest : public PropertyStoreTest {
   }
 
   ServiceMockAdaptor* GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
+    return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   MockManager mock_manager_;

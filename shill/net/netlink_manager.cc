@@ -114,7 +114,7 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
     }
     if (!handler_.is_null()) {
       const ControlNetlinkMessage* message =
-          dynamic_cast<const ControlNetlinkMessage*>(&netlink_message);
+          static_cast<const ControlNetlinkMessage*>(&netlink_message);
       handler_.Run(*message);
     }
     return true;
@@ -155,7 +155,7 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
     }
     if (!handler_.is_null()) {
       const Nl80211Message* message =
-          dynamic_cast<const Nl80211Message*>(&netlink_message);
+          static_cast<const Nl80211Message*>(&netlink_message);
       handler_.Run(*message);
     }
     return true;
@@ -270,7 +270,7 @@ void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
       }
       if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
         const ErrorAckMessage* error_ack_message =
-            dynamic_cast<const ErrorAckMessage*>(raw_message);
+            static_cast<const ErrorAckMessage*>(raw_message);
         // error_ack_message->error() should be non-zero (i.e. not an ACK),
         // since ACKs would be routed to a NetlinkAckHandler in
         // NetlinkManager::OnNlMessageReceived.
@@ -699,7 +699,7 @@ void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
   if (message->message_type() == ErrorAckMessage::GetMessageType()) {
     is_error_ack_message = true;
     const ErrorAckMessage* error_ack_message =
-        dynamic_cast<const ErrorAckMessage*>(message.get());
+        static_cast<const ErrorAckMessage*>(message.get());
     error_code = error_ack_message->error();
   }
 

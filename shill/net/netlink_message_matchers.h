@@ -36,7 +36,7 @@ MATCHER_P2(IsNl80211Command, nl80211_message_type, command, "") {
     LOG(INFO) << "Not an nl80211 message";
     return false;
   }
-  const Nl80211Message* msg = dynamic_cast<const Nl80211Message*>(arg);
+  const Nl80211Message* msg = static_cast<const Nl80211Message*>(arg);
   if (msg->command() != command) {
     LOG(INFO) << "Not a message of type " << command
                << " (it's a " << +msg->command() << ")";
@@ -52,7 +52,7 @@ MATCHER(IsDisableWakeOnWiFiMsg, "") {
     LOG(INFO) << "Null message";
     return false;
   }
-  const Nl80211Message* msg = dynamic_cast<const Nl80211Message*>(arg);
+  const Nl80211Message* msg = static_cast<const Nl80211Message*>(arg);
   if (msg->command() != NL80211_CMD_SET_WOWLAN) {
     LOG(INFO) << "Not a NL80211_CMD_SET_WOWLAN message";
     return false;

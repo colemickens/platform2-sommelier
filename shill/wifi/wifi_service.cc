@@ -1238,7 +1238,6 @@ bool WiFiService::Is8021x() const {
 }
 
 WiFiRefPtr WiFiService::ChooseDevice() {
-  // TODO(pstew): Style frowns on dynamic_cast.  crbug.com/220387
   DeviceRefPtr device = nullptr;
   if (!preferred_device_.empty()) {
     device = manager()->GetEnabledDeviceByLinkName(preferred_device_);
@@ -1247,10 +1246,12 @@ WiFiRefPtr WiFiService::ChooseDevice() {
     }
   }
   if (!device) {
-    device =
-      manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
+    device = manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
   }
-  return dynamic_cast<WiFi*>(device.get());
+  // If we have a valid device here, it's better be a WiFi device.
+  CHECK(!device || device->technology() == Technology::kWifi)
+      << "Unexpected device technology: " << device->technology();
+  return static_cast<WiFi*>(device.get());
 }
 
 void WiFiService::ResetWiFi() {

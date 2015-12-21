@@ -672,7 +672,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
       .WillRepeatedly(Return(service2_name));
   // TODO(quiche): make this EXPECT_CALL work (crbug.com/203247)
-  // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor*>(manager.adaptor_.get()),
+  // EXPECT_CALL(*static_cast<ManagerMockAdaptor*>(manager.adaptor_.get()),
   //             EmitRpcIdentifierArrayChanged(kServicesProperty, _));
 
   manager.RegisterService(mock_service);

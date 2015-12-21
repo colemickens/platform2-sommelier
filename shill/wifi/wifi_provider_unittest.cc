@@ -232,7 +232,7 @@ class WiFiProviderTest : public testing::Test {
                                     bool provide_hidden) {
     string id = base::StringToLowerASCII(
         base::StringPrintf("entry_%d", storage_entry_index_));
-    auto profile_storage = dynamic_cast<MockStore*>(profile->GetStorage());
+    auto profile_storage = static_cast<MockStore*>(profile->GetStorage());
     EXPECT_CALL(*profile_storage, GetString(id, _, _))
         .WillRepeatedly(Return(false));
     AddStringParameterToStorage(
@@ -730,7 +730,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
 TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileNonWiFi) {
   const string kEntryName("name");
   auto profile_storage =
-      dynamic_cast<MockStore*>(default_profile_->GetStorage());
+      static_cast<MockStore*>(default_profile_->GetStorage());
   EXPECT_CALL(*profile_storage,
               GetString(kEntryName, WiFiService::kStorageType, _))
       .WillOnce(Return(false));

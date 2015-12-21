@@ -99,7 +99,7 @@ class WiMaxServiceTest : public testing::Test {
   }
 
   ServiceMockAdaptor* GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
+    return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   std::unique_ptr<MockWiMaxNetworkProxy> proxy_;

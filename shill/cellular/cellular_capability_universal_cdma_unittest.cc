@@ -92,10 +92,10 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   }
 
   virtual void SetUp() {
-    capability_ = dynamic_cast<CellularCapabilityUniversalCDMA*>(
+    capability_ = static_cast<CellularCapabilityUniversalCDMA*>(
         cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<NiceMock<DeviceMockAdaptor>*>(cellular_->adaptor());
+        static_cast<NiceMock<DeviceMockAdaptor>*>(cellular_->adaptor());
     cellular_->service_ = service_;
   }
 

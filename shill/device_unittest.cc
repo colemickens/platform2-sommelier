@@ -256,7 +256,7 @@ class DeviceTest : public PropertyStoreTest {
   }
 
   DeviceMockAdaptor* GetDeviceMockAdaptor() {
-    return dynamic_cast<DeviceMockAdaptor*>(device_->adaptor_.get());
+    return static_cast<DeviceMockAdaptor*>(device_->adaptor_.get());
   }
 
   void SetManager(Manager* manager) {

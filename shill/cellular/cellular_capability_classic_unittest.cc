@@ -84,10 +84,10 @@ class CellularCapabilityTest : public testing::Test {
   virtual void SetUp() {
     static_cast<Device*>(cellular_.get())->rtnl_handler_ = &rtnl_handler_;
 
-    capability_ = dynamic_cast<CellularCapabilityClassic*>(
+    capability_ = static_cast<CellularCapabilityClassic*>(
         cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
+        static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     ASSERT_NE(nullptr, device_adaptor_);;
   }
 
@@ -119,7 +119,7 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   CellularCapabilityGSM* GetGsmCapability() {
-    return dynamic_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
+    return static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
   }
 
   void ReleaseCapabilityProxies() {
@@ -227,13 +227,13 @@ class CellularCapabilityTest : public testing::Test {
 
   void SetGSMNetworkProxy() {
     CellularCapabilityGSM* gsm_capability =
-        dynamic_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
+        static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
     gsm_capability->network_proxy_.reset(gsm_network_proxy_.release());
   }
 
   void SetCellularType(Cellular::Type type) {
     cellular_->InitCapability(type);
-    capability_ = dynamic_cast<CellularCapabilityClassic*>(
+    capability_ = static_cast<CellularCapabilityClassic*>(
         cellular_->capability_.get());
   }
 
@@ -347,7 +347,7 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   }
 
   cellular_->state_ = Cellular::kStateConnected;
-  dynamic_cast<CellularCapabilityGSM*>(capability_)->registration_state_ =
+  static_cast<CellularCapabilityGSM*>(capability_)->registration_state_ =
       MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
   cellular_->SetAllowRoaming(true, nullptr);
   EXPECT_TRUE(cellular_->GetAllowRoaming(nullptr));

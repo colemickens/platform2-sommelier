@@ -71,7 +71,7 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   virtual void SetUp() {
     capability_ =
-        dynamic_cast<CellularCapabilityCDMA*>(cellular_->capability_.get());
+        static_cast<CellularCapabilityCDMA*>(cellular_->capability_.get());
   }
 
   void InvokeActivate(const string& carrier, Error* error,

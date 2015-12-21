@@ -120,7 +120,7 @@ class ServiceTest : public PropertyStoreTest {
   typedef scoped_refptr<MockProfile> MockProfileRefPtr;
 
   ServiceMockAdaptor* GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
+    return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   string GetFriendlyName() { return service_->friendly_name(); }

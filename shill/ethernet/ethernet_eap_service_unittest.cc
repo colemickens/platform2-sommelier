@@ -50,7 +50,7 @@ class EthernetEapServiceTest : public testing::Test {
 
  protected:
   ServiceMockAdaptor* GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
+    return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   MockControl control_;

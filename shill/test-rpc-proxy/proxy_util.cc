@@ -256,7 +256,8 @@ void GetXmlRpcValueFromBrilloAnyValue(
         any_value_in.Get<brillo::VariantDictionary>(), xml_rpc_value_out);
     return;
   }
-  LOG(FATAL) << __func__ << ". Unhandled type: " << any_value_in.GetTypeName();
+  LOG(FATAL) << __func__ << ". Unhandled type: "
+             << any_value_in.GetUndecoratedTypeName();
 }
 
 void GetBrilloAnyValueFromXmlRpcValue(
@@ -279,7 +280,8 @@ void GetBrilloAnyValueFromXmlRpcValue(
       GetBrilloAnyVectorFromXmlRpcArray(xml_rpc_value_in, any_value_out);
       return;
     default:
-      LOG(FATAL) << __func__ << ". Unhandled type: " << xml_rpc_value_in->getType();
+      LOG(FATAL) << __func__ << ". Unhandled type: "
+                 << xml_rpc_value_in->getType();
   }
 }
 
