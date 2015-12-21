@@ -133,7 +133,7 @@ class ExportedPropertySetTest : public ::testing::Test {
   void AssertMethodReturnsError(dbus::MethodCall* method_call) {
     method_call->SetSerial(123);
     auto response = testing::CallMethod(p_->dbus_object_, method_call);
-    ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(response.get()), nullptr);
+    ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
   }
 
   std::unique_ptr<dbus::Response> GetPropertyOnInterface(

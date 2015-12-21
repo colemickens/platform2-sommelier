@@ -142,8 +142,8 @@ class Buffer;  // Forward declaration of data buffer container.
 // Abstract base class for contained variant data.
 struct Data {
   virtual ~Data() {}
-  // Returns the type name for the contained data.
-  virtual const char* GetTypeName() const = 0;
+  // Returns the type tag (name) for the contained data.
+  virtual const char* GetTypeTag() const = 0;
   // Copies the contained data to the output |buffer|.
   virtual void CopyTo(Buffer* buffer) const = 0;
   // Moves the contained data to the output |buffer|.
@@ -165,7 +165,7 @@ struct TypedData : public Data {
   // NOLINTNEXTLINE(build/c++11)
   explicit TypedData(T&& value) : value_(std::move(value)) {}
 
-  const char* GetTypeName() const override { return typeid(T).name(); }
+  const char* GetTypeTag() const override { return brillo::GetTypeTag<T>(); }
   void CopyTo(Buffer* buffer) const override;
   void MoveTo(Buffer* buffer) override;
   bool IsConvertibleToInteger() const override {
@@ -268,7 +268,7 @@ class Buffer final {
     using Type = typename std::decay<T>::type;
     using DataType = TypedData<Type>;
     Data* ptr = GetDataPtr();
-    if (ptr && strcmp(ptr->GetTypeName(), typeid(Type).name()) == 0) {
+    if (ptr && strcmp(ptr->GetTypeTag(), GetTypeTag<Type>()) == 0) {
       // We assign the data to the variant container, which already
       // has the data of the same type. Do fast copy/move with no memory
       // reallocation.

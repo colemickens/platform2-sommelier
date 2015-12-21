@@ -34,7 +34,7 @@ Any& Any::operator=(Any&& rhs) {
 
 bool Any::operator==(const Any& rhs) const {
   // Make sure both objects contain data of the same type.
-  if (strcmp(GetTypeNameInternal(), rhs.GetTypeNameInternal()) != 0)
+  if (strcmp(GetTypeTagInternal(), rhs.GetTypeTagInternal()) != 0)
     return false;
 
   if (IsEmpty())
@@ -43,9 +43,9 @@ bool Any::operator==(const Any& rhs) const {
   return data_buffer_.GetDataPtr()->CompareEqual(rhs.data_buffer_.GetDataPtr());
 }
 
-const char* Any::GetTypeNameInternal() const {
+const char* Any::GetTypeTagInternal() const {
   if (!IsEmpty())
-    return data_buffer_.GetDataPtr()->GetTypeName();
+    return data_buffer_.GetDataPtr()->GetTypeTag();
 
   return "";
 }

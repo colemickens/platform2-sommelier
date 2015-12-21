@@ -83,8 +83,8 @@ class BRILLO_EXPORT Any final {
     // to make sure the requested type matches the type of data actually stored,
     // so this "canonical" type is used for type checking below.
     using CanonicalDestType = typename std::decay<DestType>::type;
-    const char* contained_type = GetTypeNameInternal();
-    if (strcmp(typeid(CanonicalDestType).name(), contained_type) == 0)
+    const char* contained_type = GetTypeTagInternal();
+    if (strcmp(GetTypeTag<CanonicalDestType>(), contained_type) == 0)
       return true;
 
     if (!std::is_pointer<CanonicalDestType>::value)
@@ -97,17 +97,17 @@ class BRILLO_EXPORT Any final {
     using NonPointer = typename std::remove_pointer<CanonicalDestType>::type;
     using CanonicalDestTypeNoConst = typename std::add_pointer<
         typename std::remove_const<NonPointer>::type>::type;
-    if (strcmp(typeid(CanonicalDestTypeNoConst).name(), contained_type) == 0)
+    if (strcmp(GetTypeTag<CanonicalDestTypeNoConst>(), contained_type) == 0)
       return true;
 
     using CanonicalDestTypeNoVolatile = typename std::add_pointer<
         typename std::remove_volatile<NonPointer>::type>::type;
-    if (strcmp(typeid(CanonicalDestTypeNoVolatile).name(), contained_type) == 0)
+    if (strcmp(GetTypeTag<CanonicalDestTypeNoVolatile>(), contained_type) == 0)
       return true;
 
     using CanonicalDestTypeNoConstOrVolatile = typename std::add_pointer<
         typename std::remove_cv<NonPointer>::type>::type;
-    return strcmp(typeid(CanonicalDestTypeNoConstOrVolatile).name(),
+    return strcmp(GetTypeTag<CanonicalDestTypeNoConstOrVolatile>(),
                   contained_type) == 0;
   }
 
@@ -162,13 +162,9 @@ class BRILLO_EXPORT Any final {
     return TryGet<T>(typename std::decay<T>::type());
   }
 
-  // Returns the name of the type contained within Any. The string is a mangled
-  // type name returned by type_info::name(). For most cases, instead of using
-  // this function, you should be calling IsTypeCompatible<>().
-  inline std::string GetTypeName() const { return GetTypeNameInternal(); }
   // Returns the undecorated name of the type contained within Any.
   inline std::string GetUndecoratedTypeName() const {
-    return UndecorateTypeName(GetTypeNameInternal());
+    return GetUndecoratedTypeNameForTag(GetTypeTagInternal());
   }
   // Swaps the value of this object with that of |other|.
   void Swap(Any& other);
@@ -196,9 +192,9 @@ class BRILLO_EXPORT Any final {
   void AppendToDBusMessageWriter(dbus::MessageWriter* writer) const;
 
  private:
-  // Internal implementation of GetTypeName() which returns just a char* to
-  // static type name buffer.
-  const char* GetTypeNameInternal() const;
+  // Returns a pointer to a static buffer containing type tag (sort of a type
+  // name) of the contained value.
+  const char* GetTypeTagInternal() const;
 
   // The data buffer for contained object.
   internal_details::Buffer data_buffer_;
