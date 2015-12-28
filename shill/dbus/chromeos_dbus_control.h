@@ -27,14 +27,17 @@
 namespace shill {
 
 class EventDispatcher;
+class Manager;
 
 // This is the Interface for the  DBus control channel for Shill.
 class ChromeosDBusControl : public ControlInterface {
  public:
-  ChromeosDBusControl(const scoped_refptr<dbus::Bus>& bus,
-                      EventDispatcher* dispatcher);
+  ChromeosDBusControl(EventDispatcher* dispatcher);
   ~ChromeosDBusControl() override;
 
+  void RegisterManagerObject(
+      Manager* manager,
+      const base::Closure& registration_done_callback) override;
   DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) override;
   IPConfigAdaptorInterface* CreateIPConfigAdaptor(IPConfig* ipconfig) override;
   ManagerAdaptorInterface* CreateManagerAdaptor(Manager* manager) override;
@@ -165,6 +168,10 @@ class ChromeosDBusControl : public ControlInterface {
   template <typename Object, typename AdaptorInterface, typename Adaptor>
   AdaptorInterface* CreateAdaptor(Object* object);
 
+  void OnDBusServiceRegistered(
+      const base::Callback<void(bool)>& completion_action, bool success);
+  void TakeServiceOwnership(bool success);
+
   static const char kNullPath[];
 
   // Use separate bus connection for adaptors and proxies.  This allows the
@@ -174,6 +181,7 @@ class ChromeosDBusControl : public ControlInterface {
   scoped_refptr<dbus::Bus> proxy_bus_;
   EventDispatcher* dispatcher_;
   std::string null_identifier_;
+  base::Closure registration_done_callback_;
 };
 
 }  // namespace shill

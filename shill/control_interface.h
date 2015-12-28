@@ -91,6 +91,8 @@ class RPCServiceWatcherInterface;
 class ControlInterface {
  public:
   virtual ~ControlInterface() {}
+  virtual void RegisterManagerObject(
+      Manager* manager, const base::Closure& registration_done_callback) = 0;
   virtual DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) = 0;
   virtual IPConfigAdaptorInterface* CreateIPConfigAdaptor(
       IPConfig* ipconfig) = 0;

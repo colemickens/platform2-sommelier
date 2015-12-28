@@ -32,6 +32,10 @@ class NiceMockControl : public ControlInterface {
   NiceMockControl();
   ~NiceMockControl() override;
 
+  void RegisterManagerObject(
+      Manager* manager,
+      const base::Closure& registration_done_callback) override {};
+
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.
   DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) override;

@@ -41,6 +41,7 @@
 #if !defined(DISABLE_WIFI)
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/nl80211_message.h"
+#include "shill/wifi/callback80211_metrics.h"
 #endif  // DISABLE_WIFI
 
 using base::Bind;
@@ -60,16 +61,15 @@ namespace shill {
 class ChromeosDaemonForTest : public ChromeosDaemon {
  public:
   ChromeosDaemonForTest(const Settings& setttings,
-                        Config* config,
-                        EventDispatcher* dispatcher)
-      : ChromeosDaemon(Settings(), config) {
-    Init(new MockControl(), dispatcher);
-  }
+                        Config* config)
+      : ChromeosDaemon(base::Closure(),
+                       Settings(),
+                       config) {}
   virtual ~ChromeosDaemonForTest() {}
 
   bool quit_result() { return quit_result_; }
 
-  void RunMessageLoop() override { dispatcher_->DispatchForever(); }
+  void RunMessageLoop() { dispatcher_->DispatchForever(); }
 
   bool Quit(const base::Closure& completion_callback) override {
     quit_result_ = ChromeosDaemon::Quit(completion_callback);
@@ -84,14 +84,19 @@ class ChromeosDaemonForTest : public ChromeosDaemon {
 class ChromeosDaemonTest : public Test {
  public:
   ChromeosDaemonTest()
-      : daemon_(ChromeosDaemon::Settings(), &config_, &dispatcher_),
-        metrics_(new MockMetrics(daemon_.dispatcher_)),
-        manager_(new MockManager(daemon_.control_.get(),
-                                 daemon_.dispatcher_,
+      : daemon_(ChromeosDaemon::Settings(),
+                &config_),
+        dispatcher_(new EventDispatcherForTest()),
+        control_(new MockControl()),
+        metrics_(new MockMetrics(dispatcher_)),
+        callback_metrics_(new Callback80211Metrics(metrics_)),
+        manager_(new MockManager(control_,
+                                 dispatcher_,
                                  metrics_)),
-        device_info_(daemon_.control_.get(), daemon_.dispatcher_,
-                     metrics_, manager_) {
-  }
+        device_info_(control_,
+                     dispatcher_,
+                     metrics_,
+                     manager_) {}
   virtual ~ChromeosDaemonTest() {}
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor
@@ -102,6 +107,10 @@ class ChromeosDaemonTest : public Test {
     daemon_.process_manager_ = &process_manager_;
     daemon_.metrics_.reset(metrics_);  // Passes ownership
     daemon_.manager_.reset(manager_);  // Passes ownership
+    daemon_.control_.reset(control_);  // Passes ownership
+    daemon_.dispatcher_.reset(dispatcher_);  // Passes ownership
+    // Passes ownership
+    daemon_.callback80211_metrics_.reset(callback_metrics_);
 
 #if !defined(DISABLE_WIFI)
     daemon_.netlink_manager_ = &netlink_manager_;
@@ -125,17 +134,19 @@ class ChromeosDaemonTest : public Test {
   }
 
   MOCK_METHOD0(TerminationAction, void());
-  MOCK_METHOD0(TerminationCompleted, void());
+  MOCK_METHOD0(BreakTerminationLoop, void());
 
  protected:
-  EventDispatcherForTest dispatcher_;
   TestConfig config_;
   ChromeosDaemonForTest daemon_;
   MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
   MockDHCPProvider dhcp_provider_;
   MockProcessManager process_manager_;
+  EventDispatcherForTest* dispatcher_;
+  MockControl* control_;
   MockMetrics* metrics_;
+  Callback80211Metrics* callback_metrics_;
   MockManager* manager_;
 #if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
@@ -186,17 +197,17 @@ TEST_F(ChromeosDaemonTest, QuitWithTerminationAction) {
   // This expectation verifies that the termination actions are invoked.
   EXPECT_CALL(*this, TerminationAction())
       .WillOnce(CompleteAction(manager_, "daemon test"));
-  EXPECT_CALL(*this, TerminationCompleted()).Times(1);
+  EXPECT_CALL(*this, BreakTerminationLoop()).Times(1);
 
   manager_->AddTerminationAction("daemon test",
                                  Bind(&ChromeosDaemonTest::TerminationAction,
                                       Unretained(this)));
 
   // Run Daemon::Quit() after the daemon starts running.
-  dispatcher_.PostTask(
+  dispatcher_->PostTask(
       Bind(IgnoreResult(&ChromeosDaemon::Quit),
            Unretained(&daemon_),
-           Bind(&ChromeosDaemonTest::TerminationCompleted,
+           Bind(&ChromeosDaemonTest::BreakTerminationLoop,
                 Unretained(this))));
 
   RunDaemon();
@@ -204,9 +215,9 @@ TEST_F(ChromeosDaemonTest, QuitWithTerminationAction) {
 }
 
 TEST_F(ChromeosDaemonTest, QuitWithoutTerminationActions) {
-  EXPECT_CALL(*this, TerminationCompleted()).Times(0);
+  EXPECT_CALL(*this, BreakTerminationLoop()).Times(0);
   EXPECT_TRUE(daemon_.Quit(
-      Bind(&ChromeosDaemonTest::TerminationCompleted,
+      Bind(&ChromeosDaemonTest::BreakTerminationLoop,
            Unretained(this))));
 }
 

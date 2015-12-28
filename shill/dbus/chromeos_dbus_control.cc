@@ -16,6 +16,14 @@
 
 #include "shill/dbus/chromeos_dbus_control.h"
 
+#include <brillo/dbus/async_event_sequencer.h>
+
+#if defined(__ANDROID__)
+#include <dbus/service_constants.h>
+#else
+#include <chromeos/dbus/service_constants.h>
+#endif  // __ANDROID__
+
 #include "shill/dbus/chromeos_device_dbus_adaptor.h"
 #include "shill/dbus/chromeos_ipconfig_dbus_adaptor.h"
 #include "shill/dbus/chromeos_manager_dbus_adaptor.h"
@@ -70,7 +78,9 @@
 #include "shill/dbus/chromeos_wimax_network_proxy.h"
 #endif  // DISABLE_WIMAX
 
-using brillo::dbus_utils::ExportedObjectManager;
+#include "shill/manager.h"
+
+using brillo::dbus_utils::AsyncEventSequencer;
 using std::string;
 
 namespace shill {
@@ -78,20 +88,22 @@ namespace shill {
 // static.
 const char ChromeosDBusControl::kNullPath[] = "/";
 
-ChromeosDBusControl::ChromeosDBusControl(
-    const scoped_refptr<dbus::Bus>& bus,
-    EventDispatcher* dispatcher)
-    : adaptor_bus_(bus),
-      dispatcher_(dispatcher),
+ChromeosDBusControl::ChromeosDBusControl(EventDispatcher* dispatcher)
+    : dispatcher_(dispatcher),
       null_identifier_(kNullPath) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
+  adaptor_bus_ = new dbus::Bus(options);
   proxy_bus_ = new dbus::Bus(options);
+  CHECK(adaptor_bus_->Connect());
   CHECK(proxy_bus_->Connect());
 }
 
 ChromeosDBusControl::~ChromeosDBusControl() {
+  if (adaptor_bus_) {
+    adaptor_bus_->ShutdownAndBlock();
+  }
   if (proxy_bus_) {
     proxy_bus_->ShutdownAndBlock();
   }
@@ -101,9 +113,44 @@ const string& ChromeosDBusControl::NullRPCIdentifier() {
   return null_identifier_;
 }
 
+void ChromeosDBusControl::RegisterManagerObject(
+    Manager* manager, const base::Closure& registration_done_callback) {
+  registration_done_callback_ = registration_done_callback;
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  manager->RegisterAsync(
+      base::Bind(
+          &ChromeosDBusControl::OnDBusServiceRegistered,
+          base::Unretained(this),
+          sequencer->GetHandler("Manager.RegisterAsync() failed.", true)));
+  sequencer->OnAllTasksCompletedCall({
+      base::Bind(&ChromeosDBusControl::TakeServiceOwnership,
+                 base::Unretained(this))
+  });
+}
+
 template <typename Object, typename AdaptorInterface, typename Adaptor>
 AdaptorInterface* ChromeosDBusControl::CreateAdaptor(Object* object) {
   return new Adaptor(adaptor_bus_, object);
+}
+
+void ChromeosDBusControl::OnDBusServiceRegistered(
+    const base::Callback<void(bool)>& completion_action, bool success) {
+  // The DBus control interface will take over the ownership of the DBus service
+  // in this callback.  The daemon will crash if registration failed.
+  completion_action.Run(success);
+
+  // We can start the manager now that we have ownership of the D-Bus service.
+  // Doing so earlier would allow the manager to emit signals before service
+  // ownership was acquired.
+  registration_done_callback_.Run();
+}
+
+void ChromeosDBusControl::TakeServiceOwnership(bool success) {
+  // Success should always be true since we've said that failures are fatal.
+  CHECK(success) << "Init of one or more objects has failed.";
+  CHECK(adaptor_bus_->RequestOwnershipAndBlock(kFlimflamServiceName,
+                                       dbus::Bus::REQUIRE_PRIMARY))
+      << "Unable to take ownership of " << kFlimflamServiceName;
 }
 
 DeviceAdaptorInterface* ChromeosDBusControl::CreateDeviceAdaptor(

@@ -450,7 +450,6 @@
         'crypto_util_proxy.cc',
         'dbus/chromeos_dbus_adaptor.cc',
         'dbus/chromeos_dbus_control.cc',
-        'dbus/chromeos_dbus_daemon.cc',
         'dbus/chromeos_dbus_service_watcher.cc',
         'dbus/chromeos_device_dbus_adaptor.cc',
         'dbus/chromeos_dhcpcd_listener.cc',

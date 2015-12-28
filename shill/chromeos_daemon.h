@@ -22,7 +22,9 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <brillo/daemons/daemon.h>
 
+#include "shill/event_dispatcher.h"
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/callback80211_metrics.h"
 #endif  // DISABLE_WIFI
@@ -33,7 +35,6 @@ class Config;
 class ControlInterface;
 class DHCPProvider;
 class Error;
-class EventDispatcher;
 class Manager;
 class Metrics;
 class ProcessManager;
@@ -45,7 +46,7 @@ class NetlinkManager;
 #endif  // DISABLE_WIFI
 
 
-class ChromeosDaemon {
+class ChromeosDaemon : public brillo::Daemon {
  public:
   // Run-time settings retrieved from command line.
   struct Settings {
@@ -66,12 +67,10 @@ class ChromeosDaemon {
     bool use_portal_list;
   };
 
-  ChromeosDaemon(const Settings& settings,
+  ChromeosDaemon(const base::Closure& startup_callback,
+                 const Settings& settings,
                  Config* config);
   virtual ~ChromeosDaemon();
-
-  // Runs the message loop.
-  virtual void RunMessageLoop() = 0;
 
   // Starts the termination actions in the manager. Returns true if
   // termination actions have completed synchronously, and false
@@ -81,12 +80,13 @@ class ChromeosDaemon {
   virtual bool Quit(const base::Closure& completion_callback);
 
  protected:
-  // Initialize daemon with specific control interface.
-  void Init(ControlInterface* control, EventDispatcher* dispatcher);
-
   Manager* manager() const { return manager_.get(); }
 
   void Start();
+
+  // Implementation of brillo::Daemon.
+  int OnInit() override;
+  void OnShutdown(int* return_code) override;
 
  private:
   friend class ChromeosDaemonTest;
@@ -104,10 +104,14 @@ class ChromeosDaemon {
 
   void Stop();
 
+  // Break the termination loop started in ChromeosDaemon::OnShutdown. Invoked
+  // after shill completes its termination tasks during shutdown.
+  void BreakTerminationLoop();
+
   Settings settings_;
   Config* config_;
+  std::unique_ptr<EventDispatcher> dispatcher_;
   std::unique_ptr<ControlInterface> control_;
-  EventDispatcher* dispatcher_;
   std::unique_ptr<Metrics> metrics_;
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;
@@ -119,6 +123,7 @@ class ChromeosDaemon {
 #endif  // DISABLE_WIFI
   std::unique_ptr<Manager> manager_;
   base::Closure termination_completed_callback_;
+  base::Closure startup_callback_;
 };
 
 }  // namespace shill
