@@ -17,6 +17,7 @@
 #include <brillo/asynchronous_signal_handler.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
+#include <dbus/message.h>
 
 #include "login_manager/child_exit_handler.h"
 #include "login_manager/job_manager.h"
@@ -71,6 +72,10 @@ class SessionManagerService
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
+  // Constants for setting the ARC instance cgroup state.
+  static const char kFrozen[];
+  static const char kThawed[];
+
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
   class TestApi {
@@ -92,6 +97,18 @@ class SessionManagerService
       session_manager_service_->exit_on_child_done_ = do_exit;
     }
 
+    // Sets up powerd and arc cgroup freezer state location
+    // for testing ARC functionality.
+    void set_powerd_object_proxy(dbus::ObjectProxy* proxy) {
+      session_manager_service_->powerd_dbus_proxy_ = proxy;
+    }
+    void set_arc_cgroup_freezer_state_path(base::FilePath path) {
+      session_manager_service_->arc_cgroup_freezer_state_path_ = path;
+    }
+    void set_suspend_delay_id(int id) {
+      session_manager_service_->suspend_delay_id_ = id;
+    }
+
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout_sec) {
       session_manager_service_->CleanupChildren(
@@ -103,6 +120,14 @@ class SessionManagerService
 
     // Trigger and handle SessionManagerImpl initialization.
     bool InitializeImpl() { return session_manager_service_->InitializeImpl(); }
+
+    // Fake messages from powerd.
+    void Suspend(dbus::Signal* signal) {
+      return session_manager_service_->HandleSuspendImminent(signal);
+    }
+    void Resume() {
+      return session_manager_service_->HandleSuspendDone(nullptr);
+    }
 
    private:
     friend class SessionManagerService;
@@ -186,6 +211,10 @@ class SessionManagerService
   // to other needed services. Failure is fatal.
   void InitializeDBus();
 
+  // Initializes suspend delays with powerd and registers callbacks for
+  // suspend and resume.
+  void InitializeSuspendDelays();
+
   // Takes ownership of the Session Manager's well-known service name.
   // Failure is fatal.
   void TakeDBusServiceOwnership();
@@ -206,6 +235,22 @@ class SessionManagerService
   // Callback when receiving a termination signal.
   bool OnTerminationSignal(const struct signalfd_siginfo& info);
 
+  // Helper for making powerd calls.
+  bool CallPowerdMethod(const std::string& method_name,
+                        const google::protobuf::MessageLite& request,
+                        google::protobuf::MessageLite* reply_out);
+
+  // Sets up suspend delay with powerd.
+  void SetUpSuspendHandler();
+
+  // Callbacks for suspend/resume.
+  void HandleSuspendImminent(dbus::Signal* signal);
+  void HandleSuspendDone(dbus::Signal* signal);
+
+  // Sets the ARC instance cgroup state. Can be used to freeze or thaw
+  // the instance.
+  void SetArcCgroupState(const std::string& state);
+
   scoped_ptr<BrowserJobInterface> browser_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
@@ -213,6 +258,15 @@ class SessionManagerService
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
   dbus::ExportedObject* session_manager_dbus_object_;  // Owned by bus_;
+  dbus::ObjectProxy* powerd_dbus_proxy_;  // Owned by bus_.
+
+  // ARC instance related. |arc_cgroup_freezer_state_path_| is the path
+  // to the sysfs file that controls whether the instance's processes
+  // are frozen. |suspend_delay_id_| needs to be passed back to powerd
+  // after we are done freezing the instance to let it know we're ready
+  // to suspend.
+  base::FilePath arc_cgroup_freezer_state_path_;
+  int suspend_delay_id_;
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;  // Owned by the caller.

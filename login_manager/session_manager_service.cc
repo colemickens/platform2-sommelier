@@ -40,6 +40,7 @@
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace em = enterprise_management;
 namespace login_manager {
@@ -48,6 +49,13 @@ namespace {
 
 const int kSignals[] = {SIGTERM, SIGINT, SIGHUP};
 const int kNumSignals = sizeof(kSignals) / sizeof(int);
+
+// Constants for susend delays and ARC cgroup control.
+const int kSuspendDelayMs = 1000;
+const char kSuspendDelayDescription[] = "session_manager";
+
+const base::FilePath::CharType kArcCgroupFreezerStatePath[] =
+    FILE_PATH_LITERAL("/sys/fs/cgroup/freezer/android/freezer.state");
 
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {
@@ -69,6 +77,15 @@ void FireAndBlockOnDBusMethodCall(dbus::ObjectProxy* proxy,
   proxy->CallMethodAndBlock(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
+void HandleSignalConnected(const std::string& interface,
+                           const std::string& signal,
+                           bool success) {
+  if (!success) {
+    LOG(ERROR) << "Could not connect to signal " << signal
+               << " on interface " << interface;
+  }
+}
+
 }  // anonymous namespace
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
@@ -80,6 +97,11 @@ void FireAndBlockOnDBusMethodCall(dbus::ObjectProxy* proxy,
 const int SessionManagerService::kKillTimeoutCollectChrome = 60;
 const char SessionManagerService::kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
+
+// Write these to the ARC cgroup freezer state path to freeze or thaw all
+// of the processes in the instance.
+const char SessionManagerService::kFrozen[] = "FROZEN";
+const char SessionManagerService::kThawed[] = "THAWED";
 
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   siginfo_t info;
@@ -109,6 +131,8 @@ SessionManagerService::SessionManagerService(
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
+      arc_cgroup_freezer_state_path_(kArcCgroupFreezerStatePath),
+      suspend_delay_id_(-1),
       login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
@@ -134,7 +158,7 @@ bool SessionManagerService::Initialize() {
       bus_->GetObjectProxy(chromeos::kLibCrosServiceName,
                            dbus::ObjectPath(chromeos::kLibCrosServicePath));
 
-  dbus::ObjectProxy* powerd_dbus_proxy = bus_->GetObjectProxy(
+  powerd_dbus_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
@@ -160,7 +184,7 @@ bool SessionManagerService::Initialize() {
                                         chromeos::kLibCrosServiceInterface,
                                         chromeos::kLockScreen),
                              base::Bind(&FireAndBlockOnDBusMethodCall,
-                                        base::Unretained(powerd_dbus_proxy),
+                                        base::Unretained(powerd_dbus_proxy_),
                                         power_manager::kPowerManagerInterface,
                                         power_manager::kRequestRestartMethod),
                              &key_gen_,
@@ -180,6 +204,11 @@ bool SessionManagerService::Initialize() {
 
   adaptor_->ExportDBusMethods(session_manager_dbus_object_);
   TakeDBusServiceOwnership();
+
+#ifdef USE_ARC
+  SetUpSuspendHandler();
+#endif
+
   return true;
 }
 
@@ -356,6 +385,86 @@ void SessionManagerService::SetUpHandlers() {
         base::Bind(&SessionManagerService::OnTerminationSignal,
                    base::Unretained(this)));
   }
+}
+
+bool SessionManagerService::CallPowerdMethod(
+    const std::string& method_name,
+    const google::protobuf::MessageLite& request,
+    google::protobuf::MessageLite* reply_out) {
+  dbus::MethodCall method_call(
+      power_manager::kPowerManagerInterface, method_name);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendProtoAsArrayOfBytes(request);
+
+  scoped_ptr<dbus::Response> response(
+      powerd_dbus_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  if (!response)
+    return false;
+
+  if (reply_out) {
+    dbus::MessageReader reader(response.get());
+    reader.PopArrayOfBytesAsProto(reply_out);
+  }
+  return true;
+}
+
+void SessionManagerService::SetUpSuspendHandler() {
+  powerd_dbus_proxy_->ConnectToSignal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendImminentSignal,
+      base::Bind(&SessionManagerService::HandleSuspendImminent,
+                 base::Unretained(this)),
+      base::Bind(&HandleSignalConnected));
+  powerd_dbus_proxy_->ConnectToSignal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendDoneSignal,
+      base::Bind(&SessionManagerService::HandleSuspendDone,
+                 base::Unretained(this)),
+      base::Bind(&HandleSignalConnected));
+
+  power_manager::RegisterSuspendDelayRequest request;
+  request.set_timeout(
+      base::TimeDelta::FromMilliseconds(kSuspendDelayMs).ToInternalValue());
+  request.set_description(kSuspendDelayDescription);
+  power_manager::RegisterSuspendDelayReply reply;
+
+  if (!CallPowerdMethod(power_manager::kRegisterSuspendDelayMethod,
+                        request, &reply)) {
+    LOG(ERROR) << "Failed to set up suspend handler";
+    return;
+  }
+  LOG(INFO) << "Registered delay " << reply.delay_id();
+  suspend_delay_id_ = reply.delay_id();
+}
+
+void SessionManagerService::SetArcCgroupState(const std::string& state) {
+  // TODO(ejcaruso): Move this to wherever the ARC instance control
+  // lands.
+  LOG(INFO) << "Setting ARC instance state to " << state;
+  if (base::WriteFile(arc_cgroup_freezer_state_path_,
+                      state.c_str(), state.size()) < 0) {
+    LOG(WARNING) << "Failed to write to cgroup state file";
+  }
+}
+
+void SessionManagerService::HandleSuspendImminent(dbus::Signal* signal) {
+  power_manager::SuspendImminent info;
+  dbus::MessageReader reader(signal);
+  CHECK(reader.PopArrayOfBytesAsProto(&info));
+  int suspend_id = info.suspend_id();
+
+  SetArcCgroupState(kFrozen);
+
+  power_manager::SuspendReadinessInfo request;
+  request.set_delay_id(suspend_delay_id_);
+  request.set_suspend_id(suspend_id);
+  CallPowerdMethod(power_manager::kHandleSuspendReadinessMethod,
+                   request, nullptr);
+}
+
+void SessionManagerService::HandleSuspendDone(dbus::Signal* signal) {
+  SetArcCgroupState(kThawed);
 }
 
 // This _must_ be async signal safe. No library calls or malloc'ing allowed.

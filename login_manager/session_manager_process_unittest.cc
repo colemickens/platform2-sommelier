@@ -27,9 +27,11 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
+#include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_session_manager.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/system_utils_impl.h"
+#include "power_manager/proto_bindings/suspend.pb.h"
 
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
@@ -163,6 +165,66 @@ char SessionManagerProcessTest::kFakeEmail[] = "cmasone@whaaat.org";
 const pid_t SessionManagerProcessTest::kDummyPid = 4;
 const int SessionManagerProcessTest::kExit = 1;
 
+class HandleSuspendReadinessMethodMatcher
+    : public ::testing::MatcherInterface<dbus::MethodCall*> {
+ public:
+  HandleSuspendReadinessMethodMatcher(int delay_id, int suspend_id)
+      : delay_id_(delay_id),
+        suspend_id_(suspend_id) {}
+
+  virtual bool MatchAndExplain(dbus::MethodCall* method_call,
+                               ::testing::MatchResultListener* listener) const {
+    // Make sure we've got the right kind of method call.
+    if (method_call->GetInterface() !=
+        power_manager::kPowerManagerInterface) {
+      *listener << "interface was " << method_call->GetInterface();
+      return false;
+    }
+
+    if (method_call->GetMember() !=
+        power_manager::kHandleSuspendReadinessMethod) {
+      *listener << "method name was " << method_call->GetMember();
+      return false;
+    }
+
+    // Check proto for correctness.
+    power_manager::SuspendReadinessInfo info;
+    dbus::MessageReader reader(method_call);
+    reader.PopArrayOfBytesAsProto(&info);
+    if (info.delay_id() != delay_id_) {
+      *listener << "delay ID was " << info.delay_id();
+      return false;
+    }
+    if (info.suspend_id() != suspend_id_) {
+      *listener << "suspend ID was " << info.suspend_id();
+      return false;
+    }
+
+    return true;
+  }
+
+  virtual void DescribeTo(::std::ostream* os) const {
+    *os << "HandleSuspendReadiness method call with delay ID "
+        << delay_id_ << " and suspend ID " << suspend_id_;
+  }
+
+  virtual void DescribeNegationTo(::std::ostream* os) const {
+    *os << "non-HandleSuspendReadiness method call, or method call "
+        << "not with delay ID " << delay_id_ << " and suspend ID "
+        << suspend_id_;
+  }
+ private:
+  const int delay_id_;
+  const int suspend_id_;
+};
+
+inline testing::Matcher<dbus::MethodCall*> HandleSuspendReadinessMethod(
+    int delay_id,
+    int suspend_id) {
+  return MakeMatcher(
+      new HandleSuspendReadinessMethodMatcher(delay_id, suspend_id));
+}
+
 // Browser processes get correctly terminated.
 TEST_F(SessionManagerProcessTest, CleanupBrowser) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
@@ -287,6 +349,50 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
 
   ASSERT_FALSE(manager_->test_api().InitializeImpl());
   ASSERT_EQ(SessionManagerService::MUST_WIPE_DEVICE, manager_->exit_code());
+}
+
+TEST_F(SessionManagerProcessTest, SuspendAndResumeArcInstance) {
+  CreateMockJobAndInitManager(true);
+
+  const int kSuspendDelayId = 1000;
+  const int kSuspendId = 2000;
+  scoped_refptr<MockObjectProxy> powerd_object_proxy(new MockObjectProxy);
+  std::string cgroup_state;
+
+  manager_->test_api().set_powerd_object_proxy(powerd_object_proxy.get());
+  base::FilePath temp_file_path;
+  CHECK(base::CreateTemporaryFile(&temp_file_path));
+  manager_->test_api().set_arc_cgroup_freezer_state_path(temp_file_path);
+  manager_->test_api().set_suspend_delay_id(kSuspendDelayId);
+
+  // Fake the SuspendImminent signal.
+  dbus::Signal suspend_signal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendImminentSignal);
+  power_manager::SuspendImminent suspend_imminent;
+  suspend_imminent.set_suspend_id(kSuspendId);
+  dbus::MessageWriter suspend_writer(&suspend_signal);
+  suspend_writer.AppendProtoAsArrayOfBytes(suspend_imminent);
+
+  // SuspendImminent should trigger a HandleSuspendReadiness response
+  // after freezing the ARC instance.
+  EXPECT_CALL(*powerd_object_proxy.get(),
+      MockCallMethodAndBlock(
+          HandleSuspendReadinessMethod(kSuspendDelayId, kSuspendId),
+          _));
+
+  manager_->test_api().Suspend(&suspend_signal);
+
+  EXPECT_TRUE(base::ReadFileToString(temp_file_path, &cgroup_state));
+  EXPECT_EQ(cgroup_state, SessionManagerService::kFrozen);
+
+  // SuspendDone should just trigger thawing the instance. We don't
+  // need to worry about faking a message here, since we don't use
+  // the message.
+  manager_->test_api().Resume();
+
+  EXPECT_TRUE(base::ReadFileToString(temp_file_path, &cgroup_state));
+  EXPECT_EQ(cgroup_state, SessionManagerService::kThawed);
 }
 
 }  // namespace login_manager
