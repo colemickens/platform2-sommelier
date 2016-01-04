@@ -33,8 +33,9 @@ struct RequestDataContainer {
 };
 
 void OnCopySuccess(std::shared_ptr<RequestDataContainer> container,
-                   brillo::StreamPtr in_stream, brillo::StreamPtr out_stream,
-                   uint64_t size_copied) {
+                   brillo::StreamPtr /* in_stream */,
+                   brillo::StreamPtr out_stream,
+                   uint64_t /* size_copied */) {
   // Close/release the memory stream so we can work with underlying data buffer.
   out_stream->CloseBlocking(nullptr);
   out_stream.reset();
@@ -44,7 +45,8 @@ void OnCopySuccess(std::shared_ptr<RequestDataContainer> container,
 }
 
 void OnCopyError(std::shared_ptr<RequestDataContainer> container,
-                 brillo::StreamPtr in_stream, brillo::StreamPtr out_stream,
+                 brillo::StreamPtr /* in_stream */,
+                 brillo::StreamPtr /* out_stream */,
                  const brillo::Error* error) {
   container->error_callback.Run(std::move(container->request),
                                 std::move(container->response), error);

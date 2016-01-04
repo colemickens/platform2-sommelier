@@ -34,7 +34,7 @@ namespace libwebserv {
 namespace {
 
 // Dummy callback for async D-Bus errors.
-void IgnoreDBusError(brillo::Error* error) {}
+void IgnoreDBusError(brillo::Error* /* error */) {}
 
 // Copies the data from |src_stream| to the destination stream represented
 // by a file descriptor |fd|.
@@ -193,8 +193,8 @@ void DBusProtocolHandler::AddHandlerSuccess(
   remote_handler_id_map_.emplace(remote_handler_id, handler_id);
 }
 
-void DBusProtocolHandler::AddHandlerError(int handler_id,
-                                          brillo::Error* error) {
+void DBusProtocolHandler::AddHandlerError(int /* handler_id */,
+                                          brillo::Error* /* error */) {
   // Nothing to do at the moment.
 }
 

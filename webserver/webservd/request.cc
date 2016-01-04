@@ -37,7 +37,7 @@ namespace webservd {
 class RequestHelper {
  public:
   static int PostDataIterator(void* cls,
-                              MHD_ValueKind kind,
+                              MHD_ValueKind /* kind */,
                               const char* key,
                               const char* filename,
                               const char* content_type,
@@ -164,7 +164,7 @@ base::File Request::Complete(
 
 bool Request::Complete(
     int32_t status_code,
-    const std::vector<std::tuple<std::string, std::string>>& headers,
+    const std::vector<std::tuple<std::string, std::string>>& /* headers */,
     const std::string& mime_type,
     const std::string& data) {
   std::vector<std::tuple<std::string, std::string>> headers_copy;
@@ -315,7 +315,7 @@ bool Request::AddRawRequestData(const void* data, size_t* size) {
   return waiting_for_data_;
 }
 
-ssize_t Request::ResponseDataCallback(void *cls, uint64_t pos, char *buf,
+ssize_t Request::ResponseDataCallback(void *cls, uint64_t /* pos */, char *buf,
                                       size_t max) {
   Request* self = static_cast<Request*>(cls);
   size_t read = 0;
@@ -349,7 +349,7 @@ ssize_t Request::ResponseDataCallback(void *cls, uint64_t pos, char *buf,
   return 0;
 }
 
-void Request::OnPipeAvailable(brillo::Stream::AccessMode mode) {
+void Request::OnPipeAvailable(brillo::Stream::AccessMode /* mode */) {
   MHD_resume_connection(connection_);
   waiting_for_data_ = false;
   protocol_handler_->ScheduleWork();

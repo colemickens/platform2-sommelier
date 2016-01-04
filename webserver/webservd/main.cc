@@ -48,8 +48,10 @@ namespace {
 const char kDefaultConfigFilePath[] = "/etc/webservd/config";
 const char kServiceName[] = "org.chromium.WebServer";
 const char kRootServicePath[] = "/org/chromium/WebServer";
+#if !defined(__ANDROID__)
 const char kWebServerUserName[] = "webservd";
 const char kWebServerGroupName[] = "webservd";
+#endif  // !defined(__ANDROID__)
 
 class Daemon final : public brillo::DBusServiceDaemon {
  public:
@@ -67,7 +69,7 @@ class Daemon final : public brillo::DBusServiceDaemon {
         sequencer->GetHandler("Server.RegisterAsync() failed.", true));
   }
 
-  void OnShutdown(int* return_code) override {
+  void OnShutdown(int* /* return_code */) override {
     server_.reset();
   }
 

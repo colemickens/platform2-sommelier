@@ -156,7 +156,7 @@ bool DBusServer::IsConnected() const {
   return proxy_ != nullptr;
 }
 
-void DBusServer::Offline(const dbus::ObjectPath& object_path) {
+void DBusServer::Offline(const dbus::ObjectPath& /* object_path */) {
   if (!on_server_offline_.is_null())
     on_server_offline_.Run();
   proxy_ = nullptr;

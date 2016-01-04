@@ -67,7 +67,7 @@ ExportedObjectManager* DBusProtocolHandler::GetObjectManager() const {
 }
 
 bool DBusProtocolHandler::AddRequestHandler(
-    brillo::ErrorPtr* error,
+    brillo::ErrorPtr* /* error */,
     dbus::Message* message,
     const std::string& in_url,
     const std::string& in_method,

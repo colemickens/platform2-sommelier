@@ -55,7 +55,7 @@ void OnFirewallSuccess(const std::string& itf_name,
   }
 }
 
-void IgnoreFirewallDBusMethodError(brillo::Error* error) {
+void IgnoreFirewallDBusMethodError(brillo::Error* /* error */) {
 }
 
 brillo::SecureBlob LoadAndValidatePrivateKey(const base::FilePath& key_file,

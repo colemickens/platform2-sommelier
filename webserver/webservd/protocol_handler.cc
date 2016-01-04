@@ -70,8 +70,8 @@ class ServerHelper final {
     return MHD_YES;
   }
 
-  static void RequestCompleted(void* cls,
-                               MHD_Connection* connection,
+  static void RequestCompleted(void* /* cls */,
+                               MHD_Connection*  /* connection */,
                                void** con_cls,
                                MHD_RequestTerminationCode toe) {
     if (toe != MHD_REQUEST_TERMINATED_COMPLETED_OK) {
@@ -329,12 +329,12 @@ class ProtocolHandler::Watcher final : public base::MessageLoopForIO::Watcher {
   }
 
   // Overrides from base::MessageLoopForIO::Watcher.
-  void OnFileCanReadWithoutBlocking(int fd) override {
+  void OnFileCanReadWithoutBlocking(int /* fd */) override {
     triggered_ = true;
     handler_->ScheduleWork();
   }
 
-  void OnFileCanWriteWithoutBlocking(int fd) override {
+  void OnFileCanWriteWithoutBlocking(int /* fd */) override {
     triggered_ = true;
     handler_->ScheduleWork();
   }
