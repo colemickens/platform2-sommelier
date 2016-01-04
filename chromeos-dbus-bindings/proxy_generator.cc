@@ -767,7 +767,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
 
 // static
 void ProxyGenerator::AddMethodMock(const Interface::Method& method,
-                                   const string& interface_name,
+                                   const string& /* interface_name */,
                                    IndentedText* text) {
   DbusSignature signature;
   vector<string> arguments;
@@ -794,7 +794,7 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
 
 // static
 void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
-                                        const string& interface_name,
+                                        const string& /* interface_name */,
                                         IndentedText* text) {
   DbusSignature signature;
   vector<string> arguments;
@@ -1137,6 +1137,22 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
 void ProxyGenerator::ObjectManager::AddOnPropertyChanged(
     const std::vector<Interface>& interfaces,
     IndentedText* text) {
+  // If there are no interfaces with properties, comment out parameter
+  // names for OnPropertyChanged() to prevent compiler warnings on unused
+  // function parameters.
+  auto has_props = [](const Interface& itf) { return !itf.properties.empty(); };
+  auto itf_with_props = std::find_if(interfaces.begin(), interfaces.end(),
+                                     has_props);
+  if (itf_with_props == interfaces.end()) {
+    text->AddLineAndPushOffsetTo("void OnPropertyChanged("
+                                 "const dbus::ObjectPath& /* object_path */,",
+                                 1, '(');
+    text->AddLine("const std::string& /* interface_name */,");
+    text->AddLine("const std::string& /* property_name */) {}");
+    text->PopOffset();
+    text->AddBlankLine();
+    return;
+  }
   text->AddLineAndPushOffsetTo("void OnPropertyChanged("
                                "const dbus::ObjectPath& object_path,",
                                1, '(');

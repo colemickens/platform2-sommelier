@@ -1196,10 +1196,9 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
-  void OnPropertyChanged(const dbus::ObjectPath& object_path,
-                         const std::string& interface_name,
-                         const std::string& property_name) {
-  }
+  void OnPropertyChanged(const dbus::ObjectPath& /* object_path */,
+                         const std::string& /* interface_name */,
+                         const std::string& /* property_name */) {}
 
   void ObjectAdded(
       const dbus::ObjectPath& object_path,
