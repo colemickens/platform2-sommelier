@@ -63,8 +63,9 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   return connection;
 }
 
-void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
-                                 const base::Closure& callback) {
+void Transport::RunCallbackAsync(
+    const tracked_objects::Location& /* from_here */,
+    const base::Closure& callback) {
   if (!async_) {
     callback.Run();
     return;
@@ -88,19 +89,19 @@ void Transport::HandleAllAsyncRequests() {
 }
 
 http::RequestID Transport::StartAsyncTransfer(
-    http::Connection* connection,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+    http::Connection* /* connection */,
+    const SuccessCallback& /* success_callback */,
+    const ErrorCallback& /* error_callback */) {
   // Fake transport doesn't use this method.
   LOG(FATAL) << "This method should not be called on fake transport";
   return 0;
 }
 
-bool Transport::CancelRequest(RequestID request_id) {
+bool Transport::CancelRequest(RequestID /* request_id */) {
   return false;
 }
 
-void Transport::SetDefaultTimeout(base::TimeDelta timeout) {
+void Transport::SetDefaultTimeout(base::TimeDelta /* timeout */) {
 }
 
 static inline std::string GetHandlerMapKey(const std::string& url,
@@ -121,7 +122,7 @@ void Transport::AddSimpleReplyHandler(const std::string& url,
                                       const std::string& reply_text,
                                       const std::string& mime_type) {
   auto handler = [status_code, reply_text, mime_type](
-      const ServerRequest& request, ServerResponse* response) {
+      const ServerRequest& /* request */, ServerResponse* response) {
     response->ReplyText(status_code, reply_text, mime_type);
   };
   AddHandler(url, method, base::Bind(handler));

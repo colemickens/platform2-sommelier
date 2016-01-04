@@ -32,7 +32,7 @@ class HelpFlag : public brillo::Flag {
  public:
   HelpFlag() : Flag("help", "false", "Show this help message", true) {}
 
-  bool SetValue(const std::string& value) override { return true; };
+  bool SetValue(const std::string& /* value */) override { return true; };
   const char* GetType() const override { return "bool"; }
 };
 

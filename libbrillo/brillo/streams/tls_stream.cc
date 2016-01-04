@@ -24,7 +24,7 @@ namespace {
 
 // SSL info callback which is called by OpenSSL when we enable logging level of
 // at least 3. This logs the information about the internal TLS handshake.
-void TlsInfoCallback(const SSL* ssl, int where, int ret) {
+void TlsInfoCallback(const SSL* /* ssl */, int where, int ret) {
   std::string reason;
   std::vector<std::string> info;
   if (where & SSL_CB_LOOP)
@@ -400,7 +400,7 @@ bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
 void TlsStream::TlsStreamImpl::RetryHandshake(
     const base::Closure& success_callback,
     const Stream::ErrorCallback& error_callback,
-    Stream::AccessMode mode) {
+    Stream::AccessMode /* mode */) {
   VLOG(1) << "Retrying TLS handshake";
   DoHandshake(success_callback, error_callback);
 }
@@ -475,13 +475,13 @@ bool TlsStream::IsOpen() const {
   return impl_ ? true : false;
 }
 
-bool TlsStream::SetSizeBlocking(uint64_t size, ErrorPtr* error) {
+bool TlsStream::SetSizeBlocking(uint64_t /* size */, ErrorPtr* error) {
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }
 
-bool TlsStream::Seek(int64_t offset,
-                     Whence whence,
-                     uint64_t* new_position,
+bool TlsStream::Seek(int64_t /* offset */,
+                     Whence /* whence */,
+                     uint64_t* /* new_position*/,
                      ErrorPtr* error) {
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }

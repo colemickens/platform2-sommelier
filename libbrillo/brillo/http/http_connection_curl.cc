@@ -15,11 +15,11 @@ namespace brillo {
 namespace http {
 namespace curl {
 
-static int curl_trace(CURL* handle,
+static int curl_trace(CURL* /* handle */,
                       curl_infotype type,
                       char* data,
                       size_t size,
-                      void* userp) {
+                      void* /* userp */) {
   std::string msg(data, size);
 
   switch (type) {
@@ -72,12 +72,13 @@ Connection::~Connection() {
 }
 
 bool Connection::SendHeaders(const HeaderList& headers,
-                             brillo::ErrorPtr* error) {
+                             brillo::ErrorPtr* /* error */) {
   headers_.insert(headers.begin(), headers.end());
   return true;
 }
 
-bool Connection::SetRequestData(StreamPtr stream, brillo::ErrorPtr* error) {
+bool Connection::SetRequestData(StreamPtr stream,
+                                brillo::ErrorPtr* /* error */) {
   request_data_stream_ = std::move(stream);
   return true;
 }

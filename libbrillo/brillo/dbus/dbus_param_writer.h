@@ -45,7 +45,7 @@ class DBusParamWriter final {
   // Handles non-pointer parameter by just skipping over it.
   template<typename ParamType, typename... RestOfParams>
   static void AppendDBusOutParams(dbus::MessageWriter* writer,
-                                  const ParamType& param,
+                                  const ParamType& /* param */,
                                   const RestOfParams&... rest) {
     // Skip the current |param| and call Append() with one fewer arguments,
     // until none is left and stand-alone version of

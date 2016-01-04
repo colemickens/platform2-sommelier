@@ -60,7 +60,7 @@ class DBusMethodInvokerTest : public testing::Test {
   void TearDown() override { bus_ = nullptr; }
 
   Response* CreateResponse(dbus::MethodCall* method_call,
-                           int timeout_ms,
+                           int /* timeout_ms */,
                            dbus::ScopedDBusError* dbus_error) {
     if (method_call->GetInterface() == kTestInterface) {
       if (method_call->GetMember() == kTestMethod1) {
@@ -217,7 +217,7 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
   void TearDown() override { bus_ = nullptr; }
 
   void HandleCall(dbus::MethodCall* method_call,
-                  int timeout_ms,
+                  int /* timeout_ms */,
                   dbus::ObjectProxy::ResponseCallback success_callback,
                   dbus::ObjectProxy::ErrorCallback error_callback) {
     if (method_call->GetInterface() == kTestInterface) {

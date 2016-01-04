@@ -29,7 +29,7 @@ class Connection : public http::Connection {
   // See http_connection.h for description of these methods.
   bool SendHeaders(const HeaderList& headers, brillo::ErrorPtr* error) override;
   bool SetRequestData(StreamPtr stream, brillo::ErrorPtr* error) override;
-  void SetResponseData(StreamPtr stream) override {}
+  void SetResponseData(StreamPtr /* stream */) override {}
   bool FinishRequest(brillo::ErrorPtr* error) override;
   RequestID FinishRequestAsync(const SuccessCallback& success_callback,
                                const ErrorCallback& error_callback) override;

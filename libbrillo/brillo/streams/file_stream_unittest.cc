@@ -372,7 +372,7 @@ TEST_F(FileStreamTest, ReadAsync) {
   size_t read_size = 0;
   bool failed = false;
   auto success_callback = [&read_size](size_t size) { read_size = size; };
-  auto error_callback = [&failed](const Error* error) { failed = true; };
+  auto error_callback = [&failed](const Error* /* error */) { failed = true; };
   FileStream::FileDescriptorInterface::DataCallback data_callback;
 
   EXPECT_CALL(fd_mock(), Read(test_read_buffer_, 100))
@@ -511,7 +511,7 @@ TEST_F(FileStreamTest, WriteAsync) {
   size_t write_size = 0;
   bool failed = false;
   auto success_callback = [&write_size](size_t size) { write_size = size; };
-  auto error_callback = [&failed](const Error* error) { failed = true; };
+  auto error_callback = [&failed](const Error* /* error */) { failed = true; };
   FileStream::FileDescriptorInterface::DataCallback data_callback;
 
   EXPECT_CALL(fd_mock(), Write(test_write_buffer_, 100))
@@ -1039,7 +1039,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadAsync) {
     succeeded = true;
   };
 
-  auto error_callback = [&failed](const Error* error) {
+  auto error_callback = [&failed](const Error* /* error */) {
     failed = true;
   };
 
@@ -1084,14 +1084,14 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteAsync) {
 
   ASSERT_EQ(0, pipe(fds));
 
-  auto success_callback = [&succeeded, &data](int read_fd, size_t size) {
+  auto success_callback = [&succeeded, &data](int read_fd, size_t /* size */) {
     char buffer[100];
     EXPECT_TRUE(base::ReadFromFD(read_fd, buffer, data.size()));
     EXPECT_EQ(data, (std::string{buffer, buffer + data.size()}));
     succeeded = true;
   };
 
-  auto error_callback = [&failed](const Error* error) {
+  auto error_callback = [&failed](const Error* /* error */) {
     failed = true;
   };
 

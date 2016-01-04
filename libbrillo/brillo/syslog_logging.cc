@@ -34,8 +34,8 @@ static bool s_log_to_stderr;
 static bool s_log_header;
 
 static bool HandleMessage(int severity,
-                          const char* file,
-                          int line,
+                          const char* /* file */,
+                          int /* line */,
                           size_t message_start,
                           const std::string& message) {
   switch (severity) {

@@ -206,12 +206,13 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
   // Success/error callback needed to report the result of an async operation.
   int success_call_count = 0;
   auto success_callback = [&success_call_count, &run_loop](
-      RequestID request_id, std::unique_ptr<http::Response> resp) {
+      RequestID /* request_id */, std::unique_ptr<http::Response> /* resp */) {
     base::MessageLoop::current()->PostTask(FROM_HERE, run_loop.QuitClosure());
     success_call_count++;
   };
 
-  auto error_callback = [](RequestID request_id, const Error* error) {
+  auto error_callback = [](RequestID /* request_id */,
+                           const Error* /* error */) {
     FAIL() << "This callback shouldn't have been called";
   };
 

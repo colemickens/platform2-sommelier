@@ -104,7 +104,7 @@ TEST(Stream, ReadAsync) {
     read_size = size;
     succeeded = true;
   };
-  auto error_callback = [&failed](const Error* error) { failed = true; };
+  auto error_callback = [&failed](const Error* /* error */) { failed = true; };
 
   MockStreamImpl stream_mock;
   base::Callback<void(AccessMode)> data_callback;
@@ -149,8 +149,8 @@ TEST(Stream, ReadAsync) {
 TEST(Stream, ReadAsync_DontWaitForData) {
   bool succeeded = false;
   bool failed = false;
-  auto success_callback = [&succeeded](size_t size) { succeeded = true; };
-  auto error_callback = [&failed](const Error* error) { failed = true; };
+  auto success_callback = [&succeeded](size_t /* size */) { succeeded = true; };
+  auto error_callback = [&failed](const Error* /* error */) { failed = true; };
 
   MockStreamImpl stream_mock;
   char buf[10];
@@ -190,7 +190,7 @@ TEST(Stream, ReadAllAsync) {
   bool succeeded = false;
   bool failed = false;
   auto success_callback = [&succeeded]() { succeeded = true; };
-  auto error_callback = [&failed](const Error* error) { failed = true; };
+  auto error_callback = [&failed](const Error* /* error */) { failed = true; };
 
   MockStreamImpl stream_mock;
   base::Callback<void(AccessMode)> data_callback;
@@ -352,7 +352,7 @@ TEST(Stream, WriteAsync) {
   size_t write_size = 0;
   bool failed = false;
   auto success_callback = [&write_size](size_t size) { write_size = size; };
-  auto error_callback = [&failed](const Error* error) { failed = true; };
+  auto error_callback = [&failed](const Error* /* error */) { failed = true; };
 
   MockStreamImpl stream_mock;
   InSequence s;
@@ -391,7 +391,7 @@ TEST(Stream, WriteAllAsync) {
   bool succeeded = false;
   bool failed = false;
   auto success_callback = [&succeeded]() { succeeded = true; };
-  auto error_callback = [&failed](const Error* error) { failed = true; };
+  auto error_callback = [&failed](const Error* /* error */) { failed = true; };
 
   MockStreamImpl stream_mock;
   base::Callback<void(AccessMode)> data_callback;

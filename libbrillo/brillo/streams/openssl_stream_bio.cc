@@ -47,7 +47,7 @@ int stream_read(BIO* bio, char* buf, int size) {
 }
 
 // NOLINTNEXTLINE(runtime/int)
-long stream_ctrl(BIO* bio, int cmd, long num, void* ptr) {
+long stream_ctrl(BIO* bio, int cmd, long /* num */, void* /* ptr */) {
   if (cmd == BIO_CTRL_FLUSH) {
     brillo::Stream* stream = static_cast<brillo::Stream*>(bio->ptr);
     return stream->FlushBlocking(nullptr) ? 1 : 0;

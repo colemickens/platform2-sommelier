@@ -284,7 +284,7 @@ TEST_F(FakeStreamTest, ReadAsync) {
   int success_count = 0;
   int error_count = 0;
   auto on_success = [&success_count] { success_count++; };
-  auto on_failure = [&error_count](const Error* error) { error_count++; };
+  auto on_failure = [&error_count](const Error* /* error */) { error_count++; };
 
   EXPECT_TRUE(stream_->ReadAllAsync(buffer.data(), buffer.size(),
                                     base::Bind(on_success),
@@ -437,7 +437,7 @@ TEST_F(FakeStreamTest, WriteAsync) {
   int success_count = 0;
   int error_count = 0;
   auto on_success = [&success_count] { success_count++; };
-  auto on_failure = [&error_count](const Error* error) { error_count++; };
+  auto on_failure = [&error_count](const Error* /* error */) { error_count++; };
 
   EXPECT_TRUE(stream_->WriteAllAsync(output_data.data(), output_data.size(),
                                      base::Bind(on_success),

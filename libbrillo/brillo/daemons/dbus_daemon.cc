@@ -74,7 +74,7 @@ int DBusServiceDaemon::OnInit() {
 }
 
 void DBusServiceDaemon::RegisterDBusObjectsAsync(
-    dbus_utils::AsyncEventSequencer* sequencer) {
+    dbus_utils::AsyncEventSequencer* /* sequencer */) {
   // Do nothing here.
   // Overload this method to export custom D-Bus objects at daemon startup.
 }

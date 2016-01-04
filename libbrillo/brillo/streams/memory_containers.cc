@@ -73,19 +73,21 @@ bool ContiguousBufferBase::Write(const void* buffer,
   return true;
 }
 
-bool ContiguousReadOnlyBufferBase::Write(const void* buffer,
-                                         size_t size_to_write,
-                                         size_t offset,
-                                         size_t* size_written,
+bool ContiguousReadOnlyBufferBase::Write(const void* /* buffer */,
+                                         size_t /* size_to_write */,
+                                         size_t /* offset */,
+                                         size_t* /* size_written */,
                                          ErrorPtr* error) {
   return ErrorStreamReadOnly(FROM_HERE, error);
 }
 
-bool ContiguousReadOnlyBufferBase::Resize(size_t new_size, ErrorPtr* error) {
+bool ContiguousReadOnlyBufferBase::Resize(size_t /* new_size */,
+                                          ErrorPtr* error) {
   return ErrorStreamReadOnly(FROM_HERE, error);
 }
 
-void* ContiguousReadOnlyBufferBase::GetBuffer(size_t offset, ErrorPtr* error) {
+void* ContiguousReadOnlyBufferBase::GetBuffer(size_t /* offset */,
+                                              ErrorPtr* error) {
   ErrorStreamReadOnly(FROM_HERE, error);
   return nullptr;
 }
@@ -101,16 +103,17 @@ ByteBuffer::~ByteBuffer() {
 
 StringPtr::StringPtr(std::string* string) : string_ptr_(string) {}
 
-bool StringPtr::Resize(size_t new_size, ErrorPtr* error) {
+bool StringPtr::Resize(size_t new_size, ErrorPtr* /* error */) {
   string_ptr_->resize(new_size);
   return true;
 }
 
-const void* StringPtr::GetReadOnlyBuffer(size_t offset, ErrorPtr* error) const {
+const void* StringPtr::GetReadOnlyBuffer(size_t offset,
+                                         ErrorPtr* /* error */) const {
   return string_ptr_->data() + offset;
 }
 
-void* StringPtr::GetBuffer(size_t offset, ErrorPtr* error) {
+void* StringPtr::GetBuffer(size_t offset, ErrorPtr* /* error */) {
   return &(*string_ptr_)[offset];
 }
 
@@ -118,7 +121,7 @@ ReadOnlyStringRef::ReadOnlyStringRef(const std::string& string)
     : string_ref_(string) {}
 
 const void* ReadOnlyStringRef::GetReadOnlyBuffer(size_t offset,
-                                                 ErrorPtr* error) const {
+                                                 ErrorPtr* /* error */) const {
   return string_ref_.data() + offset;
 }
 

@@ -388,7 +388,7 @@ int Transport::MultiSocketCallback(CURL* easy,
 }
 
 // CURL actually uses "long" types in callback signatures, so we must comply.
-int Transport::MultiTimerCallback(CURLM* multi,
+int Transport::MultiTimerCallback(CURLM* /* multi */,
                                   long timeout_ms,  // NOLINT(runtime/int)
                                   void* userp) {
   auto transport = static_cast<Transport*>(userp);

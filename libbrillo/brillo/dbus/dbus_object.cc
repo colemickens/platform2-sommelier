@@ -31,7 +31,7 @@ void DBusInterface::AddProperty(const std::string& property_name,
 
 void DBusInterface::ExportAsync(
     ExportedObjectManager* object_manager,
-    dbus::Bus* bus,
+    dbus::Bus* /* bus */,
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path,
     const AsyncEventSequencer::CompletionAction& completion_callback) {
@@ -67,7 +67,7 @@ void DBusInterface::ExportAsync(
 
 void DBusInterface::ExportAndBlock(
     ExportedObjectManager* object_manager,
-    dbus::Bus* bus,
+    dbus::Bus* /* bus */,
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path) {
   VLOG(1) << "Registering D-Bus interface '" << interface_name_ << "' for '"

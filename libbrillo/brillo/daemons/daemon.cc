@@ -68,7 +68,7 @@ int Daemon::OnInit() {
   return EX_OK;
 }
 
-void Daemon::OnShutdown(int* exit_code) {
+void Daemon::OnShutdown(int* /* exit_code */) {
   // Do nothing.
 }
 
@@ -77,12 +77,12 @@ bool Daemon::OnRestart() {
   return false;  // Returning false will shut down the daemon instead.
 }
 
-bool Daemon::Shutdown(const signalfd_siginfo& info) {
+bool Daemon::Shutdown(const signalfd_siginfo& /* info */) {
   Quit();
   return true;  // Unregister the signal handler.
 }
 
-bool Daemon::Restart(const signalfd_siginfo& info) {
+bool Daemon::Restart(const signalfd_siginfo& /* info */) {
   if (OnRestart())
     return false;  // Keep listening to the signal.
   Quit();

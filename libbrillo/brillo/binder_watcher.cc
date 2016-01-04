@@ -47,7 +47,7 @@ bool BinderWatcher::Init() {
   return true;
 }
 
-void BinderWatcher::OnFileCanReadWithoutBlocking(int fd) {
+void BinderWatcher::OnFileCanReadWithoutBlocking(int /* fd */) {
   IPCThreadState::self()->handlePolledCommands();
 }
 

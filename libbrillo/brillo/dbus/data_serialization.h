@@ -647,8 +647,10 @@ struct TupleIterator {
 template<size_t N, typename... T>
 struct TupleIterator<N, N, T...> {
   using Tuple = std::tuple<T...>;
-  static void Write(dbus::MessageWriter* writer, const Tuple& value) {}
-  static bool Read(dbus::MessageReader* reader, Tuple* value) { return true; }
+  static void Write(dbus::MessageWriter* /* writer */,
+                    const Tuple& /* value */) {}
+  static bool Read(dbus::MessageReader* /* reader */,
+                   Tuple* /* value */) { return true; }
 };
 
 }  // namespace details

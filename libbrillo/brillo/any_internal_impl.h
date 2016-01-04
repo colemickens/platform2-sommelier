@@ -40,7 +40,7 @@ TryConvert(const From& in, To* out) {
 }
 template <typename From, typename To>
 inline typename std::enable_if<!IsConvertible<From, To>::value, bool>::type
-TryConvert(const From& in, To* out) {
+TryConvert(const From& /* in */, To* /* out */) {
   return false;
 }
 
@@ -69,7 +69,7 @@ struct IsEqualityComparableHelper {
     // IntWrapper when both overloads are provided.
     // Also this constructor must NOT be explicit.
     // NOLINTNEXTLINE(runtime/explicit)
-    IntWrapper(int dummy) {}  // do nothing
+    IntWrapper(int /* dummy */) {}  // do nothing
   };
 
   // Here is an obscure trick to determine if a type U has operator==().
@@ -124,7 +124,7 @@ struct IsEqualityComparable : IsEqualityComparableHelper<T>::type {};
 // EqCompare() overload for non-comparable types. Always returns false.
 template<typename T>
 inline typename std::enable_if<!IsEqualityComparable<T>::value, bool>::type
-EqCompare(const T& v1, const T& v2) {
+EqCompare(const T& /* v1 */, const T& /* v2 */) {
   return false;
 }
 
@@ -186,7 +186,7 @@ struct TypedData : public Data {
   }
   template<typename U>
   static typename std::enable_if<!dbus_utils::IsTypeSupported<U>::value>::type
-  AppendValueHelper(dbus::MessageWriter* writer, const U& value) {
+  AppendValueHelper(dbus::MessageWriter* /* writer */, const U& /* value */) {
     LOG(FATAL) << "Type '" << GetUndecoratedTypeName<U>()
                << "' is not supported by D-Bus";
   }

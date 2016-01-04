@@ -167,13 +167,13 @@ bool FakeStream::CanWrite() const {
   return stream_utils::IsWriteAccessMode(mode_);
 }
 
-bool FakeStream::SetSizeBlocking(uint64_t size, ErrorPtr* error) {
+bool FakeStream::SetSizeBlocking(uint64_t /* size */, ErrorPtr* error) {
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }
 
-bool FakeStream::Seek(int64_t offset,
-                      Whence whence,
-                      uint64_t* new_position,
+bool FakeStream::Seek(int64_t /* offset */,
+                      Whence /* whence */,
+                      uint64_t* /* new_position */,
                       ErrorPtr* error) {
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }
@@ -350,7 +350,7 @@ bool FakeStream::FlushBlocking(ErrorPtr* error) {
   return success;
 }
 
-bool FakeStream::CloseBlocking(ErrorPtr* error) {
+bool FakeStream::CloseBlocking(ErrorPtr* /* error */) {
   is_open_ = false;
   return true;
 }

@@ -27,17 +27,18 @@ Connection::~Connection() {
 }
 
 bool Connection::SendHeaders(const HeaderList& headers,
-                             brillo::ErrorPtr* error) {
+                             brillo::ErrorPtr* /* error */) {
   request_.AddHeaders(headers);
   return true;
 }
 
-bool Connection::SetRequestData(StreamPtr stream, brillo::ErrorPtr* error) {
+bool Connection::SetRequestData(StreamPtr stream,
+                                brillo::ErrorPtr* /* error */) {
   request_.SetData(std::move(stream));
   return true;
 }
 
-bool Connection::FinishRequest(brillo::ErrorPtr* error) {
+bool Connection::FinishRequest(brillo::ErrorPtr*  /* error */) {
   using brillo::string_utils::ToString;
   request_.AddHeaders(
       {{request_header::kContentLength, ToString(request_.GetData().size())}});

@@ -53,7 +53,7 @@ void IgnoreSuccess(const AsyncEventSequencer::CompletionTask& task,
                    bool /*success*/) {
   task.Run();
 }
-void DoNothing(bool success) {
+void DoNothing(bool /* success */) {
 }
 }  // namespace
 

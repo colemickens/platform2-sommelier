@@ -49,7 +49,8 @@ bool ProcessReaper::ForgetChild(pid_t pid) {
   return watched_processes_.erase(pid) != 0;
 }
 
-bool ProcessReaper::HandleSIGCHLD(const struct signalfd_siginfo& sigfd_info) {
+bool ProcessReaper::HandleSIGCHLD(
+    const struct signalfd_siginfo& /* sigfd_info */) {
   // One SIGCHLD may correspond to multiple terminated children, so ignore
   // sigfd_info and reap any available children.
   while (true) {

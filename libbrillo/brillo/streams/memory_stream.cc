@@ -184,15 +184,15 @@ bool MemoryStream::CheckContainer(ErrorPtr* error) const {
 
 bool MemoryStream::WaitForData(AccessMode mode,
                                const base::Callback<void(AccessMode)>& callback,
-                               ErrorPtr* error) {
+                               ErrorPtr* /* error */) {
   MessageLoop::current()->PostTask(FROM_HERE, base::Bind(callback, mode));
   return true;
 }
 
 bool MemoryStream::WaitForDataBlocking(AccessMode in_mode,
-                                       base::TimeDelta timeout,
+                                       base::TimeDelta /* timeout */,
                                        AccessMode* out_mode,
-                                       ErrorPtr* error) {
+                                       ErrorPtr* /* error */) {
   if (out_mode)
     *out_mode = in_mode;
   return true;

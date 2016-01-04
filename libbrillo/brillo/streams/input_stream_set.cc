@@ -88,7 +88,7 @@ uint64_t InputStreamSet::GetSize() const {
   return initial_stream_size_;
 }
 
-bool InputStreamSet::SetSizeBlocking(uint64_t size, ErrorPtr* error) {
+bool InputStreamSet::SetSizeBlocking(uint64_t /* size */, ErrorPtr* error) {
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }
 
@@ -99,9 +99,9 @@ uint64_t InputStreamSet::GetRemainingSize() const {
   return size;
 }
 
-bool InputStreamSet::Seek(int64_t offset,
-                          Whence whence,
-                          uint64_t* new_position,
+bool InputStreamSet::Seek(int64_t /* offset */,
+                          Whence /* whence */,
+                          uint64_t* /* new_position */,
                           ErrorPtr* error) {
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }
@@ -134,9 +134,9 @@ bool InputStreamSet::ReadNonBlocking(void* buffer,
   return true;
 }
 
-bool InputStreamSet::WriteNonBlocking(const void* buffer,
-                                      size_t size_to_write,
-                                      size_t* size_written,
+bool InputStreamSet::WriteNonBlocking(const void* /* buffer */,
+                                      size_t /* size_to_write */,
+                                      size_t* /* size_written */,
                                       ErrorPtr* error) {
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }

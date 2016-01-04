@@ -76,7 +76,7 @@ bool CheckNonEmpty(ErrorPtr* error, const std::string& str) {
 
 void NoOp() {}
 
-bool TestWithMessage(ErrorPtr* error,
+bool TestWithMessage(ErrorPtr* /* error */,
                      dbus::Message* message,
                      std::string* str) {
   *str = message->GetSender();

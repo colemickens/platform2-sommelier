@@ -121,7 +121,7 @@ TEST_F(ProcessReaperTest, ReapKilledChild) {
 TEST_F(ProcessReaperTest, ReapKilledAndForgottenChild) {
   pid_t pid = ForkChildAndExit(0);
   EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::Bind(
-      [this](const siginfo_t& info) {
+      [this](const siginfo_t& /* info */) {
         ADD_FAILURE() << "Child process was still tracked.";
         this->brillo_loop_.BreakLoop();
       })));

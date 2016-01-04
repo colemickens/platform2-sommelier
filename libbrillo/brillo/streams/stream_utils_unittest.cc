@@ -166,16 +166,16 @@ class CopyStreamDataTest : public testing::Test {
   bool failed_{false};
 
   void OnSuccess(uint64_t expected,
-                 StreamPtr in_stream,
-                 StreamPtr out_stream,
+                 StreamPtr /* in_stream */,
+                 StreamPtr /* out_stream */,
                  uint64_t copied) {
     EXPECT_EQ(expected, copied);
     succeeded_ = true;
   }
 
   void OnError(const std::string& expected_error,
-               StreamPtr in_stream,
-               StreamPtr out_stream,
+               StreamPtr /* in_stream */,
+               StreamPtr /* out_stream */,
                const Error* error) {
     EXPECT_EQ(expected_error, error->GetCode());
     failed_ = true;

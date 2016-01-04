@@ -131,7 +131,8 @@ class BRILLO_EXPORT ReadOnlyBuffer : public ContiguousReadOnlyBufferBase {
       : buffer_(buffer), size_(size) {}
 
   // Returns the pointer to data at |offset|.
-  const void* GetReadOnlyBuffer(size_t offset, ErrorPtr* error) const override {
+  const void* GetReadOnlyBuffer(size_t offset,
+                                ErrorPtr* /* error */) const override {
     return reinterpret_cast<const uint8_t*>(buffer_) + offset;
   }
   // Returns the size of the container.
@@ -154,16 +155,17 @@ class VectorPtr : public ContiguousBufferBase {
   static_assert(sizeof(T) == 1, "Only char/byte is supported");
   explicit VectorPtr(std::vector<T>* vector) : vector_ptr_(vector) {}
 
-  bool Resize(size_t new_size, ErrorPtr* error) override {
+  bool Resize(size_t new_size, ErrorPtr* /* error */) override {
     vector_ptr_->resize(new_size);
     return true;
   }
   size_t GetSize() const override { return vector_ptr_->size(); }
   bool IsReadOnly() const override { return false; }
-  const void* GetReadOnlyBuffer(size_t offset, ErrorPtr* error) const override {
+  const void* GetReadOnlyBuffer(size_t offset,
+                                ErrorPtr* /* error */) const override {
     return reinterpret_cast<const uint8_t*>(vector_ptr_->data()) + offset;
   }
-  void* GetBuffer(size_t offset, ErrorPtr* error) override {
+  void* GetBuffer(size_t offset, ErrorPtr* /* error */) override {
     return reinterpret_cast<uint8_t*>(vector_ptr_->data()) + offset;
   }
 
@@ -184,7 +186,8 @@ class ReadOnlyVectorRef : public ContiguousReadOnlyBufferBase {
   explicit ReadOnlyVectorRef(const std::vector<T>& vector)
       : vector_ref_(vector) {}
 
-  const void* GetReadOnlyBuffer(size_t offset, ErrorPtr* error) const override {
+  const void* GetReadOnlyBuffer(size_t offset,
+                                ErrorPtr* /* error */) const override {
     return reinterpret_cast<const uint8_t*>(vector_ref_.data()) + offset;
   }
   size_t GetSize() const override { return vector_ref_.size(); }
@@ -210,7 +213,8 @@ class ReadOnlyVectorCopy : public ContiguousReadOnlyBufferBase {
   ReadOnlyVectorCopy(const T* buffer, size_t size)
       : vector_copy_(buffer, buffer + size) {}
 
-  const void* GetReadOnlyBuffer(size_t offset, ErrorPtr* error) const override {
+  const void* GetReadOnlyBuffer(size_t offset,
+                                ErrorPtr* /* error */) const override {
     return reinterpret_cast<const uint8_t*>(vector_copy_.data()) + offset;
   }
   size_t GetSize() const override { return vector_copy_.size(); }

@@ -90,7 +90,7 @@ class BRILLO_EXPORT InputStreamSet : public Stream {
                         ErrorPtr* error) override;
 
   // == Finalizing/closing streams  ===========================================
-  bool FlushBlocking(ErrorPtr* error) override { return true; }
+  bool FlushBlocking(ErrorPtr* /* error */) override { return true; }
   bool CloseBlocking(ErrorPtr* error) override;
 
   // == Data availability monitoring ==========================================

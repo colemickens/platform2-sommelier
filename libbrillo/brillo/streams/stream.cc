@@ -187,7 +187,7 @@ bool Stream::FlushAsync(const base::Closure& success_callback,
 void Stream::IgnoreEOSCallback(
     const base::Callback<void(size_t)>& success_callback,
     size_t bytes,
-    bool eos) {
+    bool /* eos */) {
   success_callback.Run(bytes);
 }
 

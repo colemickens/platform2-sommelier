@@ -69,13 +69,14 @@ TEST(HttpUtils, SendRequestAsync_BinaryData) {
   // Test binary data round-tripping.
   std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
   auto success_callback =
-      [&custom_data](RequestID id, std::unique_ptr<http::Response> response) {
+      [&custom_data](RequestID /* id */,
+                     std::unique_ptr<http::Response> response) {
     EXPECT_TRUE(response->IsSuccessful());
     EXPECT_EQ(brillo::mime::application::kOctet_stream,
               response->GetContentType());
     EXPECT_EQ(custom_data, response->ExtractData());
   };
-  auto error_callback = [](RequestID id, const Error* error) {
+  auto error_callback = [](RequestID /* id */, const Error* /* error */) {
     FAIL() << "This callback shouldn't have been called";
   };
   http::SendRequest(request_type::kPost,
@@ -158,11 +159,12 @@ TEST(HttpUtils, SendRequestAsync_NotFound) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   // Test failed response (URL not found).
   auto success_callback =
-      [](RequestID request_id, std::unique_ptr<http::Response> response) {
+      [](RequestID /* request_id */, std::unique_ptr<http::Response> response) {
     EXPECT_FALSE(response->IsSuccessful());
     EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
   };
-  auto error_callback = [](RequestID request_id, const Error* error) {
+  auto error_callback = [](RequestID /* request_id */,
+                           const Error* /* error */) {
     FAIL() << "This callback shouldn't have been called";
   };
   http::SendRequestWithNoData(request_type::kGet,
@@ -464,10 +466,11 @@ TEST(HttpUtils, SendRequestAsync_Failure) {
   Error::AddTo(&error, FROM_HERE, "test_domain", "test_code", "Test message");
   transport->SetCreateConnectionError(std::move(error));
   auto success_callback =
-      [](RequestID request_id, std::unique_ptr<http::Response> response) {
+      [](RequestID /* request_id */,
+         std::unique_ptr<http::Response> /* response */) {
     FAIL() << "This callback shouldn't have been called";
   };
-  auto error_callback = [](RequestID request_id, const Error* error) {
+  auto error_callback = [](RequestID /* request_id */, const Error* error) {
     EXPECT_EQ("test_domain", error->GetDomain());
     EXPECT_EQ("test_code", error->GetCode());
     EXPECT_EQ("Test message", error->GetMessage());
