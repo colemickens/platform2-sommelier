@@ -131,6 +131,7 @@ class WriteOnlyPropertyAccessor : public AccessorInterface<T> {
   FRIEND_TEST(PropertyAccessorTest, SignedIntCorrectness);
   FRIEND_TEST(PropertyAccessorTest, UnsignedIntCorrectness);
   FRIEND_TEST(PropertyAccessorTest, StringCorrectness);
+  FRIEND_TEST(PropertyAccessorTest, ByteArrayCorrectness);
 
   T* const property_;
   const T default_value_;

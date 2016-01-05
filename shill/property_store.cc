@@ -55,6 +55,7 @@ bool PropertyStore::Contains(const string& prop) const {
           ContainsKey(stringmaps_properties_, prop) ||
           ContainsKey(strings_properties_, prop) ||
           ContainsKey(uint8_properties_, prop) ||
+          ContainsKey(bytearray_properties_, prop) ||
           ContainsKey(uint16_properties_, prop) ||
           ContainsKey(uint16s_properties_, prop) ||
           ContainsKey(uint32_properties_, prop) ||
@@ -87,6 +88,8 @@ bool PropertyStore::SetAnyProperty(const string& name,
     error->Populate(Error::kInternalError);
   } else if (value.IsTypeCompatible<Strings>()) {
     ret = SetStringsProperty(name, value.Get<Strings>(), error);
+  } else if (value.IsTypeCompatible<ByteArray>()) {
+    ret = SetByteArrayProperty(name, value.Get<ByteArray>(), error);
   } else if (value.IsTypeCompatible<uint16_t>()) {
     ret = SetUint16Property(name, value.Get<uint16_t>(), error);
   } else if (value.IsTypeCompatible<Uint16s>()) {
@@ -185,6 +188,12 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
   }
   {
     ReadablePropertyConstIterator<uint8_t> it = GetUint8PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<ByteArray> it = GetByteArrayPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
     }
@@ -290,6 +299,12 @@ bool PropertyStore::GetUint8Property(const string& name,
   return GetProperty(name, value, error, uint8_properties_, "a uint8_t");
 }
 
+bool PropertyStore::GetByteArrayProperty(const string& name,
+                                         ByteArray* value,
+                                         Error *error) const {
+  return GetProperty(name, value, error, bytearray_properties_, "a byte array");
+}
+
 bool PropertyStore::GetUint16Property(const string& name,
                                       uint16_t* value,
                                       Error* error) const {
@@ -372,6 +387,12 @@ bool PropertyStore::SetUint8Property(const string& name,
                                      uint8_t value,
                                      Error* error) {
   return SetProperty(name, value, error, &uint8_properties_, "a uint8_t");
+}
+
+bool PropertyStore::SetByteArrayProperty(const string& name,
+                                         const ByteArray& value,
+                                         Error *error) {
+  return SetProperty(name, value, error, &bytearray_properties_, "a byte array");
 }
 
 bool PropertyStore::SetUint16Property(const string& name,
@@ -508,6 +529,11 @@ ReadablePropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter()
 ReadablePropertyConstIterator<uint8_t> PropertyStore::GetUint8PropertiesIter()
     const {
   return ReadablePropertyConstIterator<uint8_t>(uint8_properties_);
+}
+
+ReadablePropertyConstIterator<ByteArray> PropertyStore::GetByteArrayPropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<ByteArray>(bytearray_properties_);
 }
 
 ReadablePropertyConstIterator<uint16_t> PropertyStore::GetUint16PropertiesIter()
@@ -701,6 +727,29 @@ void PropertyStore::RegisterWriteOnlyUint8(const string& name, uint8_t* prop) {
       Uint8Accessor(new WriteOnlyPropertyAccessor<uint8_t>(prop));
 }
 
+void PropertyStore::RegisterByteArray(const string& name, ByteArray* prop) {
+  DCHECK(!Contains(name) || ContainsKey(bytearray_properties_, name))
+      << "(Already registered " << name << ")";
+  bytearray_properties_[name] =
+      ByteArrayAccessor(new PropertyAccessor<ByteArray>(prop));
+}
+
+void PropertyStore::RegisterConstByteArray(const string& name,
+                                           const ByteArray* prop) {
+  DCHECK(!Contains(name) || ContainsKey(bytearray_properties_, name))
+      << "(Already registered " << name << ")";
+  bytearray_properties_[name] =
+      ByteArrayAccessor(new ConstPropertyAccessor<ByteArray>(prop));
+}
+
+void PropertyStore::RegisterWriteOnlyByteArray(const string& name,
+                                               ByteArray* prop) {
+  DCHECK(!Contains(name) || ContainsKey(bytearray_properties_, name))
+      << "(Already registered " << name << ")";
+  bytearray_properties_[name] =
+      ByteArrayAccessor(new WriteOnlyPropertyAccessor<ByteArray>(prop));
+}
+
 void PropertyStore::RegisterUint16(const string& name, uint16_t* prop) {
   DCHECK(!Contains(name) || ContainsKey(uint16_properties_, name))
       << "(Already registered " << name << ")";
@@ -832,6 +881,13 @@ void PropertyStore::RegisterDerivedUint64(const string& name,
   DCHECK(!Contains(name) || ContainsKey(uint64_properties_, name))
       << "(Already registered " << name << ")";
   uint64_properties_[name] = acc;
+}
+
+void PropertyStore::RegisterDerivedByteArray(const string& name,
+                                             const ByteArrayAccessor& acc) {
+  DCHECK(!Contains(name) || ContainsKey(bytearray_properties_, name))
+      << "(Already registered " << name << ")";
+  bytearray_properties_[name] = acc;
 }
 
 // private methods

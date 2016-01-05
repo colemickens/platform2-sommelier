@@ -74,6 +74,8 @@ class PropertyStore {
                           Error* error) const;
   bool GetUint8Property(const std::string& name, uint8_t* value,
                         Error* error) const;
+  bool GetByteArrayProperty(const std::string& name, ByteArray* value,
+                            Error *error) const;
   bool GetUint16Property(const std::string& name, uint16_t* value,
                          Error* error) const;
   bool GetUint16sProperty(const std::string& name, Uint16s* value,
@@ -132,6 +134,10 @@ class PropertyStore {
                                 uint8_t value,
                                 Error* error);
 
+  virtual bool SetByteArrayProperty(const std::string &name,
+                                    const ByteArray& value,
+                                    Error *error);
+
   virtual bool SetUint16Property(const std::string& name,
                                  uint16_t value,
                                  Error* error);
@@ -182,6 +188,7 @@ class PropertyStore {
   ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
   ReadablePropertyConstIterator<Strings> GetStringsPropertiesIter() const;
   ReadablePropertyConstIterator<uint8_t> GetUint8PropertiesIter() const;
+  ReadablePropertyConstIterator<ByteArray> GetByteArrayPropertiesIter() const;
   ReadablePropertyConstIterator<uint16_t> GetUint16PropertiesIter() const;
   ReadablePropertyConstIterator<Uint16s> GetUint16sPropertiesIter() const;
   ReadablePropertyConstIterator<uint32_t> GetUint32PropertiesIter() const;
@@ -231,6 +238,9 @@ class PropertyStore {
   void RegisterConstUint16(const std::string& name, const uint16_t* prop);
   void RegisterConstUint16s(const std::string& name, const Uint16s* prop);
   void RegisterWriteOnlyUint16(const std::string& name, uint16_t* prop);
+  void RegisterByteArray(const std::string& name, ByteArray* prop);
+  void RegisterConstByteArray(const std::string& name, const ByteArray* prop);
+  void RegisterWriteOnlyByteArray(const std::string& name, ByteArray* prop);
 
   void RegisterDerivedBool(const std::string& name,
                            const BoolAccessor& accessor);
@@ -254,6 +264,8 @@ class PropertyStore {
                              const Uint16Accessor& accessor);
   void RegisterDerivedUint64(const std::string& name,
                              const Uint64Accessor& accessor);
+  void RegisterDerivedByteArray(const std::string& name,
+                                const ByteArrayAccessor& accessor);
 
  private:
   template <class V>
@@ -286,6 +298,7 @@ class PropertyStore {
   std::map<std::string, StringmapsAccessor> stringmaps_properties_;
   std::map<std::string, StringsAccessor> strings_properties_;
   std::map<std::string, Uint8Accessor> uint8_properties_;
+  std::map<std::string, ByteArrayAccessor> bytearray_properties_;
   std::map<std::string, Uint16Accessor> uint16_properties_;
   std::map<std::string, Uint16sAccessor> uint16s_properties_;
   std::map<std::string, Uint32Accessor> uint32_properties_;

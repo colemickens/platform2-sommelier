@@ -89,6 +89,7 @@ typedef std::shared_ptr<AccessorInterface<Strings>> StringsAccessor;
 typedef std::shared_ptr<
     AccessorInterface<KeyValueStore>> KeyValueStoreAccessor;
 typedef std::shared_ptr<AccessorInterface<uint8_t>> Uint8Accessor;
+typedef std::shared_ptr<AccessorInterface<ByteArray>> ByteArrayAccessor;
 typedef std::shared_ptr<AccessorInterface<uint16_t>> Uint16Accessor;
 typedef std::shared_ptr<AccessorInterface<Uint16s>> Uint16sAccessor;
 typedef std::shared_ptr<AccessorInterface<uint32_t>> Uint32Accessor;
