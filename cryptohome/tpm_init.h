@@ -150,12 +150,13 @@ class TpmInit {
   void MigrateStatusFiles();
 
   // Returns whether or not the TPM is enabled by checking a flag in the TPM's
-  // entry in /sys/class/misc
-  bool IsEnabledCheckViaSysfs();
+  // entry in either /sys/class/misc or /sys/class/tpm
+  bool IsEnabledCheckViaSysfs(const char* enabled_file);
 
   // Returns whether or not the TPM is owned by checking a flag in the TPM's
-  // entry in /sys/class/misc
-  bool IsOwnedCheckViaSysfs();
+  // entry in either /sys/class/misc or /sys/class/tpm
+  bool IsOwnedCheckViaSysfs(const char* owned_file);
+
 
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 

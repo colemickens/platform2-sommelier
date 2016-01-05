@@ -215,9 +215,11 @@ bool TPMUtilityImpl::IsTPMAvailable() {
     return true;
   }
   // If the system says there is an enabled TPM, expect to use it.
-  const base::FilePath kTpmEnabledFile("/sys/class/misc/tpm0/device/enabled");
+  const base::FilePath kMiscEnabledFile("/sys/class/misc/tpm0/device/enabled");
+  const base::FilePath kTpmEnabledFile("/sys/class/tpm/tpm0/device/enabled");
   string file_content;
-  if (base::ReadFileToString(kTpmEnabledFile, &file_content) &&
+  if ((base::ReadFileToString(kMiscEnabledFile, &file_content) ||
+       base::ReadFileToString(kTpmEnabledFile, &file_content)) &&
       !file_content.empty() &&
       file_content[0] == '1') {
     is_enabled_ = true;

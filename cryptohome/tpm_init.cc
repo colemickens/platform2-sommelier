@@ -27,8 +27,10 @@ namespace cryptohome {
 
 const int kMaxTimeoutRetries = 5;
 
-const char* kTpmCheckEnabledFile = "/sys/class/misc/tpm0/device/enabled";
-const char* kTpmCheckOwnedFile = "/sys/class/misc/tpm0/device/owned";
+const char* kMiscTpmCheckEnabledFile = "/sys/class/misc/tpm0/device/enabled";
+const char* kMiscTpmCheckOwnedFile = "/sys/class/misc/tpm0/device/owned";
+const char* kTpmTpmCheckEnabledFile = "/sys/class/tpm/tpm0/device/enabled";
+const char* kTpmTpmCheckOwnedFile = "/sys/class/tpm/tpm0/device/owned";
 const char* kTpmOwnedFileOld = "/var/lib/.tpm_owned";
 const char* kTpmStatusFileOld = "/var/lib/.tpm_status";
 const char* kTpmOwnedFile = "/mnt/stateful_partition/.tpm_owned";
@@ -216,9 +218,13 @@ bool TpmInit::SetupTpm(bool load_key) {
   bool is_enabled = false;
   bool is_owned = false;
   bool successful_check = false;
-  if (platform_->FileExists(kTpmCheckEnabledFile)) {
-    is_enabled = IsEnabledCheckViaSysfs();
-    is_owned = IsOwnedCheckViaSysfs();
+  if (platform_->FileExists(kTpmTpmCheckEnabledFile)) {
+    is_enabled = IsEnabledCheckViaSysfs(kTpmTpmCheckEnabledFile);
+    is_owned = IsOwnedCheckViaSysfs(kTpmTpmCheckOwnedFile);
+    successful_check = true;
+  } else if (platform_->FileExists(kMiscTpmCheckEnabledFile)) {
+    is_enabled = IsEnabledCheckViaSysfs(kMiscTpmCheckEnabledFile);
+    is_owned = IsOwnedCheckViaSysfs(kMiscTpmCheckOwnedFile);
     successful_check = true;
   } else {
     if (get_tpm()->PerformEnabledOwnedCheck(&is_enabled, &is_owned)) {
@@ -484,12 +490,12 @@ bool TpmInit::CheckSysfsForOne(const char* file_name) const {
   return (contents[0] == '1');
 }
 
-bool TpmInit::IsEnabledCheckViaSysfs() {
-  return CheckSysfsForOne(kTpmCheckEnabledFile);
+bool TpmInit::IsEnabledCheckViaSysfs(const char* enabled_file) {
+  return CheckSysfsForOne(enabled_file);
 }
 
-bool TpmInit::IsOwnedCheckViaSysfs() {
-  return CheckSysfsForOne(kTpmCheckOwnedFile);
+bool TpmInit::IsOwnedCheckViaSysfs(const char* owned_file) {
+  return CheckSysfsForOne(owned_file);
 }
 
 bool TpmInit::CreateCryptohomeKey() {

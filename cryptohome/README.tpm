@@ -6,9 +6,9 @@ http://trousers.sourceforge.net/pkcs11.html for more details on how opencryptoki
 uses the SRK).  The ownership process is in the tpm_init library, separate from
 cryptohome, but the basic process is as follows:
 
-1. If /sys/class/misc/tpm0/device/owned is 0
+1. If /sys/class/{misc|tpm}/tpm0/device/owned is 0
    and
-   /sys/class/misc/tpm0/device/enabled is 1
+   /sys/class/{misc|tpm}/tpm0/device/enabled is 1
    then the initialize thread will attempt to initialize the TPM.
 2. An Endorsement Key (EK) will be created if it doesn't exist (some vendors do
    not create one at the factory, as it is not required by the spec).
