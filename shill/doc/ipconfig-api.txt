@@ -92,10 +92,10 @@ Properties	string Address [readonly]
 			a netmask of 255.255.255.0 has a prefixlen of 24
 			(note arbitrary CIDR masks are not supported.)
 
-                string VendorEncapsulatedOptions [readonly]
+		array{uint8} VendorEncapsulatedOptions [readonly]
 
 			Server-provided value for the DHCP option 43
-			value.  Its interpretation vairies based on
+			value.  Its interpretation varies based on
 			the DHCP server.
 
 		string WebProxyAutoDiscoveryUrl [readonly]

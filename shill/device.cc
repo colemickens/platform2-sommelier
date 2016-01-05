@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 #include <stdio.h>
+#include <string.h>
 #include <sys/param.h>
 #include <time.h>
 #include <unistd.h>
@@ -413,10 +414,19 @@ bool Device::IsConnectedToService(const ServiceRefPtr& service) const {
 }
 
 bool Device::IsConnectedViaTether() const {
-  return
-      ipconfig_.get() &&
-      ipconfig_->properties().vendor_encapsulated_options ==
-          Tethering::kAndroidVendorEncapsulatedOptions;
+  if (!ipconfig_.get())
+    return false;
+
+  ByteArray vendor_encapsulated_options =
+      ipconfig_->properties().vendor_encapsulated_options;
+  size_t android_vendor_encapsulated_options_len =
+      strlen(Tethering::kAndroidVendorEncapsulatedOptions);
+
+  return (vendor_encapsulated_options.size() ==
+          android_vendor_encapsulated_options_len) &&
+      !memcmp(&vendor_encapsulated_options[0],
+              Tethering::kAndroidVendorEncapsulatedOptions,
+              vendor_encapsulated_options.size());
 }
 
 string Device::GetRpcIdentifier() const {

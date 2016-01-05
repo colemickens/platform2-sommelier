@@ -86,7 +86,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     int32_t mtu;
     std::vector<Route> routes;
     // Vendor encapsulated option string gained from DHCP.
-    std::string vendor_encapsulated_options;
+    ByteArray vendor_encapsulated_options;
     // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
     std::string web_proxy_auto_discovery;
     // Length of time the lease was granted.
