@@ -44,8 +44,10 @@ using ScopedByteArray = scoped_ptr<BYTE, base::FreeDeleter>;
 using ScopedTssEncryptedData = trousers::ScopedTssObject<TSS_HENCDATA>;
 using ScopedTssHash = trousers::ScopedTssObject<TSS_HHASH>;
 
-const char* kTpmEnabledFile = "/sys/class/misc/tpm0/device/enabled";
-const char* kTpmOwnedFile = "/sys/class/misc/tpm0/device/owned";
+const char* kTpmTpmEnabledFile = "/sys/class/tpm/tpm0/device/enabled";
+const char* kMscTpmEnabledFile = "/sys/class/misc/tpm0/device/enabled";
+const char* kTpmTpmOwnedFile = "/sys/class/tpm/tpm0/device/owned";
+const char* kMscTpmOwnedFile = "/sys/class/misc/tpm0/device/owned";
 const unsigned int kWellKnownExponent = 65537;
 const unsigned char kSha256DigestInfo[] = {
   0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
@@ -89,8 +91,13 @@ bool TpmUtilityV1::Initialize() {
 
 bool TpmUtilityV1::IsTpmReady() {
   if (!is_ready_) {
-    is_ready_ = (GetFirstByte(kTpmEnabledFile) == "1" &&
-                 GetFirstByte(kTpmOwnedFile) == "1");
+    if (base::PathExists(base::FilePath(kMscTpmEnabledFile))) {
+      is_ready_ = (GetFirstByte(kMscTpmEnabledFile) == "1" &&
+                   GetFirstByte(kMscTpmOwnedFile) == "1");
+    } else {
+      is_ready_ = (GetFirstByte(kTpmTpmEnabledFile) == "1" &&
+                   GetFirstByte(kTpmTpmOwnedFile) == "1");
+    }
   }
   return is_ready_;
 }
