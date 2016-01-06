@@ -205,7 +205,7 @@ bool SessionManagerService::Initialize() {
   adaptor_->ExportDBusMethods(session_manager_dbus_object_);
   TakeDBusServiceOwnership();
 
-#ifdef USE_ARC
+#if USE_ARC
   SetUpSuspendHandler();
 #endif
 
