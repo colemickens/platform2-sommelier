@@ -1167,8 +1167,10 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     string address =
         base::StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
 
-    if (technology != Technology::kTunnel)
+    if (technology != Technology::kTunnel &&
+        technology != Technology::kUnknown) {
       DCHECK(!address.empty());
+    }
 
     DeviceRefPtr device = CreateDevice(link_name, address, dev_index,
                                        technology);
