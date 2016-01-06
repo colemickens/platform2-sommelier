@@ -11,6 +11,7 @@
     ],
     'defines': [
       'USE_DBUS=<(USE_dbus)',
+      'USE_RTTI_FOR_TYPE_TAGS',
     ],
   },
   'targets': [
