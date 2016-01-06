@@ -45,20 +45,55 @@ void SwapBitfieldOfBits(u8* field, size_t len) {
 }  // namespace
 
 ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
-    const size_t attr_count,
-    const u64 data_size,
     const unsigned long features) {  // NOLINT
   CHECK_EQ(112U, sizeof(perf_file_attr)) << "perf_file_attr has changed size!";
-  const size_t attrs_size = attr_count * sizeof(struct perf_file_attr);
   header_ = {
     .magic = kPerfMagic,
     .size = 104,
-    .attr_size = sizeof(perf_file_attr),
-    .attrs = {.offset = 104, .size = attrs_size},
-    .data = {.offset = 104 + attrs_size, .size = data_size},
+    .attr_size = sizeof(struct perf_file_attr),
+    .attrs = {.offset = 104, .size = 0},
+    .data = {.offset = 104 , .size = 0},
     .event_types = {0},
     .adds_features = {features, 0, 0, 0},
   };
+}
+
+ExamplePerfDataFileHeader&
+ExamplePerfDataFileHeader::WithAttrIdsCount(size_t n) {
+  attr_ids_count_ = n;
+  UpdateSectionOffsets();
+  return *this;
+}
+
+ExamplePerfDataFileHeader& ExamplePerfDataFileHeader::WithAttrCount(size_t n) {
+  header_.attrs.size = n * header_.attr_size;
+  UpdateSectionOffsets();
+  return *this;
+}
+
+ExamplePerfDataFileHeader& ExamplePerfDataFileHeader::WithDataSize(size_t sz) {
+  header_.data.size = sz;
+  UpdateSectionOffsets();
+  return *this;
+}
+
+ExamplePerfDataFileHeader&
+ExamplePerfDataFileHeader::WithCustomPerfEventAttrSize(size_t sz) {
+  size_t n_attrs = header_.attrs.size / header_.attr_size;
+  // Calculate sizeof(perf_file_attr) given the custom sizeof(perf_event_attr)
+  header_.attr_size = sz + sizeof(perf_file_section);
+  // Re-calculate the attrs section size and update offsets.
+  return WithAttrCount(n_attrs);
+}
+
+void ExamplePerfDataFileHeader::UpdateSectionOffsets() {
+  u64 offset = header_.size;
+  offset += attr_ids_count_ * sizeof(u64);
+  header_.attrs.offset = offset;
+  offset += header_.attrs.size;
+  header_.data.offset = offset;
+  offset += header_.data.size;
+  CHECK_EQ(data_end_offset(), offset);  // aka, the metadata offset.
 }
 
 void ExamplePerfDataFileHeader::WriteTo(std::ostream* out) const {
@@ -87,23 +122,6 @@ void ExamplePerfDataFileHeader::WriteTo(std::ostream* out) const {
              sizeof(local_header));
   // Use original header values that weren't endian-swapped.
   CHECK_EQ(static_cast<u64>(out->tellp()), header_.size);
-  CHECK_EQ(static_cast<u64>(out->tellp()), header_.attrs.offset);
-}
-
-ExamplePerfDataFileHeader_CustomAttrSize::
-    ExamplePerfDataFileHeader_CustomAttrSize(
-        const size_t event_attr_size, const u64 data_size)
-            : ExamplePerfDataFileHeader(1, data_size, 0) {  // NOLINT
-  const size_t file_attr_size = event_attr_size + sizeof(perf_file_section);
-  header_ = {
-    .magic = kPerfMagic,
-    .size = 104,
-    .attr_size = file_attr_size,
-    .attrs = {.offset = 104, .size = file_attr_size},
-    .data = {.offset = 104 + file_attr_size, .size = data_size},
-    .event_types = {0},
-    .adds_features = {0, 0, 0, 0},
-  };
 }
 
 void ExamplePipedPerfDataFileHeader::WriteTo(std::ostream* out) const {
@@ -126,20 +144,29 @@ void ExamplePerfEventAttrEvent_Hardware::WriteTo(std::ostream* out) const {
   attr.sample_type = sample_type_;
   attr.sample_id_all = sample_id_all_;
 
-  const attr_event event = {
-    .header = {
-      .type = PERF_RECORD_HEADER_ATTR,
-      .misc = 0,
-      // No ids to add to size.
-      .size = static_cast<u16>(sizeof(event.header) + attr.size),
-    },
-    .attr = attr,
+  const size_t event_size =
+      sizeof(perf_event_header) +
+      attr.size +
+      ids_.size() * sizeof(decltype(ids_)::value_type);
+
+  const perf_event_header header = {
+    .type = PERF_RECORD_HEADER_ATTR,
+    .misc = 0,
+    .size = static_cast<u16>(event_size),
   };
 
-  out->write(reinterpret_cast<const char*>(&event),
-             std::min(sizeof(event), static_cast<size_t>(event.header.size)));
-  if (sizeof(event) < event.header.size)
-    WriteExtraBytes(event.header.size - sizeof(event), out);
+  out->write(reinterpret_cast<const char*>(&header), sizeof(header));
+  out->write(reinterpret_cast<const char*>(&attr),
+             std::min(sizeof(attr), static_cast<size_t>(attr_size_)));
+  if (sizeof(attr) < attr_size_)
+    WriteExtraBytes(attr_size_ - sizeof(attr), out);
+  out->write(reinterpret_cast<const char*>(ids_.data()),
+             ids_.size() * sizeof(decltype(ids_)::value_type));
+}
+
+void AttrIdsSection::WriteTo(std::ostream* out) const {
+  out->write(reinterpret_cast<const char*>(ids_.data()),
+             ids_.size() * sizeof(decltype(ids_)::value_type));
 }
 
 void ExamplePerfFileAttr_Hardware::WriteTo(std::ostream* out) const {
@@ -175,9 +202,8 @@ void ExamplePerfFileAttr_Hardware::WriteTo(std::ostream* out) const {
   if (sizeof(attr) < attr_size_)
     WriteExtraBytes(attr_size_ - sizeof(attr), out);
 
-  const perf_file_section ids = { .offset = MaybeSwap64(104),
-                                  .size = MaybeSwap64(0) };
-  out->write(reinterpret_cast<const char*>(&ids), sizeof(ids));
+  out->write(reinterpret_cast<const char*>(&ids_section_),
+             sizeof(ids_section_));
 }
 
 void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
@@ -203,13 +229,15 @@ void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
   out->write(reinterpret_cast<const char*>(&file_attr), sizeof(file_attr));
 }
 
-void ExampleMmapEvent::WriteTo(std::ostream* out) const {
-  const size_t filename_aligned_length =
-      GetUint64AlignedStringLength(filename_);
-  const size_t event_size =
+size_t ExampleMmapEvent::GetSize() const {
+  return
       offsetof(struct mmap_event, filename) +
-      filename_aligned_length +
+      GetUint64AlignedStringLength(filename_) +
       sample_id_.size();  // sample_id_all
+}
+
+void ExampleMmapEvent::WriteTo(std::ostream* out) const {
+  const size_t event_size = GetSize();
 
   struct mmap_event event = {
     .header = {
@@ -228,6 +256,8 @@ void ExampleMmapEvent::WriteTo(std::ostream* out) const {
   const size_t pre_mmap_offset = out->tellp();
   out->write(reinterpret_cast<const char*>(&event),
              offsetof(struct mmap_event, filename));
+  const size_t filename_aligned_length =
+      GetUint64AlignedStringLength(filename_);
   *out << filename_
        << string(filename_aligned_length - filename_.size(), '\0');
   out->write(sample_id_.data(), sample_id_.size());

@@ -193,23 +193,25 @@ TEST(PerfReaderTest, UnperfizeBuildID) {
 TEST(PerfReaderTest, ReadsAndWritesTraceMetadata) {
   std::stringstream input;
 
-  const size_t attr_count = 1;
   const size_t data_size =
       testing::ExamplePerfSampleEvent_Tracepoint::kEventSize;
 
   // header
-  testing::ExamplePerfDataFileHeader file_header(attr_count, data_size,
-                                                 1 << HEADER_TRACING_DATA);
+  testing::ExamplePerfDataFileHeader file_header(1 << HEADER_TRACING_DATA);
+  file_header
+      .WithAttrCount(1)
+      .WithDataSize(data_size);
   file_header.WriteTo(&input);
   const perf_file_header &header = file_header.header();
 
   // attrs
+  CHECK_EQ(header.attrs.offset, static_cast<u64>(input.tellp()));
   testing::ExamplePerfFileAttr_Tracepoint(73).WriteTo(&input);
 
   // data
-  ASSERT_EQ(static_cast<u64>(input.tellp()), header.data.offset);
+  ASSERT_EQ(header.data.offset, static_cast<u64>(input.tellp()));
   testing::ExamplePerfSampleEvent_Tracepoint().WriteTo(&input);
-  ASSERT_EQ(input.tellp(), file_header.data_end());
+  ASSERT_EQ(file_header.data_end(), input.tellp());
 
   // metadata
 
@@ -282,24 +284,26 @@ TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
 TEST(PerfReaderTest, BranchStackMetadataIndexHasZeroSize) {
   std::stringstream input;
 
-  const size_t attr_count = 1;
   const size_t data_size =
       testing::ExamplePerfSampleEvent_BranchStack::kEventSize;
 
   // header
-  testing::ExamplePerfDataFileHeader file_header(attr_count, data_size,
-                                                 1 << HEADER_BRANCH_STACK);
+  testing::ExamplePerfDataFileHeader file_header(1 << HEADER_BRANCH_STACK);
+  file_header
+      .WithAttrCount(1)
+      .WithDataSize(data_size);
   file_header.WriteTo(&input);
   const perf_file_header &header = file_header.header();
 
   // attrs
+  CHECK_EQ(header.attrs.offset, static_cast<u64>(input.tellp()));
   testing::ExamplePerfFileAttr_Hardware(
       PERF_SAMPLE_BRANCH_STACK, false /*sample_id_all*/).WriteTo(&input);
 
   // data
-  ASSERT_EQ(static_cast<u64>(input.tellp()), header.data.offset);
+  ASSERT_EQ(header.data.offset, static_cast<u64>(input.tellp()));
   testing::ExamplePerfSampleEvent_BranchStack().WriteTo(&input);
-  ASSERT_EQ(input.tellp(), file_header.data_end());
+  ASSERT_EQ(file_header.data_end(), input.tellp());
 
   // metadata
 
@@ -756,8 +760,6 @@ TEST(PerfReaderTest, ReadsAndWritesMmap2Events) {
 TEST(PerfReaderTest, ReadsAllAvailableMetadataTypes) {
   std::stringstream input;
 
-  const size_t attr_count = 0;
-  const size_t data_size = 0;
   const uint32_t features = (1 << HEADER_HOSTNAME) |
                             (1 << HEADER_OSRELEASE) |
                             (1 << HEADER_VERSION) |
@@ -765,8 +767,7 @@ TEST(PerfReaderTest, ReadsAllAvailableMetadataTypes) {
                             (1 << HEADER_LAST_FEATURE);
 
   // header
-  testing::ExamplePerfDataFileHeader file_header(attr_count, data_size,
-                                                 features);
+  testing::ExamplePerfDataFileHeader file_header(features);
   file_header.WriteTo(&input);
 
   // metadata
@@ -900,11 +901,16 @@ TEST(PerfReaderTest, LargePerfEventAttr) {
   const size_t data_size = sample_event.GetSize();
 
   // header
-  testing::ExamplePerfDataFileHeader_CustomAttrSize file_header(
-      attr_size, data_size);
+  testing::ExamplePerfDataFileHeader file_header(0);
+  file_header
+      .WithCustomPerfEventAttrSize(attr_size)
+      .WithAttrCount(1)
+      .WithDataSize(data_size);
   file_header.WriteTo(&input);
 
   // attrs
+  CHECK_EQ(file_header.header().attrs.offset,
+           static_cast<u64>(input.tellp()));
   testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
                                         false /*sample_id_all*/)
       .WithAttrSize(attr_size)
@@ -913,10 +919,10 @@ TEST(PerfReaderTest, LargePerfEventAttr) {
 
   // data
 
-  ASSERT_EQ(static_cast<u64>(input.tellp()), file_header.header().data.offset);
+  ASSERT_EQ(file_header.header().data.offset, static_cast<u64>(input.tellp()));
   sample_event.WriteTo(&input);
-  ASSERT_EQ(static_cast<u64>(input.tellp()),
-            file_header.header().data.offset + data_size);
+  ASSERT_EQ(file_header.header().data.offset + data_size,
+            static_cast<u64>(input.tellp()));
 
   // no metadata
 
@@ -1011,11 +1017,16 @@ TEST(PerfReaderTest, SmallPerfEventAttr) {
   const size_t data_size = sample_event.GetSize();
 
   // header
-  testing::ExamplePerfDataFileHeader_CustomAttrSize file_header(
-      attr_size, data_size);
+  testing::ExamplePerfDataFileHeader file_header(0);
+  file_header
+      .WithCustomPerfEventAttrSize(attr_size)
+      .WithAttrCount(1)
+      .WithDataSize(data_size);
   file_header.WriteTo(&input);
 
   // attrs
+  CHECK_EQ(file_header.header().attrs.offset,
+           static_cast<u64>(input.tellp()));
   testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
                                         false /*sample_id_all*/)
       .WithAttrSize(attr_size)
@@ -1024,10 +1035,11 @@ TEST(PerfReaderTest, SmallPerfEventAttr) {
 
   // data
 
-  ASSERT_EQ(static_cast<u64>(input.tellp()), file_header.header().data.offset);
+  ASSERT_EQ(file_header.header().data.offset,
+            static_cast<u64>(input.tellp()));
   sample_event.WriteTo(&input);
-  ASSERT_EQ(static_cast<u64>(input.tellp()),
-            file_header.header().data.offset + data_size);
+  ASSERT_EQ(file_header.header().data.offset + data_size,
+            static_cast<u64>(input.tellp()));
 
   // no metadata
 
@@ -1119,14 +1131,16 @@ TEST(PerfReaderTest, CrossEndianAttrs) {
     std::stringstream input;
 
     // header
-    const size_t data_size = 0;
     const uint32_t features = 0;
-    testing::ExamplePerfDataFileHeader file_header(3, data_size, features);
+    testing::ExamplePerfDataFileHeader file_header(features);
     file_header
+        .WithAttrCount(3)
         .WithCrossEndianness(is_cross_endian)
         .WriteTo(&input);
 
     // attrs
+    CHECK_EQ(file_header.header().attrs.offset,
+             static_cast<u64>(input.tellp()));
     // Provide two attrs with different sample_id_all values to test the
     // correctness of byte swapping of the bit fields.
     testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
@@ -1211,12 +1225,16 @@ TEST(PerfReaderTest, CrossEndianNormalPerfData) {
   // header
   const size_t data_size = input_data.str().size();
   const uint32_t features = (1 << HEADER_HOSTNAME) | (1 << HEADER_OSRELEASE);
-  testing::ExamplePerfDataFileHeader file_header(1, data_size, features);
+  testing::ExamplePerfDataFileHeader file_header(features);
   file_header
+      .WithAttrCount(1)
+      .WithDataSize(data_size)
       .WithCrossEndianness(true)
       .WriteTo(&input);
 
   // attrs
+  CHECK_EQ(file_header.header().attrs.offset,
+           static_cast<u64>(input.tellp()));
   testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
                                         true /*sample_id_all*/)
       .WithConfig(456)

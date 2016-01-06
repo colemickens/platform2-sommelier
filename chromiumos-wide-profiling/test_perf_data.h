@@ -69,9 +69,15 @@ class StreamWriteable {
 // Normal mode header
 class ExamplePerfDataFileHeader : public StreamWriteable {
  public:
-  explicit ExamplePerfDataFileHeader(const size_t attr_count,
-                                     const u64 data_size,
-                                     const unsigned long features);  // NOLINT
+  typedef ExamplePerfDataFileHeader SelfT;
+  explicit ExamplePerfDataFileHeader(const unsigned long features);  // NOLINT
+
+  SelfT& WithAttrIdsCount(size_t n);
+  SelfT& WithAttrCount(size_t n);
+  SelfT& WithDataSize(size_t sz);
+
+  // Used for testing compatibility w.r.t. sizeof(perf_event_attr)
+  SelfT& WithCustomPerfEventAttrSize(size_t sz);
 
   const struct perf_file_header& header() const {
     return header_;
@@ -88,15 +94,10 @@ class ExamplePerfDataFileHeader : public StreamWriteable {
 
  protected:
   struct perf_file_header header_;
-};
+  size_t attr_ids_count_ = 0;
 
-// Normal mode header with custom event attr size.
-class ExamplePerfDataFileHeader_CustomAttrSize
-    : public ExamplePerfDataFileHeader {
- public:
-  explicit ExamplePerfDataFileHeader_CustomAttrSize(
-      const size_t event_attr_size,
-      const u64 data_size);  // NOLINT
+ private:
+  void UpdateSectionOffsets();
 };
 
 // Produces the pipe-mode file header.
@@ -121,12 +122,38 @@ class ExamplePerfEventAttrEvent_Hardware : public StreamWriteable {
   }
   SelfT& WithConfig(u64 config) { config_ = config; return *this; }
   SelfT& WithAttrSize(u32 size) { attr_size_ = size; return *this; }
+  SelfT& WithId(u64 id) { ids_.push_back(id); return *this; }
+  SelfT& WithIds(std::initializer_list<u64> ids) {
+    ids_.insert(ids_.end(), ids.begin(), ids.end());
+    return *this;
+  }
   void WriteTo(std::ostream* out) const override;
  private:
   u32 attr_size_;
   const u64 sample_type_;
   const bool sample_id_all_;
   u64 config_;
+  std::vector<u64> ids_;
+};
+
+class AttrIdsSection : public StreamWriteable {
+ public:
+  explicit AttrIdsSection(size_t initial_offset) : offset_(initial_offset) {}
+
+  perf_file_section AddId(u64 id) { return AddIds({id}); }
+  perf_file_section AddIds(std::initializer_list<u64> ids) {
+    ids_.insert(ids_.end(), ids.begin(), ids.end());
+    perf_file_section s = {
+      .offset = offset_,
+      .size = ids.size() * sizeof(decltype(ids)::value_type),
+    };
+    offset_ += s.size;
+    return s;
+  }
+  void WriteTo(std::ostream* out) const override;
+ private:
+  u64 offset_;
+  std::vector<u64> ids_;
 };
 
 // Produces a struct perf_file_attr with a perf_event_attr describing a
@@ -138,16 +165,22 @@ class ExamplePerfFileAttr_Hardware : public StreamWriteable {
       : attr_size_(sizeof(perf_event_attr)),
         sample_type_(sample_type),
         sample_id_all_(sample_id_all),
-        config_(0) {
+        config_(0),
+        ids_section_({.offset = MaybeSwap64(104), .size = MaybeSwap64(0)}) {
   }
   SelfT& WithAttrSize(u32 size) { attr_size_ = size; return *this; }
   SelfT& WithConfig(u64 config) { config_ = config; return *this; }
+  SelfT& WithIds(const perf_file_section& section) {
+    ids_section_ = section;
+    return *this;
+  }
   void WriteTo(std::ostream* out) const override;
  private:
   u32 attr_size_;
   const u64 sample_type_;
   const bool sample_id_all_;
   u64 config_;
+  perf_file_section ids_section_;
 };
 
 // Produces a struct perf_file_attr with a perf_event_attr describing a
@@ -176,6 +209,7 @@ class SampleInfo {
     return AddField(PunU32U64{.v32 = {pid, pid}}.v64);
   }
   SampleInfo& Time(u64 time) { return AddField(time); }
+  SampleInfo& Id(u64 id) { return AddField(id); }
   SampleInfo& BranchStack_nr(u64 nr) { return AddField(nr); }
   SampleInfo& BranchStack_lbr(u64 from, u64 to, u64 flags) {
     AddField(from);
@@ -212,6 +246,7 @@ class ExampleMmapEvent : public StreamWriteable {
         filename_(filename),
         sample_id_(sample_id) {
   }
+  size_t GetSize() const;
   void WriteTo(std::ostream* out) const override;
  private:
   const u32 pid_;
