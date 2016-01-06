@@ -9,6 +9,9 @@
 
 namespace brillo {
 
+// Tests using tags from the __PRETTY_FUNCTION__ don't work when using RTTI
+// to get the type name.
+#ifndef USE_RTTI_FOR_TYPE_TAGS
 TEST(TypeTags, GetTypeTag) {
   EXPECT_STREQ("const char *brillo::GetTypeTag() [T = int]", GetTypeTag<int>());
   EXPECT_STREQ("const char *brillo::GetTypeTag() [T = std::__1::map<std::__1::"
@@ -22,6 +25,7 @@ TEST(TypeTags, GetTypeTag) {
   EXPECT_STREQ("const char *brillo::GetTypeTag() [T = int []]",
                GetTypeTag<int[]>());
 }
+#endif  // USE_RTTI_FOR_TYPE_TAGS
 
 TEST(TypeDecoration, UndecorateTypeName) {
   EXPECT_EQ("int", UndecorateTypeName("i"));
@@ -31,6 +35,7 @@ TEST(TypeDecoration, UndecorateTypeName) {
             UndecorateTypeName("_ZNSt3__19to_stringEi"));
 }
 
+#ifndef USE_RTTI_FOR_TYPE_TAGS
 TEST(TypeDecoration, GetUndecoratedTypeNameForTag) {
   EXPECT_EQ("int",
             GetUndecoratedTypeNameForTag(
@@ -57,5 +62,6 @@ TEST(TypeDecoration, GetUndecoratedTypeName) {
             "std::__1::allocator<std::__1::pair<const int, double> > >",
             (GetUndecoratedTypeName<std::map<int, double>>()));
 }
+#endif  // USE_RTTI_FOR_TYPE_TAGS
 
 }  // namespace brillo
