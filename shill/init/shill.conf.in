@@ -38,6 +38,7 @@ env SHILL_ACCEPT_HOSTNAME_FROM=
 env SHILL_MINIMUM_MTU=
 env BLACKLISTED_DEVICES=
 env DHCPV6_ENABLED_DEVICES=
+env IGNORE_UNKNOWN_ETHERNET=
 
 # Hook for mod_for_test_scripts/100setupTestingInterface.
 env SHILL_TEST_DEVICES=""
@@ -97,6 +98,9 @@ script
   fi
   if [ -n "${DHCPV6_ENABLED_DEVICES}" ]; then
     ARGS="${ARGS} --dhcpv6-enabled-devices=${DHCPV6_ENABLED_DEVICES}"
+  fi
+  if [ -n "${IGNORE_UNKNOWN_ETHERNET}" ]; then
+    ARGS="${ARGS} --ignore-unknown-ethernet"
   fi
   ARGS="${ARGS} ${SHILL_TEST_ARGS}"
 
