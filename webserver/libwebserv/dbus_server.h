@@ -84,8 +84,6 @@ class LIBWEBSERV_PRIVATE DBusServer : public Server {
   friend class DBusProtocolHandler;
   class RequestHandler;
 
-  void Disconnect();
-
   // Handler invoked when a connection is established to web server daemon.
   void Online(org::chromium::WebServer::ServerProxyInterface* server);
 
@@ -111,11 +109,17 @@ class LIBWEBSERV_PRIVATE DBusServer : public Server {
   // Private implementation of D-Bus RequestHandlerInterface called by the web
   // server daemon whenever a new request is available to be processed.
   std::unique_ptr<RequestHandler> request_handler_;
+
+  // D-Bus object to handler registration of RequestHandlerInterface.
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
   // D-Bus object adaptor for RequestHandlerInterface.
   std::unique_ptr<org::chromium::WebServer::RequestHandlerAdaptor>
       dbus_adaptor_;
-  // D-Bus object to handler registration of RequestHandlerInterface.
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  // D-Bus object manager proxy that receives notification of web server
+  // daemon's D-Bus object creation and destruction.
+  std::unique_ptr<org::chromium::WebServer::ObjectManagerProxy> object_manager_;
 
   // A mapping of protocol handler name to the associated object.
   std::map<std::string, std::unique_ptr<DBusProtocolHandler>>
@@ -131,10 +135,6 @@ class LIBWEBSERV_PRIVATE DBusServer : public Server {
   base::Closure on_server_offline_;
   base::Callback<void(ProtocolHandler*)> on_protocol_handler_connected_;
   base::Callback<void(ProtocolHandler*)> on_protocol_handler_disconnected_;
-
-  // D-Bus object manager proxy that receives notification of web server
-  // daemon's D-Bus object creation and destruction.
-  std::unique_ptr<org::chromium::WebServer::ObjectManagerProxy> object_manager_;
 
   // D-Bus proxy for the web server main object.
   org::chromium::WebServer::ServerProxyInterface* proxy_{nullptr};

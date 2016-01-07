@@ -132,18 +132,6 @@ void DBusServer::Connect(
       base::Bind(&DBusServer::ProtocolHandlerRemoved, base::Unretained(this)));
 }
 
-void DBusServer::Disconnect() {
-  on_server_offline_.Reset();
-  on_server_online_.Reset();
-  protocol_handlers_ids_.clear();
-  protocol_handlers_names_.clear();
-  // Release D-Bus object manager proxy after all the dependent maps are freed
-  // (e.g. |protocol_handlers_names_| contains pointers to ProtocolHandlerProxy,
-  // instances of which are owned by the D-Bus object manager).
-  object_manager_.reset();
-  dbus_object_.reset();
-}
-
 void DBusServer::Online(
     org::chromium::WebServer::ServerProxyInterface* server) {
   VLOG(1) << "Web server is on-line.";
