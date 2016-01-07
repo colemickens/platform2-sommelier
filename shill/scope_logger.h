@@ -38,7 +38,8 @@ class ScopeLogger {
   // Update kScopeNames in scope_logger.cc after changing this enumerated type.
   // These scope identifiers are sorted by their scope names alphabetically.
   enum Scope {
-    kCellular = 0,
+    kBinder = 0,
+    kCellular,
     kConnection,
     kCrypto,
     kDaemon,
