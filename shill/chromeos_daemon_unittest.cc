@@ -89,10 +89,12 @@ class ChromeosDaemonTest : public Test {
         dispatcher_(new EventDispatcherForTest()),
         control_(new MockControl()),
         metrics_(new MockMetrics(dispatcher_)),
-        callback_metrics_(new Callback80211Metrics(metrics_)),
         manager_(new MockManager(control_,
                                  dispatcher_,
                                  metrics_)),
+#if !defined(DISABLE_WIFI)
+        callback_metrics_(new Callback80211Metrics(metrics_)),
+#endif  // DISABLE_WIFI
         device_info_(control_,
                      dispatcher_,
                      metrics_,
@@ -109,11 +111,11 @@ class ChromeosDaemonTest : public Test {
     daemon_.manager_.reset(manager_);  // Passes ownership
     daemon_.control_.reset(control_);  // Passes ownership
     daemon_.dispatcher_.reset(dispatcher_);  // Passes ownership
-    // Passes ownership
-    daemon_.callback80211_metrics_.reset(callback_metrics_);
 
 #if !defined(DISABLE_WIFI)
     daemon_.netlink_manager_ = &netlink_manager_;
+    // Passes ownership
+    daemon_.callback80211_metrics_.reset(callback_metrics_);
 #endif  // DISABLE_WIFI
   }
   void StartDaemon() {
@@ -146,10 +148,10 @@ class ChromeosDaemonTest : public Test {
   EventDispatcherForTest* dispatcher_;
   MockControl* control_;
   MockMetrics* metrics_;
-  Callback80211Metrics* callback_metrics_;
   MockManager* manager_;
 #if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
+  Callback80211Metrics* callback_metrics_;
 #endif  // DISABLE_WIFI
   DeviceInfo device_info_;
 };
