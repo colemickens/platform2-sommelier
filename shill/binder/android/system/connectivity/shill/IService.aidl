@@ -141,6 +141,5 @@ interface IService {
    *
    * @param callback Binder reference to call back
    */
-  void RegisterPropertyChangedSignalHandler(
-      IPropertyChangedCallback callbacks);
+  void RegisterPropertyChangedSignalHandler(IPropertyChangedCallback callback);
 }

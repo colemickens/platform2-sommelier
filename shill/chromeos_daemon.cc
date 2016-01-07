@@ -27,9 +27,11 @@
 #endif
 
 #include "shill/control_interface.h"
-#if defined(ENABLE_CHROMEOS_DBUS)
+#if defined(ENABLE_BINDER)
+#include "shill/binder/binder_control.h"
+#elif defined(ENABLE_CHROMEOS_DBUS)
 #include "shill/dbus/chromeos_dbus_control.h"
-#endif  // ENABLE_CHROMEOS_DBUS
+#endif  // ENABLE_BINDER, ENABLE_CHROMEOS_DBUS
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/logging.h"
@@ -180,12 +182,14 @@ int ChromeosDaemon::OnInit() {
   }
 
   dispatcher_.reset(new EventDispatcher());
-#if defined(ENABLE_CHROMEOS_DBUS)
+#if defined(ENABLE_BINDER)
+  control_.reset(new BinderControl(dispatcher_.get()));
+#elif defined(ENABLE_CHROMEOS_DBUS)
   control_.reset(new ChromeosDBusControl(dispatcher_.get()));
 #else
   // TODO(zqiu): use default stub control interface.
 #error Control interface type not specified.
-#endif  // ENABLE_CHROMEOS_DBUS
+#endif  // ENABLE_BINDER, ENABLE_CHROMEOS_DBUS
   metrics_.reset(new Metrics(dispatcher_.get()));
   rtnl_handler_ = RTNLHandler::GetInstance();
   routing_table_ = RoutingTable::GetInstance();

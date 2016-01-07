@@ -29,7 +29,6 @@ namespace shill {
 class EventDispatcher;
 class Manager;
 
-// This is the Interface for the  DBus control channel for Shill.
 class ChromeosDBusControl : public ControlInterface {
  public:
   ChromeosDBusControl(EventDispatcher* dispatcher);
