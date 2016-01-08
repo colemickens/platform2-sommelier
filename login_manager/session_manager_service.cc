@@ -187,6 +187,8 @@ bool SessionManagerService::Initialize() {
                                         base::Unretained(powerd_dbus_proxy_),
                                         power_manager::kPowerManagerInterface,
                                         power_manager::kRequestRestartMethod),
+                             base::Bind(&SessionManagerService::SetUpSuspendHandler,
+                                        base::Unretained(this)),
                              &key_gen_,
                              &state_key_generator_,
                              this,
@@ -204,10 +206,6 @@ bool SessionManagerService::Initialize() {
 
   adaptor_->ExportDBusMethods(session_manager_dbus_object_);
   TakeDBusServiceOwnership();
-
-#if USE_ARC
-  SetUpSuspendHandler();
-#endif
 
   return true;
 }

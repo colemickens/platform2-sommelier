@@ -130,6 +130,7 @@ SessionManagerImpl::SessionManagerImpl(
     DBusSignalEmitterInterface* dbus_emitter,
     base::Closure lock_screen_closure,
     base::Closure restart_device_closure,
+    base::Closure start_arc_instance_closure,
     KeyGenerator* key_gen,
     ServerBackedStateKeyGenerator* state_key_generator,
     ProcessManagerServiceInterface* manager,
@@ -143,6 +144,7 @@ SessionManagerImpl::SessionManagerImpl(
       upstart_signal_emitter_(emitter.Pass()),
       lock_screen_closure_(lock_screen_closure),
       restart_device_closure_(restart_device_closure),
+      start_arc_instance_closure_(start_arc_instance_closure),
       dbus_emitter_(dbus_emitter),
       key_gen_(key_gen),
       state_key_generator_(state_key_generator),
@@ -575,6 +577,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }
+
+  start_arc_instance_closure_.Run();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
 #endif  // !USE_ARC

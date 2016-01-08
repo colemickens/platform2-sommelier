@@ -80,6 +80,8 @@ class SessionManagerImplTest : public ::testing::Test {
                          base::Unretained(this)),
               base::Bind(&SessionManagerImplTest::FakeRestartDevice,
                          base::Unretained(this)),
+              base::Bind(&SessionManagerImplTest::FakeStartArcInstance,
+                         base::Unretained(this)),
               &key_gen_,
               &state_key_generator_,
               &manager_,
@@ -259,6 +261,8 @@ class SessionManagerImplTest : public ::testing::Test {
   void FakeLockScreen() { actual_locks_++; }
 
   void FakeRestartDevice() { actual_restarts_++; }
+
+  void FakeStartArcInstance() {}
 
   string fake_salt_;
 

@@ -80,6 +80,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                      DBusSignalEmitterInterface* dbus_emitter,
                      base::Closure lock_screen_closure,
                      base::Closure restart_device_closure,
+                     base::Closure start_arc_instance_closure,
                      KeyGenerator* key_gen,
                      ServerBackedStateKeyGenerator* state_key_generator,
                      ProcessManagerServiceInterface* manager,
@@ -215,6 +216,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   base::Closure lock_screen_closure_;
   base::Closure restart_device_closure_;
+  base::Closure start_arc_instance_closure_;
 
   DBusSignalEmitterInterface* dbus_emitter_;            // Owned by the caller.
   KeyGenerator* key_gen_;                               // Owned by the caller.
