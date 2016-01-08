@@ -63,7 +63,6 @@ class ChromeosManagerDBusAdaptor
       const std::string& name, const std::string& value) override;
   void EmitRpcIdentifierArrayChanged(
       const std::string& name, const std::vector<std::string>& value) override;
-  void EmitStateChanged(const std::string& new_state) override;
 
   // Implementation of Manager_adaptor
   bool GetProperties(brillo::ErrorPtr* error,

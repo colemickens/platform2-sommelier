@@ -100,8 +100,6 @@ class ManagerAdaptorInterface {
   virtual void EmitRpcIdentifierArrayChanged(
       const std::string& name,
       const std::vector<std::string>& value) = 0;
-
-  virtual void EmitStateChanged(const std::string& new_state) = 0;
 };
 
 // These are the functions that a Profile adaptor must support

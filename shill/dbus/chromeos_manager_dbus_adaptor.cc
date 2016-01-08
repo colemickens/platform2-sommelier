@@ -111,11 +111,6 @@ void ChromeosManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
   SendPropertyChangedSignal(name, brillo::Any(paths));
 }
 
-void ChromeosManagerDBusAdaptor::EmitStateChanged(const string& new_state) {
-  SLOG(this, 2) << __func__;
-  SendStateChangedSignal(new_state);
-}
-
 bool ChromeosManagerDBusAdaptor::GetProperties(
     brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;

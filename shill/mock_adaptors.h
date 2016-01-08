@@ -106,8 +106,6 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
                void(const std::string&, const std::vector<std::string>&));
 
-  MOCK_METHOD1(EmitStateChanged, void(const std::string&));
-
  private:
   const std::string rpc_id_;
 };
