@@ -54,6 +54,7 @@ enum ChecksumStatus {
   kChecksumDoesNotExist,
   kChecksumReadError,
   kChecksumMismatch,
+  kChecksumOutOfSync,
   kChecksumStatusNumBuckets
 };
 

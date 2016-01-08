@@ -1055,8 +1055,30 @@ void Platform::VerifyChecksum(const std::string& path,
     return;
   }
   if (saved_sum != GetChecksum(content, content_size)) {
-    LOG(ERROR) << "CHECKSUM: Failed to verify checksum for " << path;
-    ReportChecksum(kChecksumMismatch);
+    // Check if the last modified time is out-of-sync for the two files. If they
+    // weren't written together they can't be expected to match.
+    base::File::Info content_file_info;
+    base::File::Info checksum_file_info;
+    if (!base::GetFileInfo(FilePath(path), &content_file_info) ||
+        !base::GetFileInfo(FilePath(path + ".sum"), &checksum_file_info)) {
+      LOG(ERROR) << "CHECKSUM: Failed to read file info for " << path;
+      ReportChecksum(kChecksumReadError);
+      return;
+    }
+    base::TimeDelta checksum_timestamp_diff =
+        checksum_file_info.last_modified - content_file_info.last_modified;
+    if (checksum_timestamp_diff.magnitude().InSeconds() > 1) {
+      LOG(ERROR) << "CHECKSUM: Checksum out-of-sync for " << path;
+      ReportChecksum(kChecksumOutOfSync);
+    } else {
+      LOG(ERROR) << "CHECKSUM: Failed to verify checksum for " << path;
+      ReportChecksum(kChecksumMismatch);
+    }
+    // Attempt to update the checksum to match the current content.
+    mode_t current_mode;
+    if (GetPermissions(path + ".sum", &current_mode)) {
+      WriteChecksum(path, content, content_size, current_mode);
+    }
     return;
   }
   ReportChecksum(kChecksumOK);
