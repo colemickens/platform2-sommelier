@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <binder/IServiceManager.h>
+#include <binderwrapper/binder_wrapper.h>
 #include <brillo/binder_watcher.h>
 
 // TODO(samueltan): remove when shill is no longer dependent on DBus proxies.
@@ -47,6 +48,7 @@
 #include "shill/dbus/chromeos_supplicant_process_proxy.h"
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
+using android::BinderWrapper;
 using android::defaultServiceManager;
 using std::string;
 using std::to_string;
@@ -60,6 +62,7 @@ BinderControl::BinderControl(EventDispatcher* dispatcher)
     : next_unique_binder_adaptor_id_(0),
       dispatcher_(dispatcher),
       null_identifier_(kNullRpcIdentifier) {
+  BinderWrapper::Create();
   // Watch Binder events in the main loop
   brillo::BinderWatcher binder_watcher;
   CHECK(binder_watcher.Init()) << "Binder FD watcher init failed";

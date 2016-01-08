@@ -16,18 +16,20 @@
 
 #include "shill/binder/manager_binder_adaptor.h"
 
-#include <binder/IServiceManager.h>
 #include <binder/Status.h>
+#include <binderwrapper/binder_wrapper.h>
 #include <utils/String16.h>
+#include <utils/String8.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"
 
 using android::binder::Status;
-using android::defaultServiceManager;
+using android::BinderWrapper;
 using android::IBinder;
 using android::sp;
 using android::String16;
+using android::String8;
 using android::system::connectivity::shill::IPropertyChangedCallback;
 using std::string;
 using std::vector;
@@ -50,7 +52,8 @@ ManagerBinderAdaptor::~ManagerBinderAdaptor() { manager_ = nullptr; }
 void ManagerBinderAdaptor::RegisterAsync(
     const base::Callback<void(bool)>& /*completion_callback*/) {
   // Registration is performed synchronously in Binder.
-  defaultServiceManager()->addService(getInterfaceDescriptor(), this);
+  BinderWrapper::Get()->RegisterService(
+      String8(getInterfaceDescriptor()).string(), this);
 }
 
 void ManagerBinderAdaptor::EmitBoolChanged(const string& name, bool /*value*/) {
