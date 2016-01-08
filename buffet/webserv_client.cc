@@ -83,22 +83,23 @@ WebServClient::WebServClient(
     brillo::dbus_utils::AsyncEventSequencer* sequencer,
     const base::Closure& server_available_callback)
     : server_available_callback_{server_available_callback} {
-  web_server_.reset(new libwebserv::Server);
+  web_server_ = libwebserv::Server::ConnectToServerViaDBus(
+      bus,
+      buffet::dbus_constants::kServiceName,
+      sequencer->GetHandler("Server::Connect failed.", true),
+      base::Bind(&base::DoNothing),
+      base::Bind(&base::DoNothing));
+
   web_server_->OnProtocolHandlerConnected(
       base::Bind(&WebServClient::OnProtocolHandlerConnected,
                  weak_ptr_factory_.GetWeakPtr()));
   web_server_->OnProtocolHandlerDisconnected(
       base::Bind(&WebServClient::OnProtocolHandlerDisconnected,
                  weak_ptr_factory_.GetWeakPtr()));
-
-  web_server_->Connect(bus, buffet::dbus_constants::kServiceName,
-                       sequencer->GetHandler("Server::Connect failed.", true),
-                       base::Bind(&base::DoNothing),
-                       base::Bind(&base::DoNothing));
 }
 
 WebServClient::~WebServClient() {
-  web_server_->Disconnect();
+  web_server_.reset();
 }
 
 void WebServClient::AddHttpRequestHandler(
