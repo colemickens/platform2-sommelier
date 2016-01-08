@@ -221,7 +221,13 @@ bool PerfParser::ProcessEvents() {
 }
 
 void PerfParser::MaybeSortParsedEvents() {
-  if (!(reader_->sample_type() & PERF_SAMPLE_TIME)) {
+  bool have_sample_time = true;
+  for (const auto& attr : reader_->attrs()) {
+    if (!(attr.attr.sample_type & PERF_SAMPLE_TIME)) {
+      have_sample_time = false;
+    }
+  }
+  if (!have_sample_time) {
     parsed_events_sorted_by_time_.resize(parsed_events_.size());
     for (size_t i = 0; i < parsed_events_.size(); ++i) {
       parsed_events_sorted_by_time_[i] = &parsed_events_[i];
@@ -262,13 +268,18 @@ void PerfParser::MaybeSortParsedEvents() {
 bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   bool mapping_failed = false;
 
-  // Find the associated command.
-  if (!(reader_->sample_type() & PERF_SAMPLE_IP &&
-        reader_->sample_type() & PERF_SAMPLE_TID))
+  const struct perf_event_attr* attr =
+      reader_->GetAttrForEvent(parsed_event->raw_event);
+  if (attr == nullptr ||
+      !(attr->sample_type & PERF_SAMPLE_IP &&
+        attr->sample_type & PERF_SAMPLE_TID))
     return false;
+  SampleInfoReader sample_reader(*attr, false /*read_cross_endian*/);
   perf_sample sample_info;
-  if (!reader_->ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
+  if (!sample_reader.ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
     return false;
+
+  // Find the associated command.
   PidTid pidtid = std::make_pair(sample_info.pid, sample_info.tid);
   const auto comm_iter = pidtid_to_comm_map_.find(pidtid);
   if (comm_iter != pidtid_to_comm_map_.end()) {
@@ -304,8 +315,10 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   // Write the remapped data back to the raw event regardless of whether it was
   // entirely successfully remapped.  A single failed remap should not
   // invalidate all the other remapped entries.
-  if (!reader_->WritePerfSampleInfo(sample_info, parsed_event->raw_event)) {
-    LOG(ERROR) << "Failed to write back remapped sample info.";
+  if (!sample_reader.WritePerfSampleInfo(sample_info,
+                                         parsed_event->raw_event)) {
+    LOG(ERROR) << "Failed to write back remapped sample info."
+               << " sample_info.id: " << sample_info.id;
     return false;
   }
 

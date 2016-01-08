@@ -75,8 +75,7 @@ class DataWriter;
 
 class PerfReader {
  public:
-  PerfReader() : sample_type_(0),
-                 read_format_(0) {}
+  PerfReader();
   ~PerfReader();
 
   // Makes |build_id| fit the perf format, by either truncating it or adding
@@ -128,6 +127,18 @@ class PerfReader {
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
 
+  // Do non-SAMPLE events have a sample_id? Reflects the value of
+  // sample_id_all in the first attr, which should be consistent accross all
+  // attrs.
+  bool SampleIdAll() const;
+
+  // Find the event id in the event, and lookup the corresponding attr.
+  // Returns nullptr if the attr cannot be identified.
+  const struct perf_event_attr* GetAttrForEvent(const event_t* event) const;
+  const struct perf_event_attr* GetAttrForSample(
+      const struct perf_sample* sample, const event_t *event) const;
+  const struct perf_event_attr* GetAttrForEventId(u64 event_id) const;
+
   // If a program using PerfReader calls events(), it could work with the
   // resulting events by importing kernel/perf_internals.h.  This would also
   // apply to other forms of data (attributes, event types, build ids, etc.)
@@ -150,10 +161,6 @@ class PerfReader {
   void UpdateOnNewAttrs();
 
   // Accessors and mutators.
-
-  uint64_t sample_type() const {
-    return sample_type_;
-  }
 
   const std::vector<PerfFileAttr>& attrs() const {
     return attrs_;
@@ -227,11 +234,18 @@ class PerfReader {
   }
 
  private:
+  // Special values for the event/other_event_id_pos_ fields.
+  enum EventIdPosition {
+    Uninitialized = -2,
+    NotPresent = -1,
+  };
+
   bool ReadHeader(DataReader* data);
   bool ReadAttrsSection(DataReader* data);
   bool ReadAttr(DataReader* data);
   bool ReadEventAttr(DataReader* data, perf_event_attr* attr);
   bool ReadUniqueIDs(DataReader* data, size_t num_ids, std::vector<u64>* ids);
+  void UpdateEventIdPositions(const perf_event_attr& attr);
 
   bool ReadEventTypesSection(DataReader* data);
   // if event_size == 0, then not in an event.
@@ -333,16 +347,21 @@ class PerfReader {
   PerfCPUTopologyMetadata cpu_topology_;
   std::vector<PerfNodeTopologyMetadata> numa_topology_;
   std::vector<char> tracing_data_;
-  uint64_t sample_type_;
-  uint64_t read_format_;
   uint64_t metadata_mask_;
-
-  // For reading sample info fields from raw perf events.
-  std::unique_ptr<SampleInfoReader> sample_info_reader_;
 
   // When writing to a new perf data file, this is used to hold the generated
   // file header, which may differ from the input file header, if any.
   struct perf_file_header out_header_;
+
+  // For SAMPLE events, the position of the sample id,
+  // Or EventIdPosition::NotPresent if neither PERF_SAMPLE_ID(ENTIFIER) are set.
+  // (Corresponds to evsel->id_pos in perf)
+  ssize_t sample_event_id_pos_ = EventIdPosition::Uninitialized;
+  // For non-SAMPLE events, the position of the sample id, counting backwards
+  // from the end of the event.
+  // Or EventIdPosition::NotPresent if neither PERF_SAMPLE_ID(ENTIFIER) are set.
+  // (Corresponds to evsel->is_pos in perf)
+  ssize_t other_event_id_pos_ = EventIdPosition::Uninitialized;
 
   DISALLOW_COPY_AND_ASSIGN(PerfReader);
 };

@@ -9,7 +9,6 @@
 #include <string.h>
 
 #include <algorithm>
-#include <bitset>
 #include <vector>
 
 #include "base/logging.h"
@@ -227,6 +226,8 @@ bool ReadPerfFileSection(DataReader* data, struct perf_file_section* section) {
 }
 
 }  // namespace
+
+PerfReader::PerfReader() {}
 
 PerfReader::~PerfReader() {}
 
@@ -578,18 +579,98 @@ void PerfReader::GetFilenamesToBuildIDs(
   }
 }
 
+bool PerfReader::SampleIdAll() const {
+  if (attrs_.empty()) {
+    return false;
+  }
+  return attrs_[0].attr.sample_id_all;
+}
+
+const struct perf_event_attr* PerfReader::GetAttrForEvent(
+    const event_t* event) const {
+  // Where is the event id?
+  ssize_t event_id_pos = EventIdPosition::Uninitialized;
+  if (event->header.type == PERF_RECORD_SAMPLE) {
+    event_id_pos = sample_event_id_pos_;
+  } else if (SampleIdAll()) {
+    event_id_pos = other_event_id_pos_;
+  } else {
+    event_id_pos = EventIdPosition::NotPresent;
+  }
+
+  // What is the event id?
+  u64 event_id;
+  switch (event_id_pos) {
+    case EventIdPosition::Uninitialized:
+      LOG(FATAL) << "Position of the event id was not initialized!";
+      return nullptr;
+    case EventIdPosition::NotPresent:
+      event_id = 0;
+      break;
+    default:
+      if (event->header.type == PERF_RECORD_SAMPLE) {
+        event_id = event->sample.array[event_id_pos];
+      } else {
+        // Pretend this is a sample event--ie, an array of u64. Find the length
+        // of the array. The sample id is at the end of the array, and
+        // event_id_pos (aka other_event_id_pos_) counts from the end.
+        size_t event_end_pos =
+            (event->header.size - sizeof(event->header)) / sizeof(u64);
+        event_id = event->sample.array[event_end_pos - event_id_pos];
+      }
+      break;
+  }
+
+  // Use the event id to get the attr.
+  return GetAttrForEventId(event_id);
+}
+
+const struct perf_event_attr* PerfReader::GetAttrForSample(
+    const struct perf_sample* sample, const event_t *event) const {
+  u64 event_id = 0;
+  if (event->header.type == PERF_RECORD_SAMPLE || SampleIdAll()) {
+    event_id = sample->id;
+  }
+  return GetAttrForEventId(event_id);
+}
+
+const struct perf_event_attr* PerfReader::GetAttrForEventId(
+    u64 event_id) const {
+  // Synthesized events (like MMAP) have an id of zero. Use the first attr in
+  // lieu: The sample_info and other common fields will be useful.
+  if (event_id == 0)
+    return &attrs_[0].attr;
+
+  // TODO(dhsharp): Consider replacing this linear search with something more
+  // efficient. Over this small set, it may be fine for now. But as this would
+  // be searched for every event in the file, it could add up.
+  for (const auto& attr : attrs_) {
+    for (u64 id : attr.ids) {
+      if (id == event_id)
+        return &attr.attr;
+    }
+  }
+  LOG(ERROR) << "Invalid event id: " << event_id;
+  return nullptr;
+}
+
 bool PerfReader::ReadPerfSampleInfo(const event_t& event,
                                     struct perf_sample* sample) const {
-  if (sample_info_reader_.get() == nullptr)
+  const struct perf_event_attr* attr = GetAttrForEvent(&event);
+  if (attr == nullptr) {
+    DLOG(INFO) << "No attr for event " << event.header.type;
     return false;
-  return sample_info_reader_->ReadPerfSampleInfo(event, sample);
+  }
+  SampleInfoReader sample_info_reader(*attr, false /* read_cross_endian */);
+  return sample_info_reader.ReadPerfSampleInfo(event, sample);
 }
 
 bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
                                      event_t* event) const {
-  if (sample_info_reader_.get() == nullptr)
-    return false;
-  return sample_info_reader_->WritePerfSampleInfo(sample, event);
+  const struct perf_event_attr* attr = GetAttrForSample(&sample, event);
+  if (attr == nullptr) return false;
+  SampleInfoReader sample_info_reader(*attr, false /* read_cross_endian */);
+  return sample_info_reader.WritePerfSampleInfo(sample, event);
 }
 
 bool PerfReader::HaveEventNames() const {
@@ -602,22 +683,12 @@ bool PerfReader::HaveEventNames() const {
 
 // Update internal fields when the PerfReader gets a new set of |attrs_|.
 void PerfReader::UpdateOnNewAttrs() {
-  if (attrs_.empty())
-    return;
-
-  // Make sure all attrs have the same sample type and read format.
+  sample_event_id_pos_ = EventIdPosition::Uninitialized;
+  other_event_id_pos_ = EventIdPosition::Uninitialized;
   for (const auto& attr : attrs_) {
-    CHECK_EQ(attrs_[0].attr.sample_type, attr.attr.sample_type);
-    CHECK_EQ(attrs_[0].attr.read_format, attr.attr.read_format);
+    UpdateEventIdPositions(attr.attr);
   }
-
-  const auto& attr = attrs_[0].attr;
-  sample_type_ = attr.sample_type;
-  read_format_ = attr.read_format;
-
-  // Generate a new SampleInfoReader with the new attrs.
-  sample_info_reader_.reset(
-      new SampleInfoReader(attr, false /* read_cross_endian */));
+  // TODO(dhsharp): This is where we would update map of id-to-attr.
 }
 
 bool PerfReader::ReadHeader(DataReader* data) {
@@ -799,29 +870,44 @@ bool PerfReader::ReadEventAttr(DataReader* data, perf_event_attr* attr) {
   // the struct definition.  Check against perf_event_attr's |size| field.
   attr->size = sizeof(*attr);
 
-  // Assign sample type if it hasn't been assigned, otherwise make sure all
-  // subsequent attributes have the same sample type bits set.
-  if (sample_type_ == 0) {
-    sample_type_ = attr->sample_type;
-  } else {
-    CHECK_EQ(sample_type_, attr->sample_type)
-        << "Event type sample format does not match sample format of other "
-        << "event type.";
-  }
-
-  if (read_format_ == 0) {
-    read_format_ = attr->read_format;
-  } else {
-    CHECK_EQ(read_format_, attr->read_format)
-        << "Event type read format does not match read format of other event "
-        << "types.";
-  }
-  if (sample_info_reader_.get() == nullptr) {
-    sample_info_reader_.reset(
-        new SampleInfoReader(*attr, false /* read_cross_endian */));
-  }
+  UpdateEventIdPositions(*attr);
 
   return true;
+}
+
+void PerfReader::UpdateEventIdPositions(const struct perf_event_attr& attr) {
+  const u64 sample_type = attr.sample_type;
+  ssize_t new_sample_event_id_pos = EventIdPosition::NotPresent;
+  ssize_t new_other_event_id_pos = EventIdPosition::NotPresent;
+  if (sample_type & PERF_SAMPLE_IDENTIFIER) {
+    new_sample_event_id_pos = 0;
+    new_other_event_id_pos = 1;
+  } else if (sample_type & PERF_SAMPLE_ID) {
+    // Increment for IP, TID, TIME, ADDR
+    new_sample_event_id_pos = 0;
+    if (sample_type & PERF_SAMPLE_IP) new_sample_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_TID) new_sample_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_TIME) new_sample_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_ADDR) new_sample_event_id_pos++;
+
+    // Increment for CPU, STREAM_ID
+    new_other_event_id_pos = 1;
+    if (sample_type & PERF_SAMPLE_CPU) new_other_event_id_pos++;
+    if (sample_type & PERF_SAMPLE_STREAM_ID) new_other_event_id_pos++;
+  }
+
+  if (sample_event_id_pos_ == EventIdPosition::Uninitialized) {
+    sample_event_id_pos_ = new_sample_event_id_pos;
+  } else {
+    CHECK_EQ(new_sample_event_id_pos, sample_event_id_pos_)
+        << "Event ids must be in a consistent positition";
+  }
+  if (other_event_id_pos_ == EventIdPosition::Uninitialized) {
+    other_event_id_pos_ = new_other_event_id_pos;
+  } else {
+    CHECK_EQ(new_other_event_id_pos, other_event_id_pos_)
+        << "Event ids must be in a consistent positition";
+  }
 }
 
 bool PerfReader::ReadUniqueIDs(DataReader* data, size_t num_ids,
@@ -1766,12 +1852,12 @@ void PerfReader::MaybeSwapEventFields(event_t* event, bool is_cross_endian) {
   // back to |event| with WriteSampleInfo() so they are stored in native byte
   // order.
   CHECK_GT(attrs_.size(), 0U);
-  SampleInfoReader reader(attrs_[0].attr, is_cross_endian);
+  SampleInfoReader sample_reader(attrs_[0].attr, is_cross_endian);
 
   struct perf_sample sample_info;
-  CHECK(reader.ReadPerfSampleInfo(*event, &sample_info))
+  CHECK(sample_reader.ReadPerfSampleInfo(*event, &sample_info))
       << "Error reading sample info from event.";
-  CHECK(reader.WritePerfSampleInfo(sample_info, event))
+  CHECK(sample_reader.WritePerfSampleInfo(sample_info, event))
       << "Error writing sample info back to event.";
 }
 

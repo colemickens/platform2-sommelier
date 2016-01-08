@@ -151,6 +151,7 @@ TEST(SampleInfoReaderTest, ReadMmapEvent) {
 
   struct perf_event_attr attr = {0};
   attr.sample_type = sample_type;
+  attr.sample_id_all = true;
 
   SampleInfoReader reader(attr, false /* read_cross_endian */);
 

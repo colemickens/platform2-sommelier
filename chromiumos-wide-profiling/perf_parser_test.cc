@@ -28,8 +28,8 @@ namespace {
 void CheckChronologicalOrderOfEvents(const PerfReader& reader,
                                      const std::vector<ParsedEvent*>& events) {
   // Here a valid PerfReader is needed to read the sample info because
-  // ReadPerfSampleInfo() uses the |sample_type_| member of PerfReader to
-  // determine which sample info fields are present.
+  // the attr for an event needs to be looked up in ReadPerfSampleInfo()
+  // to determine which sample info fields are present.
   struct perf_sample sample_info;
   CHECK(reader.ReadPerfSampleInfo(*events[0]->raw_event, &sample_info));
   uint64_t prev_time = sample_info.time;

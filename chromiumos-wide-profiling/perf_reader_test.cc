@@ -462,6 +462,7 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
   // PERF_SAMPLE_BRANCH_STACK |
   testing::ExamplePerfEventAttrEvent_Hardware(sample_type,
                                               true /*sample_id_all*/)
+      .WithId(401)
       .WriteTo(&input);
 
   // PERF_RECORD_SAMPLE
@@ -477,7 +478,7 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
     PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
     1415837014*1000000000ULL,              // TIME
     0x00007f999c38d15a,                    // ADDR
-    2,                                     // ID
+    401,                                   // ID
     1,                                     // STREAM_ID
     8,                                     // CPU
     10001,                                 // PERIOD
@@ -512,7 +513,7 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
   const u64 mmap_sample_id[] = {
     PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
     1415911367*1000000000ULL,              // TIME
-    3,                                     // ID
+    0,                                     // ID
     2,                                     // STREAM_ID
     9,                                     // CPU
   };
@@ -554,7 +555,7 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
     EXPECT_EQ(0x68e, sample.tid);
     EXPECT_EQ(1415837014*1000000000ULL, sample.time);
     EXPECT_EQ(0x00007f999c38d15a, sample.addr);
-    EXPECT_EQ(2, sample.id);
+    EXPECT_EQ(401, sample.id);
     EXPECT_EQ(1, sample.stream_id);
     EXPECT_EQ(8, sample.cpu);
     EXPECT_EQ(10001, sample.period);
@@ -565,7 +566,7 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
     EXPECT_EQ(0x68d, sample.pid);
     EXPECT_EQ(0x68e, sample.tid);
     EXPECT_EQ(1415911367*1000000000ULL, sample.time);
-    EXPECT_EQ(3, sample.id);
+    EXPECT_EQ(0, sample.id);
     EXPECT_EQ(2, sample.stream_id);
     EXPECT_EQ(9, sample.cpu);
   }
@@ -587,6 +588,7 @@ TEST(PerfReaderTest, ReadsAndWritesPerfSampleIdentifier) {
                                               PERF_SAMPLE_IP |
                                               PERF_SAMPLE_TID,
                                               true /*sample_id_all*/)
+      .WithIds({0xdeadbeef, 0xf00dbaad})
       .WriteTo(&input);
 
   // PERF_RECORD_SAMPLE
@@ -891,6 +893,280 @@ TEST(PerfReaderTest, ReadsAllAvailableMetadataTypesPiped) {
   EXPECT_EQ("arch", string_metadata[3].data[0].str);
 }
 
+TEST(PerfReaderTest, AttrsWithDifferentSampleTypes) {
+  std::stringstream input;
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent sample_event_1(testing::SampleInfo()
+      .Id(51)
+      .Ip(0x00000000002c100a)
+      .Tid(1002));
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent sample_event_2(testing::SampleInfo()
+      .Id(61)
+      .Ip(0x00000000002c100b)
+      .Tid(1002)
+      .Time(1000006));
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent sample_event_3(testing::SampleInfo()
+      .Id(52)
+      .Ip(0x00000000002c100c)
+      .Tid(1002));
+
+  const size_t data_size =
+      sample_event_1.GetSize() +
+      sample_event_2.GetSize() +
+      sample_event_3.GetSize();
+  const uint32_t features = 0;
+
+  // header
+  testing::ExamplePerfDataFileHeader file_header(features);
+  file_header
+      .WithAttrIdsCount(3)
+      .WithAttrCount(2)
+      .WithDataSize(data_size);
+  file_header.WriteTo(&input);
+
+  // attr ids
+  testing::AttrIdsSection attr_ids(input.tellp());
+  const auto id_section_1 = attr_ids.AddIds({51, 52});
+  const auto id_section_2 = attr_ids.AddIds({61});
+  attr_ids.WriteTo(&input);
+
+  // attrs
+  ASSERT_EQ(file_header.header().attrs.offset,
+            static_cast<u64>(input.tellp()));
+  testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IDENTIFIER |
+                                        PERF_SAMPLE_IP |
+                                        PERF_SAMPLE_TID,
+                                        true /*sample_id_all*/)
+      .WithIds(id_section_1)
+      .WriteTo(&input);
+  testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IDENTIFIER |
+                                        PERF_SAMPLE_IP |
+                                        PERF_SAMPLE_TID |
+                                        PERF_SAMPLE_TIME,
+                                        true /*sample_id_all*/)
+      .WithIds(id_section_2)
+      .WriteTo(&input);
+
+  // data
+
+  ASSERT_EQ(file_header.header().data.offset,
+            static_cast<u64>(input.tellp()));
+  sample_event_1.WriteTo(&input);
+  sample_event_2.WriteTo(&input);
+  sample_event_3.WriteTo(&input);
+  ASSERT_EQ(file_header.header().data.offset + data_size,
+            static_cast<u64>(input.tellp()));
+
+  // no metadata
+
+  //
+  // Parse input.
+  //
+  PerfReader pr;
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr ids were read correctly.
+  ASSERT_EQ(2, pr.attrs().size());
+  ASSERT_EQ(2, pr.attrs()[0].ids.size());
+  EXPECT_EQ(51, pr.attrs()[0].ids[0]);
+  EXPECT_EQ(52, pr.attrs()[0].ids[1]);
+  ASSERT_EQ(1, pr.attrs()[1].ids.size());
+  EXPECT_EQ(61, pr.attrs()[1].ids[0]);
+
+  // Verify events were read properly.
+  ASSERT_EQ(3, pr.events().size());
+  {
+    const event_t* event = pr.events()[0].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+
+    perf_sample sample_info;
+    sample_info.time = 9999;
+    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
+    EXPECT_EQ(51, sample_info.id);
+    EXPECT_EQ(0x00000000002c100a, sample_info.ip);
+    EXPECT_EQ(1002, sample_info.tid);
+    // This event doesn't have a timestamp. Verify it was not changed.
+    EXPECT_EQ(9999, sample_info.time);
+  }
+  {
+    const event_t* event = pr.events()[1].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+
+    perf_sample sample_info;
+    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
+    EXPECT_EQ(61, sample_info.id);
+    EXPECT_EQ(0x00000000002c100b, sample_info.ip);
+    EXPECT_EQ(1002, sample_info.tid);
+    EXPECT_EQ(1000006, sample_info.time);
+  }
+  {
+    const event_t* event = pr.events()[2].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+
+    perf_sample sample_info;
+    sample_info.time = 9999;
+    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
+    EXPECT_EQ(52, sample_info.id);
+    EXPECT_EQ(0x00000000002c100c, sample_info.ip);
+    EXPECT_EQ(1002, sample_info.tid);
+    // This event doesn't have a timestamp. Verify it was not changed.
+    EXPECT_EQ(9999, sample_info.time);
+  }
+}
+
+// Neither PERF_SAMPLE_ID nor PERF_SAMPLE_IDENTIFIER are set. We should
+// fall back to using the first attr when looking for the sample_format.
+TEST(PerfReaderTest, NoSampleIdField) {
+  std::stringstream input;
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent sample_event(
+      testing::SampleInfo().Ip(0x00000000002c100a).Tid(1002));
+
+  const size_t data_size = sample_event.GetSize();
+  const uint32_t features = 0;
+
+  // header
+  testing::ExamplePerfDataFileHeader file_header(features);
+  file_header
+      .WithAttrCount(1)
+      .WithDataSize(data_size);
+  file_header.WriteTo(&input);
+
+  // attrs
+  ASSERT_EQ(file_header.header().attrs.offset,
+            static_cast<u64>(input.tellp()));
+  testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                        false /*sample_id_all*/)
+      .WithConfig(456)
+      .WriteTo(&input);
+
+  // data
+
+  ASSERT_EQ(file_header.header().data.offset,
+            static_cast<u64>(input.tellp()));
+  sample_event.WriteTo(&input);
+  ASSERT_EQ(file_header.header().data.offset + data_size,
+            static_cast<u64>(input.tellp()));
+
+  // no metadata
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  ASSERT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  ASSERT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+
+  // Verify subsequent sample event was read properly.
+  ASSERT_EQ(1, pr.events().size());
+  const event_t& event = *pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+  EXPECT_EQ(data_size, event.header.size);
+
+  perf_sample sample_info;
+  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
+  EXPECT_EQ(1002, sample_info.tid);
+}
+
+// When sample_id_all == false, non-sample events should not look for sample_id.
+TEST(PerfReaderTest, SampleIdFalseMeansDontReadASampleId) {
+  std::stringstream input;
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent sample_event(
+      testing::SampleInfo().Ip(0x00000000002c100a).Tid(1002).Id(48));
+
+  // PERF_RECORD_MMAP
+  testing::ExampleMmapEvent mmap_event(
+      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so",
+      // Write a sample_info even though we shouldn't (sample_id_all==false)
+      // Use a bogus ID: if we look at the sample_id and look for an attr, it
+      // should return an error.
+      testing::SampleInfo().Tid(1001).Id(666));
+
+  const size_t data_size =
+      sample_event.GetSize() +
+      mmap_event.GetSize();
+  const uint32_t features = 0;
+
+  // header
+  testing::ExamplePerfDataFileHeader file_header(features);
+  file_header
+      .WithAttrIdsCount(1)
+      .WithAttrCount(1)
+      .WithDataSize(data_size);
+  file_header.WriteTo(&input);
+
+  // attr IDs
+  testing::AttrIdsSection attr_ids(input.tellp());
+  const auto id_section = attr_ids.AddId(48);
+  attr_ids.WriteTo(&input);
+
+  // attrs
+  ASSERT_EQ(file_header.header().attrs.offset,
+            static_cast<u64>(input.tellp()));
+  testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP |
+                                        PERF_SAMPLE_TID |
+                                        PERF_SAMPLE_ID,
+                                        false /*sample_id_all*/)
+      .WithIds(id_section)
+      .WriteTo(&input);
+
+  // data
+
+  ASSERT_EQ(file_header.header().data.offset,
+            static_cast<u64>(input.tellp()));
+  sample_event.WriteTo(&input);
+  mmap_event.WriteTo(&input);
+  ASSERT_EQ(file_header.header().data.offset + data_size,
+            static_cast<u64>(input.tellp()));
+
+  // no metadata
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Verify events were read properly.
+  ASSERT_EQ(2, pr.events().size());
+  {
+    const event_t* event = pr.events()[0].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event->header.type);
+
+    perf_sample sample_info;
+    ASSERT_TRUE(pr.ReadPerfSampleInfo(*event, &sample_info));
+    EXPECT_EQ(0x00000000002c100a, sample_info.ip);
+    EXPECT_EQ(1002, sample_info.tid);
+    EXPECT_EQ(48, sample_info.id);
+  }
+
+  {
+    const event_t* event = pr.events()[1].get();
+    EXPECT_EQ(PERF_RECORD_MMAP, event->header.type);
+
+    perf_sample sample_info;
+    sample_info.tid = 9999;
+    sample_info.id = 8888;
+    // This event is malformed: it has junk at the end.
+    ASSERT_FALSE(pr.ReadPerfSampleInfo(*event, &sample_info));
+    // ... Therefore, sample_info should still be their original values.
+    EXPECT_EQ(9999, sample_info.tid);
+    EXPECT_EQ(8888, sample_info.id);
+  }
+}
+
 // Regression test for http://crbug.com/496441
 TEST(PerfReaderTest, LargePerfEventAttr) {
   std::stringstream input;
@@ -909,8 +1185,8 @@ TEST(PerfReaderTest, LargePerfEventAttr) {
   file_header.WriteTo(&input);
 
   // attrs
-  CHECK_EQ(file_header.header().attrs.offset,
-           static_cast<u64>(input.tellp()));
+  ASSERT_EQ(file_header.header().attrs.offset,
+            static_cast<u64>(input.tellp()));
   testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
                                         false /*sample_id_all*/)
       .WithAttrSize(attr_size)

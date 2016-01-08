@@ -132,6 +132,10 @@ size_t ReadPerfSampleFromData(const event_t& event,
   reader.set_is_cross_endian(is_cross_endian);
   reader.SeekSet(SampleInfoReader::GetPerfSampleDataOffset(event));
 
+  if (!(event.header.type == PERF_RECORD_SAMPLE || attr.sample_id_all)) {
+    return reader.Tell();
+  }
+
   uint64_t sample_fields =
       SampleInfoReader::GetSampleFieldsForEventType(event.header.type,
                                                     attr.sample_type);
@@ -291,6 +295,10 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
   uint64_t offset = SampleInfoReader::GetPerfSampleDataOffset(*event);
   uint64_t* array =
       reinterpret_cast<uint64_t*>(event) + offset / sizeof(uint64_t);
+
+  if (!(event->header.type == PERF_RECORD_SAMPLE || attr.sample_id_all)) {
+    return offset;
+  }
 
   uint64_t sample_fields =
       SampleInfoReader::GetSampleFieldsForEventType(event->header.type,
