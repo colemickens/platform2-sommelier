@@ -4,20 +4,13 @@
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
 #include "chromiumos-wide-profiling/conversion_utils.h"
 #include "chromiumos-wide-profiling/perf_test_files.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
 #include "chromiumos-wide-profiling/test_utils.h"
 #include "chromiumos-wide-profiling/utils.h"
-
-namespace {
-
-// The number for perf data files in our test files that we have protobuf text
-// representation for.
-const unsigned int kNumProtoTextFormatPerfFiles = 1;
-
-}  // namespace
 
 namespace quipper {
 
@@ -27,9 +20,8 @@ TEST(ConversionUtilsTest, TestTextOutput) {
   string output_path = output_dir.path();
 
   // TODO(asharif): Generate more test files.
-  for (unsigned int i = 0; i < kNumProtoTextFormatPerfFiles; ++i) {
+  for (const char* test_file : perf_test_files::GetPerfDataFiles()) {
     FormatAndFile input, output;
-    string test_file = perf_test_files::kPerfDataFiles[i];
 
     input.filename = GetTestInputFilePath(test_file);
     input.format = kPerfFormat;
@@ -37,7 +29,7 @@ TEST(ConversionUtilsTest, TestTextOutput) {
     output.format = kProtoTextFormat;
     EXPECT_TRUE(ConvertFile(input, output));
 
-    string golden_file = GetTestInputFilePath(test_file + ".pb_text");
+    string golden_file = GetTestInputFilePath(string(test_file) + ".pb_text");
     LOG(INFO) << "golden: " << golden_file;
     LOG(INFO) << "output: " << output.filename;
     EXPECT_TRUE(CompareFileContents(golden_file, output.filename));
@@ -45,8 +37,3 @@ TEST(ConversionUtilsTest, TestTextOutput) {
 }
 
 }  // namespace quipper
-
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

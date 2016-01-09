@@ -55,6 +55,7 @@
       'target_name': 'common_test',
       'type': 'static_library',
       'sources': [
+        'perf_test_files.cc',
         'test_utils.cc',
         'test_perf_data.cc',
       ],
@@ -115,43 +116,8 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'address_mapper_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'address_mapper_test.cc',
-          ]
-        },
-        {
-          'target_name': 'buffer_reader_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'buffer_reader_test.cc',
-          ]
-        },
-        {
-          'target_name': 'buffer_writer_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'buffer_writer_test.cc',
-          ]
-        },
-        {
-          'target_name': 'conversion_utils_test',
+          # TODO(sque): Separate out longer tests and move into this target.
+          'target_name': 'integration_tests',
           'type': 'executable',
           'dependencies': [
             'common',
@@ -161,54 +127,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'conversion_utils_test.cc',
-          ]
-        },
-        {
-          'target_name': 'file_reader_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'file_reader_test.cc',
-          ]
-        },
-        {
-          'target_name': 'perf_option_parser_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'perf_option_parser_test.cc',
-          ]
-        },
-        {
-          'target_name': 'perf_parser_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'perf_parser_test.cc',
-          ]
-        },
-        {
-          'target_name': 'perf_reader_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'perf_reader_test.cc',
+            'test_runner.cc',
           ]
         },
         {
@@ -224,7 +143,7 @@
           ]
         },
         {
-          'target_name': 'perf_serializer_test',
+          'target_name': 'unit_tests',
           'type': 'executable',
           'dependencies': [
             'common',
@@ -232,65 +151,19 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'address_mapper_test.cc',
+            'buffer_reader_test.cc',
+            'buffer_writer_test.cc',
+            'file_reader_test.cc',
+            'perf_option_parser_test.cc',
+            'perf_parser_test.cc',
+            'perf_reader_test.cc',
             'perf_serializer_test.cc',
-          ]
-        },
-        {
-          'target_name': 'perf_stat_parser_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
             'perf_stat_parser_test.cc',
-          ]
-        },
-        {
-          'target_name': 'run_command_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
             'run_command_test.cc',
-          ]
-        },
-        {
-          'target_name': 'sample_info_reader_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
             'sample_info_reader_test.cc',
-          ]
-        },
-        {
-          'target_name': 'scoped_temp_path_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
             'scoped_temp_path_test.cc',
-          ]
-        },
-        {
-          'target_name': 'utils_test',
-          'type': 'executable',
-          'dependencies': [
-            'common',
-            'common_test',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
+            'test_runner.cc',
             'utils_test.cc',
           ]
         },

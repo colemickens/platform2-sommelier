@@ -222,7 +222,7 @@ TEST(PerfParserTest, NormalPerfData) {
   string output_path = output_dir.path();
 
   int seed = 0;
-  for (const char* test_file : perf_test_files::kPerfDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfDataFiles()) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
 
@@ -310,7 +310,7 @@ TEST(PerfParserTest, PipedModePerfData) {
   string output_path = output_dir.path();
 
   int seed = 0;
-  for (const char* test_file : perf_test_files::kPerfPipedDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfPipedDataFiles()) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     string output_perf_data = output_path + test_file + ".pr.out";
@@ -763,8 +763,3 @@ TEST(PerfParserTest, MmapCoversEntireAddressSpace) {
 }
 
 }  // namespace quipper
-
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

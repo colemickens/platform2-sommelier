@@ -129,7 +129,8 @@ TEST(PerfReaderTest, PipedData_IncompleteEventData) {
 }
 
 TEST(PerfReaderTest, CorruptedFiles) {
-  for (const char* test_file : perf_test_files::kCorruptedPerfPipedDataFiles) {
+  for (const char* test_file :
+       perf_test_files::GetCorruptedPerfPipedDataFiles()) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     ASSERT_TRUE(FileExists(input_perf_data)) << "Test file does not exist!";
@@ -1606,8 +1607,3 @@ TEST(PerfReaderTest, CrossEndianNormalPerfData) {
 }
 
 }  // namespace quipper
-
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

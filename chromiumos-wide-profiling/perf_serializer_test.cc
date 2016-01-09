@@ -180,7 +180,7 @@ TEST(PerfSerializerTest, Test1Cycle) {
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   // TODO(sque): test exact number of events after discarding unused events.
-  for (const char* test_file : perf_test_files::kPerfDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfDataFiles()) {
     PerfReader input_perf_reader, output_perf_reader, output_perf_reader1,
                output_perf_reader2;
     PerfDataProto perf_data_proto, perf_data_proto1;
@@ -241,14 +241,14 @@ TEST(PerfSerializerTest, TestRemap) {
   // Read perf data using the PerfReader class with address remapping.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
-  for (const char* test_file : perf_test_files::kPerfDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfDataFiles()) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     const string output_perf_data = output_path + test_file + ".ser.remap.out";
     SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
 
-  for (const char* test_file : perf_test_files::kPerfPipedDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfPipedDataFiles()) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     const string output_perf_data = output_path + test_file + ".ser.remap.out";
@@ -263,7 +263,7 @@ TEST(PerfSerializerTest, TestCommMd5s) {
 
   // Replace command strings with their Md5sums.  Test size adjustment for
   // command strings.
-  for (const char* test_file : perf_test_files::kPerfDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfDataFiles()) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing COMM Md5sum for " << input_perf_data;
 
@@ -304,7 +304,7 @@ TEST(PerfSerializerTest, TestMmapMd5s) {
 
   // Replace MMAP filename strings with their Md5sums.  Test size adjustment for
   // MMAP filename strings.
-  for (const char* test_file : perf_test_files::kPerfDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfDataFiles()) {
     const string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing MMAP Md5sum for " << input_perf_data;
 
@@ -340,7 +340,7 @@ TEST(PerfSerializerTest, TestMmapMd5s) {
 }
 
 TEST(PerfSerializerTest, TestProtoFiles) {
-  for (const char* test_file : perf_test_files::kPerfDataProtoFiles) {
+  for (const char* test_file : perf_test_files::GetPerfDataProtoFiles()) {
     string perf_data_proto_file = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << perf_data_proto_file;
     std::vector<char> data;
@@ -359,7 +359,7 @@ TEST(PerfSerializerTest, TestProtoFiles) {
 }
 
 TEST(PerfSerializerTest, TestBuildIDs) {
-  for (const char* test_file : perf_test_files::kPerfDataFiles) {
+  for (const char* test_file : perf_test_files::GetPerfDataFiles()) {
     string perf_data_file = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << perf_data_file;
 
@@ -804,8 +804,3 @@ TEST(PerfSerializerTest, DeserializeLegacyExitEvents) {
 }
 
 }  // namespace quipper
-
-int main(int argc, char * argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
