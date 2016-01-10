@@ -134,17 +134,13 @@ class PerfReader {
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
 
-  // Check if |attrs_| has been given name strings. The raw attr data may not be
-  // read from the same location as the name strings in a perf data file.
-  bool HaveEventNames() const;
-
   // Accessors and mutators.
 
-  const std::vector<PerfFileAttr>& attrs() const {
-    return attrs_;
+  const RepeatedPtrField<PerfDataProto_PerfFileAttr>& attrs() const {
+    return proto_.file_attrs();
   }
-  std::vector<PerfFileAttr>* mutable_attrs() {
-    return &attrs_;
+  const RepeatedPtrField<PerfDataProto_PerfEventType>& event_types() const {
+    return proto_.event_types();
   }
 
   const RepeatedPtrField<PerfDataProto_PerfEvent>& events() const {
@@ -224,7 +220,7 @@ class PerfReader {
 
   bool ReadEventTypesSection(DataReader* data);
   // if event_size == 0, then not in an event.
-  bool ReadEventType(DataReader* data, size_t attr_idx, size_t event_size);
+  bool ReadEventType(DataReader* data, int attr_idx, size_t event_size);
 
   bool ReadDataSection(DataReader* data);
 
@@ -265,8 +261,6 @@ class PerfReader {
                    DataWriter* data) const;
   bool WriteAttrs(const struct perf_file_header& header,
                   DataWriter* data) const;
-  bool WriteEventTypes(const struct perf_file_header& header,
-                       DataWriter* data) const;
   bool WriteData(const struct perf_file_header& header, DataWriter* data) const;
   bool WriteMetadata(const struct perf_file_header& header,
                      DataWriter* data) const;
@@ -307,8 +301,8 @@ class PerfReader {
   // This method does not change |build_id_events_|.
   bool LocalizeMMapFilenames(const std::map<string, string>& filename_map);
 
-  // Update internal fields when the PerfReader gets a new attr.
-  void UpdateOnNewAttr(const PerfFileAttr& attr);
+  // Stores a PerfFileAttr in |proto_| and updates |serializer_|.
+  void AddPerfFileAttr(const PerfFileAttr& attr);
 
   // The file header is either a normal header or a piped header.
   union {
@@ -320,7 +314,6 @@ class PerfReader {
   // TODO(sque): Store all fields in here, not just events.
   PerfDataProto proto_;
 
-  std::vector<PerfFileAttr> attrs_;
   std::vector<malloced_unique_ptr<build_id_event>> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;

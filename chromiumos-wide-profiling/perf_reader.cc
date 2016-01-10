@@ -237,20 +237,12 @@ PerfReader::PerfReader() : metadata_mask_(0),
 PerfReader::~PerfReader() {}
 
 bool PerfReader::Serialize(PerfDataProto* perf_data_proto) const {
-  CHECK_GT(attrs_.size(), 0U);
+  CHECK_GT(proto_.file_attrs().size(), 0);
   CHECK(serializer_.SampleInfoReaderAvailable());
 
-  // Serialize attrs.
-  if (!serializer_.SerializePerfFileAttrs(
-          attrs_, perf_data_proto->mutable_file_attrs())) {
-    return false;
-  }
-
-  if (HaveEventNames() &&
-      !serializer_.SerializePerfEventTypes(
-          attrs_, perf_data_proto->mutable_event_types())) {
-    return false;
-  }
+  // Serialize attrs and event types.
+  perf_data_proto->mutable_file_attrs()->CopyFrom(proto_.file_attrs());
+  perf_data_proto->mutable_event_types()->CopyFrom(proto_.event_types());
 
   // Serialize events.
   perf_data_proto->mutable_events()->CopyFrom(proto_.events());
@@ -270,18 +262,12 @@ bool PerfReader::Serialize(PerfDataProto* perf_data_proto) const {
 }
 
 bool PerfReader::Deserialize(const PerfDataProto& perf_data_proto) {
-  if (!serializer_.DeserializePerfFileAttrs(perf_data_proto.file_attrs(),
-                                            &attrs_)) {
-    return false;
-  }
-  for (const PerfFileAttr& attr : attrs_)
+  proto_.mutable_file_attrs()->CopyFrom(perf_data_proto.file_attrs());
+  proto_.mutable_event_types()->CopyFrom(perf_data_proto.event_types());
+  for (const auto& stored_attr : proto_.file_attrs()) {
+    PerfFileAttr attr;
+    serializer_.DeserializePerfFileAttr(stored_attr, &attr);
     serializer_.CreateSampleInfoReader(attr, false /* read_cross_endian */);
-
-  if (static_cast<size_t>(perf_data_proto.event_types().size()) ==
-      attrs_.size() &&
-      !serializer_.DeserializePerfEventTypes(perf_data_proto.event_types(),
-                                             &attrs_)) {
-    return false;
   }
 
   if (perf_data_proto.metadata_mask_size())
@@ -388,7 +374,8 @@ bool PerfReader::ReadFromData(DataReader* data) {
 
     // We can construct HEADER_EVENT_DESC from attrs and event types.
     // NB: Can't set this before ReadMetadata(), or it may misread the metadata.
-    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+    if (!event_types().empty())
+      metadata_mask_ |= (1 << HEADER_EVENT_DESC);
 
     return true;
   }
@@ -437,7 +424,6 @@ bool PerfReader::WriteToPointerWithoutCheckingSize(char* buffer, size_t size) {
   return
       WriteHeader(header, &data) &&
       WriteAttrs(header, &data) &&
-      WriteEventTypes(header, &data) &&
       WriteData(header, &data) &&
       WriteMetadata(header, &data);
 }
@@ -452,8 +438,10 @@ size_t PerfReader::GetSize() const {
   total_size += header.event_types.size;
   total_size += header.data.size;
   // Add the ID info, whose size is not explicitly included in the header.
-  for (size_t i = 0; i < attrs_.size(); ++i)
-    total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
+  for (const auto& attr : proto_.file_attrs()) {
+    total_size +=
+        attr.ids_size() * sizeof(decltype(PerfFileAttr::ids)::value_type);
+  }
 
   // Additional info about metadata.  See WriteMetadata for explanation.
   total_size += GetNumSupportedMetadata() * sizeof(struct perf_file_section);
@@ -485,16 +473,18 @@ void PerfReader::GenerateHeader(struct perf_file_header* header) const {
   header->magic = kPerfMagic;
   header->size = sizeof(*header);
   header->attr_size = sizeof(perf_file_attr);
-  header->attrs.size = header->attr_size * attrs_.size();
+  header->attrs.size = header->attr_size * attrs().size();
   for (const PerfEvent& event : proto_.events())
     header->data.size += event.header().size();
-  header->event_types.size = HaveEventNames() ?
-      (attrs_.size() * sizeof(perf_trace_event_type)) : 0;
+  // Do not use the event_types section. Use EVENT_DESC metadata instead.
+  header->event_types.size = 0;
 
   u64 current_offset = 0;
   current_offset += header->size;
-  for (size_t i = 0; i < attrs_.size(); i++)
-    current_offset += sizeof(attrs_[i].ids[0]) * attrs_[i].ids.size();
+  for (const auto& attr : proto_.file_attrs()) {
+    current_offset +=
+        sizeof(decltype(PerfFileAttr::ids)::value_type) * attr.ids_size();
+  }
   header->attrs.offset = current_offset;
   current_offset += header->attrs.size;
   header->event_types.offset = current_offset;
@@ -642,14 +632,6 @@ void PerfReader::GetFilenamesToBuildIDs(
   }
 }
 
-bool PerfReader::HaveEventNames() const {
-  for (const auto& attr : attrs_) {
-    if (attr.name.empty())
-      return false;
-  }
-  return true;
-}
-
 bool PerfReader::ReadHeader(DataReader* data) {
   CheckNoEventHeaderPadding();
   // The header is the first thing to be read. Don't use SeekSet(0) because it
@@ -773,8 +755,7 @@ bool PerfReader::ReadAttr(DataReader* data) {
   if (!ReadUniqueIDs(data, num_ids, &attr.ids))
     return false;
   data->SeekSet(saved_offset);
-  attrs_.push_back(attr);
-  UpdateOnNewAttr(attr);
+  AddPerfFileAttr(attr);
 
   return true;
 }
@@ -848,25 +829,25 @@ bool PerfReader::ReadUniqueIDs(DataReader* data, size_t num_ids,
 }
 
 bool PerfReader::ReadEventTypesSection(DataReader* data) {
-  size_t num_event_types = header_.event_types.size /
-      sizeof(struct perf_trace_event_type);
+  int num_event_types =
+      header_.event_types.size / sizeof(struct perf_trace_event_type);
   if (num_event_types == 0) {
     // Not available.
     return true;
   }
-  CHECK_EQ(attrs_.size(), num_event_types);
+  CHECK_EQ(proto_.file_attrs().size(), num_event_types);
   CHECK_EQ(sizeof(perf_trace_event_type) * num_event_types,
            header_.event_types.size);
   data->SeekSet(header_.event_types.offset);
-  for (size_t i = 0; i < num_event_types; ++i) {
+  for (int i = 0; i < num_event_types; ++i) {
     if (!ReadEventType(data, i, 0))
       return false;
   }
   return true;
 }
 
-bool PerfReader::ReadEventType(DataReader* data,
-                               size_t attr_idx, size_t event_size) {
+bool PerfReader::ReadEventType(DataReader* data, int attr_idx,
+                               size_t event_size) {
   CheckNoEventTypePadding();
   decltype(perf_trace_event_type::event_id) event_id;
 
@@ -881,24 +862,26 @@ bool PerfReader::ReadEventType(DataReader* data,
   } else {
     event_name_len = event_size - sizeof(perf_event_header) - sizeof(event_id);
   }
-  string event_name;
-  if (!data->ReadString(event_name_len, &event_name)) {
+
+  PerfFileAttr attr;
+  if (!data->ReadString(event_name_len, &attr.name)) {
     LOG(ERROR) << "Not enough data left in data to read event name.";
     return false;
   }
 
-  if (attr_idx >= attrs_.size()) {
+  if (attr_idx >= proto_.file_attrs().size()) {
     LOG(ERROR) << "Too many event types, or attrs not read yet!";
     return false;
   }
-  if (event_id != attrs_[attr_idx].attr.config) {
+  if (event_id != proto_.file_attrs(attr_idx).attr().config()) {
     LOG(ERROR) << "event_id for perf_trace_event_type (" << event_id << ") "
                << "does not match attr.config ("
-               << attrs_[attr_idx].attr.config << ")";
+               << proto_.file_attrs(attr_idx).attr().config() << ")";
     return false;
   }
-  attrs_[attr_idx].name = event_name;
+  attr.attr.config = proto_.file_attrs(attr_idx).attr().config();
 
+  serializer_.SerializePerfEventType(attr, proto_.add_event_types());
   return true;
 }
 
@@ -1141,11 +1124,12 @@ bool PerfReader::ReadEventDescMetadata(DataReader* data, u32 type,
     return false;
   }
 
-  attrs_.clear();
-  attrs_.resize(nr_events);
+  proto_.clear_file_attrs();
+  proto_.mutable_file_attrs()->Reserve(nr_events);
 
   for (u32 i = 0; i < nr_events; i++) {
-    if (!ReadEventAttr(data, &attrs_[i].attr))
+    PerfFileAttr attr;
+    if (!ReadEventAttr(data, &attr.attr))
       return false;
 
     u32 nr_ids;
@@ -1157,9 +1141,9 @@ bool PerfReader::ReadEventDescMetadata(DataReader* data, u32 type,
     CStringWithLength event_name;
     if (!ReadStringFromBuffer(data, &event_name))
       return false;
-    attrs_[i].name = event_name.str;
-
-    std::vector<u64> &ids = attrs_[i].ids;
+    attr.name = event_name.str;
+    // TODO(sque): Read directly into proto_.file_attrs.
+    std::vector<u64> &ids = attr.ids;
     ids.resize(nr_ids);
     for (u64& id : ids) {
       if (!data->ReadUint64(&id)) {
@@ -1167,8 +1151,11 @@ bool PerfReader::ReadEventDescMetadata(DataReader* data, u32 type,
         return false;
       }
     }
-
-    UpdateOnNewAttr(attrs_[i]);
+    AddPerfFileAttr(attr);
+    // The EVENT_DESC metadata is the newer replacement for the older event type
+    // fields. In the protobuf, both types of data are stored in the
+    // |event_types| field.
+    serializer_.SerializePerfEventType(attr, proto_.add_event_types());
   }
   return true;
 }
@@ -1235,7 +1222,7 @@ bool PerfReader::ReadPipedData(DataReader* data) {
   // The piped data comes right after the file header.
   CHECK_EQ(piped_header_.size, data->Tell());
   bool result = true;
-  size_t num_event_types = 0;
+  int num_event_types = 0;
 
   metadata_mask_ = 0;
   CheckNoEventHeaderPadding();
@@ -1370,7 +1357,7 @@ bool PerfReader::ReadPipedData(DataReader* data) {
   // and PERF_RECORD_HEADER_EVENT_DESC metadata events are not, we should use
   // them. Otherwise, we should use prefer the _EVENT_DESC data.
   if (!(metadata_mask_ & (1 << HEADER_EVENT_DESC)) &&
-      num_event_types == attrs_.size()) {
+      num_event_types == proto_.file_attrs().size()) {
     // We can construct HEADER_EVENT_DESC:
     metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   }
@@ -1391,23 +1378,22 @@ bool PerfReader::WriteAttrs(const struct perf_file_header& header,
   CHECK_EQ(id_offset, data->Tell());
 
   std::vector<struct perf_file_section> id_sections;
-  id_sections.reserve(attrs_.size());
-  for (size_t i = 0; i < attrs_.size(); i++) {
-    const PerfFileAttr& attr = attrs_[i];
+  id_sections.reserve(attrs().size());
+  for (const auto& attr : proto_.file_attrs()) {
     size_t section_size =
-        attr.ids.size() * sizeof(decltype(attr.ids)::value_type);
+        attr.ids_size() * sizeof(decltype(PerfFileAttr::ids)::value_type);
     id_sections.push_back(perf_file_section{data->Tell(), section_size});
-    for (size_t j = 0; j < attr.ids.size(); j++) {
-      const uint64_t id = attr.ids[j];
+    for (const uint64_t& id : attr.ids()) {
       if (!data->WriteDataValue(&id, sizeof(id), "ID info"))
         return false;
     }
   }
 
   CHECK_EQ(header.attrs.offset, data->Tell());
-  for (size_t i = 0; i < attrs_.size(); i++) {
+  for (int i = 0; i < attrs().size(); i++) {
     const struct perf_file_section& id_section = id_sections[i];
-    const PerfFileAttr& attr = attrs_[i];
+    PerfFileAttr attr;
+    serializer_.DeserializePerfFileAttr(proto_.file_attrs(i), &attr);
     if (!data->WriteDataValue(&attr.attr, sizeof(attr.attr), "attribute") ||
         !data->WriteDataValue(&id_section, sizeof(id_section), "ID section")) {
       return false;
@@ -1607,7 +1593,13 @@ bool PerfReader::WriteUint64Metadata(u32 type, DataWriter* data) const {
 bool PerfReader::WriteEventDescMetadata(u32 type, DataWriter* data) const {
   CheckNoPerfEventAttrPadding();
 
-  event_desc_num_events num_events = attrs_.size();
+  if (attrs().size() > event_types().size()) {
+    LOG(ERROR) << "Number of attrs (" << attrs().size() << ") cannot exceed "
+               << "number of event types (" << event_types().size() << ")";
+    return false;
+  }
+
+  event_desc_num_events num_events = proto_.file_attrs().size();
   if (!data->WriteDataValue(&num_events, sizeof(num_events),
                             "event_desc num_events")) {
     return false;
@@ -1618,8 +1610,13 @@ bool PerfReader::WriteEventDescMetadata(u32 type, DataWriter* data) const {
     return false;
   }
 
-  for (size_t i = 0; i < num_events; ++i) {
-    const PerfFileAttr& attr = attrs_[i];
+  for (int i = 0; i < attrs().size(); ++i) {
+    const auto& stored_attr = attrs().Get(i);
+    PerfFileAttr attr;
+    serializer_.DeserializePerfFileAttr(stored_attr, &attr);
+    if (!serializer_.DeserializePerfEventType(proto_.event_types(i), &attr))
+      return false;
+
     if (!data->WriteDataValue(&attr.attr, sizeof(attr.attr),
                               "event_desc attribute")) {
       return false;
@@ -1685,29 +1682,6 @@ bool PerfReader::WriteNUMATopologyMetadata(u32 type, DataWriter* data) const {
   return true;
 }
 
-bool PerfReader::WriteEventTypes(const struct perf_file_header& header,
-                                 DataWriter* data) const {
-  CheckNoEventTypePadding();
-  const size_t event_types_size = header.event_types.size;
-  if (event_types_size == 0)
-    return true;
-
-  data->SeekSet(header.event_types.offset);
-  for (size_t i = 0; i < attrs_.size(); ++i) {
-    struct perf_trace_event_type event_type = {0};
-    event_type.event_id = attrs_[i].attr.config;
-    const string& name = attrs_[i].name;
-    memcpy(&event_type.name, name.data(),
-           std::min(name.size(), sizeof(event_type.name)));
-    if (!data->WriteDataValue(&event_type, sizeof(event_type),
-                              "event type info")) {
-      return false;
-    }
-  }
-  CHECK_EQ(event_types_size, data->Tell() - header.event_types.offset);
-  return true;
-}
-
 bool PerfReader::ReadAttrEventBlock(DataReader* data, size_t size) {
   const size_t initial_offset = data->Tell();
   PerfFileAttr attr;
@@ -1724,13 +1698,11 @@ bool PerfReader::ReadAttrEventBlock(DataReader* data, size_t size) {
 
   // Event types are found many times in the perf data file.
   // Only add this event type if it is not already present.
-  for (size_t i = 0; i < attrs_.size(); ++i) {
-    if (attrs_[i].ids[0] == attr.ids[0])
+  for (const auto& stored_attr : proto_.file_attrs()) {
+    if (stored_attr.ids(0) == attr.ids[0])
       return true;
   }
-  attrs_.push_back(attr);
-  UpdateOnNewAttr(attr);
-
+  AddPerfFileAttr(attr);
   return true;
 }
 
@@ -1805,15 +1777,22 @@ size_t PerfReader::GetNumSupportedMetadata() const {
 }
 
 size_t PerfReader::GetEventDescMetadataSize() const {
+  if (attrs().size() > event_types().size()) {
+    LOG(ERROR) << "Number of attrs (" << attrs().size() << ") cannot exceed "
+               << "number of event types (" << event_types().size() << ")";
+    return 0;
+  }
+
   size_t size = 0;
   if (metadata_mask_ & (1 << HEADER_EVENT_DESC)) {
     size += sizeof(event_desc_num_events) + sizeof(event_desc_attr_size);
     CStringWithLength dummy;
-    for (size_t i = 0; i < attrs_.size(); ++i) {
+    for (int i = 0; i < attrs().size(); ++i) {
       size += sizeof(perf_event_attr) + sizeof(dummy.len);
       size += sizeof(event_desc_num_unique_ids);
-      size += GetUint64AlignedStringLength(attrs_[i].name);
-      size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
+      size += GetUint64AlignedStringLength(event_types().Get(i).name());
+      size += attrs().Get(i).ids_size() *
+              sizeof(decltype(PerfFileAttr::ids)::value_type);
     }
   }
   return size;
@@ -1919,7 +1898,9 @@ bool PerfReader::LocalizeMMapFilenames(
   return true;
 }
 
-void PerfReader::UpdateOnNewAttr(const PerfFileAttr& attr) {
+void PerfReader::AddPerfFileAttr(const PerfFileAttr& attr) {
+  serializer_.SerializePerfFileAttr(attr, proto_.add_file_attrs());
+
   // Generate a new SampleInfoReader with the new attr.
   serializer_.CreateSampleInfoReader(attr, is_cross_endian_);
 }

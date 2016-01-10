@@ -283,7 +283,7 @@ TEST(PerfSerializerTest, TestCommMd5s) {
 
     // Need to get file attrs to construct a SampleInfoReader within
     // |serializer|.
-    ASSERT_GT(perf_data_proto.file_attrs_size(), 0U);
+    ASSERT_GT(perf_data_proto.file_attrs().size(), 0U);
     ASSERT_TRUE(perf_data_proto.file_attrs(0).has_attr());
     PerfSerializer serializer;
     PerfFileAttr attr;
@@ -339,7 +339,7 @@ TEST(PerfSerializerTest, TestMmapMd5s) {
 
     // Need to get file attrs to construct a SampleInfoReader within
     // |serializer|.
-    ASSERT_GT(perf_data_proto.file_attrs_size(), 0U);
+    ASSERT_GT(perf_data_proto.file_attrs().size(), 0U);
     ASSERT_TRUE(perf_data_proto.file_attrs(0).has_attr());
     PerfSerializer serializer;
     PerfFileAttr attr;

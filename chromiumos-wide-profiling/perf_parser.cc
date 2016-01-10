@@ -239,7 +239,7 @@ void PerfParser::MaybeSortParsedEvents() {
 
   bool have_sample_time = true;
   for (const auto& attr : reader_->attrs()) {
-    if (!(attr.attr.sample_type & PERF_SAMPLE_TIME)) {
+    if (!(attr.attr().sample_type() & PERF_SAMPLE_TIME)) {
       have_sample_time = false;
     }
   }
@@ -286,7 +286,6 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   const auto comm_iter = pidtid_to_comm_map_.find(pidtid);
   if (comm_iter != pidtid_to_comm_map_.end())
     parsed_event->set_command(comm_iter->second);
-
 
   const uint64_t unmapped_event_ip = sample_info.ip();
   uint64_t remapped_event_ip = 0;

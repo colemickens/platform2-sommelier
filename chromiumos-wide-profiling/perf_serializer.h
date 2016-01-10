@@ -227,18 +227,6 @@ class PerfSerializer {
   static void DeserializeParserStats(const PerfDataProto& perf_data_proto,
                                      PerfEventStats* stats);
 
-  const VectorSerializer<PerfDataProto_PerfFileAttr, PerfFileAttr>
-      SerializePerfFileAttrs = {this, &PerfSerializer::SerializePerfFileAttr};
-  const VectorDeserializer<PerfDataProto_PerfFileAttr, PerfFileAttr>
-      DeserializePerfFileAttrs = {
-        this, &PerfSerializer::DeserializePerfFileAttr};
-
-  const VectorSerializer<PerfDataProto_PerfEventType, PerfFileAttr>
-      SerializePerfEventTypes = {this, &PerfSerializer::SerializePerfEventType};
-  const VectorDeserializer<PerfDataProto_PerfEventType, PerfFileAttr>
-      DeserializePerfEventTypes = {
-        this, &PerfSerializer::DeserializePerfEventType};
-
   const VectorSerializer<PerfDataProto_PerfBuildID,
                          malloced_unique_ptr<build_id_event>>
       SerializeBuildIDEvents = {this, &PerfSerializer::SerializeBuildIDEvent};

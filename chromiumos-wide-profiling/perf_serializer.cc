@@ -206,8 +206,9 @@ bool PerfSerializer::DeserializePerfEventType(
     PerfFileAttr* event_attr) const {
   // Attr should have already been deserialized.
   if (event_attr->attr.config != event_type_proto.id()) {
-    LOG(ERROR) << "Deserializing event types, id did not match attr.config. "
-                  "Not deserializing the event name!";
+    LOG(ERROR) << "Event type ID " << event_type_proto.id()
+               << " does not match attr.config " << event_attr->attr.config
+               << ". Not deserializing the event name!";
     return false;
   }
   event_attr->name = event_type_proto.name();

@@ -66,9 +66,10 @@ TEST(PerfReaderTest, PipedData_IncompleteEventHeader) {
   ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
-  EXPECT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(123, pr.attrs()[0].attr.config);
-  EXPECT_EQ("cycles", pr.attrs()[0].name);
+  ASSERT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(123, pr.attrs().Get(0).attr().config());
+  ASSERT_EQ(1, pr.event_types().size());
+  EXPECT_EQ("cycles", pr.event_types().Get(0).name());
 
   // Make sure metadata mask was set to indicate EVENT_TYPE was upgraded
   // to EVENT_DESC.
@@ -123,9 +124,10 @@ TEST(PerfReaderTest, PipedData_IncompleteEventData) {
   ASSERT_TRUE(pr.ReadFromString(input.str()));
 
   // Make sure the attr was recorded properly.
-  EXPECT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(456, pr.attrs()[0].attr.config);
-  EXPECT_EQ("instructions", pr.attrs()[0].name);
+  ASSERT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(456, pr.attrs().Get(0).attr().config());
+  ASSERT_EQ(1, pr.event_types().size());
+  EXPECT_EQ("instructions", pr.event_types().Get(0).name());
 
   // Make sure metadata mask was set to indicate EVENT_TYPE was upgraded
   // to EVENT_DESC.
@@ -339,16 +341,14 @@ TEST(PerfReaderTest, BranchStackMetadataIndexHasZeroSize) {
   // Specifically check that the metadata index has zero in the size.
   const auto *output_header =
       reinterpret_cast<struct perf_file_header*>(output_perf_data.data());
-  // HEADER_EVENT_DESC gets added.
-  const u64 output_features = 1 << HEADER_EVENT_DESC | 1 << HEADER_BRANCH_STACK;
-  EXPECT_EQ(output_features, output_header->adds_features[0])
+  EXPECT_EQ(1 << HEADER_BRANCH_STACK, output_header->adds_features[0])
       << "Expected just a HEADER_BRANCH_STACK feature";
   const size_t metadata_offset =
       output_header->data.offset + output_header->data.size;
   const auto *output_feature_index =
       reinterpret_cast<struct perf_file_section*>(
           output_perf_data.data() + metadata_offset);
-  EXPECT_EQ(0, output_feature_index[1].size)
+  EXPECT_EQ(0, output_feature_index[0].size)
       << "Regression: Expected zero size for the HEADER_BRANCH_STACK feature "
       << "metadata index";
 }
@@ -438,12 +438,12 @@ TEST(PerfReaderTest, CorrectlyReadsPerfEventAttrSize) {
   PerfReader pr;
   ASSERT_TRUE(pr.ReadFromString(input.str()));
   ASSERT_EQ(pr.attrs().size(), 1);
-  const PerfFileAttr& actual_attr = pr.attrs()[0];
-  ASSERT_EQ(8, actual_attr.ids.size());
-  EXPECT_EQ(301, actual_attr.ids[0]);
-  EXPECT_EQ(302, actual_attr.ids[1]);
-  EXPECT_EQ(303, actual_attr.ids[2]);
-  EXPECT_EQ(304, actual_attr.ids[3]);
+  const auto& actual_attr = pr.attrs().Get(0);
+  ASSERT_EQ(8, actual_attr.ids().size());
+  EXPECT_EQ(301, actual_attr.ids(0));
+  EXPECT_EQ(302, actual_attr.ids(1));
+  EXPECT_EQ(303, actual_attr.ids(2));
+  EXPECT_EQ(304, actual_attr.ids(3));
 }
 
 TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
@@ -983,11 +983,11 @@ TEST(PerfReaderTest, AttrsWithDifferentSampleTypes) {
 
   // Make sure the attr ids were read correctly.
   ASSERT_EQ(2, pr.attrs().size());
-  ASSERT_EQ(2, pr.attrs()[0].ids.size());
-  EXPECT_EQ(51, pr.attrs()[0].ids[0]);
-  EXPECT_EQ(52, pr.attrs()[0].ids[1]);
-  ASSERT_EQ(1, pr.attrs()[1].ids.size());
-  EXPECT_EQ(61, pr.attrs()[1].ids[0]);
+  ASSERT_EQ(2, pr.attrs().Get(0).ids().size());
+  EXPECT_EQ(51, pr.attrs().Get(0).ids(0));
+  EXPECT_EQ(52, pr.attrs().Get(0).ids(1));
+  ASSERT_EQ(1, pr.attrs().Get(1).ids().size());
+  EXPECT_EQ(61, pr.attrs().Get(1).ids(0));
 
   // Verify events were read properly.
   ASSERT_EQ(3, pr.events().size());
@@ -1071,7 +1071,7 @@ TEST(PerfReaderTest, NoSampleIdField) {
 
   // Make sure the attr was recorded properly.
   ASSERT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+  EXPECT_EQ(456, pr.attrs().Get(0).attr().config());
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
@@ -1211,7 +1211,7 @@ TEST(PerfReaderTest, LargePerfEventAttr) {
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+  EXPECT_EQ(456, pr.attrs().Get(0).attr().config());
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
@@ -1268,8 +1268,9 @@ TEST(PerfReaderTest, LargePerfEventAttrPiped) {
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(123, pr.attrs()[0].attr.config);
-  EXPECT_EQ("cycles", pr.attrs()[0].name);
+  EXPECT_EQ(123, pr.attrs().Get(0).attr().config());
+  ASSERT_EQ(1, pr.event_types().size());
+  EXPECT_EQ("cycles", pr.event_types().Get(0).name());
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
@@ -1328,7 +1329,7 @@ TEST(PerfReaderTest, SmallPerfEventAttr) {
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+  EXPECT_EQ(456, pr.attrs().Get(0).attr().config());
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
@@ -1385,8 +1386,9 @@ TEST(PerfReaderTest, SmallPerfEventAttrPiped) {
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(123, pr.attrs()[0].attr.config);
-  EXPECT_EQ("cycles", pr.attrs()[0].name);
+  EXPECT_EQ(123, pr.attrs().Get(0).attr().config());
+  ASSERT_EQ(1, pr.event_types().size());
+  EXPECT_EQ("cycles", pr.event_types().Get(0).name());
 
   // Verify subsequent sample event was read properly.
   ASSERT_EQ(1, pr.events().size());
@@ -1446,26 +1448,26 @@ TEST(PerfReaderTest, CrossEndianAttrs) {
     // Make sure the attr was recorded properly.
     EXPECT_EQ(3, pr.attrs().size());
 
-    const perf_event_attr& attr0 = pr.attrs()[0].attr;
-    EXPECT_EQ(123, attr0.config);
-    EXPECT_EQ(1, attr0.sample_period);
-    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr0.sample_type);
-    EXPECT_TRUE(attr0.sample_id_all);
-    EXPECT_EQ(2, attr0.precise_ip);
+    const auto& attr0 = pr.attrs().Get(0).attr();
+    EXPECT_EQ(123, attr0.config());
+    EXPECT_EQ(1, attr0.sample_period());
+    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr0.sample_type());
+    EXPECT_TRUE(attr0.sample_id_all());
+    EXPECT_EQ(2, attr0.precise_ip());
 
-    const perf_event_attr& attr1 = pr.attrs()[1].attr;
-    EXPECT_EQ(456, attr1.config);
-    EXPECT_EQ(1, attr1.sample_period);
-    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr1.sample_type);
-    EXPECT_TRUE(attr1.sample_id_all);
-    EXPECT_EQ(2, attr1.precise_ip);
+    const auto& attr1 = pr.attrs().Get(1).attr();
+    EXPECT_EQ(456, attr1.config());
+    EXPECT_EQ(1, attr1.sample_period());
+    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr1.sample_type());
+    EXPECT_TRUE(attr1.sample_id_all());
+    EXPECT_EQ(2, attr1.precise_ip());
 
-    const perf_event_attr& attr2 = pr.attrs()[2].attr;
-    EXPECT_EQ(456, attr2.config);
-    EXPECT_EQ(1, attr2.sample_period);
-    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr2.sample_type);
-    EXPECT_FALSE(attr2.sample_id_all);
-    EXPECT_EQ(2, attr2.precise_ip);
+    const auto& attr2 = pr.attrs().Get(2).attr();
+    EXPECT_EQ(456, attr2.config());
+    EXPECT_EQ(1, attr2.sample_period());
+    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr2.sample_type());
+    EXPECT_FALSE(attr2.sample_id_all());
+    EXPECT_EQ(2, attr2.precise_ip());
   }
 }
 
@@ -1555,8 +1557,8 @@ TEST(PerfReaderTest, CrossEndianNormalPerfData) {
 
   // Make sure the attr was recorded properly.
   EXPECT_EQ(1, pr.attrs().size());
-  EXPECT_EQ(456, pr.attrs()[0].attr.config);
-  EXPECT_TRUE(pr.attrs()[0].attr.sample_id_all);
+  EXPECT_EQ(456, pr.attrs().Get(0).attr().config());
+  EXPECT_TRUE(pr.attrs().Get(0).attr().sample_id_all());
 
   // Verify perf events.
   ASSERT_EQ(4, pr.events().size());
