@@ -699,9 +699,6 @@ void Manager::ClaimDevice(const string& claimer_name,
     // since we are using message sender as the claimer name.
     device_claimer_.reset(
         new DeviceClaimer(claimer_name, &device_info_, false));
-    device_claimer_->StartServiceWatcher(
-        control_interface_,
-        Bind(&Manager::OnDeviceClaimerVanished, Unretained(this)));
   }
 
   // Verify claimer's name, since we only allow one claimer to exist at a time.

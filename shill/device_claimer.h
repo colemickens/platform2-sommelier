@@ -42,10 +42,6 @@ class DeviceClaimer {
                 bool default_claimer);
   virtual ~DeviceClaimer();
 
-  virtual bool StartServiceWatcher(
-      ControlInterface* control_interface,
-      const base::Closure& connection_vanished_callback);
-
   virtual bool Claim(const std::string& device_name, Error* error);
   virtual bool Release(const std::string& device_name, Error* error);
 

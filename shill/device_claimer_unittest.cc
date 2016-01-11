@@ -47,21 +47,6 @@ class DeviceClaimerTest : public testing::Test {
   DeviceClaimer device_claimer_;
 };
 
-TEST_F(DeviceClaimerTest, StartServiceWatcher) {
-  // Start service watcher.
-  MockControl control;
-  EXPECT_CALL(control, CreateRPCServiceWatcher(_, _))
-      .WillOnce(Return(new MockServiceWatcher()));
-  EXPECT_TRUE(device_claimer_.StartServiceWatcher(&control, base::Closure()));
-  Mock::VerifyAndClearExpectations(&control);
-
-  // Start service watcher again, should fail since name watcher already
-  // started.
-  EXPECT_CALL(control, CreateRPCServiceWatcher(_, _)).Times(0);
-  EXPECT_FALSE(device_claimer_.StartServiceWatcher(&control, base::Closure()));
-  Mock::VerifyAndClearExpectations(&control);
-}
-
 TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
   // Should not have any device claimed initially.
   EXPECT_FALSE(device_claimer_.DevicesClaimed());

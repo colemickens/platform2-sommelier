@@ -4905,8 +4905,6 @@ TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
 
   // Claim device when device claimer doesn't exist yet.
   Error error;
-  EXPECT_CALL(*control_interface(), CreateRPCServiceWatcher(_, _))
-      .WillOnce(Return(new MockServiceWatcher()));
   manager()->ClaimDevice(kClaimerName, kDeviceName, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));

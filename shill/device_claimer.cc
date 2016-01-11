@@ -42,19 +42,6 @@ DeviceClaimer::~DeviceClaimer() {
   }
 }
 
-bool DeviceClaimer::StartServiceWatcher(
-    ControlInterface* control_interface,
-    const base::Closure& connection_vanished_callback) {
-  if (service_watcher_) {
-    LOG(ERROR) << "Service watcher already started";
-    return false;
-  }
-  service_watcher_.reset(
-      control_interface->CreateRPCServiceWatcher(service_name_,
-                                                 connection_vanished_callback));
-  return true;
-}
-
 bool DeviceClaimer::Claim(const string& device_name, Error* error) {
   // Check if device is claimed already.
   if (claimed_device_names_.find(device_name) != claimed_device_names_.end()) {
