@@ -50,10 +50,6 @@ class ChromeosDBusControl : public ControlInterface {
 
   const std::string& NullRPCIdentifier() override;
 
-  RPCServiceWatcherInterface* CreateRPCServiceWatcher(
-      const std::string& connection_name,
-      const base::Closure& on_connection_vanished) override;
-
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
   PowerManagerProxyInterface* CreatePowerManagerProxy(

@@ -233,30 +233,35 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void RemoveProfile(const std::string& name, Error* error);
   // Give the ownership of the device with name |device_name| to claimer with
   // name |claimer_name|. This will cause shill to stop managing this device.
-  void ClaimDevice(const std::string& claimer_name,
-                   const std::string& interface_name,
-                   Error* error);
+  virtual void ClaimDevice(const std::string& claimer_name,
+                           const std::string& interface_name,
+                           Error* error);
   // Claimer |claimer_name| release the ownership of the device with
-  // |interface_name| back to shill.
-  void ReleaseDevice(const std::string& claimer_name,
-                     const std::string& interface_name,
-                     Error* error);
+  // |interface_name| back to shill. This method will set |claimer_removed|
+  // to true iff Claimer |claimer_name| is not the default claimer and no
+  // longer claims any devices.
+  virtual void ReleaseDevice(const std::string& claimer_name,
+                             const std::string& interface_name,
+                             bool* claimer_removed,
+                             Error* error);
 #if defined(__BRILLO__)
+#if !defined(DISABLE_WIFI)
   // Setup an AP mode interface using WiFi driver HAL.  The driver
   // may or may not teardown the station mode interface as a result
   // of this call.  This behavior will be driver specific.
-  // Service watcher will be set up for the requester |sender_name|, and
-  // restore back to station mode if the requester vanished.
   // Returns true and sets |interface_name| on success, false otherwise.
-  bool SetupApModeInterface(const std::string& sender_name,
-                            std::string* out_interface_name,
-                            Error* error);
+  virtual bool SetupApModeInterface(std::string* out_interface_name,
+                                    Error* error);
 
   // Setup a station mode interface using WiFi driver HAL.  The driver
   // may or may not teardown the AP mode interface as a result of this
   // call.  This behavior will be driver specific.
   // Returns true and sets |interface_name| on success, false otherwise.
-  bool SetupStationModeInterface(std::string* out_interface_name, Error* error);
+  virtual bool SetupStationModeInterface(std::string* out_interface_name,
+                                         Error* error);
+
+  virtual void OnApModeSetterVanished();
+#endif  // DISABLE_WIFI
 #endif  // __BRILLO__
 
   // Called by a service to remove its associated configuration.  If |service|
@@ -544,6 +549,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void set_suppress_autoconnect(bool val) { suppress_autoconnect_ = val; }
   bool suppress_autoconnect() { return suppress_autoconnect_; }
 
+  // Called when remote device claimer vanishes.
+  virtual void OnDeviceClaimerVanished();
+
  private:
   friend class CellularTest;
   friend class DeviceInfoTest;
@@ -754,10 +762,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void VerifyToEncryptLink(std::string public_key, std::string data,
                            ResultStringCallback cb, const Error& error,
                            bool success);
-
-#if defined(__BRILLO__)
-  void OnApModeSetterVanished();
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
   // Return true if wifi device is enabled with no existing connection (pending
@@ -775,9 +779,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
 
   DeviceRefPtr GetDeviceConnectedToService(ServiceRefPtr service);
-
-  // Invoked when remote device claimer vanished.
-  void OnDeviceClaimerVanished();
 
   void DeregisterDeviceByLinkName(const std::string& link_name);
 
@@ -803,7 +804,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::unique_ptr<WiFiProvider> wifi_provider_;
 #if defined(__BRILLO__)
   WiFiDriverHal* wifi_driver_hal_;
-  std::unique_ptr<RPCServiceWatcherInterface> watcher_for_ap_mode_setter_;
 #endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)

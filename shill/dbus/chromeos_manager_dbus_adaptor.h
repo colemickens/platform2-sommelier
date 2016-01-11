@@ -22,13 +22,16 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "dbus_bindings/org.chromium.flimflam.Manager.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/chromeos_dbus_adaptor.h"
+#include "shill/dbus/chromeos_dbus_service_watcher.h"
 
 namespace shill {
 
+class DBusServiceWatcherFactory;
 class Manager;
 
 // Subclass of DBusAdaptor for Manager objects
@@ -44,7 +47,8 @@ class ChromeosManagerDBusAdaptor
  public:
   static const char kPath[];
 
-  ChromeosManagerDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+  ChromeosManagerDBusAdaptor(const scoped_refptr<dbus::Bus>& adaptor_bus,
+                             const scoped_refptr<dbus::Bus> proxy_bus,
                              Manager* manager);
   ~ChromeosManagerDBusAdaptor() override;
 
@@ -169,7 +173,26 @@ class ChromeosManagerDBusAdaptor
                                  std::string* out_interface_name) override;
 
  private:
+  friend class ChromeosManagerDBusAdaptorTest;
+  // Tests that require access to |watcher_for_device_claimer_|.
+  FRIEND_TEST(ChromeosManagerDBusAdaptorTest, ClaimInterface);
+  FRIEND_TEST(ChromeosManagerDBusAdaptorTest, OnDeviceClaimerVanished);
+  FRIEND_TEST(ChromeosManagerDBusAdaptorTest, ReleaseInterface);
+  // Tests that require access to |watcher_for_ap_mode_setter_|.
+  FRIEND_TEST(ChromeosManagerDBusAdaptorTest, OnApModeSetterVanished);
+  FRIEND_TEST(ChromeosManagerDBusAdaptorTest, SetupApModeInterface);
+  FRIEND_TEST(ChromeosManagerDBusAdaptorTest, SetupStationModeInterface);
+
+  void OnApModeSetterVanished();
+  void OnDeviceClaimerVanished();
+
   Manager* manager_;
+  // We store a pointer to |proxy_bus_| in order to create a
+  // ChromeosDBusServiceWatcher objects.
+  scoped_refptr<dbus::Bus> proxy_bus_;
+  DBusServiceWatcherFactory* dbus_service_watcher_factory_;
+  std::unique_ptr<ChromeosDBusServiceWatcher> watcher_for_device_claimer_;
+  std::unique_ptr<ChromeosDBusServiceWatcher> watcher_for_ap_mode_setter_;
 
   DISALLOW_COPY_AND_ASSIGN(ChromeosManagerDBusAdaptor);
 };

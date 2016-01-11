@@ -23,7 +23,6 @@
 #include "shill/error.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_service_watcher.h"
 
 using std::string;
 using ::testing::_;

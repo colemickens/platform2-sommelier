@@ -169,9 +169,7 @@ IPConfigAdaptorInterface* ChromeosDBusControl::CreateIPConfigAdaptor(
 
 ManagerAdaptorInterface* ChromeosDBusControl::CreateManagerAdaptor(
     Manager* manager) {
-  return
-      CreateAdaptor<Manager, ManagerAdaptorInterface,
-                    ChromeosManagerDBusAdaptor>(manager);
+  return new ChromeosManagerDBusAdaptor(adaptor_bus_, proxy_bus_, manager);
 }
 
 ProfileAdaptorInterface* ChromeosDBusControl::CreateProfileAdaptor(
@@ -203,14 +201,6 @@ ThirdPartyVpnAdaptorInterface* ChromeosDBusControl::CreateThirdPartyVpnAdaptor(
                     ChromeosThirdPartyVpnDBusAdaptor>(driver);
 }
 #endif
-
-RPCServiceWatcherInterface* ChromeosDBusControl::CreateRPCServiceWatcher(
-    const std::string& connection_name,
-    const base::Closure& on_connection_vanished) {
-  return new ChromeosDBusServiceWatcher(proxy_bus_,
-                                        connection_name,
-                                        on_connection_vanished);
-}
 
 PowerManagerProxyInterface* ChromeosDBusControl::CreatePowerManagerProxy(
     PowerManagerProxyDelegate* delegate,

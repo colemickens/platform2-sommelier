@@ -721,8 +721,11 @@ void Manager::ClaimDevice(const string& claimer_name,
 
 void Manager::ReleaseDevice(const string& claimer_name,
                             const string& device_name,
+                            bool* claimer_removed,
                             Error* error) {
   SLOG(this, 2) << __func__;
+
+  *claimer_removed = false;
 
   // Check for blacklisted device.
   if (std::find(blacklisted_devices_.begin(),
@@ -757,26 +760,12 @@ void Manager::ReleaseDevice(const string& claimer_name,
   if (!device_claimer_->default_claimer() &&
       !device_claimer_->DevicesClaimed()) {
     device_claimer_.reset();
+    *claimer_removed = true;
   }
-}
-
-void Manager::OnDeviceClaimerVanished() {
-  // Reset device claimer.
-  device_claimer_.reset();
 }
 
 #if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-void Manager::OnApModeSetterVanished() {
-  // Restore station mode interface.
-  string interface_name = wifi_driver_hal_->SetupStationModeInterface();
-  if (interface_name.empty()) {
-    LOG(ERROR) << "Failed to restore station mode interface";
-  }
-  watcher_for_ap_mode_setter_.reset();
-}
-
-bool Manager::SetupApModeInterface(
-    const string& sender_name, string* out_interface_name, Error* error) {
+bool Manager::SetupApModeInterface(string* out_interface_name, Error* error) {
   string interface_name = wifi_driver_hal_->SetupApModeInterface();
   if (interface_name.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -784,13 +773,6 @@ bool Manager::SetupApModeInterface(
     return false;
   }
   *out_interface_name = interface_name;
-
-  // Setup a service watcher for the caller. This will restore interface mode
-  // back to station mode if the caller vanished.
-  watcher_for_ap_mode_setter_.reset(
-      control_interface_->CreateRPCServiceWatcher(
-          sender_name,
-          Bind(&Manager::OnApModeSetterVanished, AsWeakPtr())));
   return true;
 }
 
@@ -803,9 +785,15 @@ bool Manager::SetupStationModeInterface(string* out_interface_name,
     return false;
   }
   *out_interface_name = interface_name;
-  // Remove the service watcher for the AP mode setter.
-  watcher_for_ap_mode_setter_.reset();
   return true;
+}
+
+void Manager::OnApModeSetterVanished() {
+  // Restore station mode interface.
+  string interface_name = wifi_driver_hal_->SetupStationModeInterface();
+  if (interface_name.empty()) {
+    LOG(ERROR) << "Failed to restore station mode interface";
+  }
 }
 #endif  // !DISABLE_WIFI && __BRILLO__
 
@@ -1314,6 +1302,11 @@ void Manager::EmitDeviceProperties() {
 
 void Manager::OnInnerDevicesChanged() {
   EmitDeviceProperties();
+}
+
+void Manager::OnDeviceClaimerVanished() {
+  // Reset device claimer.
+  device_claimer_.reset();
 }
 
 #if !defined(DISABLE_WIFI)

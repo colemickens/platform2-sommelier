@@ -14,19 +14,16 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_MOCK_SERVICE_WATCHER_H_
-#define SHILL_MOCK_SERVICE_WATCHER_H_
-
-#include "shill/rpc_service_watcher_interface.h"
+#ifndef SHILL_DBUS_MOCK_DBUS_SERVICE_WATCHER_H_
+#define SHILL_DBUS_MOCK_DBUS_SERVICE_WATCHER_H_
 
 namespace shill {
 
-class MockServiceWatcher : public RPCServiceWatcherInterface {
+class MockDBusServiceWatcher : public ChromeosDBusServiceWatcher {
  public:
-  MockServiceWatcher() {}
-  ~MockServiceWatcher() override {}
+  MockDBusServiceWatcher() {}
 };
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_SERVICE_WATCHER_H_
+#endif  // SHILL_DBUS_MOCK_DBUS_SERVICE_WATCHER_H_

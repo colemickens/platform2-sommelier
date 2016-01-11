@@ -120,6 +120,20 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD1(FilterPrependDNSServersByFamily,
                      std::vector<std::string>(IPAddress::Family family));
   MOCK_METHOD0(OnInnerDevicesChanged, void());
+  MOCK_METHOD3(ClaimDevice,
+               void(const std::string& claimer_name,
+                    const std::string& interface_name, Error* error));
+  MOCK_METHOD4(ReleaseDevice, void(const std::string& claimer_name,
+                                   const std::string& interface_name,
+                                   bool* claimer_removed, Error* error));
+  MOCK_METHOD0(OnDeviceClaimerVanished, void());
+#if defined(__BRILLO__)
+  MOCK_METHOD2(SetupApModeInterface,
+               bool(std::string* out_interface_name, Error* error));
+  MOCK_METHOD2(SetupStationModeInterface,
+               bool(std::string* out_interface_name, Error* error));
+  MOCK_METHOD0(OnApModeSetterVanished, void());
+#endif  // __BRILLO__
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

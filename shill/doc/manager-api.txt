@@ -482,8 +482,9 @@ Methods
 
 			(Brillo only) Ask WiFi driver to setup an AP mode interface.
 			The driver might teardown the station mode interface as a result
-			of this call. Return an interface name on success, or an empty
-			string on error.
+			of this call. Shill will revert to station mode if the remote
+			service that called this method vanishes. Return an interface name
+			on success, or an empty string on error.
 
 		string SetupStationModeInterface()
 

@@ -31,10 +31,7 @@ class ControlInterface;
 class DeviceInfo;
 
 // Provide an abstraction for remote service to claim/release devices
-// from/to shill. When the service name is provided, which means that
-// the remote service is a RPC endpoint, Shill will perform RPC monitoring
-// on that service, and revert all operations performed by that service when
-// it disappears.
+// from/to shill.
 class DeviceClaimer {
  public:
   DeviceClaimer(const std::string& service_name,

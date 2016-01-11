@@ -30,7 +30,8 @@ interface IManager {
   /**
    * (Brillo only) Ask WiFi driver to setup an AP mode interface.
    * The driver might teardown the station mode interface as a result
-   * of this call.
+   * of this call. Shill will revert to station mode if the remote
+   * service that called this method vanishes.
    *
    * @return Interface name on success, empty string on error
    */

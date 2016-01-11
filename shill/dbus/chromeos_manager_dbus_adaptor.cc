@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "shill/callbacks.h"
+#include "shill/dbus/dbus_service_watcher_factory.h"
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/geolocation_info.h"
@@ -29,6 +30,7 @@
 #include "shill/manager.h"
 #include "shill/property_store.h"
 
+using base::Unretained;
 using std::map;
 using std::string;
 using std::vector;
@@ -46,12 +48,14 @@ static string ObjectID(ChromeosManagerDBusAdaptor* m) {
 const char ChromeosManagerDBusAdaptor::kPath[] = "/";
 
 ChromeosManagerDBusAdaptor::ChromeosManagerDBusAdaptor(
-    const scoped_refptr<dbus::Bus>& bus,
+    const scoped_refptr<dbus::Bus>& adaptor_bus,
+    const scoped_refptr<dbus::Bus> proxy_bus,
     Manager* manager)
     : org::chromium::flimflam::ManagerAdaptor(this),
-      ChromeosDBusAdaptor(bus, kPath),
-      manager_(manager) {
-}
+      ChromeosDBusAdaptor(adaptor_bus, kPath),
+      manager_(manager),
+      proxy_bus_(proxy_bus),
+      dbus_service_watcher_factory_(DBusServiceWatcherFactory::GetInstance()) {}
 
 ChromeosManagerDBusAdaptor::~ChromeosManagerDBusAdaptor() {
   manager_ = nullptr;
@@ -527,10 +531,16 @@ bool ChromeosManagerDBusAdaptor::ClaimInterface(
   // Empty claimer name is used to indicate default claimer.
   // TODO(zqiu): update this API or make a new API to use a flag to indicate
   // default claimer instead.
-  manager_->ClaimDevice(
-      claimer_name == "" ? "" : message->GetSender(),
-      interface_name,
-      &e);
+  string claimer = (claimer_name == "" ? "" : message->GetSender());
+  manager_->ClaimDevice(claimer, interface_name, &e);
+  if (e.IsSuccess() && claimer_name != "") {
+    // Only setup watcher for non-default claimer.
+    watcher_for_device_claimer_.reset(
+        dbus_service_watcher_factory_->CreateDBusServiceWatcher(
+            proxy_bus_, claimer,
+            Bind(&ChromeosManagerDBusAdaptor::OnDeviceClaimerVanished,
+                 Unretained(this))));
+  }
   return !e.ToChromeosError(error);
 }
 
@@ -541,13 +551,18 @@ bool ChromeosManagerDBusAdaptor::ReleaseInterface(
     const string& interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
+  bool claimer_removed;
   // Empty claimer name is used to indicate default claimer.
   // TODO(zqiu): update this API or make a new API to use a flag to indicate
   // default claimer instead.
   manager_->ReleaseDevice(
       claimer_name == "" ? "" : message->GetSender(),
       interface_name,
+      &claimer_removed,
       &e);
+  if (claimer_removed) {
+    watcher_for_device_claimer_.reset();
+  }
   return !e.ToChromeosError(error);
 }
 
@@ -566,7 +581,16 @@ bool ChromeosManagerDBusAdaptor::SetupApModeInterface(
   SLOG(this, 2) << __func__;
   Error e;
 #if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  manager_->SetupApModeInterface(message->GetSender(), out_interface_name, &e);
+  manager_->SetupApModeInterface(out_interface_name, &e);
+  if (e.IsSuccess()) {
+    // Setup a service watcher for the caller. This will restore interface mode
+    // back to station mode if the caller vanished.
+    watcher_for_ap_mode_setter_.reset(
+        dbus_service_watcher_factory_->CreateDBusServiceWatcher(
+            proxy_bus_, message->GetSender(),
+            Bind(&ChromeosManagerDBusAdaptor::OnApModeSetterVanished,
+                 Unretained(this))));
+  }
 #else
   e.Populate(Error::kNotSupported);
 #endif  // !DISABLE_WIFI && __BRILLO__
@@ -580,10 +604,24 @@ bool ChromeosManagerDBusAdaptor::SetupStationModeInterface(
   Error e;
 #if !defined(DISABLE_WIFI) && defined(__BRILLO__)
   manager_->SetupStationModeInterface(out_interface_name, &e);
+  // Remove the service watcher for the AP mode setter.
+  watcher_for_ap_mode_setter_.reset();
 #else
   e.Populate(Error::kNotSupported);
 #endif  // !DISABLE_WIFI && __BRILLO__
   return !e.ToChromeosError(error);
+}
+
+void ChromeosManagerDBusAdaptor::OnApModeSetterVanished() {
+  SLOG(this, 3) << __func__;
+  manager_->OnApModeSetterVanished();
+  watcher_for_ap_mode_setter_.reset();
+}
+
+void ChromeosManagerDBusAdaptor::OnDeviceClaimerVanished() {
+  SLOG(this, 3) << __func__;
+  manager_->OnDeviceClaimerVanished();
+  watcher_for_device_claimer_.reset();
 }
 
 }  // namespace shill

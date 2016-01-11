@@ -53,7 +53,6 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
-#include "shill/mock_service_watcher.h"
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
@@ -2344,34 +2343,27 @@ TEST_F(ManagerTest,
 #if defined(__BRILLO__)
 TEST_F(ManagerTest, SetupApModeInterface) {
   const string kApInterfaceName = "Test-Interface";
-  const string kSenderName = "DummySender";
   string ap_interface;
   Error error;
-
-  EXPECT_EQ(nullptr, manager()->watcher_for_ap_mode_setter_.get());
 
   // Failed to setup AP mode interface.
   EXPECT_CALL(wifi_driver_hal_, SetupApModeInterface()).WillOnce(Return(""));
   EXPECT_FALSE(
-      manager()->SetupApModeInterface(kSenderName, &ap_interface, &error));
+      manager()->SetupApModeInterface(&ap_interface, &error));
   Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ("Failed to setup AP mode interface", error.message());
-  EXPECT_EQ(nullptr, manager()->watcher_for_ap_mode_setter_.get());
 
   // AP mode interface setup succeed.
   error.Reset();
   EXPECT_CALL(wifi_driver_hal_, SetupApModeInterface())
       .WillOnce(Return(kApInterfaceName));
-  EXPECT_CALL(*control_interface(), CreateRPCServiceWatcher(kSenderName, _))
-      .WillOnce(Return(new MockServiceWatcher()));
   EXPECT_TRUE(
-      manager()->SetupApModeInterface(kSenderName, &ap_interface, &error));
+      manager()->SetupApModeInterface(&ap_interface, &error));
   Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
   Mock::VerifyAndClearExpectations(control_interface());
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kApInterfaceName, ap_interface);
-  EXPECT_NE(nullptr, manager()->watcher_for_ap_mode_setter_.get());
 }
 
 TEST_F(ManagerTest, SetupStationModeInterface) {
@@ -2379,17 +2371,14 @@ TEST_F(ManagerTest, SetupStationModeInterface) {
   string station_interface;
   Error error;
 
-  // Setup watcher for AP mode setter.
-  manager()->watcher_for_ap_mode_setter_.reset(new MockServiceWatcher());
-
   // Failed to setup station mode interface.
   EXPECT_CALL(wifi_driver_hal_, SetupStationModeInterface())
       .WillOnce(Return(""));
   EXPECT_FALSE(
       manager()->SetupStationModeInterface(&station_interface, &error));
   Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
+  EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ("Failed to setup station mode interface", error.message());
-  EXPECT_NE(nullptr, manager()->watcher_for_ap_mode_setter_.get());
 
   // Station mode interface setup succeed.
   error.Reset();
@@ -2400,20 +2389,15 @@ TEST_F(ManagerTest, SetupStationModeInterface) {
   Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kStationInterfaceName, station_interface);
-  EXPECT_EQ(nullptr, manager()->watcher_for_ap_mode_setter_.get());
 }
 
 TEST_F(ManagerTest, OnApModeSetterVanished) {
   const string kStationInterfaceName = "Test-Interface";
 
-  // Setup watcher for AP mode setter.
-  manager()->watcher_for_ap_mode_setter_.reset(new MockServiceWatcher());
-
   EXPECT_CALL(wifi_driver_hal_, SetupStationModeInterface())
       .WillOnce(Return(kStationInterfaceName));
   manager()->OnApModeSetterVanished();
   Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
-  EXPECT_EQ(nullptr, manager()->watcher_for_ap_mode_setter_.get());
 }
 #endif  // __BRILLO__
 #endif  // DISABLE_WIFI
@@ -4892,8 +4876,10 @@ TEST_F(ManagerTest, ReleaseBlacklistedDevice) {
   manager()->SetBlacklistedDevices(blacklisted_devices);
 
   Error error;
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
+  bool claimer_removed;
+  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
   EXPECT_TRUE(error.IsFailure());
+  EXPECT_FALSE(claimer_removed);
   EXPECT_EQ("Not allowed to release blacklisted device", error.message());
   // Verify device is still blacklisted.
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
@@ -4977,8 +4963,10 @@ TEST_F(ManagerTest, ReleaseDevice) {
   // Release device without claimer.
   const char kNoClaimerError[] = "Device claimer doesn't exist";
   Error error;
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
+  bool claimer_removed;
+  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
   EXPECT_EQ(string(kNoClaimerError), error.message());
+  EXPECT_FALSE(claimer_removed);
 
   // Setup device claimer.
   MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
@@ -4988,17 +4976,21 @@ TEST_F(ManagerTest, ReleaseDevice) {
   const char kClaimerMismatchError[] =
       "Invalid claimer name test_claimer1. Claimer test_claimer already exist";
   error.Reset();
-  manager()->ReleaseDevice(kWrongClaimerName, kDeviceName, &error);
+  manager()->ReleaseDevice(kWrongClaimerName, kDeviceName, &claimer_removed,
+                           &error);
   EXPECT_EQ(string(kClaimerMismatchError), error.message());
+  EXPECT_FALSE(claimer_removed);
 
-  // Release device with a non-default claimer.
+  // Release one of multiple device from a non-default claimer.
   error.Reset();
   EXPECT_CALL(*device_claimer, Release(kDeviceName, &error))
       .WillOnce(Return(true));
   EXPECT_CALL(*device_claimer, default_claimer()).WillOnce(Return(false));
   EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(true));
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
+  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
   Mock::VerifyAndClearExpectations(device_claimer);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(claimer_removed);
 
   // Release a device with default claimer. Claimer should not be resetted.
   error.Reset();
@@ -5006,8 +4998,10 @@ TEST_F(ManagerTest, ReleaseDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*device_claimer, default_claimer()).WillOnce(Return(true));
   EXPECT_CALL(*device_claimer, DevicesClaimed()).Times(0);
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
+  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
   Mock::VerifyAndClearExpectations(device_claimer);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(claimer_removed);
   EXPECT_NE(nullptr, manager()->device_claimer_.get());
 
   // Release last device with non-default claimer. Claimer should be resetted.
@@ -5016,8 +5010,10 @@ TEST_F(ManagerTest, ReleaseDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*device_claimer, default_claimer()).WillOnce(Return(false));
   EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(false));
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &error);
+  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
   Mock::VerifyAndClearExpectations(device_claimer);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(claimer_removed);
   EXPECT_EQ(nullptr, manager()->device_claimer_.get());
 }
 

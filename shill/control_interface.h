@@ -107,10 +107,6 @@ class ControlInterface {
 
   virtual const std::string& NullRPCIdentifier() = 0;
 
-  virtual RPCServiceWatcherInterface* CreateRPCServiceWatcher(
-      const std::string& connection_name,
-      const base::Closure& on_connection_vanished) = 0;
-
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
   virtual PowerManagerProxyInterface* CreatePowerManagerProxy(

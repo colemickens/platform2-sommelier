@@ -34,6 +34,5 @@ IcmpSession* IcmpSessionFactory::CreateIcmpSession(
     EventDispatcher* dispatcher) {
   return new IcmpSession(dispatcher);
 }
-// found in the LICENSE file.
 
 }  // namespace shill

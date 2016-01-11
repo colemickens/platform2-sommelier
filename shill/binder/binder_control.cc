@@ -38,7 +38,6 @@
 #include "shill/dbus/chromeos_firewalld_proxy.h"
 #include "shill/power_manager_proxy_stub.h"
 #include "shill/upstart/upstart_proxy_stub.h"
-#include "shill/dbus/chromeos_dbus_service_watcher.h"
 #if !defined(DISABLE_WIFI)
 #include "shill/dbus/chromeos_supplicant_bss_proxy.h"
 #endif  // DISABLE_WIFI
@@ -131,13 +130,6 @@ ThirdPartyVpnAdaptorInterface* BinderControl::CreateThirdPartyVpnAdaptor(
       to_string(next_unique_binder_adaptor_id_++));
 }
 #endif
-
-RPCServiceWatcherInterface* BinderControl::CreateRPCServiceWatcher(
-    const string& connection_name,
-    const base::Closure& on_connection_vanished) {
-  return new ChromeosDBusServiceWatcher(proxy_bus_, connection_name,
-                                        on_connection_vanished);
-}
 
 PowerManagerProxyInterface* BinderControl::CreatePowerManagerProxy(
     PowerManagerProxyDelegate* delegate,
