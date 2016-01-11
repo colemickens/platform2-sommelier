@@ -753,25 +753,9 @@ bool PerfSerializer::DeserializeTracingMetadata(
   return true;
 }
 
-bool PerfSerializer::SerializeBuildIDs(
-    const std::vector<malloced_unique_ptr<build_id_event>>& from,
-    RepeatedPtrField<PerfDataProto_PerfBuildID>* to) const {
-  return SerializeBuildIDEvents(from, to);
-}
-
-bool PerfSerializer::DeserializeBuildIDs(
-    const RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
-    std::vector<malloced_unique_ptr<build_id_event>>* to) const {
-  to->clear();
-
-  return DeserializeBuildIDEvents(from, to);
-}
-
 bool PerfSerializer::SerializeMetadata(const PerfReader& from,
                                        PerfDataProto* to) const {
   if (!SerializeTracingMetadata(from.tracing_data(), to) ||
-      !SerializeBuildIDs(from.build_id_events(),
-                         to->mutable_build_ids()) ||
       !SerializeUint32Metadata(from.uint32_metadata(),
                                to->mutable_uint32_metadata()) ||
       !SerializeUint64Metadata(from.uint64_metadata(),
@@ -855,8 +839,6 @@ bool PerfSerializer::SerializeMetadata(const PerfReader& from,
 bool PerfSerializer::DeserializeMetadata(const PerfDataProto& from,
                                          PerfReader* to) {
   if (!DeserializeTracingMetadata(from, to->mutable_tracing_data()) ||
-      !DeserializeBuildIDs(from.build_ids(),
-                           to->mutable_build_id_events()) ||
       !DeserializeUint32Metadata(from.uint32_metadata(),
                                  to->mutable_uint32_metadata()) ||
       !DeserializeUint64Metadata(from.uint64_metadata(),
@@ -937,12 +919,13 @@ bool PerfSerializer::SerializeBuildIDEvent(
   to->set_filename_md5_prefix(Md5Prefix(from->filename));
 
   // Trim out trailing zeroes from the build ID.
-  string build_id = HexToString(from->build_id, kBuildIDArraySize);
+  string build_id = RawDataToHexString(from->build_id, kBuildIDArraySize);
   PerfReader::TrimZeroesFromBuildIDString(&build_id);
 
   uint8_t build_id_bytes[kBuildIDArraySize];
-  if (!StringToHex(build_id, build_id_bytes, sizeof(build_id_bytes)))
+  if (!HexStringToRawData(build_id, build_id_bytes, sizeof(build_id_bytes)))
     return false;
+
   // Used to convert build IDs (and possibly other hashes) between raw data
   // format and as string of hex digits.
   const int kHexCharsPerByte = 2;

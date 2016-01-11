@@ -77,7 +77,7 @@ void CreateFilenameToBuildIDMap(
       build_id[j] = rand_r(&seed);
 
     (*filenames_to_build_ids)[filenames[i]] =
-        HexToString(build_id, kBuildIDArraySize);
+        RawDataToHexString(build_id, kBuildIDArraySize);
   }
 }
 
@@ -126,7 +126,7 @@ void CheckFilenameAndBuildIDMethods(PerfReader* reader,
   }
   std::map<string, string> reader_map;
   reader->GetFilenamesToBuildIDs(&reader_map);
-  EXPECT_EQ(expected_map, reader_map);
+  ASSERT_EQ(expected_map, reader_map);
 
   string output_perf_data1 = output_perf_data_prefix + ".parse.inject.out";
   ASSERT_TRUE(reader->WriteFile(output_perf_data1));
@@ -134,7 +134,7 @@ void CheckFilenameAndBuildIDMethods(PerfReader* reader,
   // Perf should find the same build ids.
   std::map<string, string> perf_build_id_map;
   ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data1, &perf_build_id_map));
-  EXPECT_EQ(expected_map, perf_build_id_map);
+  ASSERT_EQ(expected_map, perf_build_id_map);
 
   std::map<string, string> build_id_localizer;
   // Only localize the first half of the files which have build ids.
@@ -156,12 +156,12 @@ void CheckFilenameAndBuildIDMethods(PerfReader* reader,
   std::vector<string> new_filenames;
   reader->GetFilenames(&new_filenames);
   std::sort(filenames.begin(), filenames.end());
-  EXPECT_EQ(filenames, new_filenames);
+  ASSERT_EQ(filenames, new_filenames);
 
   // Build ids should be updated.
   reader_map.clear();
   reader->GetFilenamesToBuildIDs(&reader_map);
-  EXPECT_EQ(expected_map, reader_map);
+  ASSERT_EQ(expected_map, reader_map);
 
   string output_perf_data2 = output_perf_data_prefix + ".parse.localize.out";
   ASSERT_TRUE(reader->WriteFile(output_perf_data2));
@@ -580,8 +580,7 @@ TEST(PerfParserTest, DsoInfoHasBuildId) {
   ASSERT_EQ(4, events.size());
 
   EXPECT_EQ("/usr/lib/foo.so", events[2].dso_and_offset.dso_name());
-  EXPECT_EQ("deadf00d00000000000000000000000000000000",
-            events[2].dso_and_offset.build_id());
+  EXPECT_EQ("deadf00d", events[2].dso_and_offset.build_id());
   EXPECT_EQ("/usr/lib/bar.so", events[3].dso_and_offset.dso_name());
   EXPECT_EQ("", events[3].dso_and_offset.build_id());
 }

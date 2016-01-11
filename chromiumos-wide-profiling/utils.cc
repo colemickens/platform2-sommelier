@@ -100,7 +100,7 @@ bool FileExists(const string& filename) {
   return stat(filename.c_str(), &st) == 0;
 }
 
-string HexToString(const u8* array, size_t length) {
+string RawDataToHexString(const u8* array, size_t length) {
   // Convert the bytes to hex digits one at a time.
   // There will be kNumHexDigitsInByte hex digits, and 1 char for NUL.
   char buffer[kNumHexDigitsInByte + 1];
@@ -112,7 +112,12 @@ string HexToString(const u8* array, size_t length) {
   return result;
 }
 
-bool StringToHex(const string& str, u8* array, size_t length) {
+string RawDataToHexString(const string& str) {
+  return
+      RawDataToHexString(reinterpret_cast<const u8*>(str.data()), str.size());
+}
+
+bool HexStringToRawData(const string& str, u8* array, size_t length) {
   const int kHexRadix = 16;
   char* err;
   // Loop through kNumHexDigitsInByte characters at a time (to get one byte)

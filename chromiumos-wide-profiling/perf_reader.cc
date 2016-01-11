@@ -115,58 +115,23 @@ void CheckNoBuildIDEventPadding() {
            sizeof(event.build_id));
 }
 
-// Creates/updates a build id event with |build_id| and |filename|.
-// Passing "" to |build_id| or |filename| will leave the corresponding field
-// unchanged (in which case |event| must be non-null).
-// If |event| is empty or is not large enough, a new event will be created.
-// Otherwise, updates the fields of the existing event.
-// |new_misc| indicates kernel vs user space, and is only used to fill in the
-// |header.misc| field of new events.
-// In either case, returns a unique pointer to the event containing the updated
-// data, or NULL in the case of a failure.
-malloced_unique_ptr<build_id_event> CreateOrUpdateBuildID(
-    const string& build_id,
-    const string& filename,
-    uint16_t new_misc,
-    malloced_unique_ptr<build_id_event> event) {
-  // When creating an event from scratch, build id and filename must be present.
-  if (!event && (build_id.empty() || filename.empty()))
-    return nullptr;
-  size_t new_len = GetUint64AlignedStringLength(
-      filename.empty() ? event->filename : filename);
+// Creates a new build ID event with the given build ID string, filename, and
+// misc value.
+malloced_unique_ptr<build_id_event> CreateBuildIDEvent(const string& build_id,
+                                                       const string& filename,
+                                                       uint16_t misc) {
+  size_t filename_len = GetUint64AlignedStringLength(filename);
+  size_t size = sizeof(struct build_id_event) + filename_len;
+  malloced_unique_ptr<build_id_event> event(CallocMemoryForBuildID(size));
+  event->header.type = HEADER_BUILD_ID;
+  event->header.misc = misc;
+  event->header.size = size;
 
-  // If event is null, or we don't have enough memory, allocate more memory, and
-  // switch the new pointer with the existing pointer.
-  size_t new_size = sizeof(*event) + new_len;
-  if (!event || new_size > event->header.size) {
-    malloced_unique_ptr<build_id_event> new_event(
-        CallocMemoryForBuildID(new_size));
+  event->pid = kDefaultBuildIDEventPid;
+  snprintf(event->filename, filename_len, "%s", filename.c_str());
+  memset(event->filename + filename.size(), 0, filename_len - filename.size());
 
-    if (event) {
-      // Copy over everything except the filename.
-      // It is guaranteed that we are changing the filename - otherwise, the old
-      // size and the new size would be equal.
-      *new_event = *event;
-    } else {
-      // Fill in the fields appropriately.
-      new_event->header.type = HEADER_BUILD_ID;
-      new_event->header.misc = new_misc;
-      new_event->pid = kDefaultBuildIDEventPid;
-    }
-    event = std::move(new_event);
-  }
-
-  // Here, event is the pointer to the build_id_event that we are keeping.
-  // Update the event's size, build id, and filename.
-  if (!build_id.empty() &&
-      !StringToHex(build_id, event->build_id, arraysize(event->build_id))) {
-    return NULL;
-  }
-
-  if (!filename.empty())
-    CHECK_GT(snprintf(event->filename, new_len, "%s", filename.c_str()), 0);
-
-  event->header.size = new_size;
+  HexStringToRawData(build_id, event->build_id, sizeof(event->build_id));
   return event;
 }
 
@@ -249,6 +214,7 @@ bool PerfReader::Serialize(PerfDataProto* perf_data_proto) const {
 
   // Serialize metadata.
   perf_data_proto->add_metadata_mask(metadata_mask_);
+  perf_data_proto->mutable_build_ids()->CopyFrom(proto_.build_ids());
   if (!serializer_.SerializeMetadata(*this, perf_data_proto)) {
     return false;
   }
@@ -270,9 +236,10 @@ bool PerfReader::Deserialize(const PerfDataProto& perf_data_proto) {
     serializer_.CreateSampleInfoReader(attr, false /* read_cross_endian */);
   }
 
+  // Deserialize metadata.
   if (perf_data_proto.metadata_mask_size())
     metadata_mask_ = perf_data_proto.metadata_mask(0);
-
+  proto_.mutable_build_ids()->CopyFrom(perf_data_proto.build_ids());
   if (!serializer_.DeserializeMetadata(perf_data_proto, this))
     return false;
 
@@ -511,15 +478,26 @@ bool PerfReader::InjectBuildIDs(
   metadata_mask_ |= (1 << HEADER_BUILD_ID);
   std::set<string> updated_filenames;
   // Inject new build ID's for existing build ID events.
-  for (malloced_unique_ptr<build_id_event>& event : build_id_events_) {
-    string filename = event->filename;
-    if (filenames_to_build_ids.find(filename) == filenames_to_build_ids.end())
+  for (auto& build_id : *proto_.mutable_build_ids()) {
+    auto find_result = filenames_to_build_ids.find(build_id.filename());
+    if (find_result == filenames_to_build_ids.end())
       continue;
 
-    string build_id = filenames_to_build_ids.at(filename);
-    PerfizeBuildIDString(&build_id);
-    event = CreateOrUpdateBuildID(build_id, "", 0, std::move(event));
-    updated_filenames.insert(filename);
+    // TODO(sque): Should build IDs passed into this function be in binary
+    // format? That would greatly simplify this section.
+    const string& build_id_string = find_result->second;
+    const int kHexCharsPerByte = 2;
+    std::vector<uint8_t>
+        build_id_data(build_id_string.size() / kHexCharsPerByte);
+    if (!HexStringToRawData(build_id_string, build_id_data.data(),
+                            build_id_data.size())) {
+      LOG(ERROR) << "Could not convert hex string to raw data: "
+                 << build_id_string;
+      return false;
+    }
+    build_id.set_build_id_hash(build_id_data.data(), build_id_data.size());
+
+    updated_filenames.insert(build_id.filename());
   }
 
   // For files with no existing build ID events, create new build ID events.
@@ -549,57 +527,38 @@ bool PerfReader::InjectBuildIDs(
       new_misc = misc_iter->second;
 
     string build_id = it->second;
-    PerfizeBuildIDString(&build_id);
     malloced_unique_ptr<build_id_event> event =
-        CreateOrUpdateBuildID(build_id, filename, new_misc, nullptr);
-    CHECK(event);
-    build_id_events_.push_back(std::move(event));
+        CreateBuildIDEvent(build_id, filename, new_misc);
+    if (!serializer_.SerializeBuildIDEvent(event, proto_.add_build_ids())) {
+      LOG(ERROR) << "Could not serialize build ID event with ID " << build_id;
+      return false;
+    }
   }
-
   return true;
 }
 
 bool PerfReader::Localize(
     const std::map<string, string>& build_ids_to_filenames) {
-  std::map<string, string> perfized_build_ids_to_filenames;
-  std::map<string, string>::const_iterator it;
-  for (it = build_ids_to_filenames.begin();
-       it != build_ids_to_filenames.end();
-       ++it) {
-    string build_id = it->first;
-    PerfizeBuildIDString(&build_id);
-    perfized_build_ids_to_filenames[build_id] = it->second;
-  }
-
   std::map<string, string> filename_map;
-  for (malloced_unique_ptr<build_id_event>& event : build_id_events_) {
-    string build_id = HexToString(event->build_id, kBuildIDArraySize);
-    if (perfized_build_ids_to_filenames.find(build_id) ==
-        perfized_build_ids_to_filenames.end()) {
+  for (auto& build_id : *proto_.mutable_build_ids()) {
+    string build_id_string = RawDataToHexString(build_id.build_id_hash());
+    auto find_result = build_ids_to_filenames.find(build_id_string);
+    if (find_result == build_ids_to_filenames.end())
       continue;
-    }
-
-    string new_name = perfized_build_ids_to_filenames.at(build_id);
-    filename_map[string(event->filename)] = new_name;
-    event = CreateOrUpdateBuildID("", new_name, 0, std::move(event));
-    CHECK(event);
+    const string& new_filename = find_result->second;
+    filename_map[build_id.filename()] = new_filename;
   }
 
-  LocalizeUsingFilenames(filename_map);
-  return true;
+  return LocalizeUsingFilenames(filename_map);
 }
 
 bool PerfReader::LocalizeUsingFilenames(
     const std::map<string, string>& filename_map) {
   LocalizeMMapFilenames(filename_map);
-  for (malloced_unique_ptr<build_id_event>& event : build_id_events_) {
-    string old_name = event->filename;
-
-    if (filename_map.find(event->filename) != filename_map.end()) {
-      const string& new_name = filename_map.at(old_name);
-      event = CreateOrUpdateBuildID("", new_name, 0, std::move(event));
-      CHECK(event);
-    }
+  for (auto& build_id : *proto_.mutable_build_ids()) {
+    auto find_result = filename_map.find(build_id.filename());
+    if (find_result != filename_map.end())
+      build_id.set_filename(find_result->second);
   }
   return true;
 }
@@ -625,10 +584,9 @@ void PerfReader::GetFilenamesAsSet(std::set<string>* filenames) const {
 void PerfReader::GetFilenamesToBuildIDs(
     std::map<string, string>* filenames_to_build_ids) const {
   filenames_to_build_ids->clear();
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    const build_id_event& event = *build_id_events_[i].get();
-    string build_id = HexToString(event.build_id, kBuildIDArraySize);
-    (*filenames_to_build_ids)[event.filename] = build_id;
+  for (const auto& build_id : proto_.build_ids()) {
+    string build_id_string = RawDataToHexString(build_id.build_id_hash());
+    (*filenames_to_build_ids)[build_id.filename()] = build_id_string;
   }
 }
 
@@ -1032,7 +990,12 @@ bool PerfReader::ReadBuildIDMetadataWithoutHeader(
   // Perf tends to use more space than necessary, so fix the size.
   event->header.size =
       sizeof(*event) + GetUint64AlignedStringLength(event->filename);
-  build_id_events_.push_back(std::move(event));
+
+  if (!serializer_.SerializeBuildIDEvent(event, proto_.add_build_ids())) {
+    LOG(ERROR) << "Could not serialize build ID event with ID "
+               << RawDataToHexString(event->build_id, sizeof(event->build_id));
+    return false;
+  }
   return true;
 }
 
@@ -1518,10 +1481,17 @@ bool PerfReader::WriteMetadata(const struct perf_file_header& header,
 
 bool PerfReader::WriteBuildIDMetadata(u32 type, DataWriter* data) const {
   CheckNoBuildIDEventPadding();
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    const build_id_event* event = build_id_events_[i].get();
-    if (!data->WriteDataValue(event, event->header.size, "Build ID metadata"))
+  for (const auto& build_id : proto_.build_ids()) {
+    malloced_unique_ptr<build_id_event> event;
+    if (!serializer_.DeserializeBuildIDEvent(build_id, &event)) {
+      LOG(ERROR) << "Could not deserialize build ID event with build ID "
+                 << RawDataToHexString(build_id.build_id_hash());
       return false;
+    }
+    if (!data->WriteDataValue(event.get(), event->header.size,
+                              "Build ID metadata")) {
+      return false;
+    }
   }
   return true;
 }
@@ -1800,8 +1770,10 @@ size_t PerfReader::GetEventDescMetadataSize() const {
 
 size_t PerfReader::GetBuildIDMetadataSize() const {
   size_t size = 0;
-  for (size_t i = 0; i < build_id_events_.size(); ++i)
-    size += build_id_events_[i]->header.size;
+  for (const auto& build_id : proto_.build_ids()) {
+    size += sizeof(build_id_event) +
+            GetUint64AlignedStringLength(build_id.filename());
+  }
   return size;
 }
 

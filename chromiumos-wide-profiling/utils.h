@@ -103,12 +103,17 @@ uint64_t Md5Prefix(const string& input);
 uint64_t Md5Prefix(const std::vector<char>& input);
 
 // Returns a string that represents |array| in hexadecimal.
-string HexToString(const u8* array, size_t length);
+string RawDataToHexString(const u8* array, size_t length);
 
-// Converts |str| to a hexadecimal number, stored in |array|.  Returns true on
-// success.  Only stores up to |length| bytes - if there are more characters in
-// the string, they are ignored (but the function may still return true).
-bool StringToHex(const string& str, u8* array, size_t length);
+// Given raw data in |str|, returns a string that represents the binary data as
+// hexadecimal.
+string RawDataToHexString(const string& str);
+
+// Given a string |str| containing data represented in hexadecimal, converts to
+// to raw bytes stored in |array|.  Returns true on success.  Only stores up to
+// |length| bytes - if there are more characters in the string, they are
+// ignored (but the function may still return true).
+bool HexStringToRawData(const string& str, u8* array, size_t length);
 
 // Adjust |size| to blocks of |align_size|.  i.e. returns the smallest multiple
 // of |align_size| that can fit |size|.

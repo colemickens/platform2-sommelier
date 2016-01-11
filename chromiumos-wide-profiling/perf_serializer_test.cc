@@ -172,13 +172,6 @@ void SerializeToFileAndBack(const string& input, const string& output) {
   remove(output_filename.c_str());
 }
 
-// Converts build ID data (stored as a string) to an actual string containing
-// hex digits.
-string BuildIDToString(const string& raw_build_id_data) {
-  return HexToString(reinterpret_cast<const u8*>(raw_build_id_data.c_str()),
-                     raw_build_id_data.size());
-}
-
 }  // namespace
 
 TEST(PerfSerializerTest, Test1Cycle) {
@@ -566,7 +559,7 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   build_id_map["file7"] = "0123456789abcdef012345670000";
   build_id_map["file8"] = "0123456789abcdef01234567";
   build_id_map["file9"] = "00000000";
-  ASSERT_TRUE(reader.InjectBuildIDs(build_id_map));
+  reader.InjectBuildIDs(build_id_map);
 
   PerfDataProto perf_data_proto;
   ASSERT_TRUE(reader.Serialize(&perf_data_proto));
@@ -582,82 +575,92 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   // trimmed.
   EXPECT_EQ("file1", perf_data_proto.build_ids(0).filename());
   EXPECT_EQ("0123456789abcdef0123456789abcdef01234567",
-            BuildIDToString(perf_data_proto.build_ids(0).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(0).build_id_hash()));
 
   EXPECT_EQ("file2", perf_data_proto.build_ids(1).filename());
   EXPECT_EQ("0123456789abcdef0123456789abcdef01230000",
-            BuildIDToString(perf_data_proto.build_ids(1).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(1).build_id_hash()));
 
   EXPECT_EQ("file3", perf_data_proto.build_ids(2).filename());
   EXPECT_EQ("0123456789abcdef0123456789abcdef",
-            BuildIDToString(perf_data_proto.build_ids(2).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(2).build_id_hash()));
 
   EXPECT_EQ("file4", perf_data_proto.build_ids(3).filename());
   EXPECT_EQ("0123456789abcdef0123456789abcdef",
-            BuildIDToString(perf_data_proto.build_ids(3).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(3).build_id_hash()));
 
   EXPECT_EQ("file5", perf_data_proto.build_ids(4).filename());
   EXPECT_EQ("0123456789abcdef0123456789abcdef",
-            BuildIDToString(perf_data_proto.build_ids(4).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(4).build_id_hash()));
 
   EXPECT_EQ("file6", perf_data_proto.build_ids(5).filename());
   EXPECT_EQ("0123456789abcdef0123456789ab0000",
-            BuildIDToString(perf_data_proto.build_ids(5).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(5).build_id_hash()));
 
   EXPECT_EQ("file7", perf_data_proto.build_ids(6).filename());
   EXPECT_EQ("0123456789abcdef01234567",
-            BuildIDToString(perf_data_proto.build_ids(6).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(6).build_id_hash()));
 
   EXPECT_EQ("file8", perf_data_proto.build_ids(7).filename());
   EXPECT_EQ("0123456789abcdef01234567",
-            BuildIDToString(perf_data_proto.build_ids(7).build_id_hash()));
+            RawDataToHexString(perf_data_proto.build_ids(7).build_id_hash()));
 
   EXPECT_EQ("file9", perf_data_proto.build_ids(8).filename());
-  EXPECT_EQ("", BuildIDToString(perf_data_proto.build_ids(8).build_id_hash()));
+  EXPECT_EQ("",
+            RawDataToHexString(perf_data_proto.build_ids(8).build_id_hash()));
 
   // Check deserialization.
   PerfReader out_reader;
   EXPECT_TRUE(out_reader.Deserialize(perf_data_proto));
-  const std::vector<malloced_unique_ptr<build_id_event>>& build_id_events =
-      out_reader.build_id_events();
-  EXPECT_EQ(9, build_id_events.size());
+  const auto& build_ids = out_reader.build_ids();
+  ASSERT_EQ(9, build_ids.size());
+
+  std::vector<malloced_unique_ptr<build_id_event>>
+      raw_build_ids(build_ids.size());
+
+  // Convert the build IDs back to raw build ID events.
+  PerfSerializer serializer;
+  for (int i = 0; i < build_ids.size(); ++i) {
+    ASSERT_TRUE(serializer.DeserializeBuildIDEvent(build_ids.Get(i),
+                                                   &raw_build_ids[i]));
+  }
 
   // All trimmed build IDs should be padded to the full 20 byte length.
-  EXPECT_EQ(string("file1"), build_id_events[0]->filename);
+  EXPECT_EQ(string("file1"), raw_build_ids[0]->filename);
   EXPECT_EQ("0123456789abcdef0123456789abcdef01234567",
-            HexToString(build_id_events[0]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[0]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file2"), build_id_events[1]->filename);
+  EXPECT_EQ(string("file2"), raw_build_ids[1]->filename);
   EXPECT_EQ("0123456789abcdef0123456789abcdef01230000",
-            HexToString(build_id_events[1]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[1]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file3"), build_id_events[2]->filename);
+  EXPECT_EQ(string("file3"), raw_build_ids[2]->filename);
   EXPECT_EQ("0123456789abcdef0123456789abcdef00000000",
-            HexToString(build_id_events[2]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[2]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file4"), build_id_events[3]->filename);
+  EXPECT_EQ(string("file4"), raw_build_ids[3]->filename);
   EXPECT_EQ("0123456789abcdef0123456789abcdef00000000",
-            HexToString(build_id_events[3]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[3]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file5"), build_id_events[4]->filename);
+  EXPECT_EQ(string("file5"), raw_build_ids[4]->filename);
   EXPECT_EQ("0123456789abcdef0123456789abcdef00000000",
-            HexToString(build_id_events[4]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[4]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file6"), build_id_events[5]->filename);
+  EXPECT_EQ(string("file6"), raw_build_ids[5]->filename);
   EXPECT_EQ("0123456789abcdef0123456789ab000000000000",
-            HexToString(build_id_events[5]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[5]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file7"), build_id_events[6]->filename);
+  EXPECT_EQ(string("file7"), raw_build_ids[6]->filename);
   EXPECT_EQ("0123456789abcdef012345670000000000000000",
-            HexToString(build_id_events[6]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[6]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file8"), build_id_events[7]->filename);
+  EXPECT_EQ(string("file8"), raw_build_ids[7]->filename);
   EXPECT_EQ("0123456789abcdef012345670000000000000000",
-            HexToString(build_id_events[7]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[7]->build_id, kBuildIDArraySize));
 
-  EXPECT_EQ(string("file9"), build_id_events[8]->filename);
+  EXPECT_EQ(string("file9"), raw_build_ids[8]->filename);
   EXPECT_EQ("0000000000000000000000000000000000000000",
-            HexToString(build_id_events[8]->build_id, kBuildIDArraySize));
+            RawDataToHexString(raw_build_ids[8]->build_id, kBuildIDArraySize));
 }
 
 // Regression test for http://crbug.com/500746.

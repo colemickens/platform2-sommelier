@@ -178,14 +178,6 @@ class PerfSerializer {
   bool DeserializeTracingMetadata(const PerfDataProto& from,
                                   std::vector<char>* to) const;
 
-  bool SerializeBuildIDs(
-      const std::vector<malloced_unique_ptr<build_id_event>>& from,
-      RepeatedPtrField<PerfDataProto_PerfBuildID>* to)
-      const;
-  bool DeserializeBuildIDs(
-      const RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
-      std::vector<malloced_unique_ptr<build_id_event>>* to) const;
-
   bool SerializeMetadata(const PerfReader& from, PerfDataProto* to) const;
   bool DeserializeMetadata(const PerfDataProto& from, PerfReader* to);
 
@@ -226,14 +218,6 @@ class PerfSerializer {
                                    PerfDataProto* perf_data_proto);
   static void DeserializeParserStats(const PerfDataProto& perf_data_proto,
                                      PerfEventStats* stats);
-
-  const VectorSerializer<PerfDataProto_PerfBuildID,
-                         malloced_unique_ptr<build_id_event>>
-      SerializeBuildIDEvents = {this, &PerfSerializer::SerializeBuildIDEvent};
-  const VectorDeserializer<PerfDataProto_PerfBuildID,
-                           malloced_unique_ptr<build_id_event>>
-      DeserializeBuildIDEvents = {
-        this, &PerfSerializer::DeserializeBuildIDEvent};
 
   const VectorSerializer<PerfDataProto_PerfUint32Metadata, PerfUint32Metadata>
       SerializeUint32Metadata = {

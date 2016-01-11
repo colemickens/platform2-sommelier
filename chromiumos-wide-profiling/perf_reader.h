@@ -154,12 +154,11 @@ class PerfReader {
     return proto_.mutable_events();
   }
 
-  const std::vector<malloced_unique_ptr<build_id_event>>&
-      build_id_events() const {
-    return build_id_events_;
+  const RepeatedPtrField<PerfDataProto_PerfBuildID>& build_ids() const {
+    return proto_.build_ids();
   }
-  std::vector<malloced_unique_ptr<build_id_event>>* mutable_build_id_events() {
-    return &build_id_events_;
+  RepeatedPtrField<PerfDataProto_PerfBuildID>* mutable_build_ids() {
+    return proto_.mutable_build_ids();
   }
 
   const std::vector<char>& tracing_data() const {
@@ -314,7 +313,6 @@ class PerfReader {
   // TODO(sque): Store all fields in here, not just events.
   PerfDataProto proto_;
 
-  std::vector<malloced_unique_ptr<build_id_event>> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;
   std::vector<PerfUint64Metadata> uint64_metadata_;
