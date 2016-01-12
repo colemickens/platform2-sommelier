@@ -57,7 +57,8 @@ std::string GetOpenSSLError() {
 
 namespace trunks {
 
-TrunksClientTest::TrunksClientTest() : factory_(new TrunksFactoryImpl()) {
+TrunksClientTest::TrunksClientTest()
+    : factory_(new TrunksFactoryImpl(true /* failure_is_fatal */)) {
   crypto::EnsureOpenSSLInit();
 }
 
@@ -987,7 +988,7 @@ bool TrunksClientTest::PerformRSAEncrpytAndDecrpyt(
 void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
                                           std::string* prime_factor,
                                           std::string* public_key) {
-#ifdef OPENSSL_IS_BORINGSSL
+#if defined(OPENSSL_IS_BORINGSSL)
   crypto::ScopedRSA rsa(RSA_new());
   crypto::ScopedBIGNUM exponent(BN_new());
   CHECK(BN_set_word(exponent.get(), RSA_F4));

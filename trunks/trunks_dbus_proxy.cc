@@ -14,15 +14,15 @@
 // limitations under the License.
 //
 
-#include "trunks/trunks_proxy.h"
+#include "trunks/trunks_dbus_proxy.h"
 
 #include <base/bind.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 
 #include "trunks/dbus_interface.h"
-#include "trunks/dbus_interface.pb.h"
 #include "trunks/error_codes.h"
+#include "trunks/interface.pb.h"
 
 namespace {
 
@@ -36,15 +36,15 @@ const int kDBusMaxTimeout = 5 * 60 * 1000;
 
 namespace trunks {
 
-TrunksProxy::TrunksProxy() : weak_factory_(this) {}
+TrunksDBusProxy::TrunksDBusProxy() : weak_factory_(this) {}
 
-TrunksProxy::~TrunksProxy() {
+TrunksDBusProxy::~TrunksDBusProxy() {
   if (bus_) {
     bus_->ShutdownAndBlock();
   }
 }
 
-bool TrunksProxy::Init() {
+bool TrunksDBusProxy::Init() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   bus_ = new dbus::Bus(options);
@@ -55,10 +55,10 @@ bool TrunksProxy::Init() {
   return (object_proxy_ != nullptr);
 }
 
-void TrunksProxy::SendCommand(const std::string& command,
+void TrunksDBusProxy::SendCommand(const std::string& command,
                               const ResponseCallback& callback) {
   if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
-    LOG(ERROR) << "Error TrunksProxy cannot be shared by multiple threads.";
+    LOG(ERROR) << "Error TrunksDBusProxy cannot be shared by multiple threads.";
     callback.Run(CreateErrorResponse(TRUNKS_RC_IPC_ERROR));
   }
   SendCommandRequest tpm_command_proto;
@@ -81,9 +81,9 @@ void TrunksProxy::SendCommand(const std::string& command,
       tpm_command_proto);
 }
 
-std::string TrunksProxy::SendCommandAndWait(const std::string& command) {
+std::string TrunksDBusProxy::SendCommandAndWait(const std::string& command) {
   if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
-    LOG(ERROR) << "Error TrunksProxy cannot be shared by multiple threads.";
+    LOG(ERROR) << "Error TrunksDBusProxy cannot be shared by multiple threads.";
     return CreateErrorResponse(TRUNKS_RC_IPC_ERROR);
   }
   SendCommandRequest tpm_command_proto;

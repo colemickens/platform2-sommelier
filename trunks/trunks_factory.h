@@ -28,6 +28,7 @@ namespace trunks {
 
 class AuthorizationDelegate;
 class BlobParser;
+class CommandTransceiver;
 class HmacSession;
 class PolicySession;
 class SessionManager;

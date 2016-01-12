@@ -109,7 +109,7 @@ TEST_F(PolicySessionTest, GetDigestSuccess) {
       .WillOnce(DoAll(SetArgPointee<2>(policy_digest),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, session.GetDigest(&digest));
-  EXPECT_EQ(SHA256_DIGEST_SIZE, digest.size());
+  EXPECT_EQ(static_cast<size_t>(SHA256_DIGEST_SIZE), digest.size());
 }
 
 TEST_F(PolicySessionTest, GetDigestFailure) {
@@ -167,7 +167,7 @@ TEST_F(PolicySessionTest, PolicyPCRSuccess) {
   EXPECT_EQ(TPM_RC_SUCCESS, session.PolicyPCR(pcr_index, pcr_digest));
   uint8_t pcr_select_index = pcr_index / 8;
   uint8_t pcr_select_byte = 1 << (pcr_index % 8);
-  EXPECT_EQ(pcr_select.count, 1);
+  EXPECT_EQ(pcr_select.count, 1u);
   EXPECT_EQ(pcr_select.pcr_selections[0].hash, TPM_ALG_SHA256);
   EXPECT_EQ(pcr_select.pcr_selections[0].sizeof_select, PCR_SELECT_MIN);
   EXPECT_EQ(pcr_select.pcr_selections[0].pcr_select[pcr_select_index],

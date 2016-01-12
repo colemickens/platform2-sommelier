@@ -30,13 +30,13 @@
 namespace trunks {
 
 class Tpm;
-class TrunksProxy;
 
 // TrunksFactoryImpl is the default TrunksFactory implementation.
 class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
  public:
-  // Uses TrunksProxy as the default CommandTransceiver to pass to the TPM.
-  TrunksFactoryImpl();
+  // Uses an IPC proxy as the default CommandTransceiver. If |failure_is_fatal|
+  // is set then a failure to initialize the proxy will abort.
+  explicit TrunksFactoryImpl(bool failure_is_fatal);
   // TrunksFactoryImpl does not take ownership of |transceiver|. This
   // transceiver is forwarded down to the Tpm instance maintained by
   // this factory.

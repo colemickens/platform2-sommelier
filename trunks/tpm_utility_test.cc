@@ -86,6 +86,56 @@ class TpmUtilityTest : public testing::Test {
     return utility_.CreateSaltingKey(owner_password);
   }
 
+  void SetExistingKeyHandleExpectation(TPM_HANDLE handle) {
+    TPMS_CAPABILITY_DATA capability_data = {};
+    TPML_HANDLE& handles = capability_data.data.handles;
+    handles.count = 1;
+    handles.handle[0] = handle;
+    EXPECT_CALL(mock_tpm_,
+                GetCapabilitySync(TPM_CAP_HANDLES, handle, _, _, _, _))
+        .WillRepeatedly(
+            DoAll(SetArgPointee<4>(capability_data), Return(TPM_RC_SUCCESS)));
+  }
+
+  void PopulatePCRSelection(bool has_sha1_pcrs,
+                            bool make_sha1_bank_empty,
+                            bool has_sha256_pcrs,
+                            TPML_PCR_SELECTION* pcrs) {
+    memset(pcrs, 0, sizeof(TPML_PCR_SELECTION));
+    // By convention fill SHA-256 first. This is a bit brittle because order is
+    // not important but it simplifies comparison to memcmp.
+    if (has_sha256_pcrs) {
+      pcrs->pcr_selections[pcrs->count].hash = TPM_ALG_SHA256;
+      pcrs->pcr_selections[pcrs->count].sizeof_select = PCR_SELECT_MIN;
+      for (int i = 0; i < PCR_SELECT_MIN; ++i) {
+        pcrs->pcr_selections[pcrs->count].pcr_select[i] = 0xff;
+      }
+      ++pcrs->count;
+    }
+    if (has_sha1_pcrs) {
+      pcrs->pcr_selections[pcrs->count].hash = TPM_ALG_SHA1;
+      if (make_sha1_bank_empty) {
+        pcrs->pcr_selections[pcrs->count].sizeof_select = PCR_SELECT_MAX;
+      } else {
+        pcrs->pcr_selections[pcrs->count].sizeof_select = PCR_SELECT_MIN;
+        for (int i = 0; i < PCR_SELECT_MIN; ++i) {
+          pcrs->pcr_selections[pcrs->count].pcr_select[i] = 0xff;
+        }
+      }
+      ++pcrs->count;
+    }
+  }
+
+  void SetExistingPCRSExpectation(bool has_sha1_pcrs, bool has_sha256_pcrs) {
+    TPMS_CAPABILITY_DATA capability_data = {};
+    TPML_PCR_SELECTION& pcrs = capability_data.data.assigned_pcr;
+    PopulatePCRSelection(has_sha1_pcrs, false, has_sha256_pcrs, &pcrs);
+    EXPECT_CALL(mock_tpm_,
+                GetCapabilitySync(TPM_CAP_PCRS, _, _, _, _, _))
+        .WillRepeatedly(
+            DoAll(SetArgPointee<4>(capability_data), Return(TPM_RC_SUCCESS)));
+  }
+
  protected:
   TrunksFactoryForTest factory_;
   NiceMock<MockBlobParser> mock_blob_parser_;
@@ -142,18 +192,18 @@ TEST_F(TpmUtilityTest, ShutdownTest) {
 }
 
 TEST_F(TpmUtilityTest, InitializeTpmAlreadyInit) {
+  SetExistingPCRSExpectation(false, true);
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.InitializeTpm());
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.InitializeTpm());
 }
 
 TEST_F(TpmUtilityTest, InitializeTpmSuccess) {
-  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(YES),
-                      Return(TPM_RC_SUCCESS)));
+  SetExistingPCRSExpectation(false, true);
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.InitializeTpm());
 }
 
 TEST_F(TpmUtilityTest, InitializeTpmBadAuth) {
+  SetExistingPCRSExpectation(false, true);
   // Reject attempts to set platform auth.
   EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_PLATFORM, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
@@ -161,36 +211,74 @@ TEST_F(TpmUtilityTest, InitializeTpmBadAuth) {
 }
 
 TEST_F(TpmUtilityTest, InitializeTpmDisablePHFails) {
-  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(YES),
-                      Return(TPM_RC_SUCCESS)));
+  SetExistingPCRSExpectation(false, true);
   // Reject attempts to disable the platform hierarchy.
   EXPECT_CALL(mock_tpm_, HierarchyControlSync(_, _, TPM_RH_PLATFORM, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.InitializeTpm());
 }
 
-TEST_F(TpmUtilityTest, AllocatePCRSuccess) {
-  TPML_PCR_SELECTION pcr_allocation;
+TEST_F(TpmUtilityTest, AllocatePCRFromNone) {
+  SetExistingPCRSExpectation(false, false);
+  TPML_PCR_SELECTION new_pcr_allocation;
   EXPECT_CALL(mock_tpm_, PCR_AllocateSync(TPM_RH_PLATFORM, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<2>(&pcr_allocation),
+      .WillOnce(DoAll(SaveArg<2>(&new_pcr_allocation),
                       SetArgPointee<3>(YES),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.AllocatePCR(""));
-  EXPECT_EQ(1, pcr_allocation.count);
-  EXPECT_EQ(TPM_ALG_SHA256, pcr_allocation.pcr_selections[0].hash);
-  EXPECT_EQ(PCR_SELECT_MIN, pcr_allocation.pcr_selections[0].sizeof_select);
-  EXPECT_EQ(0xFF, pcr_allocation.pcr_selections[0].pcr_select[0]);
-  EXPECT_EQ(0xFF, pcr_allocation.pcr_selections[0].pcr_select[1]);
+  ASSERT_EQ(TPM_RC_SUCCESS, utility_.AllocatePCR(""));
+  ASSERT_EQ(1u, new_pcr_allocation.count);
+  TPML_PCR_SELECTION expected_pcr_allocation;
+  PopulatePCRSelection(false, false, true, &expected_pcr_allocation);
+  ASSERT_EQ(0, memcmp(&expected_pcr_allocation, &new_pcr_allocation,
+                      sizeof(TPML_PCR_SELECTION)));
+}
+
+TEST_F(TpmUtilityTest, AllocatePCRFromSHA1Only) {
+  SetExistingPCRSExpectation(true, false);
+  TPML_PCR_SELECTION new_pcr_allocation;
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(TPM_RH_PLATFORM, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&new_pcr_allocation),
+                      SetArgPointee<3>(YES),
+                      Return(TPM_RC_SUCCESS)));
+  ASSERT_EQ(TPM_RC_SUCCESS, utility_.AllocatePCR(""));
+  ASSERT_EQ(2u, new_pcr_allocation.count);
+  TPML_PCR_SELECTION expected_pcr_allocation;
+  PopulatePCRSelection(true, true, true, &expected_pcr_allocation);
+  ASSERT_EQ(0, memcmp(&expected_pcr_allocation, &new_pcr_allocation,
+                      sizeof(TPML_PCR_SELECTION)));
+}
+
+TEST_F(TpmUtilityTest, AllocatePCRFromSHA1AndSHA256) {
+  SetExistingPCRSExpectation(true, true);
+  TPML_PCR_SELECTION new_pcr_allocation;
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(TPM_RH_PLATFORM, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&new_pcr_allocation),
+                      SetArgPointee<3>(YES),
+                      Return(TPM_RC_SUCCESS)));
+  ASSERT_EQ(TPM_RC_SUCCESS, utility_.AllocatePCR(""));
+  ASSERT_EQ(1u, new_pcr_allocation.count);
+  TPML_PCR_SELECTION expected_pcr_allocation;
+  PopulatePCRSelection(true, true, false, &expected_pcr_allocation);
+  ASSERT_EQ(0, memcmp(&expected_pcr_allocation, &new_pcr_allocation,
+                      sizeof(TPML_PCR_SELECTION)));
+}
+
+TEST_F(TpmUtilityTest, AllocatePCRFromSHA256Only) {
+  SetExistingPCRSExpectation(false, true);
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(TPM_RH_PLATFORM, _, _, _, _, _, _, _))
+      .Times(0);
+  ASSERT_EQ(TPM_RC_SUCCESS, utility_.AllocatePCR(""));
 }
 
 TEST_F(TpmUtilityTest, AllocatePCRCommandFailure) {
+  SetExistingPCRSExpectation(false, false);
   EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.AllocatePCR(""));
 }
 
 TEST_F(TpmUtilityTest, AllocatePCRTpmFailure) {
+  SetExistingPCRSExpectation(false, false);
   EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(NO),
                       Return(TPM_RC_SUCCESS)));
@@ -306,7 +394,7 @@ TEST_F(TpmUtilityTest, GenerateRandomSuccess) {
   // This number is larger than the max bytes the GetRandom call can return.
   // Therefore we expect software to make multiple calls to fill this many
   // bytes.
-  int num_bytes = 72;
+  size_t num_bytes = 72;
   std::string random_data;
   TPM2B_DIGEST large_random;
   large_random.size = 32;
@@ -325,7 +413,7 @@ TEST_F(TpmUtilityTest, GenerateRandomSuccess) {
 }
 
 TEST_F(TpmUtilityTest, GenerateRandomFails) {
-  int num_bytes = 5;
+  size_t num_bytes = 5;
   std::string random_data;
   EXPECT_CALL(mock_tpm_, GetRandomSync(_, _, nullptr))
       .WillOnce(Return(TPM_RC_FAILURE));
@@ -342,7 +430,7 @@ TEST_F(TpmUtilityTest, ExtendPCRSuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.ExtendPCR(1, "test digest",
                                                &mock_authorization_delegate_));
-  EXPECT_EQ(1, digests.count);
+  EXPECT_EQ(1u, digests.count);
   EXPECT_EQ(TPM_ALG_SHA256, digests.digests[0].hash_alg);
   std::string hash_string = crypto::SHA256HashString("test digest");
   EXPECT_EQ(0, memcmp(hash_string.data(),
@@ -447,7 +535,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptFail) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricEncryptBadParams) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = TPM_RH_FIRST;
   std::string plaintext;
   std::string ciphertext;
   TPM2B_PUBLIC public_area;
@@ -579,11 +667,9 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptFail) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptBadParams) {
-  TPM_HANDLE key_handle;
-  std::string key_name;
+  TPM_HANDLE key_handle = TPM_RH_FIRST;
   std::string plaintext;
   std::string ciphertext;
-  std::string password;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt | kRestricted;
@@ -1297,13 +1383,13 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth,
             kUserWithAuth);
-  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy, 0);
+  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy, 0u);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
-  EXPECT_EQ(1, creation_pcrs.count);
+  EXPECT_EQ(1u, creation_pcrs.count);
   EXPECT_EQ(TPM_ALG_SHA256, creation_pcrs.pcr_selections[0].hash);
   EXPECT_EQ(PCR_SELECT_MIN, creation_pcrs.pcr_selections[0].sizeof_select);
-  EXPECT_EQ(1 << (creation_pcr % 8),
+  EXPECT_EQ(1u << (creation_pcr % 8),
             creation_pcrs.pcr_selections[0].pcr_select[creation_pcr / 8]);
 }
 
@@ -1320,7 +1406,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
       "", false, kNoCreationPCR, &mock_authorization_delegate_, &key_blob,
       nullptr));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
-  EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0);
+  EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0u);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
 }
@@ -1341,15 +1427,15 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
       TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, key_auth,
       policy_digest, true  /* use_only_policy_authorization */, kNoCreationPCR,
       &mock_authorization_delegate_, &key_blob, nullptr));
-  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0u);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
-  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth, 0);
+  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth, 0u);
   EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy,
             kAdminWithPolicy);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.key_bits, 2048);
-  EXPECT_EQ(public_area.public_area.parameters.rsa_detail.exponent, 0x10001);
+  EXPECT_EQ(public_area.public_area.parameters.rsa_detail.exponent, 0x10001u);
   EXPECT_EQ(public_area.public_area.auth_policy.size, policy_digest.size());
   EXPECT_EQ(0, memcmp(public_area.public_area.auth_policy.buffer,
                       policy_digest.data(), policy_digest.size()));
@@ -1897,17 +1983,11 @@ TEST_F(TpmUtilityTest, SetKnownPasswordFailure) {
 }
 
 TEST_F(TpmUtilityTest, RootKeysSuccess) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
 }
 
 TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
   TPM_HANDLE test_handle = 42;
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>(test_handle),
                             Return(TPM_RC_SUCCESS)));
@@ -1917,33 +1997,24 @@ TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
 }
 
 TEST_F(TpmUtilityTest, RootKeysCreateFailure) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys("password"));
 }
 
 TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys("password"));
 }
 
 TEST_F(TpmUtilityTest, RootKeysAlreadyExist) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  SetExistingKeyHandleExpectation(kRSAStorageRootKey);
+  SetExistingKeyHandleExpectation(kECCStorageRootKey);
   EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeySuccess) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
   TPM2B_PUBLIC public_area;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<2>(&public_area),
@@ -1953,10 +2024,6 @@ TEST_F(TpmUtilityTest, SaltingKeySuccess) {
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
   TPM_HANDLE test_handle = 42;
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<4>(test_handle),
@@ -1967,38 +2034,25 @@ TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyCreateFailure) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyLoadFailure) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyPersistFailure) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyAlreadyExists) {
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
+  SetExistingKeyHandleExpectation(kSaltingKey);
   EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
 }
 

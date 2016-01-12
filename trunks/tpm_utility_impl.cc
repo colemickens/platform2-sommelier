@@ -215,7 +215,6 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
     ++pcr_allocation.count;
   }
   for (auto pcr_type : pcr_banks_to_remove) {
-    memset(&pcr_allocation, 0, sizeof(pcr_allocation));
     pcr_allocation.pcr_selections[pcr_allocation.count].hash = pcr_type;
     pcr_allocation.pcr_selections[pcr_allocation.count].sizeof_select =
         PCR_SELECT_MAX;

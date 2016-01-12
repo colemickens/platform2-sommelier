@@ -195,10 +195,10 @@ TEST_F(TpmStateTest, FlagsClear) {
   EXPECT_FALSE(tpm_state.WasShutdownOrderly());
   EXPECT_FALSE(tpm_state.IsRSASupported());
   EXPECT_FALSE(tpm_state.IsECCSupported());
-  EXPECT_EQ(0, tpm_state.GetLockoutCounter());
-  EXPECT_EQ(0, tpm_state.GetLockoutThreshold());
-  EXPECT_EQ(0, tpm_state.GetLockoutInterval());
-  EXPECT_EQ(0, tpm_state.GetLockoutRecovery());
+  EXPECT_EQ(0u, tpm_state.GetLockoutCounter());
+  EXPECT_EQ(0u, tpm_state.GetLockoutThreshold());
+  EXPECT_EQ(0u, tpm_state.GetLockoutInterval());
+  EXPECT_EQ(0u, tpm_state.GetLockoutRecovery());
 }
 
 TEST_F(TpmStateTest, FlagsSet) {

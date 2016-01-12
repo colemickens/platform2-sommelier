@@ -27,7 +27,7 @@ TEST(HmacAuthorizationDelegateTest, UninitializedSessionTest) {
   std::string dummy;
   std::string p_hash("test");
   EXPECT_FALSE(delegate.GetCommandAuthorization(p_hash, false, false, &dummy));
-  EXPECT_EQ(0, dummy.size());
+  EXPECT_EQ(0u, dummy.size());
   EXPECT_FALSE(delegate.CheckResponseAuthorization(p_hash, dummy));
   EXPECT_FALSE(delegate.EncryptCommandParameter(&dummy));
   EXPECT_FALSE(delegate.DecryptResponseParameter(&dummy));
@@ -41,7 +41,7 @@ TEST(HmacAuthorizationDelegateTest, SessionKeyTest) {
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   EXPECT_TRUE(delegate.InitSession(dummy_handle, nonce, nonce, std::string(),
                                    std::string(), false));
-  EXPECT_EQ(0, delegate.session_key_.size());
+  EXPECT_EQ(0u, delegate.session_key_.size());
 
   std::string dummy_auth = std::string("authorization");
   std::string dummy_salt = std::string("salt");

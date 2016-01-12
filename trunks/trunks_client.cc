@@ -33,7 +33,6 @@
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_client_test.h"
 #include "trunks/trunks_factory_impl.h"
-#include "trunks/trunks_proxy.h"
 
 namespace {
 
@@ -143,14 +142,8 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  CommandTransceiver* proxy = new trunks::TrunksProxy();
-
-  if (!proxy->Init()) {
-    LOG(ERROR) << "Error initializing proxy to communicate with TPM.";
-    return -1;
-  }
   scoped_ptr<TrunksFactory> factory = scoped_ptr<TrunksFactory>(
-      new trunks::TrunksFactoryImpl(proxy));
+      new trunks::TrunksFactoryImpl(true /* failure_is_fatal */));
 
   if (cl->HasSwitch("status")) {
     return DumpStatus(factory.get());

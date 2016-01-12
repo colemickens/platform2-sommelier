@@ -65,7 +65,7 @@ TEST_F(ScopedKeyHandleTest, ReleaseTest) {
   TPM_HANDLE handle = TPM_RH_FIRST;
   ScopedKeyHandle scoped_handle(factory_, handle);
   EXPECT_EQ(handle, scoped_handle.release());
-  EXPECT_EQ(0, scoped_handle.get());
+  EXPECT_EQ(0u, scoped_handle.get());
 }
 
 TEST_F(ScopedKeyHandleTest, ResetAndFlush) {
@@ -88,7 +88,7 @@ TEST_F(ScopedKeyHandleTest, NullReset) {
   EXPECT_CALL(mock_tpm_, FlushContextSync(handle, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   scoped_handle.reset();
-  EXPECT_EQ(0, scoped_handle.get());
+  EXPECT_EQ(0u, scoped_handle.get());
 }
 
 }  // namespace trunks

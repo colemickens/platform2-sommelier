@@ -14,10 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef TRUNKS_TRUNKS_PROXY_H_
-#define TRUNKS_TRUNKS_PROXY_H_
-
-#include "trunks/command_transceiver.h"
+#ifndef TRUNKS_TRUNKS_DBUS_PROXY_H_
+#define TRUNKS_TRUNKS_DBUS_PROXY_H_
 
 #include <string>
 
@@ -26,18 +24,19 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
+#include "trunks/command_transceiver.h"
 #include "trunks/trunks_export.h"
 
 namespace trunks {
 
-// TrunksProxy is a CommandTransceiver implementation that forwards all commands
-// to the trunksd D-Bus daemon. See TrunksService for details on how the
-// commands are handled once they reach trunksd. TrunksProxy must be used in
-// only one thread.
-class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
+// TrunksDBusProxy is a CommandTransceiver implementation that forwards all
+// commands to the trunksd D-Bus daemon. See TrunksDBusService for details on
+// how the commands are handled once they reach trunksd. A TrunksDBusProxy
+// instance must be used in only one thread.
+class TRUNKS_EXPORT TrunksDBusProxy: public CommandTransceiver {
  public:
-  TrunksProxy();
-  ~TrunksProxy() override;
+  TrunksDBusProxy();
+  ~TrunksDBusProxy() override;
 
   // Initializes the D-Bus client. Returns true on success.
   bool Init() override;
@@ -48,7 +47,7 @@ class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
   std::string SendCommandAndWait(const std::string& command) override;
 
  private:
-  base::WeakPtr<TrunksProxy> GetWeakPtr() {
+  base::WeakPtr<TrunksDBusProxy> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();
   }
 
@@ -57,11 +56,11 @@ class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
   dbus::ObjectProxy* object_proxy_;
 
   // Declared last so weak pointers are invalidated first on destruction.
-  base::WeakPtrFactory<TrunksProxy> weak_factory_;
+  base::WeakPtrFactory<TrunksDBusProxy> weak_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(TrunksProxy);
+  DISALLOW_COPY_AND_ASSIGN(TrunksDBusProxy);
 };
 
 }  // namespace trunks
 
-#endif  // TRUNKS_TRUNKS_PROXY_H_
+#endif  // TRUNKS_TRUNKS_DBUS_PROXY_H_

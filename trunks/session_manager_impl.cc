@@ -24,6 +24,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 
@@ -83,7 +84,7 @@ TPM_RC SessionManagerImpl::StartSession(
       reinterpret_cast<unsigned char*>(string_as_array(&salt));
   CHECK_EQ(RAND_bytes(salt_buffer, salt.size()), 1)
       << "Error generating a cryptographically random salt.";
-  // First we enccrypt the cryptographically secure salt using PKCS1_OAEP
+  // First we encrypt the cryptographically secure salt using PKCS1_OAEP
   // padded RSA public key encryption. This is specified in TPM2.0
   // Part1 Architecture, Appendix B.10.2.
   std::string encrypted_salt;

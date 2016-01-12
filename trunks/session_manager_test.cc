@@ -18,10 +18,12 @@
 
 #include <vector>
 
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "trunks/error_codes.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_utility.h"
@@ -60,7 +62,7 @@ class SessionManagerTest : public testing::Test {
         "D3C74E721ACA97F7ADBE2CCF7B4BCC165F7380F48065F2C8370F25F066091259"
         "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
         "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
-    std::vector<uint8> bytes;
+    std::vector<uint8_t> bytes;
     CHECK(base::HexStringToBytes(kValidModulus, &bytes));
     CHECK_EQ(bytes.size(), 256u);
     TPM2B_PUBLIC_KEY_RSA rsa;
@@ -126,9 +128,9 @@ TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_FAILURE, session_manager_.StartSession(TPM_SE_TRIAL,
-                                                          TPM_RH_NULL, "",
-                                                          false, delegate_));
+  EXPECT_EQ(TRUNKS_RC_SESSION_SETUP_ERROR,
+            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "", false,
+                                          delegate_));
 }
 
 TEST_F(SessionManagerTest, StartSessionFailure) {

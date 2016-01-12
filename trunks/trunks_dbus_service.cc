@@ -14,42 +14,43 @@
 // limitations under the License.
 //
 
-#include "trunks/trunks_service.h"
+#include "trunks/trunks_dbus_service.h"
 
 #include <base/bind.h>
 #include <brillo/bind_lambda.h>
 
 #include "trunks/dbus_interface.h"
-#include "trunks/dbus_interface.pb.h"
 #include "trunks/error_codes.h"
+#include "trunks/interface.pb.h"
 
 namespace trunks {
 
+using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusMethodResponse;
 
-TrunksService::TrunksService(const scoped_refptr<dbus::Bus>& bus,
-                             CommandTransceiver* transceiver)
-    : trunks_dbus_object_(nullptr, bus, dbus::ObjectPath(kTrunksServicePath)),
-      transceiver_(transceiver),
-      weak_factory_(this) {}
+TrunksDBusService::TrunksDBusService()
+    : brillo::DBusServiceDaemon(trunks::kTrunksServiceName) {}
 
-void TrunksService::Register(const CompletionAction& callback) {
+void TrunksDBusService::RegisterDBusObjectsAsync(
+    AsyncEventSequencer* sequencer) {
+  trunks_dbus_object_.reset(new brillo::dbus_utils::DBusObject(
+      nullptr, bus_, dbus::ObjectPath(kTrunksServicePath)));
   brillo::dbus_utils::DBusInterface* dbus_interface =
-      trunks_dbus_object_.AddOrGetInterface(kTrunksInterface);
-  dbus_interface->AddMethodHandler(kSendCommand,
-                                   base::Unretained(this),
-                                   &TrunksService::HandleSendCommand);
-  trunks_dbus_object_.RegisterAsync(callback);
+      trunks_dbus_object_->AddOrGetInterface(kTrunksInterface);
+  dbus_interface->AddMethodHandler(kSendCommand, base::Unretained(this),
+                                   &TrunksDBusService::HandleSendCommand);
+  trunks_dbus_object_->RegisterAsync(
+      sequencer->GetHandler("Failed to register D-Bus object.", true));
 }
 
-void TrunksService::HandleSendCommand(
-    std::unique_ptr<DBusMethodResponse<
-        const SendCommandResponse&>> response_sender,
+void TrunksDBusService::HandleSendCommand(
+    std::unique_ptr<DBusMethodResponse<const SendCommandResponse&>>
+        response_sender,
     const SendCommandRequest& request) {
   // Convert |response_sender| to a shared_ptr so |transceiver_| can safely
   // copy the callback.
-  using SharedResponsePointer = std::shared_ptr<
-      DBusMethodResponse<const SendCommandResponse&>>;
+  using SharedResponsePointer =
+      std::shared_ptr<DBusMethodResponse<const SendCommandResponse&>>;
   // A callback that constructs the response protobuf and sends it.
   auto callback = [](const SharedResponsePointer& response,
                      const std::string& response_from_tpm) {
@@ -58,7 +59,7 @@ void TrunksService::HandleSendCommand(
     response->Return(tpm_response_proto);
   };
   if (!request.has_command() || request.command().empty()) {
-    LOG(ERROR) << "TrunksService: Invalid request.";
+    LOG(ERROR) << "TrunksDBusService: Invalid request.";
     callback(SharedResponsePointer(std::move(response_sender)),
              CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
     return;

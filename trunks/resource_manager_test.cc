@@ -230,7 +230,9 @@ class ResourceManagerTest : public testing::Test {
 
   // Creates a TPMS_CONTEXT with the given sequence field.
   TPMS_CONTEXT CreateContext(UINT64 sequence) {
-    TPMS_CONTEXT context = {sequence};
+    TPMS_CONTEXT context;
+    memset(&context, 0, sizeof(context));
+    context.sequence = sequence;
     return context;
   }
 
@@ -756,7 +758,7 @@ TEST_F(ResourceManagerTest, ExternalContext) {
   EXPECT_EQ(context_save_response1, actual_response);
 
   // Invoke a context gap (which will cause context1 to be mapped to context2).
-  EXPECT_CALL(tpm_, ContextLoadSync(Field(&TPMS_CONTEXT::sequence, Eq(1)),
+  EXPECT_CALL(tpm_, ContextLoadSync(Field(&TPMS_CONTEXT::sequence, Eq(1u)),
                                     _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(tpm_, ContextSaveSync(kArbitrarySessionHandle, _, _, _))

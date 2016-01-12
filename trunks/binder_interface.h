@@ -14,24 +14,13 @@
 // limitations under the License.
 //
 
-#ifndef TRUNKS_DBUS_INTERFACE_H_
-#define TRUNKS_DBUS_INTERFACE_H_
+#ifndef TRUNKS_BINDER_INTERFACE_H_
+#define TRUNKS_BINDER_INTERFACE_H_
 
 namespace trunks {
 
-#if defined(__ANDROID__)
-constexpr char kTrunksInterface[] = "com.android.Trunks";
-constexpr char kTrunksServicePath[] = "/com/android/Trunks";
-constexpr char kTrunksServiceName[] = "com.android.Trunks";
-#else
-constexpr char kTrunksInterface[] = "org.chromium.Trunks";
-constexpr char kTrunksServicePath[] = "/org/chromium/Trunks";
-constexpr char kTrunksServiceName[] = "org.chromium.Trunks";
-#endif
-
-// Methods exported by trunks.
-constexpr char kSendCommand[] = "SendCommand";
+constexpr char kTrunksServiceName[] = "trunks_service";
 
 };  // namespace trunks
 
-#endif  // TRUNKS_DBUS_INTERFACE_H_
+#endif  // TRUNKS_BINDER_INTERFACE_H_

@@ -16,6 +16,8 @@
 
 #include "trunks/trunks_factory_impl.h"
 
+#include <base/logging.h>
+
 #include "trunks/blob_parser.h"
 #include "trunks/hmac_session_impl.h"
 #include "trunks/password_authorization_delegate.h"
@@ -24,16 +26,28 @@
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state_impl.h"
 #include "trunks/tpm_utility_impl.h"
-#include "trunks/trunks_proxy.h"
+#if defined(USE_BINDER_IPC)
+#include "trunks/trunks_binder_proxy.h"
+#else
+#include "trunks/trunks_dbus_proxy.h"
+#endif
 
 namespace trunks {
 
-TrunksFactoryImpl::TrunksFactoryImpl() {
-  default_transceiver_.reset(new TrunksProxy());
+TrunksFactoryImpl::TrunksFactoryImpl(bool failure_is_fatal) {
+#if defined(USE_BINDER_IPC)
+  default_transceiver_.reset(new TrunksBinderProxy());
+#else
+  default_transceiver_.reset(new TrunksDBusProxy());
+#endif
   transceiver_ = default_transceiver_.get();
   tpm_.reset(new Tpm(transceiver_));
   if (!transceiver_->Init()) {
-    LOG(ERROR) << "Error initializing transceiver.";
+    if (failure_is_fatal) {
+      LOG(FATAL) << "Error initializing default IPC proxy.";
+    } else {
+      LOG(ERROR) << "Error initializing default IPC proxy.";
+    }
   }
 }
 

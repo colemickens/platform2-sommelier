@@ -64,15 +64,11 @@ ResourceManager::~ResourceManager() {}
 void ResourceManager::Initialize() {
   TPM_RC result = factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr);
   // Ignore TPM_RC_INITIALIZE, that means it was already started.
-  if (result != TPM_RC_SUCCESS && result != TPM_RC_INITIALIZE) {
-    LOG(ERROR) << "TPM startup failure: " << GetErrorString(result);
-    exit(-1);
-  }
+  CHECK(result == TPM_RC_SUCCESS || result == TPM_RC_INITIALIZE)
+      << "TPM startup failure: " << GetErrorString(result);
   result = factory_.GetTpm()->SelfTestSync(YES /* Full test. */, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "TPM self-test failure: " << GetErrorString(result);
-    exit(-1);
-  }
+  CHECK_EQ(result, TPM_RC_SUCCESS) << "TPM self-test failure: "
+                                   << GetErrorString(result);
   // Full control of the TPM is assumed and required. Existing transient object
   // and session handles are mercilessly flushed.
   for (UINT32 handle_type : {HR_TRANSIENT,

@@ -54,14 +54,14 @@ TEST(GeneratorTest, SerializeParseStruct) {
   std::string buffer;
   TPM_RC rc = Serialize_TPM2B_CREATION_DATA(data, &buffer);
   ASSERT_EQ(TPM_RC_SUCCESS, rc);
-  EXPECT_EQ(35, buffer.size());
+  EXPECT_EQ(35u, buffer.size());
   TPM2B_CREATION_DATA data2;
   memset(&data2, 0, sizeof(TPM2B_CREATION_DATA));
   std::string buffer_before = buffer;
   std::string buffer_parsed;
   rc = Parse_TPM2B_CREATION_DATA(&buffer, &data2, &buffer_parsed);
   ASSERT_EQ(TPM_RC_SUCCESS, rc);
-  EXPECT_EQ(0, buffer.size());
+  EXPECT_EQ(0u, buffer.size());
   EXPECT_EQ(buffer_before, buffer_parsed);
   EXPECT_EQ(buffer_before.size() - 2, data2.size);
   EXPECT_EQ(0, memcmp(&data.creation_data,
@@ -81,7 +81,7 @@ TEST(GeneratorTest, ParseBufferOverflow) {
   // Case 1: Sufficient source but overflow the destination.
   std::string malformed1 = "\x10\x00";
   malformed1 += std::string(0x1000, 'A');
-  ASSERT_GT(0x1000, sizeof(tmp.buffer));
+  ASSERT_GT(0x1000u, sizeof(tmp.buffer));
   EXPECT_EQ(TPM_RC_INSUFFICIENT,
             Parse_TPM2B_MAX_BUFFER(&malformed1, &tmp, nullptr));
   // Case 2: Sufficient destination but overflow the source.
@@ -249,7 +249,7 @@ TEST(GeneratorTest, SynchronousCommandResponseTest) {
   EXPECT_EQ(creation_hash.size, 1);
   EXPECT_EQ(creation_hash.buffer[0], 'b');
   EXPECT_EQ(creation_ticket.tag, 0x8002);
-  EXPECT_EQ(creation_ticket.hierarchy, 0x40000007);
+  EXPECT_EQ(creation_ticket.hierarchy, 0x40000007u);
   EXPECT_EQ(creation_ticket.digest.size, 0);
   EXPECT_EQ(key_name.size, 3);
   EXPECT_EQ(key_name.name[0], 'K');

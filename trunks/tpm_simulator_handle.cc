@@ -18,7 +18,7 @@
 
 #include <unistd.h>
 
-#ifdef USE_SIMULATOR
+#if defined(USE_SIMULATOR)
 extern "C" {
 #include <tpm2/TpmBuildSwitches.h>
 #include <tpm2/_TPM_Init_fp.h>
@@ -41,7 +41,7 @@ TpmSimulatorHandle::TpmSimulatorHandle() {}
 TpmSimulatorHandle::~TpmSimulatorHandle() {}
 
 bool TpmSimulatorHandle::Init() {
-#ifdef USE_SIMULATOR
+#if defined(USE_SIMULATOR)
   // Initialize TPM.
   CHECK_EQ(chdir("/data/misc/trunksd"), 0);
   _plat__Signal_PowerOn();
@@ -61,7 +61,7 @@ void TpmSimulatorHandle::SendCommand(const std::string& command,
 }
 
 std::string TpmSimulatorHandle::SendCommandAndWait(const std::string& command) {
-#ifdef USE_SIMULATOR
+#if defined(USE_SIMULATOR)
   unsigned int response_size;
   unsigned char* response;
   std::string mutable_command(command);

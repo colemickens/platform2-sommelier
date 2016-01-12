@@ -1,7 +1,7 @@
 option optimize_for = LITE_RUNTIME;
 package trunks;
 
-// The messages in this file correspond to the trunksd D-Bus interface. Each
+// The messages in this file correspond to the trunksd IPC interface. Each
 // exported method is represented here by a request and response protobuf.
 
 // Inputs for the SendCommand method.

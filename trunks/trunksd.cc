@@ -20,28 +20,35 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/threading/thread.h>
-#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/minijail/minijail.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 
 #include "trunks/background_command_transceiver.h"
-#include "trunks/dbus_interface.h"
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
 #include "trunks/tpm_simulator_handle.h"
+#if defined(USE_BINDER_IPC)
+#include "trunks/trunks_binder_service.h"
+#else
+#include "trunks/trunks_dbus_service.h"
+#endif
 #include "trunks/trunks_factory_impl.h"
 #include "trunks/trunks_ftdi_spi.h"
-#include "trunks/trunks_service.h"
-
-using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace {
 
 const uid_t kRootUID = 0;
+#if defined(__ANDROID__)
+const char kTrunksUser[] = "system";
+const char kTrunksGroup[] = "system";
+const char kTrunksSeccompPath[] =
+    "/system/usr/share/policy/trunksd-seccomp.policy";
+#else
 const char kTrunksUser[] = "trunks";
 const char kTrunksGroup[] = "trunks";
 const char kTrunksSeccompPath[] = "/usr/share/policy/trunksd-seccomp.policy";
+#endif
 const char kBackgroundThreadName[] = "trunksd_background_thread";
 
 void InitMinijailSandbox() {
@@ -49,7 +56,7 @@ void InitMinijailSandbox() {
   gid_t trunks_gid;
   CHECK(brillo::userdb::GetUserInfo(kTrunksUser, &trunks_uid, &trunks_gid))
       << "Error getting trunks uid and gid.";
-  CHECK_EQ(getuid(), kRootUID) << "Trunks Daemon not initialized as root.";
+  CHECK_EQ(getuid(), kRootUID) << "trunksd not initialized as root.";
   brillo::Minijail* minijail = brillo::Minijail::GetInstance();
   struct minijail* jail = minijail->New();
   minijail->DropRoot(jail, kTrunksUser, kTrunksGroup);
@@ -57,58 +64,12 @@ void InitMinijailSandbox() {
   minijail->Enter(jail);
   minijail->Destroy(jail);
   CHECK_EQ(getuid(), trunks_uid)
-      << "TrunksDaemon was not able to drop to trunks user.";
+      << "trunksd was not able to drop user privilege.";
   CHECK_EQ(getgid(), trunks_gid)
-      << "TrunksDaemon was not able to drop to trunks group.";
+      << "trunksd was not able to drop group privilege.";
 }
 
 }  // namespace
-
-class TrunksDaemon : public brillo::DBusServiceDaemon {
- public:
-  explicit TrunksDaemon(trunks::CommandTransceiver* transceiver) :
-      brillo::DBusServiceDaemon(trunks::kTrunksServiceName) {
-    transceiver_.reset(transceiver);
-    background_thread_.reset(new base::Thread(kBackgroundThreadName));
-    CHECK(background_thread_->Start());
-    // Chain together command transceivers:
-    //   [IPC] --> TrunksService --> BackgroundCommandTransceiver -->
-    //       ResourceManager --> TpmHandle --> [TPM]
-    factory_.reset(new trunks::TrunksFactoryImpl(transceiver_.get()));
-    resource_manager_.reset(new trunks::ResourceManager(
-        *factory_,
-        transceiver_.get()));
-    background_thread_->task_runner()->PostNonNestableTask(
-        FROM_HERE,
-        base::Bind(&trunks::ResourceManager::Initialize,
-        base::Unretained(resource_manager_.get())));
-    background_transceiver_.reset(
-        new trunks::BackgroundCommandTransceiver(
-            resource_manager_.get(),
-            background_thread_->task_runner()));
-  }
-
- protected:
-  void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    trunks_service_.reset(new trunks::TrunksService(
-        bus_,
-        background_transceiver_.get()));
-    trunks_service_->Register(
-        sequencer->GetHandler("Register() failed.", true));
-  }
-
-
- private:
-  std::unique_ptr<trunks::TrunksService> trunks_service_;
-  std::unique_ptr<trunks::CommandTransceiver> transceiver_;
-  // Thread for executing TPM comands.
-  std::unique_ptr<base::Thread> background_thread_;
-  std::unique_ptr<trunks::TrunksFactory> factory_;
-  std::unique_ptr<trunks::ResourceManager> resource_manager_;
-  std::unique_ptr<trunks::CommandTransceiver> background_transceiver_;
-
-  DISALLOW_COPY_AND_ASSIGN(TrunksDaemon);
-};
 
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
@@ -118,17 +79,45 @@ int main(int argc, char **argv) {
     flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(flags);
-  trunks::CommandTransceiver *transceiver;
+
+  // Create a service instance before anything else so objects like
+  // AtExitManager exist.
+#if defined(USE_BINDER_IPC)
+  trunks::TrunksBinderService service;
+#else
+  trunks::TrunksDBusService service;
+#endif
+
+  // Chain together command transceivers:
+  //   [IPC] --> BackgroundCommandTransceiver
+  //         --> ResourceManager
+  //         --> TpmHandle
+  //         --> [TPM]
+  trunks::CommandTransceiver *low_level_transceiver;
   if (cl->HasSwitch("ftdi")) {
-    transceiver = new trunks::TrunksFtdiSpi();
+    LOG(INFO) << "Sending commands to FTDI SPI.";
+    low_level_transceiver = new trunks::TrunksFtdiSpi();
   } else if (cl->HasSwitch("simulator")) {
-    transceiver = new trunks::TpmSimulatorHandle();
+    LOG(INFO) << "Sending commands to simulator.";
+    low_level_transceiver = new trunks::TpmSimulatorHandle();
   } else {
-    transceiver = new trunks::TpmHandle();
+    low_level_transceiver = new trunks::TpmHandle();
   }
-  CHECK(transceiver->Init()) << "Error initializing transceiver";
-  TrunksDaemon daemon(transceiver);
+  CHECK(low_level_transceiver->Init())
+      << "Error initializing TPM communication.";
+  // This needs to be *after* opening the TPM handle and *before* starting the
+  // background thread.
   InitMinijailSandbox();
-  LOG(INFO) << "Trunks Service Started";
-  return daemon.Run();
+  base::Thread background_thread(kBackgroundThreadName);
+  CHECK(background_thread.Start()) << "Failed to start background thread.";
+  trunks::TrunksFactoryImpl factory(low_level_transceiver);
+  trunks::ResourceManager resource_manager(factory, low_level_transceiver);
+  background_thread.task_runner()->PostNonNestableTask(
+      FROM_HERE, base::Bind(&trunks::ResourceManager::Initialize,
+                            base::Unretained(&resource_manager)));
+  trunks::BackgroundCommandTransceiver background_transceiver(
+      &resource_manager, background_thread.task_runner());
+  service.set_transceiver(&background_transceiver);
+  LOG(INFO) << "Trunks service started.";
+  return service.Run();
 }
