@@ -86,9 +86,12 @@ class WebservTestClient : public WebservTestClientBaseClass {
         AsyncEventSequencer::GetDefaultCompletionAction(),
         base::Bind(&LogServerOnlineStatus, true /* online */),
         base::Bind(&LogServerOnlineStatus, false /* offline */));
-#else
-  #error "No alteratives to DBus are currently implemented!"
-#endif  // WEBSERV_USE_DBUS
+#elif WEBSERV_USE_BINDER
+    webserver_ = Server::ConnectToServerViaBinder(
+        message_loop(),
+        base::Bind(&LogServerOnlineStatus, true /* online */),
+        base::Bind(&LogServerOnlineStatus, false /* offline */));
+#endif  // WEBSERV_USE_DBUS || WEBSERV_USE_BINDER
 
     // Note that adding this handler is only local, and we won't receive
     // requests until the library does some async book keeping.

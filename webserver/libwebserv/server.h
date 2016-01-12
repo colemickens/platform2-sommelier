@@ -15,15 +15,29 @@
 #ifndef WEBSERVER_LIBWEBSERV_SERVER_H_
 #define WEBSERVER_LIBWEBSERV_SERVER_H_
 
+// In our own Android.mk, we set these flags for ourselves.  However, for
+// libraries consuming libwebserv, they don't have any of that logic.  Leave us
+// with DBus bindings until the Binder interface is ready.
+#if !defined(WEBSERV_USE_DBUS) && !defined(WEBSERV_USE_BINDER)
+#define WEBSERV_USE_DBUS
+#endif
+
 #include <memory>
 #include <string>
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <libwebserv/export.h>
+
+#if defined(WEBSERV_USE_DBUS)
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/bus.h>
-#include <libwebserv/export.h>
+#endif  // defined(WEBSERV_USE_DBUS)
+
+#if defined(WEBSERV_USE_BINDER)
+#include <brillo/message_loops/message_loop.h>
+#endif  // defined(WEBSERV_USE_BINDER)
 
 namespace libwebserv {
 
@@ -36,20 +50,42 @@ class LIBWEBSERV_EXPORT Server {
   Server() = default;
   virtual ~Server() = default;
 
+#if defined(WEBSERV_USE_DBUS)
   // Establish a connection to the system webserver.
+  //
   // |service_name| is the well known D-Bus name of the client's process, used
   // to expose a callback D-Bus object the web server calls back with incoming
   // requests.
   // |on_server_online| and |on_server_offline| will notify the caller when the
   // server comes up and down.
-  // Note that we can Connect() even before the webserver attaches to D-Bus,
-  // and appropriate state will be built up when the webserver appears on D-Bus.
+  //
+  // Note that you can use the returned Server instance as if the webserver
+  // process is actually running (ignoring webserver crashes and restarts).
+  // All registered request handlers will simply be re-registered when the
+  // webserver appears again.
   static std::unique_ptr<Server> ConnectToServerViaDBus(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
       const base::Closure& on_server_online,
       const base::Closure& on_server_offline);
+#endif  // defined(WEBSERV_USE_DBUS)
+
+#if defined(WEBSERV_USE_BINDER)
+  // Establish a connection to the system webserver.
+  //
+  // |on_server_online| and |on_server_offline| will notify the caller when the
+  // server comes up and down.
+  //
+  // Note that you can use the returned Server instance as if the webserver
+  // process is actually running (ignoring webserver crashes and restarts).
+  // All registered request handlers will simply be re-registered when the
+  // webserver appears again.
+  static std::unique_ptr<Server> ConnectToServerViaBinder(
+      brillo::MessageLoop* message_loop,
+      const base::Closure& on_server_online,
+      const base::Closure& on_server_offline);
+#endif  // defined(WEBSERV_USE_BINDER)
 
   // A helper method that returns the default handler for "http".
   virtual ProtocolHandler* GetDefaultHttpHandler() = 0;
