@@ -422,11 +422,11 @@ class ExampleTracingMetadata {
  public:
   class Data : public StreamWriteable {
    public:
-    static const std::vector<char> kTraceMetadata;
+    static const string kTraceMetadata;
 
     explicit Data(ExampleTracingMetadata* parent) : parent_(parent) {}
 
-    const std::vector<char> value() const { return kTraceMetadata; }
+    const string& value() const { return kTraceMetadata; }
 
     void WriteTo(std::ostream* out) const override;
 

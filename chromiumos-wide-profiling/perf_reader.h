@@ -169,11 +169,8 @@ class PerfReader {
     return proto_.mutable_build_ids();
   }
 
-  const std::vector<char>& tracing_data() const {
-    return tracing_data_;
-  }
-  std::vector<char>* mutable_tracing_data() {
-    return &tracing_data_;
+  const string& tracing_data() const {
+    return proto_.tracing_data().tracing_data();
   }
 
   uint64_t metadata_mask() const {
@@ -185,34 +182,6 @@ class PerfReader {
 
   const PerfDataProto_StringMetadata& string_metadata() const {
     return proto_.string_metadata();
-  }
-
-  const std::vector<PerfUint32Metadata>& uint32_metadata() const {
-    return uint32_metadata_;
-  }
-  std::vector<PerfUint32Metadata>* mutable_uint32_metadata() {
-    return &uint32_metadata_;
-  }
-
-  const std::vector<PerfUint64Metadata>& uint64_metadata() const {
-    return uint64_metadata_;
-  }
-  std::vector<PerfUint64Metadata>* mutable_uint64_metadata() {
-    return &uint64_metadata_;
-  }
-
-  const PerfCPUTopologyMetadata& cpu_topology() const {
-    return cpu_topology_;
-  }
-  PerfCPUTopologyMetadata* mutable_cpu_topology() {
-    return &cpu_topology_;
-  }
-
-  const std::vector<PerfNodeTopologyMetadata>& numa_topology() const {
-    return numa_topology_;
-  }
-  std::vector<PerfNodeTopologyMetadata>* mutable_numa_topology() {
-    return &numa_topology_;
   }
 
  private:
@@ -340,11 +309,6 @@ class PerfReader {
   // TODO(sque): Store all fields in here, not just events.
   PerfDataProto proto_;
 
-  std::vector<PerfUint32Metadata> uint32_metadata_;
-  std::vector<PerfUint64Metadata> uint64_metadata_;
-  PerfCPUTopologyMetadata cpu_topology_;
-  std::vector<PerfNodeTopologyMetadata> numa_topology_;
-  std::vector<char> tracing_data_;
   uint64_t metadata_mask_;
 
   // Whether the incoming data is from a machine with a different endianness. We

@@ -225,9 +225,15 @@ bool PerfReader::Serialize(PerfDataProto* perf_data_proto) const {
     perf_data_proto->mutable_string_metadata()->
         CopyFrom(proto_.string_metadata());
   }
-  if (!serializer_.SerializeMetadata(*this, perf_data_proto)) {
-    return false;
-  }
+  if (proto_.has_tracing_data())
+    perf_data_proto->mutable_tracing_data()->CopyFrom(proto_.tracing_data());
+  perf_data_proto->mutable_uint32_metadata()->
+      CopyFrom(proto_.uint32_metadata());
+  perf_data_proto->mutable_uint64_metadata()->
+      CopyFrom(proto_.uint64_metadata());
+  if (proto_.has_cpu_topology())
+    perf_data_proto->mutable_cpu_topology()->CopyFrom(proto_.cpu_topology());
+  perf_data_proto->mutable_numa_topology()->CopyFrom(proto_.numa_topology());
 
   // Add a timestamp_sec to the protobuf.
   struct timeval timestamp_sec;
@@ -254,8 +260,13 @@ bool PerfReader::Deserialize(const PerfDataProto& perf_data_proto) {
     proto_.mutable_string_metadata()->
         CopyFrom(perf_data_proto.string_metadata());
   }
-  if (!serializer_.DeserializeMetadata(perf_data_proto, this))
-    return false;
+  if (perf_data_proto.has_tracing_data())
+    proto_.mutable_tracing_data()->CopyFrom(perf_data_proto.tracing_data());
+  proto_.mutable_uint32_metadata()->CopyFrom(perf_data_proto.uint32_metadata());
+  proto_.mutable_uint64_metadata()->CopyFrom(perf_data_proto.uint64_metadata());
+  if (perf_data_proto.has_cpu_topology())
+    proto_.mutable_cpu_topology()->CopyFrom(perf_data_proto.cpu_topology());
+  proto_.mutable_numa_topology()->CopyFrom(perf_data_proto.numa_topology());
 
   // Copy over events directly.
   proto_.mutable_events()->CopyFrom(perf_data_proto.events());
@@ -428,7 +439,7 @@ size_t PerfReader::GetSize() const {
   total_size += GetNumSupportedMetadata() * sizeof(struct perf_file_section);
 
   // Add the sizes of the various metadata.
-  total_size += tracing_data_.size();
+  total_size += tracing_data().size();
   total_size += GetBuildIDMetadataSize();
   total_size += GetStringMetadataSize();
   total_size += GetUint32MetadataSize();
@@ -1118,7 +1129,8 @@ bool PerfReader::ReadUint32Metadata(DataReader* data, u32 type, size_t size) {
     size -= sizeof(item);
   }
 
-  uint32_metadata_.push_back(uint32_data);
+  serializer_.SerializeSingleUint32Metadata(uint32_data,
+                                            proto_.add_uint32_metadata());
   return true;
 }
 
@@ -1137,7 +1149,8 @@ bool PerfReader::ReadUint64Metadata(DataReader* data, u32 type, size_t size) {
     size -= sizeof(item);
   }
 
-  uint64_metadata_.push_back(uint64_data);
+  serializer_.SerializeSingleUint64Metadata(uint64_data,
+                                            proto_.add_uint64_metadata());
   return true;
 }
 
@@ -1209,9 +1222,10 @@ bool PerfReader::ReadCPUTopologyMetadata(DataReader* data, u32 type,
     return false;
   }
 
-  cpu_topology_.core_siblings.resize(num_core_siblings);
+  PerfCPUTopologyMetadata cpu_topology;
+  cpu_topology.core_siblings.resize(num_core_siblings);
   for (size_t i = 0; i < num_core_siblings; ++i) {
-    if (!ReadStringFromBuffer(data, &cpu_topology_.core_siblings[i]))
+    if (!ReadStringFromBuffer(data, &cpu_topology.core_siblings[i]))
       return false;
   }
 
@@ -1221,16 +1235,19 @@ bool PerfReader::ReadCPUTopologyMetadata(DataReader* data, u32 type,
     return false;
   }
 
-  cpu_topology_.thread_siblings.resize(num_thread_siblings);
+  cpu_topology.thread_siblings.resize(num_thread_siblings);
   for (size_t i = 0; i < num_thread_siblings; ++i) {
-    if (!ReadStringFromBuffer(data, &cpu_topology_.thread_siblings[i]))
+    if (!ReadStringFromBuffer(data, &cpu_topology.thread_siblings[i]))
       return false;
   }
 
+  serializer_.SerializeCPUTopologyMetadata(cpu_topology,
+                                           proto_.mutable_cpu_topology());
   return true;
 }
 
-bool PerfReader::ReadNUMATopologyMetadata(DataReader* data, u32 type,
+bool PerfReader::ReadNUMATopologyMetadata(DataReader* data,
+                                          u32 type,
                                           size_t size) {
   numa_topology_num_nodes_type num_nodes;
   if (!data->ReadUint32(&num_nodes)) {
@@ -1247,16 +1264,20 @@ bool PerfReader::ReadNUMATopologyMetadata(DataReader* data, u32 type,
       LOG(ERROR) << "Error reading NUMA topology info for node #" << i;
       return false;
     }
-    numa_topology_.push_back(node);
+    serializer_.SerializeNodeTopologyMetadata(node, proto_.add_numa_topology());
   }
   return true;
 }
 
 // TODO(cwp-team): Move this to match the order in the header file.
 bool PerfReader::ReadTracingMetadata(DataReader* data, size_t size) {
-  tracing_data_.resize(size);
-  return data->ReadDataValue(tracing_data_.size(), "tracing_data",
-                             tracing_data_.data());
+  std::vector<char> tracing_data(size);
+  if (!data->ReadDataValue(tracing_data.size(), "tracing_data",
+                           tracing_data.data())) {
+    return false;
+  }
+  serializer_.SerializeTracingMetadata(tracing_data, &proto_);
+  return true;
 }
 
 bool PerfReader::ReadPipedData(DataReader* data) {
@@ -1510,7 +1531,7 @@ bool PerfReader::WriteMetadata(const struct perf_file_header& header,
     // Write actual metadata to address metadata_offset
     switch (type) {
     case HEADER_TRACING_DATA:
-      if (!data->WriteDataValue(tracing_data_.data(), tracing_data_.size(),
+      if (!data->WriteDataValue(tracing_data().data(), tracing_data().size(),
                                 "tracing data")) {
         return false;
       }
@@ -1644,40 +1665,30 @@ bool PerfReader::WriteRepeatedStringMetadata(
 }
 
 bool PerfReader::WriteUint32Metadata(u32 type, DataWriter* data) const {
-  for (size_t i = 0; i < uint32_metadata_.size(); ++i) {
-    const PerfUint32Metadata& uint32_data = uint32_metadata_[i];
-    if (uint32_data.type == type) {
-      const std::vector<uint32_t>& int_vector = uint32_data.data;
-
-      for (size_t j = 0; j < int_vector.size(); ++j) {
-        if (!data->WriteDataValue(&int_vector[j], sizeof(int_vector[j]),
-                                  "uint32_t metadata")) {
-          return false;
-        }
-      }
-
-      return true;
-    }
+  for (const auto& metadata : proto_.uint32_metadata()) {
+    if (metadata.type() != type)
+      continue;
+    PerfUint32Metadata local_metadata;
+    serializer_.DeserializeSingleUint32Metadata(metadata, &local_metadata);
+    const std::vector<uint32_t>& raw_data = local_metadata.data;
+    return data->WriteDataValue(raw_data.data(),
+                                raw_data.size() * sizeof(uint32_t),
+                                "uint32_t metadata");
   }
   LOG(ERROR) << "Uint32 metadata of type " << type << " not present";
   return false;
 }
 
 bool PerfReader::WriteUint64Metadata(u32 type, DataWriter* data) const {
-  for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
-    const PerfUint64Metadata& uint64_data = uint64_metadata_[i];
-    if (uint64_data.type == type) {
-      const std::vector<uint64_t>& int_vector = uint64_data.data;
-
-      for (size_t j = 0; j < int_vector.size(); ++j) {
-        if (!data->WriteDataValue(&int_vector[j], sizeof(int_vector[j]),
-                                  "uint64_t metadata")) {
-          return false;
-        }
-      }
-
-      return true;
-    }
+  for (const auto& metadata : proto_.uint64_metadata()) {
+    if (metadata.type() != type)
+      continue;
+    PerfUint64Metadata local_metadata;
+    serializer_.DeserializeSingleUint64Metadata(metadata, &local_metadata);
+    const std::vector<uint64_t>& raw_data = local_metadata.data;
+    return data->WriteDataValue(raw_data.data(),
+                                raw_data.size() * sizeof(uint64_t),
+                                "uint32_t metadata");
   }
   LOG(ERROR) << "Uint64 metadata of type " << type << " not present";
   return false;
@@ -1736,7 +1747,11 @@ bool PerfReader::WriteEventDescMetadata(u32 type, DataWriter* data) const {
 }
 
 bool PerfReader::WriteCPUTopologyMetadata(u32 type, DataWriter* data) const {
-  const std::vector<CStringWithLength>& cores = cpu_topology_.core_siblings;
+  PerfCPUTopologyMetadata cpu_topology;
+  serializer_.DeserializeCPUTopologyMetadata(proto_.cpu_topology(),
+                                             &cpu_topology);
+
+  const std::vector<CStringWithLength>& cores = cpu_topology.core_siblings;
   num_siblings_type num_cores = cores.size();
   if (!data->WriteDataValue(&num_cores, sizeof(num_cores), "num cores"))
     return false;
@@ -1745,7 +1760,7 @@ bool PerfReader::WriteCPUTopologyMetadata(u32 type, DataWriter* data) const {
       return false;
   }
 
-  const std::vector<CStringWithLength>& threads = cpu_topology_.thread_siblings;
+  const std::vector<CStringWithLength>& threads = cpu_topology.thread_siblings;
   num_siblings_type num_threads = threads.size();
   if (!data->WriteDataValue(&num_threads, sizeof(num_threads), "num threads"))
     return false;
@@ -1758,12 +1773,14 @@ bool PerfReader::WriteCPUTopologyMetadata(u32 type, DataWriter* data) const {
 }
 
 bool PerfReader::WriteNUMATopologyMetadata(u32 type, DataWriter* data) const {
-  numa_topology_num_nodes_type num_nodes = numa_topology_.size();
+  numa_topology_num_nodes_type num_nodes = proto_.numa_topology().size();
   if (!data->WriteDataValue(&num_nodes, sizeof(num_nodes), "num nodes"))
     return false;
 
-  for (size_t i = 0; i < num_nodes; ++i) {
-    const PerfNodeTopologyMetadata& node = numa_topology_[i];
+  for (const auto& node_proto : proto_.numa_topology()) {
+    PerfNodeTopologyMetadata node;
+    serializer_.DeserializeNodeTopologyMetadata(node_proto, &node);
+
     if (!data->WriteDataValue(&node.id, sizeof(node.id), "node id") ||
         !data->WriteDataValue(&node.total_memory, sizeof(node.total_memory),
                               "node total memory") ||
@@ -1926,47 +1943,38 @@ size_t PerfReader::GetStringMetadataSize() const {
 
 size_t PerfReader::GetUint32MetadataSize() const {
   size_t size = 0;
-  for (size_t i = 0; i < uint32_metadata_.size(); ++i) {
-    const PerfUint32Metadata& metadata = uint32_metadata_[i];
-    size += metadata.data.size() * sizeof(metadata.data[0]);
-  }
+  for (const auto& metadata : proto_.uint32_metadata())
+    size += metadata.data().size() * sizeof(uint32_t);
   return size;
 }
 
 size_t PerfReader::GetUint64MetadataSize() const {
   size_t size = 0;
-  for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
-    const PerfUint64Metadata& metadata = uint64_metadata_[i];
-    size += metadata.data.size() * sizeof(metadata.data[0]);
-  }
+  for (const auto& metadata : proto_.uint64_metadata())
+    size += metadata.data().size() * sizeof(uint64_t);
   return size;
 }
 
 size_t PerfReader::GetCPUTopologyMetadataSize() const {
   // Core siblings.
   size_t size = sizeof(num_siblings_type);
-  for (size_t i = 0; i < cpu_topology_.core_siblings.size(); ++i) {
-    const CStringWithLength& str = cpu_topology_.core_siblings[i];
-    size += sizeof(str.len) + str.len;
-  }
+  for (const string& core_sibling : proto_.cpu_topology().core_siblings())
+    size += CStringWithLength::ExpectedStorageSizeOf(core_sibling);
 
   // Thread siblings.
   size += sizeof(num_siblings_type);
-  for (size_t i = 0; i < cpu_topology_.thread_siblings.size(); ++i) {
-    const CStringWithLength& str = cpu_topology_.thread_siblings[i];
-    size += sizeof(str.len) + str.len;
-  }
+  for (const string& thread_sibling : proto_.cpu_topology().thread_siblings())
+    size += CStringWithLength::ExpectedStorageSizeOf(thread_sibling);
 
   return size;
 }
 
 size_t PerfReader::GetNUMATopologyMetadataSize() const {
   size_t size = sizeof(numa_topology_num_nodes_type);
-  for (size_t i = 0; i < numa_topology_.size(); ++i) {
-    const PerfNodeTopologyMetadata& node = numa_topology_[i];
-    size += sizeof(node.id);
-    size += sizeof(node.total_memory) + sizeof(node.free_memory);
-    size += sizeof(node.cpu_list.len) + node.cpu_list.len;
+  for (const auto& node : proto_.numa_topology()) {
+    size += sizeof(node.id());
+    size += sizeof(node.total_memory()) + sizeof(node.free_memory());
+    size += CStringWithLength::ExpectedStorageSizeOf(node.cpu_list());
   }
   return size;
 }

@@ -753,41 +753,6 @@ bool PerfSerializer::DeserializeTracingMetadata(
   return true;
 }
 
-bool PerfSerializer::SerializeMetadata(const PerfReader& from,
-                                       PerfDataProto* to) const {
-  if (!SerializeTracingMetadata(from.tracing_data(), to) ||
-      !SerializeUint32Metadata(from.uint32_metadata(),
-                               to->mutable_uint32_metadata()) ||
-      !SerializeUint64Metadata(from.uint64_metadata(),
-                               to->mutable_uint64_metadata()) ||
-      !((from.cpu_topology().core_siblings.empty() &&
-         from.cpu_topology().thread_siblings.empty()) ||
-        SerializeCPUTopologyMetadata(from.cpu_topology(),
-                                     to->mutable_cpu_topology())) ||
-      !SerializeNUMATopologyMetadata(from.numa_topology(),
-                                     to->mutable_numa_topology())) {
-    return false;
-  }
-  return true;
-}
-
-bool PerfSerializer::DeserializeMetadata(const PerfDataProto& from,
-                                         PerfReader* to) {
-  if (!DeserializeTracingMetadata(from, to->mutable_tracing_data()) ||
-      !DeserializeUint32Metadata(from.uint32_metadata(),
-                                 to->mutable_uint32_metadata()) ||
-      !DeserializeUint64Metadata(from.uint64_metadata(),
-                                 to->mutable_uint64_metadata()) ||
-      !DeserializeCPUTopologyMetadata(from.cpu_topology(),
-                                      to->mutable_cpu_topology()) ||
-      !DeserializeNUMATopologyMetadata(from.numa_topology(),
-                                       to->mutable_numa_topology())) {
-    return false;
-  }
-
-  return true;
-}
-
 bool PerfSerializer::SerializeBuildIDEvent(
     const malloced_unique_ptr<build_id_event>& from,
     PerfDataProto_PerfBuildID* to) const {

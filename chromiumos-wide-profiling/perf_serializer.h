@@ -32,51 +32,6 @@ struct PerfParserOptions;
 struct PerfUint32Metadata;
 struct PerfUint64Metadata;
 
-class PerfReader;
-class PerfSerializer;
-
-// Functor to serialize a vector of perf structs to a Proto repeated field,
-// using a method serializes one such item.
-// Overriding RefT allows serializing a vector of pointers to struct with
-// a serialize member fuction that takes const T* (instead of T*const&).
-template <typename Proto, typename T, typename RefT = const T&>
-struct VectorSerializer {
-  bool operator()(const std::vector<T>& from,
-                  RepeatedPtrField<Proto>* to) const {
-    to->Reserve(from.size());
-    for (size_t i = 0; i != from.size(); ++i) {
-      Proto* to_element = to->Add();
-      if (to_element == NULL) {
-        return false;
-      }
-      if (!(p->*serialize)(from[i], to_element)) {
-        return false;
-      }
-    }
-    return true;
-  }
-  const PerfSerializer* p;
-  bool (PerfSerializer::*serialize)(RefT, Proto*) const;
-};
-
-// Functor to deserialize a Proto repeated field to a vector of perf structs,
-// using a method that deserializes one Proto.
-template <typename Proto, typename T>
-struct VectorDeserializer {
-  bool operator()(const RepeatedPtrField<Proto>& from,
-                  std::vector<T>* to) const {
-    to->resize(from.size());
-    for (int i = 0; i != from.size(); ++i) {
-      if (!(p->*deserialize)(from.Get(i), &(*to)[i])) {
-        return false;
-      }
-    }
-    return true;
-  }
-  const PerfSerializer* p;
-  bool (PerfSerializer::*deserialize)(const Proto&, T*) const;
-};
-
 class PerfSerializer {
  public:
   PerfSerializer();
@@ -178,9 +133,6 @@ class PerfSerializer {
   bool DeserializeTracingMetadata(const PerfDataProto& from,
                                   std::vector<char>* to) const;
 
-  bool SerializeMetadata(const PerfReader& from, PerfDataProto* to) const;
-  bool DeserializeMetadata(const PerfDataProto& from, PerfReader* to);
-
   bool SerializeBuildIDEvent(const malloced_unique_ptr<build_id_event>& from,
                              PerfDataProto_PerfBuildID* to) const;
   bool DeserializeBuildIDEvent(const PerfDataProto_PerfBuildID& from,
@@ -218,29 +170,6 @@ class PerfSerializer {
                                    PerfDataProto* perf_data_proto);
   static void DeserializeParserStats(const PerfDataProto& perf_data_proto,
                                      PerfEventStats* stats);
-
-  const VectorSerializer<PerfDataProto_PerfUint32Metadata, PerfUint32Metadata>
-      SerializeUint32Metadata = {
-        this, &PerfSerializer::SerializeSingleUint32Metadata};
-  const VectorDeserializer<PerfDataProto_PerfUint32Metadata, PerfUint32Metadata>
-      DeserializeUint32Metadata = {
-        this, &PerfSerializer::DeserializeSingleUint32Metadata};
-
-  const VectorSerializer<PerfDataProto_PerfUint64Metadata, PerfUint64Metadata>
-      SerializeUint64Metadata = {
-        this, &PerfSerializer::SerializeSingleUint64Metadata};
-  const VectorDeserializer<PerfDataProto_PerfUint64Metadata, PerfUint64Metadata>
-      DeserializeUint64Metadata = {
-        this, &PerfSerializer::DeserializeSingleUint64Metadata};
-
-  const VectorSerializer<PerfDataProto_PerfNodeTopologyMetadata,
-                         PerfNodeTopologyMetadata>
-      SerializeNUMATopologyMetadata = {
-        this, &PerfSerializer::SerializeNodeTopologyMetadata};
-  const VectorDeserializer<PerfDataProto_PerfNodeTopologyMetadata,
-                           PerfNodeTopologyMetadata>
-      DeserializeNUMATopologyMetadata = {
-        this, &PerfSerializer::DeserializeNodeTopologyMetadata};
 
   // Instantiate a new PerfSampleReader with the given attr type. If an old one
   // exists for that attr type, it is discarded.

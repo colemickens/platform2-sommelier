@@ -446,8 +446,8 @@ void ExampleStringMetadataEvent::WriteTo(std::ostream* out) const {
 static const char kTraceMetadataValue[] =
     "\x17\x08\x44tracing0.5BLAHBLAHBLAH....";
 
-const std::vector<char> ExampleTracingMetadata::Data::kTraceMetadata(
-    kTraceMetadataValue, kTraceMetadataValue+sizeof(kTraceMetadataValue)-1);
+const string ExampleTracingMetadata::Data::kTraceMetadata(
+    kTraceMetadataValue, sizeof(kTraceMetadataValue)-1);
 
 void ExampleTracingMetadata::Data::WriteTo(std::ostream* out) const {
   const perf_file_section &index_entry = parent_->index_entry_.index_entry_;

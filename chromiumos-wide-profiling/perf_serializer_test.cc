@@ -193,7 +193,7 @@ TEST(PerfSerializerTest, Test1Cycle) {
     string output_perf_data1 = output_path + test_file + ".serialized.1.out";
 
     LOG(INFO) << "Testing " << input_perf_data;
-    input_perf_reader.ReadFile(input_perf_data);
+    ASSERT_TRUE(input_perf_reader.ReadFile(input_perf_data));
 
     // Discard unused events for a pseudorandom selection of half the test data
     // files. The selection is based on the Md5sum prefix of the file contents,
@@ -445,22 +445,17 @@ TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
   PerfDataProto perf_data_proto;
   ASSERT_TRUE(reader.Serialize(&perf_data_proto));
 
-  const std::vector<char> &tracing_metadata_value =
-      tracing_metadata.data().value();
-  const string tracing_metadata_str(tracing_metadata_value.data(),
-                                    tracing_metadata_value.size());
-  uint64_t tracing_metadata_md5_prefix =
-      Md5Prefix(tracing_metadata_value);
-  EXPECT_EQ(tracing_metadata_str,
-            perf_data_proto.tracing_data().tracing_data());
-  EXPECT_EQ(tracing_metadata_md5_prefix,
-            perf_data_proto.tracing_data().tracing_data_md5_prefix());
+  const string& tracing_metadata_str = tracing_metadata.data().value();
+  const auto& tracing_data = perf_data_proto.tracing_data();
+  EXPECT_EQ(tracing_metadata_str, tracing_data.tracing_data());
+  EXPECT_EQ(Md5Prefix(tracing_metadata_str),
+            tracing_data.tracing_data_md5_prefix());
 
   // Deserialize
 
   PerfReader deserializer;
   EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
-  EXPECT_EQ(tracing_metadata_value, deserializer.tracing_data());
+  EXPECT_EQ(tracing_metadata_str, deserializer.tracing_data());
 }
 
 TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {

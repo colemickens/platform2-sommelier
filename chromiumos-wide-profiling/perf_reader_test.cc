@@ -239,6 +239,7 @@ TEST(PerfReaderTest, ReadsAndWritesTraceMetadata) {
 
   PerfReader pr;
   ASSERT_TRUE(pr.ReadFromString(input.str()));
+
   EXPECT_EQ(tracing_metadata.data().value(), pr.tracing_data());
 
   // Write it out and read it in again, it should still be good:
@@ -256,8 +257,8 @@ TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
 
   // data
 
-  const char x[] = "\x17\x08\x44tracing0.5BLAHBLAHBLAH....";
-  const std::vector<char> trace_metadata(x, x+sizeof(x)-1);
+  const char raw_data[] = "\x17\x08\x44tracing0.5BLAHBLAHBLAH....";
+  const string trace_metadata(raw_data, sizeof(raw_data)-1);
 
   const tracing_data_event trace_event = {
     .header = {
