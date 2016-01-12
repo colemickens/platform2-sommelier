@@ -833,26 +833,13 @@ TEST(PerfReaderTest, ReadsAllAvailableMetadataTypes) {
   PerfReader pr;
   ASSERT_TRUE(pr.ReadFromString(input.str()));
 
+  // The dummy metadata should not have prevented the reading of the other
+  // metadata.
   const auto& string_metadata = pr.string_metadata();
-
-  // The dummy metadata should not have been stored.
-  EXPECT_EQ(4, string_metadata.size());
-
-  // Make sure each metadata entry has a stored string value.
-  for (const auto& entry : string_metadata)
-    EXPECT_EQ(1, entry.data.size());
-
-  EXPECT_EQ(HEADER_HOSTNAME, string_metadata[0].type);
-  EXPECT_EQ("hostname", string_metadata[0].data[0].str);
-
-  EXPECT_EQ(HEADER_OSRELEASE, string_metadata[1].type);
-  EXPECT_EQ("osrelease", string_metadata[1].data[0].str);
-
-  EXPECT_EQ(HEADER_VERSION, string_metadata[2].type);
-  EXPECT_EQ("version", string_metadata[2].data[0].str);
-
-  EXPECT_EQ(HEADER_ARCH, string_metadata[3].type);
-  EXPECT_EQ("arch", string_metadata[3].data[0].str);
+  EXPECT_EQ("hostname", string_metadata.hostname().value());
+  EXPECT_EQ("osrelease", string_metadata.kernel_version().value());
+  EXPECT_EQ("version", string_metadata.perf_version().value());
+  EXPECT_EQ("arch", string_metadata.architecture().value());
 }
 
 // Regression test for http://crbug.com/493533
@@ -884,26 +871,13 @@ TEST(PerfReaderTest, ReadsAllAvailableMetadataTypesPiped) {
   PerfReader pr;
   ASSERT_TRUE(pr.ReadFromString(input.str()));
 
+  // The dummy metadata should not have prevented the reading of the other
+  // metadata.
   const auto& string_metadata = pr.string_metadata();
-
-  // The dummy metadata should not have been stored.
-  EXPECT_EQ(4, string_metadata.size());
-
-  // Make sure each metadata entry has a stored string value.
-  for (const auto& entry : string_metadata)
-    EXPECT_EQ(1, entry.data.size());
-
-  EXPECT_EQ(HEADER_HOSTNAME, string_metadata[0].type);
-  EXPECT_EQ("hostname", string_metadata[0].data[0].str);
-
-  EXPECT_EQ(HEADER_OSRELEASE, string_metadata[1].type);
-  EXPECT_EQ("osrelease", string_metadata[1].data[0].str);
-
-  EXPECT_EQ(HEADER_VERSION, string_metadata[2].type);
-  EXPECT_EQ("version", string_metadata[2].data[0].str);
-
-  EXPECT_EQ(HEADER_ARCH, string_metadata[3].type);
-  EXPECT_EQ("arch", string_metadata[3].data[0].str);
+  EXPECT_EQ("hostname", string_metadata.hostname().value());
+  EXPECT_EQ("osrelease", string_metadata.kernel_version().value());
+  EXPECT_EQ("version", string_metadata.perf_version().value());
+  EXPECT_EQ("arch", string_metadata.architecture().value());
 }
 
 TEST(PerfReaderTest, AttrsWithDifferentSampleTypes) {

@@ -38,14 +38,22 @@ struct PerfFileAttr {
 const size_t kBuildIDArraySize = 20;
 const size_t kBuildIDStringLength = kBuildIDArraySize * 2;
 
+// TODO(sque): Move this to perf_reader.cc once it is no longer used in this
+// file.
 struct CStringWithLength {
   u32 len;
   string str;
-};
 
-struct PerfStringMetadata {
-  u32 type;
-  std::vector<CStringWithLength> data;
+  // Returns the size required to store both |len| and a string of size |len|.
+  // This is not the same as the minimum size required to store |str|.
+  size_t GetStorageSize() const {
+    return sizeof(len) + len;
+  }
+
+  // Given a string, returns the total size required to store the string in perf
+  // data, including a preceding length field and extra padding to align the
+  // string + null terminator to a multiple of uint64s.
+  static size_t ExpectedStorageSizeOf(const string& str);
 };
 
 struct PerfUint32Metadata {
@@ -175,11 +183,8 @@ class PerfReader {
     metadata_mask_ = mask;
   }
 
-  const std::vector<PerfStringMetadata>& string_metadata() const {
-    return string_metadata_;
-  }
-  std::vector<PerfStringMetadata>* mutable_string_metadata() {
-    return &string_metadata_;
+  const PerfDataProto_StringMetadata& string_metadata() const {
+    return proto_.string_metadata();
   }
 
   const std::vector<PerfUint32Metadata>& uint32_metadata() const {
@@ -235,7 +240,23 @@ class PerfReader {
   bool ReadBuildIDMetadataWithoutHeader(DataReader* data,
                                         const perf_event_header& header);
 
-  bool ReadStringMetadata(DataReader* data, u32 type, size_t size);
+  // Reads a singular string metadata field (with preceding size field) from
+  // |data| and writes the string and its Md5sum prefix into |dest|.
+  bool ReadSingleStringMetadata(
+      DataReader* data,
+      size_t max_readable_size,
+      PerfDataProto_StringMetadata_StringAndMd5sumPrefix* dest) const;
+  // Reads a string metadata with multiple string fields (each with preceding
+  // size field) from |data|. Writes each string field and its Md5sum prefix
+  // into |dest_array|. Writes the combined string fields (joined into one
+  // string into |dest_single|.
+  bool ReadRepeatedStringMetadata(
+      DataReader* data,
+      size_t max_readable_size,
+      RepeatedPtrField<PerfDataProto_StringMetadata_StringAndMd5sumPrefix>*
+          dest_array,
+      PerfDataProto_StringMetadata_StringAndMd5sumPrefix* dest_single) const;
+
   bool ReadUint32Metadata(DataReader* data, u32 type, size_t size);
   bool ReadUint64Metadata(DataReader* data, u32 type, size_t size);
   bool ReadCPUTopologyMetadata(DataReader* data, u32 type, size_t size);
@@ -266,7 +287,13 @@ class PerfReader {
 
   // For writing the various types of metadata.
   bool WriteBuildIDMetadata(u32 type, DataWriter* data) const;
-  bool WriteStringMetadata(u32 type, DataWriter* data) const;
+  bool WriteSingleStringMetadata(
+      const PerfDataProto_StringMetadata_StringAndMd5sumPrefix& src,
+      DataWriter* data) const;
+  bool WriteRepeatedStringMetadata(
+      const RepeatedPtrField<
+          PerfDataProto_StringMetadata_StringAndMd5sumPrefix>& src_array,
+      DataWriter* data) const;
   bool WriteUint32Metadata(u32 type, DataWriter* data) const;
   bool WriteUint64Metadata(u32 type, DataWriter* data) const;
   bool WriteEventDescMetadata(u32 type, DataWriter* data) const;
@@ -313,7 +340,6 @@ class PerfReader {
   // TODO(sque): Store all fields in here, not just events.
   PerfDataProto proto_;
 
-  std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;
   std::vector<PerfUint64Metadata> uint64_metadata_;
   PerfCPUTopologyMetadata cpu_topology_;

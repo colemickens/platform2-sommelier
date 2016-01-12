@@ -768,71 +768,6 @@ bool PerfSerializer::SerializeMetadata(const PerfReader& from,
                                      to->mutable_numa_topology())) {
     return false;
   }
-  typedef PerfDataProto_StringMetadata_StringAndMd5sumPrefix
-      StringAndMd5sumPrefix;
-  // Handle the string metadata specially.
-  for (const auto& metadata : from.string_metadata()) {
-    StringAndMd5sumPrefix* to_metadata = NULL;
-    PerfDataProto_StringMetadata* proto_string_metadata =
-        to->mutable_string_metadata();
-    bool is_command_line = false;
-
-    switch (metadata.type) {
-    case HEADER_HOSTNAME:
-      to_metadata = proto_string_metadata->mutable_hostname();
-      break;
-    case HEADER_OSRELEASE:
-      to_metadata = proto_string_metadata->mutable_kernel_version();
-      break;
-    case HEADER_VERSION:
-      to_metadata = proto_string_metadata->mutable_perf_version();
-      break;
-    case HEADER_ARCH:
-      to_metadata = proto_string_metadata->mutable_architecture();
-      break;
-    case HEADER_CPUDESC:
-      to_metadata = proto_string_metadata->mutable_cpu_description();
-      break;
-    case HEADER_CPUID:
-      to_metadata = proto_string_metadata->mutable_cpu_id();
-      break;
-    case HEADER_CMDLINE:
-      is_command_line = true;
-      to_metadata = proto_string_metadata->mutable_perf_command_line_whole();
-      break;
-    default:
-      LOG(ERROR) << "Unsupported string metadata type: " << metadata.type;
-      continue;
-    }
-    if (is_command_line) {
-      // Handle command lines as a special case. It has two protobuf fields, one
-      // of which is a repeated field.
-      string full_command_line;
-      for (const auto& data : metadata.data) {
-        StringAndMd5sumPrefix* command_line_token =
-                proto_string_metadata->add_perf_command_line_token();
-        command_line_token->set_value(data.str);
-        command_line_token->
-            set_value_md5_prefix(Md5Prefix(command_line_token->value()));
-        full_command_line += data.str + " ";
-      }
-      // Delete the extra space at the end of the newly created command string.
-      TrimWhitespace(&full_command_line);
-      to_metadata->set_value(full_command_line);
-      to_metadata->set_value_md5_prefix(Md5Prefix(full_command_line));
-    } else {
-      DCHECK(to_metadata);  // Make sure a valid destination metadata was found.
-      // In some cases there is a null or empty string metadata value in the
-      // perf data. Make sure not to access |string_metadata_[i].data[0]| if
-      // that is the case.
-      if (!metadata.data.empty())
-        to_metadata->set_value(metadata.data[0].str);
-      else
-        to_metadata->set_value(string());
-
-      to_metadata->set_value_md5_prefix(Md5Prefix(to_metadata->value()));
-    }
-  }
   return true;
 }
 
@@ -848,63 +783,6 @@ bool PerfSerializer::DeserializeMetadata(const PerfDataProto& from,
       !DeserializeNUMATopologyMetadata(from.numa_topology(),
                                        to->mutable_numa_topology())) {
     return false;
-  }
-
-  // Handle the string metadata specially.
-  typedef PerfDataProto_StringMetadata_StringAndMd5sumPrefix
-      StringAndMd5sumPrefix;
-  const PerfDataProto_StringMetadata& data = from.string_metadata();
-  std::vector<std::pair<u32, StringAndMd5sumPrefix> > metadata_strings;
-  if (data.has_hostname()) {
-    metadata_strings.push_back(
-        std::make_pair(static_cast<u32>(HEADER_HOSTNAME), data.hostname()));
-  }
-  if (data.has_kernel_version()) {
-    metadata_strings.push_back(
-        std::make_pair(static_cast<u32>(HEADER_OSRELEASE),
-                       data.kernel_version()));
-  }
-  if (data.has_perf_version()) {
-    metadata_strings.push_back(
-        std::make_pair(static_cast<u32>(HEADER_VERSION), data.perf_version()));
-  }
-  if (data.has_architecture()) {
-    metadata_strings.push_back(
-        std::make_pair(static_cast<u32>(HEADER_ARCH), data.architecture()));
-  }
-  if (data.has_cpu_description()) {
-    metadata_strings.push_back(
-        std::make_pair(static_cast<u32>(HEADER_CPUDESC),
-                       data.cpu_description()));
-  }
-  if (data.has_cpu_id()) {
-    metadata_strings.push_back(
-        std::make_pair(static_cast<u32>(HEADER_CPUID), data.cpu_id()));
-  }
-
-  // Add each string metadata element to |string_metadata_|.
-  for (size_t i = 0; i < metadata_strings.size(); ++i) {
-    PerfStringMetadata metadata;
-    metadata.type = metadata_strings[i].first;
-    CStringWithLength cstring;
-    cstring.str = metadata_strings[i].second.value();
-    cstring.len = cstring.str.size() + 1;   // Include the null terminator.
-    metadata.data.push_back(cstring);
-
-    to->mutable_string_metadata()->push_back(metadata);
-  }
-
-  // Add the command line tokens as a special case (repeated field).
-  if (data.perf_command_line_token_size() > 0) {
-    PerfStringMetadata metadata;
-    metadata.type = HEADER_CMDLINE;
-    for (int i = 0; i < data.perf_command_line_token_size(); ++i) {
-      CStringWithLength cstring;
-      cstring.str = data.perf_command_line_token(i).value();
-      cstring.len = cstring.str.size() + 1;   // Include the null terminator.
-      metadata.data.push_back(cstring);
-    }
-    to->mutable_string_metadata()->push_back(metadata);
   }
 
   return true;

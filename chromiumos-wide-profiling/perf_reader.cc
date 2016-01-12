@@ -26,6 +26,8 @@ namespace quipper {
 
 using PerfEvent = PerfDataProto_PerfEvent;
 using SampleInfo = PerfDataProto_SampleInfo;
+using StringAndMd5sumPrefix =
+    PerfDataProto_StringMetadata_StringAndMd5sumPrefix;
 
 namespace {
 
@@ -136,8 +138,7 @@ malloced_unique_ptr<build_id_event> CreateBuildIDEvent(const string& build_id,
 }
 
 // Reads a CStringWithLength from |data| into |dest| at the current offset.
-bool ReadStringFromBuffer(DataReader* data,
-                          CStringWithLength* dest) {
+bool ReadStringFromBuffer(DataReader* data, CStringWithLength* dest) {
   if (!data->ReadUint32(&dest->len)) {
     LOG(ERROR) << "Could not read string length from data.";
     return false;
@@ -196,6 +197,11 @@ bool ReadPerfFileSection(DataReader* data, struct perf_file_section* section) {
 
 }  // namespace
 
+// static
+size_t CStringWithLength::ExpectedStorageSizeOf(const string& str) {
+  return sizeof(CStringWithLength::len) + GetUint64AlignedStringLength(str);
+}
+
 PerfReader::PerfReader() : metadata_mask_(0),
                            is_cross_endian_(false) {}
 
@@ -215,6 +221,10 @@ bool PerfReader::Serialize(PerfDataProto* perf_data_proto) const {
   // Serialize metadata.
   perf_data_proto->add_metadata_mask(metadata_mask_);
   perf_data_proto->mutable_build_ids()->CopyFrom(proto_.build_ids());
+  if (proto_.has_string_metadata()) {
+    perf_data_proto->mutable_string_metadata()->
+        CopyFrom(proto_.string_metadata());
+  }
   if (!serializer_.SerializeMetadata(*this, perf_data_proto)) {
     return false;
   }
@@ -240,6 +250,10 @@ bool PerfReader::Deserialize(const PerfDataProto& perf_data_proto) {
   if (perf_data_proto.metadata_mask_size())
     metadata_mask_ = perf_data_proto.metadata_mask(0);
   proto_.mutable_build_ids()->CopyFrom(perf_data_proto.build_ids());
+  if (perf_data_proto.has_string_metadata()) {
+    proto_.mutable_string_metadata()->
+        CopyFrom(perf_data_proto.string_metadata());
+  }
   if (!serializer_.DeserializeMetadata(perf_data_proto, this))
     return false;
 
@@ -912,15 +926,58 @@ bool PerfReader::ReadMetadata(DataReader* data) {
         return false;
       break;
     case HEADER_HOSTNAME:
-    case HEADER_OSRELEASE:
-    case HEADER_VERSION:
-    case HEADER_ARCH:
-    case HEADER_CPUDESC:
-    case HEADER_CPUID:
-    case HEADER_CMDLINE:
-      if (!ReadStringMetadata(data, type, size))
+      if (!ReadSingleStringMetadata(
+              data, size,
+              proto_.mutable_string_metadata()->mutable_hostname())) {
         return false;
+      }
       break;
+    case HEADER_OSRELEASE:
+      if (!ReadSingleStringMetadata(
+              data, size,
+              proto_.mutable_string_metadata()->mutable_kernel_version())) {
+        return false;
+      }
+      break;
+    case HEADER_VERSION:
+      if (!ReadSingleStringMetadata(
+              data, size,
+              proto_.mutable_string_metadata()->mutable_perf_version())) {
+        return false;
+      }
+      break;
+    case HEADER_ARCH:
+      if (!ReadSingleStringMetadata(
+              data, size,
+              proto_.mutable_string_metadata()->mutable_architecture())) {
+        return false;
+      }
+      break;
+    case HEADER_CPUDESC:
+      if (!ReadSingleStringMetadata(
+              data, size,
+              proto_.mutable_string_metadata()->mutable_cpu_description())) {
+        return false;
+      }
+      break;
+    case HEADER_CPUID:
+      if (!ReadSingleStringMetadata(
+              data, size,
+              proto_.mutable_string_metadata()->mutable_cpu_id())) {
+        return false;
+      }
+      break;
+    case HEADER_CMDLINE:
+    {
+      auto* string_metadata = proto_.mutable_string_metadata();
+      if (!ReadRepeatedStringMetadata(
+              data, size,
+              string_metadata->mutable_perf_command_line_token(),
+              string_metadata->mutable_perf_command_line_whole())) {
+        return false;
+      }
+      break;
+    }
     case HEADER_NRCPUS:
       if (!ReadUint32Metadata(data, type, size))
         return false;
@@ -999,29 +1056,50 @@ bool PerfReader::ReadBuildIDMetadataWithoutHeader(
   return true;
 }
 
-bool PerfReader::ReadStringMetadata(DataReader* data, u32 type, size_t size) {
-  PerfStringMetadata str_data;
-  str_data.type = type;
+bool PerfReader::ReadSingleStringMetadata(
+    DataReader* data,
+    size_t max_readable_size,
+    StringAndMd5sumPrefix* dest) const {
+  // If a string metadata field is present but empty, it can have a size of 0,
+  // in which case there is nothing to be read.
+  CStringWithLength single_string;
+  if (max_readable_size && !ReadStringFromBuffer(data, &single_string))
+    return false;
+  dest->set_value(single_string.str);
+  dest->set_value_md5_prefix(Md5Prefix(single_string.str));
+  return true;
+}
 
-  // Skip the number of string data if it is present.
-  if (NeedsNumberOfStringData(type)) {
-    num_string_data_type count;
-    if (!data->ReadUint32(&count)) {
-      LOG(ERROR) << "Error reading string count.";
+bool PerfReader::ReadRepeatedStringMetadata(
+    DataReader* data,
+    size_t max_readable_size,
+    RepeatedPtrField<StringAndMd5sumPrefix>* dest_array,
+    StringAndMd5sumPrefix* dest_single) const {
+  num_string_data_type count = 1;
+  if (!data->ReadUint32(&count)) {
+    LOG(ERROR) << "Error reading string count.";
+    return false;
+  }
+  size_t size_read = sizeof(count);
+
+  string full_string;
+  while (count-- > 0 && size_read < max_readable_size) {
+    StringAndMd5sumPrefix* new_entry = dest_array->Add();
+    size_t offset = data->Tell();
+    if (!ReadSingleStringMetadata(data, max_readable_size - size_read,
+                                  new_entry)) {
       return false;
     }
-    size -= sizeof(count);
+
+    if (!full_string.empty())
+      full_string += " ";
+    full_string += new_entry->value();
+
+    size_read += data->Tell() - offset;
   }
 
-  while (size > 0) {
-    CStringWithLength single_string;
-    if (!ReadStringFromBuffer(data, &single_string))
-      return false;
-    str_data.data.push_back(single_string);
-    size -= (sizeof(single_string.len) + single_string.len);
-  }
-
-  string_metadata_.push_back(str_data);
+  dest_single->set_value(full_string);
+  dest_single->set_value_md5_prefix(Md5Prefix(full_string));
   return true;
 }
 
@@ -1261,32 +1339,50 @@ bool PerfReader::ReadPipedData(DataReader* data) {
       break;
     case PERF_RECORD_HEADER_HOSTNAME:
       metadata_mask_ |= (1 << HEADER_HOSTNAME);
-      result = ReadStringMetadata(data, HEADER_HOSTNAME, size_without_header);
+      result = ReadSingleStringMetadata(
+                   data, size_without_header,
+                   proto_.mutable_string_metadata()->mutable_hostname());
       break;
     case PERF_RECORD_HEADER_OSRELEASE:
       metadata_mask_ |= (1 << HEADER_OSRELEASE);
-      result = ReadStringMetadata(data, HEADER_OSRELEASE, size_without_header);
+      result = ReadSingleStringMetadata(
+                   data, size_without_header,
+                   proto_.mutable_string_metadata()->mutable_kernel_version());
       break;
     case PERF_RECORD_HEADER_VERSION:
       metadata_mask_ |= (1 << HEADER_VERSION);
-      result = ReadStringMetadata(data, HEADER_VERSION, size_without_header);
+      result = ReadSingleStringMetadata(
+                   data, size_without_header,
+                   proto_.mutable_string_metadata()->mutable_perf_version());
       break;
     case PERF_RECORD_HEADER_ARCH:
       metadata_mask_ |= (1 << HEADER_ARCH);
-      result = ReadStringMetadata(data, HEADER_ARCH, size_without_header);
+      result = ReadSingleStringMetadata(
+                   data, size_without_header,
+                   proto_.mutable_string_metadata()->mutable_architecture());
       break;
     case PERF_RECORD_HEADER_CPUDESC:
       metadata_mask_ |= (1 << HEADER_CPUDESC);
-      result = ReadStringMetadata(data, HEADER_CPUDESC, size_without_header);
+      result = ReadSingleStringMetadata(
+                   data, size_without_header,
+                   proto_.mutable_string_metadata()->mutable_cpu_description());
       break;
     case PERF_RECORD_HEADER_CPUID:
       metadata_mask_ |= (1 << HEADER_CPUID);
-      result = ReadStringMetadata(data, HEADER_CPUID, size_without_header);
+      result = ReadSingleStringMetadata(
+                   data, size_without_header,
+                   proto_.mutable_string_metadata()->mutable_cpu_id());
       break;
     case PERF_RECORD_HEADER_CMDLINE:
+    {
       metadata_mask_ |= (1 << HEADER_CMDLINE);
-      result = ReadStringMetadata(data, HEADER_CMDLINE, size_without_header);
+      auto* string_metadata = proto_.mutable_string_metadata();
+      result = ReadRepeatedStringMetadata(
+                   data, size_without_header,
+                   string_metadata->mutable_perf_command_line_token(),
+                   string_metadata->mutable_perf_command_line_whole());
       break;
+    }
     case PERF_RECORD_HEADER_NRCPUS:
       metadata_mask_ |= (1 << HEADER_NRCPUS);
       result = ReadUint32Metadata(data, HEADER_NRCPUS, size_without_header);
@@ -1402,6 +1498,9 @@ bool PerfReader::WriteMetadata(const struct perf_file_header& header,
   std::vector<struct perf_file_section> metadata_sections;
   metadata_sections.reserve(GetNumSupportedMetadata());
 
+  // For less verbose access to string metadata fields.
+  const auto& string_metadata = proto_.string_metadata();
+
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
     if ((header.adds_features[0] & (1 << type)) == 0)
       continue;
@@ -1421,14 +1520,35 @@ bool PerfReader::WriteMetadata(const struct perf_file_header& header,
         return false;
       break;
     case HEADER_HOSTNAME:
-    case HEADER_OSRELEASE:
-    case HEADER_VERSION:
-    case HEADER_ARCH:
-    case HEADER_CPUDESC:
-    case HEADER_CPUID:
-    case HEADER_CMDLINE:
-      if (!WriteStringMetadata(type, data))
+      if (!WriteSingleStringMetadata(string_metadata.hostname(), data))
         return false;
+      break;
+    case HEADER_OSRELEASE:
+      if (!WriteSingleStringMetadata(string_metadata.kernel_version(), data))
+        return false;
+      break;
+    case HEADER_VERSION:
+      if (!WriteSingleStringMetadata(string_metadata.perf_version(), data))
+        return false;
+      break;
+    case HEADER_ARCH:
+      if (!WriteSingleStringMetadata(string_metadata.architecture(), data))
+        return false;
+      break;
+    case HEADER_CPUDESC:
+      if (!WriteSingleStringMetadata(string_metadata.cpu_description(), data))
+        return false;
+      break;
+    case HEADER_CPUID:
+      if (!WriteSingleStringMetadata(string_metadata.cpu_id(), data))
+        return false;
+      break;
+    case HEADER_CMDLINE:
+      if (!WriteRepeatedStringMetadata(
+              string_metadata.perf_command_line_token(),
+              data)) {
+        return false;
+      }
       break;
     case HEADER_NRCPUS:
       if (!WriteUint32Metadata(type, data))
@@ -1496,28 +1616,31 @@ bool PerfReader::WriteBuildIDMetadata(u32 type, DataWriter* data) const {
   return true;
 }
 
-bool PerfReader::WriteStringMetadata(u32 type, DataWriter* data) const {
-  for (size_t i = 0; i < string_metadata_.size(); ++i) {
-    const PerfStringMetadata& str_data = string_metadata_[i];
-    if (str_data.type == type) {
-      num_string_data_type num_strings = str_data.data.size();
-      if (NeedsNumberOfStringData(type) &&
-          !data->WriteDataValue(&num_strings, sizeof(num_strings),
-                                "number of string metadata")) {
-        return false;
-      }
+bool PerfReader::WriteSingleStringMetadata(
+    const StringAndMd5sumPrefix& src,
+    DataWriter* data) const {
+  CStringWithLength string_with_length;
+  string_with_length.str = src.value();
+  string_with_length.len = GetUint64AlignedStringLength(src.value());
+  return WriteStringToBuffer(string_with_length, data);
+}
 
-      for (size_t j = 0; j < num_strings; ++j) {
-        const CStringWithLength& single_string = str_data.data[j];
-        if (!WriteStringToBuffer(single_string, data))
-          return false;
-      }
-
-      return true;
-    }
+bool PerfReader::WriteRepeatedStringMetadata(
+    const RepeatedPtrField<StringAndMd5sumPrefix>& src_array,
+    DataWriter* data) const {
+  num_string_data_type num_strings = src_array.size();
+  if (!data->WriteDataValue(&num_strings, sizeof(num_strings),
+                           "number of string metadata")) {
+    return false;
   }
-  LOG(ERROR) << "String metadata of type " << type << " not present";
-  return false;
+  for (const auto src_entry : src_array) {
+    CStringWithLength string_with_length;
+    string_with_length.str = src_entry.value();
+    string_with_length.len = GetUint64AlignedStringLength(src_entry.value());
+    if (!WriteStringToBuffer(string_with_length, data))
+      return false;
+  }
+  return true;
 }
 
 bool PerfReader::WriteUint32Metadata(u32 type, DataWriter* data) const {
@@ -1778,16 +1901,25 @@ size_t PerfReader::GetBuildIDMetadataSize() const {
 }
 
 size_t PerfReader::GetStringMetadataSize() const {
+  auto ExpectedStorageSizeOf = CStringWithLength::ExpectedStorageSizeOf;
   size_t size = 0;
-  for (size_t i = 0; i < string_metadata_.size(); ++i) {
-    const PerfStringMetadata& metadata = string_metadata_[i];
-    if (NeedsNumberOfStringData(metadata.type))
-      size += sizeof(num_string_data_type);
+  if (string_metadata().has_hostname())
+    size += ExpectedStorageSizeOf(string_metadata().hostname().value());
+  if (string_metadata().has_kernel_version())
+    size += ExpectedStorageSizeOf(string_metadata().kernel_version().value());
+  if (string_metadata().has_perf_version())
+    size += ExpectedStorageSizeOf(string_metadata().perf_version().value());
+  if (string_metadata().has_architecture())
+    size += ExpectedStorageSizeOf(string_metadata().architecture().value());
+  if (string_metadata().has_cpu_description())
+    size += ExpectedStorageSizeOf(string_metadata().cpu_description().value());
+  if (string_metadata().has_cpu_id())
+    size += ExpectedStorageSizeOf(string_metadata().cpu_id().value());
 
-    for (size_t j = 0; j < metadata.data.size(); ++j) {
-      const CStringWithLength& str = metadata.data[j];
-      size += sizeof(str.len) + str.len;
-    }
+  if (!string_metadata().perf_command_line_token().empty()) {
+    size += sizeof(num_string_data_type);
+    for (const auto& token : string_metadata().perf_command_line_token())
+      size += ExpectedStorageSizeOf(token.value());
   }
   return size;
 }
