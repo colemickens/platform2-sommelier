@@ -906,6 +906,8 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
   }
   int swap_total = 0;
   int swap_free = 0;
+  int mem_free_derived = 0;  // free + cached + buffers
+  int mem_used_derived = 0;  // total - free_derived
   // Send all fields retrieved, except total memory.
   for (unsigned int i = 1; i < fields.size(); i++) {
     string metrics_name = base::StringPrintf("Platform.Meminfo%s",
@@ -923,9 +925,15 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
         break;
       case kMeminfoOp_SwapTotal:
         swap_total = fields[i].value;
+        break;
       case kMeminfoOp_SwapFree:
         swap_free = fields[i].value;
         break;
+    }
+    if (strcmp(fields[i].match, "MemFree") == 0 ||
+        strcmp(fields[i].match, "Buffers") == 0 ||
+        strcmp(fields[i].match, "Cached") == 0) {
+        mem_free_derived += fields[i].value;
     }
   }
   if (swap_total > 0) {
@@ -935,6 +943,11 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
     SendLinearSample("Platform.MeminfoSwapUsedPercent", swap_used_percent,
                      100, 101);
   }
+  mem_used_derived = total_memory - mem_free_derived;
+  SendSample("Platform.MeminfoMemFreeDerived", mem_free_derived, 1,
+             total_memory, 100);
+  SendSample("Platform.MeminfoMemUsedDerived", mem_used_derived, 1,
+             total_memory, 100);
   return true;
 }
 
