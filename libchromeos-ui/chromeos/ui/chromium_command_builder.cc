@@ -195,11 +195,8 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   SetUpPepperPlugins();
   AddUiFlags();
 
-  if (UseFlagIsSet("arc")) {
+  if (UseFlagIsSet("arc"))
     AddArg("--enable-arc");
-    // TODO(lhchavez): Remove once crbug.com/573004 is fixed.
-    AddArg("--use-old-edk");
-  }
 
   AddArg("--enable-logging");
   AddArg("--log-level=1");
