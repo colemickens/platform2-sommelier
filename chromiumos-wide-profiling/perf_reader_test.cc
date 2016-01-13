@@ -1580,4 +1580,12 @@ TEST(PerfReaderTest, CrossEndianNormalPerfData) {
   }
 }
 
+TEST(PerfReaderTest, MetadataMaskInitialized) {
+  // The metadata mask is actually an array of uint64's. The accessors/mutator
+  // in PerfReader depend on it being initialized.
+  PerfReader reader;
+  ASSERT_EQ(1U, reader.proto().metadata_mask().size());
+  EXPECT_EQ(0U, reader.metadata_mask());
+}
+
 }  // namespace quipper

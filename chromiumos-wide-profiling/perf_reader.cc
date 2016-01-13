@@ -43,7 +43,7 @@ typedef u32 event_desc_num_unique_ids;
 // The type of the number of nodes field in NUMA topology.
 typedef u32 numa_topology_num_nodes_type;
 
-// A mask that is applied to metadata_mask_ in order to get a mask for
+// A mask that is applied to |metadata_mask()| in order to get a mask for
 // only the metadata supported by quipper.
 const uint32_t kSupportedMetadataMask =
     1 << HEADER_TRACING_DATA |
@@ -202,8 +202,11 @@ size_t CStringWithLength::ExpectedStorageSizeOf(const string& str) {
   return sizeof(CStringWithLength::len) + GetUint64AlignedStringLength(str);
 }
 
-PerfReader::PerfReader() : metadata_mask_(0),
-                           is_cross_endian_(false) {}
+PerfReader::PerfReader() : is_cross_endian_(false) {
+  // The metadata mask is stored in |proto_|. It should be initialized to 0
+  // since it is used heavily.
+  proto_.add_metadata_mask(0);
+}
 
 PerfReader::~PerfReader() {}
 
@@ -219,7 +222,7 @@ bool PerfReader::Serialize(PerfDataProto* perf_data_proto) const {
   perf_data_proto->mutable_events()->CopyFrom(proto_.events());
 
   // Serialize metadata.
-  perf_data_proto->add_metadata_mask(metadata_mask_);
+  perf_data_proto->mutable_metadata_mask()->CopyFrom(proto_.metadata_mask());
   perf_data_proto->mutable_build_ids()->CopyFrom(proto_.build_ids());
   if (proto_.has_string_metadata()) {
     perf_data_proto->mutable_string_metadata()->
@@ -253,8 +256,7 @@ bool PerfReader::Deserialize(const PerfDataProto& perf_data_proto) {
   }
 
   // Deserialize metadata.
-  if (perf_data_proto.metadata_mask_size())
-    metadata_mask_ = perf_data_proto.metadata_mask(0);
+  proto_.mutable_metadata_mask()->CopyFrom(perf_data_proto.metadata_mask());
   proto_.mutable_build_ids()->CopyFrom(perf_data_proto.build_ids());
   if (perf_data_proto.has_string_metadata()) {
     proto_.mutable_string_metadata()->
@@ -352,8 +354,7 @@ bool PerfReader::ReadFromData(DataReader* data) {
       return false;
     }
 
-    metadata_mask_ = header_.adds_features[0];
-    if (!(metadata_mask_ & (1 << HEADER_EVENT_DESC))) {
+    if (!get_metadata_mask_bit(HEADER_EVENT_DESC)) {
       // Prefer to read attrs and event names from HEADER_EVENT_DESC metadata if
       // available. event_types section of perf.data is obsolete, but use it as
       // a fallback:
@@ -367,7 +368,7 @@ bool PerfReader::ReadFromData(DataReader* data) {
     // We can construct HEADER_EVENT_DESC from attrs and event types.
     // NB: Can't set this before ReadMetadata(), or it may misread the metadata.
     if (!event_types().empty())
-      metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+      set_metadata_mask_bit(HEADER_EVENT_DESC);
 
     return true;
   }
@@ -495,12 +496,12 @@ void PerfReader::GenerateHeader(struct perf_file_header* header) const {
   // will also have to be updated if this CHECK starts to fail.
   CHECK_LE(static_cast<size_t>(HEADER_LAST_FEATURE),
            BytesToBits(sizeof(header->adds_features[0])));
-  header->adds_features[0] |= metadata_mask_ & kSupportedMetadataMask;
+  header->adds_features[0] |= metadata_mask() & kSupportedMetadataMask;
 }
 
 bool PerfReader::InjectBuildIDs(
     const std::map<string, string>& filenames_to_build_ids) {
-  metadata_mask_ |= (1 << HEADER_BUILD_ID);
+  set_metadata_mask_bit(HEADER_BUILD_ID);
   std::set<string> updated_filenames;
   // Inject new build ID's for existing build ID events.
   for (auto& build_id : *proto_.mutable_build_ids()) {
@@ -666,6 +667,8 @@ bool PerfReader::ReadHeader(DataReader* data) {
     LOG(ERROR) << "Error reading header::adds_features.";
     return false;
   }
+  proto_.set_metadata_mask(0, header_.adds_features[0]);
+
   // Byte-swapping |adds_features| is tricky. It is defined as an array of
   // unsigned longs, which can vary between architectures. However, the overall
   // size of the array in bytes is fixed.
@@ -912,7 +915,7 @@ bool PerfReader::ReadMetadata(DataReader* data) {
   // takes into account all present metadata types, not just the ones included
   // in |kSupportedMetadataMask|. If a metadata type is not supported, it is
   // skipped over.
-  std::vector<struct perf_file_section> sections(GetNumBits(metadata_mask_));
+  std::vector<struct perf_file_section> sections(GetNumBits(metadata_mask()));
   for (struct perf_file_section& section : sections) {
     if (!ReadPerfFileSection(data, &section)) {
       LOG(ERROR) << "Error reading metadata entry info.";
@@ -922,7 +925,7 @@ bool PerfReader::ReadMetadata(DataReader* data) {
 
   auto section_iter = sections.begin();
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
-    if ((metadata_mask_ & (1 << type)) == 0)
+    if (!get_metadata_mask_bit(type))
       continue;
     data->SeekSet(section_iter->offset);
     u64 size = section_iter->size;
@@ -1286,7 +1289,6 @@ bool PerfReader::ReadPipedData(DataReader* data) {
   bool result = true;
   int num_event_types = 0;
 
-  metadata_mask_ = 0;
   CheckNoEventHeaderPadding();
 
   while (result && data->Tell() < data->size()) {
@@ -1336,12 +1338,12 @@ bool PerfReader::ReadPipedData(DataReader* data) {
       result = ReadEventType(data, num_event_types++, header.size);
       break;
     case PERF_RECORD_HEADER_EVENT_DESC:
-      metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+      set_metadata_mask_bit(HEADER_EVENT_DESC);
       result = ReadEventDescMetadata(data, HEADER_EVENT_DESC,
                                      size_without_header);
       break;
     case PERF_RECORD_HEADER_TRACING_DATA:
-      metadata_mask_ |= (1 << HEADER_TRACING_DATA);
+      set_metadata_mask_bit(HEADER_TRACING_DATA);
       {
         // TRACING_DATA's header.size is a lie. It is the size of only the event
         // struct. The size of the data is in the event struct, and followed
@@ -1355,48 +1357,48 @@ bool PerfReader::ReadPipedData(DataReader* data) {
       }
       break;
     case PERF_RECORD_HEADER_BUILD_ID:
-      metadata_mask_ |= (1 << HEADER_BUILD_ID);
+      set_metadata_mask_bit(HEADER_BUILD_ID);
       result = ReadBuildIDMetadataWithoutHeader(data, header);
       break;
     case PERF_RECORD_HEADER_HOSTNAME:
-      metadata_mask_ |= (1 << HEADER_HOSTNAME);
+      set_metadata_mask_bit(HEADER_HOSTNAME);
       result = ReadSingleStringMetadata(
                    data, size_without_header,
                    proto_.mutable_string_metadata()->mutable_hostname());
       break;
     case PERF_RECORD_HEADER_OSRELEASE:
-      metadata_mask_ |= (1 << HEADER_OSRELEASE);
+      set_metadata_mask_bit(HEADER_OSRELEASE);
       result = ReadSingleStringMetadata(
                    data, size_without_header,
                    proto_.mutable_string_metadata()->mutable_kernel_version());
       break;
     case PERF_RECORD_HEADER_VERSION:
-      metadata_mask_ |= (1 << HEADER_VERSION);
+      set_metadata_mask_bit(HEADER_VERSION);
       result = ReadSingleStringMetadata(
                    data, size_without_header,
                    proto_.mutable_string_metadata()->mutable_perf_version());
       break;
     case PERF_RECORD_HEADER_ARCH:
-      metadata_mask_ |= (1 << HEADER_ARCH);
+      set_metadata_mask_bit(HEADER_ARCH);
       result = ReadSingleStringMetadata(
                    data, size_without_header,
                    proto_.mutable_string_metadata()->mutable_architecture());
       break;
     case PERF_RECORD_HEADER_CPUDESC:
-      metadata_mask_ |= (1 << HEADER_CPUDESC);
+      set_metadata_mask_bit(HEADER_CPUDESC);
       result = ReadSingleStringMetadata(
                    data, size_without_header,
                    proto_.mutable_string_metadata()->mutable_cpu_description());
       break;
     case PERF_RECORD_HEADER_CPUID:
-      metadata_mask_ |= (1 << HEADER_CPUID);
+      set_metadata_mask_bit(HEADER_CPUID);
       result = ReadSingleStringMetadata(
                    data, size_without_header,
                    proto_.mutable_string_metadata()->mutable_cpu_id());
       break;
     case PERF_RECORD_HEADER_CMDLINE:
     {
-      metadata_mask_ |= (1 << HEADER_CMDLINE);
+      set_metadata_mask_bit(HEADER_CMDLINE);
       auto* string_metadata = proto_.mutable_string_metadata();
       result = ReadRepeatedStringMetadata(
                    data, size_without_header,
@@ -1405,20 +1407,20 @@ bool PerfReader::ReadPipedData(DataReader* data) {
       break;
     }
     case PERF_RECORD_HEADER_NRCPUS:
-      metadata_mask_ |= (1 << HEADER_NRCPUS);
+      set_metadata_mask_bit(HEADER_NRCPUS);
       result = ReadUint32Metadata(data, HEADER_NRCPUS, size_without_header);
       break;
     case PERF_RECORD_HEADER_TOTAL_MEM:
-      metadata_mask_ |= (1 << HEADER_TOTAL_MEM);
+      set_metadata_mask_bit(HEADER_TOTAL_MEM);
       result = ReadUint64Metadata(data, HEADER_TOTAL_MEM, size_without_header);
       break;
     case PERF_RECORD_HEADER_CPU_TOPOLOGY:
-      metadata_mask_ |= (1 << HEADER_CPU_TOPOLOGY);
+      set_metadata_mask_bit(HEADER_CPU_TOPOLOGY);
       result = ReadCPUTopologyMetadata(data, HEADER_CPU_TOPOLOGY,
                                        size_without_header);
       break;
     case PERF_RECORD_HEADER_NUMA_TOPOLOGY:
-      metadata_mask_ |= (1 << HEADER_NUMA_TOPOLOGY);
+      set_metadata_mask_bit(HEADER_NUMA_TOPOLOGY);
       result = ReadNUMATopologyMetadata(data, HEADER_NUMA_TOPOLOGY,
                                         size_without_header);
       break;
@@ -1436,11 +1438,12 @@ bool PerfReader::ReadPipedData(DataReader* data) {
   // The PERF_RECORD_HEADER_EVENT_TYPE events are obsolete, but if present
   // and PERF_RECORD_HEADER_EVENT_DESC metadata events are not, we should use
   // them. Otherwise, we should use prefer the _EVENT_DESC data.
-  if (!(metadata_mask_ & (1 << HEADER_EVENT_DESC)) &&
+  if (!get_metadata_mask_bit(HEADER_EVENT_DESC) &&
       num_event_types == proto_.file_attrs().size()) {
     // We can construct HEADER_EVENT_DESC:
-    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+    set_metadata_mask_bit(HEADER_EVENT_DESC);
   }
+
   return result;
 }
 
@@ -1883,7 +1886,7 @@ void PerfReader::MaybeSwapEventFields(event_t* event, bool is_cross_endian) {
 }
 
 size_t PerfReader::GetNumSupportedMetadata() const {
-  return GetNumBits(metadata_mask_ & kSupportedMetadataMask);
+  return GetNumBits(metadata_mask() & kSupportedMetadataMask);
 }
 
 size_t PerfReader::GetEventDescMetadataSize() const {
@@ -1894,7 +1897,7 @@ size_t PerfReader::GetEventDescMetadataSize() const {
   }
 
   size_t size = 0;
-  if (metadata_mask_ & (1 << HEADER_EVENT_DESC)) {
+  if (get_metadata_mask_bit(HEADER_EVENT_DESC)) {
     size += sizeof(event_desc_num_events) + sizeof(event_desc_attr_size);
     CStringWithLength dummy;
     for (int i = 0; i < attrs().size(); ++i) {

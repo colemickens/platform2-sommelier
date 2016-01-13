@@ -173,15 +173,22 @@ class PerfReader {
     return proto_.tracing_data().tracing_data();
   }
 
-  uint64_t metadata_mask() const {
-    return metadata_mask_;
-  }
-  void set_metadata_mask(uint64_t mask) {
-    metadata_mask_ = mask;
-  }
-
   const PerfDataProto_StringMetadata& string_metadata() const {
     return proto_.string_metadata();
+  }
+
+  uint64_t metadata_mask() const {
+    return proto_.metadata_mask().Get(0);
+  }
+
+  // This is a plain accessor for the internal protobuf storage. It is meant for
+  // exposing the internals. This is not initialized until Read*() or
+  // Deserialize() has been called.
+  //
+  // Call Serialize() instead of this function to acquire a protobuf with checks
+  // that it has properly initialized. Serialize() also adds a timestamp.
+  const PerfDataProto& proto() const {
+    return proto_;
   }
 
  private:
@@ -299,6 +306,13 @@ class PerfReader {
   // Stores a PerfFileAttr in |proto_| and updates |serializer_|.
   void AddPerfFileAttr(const PerfFileAttr& attr);
 
+  bool get_metadata_mask_bit(uint32_t bit) const {
+    return metadata_mask() & (1 << bit);
+  }
+  void set_metadata_mask_bit(uint32_t bit) {
+    proto_.set_metadata_mask(0, metadata_mask() | (1 << bit));
+  }
+
   // The file header is either a normal header or a piped header.
   union {
     struct perf_file_header header_;
@@ -308,8 +322,6 @@ class PerfReader {
   // Store the perf data as a protobuf.
   // TODO(sque): Store all fields in here, not just events.
   PerfDataProto proto_;
-
-  uint64_t metadata_mask_;
 
   // Whether the incoming data is from a machine with a different endianness. We
   // got rid of this flag in the past but now we need to store this so it can be
