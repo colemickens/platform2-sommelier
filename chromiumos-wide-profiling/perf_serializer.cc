@@ -775,8 +775,10 @@ bool PerfSerializer::SerializeMetadata(const PerfReader& from,
                                to->mutable_uint32_metadata()) ||
       !SerializeUint64Metadata(from.uint64_metadata(),
                                to->mutable_uint64_metadata()) ||
-      !SerializeCPUTopologyMetadata(from.cpu_topology(),
-                                    to->mutable_cpu_topology()) ||
+      !((from.cpu_topology().core_siblings.empty() &&
+         from.cpu_topology().thread_siblings.empty()) ||
+        SerializeCPUTopologyMetadata(from.cpu_topology(),
+                                     to->mutable_cpu_topology())) ||
       !SerializeNUMATopologyMetadata(from.numa_topology(),
                                      to->mutable_numa_topology())) {
     return false;
