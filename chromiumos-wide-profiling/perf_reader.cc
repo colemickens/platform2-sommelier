@@ -188,68 +188,26 @@ PerfReader::PerfReader() : is_cross_endian_(false) {
 PerfReader::~PerfReader() {}
 
 bool PerfReader::Serialize(PerfDataProto* perf_data_proto) const {
-  CHECK_GT(proto_.file_attrs().size(), 0);
-  CHECK(serializer_.SampleInfoReaderAvailable());
-
-  // Serialize attrs and event types.
-  perf_data_proto->mutable_file_attrs()->CopyFrom(proto_.file_attrs());
-  perf_data_proto->mutable_event_types()->CopyFrom(proto_.event_types());
-
-  // Serialize events.
-  perf_data_proto->mutable_events()->CopyFrom(proto_.events());
-
-  // Serialize metadata.
-  perf_data_proto->mutable_metadata_mask()->CopyFrom(proto_.metadata_mask());
-  perf_data_proto->mutable_build_ids()->CopyFrom(proto_.build_ids());
-  if (proto_.has_string_metadata()) {
-    perf_data_proto->mutable_string_metadata()->
-        CopyFrom(proto_.string_metadata());
-  }
-  if (proto_.has_tracing_data())
-    perf_data_proto->mutable_tracing_data()->CopyFrom(proto_.tracing_data());
-  perf_data_proto->mutable_uint32_metadata()->
-      CopyFrom(proto_.uint32_metadata());
-  perf_data_proto->mutable_uint64_metadata()->
-      CopyFrom(proto_.uint64_metadata());
-  if (proto_.has_cpu_topology())
-    perf_data_proto->mutable_cpu_topology()->CopyFrom(proto_.cpu_topology());
-  perf_data_proto->mutable_numa_topology()->CopyFrom(proto_.numa_topology());
+  perf_data_proto->CopyFrom(proto_);
 
   // Add a timestamp_sec to the protobuf.
   struct timeval timestamp_sec;
   if (!gettimeofday(&timestamp_sec, NULL))
     perf_data_proto->set_timestamp_sec(timestamp_sec.tv_sec);
-
   return true;
 }
 
 bool PerfReader::Deserialize(const PerfDataProto& perf_data_proto) {
-  proto_.mutable_file_attrs()->CopyFrom(perf_data_proto.file_attrs());
-  proto_.mutable_event_types()->CopyFrom(perf_data_proto.event_types());
+  proto_.CopyFrom(perf_data_proto);
+
+  // Iterate through all attrs and create a SampleInfoReader for each of them.
+  // This is necessary for writing the proto representation of perf data to raw
+  // data.
   for (const auto& stored_attr : proto_.file_attrs()) {
     PerfFileAttr attr;
     serializer_.DeserializePerfFileAttr(stored_attr, &attr);
     serializer_.CreateSampleInfoReader(attr, false /* read_cross_endian */);
   }
-
-  // Deserialize metadata.
-  proto_.mutable_metadata_mask()->CopyFrom(perf_data_proto.metadata_mask());
-  proto_.mutable_build_ids()->CopyFrom(perf_data_proto.build_ids());
-  if (perf_data_proto.has_string_metadata()) {
-    proto_.mutable_string_metadata()->
-        CopyFrom(perf_data_proto.string_metadata());
-  }
-  if (perf_data_proto.has_tracing_data())
-    proto_.mutable_tracing_data()->CopyFrom(perf_data_proto.tracing_data());
-  proto_.mutable_uint32_metadata()->CopyFrom(perf_data_proto.uint32_metadata());
-  proto_.mutable_uint64_metadata()->CopyFrom(perf_data_proto.uint64_metadata());
-  if (perf_data_proto.has_cpu_topology())
-    proto_.mutable_cpu_topology()->CopyFrom(perf_data_proto.cpu_topology());
-  proto_.mutable_numa_topology()->CopyFrom(perf_data_proto.numa_topology());
-
-  // Copy over events directly.
-  proto_.mutable_events()->CopyFrom(perf_data_proto.events());
-
   return true;
 }
 

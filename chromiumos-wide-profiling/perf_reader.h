@@ -70,9 +70,10 @@ class PerfReader {
   PerfReader();
   ~PerfReader();
 
-  // Dump contents to a protobuf.
+  // Copy stored contents to |*perf_data_proto|. Appends a timestamp. Returns
+  // true on success.
   bool Serialize(PerfDataProto* perf_data_proto) const;
-  // Read in contents from a protobuf.
+  // Read in contents from a protobuf. Returns true on success.
   bool Deserialize(const PerfDataProto& perf_data_proto);
 
   // Makes |build_id| fit the perf format, by either truncating it or adding
@@ -126,6 +127,16 @@ class PerfReader {
 
   // Accessors and mutators.
 
+  // This is a plain accessor for the internal protobuf storage. It is meant for
+  // exposing the internals. This is not initialized until Read*() or
+  // Deserialize() has been called.
+  //
+  // Call Serialize() instead of this function to acquire an "official" protobuf
+  // with a timestamp.
+  const PerfDataProto& proto() const {
+    return proto_;
+  }
+
   const RepeatedPtrField<PerfDataProto_PerfFileAttr>& attrs() const {
     return proto_.file_attrs();
   }
@@ -161,16 +172,6 @@ class PerfReader {
 
   uint64_t metadata_mask() const {
     return proto_.metadata_mask().Get(0);
-  }
-
-  // This is a plain accessor for the internal protobuf storage. It is meant for
-  // exposing the internals. This is not initialized until Read*() or
-  // Deserialize() has been called.
-  //
-  // Call Serialize() instead of this function to acquire a protobuf with checks
-  // that it has properly initialized. Serialize() also adds a timestamp.
-  const PerfDataProto& proto() const {
-    return proto_;
   }
 
  private:
