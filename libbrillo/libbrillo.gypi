@@ -335,6 +335,7 @@
             'brillo/http/http_utils_unittest.cc',
             'brillo/key_value_store_unittest.cc',
             'brillo/map_utils_unittest.cc',
+            'brillo/message_loops/base_message_loop_unittest.cc',
             'brillo/message_loops/fake_message_loop_unittest.cc',
             'brillo/message_loops/glib_message_loop_unittest.cc',
             'brillo/message_loops/message_loop_unittest.cc',

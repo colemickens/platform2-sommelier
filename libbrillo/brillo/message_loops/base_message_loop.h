@@ -14,11 +14,13 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
+#include <gtest/gtest_prod.h>
 
 #include <brillo/brillo_export.h>
 #include <brillo/message_loops/message_loop.h>
@@ -51,6 +53,16 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
   base::Closure QuitClosure() const;
 
  private:
+  FRIEND_TEST(BaseMessageLoopTest, ParseBinderMinor);
+
+  static const int kInvalidMinor;
+  static const int kUninitializedMinor;
+
+  // Parses the contents of the file /proc/misc passed in |file_contents| and
+  // returns the minor device number reported for binder. On error or if not
+  // found, returns kInvalidMinor.
+  static int ParseBinderMinor(const std::string& file_contents);
+
   // Called by base::MessageLoopForIO when is time to call the callback
   // scheduled with Post*Task() of id |task_id|, even if it was canceled.
   void OnRanPostedTask(MessageLoop::TaskId task_id);
@@ -63,6 +75,9 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
 
   // Return a new unused task_id.
   TaskId NextTaskId();
+
+  // Returns binder minor device number.
+  unsigned int GetBinderMinor();
 
   struct DelayedTask {
     tracked_objects::Location location;
@@ -98,6 +113,10 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
     // same semantics as MessageLoop::CancelTask().
     bool CancelTask();
 
+    // Sets the closure to be run immediately whenever the file descriptor
+    // becomes ready.
+    void RunImmediately() { immediate_run_= true; }
+
    private:
     tracked_objects::Location location_;
     BaseMessageLoop* loop_;
@@ -115,6 +134,11 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
 
     // Tells whether there is a pending call to OnFileReadPostedTask().
     bool posted_task_pending_{false};
+
+    // Whether the registered callback should be running immediately when the
+    // file descriptor is ready, as opposed to posting a task to the main loop
+    // to prevent starvation.
+    bool immediate_run_{false};
 
     // base::MessageLoopForIO::Watcher overrides:
     void OnFileCanReadWithoutBlocking(int fd) override;
@@ -142,6 +166,12 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
 
   // The RunLoop instance used to run the main loop from Run().
   base::RunLoop* base_run_loop_{nullptr};
+
+  // The binder minor device number. Binder is a "misc" char device with a
+  // dynamically allocated minor number. When uninitialized, this value will
+  // be negative, otherwise, it will hold the minor part of the binder device
+  // number. This is populated by GetBinderMinor().
+  int binder_minor_{kUninitializedMinor};
 
   // We use a WeakPtrFactory to schedule tasks with the base::MessageLoopForIO
   // since we can't cancel the callbacks we have scheduled there once this

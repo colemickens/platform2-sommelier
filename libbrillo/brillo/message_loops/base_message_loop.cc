@@ -5,16 +5,36 @@
 #include <brillo/message_loops/base_message_loop.h>
 
 #include <fcntl.h>
+#include <linux/major.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
+#include <vector>
+
 #include <base/bind.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/run_loop.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 
 #include <brillo/location_logging.h>
+#include <brillo/strings/string_utils.h>
 
 using base::Closure;
 
+namespace {
+
+const char kMiscMinorPath[] = "/proc/misc";
+const char kBinderDriverName[] = "binder";
+
+}  // namespace
+
 namespace brillo {
+
+const int BaseMessageLoop::kInvalidMinor = -1;
+const int BaseMessageLoop::kUninitializedMinor = -2;
 
 BaseMessageLoop::BaseMessageLoop(base::MessageLoopForIO* base_loop)
     : base_loop_(base_loop),
@@ -107,6 +127,23 @@ MessageLoop::TaskId BaseMessageLoop::WatchFileDescriptor(
     io_tasks_.erase(task_id);
     return MessageLoop::kTaskIdNull;
   }
+
+  // Determine if the passed fd is the binder file descriptor. For that, we need
+  // to check that is a special char device and that the major and minor device
+  // numbers match. The binder file descriptor can't be removed and added back
+  // to an epoll group when there's work available to be done by the file
+  // descriptor due to bugs in the binder driver (b/26524111) when used with
+  // epoll. Therefore, we flag the binder fd and never attempt to remove it.
+  // This may cause the binder file descriptor to be attended with higher
+  // priority and cause starvation of other events.
+  struct stat buf;
+  if (fstat(fd, &buf) == 0 &&
+      S_ISCHR(buf.st_mode) &&
+      major(buf.st_rdev) == MISC_MAJOR &&
+      minor(buf.st_rdev) == GetBinderMinor()) {
+    it_bool.first->second.RunImmediately();
+  }
+
   return task_id;
 }
 
@@ -219,6 +256,38 @@ void BaseMessageLoop::OnFileReadyPostedTask(MessageLoop::TaskId task_id) {
   task_it->second.OnFileReadyPostedTask();
 }
 
+int BaseMessageLoop::ParseBinderMinor(
+    const std::string& file_contents) {
+  int result = kInvalidMinor;
+  // Split along '\n', then along the ' '. Note that base::SplitString trims all
+  // white spaces at the beginning and end after splitting.
+  std::vector<std::string> lines;
+  base::SplitString(file_contents, '\n', &lines);
+  for (const std::string& line : lines) {
+    if (line.empty())
+      continue;
+    std::string number;
+    std::string name;
+    if (!string_utils::SplitAtFirst(line, " ", &number, &name, false))
+      continue;
+
+    if (name == kBinderDriverName && base::StringToInt(number, &result))
+      break;
+  }
+  return result;
+}
+
+unsigned int BaseMessageLoop::GetBinderMinor() {
+  if (binder_minor_ != kUninitializedMinor)
+    return binder_minor_;
+
+  std::string proc_misc;
+  if (!base::ReadFileToString(base::FilePath(kMiscMinorPath), &proc_misc))
+    return binder_minor_;
+  binder_minor_ = ParseBinderMinor(proc_misc);
+  return binder_minor_;
+}
+
 BaseMessageLoop::IOTask::IOTask(const tracked_objects::Location& location,
                                 BaseMessageLoop* loop,
                                 MessageLoop::TaskId task_id,
@@ -248,9 +317,17 @@ void BaseMessageLoop::IOTask::OnFileCanWriteWithoutBlocking(int /* fd */) {
 }
 
 void BaseMessageLoop::IOTask::OnFileReady() {
+  // For file descriptors marked with the immediate_run flag, we don't call
+  // StopWatching() and wait, instead we dispatch the callback immediately.
+  if (immediate_run_) {
+    posted_task_pending_ = true;
+    OnFileReadyPostedTask();
+    return;
+  }
+
   // When the file descriptor becomes available we stop watching for it and
   // schedule a task to run the callback from the main loop. The callback will
-  // run using the same scheduler use to run other delayed tasks, avoiding
+  // run using the same scheduler used to run other delayed tasks, avoiding
   // starvation of the available posted tasks if there are file descriptors
   // always available. The new posted task will use the same TaskId as the
   // current file descriptor watching task an could be canceled in either state,
@@ -300,8 +377,10 @@ void BaseMessageLoop::IOTask::OnFileReadyPostedTask() {
   if (persistent_) {
     // In the persistent case we just run the callback. If this callback cancels
     // the task id, we can't access |this| anymore, so we re-start watching the
-    // file descriptor before running the callback.
-    StartWatching();
+    // file descriptor before running the callback, unless this is a fd where
+    // we didn't stop watching the file descriptor when it became available.
+    if (!immediate_run_)
+      StartWatching();
     closure_.Run();
   } else {
     // This will destroy |this|, the fd_watcher and therefore stop watching this
