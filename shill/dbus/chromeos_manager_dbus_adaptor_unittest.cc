@@ -211,7 +211,9 @@ TEST_F(ChromeosManagerDBusAdaptorTest, OnApModeSetterVanished) {
       new MockDBusServiceWatcher());
 
   // Reset watcher for AP mode setter after AP mode setter vanishes.
+#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
   EXPECT_CALL(manager_, OnApModeSetterVanished());
+#endif  // !DISABLE_WIFI && __BRILLO__
   manager_adaptor_.OnApModeSetterVanished();
   EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
 }

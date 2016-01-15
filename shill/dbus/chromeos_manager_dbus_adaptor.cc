@@ -614,7 +614,9 @@ bool ChromeosManagerDBusAdaptor::SetupStationModeInterface(
 
 void ChromeosManagerDBusAdaptor::OnApModeSetterVanished() {
   SLOG(this, 3) << __func__;
+#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
   manager_->OnApModeSetterVanished();
+#endif  // !DISABLE_WIFI && __BRILLO__
   watcher_for_ap_mode_setter_.reset();
 }
 

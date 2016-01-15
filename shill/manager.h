@@ -244,8 +244,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                              const std::string& interface_name,
                              bool* claimer_removed,
                              Error* error);
-#if defined(__BRILLO__)
-#if !defined(DISABLE_WIFI)
+#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
   // Setup an AP mode interface using WiFi driver HAL.  The driver
   // may or may not teardown the station mode interface as a result
   // of this call.  This behavior will be driver specific.
@@ -261,8 +260,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                                          Error* error);
 
   virtual void OnApModeSetterVanished();
-#endif  // DISABLE_WIFI
-#endif  // __BRILLO__
+#endif  // !DISABLE_WIFI && __BRILLO__
 
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
