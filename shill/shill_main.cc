@@ -46,6 +46,8 @@ namespace switches {
 static const char kForeground[] = "foreground";
 // Don't attempt to manage these devices.
 static const char kDeviceBlackList[] = "device-black-list";
+// Manage only these devices.
+static const char kDeviceWhiteList[] = "device-white-list";
 // Ignore Ethernet-like devices that don't have any driver information.
 static const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
 // Technologies to enable for portal check at startup.
@@ -77,6 +79,8 @@ static const char kHelpMessage[] = "\n"
     "    Don\'t daemon()ize; run in foreground.\n"
     "  --device-black-list=device1,device2\n"
     "    Do not manage devices named device1 or device2\n"
+    "  --device-white-list=device1,device2\n"
+    "    Manage only devices named device1 and device2\n"
     "  --ignore-unknown-ethernet\n"
     "    Ignore Ethernet-like devices that do not report a driver\n"
     "  --log-level=N\n"
@@ -195,6 +199,11 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
     base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceBlackList),
                       ',', &settings.device_blacklist);
+  }
+
+  if (cl->HasSwitch(switches::kDeviceWhiteList)) {
+    base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceWhiteList),
+                      ',', &settings.device_whitelist);
   }
 
   settings.ignore_unknown_ethernet =

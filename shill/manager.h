@@ -126,6 +126,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   virtual void SetBlacklistedDevices(
       const std::vector<std::string>& blacklisted_devices);
+  virtual void SetWhitelistedDevices(
+      const std::vector<std::string>& whitelisted_devices);
+
+  // Returns true if |device_name| is either not in the blacklist, or in the
+  // whitelist, depending on which list was supplied in startup settings.
+  virtual bool DeviceManagementAllowed(const std::string& device_name);
 
   virtual void Start();
   virtual void Stop();
@@ -904,6 +910,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // List of blacklisted devices specified from command line.
   std::vector<std::string> blacklisted_devices_;
+
+  // List of whitelisted devices specified from command line.
+  std::vector<std::string> whitelisted_devices_;
 
   // List of DHCPv6 enabled devices.
   std::vector<std::string> dhcpv6_enabled_devices_;

@@ -247,10 +247,11 @@ void Manager::RegisterAsync(const Callback<void(bool)>& completion_callback) {
 }
 
 void Manager::SetBlacklistedDevices(const vector<string>& blacklisted_devices) {
-  for (const auto& device : blacklisted_devices) {
-    device_info_.AddDeviceToBlackList(device);
-  }
   blacklisted_devices_ = blacklisted_devices;
+}
+
+void Manager::SetWhitelistedDevices(const vector<string>& whitelisted_devices) {
+  whitelisted_devices_ = whitelisted_devices;
 }
 
 void Manager::Start() {
@@ -664,6 +665,24 @@ void Manager::RemoveProfile(const string& name, Error* error) {
   return;
 }
 
+bool Manager::DeviceManagementAllowed(const string& device_name) {
+  if (std::find(blacklisted_devices_.begin(),
+                blacklisted_devices_.end(),
+                device_name) != blacklisted_devices_.end()) {
+    return false;
+  }
+  if (!whitelisted_devices_.size()) {
+    // If no whitelist is specified, all devices are considered whitelisted.
+    return true;
+  }
+  if (std::find(whitelisted_devices_.begin(),
+                whitelisted_devices_.end(),
+                device_name) != whitelisted_devices_.end()) {
+    return true;
+  }
+  return false;
+}
+
 void Manager::ClaimDevice(const string& claimer_name,
                           const string& device_name,
                           Error* error) {
@@ -676,12 +695,9 @@ void Manager::ClaimDevice(const string& claimer_name,
     return;
   }
 
-  // Check for blacklisted device.
-  if (std::find(blacklisted_devices_.begin(),
-                blacklisted_devices_.end(),
-                device_name) != blacklisted_devices_.end()) {
+  if (!DeviceManagementAllowed(device_name)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Not allowed to claim blacklisted device");
+                          "Not allowed to claim unmanaged device");
     return;
   }
 
@@ -727,12 +743,9 @@ void Manager::ReleaseDevice(const string& claimer_name,
 
   *claimer_removed = false;
 
-  // Check for blacklisted device.
-  if (std::find(blacklisted_devices_.begin(),
-                blacklisted_devices_.end(),
-                device_name) != blacklisted_devices_.end()) {
+  if (!DeviceManagementAllowed(device_name)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Not allowed to release blacklisted device");
+                          "Not allowed to release unmanaged device");
     return;
   }
 

@@ -650,8 +650,11 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
     indices_[link_name] = dev_index;
 
     if (!link_name.empty()) {
-      if (ContainsKey(black_list_, link_name)) {
+      if (IsDeviceBlackListed(link_name)) {
         technology = Technology::kBlacklisted;
+      } else if (!manager_->DeviceManagementAllowed(link_name)) {
+        technology = Technology::kBlacklisted;
+        AddDeviceToBlackList(link_name);
       } else {
         technology = GetDeviceTechnology(link_name);
       }

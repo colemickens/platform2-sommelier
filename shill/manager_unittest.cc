@@ -4861,8 +4861,7 @@ TEST_F(ManagerTest, ClaimBlacklistedDevice) {
   Error error;
   manager()->ClaimDevice(kClaimerName, kDeviceName, &error);
   EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ("Not allowed to claim blacklisted device", error.message());
-  EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
+  EXPECT_EQ("Not allowed to claim unmanaged device", error.message());
   // Verify device claimer is not created.
   EXPECT_EQ(nullptr, manager()->device_claimer_.get());
 }
@@ -4880,9 +4879,43 @@ TEST_F(ManagerTest, ReleaseBlacklistedDevice) {
   manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
   EXPECT_TRUE(error.IsFailure());
   EXPECT_FALSE(claimer_removed);
-  EXPECT_EQ("Not allowed to release blacklisted device", error.message());
-  // Verify device is still blacklisted.
-  EXPECT_TRUE(manager()->device_info()->IsDeviceBlackListed(kDeviceName));
+  EXPECT_EQ("Not allowed to release unmanaged device", error.message());
+}
+
+TEST_F(ManagerTest, BlacklistedDeviceIsNotManaged) {
+  const string kDeviceName = "test_device";
+
+  vector<string> blacklisted_devices = { kDeviceName };
+  manager()->SetBlacklistedDevices(blacklisted_devices);
+  EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
+}
+
+TEST_F(ManagerTest, NonBlacklistedDeviceIsManaged) {
+  const string kDeviceName = "test_device";
+
+  vector<string> blacklisted_devices = { "other_device" };
+  manager()->SetBlacklistedDevices(blacklisted_devices);
+  EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
+}
+
+TEST_F(ManagerTest, WhitelistedDeviceIsManaged) {
+  const string kDeviceName = "test_device";
+
+  vector<string> whitelisted_devices = { kDeviceName };
+  manager()->SetWhitelistedDevices(whitelisted_devices);
+  EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
+}
+
+TEST_F(ManagerTest, NonWhitelistedDeviceIsNotManaged) {
+  const string kDeviceName = "test_device";
+
+  vector<string> whitelisted_devices = { "other_device" };
+  manager()->SetWhitelistedDevices(whitelisted_devices);
+  EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
+}
+
+TEST_F(ManagerTest, DevicesIsManagedByDefault) {
+  EXPECT_TRUE(manager()->DeviceManagementAllowed("test_device"));
 }
 
 TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
