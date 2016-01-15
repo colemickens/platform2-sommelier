@@ -175,7 +175,6 @@ TEST_F(ChromeosManagerDBusAdaptorTest, SetupApModeInterface) {
                                                     &out_interface_name));
   EXPECT_NE(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
 #else
-  EXPECT_CALL(manager_, SetupApModeInterface(_, _)).Times(0);
   EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
       .Times(0);
   EXPECT_FALSE(manager_adaptor_.SetupApModeInterface(&error, message.get(),
@@ -199,7 +198,6 @@ TEST_F(ChromeosManagerDBusAdaptorTest, SetupStationModeInterface) {
       manager_adaptor_.SetupStationModeInterface(&error, &out_interface_name));
   EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
 #else
-  EXPECT_CALL(manager_, SetupStationModeInterface(_, _)).Times(0);
   EXPECT_FALSE(
       manager_adaptor_.SetupStationModeInterface(&error, &out_interface_name));
 #endif  // !DISABLE_WIFI && __BRILLO__
