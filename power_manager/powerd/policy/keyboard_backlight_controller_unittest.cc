@@ -419,6 +419,19 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseUserBrightness) {
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
 }
 
+TEST_F(KeyboardBacklightControllerTest, TurnOffWhenSuspended) {
+  initial_backlight_level_ = 50;
+  no_als_brightness_pref_ = 50;
+  pass_light_sensor_ = false;
+  Init();
+  controller_.SetSuspended(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+
+  controller_.SetSuspended(false);
+  EXPECT_EQ(50, backlight_.current_level());
+}
+
 TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
   Init();
   controller_.SetShuttingDown(true);

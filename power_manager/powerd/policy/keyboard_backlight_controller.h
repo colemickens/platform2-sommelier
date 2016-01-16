@@ -170,6 +170,7 @@ class KeyboardBacklightController
 
   bool dimmed_for_inactivity_;
   bool off_for_inactivity_;
+  bool suspended_;
   bool shutting_down_;
   bool docked_;
   bool hovering_;

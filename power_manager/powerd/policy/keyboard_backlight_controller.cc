@@ -86,6 +86,7 @@ KeyboardBacklightController::KeyboardBacklightController()
       session_state_(SESSION_STOPPED),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
+      suspended_(false),
       shutting_down_(false),
       docked_(false),
       hovering_(false),
@@ -262,7 +263,12 @@ void KeyboardBacklightController::SetOffForInactivity(bool off) {
   UpdateState();
 }
 
-void KeyboardBacklightController::SetSuspended(bool suspended) {}
+void KeyboardBacklightController::SetSuspended(bool suspended) {
+  if (suspended == suspended_)
+    return;
+  suspended_ = suspended;
+  UpdateState();
+}
 
 void KeyboardBacklightController::SetShuttingDown(bool shutting_down) {
   if (shutting_down == shutting_down_)
@@ -427,7 +433,7 @@ void KeyboardBacklightController::UpdateState() {
   TransitionStyle transition = TRANSITION_SLOW;
   const bool use_user = user_step_index_ != -1;
 
-  if (shutting_down_ || docked_) {
+  if (shutting_down_ || docked_ || suspended_) {
     percent = 0.0;
     transition = TRANSITION_INSTANT;
   } else if (hovering_) {
