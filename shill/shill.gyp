@@ -463,6 +463,7 @@
         'dbus/chromeos_service_dbus_adaptor.cc',
         'dbus/chromeos_third_party_vpn_dbus_adaptor.cc',
         'dbus/chromeos_upstart_proxy.cc',
+        'dbus/dbus_service_watcher_factory.cc',
         'default_profile.cc',
         'device.cc',
         'device_claimer.cc',
