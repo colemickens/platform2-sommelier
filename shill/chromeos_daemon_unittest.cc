@@ -62,9 +62,7 @@ class ChromeosDaemonForTest : public ChromeosDaemon {
  public:
   ChromeosDaemonForTest(const Settings& setttings,
                         Config* config)
-      : ChromeosDaemon(base::Closure(),
-                       Settings(),
-                       config) {}
+      : ChromeosDaemon(Settings(), config) {}
   virtual ~ChromeosDaemonForTest() {}
 
   bool quit_result() { return quit_result_; }
@@ -102,7 +100,6 @@ class ChromeosDaemonTest : public Test {
   virtual ~ChromeosDaemonTest() {}
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor
-    ASSERT_NE(nullptr, daemon_.config_);
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;
     daemon_.dhcp_provider_ = &dhcp_provider_;

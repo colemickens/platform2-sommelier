@@ -22,7 +22,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <brillo/daemons/daemon.h>
 
 #include "shill/event_dispatcher.h"
 #if !defined(DISABLE_WIFI)
@@ -45,8 +44,13 @@ class RTNLHandler;
 class NetlinkManager;
 #endif  // DISABLE_WIFI
 
-
-class ChromeosDaemon : public brillo::Daemon {
+// ChromeosDaemon contains most of the logic used in ShillDaemon, save the
+// overridden versions of brillo::Daemon methods. This class is separate from
+// ShillDaemon to decouple this class from brillo::Daemon. This is necessary for
+// ChromeosDaemon unit tests to run, since the base::ExitManager inherited from
+// brillo::Daemon cannot coexist with the base::ExitManager used by shill's
+// test_runner.cc.
+class ChromeosDaemon {
  public:
   // Run-time settings retrieved from command line.
   struct Settings {
@@ -68,9 +72,7 @@ class ChromeosDaemon : public brillo::Daemon {
     bool use_portal_list;
   };
 
-  ChromeosDaemon(const base::Closure& startup_callback,
-                 const Settings& settings,
-                 Config* config);
+  ChromeosDaemon(const Settings& settings, Config* config);
   virtual ~ChromeosDaemon();
 
   // Starts the termination actions in the manager. Returns true if
@@ -80,18 +82,18 @@ class ChromeosDaemon : public brillo::Daemon {
   // |completion_callback| if no asynchronous work is required.
   virtual bool Quit(const base::Closure& completion_callback);
 
+  // Break the termination loop started in ChromeosDaemon::OnShutdown. Invoked
+  // after shill completes its termination tasks during shutdown.
+  void BreakTerminationLoop();
+
  protected:
-  Manager* manager() const { return manager_.get(); }
-
-  void Start();
-
-  // Implementation of brillo::Daemon.
-  int OnInit() override;
-  void OnShutdown(int* return_code) override;
+  void Init();
 
  private:
   friend class ChromeosDaemonTest;
   friend class ChromeosDaemonForTest;
+
+  void Start();
 
   // Apply run-time settings to the manager.
   void ApplySettings();
@@ -104,10 +106,6 @@ class ChromeosDaemon : public brillo::Daemon {
   void StopAndReturnToMain();
 
   void Stop();
-
-  // Break the termination loop started in ChromeosDaemon::OnShutdown. Invoked
-  // after shill completes its termination tasks during shutdown.
-  void BreakTerminationLoop();
 
   Settings settings_;
   Config* config_;
@@ -124,7 +122,6 @@ class ChromeosDaemon : public brillo::Daemon {
 #endif  // DISABLE_WIFI
   std::unique_ptr<Manager> manager_;
   base::Closure termination_completed_callback_;
-  base::Closure startup_callback_;
 };
 
 }  // namespace shill

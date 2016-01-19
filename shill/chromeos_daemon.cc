@@ -16,22 +16,19 @@
 
 #include "shill/chromeos_daemon.h"
 
-#include <string>
-#include <sysexits.h>
-
 #include <base/bind.h>
 
 #if !defined(ENABLE_JSON_STORE)
 #include <glib.h>
 #include <glib-object.h>
-#endif
+#endif  // ENABLE_JSON_STORE
 
-#include "shill/control_interface.h"
 #if defined(ENABLE_BINDER)
 #include "shill/binder/binder_control.h"
 #elif defined(ENABLE_CHROMEOS_DBUS)
 #include "shill/dbus/chromeos_dbus_control.h"
 #endif  // ENABLE_BINDER, ENABLE_CHROMEOS_DBUS
+#include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/logging.h"
@@ -50,22 +47,16 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
-using std::vector;
 
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
-static string ObjectID(ChromeosDaemon* d) { return "(shill_daemon)"; }
+static string ObjectID(ChromeosDaemon* d) { return "(chromeos_daemon)"; }
 }
 
-
-ChromeosDaemon::ChromeosDaemon(const base::Closure& startup_callback,
-                               const Settings& settings,
-                               Config* config)
-    : settings_(settings),
-      config_(config),
-      startup_callback_(startup_callback) {}
+ChromeosDaemon::ChromeosDaemon(const Settings& settings, Config* config)
+    : settings_(settings), config_(config) {}
 
 ChromeosDaemon::~ChromeosDaemon() {}
 
@@ -103,6 +94,35 @@ bool ChromeosDaemon::Quit(const base::Closure& completion_callback) {
     StopAndReturnToMain();
     return true;  // All done, ready to exit.
   }
+}
+
+void ChromeosDaemon::Init() {
+  dispatcher_.reset(new EventDispatcher());
+#if defined(ENABLE_BINDER)
+  control_.reset(new BinderControl(dispatcher_.get()));
+#elif defined(ENABLE_CHROMEOS_DBUS)
+  control_.reset(new ChromeosDBusControl(dispatcher_.get()));
+#else
+// TODO(zqiu): use default stub control interface.
+#error Control interface type not specified.
+#endif  // ENABLE_BINDER, ENABLE_CHROMEOS_DBUS
+  metrics_.reset(new Metrics(dispatcher_.get()));
+  rtnl_handler_ = RTNLHandler::GetInstance();
+  routing_table_ = RoutingTable::GetInstance();
+  dhcp_provider_ = DHCPProvider::GetInstance();
+  process_manager_ = ProcessManager::GetInstance();
+#if !defined(DISABLE_WIFI)
+  netlink_manager_ = NetlinkManager::GetInstance();
+  callback80211_metrics_.reset(new Callback80211Metrics(metrics_.get()));
+#endif  // DISABLE_WIFI
+  manager_.reset(new Manager(control_.get(), dispatcher_.get(), metrics_.get(),
+                             config_->GetRunDirectory(),
+                             config_->GetStorageDirectory(),
+                             config_->GetUserStorageDirectory()));
+  control_->RegisterManagerObject(
+      manager_.get(),
+      base::Bind(&ChromeosDaemon::Start, base::Unretained(this)));
+  ApplySettings();
 }
 
 void ChromeosDaemon::TerminationActionsCompleted(const Error& error) {
@@ -173,64 +193,6 @@ void ChromeosDaemon::Start() {
 #endif  // DISABLE_WIFI
 
   manager_->Start();
-}
-
-int ChromeosDaemon::OnInit() {
-  // Manager DBus interface will get registered as part of this init call.
-  int return_code = brillo::Daemon::OnInit();
-  if (return_code != EX_OK) {
-    return return_code;
-  }
-
-  dispatcher_.reset(new EventDispatcher());
-#if defined(ENABLE_BINDER)
-  control_.reset(new BinderControl(dispatcher_.get()));
-#elif defined(ENABLE_CHROMEOS_DBUS)
-  control_.reset(new ChromeosDBusControl(dispatcher_.get()));
-#else
-  // TODO(zqiu): use default stub control interface.
-#error Control interface type not specified.
-#endif  // ENABLE_BINDER, ENABLE_CHROMEOS_DBUS
-  metrics_.reset(new Metrics(dispatcher_.get()));
-  rtnl_handler_ = RTNLHandler::GetInstance();
-  routing_table_ = RoutingTable::GetInstance();
-  dhcp_provider_ = DHCPProvider::GetInstance();
-  process_manager_ = ProcessManager::GetInstance();
-#if !defined(DISABLE_WIFI)
-  netlink_manager_ = NetlinkManager::GetInstance();
-  callback80211_metrics_.reset(new Callback80211Metrics(metrics_.get()));
-#endif  // DISABLE_WIFI
-  manager_.reset(new Manager(control_.get(),
-                             dispatcher_.get(),
-                             metrics_.get(),
-                             config_->GetRunDirectory(),
-                             config_->GetStorageDirectory(),
-                             config_->GetUserStorageDirectory()));
-  control_->RegisterManagerObject(
-      manager_.get(),
-      base::Bind(&ChromeosDaemon::Start, base::Unretained(this)));
-  ApplySettings();
-
-  // Signal that we've acquired all resources.
-  startup_callback_.Run();
-
-  return EX_OK;
-}
-
-void ChromeosDaemon::OnShutdown(int* return_code) {
-  if (!Quit(base::Bind(&ChromeosDaemon::BreakTerminationLoop,
-                       base::Unretained(this)))) {
-    // Run a message loop to allow shill to complete its termination
-    // procedures. This is different from the secondary loop in
-    // brillo::Daemon. This loop will run until we explicitly
-    // breakout of the loop, whereas the secondary loop in
-    // brillo::Daemon will run until no more tasks are posted on the
-    // loop.  This allows asynchronous D-Bus method calls to complete
-    // before exiting.
-    brillo::MessageLoop::current()->Run();
-  }
-
-  brillo::Daemon::OnShutdown(return_code);
 }
 
 void ChromeosDaemon::Stop() {

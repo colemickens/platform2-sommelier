@@ -34,6 +34,7 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/shill_config.h"
+#include "shill/shill_daemon.h"
 #include "shill/technology.h"
 
 using base::FilePath;
@@ -244,8 +245,8 @@ int main(int argc, char** argv) {
 
   shill::Config config;
 
-  shill::ChromeosDaemon daemon(base::Bind(&OnStartup, argv[0], cl), settings,
-                               &config);
+  shill::ShillDaemon daemon(base::Bind(&OnStartup, argv[0], cl), settings,
+                            &config);
   daemon.Run();
 
   LOG(INFO) << "Process exiting.";
