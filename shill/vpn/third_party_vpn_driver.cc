@@ -471,7 +471,7 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string& link_name,
   }
   CHECK(!active_client_);
 
-  SLOG(this, 2) << "Claiming " << link_name << " for OpenVPN tunnel";
+  SLOG(this, 2) << "Claiming " << link_name << " for third party VPN tunnel";
 
   CHECK(!device_);
   device_ = new VirtualDevice(control_, dispatcher(), metrics_, manager(),
