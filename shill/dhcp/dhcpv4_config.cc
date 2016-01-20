@@ -396,7 +396,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
       classless_static_routes = value.Get<string>();
     } else if (key == kConfigurationKeyVendorEncapsulatedOptions) {
-      properties->vendor_encapsulated_options = value.Get<ByteArray>();
+      properties->vendor_encapsulated_options = value.Get<string>();
     } else if (key == kConfigurationKeyWebProxyAutoDiscoveryUrl) {
       properties->web_proxy_auto_discovery = value.Get<string>();
     } else if (key == kConfigurationKeyLeaseTime) {
