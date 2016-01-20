@@ -140,7 +140,7 @@ class DBusMethodInvokerTest : public testing::Test {
     dbus::FileDescriptor fd_out;
     using brillo::dbus_utils::ExtractMethodCallResults;
     EXPECT_TRUE(ExtractMethodCallResults(response.get(), nullptr, &fd_out));
-    return fd_out.Pass();
+    return fd_out;
   }
 
   scoped_refptr<dbus::MockBus> bus_;

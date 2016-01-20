@@ -154,7 +154,7 @@ std::string mime::GetParameterValue(const std::string& mime_string,
                                     const std::string& paramName) {
   mime::Parameters params = mime::GetParameters(mime_string);
   for (const auto& pair : params) {
-    if (base::strcasecmp(pair.first.c_str(), paramName.c_str()) == 0)
+    if (base::EqualsCaseInsensitiveASCII(pair.first.c_str(), paramName.c_str()))
       return pair.second;
   }
   return std::string();

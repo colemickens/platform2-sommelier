@@ -268,8 +268,9 @@ int BaseMessageLoop::ParseBinderMinor(
   int result = kInvalidMinor;
   // Split along '\n', then along the ' '. Note that base::SplitString trims all
   // white spaces at the beginning and end after splitting.
-  std::vector<std::string> lines;
-  base::SplitString(file_contents, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(file_contents, "\n", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (const std::string& line : lines) {
     if (line.empty())
       continue;

@@ -122,7 +122,7 @@ void DBusInterface::HandleMethodCall(dbus::MethodCall* method_call,
         dbus::ErrorResponse::FromMethodCall(method_call,
                                             DBUS_ERROR_UNKNOWN_METHOD,
                                             "Unknown method: " + method_name);
-    sender.Run(response.Pass());
+    sender.Run(std::move(response));
     return;
   }
   VLOG(1) << "Dispatching DBus method call: " << method_name;

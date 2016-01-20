@@ -158,7 +158,7 @@ inline const T& HackMove(const T& val) {
 // safe to move the file descriptor out of |val|. That's why we are doing
 // const_cast here. It is a bit hacky, but there is no negative side effects.
 inline dbus::FileDescriptor HackMove(const dbus::FileDescriptor& val) {
-  return const_cast<dbus::FileDescriptor&>(val).Pass();
+  return std::move(const_cast<dbus::FileDescriptor&>(val));
 }
 }  // namespace internal
 

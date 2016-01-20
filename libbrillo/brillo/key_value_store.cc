@@ -30,7 +30,7 @@ const char kFalseValue[] = "false";
 // Returns a copy of |key| with leading and trailing whitespace removed.
 string TrimKey(const string& key) {
   string trimmed_key;
-  base::TrimWhitespace(key, base::TRIM_ALL, &trimmed_key);
+  base::TrimWhitespaceASCII(key, base::TRIM_ALL, &trimmed_key);
   CHECK(!trimmed_key.empty());
   return trimmed_key;
 }
@@ -46,11 +46,11 @@ bool KeyValueStore::Load(const base::FilePath& path) {
 
 bool KeyValueStore::LoadFromString(const std::string& data) {
   // Split along '\n', then along '='.
-  vector<string> lines;
-  base::SplitStringDontTrim(data, '\n', &lines);
+  vector<string> lines = base::SplitString(data, "\n", base::KEEP_WHITESPACE,
+                                           base::SPLIT_WANT_ALL);
   for (auto it = lines.begin(); it != lines.end(); ++it) {
     std::string line;
-    base::TrimWhitespace(*it, base::TRIM_LEADING, &line);
+    base::TrimWhitespaceASCII(*it, base::TRIM_LEADING, &line);
     if (line.empty() || line.front() == '#')
       continue;
 
@@ -59,7 +59,7 @@ bool KeyValueStore::LoadFromString(const std::string& data) {
     if (!string_utils::SplitAtFirst(line, "=", &key, &value, false))
       return false;
 
-    base::TrimWhitespace(key, base::TRIM_TRAILING, &key);
+    base::TrimWhitespaceASCII(key, base::TRIM_TRAILING, &key);
     if (key.empty())
       return false;
 
