@@ -91,8 +91,8 @@ void IPConfig::Init() {
   store_.RegisterConstInt32(kPrefixlenProperty, &properties_.subnet_prefix);
   store_.RegisterConstStrings(kSearchDomainsProperty,
                               &properties_.domain_search);
-  store_.RegisterConstString(kVendorEncapsulatedOptionsProperty,
-                             &properties_.vendor_encapsulated_options);
+  store_.RegisterConstByteArray(kVendorEncapsulatedOptionsProperty,
+                                &properties_.vendor_encapsulated_options);
   store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
                              &properties_.web_proxy_auto_discovery);
   store_.RegisterConstString(kDelegatedPrefixProperty,

@@ -1246,12 +1246,19 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
 
   // Add an ipconfig property that indicates this is an Android tether.
   IPConfig::Properties properties;
-  properties.vendor_encapsulated_options =
-      Tethering::kAndroidVendorEncapsulatedOptions;
+  properties.vendor_encapsulated_options = ByteArray(
+      Tethering::kAndroidVendorEncapsulatedOptions,
+      Tethering::kAndroidVendorEncapsulatedOptions +
+          strlen(Tethering::kAndroidVendorEncapsulatedOptions)
+  );
   device_->ipconfig_->UpdateProperties(properties, true);
   EXPECT_TRUE(device_->IsConnectedViaTether());
 
-  properties.vendor_encapsulated_options = "Some other non-empty value";
+  const char kTestVendorEncapsulatedOptions[] = "Some other non-empty value";
+  properties.vendor_encapsulated_options = ByteArray(
+      kTestVendorEncapsulatedOptions,
+      kTestVendorEncapsulatedOptions + sizeof(kTestVendorEncapsulatedOptions)
+  );
   device_->ipconfig_->UpdateProperties(properties, true);
   EXPECT_FALSE(device_->IsConnectedViaTether());
 }
