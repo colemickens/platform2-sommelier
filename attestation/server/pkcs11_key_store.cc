@@ -602,7 +602,7 @@ bool Pkcs11KeyStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
                                            const std::string& key_prefix,
                                            const std::string& key_name,
                                            CK_OBJECT_HANDLE object_handle) {
-  if (base::StartsWithASCII(key_name, key_prefix, true /*case_sensitive*/)) {
+  if (base::StartsWith(key_name, key_prefix, base::CompareCase::SENSITIVE)) {
     if (C_DestroyObject(session_handle, object_handle) != CKR_OK) {
       LOG(ERROR) << "C_DestroyObject failed.";
       return false;

@@ -62,7 +62,7 @@ TrunksClientTest::TrunksClientTest() : factory_(new TrunksFactoryImpl()) {
 }
 
 TrunksClientTest::TrunksClientTest(scoped_ptr<TrunksFactory> factory)
-    : factory_(factory.Pass()) {}
+    : factory_(std::move(factory)) {}
 
 TrunksClientTest::~TrunksClientTest() {}
 

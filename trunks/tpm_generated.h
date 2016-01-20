@@ -21,8 +21,8 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback_forward.h>
+#include <base/macros.h>
 
 #include "trunks/trunks_export.h"
 

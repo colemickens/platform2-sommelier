@@ -78,14 +78,14 @@ class TrunksDaemon : public brillo::DBusServiceDaemon {
     resource_manager_.reset(new trunks::ResourceManager(
         *factory_,
         transceiver_.get()));
-    background_thread_->message_loop_proxy()->PostNonNestableTask(
+    background_thread_->task_runner()->PostNonNestableTask(
         FROM_HERE,
         base::Bind(&trunks::ResourceManager::Initialize,
         base::Unretained(resource_manager_.get())));
     background_transceiver_.reset(
         new trunks::BackgroundCommandTransceiver(
             resource_manager_.get(),
-            background_thread_->message_loop_proxy()));
+            background_thread_->task_runner()));
   }
 
  protected:

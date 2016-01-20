@@ -80,7 +80,7 @@ class BackgroundTransceiverTest : public testing::Test {
 TEST_F(BackgroundTransceiverTest, Asynchronous) {
   trunks::BackgroundCommandTransceiver background_transceiver(
       &next_transceiver_,
-      test_thread_.message_loop_proxy());
+      test_thread_.task_runner());
   std::string output = "not_assigned";
   background_transceiver.SendCommand("test", base::Bind(Assign, &output));
   do {
@@ -94,7 +94,7 @@ TEST_F(BackgroundTransceiverTest, Asynchronous) {
 TEST_F(BackgroundTransceiverTest, Synchronous) {
   trunks::BackgroundCommandTransceiver background_transceiver(
       &next_transceiver_,
-      test_thread_.message_loop_proxy());
+      test_thread_.task_runner());
   std::string output = "not_assigned";
   // Post a synchronous call to be run when we start pumping the loop.
   message_loop_.PostTask(FROM_HERE,

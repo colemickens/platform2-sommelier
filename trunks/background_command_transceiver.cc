@@ -20,7 +20,7 @@
 #include <base/callback.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop_proxy.h>
+#include <base/single_thread_task_runner.h>
 #include <base/synchronization/waitable_event.h>
 
 namespace {
@@ -33,13 +33,13 @@ void AssignAndSignal(std::string* destination,
   event->Signal();
 }
 
-// A callback which posts another |callback| to a given |message_loop|.
-void PostCallbackToMessageLoop(
+// A callback which posts another |callback| to a given |task_runner|.
+void PostCallbackToTaskRunner(
     const trunks::CommandTransceiver::ResponseCallback& callback,
-    scoped_refptr<base::MessageLoopProxy> message_loop,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     const std::string& response) {
   base::Closure task = base::Bind(callback, response);
-  message_loop->PostTask(FROM_HERE, task);
+  task_runner->PostTask(FROM_HERE, task);
 }
 
 }  // namespace
@@ -60,9 +60,9 @@ void BackgroundCommandTransceiver::SendCommand(
     const ResponseCallback& callback) {
   if (task_runner_.get()) {
     ResponseCallback background_callback = base::Bind(
-        PostCallbackToMessageLoop,
+        PostCallbackToTaskRunner,
         callback,
-        base::MessageLoopProxy::current());
+        base::ThreadTaskRunnerHandle::Get());
     // Use SendCommandTask instead of binding to next_transceiver_ directly to
     // leverage weak pointer semantics.
     base::Closure task = base::Bind(

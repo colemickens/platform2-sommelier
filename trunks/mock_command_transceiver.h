@@ -19,8 +19,8 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "trunks/command_transceiver.h"
