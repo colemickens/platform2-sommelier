@@ -5,7 +5,7 @@
 #include "apmanager/event_dispatcher.h"
 
 #include <base/location.h>
-#include <base/message_loop/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 
 namespace apmanager {
@@ -25,13 +25,19 @@ EventDispatcher* EventDispatcher::GetInstance() {
 }
 
 bool EventDispatcher::PostTask(const base::Closure& task) {
-  return base::MessageLoopProxy::current()->PostTask(FROM_HERE, task);
+  if (!base::MessageLoop::current())
+    return false;
+  base::MessageLoop::current()->PostTask(FROM_HERE, task);
+  return true;
 }
 
 bool EventDispatcher::PostDelayedTask(const base::Closure& task,
                                       int64_t delay_ms) {
-  return base::MessageLoopProxy::current()->PostDelayedTask(
+  if (!base::MessageLoop::current())
+    return false;
+  base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
+  return true;
 }
 
 }  // namespace apmanager

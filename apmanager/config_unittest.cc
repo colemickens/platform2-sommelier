@@ -138,8 +138,8 @@ class ConfigTest : public testing::Test {
                    Error::Type expected_type,
                    const std::string& expected_message_start) {
     EXPECT_EQ(expected_type, error.type());
-    EXPECT_TRUE(
-        base::StartsWithASCII(error.message(), expected_message_start, false));
+    EXPECT_TRUE(base::StartsWith(error.message(), expected_message_start,
+                                 base::CompareCase::INSENSITIVE_ASCII));
   }
 
  protected:
