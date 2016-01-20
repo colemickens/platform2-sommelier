@@ -5,10 +5,15 @@
 #include <brillo/message_loops/base_message_loop.h>
 
 #include <fcntl.h>
-#include <linux/major.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#ifndef __ANDROID_HOST__
+// Used for MISC_MAJOR. Only required for the target and not always available
+// for the host.
+#include <linux/major.h>
+#endif
 
 #include <vector>
 
@@ -128,6 +133,7 @@ MessageLoop::TaskId BaseMessageLoop::WatchFileDescriptor(
     return MessageLoop::kTaskIdNull;
   }
 
+#ifndef __ANDROID_HOST__
   // Determine if the passed fd is the binder file descriptor. For that, we need
   // to check that is a special char device and that the major and minor device
   // numbers match. The binder file descriptor can't be removed and added back
@@ -143,6 +149,7 @@ MessageLoop::TaskId BaseMessageLoop::WatchFileDescriptor(
       minor(buf.st_rdev) == GetBinderMinor()) {
     it_bool.first->second.RunImmediately();
   }
+#endif
 
   return task_id;
 }
