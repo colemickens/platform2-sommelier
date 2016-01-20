@@ -79,6 +79,7 @@ class ScopeLogger {
   // Returns a singleton of this class.
   static ScopeLogger* GetInstance();
 
+  ScopeLogger();
   ~ScopeLogger();
 
   // Returns true if logging is enabled for |scope| and |verbose_level|, i.e.
@@ -143,7 +144,7 @@ class ScopeLogger {
   // Hooks to notify interested parties of changes to log scopes.
   ScopeEnableChangedCallbacks log_scope_callbacks_[kNumScopes];
 
-  DISALLOW_IMPLICIT_CONSTRUCTORS(ScopeLogger);
+  DISALLOW_COPY_AND_ASSIGN(ScopeLogger);
 };
 
 }  // namespace shill

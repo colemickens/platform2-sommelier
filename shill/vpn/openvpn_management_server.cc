@@ -191,9 +191,9 @@ void OpenVPNManagementServer::OnReady(int fd) {
 
 void OpenVPNManagementServer::OnInput(InputData* data) {
   SLOG(this, 2) << __func__ << "(" << data->len << ")";
-  vector<string> messages;
-  SplitString(
-      string(reinterpret_cast<char*>(data->buf), data->len), '\n', &messages);
+  vector<string> messages = SplitString(
+      string(reinterpret_cast<char*>(data->buf), data->len), "\n",
+      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (vector<string>::const_iterator it = messages.begin();
        it != messages.end() && IsStarted(); ++it) {
     ProcessMessage(*it);
@@ -222,7 +222,7 @@ void OpenVPNManagementServer::ProcessMessage(const string& message) {
 }
 
 bool OpenVPNManagementServer::ProcessInfoMessage(const string& message) {
-  if (!base::StartsWithASCII(message, ">INFO:", true)) {
+  if (!base::StartsWith(message, ">INFO:", base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << message;
@@ -231,7 +231,8 @@ bool OpenVPNManagementServer::ProcessInfoMessage(const string& message) {
 
 bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     const string& message) {
-  if (!base::StartsWithASCII(message, ">PASSWORD:Need ", true)) {
+  if (!base::StartsWith(message, ">PASSWORD:Need ",
+                        base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << "Processing need-password message.";
@@ -242,7 +243,8 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     } else {
       PerformAuthentication(tag);
     }
-  } else if (base::StartsWithASCII(tag, "User-Specific TPM Token", true)) {
+  } else if (base::StartsWith(tag, "User-Specific TPM Token",
+                              base::CompareCase::SENSITIVE)) {
     SupplyTPMToken(tag);
   } else {
     NOTIMPLEMENTED() << ": Unsupported need-password message: " << message;
@@ -343,7 +345,8 @@ void OpenVPNManagementServer::SupplyTPMToken(const string& tag) {
 
 bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
     const string& message) {
-  if (!base::StartsWithASCII(message, ">PASSWORD:Verification Failed:", true)) {
+  if (!base::StartsWith(message, ">PASSWORD:Verification Failed:",
+                        base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << message;
@@ -356,7 +359,8 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
 }
 
 bool OpenVPNManagementServer::ProcessAuthTokenMessage(const string& message) {
-  if (!base::StartsWithASCII(message, ">PASSWORD:Auth-Token:", true)) {
+  if (!base::StartsWith(message, ">PASSWORD:Auth-Token:",
+                        base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << "Auth-Token message ignored.";
@@ -374,11 +378,11 @@ bool OpenVPNManagementServer::ProcessAuthTokenMessage(const string& message) {
 // <local-ip> is a dotted-quad for the local IPv4 address (when available)
 // <remote-ip> is a dotted-quad for the remote IPv4 address (when available)
 bool OpenVPNManagementServer::ProcessStateMessage(const string& message) {
-  if (!base::StartsWithASCII(message, ">STATE:", true)) {
+  if (!base::StartsWith(message, ">STATE:", base::CompareCase::SENSITIVE)) {
     return false;
   }
-  vector<string> details;
-  SplitString(message, ',', &details);
+  vector<string> details = SplitString(message, ",", base::TRIM_WHITESPACE,
+                                       base::SPLIT_WANT_ALL);
   if (details.size() > 1) {
     state_ = details[1];
     LOG(INFO) << "OpenVPN state: " << state_;
@@ -396,7 +400,8 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string& message) {
 }
 
 bool OpenVPNManagementServer::ProcessHoldMessage(const string& message) {
-  if (!base::StartsWithASCII(message, ">HOLD:Waiting for hold release", true)) {
+  if (!base::StartsWith(message, ">HOLD:Waiting for hold release",
+                        base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << "Client waiting for hold release.";
@@ -408,7 +413,7 @@ bool OpenVPNManagementServer::ProcessHoldMessage(const string& message) {
 }
 
 bool OpenVPNManagementServer::ProcessSuccessMessage(const string& message) {
-  if (!base::StartsWithASCII(message, "SUCCESS: ", true)) {
+  if (!base::StartsWith(message, "SUCCESS: ", base::CompareCase::SENSITIVE)) {
     return false;
   }
   LOG(INFO) << message;

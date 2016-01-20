@@ -45,7 +45,7 @@ bool ModemClassic::GetLinkName(const KeyValueStore& modem_properties,
 void ModemClassic::CreateDeviceClassic(
     const KeyValueStore& modem_properties) {
   Init();
-  uint32_t mm_type = kuint32max;
+  uint32_t mm_type = std::numeric_limits<uint32_t>::max();
   if (modem_properties.ContainsUint(kPropertyType)) {
     mm_type = modem_properties.GetUint(kPropertyType);
   }
@@ -60,7 +60,7 @@ void ModemClassic::CreateDeviceClassic(
       LOG(ERROR) << "Unsupported cellular modem type: " << mm_type;
       return;
   }
-  uint32_t ip_method = kuint32max;
+  uint32_t ip_method = std::numeric_limits<uint32_t>::max();
   if (!modem_properties.ContainsUint(kPropertyIPMethod) ||
       (ip_method = modem_properties.GetUint(kPropertyIPMethod)) !=
           MM_MODEM_IP_METHOD_DHCP) {

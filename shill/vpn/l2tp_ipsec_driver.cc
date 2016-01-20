@@ -236,7 +236,8 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   if (!InitOptions(&options, error)) {
     return false;
   }
-  LOG(INFO) << "L2TP/IPSec VPN process options: " << JoinString(options, ' ');
+  LOG(INFO) << "L2TP/IPSec VPN process options: "
+            << base::JoinString(options, " ");
 
   if (external_task_local->Start(
           FilePath(kL2TPIPSecVPNPath), options, environment, true, error)) {

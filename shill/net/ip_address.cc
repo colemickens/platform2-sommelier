@@ -172,7 +172,7 @@ IPAddress IPAddress::GetAddressMaskFromPrefix(Family family, size_t prefix) {
 
   while (bits > kBitsPerByte) {
     bits -= kBitsPerByte;
-    *address_ptr++ = kuint8max;
+    *address_ptr++ = std::numeric_limits<uint8_t>::max();
   }
 
   // We are guaranteed to be before the end of the address data since even
@@ -211,8 +211,8 @@ bool IPAddress::SetAddressFromString(const string& address_string) {
 }
 
 bool IPAddress::SetAddressAndPrefixFromString(const string& address_string) {
-  vector<string> address_parts;
-  base::SplitString(address_string, '/', &address_parts);
+  vector<string> address_parts = base::SplitString(
+      address_string, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (address_parts.size() != 2) {
     LOG(ERROR) << "Cannot split address " << address_string;
     return false;

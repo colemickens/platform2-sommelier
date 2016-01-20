@@ -274,8 +274,8 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     return true;
   }
 
-  vector<string> route_strings;
-  base::SplitString(classless_routes, ' ', &route_strings);
+  vector<string> route_strings = base::SplitString(
+      classless_routes, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (route_strings.size() % 2) {
     LOG(ERROR) << "In " << __func__ << ": Size of route_strings array "
                << "is a non-even number: " << route_strings.size();

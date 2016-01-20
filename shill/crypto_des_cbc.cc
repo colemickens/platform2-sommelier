@@ -50,7 +50,8 @@ bool CryptoDESCBC::Decrypt(const string& ciphertext, string* plaintext) {
   CHECK_EQ(kBlockSize, iv_.size());
   int version = 1;
   string b64_ciphertext = ciphertext;
-  if (base::StartsWithASCII(ciphertext, kVersion2Prefix, true)) {
+  if (base::StartsWith(ciphertext, kVersion2Prefix,
+                       base::CompareCase::SENSITIVE)) {
     version = 2;
     b64_ciphertext.erase(0, strlen(kVersion2Prefix));
   }
@@ -82,7 +83,7 @@ bool CryptoDESCBC::Decrypt(const string& ciphertext, string* plaintext) {
   }
   string text = data.data();
   if (version == 2) {
-    if (!base::EndsWith(text, kSentinel, true)) {
+    if (!base::EndsWith(text, kSentinel, base::CompareCase::SENSITIVE)) {
       LOG(ERROR) << "DES-CBC decrypted text missing sentinel -- bad key?";
       return false;
     }

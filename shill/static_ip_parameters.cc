@@ -179,8 +179,8 @@ void StaticIPParameters::Load(
           // Keep it as is to be backward compatible.
           string value;
           if (storage->GetString(storage_id, name, &value)) {
-            vector<string> string_list;
-            base::SplitString(value, ',', &string_list);
+            vector<string> string_list = base::SplitString(
+                value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
             args_.SetStrings(property.name, string_list);
           } else {
             args_.RemoveStrings(property.name);
@@ -220,7 +220,7 @@ void StaticIPParameters::Save(
           // Keep it as is to be backward compatible.
           storage->SetString(
               storage_id, name,
-              JoinString(args_.GetStrings(property.name), ','));
+              base::JoinString(args_.GetStrings(property.name), ","));
         }
         break;
       default:
@@ -395,7 +395,7 @@ string StaticIPParameters::GetMappedStringsProperty(
     error->Populate(Error::kNotFound, "Property is not set");
     return string();
   }
-  return JoinString(args_.GetStrings(key), ',');
+  return base::JoinString(args_.GetStrings(key), ",");
 }
 
 string StaticIPParameters::GetMappedSavedStringsProperty(
@@ -407,7 +407,7 @@ string StaticIPParameters::GetMappedSavedStringsProperty(
     error->Populate(Error::kNotFound, "Property is not set");
     return string();
   }
-  return JoinString(saved_args_.GetStrings(key), ',');
+  return base::JoinString(saved_args_.GetStrings(key), ",");
 }
 
 bool StaticIPParameters::SetMappedInt32Property(
@@ -448,8 +448,8 @@ bool StaticIPParameters::SetMappedStringsProperty(
     const size_t& index, const string& value, Error* error) {
   CHECK(index < arraysize(kProperties));
 
-  vector<string> string_list;
-  base::SplitString(value, ',', &string_list);
+  vector<string> string_list = base::SplitString(
+      value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (args_.ContainsStrings(kProperties[index].name) &&
       args_.GetStrings(kProperties[index].name) == string_list) {
     return false;

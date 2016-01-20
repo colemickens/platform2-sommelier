@@ -126,7 +126,7 @@ void WaitForCondition(
     return;
   }
 
-  wait_timeout_callback.Reset(base::MessageLoop::QuitClosure());
+  wait_timeout_callback.Reset(base::MessageLoop::QuitWhenIdleClosure());
   change_callback.Reset(condition_change_callback);
 
   condition_change_callback_registrar.Run(change_callback.callback());

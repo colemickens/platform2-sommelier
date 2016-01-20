@@ -358,6 +358,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     // Purge queries that have expired (sequence number of this message is
     // greater than that of the head of the route query sequence).  Do the
     // math in a way that's roll-over independent.
+    const auto kuint32max = std::numeric_limits<uint32_t>::max();
     while (route_queries_.front().sequence - message.seq() > kuint32max / 2) {
       LOG(ERROR) << __func__ << ": Purging un-replied route request sequence "
                  << route_queries_.front().sequence

@@ -27,7 +27,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
 #include <base/stl_util.h>
 
 #include "shill/net/attribute_list.h"
@@ -41,7 +41,7 @@
 
 using base::Bind;
 using base::LazyInstance;
-using base::MessageLoopProxy;
+using base::MessageLoop;
 using std::list;
 using std::map;
 using std::string;
@@ -566,7 +566,7 @@ bool NetlinkManager::SendMessageInternal(
     dump_pending_ = true;
     pending_dump_timeout_callback_.Reset(Bind(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
-    MessageLoopProxy::current()->PostDelayedTask(
+    MessageLoop::current()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
         base::TimeDelta::FromMilliseconds(kPendingDumpTimeoutMilliseconds));
   }
@@ -834,7 +834,7 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
   resend_dump_message_callback_.Reset(
       Bind(&NetlinkManager::ResendPendingDumpMessage,
            weak_ptr_factory_.GetWeakPtr()));
-  MessageLoopProxy::current()->PostDelayedTask(
+  MessageLoop::current()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
       base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));
 }

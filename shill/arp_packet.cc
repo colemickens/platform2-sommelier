@@ -21,6 +21,8 @@
 #include <netinet/in.h>
 #include <string.h>
 
+#include <limits>
+
 #include "shill/logging.h"
 
 namespace shill {
@@ -151,7 +153,7 @@ bool ArpPacket::FormatRequest(ByteString* packet) const {
     return false;
   }
   size_t ip_address_length = IPAddress::GetAddressLength(family);
-  CHECK(ip_address_length < kuint8max);
+  CHECK(ip_address_length < std::numeric_limits<uint8_t>::max());
   if (local_mac_address_.GetLength() != ETH_ALEN ||
       remote_mac_address_.GetLength() != ETH_ALEN) {
     LOG(ERROR) << "Local or remote MAC address length is incorrect.";

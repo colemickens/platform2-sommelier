@@ -71,7 +71,7 @@ class ChromeosDaemonForTest : public ChromeosDaemon {
 
   bool Quit(const base::Closure& completion_callback) override {
     quit_result_ = ChromeosDaemon::Quit(completion_callback);
-    dispatcher_->PostTask(base::MessageLoop::QuitClosure());
+    dispatcher_->PostTask(base::MessageLoop::QuitWhenIdleClosure());
     return quit_result_;
   }
 

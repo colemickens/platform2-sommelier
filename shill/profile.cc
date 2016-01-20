@@ -270,7 +270,7 @@ bool Profile::IsValidIdentifierToken(const string& token) {
     return false;
   }
   for (auto chr : token) {
-    if (!IsAsciiAlpha(chr) && !IsAsciiDigit(chr)) {
+    if (!base::IsAsciiAlpha(chr) && !base::IsAsciiDigit(chr)) {
       return false;
     }
   }
@@ -327,8 +327,9 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath& path) {
     return profile_identifiers;
   }
 
-  vector<string> profile_lines;
-  base::SplitStringDontTrim(profile_data, '\n', &profile_lines);
+  vector<string> profile_lines =
+      base::SplitString(profile_data, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (const auto& line : profile_lines) {
     if (line.empty()) {
       // This will be the case on the last line, so let's not complain about it.
@@ -367,7 +368,7 @@ bool Profile::SaveUserProfileList(const FilePath& path,
                                        IdentifierToString(id).c_str(),
                                        id.user_hash.c_str()));
   }
-  string content = JoinString(lines, "");
+  string content = base::JoinString(lines, "");
   size_t ret = base::WriteFile(path, content.c_str(), content.length());
   return ret == content.length();
 }

@@ -409,7 +409,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void ClearBgscanMethod(const int& argument, Error* error);
 
   void CurrentBSSChanged(const std::string& new_bss);
-  void DisconnectReasonChanged(const int32 new_disconnect_reason);
+  void DisconnectReasonChanged(const int32_t new_disconnect_reason);
   // Return the RPC identifier associated with the wpa_supplicant network
   // entry created for |service|.  If one does not exist, an empty string
   // is returned, and |error| is populated.
@@ -640,7 +640,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
   std::string supplicant_bss_;
-  int32 supplicant_disconnect_reason_;
+  int32_t supplicant_disconnect_reason_;
   std::string phy_name_;
   // Indicates that we should flush supplicant's BSS cache after the
   // next scan completes.

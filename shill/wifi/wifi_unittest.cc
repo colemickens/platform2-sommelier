@@ -2933,8 +2933,8 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     string config_string;
     EXPECT_TRUE(params.ContainsString(WPASupplicant::kNetworkPropertyBgscan));
     config_string = params.GetString(WPASupplicant::kNetworkPropertyBgscan);
-    vector<string> elements;
-    base::SplitString(config_string, ':', &elements);
+    vector<string> elements = base::SplitString(
+        config_string, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     ASSERT_EQ(4, elements.size());
     EXPECT_EQ(WiFi::kDefaultBgscanMethod, elements[0]);
     EXPECT_EQ(StringPrintf("%d", WiFi::kBackgroundScanIntervalSeconds),
@@ -2950,8 +2950,8 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     EXPECT_TRUE(params.ContainsString(WPASupplicant::kNetworkPropertyBgscan));
     string config_string =
         params.GetString(WPASupplicant::kNetworkPropertyBgscan);
-    vector<string> elements;
-    base::SplitString(config_string, ':', &elements);
+    vector<string> elements = base::SplitString(
+        config_string, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     ASSERT_EQ(4, elements.size());
     EXPECT_EQ(StringPrintf("%d", WiFi::kDefaultScanIntervalSeconds),
               elements[3]);
@@ -3458,14 +3458,12 @@ void WiFiTimerTest::ExpectInitialScanSequence() {
     // the fast scan interval.
     EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
         _, WiFi::kFastScanIntervalSeconds * 1000))
-        .Times(WiFi::kNumFastScanAttempts - 1)
-        .WillRepeatedly(Return(true));
+        .Times(WiFi::kNumFastScanAttempts - 1);
 
     // After this, the WiFi device should use the normal scan interval.
     EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
         _, GetScanInterval() * 1000))
-        .Times(kScanTimes - WiFi::kNumFastScanAttempts + 1)
-        .WillRepeatedly(Return(true));
+        .Times(kScanTimes - WiFi::kNumFastScanAttempts + 1);
 
     for (int i = 0; i < kScanTimes; i++) {
       FireScanTimer();
@@ -3480,16 +3478,14 @@ TEST_F(WiFiTimerTest, FastRescan) {
   // post a task to call Scan() on the wpa_supplicant proxy immediately.
   EXPECT_CALL(mock_dispatcher_, PostTask(_));
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
-      _, WiFi::kFastScanIntervalSeconds * 1000))
-      .WillOnce(Return(true));
+      _, WiFi::kFastScanIntervalSeconds * 1000));
   StartWiFi();
 
   ExpectInitialScanSequence();
 
   // If we end up disconnecting, the sequence should repeat.
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
-      _, WiFi::kFastScanIntervalSeconds * 1000))
-      .WillOnce(Return(true));
+      _, WiFi::kFastScanIntervalSeconds * 1000));
   RestartFastScanAttempts();
 
   ExpectInitialScanSequence();

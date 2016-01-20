@@ -69,22 +69,22 @@ FilePath CertificateFile::CreatePEMFromStrings(
     pem_output.push_back(StringPrintf(
       "%s\n%s%s\n", kPEMHeader, hex_data.c_str(), kPEMFooter));
   }
-  return WriteFile(JoinString(pem_output, ""));
+  return WriteFile(base::JoinString(pem_output, ""));
 }
 
 // static
 string CertificateFile::ExtractHexData(const std::string& pem_data) {
   bool found_header = false;
   bool found_footer = false;
-  const bool kCaseSensitive = false;
-  vector<string> input_lines;
-  SplitString(pem_data, '\n', &input_lines);
+  vector<string> input_lines = SplitString(
+      pem_data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   vector<string> output_lines;
   for (vector<string>::const_iterator it = input_lines.begin();
        it != input_lines.end(); ++it) {
     string line;
     base::TrimWhitespaceASCII(*it, base::TRIM_ALL, &line);
-    if (base::StartsWithASCII(line, kPEMHeader, kCaseSensitive)) {
+    if (base::StartsWith(line, kPEMHeader,
+                         base::CompareCase::INSENSITIVE_ASCII)) {
       if (found_header) {
         LOG(ERROR) << "Found two PEM headers in a row.";
         return string();
@@ -92,7 +92,8 @@ string CertificateFile::ExtractHexData(const std::string& pem_data) {
         found_header = true;
         output_lines.clear();
       }
-    } else if (base::StartsWithASCII(line, kPEMFooter, kCaseSensitive)) {
+    } else if (base::StartsWith(line, kPEMFooter,
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       if (!found_header) {
         LOG(ERROR) << "Found a PEM footer before header.";
         return string();
@@ -110,7 +111,7 @@ string CertificateFile::ExtractHexData(const std::string& pem_data) {
   }
   DCHECK_EQ(found_header, found_footer);
   output_lines.push_back("");
-  return JoinString(output_lines, "\n");
+  return base::JoinString(output_lines, "\n");
 }
 
 FilePath CertificateFile::WriteFile(const string& output_data) {

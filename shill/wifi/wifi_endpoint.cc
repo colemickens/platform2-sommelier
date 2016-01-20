@@ -171,7 +171,7 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
               oui >> 16, (oui >> 8) & 0xff, oui & 0xff));
     }
     vendor_information[kVendorOUIListProperty] =
-        JoinString(oui_vector, ' ');
+        base::JoinString(oui_vector, " ");
   }
   return vendor_information;
 }
@@ -370,11 +370,11 @@ void WiFiEndpoint::ParseKeyManagementMethods(
 
   for (const auto& method : key_management_vec) {
     if (base::EndsWith(method, WPASupplicant::kKeyManagementMethodSuffixEAP,
-                       true)) {
+                       base::CompareCase::SENSITIVE)) {
       key_management_methods->insert(kKeyManagement802_1x);
     } else if (base::EndsWith(method,
                               WPASupplicant::kKeyManagementMethodSuffixPSK,
-                              true)) {
+                              base::CompareCase::SENSITIVE)) {
       key_management_methods->insert(kKeyManagementPSK);
     }
   }

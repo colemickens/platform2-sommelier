@@ -721,7 +721,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   Mock::VerifyAndClearExpectations(local_external_task);
 
   EXPECT_CALL(*local_external_task, OnDelete());
-  dispatcher_.PostTask(base::MessageLoop::QuitClosure());
+  dispatcher_.PostTask(base::MessageLoop::QuitWhenIdleClosure());
   dispatcher_.DispatchForever();
 }
 

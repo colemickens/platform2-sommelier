@@ -206,7 +206,9 @@ void ThirdPartyVpnDriver::ProcessIPArray(
   std::vector<std::string> string_array;
   auto it = parameters.find(key);
   if (it != parameters.end()) {
-    base::SplitString(parameters.at(key), delimiter, &string_array);
+    string_array = base::SplitString(
+        parameters.at(key), std::string(delimiter), base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_ALL);
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
@@ -236,7 +238,9 @@ void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
   IPAddress address(IPAddress::kFamilyIPv4);
   auto it = parameters.find(key);
   if (it != parameters.end()) {
-    base::SplitString(parameters.at(key), delimiter, &string_array);
+    string_array = base::SplitString(
+        parameters.at(key), std::string(delimiter), base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_ALL);
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
@@ -273,7 +277,9 @@ void ThirdPartyVpnDriver::ProcessSearchDomainArray(
   std::vector<std::string> string_array;
   auto it = parameters.find(key);
   if (it != parameters.end()) {
-    base::SplitString(parameters.at(key), delimiter, &string_array);
+    string_array = base::SplitString(
+        parameters.at(key), std::stringbuf(delimiter), base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_ALL);
 
     if (!string_array.empty()) {
       target->swap(string_array);

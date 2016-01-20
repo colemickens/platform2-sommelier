@@ -303,7 +303,7 @@ string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId& id,
   string storage_id =
       base::StringPrintf("%s_%s_%s",
                          kTypeWimax, name.c_str(), id.c_str());
-  base::StringToLowerASCII(&storage_id);
+  base::ToLowerASCII(&storage_id);
   replace_if(storage_id.begin(), storage_id.end(), &Service::IllegalChar, '_');
   return storage_id;
 }

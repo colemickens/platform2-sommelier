@@ -21,6 +21,7 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 #include "shill/file_reader.h"
 #include "shill/logging.h"
@@ -84,8 +85,9 @@ bool SocketInfoReader::AppendSocketInfo(const FilePath& info_file_path,
 
 bool SocketInfoReader::ParseSocketInfo(const string& input,
                                        SocketInfo* socket_info) {
-  vector<string> tokens;
-  base::SplitStringAlongWhitespace(input, &tokens);
+  vector<string> tokens = base::SplitString(input, base::kWhitespaceASCII,
+                                            base::KEEP_WHITESPACE,
+                                            base::SPLIT_WANT_NONEMPTY);
   if (tokens.size() < 10) {
     return false;
   }
@@ -131,9 +133,8 @@ bool SocketInfoReader::ParseSocketInfo(const string& input,
 
 bool SocketInfoReader::ParseIPAddressAndPort(
     const string& input, IPAddress* ip_address, uint16_t* port) {
-  vector<string> tokens;
-
-  base::SplitString(input, ':', &tokens);
+  vector<string> tokens = base::SplitString(
+      input, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (tokens.size() != 2 ||
       !ParseIPAddress(tokens[0], ip_address) ||
       !ParsePort(tokens[1], port)) {
@@ -183,10 +184,10 @@ bool SocketInfoReader::ParsePort(const string& input, uint16_t* port) {
 bool SocketInfoReader::ParseTransimitAndReceiveQueueValues(
     const string& input,
     uint64_t* transmit_queue_value, uint64_t* receive_queue_value) {
-  vector<string> tokens;
   int64_t signed_transmit_queue_value = 0, signed_receive_queue_value = 0;
 
-  base::SplitString(input, ':', &tokens);
+  vector<string> tokens = base::SplitString(
+      input, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (tokens.size() != 2 ||
       !base::HexStringToInt64(tokens[0], &signed_transmit_queue_value) ||
       !base::HexStringToInt64(tokens[1], &signed_receive_queue_value)) {
@@ -216,10 +217,10 @@ bool SocketInfoReader::ParseConnectionState(
 
 bool SocketInfoReader::ParseTimerState(
     const string& input, SocketInfo::TimerState* timer_state) {
-  vector<string> tokens;
   int result = 0;
 
-  base::SplitString(input, ':', &tokens);
+  vector<string> tokens = base::SplitString(
+      input, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (tokens.size() != 2 || tokens[0].size() != 2 ||
       !base::HexStringToInt(tokens[0], &result)) {
     return false;

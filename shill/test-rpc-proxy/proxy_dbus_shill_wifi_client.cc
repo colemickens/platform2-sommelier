@@ -158,7 +158,7 @@ bool ProxyDbusShillWifiClient::ConnectToWifiNetwork(
   if (!service ||
       !dbus_client_->GetPropertyValueFromServiceProxy(
           service.get(), shill::kSignalStrengthProperty, &signal_strength) ||
-      (signal_strength.Get<uint8>() < 0)) {
+      (signal_strength.Get<uint8_t>() < 0)) {
     *failure_reason = "FAIL(Discovery timed out)";
     return false;
   }
@@ -257,8 +257,8 @@ bool ProxyDbusShillWifiClient::DisconnectFromWifiNetwork(
 bool ProxyDbusShillWifiClient::ConfigureBgScan(
     const std::string& interface_name,
     const std::string& method_name,
-    uint16 short_interval,
-    uint16 long_interval,
+    uint16_t short_interval,
+    uint16_t long_interval,
     int signal_threshold) {
   brillo::VariantDictionary device_params;
   device_params.insert(std::make_pair(
@@ -296,7 +296,7 @@ bool ProxyDbusShillWifiClient::GetActiveWifiSsids(
     std::vector<std::string>* ssids) {
   for (auto& service : dbus_client_->GetServiceProxies()) {
     brillo::Any service_type, signal_strength, ssid_hex;
-    std::vector<uint8> ssid_bytes;
+    std::vector<uint8_t> ssid_bytes;
     brillo::VariantDictionary proxy_properties;
     brillo::ErrorPtr error;
     if (service->GetProperties(&proxy_properties, &error)) {
@@ -304,7 +304,7 @@ bool ProxyDbusShillWifiClient::GetActiveWifiSsids(
       signal_strength = proxy_properties[shill::kSignalStrengthProperty];
       ssid_hex = proxy_properties[shill::kWifiHexSsid];
       if ((service_type.TryGet<std::string>() == shill::kTypeWifi) &&
-          (signal_strength.TryGet<uint8>() > 0) &&
+          (signal_strength.TryGet<uint8_t>() > 0) &&
           !ssid_hex.TryGet<std::string>().empty() &&
           base::HexStringToBytes(ssid_hex.Get<std::string>(), &ssid_bytes)) {
         ssids->emplace_back(std::string(ssid_bytes.begin(), ssid_bytes.end()));

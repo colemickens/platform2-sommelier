@@ -90,7 +90,7 @@ class TestEventDispatcherForDeviceInfo : public EventDispatcher {
       const IOHandler::ErrorCallback& /*error_callback*/) {
     return nullptr;
   }
-  MOCK_METHOD2(PostDelayedTask, bool(const base::Closure& task,
+  MOCK_METHOD2(PostDelayedTask, void(const base::Closure& task,
                                      int64_t delay_ms));
 };
 

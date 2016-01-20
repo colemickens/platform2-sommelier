@@ -230,8 +230,7 @@ class WiFiProviderTest : public testing::Test {
                                     const char* security,
                                     bool is_hidden,
                                     bool provide_hidden) {
-    string id = base::StringToLowerASCII(
-        base::StringPrintf("entry_%d", storage_entry_index_));
+    string id = base::StringPrintf("entry_%d", storage_entry_index_);
     auto profile_storage = static_cast<MockStore*>(profile->GetStorage());
     EXPECT_CALL(*profile_storage, GetString(id, _, _))
         .WillRepeatedly(Return(false));

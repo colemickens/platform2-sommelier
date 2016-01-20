@@ -278,9 +278,9 @@ string OpenVPNDriver::JoinOptions(const vector<vector<string>>& options,
         quoted_option.push_back(argument);
       }
     }
-    option_strings.push_back(JoinString(quoted_option, ' '));
+    option_strings.push_back(base::JoinString(quoted_option, " "));
   }
-  return JoinString(option_strings, separator);
+  return base::JoinString(option_strings, string(separator));
 }
 
 bool OpenVPNDriver::WriteConfigFile(
@@ -427,7 +427,8 @@ void OpenVPNDriver::ParseIPConfiguration(
       properties->subnet_prefix =
           IPAddress::GetPrefixLengthFromMask(properties->address_family, value);
     } else if (base::LowerCaseEqualsASCII(key, kOpenVPNIfconfigRemote)) {
-      if (base::StartsWithASCII(value, kSuspectedNetmaskPrefix, false)) {
+      if (base::StartsWith(value, kSuspectedNetmaskPrefix,
+                           base::CompareCase::INSENSITIVE_ASCII)) {
         LOG(WARNING) << "Option " << key << " value " << value
                      << " looks more like a netmask than a peer address; "
                      << "assuming it is the former.";
@@ -459,7 +460,8 @@ void OpenVPNDriver::ParseIPConfiguration(
       } else {
         LOG(ERROR) << "MTU " << value << " ignored.";
       }
-    } else if (base::StartsWithASCII(key, kOpenVPNForeignOptionPrefix, false)) {
+    } else if (base::StartsWith(key, kOpenVPNForeignOptionPrefix,
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       const string suffix = key.substr(strlen(kOpenVPNForeignOptionPrefix));
       int order = 0;
       if (base::StringToInt(suffix, &order)) {
@@ -467,7 +469,8 @@ void OpenVPNDriver::ParseIPConfiguration(
       } else {
         LOG(ERROR) << "Ignored unexpected foreign option suffix: " << suffix;
       }
-    } else if (base::StartsWithASCII(key, kOpenVPNRouteOptionPrefix, false)) {
+    } else if (base::StartsWith(key, kOpenVPNRouteOptionPrefix,
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       ParseRouteOption(key.substr(strlen(kOpenVPNRouteOptionPrefix)),
                        value, &routes);
     } else {
@@ -514,8 +517,8 @@ void OpenVPNDriver::ParseForeignOption(const string& option,
                                        vector<string>* domain_search,
                                        vector<string>* dns_servers) {
   SLOG(nullptr, 2) << __func__ << "(" << option << ")";
-  vector<string> tokens;
-  SplitString(option, ' ', &tokens);
+  vector<string> tokens = SplitString(option, " ", base::TRIM_WHITESPACE,
+                                      base::SPLIT_WANT_ALL);
   if (tokens.size() != 3 ||
       !base::LowerCaseEqualsASCII(tokens[0], "dhcp-option")) {
     return;
@@ -531,7 +534,7 @@ void OpenVPNDriver::ParseForeignOption(const string& option,
 IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(
     const string& prefix, const string& key, RouteOptions* routes) {
   int order = 0;
-  if (!base::StartsWithASCII(key, prefix, false) ||
+  if (!base::StartsWith(key, prefix, base::CompareCase::INSENSITIVE_ASCII) ||
       !base::StringToInt(key.substr(prefix.size()), &order)) {
     return nullptr;
   }
@@ -580,12 +583,13 @@ void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
 // static
 bool OpenVPNDriver::SplitPortFromHost(
     const string& host, string* name, string* port) {
-  vector<string> tokens;
-  SplitString(host, ':', &tokens);
+  vector<string> tokens = SplitString(host, ":", base::TRIM_WHITESPACE,
+                                      base::SPLIT_WANT_ALL);
   int port_number = 0;
   if (tokens.size() != 2 || tokens[0].empty() || tokens[1].empty() ||
       !IsAsciiDigit(tokens[1][0]) ||
-      !base::StringToInt(tokens[1], &port_number) || port_number > kuint16max) {
+      !base::StringToInt(tokens[1], &port_number) ||
+      port_number > std::numeric_limits<uint16_t>::max()) {
     return false;
   }
   *name = tokens[0];
@@ -912,8 +916,9 @@ bool OpenVPNDriver::AppendDelimitedValueOption(
     vector<vector<string>>* options) {
   string value = args()->LookupString(property, "");
   if (!value.empty()) {
-    vector<string> parts;
-    SplitString(value, delimiter, &parts);
+    vector<string> parts = SplitString(
+        value, std::string(delimiter), base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_ALL);
     parts.insert(parts.begin(), option);
     options->push_back(parts);
     return true;
@@ -1021,8 +1026,8 @@ map<string, string> OpenVPNDriver::GetEnvironment() {
                << lsb_release_file_.value();
     return environment;
   }
-  vector<string> lines;
-  SplitString(contents, '\n', &lines);
+  vector<string> lines = SplitString(contents, "\n", base::TRIM_WHITESPACE,
+                                     base::SPLIT_WANT_ALL);
   for (const auto& line : lines) {
     const size_t assign = line.find('=');
     if (assign == string::npos) {

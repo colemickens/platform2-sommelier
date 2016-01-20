@@ -73,7 +73,7 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_METHOD3(GetIPv6DnsServerAddresses,
                bool(int interface_index,
                     std::vector<IPAddress>* address_list,
-                    uint32* life_time));
+                    uint32_t* life_time));
   MOCK_CONST_METHOD1(CreateTunnelInterface,  bool(std::string* interface_name));
   MOCK_CONST_METHOD1(OpenTunnelInterface,
                      int(const std::string& interface_name));

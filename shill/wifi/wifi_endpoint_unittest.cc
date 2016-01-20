@@ -136,7 +136,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
                      vector<uint8_t>* wps) {
     wps->push_back(type >> 8);                   // type MSByte
     wps->push_back(type);                        // type LSByte
-    CHECK(value.size() < kuint16max);
+    CHECK(value.size() < std::numeric_limits<uint16_t>::max());
     wps->push_back((value.size() >> 8) & 0xff);  // length MSByte
     wps->push_back(value.size() & 0xff);         // length LSByte
     wps->insert(wps->end(), value.begin(), value.end());

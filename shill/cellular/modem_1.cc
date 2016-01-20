@@ -62,7 +62,7 @@ bool Modem1::GetLinkName(const KeyValueStore& modem_props,
 
 void Modem1::CreateDeviceMM1(const InterfaceToProperties& properties) {
   Init();
-  uint32_t capabilities = kuint32max;
+  uint32_t capabilities = std::numeric_limits<uint32_t>::max();
   InterfaceToProperties::const_iterator it =
       properties.find(MM_DBUS_INTERFACE_MODEM);
   if (it == properties.end()) {

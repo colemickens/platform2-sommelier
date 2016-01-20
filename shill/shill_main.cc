@@ -198,13 +198,15 @@ int main(int argc, char** argv) {
   }
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
-    base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceBlackList),
-                      ',', &settings.device_blacklist);
+    settings.device_blacklist = base::SplitString(
+        cl->GetSwitchValueASCII(switches::kDeviceBlackList), ",",
+        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   }
 
   if (cl->HasSwitch(switches::kDeviceWhiteList)) {
-    base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceWhiteList),
-                      ',', &settings.device_whitelist);
+    settings.device_whitelist = base::SplitString(
+        cl->GetSwitchValueASCII(switches::kDeviceWhiteList), ",",
+        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   }
 
   settings.ignore_unknown_ethernet =
@@ -238,8 +240,9 @@ int main(int argc, char** argv) {
 
 #ifndef DISABLE_DHCPV6
   if (cl->HasSwitch(switches::kDhcpv6EnabledDevices)) {
-    base::SplitString(cl->GetSwitchValueASCII(switches::kDhcpv6EnabledDevices),
-                      ',', &settings.dhcpv6_enabled_devices);
+    settings.dhcpv6_enabled_devices = base::SplitString(
+        cl->GetSwitchValueASCII(switches::kDhcpv6EnabledDevices), ",",
+        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   }
 #endif  // DISABLE_DHCPV6
 

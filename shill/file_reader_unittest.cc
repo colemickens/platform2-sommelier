@@ -71,7 +71,7 @@ TEST_F(FileReaderTest, ReadLine) {
   lines.push_back("a");
   lines.push_back("");
   lines.push_back("test");
-  string content = JoinString(lines, '\n');
+  string content = base::JoinString(lines, "\n");
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());

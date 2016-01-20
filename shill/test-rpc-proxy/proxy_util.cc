@@ -184,12 +184,12 @@ void GetXmlRpcValueFromBrilloAnyValue(
     *xml_rpc_value_out =  any_value_in.Get<bool>();
     return;
   }
-  if (any_value_in.IsTypeCompatible<uint8>()) {
-    *xml_rpc_value_out =  any_value_in.Get<uint8>();
+  if (any_value_in.IsTypeCompatible<uint8_t>()) {
+    *xml_rpc_value_out =  any_value_in.Get<uint8_t>();
     return;
   }
-  if (any_value_in.IsTypeCompatible<uint16>()) {
-    *xml_rpc_value_out =  any_value_in.Get<uint16>();
+  if (any_value_in.IsTypeCompatible<uint16_t>()) {
+    *xml_rpc_value_out =  any_value_in.Get<uint16_t>();
     return;
   }
   if (any_value_in.IsTypeCompatible<int>()) {
@@ -213,14 +213,14 @@ void GetXmlRpcValueFromBrilloAnyValue(
         any_value_in.Get<std::vector<bool>>(), xml_rpc_value_out);
     return;
   }
-  if (any_value_in.IsTypeCompatible<std::vector<uint8>>()) {
+  if (any_value_in.IsTypeCompatible<std::vector<uint8_t>>()) {
     GetXmlRpcArrayFromVector(
-        any_value_in.Get<std::vector<uint8>>(), xml_rpc_value_out);
+        any_value_in.Get<std::vector<uint8_t>>(), xml_rpc_value_out);
     return;
   }
-  if (any_value_in.IsTypeCompatible<std::vector<uint16>>()) {
+  if (any_value_in.IsTypeCompatible<std::vector<uint16_t>>()) {
     GetXmlRpcArrayFromVector(
-        any_value_in.Get<std::vector<uint16>>(), xml_rpc_value_out);
+        any_value_in.Get<std::vector<uint16_t>>(), xml_rpc_value_out);
     return;
   }
   if (any_value_in.IsTypeCompatible<std::vector<int>>()) {

@@ -1029,10 +1029,11 @@ bool WiFiService::CheckWEPIsHex(const string& passphrase, Error* error) {
 
 // static
 bool WiFiService::CheckWEPKeyIndex(const string& passphrase, Error* error) {
-  if (base::StartsWithASCII(passphrase, "0:", false) ||
-      base::StartsWithASCII(passphrase, "1:", false) ||
-      base::StartsWithASCII(passphrase, "2:", false) ||
-      base::StartsWithASCII(passphrase, "3:", false)) {
+  const auto kCaseInsensitive = base::CompareCase::INSENSITIVE_ASCII;
+  if (base::StartsWith(passphrase, "0:", kCaseInsensitive) ||
+      base::StartsWith(passphrase, "1:", kCaseInsensitive) ||
+      base::StartsWith(passphrase, "2:", kCaseInsensitive) ||
+      base::StartsWith(passphrase, "3:", kCaseInsensitive)) {
     return true;
   } else {
     error->Populate(Error::kInvalidPassphrase);
@@ -1042,7 +1043,8 @@ bool WiFiService::CheckWEPKeyIndex(const string& passphrase, Error* error) {
 
 // static
 bool WiFiService::CheckWEPPrefix(const string& passphrase, Error* error) {
-  if (base::StartsWithASCII(passphrase, "0x", false)) {
+  if (base::StartsWith(passphrase, "0x",
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     return true;
   } else {
     error->Populate(Error::kInvalidPassphrase);
@@ -1071,8 +1073,8 @@ bool WiFiService::ParseStorageIdentifier(const string& storage_name,
                                          string* address,
                                          string* mode,
                                          string* security) {
-  vector<string> wifi_parts;
-  base::SplitString(storage_name, '_', &wifi_parts);
+  vector<string> wifi_parts = base::SplitString(
+      storage_name, "_", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if ((wifi_parts.size() != 5 && wifi_parts.size() != 6) ||
       wifi_parts[0] != kTypeWifi) {
     return false;
@@ -1173,12 +1175,12 @@ KeyValueStore WiFiService::GetStorageProperties() const {
 
 string WiFiService::GetDefaultStorageIdentifier() const {
   string security = ComputeSecurityClass(security_);
-  return base::StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
-                                                     kTypeWifi,
-                                                     kAnyDeviceAddress,
-                                                     hex_ssid_.c_str(),
-                                                     mode_.c_str(),
-                                                     security.c_str()));
+  return base::ToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
+                                               kTypeWifi,
+                                               kAnyDeviceAddress,
+                                               hex_ssid_.c_str(),
+                                               mode_.c_str(),
+                                               security.c_str()));
 }
 
 string WiFiService::GetSecurity(Error* /*error*/) {

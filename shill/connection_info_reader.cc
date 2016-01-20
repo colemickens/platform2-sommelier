@@ -82,8 +82,9 @@ bool ConnectionInfoReader::LoadConnectionInfo(
 
 bool ConnectionInfoReader::ParseConnectionInfo(const string& input,
                                                ConnectionInfo* info) {
-  vector<string> tokens;
-  base::SplitStringAlongWhitespace(input, &tokens);
+  vector<string> tokens = base::SplitString(input, base::kWhitespaceASCII,
+                                            base::KEEP_WHITESPACE,
+                                            base::SPLIT_WANT_NONEMPTY);
   if (tokens.size() < 10) {
     return false;
   }
@@ -176,10 +177,12 @@ bool ConnectionInfoReader::ParseIPAddress(
     const string& input, IPAddress* ip_address, bool* is_source) {
   string ip_address_string;
 
-  if (base::StartsWithASCII(input, kSourceIPAddressTag, false)) {
+  if (base::StartsWith(input, kSourceIPAddressTag,
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     *is_source = true;
     ip_address_string = input.substr(strlen(kSourceIPAddressTag));
-  } else if (base::StartsWithASCII(input, kDestinationIPAddressTag, false)) {
+  } else if (base::StartsWith(input, kDestinationIPAddressTag,
+                              base::CompareCase::INSENSITIVE_ASCII)) {
     *is_source = false;
     ip_address_string = input.substr(strlen(kDestinationIPAddressTag));
   } else {
@@ -206,10 +209,12 @@ bool ConnectionInfoReader::ParsePort(
   int result = 0;
   string port_string;
 
-  if (base::StartsWithASCII(input, kSourcePortTag, false)) {
+  if (base::StartsWith(input, kSourcePortTag,
+                       base::CompareCase::INSENSITIVE_ASCII)) {
     *is_source = true;
     port_string = input.substr(strlen(kSourcePortTag));
-  } else if (base::StartsWithASCII(input, kDestinationPortTag, false)) {
+  } else if (base::StartsWith(input, kDestinationPortTag,
+                              base::CompareCase::INSENSITIVE_ASCII)) {
     *is_source = false;
     port_string = input.substr(strlen(kDestinationPortTag));
   } else {

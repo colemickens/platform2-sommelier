@@ -99,8 +99,8 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
 // static
 Technology::Identifier Technology::IdentifierFromStorageGroup(
     const string& group) {
-  vector<string> group_parts;
-  base::SplitString(group, '_', &group_parts);
+  vector<string> group_parts = base::SplitString(
+      group, "_", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (group_parts.empty()) {
     return kUnknown;
   }
@@ -122,8 +122,10 @@ bool Technology::GetTechnologyVectorFromString(
   // Check if |technologies_string| is empty as some versions of
   // base::SplitString return a vector with one empty string when given an
   // empty string.
-  if (!technologies_string.empty())
-    base::SplitString(technologies_string, ',', &technology_parts);
+  if (!technologies_string.empty()) {
+    technology_parts = base::SplitString(
+        technologies_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  }
 
   for (const auto& name : technology_parts) {
     Technology::Identifier identifier = Technology::IdentifierFromName(name);

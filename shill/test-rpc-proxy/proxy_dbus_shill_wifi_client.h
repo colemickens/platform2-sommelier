@@ -60,8 +60,8 @@ class ProxyDbusShillWifiClient : public ProxyShillWifiClient {
                                  std::string* failure_reason) override;
   bool ConfigureBgScan(const std::string& interface_name,
                        const std::string& method_name,
-                       uint16 short_interval,
-                       uint16 long_interval,
+                       uint16_t short_interval,
+                       uint16_t long_interval,
                        int signal_threshold) override;
   bool GetActiveWifiSsids(std::vector<std::string>* ssids) override;
   bool WaitForServiceStates(const std::string& ssid,

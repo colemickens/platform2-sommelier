@@ -1389,7 +1389,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged_LeaseExpirationUpdated) {
 
   // Non-infinite lifetime should trigger an update of the current lease
   // expiration time.
-  const uint32 kExpiredLifetime = 1;
+  const uint32_t kExpiredLifetime = 1;
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kExpiredLifetime),
@@ -1400,7 +1400,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged_LeaseExpirationUpdated) {
 
   // Infinite lifetime should cause a reset of the current lease expiration
   // time to its default value.
-  const uint32 kExpiredLifetimeInfinity = ND_OPT_LIFETIME_INFINITY;
+  const uint32_t kExpiredLifetimeInfinity = ND_OPT_LIFETIME_INFINITY;
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kExpiredLifetimeInfinity),
@@ -1440,7 +1440,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
 
   const char kAddress1[] = "fe80::1aa9:5ff:abcd:1234";
   const char kAddress2[] = "fe80::1aa9:5ff:abcd:1235";
-  const uint32 kInfiniteLifetime = 0xffffffff;
+  const uint32_t kInfiniteLifetime = 0xffffffff;
   IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   ASSERT_TRUE(ipv6_address1.SetAddressFromString(kAddress1));
@@ -1502,7 +1502,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   Mock::VerifyAndClearExpectations(&device_info_);
 
   // Setting lifetime to 0 should expire and clear out the DNS server.
-  const uint32 kExpiredLifetime = 0;
+  const uint32_t kExpiredLifetime = 0;
   vector<string> empty_dns_server;
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
@@ -1519,7 +1519,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   Mock::VerifyAndClearExpectations(&device_info_);
 
   // Set DNS server with lifetime of 1 hour.
-  const uint32 kLifetimeOneHr = 3600;
+  const uint32_t kLifetimeOneHr = 3600;
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(dns_server_addresses),
@@ -1716,7 +1716,7 @@ TEST_F(DeviceTest, PrependIPv6DNSServers) {
     IPAddress("2001:4860:4860::8844")
   };
 
-  const uint32 kAddressLifetime = 1000;
+  const uint32_t kAddressLifetime = 1000;
   EXPECT_CALL(device_info_, GetIPv6DnsServerAddresses(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(dns_server_addresses),
                             SetArgPointee<2>(kAddressLifetime),

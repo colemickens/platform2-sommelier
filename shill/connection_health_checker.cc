@@ -256,7 +256,7 @@ void ConnectionHealthChecker::GarbageCollectDNSClients() {
       discard.push_back(dns_clients_[i]);
   }
   dns_clients_.weak_clear();
-  dns_clients_ = keep.Pass();  // Passes ownership of contents.
+  dns_clients_ = std::move(keep);
   discard.clear();
 }
 

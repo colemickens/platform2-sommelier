@@ -261,15 +261,19 @@ bool HTTPProxy::ParseClientRequest() {
   bool found_via = false;
   bool found_connection = false;
   for (auto& header : client_headers_) {
-    if (base::StartsWithASCII(header, "Host:", false)) {
+    if (base::StartsWith(header, "Host:",
+                         base::CompareCase::INSENSITIVE_ASCII)) {
       host = header.substr(5);
-    } else if (base::StartsWithASCII(header, "Via:", false)) {
+    } else if (base::StartsWith(header, "Via:",
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       found_via = true;
       header.append(StringPrintf(", %s shill-proxy", client_version_.c_str()));
-    } else if (base::StartsWithASCII(header, "Connection:", false)) {
+    } else if (base::StartsWith(header, "Connection:",
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       found_connection = true;
       header.assign("Connection: close");
-    } else if (base::StartsWithASCII(header, "Proxy-Connection:", false)) {
+    } else if (base::StartsWith(header, "Proxy-Connection:",
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       header.assign("Proxy-Connection: close");
     }
   }
@@ -303,8 +307,8 @@ bool HTTPProxy::ParseClientRequest() {
   }
 
   server_port_ = 80;
-  vector<string> host_parts;
-  base::SplitString(host, ':', &host_parts);
+  vector<string> host_parts = base::SplitString(
+      host, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (host_parts.size() > 2) {
     SendClientError(400, "Too many colons in hostname");

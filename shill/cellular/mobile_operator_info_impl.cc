@@ -232,7 +232,8 @@ void MobileOperatorInfoImpl::UpdateIMSI(const string& imsi) {
   user_imsi_ = imsi;
 
   if (!user_mccmnc_.empty()) {
-    if (!base::StartsWithASCII(imsi, user_mccmnc_, false)) {
+    if (!base::StartsWith(imsi, user_mccmnc_,
+                          base::CompareCase::INSENSITIVE_ASCII)) {
       LOG(WARNING) << "MCCMNC [" << user_mccmnc_ << "] is not a substring of "
                    << "the IMSI [" << imsi << "].";
     }
@@ -959,7 +960,7 @@ bool MobileOperatorInfoImpl::ShouldNotifyPropertyUpdate() const {
 }
 
 string MobileOperatorInfoImpl::NormalizeOperatorName(const string& name) const {
-  string result = base::StringToLowerASCII(name);
+  string result = base::ToLowerASCII(name);
   base::RemoveChars(result, base::kWhitespaceASCII, &result);
   return result;
 }

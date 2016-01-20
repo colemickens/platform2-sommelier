@@ -79,7 +79,7 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
   }
 
   if (!filtered_domain_search.empty()) {
-    lines.push_back("search " + JoinString(filtered_domain_search, ' '));
+    lines.push_back("search " + base::JoinString(filtered_domain_search, " "));
   }
 
   // - Send queries one-at-a-time, rather than parallelizing IPv4
@@ -98,7 +98,7 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
   // Newline at end of file
   lines.push_back("");
 
-  string contents = JoinString(lines, '\n');
+  string contents = base::JoinString(lines, "\n");
 
   SLOG(this, 2) << "Writing DNS out to " << path_.value();
   int count = base::WriteFile(path_, contents.c_str(), contents.size());

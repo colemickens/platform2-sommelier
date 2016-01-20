@@ -48,8 +48,8 @@ class EventDispatcher {
 
   // These are thin wrappers around calls of the same name in
   // <base/message_loop_proxy.h>
-  virtual bool PostTask(const base::Closure& task);
-  virtual bool PostDelayedTask(const base::Closure& task, int64_t delay_ms);
+  virtual void PostTask(const base::Closure& task);
+  virtual void PostDelayedTask(const base::Closure& task, int64_t delay_ms);
 
   virtual IOHandler* CreateInputHandler(
       int fd,

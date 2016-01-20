@@ -20,7 +20,7 @@
 
 #include <base/callback.h>
 #include <base/location.h>
-#include <base/message_loop/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/time/time.h>
 
@@ -44,12 +44,12 @@ void EventDispatcher::DispatchPendingEvents() {
   base::RunLoop().RunUntilIdle();
 }
 
-bool EventDispatcher::PostTask(const Closure& task) {
-  return base::MessageLoopProxy::current()->PostTask(FROM_HERE, task);
+void EventDispatcher::PostTask(const Closure& task) {
+  base::MessageLoop::current()->PostTask(FROM_HERE, task);
 }
 
-bool EventDispatcher::PostDelayedTask(const Closure& task, int64_t delay_ms) {
-  return base::MessageLoopProxy::current()->PostDelayedTask(
+void EventDispatcher::PostDelayedTask(const Closure& task, int64_t delay_ms) {
+  base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }
 

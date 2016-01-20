@@ -851,7 +851,7 @@ void WiFi::CurrentBSSChanged(const string& new_bss) {
   }
 }
 
-void WiFi::DisconnectReasonChanged(const int32 new_disconnect_reason) {
+void WiFi::DisconnectReasonChanged(const int32_t new_disconnect_reason) {
   if (new_disconnect_reason == kDefaultDisconnectReason) {
     SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
   } else {

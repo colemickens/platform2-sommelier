@@ -385,8 +385,8 @@ void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers& live_devices) {
 }
 
 string WiMaxProvider::GetLinkName(const RpcIdentifier& path) {
-  if (base::StartsWithASCII(path, wimax_manager::kDeviceObjectPathPrefix,
-                            true)) {
+  if (base::StartsWith(path, wimax_manager::kDeviceObjectPathPrefix,
+                       base::CompareCase::SENSITIVE)) {
     return path.substr(strlen(wimax_manager::kDeviceObjectPathPrefix));
   }
   LOG(ERROR) << "Unable to determine link name from RPC path: " << path;

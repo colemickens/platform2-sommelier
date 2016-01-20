@@ -28,6 +28,7 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/strings/pattern.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -1177,7 +1178,7 @@ void Manager::SetAcceptHostnameFrom(const string& hostname_from) {
 }
 
 bool Manager::ShouldAcceptHostnameFrom(const string& device_name) const {
-  return MatchPattern(device_name, accept_hostname_from_);
+  return base::MatchPattern(device_name, accept_hostname_from_);
 }
 
 void Manager::SetDHCPv6EnabledDevices(const vector<string>& device_list) {
@@ -1193,8 +1194,9 @@ bool Manager::IsDHCPv6EnabledForDevice(const string& device_name) const {
 vector<string> Manager::FilterPrependDNSServersByFamily(
     IPAddress::Family family) const {
   vector<string> dns_servers;
-  vector<string> split_servers;
-  base::SplitString(props_.prepend_dns_servers, ',', &split_servers);
+  vector<string> split_servers = base::SplitString(
+      props_.prepend_dns_servers, ",", base::TRIM_WHITESPACE,
+      base::SPLIT_WANT_ALL);
   for (const auto& server : split_servers) {
     const IPAddress address(server);
     if (address.family() == family) {
@@ -2247,7 +2249,8 @@ bool Manager::SetIgnoredDNSSearchPaths(const string& ignored_paths,
   }
   vector<string> ignored_path_list;
   if (!ignored_paths.empty()) {
-    base::SplitString(ignored_paths, ',', &ignored_path_list);
+    ignored_path_list = base::SplitString(
+        ignored_paths, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   }
   props_.ignored_dns_search_paths = ignored_paths;
   resolver_->set_ignored_search_list(ignored_path_list);
@@ -2564,7 +2567,7 @@ string Manager::GetTechnologyOrder() {
     technology_names.push_back(Technology::NameFromIdentifier(technology));
   }
 
-  return JoinString(technology_names, ',');
+  return base::JoinString(technology_names, ",");
 }
 
 void Manager::SetTechnologyOrder(const string& order, Error* error) {

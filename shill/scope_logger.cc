@@ -67,8 +67,8 @@ const char* const kScopeNames[] = {
   "wimax",
 };
 
-COMPILE_ASSERT(arraysize(kScopeNames) == ScopeLogger::kNumScopes,
-               scope_tags_does_not_have_expected_number_of_strings);
+static_assert(arraysize(kScopeNames) == ScopeLogger::kNumScopes,
+              "Scope tags do not have expected number of strings");
 
 // ScopeLogger needs to be a 'leaky' singleton as it needs to survive to
 // handle logging till the very end of the shill process. Making ScopeLogger
@@ -104,7 +104,7 @@ bool ScopeLogger::IsScopeEnabled(Scope scope) const {
 
 string ScopeLogger::GetAllScopeNames() const {
   vector<string> names(kScopeNames, kScopeNames + arraysize(kScopeNames));
-  return JoinString(names, '+');
+  return base::JoinString(names, "+");
 }
 
 string ScopeLogger::GetEnabledScopeNames() const {
@@ -113,7 +113,7 @@ string ScopeLogger::GetEnabledScopeNames() const {
     if (scope_enabled_[i])
       names.push_back(kScopeNames[i]);
   }
-  return JoinString(names, '+');
+  return base::JoinString(names, "+");
 }
 
 void ScopeLogger::EnableScopesByName(const string& expression) {

@@ -135,7 +135,7 @@ TEST_F(HookTableTest, ActionTimesOut) {
   hook_table_.Run(kTimeout, done_callback);
 
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
-  event_dispatcher_.PostDelayedTask(base::MessageLoop::QuitClosure(),
+  event_dispatcher_.PostDelayedTask(base::MessageLoop::QuitWhenIdleClosure(),
                                     kTimeout + 1);
   event_dispatcher_.DispatchForever();
   EXPECT_TRUE(GetDoneCallback()->is_null());
@@ -182,7 +182,7 @@ TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
   hook_table_.ActionComplete(kName1);
   hook_table_.ActionComplete(kName3);
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
-  event_dispatcher_.PostDelayedTask(base::MessageLoop::QuitClosure(),
+  event_dispatcher_.PostDelayedTask(base::MessageLoop::QuitWhenIdleClosure(),
                                     kTimeout + 1);
   event_dispatcher_.DispatchForever();
 }

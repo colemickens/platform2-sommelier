@@ -38,6 +38,7 @@ using base::StringPrintf;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::Invoke;
@@ -256,8 +257,7 @@ class HTTPProxyTest : public Test {
     ExpectClientHeaderTimeout();
   }
   void ExpectTimeout(int timeout) {
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, timeout * 1000))
-        .WillOnce(Return(true));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, timeout * 1000));
   }
   void ExpectClientHeaderTimeout() {
     ExpectTimeout(HTTPProxy::kClientHeaderTimeoutSeconds);
@@ -271,7 +271,7 @@ class HTTPProxyTest : public Test {
   void ExpectRepeatedInputTimeout() {
     EXPECT_CALL(dispatcher_,
                 PostDelayedTask(_, HTTPProxy::kInputTimeoutSeconds * 1000))
-        .WillRepeatedly(Return(true));
+        .Times(AnyNumber());
   }
   void ExpectTransactionTimeout() {
     ExpectTimeout(HTTPProxy::kTransactionTimeoutSeconds);

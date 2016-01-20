@@ -276,7 +276,7 @@ scoped_ptr<base::DictionaryValue> MakeCoercedValue(
       kCoercedValuePropertyNativeType, native_type);
   coerced_value->SetStringWithoutPathExpansion(
       kCoercedValuePropertyEncodedValue, encoded_value);
-  return coerced_value.Pass();
+  return coerced_value;
 }
 
 scoped_ptr<base::Value> MakeValueForString(const string& native_string) {
@@ -291,8 +291,7 @@ scoped_ptr<base::Value> MakeValueForString(const string& native_string) {
   } else {
     const string hex_encoded_string(
         base::HexEncode(native_string.data(), native_string.size()));
-    return MakeCoercedValue(
-        kNativeTypeNonAsciiString, hex_encoded_string).Pass();
+    return MakeCoercedValue(kNativeTypeNonAsciiString, hex_encoded_string);
   }
 }
 
@@ -311,21 +310,21 @@ scoped_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
           key, MakeValueForString(value.Get<string>()));
     } else if (value.IsTypeCompatible<uint64_t>()) {
       const string encoded_value(
-          base::StringPrintf("%" PRIu64, value.Get<uint64>()));
+          base::StringPrintf("%" PRIu64, value.Get<uint64_t>()));
       dictionary_value->SetWithoutPathExpansion(
-          key, MakeCoercedValue(kNativeTypeUint64, encoded_value).Pass());
+          key, MakeCoercedValue(kNativeTypeUint64, encoded_value));
     } else if (value.IsTypeCompatible<vector<string>>()) {
       auto list_value(make_scoped_ptr(new base::ListValue()));
       for (const auto& string_list_item : value.Get<vector<string>>()) {
-        list_value->Append(MakeValueForString(string_list_item).Pass());
+        list_value->Append(MakeValueForString(string_list_item));
       }
-      dictionary_value->SetWithoutPathExpansion(key, list_value.Pass());
+      dictionary_value->SetWithoutPathExpansion(key, std::move(list_value));
     } else {
       LOG(ERROR) << "Failed to convert element with key |" << key << "|.";
       return nullptr;
     }
   }
-  return dictionary_value.Pass();
+  return dictionary_value;
 }
 
 }  // namespace
@@ -356,7 +355,8 @@ bool JsonStore::Open() {
   unique_ptr<base::Value> json_value;
   string json_error;
   json_deserializer.set_allow_trailing_comma(true);
-  json_value.reset(json_deserializer.Deserialize(nullptr, &json_error));
+  json_value.reset(
+      json_deserializer.Deserialize(nullptr, &json_error).release());
   if (!json_value) {
     LOG(ERROR) << "Failed to parse JSON data from |" << path_.value() <<"|.";
     SLOG(this, 5) << json_error;
@@ -437,13 +437,13 @@ bool JsonStore::Flush() {
       LOG(FATAL) << "Failed to convert group |" << group_name << "|.";
       return false;
     }
-    groups->SetWithoutPathExpansion(group_name, group_settings.Pass());
+    groups->SetWithoutPathExpansion(group_name, std::move(group_settings));
   }
 
   base::DictionaryValue root;
   root.SetStringWithoutPathExpansion(
       kRootPropertyDescription, file_description_);
-  root.SetWithoutPathExpansion(kRootPropertySettings, groups.Pass());
+  root.SetWithoutPathExpansion(kRootPropertySettings, std::move(groups));
 
   string json_string;
   JSONStringValueSerializer json_serializer(&json_string);

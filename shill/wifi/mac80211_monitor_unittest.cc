@@ -61,8 +61,6 @@ class Mac80211MonitorTest : public testing::Test {
             base::Bind(&Mac80211MonitorTest::OnRepairHandler,
                        base::Unretained(this)),
             &metrics_) {
-    ON_CALL(event_dispatcher_, PostDelayedTask(_, _))
-        .WillByDefault(Return(true));
     mac80211_monitor_.time_ = &time_;
   }
   virtual ~Mac80211MonitorTest() {}

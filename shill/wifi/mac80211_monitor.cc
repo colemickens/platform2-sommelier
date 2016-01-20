@@ -230,9 +230,9 @@ uint32_t Mac80211Monitor::CheckAreQueuesStuck(
 // static
 vector<Mac80211Monitor::QueueState>
 Mac80211Monitor::ParseQueueState(const string& state_string) {
-  vector<string> queue_state_strings;
-  vector <QueueState> queue_states;
-  base::SplitString(state_string, '\n', &queue_state_strings);
+  vector<QueueState> queue_states;
+  vector<string> queue_state_strings = base::SplitString(
+      state_string, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (queue_state_strings.empty()) {
     return queue_states;
@@ -246,16 +246,17 @@ Mac80211Monitor::ParseQueueState(const string& state_string) {
 
   for (const auto& queue_state : queue_state_strings) {
     // Example |queue_state|: "00: 0x00000000/10".
-    vector<string> queuenum_and_state;
-    base::SplitString(queue_state, ':', &queuenum_and_state);
+    vector<string> queuenum_and_state = base::SplitString(
+        queue_state, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     if (queuenum_and_state.size() != 2) {
       LOG(WARNING) << __func__ << ": parse error on " << queue_state;
       continue;
     }
 
     // Example |queuenum_and_state|: {"00", "0x00000000/10"}.
-    vector<string> stopflags_and_length;
-    base::SplitString(queuenum_and_state[1], '/', &stopflags_and_length);
+    vector<string> stopflags_and_length = base::SplitString(
+        queuenum_and_state[1], "/", base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_ALL);
     if (stopflags_and_length.size() != 2) {
       LOG(WARNING) << __func__ << ": parse error on " << queue_state;
       continue;

@@ -182,7 +182,7 @@ string ActiveLinkMonitor::HardwareAddressToString(const ByteString& address) {
     address_parts.push_back(
         base::StringPrintf("%02x", address.GetConstData()[i]));
   }
-  return JoinString(address_parts, ':');
+  return base::JoinString(address_parts, ":");
 }
 
 bool ActiveLinkMonitor::StartArpClient() {

@@ -392,8 +392,8 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile* profile) {
   // default profile except for autotests where a test_profile is pushed.  This
   // may need to be modified for that case.
   if (is_default_profile) {
-    COMPILE_ASSERT(kMaxStorageFrequencies > kWeeksToKeepFrequencyCounts,
-                   persistently_storing_more_frequencies_than_we_can_hold);
+    static_assert(kMaxStorageFrequencies > kWeeksToKeepFrequencyCounts,
+                  "Persistently storing more frequencies than we can hold");
     total_frequency_connections_ = 0L;
     connect_count_by_frequency_.clear();
     time_t this_week = time_->GetSecondsSinceEpoch() / kSecondsPerWeek;
@@ -707,7 +707,8 @@ time_t WiFiProvider::StringListToFrequencyMap(const vector<string>& strings,
 
 // static
 time_t WiFiProvider::GetStringListStartWeek(const string& week_string) {
-  if (!base::StartsWithASCII(week_string, kStartWeekHeader, false)) {
+  if (!base::StartsWith(week_string, kStartWeekHeader,
+                        base::CompareCase::INSENSITIVE_ASCII)) {
     LOG(ERROR) << "Found no leading '" << kStartWeekHeader << "' in '"
                << week_string << "'";
     return kIllegalStartWeek;
@@ -718,8 +719,9 @@ time_t WiFiProvider::GetStringListStartWeek(const string& week_string) {
 // static
 void WiFiProvider::ParseStringListFreqCount(const string& freq_count_string,
                                             ConnectFrequencyMap* numbers) {
-  vector<string> freq_count;
-  SplitString(freq_count_string, kFrequencyDelimiter, &freq_count);
+  vector<string> freq_count = SplitString(
+      freq_count_string, std::string{kFrequencyDelimiter},
+      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (freq_count.size() != 2) {
     LOG(WARNING) << "Found " << freq_count.size() - 1 << " '"
                  << kFrequencyDelimiter << "' in '" << freq_count_string

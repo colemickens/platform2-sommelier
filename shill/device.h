@@ -604,7 +604,7 @@ class Device : public base::RefCounted<Device> {
   virtual void StopDNSTest();
 
   // Timer function for monitoring IPv6 DNS server's lifetime.
-  void StartIPv6DNSServerTimer(uint32 lifetime_seconds);
+  void StartIPv6DNSServerTimer(uint32_t lifetime_seconds);
   void StopIPv6DNSServerTimer();
 
   // Stop all monitoring/testing activities on this device. Called when tearing

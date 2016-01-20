@@ -64,9 +64,9 @@ bool HTTPURL::ParseFromString(const string& url_string) {
   if (host_end == string::npos) {
     host_end = url_string.length();
   }
-  vector<string> host_parts;
-  base::SplitString(url_string.substr(host_start, host_end - host_start),
-                    kPortSeparator, &host_parts);
+  vector<string> host_parts = base::SplitString(
+      url_string.substr(host_start, host_end - host_start),
+      std::string{kPortSeparator}, base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (host_parts.empty() || host_parts[0].empty() || host_parts.size() > 2) {
     return false;

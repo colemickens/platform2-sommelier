@@ -591,7 +591,7 @@ void Device::OnIPv6AddressChanged() {
 
 void Device::OnIPv6DnsServerAddressesChanged() {
   vector<IPAddress> server_addresses;
-  uint32 lifetime = 0;
+  uint32_t lifetime = 0;
 
   // Stop any existing timer.
   StopIPv6DNSServerTimer();
@@ -639,8 +639,8 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   OnIPv6ConfigUpdated();
 }
 
-void Device::StartIPv6DNSServerTimer(uint32 lifetime_seconds) {
-  int64 delay = static_cast<int64>(lifetime_seconds) * 1000;
+void Device::StartIPv6DNSServerTimer(uint32_t lifetime_seconds) {
+  int64_t delay = static_cast<int64_t>(lifetime_seconds) * 1000;
   ipv6_dns_server_expired_callback_.Reset(
       base::Bind(&Device::IPv6DNSServerExpired, base::Unretained(this)));
   dispatcher_->PostDelayedTask(ipv6_dns_server_expired_callback_.callback(),

@@ -19,6 +19,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/strings/pattern.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -155,7 +156,7 @@ void ConnectivityTrial::RequestReadCallback(const ByteString& response_data) {
     compare_length = response_expected.length();
   }
 
-  if (MatchPattern(
+  if (base::MatchPattern(
           string(reinterpret_cast<const char*>(response_data.GetConstData()),
                  compare_length),
           response_expected.substr(0, compare_length))) {
