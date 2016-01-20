@@ -124,7 +124,7 @@ base::File Request::GetFileData(int file_id) {
     file.Initialize(file_info_[file_id]->temp_file_name,
                     base::File::FLAG_OPEN | base::File::FLAG_READ);
   }
-  return file.Pass();
+  return file;
 }
 
 base::File Request::Complete(
@@ -133,7 +133,7 @@ base::File Request::Complete(
     int64_t in_data_size) {
   base::File file;
   if (response_data_started_)
-    return file.Pass();
+    return file;
 
   response_status_code_ = status_code;
   response_headers_.reserve(headers.size());
@@ -159,7 +159,7 @@ base::File Request::Complete(
   LogManager::OnRequestCompleted(base::Time::Now(), client_addr, method_, url_,
                                  version_, status_code, in_data_size);
   protocol_handler_->ScheduleWork();
-  return file.Pass();
+  return file;
 }
 
 bool Request::Complete(
