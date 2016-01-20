@@ -25,9 +25,9 @@ string HeaderGenerator::GenerateHeaderGuard(
   string guard = base::StringPrintf("____chromeos_dbus_binding__%s",
                                     output_file.value().c_str());
   for (auto& c : guard) {
-    if (IsAsciiAlpha(c)) {
+    if (base::IsAsciiAlpha(c)) {
       c = base::ToUpperASCII(c);
-    } else if (!IsAsciiDigit(c)) {
+    } else if (!base::IsAsciiDigit(c)) {
       c = '_';
     }
   }

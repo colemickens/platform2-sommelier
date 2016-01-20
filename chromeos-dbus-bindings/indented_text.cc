@@ -76,7 +76,8 @@ void IndentedText::AddComments(const std::string& doc_string) {
         lines_out.push_back(line.substr(pos));
       }
     } else {
-      if (base::StartsWithASCII(line, trim_prefix, false)) {
+      if (base::StartsWith(line, trim_prefix,
+                           base::CompareCase::INSENSITIVE_ASCII)) {
         line = line.substr(trim_prefix.length());
       } else {
         base::TrimWhitespaceASCII(line, base::TRIM_LEADING, &line);

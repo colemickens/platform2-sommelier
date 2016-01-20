@@ -4,6 +4,7 @@
 
 #include "chromeos-dbus-bindings/proxy_generator.h"
 
+#include <algorithm>
 #include <utility>
 
 #include <base/files/file_path.h>
