@@ -30,7 +30,7 @@
 #include <brillo/minijail/minijail.h>
 #include <brillo/syslog_logging.h>
 
-#include "shill/chromeos_daemon.h"
+#include "shill/daemon_task.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/shill_config.h"
@@ -179,7 +179,7 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  shill::ChromeosDaemon::Settings settings;
+  shill::DaemonTask::Settings settings;
   if (cl->HasSwitch(switches::kTechnologyOrder)) {
     shill::Error error;
     string order_flag = cl->GetSwitchValueASCII(

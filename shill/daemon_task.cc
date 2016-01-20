@@ -14,13 +14,13 @@
 // limitations under the License.
 //
 
-#include "shill/chromeos_daemon.h"
+#include "shill/daemon_task.h"
 
 #include <base/bind.h>
 
 #if !defined(ENABLE_JSON_STORE)
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 #endif  // ENABLE_JSON_STORE
 
 #if defined(ENABLE_BINDER)
@@ -52,15 +52,15 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
-static string ObjectID(ChromeosDaemon* d) { return "(chromeos_daemon)"; }
+static string ObjectID(DaemonTask* d) { return "(chromeos_daemon)"; }
 }
 
-ChromeosDaemon::ChromeosDaemon(const Settings& settings, Config* config)
+DaemonTask::DaemonTask(const Settings& settings, Config* config)
     : settings_(settings), config_(config) {}
 
-ChromeosDaemon::~ChromeosDaemon() {}
+DaemonTask::~DaemonTask() {}
 
-void ChromeosDaemon::ApplySettings() {
+void DaemonTask::ApplySettings() {
   manager_->SetBlacklistedDevices(settings_.device_blacklist);
   manager_->SetWhitelistedDevices(settings_.device_whitelist);
   Error error;
@@ -81,11 +81,10 @@ void ChromeosDaemon::ApplySettings() {
   manager_->SetDHCPv6EnabledDevices(settings_.dhcpv6_enabled_devices);
 }
 
-bool ChromeosDaemon::Quit(const base::Closure& completion_callback) {
+bool DaemonTask::Quit(const base::Closure& completion_callback) {
   SLOG(this, 1) << "Starting termination actions.";
   if (manager_->RunTerminationActionsAndNotifyMetrics(
-          Bind(&ChromeosDaemon::TerminationActionsCompleted,
-               Unretained(this)))) {
+          Bind(&DaemonTask::TerminationActionsCompleted, Unretained(this)))) {
     SLOG(this, 1) << "Will wait for termination actions to complete";
     termination_completed_callback_ = completion_callback;
     return false;  // Note to caller: don't exit yet!
@@ -96,7 +95,7 @@ bool ChromeosDaemon::Quit(const base::Closure& completion_callback) {
   }
 }
 
-void ChromeosDaemon::Init() {
+void DaemonTask::Init() {
   dispatcher_.reset(new EventDispatcher());
 #if defined(ENABLE_BINDER)
   control_.reset(new BinderControl(dispatcher_.get()));
@@ -120,12 +119,11 @@ void ChromeosDaemon::Init() {
                              config_->GetStorageDirectory(),
                              config_->GetUserStorageDirectory()));
   control_->RegisterManagerObject(
-      manager_.get(),
-      base::Bind(&ChromeosDaemon::Start, base::Unretained(this)));
+      manager_.get(), base::Bind(&DaemonTask::Start, base::Unretained(this)));
   ApplySettings();
 }
 
-void ChromeosDaemon::TerminationActionsCompleted(const Error& error) {
+void DaemonTask::TerminationActionsCompleted(const Error& error) {
   SLOG(this, 1) << "Finished termination actions.  Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(error.IsSuccess());
 
@@ -151,33 +149,33 @@ void ChromeosDaemon::TerminationActionsCompleted(const Error& error) {
   //                       -> Cellular::~Cellular
   //           -> Manager::RemoveTerminationAction
   dispatcher_->PostTask(
-      Bind(&ChromeosDaemon::StopAndReturnToMain, Unretained(this)));
+      Bind(&DaemonTask::StopAndReturnToMain, Unretained(this)));
 }
 
-void ChromeosDaemon::StopAndReturnToMain() {
+void DaemonTask::StopAndReturnToMain() {
   Stop();
   if (!termination_completed_callback_.is_null()) {
     termination_completed_callback_.Run();
   }
 }
 
-void ChromeosDaemon::Start() {
+void DaemonTask::Start() {
 #if !defined(ENABLE_JSON_STORE)
   g_type_init();
 #endif
   metrics_->Start();
-  rtnl_handler_->Start(
-      RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
-      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT);
+  rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+                       RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
+                       RTMGRP_ND_USEROPT);
   routing_table_->Start();
   dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
   process_manager_->Init(dispatcher_.get());
 #if !defined(DISABLE_WIFI)
   if (netlink_manager_) {
     netlink_manager_->Init();
-    uint16_t nl80211_family_id = netlink_manager_->GetFamily(
-        Nl80211Message::kMessageTypeString,
-        Bind(&Nl80211Message::CreateMessage));
+    uint16_t nl80211_family_id =
+        netlink_manager_->GetFamily(Nl80211Message::kMessageTypeString,
+                                    Bind(&Nl80211Message::CreateMessage));
     if (nl80211_family_id == NetlinkMessage::kIllegalMessageType) {
       LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
     }
@@ -186,16 +184,16 @@ void ChromeosDaemon::Start() {
 
     // Install handlers for NetlinkMessages that don't have specific handlers
     // (which are registered by message sequence number).
-    netlink_manager_->AddBroadcastHandler(Bind(
-        &Callback80211Metrics::CollectDisconnectStatistics,
-        callback80211_metrics_->AsWeakPtr()));
+    netlink_manager_->AddBroadcastHandler(
+        Bind(&Callback80211Metrics::CollectDisconnectStatistics,
+             callback80211_metrics_->AsWeakPtr()));
   }
 #endif  // DISABLE_WIFI
 
   manager_->Start();
 }
 
-void ChromeosDaemon::Stop() {
+void DaemonTask::Stop() {
   manager_->Stop();
   manager_ = nullptr;  // Release manager resources, including DBus adaptor.
 #if !defined(DISABLE_WIFI)
@@ -209,7 +207,7 @@ void ChromeosDaemon::Stop() {
   // have some work left to do. See crbug.com/537771.
 }
 
-void ChromeosDaemon::BreakTerminationLoop() {
+void DaemonTask::BreakTerminationLoop() {
   // Break out of the termination loop, to continue on with other shutdown
   // tasks.
   brillo::MessageLoop::current()->BreakLoop();

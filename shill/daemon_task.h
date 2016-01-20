@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_CHROMEOS_DAEMON_H_
-#define SHILL_CHROMEOS_DAEMON_H_
+#ifndef SHILL_DAEMON_TASK_H_
+#define SHILL_DAEMON_TASK_H_
 
 #include <memory>
 #include <string>
@@ -44,13 +44,13 @@ class RTNLHandler;
 class NetlinkManager;
 #endif  // DISABLE_WIFI
 
-// ChromeosDaemon contains most of the logic used in ShillDaemon, save the
-// overridden versions of brillo::Daemon methods. This class is separate from
-// ShillDaemon to decouple this class from brillo::Daemon. This is necessary for
-// ChromeosDaemon unit tests to run, since the base::ExitManager inherited from
+// DaemonTask contains most of the logic used in ShillDaemon (e.g.
+// init/shutdown, start/stop). This class is kept separate from ShillDaemon to
+// ensure that it does not inherit brillo::Daemon. This is necessary for
+// DaemonTask unit tests to run, since the base::ExitManager inherited from
 // brillo::Daemon cannot coexist with the base::ExitManager used by shill's
 // test_runner.cc.
-class ChromeosDaemon {
+class DaemonTask {
  public:
   // Run-time settings retrieved from command line.
   struct Settings {
@@ -72,8 +72,8 @@ class ChromeosDaemon {
     bool use_portal_list;
   };
 
-  ChromeosDaemon(const Settings& settings, Config* config);
-  virtual ~ChromeosDaemon();
+  DaemonTask(const Settings& settings, Config* config);
+  virtual ~DaemonTask();
 
   // Starts the termination actions in the manager. Returns true if
   // termination actions have completed synchronously, and false
@@ -82,7 +82,7 @@ class ChromeosDaemon {
   // |completion_callback| if no asynchronous work is required.
   virtual bool Quit(const base::Closure& completion_callback);
 
-  // Break the termination loop started in ChromeosDaemon::OnShutdown. Invoked
+  // Break the termination loop started in DaemonTask::OnShutdown. Invoked
   // after shill completes its termination tasks during shutdown.
   void BreakTerminationLoop();
 
@@ -90,8 +90,8 @@ class ChromeosDaemon {
   void Init();
 
  private:
-  friend class ChromeosDaemonTest;
-  friend class ChromeosDaemonForTest;
+  friend class DaemonTaskTest;
+  friend class DaemonTaskForTest;
 
   void Start();
 
@@ -126,4 +126,4 @@ class ChromeosDaemon {
 
 }  // namespace shill
 
-#endif  // SHILL_CHROMEOS_DAEMON_H_
+#endif  // SHILL_DAEMON_TASK_H_

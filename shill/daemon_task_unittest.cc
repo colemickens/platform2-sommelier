@@ -24,7 +24,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/chromeos_daemon.h"
+#include "shill/daemon_task.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/logging.h"
 #include "shill/mock_control.h"
@@ -58,19 +58,18 @@ using ::testing::_;
 
 namespace shill {
 
-class ChromeosDaemonForTest : public ChromeosDaemon {
+class DaemonTaskForTest : public DaemonTask {
  public:
-  ChromeosDaemonForTest(const Settings& setttings,
-                        Config* config)
-      : ChromeosDaemon(Settings(), config) {}
-  virtual ~ChromeosDaemonForTest() {}
+  DaemonTaskForTest(const Settings& setttings, Config* config)
+      : DaemonTask(Settings(), config) {}
+  virtual ~DaemonTaskForTest() {}
 
   bool quit_result() { return quit_result_; }
 
   void RunMessageLoop() { dispatcher_->DispatchForever(); }
 
   bool Quit(const base::Closure& completion_callback) override {
-    quit_result_ = ChromeosDaemon::Quit(completion_callback);
+    quit_result_ = DaemonTask::Quit(completion_callback);
     dispatcher_->PostTask(base::MessageLoop::QuitWhenIdleClosure());
     return quit_result_;
   }
@@ -79,34 +78,29 @@ class ChromeosDaemonForTest : public ChromeosDaemon {
   bool quit_result_;
 };
 
-class ChromeosDaemonTest : public Test {
+class DaemonTaskTest : public Test {
  public:
-  ChromeosDaemonTest()
-      : daemon_(ChromeosDaemon::Settings(),
-                &config_),
+  DaemonTaskTest()
+      : daemon_(DaemonTask::Settings(), &config_),
         dispatcher_(new EventDispatcherForTest()),
         control_(new MockControl()),
         metrics_(new MockMetrics(dispatcher_)),
-        manager_(new MockManager(control_,
-                                 dispatcher_,
-                                 metrics_)),
+        manager_(new MockManager(control_, dispatcher_, metrics_)),
 #if !defined(DISABLE_WIFI)
         callback_metrics_(new Callback80211Metrics(metrics_)),
 #endif  // DISABLE_WIFI
-        device_info_(control_,
-                     dispatcher_,
-                     metrics_,
-                     manager_) {}
-  virtual ~ChromeosDaemonTest() {}
+        device_info_(control_, dispatcher_, metrics_, manager_) {
+  }
+  virtual ~DaemonTaskTest() {}
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;
     daemon_.dhcp_provider_ = &dhcp_provider_;
     daemon_.process_manager_ = &process_manager_;
-    daemon_.metrics_.reset(metrics_);  // Passes ownership
-    daemon_.manager_.reset(manager_);  // Passes ownership
-    daemon_.control_.reset(control_);  // Passes ownership
+    daemon_.metrics_.reset(metrics_);        // Passes ownership
+    daemon_.manager_.reset(manager_);        // Passes ownership
+    daemon_.control_.reset(control_);        // Passes ownership
     daemon_.dispatcher_.reset(dispatcher_);  // Passes ownership
 
 #if !defined(DISABLE_WIFI)
@@ -115,19 +109,13 @@ class ChromeosDaemonTest : public Test {
     daemon_.callback80211_metrics_.reset(callback_metrics_);
 #endif  // DISABLE_WIFI
   }
-  void StartDaemon() {
-    daemon_.Start();
-  }
+  void StartDaemon() { daemon_.Start(); }
 
-  void StopDaemon() {
-    daemon_.Stop();
-  }
+  void StopDaemon() { daemon_.Stop(); }
 
-  void RunDaemon() {
-    daemon_.RunMessageLoop();
-  }
+  void RunDaemon() { daemon_.RunMessageLoop(); }
 
-  void ApplySettings(const ChromeosDaemon::Settings& settings) {
+  void ApplySettings(const DaemonTask::Settings& settings) {
     daemon_.settings_ = settings;
     daemon_.ApplySettings();
   }
@@ -137,7 +125,7 @@ class ChromeosDaemonTest : public Test {
 
  protected:
   TestConfig config_;
-  ChromeosDaemonForTest daemon_;
+  DaemonTaskForTest daemon_;
   MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
   MockDHCPProvider dhcp_provider_;
@@ -153,7 +141,7 @@ class ChromeosDaemonTest : public Test {
   DeviceInfo device_info_;
 };
 
-TEST_F(ChromeosDaemonTest, StartStop) {
+TEST_F(DaemonTaskTest, StartStop) {
   // To ensure we do not have any stale routes, we flush a device's routes
   // when it is started.  This requires that the routing table is fully
   // populated before we create and start devices.  So test to make sure that
@@ -163,11 +151,11 @@ TEST_F(ChromeosDaemonTest, StartStop) {
   // completes, we request the dump of the links.  For each link found, we
   // create and start the device.
   EXPECT_CALL(*metrics_, Start());
-  EXPECT_CALL(rtnl_handler_, Start(
-      RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
-      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
+  EXPECT_CALL(rtnl_handler_, Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR |
+                                   RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR |
+                                   RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
-  EXPECT_CALL(dhcp_provider_, Init(_,  _, _));
+  EXPECT_CALL(dhcp_provider_, Init(_, _, _));
   EXPECT_CALL(process_manager_, Init(_));
 #if !defined(DISABLE_WIFI)
   EXPECT_CALL(netlink_manager_, Init());
@@ -192,36 +180,33 @@ ACTION_P2(CompleteAction, manager, name) {
   manager->TerminationActionComplete(name);
 }
 
-TEST_F(ChromeosDaemonTest, QuitWithTerminationAction) {
+TEST_F(DaemonTaskTest, QuitWithTerminationAction) {
   // This expectation verifies that the termination actions are invoked.
   EXPECT_CALL(*this, TerminationAction())
       .WillOnce(CompleteAction(manager_, "daemon test"));
   EXPECT_CALL(*this, BreakTerminationLoop()).Times(1);
 
-  manager_->AddTerminationAction("daemon test",
-                                 Bind(&ChromeosDaemonTest::TerminationAction,
-                                      Unretained(this)));
+  manager_->AddTerminationAction(
+      "daemon test",
+      Bind(&DaemonTaskTest::TerminationAction, Unretained(this)));
 
   // Run Daemon::Quit() after the daemon starts running.
   dispatcher_->PostTask(
-      Bind(IgnoreResult(&ChromeosDaemon::Quit),
-           Unretained(&daemon_),
-           Bind(&ChromeosDaemonTest::BreakTerminationLoop,
-                Unretained(this))));
+      Bind(IgnoreResult(&DaemonTask::Quit), Unretained(&daemon_),
+           Bind(&DaemonTaskTest::BreakTerminationLoop, Unretained(this))));
 
   RunDaemon();
   EXPECT_FALSE(daemon_.quit_result());
 }
 
-TEST_F(ChromeosDaemonTest, QuitWithoutTerminationActions) {
+TEST_F(DaemonTaskTest, QuitWithoutTerminationActions) {
   EXPECT_CALL(*this, BreakTerminationLoop()).Times(0);
   EXPECT_TRUE(daemon_.Quit(
-      Bind(&ChromeosDaemonTest::BreakTerminationLoop,
-           Unretained(this))));
+      Bind(&DaemonTaskTest::BreakTerminationLoop, Unretained(this))));
 }
 
-TEST_F(ChromeosDaemonTest, ApplySettings) {
-  ChromeosDaemon::Settings settings;
+TEST_F(DaemonTaskTest, ApplySettings) {
+  DaemonTask::Settings settings;
   vector<string> kEmptyStringList;
   EXPECT_CALL(*manager_, SetBlacklistedDevices(kEmptyStringList));
   EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kEmptyStringList));
@@ -238,7 +223,7 @@ TEST_F(ChromeosDaemonTest, ApplySettings) {
   vector<string> kBlacklistedDevices = {"eth0", "eth1"};
   settings.device_blacklist = kBlacklistedDevices;
   settings.default_technology_order = "wifi,ethernet";
-  vector<string> kDHCPv6EnabledDevices {"eth2", "eth3"};
+  vector<string> kDHCPv6EnabledDevices{"eth2", "eth3"};
   settings.dhcpv6_enabled_devices = kDHCPv6EnabledDevices;
   settings.ignore_unknown_ethernet = false;
   settings.portal_list = "wimax";

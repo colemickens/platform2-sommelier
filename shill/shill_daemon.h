@@ -22,23 +22,19 @@
 #include <base/callback.h>
 #include <brillo/daemons/daemon.h>
 
-#include "shill/chromeos_daemon.h"
+#include "shill/daemon_task.h"
 
 namespace shill {
 
 class Config;
 
 // ShillDaemon is the daemon that will be initialized in shill_main.cc. It
-// inherits most of the ChromeosDaemon implementation, and additionally
-// overrides methods of brillo::Daemon. This class is separate from
-// ChromeosDaemon to decouple the latter class from brillo::Daemon. This is
-// necessary for ChromeosDaemon unit tests to run, since the base::ExitManager
-// inherited from brillo::Daemon cannot coexist with the base::ExitManager used
-// by shill's test_runner.cc.
-class ShillDaemon : public ChromeosDaemon, public brillo::Daemon {
+// inherits the logic of daemon-related tasks (e.g. init/shutdown, start/stop)
+// from DaemonTask, and additionally overrides methods of brillo::Daemon.
+class ShillDaemon : public DaemonTask, public brillo::Daemon {
  public:
   ShillDaemon(const base::Closure& startup_callback,
-              const shill::ChromeosDaemon::Settings& settings, Config* config);
+              const shill::DaemonTask::Settings& settings, Config* config);
   virtual ~ShillDaemon();
 
  protected:

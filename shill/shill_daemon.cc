@@ -26,10 +26,9 @@ using base::Unretained;
 namespace shill {
 
 ShillDaemon::ShillDaemon(const base::Closure& startup_callback,
-                         const shill::ChromeosDaemon::Settings& settings,
+                         const shill::DaemonTask::Settings& settings,
                          Config* config)
-    : ChromeosDaemon(settings, config),
-      startup_callback_(startup_callback) {}
+    : DaemonTask(settings, config), startup_callback_(startup_callback) {}
 
 ShillDaemon::~ShillDaemon() {}
 
@@ -49,8 +48,8 @@ int ShillDaemon::OnInit() {
 }
 
 void ShillDaemon::OnShutdown(int* return_code) {
-  if (!ChromeosDaemon::Quit(base::Bind(&ChromeosDaemon::BreakTerminationLoop,
-                                       base::Unretained(this)))) {
+  if (!DaemonTask::Quit(base::Bind(&DaemonTask::BreakTerminationLoop,
+                                   base::Unretained(this)))) {
     // Run a message loop to allow shill to complete its termination
     // procedures. This is different from the secondary loop in
     // brillo::Daemon. This loop will run until we explicitly
