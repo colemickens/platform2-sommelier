@@ -686,6 +686,7 @@
             'crypto_rot47_unittest.cc',
             'crypto_util_proxy_unittest.cc',
             'dbus/chromeos_dbus_adaptor_unittest.cc',
+            'dbus/chromeos_manager_dbus_adaptor_unittest.cc',
             'default_profile_unittest.cc',
             'device_claimer_unittest.cc',
             'device_info_unittest.cc',
