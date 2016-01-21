@@ -75,11 +75,13 @@ int main(int argc, char* argv[]) {
           FLAGS_external_power));
   proto.set_external_power_source_id(FLAGS_power_source_id);
 
-  std::vector<std::string> sources;
-  base::SplitString(FLAGS_power_sources, ',', &sources);
+  std::vector<std::string> sources =
+      base::SplitString(FLAGS_power_sources, ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (auto source : sources) {
-    std::vector<std::string> parts;
-    base::SplitString(source, ':', &parts);
+    std::vector<std::string> parts =
+        base::SplitString(source, ":", base::KEEP_WHITESPACE,
+                          base::SPLIT_WANT_ALL);
     CHECK_EQ(parts.size(), 4u) << "Expected "
                                << "id:manufacturer:model:active_by_default but "
                                << "got \"" << source << "\"";

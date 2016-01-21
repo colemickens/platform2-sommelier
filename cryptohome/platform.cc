@@ -23,6 +23,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <limits>
 #include <sstream>
 #include <utility>
 
@@ -113,8 +114,8 @@ bool Platform::GetMountsBySourcePrefix(const std::string& from_prefix,
   if (!base::ReadFileToString(FilePath(mtab_path_), &contents))
     return false;
 
-  std::vector<std::string> lines;
-  SplitString(contents, '\n', &lines);
+  std::vector<std::string> lines =
+      SplitString(contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator it = lines.begin();
        it < lines.end();
        ++it) {
@@ -248,7 +249,10 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   string contents;
   std::vector<std::string> cmd_line;
   if (base::ReadFileToString(cmdline_file, &contents)) {
-    SplitString(contents, '\0', &cmd_line);
+    // Can't split at null characters, so replace them with \n.
+    std::replace(contents.begin(), contents.end(), '\0', '\n');
+    cmd_line = SplitString(contents, "\n", base::KEEP_WHITESPACE,
+                           base::SPLIT_WANT_ALL);
   }
   process_info->set_cmd_line(&cmd_line);
 
@@ -517,7 +521,8 @@ bool Platform::WriteArrayToFile(const std::string& path, const char* data,
     }
   }
   // brillo::Blob::size_type is std::vector::size_type and is unsigned.
-  if (size > static_cast<std::string::size_type>(INT_MAX)) {
+  if (size > static_cast<std::string::size_type>(
+          std::numeric_limits<int>::max())) {
     LOG(ERROR) << "Cannot write to " << path
                << ". Data is too large: " << size << " bytes.";
     return false;
@@ -652,7 +657,7 @@ bool Platform::ReadFile(const std::string& path, brillo::Blob* blob) {
     return false;
   }
   // Compare to the max of a signed integer.
-  if (file_size > static_cast<int64_t>(INT_MAX)) {
+  if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
     LOG(ERROR) << "File " << path << " is too large: "
                << file_size << " bytes.";
     return false;
@@ -1038,10 +1043,10 @@ void Platform::VerifyChecksum(const std::string& path,
                               const void* content,
                               const size_t content_size) {
   // Exclude some system paths.
-  if (base::StartsWithASCII(path, "/etc", true) ||
-      base::StartsWithASCII(path, "/dev", true) ||
-      base::StartsWithASCII(path, "/sys", true) ||
-      base::StartsWithASCII(path, "/proc", true)) {
+  if (base::StartsWith(path, "/etc", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(path, "/dev", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(path, "/sys", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(path, "/proc", base::CompareCase::SENSITIVE)) {
     return;
   }
   if (!FileExists(path + ".sum")) {

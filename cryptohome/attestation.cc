@@ -1550,7 +1550,7 @@ scoped_ptr<EVP_PKEY, Attestation::EVP_PKEYDeleter>
         return scoped_ptr<EVP_PKEY, EVP_PKEYDeleter>();
       }
       EVP_PKEY_assign_RSA(pkey.get(), rsa.release());
-      return pkey.Pass();
+      return pkey;
     }
   }
   return scoped_ptr<EVP_PKEY, EVP_PKEYDeleter>();
@@ -1986,7 +1986,7 @@ scoped_ptr<RSA, Attestation::RSADeleter> Attestation::CreateRSAFromHexModulus(
     return scoped_ptr<RSA, RSADeleter>();
   if (0 == BN_hex2bn(&rsa->n, hex_modulus.c_str()))
     return scoped_ptr<RSA, RSADeleter>();
-  return rsa.Pass();
+  return rsa;
 }
 
 bool Attestation::CreateSignedPublicKey(

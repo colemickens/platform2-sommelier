@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"
@@ -74,8 +75,9 @@ bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
     LOG(ERROR) << "Failed to read object index.";
     return false;
   }
-  vector<string> object_files;
-  base::SplitStringAlongWhitespace(index, &object_files);
+  vector<string> object_files =
+      base::SplitString(index, base::kWhitespaceASCII, base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY);
   vector<AttributeMap> ready_for_import;
   LOG(INFO) << "Found " << object_files.size() << " object files.";
   // Try to read and process each file listed in the index file. If a problem

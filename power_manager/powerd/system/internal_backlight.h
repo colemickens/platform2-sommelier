@@ -99,7 +99,7 @@ class InternalBacklight : public BacklightInterface {
   int64_t current_brightness_level_;
 
   // Calls HandleTransitionTimeout().
-  base::RepeatingTimer<InternalBacklight> transition_timer_;
+  base::RepeatingTimer transition_timer_;
 
   // Time at which |transition_timer_| was last started. Used for testing.
   base::TimeTicks transition_timer_start_time_;

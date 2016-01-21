@@ -90,8 +90,8 @@ bool MountInfo::RetrieveFromFile(const string& path) {
 
   string line;
   while (reader.ReadLine(&line)) {
-    vector<string> tokens;
-    base::SplitString(line, ' ', &tokens);
+    vector<string> tokens = base::SplitString(line, " ", base::KEEP_WHITESPACE,
+                                              base::SPLIT_WANT_ALL);
     size_t num_tokens = tokens.size();
     if (num_tokens >= 10 && tokens[num_tokens - 4] == "-") {
       MountPoint mount_point;

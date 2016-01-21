@@ -91,8 +91,12 @@ scoped_ptr<MetricSample> SerializationUtils::ParseSample(
   if (sample.empty())
     return scoped_ptr<MetricSample>();
 
-  std::vector<std::string> parts;
-  base::SplitString(sample, '\0', &parts);
+  // Can't split at \0 anymore, so replace null chars with \n.
+  std::string sample_copy = sample;
+  std::replace(sample_copy.begin(), sample_copy.end(), '\0', '\n');
+  std::vector<std::string> parts =
+      base::SplitString(sample_copy, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   // We should have two null terminated strings so split should produce
   // three chunks.
   if (parts.size() != 3) {
@@ -194,7 +198,7 @@ bool SerializationUtils::WriteMetricToFile(const MetricSample& sample,
   }
 
   std::string msg = sample.ToString();
-  int32 size = msg.length() + sizeof(int32);
+  int32_t size = msg.length() + sizeof(int32_t);
   if (size > kMessageMaxLength) {
     DLOG(ERROR) << "cannot write message: too long";
     return false;

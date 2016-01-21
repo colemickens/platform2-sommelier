@@ -154,7 +154,7 @@ DevicePolicyService::DevicePolicyService(
     LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss)
-    : PolicyService(policy_store.Pass(), policy_key),
+    : PolicyService(std::move(policy_store), policy_key),
       serial_recovery_flag_file_(serial_recovery_flag_file),
       policy_file_(policy_file),
       install_attributes_file_(install_attributes_file),

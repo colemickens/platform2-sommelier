@@ -28,13 +28,14 @@ string SalsaExperimentRunner::Decode(string const &exp_string) const {
     char c1 = *it;
     char c2 = *++it;
 
-    if (IsHexDigit(c1) && IsHexDigit(c2)) {
-      int val1 = HexDigitToInt(c1);
-      int val2 = HexDigitToInt(c2);
+    if (base::IsHexDigit(c1) && base::IsHexDigit(c2)) {
+      int val1 = base::HexDigitToInt(c1);
+      int val2 = base::HexDigitToInt(c2);
       char converted_char = static_cast<char>(val1 * 16 + val2);
 
       // After decoding, these should be the only characters in the string
-      if (IsAsciiAlpha(converted_char) || IsAsciiDigit(converted_char) ||
+      if (base::IsAsciiAlpha(converted_char) ||
+          base::IsAsciiDigit(converted_char) ||
           converted_char == '+' || converted_char == ',' ||
           converted_char == ':' || converted_char == '-' ||
           converted_char == ' ' || converted_char == '.') {

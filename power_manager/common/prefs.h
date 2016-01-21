@@ -138,7 +138,7 @@ class Prefs : public PrefsInterface {
   FileWatcherMap file_watchers_;
 
   // Calls WritePrefs().
-  base::OneShotTimer<Prefs> write_prefs_timer_;
+  base::OneShotTimer write_prefs_timer_;
 
   // Last time at which WritePrefs() was called.
   base::TimeTicks last_write_time_;

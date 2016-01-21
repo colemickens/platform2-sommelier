@@ -71,7 +71,7 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   int suspend_delay_id_;
 
   bool suspended_;
-  base::OneShotTimer<PowerManager> suspend_timeout_timer_;
+  base::OneShotTimer suspend_timeout_timer_;
   Manager *wimax_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);

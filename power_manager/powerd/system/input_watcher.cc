@@ -51,7 +51,7 @@ const char kConsolePath[] = "/dev/tty0";
 // integer, extracts the integer to |num_out|. Returns false if |name| didn't
 // match the expected format.
 bool GetInputNumber(const std::string& name, int* num_out) {
-  if (!base::StartsWithASCII(name, kInputBaseName, true))
+  if (!base::StartsWith(name, kInputBaseName, base::CompareCase::SENSITIVE))
     return false;
   size_t base_len = strlen(kInputBaseName);
   return base::StringToInt(name.substr(base_len, name.size() - base_len),
@@ -118,7 +118,7 @@ bool InputWatcher::Init(
     scoped_ptr<EventDeviceFactoryInterface> event_device_factory,
     PrefsInterface* prefs,
     UdevInterface* udev) {
-  event_device_factory_ = event_device_factory.Pass();
+  event_device_factory_ = std::move(event_device_factory);
   udev_ = udev;
 
   prefs->GetBool(kUseLidPref, &use_lid_);
@@ -218,10 +218,10 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
     // Now that the string "usb" has been found, make sure it is a whole word
     // and not just part of another word like "busbreaker".
     bool usb_at_word_head =
-        position == 0 || !IsAsciiAlpha(path_string.at(position - 1));
+        position == 0 || !base::IsAsciiAlpha(path_string.at(position - 1));
     bool usb_at_word_tail =
         position + strlen(kUsbMatchString) == path_string.size() ||
-        !IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
+        !base::IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
     if (usb_at_word_head && usb_at_word_tail)
       return true;
   }
@@ -371,8 +371,8 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   }
 
   const std::string phys = device->GetPhysPath();
-  if (base::StartsWithASCII(phys, power_button_to_skip_,
-                            true /* case_sensitive */)) {
+  if (base::StartsWith(phys, power_button_to_skip_,
+                       base::CompareCase::SENSITIVE)) {
     VLOG(1) << "Skipping event device with phys path: " << phys;
     return;
   }

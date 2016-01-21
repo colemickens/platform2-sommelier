@@ -560,7 +560,7 @@ bool GdmDevice::ConstructEAPParameters(
   if (realm_pos != string::npos)
     realm = user_identity.substr(realm_pos);
 
-  ReplaceSubstringsAfterOffset(&anonymous_identity, 0, kRealmTag, realm);
+  base::ReplaceSubstringsAfterOffset(&anonymous_identity, 0, kRealmTag, realm);
 
   if (!CopyStringToUInt8Array(anonymous_identity,
                               eap_parameters->anonymousId)) {

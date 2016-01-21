@@ -60,7 +60,7 @@ class InternalBacklightTest : public ::testing::Test {
     }
   }
 
-  // Reads and returns an int64 value from |path|. -1 is returned on error.
+  // Reads and returns an int64_t value from |path|. -1 is returned on error.
   int64_t ReadFile(const base::FilePath& path) {
     std::string data;
     if (!base::ReadFileToString(path, &data)) {

@@ -90,7 +90,7 @@ Value* FetchOneInterface(DBusPropertiesProxy* properties,
     return NULL;
 
   std::string keypath = interface;
-  ReplaceSubstringsAfterOffset(&keypath, 0, ".", "/");
+  base::ReplaceSubstringsAfterOffset(&keypath, 0, ".", "/");
   result->Set(keypath, propsdict);
   return propsdict;
 }

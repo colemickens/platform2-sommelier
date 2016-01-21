@@ -269,7 +269,7 @@ void Suspender::RegisterSuspendDelayInternal(
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(reply_proto);
-  response_sender.Run(response.Pass());
+  response_sender.Run(std::move(response));
 }
 
 void Suspender::UnregisterSuspendDelayInternal(

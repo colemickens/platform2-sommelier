@@ -43,13 +43,13 @@ void HandleSynchronousDBusMethodCall(
   scoped_ptr<dbus::Response> response = handler.Run(method_call);
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
-  response_sender.Run(response.Pass());
+  response_sender.Run(std::move(response));
 }
 
 scoped_ptr<dbus::Response> CreateError(dbus::MethodCall* call,
                                        const std::string& name,
                                        const std::string& message) {
-  return dbus::ErrorResponse::FromMethodCall(call, name, message).Pass();
+  return dbus::ErrorResponse::FromMethodCall(call, name, message);
 }
 
 // Creates a new "invalid args" reply to call.
@@ -73,7 +73,7 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBool(
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(payload);
   }
-  return response.Pass();
+  return response;
 }
 
 scoped_ptr<dbus::Response> CraftAppropriateResponseWithString(
@@ -88,7 +88,7 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithString(
     dbus::MessageWriter writer(response.get());
     writer.AppendString(payload);
   }
-  return response.Pass();
+  return response;
 }
 
 scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
@@ -101,9 +101,9 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
   } else {
     response = dbus::Response::FromMethodCall(call);
     dbus::MessageWriter writer(response.get());
-    writer.AppendArrayOfBytes(vector_as_array(&payload), payload.size());
+    writer.AppendArrayOfBytes(payload.data(), payload.size());
   }
-  return response.Pass();
+  return response;
 }
 
 // Handles completion of a server-backed state key retrieval operation and
@@ -123,7 +123,7 @@ void HandleGetServerBackedStateKeysCompletion(
     array_writer.AppendArrayOfBytes(state_key->data(), state_key->size());
   }
   writer.CloseContainer(&array_writer);
-  sender.Run(response.Pass());
+  sender.Run(std::move(response));
 }
 
 }  // namespace
@@ -175,13 +175,12 @@ void DBusMethodCompletion::HandleResult(const PolicyService::Error& error) {
     scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call_));
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(true);
-    sender_.Run(response.Pass());
+    sender_.Run(std::move(response));
     call_ = nullptr;
   } else {
     sender_.Run(
         dbus::ErrorResponse::FromMethodCall(call_,
-                                            error.code(), error.message())
-        .Pass());
+                                            error.code(), error.message()));
     call_ = nullptr;
   }
 }
@@ -334,7 +333,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(success);
-  return response.Pass();
+  return response;
 }
 
 void SessionManagerDBusAdaptor::StorePolicy(
@@ -345,7 +344,7 @@ void SessionManagerDBusAdaptor::StorePolicy(
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
   if (!reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
-    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
   } else {
     impl_->StorePolicy(policy_blob, policy_blob_len,
                        DBusMethodCompletion::CreateCallback(call, sender));
@@ -371,7 +370,7 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
   // policy_blob points into reader after pop.
   if (!reader.PopString(&user_email) ||
       !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
-    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
   } else {
     impl_->StorePolicyForUser(user_email,
                               policy_blob,
@@ -406,7 +405,7 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
   // policy_blob points into reader after pop.
   if (!reader.PopString(&account_id) ||
       !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
-    sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
   } else {
     impl_->StoreDeviceLocalAccountPolicy(
         account_id,
@@ -437,7 +436,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveSessionState(
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   writer.AppendString(impl_->RetrieveSessionState());
-  return response.Pass();
+  return response;
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveActiveSessions(
@@ -459,7 +458,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveActiveSessions(
     array_writer.CloseContainer(&entry_writer);
   }
   writer.CloseContainer(&array_writer);
-  return response.Pass();
+  return response;
 }
 
 scoped_ptr<dbus::Response>
@@ -598,7 +597,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::Introspect(
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   writer.AppendString(output);
-  return response.Pass();
+  return response;
 }
 
 void SessionManagerDBusAdaptor::ExportSyncDBusMethod(

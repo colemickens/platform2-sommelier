@@ -87,7 +87,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   base::FilePath device_list_path_;
 
   // Runs ReadAls().
-  base::RepeatingTimer<AmbientLightSensor> poll_timer_;
+  base::RepeatingTimer poll_timer_;
 
   // Time between polls of the sensor file, in milliseconds.
   int poll_interval_ms_;

@@ -1274,7 +1274,7 @@ bool TpmImpl::ReadNvramForContext(TSS_HCONTEXT context_handle,
       return false;
     }
     CHECK(offset + chunk_size <= blob->size());
-    unsigned char* buffer = vector_as_array(blob) + offset;
+    unsigned char* buffer = blob->data() + offset;
     memcpy(buffer, space_data.value(), chunk_size);
     offset += chunk_size;
   }

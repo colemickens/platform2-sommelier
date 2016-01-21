@@ -118,8 +118,9 @@ scoped_ptr<MetricSample> MetricSample::HistogramSample(
 // static
 scoped_ptr<MetricSample> MetricSample::ParseHistogram(
     const std::string& serialized_histogram) {
-  std::vector<std::string> parts;
-  base::SplitString(serialized_histogram, ' ', &parts);
+  std::vector<std::string> parts =
+      base::SplitString(serialized_histogram, " ", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
 
   if (parts.size() != 5)
     return scoped_ptr<MetricSample>();
@@ -145,8 +146,9 @@ scoped_ptr<MetricSample> MetricSample::SparseHistogramSample(
 // static
 scoped_ptr<MetricSample> MetricSample::ParseSparseHistogram(
     const std::string& serialized_histogram) {
-  std::vector<std::string> parts;
-  base::SplitString(serialized_histogram, ' ', &parts);
+  std::vector<std::string> parts =
+      base::SplitString(serialized_histogram, " ", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   if (parts.size() != 2)
     return scoped_ptr<MetricSample>();
   int sample;
@@ -168,9 +170,10 @@ scoped_ptr<MetricSample> MetricSample::LinearHistogramSample(
 // static
 scoped_ptr<MetricSample> MetricSample::ParseLinearHistogram(
     const std::string& serialized_histogram) {
-  std::vector<std::string> parts;
   int sample, max;
-  base::SplitString(serialized_histogram, ' ', &parts);
+  std::vector<std::string> parts =
+      base::SplitString(serialized_histogram, " ", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   if (parts.size() != 3)
     return scoped_ptr<MetricSample>();
   if (parts[0].empty() || !base::StringToInt(parts[1], &sample) ||

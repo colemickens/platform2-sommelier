@@ -97,8 +97,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   std::string als_steps_pref_;
   std::string user_steps_pref_;
   double no_als_brightness_pref_;
-  int64 detect_hover_pref_;
-  int64 hover_delay_ms_pref_;
+  int64_t detect_hover_pref_;
+  int64_t hover_delay_ms_pref_;
 
   FakePrefs prefs_;
   system::BacklightStub backlight_;

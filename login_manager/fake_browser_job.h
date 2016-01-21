@@ -25,7 +25,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   virtual ~FakeBrowserJob();
 
   void set_fake_child_process(scoped_ptr<FakeChildProcess> fake) {
-    fake_process_ = fake.Pass();
+    fake_process_ = std::move(fake);
   }
   void set_should_run(bool should) { should_run_ = should; }
 

@@ -5,13 +5,13 @@
 #include "wimax_manager/event_dispatcher.h"
 
 #include <base/location.h>
-#include <base/message_loop/message_loop_proxy.h>
+#include <base/thread_task_runner_handle.h>
 
 namespace wimax_manager {
 
 EventDispatcher::EventDispatcher()
     : dont_use_directly_(new(std::nothrow) base::MessageLoopForUI),
-      message_loop_proxy_(base::MessageLoopProxy::current()) {
+      task_runner_(base::ThreadTaskRunnerHandle::Get()) {
   CHECK(dont_use_directly_.get());
 }
 
@@ -20,17 +20,17 @@ void EventDispatcher::DispatchForever() {
 }
 
 bool EventDispatcher::PostTask(const base::Closure &task) {
-  return message_loop_proxy_->PostTask(FROM_HERE, task);
+  return task_runner_->PostTask(FROM_HERE, task);
 }
 
 bool EventDispatcher::PostDelayedTask(
     const base::Closure &task, const base::TimeDelta &delay) {
-  return message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay);
+  return task_runner_->PostDelayedTask(FROM_HERE, task, delay);
 }
 
 void EventDispatcher::Stop() {
-  base::MessageLoop::current()->PostTask(FROM_HERE,
-                                         base::MessageLoop::QuitClosure());
+  base::MessageLoop::current()->PostTask(
+      FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
 }
 
 }  // namespace wimax_manager

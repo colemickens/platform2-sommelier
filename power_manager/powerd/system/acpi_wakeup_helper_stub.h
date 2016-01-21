@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 

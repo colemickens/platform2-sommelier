@@ -56,8 +56,8 @@ bool USBDeviceInfo::RetrieveFromFile(const string& path) {
     if (IsLineSkippable(line))
       continue;
 
-    vector<string> tokens;
-    base::SplitString(line, ' ', &tokens);
+    vector<string> tokens = base::SplitString(line, " ", base::KEEP_WHITESPACE,
+                                              base::SPLIT_WANT_ALL);
     if (tokens.size() >= 2) {
       USBDeviceEntry& entry = entries_[tokens[0]];
       entry.media_type = ConvertToDeviceMediaType(tokens[1]);
@@ -130,16 +130,17 @@ bool USBDeviceInfo::IsLineSkippable(const string& line) const {
   string trimmed_line;
   // Trim only ASCII whitespace for now.
   base::TrimWhitespaceASCII(line, base::TRIM_ALL, &trimmed_line);
-  return trimmed_line.empty() || base::StartsWithASCII(trimmed_line, "#", true);
+  return trimmed_line.empty() ||
+         base::StartsWith(trimmed_line, "#", base::CompareCase::SENSITIVE);
 }
 
 bool USBDeviceInfo::ExtractIdAndName(
     const string& line, string* id, string* name) const {
   if ((line.length() > 6) &&
-      IsHexDigit(line[0]) && IsHexDigit(line[1]) &&
-      IsHexDigit(line[2]) && IsHexDigit(line[3]) &&
+      base::IsHexDigit(line[0]) && base::IsHexDigit(line[1]) &&
+      base::IsHexDigit(line[2]) && base::IsHexDigit(line[3]) &&
       (line[4] == ' ') && (line[5] == ' ')) {
-    *id = base::StringToLowerASCII(line.substr(0, 4));
+    *id = base::ToLowerASCII(line.substr(0, 4));
     *name = line.substr(6);
     return true;
   }

@@ -25,9 +25,10 @@ const char kLogitechUnifyingReceiverDriver[] = "logitech-djreceiver";
 
 // The kernel expresses capabilities as a bitfield, broken into long-sized
 // chunks encoded in hexadecimal.
-bool ParseInputCapabilities(const char* input, std::vector<uint64>* output) {
-  std::vector<std::string> chunks;
-  base::SplitString(input, ' ', &chunks);
+bool ParseInputCapabilities(const char* input, std::vector<uint64_t>* output) {
+  std::vector<std::string> chunks =
+      base::SplitString(input, " ", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
 
   output->clear();
   output->reserve(chunks.size());
@@ -35,7 +36,7 @@ bool ParseInputCapabilities(const char* input, std::vector<uint64>* output) {
   // The most-significant chunk of the bitmask is stored first, iterate over
   // the chunks in reverse so that the result is easier to work with.
   for (const std::string& chunk : base::Reversed(chunks)) {
-    uint64 value = 0;
+    uint64_t value = 0;
     if (!base::HexStringToUInt64(chunk, &value)) {
       LOG(ERROR) << "Failed to parse: " << chunk;
       return false;
@@ -51,7 +52,7 @@ bool ParseInputCapabilities(const char* input, std::vector<uint64>* output) {
   return true;
 }
 
-bool IsCapabilityBitSet(const std::vector<uint64>& bitfield, size_t bit) {
+bool IsCapabilityBitSet(const std::vector<uint64_t>& bitfield, size_t bit) {
   size_t offset = bit / (sizeof(long) * 8);  // NOLINT(runtime/int)
   if (offset >= bitfield.size()) {
     return false;
@@ -157,13 +158,13 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
     const char* abs_capabilities,
     const char* rel_capabilities,
     const char* key_capabilities) {
-  std::vector<uint64> capabilities;
+  std::vector<uint64_t> capabilities;
   if (abs_capabilities) {
     if (!ParseInputCapabilities(abs_capabilities, &capabilities)) {
       // Parse error? Fail safe.
       return true;
     }
-    for (uint64 value : capabilities) {
+    for (uint64_t value : capabilities) {
       if (value != 0) {
         // Any absolute pointer capabilities exclude access.
         return true;
@@ -176,7 +177,7 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
       // Parse error? Fail safe.
       return true;
     }
-    for (uint64 value : capabilities) {
+    for (uint64_t value : capabilities) {
       if (value != 0) {
         // Any relative pointer capabilities exclude access.
         return true;

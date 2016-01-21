@@ -17,7 +17,7 @@
 namespace {
 const size_t kMaxInterfaceNameLen = 16;
 const int kMaxEvents = 10;
-const int64 kLifelineIntervalSeconds = 5;
+const int64_t kLifelineIntervalSeconds = 5;
 const int kInvalidHandle = -1;
 }
 

@@ -66,7 +66,7 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
 
   scoped_ptr<timers::SimpleAlarmTimer> timer(new timers::SimpleAlarmTimer());
   if (timer->can_wake_from_suspend())
-    timer_ = timer.Pass();
+    timer_ = std::move(timer);
 
   bool disable = false;
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
@@ -243,8 +243,9 @@ void DarkResume::GetFiles(std::vector<base::FilePath>* files,
   if (!prefs_->GetString(pref_name, &data))
     return;
 
-  std::vector<std::string> lines;
-  base::SplitString(data, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(data, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
     base::FilePath path = base::FilePath(lines[i]);
     path = path.AppendASCII(kPowerDir);

@@ -138,9 +138,12 @@ int main(int argc, char *argv[]) {
   if (!g_notemp)
     g_initial_temperature = GetMachineTemperature();
 
-  vector<string> enabled_tests, disabled_tests;
-  base::SplitString(FLAGS_tests, ':', &enabled_tests);
-  base::SplitString(FLAGS_blacklist, ':', &disabled_tests);
+  vector<string> enabled_tests =
+      base::SplitString(FLAGS_tests, ":", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  vector<string> disabled_tests =
+      base::SplitString(FLAGS_blacklist, ":", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
 
   glbench::TestBase* tests[] = {
     // Please add new tests at the end of this list as tests are known to bleed

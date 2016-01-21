@@ -15,8 +15,9 @@ bool Treatment::valid() const {
 }
 
 Treatment::Treatment(string const &treatment_string) {
-  vector<string> property_strings;
-  SplitString(treatment_string, ',', &property_strings);
+  vector<string> property_strings =
+      SplitString(treatment_string, ",", base::KEEP_WHITESPACE,
+                  base::SPLIT_WANT_ALL);
 
   is_valid_ = true;
   for (vector<string>::const_iterator it = property_strings.begin();

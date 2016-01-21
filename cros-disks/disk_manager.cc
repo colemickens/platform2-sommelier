@@ -451,9 +451,10 @@ bool DiskManager::CanMount(const string& source_path) const {
   //     /sys/...
   //     /devices/...
   //     /dev/...
-  return base::StartsWithASCII(source_path, "/sys/", true) ||
-         base::StartsWithASCII(source_path, "/devices/", true) ||
-         base::StartsWithASCII(source_path, "/dev/", true);
+  return base::StartsWith(source_path, "/sys/", base::CompareCase::SENSITIVE) ||
+         base::StartsWith(source_path, "/devices/",
+                          base::CompareCase::SENSITIVE) ||
+         base::StartsWith(source_path, "/dev/", base::CompareCase::SENSITIVE);
 }
 
 MountErrorType DiskManager::DoMount(const string& source_path,

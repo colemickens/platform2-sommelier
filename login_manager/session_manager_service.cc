@@ -126,7 +126,7 @@ SessionManagerService::SessionManagerService(
     base::TimeDelta hang_detection_interval,
     LoginMetrics* metrics,
     SystemUtils* utils)
-    : browser_(child_job.Pass()),
+    : browser_(std::move(child_job)),
       exit_on_child_done_(false),
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
@@ -176,25 +176,25 @@ bool SessionManagerService::Initialize() {
   scoped_ptr<UpstartSignalEmitter> upstart_emitter(
       new UpstartSignalEmitter(upstart_dbus_proxy));
 
-  SessionManagerImpl* impl =
-      new SessionManagerImpl(upstart_emitter.Pass(),
-                             dbus_emitter_.get(),
-                             base::Bind(&FireAndForgetDBusMethodCall,
-                                        base::Unretained(chrome_dbus_proxy),
-                                        chromeos::kLibCrosServiceInterface,
-                                        chromeos::kLockScreen),
-                             base::Bind(&FireAndBlockOnDBusMethodCall,
-                                        base::Unretained(powerd_dbus_proxy_),
-                                        power_manager::kPowerManagerInterface,
-                                        power_manager::kRequestRestartMethod),
-                             base::Bind(&SessionManagerService::SetUpSuspendHandler,
-                                        base::Unretained(this)),
-                             &key_gen_,
-                             &state_key_generator_,
-                             this,
-                             login_metrics_,
-                             nss_.get(),
-                             system_);
+  SessionManagerImpl* impl = new SessionManagerImpl(
+      std::move(upstart_emitter),
+      dbus_emitter_.get(),
+      base::Bind(&FireAndForgetDBusMethodCall,
+                 base::Unretained(chrome_dbus_proxy),
+                 chromeos::kLibCrosServiceInterface,
+                 chromeos::kLockScreen),
+      base::Bind(&FireAndBlockOnDBusMethodCall,
+                 base::Unretained(powerd_dbus_proxy_),
+                 power_manager::kPowerManagerInterface,
+                 power_manager::kRequestRestartMethod),
+      base::Bind(&SessionManagerService::SetUpSuspendHandler,
+                 base::Unretained(this)),
+      &key_gen_,
+      &state_key_generator_,
+      this,
+      login_metrics_,
+      nss_.get(),
+      system_);
 
   adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);

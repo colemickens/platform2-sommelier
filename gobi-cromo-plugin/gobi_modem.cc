@@ -5,6 +5,7 @@
 #include "gobi-cromo-plugin/gobi_modem.h"
 
 #include <algorithm>
+#include <limits>
 #include <sstream>
 #include <vector>
 
@@ -1280,7 +1281,7 @@ void GobiModem::GetSignalStrengthDbm(int& output,
     }
   }
 
-  INT8 max_strength = kint8min;
+  INT8 max_strength = std::numeric_limits<INT8>::min();
   for (ULONG i = 0; i < signals; ++i) {
     DLOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])
                << " dBM technology: " << interfaces[i];

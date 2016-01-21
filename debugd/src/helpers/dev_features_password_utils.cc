@@ -78,10 +78,11 @@ bool DevFeaturesPasswordUtils::SetPassword(
 
   // Split the file into lines to handle each user entry individually, set the
   // new user password, and join the lines again.
-  std::vector<std::string> lines;
-  base::SplitString(file_contents, '\n', &lines);
+  std::vector<std::string> lines =
+    base::SplitString(file_contents, "\n", base::KEEP_WHITESPACE,
+                      base::SPLIT_WANT_ALL);
   SetPasswordInEntries(username, hashed_password, &lines);
-  file_contents = JoinString(lines, '\n');
+  file_contents = base::JoinString(lines, "\n");
 
   // Since we're dealing with password files we need to be as safe as possible
   // when writing to the file, so use ImportantFileWriter and attempt to
@@ -135,13 +136,14 @@ bool DevFeaturesPasswordUtils::SetPasswordInEntries(
     if (line.compare(0, user_line_start.length(), user_line_start) == 0) {
       user_found = true;
       // Break the entry into fields and replace the password field.
-      std::vector<std::string> fields;
-      base::SplitString(line, ':', &fields);
+      std::vector<std::string> fields =
+          base::SplitString(line, ":", base::KEEP_WHITESPACE,
+                            base::SPLIT_WANT_ALL);
       if (fields.size() < 2) {
         fields.resize(2);
       }
       fields[1] = hashed_password;
-      line.assign(JoinString(fields, ':'));
+      line.assign(base::JoinString(fields, ":"));
       break;
     }
   }

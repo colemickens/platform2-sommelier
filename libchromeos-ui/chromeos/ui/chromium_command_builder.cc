@@ -104,8 +104,9 @@ bool ChromiumCommandBuilder::Init() {
     PLOG(ERROR) << "Unable to read " << kUseFlagsPath;
     return false;
   }
-  std::vector<std::string> lines;
-  base::SplitString(data, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(data, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
     if (!lines[i].empty() && lines[i][0] != '#')
       use_flags_.insert(lines[i]);
@@ -115,7 +116,7 @@ bool ChromiumCommandBuilder::Init() {
   cl.AppendArg("mainfw_type");
   std::string output;
   if (base::GetAppOutput(cl, &output)) {
-    base::TrimWhitespace(output, base::TRIM_TRAILING, &output);
+    base::TrimWhitespaceASCII(output, base::TRIM_TRAILING, &output);
     is_chrome_os_hardware_ = (output != "nonchrome");
   }
 
@@ -228,12 +229,13 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path) {
     return false;
   }
 
-  std::vector<std::string> lines;
-  base::SplitString(data, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(data, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
 
   for (size_t i = 0; i < lines.size(); ++i) {
     std::string line;
-    base::TrimWhitespace(lines[i], base::TRIM_ALL, &line);
+    base::TrimWhitespaceASCII(lines[i], base::TRIM_ALL, &line);
     if (line.empty() || line[0] == '#')
       continue;
 
@@ -443,7 +445,8 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
 
   if (!register_plugins.empty()) {
     std::sort(register_plugins.begin(), register_plugins.end());
-    AddArg("--register-pepper-plugins=" + JoinString(register_plugins, ","));
+    AddArg("--register-pepper-plugins=" + base::JoinString(register_plugins,
+                                                           ","));
   }
 }
 

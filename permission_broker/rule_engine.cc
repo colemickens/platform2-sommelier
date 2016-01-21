@@ -106,7 +106,7 @@ ScopedUdevDevicePtr RuleEngine::FindUdevDevice(const std::string& path) {
 
     const char* devnode = udev_device_get_devnode(device.get());
     if (devnode && !strcmp(devnode, path.c_str()))
-      return device.Pass();
+      return device;
   }
 
   return nullptr;

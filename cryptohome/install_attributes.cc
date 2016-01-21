@@ -227,7 +227,7 @@ bool InstallAttributes::Set(const std::string& name,
     return false;
   }
 
-  if (Count() == INT_MAX) {
+  if (Count() == std::numeric_limits<int>::max()) {
     LOG(ERROR) << "Set() cannot insert into full attribute store.";
     return false;
   }

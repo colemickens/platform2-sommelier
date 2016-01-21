@@ -141,7 +141,8 @@ int main(int argc, char** argv) {
         source.active_by_default ? "*" : "", source.manufacturer_id.c_str(),
         source.model_id.c_str()));
   }
-  display.PrintStringValue("available sources", JoinString(sources, ", "));
+  display.PrintStringValue("available sources",
+                           base::JoinString(sources, ", "));
 
   display.PrintStringValue("supports dual-role",
                            BoolToString(status.supports_dual_role_devices));

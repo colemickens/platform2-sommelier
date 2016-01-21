@@ -218,7 +218,7 @@ static bool PrefixPresent(const std::vector<std::string>& prefixes,
                           const std::string& path) {
   std::vector<std::string>::const_iterator it;
   for (it = prefixes.begin(); it != prefixes.end(); ++it)
-    if (base::StartsWithASCII(path, *it, false))
+    if (base::StartsWith(path, *it, base::CompareCase::INSENSITIVE_ASCII))
       return true;
   return false;
 }

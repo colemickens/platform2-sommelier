@@ -108,7 +108,7 @@ class SessionManagerImplTest : public ::testing::Test {
     impl_.InjectPolicyServices(
         scoped_ptr<DevicePolicyService>(device_policy_service_),
         scoped_ptr<UserPolicyServiceFactory>(factory),
-        device_local_account_policy.Pass());
+        std::move(device_local_account_policy));
   }
 
   void TearDown() override {
@@ -305,12 +305,14 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
           true)).Times(1);
 
   string testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path, false));
+  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
+                             base::CompareCase::INSENSITIVE_ASCII));
 
   // Calling again, without forcing relaunch, should not do anything.
   testing_path.clear();
   testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path, false));
+  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
+                             base::CompareCase::INSENSITIVE_ASCII));
 
   // Force relaunch.  Should go through the whole path again.
   args[0] = "--dummy";
@@ -323,7 +325,8 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
           true)).Times(1);
 
   testing_path = impl_.EnableChromeTesting(true, args, NULL);
-  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path, false));
+  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
+                             base::CompareCase::INSENSITIVE_ASCII));
 }
 
 TEST_F(SessionManagerImplTest, StartSession) {

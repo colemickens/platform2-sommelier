@@ -5,7 +5,7 @@
 #ifndef GLBENCH_TESTBASE_H_
 #define GLBENCH_TESTBASE_H_
 
-#include "base/basictypes.h"
+#include "base/macros.h"
 
 #include "glbench/main.h"
 

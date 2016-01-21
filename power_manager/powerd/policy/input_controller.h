@@ -130,10 +130,10 @@ class InputController : public system::InputObserver {
   base::TimeTicks expected_power_button_acknowledgment_timestamp_;
 
   // Calls HandlePowerButtonAcknowledgmentTimeout().
-  base::OneShotTimer<InputController> power_button_acknowledgment_timer_;
+  base::OneShotTimer power_button_acknowledgment_timer_;
 
   // Calls CheckActiveVT() periodically.
-  base::RepeatingTimer<InputController> check_active_vt_timer_;
+  base::RepeatingTimer check_active_vt_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(InputController);
 };

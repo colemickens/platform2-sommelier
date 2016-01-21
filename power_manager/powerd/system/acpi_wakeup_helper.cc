@@ -46,7 +46,7 @@ AcpiWakeupHelper::~AcpiWakeupHelper() {}
 
 void AcpiWakeupHelper::set_file_for_testing(
     scoped_ptr<AcpiWakeupFileInterface> file) {
-  file_ = file.Pass();
+  file_ = std::move(file);
 }
 
 bool AcpiWakeupHelper::IsSupported() {

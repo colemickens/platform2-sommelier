@@ -45,7 +45,7 @@ class TestMainLoopRunner {
   scoped_ptr<base::RunLoop> runner_;
 
   // Invokes OnTimeout().
-  base::OneShotTimer<TestMainLoopRunner> timeout_timer_;
+  base::OneShotTimer timeout_timer_;
 
   // Was the loop stopped as a result of OnTimeout() being called rather than
   // StopLoop()?

@@ -5,6 +5,7 @@
 #include "image-burner/image_burner_utils.h"
 
 #include <fcntl.h>
+#include <linux/limits.h>
 #include <stdio.h>
 
 #include <base/logging.h>

@@ -193,7 +193,7 @@ void ServerBackedStateKeyGenerator::ComputeKeys(
       data_to_sign.append(1, '\0');
       data_to_sign.append(reinterpret_cast<char*>(&quantized_time),
                           sizeof(quantized_time));
-      if (!hmac.Sign(data_to_sign, vector_as_array(&state_keys->back()),
+      if (!hmac.Sign(data_to_sign, state_keys->back().data(),
                      state_keys->back().size())) {
         metrics_->SendStateKeyGenerationStatus(
             LoginMetrics::STATE_KEY_STATUS_HMAC_SIGN_FAILURE);
@@ -213,7 +213,7 @@ void ServerBackedStateKeyGenerator::ComputeKeys(
               crypto::SHA256HashString(disk_serial_number_) +
               crypto::SHA256HashString(machine_serial_number_) +
               crypto::SHA256HashString(base::Int64ToString(quantized_time)),
-          vector_as_array(&state_keys->back()), state_keys->back().size());
+          state_keys->back().data(), state_keys->back().size());
       quantized_time += quantum_size;
     }
     metrics_->SendStateKeyGenerationStatus(

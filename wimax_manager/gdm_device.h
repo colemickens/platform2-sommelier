@@ -75,12 +75,12 @@ class GdmDevice : public Device {
   base::WeakPtr<GdmDriver> driver_;
   bool open_;
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress_;
-  base::OneShotTimer<GdmDevice> connect_timeout_timer_;
-  base::OneShotTimer<GdmDevice> initial_network_scan_timer_;
-  base::RepeatingTimer<GdmDevice> network_scan_timer_;
-  base::RepeatingTimer<GdmDevice> status_update_timer_;
-  base::OneShotTimer<GdmDevice> dbus_adaptor_status_update_timer_;
-  base::OneShotTimer<GdmDevice> restore_status_update_interval_timer_;
+  base::OneShotTimer connect_timeout_timer_;
+  base::OneShotTimer initial_network_scan_timer_;
+  base::RepeatingTimer network_scan_timer_;
+  base::RepeatingTimer status_update_timer_;
+  base::OneShotTimer dbus_adaptor_status_update_timer_;
+  base::OneShotTimer restore_status_update_interval_timer_;
   bool restore_status_update_interval_;
   Network::Identifier current_network_identifier_;
   std::string current_user_identity_;

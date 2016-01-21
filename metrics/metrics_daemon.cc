@@ -410,15 +410,17 @@ TimeDelta MetricsDaemon::GetIncrementalCpuUse() {
     return TimeDelta();
   }
 
-  std::vector<std::string> proc_stat_lines;
-  base::SplitString(proc_stat_string, '\n', &proc_stat_lines);
+  std::vector<std::string> proc_stat_lines =
+      base::SplitString(proc_stat_string, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   if (proc_stat_lines.empty()) {
     LOG(WARNING) << "cannot parse " << kMetricsProcStatFileName
                  << ": " << proc_stat_string;
     return TimeDelta();
   }
-  std::vector<std::string> proc_stat_totals;
-  base::SplitStringAlongWhitespace(proc_stat_lines[0], &proc_stat_totals);
+  std::vector<std::string> proc_stat_totals =
+      base::SplitString(proc_stat_lines[0], base::kWhitespaceASCII,
+                        base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   uint64_t user_ticks, user_nice_ticks, system_ticks;
   if (proc_stat_totals.size() != kMetricsProcStatFirstLineItemsCount ||
@@ -577,12 +579,12 @@ bool MetricsDaemon::VmStatsParseStats(const char* stats,
   // <ID> <VALUE>
   // for instance:
   // nr_free_pages 213427
-  vector<string> lines;
-  Tokenize(stats, "\n", &lines);
+  vector<string> lines = base::SplitString(stats, "\n", base::KEEP_WHITESPACE,
+                                           base::SPLIT_WANT_NONEMPTY);
   for (vector<string>::iterator it = lines.begin();
        it != lines.end(); ++it) {
-    vector<string> tokens;
-    base::SplitString(*it, ' ', &tokens);
+    vector<string> tokens = base::SplitString(*it, " ", base::KEEP_WHITESPACE,
+                                              base::SPLIT_WANT_ALL);
     if (tokens.size() == 2) {
       for (unsigned int i = 0; i < sizeof(map)/sizeof(struct mapping); i++) {
         if (!tokens[0].compare(map[i].name)) {
@@ -953,18 +955,20 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
 
 bool MetricsDaemon::FillMeminfo(const string& meminfo_raw,
                                 vector<MeminfoRecord>* fields) {
-  vector<string> lines;
-  unsigned int nlines = Tokenize(meminfo_raw, "\n", &lines);
+  vector<string> lines =
+      base::SplitString(meminfo_raw, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY);
 
   // Scan meminfo output and collect field values.  Each field name has to
   // match a meminfo entry (case insensitive) after removing non-alpha
   // characters from the entry.
-  unsigned int ifield = 0;
-  for (unsigned int iline = 0;
-       iline < nlines && ifield < fields->size();
+  size_t ifield = 0;
+  for (size_t iline = 0;
+       iline < lines.size() && ifield < fields->size();
        iline++) {
-    vector<string> tokens;
-    Tokenize(lines[iline], ": ", &tokens);
+    vector<string> tokens =
+        base::SplitString(lines[iline], ": ", base::KEEP_WHITESPACE,
+                          base::SPLIT_WANT_NONEMPTY);
     if (strcmp((*fields)[ifield].match, tokens[0].c_str()) == 0) {
       // Name matches. Parse value and save.
       char* rest;

@@ -4,9 +4,9 @@
 
 #include "chaps/slot_manager_impl.h"
 
-#include <limits.h>
 #include <string.h>
 
+#include <limits>
 #include <map>
 #include <memory>
 #include <string>
@@ -858,7 +858,7 @@ bool SlotManagerImpl::IsTokenPresent(int slot_id) const {
 int SlotManagerImpl::CreateHandle() {
   AutoLock lock(handle_generator_lock_);
   // If we use this many handles, we have a problem.
-  CHECK(last_handle_ < INT_MAX);
+  CHECK(last_handle_ < std::numeric_limits<int>::max());
   return ++last_handle_;
 }
 

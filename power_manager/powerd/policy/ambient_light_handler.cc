@@ -45,12 +45,14 @@ AmbientLightHandler::~AmbientLightHandler() {
 
 void AmbientLightHandler::Init(const std::string& steps_pref_value,
                                double initial_brightness_percent) {
-  std::vector<std::string> lines;
-  base::SplitString(steps_pref_value, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(steps_pref_value, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator iter = lines.begin();
        iter != lines.end(); ++iter) {
-    std::vector<std::string> segments;
-    base::SplitString(*iter, ' ', &segments);
+    std::vector<std::string> segments =
+        base::SplitString(*iter, " ", base::KEEP_WHITESPACE,
+                          base::SPLIT_WANT_ALL);
     BrightnessStep new_step;
     if (segments.size() == 3 &&
         base::StringToDouble(segments[0], &new_step.ac_target_percent) &&

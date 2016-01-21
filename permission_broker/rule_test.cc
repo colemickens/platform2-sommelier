@@ -23,7 +23,7 @@ ScopedUdevDevicePtr RuleTest::FindDevice(const std::string& path) {
 
     const char* devnode = udev_device_get_devnode(device.get());
     if (devnode && !strcmp(devnode, path.c_str()))
-      return device.Pass();
+      return device;
   }
 
   ADD_FAILURE() << "Device '" << path << "' not found.";

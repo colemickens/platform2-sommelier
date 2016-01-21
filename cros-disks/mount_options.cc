@@ -48,9 +48,11 @@ void MountOptions::Initialize(const vector<string>& options,
       option_read_only = true;
     } else if (option == kOptionReadWrite) {
       option_read_write = true;
-    } else if (base::StartsWithASCII(option, "uid=", false)) {
+    } else if (base::StartsWith(option, "uid=",
+               base::CompareCase::INSENSITIVE_ASCII)) {
       option_user_id = option;
-    } else if (base::StartsWithASCII(option, "gid=", false)) {
+    } else if (base::StartsWith(option, "gid=",
+               base::CompareCase::INSENSITIVE_ASCII)) {
       option_group_id = option;
     } else if (option == kOptionNoDev ||
                option == kOptionNoExec ||
@@ -60,7 +62,8 @@ void MountOptions::Initialize(const vector<string>& options,
     } else if (option == kOptionBind || option == kOptionDirSync ||
                option == kOptionFlush || option == kOptionSynchronous ||
                option == kOptionUtf8 ||
-               base::StartsWithASCII(option, "shortname=", false)) {
+               base::StartsWith(option, "shortname=",
+                                base::CompareCase::INSENSITIVE_ASCII)) {
       // Only add options in the whitelist.
       options_.push_back(option);
     } else {
@@ -140,11 +143,11 @@ pair<MountOptions::Flags, string> MountOptions::ToMountFlagsAndData() const {
       data.push_back(option);
     }
   }
-  return std::make_pair(flags, JoinString(data, ','));
+  return std::make_pair(flags, base::JoinString(data, ","));
 }
 
 string MountOptions::ToString() const {
-  return options_.empty() ? kOptionReadOnly : JoinString(options_, ',');
+  return options_.empty() ? kOptionReadOnly : base::JoinString(options_, ",");
 }
 
 }  // namespace cros_disks

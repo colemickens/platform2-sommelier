@@ -4,6 +4,7 @@
 
 #include "chaps/object_store_impl.h"
 
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -400,7 +401,7 @@ bool ObjectStoreImpl::GetNextID(int* next_id) {
     LOG(ERROR) << "Failed to read ID tracker.";
     return false;
   }
-  if (*next_id == INT_MAX) {
+  if (*next_id == std::numeric_limits<int>::max()) {
     LOG(ERROR) << "Object ID overflow.";
     return false;
   }

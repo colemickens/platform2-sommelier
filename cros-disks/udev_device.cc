@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <libudev.h>
+#include <linux/limits.h>
 #include <stdlib.h>
 #include <sys/statvfs.h>
 
@@ -370,7 +371,8 @@ bool UdevDevice::IsOnRemovableDevice() const {
 bool UdevDevice::IsVirtual() const {
   const char *sys_path = udev_device_get_syspath(dev_);
   if (sys_path) {
-    return base::StartsWithASCII(sys_path, kVirtualDevicePathPrefix, true);
+    return base::StartsWith(sys_path, kVirtualDevicePathPrefix,
+                            base::CompareCase::SENSITIVE);
   }
   // To be safe, mark it as virtual device if sys path cannot be determined.
   return true;
@@ -379,7 +381,8 @@ bool UdevDevice::IsVirtual() const {
 bool UdevDevice::IsLoopDevice() const {
   const char *sys_path = udev_device_get_syspath(dev_);
   if (sys_path) {
-    return base::StartsWithASCII(sys_path, kLoopDevicePathPrefix, true);
+    return base::StartsWith(sys_path, kLoopDevicePathPrefix,
+                            base::CompareCase::SENSITIVE);
   }
   return false;
 }

@@ -164,7 +164,7 @@ void HandleSynchronousDBusMethodCall(
   scoped_ptr<dbus::Response> response = handler.Run(method_call);
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
-  response_sender.Run(response.Pass());
+  response_sender.Run(std::move(response));
 }
 
 // Creates a new "not supported" reply to |method_call|.
@@ -229,7 +229,7 @@ bool FirmwareIsBeingUpdated(std::string* details_out) {
   if (PidLockFileExists(base::FilePath(kBatteryToolLockPath)))
     paths.push_back(kBatteryToolLockPath);
 
-  *details_out = JoinString(paths, ", ");
+  *details_out = base::JoinString(paths, ", ");
   return !paths.empty();
 }
 
@@ -388,7 +388,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       weak_ptr_factory_(this) {
   scoped_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary);
   metrics_lib->Init();
-  metrics_sender_.reset(new MetricsSender(metrics_lib.Pass()));
+  metrics_sender_.reset(new MetricsSender(std::move(metrics_lib)));
 
   CHECK(prefs_->Init(util::GetPrefPaths(
       base::FilePath(read_write_prefs_dir),
@@ -534,7 +534,7 @@ void Daemon::OnBrightnessChanged(
     double brightness_percent,
     policy::BacklightController::BrightnessChangeCause cause,
     policy::BacklightController* source) {
-  if (source == display_backlight_controller_ &&
+  if (source == display_backlight_controller_.get() &&
       display_backlight_controller_) {
     SendBrightnessChangedSignal(brightness_percent, cause,
                                 kBrightnessChangedSignal);
@@ -1349,7 +1349,7 @@ scoped_ptr<dbus::Response> Daemon::HandleGetScreenBrightnessMethod(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());
   writer.AppendDouble(percent);
-  return response.Pass();
+  return response;
 }
 
 scoped_ptr<dbus::Response> Daemon::HandleDecreaseKeyboardBrightnessMethod(
@@ -1373,7 +1373,7 @@ scoped_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(protobuf);
-  return response.Pass();
+  return response;
 }
 
 scoped_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(

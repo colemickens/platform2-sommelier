@@ -211,10 +211,10 @@ class KeyboardBacklightController
 
   // Runs UpdateState() |keep_on_after_hover_delay_| after the user's hands stop
   // hovering over the touchpad.
-  base::OneShotTimer<KeyboardBacklightController> hover_timer_;
+  base::OneShotTimer hover_timer_;
 
   // Runs HandleVideoTimeout().
-  base::OneShotTimer<KeyboardBacklightController> video_timer_;
+  base::OneShotTimer video_timer_;
 
   // Counters for stat tracking.
   int num_als_adjustments_;

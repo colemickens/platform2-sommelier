@@ -146,7 +146,7 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
     }
   }
 
-  *out_fd = result.Pass();
+  *out_fd = std::move(result);
   return true;
 }
 

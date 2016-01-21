@@ -118,7 +118,7 @@ bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
 
   while (!(subdir = enumerator.Next()).empty()) {
     std::string upper = subdir.BaseName().value();
-    std::string lower = base::StringToLowerASCII(upper);
+    std::string lower = base::ToLowerASCII(upper);
     if (IsValidAccountKey(lower) && lower != upper) {
       base::FilePath subdir_to(subdir.DirName().Append(lower));
       LOG(INFO) << "Migrating " << upper << " to " << lower;
@@ -155,7 +155,7 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
       LOG(WARNING) << "Failed to load policy for device-local account "
                    << account_id;
     }
-    entry->second = new PolicyService(store.Pass(), owner_key_);
+    entry->second = new PolicyService(std::move(store), owner_key_);
   }
 
   return entry->second;

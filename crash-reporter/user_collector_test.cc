@@ -75,9 +75,8 @@ class UserCollectorTest : public ::testing::Test {
   }
 
   std::vector<std::string> SplitLines(const std::string &lines) const {
-    std::vector<std::string> result;
-    base::SplitString(lines, '\n', &result);
-    return result;
+    return base::SplitString(lines, "\n", base::KEEP_WHITESPACE,
+                             base::SPLIT_WANT_ALL);
   }
 
   UserCollectorMock collector_;

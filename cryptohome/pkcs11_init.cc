@@ -11,9 +11,9 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/cryptohome.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
-#include <brillo/cryptohome.h>
 #include <errno.h>
 #include <glib.h>
 
@@ -176,7 +176,8 @@ bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
 
   std::string label(reinterpret_cast<const char*>(token_info.label),
                     arraysize(token_info.label));
-  if (!base::StartsWithASCII(label, expected_label_prefix, true)) {
+  if (!base::StartsWith(label, expected_label_prefix,
+                        base::CompareCase::SENSITIVE)) {
     LOG(WARNING) << "Token Label (" << label << ") does not match expected "
                  << "label prefix (" << expected_label_prefix << ")";
     return false;

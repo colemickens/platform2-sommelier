@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
+#include <linux/limits.h>
 #include <rootdev/rootdev.h>
 
 using std::string;

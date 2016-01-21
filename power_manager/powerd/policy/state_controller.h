@@ -293,10 +293,10 @@ class StateController : public PrefsObserver {
   bool got_initial_policy_;
 
   // Runs HandleActionTimeout().
-  base::OneShotTimer<StateController> action_timer_;
+  base::OneShotTimer action_timer_;
 
   // Runs HandleInitialStateTimeout().
-  base::OneShotTimer<StateController> initial_state_timer_;
+  base::OneShotTimer initial_state_timer_;
 
   // Time at which |action_timer_| has been scheduled to fire.
   base::TimeTicks action_timer_time_for_testing_;

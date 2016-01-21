@@ -34,7 +34,7 @@ class EventDispatcher {
 
  private:
   std::unique_ptr<base::MessageLoop> dont_use_directly_;
-  scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };

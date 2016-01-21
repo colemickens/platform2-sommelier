@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/pattern.h>
 #include <base/strings/string_util.h>
 #include <brillo/process.h>
 
@@ -334,7 +335,7 @@ void L2tpManager::Stop() {
 void L2tpManager::OnSyslogOutput(const std::string& prefix,
                                  const std::string& line) {
   if (prefix == kPppLogPrefix &&
-      MatchPattern(line, kPppAuthenticationFailurePattern)) {
+      base::MatchPattern(line, kPppAuthenticationFailurePattern)) {
     LOG(ERROR) << "PPP authentication failed";
     RegisterError(kServiceErrorPppAuthenticationFailed);
     Stop();

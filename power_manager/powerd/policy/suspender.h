@@ -400,7 +400,7 @@ class Suspender : public SuspendDelayObserver {
   std::string last_dark_resume_wake_reason_;
 
   // Runs HandleEvent(EVENT_READY_TO_RESUSPEND).
-  base::OneShotTimer<Suspender> resuspend_timer_;
+  base::OneShotTimer resuspend_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };

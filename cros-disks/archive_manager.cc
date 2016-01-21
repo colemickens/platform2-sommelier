@@ -95,7 +95,8 @@ bool ArchiveManager::CanMount(const string& source_path) const {
     //   '/', 'home', 'chronos', 'u-<userid>', 'Downloads', ..., 'doc.zip'
     //   '/', 'home', 'chronos', 'u-<userid>', 'GCache', ..., 'doc.zip'
     if (components.size() > 5 &&
-        (base::StartsWithASCII(components[3], "u-", false) &&
+        (base::StartsWith(components[3], "u-",
+                          base::CompareCase::INSENSITIVE_ASCII) &&
          brillo::cryptohome::home::IsSanitizedUserName(
              components[3].substr(2))) &&
         (components[4] == "Downloads" || components[4] == "GCache")) {
@@ -202,7 +203,7 @@ string ArchiveManager::GetFileExtension(const string& path) const {
   if (!extension.empty()) {
     // Strip the leading dot and convert the extension to lower case.
     extension.erase(0, 1);
-    base::StringToLowerASCII(&extension);
+    extension = base::ToLowerASCII(extension);
   }
   return extension;
 }

@@ -89,7 +89,7 @@ void KeyGenerator::EnsureJobExit(base::TimeDelta timeout) {
 
 void KeyGenerator::InjectJobFactory(
     scoped_ptr<GeneratorJobFactoryInterface> factory) {
-  factory_ = factory.Pass();
+  factory_ = std::move(factory);
 }
 
 void KeyGenerator::Reset() {

@@ -337,8 +337,8 @@ bool MountManager::ExtractMountLabelFromOptions(
   bool found_mount_label = false;
   vector<string>::iterator option_iterator = options->begin();
   while (option_iterator != options->end()) {
-    if (!base::StartsWithASCII(*option_iterator, kMountOptionMountLabelPrefix,
-                               false)) {
+    if (!base::StartsWith(*option_iterator, kMountOptionMountLabelPrefix,
+                          base::CompareCase::INSENSITIVE_ASCII)) {
       ++option_iterator;
       continue;
     }

@@ -236,13 +236,15 @@ void Manager::RunScanImageProcess(
 // static
 Manager::ScannerInfo Manager::ScannerInfoFromString(
     const string& scanner_info_string) {
-  vector<string> scanner_output_lines;
-  base::SplitString(scanner_info_string, '\n', &scanner_output_lines);
+  vector<string> scanner_output_lines =
+      base::SplitString(scanner_info_string, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
 
   ScannerInfo scanners;
   for (const auto& line : scanner_output_lines) {
-    vector<string> scanner_info_parts;
-    base::SplitString(line, '%', &scanner_info_parts);
+    vector<string> scanner_info_parts =
+        base::SplitString(line, "%", base::KEEP_WHITESPACE,
+                          base::SPLIT_WANT_ALL);
     if (scanner_info_parts.size() != 4) {
       continue;
     }

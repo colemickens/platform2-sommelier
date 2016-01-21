@@ -64,7 +64,7 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   ScopedVector<Device> devices_;
 
   int num_device_scans_;
-  base::OneShotTimer<Manager> device_scan_timer_;
+  base::OneShotTimer device_scan_timer_;
   DBusService dbus_service_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

@@ -164,7 +164,7 @@ class PowerSupplyTest : public ::testing::Test {
                                  int time_to_empty_sec,
                                  int time_to_full_sec) {
     int time_to_shutdown_sec = time_to_empty_sec;
-    int64 shutdown_sec = 0;
+    int64_t shutdown_sec = 0;
     if (time_to_empty_sec > 0 &&
         prefs_.GetInt64(kLowBatteryShutdownTimePref, &shutdown_sec)) {
       time_to_shutdown_sec =

@@ -11,6 +11,7 @@
 #include "base/logging.h"
 #include "base/message_loop/message_loop.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/synchronization/waitable_event.h"
 #include "brillo/process.h"
@@ -61,13 +62,14 @@ bool FillReportFromCommandline(FeedbackCommon* report) {
   report->set_page_url(args->GetSwitchValueASCII(kSwitchPageUrl));
   report->set_category_tag(args->GetSwitchValueASCII(kSwitchBucket));
 
-  std::vector<std::string> raw_files;
-  Tokenize(args->GetSwitchValueNative(kSwitchRawFiles), kListSeparator,
-           &raw_files);
+  std::vector<std::string> raw_files =
+      base::SplitString(args->GetSwitchValueNative(kSwitchRawFiles),
+                        kListSeparator, base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY);
   for (const std::string& path : raw_files) {
     scoped_ptr<std::string> content(new std::string());
     if (base::ReadFileToString(base::FilePath(path), content.get())) {
-      report->AddFile(path, content.Pass());
+      report->AddFile(path, std::move(content));
     } else {
       LOG(ERROR) << "Could not read raw file: " << path;
       return false;

@@ -5,6 +5,7 @@
 #include "permission_broker/usb_subsystem_udev_rule.h"
 
 #include <libudev.h>
+#include <string.h>
 
 #include <string>
 

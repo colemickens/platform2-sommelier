@@ -102,8 +102,9 @@ void ServiceManager::WriteFdToSyslog(int fd,
   }
   buffer[written] = '\0';
   partial_line->append(buffer);
-  std::vector<std::string> lines;
-  base::SplitString(*partial_line, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(*partial_line, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   if (lines.empty()) {
     partial_line->clear();
   } else {

@@ -59,7 +59,7 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   void SendStateToChrome(chromeos::DisplayPowerState state);
 
   // Runs SendStateToChrome().
-  base::OneShotTimer<DisplayPowerSetter> timer_;
+  base::OneShotTimer timer_;
 
   dbus::ObjectProxy* chrome_proxy_;  // non-owned
 

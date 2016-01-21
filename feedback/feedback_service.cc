@@ -98,7 +98,7 @@ void DBusFeedbackServiceImpl::DBusFeedbackSent(
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(status);
   writer.AppendString(reason);
-  sender.Run(response.Pass());
+  sender.Run(std::move(response));
 }
 
 }  // namespace feedback

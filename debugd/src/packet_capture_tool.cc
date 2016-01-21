@@ -62,7 +62,8 @@ bool PacketCaptureTool::AddValidatedStringOption(
   for (size_t i = 0; i < option_value.length(); ++i) {
     const char c = option_value[i];
     // These are the only plausible interface name characters.
-    if (!IsAsciiAlpha(c) && !IsAsciiDigit(c) && c != '-' && c != '_') {
+    if (!base::IsAsciiAlpha(c) &&
+        !base::IsAsciiDigit(c) && c != '-' && c != '_') {
       return false;
     }
   }

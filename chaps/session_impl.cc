@@ -4,6 +4,7 @@
 
 #include "chaps/session_impl.h"
 
+#include <limits>
 #include <map>
 #include <set>
 #include <string>
@@ -405,7 +406,7 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
   OperationContext* context = &operation_context_[kVerify];
   // Call the generic OperationFinal so any digest or HMAC computation gets
   // finalized.
-  int max_out_length = INT_MAX;
+  int max_out_length = std::numeric_limits<int>::max();
   string data_out;
   CK_RV result = OperationFinal(kVerify, &max_out_length, &data_out);
   if (result != CKR_OK)
@@ -445,11 +446,11 @@ CK_RV SessionImpl::OperationSinglePart(OperationType operation,
   CK_RV result = CKR_OK;
   if (!context->is_finished_) {
     string update, final;
-    int max = INT_MAX;
+    int max = std::numeric_limits<int>::max();
     result = OperationUpdateInternal(operation, data_in, &max, &update);
     if (result != CKR_OK)
       return result;
-    max = INT_MAX;
+    max = std::numeric_limits<int>::max();
     result = OperationFinalInternal(operation, &max, &final);
     if (result != CKR_OK)
       return result;

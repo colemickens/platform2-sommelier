@@ -114,8 +114,8 @@ struct SessionManagerImpl::UserSession {
       : username(username),
         userhash(userhash),
         is_incognito(is_incognito),
-        slot(slot.Pass()),
-        policy_service(policy_service.Pass()) {}
+        slot(std::move(slot)),
+        policy_service(std::move(policy_service)) {}
   ~UserSession() {}
 
   const std::string username;
@@ -141,7 +141,7 @@ SessionManagerImpl::SessionManagerImpl(
       session_stopping_(false),
       screen_locked_(false),
       supervised_user_creation_ongoing_(false),
-      upstart_signal_emitter_(emitter.Pass()),
+      upstart_signal_emitter_(std::move(emitter)),
       lock_screen_closure_(lock_screen_closure),
       restart_device_closure_(restart_device_closure),
       start_arc_instance_closure_(start_arc_instance_closure),
@@ -165,9 +165,9 @@ void SessionManagerImpl::InjectPolicyServices(
     scoped_ptr<DevicePolicyService> device_policy,
     scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
     scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy) {
-  device_policy_ = device_policy.Pass();
-  user_policy_factory_ = user_policy_factory.Pass();
-  device_local_account_policy_ = device_local_account_policy.Pass();
+  device_policy_ = std::move(device_policy);
+  user_policy_factory_ = std::move(user_policy_factory);
+  device_local_account_policy_ = std::move(device_local_account_policy);
 }
 
 void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
@@ -268,7 +268,7 @@ bool SessionManagerImpl::StartSession(const std::string& email,
                                       const std::string& unique_id,
                                       Error* error) {
   // Validate the |email|.
-  const std::string email_string(base::StringToLowerASCII(email));
+  const std::string email_string(base::ToLowerASCII(email));
   const bool is_incognito =
       ((email_string == kGuestUserName) || (email_string == kDemoUser));
   if (!is_incognito && !ValidateEmail(email_string)) {
@@ -698,8 +698,8 @@ SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
   return new SessionManagerImpl::UserSession(username,
                                              SanitizeUserName(username),
                                              is_incognito,
-                                             slot.Pass(),
-                                             user_policy.Pass());
+                                             std::move(slot),
+                                             std::move(user_policy));
 }
 
 PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {

@@ -406,7 +406,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   base::TimeDelta poll_delay_;
 
   // Calls HandlePollTimeout().
-  base::OneShotTimer<PowerSupply> poll_timer_;
+  base::OneShotTimer poll_timer_;
 
   // Delay used when |poll_timer_| was last started.
   base::TimeDelta current_poll_delay_for_testing_;

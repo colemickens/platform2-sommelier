@@ -171,7 +171,7 @@ bool SystemProfileCache::GetChromeOSVersion(std::string* version) {
         base::StringToUint(branch, &tmp) &&
         base::StringToUint(patch, &tmp)) {
       std::vector<std::string> parts = {milestone, build, branch, patch};
-      *version = JoinString(parts, '.');
+      *version = base::JoinString(parts, ".");
       return true;
     }
     DLOG(INFO) << "The milestone, build, branch or patch is not a positive "

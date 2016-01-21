@@ -19,8 +19,9 @@ namespace {
 const char kSystraceHelper[] = "systrace.sh";
 
 void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
-  std::vector<std::string> pieces;
-  base::SplitString(categories, ' ', &pieces);
+  std::vector<std::string> pieces =
+      base::SplitString(categories, " ", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator it = pieces.begin();
        it != pieces.end();
        it++)

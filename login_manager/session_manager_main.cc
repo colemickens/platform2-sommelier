@@ -106,7 +106,8 @@ bool BootDeviceIsRotationalDisk() {
     PLOG(WARNING) << "Couldn't find root device. Guessing it's not rotational.";
     return false;
   }
-  CHECK(base::StartsWithASCII(full_rootdev_path, "/dev/", true));
+  CHECK(base::StartsWith(full_rootdev_path, "/dev/",
+                         base::CompareCase::SENSITIVE));
   string device_only(full_rootdev_path + 5, PATH_MAX - 5);
   base::FilePath sysfs_path(
       base::StringPrintf("/sys/block/%s/queue/rotational",
@@ -137,8 +138,9 @@ int main(int argc, char* argv[]) {
   string command_flag(switches::kChromeCommandDefault);
   if (cl->HasSwitch(switches::kChromeCommand))
     command_flag = cl->GetSwitchValueASCII(switches::kChromeCommand);
-  vector<string> command;
-  base::SplitStringAlongWhitespace(command_flag, &command);
+  vector<string> command =
+      base::SplitString(command_flag, base::kWhitespaceASCII,
+                        base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // Start the X server and set things up for running Chrome.
   bool is_developer_end_user = false;
@@ -196,7 +198,7 @@ int main(int argc, char* argv[]) {
   brillo_loop.SetAsCurrent();
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
-      browser_job.Pass(),
+      std::move(browser_job),
       uid,
       kill_timeout,
       enable_hang_detection,

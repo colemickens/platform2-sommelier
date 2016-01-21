@@ -82,7 +82,7 @@ class AsyncFileReader {
   base::Callback<void()> error_cb_;
 
   // Runs UpdateState().
-  base::RepeatingTimer<AsyncFileReader> update_state_timer_;
+  base::RepeatingTimer update_state_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFileReader);
 };

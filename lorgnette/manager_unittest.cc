@@ -134,7 +134,8 @@ MATCHER_P(IsDbusErrorStartingWith, message, "") {
   return arg != nullptr &&
          arg->GetDomain() == brillo::errors::dbus::kDomain &&
          arg->GetCode() == kManagerServiceError &&
-         base::StartsWithASCII(arg->GetMessage(), message, false);
+         base::StartsWith(arg->GetMessage(), message,
+                          base::CompareCase::INSENSITIVE_ASCII);
 }
 
 TEST_F(ManagerTest, RunListScannersProcess) {

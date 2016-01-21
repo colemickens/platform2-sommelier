@@ -129,7 +129,7 @@ void AddLoadAppsFlag(ChromiumCommandBuilder* builder) {
   if (!master_app_name.empty())
     CHECK(found_master) << "Master app " << master_app_name << " not found.";
 
-  builder->AddArg("--load-apps=" + JoinString(apps_list, ','));
+  builder->AddArg("--load-apps=" + base::JoinString(apps_list, ","));
 }
 
 // Adds app_shell-specific flags.
@@ -185,7 +185,7 @@ void ExecAppShell(const ChromiumCommandBuilder& builder) {
     argv[i + 1] = const_cast<char*>(builder.arguments()[i].c_str());
 
   LOG(INFO) << "Exec-ing " << exec_path << " "
-            << JoinString(builder.arguments(), ' ');
+            << base::JoinString(builder.arguments(), " ");
   PCHECK(execv(argv[0], argv) == 0) << "Couldn't exec " << argv[0];
 }
 

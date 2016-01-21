@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"

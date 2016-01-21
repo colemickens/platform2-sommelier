@@ -139,8 +139,9 @@ void KeyboardBacklightController::Init(
   std::string input_str;
   if (!prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str))
     LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserStepsPref;
-  std::vector<std::string> lines;
-  base::SplitString(input_str, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(input_str, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator iter = lines.begin();
        iter != lines.end(); ++iter) {
     double new_step = 0.0;

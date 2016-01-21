@@ -96,7 +96,7 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
 
 string Platform::GetDirectoryFallbackName(const string& path,
                                           unsigned suffix) const {
-  if (!path.empty() && IsAsciiDigit(path[path.size() - 1]))
+  if (!path.empty() && base::IsAsciiDigit(path[path.size() - 1]))
     return base::StringPrintf("%s (%u)", path.c_str(), suffix);
 
   return base::StringPrintf("%s %u", path.c_str(), suffix);

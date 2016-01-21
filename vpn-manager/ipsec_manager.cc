@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/pattern.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -268,8 +269,9 @@ bool IpsecManager::FormatXauthSecret(std::string* formatted) {
                << xauth_credentials_file_;
     return false;
   }
-  std::vector<std::string> xauth_parts;
-  base::SplitString(xauth_contents, '\n', &xauth_parts);
+  std::vector<std::string> xauth_parts =
+      base::SplitString(xauth_contents, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   if (xauth_parts.size() < 2) {
     LOG(ERROR) << "Unable to parse XAUTH credentials from "
                << xauth_credentials_file_;
@@ -586,7 +588,7 @@ void IpsecManager::Stop() {
 
 void IpsecManager::OnSyslogOutput(const std::string& prefix,
                                   const std::string& line) {
-  if (MatchPattern(line, kIpsecAuthenticationFailurePattern)) {
+  if (base::MatchPattern(line, kIpsecAuthenticationFailurePattern)) {
     if (psk_file_.empty()) {
       LOG(ERROR) << "IPsec certificate authentication failed";
       RegisterError(kServiceErrorIpsecCertificateAuthenticationFailed);

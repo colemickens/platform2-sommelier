@@ -12,7 +12,7 @@ namespace metrics {
 
 namespace {
 
-// Converts the 8-byte prefix of an MD5 hash into a uint64 value.
+// Converts the 8-byte prefix of an MD5 hash into a uint64_t value.
 inline uint64_t HashToUInt64(const std::string& hash) {
   uint64_t value;
   DCHECK_GE(hash.size(), sizeof(value));

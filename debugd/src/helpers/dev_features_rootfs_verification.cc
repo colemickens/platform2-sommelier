@@ -45,14 +45,14 @@ int GetModifiablePartition() {
   }
   size_t path_length = strlen(path.data());
   // There must be at least 1 numeric digit at the end of the path.
-  if (!IsAsciiDigit(path[path_length - 1])) {
+  if (!base::IsAsciiDigit(path[path_length - 1])) {
     LOG(WARNING) << "Couldn't determine partition from rootdev path \""
                  << path.data() << '"';
     return -1;
   }
   int partition = -1;
   for (int i = path_length - 1; i > 0; --i) {
-    if (!IsAsciiDigit(path[i - 1])) {
+    if (!base::IsAsciiDigit(path[i - 1])) {
       partition = atoi(&path[i]) - 1;
       break;
     }

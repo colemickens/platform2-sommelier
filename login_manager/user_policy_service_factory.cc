@@ -92,7 +92,7 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
                                                   kPolicyKeyCopyFile));
 
   UserPolicyService* service = new UserPolicyService(
-      store.Pass(), key.Pass(), key_copy_file, system_utils_);
+      std::move(store), std::move(key), key_copy_file, system_utils_);
   service->PersistKeyCopy();
   return service;
 }

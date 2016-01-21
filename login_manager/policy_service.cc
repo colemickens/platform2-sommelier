@@ -47,7 +47,7 @@ PolicyService::Delegate::~Delegate() {
 PolicyService::PolicyService(
     scoped_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key)
-    : policy_store_(policy_store.Pass()),
+    : policy_store_(std::move(policy_store)),
       policy_key_(policy_key),
       delegate_(NULL),
       weak_ptr_factory_(this) {
@@ -77,7 +77,7 @@ bool PolicyService::Store(const uint8_t* policy_blob,
 bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
   const em::PolicyFetchResponse& policy = store()->Get();
   policy_blob->resize(policy.ByteSize());
-  uint8_t* start = vector_as_array(policy_blob);
+  uint8_t* start = policy_blob->data();
   uint8_t* end = policy.SerializeWithCachedSizesToArray(start);
   return (end - start >= 0 &&
           static_cast<size_t>(end - start) == policy_blob->size());

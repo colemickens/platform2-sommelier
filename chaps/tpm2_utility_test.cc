@@ -52,7 +52,7 @@ class TPM2UtilityTest : public testing::Test {
         "D3C74E721ACA97F7ADBE2CCF7B4BCC165F7380F48065F2C8370F25F066091259"
         "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
         "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
-    std::vector<uint8> bytes;
+    std::vector<uint8_t> bytes;
     CHECK(base::HexStringToBytes(kValidModulus, &bytes));
     CHECK_EQ(bytes.size(), 256u);
     trunks::TPM2B_PUBLIC_KEY_RSA rsa;

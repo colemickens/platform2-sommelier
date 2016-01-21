@@ -10,8 +10,8 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-#include <base/timer/timer.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
 
 #include "power_manager/common/clock.h"
@@ -148,7 +148,7 @@ class MetricsCollector {
   base::TimeTicks session_start_time_;
 
   // Runs GenerateBacklightLevelMetric().
-  base::RepeatingTimer<MetricsCollector> generate_backlight_metrics_timer_;
+  base::RepeatingTimer generate_backlight_metrics_timer_;
 
   // Timestamp of the last generated battery discharge rate metric.
   base::TimeTicks last_battery_discharge_rate_metric_timestamp_;

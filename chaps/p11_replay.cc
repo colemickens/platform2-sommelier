@@ -638,19 +638,22 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Invalid arg, expecting hex string for id (like b18aa8).";
       exit(-1);
     }
-    if (base::strcasecmp("cert",
-        cl->GetSwitchValueASCII("type").c_str()) == 0) {
+    if (base::EqualsCaseInsensitiveASCII(
+        "cert",
+        cl->GetSwitchValueASCII("type").c_str())) {
       ReadInObject(session,
                    cl->GetSwitchValueASCII("path"),
                    object_id,
                    kCertificate);
-    } else if (base::strcasecmp("privkey",
+    } else if (base::EqualsCaseInsensitiveASCII(
+        "privkey",
         cl->GetSwitchValueASCII("type").c_str()) == 0) {
       ReadInObject(session,
                    cl->GetSwitchValueASCII("path"),
                    object_id,
                    kPrivateKey);
-    } else if (base::strcasecmp("pubkey",
+    } else if (base::EqualsCaseInsensitiveASCII(
+        "pubkey",
         cl->GetSwitchValueASCII("type").c_str()) == 0) {
       ReadInObject(session,
                    cl->GetSwitchValueASCII("path"),

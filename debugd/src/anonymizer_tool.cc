@@ -80,8 +80,8 @@ string AnonymizerTool::AnonymizeMACAddresses(const string& input) {
   string pre_mac, oui, nic;
   while (mac_re.Consume(&text, &pre_mac, &oui, &nic)) {
     // Look up the MAC address in the hash.
-    oui = base::StringToLowerASCII(oui);
-    nic = base::StringToLowerASCII(nic);
+    oui = base::ToLowerASCII(oui);
+    nic = base::ToLowerASCII(nic);
     string mac = oui + ":" + nic;
     string replacement_mac = mac_addresses_[mac];
     if (replacement_mac.empty()) {

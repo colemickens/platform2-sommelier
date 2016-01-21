@@ -49,7 +49,7 @@ class PolicyKeyTest : public ::testing::Test {
                                       &public_key_obj, &private_key_obj)) {
       key.reset(crypto::RSAPrivateKey::CreateFromKey(private_key_obj.get()));
     }
-    return key.Pass();
+    return key;
   }
 
   base::FilePath tmpfile_;

@@ -76,7 +76,8 @@ bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) {
   if (!base::ReadFileToString(outfile_path_, &contents))
     return false;
 
-  base::SplitString(contents, '\n', output);
+  *output = base::SplitString(contents, "\n", base::KEEP_WHITESPACE,
+                              base::SPLIT_WANT_ALL);
   return true;
 }
 

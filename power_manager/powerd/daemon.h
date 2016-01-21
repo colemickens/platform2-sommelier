@@ -294,7 +294,7 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Timer that periodically calls RequestTpmStatus() if
   // |cryptohome_dbus_proxy_| is non-null.
-  base::RepeatingTimer<Daemon> tpm_status_timer_;
+  base::RepeatingTimer tpm_status_timer_;
 
   // Delay with which |tpm_status_timer_| should fire.
   base::TimeDelta tpm_status_interval_;

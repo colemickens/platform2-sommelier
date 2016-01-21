@@ -39,8 +39,8 @@ const char kReplyPrefix[] = "EPSON";
 const int kExpectedReplySize = 76;
 const int kReplyWaitTimeSeconds = 1;
 
-COMPILE_ASSERT(sizeof(kReplyPrefix) < kExpectedReplySize,
-               Reply prefix should be smaller than the expected reply size);
+static_assert(sizeof(kReplyPrefix) < kExpectedReplySize,
+              "Reply prefix should be smaller than the expected reply size");
 
 }  // namespace
 

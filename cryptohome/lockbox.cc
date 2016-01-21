@@ -433,7 +433,8 @@ void Lockbox::FinalizeMountEncrypted(const brillo::Blob &entropy) const {
       std::string contents;
 
       if (platform_->ReadFileToString(outfile_path, &contents)) {
-        base::SplitString(contents, '\n', &output);
+        output = base::SplitString(contents, "\n", base::KEEP_WHITESPACE,
+                                   base::SPLIT_WANT_ALL);
         for (it = output.begin(); it < output.end(); it++) {
           LOG(ERROR) << *it;
         }

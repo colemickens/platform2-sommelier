@@ -42,12 +42,16 @@ int main(int argc, char* argv[]) {
 
   umask(0);
 
-  std::vector<std::string> lines, tokens;
-  base::SplitString(modules, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(modules, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (const std::string& line : lines) {
     // If the line isn't empty, and isn't a comment, parse it as a static node.
-    if (!line.empty() && !base::StartsWithASCII(line, "#", false)) {
-      base::SplitString(line, ' ', &tokens);
+    if (!line.empty() &&
+        !base::StartsWith(line, "#", base::CompareCase::SENSITIVE)) {
+      std::vector<std::string> tokens =
+          base::SplitString(line, " ", base::KEEP_WHITESPACE,
+                            base::SPLIT_WANT_ALL);
 
       // Static node descriptions in the file should be of the form:
       //   <name> <node> <type><major_id>:<minor_id>
@@ -59,9 +63,9 @@ int main(int argc, char* argv[]) {
       if (tokens.size() == 3) {
         base::FilePath path(base::StringPrintf("/dev/%s", tokens[1].c_str()));
         std::string type = tokens[2].substr(0, 1);
-        std::vector<std::string> device_id;
-        base::SplitString(tokens[2].substr(1, std::string::npos), ':',
-                          &device_id);
+        std::vector<std::string> device_id =
+            base::SplitString(tokens[2].substr(1, std::string::npos), ":",
+                              base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
         int major_id = 0;
         int minor_id = 0;

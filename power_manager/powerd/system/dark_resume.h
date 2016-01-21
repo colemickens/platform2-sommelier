@@ -96,7 +96,7 @@ class DarkResume : public DarkResumeInterface {
   }
 
   void set_timer_for_testing(scoped_ptr<base::Timer> timer) {
-    timer_ = timer.Pass();
+    timer_ = std::move(timer);
   }
 
   Action next_action_for_testing() const {

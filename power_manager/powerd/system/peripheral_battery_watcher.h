@@ -61,7 +61,7 @@ class PeripheralBatteryWatcher {
   base::FilePath peripheral_battery_path_;
 
   // Calls ReadBatteryStatuses().
-  base::OneShotTimer<PeripheralBatteryWatcher> poll_timer_;
+  base::OneShotTimer poll_timer_;
 
   // Time between polls of the peripheral battery reading, in milliseconds.
   int poll_interval_ms_;

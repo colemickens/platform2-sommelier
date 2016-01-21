@@ -212,7 +212,7 @@ void MetricsCollector::GenerateDarkResumeMetrics(
   // We want to get metrics even if the system suspended for less than an hour
   // so we scale the number of wakes up.
   static const int kSecondsPerHour = 60 * 60;
-  const int64 wakeups_per_hour =
+  const int64_t wakeups_per_hour =
       wake_durations.size() * kSecondsPerHour / suspend_duration.InSeconds();
   SendMetric(kMetricDarkResumeWakeupsPerHourName, wakeups_per_hour,
              kMetricDarkResumeWakeupsPerHourMin,

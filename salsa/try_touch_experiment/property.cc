@@ -16,15 +16,17 @@ bool Property::valid() const {
 }
 
 Property::Property(string const &property_string) : is_valid_(false) {
-  vector<string> parts;
-  SplitString(property_string, ':', &parts);
+  vector<string> parts =
+      SplitString(property_string, ":", base::KEEP_WHITESPACE,
+                  base::SPLIT_WANT_ALL);
 
   name_ = "";
   if (parts.size() == 2) {
     // Check that the property name contains only legal characters
     is_valid_ = (parts[0].length() > 0);
     for (size_t i = 0; i < parts[0].length(); i++) {
-      is_valid_ &= (IsAsciiAlpha(parts[0][i]) || IsAsciiDigit(parts[0][i]) ||
+      is_valid_ &= (base::IsAsciiAlpha(parts[0][i]) ||
+                    base::IsAsciiDigit(parts[0][i]) ||
                     parts[0][i] == ' ' || parts[0][i] == '-');
     }
 

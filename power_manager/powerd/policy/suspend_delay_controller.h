@@ -132,10 +132,10 @@ class SuspendDelayController {
   std::set<int> delay_ids_being_waited_on_;
 
   // Used to invoke NotifyObservers().
-  base::OneShotTimer<SuspendDelayController> notify_observers_timer_;
+  base::OneShotTimer notify_observers_timer_;
 
   // Used to invoke OnDelayExpiration().
-  base::OneShotTimer<SuspendDelayController> delay_expiration_timer_;
+  base::OneShotTimer delay_expiration_timer_;
 
   base::ObserverList<SuspendDelayObserver> observers_;
 

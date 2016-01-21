@@ -278,7 +278,7 @@ class ExternalDisplay {
   // Invokes UpdateState(). Used to enforce the mandatory delays between
   // requesting the brightness and reading the reply, and after sending a "set"
   // request to the display.
-  base::OneShotTimer<ExternalDisplay> timer_;
+  base::OneShotTimer timer_;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalDisplay);
 };

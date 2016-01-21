@@ -132,12 +132,12 @@ bool Pkcs11KeyStore::Write(bool is_user_specific,
     {CKA_CLASS, &object_class, sizeof(object_class)},
     {
       CKA_LABEL,
-      string_as_array(const_cast<string*>(&key_name)),
+      const_cast<char*>(key_name.data()),
       key_name.size()
     },
     {
       CKA_VALUE,
-      vector_as_array(const_cast<SecureBlob*>(&key_data)),
+      const_cast<uint8_t*>(key_data.data()),
       key_data.size()
     },
     {

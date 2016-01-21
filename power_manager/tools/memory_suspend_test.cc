@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 
@@ -83,12 +84,13 @@ int64_t GetUsableMemorySize() {
 
   /* Parse /proc/meminfo for MemFree and Inactive size */
   set<string> field_name = {"MemFree", "Inactive"};
-  vector<string> lines;
-
-  Tokenize(meminfo_raw, "\n", &lines);
+  vector<string> lines =
+      base::SplitString(meminfo_raw, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY);
   for (auto line : lines) {
-    vector<string> tokens;
-    Tokenize(line, ": ", &tokens);
+    vector<string> tokens =
+        base::SplitString(line, ": ", base::KEEP_WHITESPACE,
+                          base::SPLIT_WANT_NONEMPTY);
     auto it = field_name.find(tokens[0]);
     if (it != field_name.end()) {
       uint64_t field_value;

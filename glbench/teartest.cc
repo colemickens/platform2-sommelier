@@ -219,8 +219,9 @@ int main(int argc, char* argv[]) {
 
   g_main_gl_interface->SwapInterval(sleep_duration ? 0 : 1);
 
-  std::vector<std::string> tests;
-  base::SplitString(FLAGS_tests, ',', &tests);
+  std::vector<std::string> tests =
+      base::SplitString(FLAGS_tests, ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
 
   int return_code = 0;
   for (const std::string& test : tests) {

@@ -95,11 +95,13 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
   CHECK(prefs->GetString(pref_name, &pref_value))
       << "Unable to read pref " << pref_name;
 
-  std::vector<std::string> lines;
-  base::SplitString(pref_value, '\n', &lines);
+  std::vector<std::string> lines =
+      base::SplitString(pref_value, "\n", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
-    std::vector<std::string> parts;
-    base::SplitStringAlongWhitespace(lines[i], &parts);
+    std::vector<std::string> parts =
+        base::SplitString(lines[i], base::kWhitespaceASCII,
+                          base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     CHECK(parts.size() == 1U || parts.size() == 2U)
         << "Unable to parse \"" << lines[i] << "\" from pref " << pref_name;
 
