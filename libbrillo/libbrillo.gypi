@@ -60,6 +60,7 @@
         'brillo/data_encoding.cc',
         'brillo/dbus/async_event_sequencer.cc',
         'brillo/dbus/data_serialization.cc',
+        'brillo/dbus/dbus_connection.cc',
         'brillo/dbus/dbus_method_invoker.cc',
         'brillo/dbus/dbus_method_response.cc',
         'brillo/dbus/dbus_object.cc',

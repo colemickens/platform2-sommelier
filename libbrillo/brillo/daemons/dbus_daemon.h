@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <brillo/brillo_export.h>
 #include <brillo/daemons/daemon.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>
 
@@ -27,16 +28,20 @@ class AsyncEventSequencer;
 class BRILLO_EXPORT DBusDaemon : public Daemon {
  public:
   DBusDaemon();
-  ~DBusDaemon() override;
+  ~DBusDaemon() override = default;
 
  protected:
   // Calls the base OnInit() and then instantiates dbus::Bus and establishes
   // a D-Bus connection.
   int OnInit() override;
 
+  // A reference to the |dbus_connection_| bus object often used by derived
+  // classes.
   scoped_refptr<dbus::Bus> bus_;
 
  private:
+  DBusConnection dbus_connection_;
+
   DISALLOW_COPY_AND_ASSIGN(DBusDaemon);
 };
 

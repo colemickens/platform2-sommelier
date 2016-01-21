@@ -18,21 +18,13 @@ namespace brillo {
 DBusDaemon::DBusDaemon() {
 }
 
-DBusDaemon::~DBusDaemon() {
-  if (bus_)
-    bus_->ShutdownAndBlock();
-}
-
 int DBusDaemon::OnInit() {
   int exit_code = Daemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
 
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-
-  bus_ = new dbus::Bus(options);
-  CHECK(bus_->Connect());
+  bus_ = dbus_connection_.Connect();
+  CHECK(bus_);
 
   return exit_code;
 }
