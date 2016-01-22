@@ -22,7 +22,9 @@
 
 namespace buffet {
 
+#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
 class ApManagerClient;
+#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
 class ShillClient final : public weave::provider::Network,
                           public weave::provider::Wifi {
@@ -115,7 +117,9 @@ class ShillClient final : public weave::provider::Network,
   std::map<dbus::ObjectPath, DeviceState> devices_;
   State connectivity_state_{State::kOffline};
 
+#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   std::unique_ptr<ApManagerClient> ap_manager_client_;
+#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 

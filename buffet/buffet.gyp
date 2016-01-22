@@ -20,7 +20,6 @@
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'exported_deps': [
           'libshill-client',
-          'libapmanager-client',
           'libweave-<(libbase_ver)',
         ],
         'deps': ['>@(exported_deps)'],
@@ -33,7 +32,6 @@
         },
       },
       'sources': [
-        'ap_manager_client.cc',
         'buffet_config.cc',
         'dbus_bindings/org.chromium.Buffet.Command.xml',
         'dbus_bindings/org.chromium.Buffet.Manager.xml',
@@ -50,6 +48,7 @@
         ['USE_wifi_bootstrapping == 1', {
           'variables': {
             'exported_deps': [
+              'libapmanager-client',
               'libpeerd-client',
               'libwebserv-<(libbase_ver)',
             ],
@@ -59,8 +58,9 @@
           },
           'defines': [ 'BUFFET_USE_WIFI_BOOTSTRAPPING' ],
           'sources': [
-            'webserv_client.cc',
+            'ap_manager_client.cc',
             'peerd_client.cc',
+            'webserv_client.cc',
           ],
         }],
       ],
