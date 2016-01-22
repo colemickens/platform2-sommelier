@@ -23,6 +23,7 @@
     # default settings.  The platform python build helpers set them up.
     'USE_arc%': 0,
     'USE_attestation%': 0,
+    'USE_binder%': 0,
     'USE_buffet%': 0,
     'USE_cellular%': 0,
     'USE_chromeos_dbus%': 0,
