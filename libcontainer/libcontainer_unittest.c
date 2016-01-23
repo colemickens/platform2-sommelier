@@ -1,0 +1,441 @@
+/* Copyright 2016 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+#define _GNU_SOURCE /* For asprintf */
+
+#include <errno.h>
+#include <signal.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include "test_harness.h"
+
+#include "container_cgroup.h"
+#include "libcontainer.h"
+
+static const pid_t INIT_TEST_PID = 5555;
+
+struct mount_args {
+	char *source;
+	char *target;
+	char *filesystemtype;
+	unsigned long mountflags;
+	const void *data;
+};
+static struct mount_args mount_call_args[5];
+static int mount_called;
+
+struct mknod_args {
+	char *pathname;
+	mode_t mode;
+	dev_t dev;
+};
+static struct mknod_args mknod_call_args;
+
+static int kill_called;
+static int kill_sig;
+static const char *minijail_alt_syscall_table;
+static int minijail_ipc_called;
+static int minijail_vfs_called;
+static int minijail_net_called;
+static int minijail_pids_called;
+static int minijail_run_as_init_called;
+static int minijail_user_called;
+static int minijail_wait_called;
+static int minijail_reset_signal_mask_called;
+static int mount_ret;
+static char *mkdtemp_root;
+
+/* global mock cgroup. */
+struct mock_cgroup {
+	struct container_cgroup cg;
+	int freeze_ret;
+	int thaw_ret;
+	int deny_all_devs_ret;
+	int add_device_ret;
+
+	int init_called_count;
+	int deny_all_devs_called_count;
+
+	int add_dev_major;
+	int add_dev_minor;
+	int add_dev_read;
+	int add_dev_write;
+	int add_dev_modify;
+	char add_dev_type;
+};
+
+static struct mock_cgroup gmcg;
+
+static int mock_freeze(const struct container_cgroup *cg)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	return mcg->freeze_ret;
+}
+
+static int mock_thaw(const struct container_cgroup *cg)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	return mcg->thaw_ret;
+}
+
+static int mock_deny_all_devices(const struct container_cgroup *cg)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	++mcg->deny_all_devs_called_count;
+	return mcg->deny_all_devs_ret;
+}
+
+static int mock_add_device(const struct container_cgroup *cg, int major,
+			   int minor, int read, int write, int modify,
+			   char type)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	mcg->add_dev_major = major;
+	mcg->add_dev_minor = minor;
+	mcg->add_dev_read = read;
+	mcg->add_dev_write = write;
+	mcg->add_dev_modify = modify;
+	mcg->add_dev_type = type;
+	return mcg->add_device_ret;
+}
+
+struct container_cgroup *container_cgroup_new(const char *name,
+					      const char *cgroup_root)
+{
+	gmcg.cg.name = strdup(name);
+	return &gmcg.cg;
+}
+
+void container_cgroup_destroy(struct container_cgroup *c)
+{
+	free(c->name);
+}
+
+/* Start of tests. */
+FIXTURE(container_test) {
+	struct container_config *config;
+	struct container *container;
+	int mount_flags;
+	char *rootfs;
+};
+
+FIXTURE_SETUP(container_test)
+{
+	char temp_template[] = "/tmp/cgtestXXXXXX";
+	char rundir_template[] = "/tmp/cgtest_runXXXXXX";
+	char *rundir;
+	char path[256];
+	char *pargs[] = {
+		"/sbin/init",
+	};
+
+	memset(&mount_call_args, 0, sizeof(mount_call_args));
+	mount_called = 0;
+	memset(&mknod_call_args, 0, sizeof(mknod_call_args));
+	mkdtemp_root = NULL;
+
+	memset(&gmcg, 0, sizeof(gmcg));
+	static const struct cgroup_ops cgops = {
+		.freeze = mock_freeze,
+		.thaw = mock_thaw,
+		.deny_all_devices = mock_deny_all_devices,
+		.add_device = mock_add_device,
+	};
+	gmcg.cg.ops = &cgops;
+
+	self->rootfs = strdup(mkdtemp(temp_template));
+
+	kill_called = 0;
+	minijail_alt_syscall_table = NULL;
+	minijail_ipc_called = 0;
+	minijail_vfs_called = 0;
+	minijail_net_called = 0;
+	minijail_pids_called = 0;
+	minijail_run_as_init_called = 0;
+	minijail_user_called = 0;
+	minijail_wait_called = 0;
+	minijail_reset_signal_mask_called = 0;
+	mount_ret = 0;
+
+	snprintf(path, sizeof(path), "%s/dev", self->rootfs);
+	//mkdir(path, S_IRWXU | S_IRWXG);
+
+	self->mount_flags = MS_NOSUID | MS_NODEV | MS_NOEXEC;
+
+	self->config = container_config_create();
+	container_config_rootfs(self->config, self->rootfs);
+	container_config_program_argv(self->config, pargs, 1);
+	container_config_alt_syscall_table(self->config, "testsyscalltable");
+	container_config_add_mount(self->config,
+				   "testtmpfs",
+				   "tmpfs",
+				   "/tmp",
+				   "tmpfs",
+				   NULL,
+				   self->mount_flags,
+				   1000,
+				   1000,
+				   0x666,
+				   0,
+				   1);
+	container_config_add_device(self->config,
+				    'c',
+				    "/dev/foo",
+				    S_IRWXU | S_IRWXG,
+				    245,
+				    2,
+				    1000,
+				    1001,
+				    1,
+				    1,
+				    0);
+
+	rundir = mkdtemp(rundir_template);
+	self->container = container_new("containerUT", rundir, self->config);
+	ASSERT_NE(NULL, self->container);
+}
+
+FIXTURE_TEARDOWN(container_test)
+{
+	char path[256];
+	int i;
+
+	container_destroy(self->container);
+	snprintf(path, sizeof(path), "rm -rf %s", self->rootfs);
+	EXPECT_EQ(0, system(path));
+	free(self->rootfs);
+
+	for (i = 0; i < mount_called; i++) {
+		free(mount_call_args[i].source);
+		free(mount_call_args[i].target);
+		free(mount_call_args[i].filesystemtype);
+	}
+	free(mknod_call_args.pathname);
+	free(mkdtemp_root);
+}
+
+TEST_F(container_test, test_mount_tmp_start)
+{
+	char *path;
+
+	EXPECT_EQ(0, container_start(self->container));
+	EXPECT_EQ(2, mount_called);
+	EXPECT_EQ(0, strcmp(mount_call_args[1].source, "tmpfs"));
+	EXPECT_LT(0, asprintf(&path, "%s/root/tmp", mkdtemp_root));
+	EXPECT_EQ(0, strcmp(mount_call_args[1].target, path));
+	free(path);
+	EXPECT_EQ(0, strcmp(mount_call_args[1].filesystemtype,
+			    "tmpfs"));
+	EXPECT_EQ(mount_call_args[1].mountflags, self->mount_flags);
+	EXPECT_EQ(mount_call_args[1].data, NULL);
+
+	EXPECT_EQ(1, minijail_ipc_called);
+	EXPECT_EQ(1, minijail_vfs_called);
+	EXPECT_EQ(1, minijail_net_called);
+	EXPECT_EQ(1, minijail_pids_called);
+	EXPECT_EQ(1, minijail_user_called);
+	EXPECT_EQ(1, minijail_run_as_init_called);
+	EXPECT_EQ(1, gmcg.deny_all_devs_called_count);
+
+	EXPECT_LT(0, asprintf(&path, "%s/root/dev/foo", mkdtemp_root));
+	EXPECT_EQ(0, strcmp(mknod_call_args.pathname, path));
+	free(path);
+	EXPECT_EQ(mknod_call_args.mode, S_IRWXU | S_IRWXG | S_IFCHR);
+	EXPECT_EQ(mknod_call_args.dev, makedev(245, 2));
+
+	EXPECT_EQ(245, gmcg.add_dev_major);
+	EXPECT_EQ(2, gmcg.add_dev_minor);
+	EXPECT_EQ(1, gmcg.add_dev_read);
+	EXPECT_EQ(1, gmcg.add_dev_write);
+	EXPECT_EQ(0, gmcg.add_dev_modify);
+	EXPECT_EQ('c', gmcg.add_dev_type);
+
+	ASSERT_NE(NULL, minijail_alt_syscall_table);
+	EXPECT_EQ(0, strcmp(minijail_alt_syscall_table,
+			    "testsyscalltable"));
+
+	EXPECT_EQ(0, container_wait(self->container));
+	EXPECT_EQ(1, minijail_wait_called);
+	EXPECT_EQ(1, minijail_reset_signal_mask_called);
+}
+
+TEST_F(container_test, test_kill_container)
+{
+	EXPECT_EQ(0, container_start(self->container));
+	EXPECT_EQ(0, container_kill(self->container));
+	EXPECT_EQ(1, kill_called);
+	EXPECT_EQ(SIGKILL, kill_sig);
+	EXPECT_EQ(1, minijail_wait_called);
+}
+
+/* libc stubs so the UT doesn't need root to call mount, etc. */
+int mount(const char *source, const char *target,
+	  const char *filesystemtype, unsigned long mountflags,
+	  const void *data)
+{
+	if (mount_called >= 5)
+		return 0;
+
+	mount_call_args[mount_called].source = strdup(source);
+	mount_call_args[mount_called].target = strdup(target);
+	mount_call_args[mount_called].filesystemtype = strdup(filesystemtype);
+	mount_call_args[mount_called].mountflags = mountflags;
+	mount_call_args[mount_called].data = data;
+	++mount_called;
+	return 0;
+}
+
+int umount(const char *target)
+{
+	return 0;
+}
+
+int mknod(const char *pathname, mode_t mode, dev_t dev)
+{
+	mknod_call_args.pathname = strdup(pathname);
+	mknod_call_args.mode = mode;
+	mknod_call_args.dev = dev;
+	return 0;
+}
+
+int chown(const char *path, uid_t owner, gid_t group)
+{
+	return 0;
+};
+
+int kill(pid_t pid, int sig)
+{
+	++kill_called;
+	kill_sig = sig;
+	return 0;
+}
+
+int stat(const char *path, struct stat *buf)
+{
+	return 0;
+}
+
+int chmod(const char *path, mode_t mode)
+{
+	return 0;
+}
+
+char *mkdtemp(char *template)
+{
+	mkdtemp_root = strdup(template);
+	return template;
+}
+
+int mkdir(const char *pathname, mode_t mode)
+{
+	return 0;
+}
+
+int rmdir(const char *pathname)
+{
+	return 0;
+}
+
+int unlink(const char *pathname)
+{
+	return 0;
+}
+
+/* Minijail stubs */
+struct minijail *minijail_new(void)
+{
+	return NULL;
+}
+
+int minijail_mount(struct minijail *j, const char *src, const char *dest,
+		   const char *type, unsigned long flags)
+{
+	return 0;
+}
+
+void minijail_namespace_vfs(struct minijail *j)
+{
+	++minijail_vfs_called;
+}
+
+void minijail_namespace_ipc(struct minijail *j)
+{
+	++minijail_ipc_called;
+}
+
+void minijail_namespace_net(struct minijail *j)
+{
+	++minijail_net_called;
+}
+
+void minijail_namespace_pids(struct minijail *j)
+{
+	++minijail_pids_called;
+}
+
+void minijail_namespace_user(struct minijail *j)
+{
+	++minijail_user_called;
+}
+
+int minijail_uidmap(struct minijail *j, const char *uidmap)
+{
+	return 0;
+}
+
+int minijail_gidmap(struct minijail *j, const char *gidmap)
+{
+	return 0;
+}
+
+int minijail_enter_pivot_root(struct minijail *j, const char *dir)
+{
+	return 0;
+}
+
+void minijail_run_as_init(struct minijail *j)
+{
+	++minijail_run_as_init_called;
+}
+
+int minijail_run_pid_pipes_no_preload(struct minijail *j, const char *filename,
+				      char *const argv[], pid_t *pchild_pid,
+				      int *pstdin_fd, int *pstdout_fd,
+				      int *pstderr_fd)
+{
+	*pchild_pid = INIT_TEST_PID;
+	return 0;
+}
+
+int minijail_write_pid_file(struct minijail *j, const char *path)
+{
+	return 0;
+}
+
+int minijail_wait(struct minijail *j)
+{
+	++minijail_wait_called;
+	return 0;
+}
+
+int minijail_use_alt_syscall(struct minijail *j, const char *table)
+{
+	minijail_alt_syscall_table = table;
+	return 0;
+}
+
+void minijail_add_to_cgroup(struct minijail *j, const char *cg_path)
+{
+}
+
+void minijail_reset_signal_mask(struct minijail *j)
+{
+	++minijail_reset_signal_mask_called;
+}
+
+TEST_HARNESS_MAIN
