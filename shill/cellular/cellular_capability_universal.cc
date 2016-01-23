@@ -775,13 +775,16 @@ void CellularCapabilityUniversal::UpdateServiceOLP() {
     SLOG(this, 1) << "Found multiple online portals. Choosing the first.";
   }
   string post_data = olp_list[0].post_data;
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}",
-                               cellular()->sim_identifier());
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", cellular()->imei());
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", cellular()->imsi());
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
-                               GetMdnForOLP(cellular()->home_provider_info()));
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", cellular()->min());
+  base::ReplaceSubstringsAfterOffset(
+      &post_data, 0, "${iccid}", cellular()->sim_identifier());
+  base::ReplaceSubstringsAfterOffset(
+      &post_data, 0, "${imei}", cellular()->imei());
+  base::ReplaceSubstringsAfterOffset(
+      &post_data, 0, "${imsi}", cellular()->imsi());
+  base::ReplaceSubstringsAfterOffset(
+      &post_data, 0, "${mdn}", GetMdnForOLP(cellular()->home_provider_info()));
+  base::ReplaceSubstringsAfterOffset(
+      &post_data, 0, "${min}", cellular()->min());
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
@@ -1282,7 +1285,7 @@ bool CellularCapabilityUniversal::IsValidSimPath(const string& sim_path) const {
 string CellularCapabilityUniversal::NormalizeMdn(const string& mdn) const {
   string normalized_mdn;
   for (size_t i = 0; i < mdn.size(); ++i) {
-    if (IsAsciiDigit(mdn[i]))
+    if (base::IsAsciiDigit(mdn[i]))
       normalized_mdn += mdn[i];
   }
   return normalized_mdn;

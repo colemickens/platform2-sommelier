@@ -280,7 +280,7 @@ string OpenVPNDriver::JoinOptions(const vector<vector<string>>& options,
     }
     option_strings.push_back(base::JoinString(quoted_option, " "));
   }
-  return base::JoinString(option_strings, string(separator));
+  return base::JoinString(option_strings, string{separator});
 }
 
 bool OpenVPNDriver::WriteConfigFile(
@@ -587,7 +587,7 @@ bool OpenVPNDriver::SplitPortFromHost(
                                       base::SPLIT_WANT_ALL);
   int port_number = 0;
   if (tokens.size() != 2 || tokens[0].empty() || tokens[1].empty() ||
-      !IsAsciiDigit(tokens[1][0]) ||
+      !base::IsAsciiDigit(tokens[1][0]) ||
       !base::StringToInt(tokens[1], &port_number) ||
       port_number > std::numeric_limits<uint16_t>::max()) {
     return false;
@@ -917,7 +917,7 @@ bool OpenVPNDriver::AppendDelimitedValueOption(
   string value = args()->LookupString(property, "");
   if (!value.empty()) {
     vector<string> parts = SplitString(
-        value, std::string(delimiter), base::TRIM_WHITESPACE,
+        value, std::string{delimiter}, base::TRIM_WHITESPACE,
         base::SPLIT_WANT_ALL);
     parts.insert(parts.begin(), option);
     options->push_back(parts);

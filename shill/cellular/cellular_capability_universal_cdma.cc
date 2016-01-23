@@ -244,12 +244,14 @@ void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
     SLOG(this, 1) << "Found multiple online portals. Choosing the first.";
   }
   string post_data = olp_list[0].post_data;
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", cellular()->esn());
-  ReplaceSubstringsAfterOffset(
+  base::ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}",
+                                     cellular()->esn());
+  base::ReplaceSubstringsAfterOffset(
       &post_data, 0, "${mdn}",
       GetMdnForOLP(cellular()->serving_operator_info()));
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", cellular()->meid());
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", "GOG2");
+  base::ReplaceSubstringsAfterOffset(&post_data, 0,
+                                     "${meid}", cellular()->meid());
+  base::ReplaceSubstringsAfterOffset(&post_data, 0, "${oem}", "GOG2");
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 

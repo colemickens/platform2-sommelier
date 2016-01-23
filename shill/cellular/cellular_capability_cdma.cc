@@ -21,6 +21,7 @@
 
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
