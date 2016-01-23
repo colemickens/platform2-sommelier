@@ -4,12 +4,12 @@
 
 #include <libmtp.h>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "mtp_file_entry.pb.h"
 
 #define COMPILE_ASSERT_MATCH(libmtp_type, protobuf_type) \
-    COMPILE_ASSERT(int(libmtp_type) == int(protobuf_type), mismatching_types)
+    static_assert(int(libmtp_type) == int(protobuf_type), "Mismatching types")
 
 COMPILE_ASSERT_MATCH(LIBMTP_FILETYPE_FOLDER,
                      MtpFileEntry_FileType_FILE_TYPE_FOLDER);

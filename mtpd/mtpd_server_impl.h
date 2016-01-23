@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/compiler_specific.h>
+#include <base/macros.h>
 
 #include "device_event_delegate.h"
 #include "device_manager.h"

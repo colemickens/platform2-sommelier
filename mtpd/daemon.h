@@ -5,7 +5,7 @@
 #ifndef MTPD_DAEMON_H_
 #define MTPD_DAEMON_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "mtpd_server_impl.h"
 

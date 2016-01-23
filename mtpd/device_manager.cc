@@ -107,8 +107,9 @@ DeviceManager::~DeviceManager() {
 bool DeviceManager::ParseStorageName(const std::string& storage_name,
                                      std::string* usb_bus_str,
                                      uint32_t* storage_id) {
-  std::vector<std::string> split_str;
-  base::SplitString(storage_name, ':', &split_str);
+  std::vector<std::string> split_str =
+      base::SplitString(storage_name, ":", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   if (split_str.size() != 3)
     return false;
 
@@ -553,8 +554,9 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
   // action. At the same time, do some light filtering and ignore events for
   // uninteresting devices.
   const std::string kEventInterface(interface);
-  std::vector<std::string> split_usb_interface;
-  base::SplitString(kEventInterface, '/', &split_usb_interface);
+  std::vector<std::string> split_usb_interface =
+      base::SplitString(kEventInterface, "/", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   if (split_usb_interface.size() != 3)
     return;
 
