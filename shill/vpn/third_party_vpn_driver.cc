@@ -384,6 +384,7 @@ void ThirdPartyVpnDriver::SetParameters(
   if (error_message->empty()) {
     ip_properties_.user_traffic_only = true;
     ip_properties_.default_route = false;
+    ip_properties_.blackhole_ipv6 = true;
     device_->SelectService(service_);
     device_->UpdateIPConfig(ip_properties_);
     device_->SetLooseRouting(true);
