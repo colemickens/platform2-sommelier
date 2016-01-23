@@ -18,6 +18,8 @@
 
 #include <sys/time.h>
 
+#include <limits>
+
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -43,7 +45,7 @@ static string ObjectID(IPConfig* i) { return i->GetRpcIdentifier(); }
 
 namespace {
 
-const time_t kDefaultLeaseExpirationTime = LONG_MAX;
+const time_t kDefaultLeaseExpirationTime = std::numeric_limits<long>::max();
 
 }  // namespace
 
