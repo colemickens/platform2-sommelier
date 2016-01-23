@@ -306,6 +306,7 @@ bool Connection::SetupIptableEntries() {
 
   std::vector<std::string> user_names;
   user_names.push_back("chronos");
+  user_names.push_back("debugd");
 
   if (!firewall_proxy_->RequestVpnSetup(user_names, interface_name_)) {
     LOG(ERROR) << "VPN iptables setup request failed.";
