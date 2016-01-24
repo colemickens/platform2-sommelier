@@ -1295,8 +1295,7 @@ TEST_F(OpenVPNDriverTest, OnConnectTimeoutResolve) {
 TEST_F(OpenVPNDriverTest, OnReconnectingUnknown) {
   EXPECT_FALSE(IsConnectTimeoutStarted());
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetDefaultConnectTimeoutSeconds() * 1000))
-      .WillOnce(Return(true));
+              PostDelayedTask(_, GetDefaultConnectTimeoutSeconds() * 1000));
   SetDevice(device_);
   SetService(service_);
   EXPECT_CALL(*device_, DropConnection());
@@ -1307,11 +1306,9 @@ TEST_F(OpenVPNDriverTest, OnReconnectingUnknown) {
 
 TEST_F(OpenVPNDriverTest, OnReconnectingTLSError) {
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetReconnectOfflineTimeoutSeconds() * 1000))
-      .WillOnce(Return(true));
+              PostDelayedTask(_, GetReconnectOfflineTimeoutSeconds() * 1000));
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetReconnectTLSErrorTimeoutSeconds() * 1000))
-      .WillOnce(Return(true));
+              PostDelayedTask(_, GetReconnectTLSErrorTimeoutSeconds() * 1000));
 
   driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonOffline);
   EXPECT_TRUE(IsConnectTimeoutStarted());
