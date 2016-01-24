@@ -91,7 +91,7 @@ const char kValidCertificateHex[] =
     "74e2ad06f9585a00bec014744d3175ecc4808d";
 
 std::string HexDecode(const std::string hex) {
-  std::vector<uint8> output;
+  std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
   return std::string(reinterpret_cast<char*>(output.data()), output.size());
 }
