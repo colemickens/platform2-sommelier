@@ -84,6 +84,7 @@ void VPNService::Connect(Error* error, const char* reason) {
                                        unique_name().c_str()));
     return;
   }
+  manager()->vpn_provider()->DisconnectAll();
   Service::Connect(error, reason);
   driver_->Connect(this, error);
 }

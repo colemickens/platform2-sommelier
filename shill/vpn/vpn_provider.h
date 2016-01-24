@@ -73,6 +73,9 @@ class VPNProvider : public ProviderInterface {
   // Returns true if any of the managed VPN services is connecting or connected.
   virtual bool HasActiveService() const;
 
+  // Disconnect any other active VPN services.
+  virtual void DisconnectAll();
+
  private:
   friend class VPNProviderTest;
   FRIEND_TEST(VPNProviderTest, CreateService);

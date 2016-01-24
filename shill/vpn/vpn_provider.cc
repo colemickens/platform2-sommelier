@@ -346,4 +346,12 @@ bool VPNProvider::HasActiveService() const {
   return false;
 }
 
+void VPNProvider::DisconnectAll() {
+  for (const auto& service : services_) {
+    if (service->IsConnecting() || service->IsConnected()) {
+      service->Disconnect(nullptr, "user selected new config");
+    }
+  }
+}
+
 }  // namespace shill
