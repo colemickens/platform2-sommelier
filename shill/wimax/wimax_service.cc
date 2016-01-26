@@ -300,10 +300,9 @@ void WiMaxService::InitStorageIdentifier() {
 // static
 string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId& id,
                                              const string& name) {
-  string storage_id =
+  string storage_id = base::ToLowerASCII(
       base::StringPrintf("%s_%s_%s",
-                         kTypeWimax, name.c_str(), id.c_str());
-  base::ToLowerASCII(&storage_id);
+                         kTypeWimax, name.c_str(), id.c_str()));
   replace_if(storage_id.begin(), storage_id.end(), &Service::IllegalChar, '_');
   return storage_id;
 }
