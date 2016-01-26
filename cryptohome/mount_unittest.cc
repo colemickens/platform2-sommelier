@@ -1217,18 +1217,14 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
             serialized2.has_last_activity_timestamp());
 }
 
-TEST_F(MountTest, MountForUserOrderingTest) {
-  // Checks that mounts made with MountForUser/BindForUser are undone in the
+TEST_F(MountTest, RememberMountOrderingTest) {
+  // Checks that mounts made with RememberMount/RememberBind are undone in the
   // right order.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
   EXPECT_TRUE(DoMountInit());
-  UserSession session;
   SecureBlob salt;
   salt.assign('A', 16);
-  session.Init(salt);
-  UsernamePasskey up("username", SecureBlob("password"));
-  EXPECT_TRUE(session.SetUser(up));
 
   std::string src = "/src";
   std::string dest0 = "/dest/foo";
@@ -1249,11 +1245,11 @@ TEST_F(MountTest, MountForUserOrderingTest) {
     EXPECT_CALL(platform_, Unmount(dest0, _, _))
         .WillOnce(Return(true));
 
-    EXPECT_TRUE(mount_->MountForUser(&session, src, dest0, "", ""));
-    EXPECT_TRUE(mount_->BindForUser(&session, src, dest1));
-    EXPECT_TRUE(mount_->MountForUser(&session, src, dest2, "", ""));
-    mount_->UnmountAllForUser(&session);
-    EXPECT_FALSE(mount_->UnmountForUser(&session));
+    EXPECT_TRUE(mount_->RememberMount(src, dest0, "", ""));
+    EXPECT_TRUE(mount_->RememberBind(src, dest1));
+    EXPECT_TRUE(mount_->RememberMount(src, dest2, "", ""));
+    mount_->UnmountAllForUser();
+    EXPECT_FALSE(mount_->UnmountForUser());
   }
 }
 

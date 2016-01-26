@@ -478,9 +478,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
-  // TODO(wad,ellyjones) Why does Mount take current_user_?
-  if (!MountForUser(current_user_, vault_path, mount_point_, "ecryptfs",
-                    ecryptfs_options)) {
+  if (!RememberMount(vault_path, mount_point_, "ecryptfs", ecryptfs_options)) {
     PLOG(ERROR) << "Cryptohome mount failed for vault " << vault_path;
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
@@ -504,7 +502,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   std::string user_home = GetMountedUserHomePath(obfuscated_username);
   if (!SetupGroupAccess(FilePath(user_home))) {
-    UnmountAllForUser(current_user_);
+    UnmountAllForUser();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -514,20 +512,20 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   std::string user_multi_home =
       brillo::cryptohome::home::GetUserPath(username).value();
-  if (!BindForUser(current_user_, user_home, user_multi_home)) {
+  if (!RememberBind(user_home, user_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << user_multi_home;
-    UnmountAllForUser(current_user_);
+    UnmountAllForUser();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
   // Mount /home/chronos/u<s_h_o_u>.
   std::string multi_home = GetNewUserPath(username);
-  if (!BindForUser(current_user_, user_home, multi_home)) {
+  if (!RememberBind(user_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << multi_home;
-    UnmountAllForUser(current_user_);
+    UnmountAllForUser();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -535,10 +533,10 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   std::string root_home = GetMountedRootHomePath(obfuscated_username);
   std::string root_multi_home =
       brillo::cryptohome::home::GetRootPath(username).value();
-  if (!BindForUser(current_user_, root_home, root_multi_home)) {
+  if (!RememberBind(root_home, root_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << root_home << " -> "
                 << root_multi_home;
-    UnmountAllForUser(current_user_);
+    UnmountAllForUser();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -573,14 +571,13 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     return false;
   if (!SetUpEphemeralCryptohome(path, user_multi_home))
     return false;
-  if (!MountForUser(current_user_,
-                    path,
+  if (!RememberMount(path,
                     root_multi_home,
                     kEphemeralMountType,
                     kEphemeralMountPerms)) {
     LOG(ERROR) << "Mount of ephemeral root home at " << root_multi_home
                << "failed: " << errno;
-    UnmountAllForUser(current_user_);
+    UnmountAllForUser();
     return false;
   }
 
@@ -588,10 +585,10 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     MountLegacyHome(user_multi_home, NULL);
 
   std::string multi_home = GetNewUserPath(username);
-  if (!BindForUser(current_user_, user_multi_home, multi_home)) {
+  if (!RememberBind(user_multi_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_multi_home << " -> "
                 << multi_home;
-    UnmountAllForUser(current_user_);
+    UnmountAllForUser();
     return false;
   }
   ephemeral_mount_ = true;
@@ -649,7 +646,7 @@ bool Mount::SetUpEphemeralCryptohome(const std::string& source_path,
   if (!SetupGroupAccess(FilePath(ephemeral_skeleton_path)))
     return false;
 
-  if (!BindForUser(current_user_, ephemeral_skeleton_path, home_dir)) {
+  if (!RememberBind(ephemeral_skeleton_path, home_dir)) {
     LOG(ERROR) << "Bind mount of ephemeral user home from "
                << ephemeral_skeleton_path << " to " << home_dir << " failed: "
                << errno;
@@ -658,9 +655,9 @@ bool Mount::SetUpEphemeralCryptohome(const std::string& source_path,
   return true;
 }
 
-bool Mount::MountForUser(UserSession *user, const std::string& src,
-                         const std::string& dest, const std::string& type,
-                         const std::string& options) {
+bool Mount::RememberMount(const std::string& src,
+                          const std::string& dest, const std::string& type,
+                          const std::string& options) {
   if (platform_->Mount(src, dest, type, options)) {
     mounts_.Push(dest);
     return true;
@@ -668,8 +665,8 @@ bool Mount::MountForUser(UserSession *user, const std::string& src,
   return false;
 }
 
-bool Mount::BindForUser(UserSession *user, const std::string& src,
-                        const std::string& dest) {
+bool Mount::RememberBind(const std::string& src,
+                         const std::string& dest) {
   if (platform_->Bind(src, dest)) {
     mounts_.Push(dest);
     return true;
@@ -677,7 +674,7 @@ bool Mount::BindForUser(UserSession *user, const std::string& src,
   return false;
 }
 
-bool Mount::UnmountForUser(UserSession *user) {
+bool Mount::UnmountForUser() {
   std::string mount_point;
   if (!mounts_.Pop(&mount_point)) {
     return false;
@@ -686,8 +683,8 @@ bool Mount::UnmountForUser(UserSession *user) {
   return true;
 }
 
-void Mount::UnmountAllForUser(UserSession *user) {
-  while (UnmountForUser(user)) { }
+void Mount::UnmountAllForUser() {
+  while (UnmountForUser()) { }
 }
 
 void Mount::ForceUnmount(const std::string& mount_point) {
@@ -725,7 +722,7 @@ void Mount::ForceUnmount(const std::string& mount_point) {
 }
 
 bool Mount::UnmountCryptohome() {
-  UnmountAllForUser(current_user_);
+  UnmountAllForUser();
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
@@ -1777,10 +1774,10 @@ bool Mount::MountLegacyHome(const std::string& from, MountError* mount_error) {
   // Multiple mounts can't live on the legacy mountpoint.
   if (platform_->IsDirectoryMounted(kDefaultHomeDir)) {
     LOG(INFO) << "Skipping binding to /home/chronos/user.";
-  } else if (!BindForUser(current_user_, from, kDefaultHomeDir)) {
+  } else if (!RememberBind(from, kDefaultHomeDir)) {
     PLOG(ERROR) << "Bind mount failed: " << from << " -> "
                 << kDefaultHomeDir;
-    UnmountAllForUser(current_user_);
+    UnmountAllForUser();
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
     }

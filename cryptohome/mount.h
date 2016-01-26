@@ -635,46 +635,38 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   credentials - The Credentials representing the user
   bool EnsureUserMountPoints(const Credentials& credentials) const;
 
-  // Mount a mount point for a user, remembering it for later unmounting
+  // Mount a mount point, remembering it for later unmounting
   // Returns true if the mount succeeds, false otherwise
   //
   // Parameters
-  //   user - User to mount for
   //   src - Directory to mount from
   //   dest - Directory to mount to
   //   type - Filesystem type to mount with
   //   options - Filesystem options to supply
-  bool MountForUser(UserSession* user,
-                    const std::string& src,
-                    const std::string& dest,
-                    const std::string& type,
-                    const std::string& options);
+  bool RememberMount(const std::string& src,
+                     const std::string& dest,
+                     const std::string& type,
+                     const std::string& options);
 
-  // Bind a mount point for a user, remembering it for later unmounting
+  // Bind a mount point, remembering it for later unmounting
   // Returns true if the bind succeeds, false otherwise
   //
   // Parameters
-  //   user - User to mount for
   //   src - Directory to bind from
   //   dest - Directory to bind to
-  bool BindForUser(UserSession* user,
-                   const std::string& src,
-                   const std::string& dest);
+  bool RememberBind(const std::string& src,
+                    const std::string& dest);
 
   // Pops a mount point from user's stack and unmounts it
   // Returns true if there was a mount to unmount, false otherwise
   // Relies on ForceUnmount internally; see the caveat listed for it
   //
-  // Parameters
-  //   user - User for whom to unmount
-  bool UnmountForUser(UserSession* user);
+  bool UnmountForUser();
 
-  // Unmounts all mount points for a user
+  // Unmounts all mount points
   // Relies on ForceUnmount() internally; see the caveat listed for it
   //
-  // Parameters
-  //   user - User for whom to unmount
-  void UnmountAllForUser(UserSession* user);
+  void UnmountAllForUser();
 
   // Forcibly unmounts a mountpoint, killing processes with open handles to it
   // if necessary. Note that this approach is not bulletproof - if a process can
@@ -784,7 +776,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   BootLockbox* boot_lockbox_;
   std::unique_ptr<BootLockbox> default_boot_lockbox_;
 
-  FRIEND_TEST(MountTest, MountForUserOrderingTest);
+  FRIEND_TEST(MountTest, RememberMountOrderingTest);
   FRIEND_TEST(MountTest, MountCryptohomeChapsKey);
   FRIEND_TEST(MountTest, MountCryptohomeNoChapsKey);
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);
