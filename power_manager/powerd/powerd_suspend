@@ -119,6 +119,37 @@ do_lumpy_gobi_modem_revive() {
     echo 1 > gpio198/value
 }
 
+# Blaze modems need to be powered off (MODEM_EN low) when suspending and
+# powered back on (MODEM_EN high) when resuming.
+
+# Return true on Blaze systems.
+is_blaze() {
+    crossystem hwid | grep -q "BLAZE"
+}
+
+# Checks if the system has a Huawei Technologies Mobile Broadband Module.
+has_huawei_modem() {
+    lsusb -d 12d1:15bb
+}
+
+# Drive the Blaze MODEM_EN gpio for $1 "on" or "off".
+do_blaze_huawei_modem() {
+    gpioval=1
+    [ "$1" = off ] && gpioval=0
+
+    cd /sys/class/gpio
+    if [ ! -d gpio148 ]; then
+        echo 148 > export
+    fi
+    echo out > gpio148/direction
+    echo $gpioval > gpio148/value
+    if [ $? -eq 0 ]; then
+        log_msg "Power $1 Huawei modem"
+    else
+        log_msg "Failed to power $1 Huawei modem"
+    fi
+}
+
 # Writes the wakeup count that was passed to this script to
 # /sys/power/wakeup_count.  Returns success if the write fails, indicating
 # that one or more wakeup events occurred in the meantime.
@@ -189,6 +220,13 @@ if is_lumpy && has_gobi_modem; then
     lumpy_with_gobi_modem=1
 fi
 
+# Is this a Blaze system with Huawei modem?
+blaze_with_huawei_modem=0
+if is_blaze && has_huawei_modem; then
+    log_msg "Blaze with Huawei modem"
+    blaze_with_huawei_modem=1
+fi
+
 enable_debug
 
 log_msg "Explicit sync"
@@ -207,6 +245,11 @@ if saw_wakeup_event; then
 
     result=$RESULT_CANCELED_EARLY
 else
+    # Before suspending, power down this problematic modem.
+    if [ $blaze_with_huawei_modem -eq 1 ]; then
+        do_blaze_huawei_modem off
+    fi
+
     log_msg "Finalizing suspend"
     # Make sure that hwclock is cached for when we wake up, this way we don't
     # wait for io and get a more accurate time for wakeup
@@ -262,6 +305,11 @@ else
                 log_msg "Reviving lumpy gobi modem"
                 do_lumpy_gobi_modem_revive
             fi
+        fi
+
+        # Power back on the Huawei modem.
+        if [ $blaze_with_huawei_modem -eq 1 ]; then
+            do_blaze_huawei_modem on
         fi
     else
         log_msg "Error writing to /sys/power/state: ${error}"
