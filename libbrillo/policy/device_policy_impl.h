@@ -43,10 +43,6 @@ class DevicePolicyImpl : public DevicePolicy {
   virtual bool GetReportActivityTimes(bool* report_activity_times) const;
   virtual bool GetReportBootMode(bool* report_boot_mode) const;
   virtual bool GetEphemeralUsersEnabled(bool* ephemeral_users_enabled) const;
-  virtual bool GetProxyMode(std::string* proxy_mode) const;
-  virtual bool GetProxyServer(std::string* proxy_server) const;
-  virtual bool GetProxyPacUrl(std::string* proxy_pac) const;
-  virtual bool GetProxyBypassList(std::string* proxy_bypass_list) const;
   virtual bool GetReleaseChannel(std::string* release_channel) const;
   virtual bool GetReleaseChannelDelegated(
       bool* release_channel_delegated) const;

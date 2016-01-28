@@ -76,10 +76,6 @@ class MockDevicePolicy : public DevicePolicy {
                      bool(bool*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetEphemeralUsersEnabled,
                      bool(bool*));  // NOLINT(readability/function)
-  MOCK_CONST_METHOD1(GetProxyMode, bool(std::string*));
-  MOCK_CONST_METHOD1(GetProxyServer, bool(std::string*));
-  MOCK_CONST_METHOD1(GetProxyPacUrl, bool(std::string*));
-  MOCK_CONST_METHOD1(GetProxyBypassList, bool(std::string*));
   MOCK_CONST_METHOD1(GetReleaseChannel, bool(std::string*));
   MOCK_CONST_METHOD1(GetReleaseChannelDelegated,
                      bool(bool*));  // NOLINT(readability/function)

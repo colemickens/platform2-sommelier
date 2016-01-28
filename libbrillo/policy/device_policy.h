@@ -83,22 +83,6 @@ class DevicePolicy {
   virtual bool GetEphemeralUsersEnabled(
       bool* ephemeral_users_enabled) const =  0;
 
-  // Writes the value of the ProxyMode policy in |proxy_mode|. Returns true on
-  // success.
-  virtual bool GetProxyMode(std::string* proxy_mode) const = 0;
-
-  // Writes the value of the ProxyServer policy in |proxy_server|. Returns true
-  // on success.
-  virtual bool GetProxyServer(std::string* proxy_server) const = 0;
-
-  // Writes the value of the ProxyPacUrl policy in |proxy_pac|. Returns true on
-  // success.
-  virtual bool GetProxyPacUrl(std::string* proxy_pac) const = 0;
-
-  // Writes the value of the ProxyBypassList policy in |proxy_bypass_list|.
-  // Returns true on success.
-  virtual bool GetProxyBypassList(std::string* proxy_bypass_list) const = 0;
-
   // Writes the value of the release channel policy in |release_channel|.
   // Returns true on success.
   virtual bool GetReleaseChannel(std::string* release_channel) const = 0;

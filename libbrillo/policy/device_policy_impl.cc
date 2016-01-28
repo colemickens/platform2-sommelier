@@ -246,59 +246,6 @@ bool DevicePolicyImpl::GetEphemeralUsersEnabled(
   return true;
 }
 
-bool DevicePolicyImpl::GetProxyMode(std::string* proxy_mode) const {
-  if (!device_policy_.has_device_proxy_settings())
-    return false;
-
-  const enterprise_management::DeviceProxySettingsProto& proto =
-      device_policy_.device_proxy_settings();
-  if (!proto.has_proxy_mode())
-    return false;
-
-  *proxy_mode = proto.proxy_mode();
-  return true;
-}
-
-bool DevicePolicyImpl::GetProxyServer(std::string* proxy_server) const {
-  if (!device_policy_.has_device_proxy_settings())
-    return false;
-
-  const enterprise_management::DeviceProxySettingsProto& proto =
-      device_policy_.device_proxy_settings();
-  if (!proto.has_proxy_server())
-    return false;
-
-  *proxy_server = proto.proxy_server();
-  return true;
-}
-
-bool DevicePolicyImpl::GetProxyPacUrl(std::string* proxy_pac) const {
-  if (!device_policy_.has_device_proxy_settings())
-    return false;
-
-  const enterprise_management::DeviceProxySettingsProto& proto =
-      device_policy_.device_proxy_settings();
-  if (!proto.has_proxy_pac_url())
-    return false;
-
-  *proxy_pac = proto.proxy_pac_url();
-  return true;
-}
-
-bool DevicePolicyImpl::GetProxyBypassList(
-    std::string* proxy_bypass_list) const {
-  if (!device_policy_.has_device_proxy_settings())
-    return false;
-
-  const enterprise_management::DeviceProxySettingsProto& proto =
-      device_policy_.device_proxy_settings();
-  if (!proto.has_proxy_bypass_list())
-    return false;
-
-  *proxy_bypass_list = proto.proxy_bypass_list();
-  return true;
-}
-
 bool DevicePolicyImpl::GetReleaseChannel(
     std::string* release_channel) const {
   if (!device_policy_.has_release_channel())

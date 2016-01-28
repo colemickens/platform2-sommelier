@@ -111,19 +111,6 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetEphemeralUsersEnabled(&bool_value));
   ASSERT_FALSE(bool_value);
 
-  std::string string_value;
-  ASSERT_TRUE(policy.GetProxyMode(&string_value));
-  ASSERT_EQ("direct", string_value);
-
-  ASSERT_TRUE(policy.GetProxyServer(&string_value));
-  ASSERT_EQ("myproxy", string_value);
-
-  ASSERT_TRUE(policy.GetProxyPacUrl(&string_value));
-  ASSERT_EQ("http://mypac.pac", string_value);
-
-  ASSERT_TRUE(policy.GetProxyBypassList(&string_value));
-  ASSERT_EQ("a, b, c", string_value);
-
   ASSERT_TRUE(policy.GetReleaseChannel(&string_value));
   ASSERT_EQ("stable-channel", string_value);
 
