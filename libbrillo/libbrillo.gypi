@@ -88,6 +88,7 @@
         'brillo/type_name_undecorate.cc',
         'brillo/url_utils.cc',
         'brillo/userdb_utils.cc',
+        'brillo/value_conversion.cc',
       ],
     },
     {
@@ -358,6 +359,7 @@
             'brillo/unittest_utils.cc',
             'brillo/url_utils_unittest.cc',
             'brillo/variant_dictionary_unittest.cc',
+            'brillo/value_conversion_unittest.cc',
             'testrunner.cc',
             '<(proto_in_dir)/test.proto',
           ]
