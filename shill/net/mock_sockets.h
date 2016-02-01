@@ -37,6 +37,8 @@ class MockSockets : public Sockets {
   MOCK_CONST_METHOD3(Bind, int(int sockfd, const struct sockaddr* addr,
                                socklen_t addrlen));
   MOCK_CONST_METHOD2(BindToDevice, int(int sockfd, const std::string& device));
+  MOCK_CONST_METHOD1(ReuseAddress, int(int sockfd));
+  MOCK_CONST_METHOD2(AddMulticastMembership, int(int sockfd, in_addr_t addr));
   MOCK_CONST_METHOD1(Close, int(int fd));
   MOCK_CONST_METHOD3(Connect, int(int sockfd, const struct sockaddr* addr,
                                   socklen_t addrlen));
