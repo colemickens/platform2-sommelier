@@ -5,6 +5,7 @@
 #include "device_manager.h"
 
 #include <libudev.h>
+#include <sys/stat.h>
 
 #include <set>
 
