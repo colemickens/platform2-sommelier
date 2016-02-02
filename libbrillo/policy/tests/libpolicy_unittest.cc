@@ -111,6 +111,7 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetEphemeralUsersEnabled(&bool_value));
   ASSERT_FALSE(bool_value);
 
+  std::string string_value;
   ASSERT_TRUE(policy.GetReleaseChannel(&string_value));
   ASSERT_EQ("stable-channel", string_value);
 
@@ -187,10 +188,6 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   ASSERT_FALSE(policy.GetReportActivityTimes(&bool_value));
   ASSERT_FALSE(policy.GetReportBootMode(&bool_value));
   ASSERT_FALSE(policy.GetEphemeralUsersEnabled(&bool_value));
-  ASSERT_FALSE(policy.GetProxyMode(&string_value));
-  ASSERT_FALSE(policy.GetProxyServer(&string_value));
-  ASSERT_FALSE(policy.GetProxyPacUrl(&string_value));
-  ASSERT_FALSE(policy.GetProxyBypassList(&string_value));
   ASSERT_FALSE(policy.GetReleaseChannel(&string_value));
   ASSERT_FALSE(policy.GetUpdateDisabled(&bool_value));
   ASSERT_FALSE(policy.GetTargetVersionPrefix(&string_value));
