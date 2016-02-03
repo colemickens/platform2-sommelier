@@ -638,27 +638,14 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Invalid arg, expecting hex string for id (like b18aa8).";
       exit(-1);
     }
-    if (base::EqualsCaseInsensitiveASCII(
-        "cert",
-        cl->GetSwitchValueASCII("type").c_str())) {
-      ReadInObject(session,
-                   cl->GetSwitchValueASCII("path"),
-                   object_id,
-                   kCertificate);
-    } else if (base::EqualsCaseInsensitiveASCII(
-        "privkey",
-        cl->GetSwitchValueASCII("type").c_str())) {
-      ReadInObject(session,
-                   cl->GetSwitchValueASCII("path"),
-                   object_id,
-                   kPrivateKey);
-    } else if (base::EqualsCaseInsensitiveASCII(
-        "pubkey",
-        cl->GetSwitchValueASCII("type").c_str())) {
-      ReadInObject(session,
-                   cl->GetSwitchValueASCII("path"),
-                   object_id,
-                   kPublicKey);
+    std::string type = cl->GetSwitchValueASCII("type");
+    std::string path = cl->GetSwitchValueASCII("path");
+    if (base::EqualsCaseInsensitiveASCII("cert", type)) {
+      ReadInObject(session, path, object_id, kCertificate);
+    } else if (base::EqualsCaseInsensitiveASCII("privkey", type)) {
+      ReadInObject(session, path, object_id, kPrivateKey);
+    } else if (base::EqualsCaseInsensitiveASCII("pubkey", type)) {
+      ReadInObject(session, path, object_id, kPublicKey);
     } else {
       LOG(ERROR) << "Invalid token type.";
       exit(-1);
