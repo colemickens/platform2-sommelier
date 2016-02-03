@@ -647,14 +647,14 @@ int main(int argc, char** argv) {
                    kCertificate);
     } else if (base::EqualsCaseInsensitiveASCII(
         "privkey",
-        cl->GetSwitchValueASCII("type").c_str()) == 0) {
+        cl->GetSwitchValueASCII("type").c_str())) {
       ReadInObject(session,
                    cl->GetSwitchValueASCII("path"),
                    object_id,
                    kPrivateKey);
     } else if (base::EqualsCaseInsensitiveASCII(
         "pubkey",
-        cl->GetSwitchValueASCII("type").c_str()) == 0) {
+        cl->GetSwitchValueASCII("type").c_str())) {
       ReadInObject(session,
                    cl->GetSwitchValueASCII("path"),
                    object_id,
