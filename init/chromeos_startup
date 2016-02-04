@@ -93,8 +93,10 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   if [ "${FORMAT_STATE}" = "ubi" ]; then
     STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
   else
+    DIRTY_EXPIRE_CENTISECS=$(sysctl -n vm.dirty_expire_centisecs)
+    COMMIT_INTERVAL=$(( DIRTY_EXPIRE_CENTISECS / 100 ))
     STATE_DEV=${ROOTDEV_TYPE}${PARTITION_NUM_STATE}
-    STATE_FLAGS="${STATE_FLAGS},commit=600"
+    STATE_FLAGS="${STATE_FLAGS},commit=${COMMIT_INTERVAL}"
   fi
 
   # Mount stateful partition from STATE_DEV.
