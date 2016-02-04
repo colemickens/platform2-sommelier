@@ -18,26 +18,26 @@
 #define LIBBRILLO_BRILLO_BINDER_WATCHER_H_
 
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
+#include <brillo/message_loops/message_loop.h>
 
 namespace brillo {
 
-// Bridge between libbinder and base::MessageLoop. Construct at startup to make
-// the message loop watch for binder events and pass them to libbinder.
-class BinderWatcher : public base::MessageLoopForIO::Watcher {
+// Bridge between libbinder and brillo::MessageLoop. Construct at startup to
+// make the message loop watch for binder events and pass them to libbinder.
+class BinderWatcher final {
  public:
+  // Construct the BinderWatcher using the passed |message_loop| if not null or
+  // the current MessageLoop otherwise.
+  explicit BinderWatcher(MessageLoop* message_loop);
   BinderWatcher();
-  ~BinderWatcher() override;
+  ~BinderWatcher();
 
   // Initializes the object, returning true on success.
   bool Init();
 
-  // base::MessageLoopForIO::Watcher:
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
-
  private:
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+  MessageLoop::TaskId task_id_{MessageLoop::kTaskIdNull};
+  MessageLoop* message_loop_;
 
   DISALLOW_COPY_AND_ASSIGN(BinderWatcher);
 };
