@@ -389,6 +389,22 @@ bool DevicePolicyImpl::GetAuP2PEnabled(bool* au_p2p_enabled) const {
   return true;
 }
 
+bool DevicePolicyImpl::GetAllowKioskAppControlChromeVersion(
+      bool* allow_kiosk_app_control_chrome_version) const {
+  if (!device_policy_.has_allow_kiosk_app_control_chrome_version())
+    return false;
+
+  const enterprise_management::AllowKioskAppControlChromeVersionProto& proto =
+      device_policy_.allow_kiosk_app_control_chrome_version();
+
+  if (!proto.has_allow_kiosk_app_control_chrome_version())
+    return false;
+
+  *allow_kiosk_app_control_chrome_version =
+      proto.allow_kiosk_app_control_chrome_version();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!base::PathExists(policy_path_) || !base::PathExists(keyfile_path_)) {

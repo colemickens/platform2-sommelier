@@ -131,6 +131,11 @@ class DevicePolicy {
   // |au_p2p_enabled|. Returns true on success.
   virtual bool GetAuP2PEnabled(bool* au_p2p_enabled) const = 0;
 
+  // Writes the value of allow_kiosk_app_control_chrome_version policy in
+  // |allow_kiosk_app_control_chrome_version|. Returns true on success.
+  virtual bool GetAllowKioskAppControlChromeVersion(
+      bool* allow_kiosk_app_control_chrome_version) const = 0;
+
  private:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles() = 0;

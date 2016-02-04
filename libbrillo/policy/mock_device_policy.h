@@ -92,6 +92,8 @@ class MockDevicePolicy : public DevicePolicy {
                      bool(bool*));  // NOLINT(readability/function)
   MOCK_CONST_METHOD1(GetAuP2PEnabled,
                      bool(bool*));  // NOLINT(readability/function)
+  MOCK_CONST_METHOD1(GetAllowKioskAppControlChromeVersion,
+                     bool(bool*));  // NOLINT(readability/function)
 
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));
