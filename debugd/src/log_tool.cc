@@ -173,7 +173,8 @@ static const Log common_logs[] = {
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
   { "touchpad_activity", "/opt/google/input/cmt_feedback alt" },
   { "touch_fw_version", "grep -E"
-              " 'synaptics: Touchpad model|chromeos-touch-[a-z]*-update'"
+              " -e 'synaptics: Touchpad model'"
+              " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
               " /var/log/messages | tail -n 20" },
   { "ui_log", "/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST" },
   { "uname", "/bin/uname -a" },
