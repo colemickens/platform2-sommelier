@@ -752,6 +752,9 @@ static int setup_encrypted(int mode)
 	char *encryption_key = NULL;
 	int migrate_allowed = 0, migrate_needed = 0, rebuild = 0;
 	gchar *lodev = NULL;
+	gchar *dirty_expire_centisecs = NULL;
+	char *mount_opts = NULL;
+	uint64_t commit_interval = 600;
 	uint64_t sectors;
 	struct bind_mount *bind;
 	int sparsefd;
@@ -922,6 +925,18 @@ static int setup_encrypted(int mode)
 			goto dm_cleanup;
 	}
 
+	/* Use vm.dirty_expire_centisecs / 100 as the commit interval. */
+	if (g_file_get_contents("/proc/sys/vm/dirty_expire_centisecs",
+				&dirty_expire_centisecs, NULL, NULL)) {
+		guint64 dirty_expire = g_ascii_strtoull(dirty_expire_centisecs,
+							NULL, 10);
+		if (dirty_expire > 0)
+		    commit_interval = dirty_expire / 100;
+		g_free(dirty_expire_centisecs);
+	}
+	if (asprintf(&mount_opts, "discard,commit=%" PRIu64, commit_interval) == -1)
+		goto dm_cleanup;
+
 	/* Mount the dm-crypt partition finally. */
 	INFO("Mounting %s onto %s.", dmcrypt_dev, encrypted_mount);
 	if (access(encrypted_mount, R_OK) &&
@@ -931,7 +946,7 @@ static int setup_encrypted(int mode)
 	}
 	if (mount(dmcrypt_dev, encrypted_mount, kEncryptedFSType,
 		  MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RELATIME,
-		  "discard,commit=600")) {
+		  mount_opts)) {
 		PERROR("mount(%s,%s)", dmcrypt_dev, encrypted_mount);
 		goto dm_cleanup;
 	}
@@ -1029,6 +1044,7 @@ lo_cleanup:
 finished:
 	free(encryption_key);
 	free(lodev);
+	free(mount_opts);
 
 	return rc;
 }
