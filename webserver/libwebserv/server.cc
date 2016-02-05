@@ -41,7 +41,7 @@ unique_ptr<Server> Server::ConnectToServerViaDBus(
 #endif  // defined(WEBSERV_USE_DBUS)
 
 #if defined(WEBSERV_USE_BINDER)
-std::unique_ptr<Server> ConnectToServerViaBinder(
+std::unique_ptr<Server> Server::ConnectToServerViaBinder(
     brillo::MessageLoop* message_loop,
     const base::Closure& on_server_online,
     const base::Closure& on_server_offline) {

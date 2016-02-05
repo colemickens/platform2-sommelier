@@ -88,7 +88,7 @@ class WebservTestClient : public WebservTestClientBaseClass {
         base::Bind(&LogServerOnlineStatus, false /* offline */));
 #elif WEBSERV_USE_BINDER
     webserver_ = Server::ConnectToServerViaBinder(
-        message_loop(),
+        brillo::MessageLoop::current(),
         base::Bind(&LogServerOnlineStatus, true /* online */),
         base::Bind(&LogServerOnlineStatus, false /* offline */));
 #endif  // WEBSERV_USE_DBUS || WEBSERV_USE_BINDER

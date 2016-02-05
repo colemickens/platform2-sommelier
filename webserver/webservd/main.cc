@@ -19,6 +19,10 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#ifdef WEBSERV_USE_BINDER
+#include <binderwrapper/binder_wrapper.h>
+#include <brillo/binder_watcher.h>
+#endif  // WEBSERV_USE_BINDER
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -28,10 +32,17 @@
 #endif  // !defined(__ANDROID__)
 #include <brillo/syslog_logging.h>
 
+#ifdef WEBSERV_USE_BINDER
+#include "webservd/binder_server.h"
+#endif  // WEBSERV_USE_BINDER
 #include "webservd/config.h"
 #include "webservd/log_manager.h"
 #include "webservd/server.h"
 #include "webservd/utils.h"
+
+#ifdef WEBSERV_USE_BINDER
+#include "webserv_common/binder_constants.h"
+#endif  // WEBSERV_USE_BINDER
 
 #if defined(__ANDROID__)
 #include "webservd/firewalld_firewall.h"
@@ -74,8 +85,34 @@ class Daemon final : public brillo::DBusServiceDaemon {
   }
 
  private:
+#ifdef WEBSERV_USE_BINDER
+  int OnInit() override {
+    int result = brillo::DBusServiceDaemon::OnInit();
+    if (result != EX_OK) {
+      return result;
+    }
+
+    android::BinderWrapper::Create();
+    if (!binder_watcher_.Init()) {
+        return EX_OSERR;
+    }
+
+    if (!android::BinderWrapper::Get()->RegisterService(
+            webservd::kWebserverBinderServiceName,
+            new webservd::BinderServer())) {
+      return EX_OSERR;
+    }
+
+
+    return EX_OK;
+  }
+#endif  // WEBSERV_USE_BINDER
+
   webservd::Config config_;
   std::unique_ptr<webservd::Server> server_;
+#ifdef WEBSERV_USE_BINDER
+  brillo::BinderWatcher binder_watcher_;
+#endif  // WEBSERV_USE_BINDER
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
