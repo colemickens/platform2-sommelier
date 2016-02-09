@@ -30,7 +30,7 @@ namespace {
 
 // If |command| is a valid command protobuf, provides the |command_data| and
 // returns true. Otherwise, returns false.
-bool ParseCommandProto(const std::vector<int8_t>& command,
+bool ParseCommandProto(const std::vector<uint8_t>& command,
                        std::string* command_data) {
   trunks::SendCommandRequest request_proto;
   if (!request_proto.ParseFromArray(command.data(), command.size()) ||
@@ -42,7 +42,7 @@ bool ParseCommandProto(const std::vector<int8_t>& command,
 }
 
 void CreateResponseProto(const std::string& data,
-                         std::vector<int8_t>* response) {
+                         std::vector<uint8_t>* response) {
   trunks::SendCommandResponse response_proto;
   response_proto.set_response(data);
   response->resize(response_proto.ByteSize());
@@ -75,7 +75,7 @@ TrunksBinderService::BinderServiceInternal::BinderServiceInternal(
     : service_(service) {}
 
 android::binder::Status TrunksBinderService::BinderServiceInternal::SendCommand(
-    const std::vector<int8_t>& command,
+    const std::vector<uint8_t>& command,
     const android::sp<android::trunks::ITrunksClient>& client) {
   auto callback =
       base::Bind(&TrunksBinderService::BinderServiceInternal::OnResponse,
@@ -93,7 +93,7 @@ android::binder::Status TrunksBinderService::BinderServiceInternal::SendCommand(
 void TrunksBinderService::BinderServiceInternal::OnResponse(
     const android::sp<android::trunks::ITrunksClient>& client,
     const std::string& response) {
-  std::vector<int8_t> binder_response;
+  std::vector<uint8_t> binder_response;
   CreateResponseProto(response, &binder_response);
   android::binder::Status status = client->OnCommandResponse(binder_response);
   if (!status.isOk()) {
@@ -104,8 +104,8 @@ void TrunksBinderService::BinderServiceInternal::OnResponse(
 
 android::binder::Status
 TrunksBinderService::BinderServiceInternal::SendCommandAndWait(
-    const std::vector<int8_t>& command,
-    std::vector<int8_t>* response) {
+    const std::vector<uint8_t>& command,
+    std::vector<uint8_t>* response) {
   std::string command_data;
   if (!ParseCommandProto(command, &command_data)) {
     LOG(ERROR) << "TrunksBinderService: Bad command data.";

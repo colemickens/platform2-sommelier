@@ -57,11 +57,11 @@ class TrunksBinderService : public brillo::Daemon {
 
     // ITrunks interface.
     android::binder::Status SendCommand(
-        const std::vector<int8_t>& command,
+        const std::vector<uint8_t>& command,
         const android::sp<android::trunks::ITrunksClient>& client) override;
     android::binder::Status SendCommandAndWait(
-        const std::vector<int8_t>& command,
-        std::vector<int8_t>* response) override;
+        const std::vector<uint8_t>& command,
+        std::vector<uint8_t>* response) override;
 
    private:
     void OnResponse(const android::sp<android::trunks::ITrunksClient>& client,

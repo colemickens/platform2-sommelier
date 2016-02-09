@@ -38,7 +38,7 @@ class ResponseObserver : public android::trunks::BnTrunksClient {
 
   // ITrunksClient interface.
   android::binder::Status OnCommandResponse(
-      const std::vector<int8_t>& response_proto_data) override {
+      const std::vector<uint8_t>& response_proto_data) override {
     trunks::SendCommandResponse response_proto;
     if (!response_proto.ParseFromArray(response_proto_data.data(),
                                        response_proto_data.size())) {
@@ -74,7 +74,7 @@ void TrunksBinderProxy::SendCommand(const std::string& command,
                                     const ResponseCallback& callback) {
   SendCommandRequest command_proto;
   command_proto.set_command(command);
-  std::vector<int8_t> command_proto_data;
+  std::vector<uint8_t> command_proto_data;
   command_proto_data.resize(command_proto.ByteSize());
   if (!command_proto.SerializeToArray(command_proto_data.data(),
                                       command_proto_data.size())) {
@@ -95,14 +95,14 @@ void TrunksBinderProxy::SendCommand(const std::string& command,
 std::string TrunksBinderProxy::SendCommandAndWait(const std::string& command) {
   SendCommandRequest command_proto;
   command_proto.set_command(command);
-  std::vector<int8_t> command_proto_data;
+  std::vector<uint8_t> command_proto_data;
   command_proto_data.resize(command_proto.ByteSize());
   if (!command_proto.SerializeToArray(command_proto_data.data(),
                                       command_proto_data.size())) {
     LOG(ERROR) << "TrunksBinderProxy: Failed to serialize protobuf.";
     return CreateErrorResponse(TRUNKS_RC_IPC_ERROR);
   }
-  std::vector<int8_t> response_proto_data;
+  std::vector<uint8_t> response_proto_data;
   android::binder::Status status = trunks_service_->SendCommandAndWait(
       command_proto_data, &response_proto_data);
   if (!status.isOk()) {
