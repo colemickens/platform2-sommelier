@@ -53,6 +53,7 @@ extern "C" {
 #include "cryptohome/crc32.h"
 
 #include <attr/xattr.h>
+#include <keyutils.h>
 #include <linux/fs.h>
 // Uses libvboot_host for accessing crossystem variables.
 #include <vboot/crossystem.h>
@@ -981,11 +982,6 @@ std::string Platform::GetHardwareID() {
 namespace ecryptfs {
 extern "C" {
 #include <ecryptfs.h>  // NOLINT(build/include_alpha)
-#include <keyutils.h>
-}
-
-long ClearUserKeyring() {  // NOLINT(runtime/int)
-  return keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
 }
 
 long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
@@ -1008,7 +1004,8 @@ long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
 }  // namespace ecryptfs
 
 bool Platform::ClearUserKeyring() {
-  return ecryptfs::ClearUserKeyring() == 0;
+  /* Flush cache to prevent corruption */
+  return (keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING) == 0);
 }
 
 bool Platform::AddEcryptfsAuthToken(
