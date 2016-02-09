@@ -99,7 +99,7 @@ class Daemon final : public brillo::DBusServiceDaemon {
 
     if (!android::BinderWrapper::Get()->RegisterService(
             webservd::kWebserverBinderServiceName,
-            new webservd::BinderServer())) {
+            new webservd::BinderServer(config_))) {
       return EX_OSERR;
     }
 
