@@ -1,0 +1,39 @@
+#!/bin/dash
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Crosh command that is only loaded when CUPS is present. Note that
+# this command is just a stopgap measure and should be dropped once
+# a proper UI is formed. See http://crbug.com/593139
+
+USAGE_cups='[--start | --stop | --status | --restart]'
+HELP_cups='
+  Start, stop, or check the status of the CUPS daemon. For initial development
+  only; will be removed in a future release.
+'
+cmd_cups() {
+  if [ $# -ne 1 ]; then
+    help "incorrect number of arguments: $@"
+    return 1
+  fi
+  local cmd="status"
+  case "$1" in
+    "--start")
+      cmd="start"
+      ;;
+    "--stop")
+      cmd="stop"
+      ;;
+    "--status")
+      cmd="status"
+      ;;
+    "--restart")
+      cmd="restart"
+      ;;
+    *)
+      help "unknown option: $1"
+      return 1
+  esac
+  sudo /sbin/initctl ${cmd} cupsd
+}

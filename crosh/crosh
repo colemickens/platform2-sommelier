@@ -99,6 +99,8 @@ load_extra_crosh() {
     . "${crosh_dir}/crosh-dev"
     ;;
   esac
+
+  [ -e "${crosh_dir}/crosh-cups" ] && . "${crosh_dir}/crosh-cups"
 }
 
 shell_read() {
