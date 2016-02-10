@@ -82,6 +82,17 @@ class BinderControl : public ControlInterface {
 
   FirewallProxyInterface* CreateFirewallProxy() override;
 
+  // Returns a Binder reference to the object uniquely identified by |rpc_id|,
+  // if it exists, NULL otherwise.
+  android::sp<android::IBinder> GetBinderForRpcIdentifier(
+      const std::string& rpc_id);
+
+  // Called by binder adaptors on destruction to clear their entries in
+  // |rpc_id_to_binder_map_|.
+  void OnAdaptorDestructed(const std::string& rpc_id) {
+    rpc_id_to_binder_map_.erase(rpc_id);
+  }
+
  private:
   static const char kNullRpcIdentifier[];
 

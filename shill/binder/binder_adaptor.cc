@@ -19,6 +19,7 @@
 #include <string>
 
 #include "android/system/connectivity/shill/IPropertyChangedCallback.h"
+#include "shill/binder/binder_control.h"
 #include "shill/logging.h"
 
 using android::sp;
@@ -34,10 +35,12 @@ static string ObjectID(BinderAdaptor* b) {
 }
 }  // namespace Logging
 
-BinderAdaptor::BinderAdaptor(BinderControl* control, const string& id)
-    : control_(control), id_(id) {
-  SLOG(this, 2) << "BinderAdaptor: " << id;
+BinderAdaptor::BinderAdaptor(BinderControl* control, const string& rpc_id)
+    : control_(control), rpc_id_(rpc_id) {
+  SLOG(this, 2) << "BinderAdaptor: " << rpc_id;
 }
+
+BinderAdaptor::~BinderAdaptor() { control_->OnAdaptorDestructed(rpc_id()); }
 
 void BinderAdaptor::AddPropertyChangedSignalHandler(
     const sp<IPropertyChangedCallback>& property_changed_callback) {

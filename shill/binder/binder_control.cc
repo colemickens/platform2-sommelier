@@ -49,6 +49,8 @@
 
 using android::BinderWrapper;
 using android::defaultServiceManager;
+using android::IBinder;
+using android::sp;
 using std::string;
 using std::to_string;
 
@@ -184,9 +186,22 @@ FirewallProxyInterface* BinderControl::CreateFirewallProxy() {
   return new ChromeosFirewalldProxy(proxy_bus_);
 }
 
+sp<IBinder> BinderControl::GetBinderForRpcIdentifier(
+    const std::string& rpc_id) {
+  const auto& it = rpc_id_to_binder_map_.find(rpc_id);
+  if (it == rpc_id_to_binder_map_.end()) {
+    return NULL;
+  }
+
+  return it->second;
+}
+
 template <typename Object, typename AdaptorInterface, typename Adaptor>
 AdaptorInterface* BinderControl::CreateAdaptor(Object* object) {
-  return new Adaptor(this, object, to_string(next_unique_binder_adaptor_id_++));
+  Adaptor* adaptor =
+      new Adaptor(this, object, to_string(next_unique_binder_adaptor_id_++));
+  rpc_id_to_binder_map_.emplace(adaptor->GetRpcIdentifier(), adaptor);
+  return adaptor;
 }
 
 }  // namespace shill

@@ -40,8 +40,8 @@ class BinderControl;
 // Superclass for all Binder-backed Adaptor objects.
 class BinderAdaptor {
  public:
-  explicit BinderAdaptor(BinderControl* control, const std::string& id);
-  ~BinderAdaptor() = default;
+  explicit BinderAdaptor(BinderControl* control, const std::string& rpc_id);
+  ~BinderAdaptor();
 
  protected:
   // Add a IPropertyChangedCallback binder to |property_changed_callbacks_|.
@@ -58,7 +58,7 @@ class BinderAdaptor {
   void SendPropertyChangedSignal(const std::string& name);
 
   BinderControl* control() { return control_; }
-  const std::string& id() { return id_; }
+  const std::string& rpc_id() { return rpc_id_; }
 
  private:
   // Storing this pointer is safe since the ordering of the members of
@@ -66,7 +66,7 @@ class BinderAdaptor {
   BinderControl* control_;
 
   // Used to uniquely identify this Binder adaptor.
-  std::string id_;
+  std::string rpc_id_;
 
   std::vector<android::sp<
       android::system::connectivity::shill::IPropertyChangedCallback>>
