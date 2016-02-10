@@ -53,7 +53,8 @@ class ServiceBinderAdaptor
       public BinderAdaptor,
       public ServiceAdaptorInterface {
  public:
-  ServiceBinderAdaptor(Service* service, const std::string& id);
+  ServiceBinderAdaptor(BinderControl* control, Service* service,
+                       const std::string& id);
   ~ServiceBinderAdaptor() override;
 
   // Implementation of ServiceAdaptorInterface.

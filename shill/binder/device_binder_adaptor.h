@@ -54,7 +54,8 @@ class DeviceBinderAdaptor
       public BinderAdaptor,
       public DeviceAdaptorInterface {
  public:
-DeviceBinderAdaptor(Device* device, const std::string& id);
+  DeviceBinderAdaptor(BinderControl* control, Device* device,
+                      const std::string& id);
   ~DeviceBinderAdaptor() override;
 
   // Implementation of DeviceAdaptorInterface.

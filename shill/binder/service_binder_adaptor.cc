@@ -37,9 +37,10 @@ static string ObjectID(ServiceBinderAdaptor* s) {
 }
 }  // namespace Logging
 
-ServiceBinderAdaptor::ServiceBinderAdaptor(Service* service,
+ServiceBinderAdaptor::ServiceBinderAdaptor(BinderControl* control,
+                                           Service* service,
                                            const std::string& id)
-    : BinderAdaptor(id), service_(service) {}
+    : BinderAdaptor(control, id), service_(service) {}
 
 ServiceBinderAdaptor::~ServiceBinderAdaptor() { service_ = nullptr; }
 

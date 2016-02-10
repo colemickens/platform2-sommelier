@@ -186,7 +186,7 @@ FirewallProxyInterface* BinderControl::CreateFirewallProxy() {
 
 template <typename Object, typename AdaptorInterface, typename Adaptor>
 AdaptorInterface* BinderControl::CreateAdaptor(Object* object) {
-  return new Adaptor(object, to_string(next_unique_binder_adaptor_id_++));
+  return new Adaptor(this, object, to_string(next_unique_binder_adaptor_id_++));
 }
 
 }  // namespace shill

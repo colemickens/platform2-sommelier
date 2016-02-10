@@ -35,10 +35,12 @@ class IPropertyChangedCallback;
 
 namespace shill {
 
+class BinderControl;
+
 // Superclass for all Binder-backed Adaptor objects.
 class BinderAdaptor {
  public:
-  explicit BinderAdaptor(const std::string& id);
+  explicit BinderAdaptor(BinderControl* control, const std::string& id);
   ~BinderAdaptor() = default;
 
  protected:
@@ -55,9 +57,14 @@ class BinderAdaptor {
   // binders in |property_changed_callbacks_|.
   void SendPropertyChangedSignal(const std::string& name);
 
+  BinderControl* control() { return control_; }
   const std::string& id() { return id_; }
 
  private:
+  // Storing this pointer is safe since the ordering of the members of
+  // DaemonTask ensure that the BinderControl will outlive all Binder adaptors.
+  BinderControl* control_;
+
   // Used to uniquely identify this Binder adaptor.
   std::string id_;
 

@@ -34,7 +34,8 @@ static string ObjectID(BinderAdaptor* b) {
 }
 }  // namespace Logging
 
-BinderAdaptor::BinderAdaptor(const string& id) : id_(id) {
+BinderAdaptor::BinderAdaptor(BinderControl* control, const string& id)
+    : control_(control), id_(id) {
   SLOG(this, 2) << "BinderAdaptor: " << id;
 }
 

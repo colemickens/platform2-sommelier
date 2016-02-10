@@ -41,9 +41,10 @@ static string ObjectID(ManagerBinderAdaptor* m) {
 }
 }  // namespace Logging
 
-ManagerBinderAdaptor::ManagerBinderAdaptor(Manager* manager,
+ManagerBinderAdaptor::ManagerBinderAdaptor(BinderControl* control,
+                                           Manager* manager,
                                            const std::string& id)
-    : BinderAdaptor(id), manager_(manager) {}
+    : BinderAdaptor(control, id), manager_(manager) {}
 
 ManagerBinderAdaptor::~ManagerBinderAdaptor() { manager_ = nullptr; }
 

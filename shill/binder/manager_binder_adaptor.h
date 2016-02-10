@@ -54,7 +54,8 @@ class ManagerBinderAdaptor
       public BinderAdaptor,
       public ManagerAdaptorInterface {
  public:
-  ManagerBinderAdaptor(Manager* manager, const std::string& id);
+  ManagerBinderAdaptor(BinderControl* control, Manager* manager,
+                       const std::string& id);
   ~ManagerBinderAdaptor() override;
 
   // Implementation of ManagerAdaptorInterface.

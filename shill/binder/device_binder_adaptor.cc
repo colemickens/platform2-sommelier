@@ -38,8 +38,9 @@ static string ObjectID(DeviceBinderAdaptor* d) {
 }
 }  // namespace Logging
 
-DeviceBinderAdaptor::DeviceBinderAdaptor(Device* device, const string& id)
-    : BinderAdaptor(id), device_(device) {}
+DeviceBinderAdaptor::DeviceBinderAdaptor(BinderControl* control, Device* device,
+                                         const string& id)
+    : BinderAdaptor(control, id), device_(device) {}
 
 DeviceBinderAdaptor::~DeviceBinderAdaptor() { device_ = nullptr; }
 
