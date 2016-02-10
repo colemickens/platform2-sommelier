@@ -38,10 +38,13 @@ interface IDevice {
    * The device guarantees that if it is connected, the
    * connected service will be returned by GetSelectedService().
    * However, GetSelectedService() could also return a null
-   * pointer to an service Binder, indicating no selected service.
+   * reference to an service Binder, indicating no selected service.
    * The SelectedService is also not guaranteed to be online
    * (e.g. it could be in the process of being connected, or an
    * error state).
+   *
+   * TODO(samueltan): make the return type @nullable when support for
+   * nullable Binders lands.
    *
    * @return Binder reference to the selected service
    */

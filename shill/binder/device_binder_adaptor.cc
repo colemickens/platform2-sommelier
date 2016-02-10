@@ -18,8 +18,10 @@
 
 #include <binder/Status.h>
 
+#include "shill/binder/binder_control.h"
 #include "shill/device.h"
 #include "shill/logging.h"
+#include "shill/refptr_types.h"
 
 using android::binder::Status;
 using android::IBinder;
@@ -109,14 +111,20 @@ void DeviceBinderAdaptor::EmitRpcIdentifierArrayChanged(
 }
 
 Status DeviceBinderAdaptor::GetInterface(string* _aidl_return) {
-  // STUB IMPLEMENTATION.
-  // TODO(samueltan): replace this with proper implementation.
+  SLOG(this, 2) << __func__;
+  *_aidl_return = device_->link_name();
   return Status::ok();
 }
 
 Status DeviceBinderAdaptor::GetSelectedService(sp<IBinder>* _aidl_return) {
-  // STUB IMPLEMENTATION.
-  // TODO(samueltan): replace this with proper implementation.
+  SLOG(this, 2) << __func__;
+  ServiceRefPtr selected_service = device_->selected_service();
+  if (!selected_service) {
+    *_aidl_return = NULL;
+  } else {
+    *_aidl_return = control()->GetBinderForRpcIdentifier(
+        selected_service->GetRpcIdentifier());
+  }
   return Status::ok();
 }
 

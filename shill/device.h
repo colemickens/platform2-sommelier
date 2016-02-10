@@ -358,6 +358,8 @@ class Device : public base::RefCounted<Device> {
   // This call will send Roam command to wpa_supplicant.
   virtual bool RequestRoam(const std::string& addr, Error* error);
 
+  const ServiceRefPtr& selected_service() const { return selected_service_; }
+
  protected:
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;
@@ -630,8 +632,6 @@ class Device : public base::RefCounted<Device> {
 
   // Indicates if the selected service is configured with static nameservers.
   bool IsUsingStaticNameServers() const;
-
-  const ServiceRefPtr& selected_service() const { return selected_service_; }
 
   void HelpRegisterConstDerivedString(
       const std::string& name,
