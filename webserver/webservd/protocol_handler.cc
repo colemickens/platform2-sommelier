@@ -152,7 +152,7 @@ std::string ProtocolHandler::FindRequestHandler(
   return handler_id;
 }
 
-bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
+bool ProtocolHandler::Start(const Config::ProtocolHandler& config) {
   if (server_) {
     LOG(ERROR) << "Protocol handler is already running.";
     return false;
@@ -160,16 +160,16 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
 
   // If using TLS, the certificate, private key and fingerprint must be
   // provided.
-  CHECK_EQ(config->use_tls, !config->private_key.empty());
-  CHECK_EQ(config->use_tls, !config->certificate.empty());
-  CHECK_EQ(config->use_tls, !config->certificate_fingerprint.empty());
+  CHECK_EQ(config.use_tls, !config.private_key.empty());
+  CHECK_EQ(config.use_tls, !config.certificate.empty());
+  CHECK_EQ(config.use_tls, !config.certificate_fingerprint.empty());
 
-  LOG(INFO) << "Starting " << (config->use_tls ? "HTTPS" : "HTTP")
-            << " protocol handler on port: " << config->port;
+  LOG(INFO) << "Starting " << (config.use_tls ? "HTTPS" : "HTTP")
+            << " protocol handler on port: " << config.port;
 
-  port_ = config->port;
-  protocol_ = (config->use_tls ? "https" : "http");
-  certificate_fingerprint_ = config->certificate_fingerprint;
+  port_ = config.port;
+  protocol_ = (config.use_tls ? "https" : "http");
+  certificate_fingerprint_ = config.certificate_fingerprint;
 
   auto callback_addr =
       reinterpret_cast<intptr_t>(&ServerHelper::RequestCompleted);
@@ -194,10 +194,8 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
     {MHD_OPTION_NOTIFY_COMPLETED, callback_addr, nullptr},
   };
 
-  if (config->socket_fd != -1) {
-    // Take ownership of the socket.
-    int socket_fd = config->socket_fd;
-    config->socket_fd = -1;
+  if (config.socket_fd != -1) {
+    int socket_fd = config.socket_fd;
 
     // Set some more socket options. These options were set in libmicrohttpd.
     int on = 1;
@@ -215,10 +213,10 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
     // Bind socket to the port.
     sockaddr_in6 addr = {};
     addr.sin6_family = AF_INET6;
-    addr.sin6_port = htons(config->port);
+    addr.sin6_port = htons(config.port);
     if (bind(socket_fd, reinterpret_cast<const sockaddr*>(&addr),
              sizeof(addr)) < 0) {
-      PLOG(ERROR) << "Failed to bind the socket to port " << config->port;
+      PLOG(ERROR) << "Failed to bind the socket to port " << config.port;
       close(socket_fd);
       return false;
     }
@@ -247,12 +245,12 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
 
   // libmicrohttpd expects both the key and certificate to be zero-terminated
   // strings. Make sure they are terminated properly.
-  brillo::SecureBlob private_key_copy = config->private_key;
-  brillo::Blob certificate_copy = config->certificate;
+  brillo::SecureBlob private_key_copy = config.private_key;
+  brillo::Blob certificate_copy = config.certificate;
   private_key_copy.push_back(0);
   certificate_copy.push_back(0);
 
-  if (config->use_tls) {
+  if (config.use_tls) {
     flags |= MHD_USE_SSL;
     options.push_back(
         MHD_OptionItem{MHD_OPTION_HTTPS_MEM_KEY, 0, private_key_copy.data()});
@@ -262,11 +260,11 @@ bool ProtocolHandler::Start(Config::ProtocolHandler* config) {
 
   options.push_back(MHD_OptionItem{MHD_OPTION_END, 0, nullptr});
 
-  server_ = MHD_start_daemon(flags, config->port, nullptr, nullptr,
+  server_ = MHD_start_daemon(flags, config.port, nullptr, nullptr,
                              &ServerHelper::ConnectionHandler, this,
                              MHD_OPTION_ARRAY, options.data(), MHD_OPTION_END);
   if (!server_) {
-    PLOG(ERROR) << "Failed to create protocol handler on port " << config->port;
+    PLOG(ERROR) << "Failed to create protocol handler on port " << config.port;
     return false;
   }
   server_interface_->ProtocolHandlerStarted(this);

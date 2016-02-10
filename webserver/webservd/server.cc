@@ -158,7 +158,7 @@ void Server::ProtocolHandlerStopped(ProtocolHandler* handler) {
 void Server::CreateProtocolHandler(Config::ProtocolHandler* handler_config) {
   std::unique_ptr<ProtocolHandler> protocol_handler{
       new ProtocolHandler{handler_config->name, this}};
-  if (protocol_handler->Start(handler_config))
+  if (protocol_handler->Start(*handler_config))
     protocol_handlers_.push_back(std::move(protocol_handler));
 }
 
