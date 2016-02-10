@@ -131,6 +131,11 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
       base::FilePath("/var/cache/device_local_account_extensions"),
       uid, gid, 0700));
 
+  // Create the directory where the Quirks Client can store downloaded
+  // icc and other display profiles.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/display_profiles"), uid, gid, 0700));
+
   // Create the directory for shared installed extensions.
   // Shared extensions are validated at runtime by the browser.
   // These extensions are read and written by chronos.
