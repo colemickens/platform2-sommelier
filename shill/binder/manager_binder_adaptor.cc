@@ -18,7 +18,6 @@
 
 #include <binder/Status.h>
 #include <binderwrapper/binder_wrapper.h>
-#include <utils/String16.h>
 #include <utils/String8.h>
 
 #include "shill/logging.h"
@@ -28,7 +27,6 @@ using android::binder::Status;
 using android::BinderWrapper;
 using android::IBinder;
 using android::sp;
-using android::String16;
 using android::String8;
 using android::system::connectivity::shill::IPropertyChangedCallback;
 using std::string;
@@ -96,26 +94,27 @@ void ManagerBinderAdaptor::EmitRpcIdentifierArrayChanged(
   SendPropertyChangedSignal(name);
 }
 
-Status ManagerBinderAdaptor::SetupApModeInterface(String16* _aidl_return) {
+Status ManagerBinderAdaptor::SetupApModeInterface(std::string* _aidl_return) {
   // STUB IMPLEMENTATION.
   return Status::ok();
 }
 
-Status ManagerBinderAdaptor::SetupStationModeInterface(String16* _aidl_return) {
-  // STUB IMPLEMENTATION.
-  // TODO(samueltan): replace this with proper implementation.
-  return Status::ok();
-}
-
-Status ManagerBinderAdaptor::ClaimInterface(const String16& claimer_name,
-                                            const String16& interface_name) {
+Status ManagerBinderAdaptor::SetupStationModeInterface(
+    std::string* _aidl_return) {
   // STUB IMPLEMENTATION.
   // TODO(samueltan): replace this with proper implementation.
   return Status::ok();
 }
 
-Status ManagerBinderAdaptor::ReleaseInterface(const String16& claimer_name,
-                                              const String16& interface_name) {
+Status ManagerBinderAdaptor::ClaimInterface(const std::string& claimer_name,
+                                            const std::string& interface_name) {
+  // STUB IMPLEMENTATION.
+  // TODO(samueltan): replace this with proper implementation.
+  return Status::ok();
+}
+
+Status ManagerBinderAdaptor::ReleaseInterface(
+    const std::string& claimer_name, const std::string& interface_name) {
   // STUB IMPLEMENTATION.
   // TODO(samueltan): replace this with proper implementation.
   return Status::ok();

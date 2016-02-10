@@ -18,13 +18,10 @@
 
 #include <string>
 
-#include <utils/String16.h>
-
 #include "android/system/connectivity/shill/IPropertyChangedCallback.h"
 #include "shill/logging.h"
 
 using android::sp;
-using android::String16;
 using android::system::connectivity::shill::IPropertyChangedCallback;
 using std::string;
 
@@ -48,7 +45,7 @@ void BinderAdaptor::AddPropertyChangedSignalHandler(
 
 void BinderAdaptor::SendPropertyChangedSignal(const string& name) {
   for (const auto& callback : property_changed_callbacks_) {
-    callback->OnPropertyChanged(String16(name.c_str()));
+    callback->OnPropertyChanged(name);
   }
 }
 

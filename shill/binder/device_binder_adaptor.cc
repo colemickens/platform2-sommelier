@@ -17,7 +17,6 @@
 #include "shill/binder/device_binder_adaptor.h"
 
 #include <binder/Status.h>
-#include <utils/String16.h>
 
 #include "shill/device.h"
 #include "shill/logging.h"
@@ -25,7 +24,6 @@
 using android::binder::Status;
 using android::IBinder;
 using android::sp;
-using android::String16;
 using android::system::connectivity::shill::IPropertyChangedCallback;
 using std::string;
 using std::vector;
@@ -109,7 +107,7 @@ void DeviceBinderAdaptor::EmitRpcIdentifierArrayChanged(
   SendPropertyChangedSignal(name);
 }
 
-Status DeviceBinderAdaptor::GetInterface(String16* _aidl_return) {
+Status DeviceBinderAdaptor::GetInterface(string* _aidl_return) {
   // STUB IMPLEMENTATION.
   // TODO(samueltan): replace this with proper implementation.
   return Status::ok();

@@ -25,7 +25,7 @@ interface IDevice {
    *
    * @return The device interface
    */
-  String GetInterface();
+  @utf8InCpp String GetInterface();
 
   /**
    * Binder reference to the currently selected service.

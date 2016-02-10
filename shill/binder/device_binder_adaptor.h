@@ -29,7 +29,6 @@
 #include "shill/binder/binder_adaptor.h"
 
 namespace android {
-class String16;
 namespace binder {
 class Status;
 }  // namespace binder
@@ -80,8 +79,7 @@ DeviceBinderAdaptor(Device* device, const std::string& id);
       const std::string& name, const std::vector<std::string>& value) override;
 
   // Implementation of BnDevice.
-  android::binder::Status GetInterface(
-      android::String16* _aidl_return) override;
+  android::binder::Status GetInterface(std::string* _aidl_return) override;
   android::binder::Status GetSelectedService(
       android::sp<IBinder>* _aidl_return) override;
   android::binder::Status RegisterPropertyChangedSignalHandler(

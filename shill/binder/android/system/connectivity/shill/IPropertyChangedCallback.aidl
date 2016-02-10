@@ -26,5 +26,5 @@ interface IPropertyChangedCallback {
    *
    * @param name The property whose value changed.
    */
-  oneway void OnPropertyChanged(String name);
+  oneway void OnPropertyChanged(@utf8InCpp String name);
 }

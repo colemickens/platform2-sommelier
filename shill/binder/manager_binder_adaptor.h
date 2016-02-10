@@ -28,7 +28,6 @@
 #include "shill/binder/binder_adaptor.h"
 
 namespace android {
-class String16;
 namespace binder {
 class Status;
 }  // namespace binder
@@ -75,21 +74,18 @@ class ManagerBinderAdaptor
       const std::string& name, const std::vector<std::string>& value) override;
 
   // Implementation of BnManager.
-  android::binder::Status SetupApModeInterface(android::String16* _aidl_return);
-  android::binder::Status SetupStationModeInterface(
-      android::String16* _aidl_return);
-  android::binder::Status ClaimInterface(
-      const android::String16& claimer_name,
-      const android::String16& interface_name);
-  android::binder::Status ReleaseInterface(
-      const android::String16& claimer_name,
-      const android::String16& interface_name);
+  android::binder::Status SetupApModeInterface(std::string* _aidl_return);
+  android::binder::Status SetupStationModeInterface(std::string* _aidl_return);
+  android::binder::Status ClaimInterface(const std::string& claimer_name,
+                                         const std::string& interface_name);
+  android::binder::Status ReleaseInterface(const std::string& claimer_name,
+                                           const std::string& interface_name);
   android::binder::Status ConfigureService(
       const android::os::PersistableBundle& properties,
       android::sp<android::IBinder>* _aidl_return);
   android::binder::Status RequestScan(int32_t type);
   android::binder::Status GetDevices(
-      ::std::vector<android::sp<android::IBinder>>* _aidl_return);
+      std::vector<android::sp<android::IBinder>>* _aidl_return);
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&

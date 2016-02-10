@@ -35,7 +35,7 @@ interface IManager {
    *
    * @return Interface name on success, empty string on error
    */
-  String SetupApModeInterface();
+  @utf8InCpp String SetupApModeInterface();
 
   /**
    * (Brillo only) Ask WiFi driver to setup a station mode interface.
@@ -44,7 +44,7 @@ interface IManager {
    *
    * @return Interface name on success, empty string on error
    */
-  String SetupStationModeInterface();
+  @utf8InCpp String SetupStationModeInterface();
 
   /**
    * Assign the ownership of a device |interface_name| to the
@@ -55,7 +55,8 @@ interface IManager {
    * @param claimer_name Name of the claimer
    * @param interface_name Name of the interface to be claimed
    */
-  void ClaimInterface(String claimer_name, String interface_name);
+  void ClaimInterface(
+      @utf8InCpp String claimer_name, @utf8InCpp String interface_name);
 
   /**
    * Take ownership of a device |interface_name| from
@@ -65,7 +66,8 @@ interface IManager {
    * @param claimer_name Name of the claimer
    * @param interface_name Name of the interface to be released
    */
-  void ReleaseInterface(String claimer_name, String interface_name);
+  void ReleaseInterface(@utf8InCpp String claimer_name,
+      @utf8InCpp String interface_name);
 
   /**
    * Update the configuration of a service in memory
