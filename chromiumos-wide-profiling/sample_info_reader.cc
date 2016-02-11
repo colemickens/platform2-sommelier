@@ -42,12 +42,15 @@ bool IsSupportedEventType(uint32_t type) {
 void ReadReadInfo(DataReader* reader,
                   uint64_t read_format,
                   struct perf_sample* sample) {
+  // Currently this only supports the !PERF_FORMAT_GROUP case (see description
+  // in perf_event.h).
+  reader->ReadUint64(&sample->read.one.value);
   if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
     reader->ReadUint64(&sample->read.time_enabled);
   if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
     reader->ReadUint64(&sample->read.time_running);
   if (read_format & PERF_FORMAT_ID)
-    reader->ReadUint64(&sample->read.id);
+    reader->ReadUint64(&sample->read.one.id);
 }
 
 // Read call chain info from perf data.  Corresponds to sample format type
@@ -384,12 +387,13 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     // TODO(cwp-team): support grouped read info.
     if (attr.read_format & PERF_FORMAT_GROUP)
       return 0;
+    *array++ = sample.read.one.value;
     if (attr.read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
       *array++ = sample.read.time_enabled;
     if (attr.read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
       *array++ = sample.read.time_running;
     if (attr.read_format & PERF_FORMAT_ID)
-      *array++ = sample.read.id;
+      *array++ = sample.read.one.id;
   }
 
   // { u64                   nr,

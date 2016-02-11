@@ -258,13 +258,7 @@ struct perf_sample {
 	struct branch_stack *branch_stack;
 	//struct regs_dump  user_regs;  // See struct regs_dump above.
 	struct stack_dump user_stack;
-	struct {  // Copied from struct read_event.
-		u64 time_enabled;
-		u64 time_running;
-		u64 id;
-	} read;
-	// TODO(dhsharp) replace struct above with:
-	// struct sample_read read;
+	struct sample_read read;
 
 	perf_sample() : raw_data(NULL),
 			callchain(NULL),

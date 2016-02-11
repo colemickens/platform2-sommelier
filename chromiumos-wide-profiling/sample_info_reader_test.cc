@@ -204,4 +204,138 @@ TEST(SampleInfoReaderTest, ReadMmapEvent) {
   EXPECT_EQ(9, sample.cpu);
 }
 
+TEST(SampleInfoReaderTest, ReadReadInfoAllFields) {
+  struct perf_event_attr attr = {0};
+  attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID | PERF_SAMPLE_READ;
+  attr.read_format = PERF_FORMAT_TOTAL_TIME_ENABLED |
+                     PERF_FORMAT_TOTAL_TIME_RUNNING |
+                     PERF_FORMAT_ID;
+
+  SampleInfoReader reader(attr, false /* read_cross_endian */);
+
+  // PERF_RECORD_SAMPLE
+  const u64 sample_event_array[] = {
+    0xffffffff01234567,                    // IP
+    PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
+    // From kernel/perf_event.h:
+    // struct read_format {
+    //   { u64  value;
+    //     { u64  time_enabled; } && PERF_FORMAT_TOTAL_TIME_ENABLED
+    //     { u64  time_running; } && PERF_FORMAT_TOTAL_TIME_RUNNING
+    //     { u64  id;           } && PERF_FORMAT_ID
+    //   } && !PERF_FORMAT_GROUP
+    // };
+    1000000,                               // READ: value
+    1415837014*1000000000ULL,              // READ: time_enabled
+    1234567890*1000000000ULL,              // READ: time_running
+    0xabcdef,                              // READ: id
+  };
+  sample_event sample_event_struct = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = 0,
+      .size = sizeof(sample_event) + sizeof(sample_event_array),
+    }
+  };
+
+  stringstream input;
+  input.write(reinterpret_cast<const char*>(&sample_event_struct),
+              sizeof(sample_event_struct));
+  input.write(reinterpret_cast<const char*>(sample_event_array),
+              sizeof(sample_event_array));
+  string input_string = input.str();
+  const event_t& event = *reinterpret_cast<const event_t*>(input_string.data());
+
+  perf_sample sample;
+  ASSERT_TRUE(reader.ReadPerfSampleInfo(event, &sample));
+
+  EXPECT_EQ(0xffffffff01234567, sample.ip);
+  EXPECT_EQ(0x68d, sample.pid);
+  EXPECT_EQ(0x68e, sample.tid);
+  EXPECT_EQ(1415837014*1000000000ULL, sample.read.time_enabled);
+  EXPECT_EQ(1234567890*1000000000ULL, sample.read.time_running);
+  EXPECT_EQ(0xabcdef, sample.read.one.id);
+  EXPECT_EQ(1000000, sample.read.one.value);
+}
+
+TEST(SampleInfoReaderTest, ReadReadInfoOmitTotalTimeFields) {
+  struct perf_event_attr attr = {0};
+  attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID | PERF_SAMPLE_READ;
+  // Omit the PERF_FORMAT_TOTAL_TIME_* fields.
+  attr.read_format = PERF_FORMAT_ID;
+
+  SampleInfoReader reader(attr, false /* read_cross_endian */);
+
+  // PERF_RECORD_SAMPLE
+  const u64 sample_event_array[] = {
+    0xffffffff01234567,                    // IP
+    PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
+    1000000,                               // READ: value
+    0xabcdef,                              // READ: id
+  };
+  sample_event sample_event_struct = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = 0,
+      .size = sizeof(sample_event) + sizeof(sample_event_array),
+    }
+  };
+
+  stringstream input;
+  input.write(reinterpret_cast<const char*>(&sample_event_struct),
+              sizeof(sample_event_struct));
+  input.write(reinterpret_cast<const char*>(sample_event_array),
+              sizeof(sample_event_array));
+  string input_string = input.str();
+  const event_t& event = *reinterpret_cast<const event_t*>(input_string.data());
+
+  perf_sample sample;
+  ASSERT_TRUE(reader.ReadPerfSampleInfo(event, &sample));
+
+  EXPECT_EQ(0xffffffff01234567, sample.ip);
+  EXPECT_EQ(0x68d, sample.pid);
+  EXPECT_EQ(0x68e, sample.tid);
+  EXPECT_EQ(0xabcdef, sample.read.one.id);
+  EXPECT_EQ(1000000, sample.read.one.value);
+}
+
+TEST(SampleInfoReaderTest, ReadReadInfoValueFieldOnly) {
+  struct perf_event_attr attr = {0};
+  attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID | PERF_SAMPLE_READ;
+  // Omit all optional fields. The |value| field still remains.
+  attr.read_format = 0;
+
+  SampleInfoReader reader(attr, false /* read_cross_endian */);
+
+  // PERF_RECORD_SAMPLE
+  const u64 sample_event_array[] = {
+    0xffffffff01234567,                    // IP
+    PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
+    1000000,                               // READ: value
+  };
+  sample_event sample_event_struct = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = 0,
+      .size = sizeof(sample_event) + sizeof(sample_event_array),
+    }
+  };
+
+  stringstream input;
+  input.write(reinterpret_cast<const char*>(&sample_event_struct),
+              sizeof(sample_event_struct));
+  input.write(reinterpret_cast<const char*>(sample_event_array),
+              sizeof(sample_event_array));
+  string input_string = input.str();
+  const event_t& event = *reinterpret_cast<const event_t*>(input_string.data());
+
+  perf_sample sample;
+  ASSERT_TRUE(reader.ReadPerfSampleInfo(event, &sample));
+
+  EXPECT_EQ(0xffffffff01234567, sample.ip);
+  EXPECT_EQ(0x68d, sample.pid);
+  EXPECT_EQ(0x68e, sample.tid);
+  EXPECT_EQ(1000000, sample.read.one.value);
+}
+
 }  // namespace quipper
