@@ -16,6 +16,10 @@
 
 #include "shill/error.h"
 
+#if defined(ENABLE_BINDER)
+#include <binder/Status.h>
+#include <utils/String8.h>
+#endif  // ENABLE_BINDER
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -25,6 +29,9 @@
 #include <brillo/errors/error_codes.h>
 #include <gtest/gtest.h>
 
+#if defined(ENABLE_BINDER)
+using android::binder::Status;
+#endif  // ENABLE_BINDER
 using testing::Test;
 
 namespace shill {
@@ -92,6 +99,20 @@ TEST_F(ErrorTest, ToChromeosError) {
   EXPECT_EQ(kErrorResultPermissionDenied, chromeos_error->GetCode());
   EXPECT_EQ(kMessage, chromeos_error->GetMessage());
 }
+
+#if defined(ENABLE_BINDER)
+TEST_F(ErrorTest, ToBinderStatus) {
+  Status ret_status_0 = Error().ToBinderStatus();
+  EXPECT_EQ(Status::EX_NONE, ret_status_0.exceptionCode());
+
+  static const std::string kMessage = "Test error message";
+  Status ret_status_1 =
+      Error(Error::kPermissionDenied, kMessage).ToBinderStatus();
+  EXPECT_EQ(Status::EX_SERVICE_SPECIFIC, ret_status_1.exceptionCode());
+  EXPECT_EQ(Error::kPermissionDenied, ret_status_1.serviceSpecificErrorCode());
+  EXPECT_EQ(kMessage, ret_status_1.exceptionMessage().string());
+}
+#endif  // ENABLE_BINDER
 
 TEST_F(ErrorTest, IsSuccessFailure) {
   EXPECT_TRUE(Error().IsSuccess());

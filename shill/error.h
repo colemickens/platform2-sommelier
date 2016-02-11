@@ -20,6 +20,10 @@
 #include <memory>
 #include <string>
 
+#if defined(ENABLE_BINDER)
+#include <binder/Status.h>
+#include <utils/String8.h>
+#endif  // ENABLE_BINDER
 #include <base/location.h>
 #include <base/macros.h>
 
@@ -85,6 +89,10 @@ class Error {
   // Sets the Chromeos |error| and returns true if Error represents failure.
   // Leaves error unchanged, and returns false otherwise.
   bool ToChromeosError(brillo::ErrorPtr* error) const;
+
+#if defined(ENABLE_BINDER)
+  android::binder::Status ToBinderStatus() const;
+#endif  // ENABLE_BINDER
 
   Type type() const { return type_; }
   const std::string& message() const { return message_; }

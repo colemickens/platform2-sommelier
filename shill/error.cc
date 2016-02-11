@@ -115,6 +115,17 @@ bool Error::ToChromeosError(brillo::ErrorPtr* error) const {
   return false;
 }
 
+#if defined(ENABLE_BINDER)
+android::binder::Status Error::ToBinderStatus() const {
+  if (IsSuccess()) {
+    return android::binder::Status::ok();
+  }
+
+  return android::binder::Status::fromServiceSpecificError(
+      type_, android::String8(message_.c_str()));
+}
+#endif  // ENABLE_BINDER
+
 // static
 string Error::GetDBusResult(Type type) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
