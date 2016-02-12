@@ -112,6 +112,25 @@
     },
   ],
   'conditions': [
+    ['USE_arc == 1', {
+      'targets': [
+        {
+          'target_name': 'core_collector',
+          'type': 'executable',
+          'variables': {
+            'deps': [
+              'breakpad-client',
+              'libchrome-<(libbase_ver)'
+            ],
+          },
+          'sources': [
+            'core-collector/core_collector.cc',
+            'core-collector/coredump_writer.cc',
+            'core-collector/coredump_writer.h',
+          ],
+        },
+      ],
+    }],
     ['USE_test == 1', {
       'targets': [
         {
