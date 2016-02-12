@@ -52,9 +52,15 @@ class KeyValueStore {
   bool IsEmpty();
 
   bool ContainsBool(const std::string& name) const;
+  bool ContainsBools(const std::string& name) const;
   bool ContainsByteArrays(const std::string& name) const;
   bool ContainsInt(const std::string& name) const;
+  bool ContainsInts(const std::string& name) const;
   bool ContainsInt16(const std::string& name) const;
+  bool ContainsInt64(const std::string& name) const;
+  bool ContainsInt64s(const std::string& name) const;
+  bool ContainsDouble(const std::string& name) const;
+  bool ContainsDoubles(const std::string& name) const;
   bool ContainsKeyValueStore(const std::string& name) const;
   bool ContainsRpcIdentifier(const std::string& name) const;
   bool ContainsRpcIdentifiers(const std::string& name) const;
@@ -69,10 +75,16 @@ class KeyValueStore {
   bool Contains(const std::string& name) const;
 
   bool GetBool(const std::string& name) const;
+  const std::vector<bool>& GetBools(const std::string& name) const;
   const std::vector<std::vector<uint8_t>>& GetByteArrays(
       const std::string& name) const;
   int32_t GetInt(const std::string& name) const;
+  const std::vector<int32_t>& GetInts(const std::string& name) const;
   int16_t GetInt16(const std::string& name) const;
+  int64_t GetInt64(const std::string& name) const;
+  const std::vector<int64_t>& GetInt64s(const std::string& name) const;
+  double GetDouble(const std::string& name) const;
+  const std::vector<double>& GetDoubles(const std::string& name) const;
   const KeyValueStore& GetKeyValueStore(const std::string& name) const;
   const std::string& GetRpcIdentifier(const std::string& name) const;
   std::vector<std::string> GetRpcIdentifiers(const std::string& name) const;
@@ -91,10 +103,16 @@ class KeyValueStore {
   // function instead.  This way, we don't need to add new functions every
   // time we need to support a new type.
   void SetBool(const std::string& name, bool value);
+  void SetBools(const std::string& name, const std::vector<bool>& value);
   void SetByteArrays(const std::string& name,
                      const std::vector<std::vector<uint8_t>>& value);
   void SetInt(const std::string& name, int32_t value);
+  void SetInts(const std::string& name, const std::vector<int32_t>& value);
   void SetInt16(const std::string& name, int16_t value);
+  void SetInt64(const std::string& name, int64_t value);
+  void SetInt64s(const std::string& name, const std::vector<int64_t>& value);
+  void SetDouble(const std::string& name, double value);
+  void SetDoubles(const std::string& name, const std::vector<double>& value);
   void SetKeyValueStore(const std::string& name, const KeyValueStore& value);
   void SetRpcIdentifier(const std::string& name, const std::string& value);
   void SetRpcIdentifiers(const std::string& name,

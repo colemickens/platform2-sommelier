@@ -53,6 +53,11 @@ bool KeyValueStore::ContainsBool(const string& name) const {
       properties_.find(name)->second.IsTypeCompatible<bool>();
 }
 
+bool KeyValueStore::ContainsBools(const string& name) const {
+  return ContainsKey(properties_, name) &&
+      properties_.find(name)->second.IsTypeCompatible<vector<bool>>();
+}
+
 bool KeyValueStore::ContainsByteArrays(const string& name) const {
   return ContainsKey(properties_, name) &&
       properties_.find(name)->second
@@ -64,9 +69,34 @@ bool KeyValueStore::ContainsInt(const string& name) const {
       properties_.find(name)->second.IsTypeCompatible<int32_t>();
 }
 
+bool KeyValueStore::ContainsInts(const string& name) const {
+  return ContainsKey(properties_, name) &&
+      properties_.find(name)->second.IsTypeCompatible<vector<int32_t>>();
+}
+
 bool KeyValueStore::ContainsInt16(const string& name) const {
   return ContainsKey(properties_, name) &&
       properties_.find(name)->second.IsTypeCompatible<int16_t>();
+}
+
+bool KeyValueStore::ContainsInt64(const string& name) const {
+  return ContainsKey(properties_, name) &&
+      properties_.find(name)->second.IsTypeCompatible<int64_t>();
+}
+
+bool KeyValueStore::ContainsInt64s(const string& name) const {
+  return ContainsKey(properties_, name) &&
+      properties_.find(name)->second.IsTypeCompatible<vector<int64_t>>();
+}
+
+bool KeyValueStore::ContainsDouble(const string& name) const {
+  return ContainsKey(properties_, name) &&
+      properties_.find(name)->second.IsTypeCompatible<double>();
+}
+
+bool KeyValueStore::ContainsDoubles(const string& name) const {
+  return ContainsKey(properties_, name) &&
+      properties_.find(name)->second.IsTypeCompatible<vector<double>>();
 }
 
 bool KeyValueStore::ContainsKeyValueStore(const string& name) const {
@@ -136,6 +166,13 @@ bool KeyValueStore::GetBool(const string& name) const {
   return it->second.Get<bool>();
 }
 
+const vector<bool>& KeyValueStore::GetBools(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<vector<bool>>())
+      << "for bools property " << name;
+  return it->second.Get<vector<bool>>();
+}
+
 const vector<vector<uint8_t>>& KeyValueStore::GetByteArrays(
     const string& name) const {
   const auto it(properties_.find(name));
@@ -152,11 +189,49 @@ int32_t KeyValueStore::GetInt(const string& name) const {
   return it->second.Get<int32_t>();
 }
 
+const vector<int32_t>& KeyValueStore::GetInts(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<vector<int32_t>>())
+      << "for ints property " << name;
+  return it->second.Get<vector<int32_t>>();
+}
+
 int16_t KeyValueStore::GetInt16(const string& name) const {
   const auto it(properties_.find(name));
   CHECK(it != properties_.end() && it->second.IsTypeCompatible<int16_t>())
       << "for int16 property " << name;
   return it->second.Get<int16_t>();
+}
+
+int64_t KeyValueStore::GetInt64(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<int64_t>())
+      << "for int64 property " << name;
+  return it->second.Get<int64_t>();
+}
+
+const vector<int64_t>& KeyValueStore::GetInt64s(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<vector<int64_t>>())
+      << "for int64s property " << name;
+  return it->second.Get<vector<int64_t>>();
+}
+
+double KeyValueStore::GetDouble(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end() && it->second.IsTypeCompatible<double>())
+      << "for double property " << name;
+  return it->second.Get<double>();
+}
+
+const vector<double>& KeyValueStore::GetDoubles(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end() &&
+        it->second.IsTypeCompatible<vector<double>>())
+      << "for doubles property " << name;
+  return it->second.Get<vector<double>>();
 }
 
 const KeyValueStore& KeyValueStore::GetKeyValueStore(const string& name) const {
@@ -254,6 +329,10 @@ void KeyValueStore::SetBool(const string& name, bool value) {
   properties_[name] = brillo::Any(value);
 }
 
+void KeyValueStore::SetBools(const string& name, const vector<bool>& value) {
+  properties_[name] = brillo::Any(value);
+}
+
 void KeyValueStore::SetByteArrays(const string& name,
                                   const vector<vector<uint8_t>>& value) {
   properties_[name] = brillo::Any(value);
@@ -263,7 +342,29 @@ void KeyValueStore::SetInt(const string& name, int32_t value) {
   properties_[name] = brillo::Any(value);
 }
 
+void KeyValueStore::SetInts(const string& name, const vector<int32_t>& value) {
+  properties_[name] = brillo::Any(value);
+}
+
 void KeyValueStore::SetInt16(const string& name, int16_t value) {
+  properties_[name] = brillo::Any(value);
+}
+
+void KeyValueStore::SetInt64(const string& name, int64_t value) {
+  properties_[name] = brillo::Any(value);
+}
+
+void KeyValueStore::SetInt64s(const string& name,
+                              const vector<int64_t>& value) {
+  properties_[name] = brillo::Any(value);
+}
+
+void KeyValueStore::SetDouble(const string& name, double value) {
+  properties_[name] = brillo::Any(value);
+}
+
+void KeyValueStore::SetDoubles(const string& name,
+                               const vector<double>& value) {
   properties_[name] = brillo::Any(value);
 }
 
