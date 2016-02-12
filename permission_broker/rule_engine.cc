@@ -49,9 +49,12 @@ Rule::Result RuleEngine::ProcessPath(const std::string& path) {
       if (rule_result == Rule::DENY) {
         result = Rule::DENY;
         break;
+      } else if (rule_result == Rule::ALLOW_WITH_DETACH) {
+        result = Rule::ALLOW_WITH_DETACH;
       } else if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
         result = Rule::ALLOW_WITH_LOCKDOWN;
       } else if (rule_result == Rule::ALLOW &&
+                 result != Rule::ALLOW_WITH_DETACH &&
                  result != Rule::ALLOW_WITH_LOCKDOWN) {
         result = Rule::ALLOW;
       }

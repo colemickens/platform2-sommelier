@@ -96,4 +96,11 @@ TEST_F(RuleEngineTest, LockdownPrecedence) {
   EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN, ProcessPath("/dev/null"));
 }
 
+TEST_F(RuleEngineTest, DetachPrecedence) {
+  engine_.AddRule(CreateMockRule(Rule::IGNORE));
+  engine_.AddRule(CreateMockRule(Rule::ALLOW_WITH_DETACH));
+  engine_.AddRule(CreateMockRule(Rule::ALLOW));
+  EXPECT_EQ(Rule::ALLOW_WITH_DETACH, ProcessPath("/dev/null"));
+}
+
 }  // namespace permission_broker

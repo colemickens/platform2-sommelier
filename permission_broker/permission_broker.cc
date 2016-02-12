@@ -101,7 +101,8 @@ void PermissionBroker::RegisterAsync(
 
 bool PermissionBroker::CheckPathAccess(const std::string& in_path) {
   Rule::Result result = rule_engine_.ProcessPath(in_path);
-  return result == Rule::ALLOW || result == Rule::ALLOW_WITH_LOCKDOWN;
+  return result == Rule::ALLOW || result == Rule::ALLOW_WITH_LOCKDOWN
+      || result == Rule::ALLOW_WITH_DETACH;
 }
 
 bool PermissionBroker::RequestPathAccess(const std::string& in_path,
@@ -116,7 +117,8 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
                                 const std::string& in_path,
                                 dbus::FileDescriptor* out_fd) {
   Rule::Result rule_result = rule_engine_.ProcessPath(in_path);
-  if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN) {
+  if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN
+      && rule_result != Rule::ALLOW_WITH_DETACH) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kErrorDomainPermissionBroker, kPermissionDeniedError,
         "Permission to open '%s' denied", in_path.c_str());
@@ -144,6 +146,11 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
           "USBDEVFS_DROP_PRIVILEGES ioctl failed on '%s'", in_path.c_str());
       return false;
     }
+  }
+
+  if (rule_result == Rule::ALLOW_WITH_DETACH) {
+    if (!usb_driver_tracker_.DetachPathFromKernel(fd, in_path))
+      return false;
   }
 
   *out_fd = std::move(result);

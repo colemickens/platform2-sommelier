@@ -10,13 +10,56 @@
 #include "base/strings/string_number_conversions.h"
 #include "permission_broker/udev_scopers.h"
 
+using policy::DevicePolicy;
+
 namespace permission_broker {
 
 DenyClaimedUsbDeviceRule::DenyClaimedUsbDeviceRule()
-    : UsbSubsystemUdevRule("DenyClaimedUsbDeviceRule") {
+    : UsbSubsystemUdevRule("DenyClaimedUsbDeviceRule"),
+      policy_loaded_(false) {
 }
 
 DenyClaimedUsbDeviceRule::~DenyClaimedUsbDeviceRule() {
+}
+
+bool DenyClaimedUsbDeviceRule::LoadPolicy() {
+  usb_whitelist_.clear();
+
+  scoped_ptr<policy::PolicyProvider>
+      policy_provider(new policy::PolicyProvider());
+  policy_provider->Reload();
+
+  // No available policies.
+  if (!policy_provider->device_policy_is_loaded())
+    return false;
+
+  const policy::DevicePolicy* policy = &policy_provider->GetDevicePolicy();
+  return policy->GetUsbDetachableWhitelist(&usb_whitelist_);
+}
+
+bool DenyClaimedUsbDeviceRule::IsDeviceDetachable(udev_device* device) {
+  // Retrieve the device policy for detachable USB devices if needed.
+  if (!policy_loaded_)
+    policy_loaded_ = LoadPolicy();
+  if (!policy_loaded_)
+    return false;
+
+  // Check whether this USB device is whitelisted
+  const char *str_vid = udev_device_get_sysattr_value(device, "idVendor");
+  const char *str_pid = udev_device_get_sysattr_value(device, "idProduct");
+  unsigned vendor_id, product_id;
+  if (!str_vid || !base::HexStringToUInt(str_vid, &vendor_id))
+    return false;
+  if (!str_pid || !base::HexStringToUInt(str_pid, &product_id))
+    return false;
+
+  for (const DevicePolicy::UsbDeviceId &id : usb_whitelist_) {
+    if (id.vendor_id == vendor_id &&
+        (!id.product_id || id.product_id == product_id))
+        return true;
+  }
+
+  return false;
 }
 
 Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
@@ -62,7 +105,10 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   }
 
   if (found_claimed_interface) {
-    return found_unclaimed_interface ? ALLOW_WITH_LOCKDOWN : DENY;
+    if (IsDeviceDetachable(device))
+      return ALLOW_WITH_DETACH;
+    else
+      return found_unclaimed_interface ? ALLOW_WITH_LOCKDOWN : DENY;
   } else {
     return IGNORE;
   }

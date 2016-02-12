@@ -27,6 +27,11 @@
       'target_name': 'libpermission_broker',
       'type': 'static_library',
       'dependencies': ['permission_broker_adaptors'],
+      'link_settings': {
+        'libraries': [
+          '-lpolicy-<(libbase_ver)',
+        ]
+      },
       'sources': [
         'allow_group_tty_device_rule.cc',
         'allow_hidraw_device_rule.cc',
@@ -47,6 +52,7 @@
         'tty_subsystem_udev_rule.cc',
         'udev_scopers.cc',
         'usb_subsystem_udev_rule.cc',
+        'usb_driver_tracker.cc',
       ],
     },
     {

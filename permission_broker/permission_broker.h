@@ -19,6 +19,7 @@
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
 #include "permission_broker/port_tracker.h"
 #include "permission_broker/rule_engine.h"
+#include "permission_broker/usb_driver_tracker.h"
 
 namespace permission_broker {
 
@@ -70,6 +71,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   brillo::dbus_utils::DBusObject dbus_object_;
   gid_t access_group_;
   PortTracker port_tracker_;
+  UsbDriverTracker usb_driver_tracker_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);
 };

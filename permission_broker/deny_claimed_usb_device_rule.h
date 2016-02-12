@@ -6,8 +6,11 @@
 #define PERMISSION_BROKER_DENY_CLAIMED_USB_DEVICE_RULE_H_
 
 #include <base/macros.h>
+#include <vector>
 
 #include "permission_broker/usb_subsystem_udev_rule.h"
+#include "policy/device_policy.h"
+#include "policy/libpolicy.h"
 
 struct udev;
 
@@ -27,7 +30,19 @@ class DenyClaimedUsbDeviceRule : public UsbSubsystemUdevRule {
 
   Result ProcessUsbDevice(udev_device* device) override;
 
+ protected:
+  std::vector<policy::DevicePolicy::UsbDeviceId> usb_whitelist_;
+
  private:
+  bool policy_loaded_;
+
+  // Loads the device settings policy and returns success.
+  virtual bool LoadPolicy();
+
+  // Returns whether a USB device is whitelisted inside the device settings
+  // to be detached from its kernel driver.
+  bool IsDeviceDetachable(udev_device* device);
+
   DISALLOW_COPY_AND_ASSIGN(DenyClaimedUsbDeviceRule);
 };
 

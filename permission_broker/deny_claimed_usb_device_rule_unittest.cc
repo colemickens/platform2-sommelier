@@ -12,6 +12,7 @@
 
 #include "base/logging.h"
 #include "base/stl_util.h"
+#include "base/strings/string_number_conversions.h"
 #include "permission_broker/rule_test.h"
 #include "permission_broker/udev_scopers.h"
 
@@ -19,6 +20,24 @@ using std::set;
 using std::string;
 
 namespace permission_broker {
+
+class  DenyClaimedUsbDeviceRuleMockPolicy : public DenyClaimedUsbDeviceRule {
+ public:
+  DenyClaimedUsbDeviceRuleMockPolicy() = default;
+  ~DenyClaimedUsbDeviceRuleMockPolicy() override = default;
+
+  void SetMockedUsbWhitelist(
+      const std::vector<policy::DevicePolicy::UsbDeviceId>& whitelist) {
+    usb_whitelist_ = whitelist;
+  }
+
+ private:
+  bool LoadPolicy() override {
+    return true;
+  }
+
+  DISALLOW_COPY_AND_ASSIGN(DenyClaimedUsbDeviceRuleMockPolicy);
+};
 
 class DenyClaimedUsbDeviceRuleTest : public RuleTest {
  public:
@@ -51,12 +70,28 @@ class DenyClaimedUsbDeviceRuleTest : public RuleTest {
       if (!devnode)
         continue;
 
+      const char *vid = udev_device_get_sysattr_value(parent, "idVendor");
+      const char *pid = udev_device_get_sysattr_value(parent, "idProduct");
+      unsigned vendor_id, product_id;
+      if (!vid || !base::HexStringToUInt(vid, &vendor_id))
+        continue;
+      if (!pid || !base::HexStringToUInt(pid, &product_id))
+        continue;
+      policy::DevicePolicy::UsbDeviceId id;
+      id.vendor_id = vendor_id;
+      id.product_id = product_id;
+
       string path = devnode;
+      const char* driver = udev_device_get_driver(device.get());
       if (!ContainsKey(partially_claimed_devices_, path)) {
-        if (udev_device_get_driver(device.get())) {
+        if (driver) {
           auto it = unclaimed_devices_.find(path);
           if (it == unclaimed_devices_.end()) {
             claimed_devices_.insert(path);
+           if (strcmp(driver, "hub") != 0) {
+             detachable_whitelist_.push_back(id);
+             detachable_devices_.insert(path);
+           }
           } else {
             partially_claimed_devices_.insert(path);
             unclaimed_devices_.erase(it);
@@ -74,10 +109,12 @@ class DenyClaimedUsbDeviceRuleTest : public RuleTest {
     }
   }
 
-  DenyClaimedUsbDeviceRule rule_;
+  DenyClaimedUsbDeviceRuleMockPolicy rule_;
   set<string> claimed_devices_;
   set<string> unclaimed_devices_;
   set<string> partially_claimed_devices_;
+  set<string> detachable_devices_;
+  std::vector<policy::DevicePolicy::UsbDeviceId> detachable_whitelist_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DenyClaimedUsbDeviceRuleTest);
@@ -115,6 +152,20 @@ TEST_F(DenyClaimedUsbDeviceRuleTest,
 
   for (const string& device : partially_claimed_devices_)
     EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN,
+              rule_.ProcessDevice(FindDevice(device).get()))
+        << device;
+}
+
+TEST_F(DenyClaimedUsbDeviceRuleTest,
+       AllowDetachableClaimedUsbDevice) {
+  if (detachable_devices_.empty())
+    LOG(WARNING) << "Tests incomplete because there are no detachable "
+                 << "devices connected.";
+
+  rule_.SetMockedUsbWhitelist(detachable_whitelist_);
+
+  for (const string& device : detachable_devices_)
+    EXPECT_EQ(Rule::ALLOW_WITH_DETACH,
               rule_.ProcessDevice(FindDevice(device).get()))
         << device;
 }
