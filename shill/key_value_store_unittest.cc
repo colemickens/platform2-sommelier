@@ -293,7 +293,7 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_FALSE(store_.ContainsByteArrays(kByteArraysKey));
   EXPECT_FALSE(store_.ContainsInt(kIntKey));
   EXPECT_FALSE(store_.ContainsInt16(kInt16Key));
-  EXPECT_FALSE(store_.ContainsInt(kKeyValueStoreKey));
+  EXPECT_FALSE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
   EXPECT_FALSE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
   EXPECT_FALSE(store_.ContainsString(kStringKey));
   EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
@@ -339,7 +339,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   first.Clear();
   second.Clear();
   first.SetByteArrays("byteArraysKey", kByteArrays1);
-  second.SetByteArrays("byteArraysOtherKey", kByteArrays2);
+  second.SetByteArrays("byteArraysKey", kByteArrays2);
   EXPECT_NE(first, second);
 
   first.Clear();
@@ -504,7 +504,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   first.SetBool("boolKey", true);
   first.SetByteArrays("byteArraysKey", kByteArrays1);
   first.SetInt("intKey", 123);
-  first.SetInt("int16Key", 123);
+  first.SetInt16("int16Key", 123);
   first.SetRpcIdentifier("rpcIdentifierKey", "rpcid");
   first.SetString("stringKey", "value");
   first.SetStringmap("stringmapKey", kStringmap1);
@@ -516,7 +516,7 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetBool("boolKey", true);
   second.SetByteArrays("byteArraysKey", kByteArrays1);
   second.SetInt("intKey", 123);
-  second.SetInt("int16Key", 123);
+  second.SetInt16("int16Key", 123);
   second.SetRpcIdentifier("rpcIdentifierKey", "rpcid");
   second.SetString("stringKey", "value");
   second.SetStringmap("stringmapKey", kStringmap1);
