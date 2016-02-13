@@ -219,6 +219,8 @@ WiFi::WiFi(ControlInterface* control_interface,
   HelpRegisterConstDerivedBool(store,
                                kScanningProperty,
                                &WiFi::GetScanPending);
+  HelpRegisterConstDerivedUint16s(store, kWifiSupportedFrequenciesProperty,
+                                  &WiFi::GetAllScanFrequencies);
   HelpRegisterDerivedUint16(store,
                             kRoamThresholdProperty,
                             &WiFi::GetRoamThreshold,
@@ -1841,6 +1843,14 @@ void WiFi::HelpRegisterConstDerivedBool(
       BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, nullptr)));
 }
 
+void WiFi::HelpRegisterConstDerivedUint16s(PropertyStore* store,
+                                           const std::string& name,
+                                           Uint16s (WiFi::*get)(Error* error)) {
+  store->RegisterDerivedUint16s(
+      name,
+      Uint16sAccessor(new CustomAccessor<WiFi, Uint16s>(this, get, nullptr)));
+}
+
 void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
   if (!enabled()) {
     callback.Run(Error(Error::kSuccess));
@@ -2464,6 +2474,10 @@ void WiFi::OnTriggerPassiveScanResponse(const Nl80211Message& netlink_message) {
 
 KeyValueStore WiFi::GetLinkStatistics(Error* /*error*/) {
   return link_statistics_;
+}
+
+Uint16s WiFi::GetAllScanFrequencies(Error* /* error */) {
+  return {begin(all_scan_frequencies_), end(all_scan_frequencies_)};
 }
 
 bool WiFi::GetScanPending(Error* /* error */) {

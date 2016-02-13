@@ -883,6 +883,13 @@ void PropertyStore::RegisterDerivedUint64(const string& name,
   uint64_properties_[name] = acc;
 }
 
+void PropertyStore::RegisterDerivedUint16s(const std::string& name,
+                                           const Uint16sAccessor& acc) {
+  DCHECK(!Contains(name) || ContainsKey(uint16s_properties_, name))
+      << "(Already registered " << name << ")";
+  uint16s_properties_[name] = acc;
+}
+
 void PropertyStore::RegisterDerivedByteArray(const string& name,
                                              const ByteArrayAccessor& acc) {
   DCHECK(!Contains(name) || ContainsKey(bytearray_properties_, name))

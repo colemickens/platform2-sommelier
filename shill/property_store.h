@@ -264,6 +264,8 @@ class PropertyStore {
                              const Uint16Accessor& accessor);
   void RegisterDerivedUint64(const std::string& name,
                              const Uint64Accessor& accessor);
+  void RegisterDerivedUint16s(const std::string& name,
+                              const Uint16sAccessor& accessor);
   void RegisterDerivedByteArray(const std::string& name,
                                 const ByteArrayAccessor& accessor);
 

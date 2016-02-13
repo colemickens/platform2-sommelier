@@ -399,6 +399,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // RPC accessor for |link_statistics_|.
   KeyValueStore GetLinkStatistics(Error* error);
 
+  Uint16s GetAllScanFrequencies(Error* /* error */);
+
   bool GetScanPending(Error* /* error */);
   bool SetBgscanMethod(
       const int& argument, const std::string& method, Error* error);
@@ -464,6 +466,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       PropertyStore* store,
       const std::string& name,
       bool(WiFi::*get)(Error* error));
+  void HelpRegisterConstDerivedUint16s(PropertyStore* store,
+                                       const std::string& name,
+                                       Uint16s (WiFi::*get)(Error* error));
 
   // Disable a network entry in wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
