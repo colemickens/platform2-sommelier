@@ -23,202 +23,227 @@ using std::string;
 using std::vector;
 using testing::Test;
 
+namespace {
+const char kBoolKey[] = "BoolKey";
+const char kByteArraysKey[] = "ByteArraysKey";
+const char kIntKey[] = "IntKey";
+const char kInt16Key[] = "Int16Key";
+const char kKeyValueStoreKey[] = "KeyValueStoreKey";
+const char kRpcIdentifierKey[] = "RpcIdentifierKey";
+const char kRpcIdentifiersKey[] = "RpcIdentifiersKey";
+const char kStringKey[] = "StringKey";
+const char kStringmapKey[] = "StringmapKey";
+const char kStringsKey[] = "StringsKey";
+const char kUintKey[] = "UintKey";
+const char kUint16Key[] = "Uint16Key";
+const char kUint8Key[] = "Uint8Key";
+const char kUint8sKey[] = "Uint8sKey";
+const char kUint32sKey[] = "Uint32sKey";
+const char kNestedInt32Key[] = "NestedInt32Key";
+
+const bool kBoolValue = true;
+const vector<vector<uint8_t>> kByteArraysValue{{1}, {2}};
+const int32_t kIntValue = 123;
+const int16_t kInt16Value = 123;
+const string kRpcIdentifierValue("/org/chromium/test");
+const vector<string> kRpcIdentifiersValue{
+    "/org/chromium/test0", "/org/chromium/test1", "/org/chromium/test2"};
+const string kStringValue("StringValue");
+const map<string, string> kStringmapValue = {{"key", "value"}};
+const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
+const uint32_t kUintValue = 654;
+const uint16_t kUint16Value = 123;
+const uint8_t kUint8Value = 3;
+const vector<uint8_t> kUint8sValue{1, 2};
+const vector<uint32_t> kUint32sValue{1, 2};
+const int32_t kNestedInt32Value = 1;
+}
+
 namespace shill {
 
 class KeyValueStoreTest : public Test {
  public:
   KeyValueStoreTest() {}
 
+  void SetOneOfEachType(KeyValueStore* store,
+                        const KeyValueStore& nested_key_value_store_value) {
+    store->SetBool(kBoolKey, kBoolValue);
+    store->SetByteArrays(kByteArraysKey, kByteArraysValue);
+    store->SetInt(kIntKey, kIntValue);
+    store->SetInt16(kInt16Key, kInt16Value);
+    store->SetKeyValueStore(kKeyValueStoreKey, nested_key_value_store_value);
+    store->SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
+    store->SetRpcIdentifiers(kRpcIdentifiersKey, kRpcIdentifiersValue);
+    store->SetString(kStringKey, kStringValue);
+    store->SetStringmap(kStringmapKey, kStringmapValue);
+    store->SetStrings(kStringsKey, kStringsValue);
+    store->SetUint(kUintKey, kUintValue);
+    store->SetUint16(kUint16Key, kUint16Value);
+    store->SetUint8(kUint8Key, kUint8Value);
+    store->SetUint8s(kUint8sKey, kUint8sValue);
+    store->SetUint32s(kUint32sKey, kUint32sValue);
+  }
+
  protected:
   KeyValueStore store_;
 };
 
 TEST_F(KeyValueStoreTest, Any) {
-  const string kKey("foo");
-  const string kValue("baz");
-  EXPECT_FALSE(store_.Contains(kKey));
-  store_.Set(kKey, brillo::Any(kValue));
-  EXPECT_TRUE(store_.Contains(kKey));
-  EXPECT_EQ(kValue, store_.Get(kKey).Get<string>());
-  store_.Remove(kKey);
-  EXPECT_FALSE(store_.Contains(kKey));
+  EXPECT_FALSE(store_.Contains(kStringKey));
+  store_.Set(kStringKey, brillo::Any(kStringValue));
+  EXPECT_TRUE(store_.Contains(kStringKey));
+  EXPECT_EQ(kStringValue, store_.Get(kStringKey).Get<string>());
+  store_.Remove(kStringKey);
+  EXPECT_FALSE(store_.Contains(kStringKey));
 }
 
 TEST_F(KeyValueStoreTest, Bool) {
-  const string kKey("foo");
   const bool kDefaultValue = true;
   const bool kValue = false;
-  EXPECT_FALSE(store_.ContainsBool(kKey));
-  EXPECT_EQ(kDefaultValue, store_.LookupBool(kKey, kDefaultValue));
-  store_.SetBool(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsBool(kKey));
+  EXPECT_FALSE(store_.ContainsBool(kBoolKey));
+  EXPECT_EQ(kDefaultValue, store_.LookupBool(kBoolKey, kDefaultValue));
+  store_.SetBool(kBoolKey, kValue);
+  EXPECT_TRUE(store_.ContainsBool(kBoolKey));
   // TODO(shenhan): investigate if a newer version of gtest handles EXPECT_EQ
   // for bools in a manner that gcc 4.7 is happy with. (Improper conversion from
   // "false" to "NULL").
   EXPECT_EQ(static_cast<int>(kValue),
-            static_cast<int>(store_.LookupBool(kKey, kDefaultValue)));
+            static_cast<int>(store_.LookupBool(kBoolKey, kDefaultValue)));
   EXPECT_EQ(static_cast<int>(kValue),
-            static_cast<int>(store_.GetBool(kKey)));
+            static_cast<int>(store_.GetBool(kBoolKey)));
 }
 
 TEST_F(KeyValueStoreTest, ByteArrays) {
-  const string kKey("foo");
-  const vector<vector<uint8_t>> kValue{ {1, 2, 3 } };
-  EXPECT_FALSE(store_.ContainsByteArrays(kKey));
-  store_.SetByteArrays(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsByteArrays(kKey));
-  EXPECT_EQ(kValue, store_.GetByteArrays(kKey));
-  store_.RemoveByteArrays(kKey);
-  EXPECT_FALSE(store_.ContainsByteArrays(kKey));
+  EXPECT_FALSE(store_.ContainsByteArrays(kByteArraysKey));
+  store_.SetByteArrays(kByteArraysKey, kByteArraysValue);
+  EXPECT_TRUE(store_.ContainsByteArrays(kByteArraysKey));
+  EXPECT_EQ(kByteArraysValue, store_.GetByteArrays(kByteArraysKey));
+  store_.RemoveByteArrays(kByteArraysKey);
+  EXPECT_FALSE(store_.ContainsByteArrays(kByteArraysKey));
 }
 
 TEST_F(KeyValueStoreTest, Int) {
-  const string kKey("foo");
-  const int kValue = 456;
-  EXPECT_FALSE(store_.ContainsInt(kKey));
+  EXPECT_FALSE(store_.ContainsInt(kIntKey));
   const int kDefaultValue = 789;
-  EXPECT_EQ(kDefaultValue, store_.LookupInt(kKey, kDefaultValue));
-  store_.SetInt(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsInt(kKey));
-  EXPECT_EQ(kValue, store_.GetInt(kKey));
-  EXPECT_EQ(kValue, store_.LookupInt(kKey, kDefaultValue));
-  store_.RemoveInt(kKey);
-  EXPECT_FALSE(store_.ContainsInt(kKey));
+  const int kValue = 456;
+  EXPECT_EQ(kDefaultValue, store_.LookupInt(kIntKey, kDefaultValue));
+  store_.SetInt(kIntKey, kValue);
+  EXPECT_TRUE(store_.ContainsInt(kIntKey));
+  EXPECT_EQ(kValue, store_.GetInt(kIntKey));
+  EXPECT_EQ(kValue, store_.LookupInt(kIntKey, kDefaultValue));
+  store_.RemoveInt(kIntKey);
+  EXPECT_FALSE(store_.ContainsInt(kIntKey));
 }
 
 TEST_F(KeyValueStoreTest, Int16) {
-  const string kKey("foo");
-  const int16_t kValue = 123;
-  EXPECT_FALSE(store_.ContainsInt16(kKey));
-  store_.SetInt16(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsInt16(kKey));
-  EXPECT_EQ(kValue, store_.GetInt16(kKey));
-  store_.RemoveInt16(kKey);
-  EXPECT_FALSE(store_.ContainsInt16(kKey));
+  EXPECT_FALSE(store_.ContainsInt16(kInt16Key));
+  store_.SetInt16(kInt16Key, kInt16Value);
+  EXPECT_TRUE(store_.ContainsInt16(kInt16Key));
+  EXPECT_EQ(kInt16Value, store_.GetInt16(kInt16Key));
+  store_.RemoveInt16(kInt16Key);
+  EXPECT_FALSE(store_.ContainsInt16(kInt16Key));
 }
 
 TEST_F(KeyValueStoreTest, KeyValueStore) {
-  const string kSubKey("foo");
-  const map<string, string> kSubValue{ { "bar0", "baz0" }, { "bar1", "baz1" } };
   KeyValueStore value;
-  value.SetStringmap(kSubKey, kSubValue);
-  const string kKey("foo");
-  EXPECT_FALSE(store_.ContainsKeyValueStore(kKey));
-  store_.SetKeyValueStore(kKey, value);
-  EXPECT_TRUE(store_.ContainsKeyValueStore(kKey));
-  EXPECT_EQ(value, store_.GetKeyValueStore(kKey));
-  store_.RemoveKeyValueStore(kKey);
-  EXPECT_FALSE(store_.ContainsKeyValueStore(kKey));
+  value.SetStringmap(kStringmapKey, kStringmapValue);
+  EXPECT_FALSE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
+  store_.SetKeyValueStore(kKeyValueStoreKey, value);
+  EXPECT_TRUE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
+  EXPECT_EQ(value, store_.GetKeyValueStore(kKeyValueStoreKey));
+  store_.RemoveKeyValueStore(kKeyValueStoreKey);
+  EXPECT_FALSE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
 }
 
 TEST_F(KeyValueStoreTest, RpcIdentifier) {
-  const string kKey("foo");
-  const string kValue("baz");
-  EXPECT_FALSE(store_.ContainsRpcIdentifier(kKey));
-  store_.SetRpcIdentifier(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsRpcIdentifier(kKey));
-  EXPECT_EQ(kValue, store_.GetRpcIdentifier(kKey));
-  store_.RemoveRpcIdentifier(kKey);
-  EXPECT_FALSE(store_.ContainsRpcIdentifier(kKey));
+  EXPECT_FALSE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
+  store_.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
+  EXPECT_TRUE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
+  EXPECT_EQ(kRpcIdentifierValue, store_.GetRpcIdentifier(kRpcIdentifierKey));
+  store_.RemoveRpcIdentifier(kRpcIdentifierKey);
+  EXPECT_FALSE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
 }
 
 TEST_F(KeyValueStoreTest, RpcIdentifiers) {
-  const string kKey("foo");
-  const vector<string> kValue{ "baz0", "baz1", "baz2" };
-  EXPECT_FALSE(store_.ContainsRpcIdentifiers(kKey));
-  store_.SetRpcIdentifiers(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsRpcIdentifiers(kKey));
-  EXPECT_EQ(kValue, store_.GetRpcIdentifiers(kKey));
-  store_.Remove(kKey);
-  EXPECT_FALSE(store_.ContainsRpcIdentifiers(kKey));
+  EXPECT_FALSE(store_.ContainsRpcIdentifiers(kRpcIdentifiersKey));
+  store_.SetRpcIdentifiers(kRpcIdentifiersKey, kRpcIdentifiersValue);
+  EXPECT_TRUE(store_.ContainsRpcIdentifiers(kRpcIdentifiersKey));
+  EXPECT_EQ(kRpcIdentifiersValue, store_.GetRpcIdentifiers(kRpcIdentifiersKey));
+  store_.Remove(kRpcIdentifiersKey);
+  EXPECT_FALSE(store_.ContainsRpcIdentifiers(kRpcIdentifiersKey));
 }
 
 TEST_F(KeyValueStoreTest, String) {
-  const string kKey("foo");
   const string kDefaultValue("bar");
   const string kValue("baz");
-  EXPECT_FALSE(store_.ContainsString(kKey));
-  EXPECT_EQ(kDefaultValue, store_.LookupString(kKey, kDefaultValue));
-  store_.SetString(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsString(kKey));
-  EXPECT_EQ(kValue, store_.LookupString(kKey, kDefaultValue));
-  EXPECT_EQ(kValue, store_.GetString(kKey));
-  store_.RemoveString(kKey);
-  EXPECT_FALSE(store_.ContainsString(kKey));
-  EXPECT_EQ(kDefaultValue, store_.LookupString(kKey, kDefaultValue));
+  EXPECT_FALSE(store_.ContainsString(kStringKey));
+  EXPECT_EQ(kDefaultValue, store_.LookupString(kStringKey, kDefaultValue));
+  store_.SetString(kStringKey, kValue);
+  EXPECT_TRUE(store_.ContainsString(kStringKey));
+  EXPECT_EQ(kValue, store_.LookupString(kStringKey, kDefaultValue));
+  EXPECT_EQ(kValue, store_.GetString(kStringKey));
+  store_.RemoveString(kStringKey);
+  EXPECT_FALSE(store_.ContainsString(kStringKey));
+  EXPECT_EQ(kDefaultValue, store_.LookupString(kStringKey, kDefaultValue));
 }
 
 TEST_F(KeyValueStoreTest, Stringmap) {
-  const string kKey("foo");
-  const map<string, string> kValue{ { "bar0", "baz0" }, { "bar1", "baz1" } };
-  EXPECT_FALSE(store_.ContainsStringmap(kKey));
-  store_.SetStringmap(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsStringmap(kKey));
-  EXPECT_EQ(kValue, store_.GetStringmap(kKey));
-  store_.RemoveStringmap(kKey);
-  EXPECT_FALSE(store_.ContainsStringmap(kKey));
+  EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
+  store_.SetStringmap(kStringmapKey, kStringmapValue);
+  EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
+  EXPECT_EQ(kStringmapValue, store_.GetStringmap(kStringmapKey));
+  store_.RemoveStringmap(kStringmapKey);
+  EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
 }
 
 TEST_F(KeyValueStoreTest, Strings) {
-  const string kKey("foo");
-  const vector<string> kValue{ "baz0", "baz1", "baz2" };
-  EXPECT_FALSE(store_.ContainsStrings(kKey));
-  store_.SetStrings(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsStrings(kKey));
-  EXPECT_EQ(kValue, store_.GetStrings(kKey));
-  store_.RemoveStrings(kKey);
-  EXPECT_FALSE(store_.ContainsStrings(kKey));
+  EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
+  store_.SetStrings(kStringsKey, kStringsValue);
+  EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
+  EXPECT_EQ(kStringsValue, store_.GetStrings(kStringsKey));
+  store_.RemoveStrings(kStringsKey);
+  EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
 }
 
 TEST_F(KeyValueStoreTest, Uint) {
-  const string kKey("foo");
-  const uint32_t kValue = 456;
-  EXPECT_FALSE(store_.ContainsUint(kKey));
-  store_.SetUint(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsUint(kKey));
-  EXPECT_EQ(kValue, store_.GetUint(kKey));
+  EXPECT_FALSE(store_.ContainsUint(kUintKey));
+  store_.SetUint(kUintKey, kUintValue);
+  EXPECT_TRUE(store_.ContainsUint(kUintKey));
+  EXPECT_EQ(kUintValue, store_.GetUint(kUintKey));
 }
 
 TEST_F(KeyValueStoreTest, Uint16) {
-  const string kKey("foo");
-  const uint16_t kValue = 456;
-  EXPECT_FALSE(store_.ContainsUint16(kKey));
-  store_.SetUint16(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsUint16(kKey));
-  EXPECT_EQ(kValue, store_.GetUint16(kKey));
+  EXPECT_FALSE(store_.ContainsUint16(kUint16Key));
+  store_.SetUint16(kUint16Key, kUint16Value);
+  EXPECT_TRUE(store_.ContainsUint16(kUint16Key));
+  EXPECT_EQ(kUint16Value, store_.GetUint16(kUint16Key));
 }
 
 TEST_F(KeyValueStoreTest, Uint8) {
-  const string kKey("foo");
-  const uint8_t kValue = 123;
-  EXPECT_FALSE(store_.ContainsUint8(kKey));
-  store_.SetUint8(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsUint8(kKey));
-  EXPECT_EQ(kValue, store_.GetUint8(kKey));
-  store_.RemoveUint8(kKey);
-  EXPECT_FALSE(store_.ContainsUint8(kKey));
+  EXPECT_FALSE(store_.ContainsUint8(kUint8Key));
+  store_.SetUint8(kUint8Key, kUint8Value);
+  EXPECT_TRUE(store_.ContainsUint8(kUint8Key));
+  EXPECT_EQ(kUint8Value, store_.GetUint8(kUint8Key));
+  store_.RemoveUint8(kUint8Key);
+  EXPECT_FALSE(store_.ContainsUint8(kUint8Key));
 }
 
 TEST_F(KeyValueStoreTest, Uint8s) {
-  const string kKey("foo");
-  const vector<uint8_t> kValue{ 1, 2, 3 };
-  EXPECT_FALSE(store_.ContainsUint8s(kKey));
-  store_.SetUint8s(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsUint8s(kKey));
-  EXPECT_EQ(kValue, store_.GetUint8s(kKey));
-  store_.RemoveUint8s(kKey);
-  EXPECT_FALSE(store_.ContainsUint8s(kKey));
+  EXPECT_FALSE(store_.ContainsUint8s(kUint8sKey));
+  store_.SetUint8s(kUint8sKey, kUint8sValue);
+  EXPECT_TRUE(store_.ContainsUint8s(kUint8sKey));
+  EXPECT_EQ(kUint8sValue, store_.GetUint8s(kUint8sKey));
+  store_.RemoveUint8s(kUint8sKey);
+  EXPECT_FALSE(store_.ContainsUint8s(kUint8sKey));
 }
 
 TEST_F(KeyValueStoreTest, Uint32s) {
-  const string kKey("foo");
-  const vector<uint32_t> kValue{ 1, 2, 3 };
-  EXPECT_FALSE(store_.ContainsUint32s(kKey));
-  store_.SetUint32s(kKey, kValue);
-  EXPECT_TRUE(store_.ContainsUint32s(kKey));
-  EXPECT_EQ(kValue, store_.GetUint32s(kKey));
-  store_.RemoveUint32s(kKey);
-  EXPECT_FALSE(store_.ContainsUint32s(kKey));
+  EXPECT_FALSE(store_.ContainsUint32s(kUint32sKey));
+  store_.SetUint32s(kUint32sKey, kUint32sValue);
+  EXPECT_TRUE(store_.ContainsUint32s(kUint32sKey));
+  EXPECT_EQ(kUint32sValue, store_.GetUint32s(kUint32sKey));
+  store_.RemoveUint32s(kUint32sKey);
+  EXPECT_FALSE(store_.ContainsUint32s(kUint32sKey));
 }
 
 TEST_F(KeyValueStoreTest, DoubleRemove) {
@@ -233,45 +258,7 @@ TEST_F(KeyValueStoreTest, DoubleRemove) {
 
 TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_TRUE(store_.IsEmpty());
-  const string kBoolKey("foo");
-  const bool kBoolValue = true;
-  store_.SetBool(kBoolKey, kBoolValue);
-  const string kByteArraysKey("bytearrays");
-  const vector<vector<uint8_t>> kByteArraysValue{ {1, 2} };
-  store_.SetByteArrays(kByteArraysKey, kByteArraysValue);
-  const string kIntKey("bar");
-  const int kIntValue = 123;
-  store_.SetInt(kIntKey, kIntValue);
-  const string kInt16Key("int16");
-  const int16_t kInt16Value = 123;
-  store_.SetInt16(kInt16Key, kInt16Value);
-  const string kKeyValueStoreKey("bear");
-  const KeyValueStore kKeyValueStoreValue;
-  store_.SetKeyValueStore(kKeyValueStoreKey, kKeyValueStoreValue);
-  const string kRpcIdentifierKey("rpcid");
-  const string kRpcIdentifierValue("rpc_identifier");
-  store_.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
-  const string kStringKey("baz");
-  const string kStringValue("string");
-  store_.SetString(kStringKey, kStringValue);
-  const string kStringmapKey("stringMapKey");
-  const map<string, string> kStringmapValue;
-  store_.SetStringmap(kStringmapKey, kStringmapValue);
-  const string kStringsKey("stringsKey");
-  const vector<string> kStringsValue;
-  store_.SetStrings(kStringsKey, kStringsValue);
-  const string kUintKey("bun");
-  const uint32_t kUintValue = 456;
-  store_.SetUint(kUintKey, kUintValue);
-  const string kUint16Key("uint16");
-  const uint16_t kUint16Value = 123;
-  store_.SetUint16(kUint16Key, kUint16Value);
-  const string kUint8sKey("uint8s");
-  const vector<uint8_t> kUint8sValue{ 1, 2, 3 };
-  store_.SetUint8s(kUint8sKey, kUint8sValue);
-  const string kUint32sKey("uint32s");
-  const vector<uint32_t> kUint32sValue{ 1, 2, 3 };
-  store_.SetUint32s(kUint32sKey, kUint32sValue);
+  SetOneOfEachType(&store_, KeyValueStore());
 
   EXPECT_TRUE(store_.ContainsBool(kBoolKey));
   EXPECT_TRUE(store_.ContainsByteArrays(kByteArraysKey));
@@ -327,8 +314,8 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetBool("boolKey", false);
   EXPECT_NE(first, second);
 
-  const vector<vector<uint8_t>> kByteArrays1{ {1, 2} };
-  const vector<vector<uint8_t>> kByteArrays2{ {3, 4} };
+  const vector<vector<uint8_t>> kByteArrays1{{1, 2}};
+  const vector<vector<uint8_t>> kByteArrays2{{3, 4}};
 
   first.Clear();
   second.Clear();
@@ -407,10 +394,9 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetString("stringKey", "otherString");
   EXPECT_NE(first, second);
 
-
-  const map<string, string> kStringmap1{ { "key", "value" } };
-  const map<string, string> kStringmap2{ { "otherKey", "value" } };
-  const map<string, string> kStringmap3{ { "key", "otherValue" } };
+  const map<string, string> kStringmap1{{"key", "value"}};
+  const map<string, string> kStringmap2{{"otherKey", "value"}};
+  const map<string, string> kStringmap3{{"key", "otherValue"}};
 
   first.Clear();
   second.Clear();
@@ -430,8 +416,8 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetStringmap("stringmapKey", kStringmap3);
   EXPECT_NE(first, second);
 
-  const vector<string> kStrings1{ "value" };
-  const vector<string> kStrings2{ "otherValue" };
+  const vector<string> kStrings1{"value"};
+  const vector<string> kStrings2{"otherValue"};
 
   first.Clear();
   second.Clear();
@@ -469,8 +455,8 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetUint16("uint16Key", 2);
   EXPECT_NE(first, second);
 
-  const vector<uint8_t> kUint8s1{ 1 };
-  const vector<uint8_t> kUint8s2{ 2 };
+  const vector<uint8_t> kUint8s1{1};
+  const vector<uint8_t> kUint8s2{2};
 
   first.Clear();
   second.Clear();
@@ -484,8 +470,8 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetUint8s("uint8sKey", kUint8s2);
   EXPECT_NE(first, second);
 
-  const vector<uint32_t> kUint32s1{ 1 };
-  const vector<uint32_t> kUint32s2{ 2 };
+  const vector<uint32_t> kUint32s1{1};
+  const vector<uint32_t> kUint32s2{2};
 
   first.Clear();
   second.Clear();
@@ -530,46 +516,9 @@ TEST_F(KeyValueStoreTest, Equals) {
 
 TEST_F(KeyValueStoreTest, CopyFrom) {
   KeyValueStore donor;
-  const string kBoolKey("foo");
-  const bool kBoolValue = true;
-  donor.SetBool(kBoolKey, kBoolValue);
-  const string kByteArraysKey("bytearrays");
-  const vector<vector<uint8_t>> kByteArraysValue{ {1} };
-  donor.SetByteArrays(kByteArraysKey, kByteArraysValue);
-  const string kIntKey("bar");
-  const int kIntValue = 123;
-  donor.SetInt(kIntKey, kIntValue);
-  const string kInt16Key("int16");
-  const int16_t kInt16Value = 123;
-  donor.SetInt16(kInt16Key, kInt16Value);
-  const string kKeyValueStoreKey("bear");
   KeyValueStore keyValueStoreValue;
   keyValueStoreValue.SetInt(kIntKey, kIntValue);
-  donor.SetKeyValueStore(kKeyValueStoreKey, keyValueStoreValue);
-  const string kRpcIdentifierKey("rpcidentifier");
-  const string kRpcIdentifierValue("rpcid");
-  donor.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
-  const string kStringKey("baz");
-  const string kStringValue("string");
-  donor.SetString(kStringKey, kStringValue);
-  const string kStringmapKey("stringMapKey");
-  const map<string, string> kStringmapValue{ { "key", "value" } };
-  donor.SetStringmap(kStringmapKey, kStringmapValue);
-  const string kStringsKey("stringsKey");
-  const vector<string> kStringsValue{ "string0", "string1" };
-  donor.SetStrings(kStringsKey, kStringsValue);
-  const string kUintKey("bun");
-  const uint32_t kUintValue = 456;
-  donor.SetUint(kUintKey, kUintValue);
-  const string kUint16Key("uint16");
-  const uint16_t kUint16Value = 456;
-  donor.SetUint16(kUint16Key, kUint16Value);
-  const string kUint8sKey("uint8s");
-  const vector<uint8_t> kUint8sValue{ 1 };
-  donor.SetUint8s(kUint8sKey, kUint8sValue);
-  const string kUint32sKey("uint32s");
-  const vector<uint32_t> kUint32sValue{ 1 };
-  donor.SetUint32s(kUint32sKey, kUint32sValue);
+  SetOneOfEachType(&donor, keyValueStoreValue);
 
   EXPECT_TRUE(store_.IsEmpty());
   store_.CopyFrom(donor);
@@ -578,62 +527,22 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
 }
 
 TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
-  static const char kStringKey[] = "StringKey";
-  static const char kStringValue[] = "StringValue";
-  static const char kStringmapKey[] = "StringmapKey";
-  const map<string, string> kStringmapValue = { { "key", "value" } };
-  static const char kStringsKey[] = "StringsKey";
-  const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
-  static const char kBoolKey[] = "BoolKey";
-  const bool kBoolValue = true;
-  static const char kInt32Key[] = "Int32Key";
-  const int32_t kInt32Value = 123;
-  static const char kUint32Key[] = "Uint32Key";
-  const uint32_t kUint32Value = 654;
-  static const char kByteArraysKey[] = "ByteArraysKey";
-  const vector<vector<uint8_t>> kByteArraysValue{ {1}, {2} };
-  static const char kInt16Key[] = "Int16Key";
-  const int16_t kInt16Value = 123;
-  static const char kRpcIdentifierKey[] = "RpcIdentifierKey";
-  static const char kRpcIdentifierValue[] = "/org/chromium/test";
-  static const char kUint16Key[] = "Uint16Key";
-  const uint16_t kUint16Value = 123;
-  static const char kUint8sKey[] = "Uint8sKey";
-  const vector<uint8_t> kUint8sValue{ 1, 2 };
-  static const char kUint32sKey[] = "Uint32sKey";
-  const vector<uint32_t> kUint32sValue{ 1, 2 };
-  static const char kKeyValueStoreKey[] = "KeyValueStoreKey";
-  static const char kNestedInt32Key[] = "NestedKey32Key";
-  const int32_t kNestedInt32Value = 1;
+  KeyValueStore store;
   KeyValueStore nested_store;
   nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
-
-  KeyValueStore store;
-  store.SetString(kStringKey, kStringValue);
-  store.SetStringmap(kStringmapKey, kStringmapValue);
-  store.SetStrings(kStringsKey, kStringsValue);
-  store.SetBool(kBoolKey, kBoolValue);
-  store.SetInt(kInt32Key, kInt32Value);
-  store.SetUint(kUint32Key, kUint32Value);
-  store.SetByteArrays(kByteArraysKey, kByteArraysValue);
-  store.SetInt16(kInt16Key, kInt16Value);
-  store.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
-  store.SetUint16(kUint16Key, kUint16Value);
-  store.SetUint8s(kUint8sKey, kUint8sValue);
-  store.SetUint32s(kUint32sKey, kUint32sValue);
-  store.SetKeyValueStore(kKeyValueStoreKey, nested_store);
+  SetOneOfEachType(&store, nested_store);
 
   brillo::VariantDictionary dict;
   KeyValueStore::ConvertToVariantDictionary(store, &dict);
-  EXPECT_EQ(13, dict.size());
+  EXPECT_EQ(15, dict.size());
   EXPECT_EQ(kStringValue, dict[kStringKey].Get<string>());
   map<string, string> stringmap_value =
       dict[kStringmapKey].Get<map<string, string>>();
   EXPECT_EQ(kStringmapValue, stringmap_value);
   EXPECT_EQ(kStringsValue, dict[kStringsKey].Get<vector<string>>());
   EXPECT_EQ(kBoolValue, dict[kBoolKey].Get<bool>());
-  EXPECT_EQ(kInt32Value, dict[kInt32Key].Get<int32_t>());
-  EXPECT_EQ(kUint32Value, dict[kUint32Key].Get<uint32_t>());
+  EXPECT_EQ(kIntValue, dict[kIntKey].Get<int32_t>());
+  EXPECT_EQ(kUintValue, dict[kUintKey].Get<uint32_t>());
   EXPECT_EQ(kByteArraysValue,
             dict[kByteArraysKey].Get<vector<vector<uint8_t>>>());
   EXPECT_EQ(kInt16Value, dict[kInt16Key].Get<int16_t>());
@@ -648,45 +557,16 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
 }
 
 TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
-  static const char kStringKey[] = "StringKey";
-  static const char kStringValue[] = "StringValue";
-  static const char kStringmapKey[] = "StringmapKey";
-  const map<string, string> kStringmapValue = { { "key", "value" } };
-  static const char kStringsKey[] = "StringsKey";
-  const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
-  static const char kBoolKey[] = "BoolKey";
-  const bool kBoolValue = true;
-  static const char kInt32Key[] = "Int32Key";
-  const int32_t kInt32Value = 123;
-  static const char kUint32Key[] = "Uint32Key";
-  const uint32_t kUint32Value = 654;
-  static const char kByteArraysKey[] = "ByteArraysKey";
-  const vector<vector<uint8_t>> kByteArraysValue{ {1}, {2} };
-  static const char kInt16Key[] = "Int16Key";
-  const int16_t kInt16Value = 123;
-  static const char kRpcIdentifierKey[] = "RpcIdentifierKey";
-  static const char kRpcIdentifierValue[] = "/org/chromium/test";
-  static const char kUint16Key[] = "Uint16Key";
-  const uint16_t kUint16Value = 123;
-  static const char kUint8sKey[] = "Uint8sKey";
-  const vector<uint8_t> kUint8sValue{ 1, 2 };
-  static const char kUint32sKey[] = "Uint32sKey";
-  const vector<uint32_t> kUint32sValue{ 1, 2 };
-  static const char kKeyValueStoreKey[] = "KeyValueStoreKey";
-  static const char kNestedInt32Key[] = "NestedKey32Key";
-  const int32_t kNestedInt32Value = 1;
-
   brillo::VariantDictionary dict;
   dict[kStringKey] = brillo::Any(string(kStringValue));
   dict[kStringmapKey] = brillo::Any(kStringmapValue);
   dict[kStringsKey] = brillo::Any(kStringsValue);
   dict[kBoolKey] = brillo::Any(kBoolValue);
-  dict[kInt32Key] = brillo::Any(kInt32Value);
-  dict[kUint32Key] = brillo::Any(kUint32Value);
+  dict[kIntKey] = brillo::Any(kIntValue);
+  dict[kUintKey] = brillo::Any(kUintValue);
   dict[kByteArraysKey] = brillo::Any(kByteArraysValue);
   dict[kInt16Key] = brillo::Any(kInt16Value);
-  dict[kRpcIdentifierKey] =
-      brillo::Any(dbus::ObjectPath(kRpcIdentifierValue));
+  dict[kRpcIdentifierKey] = brillo::Any(dbus::ObjectPath(kRpcIdentifierValue));
   dict[kUint16Key] = brillo::Any(kUint16Value);
   dict[kUint8sKey] = brillo::Any(kUint8sValue);
   dict[kUint32sKey] = brillo::Any(kUint32sValue);
@@ -704,10 +584,10 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   EXPECT_EQ(kStringsValue, store.GetStrings(kStringsKey));
   EXPECT_TRUE(store.ContainsBool(kBoolKey));
   EXPECT_EQ(kBoolValue, store.GetBool(kBoolKey));
-  EXPECT_TRUE(store.ContainsInt(kInt32Key));
-  EXPECT_EQ(kInt32Value, store.GetInt(kInt32Key));
-  EXPECT_TRUE(store.ContainsUint(kUint32Key));
-  EXPECT_EQ(kUint32Value, store.GetUint(kUint32Key));
+  EXPECT_TRUE(store.ContainsInt(kIntKey));
+  EXPECT_EQ(kIntValue, store.GetInt(kIntKey));
+  EXPECT_TRUE(store.ContainsUint(kUintKey));
+  EXPECT_EQ(kUintValue, store.GetUint(kUintKey));
   EXPECT_TRUE(store.ContainsByteArrays(kByteArraysKey));
   EXPECT_EQ(kByteArraysValue, store.GetByteArrays(kByteArraysKey));
   EXPECT_TRUE(store.ContainsInt16(kInt16Key));
