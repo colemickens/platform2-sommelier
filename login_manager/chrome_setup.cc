@@ -275,6 +275,11 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // Turn on plugin loading failure logging for crbug.com/314301.
   builder->AddVmodulePattern("*zygote*=1");
   builder->AddVmodulePattern("*plugin*=2");
+
+  // There is a mysterious offline login failure. Turn on logging on
+  // the login code path.
+  // TODO(xiyuan): Remove after http://crbug.com/547857 is resolved.
+  builder->AddVmodulePattern("*chromeos/login/*=1");
 }
 
 }  // namespace
