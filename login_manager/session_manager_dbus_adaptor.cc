@@ -317,12 +317,12 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EnableChromeTesting(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartSession(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  std::string email, unique_id;
-  if (!reader.PopString(&email) || !reader.PopString(&unique_id))
+  std::string cryptohome_id, unique_id;
+  if (!reader.PopString(&cryptohome_id) || !reader.PopString(&unique_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
   SessionManagerImpl::Error error;
-  bool success = impl_->StartSession(email, unique_id, &error);
+  bool success = impl_->StartSession(cryptohome_id, unique_id, &error);
   return CraftAppropriateResponseWithBool(call, error, success);
 }
 
@@ -363,35 +363,33 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
 void SessionManagerDBusAdaptor::StorePolicyForUser(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  std::string user_email;
+  std::string user_id;
   const uint8_t* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
-  if (!reader.PopString(&user_email) ||
+  if (!reader.PopString(&user_id) ||
       !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
   } else {
-    impl_->StorePolicyForUser(user_email,
-                              policy_blob,
-                              policy_blob_len,
-                              DBusMethodCompletion::CreateCallback(call,
-                                                                   sender));
+    impl_->StorePolicyForUser(
+        user_id, policy_blob, policy_blob_len,
+        DBusMethodCompletion::CreateCallback(call, sender));
     // Response will normally be sent asynchronously.
   }
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicyForUser(
     dbus::MethodCall* call) {
-  std::string user_email;
+  std::string user_id;
   dbus::MessageReader reader(call);
 
-  if (!reader.PopString(&user_email))
+  if (!reader.PopString(&user_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
   std::vector<uint8_t> policy_data;
   SessionManagerImpl::Error error;
-  impl_->RetrievePolicyForUser(user_email, &policy_data, &error);
+  impl_->RetrievePolicyForUser(user_id, &policy_data, &error);
   return CraftAppropriateResponseWithBytes(call, error, policy_data);
 }
 
@@ -524,13 +522,13 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  std::string user_email;
+  std::string user_id;
   std::vector<std::string> session_user_flags;
-  if (!reader.PopString(&user_email) ||
+  if (!reader.PopString(&user_id) ||
       !reader.PopArrayOfStrings(&session_user_flags)) {
     return CreateInvalidArgsError(call, call->GetSignature());
   }
-  impl_->SetFlagsForUser(user_email, session_user_flags);
+  impl_->SetFlagsForUser(user_id, session_user_flags);
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
 

@@ -119,7 +119,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   std::string EnableChromeTesting(bool force_relaunch,
                                   std::vector<std::string> extra_args,
                                   Error* error);
-  bool StartSession(const std::string& email,
+  bool StartSession(const std::string& user_id,
                     const std::string& unique_id,
                     Error* error);
   bool StopSession();
@@ -129,11 +129,11 @@ class SessionManagerImpl : public SessionManagerInterface,
                    PolicyService::Completion completion);
   void RetrievePolicy(std::vector<uint8_t>* policy_data, Error* error);
 
-  void StorePolicyForUser(const std::string& user_email,
+  void StorePolicyForUser(const std::string& user_id,
                           const uint8_t* policy_blob,
                           size_t policy_blob_len,
                           PolicyService::Completion completion);
-  void RetrievePolicyForUser(const std::string& user_email,
+  void RetrievePolicyForUser(const std::string& user_id,
                              std::vector<uint8_t>* policy_data,
                              Error* error);
 
@@ -157,7 +157,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   bool RestartJob(int fd, const std::vector<std::string>& argv, Error* error);
   void StartDeviceWipe(const std::string& reason, Error* error);
-  void SetFlagsForUser(const std::string& user_email,
+  void SetFlagsForUser(const std::string& user_id,
                        const std::vector<std::string>& session_user_flags);
 
   void RequestServerBackedStateKeys(
@@ -190,6 +190,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   void ImportValidateAndStoreGeneratedKey(const std::string& username,
                                           const base::FilePath& temp_key_file);
 
+  // Checks if string looks like valid cryptohome user id.
+  static bool ValidateUserId(const std::string& user_id);
+
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
 
@@ -199,7 +202,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                                  bool is_incognito,
                                  std::string* error);
 
-  PolicyService* GetPolicyService(const std::string& user_email);
+  PolicyService* GetPolicyService(const std::string& user_id);
 
   // Updates system settings according to |device_policy_|.
   void UpdateSystemSettings();

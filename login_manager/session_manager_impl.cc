@@ -63,10 +63,17 @@ namespace {
 
 // Constants used in email validation.
 const char kEmailSeparator = '@';
-const char kLegalCharacters[] =
+const char kEmailLegalCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890!#$%&'*+-/=?^_`{|}~";
+
+// Should match chromium AccountId::kUserIdPrefix .
+const char kUserIdPrefix[] = "g-";
+const char kUserIdLegalCharacters[] =
+    "-0123456789"
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
@@ -83,6 +90,12 @@ const char kCrossystemMainfwType[] = "mainfw_type";
 
 // Firmware type string returned when there is no Chrome OS firmware present.
 const char kCrossystemMainfwTypeNonchrome[] = "nonchrome";
+
+bool IsIncognitoUserId(const std::string& user_id) {
+  const std::string lower_case_id(base::ToLowerASCII(user_id));
+  return (lower_case_id == kGuestUserName) ||
+         (lower_case_id == SessionManagerImpl::kDemoUser);
+}
 
 }  // namespace
 
@@ -264,23 +277,28 @@ std::string SessionManagerImpl::EnableChromeTesting(
   return chrome_testing_path_.value();
 }
 
-bool SessionManagerImpl::StartSession(const std::string& email,
+bool SessionManagerImpl::StartSession(const std::string& user_id,
                                       const std::string& unique_id,
                                       Error* error) {
-  // Validate the |email|.
-  const std::string email_string(base::ToLowerASCII(email));
-  const bool is_incognito =
-      ((email_string == kGuestUserName) || (email_string == kDemoUser));
-  if (!is_incognito && !ValidateEmail(email_string)) {
-    const char msg[] = "Provided email address is not valid.  ASCII only.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kInvalidAccount, msg);
-    return false;
+  std::string actual_user_id = user_id;
+  const bool is_incognito = IsIncognitoUserId(actual_user_id);
+  // Validate the |user_id|.
+  if (!ValidateUserId(actual_user_id) && !is_incognito) {
+    // Support legacy email addresses.
+    // TODO(alemate): remove this after ChromeOS will stop using email as
+    // cryptohome identifier.
+    actual_user_id = base::ToLowerASCII(user_id);
+    if (!ValidateEmail(actual_user_id)) {
+      const char msg[] = "Provided email address is not valid.  ASCII only.";
+      LOG(ERROR) << msg;
+      error->Set(dbus_error::kInvalidAccount, msg);
+      return false;
+    }
   }
 
   // Check if this user already started a session.
-  if (user_sessions_.count(email_string) > 0) {
-    const char msg[] = "Provided email address already started a session.";
+  if (user_sessions_.count(actual_user_id) > 0) {
+    const char msg[] = "Provided user id already started a session.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSessionExists, msg);
     return false;
@@ -289,7 +307,7 @@ bool SessionManagerImpl::StartSession(const std::string& email,
   // Create a UserSession object for this user.
   std::string error_name;
   scoped_ptr<UserSession> user_session(
-      CreateUserSession(email_string, is_incognito, &error_name));
+      CreateUserSession(actual_user_id, is_incognito, &error_name));
   if (!user_session.get()) {
     error->Set(error_name, "Can't create session.");
     return false;
@@ -318,7 +336,7 @@ bool SessionManagerImpl::StartSession(const std::string& email,
   scoped_ptr<dbus::Response> emit_response =
       upstart_signal_emitter_->EmitSignal(
           "start-user-session",
-          std::vector<std::string>(1, "CHROMEOS_USER=" + email_string));
+          std::vector<std::string>(1, "CHROMEOS_USER=" + actual_user_id));
 
   if (!emit_response) {
     const char msg[] = "Emitting start-user-session upstart signal failed.";
@@ -327,16 +345,16 @@ bool SessionManagerImpl::StartSession(const std::string& email,
     return false;
   }
   LOG(INFO) << "Starting user session";
-  manager_->SetBrowserSessionForUser(email_string, user_session->userhash);
+  manager_->SetBrowserSessionForUser(actual_user_id, user_session->userhash);
   session_started_ = true;
-  user_sessions_[email_string] = user_session.release();
+  user_sessions_[actual_user_id] = user_session.release();
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
   dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStarted);
 
   if (device_policy_->KeyMissing() && !device_policy_->Mitigating() &&
       is_first_real_user) {
     // This is the first sign-in on this unmanaged device.  Take ownership.
-    key_gen_->Start(email_string);
+    key_gen_->Start(actual_user_id);
   }
 
   // Record that a login has successfully completed on this boot.
@@ -378,11 +396,11 @@ void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
 }
 
 void SessionManagerImpl::StorePolicyForUser(
-    const std::string& user_email,
+    const std::string& user_id,
     const uint8_t* policy_blob,
     size_t policy_blob_len,
     PolicyService::Completion completion) {
-  PolicyService* policy_service = GetPolicyService(user_email);
+  PolicyService* policy_service = GetPolicyService(user_id);
   if (!policy_service) {
     PolicyService::Error error(
         dbus_error::kSessionDoesNotExist,
@@ -400,10 +418,10 @@ void SessionManagerImpl::StorePolicyForUser(
 }
 
 void SessionManagerImpl::RetrievePolicyForUser(
-    const std::string& user_email,
+    const std::string& user_id,
     std::vector<uint8_t>* policy_data,
     Error* error) {
-  PolicyService* policy_service = GetPolicyService(user_email);
+  PolicyService* policy_service = GetPolicyService(user_id);
   if (!policy_service) {
     const char msg[] = "Cannot retrieve user policy before session is started.";
     LOG(ERROR) << msg;
@@ -534,9 +552,9 @@ void SessionManagerImpl::StartDeviceWipe(const std::string& reason,
 }
 
 void SessionManagerImpl::SetFlagsForUser(
-    const std::string& user_email,
+    const std::string& user_id,
     const std::vector<std::string>& session_user_flags) {
-  manager_->SetFlagsForUser(user_email, session_user_flags);
+  manager_->SetFlagsForUser(user_id, session_user_flags);
 }
 
 void SessionManagerImpl::RequestServerBackedStateKeys(
@@ -650,9 +668,19 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
 }
 
 // static
-bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
-  if (email_address.find_first_not_of(kLegalCharacters) != std::string::npos)
+bool SessionManagerImpl::ValidateUserId(const std::string& user_id) {
+  if (user_id.find_first_not_of(kUserIdLegalCharacters) != std::string::npos)
     return false;
+
+  return base::StartsWith(user_id, kUserIdPrefix, base::CompareCase::SENSITIVE);
+}
+
+// static
+bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
+  if (email_address.find_first_not_of(kEmailLegalCharacters) !=
+      std::string::npos) {
+    return false;
+  }
 
   size_t at = email_address.find(kEmailSeparator);
   // it has NO @.
