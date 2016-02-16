@@ -87,6 +87,12 @@ class HomeDirs {
   // Removes the cryptohome for the named user.
   virtual bool Remove(const std::string& username);
 
+  // Renames account identified by |account_id_from| to |account_id_to|.
+  // This is called when user e-mail is replaced with GaiaId as account
+  // identifier.
+  virtual bool Rename(const std::string& account_id_from,
+                      const std::string& account_id_to);
+
   // Returns true if the supplied Credentials are a valid (username, passkey)
   // pair.
   virtual bool AreCredentialsValid(const Credentials& credentials);

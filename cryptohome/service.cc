@@ -61,6 +61,18 @@ namespace gobject {
 
 namespace cryptohome {
 
+namespace {
+
+const std::string& GetAccountId(const AccountIdentifier& id) {
+  if (id.has_account_id()) {
+    return id.account_id();
+  }
+
+  return id.email();
+}
+
+}  // anonymous namespace
+
 const char kSaltFilePath[] = "/home/.shadow/salt";
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 const char kChapsSystemToken[] = "/var/lib/chaps";
@@ -773,7 +785,7 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  if (identifier->email().empty()) {
+  if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
@@ -785,9 +797,9 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  UsernamePasskey credentials(identifier->email().c_str(),
-                            SecureBlob(authorization->key().secret().begin(),
-                                       authorization->key().secret().end()));
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
+                              SecureBlob(authorization->key().secret().begin(),
+                                         authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   BaseReply reply;
@@ -847,7 +859,7 @@ void Service::DoRemoveKeyEx(AccountIdentifier* identifier,
     return;
   }
 
-  if (identifier->email().empty()) {
+  if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
@@ -865,10 +877,9 @@ void Service::DoRemoveKeyEx(AccountIdentifier* identifier,
   }
 
   BaseReply reply;
-  UsernamePasskey credentials(
-      identifier->email().c_str(),
-      SecureBlob(authorization->key().secret().begin(),
-                 authorization->key().secret().end()));
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
+                              SecureBlob(authorization->key().secret().begin(),
+                                         authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials)) {
@@ -923,14 +934,12 @@ void Service::DoListKeysEx(AccountIdentifier* identifier,
     return;
   }
 
-  if (identifier->email().empty()) {
+  if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
   BaseReply reply;
-  UsernamePasskey credentials(
-      identifier->email().c_str(),
-      SecureBlob());
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(), SecureBlob());
   if (!homedirs_->Exists(credentials)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
@@ -986,7 +995,7 @@ void Service::DoGetKeyDataEx(AccountIdentifier* identifier,
     return;
   }
 
-  if (identifier->email().empty()) {
+  if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
@@ -997,7 +1006,7 @@ void Service::DoGetKeyDataEx(AccountIdentifier* identifier,
   }
 
   BaseReply reply;
-  UsernamePasskey credentials(identifier->email().c_str(), SecureBlob());
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(), SecureBlob());
   if (!homedirs_->Exists(credentials)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     SendReply(context, reply);
@@ -1146,7 +1155,7 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
   // Setup a reply for use during error handling.
   BaseReply reply;
 
-  if (identifier->email().empty()) {
+  if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
@@ -1184,10 +1193,9 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
     }
   }
 
-  UsernamePasskey credentials(
-      identifier->email().c_str(),
-      SecureBlob(authorization->key().secret().begin(),
-                 authorization->key().secret().end()));
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
+                              SecureBlob(authorization->key().secret().begin(),
+                                         authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials)) {
@@ -1250,7 +1258,7 @@ void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
   // Setup a reply for use during error handling.
   BaseReply reply;
 
-  if (identifier->email().empty()) {
+  if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
@@ -1283,9 +1291,9 @@ void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
     }
   }
 
-  UsernamePasskey credentials(identifier->email().c_str(),
-                            SecureBlob(authorization->key().secret().begin(),
-                                       authorization->key().secret().end()));
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
+                              SecureBlob(authorization->key().secret().begin(),
+                                         authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials)) {
@@ -1379,6 +1387,59 @@ gboolean Service::AsyncRemove(gchar *userid,
         base::Bind(&MountTaskRemove::Run, mount_task.get()));
   }
   return TRUE;
+}
+
+gboolean Service::RenameCryptohome(const GArray* account_id_from,
+                                   const GArray* account_id_to,
+                                   DBusGMethodInvocation* response) {
+  scoped_ptr<AccountIdentifier> id_from(new AccountIdentifier);
+  scoped_ptr<AccountIdentifier> id_to(new AccountIdentifier);
+  if (!id_from->ParseFromArray(account_id_from->data, account_id_from->len)) {
+    id_from.reset();
+  }
+
+  if (!id_to->ParseFromArray(account_id_to->data, account_id_to->len)) {
+    id_to.reset();
+  }
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::DoRenameCryptohome, base::Unretained(this),
+                 base::Owned(id_from.release()), base::Owned(id_to.release()),
+                 base::Unretained(response)));
+
+  return TRUE;
+}
+
+void Service::DoRenameCryptohome(AccountIdentifier* id_from,
+                                 AccountIdentifier* id_to,
+                                 DBusGMethodInvocation* context) {
+  if (!id_from || !id_to) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  scoped_refptr<cryptohome::Mount> mount =
+      GetMountForUser(GetAccountId(*id_from));
+  const bool is_mounted =
+      mount.get() && (mount->IsVaultMounted() || mount->IsMounted());
+  BaseReply reply;
+
+  if (is_mounted) {
+    LOG(ERROR) << "RenameCryptohome('" << GetAccountId(*id_from) << "','"
+               << GetAccountId(*id_to)
+               << "'): Unable to rename mounted cryptohome.";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  } else if (!homedirs_) {
+    LOG(ERROR) << "RenameCryptohome('" << GetAccountId(*id_from) << "','"
+               << GetAccountId(*id_to) << "'): Homedirs not initialized.";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  } else if (!homedirs_->Rename(GetAccountId(*id_from), GetAccountId(*id_to))) {
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+  }
+
+  SendReply(context, reply);
 }
 
 gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
@@ -1584,7 +1645,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   // At present, we only enforce non-empty email addresses.
   // In the future, we may wish to canonicalize if we don't move
   // to requiring a IdP-unique identifier.
-  if (identifier->email().empty()) {
+  if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
   }
@@ -1643,9 +1704,9 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     }
   }
 
-  UsernamePasskey credentials(identifier->email().c_str(),
-                            SecureBlob(authorization->key().secret().begin(),
-                                       authorization->key().secret().end()));
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(),
+                              SecureBlob(authorization->key().secret().begin(),
+                                         authorization->key().secret().end()));
   // Everything else can be the default.
   credentials.set_key_data(authorization->key().data());
 
@@ -1657,7 +1718,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
 
   // Provide an authoritative filesystem-sanitized username.
   mount_reply->set_sanitized_username(
-      brillo::cryptohome::home::SanitizeUserName(identifier->email()));
+      brillo::cryptohome::home::SanitizeUserName(GetAccountId(*identifier)));
 
   // While it would be cleaner to implement the privilege enforcement
   // here, that can only be done if a label was supplied.  If a wildcard
@@ -1679,7 +1740,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
 
   // Don't overlay an ephemeral mount over a file-backed one.
   scoped_refptr<cryptohome::Mount> user_mount =
-      GetOrCreateMountForUser(identifier->email());
+      GetOrCreateMountForUser(GetAccountId(*identifier));
   if (request->require_ephemeral() && user_mount->IsVaultMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.

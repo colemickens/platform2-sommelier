@@ -1781,7 +1781,8 @@ base::Value* Mount::GetStatus() {
   return dv;
 }
 
-std::string Mount::GetNewUserPath(const std::string& username) const {
+// static
+std::string Mount::GetNewUserPath(const std::string& username) {
   std::string sanitized =
       brillo::cryptohome::home::SanitizeUserName(username);
   return StringPrintf("/home/chronos/u-%s", sanitized.c_str());

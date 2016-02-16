@@ -259,6 +259,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean AsyncRemove(gchar *user,
                                gint *OUT_async_id,
                                GError **error);
+  virtual gboolean RenameCryptohome(const GArray* account_id_from,
+                                    const GArray* account_id_to,
+                                    DBusGMethodInvocation* response);
   virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
   virtual gboolean GetSanitizedUsername(gchar *username,
                                         gchar **OUT_sanitized,
@@ -294,6 +297,9 @@ class Service : public brillo::dbus::AbstractDbusService,
       AuthorizationRequest* authorization,
       MountRequest* request,
       DBusGMethodInvocation *response);
+  virtual void DoRenameCryptohome(AccountIdentifier* id_from,
+                                  AccountIdentifier* id_to,
+                                  DBusGMethodInvocation* context);
   virtual gboolean MountEx(
       const GArray *account_id,
       const GArray *authorization_request,

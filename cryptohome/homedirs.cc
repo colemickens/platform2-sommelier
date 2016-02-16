@@ -898,6 +898,109 @@ bool HomeDirs::Remove(const std::string& username) {
          platform_->DeleteFile(root_path.value(), true);
 }
 
+bool HomeDirs::Rename(const std::string& account_id_from,
+                      const std::string& account_id_to) {
+  if (account_id_from == account_id_to) {
+    return true;
+  }
+
+  UsernamePasskey from(account_id_from.c_str(), SecureBlob());
+  UsernamePasskey to(account_id_to.c_str(), SecureBlob());
+  const std::string obfuscated_from = from.GetObfuscatedUsername(system_salt_);
+  const std::string obfuscated_to = to.GetObfuscatedUsername(system_salt_);
+
+  const FilePath user_dir_from = FilePath(shadow_root_).Append(obfuscated_from);
+  const FilePath user_path_from =
+      brillo::cryptohome::home::GetUserPath(account_id_from);
+  const FilePath root_path_from =
+      brillo::cryptohome::home::GetRootPath(account_id_from);
+  const FilePath new_user_path_from =
+      FilePath(Mount::GetNewUserPath(account_id_from));
+
+  const FilePath user_dir_to = FilePath(shadow_root_).Append(obfuscated_to);
+  const FilePath user_path_to =
+      brillo::cryptohome::home::GetUserPath(account_id_to);
+  const FilePath root_path_to =
+      brillo::cryptohome::home::GetRootPath(account_id_to);
+  const FilePath new_user_path_to =
+      FilePath(Mount::GetNewUserPath(account_id_to));
+
+  LOG(INFO) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
+            << account_id_to << "'):"
+            << " renaming '" << user_dir_from.value() << "' "
+            << "(exists=" << base::PathExists(user_dir_from) << ") "
+            << "=> '" << user_dir_to.value() << "' "
+            << "(exists=" << base::PathExists(user_dir_to) << "); "
+            << "renaming '" << user_path_from.value() << "' "
+            << "(exists=" << base::PathExists(user_path_from) << ") "
+            << "=> '" << user_path_to.value() << "' "
+            << "(exists=" << base::PathExists(user_path_to) << "); "
+            << "renaming '" << root_path_from.value() << "' "
+            << "(exists=" << base::PathExists(root_path_from) << ") "
+            << "=> '" << root_path_to.value() << "' "
+            << "(exists=" << base::PathExists(root_path_to) << "); "
+            << "renaming '" << new_user_path_from.value() << "' "
+            << "(exists=" << base::PathExists(new_user_path_from) << ") "
+            << "=> '" << new_user_path_to.value() << "' "
+            << "(exists=" << base::PathExists(new_user_path_to) << ")";
+
+  const bool already_renamed = !base::PathExists(user_dir_from);
+
+  if (already_renamed) {
+    LOG(INFO) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
+              << account_id_to << "'): Consider already renamed. "
+              << "('" << user_dir_from.value() << "' doesn't exist.)";
+    return true;
+  }
+
+  const bool can_rename = !base::PathExists(user_dir_to);
+
+  if (!can_rename) {
+    LOG(ERROR) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
+               << account_id_to << "'): Destination already exists! "
+               << " '" << user_dir_from.value() << "' "
+               << "(exists=" << base::PathExists(user_dir_from) << ") "
+               << "=> '" << user_dir_to.value() << "' "
+               << "(exists=" << base::PathExists(user_dir_to) << "); ";
+    return false;
+  }
+
+  // |user_dir_renamed| is return value, because two other directories are
+  // empty and will be created as needed.
+  const bool user_dir_renamed =
+      !base::PathExists(user_dir_from) ||
+      platform_->Rename(user_dir_from.value(), user_dir_to.value());
+
+  if (user_dir_renamed) {
+    const bool user_path_renamed =
+        !base::PathExists(user_path_from) ||
+        platform_->Rename(user_path_from.value(), user_path_to.value());
+    const bool root_path_renamed =
+        !base::PathExists(root_path_from) ||
+        platform_->Rename(root_path_from.value(), root_path_to.value());
+    const bool new_user_path_renamed =
+        !base::PathExists(new_user_path_from) ||
+        platform_->Rename(new_user_path_from.value(), new_user_path_to.value());
+    if (!user_path_renamed) {
+      LOG(WARNING) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
+                   << account_id_to << "'): failed to rename user_path.";
+    }
+    if (!root_path_renamed) {
+      LOG(WARNING) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
+                   << account_id_to << "'): failed to rename root_path.";
+    }
+    if (!new_user_path_renamed) {
+      LOG(WARNING) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
+                   << account_id_to << "'): failed to rename new_user_path.";
+    }
+  } else {
+    LOG(ERROR) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
+               << account_id_to << "'): failed to rename user_dir.";
+  }
+
+  return user_dir_renamed;
+}
+
 bool HomeDirs::Migrate(const Credentials& newcreds,
                        const SecureBlob& oldkey) {
   SecureBlob newkey;

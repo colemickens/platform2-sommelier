@@ -269,7 +269,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Returns the temporary user path while we're migrating for
   // http://crbug.com/224291
-  std::string GetNewUserPath(const std::string& username) const;
+  static std::string GetNewUserPath(const std::string& username);
 
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
 

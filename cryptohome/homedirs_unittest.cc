@@ -189,6 +189,28 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
   homedirs_.RemoveNonOwnerCryptohomes();
 }
 
+TEST_F(HomeDirsTest, RenameCryptohome) {
+  ASSERT_TRUE(
+      base::CreateDirectory(base::FilePath(test_helper_.users[0].base_path)));
+  ASSERT_TRUE(
+      base::CreateDirectory(base::FilePath(test_helper_.users[1].base_path)));
+  ASSERT_TRUE(
+      base::CreateDirectory(base::FilePath(test_helper_.users[2].base_path)));
+
+  const char kNewUserId[] = "some_new_user";
+  EXPECT_TRUE(homedirs_.Rename(kDefaultUsers[0].username, kNewUserId));
+
+  // If source directory doesn't exist, assume renamed.
+  EXPECT_TRUE(homedirs_.Rename(kDefaultUsers[0].username, kNewUserId));
+
+  // This should fail as target directory already exists.
+  EXPECT_FALSE(
+      homedirs_.Rename(kDefaultUsers[1].username, kDefaultUsers[2].username));
+
+  // Rename back.
+  EXPECT_TRUE(homedirs_.Rename(kNewUserId, kDefaultUsers[0].username));
+}
+
 class FreeDiskSpaceTest : public HomeDirsTest {
  public:
   FreeDiskSpaceTest() { }

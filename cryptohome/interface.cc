@@ -161,6 +161,12 @@ gboolean cryptohome_async_remove(Cryptohome* self,
                                  GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncRemove, userid, OUT_async_id);
 }
+gboolean cryptohome_rename_cryptohome(Cryptohome* self,
+                                      GArray* account_id_from,
+                                      GArray* account_id_to,
+                                      DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(RenameCryptohome, account_id_from, account_id_to);
+}
 gboolean cryptohome_get_system_salt(Cryptohome* self,
                                     GArray** OUT_salt,
                                     GError** error) {

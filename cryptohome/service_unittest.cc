@@ -192,7 +192,7 @@ TEST_F(ServiceTest, CheckKeyMountTest) {
   scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
   scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
   scoped_ptr<CheckKeyRequest> req(new CheckKeyRequest);
-  id->set_email(kUser);
+  id->set_account_id(kUser);
   auth->mutable_key()->set_secret(kKey);
 
   // event_source_ will delete reply on cleanup.
@@ -255,7 +255,7 @@ TEST_F(ServiceTest, CheckKeyHomedirsTest) {
   // |error| will be cleaned up by event_source_
   MockDBusReply* reply = new MockDBusReply();
   std::string* base_reply_ptr = NULL;
-  id->set_email(kUser);
+  id->set_account_id(kUser);
   auth->mutable_key()->set_secret(kKey);
 
   EXPECT_CALL(*mount_, AreSameUser(_))
@@ -725,7 +725,7 @@ TEST_F(ServiceExTest, MountInvalidArgsNoEmail) {
 TEST_F(ServiceExTest, MountInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
@@ -734,7 +734,7 @@ TEST_F(ServiceExTest, MountInvalidArgsNoSecret) {
 TEST_F(ServiceExTest, MountInvalidArgsEmptySecret) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
   service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
@@ -744,7 +744,7 @@ TEST_F(ServiceExTest, MountInvalidArgsEmptySecret) {
 TEST_F(ServiceExTest, MountInvalidArgsCreateWithNoKey) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   mount_req_->mutable_create();
   service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
@@ -755,7 +755,7 @@ TEST_F(ServiceExTest, MountInvalidArgsCreateWithNoKey) {
 TEST_F(ServiceExTest, MountInvalidArgsCreateWithEmptyKey) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   mount_req_->mutable_create()->add_keys();
   // TODO(wad) Add remaining missing field tests and NULL tests
@@ -778,7 +778,7 @@ TEST_F(ServiceExTest, AddKeyInvalidArgsNoEmail) {
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
@@ -787,7 +787,7 @@ TEST_F(ServiceExTest, AddKeyInvalidArgsNoSecret) {
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeySet) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   add_req_->clear_key();
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
@@ -798,7 +798,7 @@ TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeySet) {
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoKeyFilled) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   add_req_->mutable_key();
   service_.DoAddKeyEx(id_.get(), auth_.get(), add_req_.get(), NULL);
@@ -809,7 +809,7 @@ TEST_F(ServiceExTest, AddKeyInvalidArgsNoKeyFilled) {
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeyLabel) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("blerg");
   add_req_->mutable_key();
   // No label
@@ -832,7 +832,7 @@ TEST_F(ServiceExTest, CheckKeyInvalidArgsNoEmail) {
 TEST_F(ServiceExTest, CheckKeyInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
@@ -841,7 +841,7 @@ TEST_F(ServiceExTest, CheckKeyInvalidArgsNoSecret) {
 TEST_F(ServiceExTest, CheckKeyInvalidArgsEmptySecret) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
   service_.DoCheckKeyEx(id_.get(), auth_.get(), check_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
@@ -861,7 +861,7 @@ TEST_F(ServiceExTest, RemoveKeyInvalidArgsNoEmail) {
 TEST_F(ServiceExTest, RemoveKeyInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No key secret supplied", g_error_->message);
@@ -870,7 +870,7 @@ TEST_F(ServiceExTest, RemoveKeyInvalidArgsNoSecret) {
 TEST_F(ServiceExTest, RemoveKeyInvalidArgsEmptySecret) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("");
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
@@ -880,7 +880,7 @@ TEST_F(ServiceExTest, RemoveKeyInvalidArgsEmptySecret) {
 TEST_F(ServiceExTest, RemoveKeyInvalidArgsEmptyRemoveLabel) {
   SetupErrorReply();
   PrepareArguments();
-  id_->set_email("foo@gmail.com");
+  id_->set_account_id("foo@gmail.com");
   auth_->mutable_key()->set_secret("some secret");
   remove_req_->mutable_key()->mutable_data();
   service_.DoRemoveKeyEx(id_.get(), auth_.get(), remove_req_.get(), NULL);
@@ -1133,7 +1133,7 @@ TEST_F(ServiceExTest, GetKeyDataExNoMatch) {
   EXPECT_CALL(homedirs_, Exists(_))
       .WillRepeatedly(Return(true));
 
-  id_->set_email("unittest@example.com");
+  id_->set_account_id("unittest@example.com");
   GetKeyDataRequest req;
   req.mutable_key()->mutable_data()->set_label("non-existent label");
   // Ensure there are no matches.
@@ -1162,7 +1162,7 @@ TEST_F(ServiceExTest, GetKeyDataExOneMatch) {
       .Times(1)
       .WillRepeatedly(Invoke(this, &ServiceExTest::GetNiceMockVaultKeyset));
 
-  id_->set_email("unittest@example.com");
+  id_->set_account_id("unittest@example.com");
   service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
   BaseReply reply = GetLastReply();
   EXPECT_FALSE(reply.has_error());

@@ -253,11 +253,11 @@ bool GetAttrValue(const base::CommandLine* cl, std::string* value_out) {
   return true;
 }
 
-bool GetUsername(const base::CommandLine* cl, std::string* user_out) {
+bool GetAccountId(const base::CommandLine* cl, std::string* user_out) {
   *user_out = cl->GetSwitchValueASCII(switches::kUserSwitch);
 
   if (user_out->length() == 0) {
-    printf("No user specified (--user=<user>)\n");
+    printf("No user specified (--user=<account_id>)\n");
     return false;
   }
   return true;
@@ -340,12 +340,12 @@ GArray* GArrayFromProtoBuf(const google::protobuf::MessageLite& pb) {
 }
 
 bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier *id) {
-  std::string user;
-  if (!GetUsername(cl, &user)) {
-    printf("No username specified.\n");
+  std::string account_id;
+  if (!GetAccountId(cl, &account_id)) {
+    printf("No account_id specified.\n");
     return false;
   }
-  id->set_email(user);
+  id->set_account_id(account_id);
   return true;
 }
 
@@ -628,15 +628,15 @@ int main(int argc, char **argv) {
   cryptohome::Platform platform;
 
   if (!strcmp(switches::kActions[switches::ACTION_MOUNT], action.c_str())) {
-    std::string user, password;
+    std::string account_id, password;
 
-    if (!GetUsername(cl, &user)) {
-      printf("No username specified.\n");
+    if (!GetAccountId(cl, &account_id)) {
+      printf("No account_id specified.\n");
       return 1;
     }
 
     GetPassword(proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter the password for <%s>", user.c_str()),
+                StringPrintf("Enter the password for <%s>", account_id.c_str()),
                 &password);
 
     gboolean done = false;
@@ -645,7 +645,7 @@ int main(int argc, char **argv) {
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_mount(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                password.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
                cl->HasSwitch(switches::kEnsureEphemeralSwitch),
@@ -661,7 +661,7 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_mount(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                password.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
                cl->HasSwitch(switches::kEnsureEphemeralSwitch),
@@ -770,10 +770,10 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_PUBLIC],
                      action.c_str())) {
-    std::string user;
+    std::string account_id;
 
-    if (!GetUsername(cl, &user)) {
-      printf("No username specified.\n");
+    if (!GetAccountId(cl, &account_id)) {
+      printf("No account_id specified.\n");
       return 1;
     }
 
@@ -783,7 +783,7 @@ int main(int argc, char **argv) {
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_mount_public(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
                cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                &mount_error,
@@ -797,7 +797,7 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_mount_public(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
                cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                &async_id,
@@ -815,15 +815,15 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TEST_AUTH],
                      action.c_str())) {
-    std::string user, password;
+    std::string account_id, password;
 
-    if (!GetUsername(cl, &user)) {
-      printf("No username specified.\n");
+    if (!GetAccountId(cl, &account_id)) {
+      printf("No account_id specified.\n");
       return 1;
     }
 
     GetPassword(proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter the password for <%s>", user.c_str()),
+                StringPrintf("Enter the password for <%s>", account_id.c_str()),
                 &password);
 
     gboolean done = false;
@@ -831,7 +831,7 @@ int main(int argc, char **argv) {
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_check_key(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                password.c_str(),
                &done,
                &brillo::Resetter(&error).lvalue())) {
@@ -842,7 +842,7 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_check_key(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                password.c_str(),
                &async_id,
                &brillo::Resetter(&error).lvalue())) {
@@ -1083,25 +1083,26 @@ int main(int argc, char **argv) {
     printf("Key authenticated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY],
                      action.c_str())) {
-    std::string user, password, old_password;
+    std::string account_id, password, old_password;
 
-    if (!GetUsername(cl, &user)) {
+    if (!GetAccountId(cl, &account_id)) {
       return 1;
     }
 
     GetPassword(proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter the password for <%s>", user.c_str()),
+                StringPrintf("Enter the password for <%s>", account_id.c_str()),
                 &password);
-    GetPassword(proxy, cl, switches::kOldPasswordSwitch,
-                StringPrintf("Enter the old password for <%s>", user.c_str()),
-                &old_password);
+    GetPassword(
+        proxy, cl, switches::kOldPasswordSwitch,
+        StringPrintf("Enter the old password for <%s>", account_id.c_str()),
+        &old_password);
 
     gboolean done = false;
     brillo::glib::ScopedError error;
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_migrate_key(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                old_password.c_str(),
                password.c_str(),
                &done,
@@ -1113,7 +1114,7 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_migrate_key(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                old_password.c_str(),
                password.c_str(),
                &async_id,
@@ -1131,18 +1132,20 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY],
                      action.c_str())) {
-    std::string user, password, new_password;
+    std::string account_id, password, new_password;
 
-    if (!GetUsername(cl, &user)) {
+    if (!GetAccountId(cl, &account_id)) {
       return 1;
     }
 
-    GetPassword(proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter a current password for <%s>", user.c_str()),
-                &password);
-    GetPassword(proxy, cl, switches::kNewPasswordSwitch,
-                StringPrintf("Enter the new password for <%s>", user.c_str()),
-                &new_password);
+    GetPassword(
+        proxy, cl, switches::kPasswordSwitch,
+        StringPrintf("Enter a current password for <%s>", account_id.c_str()),
+        &password);
+    GetPassword(
+        proxy, cl, switches::kNewPasswordSwitch,
+        StringPrintf("Enter the new password for <%s>", account_id.c_str()),
+        &new_password);
 
     gboolean done = false;
     gint key_index = -1;
@@ -1150,7 +1153,7 @@ int main(int argc, char **argv) {
 
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_add_key(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                password.c_str(),
                new_password.c_str(),
                &key_index,
@@ -1163,7 +1166,7 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_add_key(proxy.gproxy(),
-               user.c_str(),
+               account_id.c_str(),
                password.c_str(),
                new_password.c_str(),
                &async_id,
@@ -1348,20 +1351,20 @@ int main(int argc, char **argv) {
     printf("Key updated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
-    std::string user;
+    std::string account_id;
 
-    if (!GetUsername(cl, &user)) {
+    if (!GetAccountId(cl, &account_id)) {
       return 1;
     }
 
-    if (!cl->HasSwitch(switches::kForceSwitch) && !ConfirmRemove(user)) {
+    if (!cl->HasSwitch(switches::kForceSwitch) && !ConfirmRemove(account_id)) {
       return 1;
     }
 
     gboolean done = false;
     brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_remove(proxy.gproxy(),
-        user.c_str(),
+        account_id.c_str(),
         &done,
         &brillo::Resetter(&error).lvalue())) {
       printf("Remove call failed: %s.\n", error->message);
@@ -1401,23 +1404,23 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_OBFUSCATE_USER],
                      action.c_str())) {
-    std::string user;
+    std::string account_id;
 
-    if (!GetUsername(cl, &user)) {
+    if (!GetAccountId(cl, &account_id)) {
       return 1;
     }
 
-    cryptohome::UsernamePasskey up(user.c_str(), SecureBlob());
+    cryptohome::UsernamePasskey up(account_id.c_str(), SecureBlob());
     printf("%s\n", up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_KEYSET],
                      action.c_str())) {
-    std::string user;
+    std::string account_id;
 
-    if (!GetUsername(cl, &user)) {
+    if (!GetAccountId(cl, &account_id)) {
       return 1;
     }
 
-    cryptohome::UsernamePasskey up(user.c_str(), SecureBlob());
+    cryptohome::UsernamePasskey up(account_id.c_str(), SecureBlob());
 
     string vault_path = StringPrintf("/home/.shadow/%s/master.0",
         up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
@@ -1802,23 +1805,23 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_PKCS11_TOKEN_STATUS],
       action.c_str())) {
-    // If no username is specified, proceed with the empty string.
-    string user = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    if (!user.empty()) {
+    // If no account_id is specified, proceed with the empty string.
+    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    if (!account_id.empty()) {
       brillo::glib::ScopedError error;
       gchar* label = NULL;
       gchar* pin = NULL;
       int slot = 0;
       if (!org_chromium_CryptohomeInterface_pkcs11_get_tpm_token_info_for_user(
               proxy.gproxy(),
-              user.c_str(),
+              account_id.c_str(),
               &label,
               &pin,
               &slot,
               &brillo::Resetter(&error).lvalue())) {
         printf("PKCS #11 info call failed: %s.\n", error->message);
       } else {
-        printf("Token properties for %s:\n", user.c_str());
+        printf("Token properties for %s:\n", account_id.c_str());
         printf("Label = %s\n", label);
         printf("Pin = %s\n", pin);
         printf("Slot = %d\n", slot);
@@ -1835,13 +1838,13 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_PKCS11_TERMINATE],
                      action.c_str())) {
-    // If no username is specified, proceed with the empty string.
-    string user;
-    GetUsername(cl, &user);
+    // If no account_id is specified, proceed with the empty string.
+    string account_id;
+    GetAccountId(cl, &account_id);
     brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_pkcs11_terminate(
             proxy.gproxy(),
-            user.c_str(),
+            account_id.c_str(),
             &brillo::Resetter(&error).lvalue())) {
       printf("PKCS #11 terminate call failed: %s.\n", error->message);
     }
@@ -2023,7 +2026,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
       action.c_str())) {
-    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -2047,7 +2050,7 @@ int main(int argc, char **argv) {
           proxy.gproxy(),
           data.get(),
           is_user_specific,
-          username.c_str(),
+          account_id.c_str(),
           key_name.c_str(),
           &brillo::Resetter(&cert).lvalue(),
           &success,
@@ -2065,7 +2068,7 @@ int main(int argc, char **argv) {
               proxy.gproxy(),
               data.get(),
               is_user_specific,
-              username.c_str(),
+              account_id.c_str(),
               key_name.c_str(),
               &async_id,
               &brillo::Resetter(&error).lvalue())) {
@@ -2086,7 +2089,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
       action.c_str())) {
-    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -2099,7 +2102,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
           proxy.gproxy(),
           is_user_specific,
-          username.c_str(),
+          account_id.c_str(),
           key_name.c_str(),
           &exists,
           &brillo::Resetter(&error).lvalue())) {
@@ -2115,7 +2118,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate(
           proxy.gproxy(),
           is_user_specific,
-          username.c_str(),
+          account_id.c_str(),
           key_name.c_str(),
           &brillo::Resetter(&cert).lvalue(),
           &success,
@@ -2127,7 +2130,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_public_key(
           proxy.gproxy(),
           is_user_specific,
-          username.c_str(),
+          account_id.c_str(),
           key_name.c_str(),
           &brillo::Resetter(&public_key).lvalue(),
           &success,
@@ -2143,7 +2146,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_REGISTER_KEY],
       action.c_str())) {
-    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -2157,7 +2160,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_register_key(
           proxy.gproxy(),
           true,
-          username.c_str(),
+          account_id.c_str(),
           key_name.c_str(),
           &async_id,
           &brillo::Resetter(&error).lvalue())) {
@@ -2171,7 +2174,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE],
       action.c_str())) {
-    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -2198,7 +2201,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_challenge(  // NOLINT
             proxy.gproxy(),
             is_user_specific,
-            username.c_str(),
+            account_id.c_str(),
             key_name.c_str(),
             "cros@crosdmsregtest.com",
             device_id.get(),
@@ -2222,7 +2225,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_DELETE],
       action.c_str())) {
-    string username = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
@@ -2235,7 +2238,7 @@ int main(int argc, char **argv) {
     if (!org_chromium_CryptohomeInterface_tpm_attestation_delete_keys(
             proxy.gproxy(),
             is_user_specific,
-            username.c_str(),
+            account_id.c_str(),
             key_name.c_str(),
             &success,
             &brillo::Resetter(&error).lvalue())) {
