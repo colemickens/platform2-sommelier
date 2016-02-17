@@ -37,6 +37,7 @@
         'udev_collector.cc',
         'unclean_shutdown_collector.cc',
         'user_collector.cc',
+        'user_collector_base.cc',
       ],
     },
     {

@@ -6,18 +6,15 @@
 #define CRASH_REPORTER_USER_COLLECTOR_H_
 
 #include <string>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "crash-reporter/crash_collector.h"
-
-class SystemLogging;
+#include "crash-reporter/user_collector_base.h"
 
 // User crash collector.
-class UserCollector : public CrashCollector {
+class UserCollector : public UserCollectorBase {
  public:
   UserCollector();
 
@@ -42,10 +39,6 @@ class UserCollector : public CrashCollector {
 
   // Disable collection.
   bool Disable() { return SetUpInternal(false); }
-
-  // Handle a specific user crash.  Returns true on success.
-  bool HandleCrash(const std::string &crash_attributes,
-                   const char *force_exec);
 
   // Set (override the default) core file pattern.
   void set_core_pattern_file(const std::string &pattern) {
@@ -76,58 +69,8 @@ class UserCollector : public CrashCollector {
   FRIEND_TEST(UserCollectorTest, ValidateProcFiles);
   FRIEND_TEST(UserCollectorTest, ValidateCoreFile);
 
-  // Enumeration to pass to GetIdFromStatus.  Must match the order
-  // that the kernel lists IDs in the status file.
-  enum IdKind {
-    kIdReal = 0,  // uid and gid
-    kIdEffective = 1,  // euid and egid
-    kIdSet = 2,  // suid and sgid
-    kIdFileSystem = 3,  // fsuid and fsgid
-    kIdMax
-  };
-
-  enum ErrorType {
-    kErrorNone,
-    kErrorSystemIssue,
-    kErrorReadCoreData,
-    kErrorUnusableProcFiles,
-    kErrorInvalidCoreFile,
-    kErrorUnsupported32BitCoreFile,
-    kErrorCore2MinidumpConversion,
-  };
-
-  static const int kForkProblem = 255;
-
-  // Returns an error type signature for a given |error_type| value,
-  // which is reported to the crash server along with the
-  // crash_reporter-user-collection signature.
-  std::string GetErrorTypeSignature(ErrorType error_type) const;
-
   std::string GetPattern(bool enabled) const;
   bool SetUpInternal(bool enabled);
-
-  // Returns, via |line|, the first line in |lines| that starts with |prefix|.
-  // Returns true if a line is found, or false otherwise.
-  bool GetFirstLineWithPrefix(const std::vector<std::string> &lines,
-                              const char *prefix, std::string *line);
-
-  // Returns the identifier of |kind|, via |id|, found in |status_lines| on
-  // the line starting with |prefix|. |status_lines| contains the lines in
-  // the status file. Returns true if the identifier can be determined.
-  bool GetIdFromStatus(const char *prefix,
-                       IdKind kind,
-                       const std::vector<std::string> &status_lines,
-                       int *id);
-
-  // Returns the process state, via |state|, found in |status_lines|, which
-  // contains the lines in the status file. Returns true if the process state
-  // can be determined.
-  bool GetStateFromStatus(const std::vector<std::string> &status_lines,
-                          std::string *state);
-
-  void LogCollectionError(const std::string &error_message);
-  void EnqueueCollectionErrorLog(pid_t pid, ErrorType error_type,
-                                 const std::string &exec_name);
 
   bool CopyOffProcFiles(pid_t pid, const base::FilePath &container_dir);
 
@@ -144,28 +87,11 @@ class UserCollector : public CrashCollector {
   // platform), which is due to the limitation in core2md. It returns an error
   // type otherwise.
   ErrorType ValidateCoreFile(const base::FilePath &core_path) const;
-
-  // Determines the crash directory for given pid based on pid's owner,
-  // and creates the directory if necessary with appropriate permissions.
-  // Returns true whether or not directory needed to be created, false on
-  // any failure.
-  bool GetCreatedCrashDirectory(pid_t pid, uid_t supplied_ruid,
-                                base::FilePath *crash_file_path,
-                                bool *out_of_capacity);
   bool CopyStdinToCoreFile(const base::FilePath &core_path);
   bool RunCoreToMinidump(const base::FilePath &core_path,
                          const base::FilePath &procfs_directory,
                          const base::FilePath &minidump_path,
                          const base::FilePath &temp_directory);
-  ErrorType ConvertCoreToMinidump(pid_t pid,
-                                  const base::FilePath &container_dir,
-                                  const base::FilePath &core_path,
-                                  const base::FilePath &minidump_path);
-  ErrorType ConvertAndEnqueueCrash(pid_t pid, const std::string &exec_name,
-                                   uid_t supplied_ruid, bool *out_of_capacity);
-  bool ParseCrashAttributes(const std::string &crash_attributes,
-                            pid_t *pid, int *signal, uid_t *uid,
-                            std::string *kernel_supplied_name);
 
   bool ShouldDump(bool has_owner_consent,
                   bool is_developer,
@@ -173,18 +99,21 @@ class UserCollector : public CrashCollector {
                   const std::string &exec,
                   std::string *reason);
 
-  bool generate_diagnostics_;
+  // UserCollectorBase overrides.
+  bool ShouldDump(pid_t pid,
+                  const std::string &exec,
+                  std::string *reason) override;
+
+  ErrorType ConvertCoreToMinidump(pid_t pid,
+                                  const base::FilePath &container_dir,
+                                  const base::FilePath &core_path,
+                                  const base::FilePath &minidump_path) override;
+
   std::string core_pattern_file_;
   std::string core_pipe_limit_file_;
   std::string our_path_;
-  bool initialized_;
 
   bool core2md_failure_;
-  bool directory_failure_;
-  std::string filter_in_;
-
-  static const char *kUserId;
-  static const char *kGroupId;
 
   DISALLOW_COPY_AND_ASSIGN(UserCollector);
 };
