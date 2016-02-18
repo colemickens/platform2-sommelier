@@ -154,6 +154,14 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));
   ASSERT_FALSE(bool_value);
 
+  std::vector<DevicePolicy::UsbDeviceId> list_device;
+  ASSERT_TRUE(policy.GetUsbDetachableWhitelist(&list_device));
+  ASSERT_EQ(2, list_device.size());
+  ASSERT_EQ(0x413c, list_device[0].vendor_id);
+  ASSERT_EQ(0x2105, list_device[0].product_id);
+  ASSERT_EQ(0x0403, list_device[1].vendor_id);
+  ASSERT_EQ(0x6001, list_device[1].product_id);
+
   // Reloading the protobuf should succeed.
   ASSERT_TRUE(provider.Reload());
 }
@@ -179,6 +187,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   std::vector<std::string> list_value;
   bool bool_value;
   std::string string_value;
+  std::vector<DevicePolicy::UsbDeviceId> list_device;
 
   ASSERT_FALSE(policy.GetPolicyRefreshRate(&int_value));
   ASSERT_FALSE(policy.GetUserWhitelist(&list_value));
@@ -200,6 +209,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   ASSERT_FALSE(policy.GetHttpDownloadsEnabled(&bool_value));
   ASSERT_FALSE(policy.GetAuP2PEnabled(&bool_value));
   ASSERT_FALSE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));
+  ASSERT_FALSE(policy.GetUsbDetachableWhitelist(&list_device));
 }
 
 // Verify that the library will correctly recognize and signal missing files.

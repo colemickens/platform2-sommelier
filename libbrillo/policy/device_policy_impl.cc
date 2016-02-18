@@ -405,6 +405,23 @@ bool DevicePolicyImpl::GetAllowKioskAppControlChromeVersion(
   return true;
 }
 
+bool DevicePolicyImpl::GetUsbDetachableWhitelist(
+    std::vector<UsbDeviceId>* usb_whitelist) const {
+  if (!device_policy_.has_usb_detachable_whitelist())
+    return false;
+  const enterprise_management::UsbDetachableWhitelistProto& proto =
+      device_policy_.usb_detachable_whitelist();
+  usb_whitelist->clear();
+  for (int i = 0; i < proto.id_size(); i++) {
+    const ::enterprise_management::UsbDeviceIdProto& id = proto.id(i);
+    UsbDeviceId dev_id;
+    dev_id.vendor_id = id.has_vendor_id() ? id.vendor_id() : 0;
+    dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
+    usb_whitelist->push_back(dev_id);
+  }
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!base::PathExists(policy_path_) || !base::PathExists(keyfile_path_)) {

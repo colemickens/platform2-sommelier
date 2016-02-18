@@ -26,6 +26,15 @@ namespace policy {
 // definition from leaking into the libraries using this interface.
 class DevicePolicy {
  public:
+  // Identifiers of a USB device or device family.
+  struct UsbDeviceId {
+    // USB Vendor Identifier (aka idVendor).
+    uint16_t vendor_id;
+
+    // USB Product Identifier (aka idProduct).
+    uint16_t product_id;
+  };
+
   DevicePolicy();
   virtual ~DevicePolicy();
 
@@ -135,6 +144,11 @@ class DevicePolicy {
   // |allow_kiosk_app_control_chrome_version|. Returns true on success.
   virtual bool GetAllowKioskAppControlChromeVersion(
       bool* allow_kiosk_app_control_chrome_version) const = 0;
+
+  // Writes the value of the UsbDetachableWhitelist policy in |usb_whitelist|.
+  // Returns true on success.
+  virtual bool GetUsbDetachableWhitelist(
+      std::vector<UsbDeviceId>* usb_whitelist) const = 0;
 
  private:
   // Verifies that the policy files are owned by root and exist.
