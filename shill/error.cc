@@ -116,6 +116,7 @@ bool Error::ToChromeosError(brillo::ErrorPtr* error) const {
 }
 
 #if defined(ENABLE_BINDER)
+// static
 android::binder::Status Error::ToBinderStatus() const {
   if (IsSuccess()) {
     return android::binder::Status::ok();
