@@ -4,7 +4,9 @@
 #define PERF_INTERNALS_H_
 
 #include <linux/limits.h>
+#include <stddef.h>  // For NULL
 #include <stdint.h>
+#include <sys/types.h>  // For pid_t
 
 #include "perf_event.h"
 
