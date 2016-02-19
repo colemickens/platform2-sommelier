@@ -65,6 +65,7 @@ const int64_t kInt64Value = 0x1234000000000000;
 const vector<int64_t> kInt64sValue{0x2345000000000000, 0x6789000000000000};
 const double kDoubleValue = 1.1;
 const vector<double> kDoublesValue{2.2, 3.3};
+const size_t kDoublesValueSize = kDoublesValue.size();
 const string kRpcIdentifierValue("/org/chromium/test");
 const vector<string> kRpcIdentifiersValue{
     "/org/chromium/test0", "/org/chromium/test1", "/org/chromium/test2"};
@@ -210,9 +211,10 @@ TEST_F(KeyValueStoreTest, Doubles) {
   store_.SetDoubles(kDoublesKey, kDoublesValue);
   EXPECT_TRUE(store_.ContainsDoubles(kDoublesKey));
   vector<double> ret = store_.GetDoubles(kDoublesKey);
-  EXPECT_EQ(2, ret.size());
-  EXPECT_DOUBLE_EQ(kDoublesValue[0], ret[0]);
-  EXPECT_DOUBLE_EQ(kDoublesValue[1], ret[1]);
+  EXPECT_EQ(kDoublesValueSize, ret.size());
+  for (int i = 0; i < kDoublesValueSize; ++i) {
+    EXPECT_DOUBLE_EQ(kDoublesValue[i], ret[i]);
+  }
 }
 
 TEST_F(KeyValueStoreTest, KeyValueStore) {
@@ -734,9 +736,10 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
   EXPECT_EQ(kInt64sValue, dict[kInt64sKey].Get<vector<int64_t>>());
   EXPECT_DOUBLE_EQ(kDoubleValue, dict[kDoubleKey].Get<double>());
   vector<double> doubles_value = dict[kDoublesKey].Get<vector<double>>();
-  EXPECT_EQ(2, doubles_value.size());
-  EXPECT_DOUBLE_EQ(kDoublesValue[0], doubles_value[0]);
-  EXPECT_DOUBLE_EQ(kDoublesValue[1], doubles_value[1]);
+  EXPECT_EQ(kDoublesValueSize, doubles_value.size());
+  for (int i = 0; i < kDoublesValueSize; ++i) {
+    EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
+  }
   EXPECT_EQ(kUint8sValue, dict[kUint8sKey].Get<vector<uint8_t>>());
   EXPECT_EQ(kUint32sValue, dict[kUint32sKey].Get<vector<uint32_t>>());
   brillo::VariantDictionary nested_dict =
@@ -799,9 +802,10 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   EXPECT_DOUBLE_EQ(kDoubleValue, store.GetDouble(kDoubleKey));
   EXPECT_TRUE(store.ContainsDoubles(kDoublesKey));
   vector<double> doubles_value = store.GetDoubles(kDoublesKey);
-  EXPECT_EQ(2, doubles_value.size());
-  EXPECT_DOUBLE_EQ(kDoublesValue[0], doubles_value[0]);
-  EXPECT_DOUBLE_EQ(kDoublesValue[1], doubles_value[1]);
+  EXPECT_EQ(kDoublesValueSize, doubles_value.size());
+  for (int i = 0; i < kDoublesValueSize; ++i) {
+    EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
+  }
   EXPECT_TRUE(store.ContainsRpcIdentifier(kRpcIdentifierKey));
   EXPECT_EQ(kRpcIdentifierValue, store.GetRpcIdentifier(kRpcIdentifierKey));
   EXPECT_TRUE(store.ContainsUint16(kUint16Key));
@@ -913,9 +917,10 @@ TEST_F(KeyValueStoreTest, ConvertFromPersistableBundle) {
   EXPECT_EQ(kInt64sValue, store.GetInt64s(kInt64sKey));
   EXPECT_TRUE(store.ContainsDoubles(kDoublesKey));
   vector<double> doubles_value = store.GetDoubles(kDoublesKey);
-  EXPECT_EQ(2, doubles_value.size());
-  EXPECT_DOUBLE_EQ(kDoublesValue[0], doubles_value[0]);
-  EXPECT_DOUBLE_EQ(kDoublesValue[1], doubles_value[1]);
+  EXPECT_EQ(kDoublesValueSize, doubles_value.size());
+  for (int i = 0; i < kDoublesValueSize; ++i) {
+    EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
+  }
   EXPECT_TRUE(store.ContainsStrings(kStringsKey));
   EXPECT_EQ(kStringsValue, store.GetStrings(kStringsKey));
   EXPECT_TRUE(store.ContainsKeyValueStore(kKeyValueStoreKey));
