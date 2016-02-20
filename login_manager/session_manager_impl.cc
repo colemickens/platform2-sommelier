@@ -585,7 +585,7 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
   scoped_ptr<dbus::Response> emit_response =
       upstart_signal_emitter_->EmitSignal(
           "start-arc-instance",
-          std::vector<std::string>(1, "SOCKET_PATH=" + socket_path));
+          std::vector<std::string>());
 
   if (!emit_response) {
     const char msg[] = "Emitting start-arc-instance upstart signal failed.";

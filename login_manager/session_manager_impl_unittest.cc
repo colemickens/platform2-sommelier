@@ -801,9 +801,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   // ends.
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
-      OnSignalEmitted(StrEq("start-arc-instance"),
-                      ElementsAre(std::string("SOCKET_PATH=") + kSocketPath)))
-      .Times(1);
+      OnSignalEmitted(StrEq("start-arc-instance"), ElementsAre())).Times(1);
   impl_.StartArcInstance(kSocketPath, &error_);
 #else
   EXPECT_FALSE(available);
