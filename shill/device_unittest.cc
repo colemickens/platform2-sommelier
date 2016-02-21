@@ -628,6 +628,25 @@ TEST_F(DeviceTest, SelectedService) {
   SelectService(nullptr);
 }
 
+TEST_F(DeviceTest, ResetConnection) {
+  EXPECT_FALSE(device_->selected_service_.get());
+  device_->SetServiceState(Service::kStateAssociating);
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+  EXPECT_TRUE(device_->selected_service_.get() == service.get());
+
+  // ResetConnection() should drop the connection and the selected service,
+  // but should not change the service state.
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
+  device_->ResetConnection();
+  EXPECT_FALSE(device_->selected_service_.get());
+}
+
 TEST_F(DeviceTest, LinkMonitorFailure) {
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),

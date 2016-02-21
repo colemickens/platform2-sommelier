@@ -525,6 +525,20 @@ void Device::DropConnection() {
   SelectService(nullptr);
 }
 
+void Device::ResetConnection() {
+  SLOG(this, 2) << __func__;
+  DestroyIPConfig();
+  if (!selected_service_.get()) {
+    return;
+  }
+
+  selected_service_->set_unreliable(false);
+  reliable_link_callback_.Cancel();
+  selected_service_ = nullptr;
+  adaptor_->EmitRpcIdentifierChanged(
+      kSelectedServiceProperty, GetSelectedServiceRpcIdentifier(nullptr));
+}
+
 void Device::DestroyIPConfig() {
   DisableIPv6();
   bool ipconfig_changed = false;

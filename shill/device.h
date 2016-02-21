@@ -360,6 +360,10 @@ class Device : public base::RefCounted<Device> {
 
   const ServiceRefPtr& selected_service() const { return selected_service_; }
 
+  // Drops the current connection and the selected service, if any.  Does not
+  // change the state of the previously selected service.
+  virtual void ResetConnection();
+
  protected:
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;
@@ -394,6 +398,7 @@ class Device : public base::RefCounted<Device> {
               OnIPv6DnsServerAddressesChanged_LeaseExpirationUpdated);
   FRIEND_TEST(DeviceTest, PrependIPv4DNSServers);
   FRIEND_TEST(DeviceTest, PrependIPv6DNSServers);
+  FRIEND_TEST(DeviceTest, ResetConnection);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
