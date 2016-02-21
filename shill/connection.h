@@ -81,6 +81,16 @@ class Connection : public base::RefCounted<Connection> {
     DISALLOW_COPY_AND_ASSIGN(Binder);
   };
 
+  // The routing metric used for the default service, either physical or VPN.
+  static const uint32_t kDefaultMetric;
+  // A unique metric used temporarily for the soon-to-be default service during
+  // transitions, which ensures that the old default service and the new
+  // default service each have a unique metric.
+  static const uint32_t kNewDefaultMetric;
+  // All other services use a metric that starts at |kNonDefaultMetricBase|
+  // and counts up.
+  static const uint32_t kNonDefaultMetricBase;
+
   Connection(int interface_index,
              const std::string& interface_name,
              Technology::Identifier technology_,
@@ -96,10 +106,23 @@ class Connection : public base::RefCounted<Connection> {
     return lower_binder_.connection();
   }
 
-  // Sets the current connection as "default", i.e., routes and DNS entries
-  // should be used by all system components that don't select explicitly.
-  virtual bool IsDefault() const { return is_default_; }
-  virtual void SetIsDefault(bool is_default);
+  // The interface metric is a positive integer used by the kernel to
+  // determine which interface to use for outbound packets if there are
+  // multiple overlapping routes.  The lowest metric wins; the connection
+  // with the lowest metric is referred to as the "default connection."
+
+  // Updates the kernel's routing table so that routes associated with
+  // this connection will use |metric|, updates the systemwide DNS
+  // configuration if necessary, and triggers captive portal detection
+  // if the connection has transitioned from non-default to default.
+  virtual void SetMetric(uint32_t metric);
+
+  // Returns true if this connection is currently the systemwide default.
+  virtual bool IsDefault();
+
+  // Determines whether this connection controls the system DNS settings.
+  // This should only be true for one connection at a time.
+  virtual void SetUseDNS(bool enable);
 
   // Update and apply the new DNS servers setting to this connection.
   virtual void UpdateDNSServers(const std::vector<std::string>& dns_servers);
@@ -170,8 +193,6 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
-  static const uint32_t kDefaultMetric;
-  static const uint32_t kNonDefaultMetricBase;
   static const uint32_t kMarkForUserTraffic;
   static const uint8_t kSecondaryTableId;
 
@@ -181,7 +202,6 @@ class Connection : public base::RefCounted<Connection> {
                               IPAddress* peer,
                               IPAddress* gateway,
                               const IPAddress& trusted_ip);
-  uint32_t GetMetric(bool is_default);
   bool PinHostRoute(const IPAddress& trusted_ip, const IPAddress& gateway);
   void SetMTU(int32_t mtu);
 
@@ -199,7 +219,8 @@ class Connection : public base::RefCounted<Connection> {
 
   base::WeakPtrFactory<Connection> weak_ptr_factory_;
 
-  bool is_default_;
+  bool use_dns_;
+  uint32_t metric_;
   bool has_broadcast_domain_;
   int routing_request_count_;
   int interface_index_;

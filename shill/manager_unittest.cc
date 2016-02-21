@@ -2619,10 +2619,26 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   mock_service0->set_mock_connection(mock_connection0);
   mock_service1->set_mock_connection(mock_connection1);
 
+  // Add an entry to the dns_servers() list to test the logic in
+  // SortServicesTask() which figures out which connection owns the system
+  // DNS configuration.
+  std::vector<std::string> dns_servers;
+  dns_servers.push_back("8.8.8.8");
+  EXPECT_CALL(*mock_connection0.get(), dns_servers()).
+      WillRepeatedly(ReturnRef(dns_servers));
+  EXPECT_CALL(*mock_connection1.get(), dns_servers()).
+      WillRepeatedly(ReturnRef(dns_servers));
+
   // If both Services have Connections, the DefaultService follows
   // from ServiceOrderIs.  We notify others of the change in
   // DefaultService.
-  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
+  EXPECT_CALL(*mock_connection0.get(), SetUseDNS(true));
+  EXPECT_CALL(*mock_connection0.get(),
+              SetMetric(Connection::kNewDefaultMetric));
+  EXPECT_CALL(*mock_connection0.get(), SetMetric(Connection::kDefaultMetric));
+  EXPECT_CALL(*mock_connection1.get(), SetUseDNS(false));
+  EXPECT_CALL(*mock_connection1.get(),
+              SetMetric(Connection::kNonDefaultMetricBase));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
@@ -2639,8 +2655,13 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Changing the ordering causes the DefaultService to change, and
   // appropriate notifications are sent.
   mock_service1->SetPriority(1, nullptr);
-  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
-  EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
+  EXPECT_CALL(*mock_connection0.get(), SetUseDNS(false));
+  EXPECT_CALL(*mock_connection0.get(),
+              SetMetric(Connection::kNonDefaultMetricBase));
+  EXPECT_CALL(*mock_connection1.get(), SetUseDNS(true));
+  EXPECT_CALL(*mock_connection1.get(),
+              SetMetric(Connection::kNewDefaultMetric));
+  EXPECT_CALL(*mock_connection1.get(), SetMetric(Connection::kDefaultMetric));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service1.get()));
   EXPECT_CALL(*manager_adaptor_,
@@ -2656,7 +2677,10 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // Deregistering the current DefaultService causes the other Service
   // to become default.  Appropriate notifications are sent.
-  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
+  EXPECT_CALL(*mock_connection0.get(), SetUseDNS(true));
+  EXPECT_CALL(*mock_connection0.get(),
+              SetMetric(Connection::kNewDefaultMetric));
+  EXPECT_CALL(*mock_connection0.get(), SetMetric(Connection::kDefaultMetric));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
@@ -2681,7 +2705,7 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   manager()->SortServicesTask();
 }
 
-TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
+TEST_F(ManagerTest, UpdateDefaultServices) {
   EXPECT_EQ(0, manager()->default_service_callback_tag_);
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 
@@ -2695,7 +2719,7 @@ TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
   ServiceRefPtr null_service;
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
-  manager()->NotifyDefaultServiceChanged(null_service);
+  manager()->UpdateDefaultServices(null_service, null_service);
 
   ServiceWatcher service_watcher1;
   ServiceWatcher service_watcher2;
@@ -2710,27 +2734,27 @@ TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
                service_watcher2.AsWeakPtr()));
   EXPECT_EQ(2, tag2);
 
-  EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(null_service));
-  EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(null_service));
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
-  manager()->NotifyDefaultServiceChanged(null_service);
-
   EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(service));
   EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(service));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(service.get()));
-  manager()->NotifyDefaultServiceChanged(mock_service);
+  manager()->UpdateDefaultServices(mock_service, mock_service);
+
+  EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(null_service));
+  EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(null_service));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
+  manager()->UpdateDefaultServices(null_service, null_service);
 
   manager()->DeregisterDefaultServiceCallback(tag1);
   EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(_)).Times(0);
   EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(service));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(service.get()));
-  manager()->NotifyDefaultServiceChanged(mock_service);
+  manager()->UpdateDefaultServices(mock_service, mock_service);
   EXPECT_EQ(1, manager()->default_service_callbacks_.size());
 
   manager()->DeregisterDefaultServiceCallback(tag2);
   EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(_)).Times(0);
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(service.get()));
-  manager()->NotifyDefaultServiceChanged(mock_service);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
+  manager()->UpdateDefaultServices(null_service, null_service);
 
   EXPECT_EQ(2, manager()->default_service_callback_tag_);
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
@@ -2981,11 +3005,10 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
   string updated_message = base::StringPrintf(
       "Service %s updated;", mock_service->unique_name().c_str());
 
-  // An idle service should not create a log message by default.
+  // An idle service should only be logged as unconnected.
   EXPECT_CALL(*mock_service.get(), state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
-      .Times(0);
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("not connected")));
   manager()->RegisterService(mock_service);
   CompleteServiceSort();
   manager()->UpdateService(mock_service);

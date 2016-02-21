@@ -293,9 +293,7 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
-                              GetNonDefaultMetricBase() +
-                              kTestDeviceInterfaceIndex0,
-                              RT_TABLE_MAIN));
+                              _, RT_TABLE_MAIN));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -346,17 +344,17 @@ TEST_F(ConnectionTest, AddConfig) {
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache())
       .WillOnce(Return(true));
-  connection_->SetIsDefault(true);
+  connection_->SetUseDNS(true);
+  connection_->SetMetric(GetDefaultMetric());
   Mock::VerifyAndClearExpectations(&routing_table_);
   EXPECT_TRUE(connection_->IsDefault());
 
   EXPECT_CALL(routing_table_,
-              SetDefaultMetric(kTestDeviceInterfaceIndex0,
-                               GetNonDefaultMetricBase() +
-                               kTestDeviceInterfaceIndex0));
+              SetDefaultMetric(kTestDeviceInterfaceIndex0, _));
   EXPECT_CALL(routing_table_, FlushCache())
       .WillOnce(Return(true));
-  connection_->SetIsDefault(false);
+  connection_->SetUseDNS(false);
+  connection_->SetMetric(GetNonDefaultMetricBase());
   EXPECT_FALSE(connection_->IsDefault());
 }
 
@@ -458,15 +456,15 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
       .WillOnce(Return(device));
   EXPECT_CALL(*device.get(), RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection->SetIsDefault(true);
+  connection->SetUseDNS(true);
+  connection->SetMetric(GetDefaultMetric());
   Mock::VerifyAndClearExpectations(&routing_table_);
   EXPECT_TRUE(connection->IsDefault());
 
-  EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
-                                               GetNonDefaultMetricBase() +
-                                                   kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0, _));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection->SetIsDefault(false);
+  connection->SetUseDNS(false);
+  connection->SetMetric(GetNonDefaultMetricBase());
   EXPECT_FALSE(connection->IsDefault());
   AddDestructorExpectations();
   EXPECT_CALL(*firewall_proxy, RemoveVpnSetup());
@@ -547,9 +545,7 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
-                              GetNonDefaultMetricBase() +
-                              kTestDeviceInterfaceIndex0,
-                              RT_TABLE_MAIN));
+                              _, RT_TABLE_MAIN));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -583,7 +579,8 @@ TEST_F(ConnectionTest, AddConfigReverse) {
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache())
       .WillOnce(Return(true));
-  connection_->SetIsDefault(true);
+  connection_->SetUseDNS(true);
+  connection_->SetMetric(GetDefaultMetric());
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   EXPECT_CALL(*device_info_,
@@ -640,7 +637,8 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   DeviceRefPtr device;
   EXPECT_CALL(*device_info_, GetDevice(_)).WillOnce(Return(device));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetIsDefault(true);
+  connection_->SetUseDNS(true);
+  connection_->SetMetric(GetDefaultMetric());
 }
 
 TEST_F(ConnectionTest, HasOtherAddress) {
@@ -658,9 +656,7 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
-                              GetNonDefaultMetricBase() +
-                              kTestDeviceInterfaceIndex0,
-                              RT_TABLE_MAIN));
+                              _, RT_TABLE_MAIN));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -676,7 +672,7 @@ TEST_F(ConnectionTest, UpdateDNSServers) {
   vector<string> dns_servers(kDnsServers, std::end(kDnsServers));
 
   // Non-default connection.
-  connection_->is_default_ = false;
+  connection_->metric_ = GetNonDefaultMetricBase();
 #if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
 #else
@@ -690,7 +686,8 @@ TEST_F(ConnectionTest, UpdateDNSServers) {
 #endif  // __ANDROID__
 
   // Default connection.
-  connection_->is_default_ = true;
+  connection_->use_dns_ = true;
+  connection_->metric_ = GetDefaultMetric();
 #if !defined(__ANDROID__)
   EXPECT_CALL(resolver_, SetDNSFromLists(dns_servers, _));
 #else

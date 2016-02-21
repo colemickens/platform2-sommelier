@@ -68,6 +68,8 @@ const char* kGoogleDNSServers[] = {
 // static
 const uint32_t Connection::kDefaultMetric = 1;
 // static
+const uint32_t Connection::kNewDefaultMetric = 2;
+// static
 const uint32_t Connection::kNonDefaultMetricBase = 10;
 // static
 const uint32_t Connection::kMarkForUserTraffic = 0x1;
@@ -114,7 +116,8 @@ Connection::Connection(int interface_index,
                        const DeviceInfo* device_info,
                        ControlInterface* control_interface)
     : weak_ptr_factory_(this),
-      is_default_(false),
+      use_dns_(false),
+      metric_(0),
       has_broadcast_domain_(false),
       routing_request_count_(0),
       interface_index_(interface_index),
@@ -246,7 +249,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
 
   if (gateway.IsValid() && properties.default_route) {
     routing_table_->SetDefaultRoute(interface_index_, gateway,
-                                    GetMetric(is_default_),
+                                    metric_,
                                     table_id_);
   }
 
@@ -320,20 +323,23 @@ bool Connection::TearDownIptableEntries() {
   return firewall_proxy_ ? firewall_proxy_->RemoveVpnSetup() : true;
 }
 
-void Connection::SetIsDefault(bool is_default) {
+bool Connection::IsDefault() {
+  return metric_ == kDefaultMetric;
+}
+
+void Connection::SetMetric(uint32_t metric) {
   SLOG(this, 2) << __func__ << " " << interface_name_
-                << " (index " << interface_index_ << ") "
-                << is_default_ << " -> " << is_default;
-  if (is_default == is_default_) {
+                << " (index " << interface_index_ << ")"
+                << metric_ << " -> " << metric;
+  if (metric == metric_) {
     return;
   }
 
-  routing_table_->SetDefaultMetric(interface_index_, GetMetric(is_default));
-
-  is_default_ = is_default;
+  routing_table_->SetDefaultMetric(interface_index_, metric);
+  metric_ = metric;
 
   PushDNSConfig();
-  if (is_default) {
+  if (metric == kDefaultMetric) {
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     if (device) {
       device->RequestPortalDetection();
@@ -342,13 +348,20 @@ void Connection::SetIsDefault(bool is_default) {
   routing_table_->FlushCache();
 }
 
+void Connection::SetUseDNS(bool enable) {
+  SLOG(this, 2) << __func__ << " " << interface_name_
+                << " (index " << interface_index_ << ")"
+                << use_dns_ << " -> " << enable;
+  use_dns_ = enable;
+}
+
 void Connection::UpdateDNSServers(const vector<string>& dns_servers) {
   dns_servers_ = dns_servers;
   PushDNSConfig();
 }
 
 void Connection::PushDNSConfig() {
-  if (!is_default_) {
+  if (!use_dns_) {
 #if defined(__ANDROID__)
     // Stop DNS server proxy to avoid having multiple instances of it running.
     // Only run DNS server proxy for the current default connection.
@@ -553,13 +566,6 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
   LOG(WARNING) << "Mitigating this by creating a link route to the gateway.";
 
   return true;
-}
-
-uint32_t Connection::GetMetric(bool is_default) {
-  // If this is not the default route, assign a metric based on the interface
-  // index.  This way all non-default routes (even to the same gateway IP) end
-  // up with unique metrics so they do not collide.
-  return is_default ? kDefaultMetric : kNonDefaultMetricBase + interface_index_;
 }
 
 bool Connection::PinHostRoute(const IPAddress& trusted_ip,

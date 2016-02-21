@@ -604,7 +604,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, IsWifiIdle);
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
-  FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
+  FRIEND_TEST(ManagerTest, UpdateDefaultServices);
   FRIEND_TEST(ManagerTest, OnApModeSetterVanished);
   FRIEND_TEST(ManagerTest, OnDeviceClaimerAppeared);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
@@ -739,7 +739,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // as determined by sorting all services independent of their current state.
   void ConnectToBestServicesTask();
 
-  void NotifyDefaultServiceChanged(const ServiceRefPtr& service);
+  void UpdateDefaultServices(const ServiceRefPtr& logical_service,
+                             const ServiceRefPtr& physical_service);
 
   // Runs the termination actions.  If all actions complete within
   // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a
@@ -823,6 +824,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Services that are connected appear first in the vector.  See
   // Service::Compare() for details of the sorting criteria.
   std::vector<ServiceRefPtr> services_;
+  // Last known default physical service (i.e. not a VPN).  Used to figure
+  // out when to send the DefaultServiceChanged notification.
+  ServiceRefPtr last_default_physical_service_;
+  bool last_default_physical_service_connected_;
   // Map of technologies to Provider instances.  These pointers are owned
   // by the respective scoped_reptr objects that are held over the lifetime
   // of the Manager object.

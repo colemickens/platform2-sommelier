@@ -61,6 +61,7 @@
 #include "shill/service.h"
 #include "shill/service_sorter.h"
 #include "shill/store_factory.h"
+#include "shill/technology.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 #include "shill/wimax/wimax_service.h"
@@ -158,6 +159,7 @@ Manager::Manager(ControlInterface* control_interface,
       resolver_(Resolver::GetInstance()),
       running_(false),
       connect_profiles_to_rpc_(true),
+      last_default_physical_service_(nullptr),
       ephemeral_profile_(
           new EphemeralProfile(control_interface, metrics, this)),
       control_interface_(control_interface),
@@ -1652,11 +1654,38 @@ void Manager::ReportServicesOnSameNetwork(int connection_id) {
   metrics_->NotifyServicesOnSameNetwork(num_services);
 }
 
-void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr& service) {
-  for (const auto& callback : default_service_callbacks_) {
-    callback.second.Run(service);
+void Manager::UpdateDefaultServices(
+    const ServiceRefPtr& logical_service,
+    const ServiceRefPtr& physical_service) {
+  metrics_->NotifyDefaultServiceChanged(logical_service.get());
+
+  bool physical_service_connected =
+      physical_service && physical_service->connection();
+
+  if (physical_service == last_default_physical_service_ &&
+      physical_service_connected == last_default_physical_service_connected_) {
+    return;
   }
-  metrics_->NotifyDefaultServiceChanged(service.get());
+  last_default_physical_service_ = physical_service;
+  last_default_physical_service_connected_ = physical_service_connected;
+
+  if (physical_service) {
+    if (!physical_service->connection()) {
+      LOG(INFO) << "Default physical service: "
+                << physical_service->unique_name()
+                << " (not connected)";
+    } else {
+      LOG(INFO) << "Default physical service: "
+                << physical_service->unique_name()
+                << " (connected)";
+    }
+  } else {
+    LOG(INFO) << "Default physical service: NONE";
+  }
+
+  for (const auto& callback : default_service_callbacks_) {
+    callback.second.Run(physical_service);
+  }
   EmitDefaultService();
 }
 
@@ -1813,35 +1842,52 @@ void Manager::SortServices() {
 void Manager::SortServicesTask() {
   SLOG(this, 4) << "In " << __func__;
   sort_services_task_.Cancel();
-  ServiceRefPtr default_service;
 
-  if (!services_.empty()) {
-    // Keep track of the service that is the candidate for the default
-    // service.  We have not yet tested to see if this service has a
-    // connection.
-    default_service = services_[0];
-  }
   const bool kCompareConnectivityState = true;
   sort(services_.begin(), services_.end(),
        ServiceSorter(this, kCompareConnectivityState, technology_order_));
 
-  if (!services_.empty()) {
-    ConnectionRefPtr default_connection = default_service->connection();
-    if (default_connection &&
-        services_[0]->connection() != default_connection) {
-      default_connection->SetIsDefault(false);
-    }
-    if (services_[0]->connection()) {
-      services_[0]->connection()->SetIsDefault(true);
-      if (default_service != services_[0]) {
-        default_service = services_[0];
-        LOG(INFO) << "Default service is now "
-                  << default_service->unique_name();
+  int metric = Connection::kNonDefaultMetricBase;
+  bool found_dns = false;
+  ServiceRefPtr old_logical;
+  int old_logical_metric;
+  ServiceRefPtr new_logical;
+  ServiceRefPtr new_physical;
+  for (const auto& service : services_) {
+    ConnectionRefPtr conn = service->connection();
+    if (conn) {
+      int new_metric;
+
+      if (!found_dns && !conn->dns_servers().empty()) {
+        found_dns = true;
+        conn->SetUseDNS(true);
+      } else {
+        conn->SetUseDNS(false);
       }
-    } else {
-      default_service = nullptr;
+
+      if (!new_logical) {
+        new_logical = service;
+        new_metric = Connection::kNewDefaultMetric;
+      } else {
+        new_metric = metric++;
+      }
+
+      if (conn->IsDefault()) {
+        old_logical = service;
+        old_logical_metric = new_metric;
+      } else {
+        conn->SetMetric(new_metric);
+      }
     }
+
+    if (!new_physical && service->technology() != Technology::kVPN)
+      new_physical = service;
   }
+
+  if (old_logical && old_logical != new_logical)
+    old_logical->connection()->SetMetric(old_logical_metric);
+  if (new_logical)
+    new_logical->connection()->SetMetric(Connection::kDefaultMetric);
 
   Error error;
   adaptor_->EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty,
@@ -1854,7 +1900,7 @@ void Manager::SortServicesTask() {
                                ConnectedTechnologies(&error));
   adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
                               DefaultTechnology(&error));
-  NotifyDefaultServiceChanged(default_service);
+  UpdateDefaultServices(new_logical, new_physical);
   RefreshConnectionState();
   DetectMultiHomedDevices();
 
