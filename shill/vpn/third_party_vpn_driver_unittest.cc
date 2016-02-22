@@ -295,7 +295,7 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
   EXPECT_EQ(driver_->ip_properties_.routes[1].gateway, parameters["address"]);
   EXPECT_TRUE(error.empty());
   EXPECT_TRUE(warning.empty());
-  EXPECT_FALSE(driver_->parameters_expected_);
+  EXPECT_TRUE(driver_->parameters_expected_);
   driver_->device_ = nullptr;
 }
 

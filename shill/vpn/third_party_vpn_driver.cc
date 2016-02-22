@@ -95,7 +95,8 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface* control,
       device_info_(device_info),
       tun_fd_(-1),
       parameters_expected_(false),
-      reconnect_supported_(false) {
+      reconnect_supported_(false),
+      link_down_(false) {
   file_io_ = FileIO::GetInstance();
 }
 
@@ -412,7 +413,6 @@ void ThirdPartyVpnDriver::SetParameters(
     device_->UpdateIPConfig(ip_properties_);
     device_->SetLooseRouting(true);
     StopConnectTimeout();
-    parameters_expected_ = false;
   }
 }
 
@@ -438,6 +438,10 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
                 << ", " << error_details << ")";
   StopConnectTimeout();
   int interface_index = -1;
+  if (default_service_callback_tag_) {
+    manager()->DeregisterDefaultServiceCallback(default_service_callback_tag_);
+    default_service_callback_tag_ = 0;
+  }
   if (device_) {
     interface_index = device_->interface_index();
     device_->DropConnection();
@@ -468,6 +472,7 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
     active_client_ = nullptr;
   }
   parameters_expected_ = false;
+  link_down_ = false;
   reconnect_supported_ = false;
 }
 
@@ -517,6 +522,10 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string& link_name,
     parameters_expected_ = true;
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kConnected));
+    default_service_callback_tag_ =
+        manager()->RegisterDefaultServiceCallback(
+            Bind(&ThirdPartyVpnDriver::OnDefaultServiceChanged,
+                 base::Unretained(this)));
   }
   return true;
 }
@@ -535,8 +544,46 @@ std::string ThirdPartyVpnDriver::GetProviderType() const {
 }
 
 void ThirdPartyVpnDriver::OnConnectionDisconnected() {
-  Cleanup(Service::kStateFailure, Service::kFailureInternal,
-          "Underlying network disconnected.");
+  SLOG(this, 2) << __func__;
+}
+
+void ThirdPartyVpnDriver::OnDefaultServiceChanged(
+    const ServiceRefPtr& service) {
+  if (!service_ || !device_)
+    return;
+
+  if (!reconnect_supported_) {
+    Cleanup(Service::kStateFailure, Service::kFailureInternal,
+            "Underlying network disconnected.");
+    return;
+  }
+
+  device_->SetServiceState(Service::kStateConfiguring);
+  device_->ResetConnection();
+
+  if (!service || !service->IsConnected()) {
+    // No physical connection, so all we can do is wait.
+    StopConnectTimeout();
+    SLOG(this, 2) << __func__
+                  << " - physical connection lost";
+    link_down_ = true;
+    adaptor_interface_->EmitPlatformMessage(
+        static_cast<uint32_t>(PlatformMessage::kLinkDown));
+  } else {
+    // Ask the vpnProvider to reconnect.
+    StartConnectTimeout(kConnectTimeoutSeconds);
+    SLOG(this, 2) << __func__
+                  << " - requesting reconnection via "
+                  << service->unique_name();
+    if (link_down_) {
+      adaptor_interface_->EmitPlatformMessage(
+          static_cast<uint32_t>(PlatformMessage::kLinkUp));
+      link_down_ = false;
+    } else {
+      adaptor_interface_->EmitPlatformMessage(
+          static_cast<uint32_t>(PlatformMessage::kLinkChanged));
+    }
+  }
 }
 
 void ThirdPartyVpnDriver::OnConnectTimeout() {

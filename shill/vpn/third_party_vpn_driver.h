@@ -84,6 +84,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   std::string GetProviderType() const override;
   void Disconnect() override;
   void OnConnectionDisconnected() override;
+  void OnDefaultServiceChanged(const ServiceRefPtr& service);
   bool Load(StoreInterface* storage, const std::string& storage_id) override;
   bool Save(StoreInterface* storage, const std::string& storage_id,
             bool save_credentials) override;
@@ -237,10 +238,19 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // The boolean indicates if parameters are expected from the VPN client.
   bool parameters_expected_;
 
+  // Default service watch callback tag.
+  int default_service_callback_tag_;
+
   // Flag indicating whether the extension supports reconnections - a feature
   // that wasn't in the original API.  If not, we won't send link_* or
   // suspend/resume signals.
   bool reconnect_supported_;
+
+  // Helps distinguish between a network->network transition (where the
+  // client simply reconnects), and a network->link_down->network transition
+  // (where the client should disconnect, wait for link up, then reconnect).
+  bool link_down_;
+
   DISALLOW_COPY_AND_ASSIGN(ThirdPartyVpnDriver);
 };
 
