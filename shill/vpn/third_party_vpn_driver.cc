@@ -94,7 +94,8 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface* control,
       metrics_(metrics),
       device_info_(device_info),
       tun_fd_(-1),
-      parameters_expected_(false) {
+      parameters_expected_(false),
+      reconnect_supported_(false) {
   file_io_ = FileIO::GetInstance();
 }
 
@@ -309,6 +310,24 @@ void ThirdPartyVpnDriver::ProcessInt32(
   }
 }
 
+void ThirdPartyVpnDriver::ProcessBoolean(
+    const std::map<std::string, std::string>& parameters, const char* key,
+    bool* target, bool mandatory, std::string* error_message) {
+  auto it = parameters.find(key);
+  if (it != parameters.end()) {
+    std::string str_value = parameters.at(key);
+    if (str_value == "true") {
+      *target = true;
+    } else if (str_value == "false") {
+      *target = false;
+    } else {
+      error_message->append(key).append(" not a valid boolean;");
+    }
+  } else if (mandatory) {
+    error_message->append(key).append(" is missing;");
+  }
+}
+
 void ThirdPartyVpnDriver::SetParameters(
     const std::map<std::string, std::string>& parameters,
     std::string* error_message, std::string* warning_message) {
@@ -363,6 +382,10 @@ void ThirdPartyVpnDriver::SetParameters(
       }
     }
   }
+
+  reconnect_supported_ = false;
+  ProcessBoolean(parameters, kReconnectParameterThirdPartyVpn,
+                 &reconnect_supported_, false, error_message);
 
   std::vector<std::string> inclusion_list;
   ProcessIPArrayCIDR(parameters, kInclusionListParameterThirdPartyVpn,
@@ -445,6 +468,7 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
     active_client_ = nullptr;
   }
   parameters_expected_ = false;
+  reconnect_supported_ = false;
 }
 
 void ThirdPartyVpnDriver::Connect(const VPNServiceRefPtr& service,

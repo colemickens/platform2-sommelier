@@ -46,7 +46,12 @@ class ThirdPartyVpnDriver : public VPNDriver {
   enum PlatformMessage {
     kConnected = 1,
     kDisconnected,
-    kError
+    kError,
+    kLinkDown,
+    kLinkUp,
+    kLinkChanged,
+    kSuspend,
+    kResume
   };
 
   ThirdPartyVpnDriver(ControlInterface* control, EventDispatcher* dispatcher,
@@ -168,6 +173,17 @@ class ThirdPartyVpnDriver : public VPNDriver {
                     int32_t max_value, bool mandatory,
                     std::string* error_message);
 
+  // This function first checks if a value is present for a particular |key| in
+  // the dictionary |parameters|.
+  // If present it treats the value as a boolean. It then updates |target|
+  // with the boolean value if it is valid;
+  // The flag |mandatory| when set to true, makes the function treat a missing
+  // key as an error. The function adds to |error_messages|, when there is a
+  // failure.
+  void ProcessBoolean(const std::map<std::string, std::string>& parameters,
+                      const char* key, bool* target, bool mandatory,
+                      std::string* error_message);
+
   // These functions are called whe there is input and error in the tun
   // interface.
   void OnInput(InputData* data);
@@ -221,6 +237,10 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // The boolean indicates if parameters are expected from the VPN client.
   bool parameters_expected_;
 
+  // Flag indicating whether the extension supports reconnections - a feature
+  // that wasn't in the original API.  If not, we won't send link_* or
+  // suspend/resume signals.
+  bool reconnect_supported_;
   DISALLOW_COPY_AND_ASSIGN(ThirdPartyVpnDriver);
 };
 
