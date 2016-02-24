@@ -41,7 +41,15 @@ class DataWriter {
   // terminator. Returns true iff the expected number of bytes were written.
   virtual bool WriteString(const string& str, const size_t size) = 0;
 
+  // Writes a string |src| to data, prefixed with a 32-bit size field. The size
+  // is rounded up to the next multiple of uint64.
+  bool WriteStringWithSizeToData(const string& src);
+
  protected:
+  // Returns true if |data_size| bytes of data can be written to the current
+  // underlying destination.
+  virtual bool CanWriteSize(size_t data_size) = 0;
+
   // Current data size.
   size_t size_;
 };

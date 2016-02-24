@@ -31,6 +31,10 @@ using StringAndMd5sumPrefix =
 
 namespace {
 
+// The type of the storage size of a string, prefixed before each string field
+// in raw data.
+typedef u32 string_size_type;
+
 // The type of the number of string data, found in the command line metadata in
 // the perf data file.
 typedef u32 num_string_data_type;
@@ -137,33 +141,11 @@ malloced_unique_ptr<build_id_event> CreateBuildIDEvent(const string& build_id,
   return event;
 }
 
-// Reads a CStringWithLength from |data| into |dest| at the current offset.
-bool ReadStringFromBuffer(DataReader* data, CStringWithLength* dest) {
-  if (!data->ReadUint32(&dest->len)) {
-    LOG(ERROR) << "Could not read string length from data.";
-    return false;
-  }
-
-  if (!data->ReadString(dest->len, &dest->str)) {
-    LOG(ERROR) << "Failed to read string from data. len: " << dest->len;
-    return false;
-  }
-  return true;
-}
-
-// Writes a CStringWithLength from |src| to |data|.
-bool WriteStringToBuffer(const CStringWithLength& src, DataWriter* data) {
-  if (data->Tell() + src.len + sizeof(src.len) > data->size()) {
-    LOG(ERROR) << "Not enough space to write string.";
-    return false;
-  }
-
-  if (!data->WriteDataValue(&src.len, sizeof(src.len), "string length") ||
-      !data->WriteString(src.str, src.len)) {
-    LOG(ERROR) << "Failed to write string.";
-    return false;
-  }
-  return true;
+// Given a string, returns the total size required to store the string in perf
+// data, including a preceding length field and extra padding to align the
+// string + null terminator to a multiple of uint64s.
+size_t ExpectedStorageSizeOf(const string& str) {
+  return sizeof(string_size_type) + GetUint64AlignedStringLength(str);
 }
 
 // Reads a perf_event_header from |data| and performs byte swapping if
@@ -196,11 +178,6 @@ bool ReadPerfFileSection(DataReader* data, struct perf_file_section* section) {
 }
 
 }  // namespace
-
-// static
-size_t CStringWithLength::ExpectedStorageSizeOf(const string& str) {
-  return sizeof(CStringWithLength::len) + GetUint64AlignedStringLength(str);
-}
 
 PerfReader::PerfReader() : is_cross_endian_(false) {
   // The metadata mask is stored in |proto_|. It should be initialized to 0
@@ -1076,11 +1053,11 @@ bool PerfReader::ReadSingleStringMetadata(
     StringAndMd5sumPrefix* dest) const {
   // If a string metadata field is present but empty, it can have a size of 0,
   // in which case there is nothing to be read.
-  CStringWithLength single_string;
-  if (max_readable_size && !ReadStringFromBuffer(data, &single_string))
+  string single_string;
+  if (max_readable_size && !data->ReadStringWithSizeFromData(&single_string))
     return false;
-  dest->set_value(single_string.str);
-  dest->set_value_md5_prefix(Md5Prefix(single_string.str));
+  dest->set_value(single_string);
+  dest->set_value_md5_prefix(Md5Prefix(single_string));
   return true;
 }
 
@@ -1195,10 +1172,8 @@ bool PerfReader::ReadEventDescMetadata(DataReader* data, u32 type,
       return false;
     }
 
-    CStringWithLength event_name;
-    if (!ReadStringFromBuffer(data, &event_name))
+    if (!data->ReadStringWithSizeFromData(&attr.name))
       return false;
-    attr.name = event_name.str;
     // TODO(sque): Read directly into proto_.file_attrs.
     std::vector<u64> &ids = attr.ids;
     ids.resize(nr_ids);
@@ -1228,7 +1203,7 @@ bool PerfReader::ReadCPUTopologyMetadata(DataReader* data, u32 type,
   PerfCPUTopologyMetadata cpu_topology;
   cpu_topology.core_siblings.resize(num_core_siblings);
   for (size_t i = 0; i < num_core_siblings; ++i) {
-    if (!ReadStringFromBuffer(data, &cpu_topology.core_siblings[i]))
+    if (!data->ReadStringWithSizeFromData(&cpu_topology.core_siblings[i]))
       return false;
   }
 
@@ -1240,7 +1215,7 @@ bool PerfReader::ReadCPUTopologyMetadata(DataReader* data, u32 type,
 
   cpu_topology.thread_siblings.resize(num_thread_siblings);
   for (size_t i = 0; i < num_thread_siblings; ++i) {
-    if (!ReadStringFromBuffer(data, &cpu_topology.thread_siblings[i]))
+    if (!data->ReadStringWithSizeFromData(&cpu_topology.thread_siblings[i]))
       return false;
   }
 
@@ -1263,7 +1238,7 @@ bool PerfReader::ReadNUMATopologyMetadata(DataReader* data,
     if (!data->ReadUint32(&node.id) ||
         !data->ReadUint64(&node.total_memory) ||
         !data->ReadUint64(&node.free_memory) ||
-        !ReadStringFromBuffer(data, &node.cpu_list)) {
+        !data->ReadStringWithSizeFromData(&node.cpu_list)) {
       LOG(ERROR) << "Error reading NUMA topology info for node #" << i;
       return false;
     }
@@ -1640,13 +1615,9 @@ bool PerfReader::WriteBuildIDMetadata(u32 type, DataWriter* data) const {
   return true;
 }
 
-bool PerfReader::WriteSingleStringMetadata(
-    const StringAndMd5sumPrefix& src,
-    DataWriter* data) const {
-  CStringWithLength string_with_length;
-  string_with_length.str = src.value();
-  string_with_length.len = GetUint64AlignedStringLength(src.value());
-  return WriteStringToBuffer(string_with_length, data);
+bool PerfReader::WriteSingleStringMetadata(const StringAndMd5sumPrefix& src,
+                                           DataWriter* data) const {
+  return data->WriteStringWithSizeToData(src.value());
 }
 
 bool PerfReader::WriteRepeatedStringMetadata(
@@ -1657,11 +1628,8 @@ bool PerfReader::WriteRepeatedStringMetadata(
                            "number of string metadata")) {
     return false;
   }
-  for (const auto src_entry : src_array) {
-    CStringWithLength string_with_length;
-    string_with_length.str = src_entry.value();
-    string_with_length.len = GetUint64AlignedStringLength(src_entry.value());
-    if (!WriteStringToBuffer(string_with_length, data))
+  for (const auto& src_entry : src_array) {
+    if (!data->WriteStringWithSizeToData(src_entry.value()))
       return false;
   }
   return true;
@@ -1735,10 +1703,7 @@ bool PerfReader::WriteEventDescMetadata(u32 type, DataWriter* data) const {
       return false;
     }
 
-    CStringWithLength container;
-    container.len = GetUint64AlignedStringLength(attr.name);
-    container.str = attr.name;
-    if (!WriteStringToBuffer(container, data))
+    if (!data->WriteStringWithSizeToData(attr.name))
       return false;
 
     if (!data->WriteDataValue(attr.ids.data(), num_ids * sizeof(attr.ids[0]),
@@ -1754,21 +1719,21 @@ bool PerfReader::WriteCPUTopologyMetadata(u32 type, DataWriter* data) const {
   serializer_.DeserializeCPUTopologyMetadata(proto_.cpu_topology(),
                                              &cpu_topology);
 
-  const std::vector<CStringWithLength>& cores = cpu_topology.core_siblings;
+  std::vector<string>& cores = cpu_topology.core_siblings;
   num_siblings_type num_cores = cores.size();
   if (!data->WriteDataValue(&num_cores, sizeof(num_cores), "num cores"))
     return false;
-  for (size_t i = 0; i < num_cores; ++i) {
-    if (!WriteStringToBuffer(cores[i], data))
+  for (string& core_name : cores) {
+    if (!data->WriteStringWithSizeToData(core_name))
       return false;
   }
 
-  const std::vector<CStringWithLength>& threads = cpu_topology.thread_siblings;
+  std::vector<string>& threads = cpu_topology.thread_siblings;
   num_siblings_type num_threads = threads.size();
   if (!data->WriteDataValue(&num_threads, sizeof(num_threads), "num threads"))
     return false;
-  for (size_t i = 0; i < num_threads; ++i) {
-    if (!WriteStringToBuffer(threads[i], data))
+  for (string& thread_name : threads) {
+    if (!data->WriteStringWithSizeToData(thread_name))
       return false;
   }
 
@@ -1789,7 +1754,7 @@ bool PerfReader::WriteNUMATopologyMetadata(u32 type, DataWriter* data) const {
                               "node total memory") ||
         !data->WriteDataValue(&node.free_memory, sizeof(node.free_memory),
                               "node free memory") ||
-        !WriteStringToBuffer(node.cpu_list, data)) {
+        !data->WriteStringWithSizeToData(node.cpu_list)) {
     }
   }
   return true;
@@ -1899,11 +1864,10 @@ size_t PerfReader::GetEventDescMetadataSize() const {
   size_t size = 0;
   if (get_metadata_mask_bit(HEADER_EVENT_DESC)) {
     size += sizeof(event_desc_num_events) + sizeof(event_desc_attr_size);
-    CStringWithLength dummy;
     for (int i = 0; i < attrs().size(); ++i) {
-      size += sizeof(perf_event_attr) + sizeof(dummy.len);
+      size += sizeof(perf_event_attr);
       size += sizeof(event_desc_num_unique_ids);
-      size += GetUint64AlignedStringLength(event_types().Get(i).name());
+      size += ExpectedStorageSizeOf(event_types().Get(i).name());
       size += attrs().Get(i).ids_size() *
               sizeof(decltype(PerfFileAttr::ids)::value_type);
     }
@@ -1921,7 +1885,6 @@ size_t PerfReader::GetBuildIDMetadataSize() const {
 }
 
 size_t PerfReader::GetStringMetadataSize() const {
-  auto ExpectedStorageSizeOf = CStringWithLength::ExpectedStorageSizeOf;
   size_t size = 0;
   if (string_metadata().has_hostname())
     size += ExpectedStorageSizeOf(string_metadata().hostname().value());
@@ -1962,12 +1925,12 @@ size_t PerfReader::GetCPUTopologyMetadataSize() const {
   // Core siblings.
   size_t size = sizeof(num_siblings_type);
   for (const string& core_sibling : proto_.cpu_topology().core_siblings())
-    size += CStringWithLength::ExpectedStorageSizeOf(core_sibling);
+    size += ExpectedStorageSizeOf(core_sibling);
 
   // Thread siblings.
   size += sizeof(num_siblings_type);
   for (const string& thread_sibling : proto_.cpu_topology().thread_siblings())
-    size += CStringWithLength::ExpectedStorageSizeOf(thread_sibling);
+    size += ExpectedStorageSizeOf(thread_sibling);
 
   return size;
 }
@@ -1977,7 +1940,7 @@ size_t PerfReader::GetNUMATopologyMetadataSize() const {
   for (const auto& node : proto_.numa_topology()) {
     size += sizeof(node.id());
     size += sizeof(node.total_memory()) + sizeof(node.free_memory());
-    size += CStringWithLength::ExpectedStorageSizeOf(node.cpu_list());
+    size += ExpectedStorageSizeOf(node.cpu_list());
   }
   return size;
 }

@@ -32,6 +32,8 @@ class BufferWriter : public DataWriter {
   bool WriteString(const string& str, const size_t size) override;
 
  private:
+  bool CanWriteSize(size_t data_size) override;
+
   // Pointer to the data buffer. Does not own the buffer.
   char* buffer_;
 

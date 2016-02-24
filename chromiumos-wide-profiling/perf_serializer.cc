@@ -8,8 +8,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#include <bitset>
-#include <utility>
+#include <algorithm>  // for std::copy
 
 #include "base/logging.h"
 
@@ -839,16 +838,13 @@ bool PerfSerializer::DeserializeSingleUint64Metadata(
 bool PerfSerializer::SerializeCPUTopologyMetadata(
     const PerfCPUTopologyMetadata& metadata,
     PerfDataProto_PerfCPUTopologyMetadata* proto_metadata) const {
-  for (size_t i = 0; i < metadata.core_siblings.size(); ++i) {
-    const string& str = metadata.core_siblings[i].str;
-    proto_metadata->add_core_siblings(str);
-    proto_metadata->add_core_siblings_md5_prefix(Md5Prefix(str));
+  for (const string& core_name : metadata.core_siblings) {
+    proto_metadata->add_core_siblings(core_name);
+    proto_metadata->add_core_siblings_md5_prefix(Md5Prefix(core_name));
   }
-
-  for (size_t i = 0; i < metadata.thread_siblings.size(); ++i) {
-    const string& str = metadata.thread_siblings[i].str;
-    proto_metadata->add_thread_siblings(str);
-    proto_metadata->add_thread_siblings_md5_prefix(Md5Prefix(str));
+  for (const string& thread_name : metadata.thread_siblings) {
+    proto_metadata->add_thread_siblings(thread_name);
+    proto_metadata->add_thread_siblings_md5_prefix(Md5Prefix(thread_name));
   }
   return true;
 }
@@ -856,19 +852,17 @@ bool PerfSerializer::SerializeCPUTopologyMetadata(
 bool PerfSerializer::DeserializeCPUTopologyMetadata(
     const PerfDataProto_PerfCPUTopologyMetadata& proto_metadata,
     PerfCPUTopologyMetadata* metadata) const {
-  for (int i = 0; i < proto_metadata.core_siblings_size(); ++i) {
-    CStringWithLength core;
-    core.str = proto_metadata.core_siblings(i);
-    core.len = GetUint64AlignedStringLength(core.str);
-    metadata->core_siblings.push_back(core);
-  }
+  metadata->core_siblings.clear();
+  metadata->core_siblings.reserve(proto_metadata.core_siblings().size());
+  std::copy(proto_metadata.core_siblings().begin(),
+            proto_metadata.core_siblings().end(),
+            std::back_inserter(metadata->core_siblings));
 
-  for (int i = 0; i < proto_metadata.thread_siblings_size(); ++i) {
-    CStringWithLength thread;
-    thread.str = proto_metadata.thread_siblings(i);
-    thread.len = GetUint64AlignedStringLength(thread.str);
-    metadata->thread_siblings.push_back(thread);
-  }
+  metadata->thread_siblings.clear();
+  metadata->thread_siblings.reserve(proto_metadata.thread_siblings().size());
+  std::copy(proto_metadata.thread_siblings().begin(),
+            proto_metadata.thread_siblings().end(),
+            std::back_inserter(metadata->thread_siblings));
   return true;
 }
 
@@ -878,8 +872,8 @@ bool PerfSerializer::SerializeNodeTopologyMetadata(
   proto_metadata->set_id(metadata.id);
   proto_metadata->set_total_memory(metadata.total_memory);
   proto_metadata->set_free_memory(metadata.free_memory);
-  proto_metadata->set_cpu_list(metadata.cpu_list.str);
-  proto_metadata->set_cpu_list_md5_prefix(Md5Prefix(metadata.cpu_list.str));
+  proto_metadata->set_cpu_list(metadata.cpu_list);
+  proto_metadata->set_cpu_list_md5_prefix(Md5Prefix(metadata.cpu_list));
   return true;
 }
 
@@ -889,8 +883,7 @@ bool PerfSerializer::DeserializeNodeTopologyMetadata(
   metadata->id = proto_metadata.id();
   metadata->total_memory = proto_metadata.total_memory();
   metadata->free_memory = proto_metadata.free_memory();
-  metadata->cpu_list.str = proto_metadata.cpu_list();
-  metadata->cpu_list.len = GetUint64AlignedStringLength(metadata->cpu_list.str);
+  metadata->cpu_list = proto_metadata.cpu_list();
   return true;
 }
 

@@ -6,6 +6,7 @@
 #define CHROMIUMOS_WIDE_PROFILING_DATA_READER_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/utils.h"
@@ -52,6 +53,12 @@ class DataReader {
   // null terminator). The actual string may be shorter than the number of bytes
   // requested.
   virtual bool ReadString(const size_t size, string* str) = 0;
+
+  // Reads a string from data into |dest| at the current offset. The string in
+  // data is prefixed with a 32-bit size field. The size() of |*dest| after the
+  // read will be the null-terminated string length of the underlying string
+  // data, and not necessarily the same as the size field in the data.
+  bool ReadStringWithSizeFromData(string* dest);
 
   bool is_cross_endian() const {
     return is_cross_endian_;

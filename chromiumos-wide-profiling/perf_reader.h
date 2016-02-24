@@ -38,24 +38,6 @@ struct PerfFileAttr {
 const size_t kBuildIDArraySize = 20;
 const size_t kBuildIDStringLength = kBuildIDArraySize * 2;
 
-// TODO(sque): Move this to perf_reader.cc once it is no longer used in this
-// file.
-struct CStringWithLength {
-  u32 len;
-  string str;
-
-  // Returns the size required to store both |len| and a string of size |len|.
-  // This is not the same as the minimum size required to store |str|.
-  size_t GetStorageSize() const {
-    return sizeof(len) + len;
-  }
-
-  // Given a string, returns the total size required to store the string in perf
-  // data, including a preceding length field and extra padding to align the
-  // string + null terminator to a multiple of uint64s.
-  static size_t ExpectedStorageSizeOf(const string& str);
-};
-
 struct PerfUint32Metadata {
   u32 type;
   std::vector<uint32_t> data;
@@ -69,15 +51,15 @@ struct PerfUint64Metadata {
 typedef u32 num_siblings_type;
 
 struct PerfCPUTopologyMetadata {
-  std::vector<CStringWithLength> core_siblings;
-  std::vector<CStringWithLength> thread_siblings;
+  std::vector<string> core_siblings;
+  std::vector<string> thread_siblings;
 };
 
 struct PerfNodeTopologyMetadata {
   u32 id;
   u64 total_memory;
   u64 free_memory;
-  CStringWithLength cpu_list;
+  string cpu_list;
 };
 
 class DataReader;

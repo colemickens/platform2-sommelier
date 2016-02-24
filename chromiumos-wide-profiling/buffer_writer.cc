@@ -34,4 +34,8 @@ bool BufferWriter::WriteString(const string& str, const size_t size) {
   return true;
 }
 
+bool BufferWriter::CanWriteSize(size_t data_size) {
+  return Tell() + data_size <= size();
+}
+
 }  // namespace quipper

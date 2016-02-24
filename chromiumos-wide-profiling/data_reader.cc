@@ -6,6 +6,8 @@
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/utils.h"
+
 namespace quipper {
 
 bool DataReader::ReadDataValue(const size_t size, const string& value_name,
@@ -15,6 +17,20 @@ bool DataReader::ReadDataValue(const size_t size, const string& value_name,
   LOG(ERROR)  << "Unable to read " << value_name << ". Requested " << size
                << " bytes, " << size_ - Tell() << " bytes remaining.";
   return false;
+}
+
+bool DataReader::ReadStringWithSizeFromData(string* dest) {
+  uint32_t len = 0;
+  if (!ReadUint32(&len)) {
+    LOG(ERROR) << "Could not read string length from data.";
+    return false;
+  }
+
+  if (!ReadString(len, dest)) {
+    LOG(ERROR) << "Failed to read string from data. len: " << len;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace quipper
