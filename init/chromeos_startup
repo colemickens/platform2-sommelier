@@ -136,8 +136,23 @@ BLOCKED_DEV_MODE_FILE="/mnt/stateful_partition/.blocked_dev_mode"
 #
 # The up-front CROS_DEBUG check avoids forking a crossystem process in verified
 # mode, thus keeping the check as lightweight as possible for normal boot.
-if [ $CROS_DEBUG -eq 1 ]; then
-  if crossystem "block_devmode?1" "debug_build?0" "devsw_boot?1"; then
+if [ $CROS_DEBUG -eq 1 ] && crossystem "devsw_boot?1" "debug_build?0"; then
+  # Checks ordered by run time: First try reading VPD through sysfs.
+  if [ -f /sys/firmware/vpd/rw/block_devmode ]; then
+    BLOCK_DEVMODE=1
+  # Second try crossystem.
+  elif crossystem "block_devmode?1"; then
+    BLOCK_DEVMODE=1
+  # Third re-read VPD directly from SPI flash (slow!) but only for systems that
+  # don't have VPD in sysfs and only when NVRAM indicates that it has been
+  # cleared.
+  elif [ ! -d /sys/firmware/vpd/rw ] &&
+     crossystem "nvram_cleared?1" &&
+     [ "$(vpd -i RW_VPD -g block_devmode)" = "1" ]; then
+    BLOCK_DEVMODE=1
+  fi
+
+  if [ -n "${BLOCK_DEVMODE}" ]; then
     # Put a flag file into place that will trigger a stateful partition wipe
     # after reboot in verified mode.
     touch ${BLOCKED_DEV_MODE_FILE}
