@@ -44,6 +44,11 @@
 using base::FilePath;
 using base::StringPrintf;
 using chaps::IsolateCredentialManager;
+using brillo::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::GetRootPath;
+using brillo::cryptohome::home::GetUserPath;
+using brillo::cryptohome::home::IsSanitizedUserName;
+using brillo::cryptohome::home::SanitizeUserName;
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -510,8 +515,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (legacy_mount_)
     MountLegacyHome(user_home, mount_error);
 
-  std::string user_multi_home =
-      brillo::cryptohome::home::GetUserPath(username).value();
+  std::string user_multi_home = GetUserPath(username).value();
   if (!RememberBind(user_home, user_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << user_multi_home;
@@ -531,8 +535,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   std::string root_home = GetMountedRootHomePath(obfuscated_username);
-  std::string root_multi_home =
-      brillo::cryptohome::home::GetRootPath(username).value();
+  std::string root_multi_home = GetRootPath(username).value();
   if (!RememberBind(root_home, root_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << root_home << " -> "
                 << root_multi_home;
@@ -556,15 +559,13 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   const std::string username = credentials.username();
   std::string path = GetUserEphemeralPath(credentials.GetObfuscatedUsername(
       system_salt_));
-  const std::string user_multi_home =
-      brillo::cryptohome::home::GetUserPath(username).value();
-  const std::string root_multi_home =
-      brillo::cryptohome::home::GetRootPath(username).value();
+  const std::string user_multi_home = GetUserPath(username).value();
+  const std::string root_multi_home = GetRootPath(username).value();
 
   // If we're mounting as a guest, as source use just "guestfs" instead of an
   // actual path. We don't want the guest cryptohome to persist even between
   // logins during the same boot.
-  if (credentials.username() == brillo::cryptohome::home::kGuestUserName)
+  if (credentials.username() == kGuestUserName)
     path = kGuestMountPath;
 
   if (!EnsureUserMountPoints(credentials))
@@ -1200,7 +1201,7 @@ bool Mount::MountGuestCryptohome() {
     LOG(WARNING) << "Failed to finalize boot lockbox.";
   }
 
-  std::string guest = brillo::cryptohome::home::kGuestUserName;
+  std::string guest = kGuestUserName;
   UsernamePasskey guest_creds(guest.c_str(), brillo::Blob(0));
   current_user_->Reset();
   return MountEphemeralCryptohome(guest_creds);
@@ -1704,8 +1705,8 @@ bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
 
 bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
   const std::string username = credentials.username();
-  FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
-  FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
+  FilePath root_path = GetRootPath(username);
+  FilePath user_path = GetUserPath(username);
   FilePath temp_path(GetNewUserPath(username));
   if (!EnsureDirHasOwner(root_path, kMountOwnerUid, kMountOwnerGid)) {
     LOG(ERROR) << "Couldn't ensure root path: " << root_path.value();
@@ -1765,8 +1766,7 @@ base::Value* Mount::GetStatus() {
 
 // static
 std::string Mount::GetNewUserPath(const std::string& username) {
-  std::string sanitized =
-      brillo::cryptohome::home::SanitizeUserName(username);
+  std::string sanitized = SanitizeUserName(username);
   return StringPrintf("/home/chronos/u-%s", sanitized.c_str());
 }
 
