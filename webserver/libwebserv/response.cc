@@ -12,61 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <libwebserv/response_impl.h>
-
-#include <algorithm>
+#include <libwebserv/response.h>
 
 #include <base/json/json_writer.h>
-#include <base/logging.h>
 #include <base/values.h>
 #include <brillo/http/http_request.h>
 #include <brillo/mime_utils.h>
 #include <brillo/streams/memory_stream.h>
-#include <brillo/strings/string_utils.h>
-#include <libwebserv/dbus_protocol_handler.h>
 
 namespace libwebserv {
 
-ResponseImpl::ResponseImpl(DBusProtocolHandler* handler,
-                           const std::string& request_id)
-    : handler_{handler}, request_id_{request_id} {
+void Response::AddHeader(const std::string& header_name,
+                         const std::string& value) {
+  AddHeaders({std::pair<std::string,std::string>{header_name, value}});
 }
 
-ResponseImpl::~ResponseImpl() {
-  if (!reply_sent_) {
-    ReplyWithError(brillo::http::status_code::InternalServerError,
-                   "Internal server error");
-  }
-}
-
-void ResponseImpl::AddHeader(const std::string& header_name,
-                             const std::string& value) {
-  headers_.emplace(header_name, value);
-}
-
-void ResponseImpl::AddHeaders(
-    const std::vector<std::pair<std::string, std::string>>& headers) {
-  headers_.insert(headers.begin(), headers.end());
-}
-
-void ResponseImpl::Reply(int status_code,
-                         brillo::StreamPtr data_stream,
-                         const std::string& mime_type) {
-  CHECK(data_stream);
-  status_code_ = status_code;
-  data_stream_ = std::move(data_stream);
-  AddHeader(brillo::http::response_header::kContentType, mime_type);
-  SendResponse();
-}
-
-void ResponseImpl::ReplyWithText(int status_code,
-                                 const std::string& text,
-                                 const std::string& mime_type) {
+void Response::ReplyWithText(int status_code,
+                             const std::string& text,
+                             const std::string& mime_type) {
   Reply(status_code, brillo::MemoryStream::OpenCopyOf(text, nullptr),
         mime_type);
 }
 
-void ResponseImpl::ReplyWithJson(int status_code, const base::Value* json) {
+void Response::ReplyWithJson(int status_code, const base::Value* json) {
   std::string text;
   base::JSONWriter::WriteWithOptions(
       *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
@@ -77,7 +45,7 @@ void ResponseImpl::ReplyWithJson(int status_code, const base::Value* json) {
   ReplyWithText(status_code, text, mime_type);
 }
 
-void ResponseImpl::ReplyWithJson(
+void Response::ReplyWithJson(
     int status_code, const std::map<std::string, std::string>& json) {
   base::DictionaryValue json_value;
   for (const auto& pair : json) {
@@ -86,27 +54,19 @@ void ResponseImpl::ReplyWithJson(
   ReplyWithJson(status_code, &json_value);
 }
 
-void ResponseImpl::Redirect(int status_code, const std::string& redirect_url) {
+void Response::Redirect(int status_code, const std::string& redirect_url) {
   AddHeader(brillo::http::response_header::kLocation, redirect_url);
   ReplyWithError(status_code, "");
 }
 
-void ResponseImpl::ReplyWithError(int status_code,
-                                  const std::string& error_text) {
-  status_code_ = status_code;
-  data_stream_ = brillo::MemoryStream::OpenCopyOf(error_text, nullptr);
-  SendResponse();
+void Response::ReplyWithError(int status_code,
+                              const std::string& error_text) {
+  Reply(status_code, brillo::MemoryStream::OpenCopyOf(error_text, nullptr),
+        "text/plain");
 }
 
-void ResponseImpl::ReplyWithErrorNotFound() {
+void Response::ReplyWithErrorNotFound() {
   ReplyWithError(brillo::http::status_code::NotFound, "Not Found");
-}
-
-void ResponseImpl::SendResponse() {
-  CHECK(!reply_sent_) << "Response already sent";
-  reply_sent_ = true;
-  handler_->CompleteRequest(request_id_, status_code_, headers_,
-                            std::move(data_stream_));
 }
 
 }  // namespace libwebserv

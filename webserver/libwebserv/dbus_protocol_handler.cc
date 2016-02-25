@@ -26,7 +26,7 @@
 #include "libwebserv/protocol_handler.h"
 #include "libwebserv/request.h"
 #include "libwebserv/request_handler_callback.h"
-#include "libwebserv/response_impl.h"
+#include "libwebserv/dbus_response.h"
 #include "webservd/dbus-proxies.h"
 
 namespace libwebserv {
@@ -224,7 +224,7 @@ bool DBusProtocolHandler::ProcessRequest(const std::string& protocol_handler_id,
   }
   handler_iter->second.handler->HandleRequest(
       std::move(request),
-      std::unique_ptr<Response>{new ResponseImpl{this, request_id}});
+      std::unique_ptr<Response>{new DBusResponse{this, request_id}});
   return true;
 }
 

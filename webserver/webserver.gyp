@@ -34,6 +34,7 @@
       'sources': [
         'libwebserv/dbus_protocol_handler.cc',
         'libwebserv/dbus_server.cc',
+        'libwebserv/dbus_response.cc',
         'libwebserv/protocol_handler.cc',
         'libwebserv/request.cc',
         'libwebserv/request_handler_callback.cc',

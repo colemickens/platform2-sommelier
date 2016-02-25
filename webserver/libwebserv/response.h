@@ -40,8 +40,8 @@ class LIBWEBSERV_EXPORT Response {
   virtual ~Response() = default;
 
   // Adds a single HTTP response header to the response.
-  virtual void AddHeader(const std::string& header_name,
-                         const std::string& value) = 0;
+  void AddHeader(const std::string& header_name,
+                 const std::string& value);
 
   // Adds number of HTTP response headers to the response.
   virtual void AddHeaders(
@@ -53,30 +53,30 @@ class LIBWEBSERV_EXPORT Response {
                      const std::string& mime_type) = 0;
 
   // Reply with text body.
-  virtual void ReplyWithText(int status_code,
-                             const std::string& text,
-                             const std::string& mime_type) = 0;
+  void ReplyWithText(int status_code,
+                     const std::string& text,
+                     const std::string& mime_type);
 
   // Reply with JSON object. The content type will be "application/json".
-  virtual void ReplyWithJson(int status_code, const base::Value* json) = 0;
+  void ReplyWithJson(int status_code, const base::Value* json);
 
   // Special form for JSON response for simple objects that have a flat
   // list of key-value pairs of string type.
-  virtual void ReplyWithJson(
-      int status_code, const std::map<std::string, std::string>& json) = 0;
+  void ReplyWithJson(int status_code,
+                     const std::map<std::string,
+                     std::string>& json);
 
   // Issue a redirect response, so the client browser loads a page at
   // the URL specified in |redirect_url|. If this is not an external URL,
   // it must be an absolute path starting at the root "/...".
-  virtual void Redirect(int status_code, const std::string& redirect_url) = 0;
+  void Redirect(int status_code, const std::string& redirect_url);
 
   // Send a plain text response (with no Content-Type header).
   // Usually used with error responses. |error_text| must be plain text.
-  virtual void ReplyWithError(int status_code,
-                              const std::string& error_text) = 0;
+  void ReplyWithError(int status_code, const std::string& error_text);
 
   // Send "404 Not Found" response.
-  virtual void ReplyWithErrorNotFound() = 0;
+  void ReplyWithErrorNotFound();
 };
 
 }  // namespace libwebserv

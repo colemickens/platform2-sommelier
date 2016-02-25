@@ -78,7 +78,7 @@ class LIBWEBSERV_PRIVATE DBusProtocolHandler : public ProtocolHandler {
  private:
   friend class FileInfo;
   friend class DBusServer;
-  friend class ResponseImpl;
+  friend class DBusResponse;
 
   using ProtocolHandlerProxyInterface =
       org::chromium::WebServer::ProtocolHandlerProxyInterface;

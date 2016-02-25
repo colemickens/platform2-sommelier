@@ -28,35 +28,22 @@ namespace libwebserv {
 class DBusProtocolHandler;
 
 // Implementation of the Response interface.
-class ResponseImpl final : public Response {
+class DBusResponse final : public Response {
  public:
-  ~ResponseImpl() override;
+  ~DBusResponse() override;
 
   // Overrides from Response.
-  void AddHeader(const std::string& header_name,
-                 const std::string& value) override;
   void AddHeaders(
       const std::vector<std::pair<std::string, std::string>>& headers) override;
   void Reply(int status_code,
              brillo::StreamPtr data_stream,
              const std::string& mime_type) override;
-  void ReplyWithText(int status_code,
-                     const std::string& text,
-                     const std::string& mime_type) override;
-  void ReplyWithJson(int status_code, const base::Value* json) override;
-  void ReplyWithJson(int status_code,
-                     const std::map<std::string, std::string>& json) override;
-  void Redirect(int status_code, const std::string& redirect_url) override;
-  void ReplyWithError(int status_code, const std::string& error_text) override;
-  void ReplyWithErrorNotFound() override;
 
  private:
   friend class DBusProtocolHandler;
 
-  LIBWEBSERV_PRIVATE ResponseImpl(DBusProtocolHandler* handler,
+  LIBWEBSERV_PRIVATE DBusResponse(DBusProtocolHandler* handler,
                                   const std::string& request_id);
-
-  LIBWEBSERV_PRIVATE void SendResponse();
 
   DBusProtocolHandler* handler_{nullptr};
   std::string request_id_;
@@ -65,7 +52,7 @@ class ResponseImpl final : public Response {
   std::multimap<std::string, std::string> headers_;
   bool reply_sent_{false};
 
-  DISALLOW_COPY_AND_ASSIGN(ResponseImpl);
+  DISALLOW_COPY_AND_ASSIGN(DBusResponse);
 };
 
 }  // namespace libwebserv
