@@ -216,7 +216,8 @@ TEST_F(ArcContextTest, GetExeBaseName) {
   EXPECT_EQ("crash_reporter_test", exe);
 }
 
-TEST_F(ArcContextTest, GetCommand) {
+// TODO(crbug.com/590044)
+TEST_F(ArcContextTest, DISABLED_GetCommand) {
   std::string command;
   EXPECT_TRUE(collector_->context().GetCommand(pid_, &command));
 
