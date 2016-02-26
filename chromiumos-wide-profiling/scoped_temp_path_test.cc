@@ -69,6 +69,21 @@ TEST(ScopedTempPathTest, OneFile) {
   EXPECT_FALSE(PathExists(path)) << path;
 }
 
+// Create a file with a custom template filename.
+TEST(ScopedTempPathTest, CustomFileTemplate) {
+  string path;
+  {
+    const string exes = "XXXXXX";
+    const string prefix = "/tmp/foobar.";
+    ScopedTempFile temp_file(prefix);
+    path = temp_file.path();
+    EXPECT_TRUE(PathExists(path)) << path;
+    EXPECT_EQ(prefix.size() + exes.size(), path.size());
+    EXPECT_EQ(prefix, path.substr(0, prefix.size()));
+  }
+  EXPECT_FALSE(PathExists(path)) << path;
+}
+
 // Create many files and make sure they are deleted when out of scope.
 TEST(ScopedTempPathTest, MultipleFiles) {
   std::vector<string> paths(kNumMultiplePaths);
@@ -91,6 +106,23 @@ TEST(ScopedTempPathTest, OneEmptyDir) {
     ScopedTempDir temp_path;
     path = temp_path.path();
     EXPECT_TRUE(PathExists(path)) << path;
+  }
+  EXPECT_FALSE(PathExists(path)) << path;
+}
+
+// Create a file with a custom template dirname.
+TEST(ScopedTempPathTest, CustomDirTemplate) {
+  string path;
+  {
+    const string exes = "XXXXXX";
+    const string prefix = "/tmp/foobar.";
+    ScopedTempDir temp_path(prefix);
+    path = temp_path.path();
+    EXPECT_TRUE(PathExists(path)) << path;
+    EXPECT_EQ('/', path.back()) << "Should append a slash";
+    // Check prefix matches:
+    EXPECT_EQ(prefix.size()+exes.size()+1, path.size());
+    EXPECT_EQ(prefix, path.substr(0, prefix.size()));
   }
   EXPECT_FALSE(PathExists(path)) << path;
 }

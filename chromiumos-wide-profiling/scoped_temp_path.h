@@ -33,6 +33,9 @@ class ScopedTempFile : public ScopedTempPath {
   // Create a temporary file.  If successful, the path will be stored in
   // |path_|.  If not, |path_| will be an empty string.
   ScopedTempFile();
+  // A temporary file is created using mkstemp() by adding "XXXXXX" to
+  // |prefix|.
+  explicit ScopedTempFile(string prefix);
 };
 
 class ScopedTempDir : public ScopedTempPath {
@@ -40,6 +43,9 @@ class ScopedTempDir : public ScopedTempPath {
   // Create a temporary directory.  If successful, the path will be stored in
   // |path_|.  If not, |path_| will be an empty string.
   ScopedTempDir();
+  // A temporary file is created using mkdtemp() by adding "XXXXXX" to
+  // |prefix|.
+  explicit ScopedTempDir(string prefix);
 };
 
 }  // namespace quipper
