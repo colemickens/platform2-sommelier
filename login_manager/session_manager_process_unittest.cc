@@ -22,6 +22,7 @@
 #include "login_manager/browser_job.h"
 #include "login_manager/fake_browser_job.h"
 #include "login_manager/fake_child_process.h"
+#include "login_manager/fake_crossystem.h"
 #include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
@@ -112,7 +113,8 @@ class SessionManagerProcessTest : public ::testing::Test {
                                          false,
                                          base::TimeDelta(),
                                          &metrics_,
-                                         &real_utils_);
+                                         &real_utils_,
+                                         &crossystem_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
   }
@@ -143,6 +145,7 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   scoped_refptr<SessionManagerService> manager_;
   SystemUtilsImpl real_utils_;
+  FakeCrossystem crossystem_;
   MockMetrics metrics_;
   MockSystemUtils utils_;
 

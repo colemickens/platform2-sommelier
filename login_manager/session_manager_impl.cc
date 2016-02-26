@@ -22,10 +22,10 @@
 #include <brillo/cryptohome.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
-#include <vboot/crossystem.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/crossystem.h"
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/device_local_account_policy_service.h"
@@ -149,7 +149,8 @@ SessionManagerImpl::SessionManagerImpl(
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,
     NssUtil* nss,
-    SystemUtils* utils)
+    SystemUtils* utils,
+    Crossystem* crossystem)
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
@@ -165,6 +166,7 @@ SessionManagerImpl::SessionManagerImpl(
       login_metrics_(metrics),
       nss_(nss),
       system_(utils),
+      crossystem_(crossystem),
       owner_key_(nss->GetOwnerKeyFilePath(), nss),
       mitigator_(key_gen) {
 }
@@ -741,19 +743,20 @@ void SessionManagerImpl::UpdateSystemSettings() {
     return;
 
   // Only write verified boot settings if running on Chrome OS firmware.
-  char buffer[VB_MAX_STRING_PROPERTY];
-  if (VbGetSystemPropertyString(kCrossystemMainfwType, buffer,
-                                sizeof(buffer)) &&
+  char buffer[Crossystem::kVbMaxStringProperty];
+  if (crossystem_->VbGetSystemPropertyString(kCrossystemMainfwType, buffer,
+                                             sizeof(buffer)) &&
       strcmp(kCrossystemMainfwTypeNonchrome, buffer)) {
     int block_devmode_setting =
         device_policy_->GetSettings().system_settings().block_devmode() ? 1 : 0;
-    int block_devmode_value = VbGetSystemPropertyInt(kCrossystemBlockDevmode);
+    int block_devmode_value =
+        crossystem_->VbGetSystemPropertyInt(kCrossystemBlockDevmode);
     if (block_devmode_value == -1)
       LOG(ERROR) << "Failed to read block_devmode flag!";
 
     if (block_devmode_setting != block_devmode_value) {
-      if (VbSetSystemPropertyInt(kCrossystemBlockDevmode,
-                                 block_devmode_setting)) {
+      if (crossystem_->VbSetSystemPropertyInt(kCrossystemBlockDevmode,
+                                              block_devmode_setting)) {
         LOG(ERROR) << "Failed to write block_devmode flag!";
       }
     }

@@ -30,6 +30,7 @@
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/device_local_account_policy_service.h"
+#include "login_manager/fake_crossystem.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_dbus_signal_emitter.h"
@@ -87,7 +88,8 @@ class SessionManagerImplTest : public ::testing::Test {
               &manager_,
               &metrics_,
               &nss_,
-              &utils_),
+              &utils_,
+              &crossystem_),
         fake_salt_("fake salt"),
         actual_locks_(0),
         expected_locks_(0),
@@ -196,6 +198,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockMetrics metrics_;
   MockNssUtil nss_;
   MockSystemUtils utils_;
+  FakeCrossystem crossystem_;
 
   SessionManagerImpl impl_;
   SessionManagerImpl::Error error_;

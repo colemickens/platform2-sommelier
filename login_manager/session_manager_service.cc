@@ -31,6 +31,7 @@
 
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_handler.h"
+#include "login_manager/crossystem_impl.h"
 #include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
@@ -125,7 +126,8 @@ SessionManagerService::SessionManagerService(
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
     LoginMetrics* metrics,
-    SystemUtils* utils)
+    SystemUtils* utils,
+    Crossystem* crossystem)
     : browser_(std::move(child_job)),
       exit_on_child_done_(false),
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
@@ -135,6 +137,7 @@ SessionManagerService::SessionManagerService(
       suspend_delay_id_(-1),
       login_metrics_(metrics),
       system_(utils),
+      crossystem_(crossystem),
       nss_(NssUtil::Create()),
       key_gen_(uid, utils),
       state_key_generator_(utils, metrics),
@@ -194,7 +197,8 @@ bool SessionManagerService::Initialize() {
       this,
       login_metrics_,
       nss_.get(),
-      system_);
+      system_,
+      crossystem_);
 
   adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);

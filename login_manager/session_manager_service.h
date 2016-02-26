@@ -29,6 +29,7 @@
 
 struct signalfd_siginfo;
 
+class Crossystem;
 class MessageLoop;
 
 namespace dbus {
@@ -142,7 +143,8 @@ class SessionManagerService
                         bool enable_browser_abort_on_hang,
                         base::TimeDelta hang_detection_interval,
                         LoginMetrics* metrics,
-                        SystemUtils* system);
+                        SystemUtils* system,
+                        Crossystem* crossystem);
   virtual ~SessionManagerService();
 
   // TestApi exposes internal routines for testing purposes.
@@ -269,7 +271,8 @@ class SessionManagerService
   int suspend_delay_id_;
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
-  SystemUtils* system_;  // Owned by the caller.
+  SystemUtils* system_;          // Owned by the caller.
+  Crossystem* crossystem_;       // Owned by the caller.
 
   scoped_ptr<NssUtil> nss_;
   KeyGenerator key_gen_;

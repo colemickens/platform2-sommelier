@@ -23,6 +23,8 @@
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/server_backed_state_key_generator.h"
 
+class Crossystem;
+
 namespace login_manager {
 class DBusSignalEmitterInterface;
 class DeviceLocalAccountPolicyService;
@@ -86,7 +88,8 @@ class SessionManagerImpl : public SessionManagerInterface,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,
                      NssUtil* nss,
-                     SystemUtils* utils);
+                     SystemUtils* utils,
+                     Crossystem* crossystem);
   virtual ~SessionManagerImpl();
 
   void InjectPolicyServices(
@@ -228,6 +231,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   LoginMetrics* login_metrics_;                         // Owned by the caller.
   NssUtil* nss_;                                        // Owned by the caller.
   SystemUtils* system_;                                 // Owned by the caller.
+  Crossystem* crossystem_;                              // Owned by the caller.
 
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
