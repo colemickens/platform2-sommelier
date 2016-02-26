@@ -22,6 +22,7 @@
         'compat/cros/detail/log_level.cc',
         'data_reader.cc',
         'data_writer.cc',
+        'dso.cc',
         'file_reader.cc',
         'perf_data_utils.cc',
         'perf_option_parser.cc',
@@ -44,6 +45,9 @@
         'perf_data_proto',
         'perf_stat_proto',
       ],
+      'link_settings': {
+        'libraries': ['-lelf'],
+      },
     },
     {
       'target_name': 'conversion_utils',
@@ -59,6 +63,7 @@
       'target_name': 'common_test',
       'type': 'static_library',
       'sources': [
+        'dso_test_utils.cc',
         'perf_test_files.cc',
         'test_utils.cc',
         'test_perf_data.cc',
@@ -158,6 +163,7 @@
             'address_mapper_test.cc',
             'buffer_reader_test.cc',
             'buffer_writer_test.cc',
+            'dso_test.cc',
             'file_reader_test.cc',
             'perf_data_utils_test.cc',
             'perf_option_parser_test.cc',
