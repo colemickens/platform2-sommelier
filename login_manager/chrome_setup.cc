@@ -260,8 +260,12 @@ void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
 void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // There has been a steady supply of bug reports about screen locking. These
   // messages are useful for determining what happened within feedback reports.
-  builder->AddVmodulePattern("screen_locker=1");
-  builder->AddVmodulePattern("webui_screen_locker=1");
+  // See crbug.com/452599.
+  builder->AddVmodulePattern("screen_locker=2");
+  builder->AddVmodulePattern("webui_screen_locker=2");
+  builder->AddVmodulePattern("lock_state_controller=2");
+  builder->AddVmodulePattern("webui_login_view=2");
+  builder->AddVmodulePattern("power_button_observer=2");
 
   // Turn on logging about external displays being connected and disconnected.
   // Different behavior is seen from different displays and these messages are
