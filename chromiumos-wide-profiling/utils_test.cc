@@ -21,15 +21,27 @@ TEST(UtilsTest, TestMD5) {
             0xe4d909c290d0fb1cLL);
 }
 
-TEST(UtilsTest, TestAlignSize) {
-  EXPECT_EQ(12, AlignSize(10, 4));
-  EXPECT_EQ(12, AlignSize(12, 4));
-  EXPECT_EQ(16, AlignSize(13, 4));
-  EXPECT_EQ(100, AlignSize(97, 4));
-  EXPECT_EQ(100, AlignSize(100, 4));
-  EXPECT_EQ(104, AlignSize(100, 8));
-  EXPECT_EQ(112, AlignSize(108, 8));
-  EXPECT_EQ(112, AlignSize(112, 8));
+TEST(UtilsTest, Align) {
+  EXPECT_EQ(12,  Align<4>(10));
+  EXPECT_EQ(12,  Align<4>(12));
+  EXPECT_EQ(16,  Align<4>(13));
+  EXPECT_EQ(100, Align<4>(97));
+  EXPECT_EQ(100, Align<4>(100));
+  EXPECT_EQ(104, Align<8>(100));
+  EXPECT_EQ(112, Align<8>(108));
+  EXPECT_EQ(112, Align<8>(112));
+
+  EXPECT_EQ(12,  Align<uint32_t>(10));
+  EXPECT_EQ(112, Align<uint64_t>(112));
+}
+
+TEST(UtilsTest, GetUint64AlignedStringLength) {
+  EXPECT_EQ(8, GetUint64AlignedStringLength("012345"));
+  EXPECT_EQ(8, GetUint64AlignedStringLength("0123456"));
+  EXPECT_EQ(16, GetUint64AlignedStringLength("01234567"));  // Room for '\0'
+  EXPECT_EQ(16, GetUint64AlignedStringLength("012345678"));
+  EXPECT_EQ(16, GetUint64AlignedStringLength("0123456789abcde"));
+  EXPECT_EQ(24, GetUint64AlignedStringLength("0123456789abcdef"));
 }
 
 TEST(UtilsTest, TestRawDataToHexString) {

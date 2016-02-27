@@ -83,8 +83,7 @@ void ReadRawData(DataReader* reader, struct perf_sample* sample) {
   reader->ReadData(sample->raw_size, sample->raw_data);
 
   // Determine the bytes that were read, and align to the next 64 bits.
-  reader_offset += AlignSize(sizeof(sample->raw_size) + sample->raw_size,
-                             sizeof(uint64_t));
+  reader_offset += Align<uint64_t>(sizeof(sample->raw_size) + sample->raw_size);
   reader->SeekSet(reader_offset);
 }
 
@@ -412,8 +411,7 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     memcpy(ptr, sample.raw_data, sample.raw_size);
 
     // Update the data read pointer after aligning to the next 64 bytes.
-    int num_bytes = AlignSize(sizeof(sample.raw_size) + sample.raw_size,
-                              sizeof(uint64_t));
+    int num_bytes = Align<uint64_t>(sizeof(sample.raw_size) + sample.raw_size);
     array += num_bytes / sizeof(uint64_t);
   }
 

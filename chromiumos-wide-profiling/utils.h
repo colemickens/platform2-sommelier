@@ -13,6 +13,7 @@
 #include <bitset>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "base/logging.h"
@@ -115,12 +116,38 @@ string RawDataToHexString(const string& str);
 // ignored (but the function may still return true).
 bool HexStringToRawData(const string& str, u8* array, size_t length);
 
-// Adjust |size| to blocks of |align_size|.  i.e. returns the smallest multiple
-// of |align_size| that can fit |size|.
-uint64_t AlignSize(uint64_t size, uint32_t align_size);
+// Round |value| up to the next |alignment|. I.e. returns the smallest multiple
+// of |alignment| less than or equal to |value|. |alignment| must be a power
+// of 2 (compile-time enforced).
+template<unsigned int alignment,
+         typename std::enable_if<
+             alignment != 0 && (alignment&(alignment-1)) == 0
+         >::type* = nullptr>
+inline uint64_t Align(uint64_t value) {
+  constexpr uint64_t mask = alignment - 1;
+  return (value + mask) & ~mask;
+}
 
+// Allows passing a type parameter instead of a size.
+template<typename T>
+inline uint64_t Align(uint64_t value) {
+  return Align<sizeof(T)>(value);
+}
+
+// In perf data, strings are packed into the smallest number of 8-byte blocks
+// possible, including a null terminator.
+// e.g.
+//    "0123"                ->  5 bytes -> packed into  8 bytes
+//    "0123456"             ->  8 bytes -> packed into  8 bytes
+//    "01234567"            ->  9 bytes -> packed into 16 bytes
+//    "0123456789abcd"      -> 15 bytes -> packed into 16 bytes
+//    "0123456789abcde"     -> 16 bytes -> packed into 16 bytes
+//    "0123456789abcdef"    -> 17 bytes -> packed into 24 bytes
+//
 // Returns the size of the 8-byte-aligned memory for storing |string|.
-size_t GetUint64AlignedStringLength(const string& str);
+static inline size_t GetUint64AlignedStringLength(const string& str) {
+  return Align<uint64_t>(str.size() + 1);
+}
 
 // Returns true iff the file exists.
 bool FileExists(const string& filename);

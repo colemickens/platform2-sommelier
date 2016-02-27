@@ -133,25 +133,6 @@ bool HexStringToRawData(const string& str, u8* array, size_t length) {
   return true;
 }
 
-uint64_t AlignSize(uint64_t size, uint32_t align_size) {
-  return ((size + align_size - 1) / align_size) * align_size;
-}
-
-// In perf data, strings are packed into the smallest number of 8-byte blocks
-// possible, including the null terminator.
-// e.g.
-//    "0123"                ->  5 bytes -> packed into  8 bytes
-//    "0123456"             ->  8 bytes -> packed into  8 bytes
-//    "01234567"            ->  9 bytes -> packed into 16 bytes
-//    "0123456789abcd"      -> 15 bytes -> packed into 16 bytes
-//    "0123456789abcde"     -> 16 bytes -> packed into 16 bytes
-//    "0123456789abcdef"    -> 17 bytes -> packed into 24 bytes
-//
-// Returns the size of the 8-byte-aligned memory for storing |string|.
-size_t GetUint64AlignedStringLength(const string& str) {
-  return AlignSize(str.size() + 1, sizeof(uint64_t));
-}
-
 bool ReadFileToData(const string& filename, std::vector<char>* data) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in.good()) {
