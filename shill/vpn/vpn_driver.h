@@ -26,6 +26,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
+#include "shill/callbacks.h"
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 
@@ -57,6 +58,10 @@ class VPNDriver {
                     const std::string& storage_id,
                     bool save_credentials);
   virtual void UnloadCredentials();
+
+  // Power management events.
+  virtual void OnBeforeSuspend(const ResultCallback& callback);
+  virtual void OnAfterResume();
 
   std::string GetHost() const;
 

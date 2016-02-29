@@ -258,4 +258,13 @@ string VPNService::GetPhysicalTechnologyProperty(Error* error) {
   return Technology::NameFromIdentifier(conn->technology());
 }
 
+void VPNService::OnBeforeSuspend(const ResultCallback& callback) {
+  driver_->OnBeforeSuspend(callback);
+}
+
+void VPNService::OnAfterResume() {
+  driver_->OnAfterResume();
+  Service::OnAfterResume();
+}
+
 }  // namespace shill

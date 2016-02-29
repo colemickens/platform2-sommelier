@@ -586,6 +586,30 @@ void ThirdPartyVpnDriver::OnDefaultServiceChanged(
   }
 }
 
+void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {
+  if (service_ && reconnect_supported_) {
+    // FIXME: Currently the VPN app receives this message at the same time
+    // as the resume message, even if shill adds a delay to hold off the
+    // suspend sequence.
+    adaptor_interface_->EmitPlatformMessage(
+        static_cast<uint32_t>(PlatformMessage::kSuspend));
+  }
+  callback.Run(Error(Error::kSuccess));
+}
+
+void ThirdPartyVpnDriver::OnAfterResume() {
+  if (service_ && reconnect_supported_) {
+    // Transition back to Configuring state so that the app can perform
+    // DNS lookups and reconnect.
+    device_->SetServiceState(Service::kStateConfiguring);
+    device_->ResetConnection();
+    StartConnectTimeout(kConnectTimeoutSeconds);
+
+    adaptor_interface_->EmitPlatformMessage(
+        static_cast<uint32_t>(PlatformMessage::kResume));
+  }
+}
+
 void ThirdPartyVpnDriver::OnConnectTimeout() {
   SLOG(this, 2) << __func__;
   VPNDriver::OnConnectTimeout();

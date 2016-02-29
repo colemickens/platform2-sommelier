@@ -89,6 +89,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   bool Save(StoreInterface* storage, const std::string& storage_id,
             bool save_credentials) override;
 
+  void OnBeforeSuspend(const ResultCallback& callback) override;
+  void OnAfterResume() override;
+
   const std::string& object_path_suffix() const { return object_path_suffix_; }
 
  protected:

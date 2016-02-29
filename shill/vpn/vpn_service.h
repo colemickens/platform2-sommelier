@@ -22,6 +22,7 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/callbacks.h"
 #include "shill/connection.h"
 #include "shill/service.h"
 
@@ -49,6 +50,10 @@ class VPNService : public Service {
   void EnableAndRetainAutoConnect() override;
   void SetConnection(const ConnectionRefPtr& connection) override;
   bool SetNameProperty(const std::string& name, Error* error) override;
+
+  // Power management events.
+  virtual void OnBeforeSuspend(const ResultCallback& callback) override;
+  virtual void OnAfterResume() override;
 
   virtual void InitDriverPropertyStore();
 
