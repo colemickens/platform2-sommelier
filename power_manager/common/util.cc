@@ -25,6 +25,13 @@
 namespace power_manager {
 namespace util {
 
+namespace {
+
+// Program used to run code as root.
+const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
+
+}  // namespace
+
 void Launch(const std::string& command) {
   LOG(INFO) << "Launching \"" << command << "\"";
   pid_t pid = fork();
@@ -47,6 +54,20 @@ int Run(const std::string& command) {
     LOG(ERROR) << "Command failed with " << return_value;
   }
   return return_value;
+}
+
+int RunSetuidHelper(const std::string& action,
+                    const std::string& additional_args,
+                    bool wait_for_completion) {
+  std::string command = kSetuidHelperPath + std::string(" --action=" + action);
+  if (!additional_args.empty())
+    command += " " + additional_args;
+  if (wait_for_completion) {
+    return Run(command.c_str());
+  } else {
+    Launch(command.c_str());
+    return 0;
+  }
 }
 
 double ClampPercent(double percent) {

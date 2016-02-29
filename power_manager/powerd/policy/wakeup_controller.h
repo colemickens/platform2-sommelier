@@ -10,6 +10,7 @@
 #include <base/macros.h>
 
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
 
 namespace power_manager {
@@ -17,6 +18,7 @@ class PrefsInterface;
 
 namespace system {
 class AcpiWakeupHelperInterface;
+class EcWakeupHelperInterface;
 class TaggedDevice;
 class UdevInterface;
 }  // namespace system
@@ -26,18 +28,21 @@ namespace policy {
 // Describes which mode the system is currently in, depending on e.g. the state
 // of the lid. Currently, WakeupController only tracks CLOSED and OPEN.
 enum WakeupMode {
-  WAKEUP_MODE_CLOSED = 0,  // Lid closed, no external monitor attached.
-  WAKEUP_MODE_DOCKED,  // Lid closed, external monitor attached.
-  WAKEUP_MODE_LAPTOP,  // Lid open.
-  WAKEUP_MODE_TABLET,  // Tablet mode, e.g. lid open more than 180 degrees.
+  WAKEUP_MODE_CLOSED = 0,   // Lid closed, no external monitor attached.
+  WAKEUP_MODE_DOCKED,       // Lid closed, external monitor attached.
+  WAKEUP_MODE_DISPLAY_OFF,  // Internal display off, external monitor attached.
+  WAKEUP_MODE_LAPTOP,       // Lid open.
+  WAKEUP_MODE_TABLET,       // Tablet mode, e.g. lid open more than 180 degrees.
 };
 
 // Configures wakeup-capable devices according to the current lid state.
-class WakeupController : public system::UdevTaggedDeviceObserver {
+class WakeupController : public policy::BacklightControllerObserver,
+                         public system::UdevTaggedDeviceObserver {
  public:
   // Powerd tags.
   static const char kTagInhibit[];
   static const char kTagUsableWhenDocked[];
+  static const char kTagUsableWhenDisplayOff[];
   static const char kTagUsableWhenLaptop[];
   static const char kTagUsableWhenTablet[];
   static const char kTagWakeup[];
@@ -59,8 +64,10 @@ class WakeupController : public system::UdevTaggedDeviceObserver {
   WakeupController();
   virtual ~WakeupController();
 
-  void Init(system::UdevInterface* udev,
+  void Init(policy::BacklightController* backlight_controller,
+            system::UdevInterface* udev,
             system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
+            system::EcWakeupHelperInterface* ec_wakeup_helper,
             LidState lid_state,
             DisplayMode display_mode,
             PrefsInterface* prefs);
@@ -71,6 +78,12 @@ class WakeupController : public system::UdevTaggedDeviceObserver {
   // Implementation of TaggedDeviceObserver.
   void OnTaggedDeviceChanged(const system::TaggedDevice& device) override;
   void OnTaggedDeviceRemoved(const system::TaggedDevice& device) override;
+
+  // Overridden from policy::BacklightControllerObserver:
+  void OnBrightnessChanged(
+      double brightness_percent,
+      policy::BacklightController::BrightnessChangeCause cause,
+      policy::BacklightController* source) override;
 
  private:
   // Derive the currently applicable WakeupMode according to lid state.
@@ -88,17 +101,23 @@ class WakeupController : public system::UdevTaggedDeviceObserver {
   // Re-configures ACPI wakeup.
   void ConfigureAcpiWakeup();
 
+  // Re-configures EC wakeup.
+  void ConfigureEcWakeup();
+
   // Re-configures all known devices to reflect a policy change.
   void UpdatePolicy();
 
   system::UdevInterface* udev_;  // weak
+  policy::BacklightController* backlight_controller_;  // weak
   system::AcpiWakeupHelperInterface* acpi_wakeup_helper_;  // weak
+  system::EcWakeupHelperInterface* ec_wakeup_helper_;  // weak
 
   PrefsInterface* prefs_;  // weak
 
   LidState lid_state_;
   DisplayMode display_mode_;
   bool allow_docked_mode_;
+  bool backlight_enabled_;
 
   // The mode calculated in the most recent invocation of UpdatePolicy().
   WakeupMode mode_;

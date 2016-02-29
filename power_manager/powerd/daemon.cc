@@ -39,6 +39,7 @@
 #include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
+#include "power_manager/powerd/system/ec_wakeup_helper.h"
 #include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
@@ -68,9 +69,6 @@ const char kSessionStarted[] = "started";
 
 // Path containing the number of wakeup events.
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";
-
-// Program used to run code as root.
-const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
 
 // File that's created once the out-of-box experience has been completed.
 const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
@@ -183,25 +181,6 @@ scoped_ptr<dbus::Response> CreateInvalidArgsError(
   return scoped_ptr<dbus::Response>(
       dbus::ErrorResponse::FromMethodCall(
           method_call, DBUS_ERROR_INVALID_ARGS, message));
-}
-
-// Runs powerd_setuid_helper. |action| is passed via --action.  If
-// |additional_args| is non-empty, it will be appended to the command. If
-// |wait_for_completion| is true, this function will block until the helper
-// finishes and return the helper's exit code; otherwise it will return 0
-// immediately.
-int RunSetuidHelper(const std::string& action,
-                    const std::string& additional_args,
-                    bool wait_for_completion) {
-  std::string command = kSetuidHelperPath + std::string(" --action=" + action);
-  if (!additional_args.empty())
-    command += " " + additional_args;
-  if (wait_for_completion) {
-    return util::Run(command.c_str());
-  } else {
-    util::Launch(command.c_str());
-    return 0;
-  }
 }
 
 // Returns true if |path| exists and contains the PID of an active process.
@@ -367,6 +346,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       state_controller_(new policy::StateController),
       input_controller_(new policy::InputController),
       acpi_wakeup_helper_(new system::AcpiWakeupHelper),
+      ec_wakeup_helper_(new system::EcWakeupHelper),
       wakeup_controller_(new policy::WakeupController),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
       power_supply_(new system::PowerSupply),
@@ -483,8 +463,9 @@ void Daemon::Init() {
                           dbus_sender_.get(), prefs_.get());
 
   const LidState lid_state = input_watcher_->QueryLidState();
-  wakeup_controller_->Init(udev_.get(), acpi_wakeup_helper_.get(), lid_state,
-                           DISPLAY_NORMAL, prefs_.get());
+  wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
+                           acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(),
+                           lid_state, DISPLAY_NORMAL, prefs_.get());
 
   const PowerSource power_source =
       power_status.line_power_on ? POWER_AC : POWER_BATTERY;
@@ -666,7 +647,7 @@ void Daemon::PrepareToSuspend() {
 
   // Do not let suspend change the console terminal.
   if (lock_vt_before_suspend_)
-    RunSetuidHelper("lock_vt", "", true);
+    util::RunSetuidHelper("lock_vt", "", true);
 
   power_supply_->SetSuspended(true);
   if (audio_client_)
@@ -711,7 +692,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   // This command is run synchronously to ensure that it finishes before the
   // system is suspended.
   if (log_suspend_with_mosys_eventlog_)
-    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
+    util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
 
   std::string args;
   if (wakeup_count_valid) {
@@ -728,11 +709,12 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   if (suspend_to_idle_)
     args += " --suspend_to_idle";
 
-  const int exit_code = RunSetuidHelper("suspend", args, true);
+  const int exit_code = util::RunSetuidHelper("suspend", args, true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
 
   if (log_suspend_with_mosys_eventlog_)
-    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
+    util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8",
+                          false);
 
   if (created_suspended_state_file_) {
     if (!base::DeleteFile(base::FilePath(kSuspendedStatePath), false))
@@ -767,7 +749,7 @@ void Daemon::UndoPrepareToSuspend(bool success,
 
   // Allow virtual terminal switching again.
   if (lock_vt_before_suspend_)
-    RunSetuidHelper("unlock_vt", "", true);
+    util::RunSetuidHelper("unlock_vt", "", true);
 
   SetBacklightsSuspended(false);
   state_controller_->HandleResume();
@@ -1554,11 +1536,12 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   switch (mode) {
     case SHUTDOWN_MODE_POWER_OFF:
       LOG(INFO) << "Shutting down, reason: " << reason_str;
-      RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str, false);
+      util::RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str,
+                            false);
       break;
     case SHUTDOWN_MODE_REBOOT:
       LOG(INFO) << "Restarting, reason: " << reason_str;
-      RunSetuidHelper("reboot", "", false);
+      util::RunSetuidHelper("reboot", "", false);
       break;
   }
 }

@@ -20,6 +20,15 @@ void Launch(const std::string& command);
 // Runs |command| synchronously.  The process's exit code is returned.
 int Run(const std::string& command);
 
+// Runs powerd_setuid_helper. |action| is passed via --action.  If
+// |additional_args| is non-empty, it will be appended to the command. If
+// |wait_for_completion| is true, this function will block until the helper
+// finishes and return the helper's exit code; otherwise it will return 0
+// immediately.
+int RunSetuidHelper(const std::string& action,
+                    const std::string& additional_args,
+                    bool wait_for_completion);
+
 // Clamps |percent| in the range [0.0, 100.0].
 double ClampPercent(double percent);
 
