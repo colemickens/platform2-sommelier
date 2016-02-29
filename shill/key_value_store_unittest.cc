@@ -212,7 +212,7 @@ TEST_F(KeyValueStoreTest, Doubles) {
   EXPECT_TRUE(store_.ContainsDoubles(kDoublesKey));
   vector<double> ret = store_.GetDoubles(kDoublesKey);
   EXPECT_EQ(kDoublesValueSize, ret.size());
-  for (int i = 0; i < kDoublesValueSize; ++i) {
+  for (size_t i = 0; i < kDoublesValueSize; ++i) {
     EXPECT_DOUBLE_EQ(kDoublesValue[i], ret[i]);
   }
 }
@@ -737,7 +737,7 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
   EXPECT_DOUBLE_EQ(kDoubleValue, dict[kDoubleKey].Get<double>());
   vector<double> doubles_value = dict[kDoublesKey].Get<vector<double>>();
   EXPECT_EQ(kDoublesValueSize, doubles_value.size());
-  for (int i = 0; i < kDoublesValueSize; ++i) {
+  for (size_t i = 0; i < kDoublesValueSize; ++i) {
     EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
   }
   EXPECT_EQ(kUint8sValue, dict[kUint8sKey].Get<vector<uint8_t>>());
@@ -803,7 +803,7 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   EXPECT_TRUE(store.ContainsDoubles(kDoublesKey));
   vector<double> doubles_value = store.GetDoubles(kDoublesKey);
   EXPECT_EQ(kDoublesValueSize, doubles_value.size());
-  for (int i = 0; i < kDoublesValueSize; ++i) {
+  for (size_t i = 0; i < kDoublesValueSize; ++i) {
     EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
   }
   EXPECT_TRUE(store.ContainsRpcIdentifier(kRpcIdentifierKey));
@@ -918,7 +918,7 @@ TEST_F(KeyValueStoreTest, ConvertFromPersistableBundle) {
   EXPECT_TRUE(store.ContainsDoubles(kDoublesKey));
   vector<double> doubles_value = store.GetDoubles(kDoublesKey);
   EXPECT_EQ(kDoublesValueSize, doubles_value.size());
-  for (int i = 0; i < kDoublesValueSize; ++i) {
+  for (size_t i = 0; i < kDoublesValueSize; ++i) {
     EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
   }
   EXPECT_TRUE(store.ContainsStrings(kStringsKey));
