@@ -58,6 +58,7 @@ using ::testing::ElementsAreArray;
 using ::testing::HasSubstr;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
+using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
@@ -806,6 +807,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   bool available = impl_.CheckArcAvailability();
   SessionManagerImpl::Error start_time_error;
 #if USE_ARC
+  const pid_t kAndroidPid = 10;
+
   EXPECT_TRUE(available);
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
@@ -814,7 +817,29 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   // ends.
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
-      OnSignalEmitted(StrEq("start-arc-instance"), ElementsAre())).Times(1);
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
+                      ElementsAre())).Times(1);
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStartSignal),
+          ElementsAre(std::string("CONTAINER_NAME=") +
+                          SessionManagerImpl::kArcContainerName,
+                      std::string("CONTAINER_PATH="),
+                      std::string("CONTAINER_PID=") +
+                          std::to_string(kAndroidPid))))
+          .Times(1);
+  EXPECT_CALL(containers_,
+              StartContainer(StrEq(SessionManagerImpl::kArcContainerName)))
+      .Times(1)
+      .WillOnce(Return(true));
+  EXPECT_CALL(containers_,
+              GetRootFsPath(StrEq(SessionManagerImpl::kArcContainerName),
+                            NotNull()))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(containers_,
+              GetContainerPID(StrEq(SessionManagerImpl::kArcContainerName),
+                              NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(kAndroidPid), Return(true)));
   impl_.StartArcInstance(kSocketPath, &error_);
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
 #else

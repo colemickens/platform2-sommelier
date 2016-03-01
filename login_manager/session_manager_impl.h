@@ -68,6 +68,15 @@ class SessionManagerImpl : public SessionManagerInterface,
   static const base::FilePath::CharType kArcDataDir[];
   static const base::FilePath::CharType kArcCacheDir[];
 
+  // Name of the Android container.
+  static const char kArcContainerName[];
+
+  // Android container messages.
+  static const char kArcStartSignal[];
+  static const char kArcStopSignal[];
+  static const char kArcNetworkStartSignal[];
+  static const char kArcNetworkStopSignal[];
+
   class Error {
    public:
     Error();
@@ -223,6 +232,15 @@ class SessionManagerImpl : public SessionManagerInterface,
                                  std::string* error);
 
   PolicyService* GetPolicyService(const std::string& user_id);
+
+  // Starts the Android container for ARC.  If the container has started
+  // |started_container_out| is set to true and it should be stopped.  When a
+  // failure is encountered false will be returned, |dbus_error_out| will be set
+  // to a value from login_manager::dbus_error, and |error_message_out| will be
+  // filled with a message suitable for logging.
+  bool StartArcInstanceInternal(bool* started_container_out,
+                                const char** dbus_error_out,
+                                std::string* error_message_out);
 
   bool session_started_;
   bool session_stopping_;

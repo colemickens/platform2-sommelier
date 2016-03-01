@@ -59,6 +59,12 @@ const char SessionManagerImpl::kLoggedInFlag[] =
 const char SessionManagerImpl::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
 
+const char SessionManagerImpl::kArcContainerName[] = "android";
+const char SessionManagerImpl::kArcStartSignal[] = "start-arc-instance";
+const char SessionManagerImpl::kArcStopSignal[] = "stop-arc-instance";
+const char SessionManagerImpl::kArcNetworkStartSignal[] = "start-arc-network";
+const char SessionManagerImpl::kArcNetworkStopSignal[] = "stop-arc-network";
+
 // TODO(dspaid): Migrate to using /home/root/$hash once it is supported
 // see http://b/26700652
 const base::FilePath::CharType SessionManagerImpl::kArcDataDir[] =
@@ -602,20 +608,27 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
 #if USE_ARC
   arc_start_time_ = base::TimeTicks::Now();
 
-  // TODO(lhchavez): Let session_manager control the ARC instance process
-  // instead of having upstart handle it.
-  scoped_ptr<dbus::Response> response =
-      init_controller_->TriggerImpulse(
-          "start-arc-instance",
-          std::vector<std::string>());
-
-  if (!response) {
-    static const char msg[] =
-        "Emitting start-arc-instance upstart signal failed.";
+  if (!init_controller_->TriggerImpulse(kArcStartSignal,
+                                        std::vector<std::string>())) {
+    static const char msg[] = "Emitting start-arc-instance signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
+    return;
   }
 
+  bool started_container = false;
+  const char* dbus_error = nullptr;
+  std::string error_message;
+  if (!StartArcInstanceInternal(&started_container, &dbus_error,
+                                &error_message)) {
+    LOG(ERROR) << error_message;
+    error->Set(dbus_error, error_message);
+    init_controller_->TriggerImpulse(kArcStopSignal,
+                                     std::vector<std::string>());
+    if (started_container)
+      containers_->KillContainer(kArcContainerName);
+    return;
+  }
   start_arc_instance_closure_.Run();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
@@ -624,17 +637,37 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
 
 void SessionManagerImpl::StopArcInstance(Error* error) {
 #if USE_ARC
-  // TODO(lhchavez): Let session_manager control the ARC instance process
-  // instead of having upstart handle it.
-  scoped_ptr<dbus::Response> response =
-      init_controller_->TriggerImpulse(
-          "stop-arc-instance",
-          std::vector<std::string>());
-
-  if (!response) {
-    const char msg[] = "Emitting stop-arc-instance upstart signal failed.";
+  pid_t pid = 0;
+  if (!containers_->GetContainerPID(kArcContainerName, &pid)) {
+    static const char msg[] = "Error getting Android container pid.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kContainerShutdownFail, msg);
+  }
+  std::vector<std::string> env;
+  // pid can be zero here if the container isn't running, that's OK as the
+  // init job will ignore shutting it down.
+  env.emplace_back("ANDROID_PID=" + std::to_string(pid));
+  if (!init_controller_->TriggerImpulse(kArcStopSignal, env)) {
+    static const char msg[] =
+        "Emitting stop-arc-instance init signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
+  }
+
+  // Stopping arc-network doesn't stop the bridge or steal the interface
+  // so the container shouldn't be affected.
+  if (!init_controller_->TriggerImpulse(kArcNetworkStopSignal,
+                                        std::vector<std::string>())) {
+    static const char msg[] =
+        "Emitting stop-arc-network init signal failed.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kEmitFailed, msg);
+  }
+
+  if (!containers_->KillContainer(kArcContainerName)) {
+    static const char msg[] = "Killing Android failed.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kContainerShutdownFail, msg);
   }
   arc_start_time_ = base::TimeTicks();
 #else
@@ -793,6 +826,43 @@ SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
 PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
   UserSessionMap::const_iterator it = user_sessions_.find(user);
   return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
+}
+
+bool SessionManagerImpl::StartArcInstanceInternal(
+    bool* started_container_out,
+    const char** dbus_error_out,
+    std::string* error_message_out) {
+  *started_container_out = false;
+  *dbus_error_out = nullptr;
+  error_message_out->clear();
+  if (!containers_->StartContainer(kArcContainerName)) {
+    *dbus_error_out = dbus_error::kContainerStartupFail;
+    *error_message_out = "Starting Android container failed.";
+    return false;
+  }
+  *started_container_out = true;
+
+  base::FilePath root_path;
+  pid_t pid = 0;
+  if (!containers_->GetRootFsPath(kArcContainerName, &root_path) ||
+      !containers_->GetContainerPID(kArcContainerName, &pid)) {
+    *dbus_error_out = dbus_error::kContainerStartupFail;
+    *error_message_out = "Getting Android container info failed.";
+    return false;
+  }
+
+  // Also tell init to configure the network.
+  std::vector<std::string> env;
+  env.emplace_back("CONTAINER_NAME=" + std::string(kArcContainerName));
+  env.emplace_back("CONTAINER_PATH=" + root_path.value());
+  env.emplace_back("CONTAINER_PID=" + std::to_string(pid));
+  if (!init_controller_->TriggerImpulse(kArcNetworkStartSignal, env)) {
+    *dbus_error_out = dbus_error::kEmitFailed;
+    *error_message_out = "Emitting start-arc-network signal failed.";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace login_manager
