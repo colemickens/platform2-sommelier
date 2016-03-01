@@ -204,7 +204,18 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
-  builder->AddArg("--login-manager");
+  // TODO(crbug.com/574923): Remove this when rialto is enrolled and using
+  // standard kiosk mode.
+  if (builder->IsBoard("veyron_rialto")) {
+    builder->AddArg("--disable-demo-mode");
+    builder->AddArg("--kiosk");
+    builder->AddArg("--login-user=chronos");
+    builder->AddArg("--ash-hide-notifications-for-factory");
+    builder->AddArg("--load-and-launch-app=/usr/share/app_shell/apps/rialto");
+    builder->AddArg("about:blank");
+  } else {
+    builder->AddArg("--login-manager");
+  }
   builder->AddArg("--login-profile=user");
 
   if (builder->UseFlagIsSet("natural_scroll_default"))
