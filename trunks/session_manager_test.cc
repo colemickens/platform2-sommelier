@@ -105,6 +105,7 @@ TEST_F(SessionManagerTest, GetSessionHandleTest) {
 TEST_F(SessionManagerTest, StartSessionSuccess) {
   TPM_SE session_type = TPM_SE_TRIAL;
   TPM2B_PUBLIC public_data;
+  public_data.public_area.type = TPM_ALG_RSA;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
@@ -124,7 +125,16 @@ TEST_F(SessionManagerTest, StartSessionSuccess) {
 
 TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
   TPM2B_PUBLIC public_data;
+  public_data.public_area.type = TPM_ALG_RSA;
   public_data.public_area.unique.rsa.size = 32;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
+      .WillOnce(DoAll(SetArgPointee<2>(public_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TRUNKS_RC_SESSION_SETUP_ERROR,
+            session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "", false,
+                                          delegate_));
+  public_data.public_area.type = TPM_ALG_ECC;
+  public_data.public_area.unique.rsa.size = 256;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
@@ -135,6 +145,7 @@ TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
 
 TEST_F(SessionManagerTest, StartSessionFailure) {
   TPM2B_PUBLIC public_data;
+  public_data.public_area.type = TPM_ALG_RSA;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
@@ -151,6 +162,7 @@ TEST_F(SessionManagerTest, StartSessionFailure) {
 TEST_F(SessionManagerTest, StartSessionBadNonce) {
   TPM_SE session_type = TPM_SE_TRIAL;
   TPM2B_PUBLIC public_data;
+  public_data.public_area.type = TPM_ALG_RSA;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),

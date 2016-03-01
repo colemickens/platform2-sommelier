@@ -137,6 +137,8 @@ std::string GetErrorStringInternal(trunks::TPM_RC error) {
     case trunks::TRUNKS_RC_READ_ERROR: return "TRUNKS_RC_READ_ERROR";
     case trunks::TRUNKS_RC_WRITE_ERROR: return "TRUNKS_RC_WRITE_ERROR";
     case trunks::TRUNKS_RC_IPC_ERROR: return "TRUNKS_RC_IPC_ERROR";
+    case trunks::TRUNKS_RC_SESSION_SETUP_ERROR:
+      return "TRUNKS_RC_SESSION_SETUP_ERROR";
     case trunks::TCTI_RC_TRY_AGAIN: return "TCTI_RC_TRY_AGAIN";
     case trunks::TCTI_RC_GENERAL_FAILURE: return "TCTI_RC_GENERAL_FAILURE";
     case trunks::TCTI_RC_BAD_CONTEXT: return "TCTI_RC_BAD_CONTEXT";

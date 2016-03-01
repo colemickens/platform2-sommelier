@@ -24,7 +24,9 @@
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#if defined(OPENSSL_IS_BORINGSSL)
 #include <openssl/mem.h>
+#endif
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 
@@ -161,6 +163,11 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
     LOG(ERROR) << "Error fetching salting key public info: "
                << GetErrorString(result);
     return result;
+  }
+  if (public_data.public_area.type != TPM_ALG_RSA ||
+      public_data.public_area.unique.rsa.size != 256) {
+    LOG(ERROR) << "Invalid salting key attributes.";
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
   crypto::ScopedRSA salting_key_rsa(RSA_new());
   salting_key_rsa->e = BN_new();
