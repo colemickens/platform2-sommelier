@@ -531,7 +531,7 @@ bool PerfReader::InjectBuildIDs(
   // build ID event.
   std::map<string, uint16_t> filename_to_misc;
   for (const PerfEvent& event : proto_.events()) {
-    if (event.header().type() == PERF_RECORD_MMAP &&
+    if (event.header().type() == PERF_RECORD_MMAP ||
         event.header().type() == PERF_RECORD_MMAP2) {
       filename_to_misc[event.mmap_event().filename()] = event.header().misc();
     }
