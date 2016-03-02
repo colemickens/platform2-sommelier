@@ -114,6 +114,8 @@ class Daemon final : public BaseDaemon {
       return result;
     }
 
+    webservd::LogManager::Init(base::FilePath{config_.log_directory});
+
     android::BinderWrapper::Create();
     if (!binder_watcher_.Init()) {
         return EX_OSERR;
