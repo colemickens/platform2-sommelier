@@ -32,6 +32,9 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 #elif defined(WEBSERV_USE_BINDER)
 
+#include <binderwrapper/binder_wrapper.h>
+
+#include <brillo/binder_watcher.h>
 #include <brillo/daemons/daemon.h>
 using WebservTestClientBaseClass = brillo::Daemon;
 
@@ -87,6 +90,11 @@ class WebservTestClient : public WebservTestClientBaseClass {
         base::Bind(&LogServerOnlineStatus, true /* online */),
         base::Bind(&LogServerOnlineStatus, false /* offline */));
 #elif WEBSERV_USE_BINDER
+    android::BinderWrapper::Create();
+    if (!binder_watcher_.Init()) {
+      return EX_OSERR;
+    }
+
     webserver_ = Server::ConnectToServerViaBinder(
         brillo::MessageLoop::current(),
         base::Bind(&LogServerOnlineStatus, true /* online */),
@@ -106,6 +114,9 @@ class WebservTestClient : public WebservTestClientBaseClass {
 
  private:
   std::unique_ptr<Server> webserver_;
+#if WEBSERV_USE_BINDER
+  brillo::BinderWatcher binder_watcher_;
+#endif  // WEBSERV_USE_BINDER
 
   DISALLOW_COPY_AND_ASSIGN(WebservTestClient);
 };  // class WebservTestClient
