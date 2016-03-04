@@ -97,6 +97,7 @@ void DHCPProvider::Init(ControlInterface* control_interface,
 
 void DHCPProvider::Stop() {
   listener_.reset();
+  configs_.clear();
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(

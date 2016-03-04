@@ -200,8 +200,8 @@ void DaemonTask::Stop() {
   callback80211_metrics_ = nullptr;
 #endif  // DISABLE_WIFI
   metrics_->Stop();
-  process_manager_->Stop();
   dhcp_provider_->Stop();
+  process_manager_->Stop();
   metrics_ = nullptr;
   // Must retain |control_|, as the D-Bus library may
   // have some work left to do. See crbug.com/537771.
