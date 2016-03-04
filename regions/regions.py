@@ -77,7 +77,7 @@ class Region(object):
   # ANSI = US-like
   # ISO = UK-like
   # JIS = Japanese
-  # KS = Korean
+  # KS = Korean (see http://crosbug.com/p/50753 for why this is not used yet)
   # ABNT2 = Brazilian (like ISO but with an extra key to the left of the
   #   right shift key)
   KeyboardMechanicalLayout = Enum(['ANSI', 'ISO', 'JIS', 'KS', 'ABNT2'])
@@ -421,7 +421,7 @@ REGIONS_LIST = [
         ['ro', 'hu', 'de', 'en-GB'], _KML.ISO, 'Romania', None, 43),
     Region(
         'kr', ['xkb:us::eng', 'ime:ko:hangul'], 'Asia/Seoul',
-        ['ko', 'en-US'], _KML.KS, 'South Korea', None, 44),
+        ['ko', 'en-US'], _KML.ANSI, 'South Korea', None, 44),
     Region(
         'ae', 'xkb:us::eng', 'Asia/Dubai', 'ar', _KML.ANSI, 'UAE', None,
         45),
