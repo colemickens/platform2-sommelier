@@ -21,6 +21,8 @@
 #include <libwebserv/server.h>
 #include <sysexits.h>
 
+#define LOG_TAG webservd_testc
+
 #if defined(WEBSERV_USE_DBUS)
 
 #include <brillo/daemons/dbus_daemon.h>
