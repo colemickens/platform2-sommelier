@@ -680,11 +680,11 @@ Properties	string Address [readonly]
 			(Defined in WiFi)
 
 			The wake on WiFi features that are currently enabled.
-			The value of this property is "packet" if only wake on
-			packet is enabled, "ssid" if only wake on ssid is enabled,
-			"packet_and_ssid" if both wake on packet and wake on ssid
-			are enabled, and "none" if all wake on WiFi features are
-			disabled.
+			The value of this property is "packet" if only the
+			packet feature is enabled, "darkconnect" if only the dark
+			connect feature is enabled, "packet_and_darkconnect" if both
+			the packet and dark connect features are enabled, and "none"
+			if all wake on WiFi features are disabled.
 
 			Possible errors: [service].Error.NotSupported (wake on WiFi not supported)
 					 [service].Error.InvalidArguments (invalid wake on WiFi feature)
