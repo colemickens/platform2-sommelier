@@ -137,12 +137,23 @@ make_partition_dev() {
 # The type can be:
 # MMC, SD for device managed by the MMC stack
 # ATA for ATA disk
+# NVME for NVMe device
 # OTHER for other devices.
 get_device_type() {
   local dev="$(basename "$1")"
   local vdr
   local type_file
   local vendor_file
+  # True device path of a NVMe device is just a simple PCI device.
+  # (there are no other buses),
+  # Use the device name to identify the type precisely.
+  case "${dev}" in
+    nvme*)
+      echo "NVME"
+      return
+      ;;
+  esac
+
   type_file="/sys/block/${dev}/device/type"
   # To detect device managed by the MMC stack
   case $(readlink -f "${type_file}") in
