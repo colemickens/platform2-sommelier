@@ -11,6 +11,8 @@
 #include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
+#include "debugd/src/anonymizer_tool.h"
+
 namespace debugd {
 
 class LogTool {
@@ -23,6 +25,9 @@ class LogTool {
   std::string GetLog(const std::string& name, DBus::Error* error);
   LogMap GetAllLogs(DBus::Connection* connection, DBus::Error* error);
   LogMap GetFeedbackLogs(DBus::Connection* connection, DBus::Error* error);
+  void GetBigFeedbackLogs(DBus::Connection* connection,
+                          const DBus::FileDescriptor& fd,
+                          DBus::Error* error);
   LogMap GetUserLogFiles(DBus::Error* error);
 
  private:
@@ -30,6 +35,8 @@ class LogTool {
 
   void AnonymizeLogMap(LogMap* log_map);
   void CreateConnectivityReport(DBus::Connection* connection);
+
+  AnonymizerTool anonymizer_;
 
   DISALLOW_COPY_AND_ASSIGN(LogTool);
 };

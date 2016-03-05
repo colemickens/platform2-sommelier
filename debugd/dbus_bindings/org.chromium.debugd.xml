@@ -274,6 +274,18 @@
       </tp:docstring>
       <arg name="logs" type="a{ss}" direction="out" />
     </method>
+    <method name="GetBigFeedbackLogs">
+      <tp:docstring>
+        Fills the system logs for feedback reports in the file whose file
+        descriptor is given. This is used for logs that are so big that they
+        exceed the limits of D-Bus returning them.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to emit the logs to.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="GetUserLogFiles">
       <tp:docstring>
         Returns list of User log file names that Chrome itself must collect.

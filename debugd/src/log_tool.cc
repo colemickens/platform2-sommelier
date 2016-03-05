@@ -9,57 +9,32 @@
 #include <glib.h>
 
 #include <base/files/file_util.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/values.h>
 
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
 
-#include "debugd/src/anonymizer_tool.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
-
-const char *kShell = "/bin/sh";
-const char *kDebugfsGroup = "debugfs-access";
-
-// Minimum time in seconds needed to allow shill to test active connections.
-const int kConnectionTesterTimeoutSeconds = 5;
-
-class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
-                     public DBus::ObjectProxy {
- public:
-  ManagerProxy(DBus::Connection* connection,
-               const char* path,
-               const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ManagerProxy() override = default;
-  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
-  void StateChanged(const std::string&) override {}
-};
 
 using std::string;
 using std::vector;
 
 typedef vector<string> Strings;
 
-// Returns |value| if |value| is a valid UTF-8 string or a base64-encoded
-// string of |value| otherwise.
-string EnsureUTF8String(const string& value) {
-  if (base::IsStringUTF8(value))
-    return value;
+const char *kDebugfsGroup = "debugfs-access";
 
-  gchar* base64_value = g_base64_encode(
-      reinterpret_cast<const guchar*>(value.c_str()), value.length());
-  if (base64_value) {
-    string encoded_value = "<base64>: ";
-    encoded_value += base64_value;
-    g_free(base64_value);
-    return encoded_value;
-  }
-  return "<invalid>";
-}
+namespace {
+
+const char *kShell = "/bin/sh";
+
+// Minimum time in seconds needed to allow shill to test active connections.
+const int kConnectionTesterTimeoutSeconds = 5;
 
 struct Log {
   const char *name;
@@ -68,26 +43,7 @@ struct Log {
   const char *group;
 };
 
-// TODO(ellyjones): sandbox. crosbug.com/35122
-string Run(const Log& log) {
-  string output;
-  ProcessWithOutput p;
-  string tailed_cmdline = std::string(log.command) + " | tail -c 256K";
-  if (log.user && log.group)
-    p.SandboxAs(log.user, log.group);
-  if (!p.Init())
-    return "<not available>";
-  p.AddArg(kShell);
-  p.AddStringOption("-c", tailed_cmdline);
-  if (p.Run())
-    return "<not available>";
-  p.GetOutput(&output);
-  if (!output.size())
-    return "<empty>";
-  return EnsureUTF8String(output);
-}
-
-static const Log common_logs[] = {
+const Log common_logs[] = {
   { "CLIENT_ID", "/bin/cat '/home/chronos/Consent To Send Stats'" },
   { "LOGDATE", "/bin/date" },
   { "Xorg.0.log", "/bin/cat /var/log/Xorg.0.log" },
@@ -205,7 +161,7 @@ static const Log common_logs[] = {
   { NULL, NULL }
 };
 
-static const Log extra_logs[] = {
+const Log extra_logs[] = {
 #if USE_CELLULAR
   { "mm-status", "/usr/bin/modem status" },
 #endif  // USE_CELLULAR
@@ -214,7 +170,7 @@ static const Log extra_logs[] = {
   { NULL, NULL }
 };
 
-static const Log feedback_logs[] = {
+const Log feedback_logs[] = {
 #if USE_CELLULAR
   { "mm-status", "/usr/bin/modem status-feedback" },
 #endif  // USE_CELLULAR
@@ -226,12 +182,81 @@ static const Log feedback_logs[] = {
 // List of log files that must directly be collected by Chrome. This is because
 // debugd is running under a VFS namespace and does not have access to later
 // cryptohome mounts.
-static const Log user_logs[] = {
+const Log user_logs[] = {
   {"chrome_user_log", "log/chrome"},
   {"login-times", "login-times"},
   {"logout-times", "logout-times"},
   { NULL, NULL}
 };
+
+class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
+                     public DBus::ObjectProxy {
+ public:
+  ManagerProxy(DBus::Connection* connection,
+               const char* path,
+               const char* service)
+      : DBus::ObjectProxy(*connection, path, service) {}
+  ~ManagerProxy() override = default;
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
+  void StateChanged(const std::string&) override {}
+};
+
+// Returns |value| if |value| is a valid UTF-8 string or a base64-encoded
+// string of |value| otherwise.
+string EnsureUTF8String(const string& value) {
+  if (base::IsStringUTF8(value))
+    return value;
+
+  gchar* base64_value = g_base64_encode(
+      reinterpret_cast<const guchar*>(value.c_str()), value.length());
+  if (base64_value) {
+    string encoded_value = "<base64>: ";
+    encoded_value += base64_value;
+    g_free(base64_value);
+    return encoded_value;
+  }
+  return "<invalid>";
+}
+
+// TODO(ellyjones): sandbox. crosbug.com/35122
+string Run(const Log& log) {
+  string output;
+  ProcessWithOutput p;
+  string tailed_cmdline = std::string(log.command) + " | tail -c 256K";
+  if (log.user && log.group)
+    p.SandboxAs(log.user, log.group);
+  if (!p.Init())
+    return "<not available>";
+  p.AddArg(kShell);
+  p.AddStringOption("-c", tailed_cmdline);
+  if (p.Run())
+    return "<not available>";
+  p.GetOutput(&output);
+  if (!output.size())
+    return "<empty>";
+  return EnsureUTF8String(output);
+}
+
+// Fills |dictionary| with the anonymized contents of the logs in |logs|.
+void GetLogsInDictionary(const struct Log* logs,
+                         AnonymizerTool* anonymizer,
+                         base::DictionaryValue* dictionary) {
+  for (size_t i = 0; logs[i].name; ++i) {
+    dictionary->SetStringWithoutPathExpansion(
+        logs[i].name, anonymizer->Anonymize(Run(logs[i])));
+  }
+}
+
+// Serializes the |dictionary| into the file with the given |fd| in a JSON
+// format.
+void SerializeLogsAsJSON(const base::DictionaryValue& dictionary,
+                         const DBus::FileDescriptor& fd) {
+  std::string logs_json;
+  base::JSONWriter::WriteWithOptions(dictionary,
+                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
+                                     &logs_json);
+  base::WriteFileDescriptor(fd.get(), logs_json.c_str(), logs_json.size());
+}
 
 bool GetNamedLogFrom(const string& name, const struct Log* logs,
                      string* result) {
@@ -244,6 +269,13 @@ bool GetNamedLogFrom(const string& name, const struct Log* logs,
   *result = "<invalid log name>";
   return false;
 }
+
+void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
+  for (size_t i = 0; logs[i].name; i++)
+    (*map)[logs[i].name] = Run(logs[i]);
+}
+
+}  // namespace
 
 void LogTool::CreateConnectivityReport(DBus::Connection* connection) {
   // Perform ConnectivityTrial to report connection state in feedback log.
@@ -266,11 +298,6 @@ string LogTool::GetLog(const string& name, DBus::Error* error) {
   return result;
 }
 
-void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
-  for (size_t i = 0; logs[i].name; i++)
-    (*map)[logs[i].name] = Run(logs[i]);
-}
-
 LogTool::LogMap LogTool::GetAllLogs(DBus::Connection* connection,
                                     DBus::Error* error) {
   CreateConnectivityReport(connection);
@@ -290,6 +317,16 @@ LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Connection* connection,
   return result;
 }
 
+void LogTool::GetBigFeedbackLogs(DBus::Connection* connection,
+                                 const DBus::FileDescriptor& fd,
+                                 DBus::Error* error) {
+  CreateConnectivityReport(connection);
+  base::DictionaryValue dictionary;
+  GetLogsInDictionary(common_logs, &anonymizer_, &dictionary);
+  GetLogsInDictionary(feedback_logs, &anonymizer_, &dictionary);
+  SerializeLogsAsJSON(dictionary, fd);
+}
+
 LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error* error) {
   LogMap result;
   for (size_t i = 0; user_logs[i].name; ++i)
@@ -298,10 +335,9 @@ LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error* error) {
 }
 
 void LogTool::AnonymizeLogMap(LogMap* log_map) {
-  AnonymizerTool anonymizer;
   for (LogMap::iterator it = log_map->begin();
        it != log_map->end(); ++it) {
-    it->second = anonymizer.Anonymize(it->second);
+    it->second = anonymizer_.Anonymize(it->second);
   }
 }
 

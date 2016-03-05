@@ -179,6 +179,11 @@ std::map<std::string, std::string> DebugDaemon::GetFeedbackLogs(
   return log_tool_->GetFeedbackLogs(dbus_, &error);
 }
 
+void DebugDaemon::GetBigFeedbackLogs(const DBus::FileDescriptor& fd,
+                                     DBus::Error& error) {  // NOLINT
+  log_tool_->GetBigFeedbackLogs(dbus_, fd, &error);
+}
+
 std::map<std::string, std::string> DebugDaemon::GetUserLogFiles(
     DBus::Error& error) {  // NOLINT
   return log_tool_->GetUserLogFiles(&error);

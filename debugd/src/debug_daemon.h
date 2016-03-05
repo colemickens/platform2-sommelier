@@ -129,6 +129,8 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
       DBus::Error& error) override;  // NOLINT
   std::map<std::string, std::string> GetFeedbackLogs(
       DBus::Error& error) override;  // NOLINT
+  void GetBigFeedbackLogs(const DBus::FileDescriptor& fd,
+                          DBus::Error& error) override;  // NOLINT
   std::map<std::string, std::string> GetUserLogFiles(
       DBus::Error& error) override;  // NOLINT
   std::string GetExample(DBus::Error& error) override;  // NOLINT
