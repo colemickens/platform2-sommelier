@@ -4,11 +4,13 @@
 
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
 
+#include <string.h>  // for strlen.
 #include <sys/stat.h>
 
 #include <vector>
 
 #include "base/logging.h"
+#include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
 
 namespace {
@@ -18,6 +20,13 @@ const int kNumMultiplePaths = 32;
 
 // When testing non-empty directories, populate them with this many files.
 const int kNumFilesPerNonEmptyDirectory = 10;
+
+// The length of the path template suffix used internally by ScopedTempPath and
+// derived classes.
+const size_t kTemplateSuffixSize = strlen("XXXXXX");
+
+// Temporary paths use this prefix by default. Copied from scoped_temp_path.cc.
+const char kTempPathTemplatePrefix[] = "/tmp/quipper.";
 
 // Tests if |path| exists on the file system.
 bool PathExists(const string& path) {
@@ -65,6 +74,10 @@ TEST(ScopedTempPathTest, OneFile) {
     ScopedTempFile temp_file;
     path = temp_file.path();
     EXPECT_TRUE(PathExists(path)) << path;
+    EXPECT_EQ(strlen(kTempPathTemplatePrefix) + kTemplateSuffixSize,
+              path.size());
+    EXPECT_EQ(kTempPathTemplatePrefix,
+              path.substr(0, strlen(kTempPathTemplatePrefix)));
   }
   EXPECT_FALSE(PathExists(path)) << path;
 }
@@ -73,12 +86,11 @@ TEST(ScopedTempPathTest, OneFile) {
 TEST(ScopedTempPathTest, CustomFileTemplate) {
   string path;
   {
-    const string exes = "XXXXXX";
     const string prefix = "/tmp/foobar.";
     ScopedTempFile temp_file(prefix);
     path = temp_file.path();
     EXPECT_TRUE(PathExists(path)) << path;
-    EXPECT_EQ(prefix.size() + exes.size(), path.size());
+    EXPECT_EQ(prefix.size() + kTemplateSuffixSize, path.size());
     EXPECT_EQ(prefix, path.substr(0, prefix.size()));
   }
   EXPECT_FALSE(PathExists(path)) << path;
@@ -106,6 +118,11 @@ TEST(ScopedTempPathTest, OneEmptyDir) {
     ScopedTempDir temp_path;
     path = temp_path.path();
     EXPECT_TRUE(PathExists(path)) << path;
+    EXPECT_EQ('/', path.back()) << "Should append a slash";
+    EXPECT_EQ(strlen(kTempPathTemplatePrefix) + kTemplateSuffixSize + 1,
+              path.size());
+    EXPECT_EQ(kTempPathTemplatePrefix,
+              path.substr(0, strlen(kTempPathTemplatePrefix)));
   }
   EXPECT_FALSE(PathExists(path)) << path;
 }
@@ -114,14 +131,13 @@ TEST(ScopedTempPathTest, OneEmptyDir) {
 TEST(ScopedTempPathTest, CustomDirTemplate) {
   string path;
   {
-    const string exes = "XXXXXX";
     const string prefix = "/tmp/foobar.";
     ScopedTempDir temp_path(prefix);
     path = temp_path.path();
     EXPECT_TRUE(PathExists(path)) << path;
     EXPECT_EQ('/', path.back()) << "Should append a slash";
     // Check prefix matches:
-    EXPECT_EQ(prefix.size()+exes.size()+1, path.size());
+    EXPECT_EQ(prefix.size()+kTemplateSuffixSize+1, path.size());
     EXPECT_EQ(prefix, path.substr(0, prefix.size()));
   }
   EXPECT_FALSE(PathExists(path)) << path;

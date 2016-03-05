@@ -14,11 +14,10 @@
 
 #include "base/logging.h"
 
-// Temporary paths follow this format, with the X's replaced by letters or
-// digits.
-const char kTempPathTemplate[] = "/tmp/quipper.XXXXXX";
-
 namespace {
+
+// Temporary paths use this prefix by default.
+const char kTempPathTemplatePrefix[] = "/tmp/quipper.";
 
 // Maximum number of directories that nftw() will hold open simultaneously.
 const int kNumOpenFds = 4;
@@ -48,7 +47,7 @@ std::vector<char> MakeTempfileTemplate(string path_template) {
 
 namespace quipper {
 
-ScopedTempFile::ScopedTempFile() : ScopedTempFile(kTempPathTemplate) {}
+ScopedTempFile::ScopedTempFile() : ScopedTempFile(kTempPathTemplatePrefix) {}
 
 ScopedTempFile::ScopedTempFile(const string prefix) {
   std::vector<char> filename = MakeTempfileTemplate(prefix);
@@ -59,7 +58,7 @@ ScopedTempFile::ScopedTempFile(const string prefix) {
   path_ = string(filename.data());
 }
 
-ScopedTempDir::ScopedTempDir() : ScopedTempDir(kTempPathTemplate) {}
+ScopedTempDir::ScopedTempDir() : ScopedTempDir(kTempPathTemplatePrefix) {}
 
 ScopedTempDir::ScopedTempDir(const string prefix) {
   std::vector<char> dirname = MakeTempfileTemplate(prefix);
