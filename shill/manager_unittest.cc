@@ -3194,12 +3194,14 @@ TEST_F(ManagerTest, Suspend) {
   dispatcher()->DispatchPendingEvents();
 
   EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend(_));
+  EXPECT_CALL(*service, OnBeforeSuspend(_));
   OnSuspendImminent();
   EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(mock_devices_[0].get());
 
   EXPECT_CALL(*mock_devices_[0], OnAfterResume());
+  EXPECT_CALL(*service, OnAfterResume());
   OnSuspendDone();
   EXPECT_CALL(*service, AutoConnect());
   dispatcher()->DispatchPendingEvents();

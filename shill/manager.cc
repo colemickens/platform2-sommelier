@@ -1680,6 +1680,11 @@ void Manager::OnSuspendImminent() {
   auto result_aggregator(make_scoped_refptr(new ResultAggregator(
       Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()), dispatcher_,
       kTerminationActionsTimeoutMilliseconds)));
+  for (const auto& service : services_) {
+    ResultCallback aggregator_callback(
+        Bind(&ResultAggregator::ReportResult, result_aggregator));
+    service->OnBeforeSuspend(aggregator_callback);
+  }
   for (const auto& device : devices_) {
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));

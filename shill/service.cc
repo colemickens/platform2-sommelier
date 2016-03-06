@@ -1219,6 +1219,11 @@ void Service::OnPropertyChanged(const string& property) {
   }
 }
 
+void Service::OnBeforeSuspend(const ResultCallback& callback) {
+  // Nothing to be done in the general case, so immediately report success.
+  callback.Run(Error(Error::kSuccess));
+}
+
 void Service::OnAfterResume() {
   // Forget old autoconnect failures across suspend/resume.
   auto_connect_cooldown_milliseconds_  = 0;

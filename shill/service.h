@@ -484,6 +484,18 @@ class Service : public base::RefCounted<Service> {
   // event.
   virtual void OnEapCredentialsChanged(UpdateCredentialsReason reason) {}
 
+  // Suspend event handler. Called by Manager before the system
+  // suspends. This handler, along with any other suspend handlers,
+  // will have Manager::kTerminationActionsTimeoutMilliseconds to
+  // execute before the system enters the suspend state. |callback|
+  // must be invoked after all synchronous and/or asynchronous actions
+  // this function performs complete. Code that needs to run on exit should use
+  // Manager::AddTerminationAction, rather than OnBeforeSuspend.
+  //
+  // The default implementation invokes the |callback| immediately, since
+  // there is nothing to be done in the general case.
+  virtual void OnBeforeSuspend(const ResultCallback& callback);
+
   // Called by the manager once after a resume.
   virtual void OnAfterResume();
 

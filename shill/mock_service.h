@@ -88,6 +88,8 @@ class MockService : public Service {
   MOCK_METHOD0(NotifyIPConfigChanges, void());
   MOCK_CONST_METHOD0(link_monitor_disabled, bool());
   MOCK_METHOD0(EnableAndRetainAutoConnect, void());
+  MOCK_METHOD1(OnBeforeSuspend, void(const ResultCallback& callback));
+  MOCK_METHOD0(OnAfterResume, void());
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
