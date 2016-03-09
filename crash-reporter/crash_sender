@@ -318,6 +318,11 @@ send_crash() {
       upload_var_*)
         set -- "$@" -F "${upload_prefix}${k#upload_var_}=${v}"
         ;;
+      upload_text_*)
+        if [ -r "${v}" ]; then
+          set -- "$@" -F "${upload_prefix}${k#upload_text_}=<${v}"
+        fi
+        ;;
       upload_file_*)
         if [ -r "${v}" ]; then
           set -- "$@" -F "${upload_prefix}${k#upload_file_}=@${v}"

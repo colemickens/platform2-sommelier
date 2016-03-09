@@ -143,6 +143,10 @@ class CrashCollector {
   // appearing as a form field.
   void AddCrashMetaUploadData(const std::string &key, const std::string &value);
 
+  // Like AddCrashMetaUploadData, but loads the value from the file at |path|.
+  // The file is not uploaded as an attachment, unlike AddCrashMetaUploadFile.
+  void AddCrashMetaUploadText(const std::string &key, const std::string &path);
+
   // Write a file of metadata about crash.
   void WriteCrashMetaData(const base::FilePath &meta_path,
                           const std::string &exec_name,

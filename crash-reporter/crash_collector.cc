@@ -39,6 +39,7 @@ const char kLsbRelease[] = "/etc/lsb-release";
 const char kShellPath[] = "/bin/sh";
 const char kSystemCrashPath[] = "/var/spool/crash";
 const char kUploadVarPrefix[] = "upload_var_";
+const char kUploadTextPrefix[] = "upload_text_";
 const char kUploadFilePrefix[] = "upload_file_";
 
 // Key of the lsb-release entry containing the OS version.
@@ -441,6 +442,12 @@ void CrashCollector::AddCrashMetaUploadData(const std::string &key,
                                             const std::string &value) {
   if (!value.empty())
     AddCrashMetaData(kUploadVarPrefix + key, value);
+}
+
+void CrashCollector::AddCrashMetaUploadText(const std::string &key,
+                                            const std::string &path) {
+  if (!path.empty())
+    AddCrashMetaData(kUploadTextPrefix + key, path);
 }
 
 void CrashCollector::WriteCrashMetaData(const FilePath &meta_path,
