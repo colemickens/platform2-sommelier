@@ -50,16 +50,19 @@
 #endif  // WEBSERV_USE_BINDER
 
 #if defined(__ANDROID__)
+#ifdef WEBSERV_USE_BINDER
+#include <firewalld/firewall.h>
+#else
 #include "webservd/firewalld_firewall.h"
 using FirewallImpl = webservd::FirewalldFirewall;
+#endif
 #else
 #include "webservd/permission_broker_firewall.h"
 using FirewallImpl = webservd::PermissionBrokerFirewall;
 #endif  // defined(__ANDROID__)
 
-using brillo::dbus_utils::AsyncEventSequencer;
-
 #ifdef WEBSERV_USE_DBUS
+using brillo::dbus_utils::AsyncEventSequencer;
 using BaseDaemon = brillo::DBusServiceDaemon;
 #else
 using BaseDaemon = brillo::Daemon;
@@ -121,7 +124,8 @@ class Daemon final : public BaseDaemon {
         return EX_OSERR;
     }
 
-    server_.reset(new webservd::BinderServer(config_));
+    server_.reset(new webservd::BinderServer(config_,
+                  android::BinderWrapper::Get()));
 
     if (!android::BinderWrapper::Get()->RegisterService(
             webservd::kWebserverBinderServiceName,
