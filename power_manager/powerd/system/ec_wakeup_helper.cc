@@ -29,7 +29,9 @@ EcWakeupHelper::EcWakeupHelper() :
 EcWakeupHelper::~EcWakeupHelper() {}
 
 bool EcWakeupHelper::IsSupported() {
-  return supported_;
+  // TODO(jwerner): Temporarily disabled until we have clarified the EC
+  // communication interface (see http://crbug.com/594037 for details).
+  return false;
 }
 
 bool EcWakeupHelper::AllowWakeupAsTablet(bool enabled) {
