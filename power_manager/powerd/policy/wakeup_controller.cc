@@ -85,7 +85,8 @@ void WakeupController::Init(
   acpi_wakeup_helper_ = acpi_wakeup_helper;
   ec_wakeup_helper_ = ec_wakeup_helper;
 
-  backlight_controller_->AddObserver(this);
+  if (backlight_controller_)
+    backlight_controller_->AddObserver(this);
   udev_->AddTaggedDeviceObserver(this);
 
   // Trigger initial configuration.

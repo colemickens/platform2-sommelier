@@ -279,5 +279,12 @@ TEST_F(WakeupControllerTest, AllowEcWakeupAsTabletWhenDisplayOff) {
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 }
 
+TEST_F(WakeupControllerTest, InitWithoutBacklightController) {
+  // Init with null backlight controller shouldn't crash.
+  wakeup_controller_.Init(nullptr, &udev_,
+                          &acpi_wakeup_helper_, &ec_wakeup_helper_,
+                          initial_lid_state_, initial_display_mode_, &prefs_);
+}
+
 }  // namespace policy
 }  // namespace power_manager

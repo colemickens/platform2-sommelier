@@ -258,6 +258,8 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<MetricsSender> metrics_sender_;
   scoped_ptr<DBusSender> dbus_sender_;
 
+  // Many of these members may be null depending on the device's hardware
+  // configuration.
   scoped_ptr<system::AmbientLightSensor> light_sensor_;
   scoped_ptr<system::DisplayWatcher> display_watcher_;
   scoped_ptr<system::DisplayPowerSetter> display_power_setter_;
