@@ -28,6 +28,7 @@ const char kUdevSignatureKey[] = "sig";
 const char kUdevSubsystemDevCoredump[] = "devcoredump";
 const char kDefaultDevCoredumpDirectory[] = "/sys/class/devcoredump";
 const char kDevCoredumpFilePrefixFormat[] = "devcoredump_%s";
+const char kDevCoredumpDisabledPath[] = "/sys/class/devcoredump/disabled";
 
 }  // namespace
 
@@ -79,6 +80,11 @@ bool UdevCollector::HandleCrash(const std::string &udev_event) {
                               udev_event_map["ACTION"],
                               udev_event_map["KERNEL"],
                               udev_event_map["SUBSYSTEM"]);
+}
+
+bool UdevCollector::Enable() {
+  return base::WriteFile(FilePath(kDevCoredumpDisabledPath),
+                         IsDeveloperImage() ? "0" : "1", 1);
 }
 
 bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,

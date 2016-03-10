@@ -109,6 +109,7 @@ static void CountChromeCrash() {
 static int Initialize(KernelCollector *kernel_collector,
                       UserCollector *user_collector,
                       UncleanShutdownCollector *unclean_shutdown_collector,
+                      UdevCollector *udev_collector,
                       const bool unclean_check,
                       const bool clean_shutdown) {
   CHECK(!clean_shutdown) << "Incompatible options";
@@ -140,6 +141,7 @@ static int Initialize(KernelCollector *kernel_collector,
   // Must enable the unclean shutdown collector *after* collecting.
   unclean_shutdown_collector->Enable();
   user_collector->Enable();
+  udev_collector->Enable();
 
   return 0;
 }
@@ -327,6 +329,7 @@ int main(int argc, char *argv[]) {
     return Initialize(&kernel_collector,
                       &user_collector,
                       &unclean_shutdown_collector,
+                      &udev_collector,
                       FLAGS_unclean_check,
                       FLAGS_clean_shutdown);
   }
