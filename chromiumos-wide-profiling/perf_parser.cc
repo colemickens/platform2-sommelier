@@ -26,7 +26,6 @@ using ForkEvent = PerfDataProto_ForkEvent;
 using MMapEvent = PerfDataProto_MMapEvent;
 using PerfEvent = PerfDataProto_PerfEvent;
 using SampleEvent = PerfDataProto_SampleEvent;
-using ::google::protobuf::RepeatedPtrField;
 
 namespace {
 
@@ -319,12 +318,11 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   return !mapping_failed;
 }
 
-bool PerfParser::MapCallchain(
-    const uint64_t ip,
-    const uint32_t pid,
-    const uint64_t original_event_addr,
-    google::protobuf::RepeatedField<google::protobuf::uint64>* callchain,
-    ParsedEvent* parsed_event) {
+bool PerfParser::MapCallchain(const uint64_t ip,
+                              const uint32_t pid,
+                              const uint64_t original_event_addr,
+                              RepeatedField<uint64>* callchain,
+                              ParsedEvent* parsed_event) {
   if (!callchain) {
     LOG(ERROR) << "NULL call stack data.";
     return false;

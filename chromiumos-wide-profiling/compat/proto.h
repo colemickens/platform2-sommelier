@@ -5,6 +5,7 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_COMPAT_PROTO_H_
 #define CHROMIUMOS_WIDE_PROFILING_COMPAT_PROTO_H_
 
+#include <google/protobuf/repeated_field.h>
 #include <google/protobuf/text_format.h>
 
 #include "perf_data.pb.h"  // NOLINT(build/include)
@@ -15,6 +16,7 @@ namespace quipper {
 using ::google::protobuf::RepeatedField;
 using ::google::protobuf::RepeatedPtrField;
 using ::google::protobuf::TextFormat;
+using ::google::protobuf::uint64;
 
 }  // namespace quipper
 

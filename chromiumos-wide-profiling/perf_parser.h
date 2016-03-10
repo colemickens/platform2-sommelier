@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 
-#include <google/protobuf/repeated_field.h>
 #include <map>
 #include <set>
 #include <string>
@@ -16,6 +15,7 @@
 
 #include "base/macros.h"
 
+#include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
@@ -218,15 +218,14 @@ class PerfParser {
   bool MapCallchain(const uint64_t ip,
                     const uint32_t pid,
                     uint64_t original_event_addr,
-                    google::protobuf::RepeatedField<uint64_t>* callchain,
+                    RepeatedField<uint64>* callchain,
                     ParsedEvent* parsed_event);
 
   // Trims the branch stack for null entries and calls
   // MapIPAndPidAndGetNameAndOffset() on each entry.
   bool MapBranchStack(
       const uint32_t pid,
-      google::protobuf::RepeatedPtrField<PerfDataProto_BranchStackEntry>*
-          branch_stack,
+      RepeatedPtrField<PerfDataProto_BranchStackEntry>* branch_stack,
       ParsedEvent* parsed_event);
 
   // This maps a sample event and returns the mapped address, DSO name, and
