@@ -19,82 +19,67 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
-#ifdef WEBSERV_USE_BINDER
+#ifdef __ANDROID__
 #include <binderwrapper/binder_wrapper.h>
 #include <brillo/binder_watcher.h>
 #include <brillo/daemons/daemon.h>
-#endif  // WEBSERV_USE_BINDER
-#ifdef WEBSERV_USE_DBUS
+#else
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/daemons/dbus_daemon.h>
-#endif  // WEBSERV_USE_DBUS
-#include <brillo/flag_helper.h>
-#if !defined(__ANDROID__)
 #include <brillo/minijail/minijail.h>
-#endif  // !defined(__ANDROID__)
+#endif  // __ANDROID__
+#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#ifdef WEBSERV_USE_BINDER
+#ifdef __ANDROID__
 #include "webservd/binder_server.h"
-#endif  // WEBSERV_USE_BINDER
-#include "webservd/config.h"
-#include "webservd/log_manager.h"
-#ifdef WEBSERV_USE_DBUS
+#include "webserv_common/binder_constants.h"
+#else
 #include "webservd/server.h"
 #endif
+#include "webservd/config.h"
+#include "webservd/log_manager.h"
 #include "webservd/utils.h"
 
-#ifdef WEBSERV_USE_BINDER
-#include "webserv_common/binder_constants.h"
-#endif  // WEBSERV_USE_BINDER
-
 #if defined(__ANDROID__)
-#ifdef WEBSERV_USE_BINDER
 #include <firewalld/firewall.h>
-#else
-#include "webservd/firewalld_firewall.h"
-using FirewallImpl = webservd::FirewalldFirewall;
-#endif
 #else
 #include "webservd/permission_broker_firewall.h"
 using FirewallImpl = webservd::PermissionBrokerFirewall;
 #endif  // defined(__ANDROID__)
 
-#ifdef WEBSERV_USE_DBUS
+#ifdef __ANDROID__
+using BaseDaemon = brillo::Daemon;
+#else
 using brillo::dbus_utils::AsyncEventSequencer;
 using BaseDaemon = brillo::DBusServiceDaemon;
-#else
-using BaseDaemon = brillo::Daemon;
-#endif  // WEBSERV_USE_DBUS
+#endif  // __ANDROID__
 
 namespace {
 
 const char kDefaultConfigFilePath[] = "/etc/webservd/config";
 
-#ifdef WEBSERV_USE_DBUS
+#ifndef __ANDROID__
 const char kServiceName[] = "org.chromium.WebServer";
 const char kRootServicePath[] = "/org/chromium/WebServer";
-#endif  // WEBSERV_USE_DBUS
-
-#if !defined(__ANDROID__)
 const char kWebServerUserName[] = "webservd";
 const char kWebServerGroupName[] = "webservd";
 #endif  // !defined(__ANDROID__)
 
 class Daemon final : public BaseDaemon {
  public:
-#ifdef WEBSERV_USE_DBUS
+#ifdef __ANDROID__
+  explicit Daemon(webservd::Config config)
+      : config_{std::move(config)} {}
+#else
   explicit Daemon(webservd::Config config)
       : DBusServiceDaemon{kServiceName, kRootServicePath},
         config_{std::move(config)} {}
-#else
-  explicit Daemon(webservd::Config config)
-      : config_{std::move(config)} {}
-#endif  // WEBSERV_USE_DBUS
+#endif  // __ANDROID__
 
  protected:
-#ifdef WEBSERV_USE_DBUS
+#ifndef __ANDROID__
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     webservd::LogManager::Init(base::FilePath{config_.log_directory});
     server_.reset(new webservd::Server{
@@ -107,10 +92,10 @@ class Daemon final : public BaseDaemon {
   void OnShutdown(int* /* return_code */) override {
     server_.reset();
   }
-#endif  // WEBSERV_USE_DBUS
+#endif  // !__ANDROID__
 
  private:
-#ifdef WEBSERV_USE_BINDER
+#ifdef __ANDROID__
   int OnInit() override {
     int result = brillo::Daemon::OnInit();
     if (result != EX_OK) {
@@ -136,15 +121,15 @@ class Daemon final : public BaseDaemon {
 
     return EX_OK;
   }
-#endif  // WEBSERV_USE_BINDER
+#endif  // __ANDROID__
 
   webservd::Config config_;
-#ifdef WEBSERV_USE_DBUS
-  std::unique_ptr<webservd::Server> server_;
-#else
+#ifdef __ANDROID__
   std::unique_ptr<webservd::BinderServer> server_;
   brillo::BinderWatcher binder_watcher_;
-#endif  // WEBSERV_USE_DBUS
+#else
+  std::unique_ptr<webservd::Server> server_;
+#endif  // __ANDROID__
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

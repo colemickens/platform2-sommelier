@@ -23,16 +23,7 @@
 
 #define LOG_TAG webservd_testc
 
-#if defined(WEBSERV_USE_DBUS)
-
-#include <brillo/daemons/dbus_daemon.h>
-#include <brillo/dbus/async_event_sequencer.h>
-
-// If we're using DBus, pick a base class that does DBus related init.
-using WebservTestClientBaseClass = brillo::DBusDaemon;
-using brillo::dbus_utils::AsyncEventSequencer;
-
-#elif defined(WEBSERV_USE_BINDER)
+#ifdef __ANDROID__
 
 #include <binderwrapper/binder_wrapper.h>
 
@@ -41,8 +32,15 @@ using brillo::dbus_utils::AsyncEventSequencer;
 using WebservTestClientBaseClass = brillo::Daemon;
 
 #else
-#error "You must select one of Binder or DBus as an RPC mechanism."
-#endif  // defined(WEBSERV_USE_DBUS)
+
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/async_event_sequencer.h>
+
+// If we're using DBus, pick a base class that does DBus related init.
+using WebservTestClientBaseClass = brillo::DBusDaemon;
+using brillo::dbus_utils::AsyncEventSequencer;
+
+#endif  // __ANDROID__
 
 using libwebserv::Server;
 using libwebserv::ProtocolHandler;
@@ -85,13 +83,7 @@ class WebservTestClient : public WebservTestClientBaseClass {
     if (exit_code != EX_OK)
       return exit_code;
 
-#ifdef WEBSERV_USE_DBUS
-    webserver_ = Server::ConnectToServerViaDBus(
-        bus_, bus_->GetConnectionName(),
-        AsyncEventSequencer::GetDefaultCompletionAction(),
-        base::Bind(&LogServerOnlineStatus, true /* online */),
-        base::Bind(&LogServerOnlineStatus, false /* offline */));
-#elif WEBSERV_USE_BINDER
+#ifdef __ANDROID__
     android::BinderWrapper::Create();
     if (!binder_watcher_.Init()) {
       return EX_OSERR;
@@ -101,7 +93,13 @@ class WebservTestClient : public WebservTestClientBaseClass {
         brillo::MessageLoop::current(),
         base::Bind(&LogServerOnlineStatus, true /* online */),
         base::Bind(&LogServerOnlineStatus, false /* offline */));
-#endif  // WEBSERV_USE_DBUS || WEBSERV_USE_BINDER
+#else
+    webserver_ = Server::ConnectToServerViaDBus(
+        bus_, bus_->GetConnectionName(),
+        AsyncEventSequencer::GetDefaultCompletionAction(),
+        base::Bind(&LogServerOnlineStatus, true /* online */),
+        base::Bind(&LogServerOnlineStatus, false /* offline */));
+#endif  // __ANDROID__
 
     // Note that adding this handler is only local, and we won't receive
     // requests until the library does some async book keeping.
@@ -116,9 +114,9 @@ class WebservTestClient : public WebservTestClientBaseClass {
 
  private:
   std::unique_ptr<Server> webserver_;
-#if WEBSERV_USE_BINDER
+#ifdef __ANDROID__
   brillo::BinderWatcher binder_watcher_;
-#endif  // WEBSERV_USE_BINDER
+#endif  // __ANDROID__
 
   DISALLOW_COPY_AND_ASSIGN(WebservTestClient);
 };  // class WebservTestClient

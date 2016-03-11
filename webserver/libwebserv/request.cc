@@ -22,6 +22,7 @@
 
 namespace libwebserv {
 
+#ifndef __ANDROID__
 FileInfo::FileInfo(DBusProtocolHandler* handler,
                    int file_id,
                    const std::string& request_id,
@@ -44,6 +45,7 @@ void FileInfo::GetData(
                         success_callback,
                         error_callback);
 }
+#endif  // !__ANDROID__
 
 RequestImpl::RequestImpl(DBusProtocolHandler* handler,
                          const std::string& url,
@@ -71,6 +73,7 @@ std::vector<PairOfStrings> Request::GetFormDataPost() const {
   return std::vector<PairOfStrings>{post_data_.begin(), post_data_.end()};
 }
 
+#ifndef __ANDROID__
 std::vector<std::pair<std::string, const FileInfo*>> Request::GetFiles() const {
   std::vector<std::pair<std::string, const FileInfo*>> data;
   data.reserve(file_info_.size());
@@ -79,6 +82,7 @@ std::vector<std::pair<std::string, const FileInfo*>> Request::GetFiles() const {
   }
   return data;
 }
+#endif  // !__ANDROID__
 
 std::vector<std::string> Request::GetFormField(const std::string& name) const {
   std::vector<std::string> data;
@@ -117,6 +121,7 @@ std::vector<std::string> Request::GetFormFieldGet(
   return data;
 }
 
+#ifndef __ANDROID__
 std::vector<const FileInfo*> Request::GetFileInfo(
     const std::string& name) const {
   std::vector<const FileInfo*> data;
@@ -127,6 +132,7 @@ std::vector<const FileInfo*> Request::GetFileInfo(
   }
   return data;
 }
+#endif  // !__ANDROID__
 
 std::vector<PairOfStrings> Request::GetHeaders() const {
   return std::vector<PairOfStrings>{headers_.begin(), headers_.end()};

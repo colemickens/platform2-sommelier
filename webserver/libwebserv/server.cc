@@ -14,19 +14,27 @@
 
 #include <libwebserv/server.h>
 
-#if defined(WEBSERV_USE_DBUS)
-#include "libwebserv/dbus_server.h"
-#endif  // defined(WEBSERV_USE_DBUS)
-
-#if defined(WEBSERV_USE_BINDER)
+#ifdef __ANDROID__
 #include "libwebserv/binder_server.h"
-#endif  // defined(WEBSERV_USE_BINDER)
+#else
+#include "libwebserv/dbus_server.h"
+#endif  // __ANDROID__
+
 
 using std::unique_ptr;
 
 namespace libwebserv {
 
-#if defined(WEBSERV_USE_DBUS)
+#ifdef __ANDROID__
+std::unique_ptr<Server> Server::ConnectToServerViaBinder(
+    brillo::MessageLoop* message_loop,
+    const base::Closure& on_server_online,
+    const base::Closure& on_server_offline) {
+  return unique_ptr<Server>(new BinderServer(
+      message_loop, on_server_online, on_server_offline,
+      android::BinderWrapper::GetOrCreateInstance()));
+}
+#else
 unique_ptr<Server> Server::ConnectToServerViaDBus(
     const scoped_refptr<dbus::Bus>& bus,
     const std::string& service_name,
@@ -38,17 +46,7 @@ unique_ptr<Server> Server::ConnectToServerViaDBus(
   server->Connect(bus, service_name, cb, on_server_online, on_server_offline);
   return ret;
 }
-#endif  // defined(WEBSERV_USE_DBUS)
+#endif  // __ANDROID__
 
-#if defined(WEBSERV_USE_BINDER)
-std::unique_ptr<Server> Server::ConnectToServerViaBinder(
-    brillo::MessageLoop* message_loop,
-    const base::Closure& on_server_online,
-    const base::Closure& on_server_offline) {
-  return unique_ptr<Server>(new BinderServer(
-      message_loop, on_server_online, on_server_offline,
-      android::BinderWrapper::GetOrCreateInstance()));
-}
-#endif  // defined(WEBSERV_USE_BINDER)
 
 }  // namespace libwebserv
