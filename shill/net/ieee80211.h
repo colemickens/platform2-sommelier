@@ -39,6 +39,7 @@ const uint8_t kElemIdTpcReport = 0x23;
 const uint8_t kElemIdVendor = 0xdd;
 const uint8_t kElemIdVHTCap = 0xbf;
 const uint8_t kElemIdVHTOperation = 0xc0;
+const uint8_t kElemIdMeshId = 0x72;
 
 const unsigned int kMaxSSIDLen = 32;
 

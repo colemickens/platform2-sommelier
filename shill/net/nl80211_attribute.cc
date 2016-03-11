@@ -75,6 +75,8 @@ const int Nl80211AttributeBss::kVhtCapAttributeId =
     IEEE_80211::kElemIdVHTCap;
 const int Nl80211AttributeBss::kVhtInfoAttributeId =
     IEEE_80211::kElemIdVHTOperation;
+const int Nl80211AttributeBss::kMeshIdAttributeId =
+    IEEE_80211::kElemIdMeshId;
 
 static const char kSsidString[] = "SSID";
 static const char kRatesString[] = "Rates";
@@ -82,6 +84,7 @@ static const char kHtCapString[] = "HTCapabilities";
 static const char kHtOperString[] = "HTOperation";
 static const char kVhtCapString[] = "VHTCapabilities";
 static const char kVhtOperString[] = "VHTOperation";
+static const char kMeshIdString[] = "MeshID";
 
 Nl80211AttributeBss::Nl80211AttributeBss()
     : NetlinkNestedAttribute(kName, kNameString) {
@@ -209,6 +212,17 @@ bool Nl80211AttributeBss::ParseInformationElements(
             type,
             ByteString(
                 reinterpret_cast<const char*>(payload), payload_bytes));
+        break;
+      }
+      case kMeshIdAttributeId: {
+        ie_attribute->CreateStringAttribute(type, kMeshIdString);
+        if (payload_bytes == 0) {
+          ie_attribute->SetStringAttributeValue(type, "");
+        } else {
+          ie_attribute->SetStringAttributeValue(
+              type,
+              string(reinterpret_cast<const char*>(payload), payload_bytes));
+        }
         break;
       }
       case kDSParameterSetAttributeId:
