@@ -550,6 +550,8 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
   if (state != BUTTON_REPEAT)
     LOG(INFO) << "Power button " << ButtonStateToString(state);
   metrics_collector_->HandlePowerButtonEvent(state);
+  if (state == BUTTON_DOWN)
+    util::Launch("sync");
   if (state == BUTTON_DOWN && display_backlight_controller_)
     display_backlight_controller_->HandlePowerButtonPress();
 }
