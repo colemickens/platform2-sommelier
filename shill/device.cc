@@ -915,12 +915,17 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   // SetConnection must occur after the UpdateFromIPConfig so the
   // service can use the values derived from the connection.
   if (selected_service_) {
+    // The service state change needs to happen after this call, so that
+    // at the time we report the state change to the manager, the service
+    // has its connection.
     selected_service_->SetConnection(connection_);
 
-    // The service state change needs to happen last, so that at the
-    // time we report the state change to the manager, the service
-    // has its connection.
-    SetServiceState(Service::kStateConnected);
+    // If this function was called due to a DHCP renewal, avoid transitioning
+    // from Connected->Online->Connected because that can affect the service
+    // sort order.  In this case, perform portal detection "optimistically"
+    // in the Online state, and transition from Online->Portal if it fails.
+    if (selected_service_->state() != Service::kStateOnline)
+      SetServiceState(Service::kStateConnected);
     OnConnected();
     portal_attempts_to_online_ = 0;
 
