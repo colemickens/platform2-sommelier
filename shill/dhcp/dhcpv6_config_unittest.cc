@@ -23,6 +23,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
@@ -174,18 +175,30 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
   const char kConfigDomainSearch[] = "example.domain";
   const uint32_t kConfigDelegatedPrefixLength = 56;
   const uint32_t kConfigIPAddressLeaseTime = 5;
+  const uint32_t kConfigIPAddressPreferredLeaseTime = 4;
   const uint32_t kConfigDelegatedPrefixLeaseTime = 10;
+  const uint32_t kConfigDelegatedPrefixPreferredLeaseTime = 3;
+
+  // For building configuration strings.
+  const std::string kOne = "1";
 
   KeyValueStore conf;
-  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress, kConfigIPAddress);
-  conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime,
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                 kConfigIPAddress);
+  conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
                kConfigIPAddressLeaseTime);
-  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
+  conf.SetUint(
+      DHCPv6Config::kConfigurationKeyIPAddressPreferredLeaseTime + kOne,
+      kConfigIPAddressPreferredLeaseTime);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
                  kConfigDelegatedPrefix);
-  conf.SetUint(DHCPv6Config::kConfigurationKeyDelegatedPrefixLength,
+  conf.SetUint(DHCPv6Config::kConfigurationKeyDelegatedPrefixLength + kOne,
                kConfigDelegatedPrefixLength);
-  conf.SetUint(DHCPv6Config::kConfigurationKeyDelegatedPrefixLeaseTime,
+  conf.SetUint(DHCPv6Config::kConfigurationKeyDelegatedPrefixLeaseTime + kOne,
                kConfigDelegatedPrefixLeaseTime);
+  conf.SetUint(
+      DHCPv6Config::kConfigurationKeyDelegatedPrefixPreferredLeaseTime + kOne,
+      kConfigDelegatedPrefixPreferredLeaseTime);
   {
     vector<string> dns;
     dns.push_back(kConfigNameServer);
@@ -199,10 +212,23 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
   conf.SetString("UnknownKey", "UnknownValue");
 
   ASSERT_TRUE(config_->ParseConfiguration(conf));
-  EXPECT_EQ(kConfigIPAddress, config_->properties_.address);
-  EXPECT_EQ(kConfigDelegatedPrefix, config_->properties_.delegated_prefix);
-  EXPECT_EQ(kConfigDelegatedPrefixLength,
-            config_->properties_.delegated_prefix_length);
+  const Stringmaps kAddresses = {{{kDhcpv6AddressProperty, kConfigIPAddress},
+      {kDhcpv6LengthProperty, "128"},
+      {kDhcpv6LeaseDurationSecondsProperty,
+          base::UintToString(kConfigIPAddressLeaseTime)},
+      {kDhcpv6PreferredLeaseDurationSecondsProperty,
+          base::UintToString(kConfigIPAddressPreferredLeaseTime)},
+  }};
+  EXPECT_EQ(kAddresses, config_->properties_.dhcpv6_addresses);
+  const Stringmaps kDelegatedPrefixes =
+      {{{kDhcpv6AddressProperty, kConfigDelegatedPrefix},
+      {kDhcpv6LengthProperty, base::UintToString(kConfigDelegatedPrefixLength)},
+      {kDhcpv6LeaseDurationSecondsProperty,
+          base::UintToString(kConfigDelegatedPrefixLeaseTime)},
+      {kDhcpv6PreferredLeaseDurationSecondsProperty,
+          base::UintToString(kConfigDelegatedPrefixPreferredLeaseTime)},
+  }};
+  EXPECT_EQ(kDelegatedPrefixes, config_->properties_.dhcpv6_delegated_prefixes);
   ASSERT_EQ(1, config_->properties_.dns_servers.size());
   EXPECT_EQ(kConfigNameServer, config_->properties_.dns_servers[0]);
   ASSERT_EQ(1, config_->properties_.domain_search.size());
@@ -277,36 +303,41 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalFail) {
 }
 
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
+  const std::string kOne = "1";
   for (const auto& reason : { DHCPv6Config::kReasonBound,
                               DHCPv6Config::kReasonRebind,
                               DHCPv6Config::kReasonReboot,
                               DHCPv6Config::kReasonRenew }) {
-    for (const auto lease_time_given : { false, true }) {
-      KeyValueStore conf;
-      conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
-      conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
-                     kDelegatedPrefix);
-      if (lease_time_given) {
-        const uint32_t kLeaseTime = 1;
-        conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime,
-                     kLeaseTime);
-      }
-      EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true));
-      EXPECT_CALL(*this, FailureCallback(_)).Times(0);
-      config_->ProcessEventSignal(reason, conf);
-      string failure_message = string(reason) + " failed with lease time " +
-          (lease_time_given ? "given" : "not given");
-      EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
-      EXPECT_EQ("2001:db8:0:1::1", config_->properties().address)
-          << failure_message;
-    }
+    KeyValueStore conf;
+    conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
+                   kIPAddress);
+    const uint32_t kLeaseTime = 1;
+    conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
+                 kLeaseTime);
+    conf.SetUint(
+        DHCPv6Config::kConfigurationKeyIPAddressPreferredLeaseTime + kOne,
+        kLeaseTime);
+    conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressIaid, 0);
+
+    EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true));
+    EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+    config_->ProcessEventSignal(reason, conf);
+    string failure_message = string(reason) + " failed";
+    EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
+    ASSERT_EQ(1, config_->properties().dhcpv6_addresses.size());
+    auto it =
+        config_->properties().dhcpv6_addresses[0].find(kDhcpv6AddressProperty);
+    ASSERT_TRUE(it != config_->properties().dhcpv6_addresses[0].end())
+        << failure_message;
+    EXPECT_EQ("2001:db8:0:1::1", it->second)<< failure_message;
   }
 }
 
 TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringFailureCallback) {
+  const std::string kOne = "1";
   KeyValueStore conf;
-  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
-  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
                  kDelegatedPrefix);
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
@@ -318,9 +349,10 @@ TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringFailureCallback) {
 }
 
 TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringSuccessCallback) {
+  const std::string kOne = "1";
   KeyValueStore conf;
-  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
-  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
                  kDelegatedPrefix);
   const uint32_t kLeaseTime = 1;
   conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime, kLeaseTime);
@@ -336,16 +368,17 @@ TEST_F(DHCPv6ConfigCallbackTest, StoppedDuringSuccessCallback) {
 }
 
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalUnknown) {
+  const std::string kOne = "1";
   KeyValueStore conf;
-  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress, kIPAddress);
-  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix,
+  conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
+  conf.SetString(DHCPv6Config::kConfigurationKeyDelegatedPrefix + kOne,
                  kDelegatedPrefix);
   static const char kReasonUnknown[] = "UNKNOWN_REASON";
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->ProcessEventSignal(kReasonUnknown, conf);
   Mock::VerifyAndClearExpectations(this);
-  EXPECT_TRUE(config_->properties().address.empty());
+  EXPECT_TRUE(config_->properties().dhcpv6_addresses.empty());
 }
 
 TEST_F(DHCPv6ConfigTest, StartSuccessEphemeral) {

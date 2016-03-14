@@ -64,10 +64,14 @@ class DHCPv6Config : public DHCPConfig {
   static const char kConfigurationKeyDelegatedPrefix[];
   static const char kConfigurationKeyDelegatedPrefixLength[];
   static const char kConfigurationKeyDelegatedPrefixLeaseTime[];
+  static const char kConfigurationKeyDelegatedPrefixPreferredLeaseTime[];
+  static const char kConfigurationKeyDelegatedPrefixIaid[];
   static const char kConfigurationKeyDNS[];
   static const char kConfigurationKeyDomainSearch[];
   static const char kConfigurationKeyIPAddress[];
   static const char kConfigurationKeyIPAddressLeaseTime[];
+  static const char kConfigurationKeyIPAddressPreferredLeaseTime[];
+  static const char kConfigurationKeyIPAddressIaid[];
   static const char kConfigurationKeyServerIdentifier[];
 
   static const char kReasonBound[];

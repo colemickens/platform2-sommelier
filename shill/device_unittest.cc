@@ -1702,8 +1702,10 @@ TEST_F(DeviceTest, OnDHCPv6ConfigUpdated) {
 TEST_F(DeviceTest, OnDHCPv6ConfigFailed) {
   device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
   IPConfig::Properties properties;
-  properties.address = "2001:db8:0:1::1";
-  properties.delegated_prefix = "2001:db8:0:100::";
+  properties.dhcpv6_addresses =
+      {{{kDhcpv6AddressProperty, "2001:db8:0:1::1"}}};
+  properties.dhcpv6_delegated_prefixes =
+      {{{kDhcpv6AddressProperty, "2001:db8:0:100::"}}};
   properties.lease_duration_seconds = 1;
   device_->dhcpv6_config_->set_properties(properties);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
@@ -1711,16 +1713,19 @@ TEST_F(DeviceTest, OnDHCPv6ConfigFailed) {
                   kIPConfigsProperty,
                   vector<string> { IPConfigMockAdaptor::kRpcId }));
   device_->OnDHCPv6ConfigFailed(device_->dhcpv6_config_.get());
-  EXPECT_TRUE(device_->dhcpv6_config_->properties().address.empty());
-  EXPECT_TRUE(device_->dhcpv6_config_->properties().delegated_prefix.empty());
+  EXPECT_TRUE(device_->dhcpv6_config_->properties().dhcpv6_addresses.empty());
+  EXPECT_TRUE(
+      device_->dhcpv6_config_->properties().dhcpv6_delegated_prefixes.empty());
   EXPECT_EQ(0, device_->dhcpv6_config_->properties().lease_duration_seconds);
 }
 
 TEST_F(DeviceTest, OnDHCPv6ConfigExpired) {
   device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
   IPConfig::Properties properties;
-  properties.address = "2001:db8:0:1::1";
-  properties.delegated_prefix = "2001:db8:0:100::";
+  properties.dhcpv6_addresses =
+      {{{kDhcpv6AddressProperty, "2001:db8:0:1::1"}}};
+  properties.dhcpv6_delegated_prefixes =
+      {{{kDhcpv6AddressProperty, "2001:db8:0:100::"}}};
   properties.lease_duration_seconds = 1;
   device_->dhcpv6_config_->set_properties(properties);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
@@ -1728,8 +1733,9 @@ TEST_F(DeviceTest, OnDHCPv6ConfigExpired) {
                   kIPConfigsProperty,
                   vector<string> { IPConfigMockAdaptor::kRpcId }));
   device_->OnDHCPv6ConfigExpired(device_->dhcpv6_config_.get());
-  EXPECT_TRUE(device_->dhcpv6_config_->properties().address.empty());
-  EXPECT_TRUE(device_->dhcpv6_config_->properties().delegated_prefix.empty());
+  EXPECT_TRUE(device_->dhcpv6_config_->properties().dhcpv6_addresses.empty());
+  EXPECT_TRUE(
+      device_->dhcpv6_config_->properties().dhcpv6_delegated_prefixes.empty());
   EXPECT_EQ(0, device_->dhcpv6_config_->properties().lease_duration_seconds);
 }
 

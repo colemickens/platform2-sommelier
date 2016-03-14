@@ -51,7 +51,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   struct Properties {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
-                   delegated_prefix_length(0),
                    user_traffic_only(false),
                    default_route(true),
                    blackhole_ipv6(false),
@@ -69,9 +68,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::string gateway;
     std::string method;
     std::string peer_address;
+    // Each map represents a single address or prefix in a DHCPv6 lease.
+    // Multiple addresses can be returned with different lifetimes, for example
+    // when aging out an old prefix and switching to a new one.  The available
+    // keys are all of the form "kDhcpv6*".
+    // IPv6 addresses delegated from a DHCPv6 server.
+    Stringmaps dhcpv6_addresses;
     // IPv6 prefix delegated from a DHCPv6 server.
-    std::string delegated_prefix;
-    int32_t delegated_prefix_length;
+    Stringmaps dhcpv6_delegated_prefixes;
     // Set the flag when a secondary routing table should be used for less
     // privileged user traffic which alone would be sent to the VPN client. A
     // primary routing table will be used for traffic from privileged processes
