@@ -24,13 +24,6 @@
 
 namespace quipper {
 
-// This is becoming more like a partial struct perf_evsel
-struct PerfFileAttr {
-  struct perf_event_attr attr;
-  string name;
-  std::vector<u64> ids;
-};
-
 // Based on code in tools/perf/util/header.c, the metadata are of the following
 // formats:
 
@@ -38,32 +31,12 @@ struct PerfFileAttr {
 const size_t kBuildIDArraySize = 20;
 const size_t kBuildIDStringLength = kBuildIDArraySize * 2;
 
-struct PerfUint32Metadata {
-  u32 type;
-  std::vector<uint32_t> data;
-};
-
-struct PerfUint64Metadata {
-  u32 type;
-  std::vector<uint64_t> data;
-};
-
 typedef u32 num_siblings_type;
-
-struct PerfCPUTopologyMetadata {
-  std::vector<string> core_siblings;
-  std::vector<string> thread_siblings;
-};
-
-struct PerfNodeTopologyMetadata {
-  u32 id;
-  u64 total_memory;
-  u64 free_memory;
-  string cpu_list;
-};
 
 class DataReader;
 class DataWriter;
+
+struct PerfFileAttr;
 
 class PerfReader {
  public:
