@@ -576,7 +576,6 @@ void Daemon::ShutDownForPowerButtonWithNoDisplay() {
 
 void Daemon::HandleMissingPowerButtonAcknowledgment() {
   LOG(INFO) << "Didn't receive power button acknowledgment from Chrome";
-  util::Launch("sync");
 }
 
 void Daemon::ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) {
