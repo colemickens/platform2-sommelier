@@ -8,10 +8,40 @@
 
 #include "base/logging.h"
 
-#include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
+
+
+bool SerializeFromFile(const string& filename, PerfDataProto* perf_data_proto) {
+  return SerializeFromFileWithOptions(filename, PerfParserOptions(),
+                                      perf_data_proto);
+}
+
+bool SerializeFromFileWithOptions(const string& filename,
+                                  const PerfParserOptions& options,
+                                  PerfDataProto* perf_data_proto) {
+  PerfReader reader;
+  if (!reader.ReadFile(filename))
+    return false;
+
+  PerfParser parser(&reader, options);
+  if (!parser.ParseRawEvents())
+    return false;
+
+  if (!reader.Serialize(perf_data_proto))
+    return false;
+
+  // Append parser stats to protobuf.
+  PerfSerializer::SerializeParserStats(parser.stats(), perf_data_proto);
+  return true;
+}
+
+bool DeserializeToFile(const PerfDataProto& perf_data_proto,
+                       const string& filename) {
+  PerfReader reader;
+  return reader.Deserialize(perf_data_proto) && reader.WriteFile(filename);
+}
 
 bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
                          const string& filename) {

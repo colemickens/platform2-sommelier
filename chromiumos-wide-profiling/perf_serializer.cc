@@ -28,41 +28,6 @@ PerfSerializer::PerfSerializer() {
 PerfSerializer::~PerfSerializer() {
 }
 
-// static
-bool PerfSerializer::SerializeFromFile(const string& filename,
-                                       PerfDataProto* perf_data_proto) {
-  return SerializeFromFileWithOptions(filename, PerfParserOptions(),
-                                      perf_data_proto);
-}
-
-// static
-bool PerfSerializer::SerializeFromFileWithOptions(
-    const string& filename,
-    const PerfParserOptions& options,
-    PerfDataProto* perf_data_proto) {
-  PerfReader reader;
-  if (!reader.ReadFile(filename))
-    return false;
-
-  PerfParser parser(&reader, options);
-  if (!parser.ParseRawEvents())
-    return false;
-
-  if (!reader.Serialize(perf_data_proto))
-    return false;
-
-  // Append parser stats to protobuf.
-  PerfSerializer::SerializeParserStats(parser.stats(), perf_data_proto);
-  return true;
-}
-
-// static
-bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
-                                       const string& filename) {
-  PerfReader reader;
-  return reader.Deserialize(perf_data_proto) && reader.WriteFile(filename);
-}
-
 bool PerfSerializer::SerializePerfFileAttr(
     const PerfFileAttr& perf_file_attr,
     PerfDataProto_PerfFileAttr* perf_file_attr_proto) const {

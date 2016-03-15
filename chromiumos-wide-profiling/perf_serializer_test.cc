@@ -90,9 +90,7 @@ void SerializeAndDeserialize(const string& input,
   options.discard_unused_events = discard_unused_events;
   options.sample_mapping_percentage_threshold = 100.0f;
 
-  PerfSerializer serializer;
-  ASSERT_TRUE(serializer.SerializeFromFileWithOptions(input, options,
-                                                      &perf_data_proto));
+  ASSERT_TRUE(SerializeFromFileWithOptions(input, options, &perf_data_proto));
 
   PerfReader reader;
   ASSERT_TRUE(reader.Deserialize(perf_data_proto));
@@ -127,18 +125,16 @@ void SerializeToFileAndBack(const string& input, const string& output) {
   // Serialize with and without sorting by chronological order.
   // PerfSerializer is stateless w/r to Serialize or Deserialize calls so we can
   // use just one.
-  PerfSerializer serializer;
-
   PerfParserOptions options;
   options.sort_events_by_time = true;
-  EXPECT_TRUE(serializer.SerializeFromFileWithOptions(input, options,
-                                                      &input_perf_data_proto));
+  EXPECT_TRUE(SerializeFromFileWithOptions(input, options,
+                                           &input_perf_data_proto));
   CheckChronologicalOrderOfSerializedEvents(input_perf_data_proto);
 
   input_perf_data_proto.Clear();
   options.sort_events_by_time = false;
-  EXPECT_TRUE(serializer.SerializeFromFileWithOptions(input, options,
-                                                      &input_perf_data_proto));
+  EXPECT_TRUE(SerializeFromFileWithOptions(input, options,
+                                           &input_perf_data_proto));
 
   // Make sure the timestamp_sec was properly recorded.
   EXPECT_TRUE(input_perf_data_proto.has_timestamp_sec());
@@ -161,8 +157,7 @@ void SerializeToFileAndBack(const string& input, const string& output) {
   PerfDataProto output_perf_data_proto;
   EXPECT_TRUE(ReadProtobufFromFile(&output_perf_data_proto, input_filename));
 
-  PerfSerializer deserializer;
-  EXPECT_TRUE(deserializer.DeserializeToFile(output_perf_data_proto, output));
+  EXPECT_TRUE(DeserializeToFile(output_perf_data_proto, output));
 
   EXPECT_TRUE(WriteProtobufToFile(output_perf_data_proto, output_filename));
 
@@ -272,8 +267,7 @@ TEST(PerfSerializerTest, TestCommMd5s) {
     LOG(INFO) << "Testing COMM Md5sum for " << input_perf_data;
 
     PerfDataProto perf_data_proto;
-    EXPECT_TRUE(PerfSerializer::SerializeFromFile(input_perf_data,
-                                                  &perf_data_proto));
+    EXPECT_TRUE(SerializeFromFile(input_perf_data, &perf_data_proto));
 
     // Need to get file attrs to construct a SampleInfoReader within
     // |serializer|.
@@ -308,10 +302,8 @@ TEST(PerfSerializerTest, TestCommMd5s) {
       event.mutable_header()->set_size(event.header().size() + string_len_diff);
     }
 
-    PerfSerializer deserializer;
     const string output_perf_data = output_path + test_file + ".ser.comm.out";
-    EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
-                                               output_perf_data));
+    EXPECT_TRUE(DeserializeToFile(perf_data_proto, output_perf_data));
     EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data));
   }
 }
@@ -328,8 +320,7 @@ TEST(PerfSerializerTest, TestMmapMd5s) {
     LOG(INFO) << "Testing MMAP Md5sum for " << input_perf_data;
 
     PerfDataProto perf_data_proto;
-    EXPECT_TRUE(PerfSerializer::SerializeFromFile(input_perf_data,
-                                                  &perf_data_proto));
+    EXPECT_TRUE(SerializeFromFile(input_perf_data, &perf_data_proto));
 
     // Need to get file attrs to construct a SampleInfoReader within
     // |serializer|.
@@ -365,12 +356,10 @@ TEST(PerfSerializerTest, TestMmapMd5s) {
       event.mutable_header()->set_size(event.header().size() + string_len_diff);
     }
 
-    PerfSerializer deserializer;
     const string output_perf_data = output_path + test_file + ".ser.mmap.out";
     // Make sure the data can be deserialized after replacing the filenames with
     // Md5sum prefixes.  No need to check the output.
-    EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
-                                               output_perf_data));
+    EXPECT_TRUE(DeserializeToFile(perf_data_proto, output_perf_data));
   }
 }
 
@@ -397,10 +386,8 @@ TEST(PerfSerializerTest, TestBuildIDs) {
     LOG(INFO) << "Testing " << perf_data_file;
 
     // Serialize into a protobuf.
-    PerfSerializer perf_serializer;
     PerfDataProto perf_data_proto;
-    EXPECT_TRUE(perf_serializer.SerializeFromFile(perf_data_file,
-                                                  &perf_data_proto));
+    EXPECT_TRUE(SerializeFromFile(perf_data_file, &perf_data_proto));
 
     // Test a file with build ID filenames removed.
     for (int i = 0; i < perf_data_proto.build_ids_size(); ++i) {

@@ -37,15 +37,6 @@ class PerfSerializer {
   PerfSerializer();
   ~PerfSerializer();
 
-  // Convert directly from an input perf data file to a PerfDataProto and vice
-  // versa.
-  static bool SerializeFromFile(const string& filename, PerfDataProto* proto);
-  static bool SerializeFromFileWithOptions(const string& filename,
-                                           const PerfParserOptions& options,
-                                           PerfDataProto* proto);
-  static bool DeserializeToFile(const PerfDataProto& proto,
-                                const string& filename);
-
   // The following functions convert between raw perf data structures and their
   // equivalent PerfDataProto representations.
   bool SerializePerfFileAttr(

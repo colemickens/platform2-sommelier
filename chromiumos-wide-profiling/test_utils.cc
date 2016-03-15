@@ -14,12 +14,11 @@
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/compat/proto.h"
-#include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/perf_protobuf_io.h"
 #include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 using quipper::PerfDataProto;
-using quipper::PerfSerializer;
 using quipper::SplitString;
 using quipper::TextFormat;
 
@@ -68,14 +67,13 @@ bool ReadExistingProtobufText(const string& filename, string* output_string) {
   return true;
 }
 
-// Given a perf data file, return its protobuf representation (given by
-// PerfSerializer) as a text string and/or a serialized data stream.
+// Given a perf data file, return its protobuf representation as a text string
+// and/or a serialized data stream.
 bool PerfDataToProtoRepresentation(const string& filename,
                                    string* output_text,
                                    string* output_data) {
   PerfDataProto perf_data_proto;
-  PerfSerializer serializer;
-  if (!serializer.SerializeFromFile(filename, &perf_data_proto)) {
+  if (!SerializeFromFile(filename, &perf_data_proto)) {
     return false;
   }
   // Reset the timestamp field since it causes reproducability issues when

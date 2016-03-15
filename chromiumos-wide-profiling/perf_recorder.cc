@@ -14,7 +14,7 @@
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/perf_option_parser.h"
 #include "chromiumos-wide-profiling/perf_parser.h"
-#include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/perf_protobuf_io.h"
 #include "chromiumos-wide-profiling/perf_stat_parser.h"
 #include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
@@ -41,9 +41,7 @@ bool ParsePerfDataFileToString(const string& filename, string* output_string) {
   options.discard_unused_events = true;
 
   PerfDataProto perf_data;
-  PerfSerializer perf_serializer;
-  return perf_serializer.SerializeFromFileWithOptions(filename, options,
-                                                      &perf_data) &&
+  return SerializeFromFileWithOptions(filename, options, &perf_data) &&
          perf_data.SerializeToString(output_string);
 }
 
