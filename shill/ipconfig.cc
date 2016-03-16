@@ -103,6 +103,8 @@ void IPConfig::Init() {
                             &properties_.delegated_prefix_length);
   store_.RegisterConstUint32(kLeaseDurationSecondsProperty,
                              &properties_.lease_duration_seconds);
+  store_.RegisterConstByteArray(kiSNSOptionDataProperty,
+                                &properties_.isns_option_data);
   time_ = Time::GetInstance();
   current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
   SLOG(this, 2) << __func__ << " device: " << device_name();

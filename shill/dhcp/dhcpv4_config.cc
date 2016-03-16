@@ -59,6 +59,7 @@ const char DHCPv4Config::kConfigurationKeyDomainName[] = "DomainName";
 const char DHCPv4Config::kConfigurationKeyDomainSearch[] = "DomainSearch";
 const char DHCPv4Config::kConfigurationKeyHostname[] = "Hostname";
 const char DHCPv4Config::kConfigurationKeyIPAddress[] = "IPAddress";
+const char DHCPv4Config::kConfigurationKeyiSNSOptionData[] = "iSNSOptionData";
 const char DHCPv4Config::kConfigurationKeyLeaseTime[] = "DHCPLeaseTime";
 const char DHCPv4Config::kConfigurationKeyMTU[] = "InterfaceMTU";
 const char DHCPv4Config::kConfigurationKeyRouters[] = "Routers";
@@ -401,6 +402,8 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       properties->web_proxy_auto_discovery = value.Get<string>();
     } else if (key == kConfigurationKeyLeaseTime) {
       properties->lease_duration_seconds = value.Get<uint32_t>();
+    } else if (key == kConfigurationKeyiSNSOptionData) {
+      properties->isns_option_data = value.Get<ByteArray>();
     } else {
       SLOG(nullptr, 2) << "Key ignored.";
     }

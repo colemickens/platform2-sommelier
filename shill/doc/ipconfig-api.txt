@@ -102,3 +102,12 @@ Properties	string Address [readonly]
 
 			The Web Proxy Auto-Discovery URL for this network
 			as reported over DHCP.
+
+		array{uint8} iSNSOptionData [readonly]
+
+			Server-provided value for the DHCPv4 option 83. This
+			option allows Internet Storage Name Service (iSNS)
+			clients to discover the location of the iSNS server
+			automatically. The property is stored as a byte
+			array, leaving the burden to iSNS clients to parse it
+			according to RFC4174.

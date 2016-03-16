@@ -89,6 +89,7 @@ class DHCPv4Config : public DHCPConfig {
   static const char kConfigurationKeyDomainSearch[];
   static const char kConfigurationKeyHostname[];
   static const char kConfigurationKeyIPAddress[];
+  static const char kConfigurationKeyiSNSOptionData[];
   static const char kConfigurationKeyLeaseTime[];
   static const char kConfigurationKeyMTU[];
   static const char kConfigurationKeyRouters[];

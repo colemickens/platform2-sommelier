@@ -322,6 +322,9 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
   conf.SetString(DHCPv4Config::kConfigurationKeyHostname, "hostname");
   conf.SetString("UnknownKey", "UnknownValue");
 
+  ByteArray isns_data{0x1, 0x2, 0x3, 0x4};
+  conf.SetUint8s(DHCPv4Config::kConfigurationKeyiSNSOptionData, isns_data);
+
   EXPECT_CALL(metrics_,
               SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 600));
   IPConfig::Properties properties;
@@ -339,6 +342,8 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
   EXPECT_EQ("bar.com", properties.domain_search[1]);
   EXPECT_EQ(600, properties.mtu);
   EXPECT_EQ("hostname", properties.accepted_hostname);
+  EXPECT_EQ(isns_data.size(), properties.isns_option_data.size());
+  EXPECT_FALSE(memcmp(&properties.isns_option_data[0], &isns_data[0], isns_data.size()));
 }
 
 TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {

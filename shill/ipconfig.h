@@ -87,6 +87,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::vector<Route> routes;
     // Vendor encapsulated option string gained from DHCP.
     ByteArray vendor_encapsulated_options;
+    // iSNS option data gained from DHCP.
+    ByteArray isns_option_data;
     // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
     std::string web_proxy_auto_discovery;
     // Length of time the lease was granted.
