@@ -17,21 +17,45 @@ namespace system {
 
 namespace {
 
-const char kWakeupAngleIsSupportedPath[] =
-    "/lib/udev/rules.d/99-cros-ec-accel.rules";
+const base::FilePath k318SysfsPath("/sys/class/chromeos/cros_ec/kb_wake_angle");
+const base::FilePath k314IioLinkPath("/dev/cros-ec-accel/0");
+const base::FilePath k314IioSysfsPath("/sys/bus/iio/devices");
+const base::FilePath k314AccelNodeName("in_angl_offset");
 
 }  // namespace
 
-EcWakeupHelper::EcWakeupHelper() :
-    supported_(base::PathExists(base::FilePath(kWakeupAngleIsSupportedPath))),
-    cached_wake_angle_(-1) {}
+EcWakeupHelper::EcWakeupHelper()
+    : supported_(false),
+      cached_wake_angle_(-1) {
+  if (base::PathExists(k318SysfsPath)) {  // Kernel 3.18 and later
+    sysfs_node_ = k318SysfsPath;
+    supported_ = true;
+    VLOG(1) << "Accessing EC wake angle through 3.18+ sysfs node: "
+            << sysfs_node_.value();
+  } else if (base::IsLink(k314IioLinkPath)) {  // Kernel 3.14
+    base::FilePath iioDevPath;
+    if (!base::ReadSymbolicLink(k314IioLinkPath, &iioDevPath)) {
+      LOG(ERROR) << "Cannot read link target of " << k314IioLinkPath.value();
+      return;
+    }
+    iioDevPath = iioDevPath.BaseName();
+    sysfs_node_ = k314IioSysfsPath.Append(iioDevPath).Append(k314AccelNodeName);
+    if (!base::PathExists(sysfs_node_)) {
+      LOG(ERROR) << "Cannot find EC wake angle node: " << sysfs_node_.value();
+      return;
+    }
+    supported_ = true;
+    VLOG(1) << "Accessing EC wake angle through 3.14 sysfs node: "
+            << sysfs_node_.value();
+  } else {
+    VLOG(1) << "This device does not support EC wake angle control.";
+  }
+}
 
 EcWakeupHelper::~EcWakeupHelper() {}
 
 bool EcWakeupHelper::IsSupported() {
-  // TODO(jwerner): Temporarily disabled until we have clarified the EC
-  // communication interface (see http://crbug.com/594037 for details).
-  return false;
+  return supported_;
 }
 
 bool EcWakeupHelper::AllowWakeupAsTablet(bool enabled) {
@@ -41,12 +65,11 @@ bool EcWakeupHelper::AllowWakeupAsTablet(bool enabled) {
     VLOG(1) << "EC wake angle is already set to " << str;
     return true;
   }
-  int ret = util::RunSetuidHelper("wake_angle", "--wake_angle=" + str, true);
-  if (ret != 0) {
-    LOG(ERROR) << "Failed to set EC wake angle to " << str
-               << ", ectool error code: " << ret;
+  if (base::WriteFile(sysfs_node_, str.c_str(), str.size()) < 0) {
+    PLOG(ERROR) << "Failed to set EC wake angle to " << str;
     return false;
   }
+  LOG(INFO) << "EC wake angle set to " << str;
   cached_wake_angle_ = new_wake_angle;
   return true;
 }

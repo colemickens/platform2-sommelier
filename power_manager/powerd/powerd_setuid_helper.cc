@@ -74,7 +74,7 @@ void SetVTSwitchingAllowed(bool allowed) {
 int main(int argc, char* argv[]) {
   DEFINE_string(action, "", "Action to perform.  Must be one of \"lock_vt\", "
                 "\"mosys_eventlog\", \"reboot\", \"shut_down\", \"suspend\", "
-                "\"unlock_vt\" and \"wake_angle\".");
+                "and \"unlock_vt\".");
   DEFINE_string(mosys_eventlog_code, "", "Hexadecimal byte, e.g. \"0xa7\", "
                 "describing the event being logged.");
   DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
@@ -89,8 +89,6 @@ int main(int argc, char* argv[]) {
               "Should --suspend_wakeup_count be honored?");
   DEFINE_bool(suspend_to_idle, false,
               "Should the system suspend to idle (freeze)?");
-  DEFINE_int32(wake_angle, -1, "The minimum lid angle above which wakeups will "
-               "be inhibited, measured in degrees between 0 and 360.");
   brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
   if (FLAGS_action == "lock_vt") {
@@ -131,10 +129,6 @@ int main(int argc, char* argv[]) {
                wakeup_flag.empty() ? NULL : wakeup_flag.c_str(), NULL);
   } else if (FLAGS_action == "unlock_vt") {
     SetVTSwitchingAllowed(true);
-  } else if (FLAGS_action == "wake_angle") {
-    CHECK(FLAGS_wake_angle >= 0 && FLAGS_wake_angle <= 360) << "Invalid angle.";
-    RunCommand("ectool", "motionsense", "kb_wake",
-               base::IntToString(FLAGS_wake_angle).c_str(), NULL);
   } else {
     LOG(ERROR) << "Unknown action \"" << FLAGS_action << "\"";
     return 1;
