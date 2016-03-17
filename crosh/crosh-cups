@@ -7,33 +7,51 @@
 # this command is just a stopgap measure and should be dropped once
 # a proper UI is formed. See http://crbug.com/593139
 
-USAGE_cups='[--start | --stop | --status | --restart]'
+USAGE_cups='[--start | --stop | --status | --restart | --reset]'
 HELP_cups='
-  Start, stop, or check the status of the CUPS daemon. For initial development
-  only; will be removed in a future release.
+  Start, stop, check the status of, restart, or reset the CUPS daemon. --reset
+  will stop cupsd (if running) and remove any local state (e.g., saved
+  printers, jobs, etc.). For initial development only; will be removed in a
+  future release.
 '
+
+cups_initctl() {
+  sudo /sbin/initctl $1 cupsd
+}
+
+cups_reset() {
+  # Stop the daemon first; ignore errors in case it's already stopped.
+  cups_initctl "stop" > /dev/null 2>&1
+  echo "Clearing CUPS daemon state"
+  sudo rm -rf \
+      /var/cache/cups/ \
+      /run/cups/ \
+      /var/spool/cups/
+}
+
 cmd_cups() {
   if [ $# -ne 1 ]; then
     help "incorrect number of arguments: $@"
     return 1
   fi
-  local cmd="status"
   case "$1" in
     "--start")
-      cmd="start"
+      cups_initctl "start"
       ;;
     "--stop")
-      cmd="stop"
+      cups_initctl "stop"
       ;;
     "--status")
-      cmd="status"
+      cups_initctl "status"
       ;;
     "--restart")
-      cmd="restart"
+      cups_initctl "restart"
+      ;;
+    "--reset")
+      cups_reset
       ;;
     *)
       help "unknown option: $1"
       return 1
   esac
-  sudo /sbin/initctl ${cmd} cupsd
 }
