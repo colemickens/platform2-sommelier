@@ -1083,7 +1083,7 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   // can be zero.  Avoid division by zero.
   if (cpu_use_ms > 0) {
     // Send the crash frequency since update in number of crashes per CPU year.
-    SendSample("Logging.KernelCrashesPerCpuYear",
+    SendSample("Platform.KernelCrashesPerCpuYear",
                crashes_count * kSecondsPerDay * 365 * 1000 / cpu_use_ms,
                1,
                1000 * 1000,     // about one crash every 30s of CPU time
@@ -1098,7 +1098,7 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
                8 * 1000 * 1000,            // ... or a lot (about 90 days)
                100);
     // Same as above, but per year of active time.
-    SendSample("Logging.KernelCrashesPerActiveYear",
+    SendSample("Platform.KernelCrashesPerActiveYear",
                crashes_count * kSecondsPerDay * 365 / active_use_seconds,
                1,
                1000 * 1000,     // about one crash every 30s of active time
