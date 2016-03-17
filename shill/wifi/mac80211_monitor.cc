@@ -126,8 +126,9 @@ void Mac80211Monitor::WakeQueuesIfNeeded() {
   }
 
   string queue_state_string;
-  if (!base::ReadFileToString(queue_state_file_path_, &queue_state_string,
-                              kMaxQueueStateSizeBytes)) {
+  if (!base::ReadFileToStringWithMaxSize(queue_state_file_path_,
+                                         &queue_state_string,
+                                         kMaxQueueStateSizeBytes)) {
     if (have_ever_read_queue_state_file_) {
       LOG(WARNING) << __func__ << ": incomplete read on "
                    << queue_state_file_path_.value();

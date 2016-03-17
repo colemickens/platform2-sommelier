@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <limits>
 #include <string>
 #include <vector>
 
