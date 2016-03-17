@@ -347,20 +347,17 @@ bool ProcessImpl::Kill(int signal, int timeout) {
     return false;
   }
   if (kill(pid_, signal) < 0) {
-    int saved_errno = errno;
-    LOG(ERROR) << "Unable to send signal to " << pid_ << " error "
-               << saved_errno;
+    PLOG(ERROR) << "Unable to send signal to " << pid_;
     return false;
   }
   base::TimeTicks start_signal = base::TimeTicks::Now();
   do {
     int status = 0;
     pid_t w = waitpid(pid_, &status, WNOHANG);
-    int saved_errno = errno;
     if (w < 0) {
-      if (saved_errno == ECHILD)
+      if (errno == ECHILD)
         return true;
-      LOG(ERROR) << "Waitpid returned " << w << ", errno " << saved_errno;
+      PLOG(ERROR) << "Waitpid returned " << w;
       return false;
     }
     if (w > 0) {
