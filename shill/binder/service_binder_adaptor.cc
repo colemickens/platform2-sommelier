@@ -120,6 +120,24 @@ Status ServiceBinderAdaptor::GetError(int32_t* _aidl_return) {
   return Status::ok();
 }
 
+Status ServiceBinderAdaptor::GetTethering(int32_t* _aidl_return) {
+  // STUB IMPLEMENTATION.
+  // TODO(samueltan): replace this with proper implementation.
+  return Status::ok();
+}
+
+Status ServiceBinderAdaptor::GetType(int32_t* _aidl_return) {
+  // STUB IMPLEMENTATION.
+  // TODO(samueltan): replace this with proper implementation.
+  return Status::ok();
+}
+
+Status ServiceBinderAdaptor::GetPhysicalTechnology(int32_t* _aidl_return) {
+  // STUB IMPLEMENTATION.
+  // TODO(samueltan): replace this with proper implementation.
+  return Status::ok();
+}
+
 Status ServiceBinderAdaptor::RegisterPropertyChangedSignalHandler(
     const sp<IPropertyChangedCallback>& callback) {
   AddPropertyChangedSignalHandler(callback);

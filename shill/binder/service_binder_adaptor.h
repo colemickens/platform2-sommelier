@@ -78,6 +78,9 @@ class ServiceBinderAdaptor
   android::binder::Status GetState(int32_t* _aidl_return);
   android::binder::Status GetStrength(int8_t* _aidl_return);
   android::binder::Status GetError(int32_t* _aidl_return);
+  android::binder::Status GetTethering(int32_t* _aidl_return);
+  android::binder::Status GetType(int32_t* _aidl_return);
+  android::binder::Status GetPhysicalTechnology(int32_t* _aidl_return);
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&

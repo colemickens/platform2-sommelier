@@ -43,7 +43,10 @@ interface IDevice {
    * (e.g. it could be in the process of being connected, or an
    * error state).
    *
-   * @return Binder reference to the selected service
+   * TODO(samueltan): make return type IService when b/27795428 has
+   * been fixed.
+   *
+   * @return IService Binder reference to the selected service
    */
   @nullable IBinder GetSelectedService();
 

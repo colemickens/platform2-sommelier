@@ -71,6 +71,42 @@ interface IService {
   const int ERROR_PPP_AUTH_FAILED = 17;
 
   /**
+   * Tethering values that can returned by GetTethering().
+   *
+   * Note: keep in sync with Service Tethering property values in
+   * system_api/dbus/shill/dbus-constants.h.
+   */
+  // Tethering is not detected.
+  const int TETHERING_NOT_DETECTED = 0;
+  // Something in the network scan provides circumstantial evidence that this
+  // service is tethered.
+  const int TETHERING_SUSPECTED = 1;
+  // Some definitive evidence has been discovered that indicates either this
+  // service is tethered or the server is overtly pretending to be tethered.
+  const int TETHERING_CONFIRMED = 2;
+
+  /**
+   * Types that can returned by GetType().
+   *
+   * Note: keep in sync with Flimflam type options in
+   * system_api/dbus/shill/dbus-constants.h.
+   */
+  // 802.3 wired Ethernet
+  const int TYPE_ETHERNET = 0;
+  // IEEE 802.11
+  const int TYPE_WIFI = 1;
+  // IEEE 802.16
+  const int TYPE_WIMAX = 2;
+  // Bluetooth PAN
+  const int TYPE_BLUETOOTH = 3;
+  // 3G Cellular
+  const int TYPE_CELLULAR = 4;
+  // Virtual Private Network
+  const int TYPE_VPN = 5;
+  // Point-to-Point Protocol over Ethernet
+  const int TYPE_PPPOE = 6;
+
+  /**
    * Initiate a connection for the specified service.
    *
    * For Ethernet devices, this method can only be used
@@ -134,6 +170,48 @@ interface IService {
    * @return The signal strength of the service
    */
   int GetError();
+
+  /**
+   * Get an integer representing an estimate of whether this service is
+   * providing internet connectivity over a mobile network backhaul.
+   *
+   * See the TETHERING_* constants defined in this AIDL file
+   * for possible return types.
+   *
+   * This property is only visible in service types which can support tethering.
+   * Currently, only Ethernet and WiFi services support this property directly.
+   * VPN services make this property visible if the service they are using for
+   * connectivity does (i.e. if VPN connectivity is gained via Ethernet or
+   * WiFi).
+   *
+   * @return An integer representing an estimate of of whether this service is
+   * providing internet connectivity over a mobile network backhaul
+   */
+  int GetTethering();
+
+  /**
+   * Get the service type.
+   *
+   * See the TYPE_* constants defined in this AIDL file
+   * for possible return types.
+   *
+   * This information should only be used to determine advanced properties or
+   * to show the correct icon to the user.
+   *
+   * @return The service type
+   */
+  int GetType();
+
+  /**
+   * The service type of the underlying physical service used by a VPN service.
+   * This property is only present iff the service type is TYPE_VPN.
+   *
+   * See the TYPE_* constants defined in this AIDL file
+   * for possible return types.
+   *
+   * @return The service type of the underlying physical service
+   */
+  int GetPhysicalTechnology();
 
   /**
    * Register a callback interface whose OnPropertyChanged()

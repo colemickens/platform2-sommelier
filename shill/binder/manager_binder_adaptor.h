@@ -83,10 +83,13 @@ class ManagerBinderAdaptor
                                            const std::string& interface_name);
   android::binder::Status ConfigureService(
       const android::os::PersistableBundle& properties,
-      android::sp<android::IBinder>* _aidl_return);
+      android::sp<android::system::connectivity::shill::IService>*
+          _aidl_return);
   android::binder::Status RequestScan(int32_t type);
   android::binder::Status GetDevices(
       std::vector<android::sp<android::IBinder>>* _aidl_return);
+  android::binder::Status GetDefaultService(
+      android::sp<android::IBinder>* _aidl_return);
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&

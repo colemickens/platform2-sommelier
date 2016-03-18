@@ -29,6 +29,7 @@ using android::IBinder;
 using android::sp;
 using android::String8;
 using android::system::connectivity::shill::IPropertyChangedCallback;
+using android::system::connectivity::shill::IService;
 using std::string;
 using std::vector;
 
@@ -123,7 +124,7 @@ Status ManagerBinderAdaptor::ReleaseInterface(
 
 Status ManagerBinderAdaptor::ConfigureService(
     const android::os::PersistableBundle& properties,
-    sp<IBinder>* _aidl_return) {
+    sp<IService>* _aidl_return) {
   // STUB IMPLEMENTATION.
   // TODO(samueltan): replace this with proper implementation.
   return Status::ok();
@@ -136,6 +137,12 @@ Status ManagerBinderAdaptor::RequestScan(int32_t type) {
 }
 
 Status ManagerBinderAdaptor::GetDevices(vector<sp<IBinder>>* _aidl_return) {
+  // STUB IMPLEMENTATION.
+  // TODO(samueltan): replace this with proper implementation.
+  return Status::ok();
+}
+
+Status ManagerBinderAdaptor::GetDefaultService(sp<IBinder>* _aidl_return) {
   // STUB IMPLEMENTATION.
   // TODO(samueltan): replace this with proper implementation.
   return Status::ok();

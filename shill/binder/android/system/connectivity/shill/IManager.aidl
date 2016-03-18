@@ -19,6 +19,7 @@ package android.system.connectivity.shill;
 import android.os.PersistableBundle;
 
 import android.system.connectivity.shill.IPropertyChangedCallback;
+import android.system.connectivity.shill.IService;
 
 interface IManager {
   /**
@@ -92,9 +93,9 @@ interface IManager {
    * for a list of properties and constraints on property values.
    *
    * @param properties Properties to configure the service with
-   * @return Binder reference to the service updated or created
+   * @return IService Binder reference to the service updated or created
    */
-  IBinder ConfigureService(in PersistableBundle properties);
+  IService ConfigureService(in PersistableBundle properties);
 
   /**
    * Request a scan for the specified technology |type|. If
@@ -112,9 +113,20 @@ interface IManager {
    * Get a list of device Binder references of all
    * devices managed by Manager.
    *
-   * @return List of device Binder references
+   * @return List of IDevice Binder references to devices managed by Manager
    */
   List<IBinder> GetDevices();
+
+  /**
+   * Get the current connected service with the default route.
+   *
+   * TODO(samueltan): make return type IService when b/27795428 has
+   * been fixed.
+   *
+   * @return IService Binder reference to the current connected service
+   * with the default route, if it exists, null otherwise.
+   */
+  @nullable IBinder GetDefaultService();
 
   /**
    * Register a callback interface whose OnPropertyChanged()
