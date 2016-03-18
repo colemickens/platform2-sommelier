@@ -14,6 +14,7 @@
 
 #include <brillo/value_conversion.h>
 
+#include <algorithm>
 #include <limits>
 #include <memory>
 #include <string>

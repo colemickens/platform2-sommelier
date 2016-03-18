@@ -1,6 +1,6 @@
 {
   'includes': [
-    'libbrillo-369476.gypi',
+    'libbrillo-381699.gypi',
     'libpolicy.gypi',
   ]
 }
