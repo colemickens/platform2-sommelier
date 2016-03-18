@@ -776,7 +776,7 @@ TEST_F(ServiceTest, Unload) {
 TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
-  EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+  EXPECT_EQ(Service::kFailureNone, service_->failure());
   const string unknown_error(
       Service::ConnectFailureToString(Service::kFailureUnknown));
   EXPECT_EQ(unknown_error, service_->error());

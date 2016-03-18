@@ -1432,11 +1432,13 @@ void Manager::UpdateService(const ServiceRefPtr& to_update) {
     is_interesting_state_change = to_update->IsActive(nullptr);
   }
 
+  bool has_failure = to_update->failure() != Service::kFailureNone;
   string log_message = StringPrintf(
-      "Service %s updated; state: %s failure %s",
+      "Service %s updated; state: %s%s%s",
       to_update->unique_name().c_str(),
       Service::ConnectStateToString(to_update->state()),
-      Service::ConnectFailureToString(to_update->failure()));
+      has_failure ? " " : "",
+      has_failure ? Service::ConnectFailureToString(to_update->failure()) : "");
   if (is_interesting_state_change) {
     LOG(INFO) << log_message;
   } else {

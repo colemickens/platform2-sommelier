@@ -1664,10 +1664,6 @@ void Metrics::SendServiceFailure(const Service& service) {
   // they will need to be mapped as well. Otherwise, the compiler will
   // complain.
   switch (service.failure()) {
-    case Service::kFailureUnknown:
-    case Service::kFailureMax:
-      error = kNetworkServiceErrorUnknown;
-      break;
     case Service::kFailureAAA:
       error = kNetworkServiceErrorAAA;
       break;
@@ -1727,6 +1723,13 @@ void Metrics::SendServiceFailure(const Service& service) {
       break;
     case Service::kFailurePinMissing:
       error = kNetworkServiceErrorPinMissing;
+      break;
+    case Service::kFailureNone:
+      LOG(WARNING) << "Reporting service failure with no failure";
+      /* FALLTHROUGH */
+    case Service::kFailureUnknown:
+    case Service::kFailureMax:
+      error = kNetworkServiceErrorUnknown;
       break;
   }
 

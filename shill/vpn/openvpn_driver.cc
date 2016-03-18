@@ -185,7 +185,7 @@ OpenVPNDriver::~OpenVPNDriver() {
 
 void OpenVPNDriver::IdleService() {
   Cleanup(Service::kStateIdle,
-          Service::kFailureUnknown,
+          Service::kFailureNone,
           Service::kErrorDetailsNone);
 }
 

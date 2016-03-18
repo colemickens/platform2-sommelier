@@ -101,7 +101,7 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface* control,
 }
 
 ThirdPartyVpnDriver::~ThirdPartyVpnDriver() {
-  Cleanup(Service::kStateIdle, Service::kFailureUnknown,
+  Cleanup(Service::kStateIdle, Service::kFailureNone,
           Service::kErrorDetailsNone);
 }
 
@@ -454,9 +454,11 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
   tunnel_interface_.clear();
   if (service_) {
     if (state == Service::kStateFailure) {
+      CHECK_NE(failure, Service::kFailureNone);
       service_->SetErrorDetails(error_details);
       service_->SetFailure(failure);
     } else {
+      CHECK_EQ(failure, Service::kFailureNone);
       service_->SetState(state);
     }
     service_ = nullptr;
@@ -534,7 +536,7 @@ void ThirdPartyVpnDriver::Disconnect() {
   SLOG(this, 2) << __func__;
   CHECK(adaptor_interface_);
   if (active_client_ == this) {
-    Cleanup(Service::kStateIdle, Service::kFailureUnknown,
+    Cleanup(Service::kStateIdle, Service::kFailureNone,
             Service::kErrorDetailsNone);
   }
 }
