@@ -43,12 +43,9 @@ interface IDevice {
    * (e.g. it could be in the process of being connected, or an
    * error state).
    *
-   * TODO(samueltan): make the return type @nullable when support for
-   * nullable Binders lands.
-   *
    * @return Binder reference to the selected service
    */
-  IBinder GetSelectedService();
+  @nullable IBinder GetSelectedService();
 
   /**
    * Register a callback interface whose OnPropertyChanged()
