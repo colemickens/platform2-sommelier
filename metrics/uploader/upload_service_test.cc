@@ -117,7 +117,7 @@ TEST_F(UploadServiceTest, DiscardLogsAfterTooManyFailedUpload) {
     upload_service_.UploadEvent();
   }
 
-  EXPECT_TRUE(upload_service_.staged_log_);
+  EXPECT_TRUE(upload_service_.staged_log_.get());
   upload_service_.UploadEvent();
   EXPECT_FALSE(upload_service_.staged_log_);
 }
@@ -152,7 +152,7 @@ TEST_F(UploadServiceTest, CanSendMultipleTimes) {
 TEST_F(UploadServiceTest, LogEmptyAfterUpload) {
   upload_service_.AddSample(*Crash("user"));
 
-  EXPECT_TRUE(upload_service_.current_log_);
+  EXPECT_TRUE(upload_service_.current_log_.get());
 
   upload_service_.UploadEvent();
   EXPECT_FALSE(upload_service_.current_log_);

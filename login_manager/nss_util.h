@@ -59,9 +59,7 @@ class NssUtil {
   // Returns true if |blob| is a validly encoded NSS SubjectPublicKeyInfo.
   virtual bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) = 0;
 
-  virtual bool Verify(const uint8_t* algorithm,
-                      int algorithm_len,
-                      const uint8_t* signature,
+  virtual bool Verify(const uint8_t* signature,
                       int signature_len,
                       const uint8_t* data,
                       int data_len,

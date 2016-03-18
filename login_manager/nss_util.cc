@@ -71,9 +71,7 @@ class NssUtilImpl : public NssUtil {
 
   bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) override;
 
-  bool Verify(const uint8_t* algorithm,
-              int algorithm_len,
-              const uint8_t* signature,
+  bool Verify(const uint8_t* signature,
               int signature_len,
               const uint8_t* data,
               int data_len,
@@ -241,9 +239,7 @@ bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8_t>& blob) {
 
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Verify(const uint8_t* algorithm,
-                         int algorithm_len,
-                         const uint8_t* signature,
+bool NssUtilImpl::Verify(const uint8_t* signature,
                          int signature_len,
                          const uint8_t* data,
                          int data_len,
@@ -251,8 +247,7 @@ bool NssUtilImpl::Verify(const uint8_t* algorithm,
                          int public_key_len) {
   crypto::SignatureVerifier verifier_;
 
-  if (!verifier_.VerifyInit(algorithm,
-                            algorithm_len,
+  if (!verifier_.VerifyInit(crypto::SignatureVerifier::RSA_PKCS1_SHA1,
                             signature,
                             signature_len,
                             public_key,

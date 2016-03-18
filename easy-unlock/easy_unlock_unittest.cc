@@ -154,7 +154,7 @@ class EasyUnlockTest : public ::testing::Test {
 
   void VerifyGenerateEcP256KeyPairResponse(
       scoped_ptr<dbus::Response> response) {
-    ASSERT_TRUE(response);
+    ASSERT_TRUE(response.get());
 
     dbus::MessageReader reader(response.get());
 
@@ -172,7 +172,7 @@ class EasyUnlockTest : public ::testing::Test {
 
   void VerifyDataResponse(const std::string& expected_content,
                           scoped_ptr<dbus::Response> response) {
-    ASSERT_TRUE(response);
+    ASSERT_TRUE(response.get());
 
     dbus::MessageReader reader(response.get());
 
@@ -185,7 +185,7 @@ class EasyUnlockTest : public ::testing::Test {
   }
 
   void VerifyNoDataResponse(scoped_ptr<dbus::Response> response) {
-    ASSERT_TRUE(response);
+    ASSERT_TRUE(response.get());
     dbus::MessageReader reader(response.get());
     const uint8_t* bytes = nullptr;
     size_t length = 0;

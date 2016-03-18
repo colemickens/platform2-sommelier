@@ -89,8 +89,6 @@ class PolicyKey {
   virtual const std::vector<uint8_t>& public_key_der() const { return key_; }
 
  private:
-  static const uint8_t kAlgorithm[];
-
   const base::FilePath key_file_;
   bool have_checked_disk_;
   bool have_replaced_;

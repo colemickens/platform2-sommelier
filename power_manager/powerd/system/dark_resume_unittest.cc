@@ -474,7 +474,7 @@ TYPED_TEST(DarkResumeTest, InterruptedDarkResume) {
 
   // This doesn't apply to legacy pathways, since there are no dark resumes
   // for other reasons.
-  if (base::is_same<TypeParam, LegacySystem>::value)
+  if (std::is_same<TypeParam, LegacySystem>::value)
     return;
 
   // We'll dark resume, but it will be for another reason, so the callback

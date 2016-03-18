@@ -33,7 +33,7 @@ class SerializationUtilsTest : public testing::Test {
     ASSERT_EQ('\0', serialized[serialized.length() - 1]);
     scoped_ptr<MetricSample> deserialized =
         SerializationUtils::ParseSample(serialized);
-    ASSERT_TRUE(deserialized);
+    ASSERT_TRUE(deserialized.get());
     EXPECT_TRUE(sample->IsEqual(*deserialized.get()));
   }
 
