@@ -2123,7 +2123,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
                         Metrics::kMetricPortalAttemptsMin,
                         Metrics::kMetricPortalAttemptsMax,
                         Metrics::kMetricPortalAttemptsNumBuckets));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
@@ -2179,7 +2179,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
                         Metrics::kMetricPortalAttemptsMin,
                         Metrics::kMetricPortalAttemptsMax,
                         Metrics::kMetricPortalAttemptsNumBuckets));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
@@ -2221,7 +2221,7 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
       .WillRepeatedly(Return(Service::kStatePortal));
   EXPECT_FALSE(RequestPortalDetection());
 
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(RequestPortalDetection());
@@ -2293,7 +2293,7 @@ TEST_F(DevicePortalDetectionTest, NotPortal) {
 TEST_F(DevicePortalDetectionTest, NotDefault) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(false));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   SetServiceConnectedState(Service::kStatePortal);
@@ -2303,7 +2303,7 @@ TEST_F(DevicePortalDetectionTest, NotDefault) {
 TEST_F(DevicePortalDetectionTest, PortalIntervalIsZero) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, GetPortalCheckInterval())
       .WillOnce(Return(0));
@@ -2315,7 +2315,7 @@ TEST_F(DevicePortalDetectionTest, PortalIntervalIsZero) {
 TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(true));
   const int kPortalDetectionInterval = 10;
   EXPECT_CALL(manager_, GetPortalCheckInterval())
@@ -2360,7 +2360,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
@@ -2381,7 +2381,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusTimeout));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
@@ -2401,7 +2401,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
-  EXPECT_CALL(*connection_.get(), is_default())
+  EXPECT_CALL(*connection_.get(), IsDefault())
       .WillOnce(Return(false));
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));

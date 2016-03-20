@@ -98,7 +98,7 @@ class Connection : public base::RefCounted<Connection> {
 
   // Sets the current connection as "default", i.e., routes and DNS entries
   // should be used by all system components that don't select explicitly.
-  virtual bool is_default() const { return is_default_; }
+  virtual bool IsDefault() const { return is_default_; }
   virtual void SetIsDefault(bool is_default);
 
   // Update and apply the new DNS servers setting to this connection.

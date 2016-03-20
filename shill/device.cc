@@ -1269,7 +1269,7 @@ bool Device::RequestPortalDetection() {
     return false;
   }
 
-  if (!connection_->is_default()) {
+  if (!connection_->IsDefault()) {
     SLOG(this, 2) << FriendlyName()
                   << ": Service is not the default connection.  "
                   << "Don't start check.";
@@ -1628,7 +1628,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
     return;
   }
 
-  if (state == Service::kStatePortal && connection_->is_default() &&
+  if (state == Service::kStatePortal && connection_->IsDefault() &&
       manager_->GetPortalCheckInterval() != 0) {
     CHECK(portal_detector_.get());
     if (!portal_detector_->StartAfterDelay(

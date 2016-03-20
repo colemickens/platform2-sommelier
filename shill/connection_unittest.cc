@@ -276,7 +276,7 @@ MATCHER_P(IsLinkRouteTo, dst, "") {
 TEST_F(ConnectionTest, InitState) {
   EXPECT_EQ(kTestDeviceInterfaceIndex0, connection_->interface_index_);
   EXPECT_EQ(kTestDeviceName0, connection_->interface_name_);
-  EXPECT_FALSE(connection_->is_default());
+  EXPECT_FALSE(connection_->IsDefault());
   EXPECT_FALSE(connection_->routing_request_count_);
 }
 
@@ -348,7 +348,7 @@ TEST_F(ConnectionTest, AddConfig) {
       .WillOnce(Return(true));
   connection_->SetIsDefault(true);
   Mock::VerifyAndClearExpectations(&routing_table_);
-  EXPECT_TRUE(connection_->is_default());
+  EXPECT_TRUE(connection_->IsDefault());
 
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(kTestDeviceInterfaceIndex0,
@@ -357,7 +357,7 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_CALL(routing_table_, FlushCache())
       .WillOnce(Return(true));
   connection_->SetIsDefault(false);
-  EXPECT_FALSE(connection_->is_default());
+  EXPECT_FALSE(connection_->IsDefault());
 }
 
 TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
@@ -460,14 +460,14 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection->SetIsDefault(true);
   Mock::VerifyAndClearExpectations(&routing_table_);
-  EXPECT_TRUE(connection->is_default());
+  EXPECT_TRUE(connection->IsDefault());
 
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                GetNonDefaultMetricBase() +
                                                    kTestDeviceInterfaceIndex0));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection->SetIsDefault(false);
-  EXPECT_FALSE(connection->is_default());
+  EXPECT_FALSE(connection->IsDefault());
   AddDestructorExpectations();
   EXPECT_CALL(*firewall_proxy, RemoveVpnSetup());
 }
