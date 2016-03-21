@@ -222,7 +222,7 @@ void ThirdPartyVpnDriver::ProcessIPArray(
 
     if (!string_array.empty()) {
       target->swap(string_array);
-    } else {
+    } else if (mandatory) {
       error_message->append(key).append(" has no valid values or is empty;");
     }
   } else if (mandatory) {
@@ -337,7 +337,7 @@ void ThirdPartyVpnDriver::SetParameters(
                            kNonIPDelimiter, &ip_properties_.domain_search,
                            false, error_message);
   ProcessIPArray(parameters, kDnsServersParameterThirdPartyVpn, kIPDelimiter,
-                 &ip_properties_.dns_servers, true, error_message,
+                 &ip_properties_.dns_servers, false, error_message,
                  warning_message);
 
   known_cidrs_.clear();
