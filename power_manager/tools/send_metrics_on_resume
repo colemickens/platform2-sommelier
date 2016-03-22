@@ -45,7 +45,7 @@ log_metric() {
 #
 # Prints the name of the temp file created.
 split_recent_messages() {
-  local suspend_start="Going to suspend-to-RAM state"
+  local suspend_start="Going to suspend-to-"
   local tempdir=$(mktemp --tmpdir -d send_metrics_on_resume.XXXXXXXXXX)
   local retries=25
 
@@ -178,7 +178,8 @@ get_start_resume_time() {
     "Suspended for", \
     "Resume caused by" \
     "post sleep, preparing to return" \
-    "Enabling non-boot CPUs ..."
+    "Enabling non-boot CPUs ..." \
+    "PM: resume from suspend-to-idle"
 }
 
 # Find a message related to the end of resume and parse out its timestamp. It
@@ -198,7 +199,8 @@ get_cpu_ready_time() {
   [ -n "${1}" ] || return
   get_timestamp "${1}" \
     'CPU[0-9]+ is up' \
-    "Booted secondary processor"
+    "Booted secondary processor" \
+    "PM: resume from suspend-to-idle"
 }
 
 # Sends to UMA the time it took to suspend and resume:
