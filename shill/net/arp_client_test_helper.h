@@ -19,10 +19,10 @@
 
 #include <base/macros.h>
 
-#include "shill/arp_packet.h"
-#include "shill/mock_arp_client.h"
+#include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
+#include "shill/net/mock_arp_client.h"
 
 namespace shill {
 

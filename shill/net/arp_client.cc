@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "shill/arp_client.h"
+#include "shill/net/arp_client.h"
 
 #include <linux/if_packet.h>
 #include <net/ethernet.h>
@@ -22,8 +22,8 @@
 #include <netinet/in.h>
 #include <string.h>
 
-#include "shill/arp_packet.h"
 #include "shill/logging.h"
+#include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/sockets.h"
 

@@ -20,11 +20,11 @@
 
 #include <base/bind.h>
 
-#include "shill/arp_client.h"
-#include "shill/arp_packet.h"
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/net/arp_client.h"
+#include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
 
 using base::Bind;

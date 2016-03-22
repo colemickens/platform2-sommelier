@@ -23,13 +23,13 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 
-#include "shill/arp_client.h"
-#include "shill/arp_packet.h"
 #include "shill/connection.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/net/arp_client.h"
+#include "shill/net/arp_packet.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/shill_time.h"
 

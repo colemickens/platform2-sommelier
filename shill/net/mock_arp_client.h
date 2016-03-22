@@ -17,11 +17,11 @@
 #ifndef SHILL_MOCK_ARP_CLIENT_H_
 #define SHILL_MOCK_ARP_CLIENT_H_
 
-#include "shill/arp_client.h"
+#include "shill/net/arp_client.h"
 
 #include <gmock/gmock.h>
 
-#include "shill/arp_packet.h"
+#include "shill/net/arp_packet.h"
 
 namespace shill {
 

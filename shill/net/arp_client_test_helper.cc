@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "shill/arp_client_test_helper.h"
+#include "shill/net/arp_client_test_helper.h"
 
 #include <gtest/gtest.h>
 

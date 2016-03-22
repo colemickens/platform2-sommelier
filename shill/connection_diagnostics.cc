@@ -19,8 +19,6 @@
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/arp_client.h"
-#include "shill/arp_packet.h"
 #include "shill/connection.h"
 #include "shill/connectivity_trial.h"
 #include "shill/device_info.h"
@@ -33,6 +31,8 @@
 #include "shill/icmp_session_factory.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/net/arp_client.h"
+#include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"

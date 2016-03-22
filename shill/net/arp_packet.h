@@ -19,13 +19,14 @@
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
+#include "shill/net/shill_export.h"
 
 namespace shill {
 
 // ArpPacket encapsulates the task of creating and parsing
 // Address Resolution Protocol (ARP) packets for IP and
 // IPv6 protocols on Ethernet (or Ethernet-like) networks.
-class ArpPacket {
+class SHILL_EXPORT ArpPacket {
  public:
   ArpPacket();
   ArpPacket(const IPAddress& local_ip, const IPAddress& remote_ip,

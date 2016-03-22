@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "shill/arp_packet.h"
+#include "shill/net/arp_packet.h"
 
 #include <net/ethernet.h>
 #include <net/if_arp.h>

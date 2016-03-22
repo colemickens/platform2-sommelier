@@ -21,6 +21,8 @@
 
 #include <base/macros.h>
 
+#include "shill/net/shill_export.h"
+
 namespace shill {
 
 class ArpPacket;
@@ -31,7 +33,7 @@ class ScopedSocketCloser;
 // ArpClient task of creating ARP-capable sockets, as well as
 // transmitting requests on and receiving responses from such
 // sockets.
-class ArpClient {
+class SHILL_EXPORT ArpClient {
  public:
   explicit ArpClient(int interface_index);
   virtual ~ArpClient();

@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "shill/mock_arp_client.h"
+#include "shill/net/mock_arp_client.h"
 
 namespace shill {
 

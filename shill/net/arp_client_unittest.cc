@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "shill/arp_client.h"
+#include "shill/net/arp_client.h"
 
 #include <linux/if_packet.h>
 #include <net/ethernet.h>
@@ -23,8 +23,8 @@
 
 #include <gtest/gtest.h>
 
-#include "shill/arp_packet.h"
 #include "shill/mock_log.h"
+#include "shill/net/arp_packet.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_sockets.h"
 
