@@ -63,7 +63,8 @@ class MyClient : public brillo::DBusDaemon {
       return ret;
     }
     ConfigureAndConnect();
-    Quit();
+    brillo::MessageLoop::current()->PostTask(
+        base::Bind(&MyClient::Quit, base::Unretained(this)));
     return EX_OK;
   }
 
