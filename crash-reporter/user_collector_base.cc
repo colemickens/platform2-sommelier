@@ -186,6 +186,24 @@ bool UserCollectorBase::GetStateFromStatus(
   return true;
 }
 
+bool UserCollectorBase::ClobberContainerDirectory(
+    const base::FilePath &container_dir) {
+  // Delete a pre-existing directory from crash reporter that may have
+  // been left around for diagnostics from a failed conversion attempt.
+  // If we don't, existing files can cause forking to fail.
+  if (!base::DeleteFile(container_dir, true)) {
+    PLOG(ERROR) << "Could not delete " << container_dir.value();
+    return false;
+  }
+
+  if (!base::CreateDirectory(container_dir)) {
+    PLOG(ERROR) << "Could not create " << container_dir.value();
+    return false;
+  }
+
+  return true;
+}
+
 UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     pid_t pid, const std::string &exec, uid_t supplied_ruid,
     bool *out_of_capacity) {
@@ -199,10 +217,9 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   // Directory like /tmp/crash_reporter/1234 which contains the
   // procfs entries and other temporary files used during conversion.
   FilePath container_dir(StringPrintf("/tmp/crash_reporter/%d", pid));
-  // Delete a pre-existing directory from crash reporter that may have
-  // been left around for diagnostics from a failed conversion attempt.
-  // If we don't, existing files can cause forking to fail.
-  base::DeleteFile(container_dir, true);
+  if (!ClobberContainerDirectory(container_dir))
+    return kErrorSystemIssue;
+
   std::string dump_basename = FormatDumpBasename(exec, time(nullptr), pid);
   FilePath core_path = GetCrashPath(crash_path, dump_basename, "core");
   FilePath meta_path = GetCrashPath(crash_path, dump_basename, "meta");
@@ -215,9 +232,12 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   ErrorType error_type =
       ConvertCoreToMinidump(pid, container_dir, core_path, minidump_path);
   if (error_type != kErrorNone) {
-    LOG(INFO) << "Leaving core file at " << core_path.value()
-              << " due to conversion error";
+    if (error_type != kErrorReadCoreData)
+      LOG(INFO) << "Leaving core file at " << core_path.value()
+                << " due to conversion error";
     return error_type;
+  } else {
+    LOG(INFO) << "Stored minidump to " << minidump_path.value();
   }
 
   // Here we commit to sending this file.  We must not return false

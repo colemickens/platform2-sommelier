@@ -105,10 +105,6 @@ bool UserCollector::SetUpInternal(bool enabled) {
 
 bool UserCollector::CopyOffProcFiles(pid_t pid,
                                      const FilePath &container_dir) {
-  if (!base::CreateDirectory(container_dir)) {
-    PLOG(ERROR) << "Could not create " << container_dir.value().c_str();
-    return false;
-  }
   FilePath process_path = GetProcessPath(pid);
   if (!base::PathExists(process_path)) {
     LOG(ERROR) << "Path " << process_path.value() << " does not exist";
@@ -151,7 +147,7 @@ UserCollector::ErrorType UserCollector::ValidateCoreFile(
   int fd = HANDLE_EINTR(open(core_path.value().c_str(), O_RDONLY));
   if (fd < 0) {
     PLOG(ERROR) << "Could not open core file " << core_path.value();
-    return kErrorInvalidCoreFile;
+    return kErrorReadCoreData;
   }
 
   char e_ident[EI_NIDENT];
@@ -300,7 +296,6 @@ UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
     return kErrorCore2MinidumpConversion;
   }
 
-  LOG(INFO) << "Stored minidump to " << minidump_path.value();
   return kErrorNone;
 }
 

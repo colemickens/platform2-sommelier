@@ -73,6 +73,8 @@ class UserCollectorBase : public CrashCollector {
   bool GetStateFromStatus(const std::vector<std::string> &status_lines,
                           std::string *state);
 
+  bool ClobberContainerDirectory(const base::FilePath &container_dir);
+
   bool initialized_ = false;
 
   static const char *kUserId;

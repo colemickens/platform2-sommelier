@@ -458,20 +458,24 @@ TEST_F(UserCollectorTest, GetUserInfoFromName) {
   EXPECT_EQ(0, gid);
 }
 
-TEST_F(UserCollectorTest, CopyOffProcFilesBadPath) {
+TEST_F(UserCollectorTest, ClobberContainerDirectory) {
   // Try a path that is not writable.
-  ASSERT_FALSE(collector_.CopyOffProcFiles(pid_, FilePath("/bad/path")));
+  ASSERT_FALSE(collector_.ClobberContainerDirectory(FilePath("/bad/path")));
   EXPECT_TRUE(FindLog("Could not create /bad/path"));
 }
 
 TEST_F(UserCollectorTest, CopyOffProcFilesBadPid) {
   FilePath container_path("test/container");
+  ASSERT_TRUE(collector_.ClobberContainerDirectory(container_path));
+
   ASSERT_FALSE(collector_.CopyOffProcFiles(0, container_path));
   EXPECT_TRUE(FindLog("Path /proc/0 does not exist"));
 }
 
 TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
   FilePath container_path("test/container");
+  ASSERT_TRUE(collector_.ClobberContainerDirectory(container_path));
+
   ASSERT_TRUE(collector_.CopyOffProcFiles(pid_, container_path));
   EXPECT_FALSE(FindLog("Could not copy"));
   static struct {
@@ -522,7 +526,7 @@ TEST_F(UserCollectorTest, ValidateCoreFile) {
   FilePath core_file = container_dir.Append("core");
 
   // Core file does not exist
-  EXPECT_EQ(UserCollector::kErrorInvalidCoreFile,
+  EXPECT_EQ(UserCollector::kErrorReadCoreData,
             collector_.ValidateCoreFile(core_file));
   char e_ident[EI_NIDENT];
   e_ident[EI_MAG0] = ELFMAG0;

@@ -56,7 +56,7 @@ class UserCollector : public UserCollectorBase {
 
  private:
   friend class UserCollectorTest;
-  FRIEND_TEST(UserCollectorTest, CopyOffProcFilesBadPath);
+  FRIEND_TEST(UserCollectorTest, ClobberContainerDirectory);
   FRIEND_TEST(UserCollectorTest, CopyOffProcFilesBadPid);
   FRIEND_TEST(UserCollectorTest, CopyOffProcFilesOK);
   FRIEND_TEST(UserCollectorTest, GetExecutableBaseNameFromPid);
