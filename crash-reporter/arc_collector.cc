@@ -4,12 +4,18 @@
 
 #include "crash-reporter/arc_collector.h"
 
+#include <sysexits.h>
+#include <unistd.h>
+
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringize_macros.h>
+#include <brillo/key_value_store.h>
+#include <brillo/process.h>
 
 using base::FilePath;
 using base::ReadFileToString;
@@ -17,10 +23,22 @@ using base::ReadFileToString;
 namespace {
 
 const FilePath kContainerPidFile("/run/arc/container.pid");
+const FilePath kArcRootPrefix("/opt/google/containers/android/rootfs/root");
+const FilePath kArcBuildProp("system/build.prop");  // Relative to ARC root.
+
+const char kCoreCollectorPath[] = "/usr/bin/core_collector";
+const char kChromePath[] = "/opt/google/chrome/chrome";
+
+const char kArcProduct[] = "ChromeOS_ARC";
+
+const size_t kBufferSize = 4096;
 
 inline bool IsAppProcess(const std::string& name) {
   return name == "app_process32" || name == "app_process64";
 }
+
+bool GetChromeVersion(std::string *version);
+bool GetArcVersion(std::string *version);
 
 }  // namespace
 
@@ -135,7 +153,92 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
     const base::FilePath &container_dir,
     const base::FilePath &core_path,
     const base::FilePath &minidump_path) {
-  // TODO(domlaskowski): Invoke arc_collector.
-  LOG(ERROR) << "ARC collector not implemented";
-  return kErrorCore2MinidumpConversion;
+// TODO(domlaskowski): Dispatch to core_collector{32,64}.
+#if __WORDSIZE == 64
+  LOG(ERROR) << kCoreCollectorPath << "{32,64} not implemented";
+  return kErrorUnsupported32BitCoreFile;
+#else
+  brillo::ProcessImpl core_collector;
+  core_collector.AddArg(kCoreCollectorPath);
+  core_collector.AddArg("--minidump=" + minidump_path.value());
+  core_collector.AddArg("--coredump=" + core_path.value());
+  core_collector.AddArg("--proc=" + container_dir.value());
+  core_collector.AddArg("--prefix=" + kArcRootPrefix.value());
+  core_collector.AddArg("--syslog");
+
+  const int exit_code = core_collector.Run();
+  if (exit_code == EX_OK) {
+    AddArcMetaData("arc_native_crash", true);
+    return kErrorNone;
+  }
+
+  LOG(ERROR) << kCoreCollectorPath << " failed with exit code " << exit_code;
+  switch (exit_code) {
+    case EX_OSFILE:
+      return kErrorInvalidCoreFile;
+    case EX_SOFTWARE:
+      return kErrorCore2MinidumpConversion;
+    default:
+      return base::PathExists(core_path) ? kErrorSystemIssue :
+                                           kErrorReadCoreData;
+  }
+#endif
 }
+
+void ArcCollector::AddArcMetaData(const std::string &type,
+                                  bool add_arc_version) {
+  AddCrashMetaUploadData("prod", kArcProduct);
+  AddCrashMetaUploadData("type", type);
+
+  std::string version;
+  if (GetChromeVersion(&version))
+    AddCrashMetaUploadData("chrome_version", version);
+
+  if (add_arc_version && GetArcVersion(&version))
+    AddCrashMetaUploadData("arc_version", version);
+}
+
+namespace {
+
+bool GetChromeVersion(std::string *version) {
+  brillo::ProcessImpl chrome;
+  chrome.AddArg(kChromePath);
+  chrome.AddArg("--product-version");
+  chrome.RedirectUsingPipe(STDOUT_FILENO, false);
+  if (chrome.Start()) {
+    const int out = chrome.GetPipe(STDOUT_FILENO);
+    char buffer[kBufferSize];
+    version->clear();
+
+    while (true) {
+      const ssize_t count = HANDLE_EINTR(read(out, buffer, kBufferSize));
+      if (count < 0)
+        break;
+
+      if (count == 0) {
+        if (chrome.Wait() != EX_OK || version->empty())
+          break;
+
+        version->pop_back();  // Discard EOL.
+        return true;
+      }
+
+      version->append(buffer, count);
+    }
+  }
+
+  LOG(ERROR) << "Failed to get Chrome version";
+  return false;
+}
+
+bool GetArcVersion(std::string *version) {
+  brillo::KeyValueStore store;
+  if (store.Load(kArcRootPrefix.Append(kArcBuildProp)) &&
+      store.GetString("ro.build.fingerprint", version))
+    return true;
+
+  LOG(ERROR) << "Failed to get ARC version";
+  return false;
+}
+
+}  // namespace

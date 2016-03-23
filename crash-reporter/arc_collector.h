@@ -76,6 +76,10 @@ class ArcCollector : public UserCollectorBase {
                                   const base::FilePath &core_path,
                                   const base::FilePath &minidump_path) override;
 
+  // Adds the crash |type| and Chrome version as metadata. The |add_arc_version|
+  // option requires privilege to access the ARC root.
+  void AddArcMetaData(const std::string &type, bool add_arc_version);
+
   const ContextPtr context_{new ArcContext(this)};
 
   DISALLOW_COPY_AND_ASSIGN(ArcCollector);
