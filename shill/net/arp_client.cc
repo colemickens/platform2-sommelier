@@ -139,8 +139,8 @@ bool ArpClient::ReceivePacket(ArpPacket* packet, ByteString* sender) const {
 
   // The socket address returned may only be big enough to contain
   // the hardware address of the sender.
-  CHECK(socklen >=
-        sizeof(socket_address) - sizeof(socket_address.sll_addr) + ETH_ALEN);
+  CHECK(socklen >= static_cast<socklen_t>(sizeof(socket_address) -
+       sizeof(socket_address.sll_addr)) + ETH_ALEN);
   CHECK(socket_address.sll_halen == ETH_ALEN);
   *sender = ByteString(
       reinterpret_cast<const unsigned char*>(&socket_address.sll_addr),
