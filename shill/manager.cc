@@ -1658,6 +1658,7 @@ void Manager::UpdateDefaultServices(
     const ServiceRefPtr& logical_service,
     const ServiceRefPtr& physical_service) {
   metrics_->NotifyDefaultServiceChanged(logical_service.get());
+  EmitDefaultService();
 
   bool physical_service_connected =
       physical_service && physical_service->connection();
@@ -1686,7 +1687,6 @@ void Manager::UpdateDefaultServices(
   for (const auto& callback : default_service_callbacks_) {
     callback.second.Run(physical_service);
   }
-  EmitDefaultService();
 }
 
 void Manager::EmitDefaultService() {
