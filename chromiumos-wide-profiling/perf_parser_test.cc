@@ -580,7 +580,8 @@ TEST(PerfParserTest, DsoInfoHasBuildId) {
   ASSERT_EQ(4, events.size());
 
   EXPECT_EQ("/usr/lib/foo.so", events[2].dso_and_offset.dso_name());
-  EXPECT_EQ("deadf00d", events[2].dso_and_offset.build_id());
+  EXPECT_EQ("deadf00d00000000000000000000000000000000",
+            events[2].dso_and_offset.build_id());
   EXPECT_EQ("/usr/lib/bar.so", events[3].dso_and_offset.dso_name());
   EXPECT_EQ("", events[3].dso_and_offset.build_id());
 }

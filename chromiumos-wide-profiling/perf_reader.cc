@@ -530,6 +530,7 @@ void PerfReader::GetFilenamesToBuildIDs(
   filenames_to_build_ids->clear();
   for (const auto& build_id : proto_.build_ids()) {
     string build_id_string = RawDataToHexString(build_id.build_id_hash());
+    PerfizeBuildIDString(&build_id_string);
     (*filenames_to_build_ids)[build_id.filename()] = build_id_string;
   }
 }
