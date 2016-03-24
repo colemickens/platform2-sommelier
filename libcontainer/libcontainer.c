@@ -392,6 +392,14 @@ static int run_setfiles_command(const struct container *c,
 	if (!config->run_setfiles)
 		return 0;
 
+	/* Really gross hack to avoid setfiles on /data, this should be removed
+	 * when data isn't under /home/chronos/user where we can't access it as
+	 * the android user.
+	 * TODO(b/28705740) - Fix permission to the data directory.
+	 */
+	if (strlen(dest) >= 5 && !strcmp(&dest[strlen(dest) - 5], "/data"))
+		return 0;
+
 	if (asprintf(&context_path, "%s/file_contexts",
 		     c->runfsroot) < 0)
 		return -errno;
@@ -490,12 +498,9 @@ static int do_container_mounts(struct container *c,
 					   mnt->type, mnt->flags))
 				goto error_free_return;
 		} else {
-			/*
-			 * Mount this externally and unmount it on exit. Don't
-			 * allow execution from external mounts.
-			 */
-			if (mount(source, dest, mnt->type,
-				  mnt->flags | MS_NOEXEC, mnt->data))
+			/* Mount this externally and unmount it on exit. */
+			if (mount(source, dest, mnt->type, mnt->flags,
+				  mnt->data))
 				goto error_free_return;
 			/* Save this to unmount when shutting down. */
 			c->ext_mounts[c->num_ext_mounts] = strdup(dest);
@@ -515,6 +520,7 @@ error_free_return:
 
 int container_start(struct container *c, const struct container_config *config)
 {
+	static const mode_t root_dir_mode = 0660;
 	int rc;
 	unsigned int i;
 	const char *rootfs = config->rootfs;
@@ -533,17 +539,24 @@ int container_start(struct container *c, const struct container_config *config)
 		free(runfs_template);
 		return -errno;
 	}
+	/* Make sure the container uid can access the rootfs. */
+	rc = chmod(c->runfs, 0755);
+	if (rc)
+		goto error_rmdir;
+
 	if (asprintf(&c->runfsroot, "%s/root", c->runfs) < 0) {
 		free(runfs_template);
 		return -errno;
 	}
 
-	rc = mkdir(c->runfsroot, 0660);
+	rc = mkdir(c->runfsroot, root_dir_mode);
+	if (rc)
+		goto error_rmdir;
+	rc = chmod(c->runfsroot, root_dir_mode);
 	if (rc)
 		goto error_rmdir;
 
-	rc = mount(rootfs, c->runfsroot, "", MS_BIND | MS_RDONLY | MS_NOEXEC,
-		   NULL);
+	rc = mount(rootfs, c->runfsroot, "", MS_BIND | MS_RDONLY, NULL);
 	if (rc)
 		goto error_rmdir;
 
@@ -633,7 +646,6 @@ int container_start(struct container *c, const struct container_config *config)
 	minijail_namespace_vfs(c->jail);
 	minijail_namespace_net(c->jail);
 	minijail_namespace_pids(c->jail);
-/*	TODO(dgreid) - Enable user namespaces
 	minijail_namespace_user(c->jail);
 	rc = minijail_uidmap(c->jail, config->uid_map);
 	if (rc)
@@ -641,7 +653,6 @@ int container_start(struct container *c, const struct container_config *config)
 	rc = minijail_gidmap(c->jail, config->gid_map);
 	if (rc)
 		goto error_rmdir;
-*/
 
 	rc = minijail_enter_pivot_root(c->jail, c->runfsroot);
 	if (rc)
@@ -671,12 +682,6 @@ int container_start(struct container *c, const struct container_config *config)
 
 	/* TODO(dgreid) - remove this once shared mounts are cleaned up. */
 	minijail_skip_remount_private(c->jail);
-
-	/* Last mount is to make '/' executable in the container. */
-	rc = minijail_mount(c->jail, rootfs, "/", "",
-			    MS_REMOUNT | MS_RDONLY);
-	if (rc)
-		goto error_rmdir;
 
 	rc = minijail_run_pid_pipes_no_preload(c->jail,
 					       config->program_argv[0],
