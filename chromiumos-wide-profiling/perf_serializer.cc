@@ -16,6 +16,7 @@
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_event.h"
 #include "chromiumos-wide-profiling/perf_data_structures.h"
+#include "chromiumos-wide-profiling/perf_data_utils.h"
 #include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
@@ -728,7 +729,7 @@ bool PerfSerializer::SerializeBuildIDEvent(
 
   // Trim out trailing zeroes from the build ID.
   string build_id = RawDataToHexString(from->build_id, kBuildIDArraySize);
-  PerfReader::TrimZeroesFromBuildIDString(&build_id);
+  TrimZeroesFromBuildIDString(&build_id);
 
   uint8_t build_id_bytes[kBuildIDArraySize];
   if (!HexStringToRawData(build_id, build_id_bytes, sizeof(build_id_bytes)))

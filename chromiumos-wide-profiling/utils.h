@@ -8,10 +8,8 @@
 #include <byteswap.h>
 #include <limits.h>
 #include <stdint.h>
-#include <stdlib.h>  // for free()
 
 #include <bitset>
-#include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -26,22 +24,8 @@ namespace quipper {
 class PerfDataProto_PerfEvent;
 class PerfDataProto_SampleInfo;
 
-struct FreeDeleter {
-  inline void operator()(void* pointer) {
-    free(pointer);
-  }
-};
-
-template <typename T>
-using malloced_unique_ptr = std::unique_ptr<T, FreeDeleter>;
-
 // Given a valid open file handle |fp|, returns the size of the file.
 int64_t GetFileSizeFromHandle(FILE* fp);
-
-event_t* CallocMemoryForEvent(size_t size);
-event_t* ReallocMemoryForEvent(event_t* event, size_t new_size);
-
-build_id_event* CallocMemoryForBuildID(size_t size);
 
 bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
@@ -132,21 +116,6 @@ inline uint64_t Align(uint64_t value) {
 template<typename T>
 inline uint64_t Align(uint64_t value) {
   return Align<sizeof(T)>(value);
-}
-
-// In perf data, strings are packed into the smallest number of 8-byte blocks
-// possible, including a null terminator.
-// e.g.
-//    "0123"                ->  5 bytes -> packed into  8 bytes
-//    "0123456"             ->  8 bytes -> packed into  8 bytes
-//    "01234567"            ->  9 bytes -> packed into 16 bytes
-//    "0123456789abcd"      -> 15 bytes -> packed into 16 bytes
-//    "0123456789abcde"     -> 16 bytes -> packed into 16 bytes
-//    "0123456789abcdef"    -> 17 bytes -> packed into 24 bytes
-//
-// Returns the size of the 8-byte-aligned memory for storing |string|.
-static inline size_t GetUint64AlignedStringLength(const string& str) {
-  return Align<uint64_t>(str.size() + 1);
 }
 
 // Returns true iff the file exists.

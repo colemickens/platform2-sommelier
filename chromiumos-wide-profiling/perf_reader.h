@@ -27,10 +27,6 @@ namespace quipper {
 // Based on code in tools/perf/util/header.c, the metadata are of the following
 // formats:
 
-// Based on kernel/perf_internals.h
-const size_t kBuildIDArraySize = 20;
-const size_t kBuildIDStringLength = kBuildIDArraySize * 2;
-
 typedef u32 num_siblings_type;
 
 class DataReader;
@@ -48,16 +44,6 @@ class PerfReader {
   bool Serialize(PerfDataProto* perf_data_proto) const;
   // Read in contents from a protobuf. Returns true on success.
   bool Deserialize(const PerfDataProto& perf_data_proto);
-
-  // Makes |build_id| fit the perf format, by either truncating it or adding
-  // zeros to the end so that it has length kBuildIDStringLength.
-  static void PerfizeBuildIDString(string* build_id);
-
-  // Changes |build_id| to the best guess of what the build id was before going
-  // through perf.  Specifically, it keeps removing trailing sequences of four
-  // zero bytes (or eight '0' characters) until there are no more such
-  // sequences, or the build id would be empty if the process were repeated.
-  static void TrimZeroesFromBuildIDString(string* build_id);
 
   bool ReadFile(const string& filename);
   bool ReadFromVector(const std::vector<char>& data);

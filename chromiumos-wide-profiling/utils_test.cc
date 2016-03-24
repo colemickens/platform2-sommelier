@@ -35,15 +35,6 @@ TEST(UtilsTest, Align) {
   EXPECT_EQ(112, Align<uint64_t>(112));
 }
 
-TEST(UtilsTest, GetUint64AlignedStringLength) {
-  EXPECT_EQ(8, GetUint64AlignedStringLength("012345"));
-  EXPECT_EQ(8, GetUint64AlignedStringLength("0123456"));
-  EXPECT_EQ(16, GetUint64AlignedStringLength("01234567"));  // Room for '\0'
-  EXPECT_EQ(16, GetUint64AlignedStringLength("012345678"));
-  EXPECT_EQ(16, GetUint64AlignedStringLength("0123456789abcde"));
-  EXPECT_EQ(24, GetUint64AlignedStringLength("0123456789abcdef"));
-}
-
 TEST(UtilsTest, TestRawDataToHexString) {
   u8 hex_number[kHexArraySize];
   // Generate a sequence of bytes and check its hex string representation.

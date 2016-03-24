@@ -16,8 +16,7 @@
 
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
-#include "chromiumos-wide-profiling/sample_info_reader.h"
-#include "chromiumos-wide-profiling/utils.h"
+#include "chromiumos-wide-profiling/perf_data_utils.h"
 
 struct perf_event_attr;
 
@@ -31,6 +30,8 @@ struct PerfEventStats;
 struct PerfParserOptions;
 struct PerfUint32Metadata;
 struct PerfUint64Metadata;
+
+class SampleInfoReader;
 
 class PerfSerializer {
  public:

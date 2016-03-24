@@ -145,58 +145,6 @@ TEST(PerfReaderTest, CorruptedFiles) {
   }
 }
 
-TEST(PerfReaderTest, PerfizeBuildID) {
-  string build_id_string = "f";
-  PerfReader::PerfizeBuildIDString(&build_id_string);
-  EXPECT_EQ("f000000000000000000000000000000000000000", build_id_string);
-  PerfReader::PerfizeBuildIDString(&build_id_string);
-  EXPECT_EQ("f000000000000000000000000000000000000000", build_id_string);
-
-  build_id_string = "01234567890123456789012345678901234567890";
-  PerfReader::PerfizeBuildIDString(&build_id_string);
-  EXPECT_EQ("0123456789012345678901234567890123456789", build_id_string);
-  PerfReader::PerfizeBuildIDString(&build_id_string);
-  EXPECT_EQ("0123456789012345678901234567890123456789", build_id_string);
-}
-
-TEST(PerfReaderTest, UnperfizeBuildID) {
-  string build_id_string = "f000000000000000000000000000000000000000";
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("f0000000", build_id_string);
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("f0000000", build_id_string);
-
-  build_id_string = "0123456789012345678901234567890123456789";
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("0123456789012345678901234567890123456789", build_id_string);
-
-  build_id_string = "0000000000000000000000000000001000000000";
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("00000000000000000000000000000010", build_id_string);
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("00000000000000000000000000000010", build_id_string);
-
-  build_id_string = "0000000000000000000000000000000000000000";  // 40 zeroes
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("", build_id_string);
-
-  build_id_string = "00000000000000000000000000000000";  // 32 zeroes
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("", build_id_string);
-
-  build_id_string = "00000000";  // 8 zeroes
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("", build_id_string);
-
-  build_id_string = "0000000";  // 7 zeroes
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("0000000", build_id_string);
-
-  build_id_string = "";
-  PerfReader::TrimZeroesFromBuildIDString(&build_id_string);
-  EXPECT_EQ("", build_id_string);
-}
-
 TEST(PerfReaderTest, ReadsAndWritesTraceMetadata) {
   std::stringstream input;
 
