@@ -41,8 +41,11 @@ class KernelCollectorTest : public ::testing::Test {
   }
 
   void SetUpSuccessfulCollect();
+  void SetUpSuccessfulWatchdog();
   void ComputeKernelStackSignatureCommon();
 
+  const FilePath &console_ramoops_file() const { return test_console_ramoops_; }
+  const FilePath &eventlog_file() const { return test_eventlog_; }
   const FilePath &kcrash_file() const { return test_kcrash_; }
   const FilePath &test_crash_directory() const { return test_crash_directory_; }
 
@@ -61,14 +64,22 @@ class KernelCollectorTest : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(test_kcrash_));
     collector_.OverridePreservedDumpPath(test_kcrash_);
 
+    test_console_ramoops_ = test_kcrash_.Append("console-ramoops");
+    ASSERT_FALSE(base::PathExists(test_console_ramoops_));
     test_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_kcrash_));
 
     test_crash_directory_ = scoped_temp_dir_.path().Append("crash_directory");
     ASSERT_TRUE(base::CreateDirectory(test_crash_directory_));
+
+    test_eventlog_ = scoped_temp_dir_.path().Append("eventlog.txt");
+    ASSERT_FALSE(base::PathExists(test_eventlog_));
+    collector_.OverrideEventLogPath(test_eventlog_);
     brillo::ClearLog();
   }
 
+  FilePath test_console_ramoops_;
+  FilePath test_eventlog_;
   FilePath test_kcrash_;
   FilePath test_crash_directory_;
   base::ScopedTempDir scoped_temp_dir_;
@@ -256,8 +267,25 @@ void KernelCollectorTest::SetUpSuccessfulCollect() {
   ASSERT_EQ(0, s_crashes);
 }
 
+void KernelCollectorTest::SetUpSuccessfulWatchdog() {
+  collector_.ForceCrashDirectory(test_crash_directory());
+  WriteStringToFile(eventlog_file(),
+    "112 | 2016-03-24 15:09:39 | System boot | 0\n"
+    "113 | 2016-03-24 15:11:20 | System boot | 0\n"
+    "114 | 2016-03-24 15:11:20 | Hardware watchdog reset\n");
+  WriteStringToFile(console_ramoops_file(), "\n[ 0.0000] I can haz boot!");
+}
+
 TEST_F(KernelCollectorTest, CollectOptedOut) {
   SetUpSuccessfulCollect();
+  s_metrics = false;
+  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(FindLog("(ignoring - no consent)"));
+  ASSERT_EQ(0, s_crashes);
+}
+
+TEST_F(KernelCollectorTest, WatchdogOptedOut) {
+  SetUpSuccessfulWatchdog();
   s_metrics = false;
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(ignoring - no consent)"));
@@ -286,6 +314,22 @@ TEST_F(KernelCollectorTest, CollectOK) {
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(FilePath(filename), &contents));
   ASSERT_EQ("something", contents);
+}
+
+TEST_F(KernelCollectorTest, WatchdogOK) {
+  SetUpSuccessfulWatchdog();
+  ASSERT_TRUE(collector_.Collect());
+  ASSERT_EQ(1, s_crashes);
+  ASSERT_TRUE(FindLog("(handling)"));
+  ASSERT_TRUE(FindLog("kernel-(WATCHDOG)-I can haz"));
+}
+
+TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {
+  char next[] = "115 | 2016-03-24 15:24:27 | System boot | 0";
+  SetUpSuccessfulWatchdog();
+  ASSERT_EQ(strlen(next), base::WriteFile(eventlog_file(), next, strlen(next)));
+  ASSERT_FALSE(collector_.Collect());
+  ASSERT_EQ(0, s_crashes);
 }
 
 // Perform tests which are common across architectures

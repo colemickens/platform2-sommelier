@@ -33,6 +33,7 @@ class KernelCollector : public CrashCollector {
 
   ~KernelCollector() override;
 
+  void OverrideEventLogPath(const base::FilePath &file_path);
   void OverridePreservedDumpPath(const base::FilePath &file_path);
 
   // Enable collection.
@@ -67,6 +68,9 @@ class KernelCollector : public CrashCollector {
   bool LoadPreservedDump(std::string *contents);
   void StripSensitiveData(std::string *kernel_dump);
 
+  bool LastRebootWasWatchdog();
+  bool LoadConsoleRamoops(std::string *contents);
+
   void GetRamoopsRecordPath(base::FilePath *path, size_t record);
   bool LoadParameters();
   bool HasMoreRecords();
@@ -99,6 +103,7 @@ class KernelCollector : public CrashCollector {
   static ArchKind GetCompilerArch();
 
   bool is_enabled_;
+  base::FilePath eventlog_path_;
   base::FilePath ramoops_dump_path_;
   size_t records_;
 

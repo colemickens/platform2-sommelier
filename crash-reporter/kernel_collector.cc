@@ -4,6 +4,7 @@
 
 #include "crash-reporter/kernel_collector.h"
 
+#include <algorithm>
 #include <map>
 #include <sys/stat.h>
 
@@ -13,21 +14,26 @@
 #include <base/strings/stringprintf.h>
 
 using base::FilePath;
+using base::StringPiece;
 using base::StringPrintf;
 
 namespace {
 
+const char kConsoleRamoops[] = "console-ramoops";
 const char kDefaultKernelStackSignature[] = "kernel-UnspecifiedStackSignature";
 const char kDumpParentPath[] = "/dev";
 const char kDumpPath[] = "/dev/pstore";
 const char kDumpFormat[] = "dmesg-ramoops-%zu";
+const FilePath kEventLogPath("/var/log/eventlog.txt");
+const char kEventNameBoot[] = "System boot";
+const char kEventNameWatchdog[] = "Hardware watchdog reset";
 const char kKernelExecName[] = "kernel";
 // Maximum number of records to examine in the kDumpPath.
 const size_t kMaxDumpRecords = 100;
 const pid_t kKernelPid = 0;
 const char kKernelSignatureKey[] = "sig";
 // Byte length of maximum human readable portion of a kernel crash signature.
-const int kMaxHumanStringLength = 40;
+const size_t kMaxHumanStringLength = 40;
 const uid_t kRootUid = 0;
 // Time in seconds from the final kernel log message for a call stack
 // to count towards the signature of the kcrash.
@@ -59,10 +65,13 @@ const char* const kPCRegex[] = {
 static_assert(arraysize(kPCRegex) == KernelCollector::kArchCount,
               "Missing Arch PC RegExp");
 
+pcrecpp::RE kSanityCheckRe("\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]");
+
 }  // namespace
 
 KernelCollector::KernelCollector()
     : is_enabled_(false),
+      eventlog_path_(kEventLogPath),
       ramoops_dump_path_(kDumpPath),
       records_(0),
       // We expect crash dumps in the format of architecture we are built for.
@@ -70,6 +79,10 @@ KernelCollector::KernelCollector()
 }
 
 KernelCollector::~KernelCollector() {
+}
+
+void KernelCollector::OverrideEventLogPath(const FilePath &file_path) {
+  eventlog_path_ = file_path;
 }
 
 void KernelCollector::OverridePreservedDumpPath(const FilePath &file_path) {
@@ -89,8 +102,6 @@ bool KernelCollector::ReadRecordToString(std::string *contents,
       "====\\d+\\.\\d+\n(.*)",
       pcrecpp::RE_Options().set_multiline(true).set_dotall(true));
 
-  pcrecpp::RE sanity_check_re("\n<\\d+>\\[\\s*(\\d+\\.\\d+)\\]");
-
   FilePath ramoops_record;
   GetRamoopsRecordPath(&ramoops_record, current_record);
   if (!base::ReadFileToString(ramoops_record, &record)) {
@@ -103,7 +114,7 @@ bool KernelCollector::ReadRecordToString(std::string *contents,
     // Found a ramoops header, so strip the header and append the rest.
     contents->append(captured);
     *record_found = true;
-  } else if (sanity_check_re.PartialMatch(record.substr(0, 1024))) {
+  } else if (kSanityCheckRe.PartialMatch(record.substr(0, 1024))) {
     // pstore compression has been added since kernel 3.12. In order to
     // decompress dmesg correctly, ramoops driver has to strip the header
     // before handing over the record to the pstore driver, so we don't
@@ -171,6 +182,52 @@ bool KernelCollector::LoadPreservedDump(std::string *contents) {
 
   if (!any_records_found) {
     LOG(ERROR) << "No valid records found in " << ramoops_dump_path_.value();
+    return false;
+  }
+
+  return true;
+}
+
+// We can't always trust kernel watchdog drivers to correctly report the boot
+// reason, since on some platforms our firmware has to reinitialize the hardware
+// registers in a way that clears this information. Instead read the firmware
+// eventlog to figure out if a watchdog reset was detected during the last boot.
+bool KernelCollector::LastRebootWasWatchdog() {
+  if (!base::PathExists(eventlog_path_)) {
+    LOG(INFO) << "Cannot find " << eventlog_path_.value()
+              << ", skipping hardware watchdog check.";
+    return false;
+  }
+
+  std::string eventlog;
+  if (!base::ReadFileToString(eventlog_path_, &eventlog)) {
+    LOG(ERROR) << "Unable to open " << eventlog_path_.value();
+    return false;
+  }
+
+  StringPiece piece = StringPiece(eventlog);
+  size_t last_boot = piece.rfind(kEventNameBoot);
+  if (last_boot == StringPiece::npos)
+    return false;
+
+  return piece.find(kEventNameWatchdog, last_boot) != StringPiece::npos;
+}
+
+bool KernelCollector::LoadConsoleRamoops(std::string *contents) {
+  FilePath console_ramoops_path = ramoops_dump_path_.Append(kConsoleRamoops);
+
+  if (!base::PathExists(console_ramoops_path)) {
+    LOG(WARNING) << "No console-ramoops file found after watchdog reset!";
+    return false;
+  }
+
+  if (!base::ReadFileToString(console_ramoops_path, contents)) {
+    LOG(ERROR) << "Unable to open " << console_ramoops_path.value();
+    return false;
+  }
+
+  if (!kSanityCheckRe.PartialMatch(contents->substr(0, 1024))) {
+    LOG(WARNING) << "Found invalid console-ramoops file!";
     return false;
   }
 
@@ -296,10 +353,10 @@ bool KernelCollector::Enable() {
 // be dependent on a C++ library that might change.  This function
 // uses basically the same approach as tr1/functional_hash.h but with
 // a larger prime number (16127 vs 131).
-static unsigned HashString(const std::string &input) {
+static unsigned HashString(StringPiece input) {
   unsigned hash = 0;
-  for (size_t i = 0; i < input.length(); ++i)
-    hash = hash * 16127 + input[i];
+  for (auto c : input)
+    hash = hash * 16127 + c;
   return hash;
 }
 
@@ -387,7 +444,7 @@ void KernelCollector::ProcessStackTrace(
     hashable = previous_hashable;
   }
 
-  *hash = HashString(hashable);
+  *hash = HashString(StringPiece(hashable));
   *is_watchdog_crash = is_watchdog;
 
   if (print_diagnostics) {
@@ -519,22 +576,38 @@ bool KernelCollector::ComputeKernelStackSignature(
   return true;
 }
 
+// Watchdog reboots leave no stack trace. Generate a poor man's signature out
+// of the last log line instead (minus the timestamp ended by ']').
+void WatchdogSignature(const std::string &console_ramoops,
+                       std::string *signature) {
+  StringPiece line(console_ramoops);
+  line = line.substr(line.rfind("] ") + 2);
+  size_t end = std::min(line.find("\n"), kMaxHumanStringLength) - 1;
+  *signature = StringPrintf("%s-(WATCHDOG)-%s-%08X",
+                            kKernelExecName,
+                            line.substr(0, end).as_string().c_str(),
+                            HashString(line));
+}
+
 bool KernelCollector::Collect() {
   std::string kernel_dump;
+  std::string signature;
   FilePath root_crash_directory;
+  bool is_watchdog = false;
 
-  if (!LoadParameters()) {
-    return false;
-  }
-  if (!LoadPreservedDump(&kernel_dump)) {
-    return false;
+  if (!LoadParameters() || !LoadPreservedDump(&kernel_dump)) {
+    if (!LastRebootWasWatchdog() || !LoadConsoleRamoops(&kernel_dump)) {
+      return false;
+    }
+    is_watchdog = true;
   }
   StripSensitiveData(&kernel_dump);
   if (kernel_dump.empty()) {
     return false;
   }
-  std::string signature;
-  if (!ComputeKernelStackSignature(kernel_dump, &signature, false)) {
+  if (is_watchdog) {
+    WatchdogSignature(kernel_dump, &signature);
+  } else if (!ComputeKernelStackSignature(kernel_dump, &signature, false)) {
     signature = kDefaultKernelStackSignature;
   }
 
