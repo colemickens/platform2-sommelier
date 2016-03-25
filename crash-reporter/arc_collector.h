@@ -16,8 +16,6 @@
 // Collector for system crashes in the ARC container.
 class ArcCollector : public UserCollectorBase {
  public:
-  static const uid_t kSystemUser = 1000;
-
   struct Context {
     virtual ~Context() = default;
 
@@ -47,6 +45,9 @@ class ArcCollector : public UserCollectorBase {
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForUserCrash);
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForArcCrash);
   FRIEND_TEST(ArcCollectorTest, ShouldDump);
+
+  // Upper bound for system UIDs in ARC.
+  static const uid_t kSystemUserEnd = 10000;
 
   class ArcContext : public Context {
    public:

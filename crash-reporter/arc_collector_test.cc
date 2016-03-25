@@ -184,15 +184,13 @@ TEST_F(ArcCollectorTest, ShouldDump) {
   context_->AddProcess(789, "arc", "app_process32", "com.arc.app");
 
   std::string reason;
-  EXPECT_FALSE(collector_->ShouldDump(50, ArcCollector::kSystemUser,
-                                      "chrome", &reason));
+  EXPECT_FALSE(collector_->ShouldDump(50, 1234, "chrome", &reason));
   EXPECT_EQ("ARC: ignoring - crash origin is not ARC", reason);
 
-  EXPECT_TRUE(collector_->ShouldDump(123, ArcCollector::kSystemUser,
-                                     "arc_service", &reason));
+  EXPECT_TRUE(collector_->ShouldDump(123, 0, "arc_service", &reason));
   EXPECT_EQ("ARC: handling", reason);
 
-  EXPECT_FALSE(collector_->ShouldDump(123, ArcCollector::kSystemUser + 1,
+  EXPECT_FALSE(collector_->ShouldDump(123, ArcCollector::kSystemUserEnd,
                                       "com.arc.app", &reason));
   EXPECT_EQ("ARC: ignoring - not a system process", reason);
 }

@@ -135,7 +135,7 @@ bool ArcCollector::ShouldDump(pid_t pid,
   }
 
   // TODO(domlaskowski): Convert between UID namespaces.
-  if (uid != kSystemUser) {
+  if (uid >= kSystemUserEnd) {
     reason->append("ignoring - not a system process");
     return false;
   }
