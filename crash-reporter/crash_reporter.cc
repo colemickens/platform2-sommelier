@@ -106,24 +106,22 @@ static void CountChromeCrash() {
 }
 
 
-static int Initialize(KernelCollector *kernel_collector,
-                      UserCollector *user_collector,
-                      UncleanShutdownCollector *unclean_shutdown_collector,
-                      UdevCollector *udev_collector,
-                      const bool unclean_check,
-                      const bool clean_shutdown) {
-  CHECK(!clean_shutdown) << "Incompatible options";
+static int Initialize(UserCollector *user_collector,
+                      UdevCollector *udev_collector) {
+  user_collector->Enable();
+  udev_collector->Enable();
+  return 0;
+}
 
+static int BootCollect(KernelCollector *kernel_collector,
+                       UncleanShutdownCollector *unclean_shutdown_collector) {
   bool was_kernel_crash = false;
   bool was_unclean_shutdown = false;
   kernel_collector->Enable();
   if (kernel_collector->is_enabled()) {
     was_kernel_crash = kernel_collector->Collect();
   }
-
-  if (unclean_check) {
-    was_unclean_shutdown = unclean_shutdown_collector->Collect();
-  }
+  was_unclean_shutdown = unclean_shutdown_collector->Collect();
 
   // Touch a file to notify the metrics daemon that a kernel
   // crash has been detected so that it can log the time since
@@ -140,8 +138,6 @@ static int Initialize(KernelCollector *kernel_collector,
 
   // Must enable the unclean shutdown collector *after* collecting.
   unclean_shutdown_collector->Enable();
-  user_collector->Enable();
-  udev_collector->Enable();
 
   return 0;
 }
@@ -266,12 +262,12 @@ static void OpenStandardFileDescriptors() {
 
 int main(int argc, char *argv[]) {
   DEFINE_bool(init, false, "Initialize crash logging");
+  DEFINE_bool(boot_collect, false, "Run per-boot crash collection tasks");
   DEFINE_bool(clean_shutdown, false, "Signal clean shutdown");
   DEFINE_string(generate_kernel_signature, "",
                 "Generate signature from given kcrash file");
   DEFINE_bool(crash_test, false, "Crash test");
   DEFINE_string(user, "", "User crash info (pid:signal:exec_name)");
-  DEFINE_bool(unclean_check, true, "Check for unclean shutdown");
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
   DEFINE_string(chrome, "", "Chrome crash dump file");
@@ -326,12 +322,12 @@ int main(int argc, char *argv[]) {
   kernel_warning_collector.Initialize(CountUdevCrash, IsFeedbackAllowed);
 
   if (FLAGS_init) {
-    return Initialize(&kernel_collector,
-                      &user_collector,
-                      &unclean_shutdown_collector,
-                      &udev_collector,
-                      FLAGS_unclean_check,
-                      FLAGS_clean_shutdown);
+    return Initialize(&user_collector, &udev_collector);
+  }
+
+  if (FLAGS_boot_collect) {
+    return BootCollect(&kernel_collector,
+                       &unclean_shutdown_collector);
   }
 
   if (FLAGS_clean_shutdown) {
