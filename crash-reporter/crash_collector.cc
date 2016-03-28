@@ -106,11 +106,12 @@ void CrashCollector::Initialize(
 
   count_crash_function_ = count_crash_function;
   is_feedback_allowed_function_ = is_feedback_allowed_function;
-
-  SetUpDBus();
 }
 
 void CrashCollector::SetUpDBus() {
+  if (bus_)
+    return;
+
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
@@ -175,6 +176,7 @@ FilePath CrashCollector::GetCrashPath(const FilePath &crash_directory,
 bool CrashCollector::GetActiveUserSessions(
     std::map<std::string, std::string> *sessions) {
   brillo::ErrorPtr error;
+  SetUpDBus();
   session_manager_proxy_->RetrieveActiveSessions(sessions, &error);
 
   if (error) {
