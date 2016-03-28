@@ -210,6 +210,9 @@ bool ChromeCollector::HandleCrash(const FilePath &file_path,
 }
 
 void ChromeCollector::SetUpDBus() {
+  if (bus_)
+    return;
+
   CrashCollector::SetUpDBus();
 
   debugd_proxy_.reset(new org::chromium::debugdProxy(bus_));
@@ -334,6 +337,7 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
 
   // For unit testing, debugd_proxy_ isn't initialized, so skip attempting to
   // get the GPU error state from debugd.
+  SetUpDBus();
   if (debugd_proxy_) {
     const FilePath dri_error_state_path =
         GetCrashPath(dir, basename, kGpuStateFilename);
