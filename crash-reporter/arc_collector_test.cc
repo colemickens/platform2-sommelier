@@ -15,6 +15,21 @@ using brillo::ClearLog;
 using brillo::FindLog;
 using brillo::GetLog;
 
+namespace {
+
+const char kCrashLog[] = R"(
+Process: com.arc.app
+Flags: 0xcafebabe
+Package: com.arc.app v1 (1.0)
+Build: fingerprint
+
+Line 1
+Line 2
+Line 3
+)";
+
+}  // namespace
+
 class MockArcCollector : public ArcCollector {
  public:
   using ArcCollector::ArcCollector;
@@ -193,6 +208,62 @@ TEST_F(ArcCollectorTest, ShouldDump) {
   EXPECT_FALSE(collector_->ShouldDump(123, ArcCollector::kSystemUserEnd,
                                       "com.arc.app", &reason));
   EXPECT_EQ("ignoring - not a system process", reason);
+}
+
+TEST_F(ArcCollectorTest, ParseCrashLog) {
+  std::stringstream stream;
+  ArcCollector::CrashLogHeaderMap map;
+  std::string exception_info;
+
+  // Crash log should not be empty.
+  EXPECT_FALSE(ArcCollector::ParseCrashLog(
+      "arc_app_crash", &stream, &map, &exception_info));
+
+  // Header key should be followed by a colon.
+  stream.clear();
+  stream.str("Key");
+  EXPECT_FALSE(ArcCollector::ParseCrashLog(
+      "arc_app_crash", &stream, &map, &exception_info));
+
+  EXPECT_TRUE(FindLog("Header has unexpected format"));
+  ClearLog();
+
+  // Header value should not be empty.
+  stream.clear();
+  stream.str("Key:   ");
+  EXPECT_FALSE(ArcCollector::ParseCrashLog(
+      "arc_app_crash", &stream, &map, &exception_info));
+
+  EXPECT_TRUE(FindLog("Header has unexpected format"));
+  ClearLog();
+
+  // Parse a crash log with exception info.
+  stream.clear();
+  stream.str(kCrashLog + 1);  // Skip EOL.
+  EXPECT_TRUE(ArcCollector::ParseCrashLog(
+      "arc_app_crash", &stream, &map, &exception_info));
+
+  EXPECT_TRUE(GetLog().empty());
+
+  EXPECT_EQ("com.arc.app", ArcCollector::GetCrashLogHeader(map, "Process"));
+  EXPECT_EQ("fingerprint", ArcCollector::GetCrashLogHeader(map, "Build"));
+  EXPECT_EQ("unknown", ArcCollector::GetCrashLogHeader(map, "Activity"));
+  EXPECT_EQ("Line 1\nLine 2\nLine 3\n", exception_info);
+
+  // Parse a crash log without exception info.
+  stream.clear();
+  stream.seekg(0);
+  map.clear();
+  exception_info.clear();
+  EXPECT_TRUE(ArcCollector::ParseCrashLog(
+      "arc_app_anr", &stream, &map, &exception_info));
+
+  EXPECT_TRUE(GetLog().empty());
+
+  EXPECT_EQ("0xcafebabe", ArcCollector::GetCrashLogHeader(map, "Flags"));
+  EXPECT_EQ("com.arc.app v1 (1.0)",
+      ArcCollector::GetCrashLogHeader(map, "Package"));
+  EXPECT_TRUE(exception_info.empty());
 }
 
 TEST_F(ArcContextTest, GetArcPid) {

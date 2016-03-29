@@ -174,6 +174,16 @@ static int HandleArcCrash(ArcCollector *arc_collector,
     return 1;
   return 0;
 }
+
+static int HandleArcJavaCrash(ArcCollector *arc_collector,
+                              const std::string& type) {
+  brillo::LogToString(true);
+  bool handled = arc_collector->HandleJavaCrash(type);
+  brillo::LogToString(false);
+  if (!handled)
+    return 1;
+  return 0;
+}
 #endif
 
 static int HandleChromeCrash(ChromeCollector *chrome_collector,
@@ -278,6 +288,10 @@ int main(int argc, char *argv[]) {
   DEFINE_bool(directory_failure, false, "Spool directory failure test");
   DEFINE_string(filter_in, "",
                 "Ignore all crashes but this for testing");
+#if USE_ARC
+  DEFINE_string(arc_java_crash, "",
+      "Read Java crash log of the given type from standard input");
+#endif
 
   OpenStandardFileDescriptors();
   FilePath my_path = base::MakeAbsoluteFilePath(FilePath(argv[0]));
@@ -356,6 +370,11 @@ int main(int argc, char *argv[]) {
                              FLAGS_uid,
                              FLAGS_exe);
   }
+
+#if USE_ARC
+  if (!FLAGS_arc_java_crash.empty())
+    return HandleArcJavaCrash(&arc_collector, FLAGS_arc_java_crash);
+#endif
 
   int exit_code = HandleUserCrash(&user_collector,
                                   FLAGS_user, FLAGS_crash_test);

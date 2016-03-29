@@ -6,7 +6,9 @@
 #define CRASH_REPORTER_ARC_COLLECTOR_H_
 
 #include <memory>
+#include <sstream>
 #include <string>
+#include <unordered_map>
 
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -39,12 +41,17 @@ class ArcCollector : public UserCollectorBase {
   // during teardown.
   bool IsArcProcess(pid_t pid) const;
 
+  // Reads a Java crash log of the given |type| from standard input, or closes
+  // the stream if reporting is disabled.
+  bool HandleJavaCrash(const std::string &type);
+
   static bool IsArcRunning();
 
  private:
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForUserCrash);
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForArcCrash);
   FRIEND_TEST(ArcCollectorTest, ShouldDump);
+  FRIEND_TEST(ArcCollectorTest, ParseCrashLog);
 
   // Upper bound for system UIDs in ARC.
   static const uid_t kSystemUserEnd = 10000;
@@ -80,6 +87,21 @@ class ArcCollector : public UserCollectorBase {
   // Adds the crash |type| and Chrome version as metadata. The |add_arc_version|
   // option requires privilege to access the ARC root.
   void AddArcMetaData(const std::string &type, bool add_arc_version);
+
+  using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
+  static std::string GetCrashLogHeader(const CrashLogHeaderMap &map,
+                                       const char *key);
+
+  static bool ParseCrashLog(const std::string &type,
+                            std::stringstream *stream,
+                            CrashLogHeaderMap *map,
+                            std::string *exception_info);
+
+  bool CreateReportForJavaCrash(const std::string &type,
+                                const CrashLogHeaderMap &map,
+                                const std::string &exception_info,
+                                const std::string &log,
+                                bool *out_of_capacity);
 
   const ContextPtr context_;
 

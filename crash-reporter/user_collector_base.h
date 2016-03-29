@@ -82,6 +82,9 @@ class UserCollectorBase : public CrashCollector {
 
   bool ClobberContainerDirectory(const base::FilePath &container_dir);
 
+  void EnqueueCollectionErrorLog(pid_t pid, ErrorType error_type,
+                                 const std::string &exec_name);
+
   bool initialized_ = false;
 
   static const char *kUserId;
@@ -116,9 +119,6 @@ class UserCollectorBase : public CrashCollector {
   bool GetCreatedCrashDirectory(pid_t pid, uid_t supplied_ruid,
                                 base::FilePath *crash_file_path,
                                 bool *out_of_capacity);
-
-  void EnqueueCollectionErrorLog(pid_t pid, ErrorType error_type,
-                                 const std::string &exec_name);
 
   // Prepended to log messages to differentiate between collectors.
   const char * const tag_;
