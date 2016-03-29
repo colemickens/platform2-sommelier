@@ -78,6 +78,9 @@ const char* kResultNames[] = {
 // After we fail to ping the gateway, we 1) start ARP lookup, 2) fail ARP
 // lookup, 3) start IP collision check, 4) end IP collision check.
 const int kNumEventsFromPingGatewayEndToIpCollisionCheckEnd = 4;
+const char kIPv4ZeroAddress[] = "0.0.0.0";
+const uint8_t kMACZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 }  // namespace
 
 namespace shill {
@@ -554,8 +557,11 @@ void ConnectionDiagnostics::CheckIpCollision() {
       Bind(&ConnectionDiagnostics::OnArpReplyReceived,
            weak_ptr_factory_.GetWeakPtr())));
 
-  ArpPacket request(connection_->local(), connection_->local(),
-                    local_mac_address_, ByteString());
+  // Create an 'Arp Probe' Packet.
+  ArpPacket request(IPAddress(string(kIPv4ZeroAddress)),
+                    connection_->local(),
+                    local_mac_address_,
+                    ByteString(kMACZeroAddress, sizeof(kMACZeroAddress)));
   if (!arp_client_->TransmitRequest(request)) {
     LOG(ERROR) << __func__ << ": failed to send ARP request";
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
@@ -742,25 +748,9 @@ void ConnectionDiagnostics::OnArpReplyReceived(int fd) {
   if (!arp_client_->ReceivePacket(&packet, &sender)) {
     return;
   }
-
-  if (!packet.IsReply()) {
-    SLOG(this, 4) << __func__ << ": this is not a reply packet. Ignoring.";
-    return;
-  }
-
-  if (!connection_->local().address().Equals(
-          packet.remote_ip_address().address())) {
-    SLOG(this, 4) << __func__ << ": response is not for our IP address.";
-    return;
-  }
-
-  if (!local_mac_address_.Equals(packet.remote_mac_address())) {
-    SLOG(this, 4) << __func__ << ": response is not for our MAC address.";
-    return;
-  }
-
-  if (connection_->local().address().Equals(
-          packet.local_ip_address().address())) {
+  // According to RFC 5227, we only check the sender's ip address.
+  if (connection_->local().Equals(
+          packet.local_ip_address())) {
     arp_reply_timeout_callback_.Cancel();
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseEnd, kResultSuccess,
                         "IP collision found");

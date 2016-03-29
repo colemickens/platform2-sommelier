@@ -63,9 +63,11 @@ const shill::IPAddress kIPv4ServerAddress("8.8.8.8");
 const shill::IPAddress kIPv6ServerAddress("fe80::1aa9:5ff:7ebf:14c5");
 const shill::IPAddress kIPv4GatewayAddress("192.168.1.1");
 const shill::IPAddress kIPv6GatewayAddress("fee2::11b2:53f:13be:125e");
+const shill::IPAddress kIPv4ZeroAddress("0.0.0.0");
 const vector<base::TimeDelta> kEmptyResult;
 const vector<base::TimeDelta> kNonEmptyResult{
     base::TimeDelta::FromMilliseconds(10)};
+const uint8_t kMACZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 }  // namespace
 
 namespace shill {
@@ -561,10 +563,13 @@ class ConnectionDiagnosticsTest : public Test {
         .WillOnce(
             DoAll(SetArgumentPointee<1>(local_mac_address_), Return(true)));
     EXPECT_CALL(*arp_client_, StartReplyListener()).WillOnce(Return(true));
-    // We should send an ARP request for our own local IP address.
+    // We should send an ARP probe request for our own local IP address.
     EXPECT_CALL(*arp_client_, TransmitRequest(IsArpRequest(
-                                  local_ip_address_, local_ip_address_,
-                                  local_mac_address_, ByteString())))
+                                  kIPv4ZeroAddress,
+                                  local_ip_address_,
+                                  local_mac_address_,
+                                  ByteString(kMACZeroAddress,
+                                             sizeof(kMACZeroAddress)))))
         .WillOnce(Return(true));
     EXPECT_CALL(dispatcher_,
                 PostDelayedTask(
