@@ -27,6 +27,10 @@ const char kStatePrefix[] = "State:\t";
 const char *UserCollectorBase::kUserId = "Uid:\t";
 const char *UserCollectorBase::kGroupId = "Gid:\t";
 
+UserCollectorBase::UserCollectorBase(const char *tag)
+    : tag_(tag) {
+}
+
 void UserCollectorBase::Initialize(
     CountCrashFunction count_crash_function,
     IsFeedbackAllowedFunction is_feedback_allowed_function,
@@ -80,9 +84,11 @@ bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
   std::string reason;
   bool dump = ShouldDump(pid, supplied_ruid, exec, &reason);
 
-  LOG(WARNING) << "Received crash notification for " << exec << "[" << pid
-               << "] sig " << signal << ", user " << supplied_ruid
-               << " (" << reason << ")";
+  const auto message = StringPrintf(
+      "Received crash notification for %s[%d] sig %d, user %u",
+      exec.c_str(), pid, signal, supplied_ruid);
+
+  LogCrash(message, reason);
 
   if (dump) {
     count_crash_function_();
@@ -135,6 +141,11 @@ bool UserCollectorBase::ShouldDump(bool has_owner_consent,
 
   *reason = "handling";
   return true;
+}
+
+void UserCollectorBase::LogCrash(const std::string &message,
+                                 const std::string &reason) const {
+  LOG(WARNING) << '[' << tag_ << "] " << message << " (" << reason << ')';
 }
 
 bool UserCollectorBase::GetFirstLineWithPrefix(
@@ -328,8 +339,8 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid, uid_t supplied_ruid,
 }
 
 void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
-                                              ErrorType error_type,
-                                              const std::string &exec) {
+                                                  ErrorType error_type,
+                                                  const std::string &exec) {
   FilePath crash_path;
   LOG(INFO) << "Writing conversion problems as separate crash report.";
   if (!GetCreatedCrashDirectoryByEuid(0, &crash_path, nullptr)) {

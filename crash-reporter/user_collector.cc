@@ -41,7 +41,8 @@ bool IsChromeExecName(const std::string &exec);
 }  // namespace
 
 UserCollector::UserCollector()
-    : core_pattern_file_(kCorePatternFile),
+    : UserCollectorBase("user"),
+      core_pattern_file_(kCorePatternFile),
       core_pipe_limit_file_(kCorePipeLimitFile),
       core2md_failure_(false) {
 }

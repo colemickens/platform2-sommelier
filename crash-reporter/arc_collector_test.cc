@@ -185,14 +185,14 @@ TEST_F(ArcCollectorTest, ShouldDump) {
 
   std::string reason;
   EXPECT_FALSE(collector_->ShouldDump(50, 1234, "chrome", &reason));
-  EXPECT_EQ("ARC: ignoring - crash origin is not ARC", reason);
+  EXPECT_EQ("ignoring - crash origin is not ARC", reason);
 
   EXPECT_TRUE(collector_->ShouldDump(123, 0, "arc_service", &reason));
-  EXPECT_EQ("ARC: handling", reason);
+  EXPECT_EQ("handling", reason);
 
   EXPECT_FALSE(collector_->ShouldDump(123, ArcCollector::kSystemUserEnd,
                                       "com.arc.app", &reason));
-  EXPECT_EQ("ARC: ignoring - not a system process", reason);
+  EXPECT_EQ("ignoring - not a system process", reason);
 }
 
 TEST_F(ArcContextTest, GetArcPid) {

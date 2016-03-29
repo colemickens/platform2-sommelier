@@ -27,7 +27,7 @@ class ArcCollector : public UserCollectorBase {
 
   using ContextPtr = std::unique_ptr<Context>;
 
-  ArcCollector() = default;
+  ArcCollector();
   explicit ArcCollector(ContextPtr context);
   ~ArcCollector() override = default;
 
@@ -81,7 +81,7 @@ class ArcCollector : public UserCollectorBase {
   // option requires privilege to access the ARC root.
   void AddArcMetaData(const std::string &type, bool add_arc_version);
 
-  const ContextPtr context_{new ArcContext(this)};
+  const ContextPtr context_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcCollector);
 };

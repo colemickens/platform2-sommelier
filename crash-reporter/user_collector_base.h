@@ -15,6 +15,8 @@
 // Common functionality shared by user collectors.
 class UserCollectorBase : public CrashCollector {
  public:
+  explicit UserCollectorBase(const char *tag);
+
   void Initialize(CountCrashFunction count_crash,
                   IsFeedbackAllowedFunction is_metrics_allowed,
                   bool generate_diagnostics,
@@ -53,6 +55,11 @@ class UserCollectorBase : public CrashCollector {
   bool ShouldDump(bool has_owner_consent,
                   bool is_developer,
                   std::string *reason) const;
+
+  // Logs a |message| detailing a crash, along with the |reason| for which the
+  // collector handled or ignored it.
+  void LogCrash(const std::string &message,
+                const std::string &reason) const;
 
   // Returns, via |line|, the first line in |lines| that starts with |prefix|.
   // Returns true if a line is found, or false otherwise.
@@ -112,6 +119,9 @@ class UserCollectorBase : public CrashCollector {
 
   void EnqueueCollectionErrorLog(pid_t pid, ErrorType error_type,
                                  const std::string &exec_name);
+
+  // Prepended to log messages to differentiate between collectors.
+  const char * const tag_;
 
   bool generate_diagnostics_ = false;
   bool directory_failure_ = false;

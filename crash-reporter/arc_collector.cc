@@ -42,8 +42,14 @@ bool GetArcVersion(std::string *version);
 
 }  // namespace
 
+ArcCollector::ArcCollector()
+    : ArcCollector(ContextPtr(new ArcContext(this))) {
+}
+
 ArcCollector::ArcCollector(ContextPtr context)
-    : context_(std::move(context)) {}
+    : UserCollectorBase("ARC"),
+      context_(std::move(context)) {
+}
 
 bool ArcCollector::IsArcProcess(pid_t pid) const {
   pid_t arc_pid;
@@ -127,25 +133,19 @@ bool ArcCollector::ShouldDump(pid_t pid,
                               uid_t uid,
                               const std::string &exec,
                               std::string *reason) {
-  *reason = "ARC: ";
-
   if (!IsArcProcess(pid)) {
-    reason->append("ignoring - crash origin is not ARC");
+    *reason = "ignoring - crash origin is not ARC";
     return false;
   }
 
   // TODO(domlaskowski): Convert between UID namespaces.
   if (uid >= kSystemUserEnd) {
-    reason->append("ignoring - not a system process");
+    *reason = "ignoring - not a system process";
     return false;
   }
 
-  std::string message;
-  const bool dump = UserCollectorBase::ShouldDump(
-      is_feedback_allowed_function_(), IsDeveloperImage(), &message);
-
-  reason->append(message);
-  return dump;
+  return UserCollectorBase::ShouldDump(
+      is_feedback_allowed_function_(), IsDeveloperImage(), reason);
 }
 
 UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
