@@ -282,6 +282,9 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
   ExportSyncDBusMethod(object,
                        kSessionManagerStopArcInstance,
                        &SessionManagerDBusAdaptor::StopArcInstance);
+  ExportSyncDBusMethod(object,
+                       kSessionManagerGetArcStartTimeTicks,
+                       &SessionManagerDBusAdaptor::GetArcStartTimeTicks);
 
   CHECK(object->ExportMethodAndBlock(
       kDBusIntrospectableInterface,
@@ -583,6 +586,19 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::GetArcStartTimeTicks(
+    dbus::MethodCall* call) {
+  SessionManagerImpl::Error error;
+  base::TimeTicks start_time = impl_->GetArcStartTime(&error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
+
+  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendInt64(start_time.ToInternalValue());
+  return response;
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::Introspect(

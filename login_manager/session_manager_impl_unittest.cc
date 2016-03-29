@@ -794,8 +794,11 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 
   ExpectAndRunStartSession(kSaneEmail);
   bool available = impl_.CheckArcAvailability();
+  SessionManagerImpl::Error start_time_error;
 #if USE_ARC
   EXPECT_TRUE(available);
+  impl_.GetArcStartTime(&start_time_error);
+  EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
   // TODO(lhchavez): Once session_manager controls the ARC instance process and
   // upstart is not used, verify that the instance is killed when the session
   // ends.
@@ -803,10 +806,13 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(StrEq("start-arc-instance"), ElementsAre())).Times(1);
   impl_.StartArcInstance(kSocketPath, &error_);
+  EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
 #else
   EXPECT_FALSE(available);
   impl_.StartArcInstance(kSocketPath, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+  impl_.GetArcStartTime(&start_time_error);
+  EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
 #endif
 }
 

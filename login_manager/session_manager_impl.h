@@ -174,6 +174,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   bool CheckArcAvailability();
   void StartArcInstance(const std::string& socket_path, Error* error);
   void StopArcInstance(Error* error);
+  base::TimeTicks GetArcStartTime(Error* error);
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -228,6 +229,8 @@ class SessionManagerImpl : public SessionManagerInterface,
   base::Closure lock_screen_closure_;
   base::Closure restart_device_closure_;
   base::Closure start_arc_instance_closure_;
+
+  base::TimeTicks arc_start_time_;
 
   DBusSignalEmitterInterface* dbus_emitter_;            // Owned by the caller.
   KeyGenerator* key_gen_;                               // Owned by the caller.

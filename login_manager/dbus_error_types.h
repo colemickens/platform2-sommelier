@@ -25,6 +25,7 @@ static const char kSigEncodeFail[] = INTERFACE ".SigEncodeFail";
 static const char kTestingChannelError[] = INTERFACE ".TestingChannelError";
 static const char kUnknownPid[] = INTERFACE ".UnknownPid";
 static const char kVerifyFail[] = INTERFACE ".VerifyFail";
+static const char kNotStarted[] = INTERFACE ".NotStarted";
 
 #undef INTERFACE
 }  // namespace dbus_error

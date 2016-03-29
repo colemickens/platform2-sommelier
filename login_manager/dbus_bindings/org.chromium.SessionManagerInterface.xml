@@ -410,6 +410,18 @@
     -->
     <method name="StopArcInstance">
     </method>
+
+    <!--
+        GetArcStartTimeTicks:
+
+        Returns the value of start time (base::TimeTicks::ToInternalValue()) of
+        the ARC instance if exists, otherwise an error will be returned
+        accordingly i.e. ARC is not available on the platform or ARC is not
+        started.
+    -->
+    <method name="GetArcStartTimeTicks">
+      <arg type="x" name="start_time" direction="out" />
+    </method>
   </interface>
   <!-- ********************************************************************* -->
 </node>

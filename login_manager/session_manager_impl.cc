@@ -580,6 +580,8 @@ bool SessionManagerImpl::CheckArcAvailability() {
 void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
                                           Error* error) {
 #if USE_ARC
+  arc_start_time_ = base::TimeTicks::Now();
+
   // TODO(lhchavez): Let session_manager control the ARC instance process
   // instead of having upstart handle it.
   scoped_ptr<dbus::Response> emit_response =
@@ -613,9 +615,20 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }
+  arc_start_time_ = base::TimeTicks();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
 #endif  // USE_ARC
+}
+
+base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
+#if USE_ARC
+  if (arc_start_time_.is_null())
+    error->Set(dbus_error::kNotStarted, "ARC is not started yet.");
+#else
+  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+#endif  // !USE_ARC
+  return arc_start_time_;
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
