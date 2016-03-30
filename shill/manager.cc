@@ -1326,6 +1326,20 @@ void Manager::OnDeviceClaimerVanished() {
   device_claimer_.reset();
 }
 
+RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
+  RpcIdentifiers device_rpc_ids;
+  for (const auto& device : devices_) {
+    device_rpc_ids.push_back(device->GetRpcIdentifier());
+  }
+  // Enumerate devices that are internal to the services, such as PPPoE devices.
+  for (const auto& service : services_) {
+    if (!service->GetInnerDeviceRpcIdentifier().empty()) {
+      device_rpc_ids.push_back(service->GetInnerDeviceRpcIdentifier());
+    }
+  }
+  return device_rpc_ids;
+}
+
 #if !defined(DISABLE_WIFI)
 bool Manager::SetDisableWiFiVHT(const bool& disable_wifi_vht, Error* error) {
   if (disable_wifi_vht == wifi_provider_->disable_vht()) {
@@ -2217,20 +2231,6 @@ vector<string> Manager::EnabledTechnologies(Error* /*error*/) {
 
 vector<string> Manager::UninitializedTechnologies(Error* /*error*/) {
   return device_info_.GetUninitializedTechnologies();
-}
-
-RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
-  RpcIdentifiers device_rpc_ids;
-  for (const auto& device : devices_) {
-    device_rpc_ids.push_back(device->GetRpcIdentifier());
-  }
-  // Enumerate devices that are internal to the services, such as PPPoE devices.
-  for (const auto& service : services_) {
-    if (!service->GetInnerDeviceRpcIdentifier().empty()) {
-      device_rpc_ids.push_back(service->GetInnerDeviceRpcIdentifier());
-    }
-  }
-  return device_rpc_ids;
 }
 
 RpcIdentifiers Manager::EnumerateProfiles(Error* /*error*/) {

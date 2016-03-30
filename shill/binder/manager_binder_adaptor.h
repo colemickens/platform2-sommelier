@@ -75,28 +75,38 @@ class ManagerBinderAdaptor
       const std::string& name, const std::vector<std::string>& value) override;
 
   // Implementation of BnManager.
-  android::binder::Status SetupApModeInterface(std::string* _aidl_return);
-  android::binder::Status SetupStationModeInterface(std::string* _aidl_return);
-  android::binder::Status ClaimInterface(const std::string& claimer_name,
-                                         const std::string& interface_name);
-  android::binder::Status ReleaseInterface(const std::string& claimer_name,
-                                           const std::string& interface_name);
+  android::binder::Status SetupApModeInterface(
+      const android::sp<IBinder>& ap_mode_setter,
+      std::string* _aidl_return) override;
+  android::binder::Status SetupStationModeInterface(
+      std::string* _aidl_return) override;
+  android::binder::Status ClaimInterface(
+      const android::sp<IBinder>& claimer, const std::string& claimer_name,
+      const std::string& interface_name) override;
+  android::binder::Status ReleaseInterface(
+      const android::sp<IBinder>& claimer, const std::string& claimer_name,
+      const std::string& interface_name) override;
   android::binder::Status ConfigureService(
       const android::os::PersistableBundle& properties,
-      android::sp<android::system::connectivity::shill::IService>*
-          _aidl_return);
-  android::binder::Status RequestScan(int32_t type);
+      android::sp<android::system::connectivity::shill::IService>* _aidl_return)
+      override;
+  android::binder::Status RequestScan(int32_t type) override;
   android::binder::Status GetDevices(
-      std::vector<android::sp<android::IBinder>>* _aidl_return);
+      std::vector<android::sp<android::IBinder>>* _aidl_return) override;
   android::binder::Status GetDefaultService(
-      android::sp<android::IBinder>* _aidl_return);
+      android::sp<android::IBinder>* _aidl_return) override;
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&
-          callback);
+          callback) override;
 
  private:
+  void OnApModeSetterVanished();
+  void OnDeviceClaimerVanished();
+
   Manager* manager_;
+  android::sp<IBinder> ap_mode_setter_;
+  android::sp<IBinder> device_claimer_;
 
   DISALLOW_COPY_AND_ASSIGN(ManagerBinderAdaptor);
 };

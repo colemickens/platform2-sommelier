@@ -303,6 +303,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return a reference to the Service associated with the default connection.
   // If there is no such connection, this function returns a reference to NULL.
   virtual ServiceRefPtr GetDefaultService() const;
+  RpcIdentifier GetDefaultServiceRpcIdentifier(Error* error);
 
   // Set enabled state of all |technology_name| devices to |enabled_state|.
   // Persist the state to storage is |persist| is true.
@@ -556,6 +557,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Called when remote device claimer vanishes.
   virtual void OnDeviceClaimerVanished();
 
+  RpcIdentifiers EnumerateDevices(Error* error);
+
  private:
   friend class CellularTest;
   friend class DeviceInfoTest;
@@ -652,12 +655,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::string DefaultTechnology(Error* error);
   std::vector<std::string> EnabledTechnologies(Error* error);
   std::vector<std::string> UninitializedTechnologies(Error* error);
-  RpcIdentifiers EnumerateDevices(Error* error);
   RpcIdentifiers EnumerateProfiles(Error* error);
   RpcIdentifiers EnumerateWatchedServices(Error* error);
   std::string GetActiveProfileRpcIdentifier(Error* error);
   std::string GetCheckPortalList(Error* error);
-  RpcIdentifier GetDefaultServiceRpcIdentifier(Error* error);
   std::string GetIgnoredDNSSearchPaths(Error* error);
   ServiceRefPtr GetServiceInner(const KeyValueStore& args, Error* error);
   bool SetCheckPortalList(const std::string& portal_list, Error* error);

@@ -25,7 +25,9 @@ interface IManager {
   /**
    * Technology types that can be passed to RequestScan().
    */
+  // Any technology, i.e. scan request is made for each technology.
   const int TECHNOLOGY_ANY = 0;
+  // Wi-Fi
   const int TECHNOLOGY_WIFI = 1;
 
   /**
@@ -34,9 +36,11 @@ interface IManager {
    * of this call. Shill will revert to station mode if the remote
    * service that called this method vanishes.
    *
+   * @param ap_mode_setter Binder reference to the remote service that called
+   * this method.
    * @return Interface name on success, empty string on error
    */
-  @utf8InCpp String SetupApModeInterface();
+  @utf8InCpp String SetupApModeInterface(IBinder ap_mode_setter);
 
   /**
    * (Brillo only) Ask WiFi driver to setup a station mode interface.
@@ -52,22 +56,28 @@ interface IManager {
    * claimer |claimer_name|. The specified device will be
    * added to the blacklist. Any current connection on that device
    * will be terminated, and shill will stop managing that device.
+   * Pass an empty string as the claimer name to indicate default claimer.
    *
+   * @param claimer Binder reference to the remote service that called this
+   * method.
    * @param claimer_name Name of the claimer
    * @param interface_name Name of the interface to be claimed
    */
-  void ClaimInterface(
+  void ClaimInterface(IBinder claimer,
       @utf8InCpp String claimer_name, @utf8InCpp String interface_name);
 
   /**
    * Take ownership of a device |interface_name| from
    * claimer |claimer_name| back to shill. The specified device
    * will be removed from the blacklist and managed by shill.
+   * Pass an empty string as the claimer name to indicate default claimer.
    *
+   * @param claimer Binder reference to the remote service that called this
+   * method.
    * @param claimer_name Name of the claimer
    * @param interface_name Name of the interface to be released
    */
-  void ReleaseInterface(@utf8InCpp String claimer_name,
+  void ReleaseInterface(IBinder claimer, @utf8InCpp String claimer_name,
       @utf8InCpp String interface_name);
 
   /**

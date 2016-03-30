@@ -190,7 +190,7 @@ BinderAdaptor* BinderControl::GetBinderAdaptorForRpcIdentifier(
     const std::string& rpc_id) {
   const auto& it = rpc_id_to_adaptor_map_.find(rpc_id);
   if (it == rpc_id_to_adaptor_map_.end()) {
-    return NULL;
+    return nullptr;
   }
 
   return it->second;
