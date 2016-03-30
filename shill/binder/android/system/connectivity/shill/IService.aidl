@@ -51,24 +51,26 @@ interface IService {
    * Note: keep in sync with Service::ConnectFailureToString() and Flimflam
    * error options in system_api/dbus/shill/dbus-constants.h.
    */
-  const int ERROR_IDLE = 0;
-  const int ERROR_AAA_FAILED = 1;
-  const int ERROR_ACTIVATION_FAILED = 2;
-  const int ERROR_BAD_PASSPHRASE = 3;
-  const int ERROR_BAD_WEP_KEY = 4;
-  const int ERROR_CONNECT_FAILED = 5;
-  const int ERROR_DNS_LOOKUP_FAILED = 6;
-  const int ERROR_DHCP_FAILED = 7;
-  const int ERROR_HTTP_GET_FAILED = 8;
-  const int ERROR_INTERNAL = 9;
+  const int ERROR_AAA_FAILED = 0;
+  const int ERROR_ACTIVATION_FAILED = 1;
+  const int ERROR_BAD_PASSPHRASE = 2;
+  const int ERROR_BAD_WEP_KEY = 3;
+  const int ERROR_CONNECT_FAILED = 4;
+  const int ERROR_DNS_LOOKUP_FAILED = 5;
+  const int ERROR_DHCP_FAILED = 6;
+  const int ERROR_HTTP_GET_FAILED = 7;
+  const int ERROR_INTERNAL = 8;
+  const int ERROR_INVALID_FAILURE = 9;
   const int ERROR_IPSEC_CERT_AUTH_FAILED = 10;
   const int ERROR_IPSEC_PSK_AUTH_FAILED = 11;
   const int ERROR_NEED_EVDO = 12;
   const int ERROR_NEED_HOME_NETWORK = 13;
-  const int ERROR_OTASP_FAILED = 14;
-  const int ERROR_OUT_OF_RANGE = 15;
-  const int ERROR_PIN_MISSING = 16;
-  const int ERROR_PPP_AUTH_FAILED = 17;
+  const int ERROR_NO_FAILURE = 14;
+  const int ERROR_OTASP_FAILED = 15;
+  const int ERROR_OUT_OF_RANGE = 16;
+  const int ERROR_PIN_MISSING = 17;
+  const int ERROR_PPP_AUTH_FAILED = 18;
+  const int ERROR_UNKNOWN_FAILURE = 19;
 
   /**
    * Tethering values that can returned by GetTethering().
