@@ -79,6 +79,24 @@ TEST(SimpleProcess, BindFd) {
   EXPECT_EQ(std::string(kMsg) + "\n", std::string(buf));
 }
 
+TEST(SimpleProcess, BindFdToSameFd) {
+  static const char* kMsg = "hello_world";
+  ScopedPipe pipe;
+  ProcessImpl process;
+  process.AddArg(kBinSh);
+  process.AddArg("-c");
+  process.AddArg(base::StringPrintf("echo %s >&%d", kMsg, pipe.writer));
+  process.BindFd(pipe.writer, pipe.writer);
+  process.Run();
+  close(pipe.writer);
+  pipe.writer = -1;
+
+  char buf[16];
+  memset(buf, 0, sizeof(buf));
+  EXPECT_EQ(read(pipe.reader, buf, sizeof(buf) - 1), strlen(kMsg) + 1);
+  EXPECT_EQ(std::string(kMsg) + "\n", std::string(buf));
+}
+
 class ProcessTest : public ::testing::Test {
  public:
   void SetUp() {

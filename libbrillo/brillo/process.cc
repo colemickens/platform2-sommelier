@@ -240,11 +240,18 @@ bool ProcessImpl::Start() {
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
       if (i->second.parent_fd_ != -1)
         IGNORE_EINTR(close(i->second.parent_fd_));
+      // If we want to bind a fd to the same fd in the child, we don't need to
+      // close and dup2 it.
+      if (i->second.child_fd_ == i->first)
+        continue;
       HANDLE_EINTR(dup2(i->second.child_fd_, i->first));
     }
     // Defer the actual close() of the child fd until afterward; this lets the
-    // same child fd be bound to multiple fds using BindFd
+    // same child fd be bound to multiple fds using BindFd. Don't close the fd
+    // if it was bound to itself.
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
+      if (i->second.child_fd_ == i->first)
+        continue;
       IGNORE_EINTR(close(i->second.child_fd_));
     }
     if (!output_file_.empty()) {
@@ -296,9 +303,11 @@ bool ProcessImpl::Start() {
     // Still executing inside the parent process with known child pid.
     arguments_.clear();
     UpdatePid(pid);
-    // Close our copy of child side pipes.
-    for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
-      IGNORE_EINTR(close(i->second.child_fd_));
+    // Close our copy of child side pipes only if we created those pipes.
+    for (const auto& i : pipe_map_) {
+      if (!i.second.is_bound_) {
+        IGNORE_EINTR(close(i.second.child_fd_));
+      }
     }
   }
   return true;
