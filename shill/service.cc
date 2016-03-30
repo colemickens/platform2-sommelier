@@ -969,10 +969,6 @@ string Service::GetTechnologyString() const {
   return Technology::NameFromIdentifier(technology());
 }
 
-string Service::CalculateTechnology(Error* /*error*/) {
-  return GetTechnologyString();
-}
-
 void Service::NoteDisconnectEvent() {
   SLOG(this, 2) << __func__;
   // Ignore the event if it's user-initiated explicit disconnect.
@@ -1294,10 +1290,6 @@ string Service::GetStateString() const {
   }
 }
 
-string Service::CalculateState(Error* /*error*/) {
-  return GetStateString();
-}
-
 bool Service::IsAutoConnectable(const char** reason) const {
   if (manager_->IsTechnologyAutoConnectDisabled(technology_)) {
     *reason = kAutoConnTechnologyNotConnectable;
@@ -1447,6 +1439,22 @@ void Service::SaveString(StoreInterface* storage,
 
 map<string, string> Service::GetLoadableProfileEntries() {
   return manager_->GetLoadableProfileEntriesForService(this);
+}
+
+string Service::CalculateState(Error* /*error*/) {
+  return GetStateString();
+}
+
+string Service::CalculateTechnology(Error* /*error*/) {
+  return GetTechnologyString();
+}
+
+string Service::GetTethering(Error* error) const {
+  // The "Tethering" property isn't supported by the Service base class, and
+  // therefore should not be listed in the properties returned by
+  // the GetProperties() RPC method.
+  error->Populate(Error::kNotSupported);
+  return "";
 }
 
 void Service::IgnoreParameterForConfigure(const string& parameter) {
@@ -1633,15 +1641,6 @@ bool Service::SetProxyConfig(const string& proxy_config, Error* error) {
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }
-
-string Service::GetTethering(Error* error) const {
-  // The "Tethering" property isn't supported by the Service base class, and
-  // therefore should not be listed in the properties returned by
-  // the GetProperties() RPC method.
-  error->Populate(Error::kNotSupported);
-  return "";
-}
-
 
 void Service::NotifyPropertyChanges() {
   property_change_notifier_->UpdatePropertyObservers();

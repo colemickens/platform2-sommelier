@@ -63,6 +63,10 @@ class VPNService : public Service {
                                              Error* error);
   void set_storage_id(const std::string& id) { storage_id_ = id; }
 
+  // Returns the Type name of the lowest connection (presumably the "physical"
+  // connection) that this service depends on.
+  std::string GetPhysicalTechnologyProperty(Error* error);
+
  protected:
   // Inherited from Service.
   bool IsAutoConnectable(const char** reason) const override;
@@ -80,10 +84,6 @@ class VPNService : public Service {
   static const char kAutoConnVPNAlreadyActive[];
 
   std::string GetDeviceRpcId(Error* error) const override;
-
-  // Returns the Type name of the lowest connection (presumably the "physical"
-  // connection) that this service depends on.
-  std::string GetPhysicalTechnologyProperty(Error* error);
 
   std::string storage_id_;
   std::unique_ptr<VPNDriver> driver_;

@@ -119,6 +119,19 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
   return id;
 }
 
+string VPNService::GetPhysicalTechnologyProperty(Error* error) {
+  ConnectionRefPtr conn = connection();
+  if (conn)
+    conn = conn->GetCarrierConnection();
+
+  if (!conn) {
+    error->Populate(Error::kOperationFailed);
+    return "";
+  }
+
+  return Technology::NameFromIdentifier(conn->technology());
+}
+
 string VPNService::GetDeviceRpcId(Error* error) const {
   error->Populate(Error::kNotSupported);
   return "/";
@@ -243,19 +256,6 @@ bool VPNService::SetNameProperty(const string& name, Error* error) {
   profile()->DeleteEntry(old_storage_id, nullptr);
   profile()->UpdateService(this);
   return true;
-}
-
-string VPNService::GetPhysicalTechnologyProperty(Error* error) {
-  ConnectionRefPtr conn = connection();
-  if (conn)
-    conn = conn->GetCarrierConnection();
-
-  if (!conn) {
-    error->Populate(Error::kOperationFailed);
-    return "";
-  }
-
-  return Technology::NameFromIdentifier(conn->technology());
 }
 
 void VPNService::OnBeforeSuspend(const ResultCallback& callback) {

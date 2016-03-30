@@ -546,6 +546,15 @@ class Service : public base::RefCounted<Service> {
   // this service.
   std::map<std::string, std::string> GetLoadableProfileEntries();
 
+  virtual std::string CalculateState(Error* error);
+
+  std::string CalculateTechnology(Error* error);
+
+  // Return whether this service is suspected or confirmed to be
+  // provided by a mobile device, which is likely to be using a
+  // metered backhaul for internet connectivity.
+  virtual std::string GetTethering(Error* error) const;
+
   void set_connection_id(int connection_id) { connection_id_ = connection_id; }
   int connection_id() const { return connection_id_; }
 
@@ -564,9 +573,6 @@ class Service : public base::RefCounted<Service> {
 
   // Returns true if a character is disallowed to be in a service storage id.
   static bool IllegalChar(char a) { return !LegalChar(a); }
-
-  virtual std::string CalculateState(Error* error);
-  std::string CalculateTechnology(Error* error);
 
   bool GetVisibleProperty(Error* error);
 
@@ -658,11 +664,6 @@ class Service : public base::RefCounted<Service> {
   // NB: When adding a call to this function from a subclass, please check
   // that the semantics of SecurityLevel() are appropriate for the subclass.
   void SetSecurity(CryptoAlgorithm crypt, bool rotation, bool endpoint_auth);
-
-  // Return whether this service is suspected or confirmed to be
-  // provided by a mobile device, which is likely to be using a
-  // metered backhaul for internet connectivity.
-  virtual std::string GetTethering(Error* error) const;
 
   // Emit property change notifications for all observed properties.
   void NotifyPropertyChanges();

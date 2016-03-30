@@ -74,21 +74,26 @@ class ServiceBinderAdaptor
                             const Stringmap& value) override;
 
   // Implementation of BnService.
-  android::binder::Status Connect();
-  android::binder::Status GetState(int32_t* _aidl_return);
-  android::binder::Status GetStrength(int8_t* _aidl_return);
-  android::binder::Status GetError(int32_t* _aidl_return);
-  android::binder::Status GetTethering(int32_t* _aidl_return);
-  android::binder::Status GetType(int32_t* _aidl_return);
-  android::binder::Status GetPhysicalTechnology(int32_t* _aidl_return);
+  android::binder::Status Connect() override;
+  android::binder::Status GetState(int32_t* _aidl_return) override;
+  android::binder::Status GetStrength(int8_t* _aidl_return) override;
+  android::binder::Status GetError(int32_t* _aidl_return) override;
+  android::binder::Status GetTethering(int32_t* _aidl_return) override;
+  android::binder::Status GetType(int32_t* _aidl_return) override;
+  android::binder::Status GetPhysicalTechnology(int32_t* _aidl_return) override;
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&
-          callback);
+          callback) override;
 
   Service* service() const { return service_; }
 
  private:
+  android::binder::Status ShillTechnologyToIServiceType(
+      const std::string& technology, int32_t* type);
+  android::binder::Status ShillErrorToIServiceErrorType(
+      const std::string& error, int32_t* error_type);
+
   Service* service_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceBinderAdaptor);
