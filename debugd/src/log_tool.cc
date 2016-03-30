@@ -179,6 +179,14 @@ const Log feedback_logs[] = {
   { NULL, NULL }
 };
 
+// List of log files needed to be part of the feedback report that are huge and
+// must be sent back to the client via the file descriptor using
+// LogTool::GetBigFeedbackLogs().
+const Log big_feedback_logs[] = {
+  // TODO(olofj): Add the huge cheets logs here.
+  { NULL, NULL }
+};
+
 // List of log files that must directly be collected by Chrome. This is because
 // debugd is running under a VFS namespace and does not have access to later
 // cryptohome mounts.
@@ -324,7 +332,12 @@ void LogTool::GetBigFeedbackLogs(DBus::Connection* connection,
   base::DictionaryValue dictionary;
   GetLogsInDictionary(common_logs, &anonymizer_, &dictionary);
   GetLogsInDictionary(feedback_logs, &anonymizer_, &dictionary);
+  GetLogsInDictionary(big_feedback_logs, &anonymizer_, &dictionary);
   SerializeLogsAsJSON(dictionary, fd);
+
+  // We need to manually close the FD here to enable the client to read the
+  // contents via a pipe.
+  close(fd.get());
 }
 
 LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error* error) {
