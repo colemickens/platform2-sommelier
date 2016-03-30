@@ -529,8 +529,8 @@ bool ChromeosManagerDBusAdaptor::ClaimInterface(
   SLOG(this, 2) << __func__;
   Error e;
   // Empty claimer name is used to indicate default claimer.
-  // TODO(zqiu): update this API or make a new API to use a flag to indicate
-  // default claimer instead.
+  // TODO(samueltan): update this API or make a new API to use a flag to
+  // indicate default claimer instead (b/27924738).
   string claimer = (claimer_name == "" ? "" : message->GetSender());
   manager_->ClaimDevice(claimer, interface_name, &e);
   if (e.IsSuccess() && claimer_name != "") {
@@ -553,8 +553,8 @@ bool ChromeosManagerDBusAdaptor::ReleaseInterface(
   Error e;
   bool claimer_removed;
   // Empty claimer name is used to indicate default claimer.
-  // TODO(zqiu): update this API or make a new API to use a flag to indicate
-  // default claimer instead.
+  // TODO(samueltan): update this API or make a new API to use a flag to
+  // indicate default claimer instead (b/27924738).
   manager_->ReleaseDevice(
       claimer_name == "" ? "" : message->GetSender(),
       interface_name,
