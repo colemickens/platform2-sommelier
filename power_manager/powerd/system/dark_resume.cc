@@ -45,6 +45,7 @@ const char DarkResume::kUnknown[] = "unknown";
 
 DarkResume::DarkResume()
     : in_dark_resume_(false),
+      enabled_(false),
       using_wakeup_type_(false),
       power_supply_(NULL),
       prefs_(NULL),
@@ -55,8 +56,10 @@ DarkResume::DarkResume()
 }
 
 DarkResume::~DarkResume() {
-  SetStates(dark_resume_sources_, using_wakeup_type_ ? kUnknown : kDisabled);
-  SetStates(dark_resume_devices_, kDisabled);
+  if (enabled_) {
+    SetStates(dark_resume_sources_, using_wakeup_type_ ? kUnknown : kDisabled);
+    SetStates(dark_resume_devices_, kDisabled);
+  }
 }
 
 void DarkResume::Init(PowerSupplyInterface* power_supply,
@@ -89,10 +92,12 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
     enabled_ = false;
     LOG(WARNING) << "Dark resume state path not found";
   }
-  GetFiles(&dark_resume_sources_, kDarkResumeSourcesPref, source_file);
-  GetFiles(&dark_resume_devices_, kDarkResumeDevicesPref, kActiveFile);
-  SetStates(dark_resume_sources_, source_state);
-  SetStates(dark_resume_devices_, (enabled_ ? kEnabled : kDisabled));
+  if (enabled_) {
+    GetFiles(&dark_resume_sources_, kDarkResumeSourcesPref, source_file);
+    GetFiles(&dark_resume_devices_, kDarkResumeDevicesPref, kActiveFile);
+    SetStates(dark_resume_sources_, source_state);
+    SetStates(dark_resume_devices_, (enabled_ ? kEnabled : kDisabled));
+  }
 }
 
 void DarkResume::PrepareForSuspendRequest() {
