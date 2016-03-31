@@ -186,10 +186,10 @@ FirewallProxyInterface* BinderControl::CreateFirewallProxy() {
   return new ChromeosFirewalldProxy(proxy_bus_);
 }
 
-sp<IBinder> BinderControl::GetBinderForRpcIdentifier(
+BinderAdaptor* BinderControl::GetBinderAdaptorForRpcIdentifier(
     const std::string& rpc_id) {
-  const auto& it = rpc_id_to_binder_map_.find(rpc_id);
-  if (it == rpc_id_to_binder_map_.end()) {
+  const auto& it = rpc_id_to_adaptor_map_.find(rpc_id);
+  if (it == rpc_id_to_adaptor_map_.end()) {
     return NULL;
   }
 
@@ -200,7 +200,7 @@ template <typename Object, typename AdaptorInterface, typename Adaptor>
 AdaptorInterface* BinderControl::CreateAdaptor(Object* object) {
   Adaptor* adaptor =
       new Adaptor(this, object, to_string(next_unique_binder_adaptor_id_++));
-  rpc_id_to_binder_map_.emplace(adaptor->GetRpcIdentifier(), adaptor);
+  rpc_id_to_adaptor_map_.emplace(adaptor->GetRpcIdentifier(), adaptor);
   return adaptor;
 }
 

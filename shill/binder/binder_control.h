@@ -20,13 +20,11 @@
 #include <map>
 #include <string>
 
-#include <binder/IBinder.h>
-#include <utils/StrongPointer.h>
-
 #include "shill/control_interface.h"
 
 namespace shill {
 
+class BinderAdaptor;
 class EventDispatcher;
 class Manager;
 
@@ -84,13 +82,12 @@ class BinderControl : public ControlInterface {
 
   // Returns a Binder reference to the object uniquely identified by |rpc_id|,
   // if it exists, NULL otherwise.
-  android::sp<android::IBinder> GetBinderForRpcIdentifier(
-      const std::string& rpc_id);
+  BinderAdaptor* GetBinderAdaptorForRpcIdentifier(const std::string& rpc_id);
 
   // Called by binder adaptors on destruction to clear their entries in
-  // |rpc_id_to_binder_map_|.
+  // |rpc_id_to_adaptor_map_|.
   void OnAdaptorDestructed(const std::string& rpc_id) {
-    rpc_id_to_binder_map_.erase(rpc_id);
+    rpc_id_to_adaptor_map_.erase(rpc_id);
   }
 
  private:
@@ -104,7 +101,7 @@ class BinderControl : public ControlInterface {
   // binder adaptor created. This unique ID will then be used as the Binder
   // adaptor's RPC identifier.
   uint32_t next_unique_binder_adaptor_id_;
-  std::map<std::string, android::sp<android::IBinder>> rpc_id_to_binder_map_;
+  std::map<std::string, BinderAdaptor*> rpc_id_to_adaptor_map_;
   EventDispatcher* dispatcher_;
   std::string null_identifier_;
 

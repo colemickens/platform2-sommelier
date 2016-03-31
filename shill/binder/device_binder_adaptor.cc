@@ -19,6 +19,7 @@
 #include <binder/Status.h>
 
 #include "shill/binder/binder_control.h"
+#include "shill/binder/service_binder_adaptor.h"
 #include "shill/device.h"
 #include "shill/logging.h"
 #include "shill/refptr_types.h"
@@ -122,8 +123,9 @@ Status DeviceBinderAdaptor::GetSelectedService(sp<IBinder>* _aidl_return) {
   if (!selected_service) {
     *_aidl_return = NULL;
   } else {
-    *_aidl_return = control()->GetBinderForRpcIdentifier(
-        selected_service->GetRpcIdentifier());
+    *_aidl_return = static_cast<ServiceBinderAdaptor*>(
+        control()->GetBinderAdaptorForRpcIdentifier(
+            selected_service->GetRpcIdentifier()));
   }
   return Status::ok();
 }
