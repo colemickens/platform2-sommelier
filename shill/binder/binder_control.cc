@@ -64,9 +64,8 @@ BinderControl::BinderControl(EventDispatcher* dispatcher)
       dispatcher_(dispatcher),
       null_identifier_(kNullRpcIdentifier) {
   BinderWrapper::Create();
-  // Watch Binder events in the main loop
-  brillo::BinderWatcher binder_watcher;
-  CHECK(binder_watcher.Init()) << "Binder FD watcher init failed";
+  // Watch Binder events in the event loop.
+  CHECK(binder_watcher_.Init()) << "Binder FD watcher init failed";
 
   // Also initialize D-Bus, which we will use alongside Binder for IPC with
   // daemons that do not yet support Binder.

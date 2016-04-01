@@ -20,6 +20,8 @@
 #include <map>
 #include <string>
 
+#include <brillo/binder_watcher.h>
+
 #include "shill/control_interface.h"
 
 namespace shill {
@@ -104,6 +106,7 @@ class BinderControl : public ControlInterface {
   std::map<std::string, BinderAdaptor*> rpc_id_to_adaptor_map_;
   EventDispatcher* dispatcher_;
   std::string null_identifier_;
+  brillo::BinderWatcher binder_watcher_;
 
   // TODO(samueltan): remove when shill is no longer dependent on DBus proxies.
   scoped_refptr<dbus::Bus> proxy_bus_;
