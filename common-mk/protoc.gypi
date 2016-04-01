@@ -60,4 +60,9 @@
   # This target exports a hard dependency because it generates header
   # files.
   'hard_dependency': 1,
+  'direct_dependent_settings': {
+    'include_dirs': [
+      '<(SHARED_INTERMEDIATE_DIR)',
+    ],
+  }
 }
