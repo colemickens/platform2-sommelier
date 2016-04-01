@@ -1409,7 +1409,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   dispatcher()->DispatchPendingEvents();
 
   Error error;
-  service->UserInitiatedDisconnect(&error);
+  service->UserInitiatedDisconnect("RPC", &error);
   dispatcher()->DispatchPendingEvents();
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
 }

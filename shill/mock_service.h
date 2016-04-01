@@ -44,7 +44,7 @@ class MockService : public Service {
   MOCK_METHOD3(DisconnectWithFailure, void(Service::ConnectFailure failure,
                                            Error* error,
                                            const char* reason));
-  MOCK_METHOD1(UserInitiatedDisconnect, void(Error* error));
+  MOCK_METHOD2(UserInitiatedDisconnect, void(const char* reason, Error* error));
   MOCK_METHOD1(CalculateState, std::string(Error* error));
   MOCK_CONST_METHOD0(state, ConnectState());
   MOCK_METHOD1(SetState, void(ConnectState state));

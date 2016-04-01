@@ -79,6 +79,10 @@ using testing::SetArgumentPointee;
 using testing::Test;
 using testing::Values;
 
+namespace {
+  const char kConnectDisconnectReason[] = "RPC";
+}
+
 namespace shill {
 
 class ServiceTest : public PropertyStoreTest {
@@ -889,7 +893,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   Error error;
   // User-initiated connection attempt succeed.
   service_->SetState(Service::kStateIdle);
-  service_->UserInitiatedConnect(&error);
+  service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
       Metrics::kUserInitiatedConnectionResultSuccess));
@@ -900,7 +904,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
 
   // User-initiated connection attempt failed.
   service_->SetState(Service::kStateIdle);
-  service_->UserInitiatedConnect(&error);
+  service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
       Metrics::kUserInitiatedConnectionResultFailure));
@@ -912,7 +916,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
 
   // User-initiated connection attempt aborted.
   service_->SetState(Service::kStateIdle);
-  service_->UserInitiatedConnect(&error);
+  service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   service_->SetState(Service::kStateAssociating);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
@@ -924,7 +928,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
 
   // No metric reporting for other state transition.
   service_->SetState(Service::kStateIdle);
-  service_->UserInitiatedConnect(&error);
+  service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
       .Times(0);
@@ -944,7 +948,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   // No metric reporting for other technology.
   service_->technology_ = Technology::kCellular;
   service_->SetState(Service::kStateIdle);
-  service_->UserInitiatedConnect(&error);
+  service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(_, _)).Times(0);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
       .Times(0);
@@ -1004,7 +1008,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   // We should not auto-connect to a Service that a user has
   // deliberately disconnected.
   Error error;
-  service_->UserInitiatedDisconnect(&error);
+  service_->UserInitiatedDisconnect(kConnectDisconnectReason, &error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnExplicitDisconnect, reason);
 
@@ -1019,7 +1023,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A deliberate Connect should also re-enable auto-connect.
-  service_->UserInitiatedDisconnect(&error);
+  service_->UserInitiatedDisconnect(kConnectDisconnectReason, &error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   service_->Connect(&error, "in test");
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
@@ -1029,7 +1033,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A resume also re-enables auto-connect.
-  service_->UserInitiatedDisconnect(&error);
+  service_->UserInitiatedDisconnect(kConnectDisconnectReason, &error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   service_->OnAfterResume();
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));

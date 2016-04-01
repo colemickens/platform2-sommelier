@@ -29,6 +29,10 @@ using std::map;
 using std::string;
 using std::vector;
 
+namespace {
+const char kDBusRpcReasonString[] = "D-Bus RPC";
+}  // namespace
+
 namespace shill {
 
 namespace Logging {
@@ -163,14 +167,14 @@ bool ChromeosServiceDBusAdaptor::ClearProperties(brillo::ErrorPtr* /*error*/,
 bool ChromeosServiceDBusAdaptor::Connect(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
-  service_->UserInitiatedConnect(&e);
+  service_->UserInitiatedConnect(kDBusRpcReasonString, &e);
   return !e.ToChromeosError(error);
 }
 
 bool ChromeosServiceDBusAdaptor::Disconnect(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
-  service_->UserInitiatedDisconnect(&e);
+  service_->UserInitiatedDisconnect(kDBusRpcReasonString, &e);
   return !e.ToChromeosError(error);
 }
 

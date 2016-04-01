@@ -353,13 +353,13 @@ void Service::DisconnectWithFailure(ConnectFailure failure,
   SetFailure(failure);
 }
 
-void Service::UserInitiatedDisconnect(Error* error) {
-  Disconnect(error, "D-Bus RPC");
+void Service::UserInitiatedDisconnect(const char* reason, Error* error) {
+  Disconnect(error, reason);
   explicitly_disconnected_ = true;
 }
 
-void Service::UserInitiatedConnect(Error* error) {
-  Connect(error, "D-Bus RPC");
+void Service::UserInitiatedConnect(const char* reason, Error* error) {
+  Connect(error, reason);
   is_in_user_connect_ = true;
 }
 

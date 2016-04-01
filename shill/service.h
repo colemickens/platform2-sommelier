@@ -183,10 +183,10 @@ class Service : public base::RefCounted<Service> {
   // Disconnects this service via Disconnect(). The service will not be eligible
   // for auto-connect until a subsequent call to Connect, or Load.  Do not
   // override this method.
-  virtual void UserInitiatedDisconnect(Error* error);
+  virtual void UserInitiatedDisconnect(const char* reason, Error* error);
   // Connect to this service via Connect(). This function indicates that the
   // connection attempt is user-initiated.
-  virtual void UserInitiatedConnect(Error* error);
+  virtual void UserInitiatedConnect(const char* reason, Error* error);
 
   // The default implementation returns the error kInvalidArguments.
   virtual void ActivateCellularModem(const std::string& carrier,
