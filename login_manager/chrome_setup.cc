@@ -216,6 +216,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddArg("--kiosk");
     builder->AddArg("--login-user=chronos");
     builder->AddArg("--ash-hide-notifications-for-factory");
+    builder->AddArg("--allow-data-roaming-by-default");
     builder->AddArg("--load-and-launch-app=/usr/share/app_shell/apps/rialto");
     builder->AddArg("about:blank");
   } else {
