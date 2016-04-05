@@ -668,6 +668,9 @@ int container_start(struct container *c, const struct container_config *config)
 
 	minijail_run_as_init(c->jail);
 
+	/* TODO(dgreid) - remove this once shared mounts are cleaned up. */
+	minijail_skip_remount_private(c->jail);
+
 	/* Last mount is to make '/' executable in the container. */
 	rc = minijail_mount(c->jail, rootfs, "/", "",
 			    MS_REMOUNT | MS_RDONLY);
