@@ -146,6 +146,15 @@ void DebugDaemon::GetPerfOutput(
       duration_sec, perf_args, &perf_data, &perf_stat, &error);
 }
 
+void DebugDaemon::GetPerfOutputFd(
+    const uint32_t& duration_sec,
+    const std::vector<std::string>& perf_args,
+    const DBus::FileDescriptor& stdout_fd,
+    DBus::Error& error) {  // NOLINT
+  perf_tool_->GetPerfOutputFd(
+      duration_sec, perf_args, stdout_fd, &error);
+}
+
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
                                DBus::Error& error) {  // NOLINT
   debug_logs_tool_->GetDebugLogs(true,  // is_compressed,

@@ -214,6 +214,28 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetPerfOutputFd">
+      <tp:docstring>
+        Runs system-wide perf profiling. The profile parameters are selected by
+        perf_args.
+      </tp:docstring>
+      <arg name="duration_sec" type="u" direction="in">
+        <tp:docstring>
+          Duration to run perf in seconds.
+        </tp:docstring>
+      </arg>
+      <arg name="perf_args" type="as" direction="in">
+        <tp:docstring>
+          The perf parameters to pass to quipper, which will forward them to
+          perf after checking they are safe.
+        </tp:docstring>
+      </arg>
+      <arg name="stdout" type="h" direction="in">
+        <tp:docstring>
+          quipper's stdout will be connected to this file descriptor.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="GetDebugLogs">
       <tp:docstring>
         DEPRECATED: Use DumpDebugLogs instead.

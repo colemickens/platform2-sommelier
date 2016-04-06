@@ -4,13 +4,15 @@
 
 #include "debugd/src/perf_tool.h"
 
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
-#include <sys/utsname.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <map>
+
+#include <base/callback.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 #include "debugd/src/process_with_output.h"
 
@@ -22,6 +24,7 @@ namespace {
 
 const char kUnsupportedPerfToolErrorName[] =
     "org.chromium.debugd.error.UnsupportedPerfTool";
+const char kProcessErrorName[] = "org.chromium.debugd.error.RunProcess";
 
 // Location of quipper on ChromeOS.
 const char kQuipperLocation[] = "/usr/bin/quipper";
@@ -47,6 +50,29 @@ PerfSubcommand GetPerfSubcommandType(const std::vector<std::string>& args) {
 
   return PERF_COMMAND_UNSUPPORTED;
 }
+
+void AddQuipperArguments(brillo::Process* process,
+                         const uint32_t duration_secs,
+                         const std::vector<std::string>& perf_args) {
+  process->AddArg(kQuipperLocation);
+  process->AddArg(StringPrintf("%u", duration_secs));
+  for (const auto& arg : perf_args) {
+    process->AddArg(arg);
+  }
+}
+
+// For use with brillo::Process::SetPreExecCallback(), this runs after
+// the fork() in the child process, but before exec(). Call fork() again
+// and exit the parent (child of main process). The grandchild will get
+// orphaned, meaning init will wait() for it up so we don't have to.
+bool Orphan() {
+  if (fork() == 0) {  // (grand-)child
+    return true;
+  }
+  // parent
+  ::_Exit(EXIT_SUCCESS);
+}
+
 
 }  // namespace
 
@@ -85,6 +111,35 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
   return result;
 }
 
+void PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
+                               const std::vector<std::string>& perf_args,
+                               const DBus::FileDescriptor& stdout_fd,
+                               DBus::Error* error) {
+  PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
+  if (subcommand == PERF_COMMAND_UNSUPPORTED) {
+    error->set(kUnsupportedPerfToolErrorName,
+               "perf_args must begin with {\"perf\", \"record\"}, "
+               " {\"perf\", \"stat\"}, or {\"perf\", \"mem\"}");
+    return;
+  }
+
+  SandboxedProcess process;
+  process.SandboxAs("root", "root");
+  if (!process.Init()) {
+    error->set(kProcessErrorName, "Process initialization failure.");
+    return;
+  }
+
+  AddQuipperArguments(&process, duration_secs, perf_args);
+
+  process.SetPreExecCallback(base::Bind(Orphan));
+  process.BindFd(stdout_fd.get(), 1);
+
+  if (process.Run() != 0) {
+    error->set(kProcessErrorName, "Process start failure.");
+  }
+}
+
 int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
                                   const std::vector<std::string>& perf_args,
                                   DBus::Error* error,
@@ -95,13 +150,9 @@ int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
   process.SandboxAs("root", "root");
   if (!process.Init())
     *data_string = "<process init failed>";
-  // If you're going to add switches to a command, have a look at the Process
-  // interface; there's support for adding options specifically.
-  process.AddArg(kQuipperLocation);
-  process.AddArg(StringPrintf("%u", duration_secs));
-  for (const auto& arg : perf_args) {
-    process.AddArg(arg);
-  }
+
+  AddQuipperArguments(&process, duration_secs, perf_args);
+
   // Run the process to completion. If the process might take a while, you may
   // have to make this asynchronous using .Start().
   int status = process.Run();

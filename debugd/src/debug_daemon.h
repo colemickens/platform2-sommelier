@@ -116,6 +116,11 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                      std::vector<uint8_t>& perf_data,
                      std::vector<uint8_t>& perf_stat,
                      DBus::Error& error) override;  // NOLINT
+  void GetPerfOutputFd(
+      const uint32_t& duration_sec,
+      const std::vector<std::string>& perf_args,
+      const DBus::FileDescriptor& stdout_fd,
+      DBus::Error& error) override;  // NOLINT
   void GetDebugLogs(const DBus::FileDescriptor& fd,
                     DBus::Error& error) override;  // NOLINT
   void DumpDebugLogs(const bool& is_compressed,

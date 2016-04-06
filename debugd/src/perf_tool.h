@@ -30,6 +30,15 @@ class PerfTool {
                     std::vector<uint8_t>* perf_stat,
                     DBus::Error* error);
 
+  // Runs the perf tool with the request command for |duration_secs| seconds
+  // and returns either a perf_data or perf_stat protobuf in serialized form
+  // over the passed stdout_fd file descriptor, or nothing if there was an
+  // error.
+  void GetPerfOutputFd(const uint32_t& duration_secs,
+                       const std::vector<std::string>& perf_args,
+                       const DBus::FileDescriptor& stdout_fd,
+                       DBus::Error* error);
+
  private:
   // Helper function that runs perf for a given |duration_secs| returning the
   // collected data in |data_string|. Return value is the status from running
