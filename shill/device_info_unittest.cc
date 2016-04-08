@@ -1501,6 +1501,13 @@ TEST_F(DeviceInfoTechnologyTest, WiFi) {
   EXPECT_EQ(Technology::kWiFiMonitor, GetDeviceTechnology());
 }
 
+TEST_F(DeviceInfoTechnologyTest, Bridge) {
+  CreateInfoFile("uevent", "DEVTYPE=bridge");
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+  CreateInfoFile("uevent", "bar\nDEVTYPE=bridge");
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+}
+
 TEST_F(DeviceInfoTechnologyTest, Ethernet) {
   CreateInfoSymLink("device/driver", "xxx");
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());

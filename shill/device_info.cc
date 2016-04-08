@@ -92,6 +92,7 @@ const char DeviceInfo::kDriverCdcNcm[] = "cdc_ncm";
 const char DeviceInfo::kDriverGdmWiMax[] = "gdm_wimax";
 const char DeviceInfo::kDriverVirtioNet[] = "virtio_net";
 const char DeviceInfo::kInterfaceUevent[] = "uevent";
+const char DeviceInfo::kInterfaceUeventBridgeSignature[] = "DEVTYPE=bridge\n";
 const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
 const char DeviceInfo::kInterfaceDevice[] = "device";
 const char DeviceInfo::kInterfaceDriver[] = "device/driver";
@@ -287,6 +288,14 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
       return Technology::kWiFiMonitor;
     }
     return Technology::kWifi;
+  }
+
+  // Similarly, if the uevent file contains "DEVTYPE=bridge\n" then we can
+  // safely assume this is a bridge device and can be treated as ethernet.
+  if (contents.find(kInterfaceUeventBridgeSignature) != string::npos) {
+    SLOG(this, 2) << __func__ << ": device " << iface_name
+                  << " has bridge signature in uevent file";
+    return Technology::kEthernet;
   }
 
   // Special case for pseudo modems which are used for testing

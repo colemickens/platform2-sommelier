@@ -212,6 +212,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   static const char kDriverVirtioNet[];
   // Sysfs path to a device uevent file.
   static const char kInterfaceUevent[];
+  // Content of a device uevent file that indicates it is a bridge device.
+  static const char kInterfaceUeventBridgeSignature[];
   // Content of a device uevent file that indicates it is a wifi device.
   static const char kInterfaceUeventWifiSignature[];
   // Sysfs path to a device via its interface name.
