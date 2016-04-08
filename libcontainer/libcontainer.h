@@ -6,7 +6,7 @@
 #ifndef CONTAINER_MANAGER_LIBCONTAINER_H_
 #define CONTAINER_MANAGER_LIBCONTAINER_H_
 
-#include "stddef.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,6 +95,12 @@ int container_config_add_device(struct container_config *c,
 				int write_allowed,
 				int modify_allowed);
 
+/*
+ * Set to cause the given setfiles command to be run whenever a mount is made
+ * in the parent mount namespace.
+ */
+void container_config_run_setfiles(struct container_config *c,
+				   const char *setfiles_cmd);
 
 /* Container manipulation. */
 struct container;

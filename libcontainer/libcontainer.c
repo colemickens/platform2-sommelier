@@ -15,6 +15,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "container_cgroup.h"
@@ -61,6 +62,7 @@ struct container_device {
  * num_mounts - Number of above.
  * devices - Device nodes to create.
  * num_devices - Number of above.
+ * run_setfiles - Should run setfiles on mounts to enable selinux.
  */
 struct container_config {
 	char *rootfs;
@@ -73,6 +75,7 @@ struct container_config {
 	size_t num_mounts;
 	struct container_device *devices;
 	size_t num_devices;
+	const char *run_setfiles;
 };
 
 struct container_config *container_config_create()
@@ -249,6 +252,11 @@ int container_config_add_device(struct container_config *c,
 	return 0;
 }
 
+void container_config_run_setfiles(struct container_config *c,
+				   const char *setfiles_cmd)
+{
+	c->run_setfiles = setfiles_cmd;
+}
 
 /*
  * Container manipulation
@@ -342,6 +350,51 @@ static int setup_mount_destination(const struct container_mount *mnt,
 	return touch_file(dest, mnt->uid, mnt->gid, mnt->mode);
 }
 
+/* Fork and exec the setfiles command to configure the selinux policy. */
+static int run_setfiles_command(const struct container *c, const char *dest)
+{
+	int rc;
+	int status;
+	int pid;
+	char *context_path;
+
+	if (!c->config->run_setfiles)
+		return 0;
+
+	if (asprintf(&context_path, "%s/file_contexts",
+		     c->runfsroot) < 0)
+		return -errno;
+
+	pid = fork();
+	if (pid == 0) {
+		const char *argv[] = {
+			c->config->run_setfiles,
+			"-r",
+			c->runfsroot,
+			context_path,
+			dest,
+			NULL,
+		};
+		const char *env[] = {
+			NULL,
+		};
+
+		execve(argv[0], (char *const*)argv, (char *const*)env);
+
+		/* Command failed to exec if execve returns. */
+		_exit(-errno);
+	}
+	free(context_path);
+	if (pid < 0)
+		return -errno;
+	do {
+		rc = waitpid(pid, &status, 0);
+	} while (rc == -1 && errno == EINTR);
+	if (rc < 0)
+		return -errno;
+	return status;
+}
+
 int container_start(struct container *c)
 {
 	int rc;
@@ -420,6 +473,13 @@ int container_start(struct container *c)
 				free(dest);
 				goto error_rmdir;
 			}
+
+			rc = run_setfiles_command(c, dest);
+			if (rc) {
+				free(dest);
+				goto error_rmdir;
+			}
+
 		}
 		free(dest);
 	}
