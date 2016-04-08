@@ -113,10 +113,8 @@ bool LoadConfigFromString(const std::string& config_json,
                           Config* config,
                           brillo::ErrorPtr* error) {
   std::string error_msg;
-  std::unique_ptr<const base::Value> value{
-      base::JSONReader::ReadAndReturnError(
-          config_json, base::JSON_ALLOW_TRAILING_COMMAS, nullptr, &error_msg)
-          .release()};
+  auto value = base::JSONReader::ReadAndReturnError(
+      config_json, base::JSON_ALLOW_TRAILING_COMMAS, nullptr, &error_msg);
 
   if (!value) {
     brillo::Error::AddToPrintf(error, FROM_HERE,
@@ -127,8 +125,8 @@ bool LoadConfigFromString(const std::string& config_json,
     return false;
   }
 
-  const base::DictionaryValue* dict_value = nullptr;  // Owned by |value|
-  if (!value->GetAsDictionary(&dict_value)) {
+  auto dict_value = base::DictionaryValue::From(std::move(value));
+  if (!dict_value) {
     brillo::Error::AddTo(error,
                          FROM_HERE,
                          brillo::errors::json::kDomain,
@@ -140,10 +138,11 @@ bool LoadConfigFromString(const std::string& config_json,
   // "log_directory" is optional, so ignoring the return value here.
   dict_value->GetString(kLogDirectoryKey, &config->log_directory);
 
-  const base::ListValue* protocol_handlers = nullptr;  // Owned by |value|
+  const base::ListValue* protocol_handlers = nullptr;  // Owned by |dict_value|
   if (dict_value->GetList(kProtocolHandlersKey, &protocol_handlers)) {
     for (base::Value* handler_value : *protocol_handlers) {
-      const base::DictionaryValue* handler_dict = nullptr;  // Owned by |value|
+      const base::DictionaryValue* handler_dict = nullptr;  // Owned by
+                                                            // |dict_value|
       if (!handler_value->GetAsDictionary(&handler_dict)) {
         brillo::Error::AddTo(
             error,
