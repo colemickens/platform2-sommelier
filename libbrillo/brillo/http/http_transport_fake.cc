@@ -172,20 +172,14 @@ std::string ServerRequestResponseBase::GetDataAsString() const {
 
 std::unique_ptr<base::DictionaryValue>
 ServerRequestResponseBase::GetDataAsJson() const {
+  std::unique_ptr<base::DictionaryValue> result;
   if (brillo::mime::RemoveParameters(
           GetHeader(request_header::kContentType)) ==
       brillo::mime::application::kJson) {
     auto value = base::JSONReader::Read(GetDataAsString());
-    if (value) {
-      base::DictionaryValue* dict = nullptr;
-      if (value->GetAsDictionary(&dict)) {
-        // |value| is now owned by |dict|.
-        base::IgnoreResult(value.release());
-        return std::unique_ptr<base::DictionaryValue>(dict);
-      }
-    }
+    result = base::DictionaryValue::From(std::move(value));
   }
-  return std::unique_ptr<base::DictionaryValue>();
+  return result;
 }
 
 std::string ServerRequestResponseBase::GetDataAsNormalizedJsonString() const {
