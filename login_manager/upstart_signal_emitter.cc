@@ -37,7 +37,13 @@ scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
   writer.AppendBool(true);
 
   return upstart_dbus_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+              &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+}
+
+scoped_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
+    const std::string &name,
+    const std::vector<std::string> &args_keyvals) {
+  return EmitSignal(name, args_keyvals);
 }
 
 }  // namespace login_manager

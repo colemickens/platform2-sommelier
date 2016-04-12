@@ -39,6 +39,7 @@
 #include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/systemd_unit_starter.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
@@ -163,9 +164,14 @@ bool SessionManagerService::Initialize() {
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  dbus::ObjectProxy* upstart_dbus_proxy =
-      bus_->GetObjectProxy(UpstartSignalEmitter::kServiceName,
-                           dbus::ObjectPath(UpstartSignalEmitter::kPath));
+#if USE_SYSTEMD
+  using InitDaemonControllerImpl = SystemdUnitStarter;
+#else
+  using InitDaemonControllerImpl = UpstartSignalEmitter;
+#endif
+  dbus::ObjectProxy* init_dbus_proxy =
+      bus_->GetObjectProxy(InitDaemonControllerImpl::kServiceName,
+                           dbus::ObjectPath(InitDaemonControllerImpl::kPath));
 
   liveness_checker_.reset(new LivenessCheckerImpl(this,
                                                   chrome_dbus_proxy,
@@ -174,11 +180,11 @@ bool SessionManagerService::Initialize() {
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
-  scoped_ptr<UpstartSignalEmitter> upstart_emitter(
-      new UpstartSignalEmitter(upstart_dbus_proxy));
+  scoped_ptr<InitDaemonController> init_controller(
+      new InitDaemonControllerImpl(init_dbus_proxy));
 
   SessionManagerImpl* impl = new SessionManagerImpl(
-      std::move(upstart_emitter),
+      std::move(init_controller),
       dbus_emitter_.get(),
       base::Bind(&FireAndForgetDBusMethodCall,
                  base::Unretained(chrome_dbus_proxy),

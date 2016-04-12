@@ -131,7 +131,7 @@ struct SessionManagerImpl::UserSession {
 };
 
 SessionManagerImpl::SessionManagerImpl(
-    scoped_ptr<UpstartSignalEmitter> emitter,
+    scoped_ptr<InitDaemonController> init_controller,
     DBusSignalEmitterInterface* dbus_emitter,
     base::Closure lock_screen_closure,
     base::Closure restart_device_closure,
@@ -149,7 +149,7 @@ SessionManagerImpl::SessionManagerImpl(
       session_stopping_(false),
       screen_locked_(false),
       supervised_user_creation_ongoing_(false),
-      upstart_signal_emitter_(std::move(emitter)),
+      init_controller_(std::move(init_controller)),
       lock_screen_closure_(lock_screen_closure),
       restart_device_closure_(restart_device_closure),
       start_arc_instance_closure_(start_arc_instance_closure),
@@ -233,10 +233,10 @@ void SessionManagerImpl::Finalize() {
 void SessionManagerImpl::EmitLoginPromptVisible(Error* error) {
   login_metrics_->RecordStats("login-prompt-visible");
   dbus_emitter_->EmitSignal(kLoginPromptVisibleSignal);
-  scoped_ptr<dbus::Response> emit_response =
-      upstart_signal_emitter_->EmitSignal("login-prompt-visible",
-                                          std::vector<std::string>());
-  if (!emit_response) {
+  scoped_ptr<dbus::Response> response =
+      init_controller_->TriggerImpulse("login-prompt-visible",
+                                       std::vector<std::string>());
+  if (!response) {
     static const char msg[] =
         "Emitting login-prompt-visible upstart signal failed.";
     LOG(ERROR) << msg;
@@ -333,12 +333,12 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
   if (dev_mode > -1)
     login_metrics_->SendLoginUserType(dev_mode, is_incognito, user_is_owner);
 
-  scoped_ptr<dbus::Response> emit_response =
-      upstart_signal_emitter_->EmitSignal(
+  scoped_ptr<dbus::Response> response =
+      init_controller_->TriggerImpulse(
           "start-user-session",
           std::vector<std::string>(1, "CHROMEOS_USER=" + actual_user_id));
 
-  if (!emit_response) {
+  if (!response) {
     static const char msg[] =
         "Emitting start-user-session upstart signal failed.";
     LOG(ERROR) << msg;
@@ -589,12 +589,12 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
 
   // TODO(lhchavez): Let session_manager control the ARC instance process
   // instead of having upstart handle it.
-  scoped_ptr<dbus::Response> emit_response =
-      upstart_signal_emitter_->EmitSignal(
+  scoped_ptr<dbus::Response> response =
+      init_controller_->TriggerImpulse(
           "start-arc-instance",
           std::vector<std::string>());
 
-  if (!emit_response) {
+  if (!response) {
     static const char msg[] =
         "Emitting start-arc-instance upstart signal failed.";
     LOG(ERROR) << msg;
@@ -611,14 +611,13 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
 #if USE_ARC
   // TODO(lhchavez): Let session_manager control the ARC instance process
   // instead of having upstart handle it.
-  scoped_ptr<dbus::Response> emit_response =
-      upstart_signal_emitter_->EmitSignal(
+  scoped_ptr<dbus::Response> response =
+      init_controller_->TriggerImpulse(
           "stop-arc-instance",
           std::vector<std::string>());
 
-  if (!emit_response) {
-    static const char msg[] =
-        "Emitting stop-arc-instance upstart signal failed.";
+  if (!response) {
+    const char msg[] = "Emitting stop-arc-instance upstart signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }

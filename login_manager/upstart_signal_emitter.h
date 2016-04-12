@@ -11,6 +11,8 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "login_manager/init_daemon_controller.h"
+
 namespace dbus {
 class ObjectProxy;
 class Response;
@@ -18,7 +20,7 @@ class Response;
 
 namespace login_manager {
 // Simple mockable class for emitting Upstart signals.
-class UpstartSignalEmitter {
+class UpstartSignalEmitter : public InitDaemonController {
  public:
   static const char kServiceName[];
   static const char kPath[];
@@ -38,6 +40,10 @@ class UpstartSignalEmitter {
   virtual scoped_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
       const std::vector<std::string>& args_keyvals);
+  // InitDaemonController interface.
+  scoped_ptr<dbus::Response> TriggerImpulse(
+      const std::string &name,
+      const std::vector<std::string> &args_keyvals) final;
 
  private:
   dbus::ObjectProxy* upstart_dbus_proxy_;  // Weak, owned by caller.

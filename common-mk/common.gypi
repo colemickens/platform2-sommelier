@@ -39,6 +39,7 @@
     'USE_power_management%': 0,
     'USE_pppoe%': 0,
     'USE_profile%': 0,
+    'USE_systemd%': 0,
     'USE_tcmalloc%': 0,
     'USE_test%': 0,
     'USE_tpm2%': 0,

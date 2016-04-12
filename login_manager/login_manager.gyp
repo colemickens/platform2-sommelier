@@ -4,6 +4,7 @@
       'OS_CHROMEOS',
       'USE_ARC=<(USE_arc)',
       'USE_NSS_CERTS',
+      'USE_SYSTEMD=<(USE_systemd)',
     ],
     'variables': {
       'deps': [
@@ -77,6 +78,7 @@
         'session_manager_impl.cc',
         'session_manager_service.cc',
         'system_utils_impl.cc',
+        'systemd_unit_starter.cc',
         'upstart_signal_emitter.cc',
         'user_policy_service.cc',
         'user_policy_service_factory.cc',

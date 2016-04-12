@@ -27,13 +27,13 @@ class Crossystem;
 namespace login_manager {
 class DBusSignalEmitterInterface;
 class DeviceLocalAccountPolicyService;
+class InitDaemonController;
 class KeyGenerator;
 class LoginMetrics;
 class NssUtil;
 class PolicyKey;
 class ProcessManagerServiceInterface;
 class SystemUtils;
-class UpstartSignalEmitter;
 class UserPolicyServiceFactory;
 class VpdProcess;
 
@@ -80,7 +80,7 @@ class SessionManagerImpl : public SessionManagerInterface,
     bool set_;
   };
 
-  SessionManagerImpl(scoped_ptr<UpstartSignalEmitter> emitter,
+  SessionManagerImpl(scoped_ptr<InitDaemonController> init_controller,
                      DBusSignalEmitterInterface* dbus_emitter,
                      base::Closure lock_screen_closure,
                      base::Closure restart_device_closure,
@@ -224,7 +224,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   base::FilePath chrome_testing_path_;
 
-  scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
+  scoped_ptr<InitDaemonController> init_controller_;
 
   base::Closure lock_screen_closure_;
   base::Closure restart_device_closure_;
