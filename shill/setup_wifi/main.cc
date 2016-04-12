@@ -22,6 +22,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/any.h>
 #include <brillo/daemons/dbus_daemon.h>
 #if defined(__ANDROID__)
@@ -38,6 +39,7 @@ static const char kHelp[] = "help";
 static const char kPassphrase[] = "passphrase";
 static const char kHexSsid[] = "hex-ssid";
 static const char kSSID[] = "ssid";
+static const char kTimeOut[] = "wait-for-online-seconds";
 static const char kHelpMessage[] = "\n"
     "Available Switches: \n"
     "  --ssid=<ssid>\n"
@@ -45,15 +47,17 @@ static const char kHelpMessage[] = "\n"
     "  --hex-ssid\n"
     "    SSID is provided in hexadecimal\n"
     "  --passphrase=<passprhase>\n"
-    "    Set the passphrase for PSK networks\n";
+    "    Set the passphrase for PSK networks\n"
+    "  --wait-for-online-seconds=<seconds>\n"
+    "    Number of seconds to wait to connect the SSID\n";
 }  // namespace switches
 
 }  // namespace
 
 class MyClient : public brillo::DBusDaemon {
  public:
-  MyClient(std::string ssid, bool is_hex_ssid, std::string psk)
-      : ssid_(ssid), is_hex_ssid_(is_hex_ssid), psk_(psk) {}
+  MyClient(std::string ssid, bool is_hex_ssid, std::string psk, int timeout)
+      : ssid_(ssid), is_hex_ssid_(is_hex_ssid), psk_(psk), timeout_(timeout) {}
   ~MyClient() override = default;
 
  protected:
@@ -63,8 +67,10 @@ class MyClient : public brillo::DBusDaemon {
       return ret;
     }
     ConfigureAndConnect();
-    brillo::MessageLoop::current()->PostTask(
-        base::Bind(&MyClient::Quit, base::Unretained(this)));
+    // Timeout if we can't get online.
+    brillo::MessageLoop::current()->PostDelayedTask(
+        base::Bind(&MyClient::Quit, base::Unretained(this)),
+        base::TimeDelta::FromSeconds(timeout_));
     return EX_OK;
   }
 
@@ -81,17 +87,50 @@ class MyClient : public brillo::DBusDaemon {
     }
 
     brillo::ErrorPtr connect_error;
-    std::unique_ptr<org::chromium::flimflam::ServiceProxy> shill_service_proxy(
-        new org::chromium::flimflam::ServiceProxy(bus_,
-                                                  created_service));
-    if (!shill_service_proxy->Connect(&connect_error)) {
+    shill_service_proxy_ =
+        std::unique_ptr<org::chromium::flimflam::ServiceProxy>(
+            new org::chromium::flimflam::ServiceProxy(bus_, created_service));
+    if (!shill_service_proxy_->Connect(&connect_error)) {
       LOG(ERROR) << "Connect service failed";
       return false;
     }
 
-    // TODO(pstew): Monitor service as it attempts to connect.
-
+    PostCheckWifiStatusTask();
     return true;
+  }
+
+  void PostCheckWifiStatusTask() {
+    LOG(INFO) << "Sleeping now. Will check wifi status in 100 ms.";
+    const int kSleepTimeoutMs = 100;
+    brillo::MessageLoop::current()->PostDelayedTask(
+        base::Bind(&MyClient::QuitIfOnline, base::Unretained(this)),
+        base::TimeDelta::FromMilliseconds(kSleepTimeoutMs));
+  }
+
+  // Check if the device is online. If it is, quit.
+  void QuitIfOnline() {
+    if (IsOnline())
+      Quit();
+    else
+      PostCheckWifiStatusTask();
+  }
+
+  bool IsOnline() {
+    brillo::VariantDictionary properties;
+    if (!shill_service_proxy_->GetProperties(&properties, nullptr)) {
+      LOG(ERROR) << "Cannot get properties.";
+      PostCheckWifiStatusTask();
+      return false;
+    }
+    auto property_it = properties.find(shill::kStateProperty);
+    if (property_it == properties.end()) {
+      PostCheckWifiStatusTask();
+      return false;
+    }
+
+    std::string state = property_it->second.TryGet<std::string>();
+    const std::string kOnlineState = "online";
+    return state == kOnlineState;
   }
 
   std::map<std::string, brillo::Any> GetServiceConfig() {
@@ -109,9 +148,11 @@ class MyClient : public brillo::DBusDaemon {
     return configure_dict;
   }
 
+  std::unique_ptr<org::chromium::flimflam::ServiceProxy> shill_service_proxy_;
   std::string ssid_;
   bool is_hex_ssid_;
   std::string psk_;
+  int timeout_;
 };
 
 int main(int argc, char** argv) {
@@ -136,7 +177,16 @@ int main(int argc, char** argv) {
   }
   bool hex_ssid = cl->HasSwitch(switches::kHexSsid);
 
-  MyClient client(ssid, hex_ssid, psk);
+  int timeout = 0;
+  if (cl->HasSwitch(switches::kTimeOut)) {
+    auto value = cl->GetSwitchValueASCII(switches::kTimeOut);
+     if (!base::StringToInt(value, &timeout)) {
+       LOG(ERROR) << "Timeout value invalid";
+       return EXIT_FAILURE;
+     }
+  }
+
+  MyClient client(ssid, hex_ssid, psk, timeout);
   client.Run();
   LOG(INFO) << "Process exiting.";
 
