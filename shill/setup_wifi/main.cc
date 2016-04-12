@@ -52,6 +52,9 @@ static const char kHelpMessage[] = "\n"
     "    Number of seconds to wait to connect the SSID\n";
 }  // namespace switches
 
+static const char kOnlineState[] = "online";
+static const int kTimeoutBetweenStateChecksMs = 100;
+
 }  // namespace
 
 class MyClient : public brillo::DBusDaemon {
@@ -101,10 +104,9 @@ class MyClient : public brillo::DBusDaemon {
 
   void PostCheckWifiStatusTask() {
     LOG(INFO) << "Sleeping now. Will check wifi status in 100 ms.";
-    const int kSleepTimeoutMs = 100;
     brillo::MessageLoop::current()->PostDelayedTask(
         base::Bind(&MyClient::QuitIfOnline, base::Unretained(this)),
-        base::TimeDelta::FromMilliseconds(kSleepTimeoutMs));
+        base::TimeDelta::FromMilliseconds(kTimeoutBetweenStateChecksMs));
   }
 
   // Check if the device is online. If it is, quit.
@@ -129,7 +131,6 @@ class MyClient : public brillo::DBusDaemon {
     }
 
     std::string state = property_it->second.TryGet<std::string>();
-    const std::string kOnlineState = "online";
     return state == kOnlineState;
   }
 
