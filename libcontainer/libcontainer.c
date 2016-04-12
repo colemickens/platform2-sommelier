@@ -285,12 +285,16 @@ struct container *container_new(const char *name,
 		return NULL;
 
 	c = calloc(1, sizeof(*c));
+	if (!c)
+		return NULL;
 	c->name = name;
 	c->config = config;
 	c->cgroup = container_cgroup_new(name, "/sys/fs/cgroup");
 	c->rundir = strdup(rundir);
-	if (!c->rundir)
+	if (!c->rundir) {
+		free(c);
 		return NULL;
+	}
 	return c;
 }
 
