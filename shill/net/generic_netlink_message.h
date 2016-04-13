@@ -144,11 +144,9 @@ class SHILL_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
 class SHILL_EXPORT UnknownControlMessage : public ControlNetlinkMessage {
  public:
   explicit UnknownControlMessage(uint8_t command)
-      : ControlNetlinkMessage(command, "<UNKNOWN CONTROL MESSAGE>"),
-        command_(command) {}
+      : ControlNetlinkMessage(command, "<UNKNOWN CONTROL MESSAGE>") {}
 
  private:
-  uint8_t command_;
   DISALLOW_COPY_AND_ASSIGN(UnknownControlMessage);
 };
 
