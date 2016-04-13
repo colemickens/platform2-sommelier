@@ -41,7 +41,8 @@ class AdaptorGenerator : public HeaderGenerator {
                                   IndentedText *text);
 
   // Generates the constructor for the adaptor.
-  static void AddConstructor(const std::string& class_name,
+  static void AddConstructor(const Interface& interface,
+                             const std::string& class_name,
                              const std::string& itf_name,
                              IndentedText *text);
 

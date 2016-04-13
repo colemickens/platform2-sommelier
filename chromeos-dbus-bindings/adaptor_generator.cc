@@ -86,7 +86,7 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   text->AddLine(StringPrintf("class %s {", class_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
-  AddConstructor(class_name, itf_name, text);
+  AddConstructor(interface, class_name, itf_name, text);
   AddRegisterWithDBusObject(itf_name, interface, text);
   AddSendSignalMethods(interface, text);
   AddPropertyMethodImplementation(interface, text);
@@ -107,9 +107,11 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   AddSignalDataMembers(interface, text);
   AddPropertyDataMembers(interface, text);
 
-  text->AddLine(StringPrintf(
-      "%s* interface_;  // Owned by container of this adapter.",
-      itf_name.c_str()));
+  if (!interface.methods.empty()) {
+    text->AddLine(StringPrintf(
+        "%s* interface_;  // Owned by container of this adapter.",
+        itf_name.c_str()));
+  }
 
   text->AddBlankLine();
   text->AddLine(StringPrintf("DISALLOW_COPY_AND_ASSIGN(%s);",
@@ -122,11 +124,18 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
 }
 
 // static
-void AdaptorGenerator::AddConstructor(const string& class_name,
+void AdaptorGenerator::AddConstructor(const Interface& interface,
+                                      const string& class_name,
                                       const string& itf_name,
                                       IndentedText *text) {
-  text->AddLine(StringPrintf("%s(%s* interface) : interface_(interface) {}",
-                             class_name.c_str(), itf_name.c_str()));
+  if (interface.methods.empty()) {
+    text->AddLine(StringPrintf("%s(%s* /* interface */) {}",
+                               class_name.c_str(), itf_name.c_str()));
+
+  } else {
+    text->AddLine(StringPrintf("%s(%s* interface) : interface_(interface) {}",
+                               class_name.c_str(), itf_name.c_str()));
+  }
 }
 
 // static
