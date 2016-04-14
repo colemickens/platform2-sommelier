@@ -92,8 +92,17 @@ extern const char kKeyboardBacklightUserStepsPref[];
 extern const char kKeyboardBacklightNoAlsBrightnessPref[];
 
 // Duration in milliseconds the keyboard backlight should remain on after
-// hovering stops (on systems that support hover detection).
-extern const char kKeyboardBacklightKeepOnAfterHoverMsPref[];
+// hovering stops (on systems that support hover detection) or after the last
+// report of user activity (if kKeyboardBacklightTurnOnForUserActivityPref is
+// enabled).
+extern const char kKeyboardBacklightKeepOnMsPref[];
+
+// If true, powerd will dynamically turn the keyboard backlight on when user
+// activity is detected and disable it after kKeyboardBacklightKeepOnMsPref.
+// This can be set on systems that lack ambient light sensors and hover
+// detection to reduce the backlight's power consumption. It has no effect if
+// kDetectHoverPref is set.
+extern const char kKeyboardBacklightTurnOnForUserActivityPref[];
 
 // If true, the system won't be suspended due to user inactivity unless a USB
 // input device is connected.

@@ -47,9 +47,9 @@ class KeyboardBacklightController
 
     Clock* clock() { return controller_->clock_.get(); }
 
-    // Triggers |hover_timer_| or |video_timer_| and returns true. Returns false
-    // if the timer wasn't running.
-    bool TriggerHoverTimeout() WARN_UNUSED_RESULT;
+    // Triggers |turn_off_timer_| or |video_timer_| and returns true. Returns
+    // false if the timer wasn't running.
+    bool TriggerTurnOffTimeout() WARN_UNUSED_RESULT;
     bool TriggerVideoTimeout() WARN_UNUSED_RESULT;
 
    private:
@@ -118,8 +118,8 @@ class KeyboardBacklightController
   double LevelToPercent(int64_t level) const;
 
   // Returns true if |last_hover_or_user_activity_time_| was less than
-  // |keep_on_after_hover_delay_| ago.
-  bool RecentlyHovering() const;
+  // |keep_on_delay_| ago.
+  bool RecentlyHoveringOrUserActive() const;
 
   // Returns the brightness from the current step in either |als_steps_| or
   // |user_steps_|, depending on which is in use.
@@ -166,6 +166,10 @@ class KeyboardBacklightController
   // hovering over the touchpad.
   bool supports_hover_;
 
+  // True if the keyboard should be turned on for user activity but kept off
+  // otherwise. This has no effect if |supports_hover_| is set.
+  bool turn_on_for_user_activity_;
+
   SessionState session_state_;
 
   bool dimmed_for_inactivity_;
@@ -202,16 +206,19 @@ class KeyboardBacklightController
 
   // Time at which the user's hands stopped hovering over the touchpad or at
   // which user activity was last observed (whichever is greater). Unset if
-  // |hovering_| is true or |supports_hover_| is false.
+  // |hovering_| is true or both |supports_hover_| and
+  // |turn_on_for_user_activity_| are false.
   base::TimeTicks last_hover_or_user_activity_time_;
 
   // Duration the backlight should remain on after hovering stops (on systems
-  // that support hover detection).
-  base::TimeDelta keep_on_after_hover_delay_;
+  // that support hover detection) or after user activity (if
+  // turn_on_for_user_activity_ is set).
+  base::TimeDelta keep_on_delay_;
 
-  // Runs UpdateState() |keep_on_after_hover_delay_| after the user's hands stop
-  // hovering over the touchpad.
-  base::OneShotTimer hover_timer_;
+  // Runs UpdateState() |keep_on_delay_| after the user's hands stop hovering
+  // over the touchpad (or after user activity is last observed, if
+  // |turn_on_for_user_activity_| is true).
+  base::OneShotTimer turn_off_timer_;
 
   // Runs HandleVideoTimeout().
   base::OneShotTimer video_timer_;

@@ -40,8 +40,9 @@ const char kKeyboardBacklightAlsStepsPref[] = "keyboard_backlight_als_steps";
 const char kKeyboardBacklightUserStepsPref[] = "keyboard_backlight_user_steps";
 const char kKeyboardBacklightNoAlsBrightnessPref[] =
     "keyboard_backlight_no_als_brightness";
-const char kKeyboardBacklightKeepOnAfterHoverMsPref[] =
-    "keyboard_backlight_keep_on_after_hover_ms";
+const char kKeyboardBacklightKeepOnMsPref[] = "keyboard_backlight_keep_on_ms";
+const char kKeyboardBacklightTurnOnForUserActivityPref[] =
+    "keyboard_backlight_turn_on_for_user_activity";
 const char kRequireUsbInputDeviceToSuspendPref[] =
     "require_usb_input_device_to_suspend";
 const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
