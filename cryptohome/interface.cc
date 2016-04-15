@@ -747,6 +747,27 @@ gboolean cryptohome_initialize_cast_key(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(InitializeCastKey, request);
 }
 
+gboolean cryptohome_get_firmware_management_parameters(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetFirmwareManagementParameters, request);
+}
+
+gboolean cryptohome_set_firmware_management_parameters(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(SetFirmwareManagementParameters, request);
+}
+
+gboolean cryptohome_remove_firmware_management_parameters(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(RemoveFirmwareManagementParameters, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

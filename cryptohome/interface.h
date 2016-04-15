@@ -443,6 +443,19 @@ gboolean cryptohome_initialize_cast_key(Cryptohome* self,
                                         GArray* request,
                                         DBusGMethodInvocation* resp);
 
+gboolean cryptohome_get_firmware_management_parameters(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* resp);
+gboolean cryptohome_set_firmware_management_parameters(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* resp);
+gboolean cryptohome_remove_firmware_management_parameters(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* resp);
+
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

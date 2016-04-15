@@ -51,7 +51,7 @@ class StubTpm : public Tpm {
   void SetIsBeingOwned(bool value) override {}
   bool GetRandomData(size_t length, brillo::Blob* data) override
     { return false; }
-  bool DefineLockOnceNvram(uint32_t index, size_t length) override
+  bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override
     { return false; }
   bool DestroyNvram(uint32_t index) override { return false; }
   bool WriteNvram(uint32_t index, const SecureBlob& blob) override

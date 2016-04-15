@@ -25,6 +25,7 @@
 #include "cryptohome/attestation.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/dbus_transition.h"
+#include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/mount_factory.h"
@@ -172,6 +173,11 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   virtual void set_boot_attributes(BootAttributes* boot_attributes) {
     boot_attributes_ = boot_attributes;
+  }
+
+  virtual void set_firmware_management_parameters(
+      FirmwareManagementParameters* fwmp) {
+    firmware_management_parameters_ = fwmp;
   }
 
   // Service implementation functions as wrapped in interface.cc
@@ -552,6 +558,27 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean InitializeCastKey(const GArray* request,
                                      DBusGMethodInvocation* context);
 
+  // Runs on the mount thread.
+  virtual void DoGetFirmwareManagementParameters(
+      const brillo::SecureBlob& request,
+      DBusGMethodInvocation* context);
+  virtual gboolean GetFirmwareManagementParameters(const GArray* request,
+                           DBusGMethodInvocation* context);
+
+  // Runs on the mount thread.
+  virtual void DoSetFirmwareManagementParameters(
+      const brillo::SecureBlob& request,
+      DBusGMethodInvocation* context);
+  virtual gboolean SetFirmwareManagementParameters(const GArray* request,
+                           DBusGMethodInvocation* context);
+
+  // Runs on the mount thread.
+  virtual void DoRemoveFirmwareManagementParameters(
+      const brillo::SecureBlob& request,
+      DBusGMethodInvocation* context);
+  virtual gboolean RemoveFirmwareManagementParameters(const GArray* request,
+                              DBusGMethodInvocation* context);
+
  protected:
   FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
   FRIEND_TEST(ServiceTest, StoreEnrollmentState);
@@ -710,6 +737,8 @@ class Service : public brillo::dbus::AbstractDbusService,
   scoped_ptr<BootAttributes> default_boot_attributes_;
   // After construction, this should only be used on the mount thread.
   BootAttributes* boot_attributes_;
+  scoped_ptr<FirmwareManagementParameters> default_firmware_management_params_;
+  FirmwareManagementParameters* firmware_management_parameters_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

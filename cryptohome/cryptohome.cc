@@ -123,6 +123,9 @@ namespace switches {
     "flush_and_sign_boot_attributes",
     "get_login_status",
     "initialize_cast_key",
+    "get_firmware_management_parameters",
+    "set_firmware_management_parameters",
+    "remove_firmware_management_parameters",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -182,6 +185,9 @@ namespace switches {
     ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES,
     ACTION_GET_LOGIN_STATUS,
     ACTION_INITIALIZE_CAST_KEY,
+    ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS,
+    ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS,
+    ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -202,6 +208,8 @@ namespace switches {
   static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
   static const char kCrosCoreSwitch[] = "cros_core";
   static const char kProtobufSwitch[] = "protobuf";
+  static const char kFlagsSwitch[] = "flags";
+  static const char kDevKeyHashSwitch[] = "developer_key_hash";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -594,7 +602,7 @@ bool MakeProtoDBusCall(const std::string& name,
                    request_ary.get(),
                    &brillo::Resetter(&reply_ary).lvalue(),
                    &brillo::Resetter(&error).lvalue())) {
-      printf("Failed to call %s!\n", name.c_str());
+      printf("Failed to call %s: %s\n", name.c_str(), error->message);
       return false;
     }
     ParseBaseReply(reply_ary.get(), reply);
@@ -2495,6 +2503,89 @@ int main(int argc, char **argv) {
       return -1;
     }
     printf("InitializeCastKey success.\n");
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS],
+      action.c_str())) {
+    cryptohome::GetFirmwareManagementParametersRequest request;
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall(
+        cryptohome::kCryptohomeGetFirmwareManagementParameters,
+        DBUS_METHOD(get_firmware_management_parameters),
+        DBUS_METHOD(get_firmware_management_parameters_async),
+        cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    if (!reply.HasExtension(
+        cryptohome::GetFirmwareManagementParametersReply::reply)) {
+      printf("GetFirmwareManagementParametersReply missing.\n");
+      return -1;
+    }
+    cryptohome::GetFirmwareManagementParametersReply get_fwmp_reply =
+        reply.GetExtension(
+            cryptohome::GetFirmwareManagementParametersReply::reply);
+    printf("flags=0x%08x\n", get_fwmp_reply.flags());
+    brillo::SecureBlob hash(get_fwmp_reply.developer_key_hash());
+    printf("hash=%s\n", cryptohome::CryptoLib::BlobToHex(hash).c_str());
+    printf("GetFirmwareManagementParameters success.\n");
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS],
+      action.c_str())) {
+    cryptohome::SetFirmwareManagementParametersRequest request;
+    cryptohome::BaseReply reply;
+
+    if (cl->HasSwitch(switches::kFlagsSwitch)) {
+      std::string flags_str = cl->GetSwitchValueASCII(switches::kFlagsSwitch);
+      char *end = NULL;
+      int32_t flags = strtol(flags_str.c_str(), &end, 0);
+      if (end && *end != '\0') {
+        printf("Bad flags value.\n");
+        return 1;
+      }
+      request.set_flags(flags);
+    } else {
+      printf("Use --flags (and optionally --developer_key_hash).\n");
+      return 1;
+    }
+
+    if (cl->HasSwitch(switches::kDevKeyHashSwitch)) {
+      std::string hash_str =
+        cl->GetSwitchValueASCII(switches::kDevKeyHashSwitch);
+      brillo::SecureBlob hash;
+      if (!base::HexStringToBytes(hash_str, &hash)) {
+        printf("Bad hash value.\n");
+        return 1;
+      }
+      if (hash.size() != SHA256_DIGEST_LENGTH) {
+        printf("Bad hash size.\n");
+        return 1;
+      }
+
+      request.set_developer_key_hash(hash.to_string());
+    }
+
+    if (!MakeProtoDBusCall(
+        cryptohome::kCryptohomeSetFirmwareManagementParameters,
+        DBUS_METHOD(set_firmware_management_parameters),
+        DBUS_METHOD(set_firmware_management_parameters_async),
+        cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    printf("SetFirmwareManagementParameters success.\n");
+  } else if (!strcmp(
+      switches::kActions[
+          switches::ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS],
+      action.c_str())) {
+    cryptohome::RemoveFirmwareManagementParametersRequest request;
+    cryptohome::BaseReply reply;
+
+    if (!MakeProtoDBusCall(
+        cryptohome::kCryptohomeRemoveFirmwareManagementParameters,
+        DBUS_METHOD(remove_firmware_management_parameters),
+        DBUS_METHOD(remove_firmware_management_parameters_async),
+        cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    printf("RemoveFirmwareManagementParameters success.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

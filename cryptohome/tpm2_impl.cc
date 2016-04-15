@@ -94,7 +94,14 @@ bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
   return true;
 }
 
-bool Tpm2Impl::DefineLockOnceNvram(uint32_t index, size_t length) {
+bool Tpm2Impl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
+  // TODO(rspangler): Refactor the trunks DefineNVSpace() API so it
+  // doesn't hard-code these flags.
+  if (flags != Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0) {
+    LOG(ERROR) << "Defining NVram with flags unsupported by trunks.";
+    return false;
+  }
+
   if (owner_password_.empty()) {
     LOG(ERROR) << "Defining NVram needs owner_password.";
     return false;

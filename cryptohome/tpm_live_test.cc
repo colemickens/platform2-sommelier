@@ -140,7 +140,9 @@ bool TpmLiveTest::NvramTest() {
     LOG(ERROR) << "Nvram index is already defined.";
     return false;
   }
-  if (!tpm_->DefineLockOnceNvram(index, nvram_data.size())) {
+  if (!tpm_->DefineNvram(index, nvram_data.size(),
+                         Tpm::kTpmNvramWriteDefine |
+                         Tpm::kTpmNvramBindToPCR0)) {
     LOG(ERROR) << "Defining Nvram index.";
     return false;
   }

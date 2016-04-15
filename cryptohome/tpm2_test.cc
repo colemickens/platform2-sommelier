@@ -152,7 +152,9 @@ TEST_F(Tpm2Test, DefineNvramSuccess) {
       .WillOnce(SaveArg<0>(&recovered_password));
   EXPECT_CALL(mock_tpm_utility_, DefineNVSpace(index, length, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(tpm_->DefineLockOnceNvram(index, length));
+  EXPECT_TRUE(tpm_->DefineNvram(index, length,
+                                Tpm::kTpmNvramWriteDefine |
+                                Tpm::kTpmNvramBindToPCR0));
   EXPECT_EQ(recovered_password.size(), owner_pass.size());
   EXPECT_EQ(recovered_password, owner_pass.to_string());
 }
@@ -161,7 +163,9 @@ TEST_F(Tpm2Test, DefineNvramWithoutOwnerPassword) {
   uint32_t index = 2;
   size_t length = 5;
   tpm_->SetOwnerPassword(SecureBlob(""));
-  EXPECT_FALSE(tpm_->DefineLockOnceNvram(index, length));
+  EXPECT_FALSE(tpm_->DefineNvram(index, length,
+                                 Tpm::kTpmNvramWriteDefine |
+                                 Tpm::kTpmNvramBindToPCR0));
 }
 
 TEST_F(Tpm2Test, DefineNvramFailure) {
@@ -170,7 +174,9 @@ TEST_F(Tpm2Test, DefineNvramFailure) {
   tpm_->SetOwnerPassword(SecureBlob("password"));
   EXPECT_CALL(mock_tpm_utility_, DefineNVSpace(index, length, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->DefineLockOnceNvram(index, length));
+  EXPECT_FALSE(tpm_->DefineNvram(index, length,
+                                 Tpm::kTpmNvramWriteDefine |
+                                 Tpm::kTpmNvramBindToPCR0));
 }
 
 TEST_F(Tpm2Test, DestroyNvramSuccess) {

@@ -45,7 +45,7 @@ class MockTpm : public Tpm {
   MOCK_CONST_METHOD0(IsBeingOwned, bool());
   MOCK_METHOD1(SetIsBeingOwned, void(bool));
   MOCK_METHOD2(GetRandomData, bool(size_t, brillo::Blob*));
-  MOCK_METHOD2(DefineLockOnceNvram, bool(uint32_t, size_t));
+  MOCK_METHOD3(DefineNvram, bool(uint32_t, size_t, uint32_t));
   MOCK_METHOD2(WriteNvram, bool(uint32_t, const brillo::SecureBlob&));
   MOCK_METHOD2(ReadNvram, bool(uint32_t, brillo::SecureBlob*));
   MOCK_METHOD1(DestroyNvram, bool(uint32_t));

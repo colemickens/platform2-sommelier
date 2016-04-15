@@ -29,6 +29,7 @@
 #include "cryptohome/mock_boot_lockbox.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_dbus_transition.h"
+#include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_homedirs.h"
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_mount.h"
@@ -106,6 +107,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
     service_.set_chaps_client(&chaps_client_);
     service_.set_boot_lockbox(&lockbox_);
     service_.set_boot_attributes(&boot_attributes_);
+    service_.set_firmware_management_parameters(&fwmp_);
     service_.set_reply_factory(&reply_factory_);
     service_.set_event_source_sink(&event_sink_);
     test_helper_.SetUpSystemSalt();
@@ -143,6 +145,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
   NiceMock<MockInstallAttributes> attrs_;
   NiceMock<MockBootLockbox> lockbox_;
   NiceMock<MockBootAttributes> boot_attributes_;
+  NiceMock<MockFirmwareManagementParameters> fwmp_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockDBusReplyFactory> reply_factory_;
   NiceMock<chaps::TokenManagerClientMock> chaps_client_;
@@ -1189,6 +1192,143 @@ TEST_F(ServiceExTest, ListKeysInvalidArgsNoEmail) {
   service_.DoListKeysEx(id_.get(), auth_.get(), list_keys_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No email supplied", g_error_->message);
+}
+
+TEST_F(ServiceExTest, GetFirmwareManagementParametersSuccess) {
+  brillo::SecureBlob hash("its_a_hash");
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Load())
+    .WillOnce(Return(true));
+  EXPECT_CALL(fwmp_, GetFlags(_))
+    .WillRepeatedly(DoAll(SetArgPointee<0>(0x1234), Return(true)));
+  EXPECT_CALL(fwmp_, GetDeveloperKeyHash(_))
+    .WillRepeatedly(DoAll(SetArgPointee<0>(hash), Return(true)));
+
+  GetFirmwareManagementParametersRequest request;
+  service_.DoGetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  EXPECT_TRUE(reply.HasExtension(GetFirmwareManagementParametersReply::reply));
+  EXPECT_EQ(
+      reply.GetExtension(GetFirmwareManagementParametersReply::reply).flags(),
+      0x1234);
+  EXPECT_EQ(reply.GetExtension(
+      GetFirmwareManagementParametersReply::reply).developer_key_hash(),
+      hash.to_string());
+}
+
+TEST_F(ServiceExTest, GetFirmwareManagementParametersError) {
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Load())
+    .WillRepeatedly(Return(false));
+
+  GetFirmwareManagementParametersRequest request;
+  service_.DoGetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
+            reply.error());
+}
+
+TEST_F(ServiceExTest, SetFirmwareManagementParametersSuccess) {
+  brillo::SecureBlob hash("its_a_hash");
+  brillo::Blob out_hash;
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Create())
+    .WillOnce(Return(true));
+  EXPECT_CALL(fwmp_, Store(0x1234, _))
+    .WillOnce(DoAll(SaveArgPointee<1>(&out_hash), Return(true)));
+
+  SetFirmwareManagementParametersRequest request;
+  request.set_flags(0x1234);
+  request.set_developer_key_hash(hash.to_string());
+  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  EXPECT_EQ(hash, out_hash);
+}
+
+TEST_F(ServiceExTest, SetFirmwareManagementParametersNoHash) {
+  brillo::Blob hash(0);
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Create())
+    .WillOnce(Return(true));
+  EXPECT_CALL(fwmp_, Store(0x1234, NULL))
+    .WillOnce(Return(true));
+
+  SetFirmwareManagementParametersRequest request;
+  request.set_flags(0x1234);
+  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+}
+
+TEST_F(ServiceExTest, SetFirmwareManagementParametersCreateError) {
+  brillo::SecureBlob hash("its_a_hash");
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Create())
+    .WillOnce(Return(false));
+
+  SetFirmwareManagementParametersRequest request;
+  request.set_flags(0x1234);
+  request.set_developer_key_hash(hash.to_string());
+  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+            reply.error());
+}
+
+TEST_F(ServiceExTest, SetFirmwareManagementParametersStoreError) {
+  brillo::SecureBlob hash("its_a_hash");
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Create())
+    .WillOnce(Return(true));
+  EXPECT_CALL(fwmp_, Store(_, _))
+    .WillOnce(Return(false));
+
+  SetFirmwareManagementParametersRequest request;
+  request.set_flags(0x1234);
+  request.set_developer_key_hash(hash.to_string());
+  service_.DoSetFirmwareManagementParameters(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
+            reply.error());
+}
+
+TEST_F(ServiceExTest, RemoveFirmwareManagementParametersSuccess) {
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Destroy())
+    .WillOnce(Return(true));
+
+  RemoveFirmwareManagementParametersRequest request;
+  service_.DoRemoveFirmwareManagementParameters(BlobFromProtobuf(request),
+                                                NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+}
+
+TEST_F(ServiceExTest, RemoveFirmwareManagementParametersError) {
+  SetupReply();
+
+  EXPECT_CALL(fwmp_, Destroy())
+    .WillOnce(Return(false));
+
+  RemoveFirmwareManagementParametersRequest request;
+  service_.DoRemoveFirmwareManagementParameters(BlobFromProtobuf(request),
+                                                NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE,
+            reply.error());
 }
 
 }  // namespace cryptohome

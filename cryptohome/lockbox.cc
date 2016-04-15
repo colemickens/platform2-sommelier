@@ -124,7 +124,10 @@ bool Lockbox::Create(ErrorId* error) {
     nvram_bytes = kReservedNvramBytesV2;
     break;
   }
-  if (!tpm_->DefineLockOnceNvram(nvram_index_, nvram_bytes)) {
+
+  if (!tpm_->DefineNvram(nvram_index_, nvram_bytes,
+                         Tpm::kTpmNvramWriteDefine |
+                         Tpm::kTpmNvramBindToPCR0)) {
     *error = kErrorIdTpmError;
     LOG(ERROR) << "Create() failed to defined NVRAM space.";
     return false;

@@ -36,6 +36,7 @@
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dbus_transition.h"
+#include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/mount.h"
@@ -205,7 +206,8 @@ Service::Service()
       default_attestation_(new Attestation()),
       attestation_(default_attestation_.get()),
       boot_lockbox_(nullptr),
-      boot_attributes_(nullptr) {
+      boot_attributes_(nullptr),
+      firmware_management_parameters_(nullptr) {
 }
 
 Service::~Service() {
@@ -383,6 +385,11 @@ bool Service::Initialize() {
     default_boot_attributes_.reset(
         new BootAttributes(boot_lockbox_, platform_));
     boot_attributes_ = default_boot_attributes_.get();
+  }
+  if (!firmware_management_parameters_) {
+    default_firmware_management_params_.reset(
+        new FirmwareManagementParameters(tpm_));
+    firmware_management_parameters_ = default_firmware_management_params_.get();
   }
   crypto_->set_use_tpm(use_tpm_);
   if (!crypto_->Init(tpm_init_))
@@ -3097,6 +3104,124 @@ gboolean Service::InitializeCastKey(const GArray* request,
                                     DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoInitializeCastKey, base::Unretained(this),
+                 SecureBlob(request->data, request->data + request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoGetFirmwareManagementParameters(
+    const brillo::SecureBlob& request,
+    DBusGMethodInvocation* context) {
+  GetFirmwareManagementParametersRequest request_pb;
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
+    SendInvalidArgsReply(context, "Bad GetFirmwareManagementParametersRequest");
+    return;
+  }
+  BaseReply reply;
+  GetFirmwareManagementParametersReply* extension =
+    reply.MutableExtension(GetFirmwareManagementParametersReply::reply);
+
+  if (!firmware_management_parameters_->Load()) {
+    reply.set_error(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID);
+    SendReply(context, reply);
+    return;
+  }
+
+  uint32_t flags;
+  if (firmware_management_parameters_->GetFlags(&flags)) {
+    extension->set_flags(flags);
+  }
+
+  brillo::SecureBlob hash;
+  if (firmware_management_parameters_->GetDeveloperKeyHash(&hash)) {
+    extension->set_developer_key_hash(hash.to_string());
+  }
+
+  SendReply(context, reply);
+}
+
+gboolean Service::GetFirmwareManagementParameters(const GArray* request,
+    DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoGetFirmwareManagementParameters,
+                 base::Unretained(this),
+                 SecureBlob(request->data, request->data + request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoSetFirmwareManagementParameters(
+    const brillo::SecureBlob& request,
+    DBusGMethodInvocation* context) {
+  SetFirmwareManagementParametersRequest request_pb;
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
+    SendInvalidArgsReply(context, "Bad SetFirmwareManagementParametersRequest");
+    return;
+  }
+
+  BaseReply reply;
+  if (!firmware_management_parameters_->Create()) {
+    reply.set_error(
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE);
+    SendReply(context, reply);
+    return;
+  }
+
+  uint32_t flags = 0;
+  if (request_pb.has_flags()) {
+    flags = request_pb.flags();
+  }
+
+  scoped_ptr<brillo::Blob> hash;
+  if (request_pb.has_developer_key_hash()) {
+    hash.reset(new SecureBlob(request_pb.developer_key_hash()));
+  }
+
+  if (!firmware_management_parameters_->Store(flags, hash.get())) {
+    reply.set_error(
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE);
+    SendReply(context, reply);
+    return;
+  }
+
+  SendReply(context, reply);
+}
+
+gboolean Service::SetFirmwareManagementParameters(const GArray* request,
+                          DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoSetFirmwareManagementParameters,
+                 base::Unretained(this),
+                 SecureBlob(request->data, request->data + request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
+void Service::DoRemoveFirmwareManagementParameters(
+    const brillo::SecureBlob& request,
+    DBusGMethodInvocation* context) {
+  RemoveFirmwareManagementParametersRequest request_pb;
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
+    SendInvalidArgsReply(context,
+                         "Bad RemoveFirmwareManagementParametersRequest");
+    return;
+  }
+  BaseReply reply;
+  if (!firmware_management_parameters_->Destroy()) {
+    reply.set_error(
+        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE);
+    SendReply(context, reply);
+    return;
+  }
+
+  SendReply(context, reply);
+}
+
+gboolean Service::RemoveFirmwareManagementParameters(const GArray* request,
+                             DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoRemoveFirmwareManagementParameters,
+                 base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;

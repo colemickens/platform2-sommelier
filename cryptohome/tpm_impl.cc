@@ -995,45 +995,48 @@ bool TpmImpl::DestroyNvram(uint32_t index) {
   return true;
 }
 
-// TODO(wad) Make this a wrapper around a generic DefineNvram().
-bool TpmImpl::DefineLockOnceNvram(uint32_t index, size_t length) {
+bool TpmImpl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "DefineLockOnceNvram failed to acquire authorization.";
+    LOG(ERROR) << "DefineNvram failed to acquire authorization.";
     return false;
   }
-  // Create a PCR object handle.
   TSS_RESULT result;
+
+  // Create a PCR object handle.
   ScopedTssPcrs pcrs_handle(context_handle);
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
-                                                   TSS_OBJECT_TYPE_PCRS,
-                                                   TSS_PCRS_STRUCT_INFO_SHORT,
-                                                   pcrs_handle.ptr()))) {
-    TPM_LOG(ERROR, result) << "Could not acquire PCR object handle";
-    return false;
-  }
-  // Read PCR0.
-  UINT32 pcr_len;
-  ScopedTssMemory pcr_value(context_handle);
-  if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, kTpmBootPCR,
-                                          &pcr_len, pcr_value.ptr()))) {
-    TPM_LOG(ERROR, result) << "Could not read PCR0 value";
-    return false;
-  }
-  // Include PCR0 value in PcrComposite.
-  if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrValue(pcrs_handle,
-                                                       kTpmBootPCR,
-                                                       pcr_len,
-                                                       pcr_value.value()))) {
-    TPM_LOG(ERROR, result) << "Could not set value for PCR0 in PCR handle";
-    return false;
-  }
-  // Set locality.
-  if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrLocality(pcrs_handle,
-                                                          kTpmPCRLocality))) {
-    TPM_LOG(ERROR, result) << "Could not set locality for PCR0 in PCR handle";
-    return false;
+  if (flags & kTpmNvramBindToPCR0) {
+    if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                     TSS_OBJECT_TYPE_PCRS,
+                                                     TSS_PCRS_STRUCT_INFO_SHORT,
+                                                     pcrs_handle.ptr()))) {
+      TPM_LOG(ERROR, result) << "Could not acquire PCR object handle";
+      return false;
+    }
+
+    // Read PCR0.
+    UINT32 pcr_len;
+    ScopedTssMemory pcr_value(context_handle);
+    if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, kTpmBootPCR,
+                                            &pcr_len, pcr_value.ptr()))) {
+      TPM_LOG(ERROR, result) << "Could not read PCR0 value";
+      return false;
+    }
+    // Include PCR0 value in PcrComposite.
+    if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrValue(pcrs_handle,
+                                                         kTpmBootPCR,
+                                                         pcr_len,
+                                                         pcr_value.value()))) {
+      TPM_LOG(ERROR, result) << "Could not set value for PCR0 in PCR handle";
+      return false;
+    }
+    // Set locality.
+    if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrLocality(pcrs_handle,
+                                                            kTpmPCRLocality))) {
+      TPM_LOG(ERROR, result) << "Could not set locality for PCR0 in PCR handle";
+      return false;
+    }
   }
 
   // Create an NVRAM store object handle.
@@ -1061,11 +1064,18 @@ bool TpmImpl::DefineLockOnceNvram(uint32_t index, size_t length) {
     return false;
   }
 
-  // Do not restrict to owner auth for write - just ensure it is lockable.
+  // Set appropriate permissions
+  uint32_t perms = 0;
+  if (flags & kTpmNvramWriteDefine) {
+    perms |= TPM_NV_PER_WRITEDEFINE;
+  } else {
+    TPM_LOG(ERROR, result) << "Unsupported permissions for NVRAM object";
+    return false;
+  }
   result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_PERMISSIONS,
-                                0, TPM_NV_PER_WRITEDEFINE);
+                                0, perms);
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Could not set PER_WRITEDEFINE on NVRAM object";
+    TPM_LOG(ERROR, result) << "Could not set permissions on NVRAM object";
     return false;
   }
 

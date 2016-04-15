@@ -57,6 +57,15 @@ class Tpm {
     kTpmRetryReboot,
   };
 
+  enum TpmNvramFlags {
+    // NVRAM space is write-once; lock by writing 0 bytes
+    kTpmNvramWriteDefine = (1<<0),
+
+    // NVRAM space is only accessible if PCR0 has the same value it did
+    // when the space was created
+    kTpmNvramBindToPCR0 = (1<<1),
+  };
+
   struct TpmStatusInfo {
     uint32_t last_tpm_error;
     bool can_connect;
@@ -152,17 +161,17 @@ class Tpm {
   //   data (OUT) - The random data from the TPM
   virtual bool GetRandomData(size_t length, brillo::Blob* data) = 0;
 
-  // Creates a lockable NVRAM space in the TPM
+  // Creates a NVRAM space in the TPM
   //
   // Parameters
   //   index - The index of the space
   //   length - The number of bytes to allocate
-  // TODO(wad) Add PCR compositing via flags.
-  // TODO(wad) Should this just be a factory for a TpmNvram class?
+  //   flags - Flags for NVRAM space attributes; zero or more TpmNvramFlags
   // Returns false if the index or length invalid or the required
   // authorization is not possible.
-  virtual bool DefineLockOnceNvram(uint32_t index,
-                                   size_t length) = 0;
+  virtual bool DefineNvram(uint32_t index,
+                           size_t length,
+                           uint32_t flags) = 0;
 
   // Destroys a defined NVRAM space
   //
