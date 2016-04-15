@@ -66,7 +66,7 @@ bool UserPolicyService::Store(const uint8_t* policy_blob,
   em::PolicyData policy_data;
   if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
       !policy_data.ParseFromString(policy.policy_data())) {
-    const char msg[] = "Unable to parse policy protobuf.";
+    static const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
     Error error(dbus_error::kSigDecodeFail, msg);
     completion.Run(error);

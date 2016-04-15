@@ -368,7 +368,8 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   std::vector<uint8_t> sig;
   const uint8_t* data = reinterpret_cast<const uint8_t*>(new_data.c_str());
   if (!nss_->Sign(data, new_data.length(), &sig, signing_key)) {
-    const char err_msg[] = "Could not sign policy containing new owner data.";
+    static const char err_msg[] =
+        "Could not sign policy containing new owner data.";
     if (error) {
       LOG(WARNING) << err_msg;
       error->Set(dbus_error::kPubkeySetIllegal, err_msg);
@@ -396,7 +397,8 @@ RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
     Error* error) {
   RSAPrivateKey* result = nss_->GetPrivateKeyForUser(key, slot);
   if (!result) {
-    const char msg[] = "Could not verify that owner key belongs to this user.";
+    static const char msg[] =
+        "Could not verify that owner key belongs to this user.";
     LOG(WARNING) << msg;
     if (error)
       error->Set(dbus_error::kPubkeySetIllegal, msg);

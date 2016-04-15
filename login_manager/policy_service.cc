@@ -64,7 +64,7 @@ bool PolicyService::Store(const uint8_t* policy_blob,
   em::PolicyFetchResponse policy;
   if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
       !policy.has_policy_data_signature()) {
-    const char msg[] = "Unable to parse policy protobuf.";
+    static const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
     Error error(dbus_error::kSigDecodeFail, msg);
     completion.Run(error);
@@ -135,7 +135,7 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
     }
 
     if (!installed) {
-      const char msg[] = "Failed to install policy key!";
+      static const char msg[] = "Failed to install policy key!";
       LOG(ERROR) << msg;
       Error error(dbus_error::kPubkeySetIllegal, msg);
       completion.Run(error);
@@ -153,7 +153,7 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
                      data.size(),
                      reinterpret_cast<const uint8_t*>(sig.c_str()),
                      sig.size())) {
-    const char msg[] = "Signature could not be verified.";
+    static const char msg[] = "Signature could not be verified.";
     LOG(ERROR) << msg;
     Error error(dbus_error::kVerifyFail, msg);
     completion.Run(error);

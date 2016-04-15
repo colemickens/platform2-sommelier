@@ -237,7 +237,8 @@ void SessionManagerImpl::EmitLoginPromptVisible(Error* error) {
       upstart_signal_emitter_->EmitSignal("login-prompt-visible",
                                           std::vector<std::string>());
   if (!emit_response) {
-    const char msg[] = "Emitting login-prompt-visible upstart signal failed.";
+    static const char msg[] =
+        "Emitting login-prompt-visible upstart signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }
@@ -286,7 +287,8 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
     // cryptohome identifier.
     actual_user_id = base::ToLowerASCII(user_id);
     if (!ValidateEmail(actual_user_id)) {
-      const char msg[] = "Provided email address is not valid.  ASCII only.";
+      static const char msg[] =
+          "Provided email address is not valid.  ASCII only.";
       LOG(ERROR) << msg;
       error->Set(dbus_error::kInvalidAccount, msg);
       return false;
@@ -295,7 +297,8 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
 
   // Check if this user already started a session.
   if (user_sessions_.count(actual_user_id) > 0) {
-    const char msg[] = "Provided user id already started a session.";
+    static const char msg[] =
+        "Provided user id already started a session.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSessionExists, msg);
     return false;
@@ -336,7 +339,8 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
           std::vector<std::string>(1, "CHROMEOS_USER=" + actual_user_id));
 
   if (!emit_response) {
-    const char msg[] = "Emitting start-user-session upstart signal failed.";
+    static const char msg[] =
+        "Emitting start-user-session upstart signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
     return false;
@@ -385,7 +389,7 @@ void SessionManagerImpl::StorePolicy(const uint8_t* policy_blob,
 void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
                                         Error* error) {
   if (!device_policy_->Retrieve(policy_data)) {
-    const char msg[] = "Failed to retrieve policy data.";
+    static const char msg[] = "Failed to retrieve policy data.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSigEncodeFail, msg);
     return;
@@ -420,13 +424,14 @@ void SessionManagerImpl::RetrievePolicyForUser(
     Error* error) {
   PolicyService* policy_service = GetPolicyService(user_id);
   if (!policy_service) {
-    const char msg[] = "Cannot retrieve user policy before session is started.";
+    static const char msg[] =
+        "Cannot retrieve user policy before session is started.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSessionDoesNotExist, msg);
     return;
   }
   if (!policy_service->Retrieve(policy_data)) {
-    const char msg[] = "Failed to retrieve policy data.";
+    static const char msg[] = "Failed to retrieve policy data.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSigEncodeFail, msg);
   }
@@ -446,7 +451,7 @@ void SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
     std::vector<uint8_t>* policy_data,
     Error* error) {
   if (!device_local_account_policy_->Retrieve(account_id, policy_data)) {
-    const char msg[] = "Failed to retrieve policy data.";
+    static const char msg[] = "Failed to retrieve policy data.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSigEncodeFail, msg);
     return;
@@ -481,14 +486,14 @@ void SessionManagerImpl::HandleSupervisedUserCreationFinished() {
 
 void SessionManagerImpl::LockScreen(Error* error) {
   if (!session_started_) {
-    const char msg[] = "Attempt to lock screen outside of user session.";
+    static const char msg[] = "Attempt to lock screen outside of user session.";
     LOG(WARNING) << msg;
     error->Set(dbus_error::kSessionDoesNotExist, msg);
     return;
   }
   // If all sessions are incognito, then locking is not allowed.
   if (AllSessionsAreIncognito()) {
-    const char msg[] = "Attempt to lock screen during Guest session.";
+    static const char msg[] = "Attempt to lock screen during Guest session.";
     LOG(WARNING) << msg;
     error->Set(dbus_error::kSessionExists, msg);
     return;
@@ -523,7 +528,7 @@ bool SessionManagerImpl::RestartJob(int fd,
   }
 
   if (!manager_->IsBrowser(ucred.pid)) {
-    const char msg[] = "Provided pid is unknown.";
+    static const char msg[] = "Provided pid is unknown.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kUnknownPid, msg);
     return false;
@@ -540,7 +545,7 @@ void SessionManagerImpl::StartDeviceWipe(const std::string& reason,
                                          Error* error) {
   const base::FilePath session_path(kLoggedInFlag);
   if (system_->Exists(session_path)) {
-    const char msg[] = "A user has already logged in this boot.";
+    static const char msg[] = "A user has already logged in this boot.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSessionExists, msg);
     return;
@@ -590,7 +595,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
           std::vector<std::string>());
 
   if (!emit_response) {
-    const char msg[] = "Emitting start-arc-instance upstart signal failed.";
+    static const char msg[] =
+        "Emitting start-arc-instance upstart signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }
@@ -611,7 +617,8 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
           std::vector<std::string>());
 
   if (!emit_response) {
-    const char msg[] = "Emitting stop-arc-instance upstart signal failed.";
+    static const char msg[] =
+        "Emitting stop-arc-instance upstart signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }
