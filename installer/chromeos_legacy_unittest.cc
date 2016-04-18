@@ -23,9 +23,9 @@ TEST(LegacyTest, EfiGrubUpdateTest) {
     "  linux /syslinux/vmlinuz.B cros_efi cros_debug "
       " root=PARTUUID=5BFD65FE-0398-804A-B090-A201E022A7C6\n"
     "  linux /syslinux/vmlinuz.A cros_efi cros_debug "
-      "root=/dev/dm-0 dm=\\\"DM verity=A\\\"\n"
+      "root=/dev/dm-0 dm=\"DM verity=A\"\n"
     "  linux /syslinux/vmlinuz.B cros_efi cros_debug "
-      "root=/dev/dm-0 dm=\\\"DM verity=B\\\"\n"
+      "root=/dev/dm-0 dm=\"DM verity=B\"\n"
     "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
       "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
@@ -38,9 +38,9 @@ TEST(LegacyTest, EfiGrubUpdateTest) {
     "  linux /syslinux/vmlinuz.B cros_efi cros_debug "
       " root=PARTUUID=5BFD65FE-0398-804A-B090-A201E022A7C6\n"
     "  linux /syslinux/vmlinuz.A cros_efi cros_debug "
-      "root=/dev/dm-0 dm=\\\"verity args\\\"\n"
+      "root=/dev/dm-0 dm=\"verity args\"\n"
     "  linux /syslinux/vmlinuz.B cros_efi cros_debug "
-      "root=/dev/dm-0 dm=\\\"DM verity=B\\\"\n"
+      "root=/dev/dm-0 dm=\"DM verity=B\"\n"
     "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
       "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";

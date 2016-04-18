@@ -214,16 +214,10 @@ bool EfiGrubUpdate(const string& input,
           return false;
         }
       } else {
-        // Unescape quotes in the line.
-        ReplaceAll(&(*line), "\\\"", "\"");
-
         if (!SetKernelArg("dm", verity_args, &(*line))) {
           printf("Unable to update verified dm flag.\n");
           return false;
         }
-
-        // Escape quotes in the line.
-        ReplaceAll(&(*line), "\"", "\\\"");
       }
     }
   }

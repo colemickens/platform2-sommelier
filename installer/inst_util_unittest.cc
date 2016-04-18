@@ -144,6 +144,11 @@ TEST(UtilTest, WriteStringToFileTest) {
   EXPECT_EQ(ReadFileToString(file, &read_contents), true);
   EXPECT_EQ("foobar", read_contents);
 
+  // Attempt to (over)write with string containing quotes.
+  EXPECT_EQ(WriteStringToFile("\"fuzzy\"", file), true);
+  EXPECT_EQ(ReadFileToString(file, &read_contents), true);
+  EXPECT_EQ("\"fuzzy\"", read_contents);
+
   // Cleanup
   unlink(file.c_str());
 }
