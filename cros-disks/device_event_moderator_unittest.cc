@@ -4,6 +4,8 @@
 
 #include "cros-disks/device_event_moderator.h"
 
+#include <memory>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -32,7 +34,8 @@ class MockDeviceEventSource : public DeviceEventSourceInterface {
 class DeviceEventModeratorTest : public ::testing::Test {
  public:
   DeviceEventModeratorTest()
-      : moderator_(&event_dispatcher_, &event_source_),
+      : moderator_(new DeviceEventModerator(
+            &event_dispatcher_, &event_source_, true)),
         event1_(DeviceEvent::kDeviceAdded, "1"),
         event2_(DeviceEvent::kDeviceAdded, "2"),
         event_list1_({event1_}),
@@ -41,16 +44,44 @@ class DeviceEventModeratorTest : public ::testing::Test {
   }
 
  protected:
+  void RecreateDeviceEventModerator(bool dispatch_initially) {
+    moderator_.reset(new DeviceEventModerator(
+        &event_dispatcher_, &event_source_, dispatch_initially));
+  }
+
   MockDeviceEventDispatcher event_dispatcher_;
   MockDeviceEventSource event_source_;
-  DeviceEventModerator moderator_;
+  std::unique_ptr<DeviceEventModerator> moderator_;
   DeviceEvent event1_, event2_;
   DeviceEventList event_list1_, event_list2_, event_list3_;
 };
 
 TEST_F(DeviceEventModeratorTest, DispatchQueuedDeviceEventsWithEmptyQueue) {
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(_)).Times(0);
-  moderator_.DispatchQueuedDeviceEvents();
+  moderator_->DispatchQueuedDeviceEvents();
+}
+
+TEST_F(DeviceEventModeratorTest, EventsProcessedNoSessionManager) {
+  RecreateDeviceEventModerator(/* dispatch_initially= */ false);
+  EXPECT_FALSE(moderator_->is_event_queued());
+
+  InSequence sequence;
+  EXPECT_CALL(event_source_, GetDeviceEvents(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(event_list1_), Return(true)))
+      .RetiresOnSaturation();
+  EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
+  EXPECT_CALL(event_source_, GetDeviceEvents(_))
+      .WillOnce(Return(false))
+      .RetiresOnSaturation();
+  EXPECT_CALL(event_source_, GetDeviceEvents(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)))
+      .RetiresOnSaturation();
+  EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
+
+  moderator_->OnScreenIsUnlocked();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
 }
 
 TEST_F(DeviceEventModeratorTest, OnScreenIsLocked) {
@@ -61,11 +92,11 @@ TEST_F(DeviceEventModeratorTest, OnScreenIsLocked) {
       .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(_)).Times(0);
 
-  moderator_.OnScreenIsLocked();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  EXPECT_TRUE(moderator_.is_event_queued());
+  moderator_->OnScreenIsLocked();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  EXPECT_TRUE(moderator_->is_event_queued());
 }
 
 TEST_F(DeviceEventModeratorTest, OnScreenIsLockedAndThenUnlocked) {
@@ -77,13 +108,13 @@ TEST_F(DeviceEventModeratorTest, OnScreenIsLockedAndThenUnlocked) {
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnScreenIsLocked();
-  EXPECT_TRUE(moderator_.is_event_queued());
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.OnScreenIsUnlocked();
-  EXPECT_FALSE(moderator_.is_event_queued());
+  moderator_->OnScreenIsLocked();
+  EXPECT_TRUE(moderator_->is_event_queued());
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->OnScreenIsUnlocked();
+  EXPECT_FALSE(moderator_->is_event_queued());
 }
 
 TEST_F(DeviceEventModeratorTest, OnScreenIsUnlocked) {
@@ -100,11 +131,11 @@ TEST_F(DeviceEventModeratorTest, OnScreenIsUnlocked) {
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnScreenIsUnlocked();
-  EXPECT_FALSE(moderator_.is_event_queued());
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
+  moderator_->OnScreenIsUnlocked();
+  EXPECT_FALSE(moderator_->is_event_queued());
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
 }
 
 TEST_F(DeviceEventModeratorTest, OnSessionStarted) {
@@ -121,11 +152,11 @@ TEST_F(DeviceEventModeratorTest, OnSessionStarted) {
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnSessionStarted();
-  EXPECT_FALSE(moderator_.is_event_queued());
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
+  moderator_->OnSessionStarted();
+  EXPECT_FALSE(moderator_->is_event_queued());
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
 }
 
 TEST_F(DeviceEventModeratorTest, OnSessionStopped) {
@@ -136,11 +167,11 @@ TEST_F(DeviceEventModeratorTest, OnSessionStopped) {
       .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(_)).Times(0);
 
-  moderator_.OnSessionStopped();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  EXPECT_TRUE(moderator_.is_event_queued());
+  moderator_->OnSessionStopped();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  EXPECT_TRUE(moderator_->is_event_queued());
 }
 
 TEST_F(DeviceEventModeratorTest, OnSessionStoppedAndThenStarted) {
@@ -152,13 +183,13 @@ TEST_F(DeviceEventModeratorTest, OnSessionStoppedAndThenStarted) {
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnSessionStopped();
-  EXPECT_TRUE(moderator_.is_event_queued());
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.ProcessDeviceEvents();
-  moderator_.OnSessionStarted();
-  EXPECT_FALSE(moderator_.is_event_queued());
+  moderator_->OnSessionStopped();
+  EXPECT_TRUE(moderator_->is_event_queued());
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->ProcessDeviceEvents();
+  moderator_->OnSessionStarted();
+  EXPECT_FALSE(moderator_->is_event_queued());
 }
 
 TEST_F(DeviceEventModeratorTest, GetDeviceEventsReturningMultipleEvents) {
@@ -168,8 +199,8 @@ TEST_F(DeviceEventModeratorTest, GetDeviceEventsReturningMultipleEvents) {
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnSessionStarted();
-  moderator_.ProcessDeviceEvents();
+  moderator_->OnSessionStarted();
+  moderator_->ProcessDeviceEvents();
 }
 
 }  // namespace cros_disks

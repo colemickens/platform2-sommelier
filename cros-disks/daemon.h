@@ -21,7 +21,9 @@ namespace cros_disks {
 
 class Daemon {
  public:
-  explicit Daemon(DBus::Connection* dbus_connection);
+  // |has_session_manager| indicates whether the presence of a SessionManager is
+  // expected.
+  Daemon(DBus::Connection* dbus_connection, bool has_session_manager);
   ~Daemon() = default;
 
   // Initializes various components in the daemon.

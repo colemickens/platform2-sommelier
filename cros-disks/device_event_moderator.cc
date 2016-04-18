@@ -15,10 +15,11 @@ namespace cros_disks {
 
 DeviceEventModerator::DeviceEventModerator(
     DeviceEventDispatcherInterface* event_dispatcher,
-    DeviceEventSourceInterface* event_source)
+    DeviceEventSourceInterface* event_source,
+    bool dispatch_initially)
     : event_dispatcher_(event_dispatcher),
       event_source_(event_source),
-      is_event_queued_(true) {
+      is_event_queued_(dispatch_initially) {
   CHECK(event_dispatcher_) << "Invalid event dispatcher object";
   CHECK(event_source_) << "Invalid event source object";
 }

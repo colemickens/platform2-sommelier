@@ -20,15 +20,21 @@ class DeviceEventSourceInterface;
 // A class for moderating device events by retrieving events from an event
 // source and dispatching them through a dispatcher at appropriate moments.
 //
-// Device events are dispatched immediately only during an active user session.
-// After a user session ends or the screen is locked, any received device
-// event is temporarily queued and only dispatched after a new user session
-// starts or the screen is unlocked. This is to minimize the chance of device
-// insertion attacks when the system is not actively used.
+// If |dispatch_initially| is true, device events are dispatched immediately
+// only during an active user session. Then, after a user session ends or the
+// screen is locked, any received device event is temporarily queued and only
+// dispatched after a new user session starts or the screen is unlocked. This
+// is to minimize the chance of device insertion attacks when the system is not
+// actively used.
+//
+// If |dispatch_initially| is false, device events are not queued and
+// dispatched immediately regardless of a session status. This is for use in
+// environments where the concept of sessions is not relevant.
 class DeviceEventModerator : public SessionManagerObserverInterface {
  public:
   DeviceEventModerator(DeviceEventDispatcherInterface* event_dispatcher,
-                       DeviceEventSourceInterface* event_source);
+                       DeviceEventSourceInterface* event_source,
+                       bool dispatch_initially);
 
   virtual ~DeviceEventModerator() = default;
 

@@ -30,6 +30,8 @@ namespace switches {
 
 // Command line switch to run this daemon in foreground.
 const char kForeground[] = "foreground";
+// Command line switch to run without a session manager.
+const char kNoSessionManager[] = "no-session-manager";
 // Command line switch to show the help message and exit.
 const char kHelp[] = "help";
 // Command line switch to set the logging level:
@@ -42,6 +44,8 @@ const char kHelpMessage[] =
     "Available Switches:\n"
     "  --foreground\n"
     "    Do not daemonize; run in foreground.\n"
+    "  --no-session-manager\n"
+    "    Runs without the expectation of a session manager.\n"
     "  --log-level=N\n"
     "    Logging level:\n"
     "      0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR)\n"
@@ -108,6 +112,7 @@ int main(int argc, char** argv) {
   }
 
   bool foreground = cl->HasSwitch(switches::kForeground);
+  bool no_session_manager = cl->HasSwitch(switches::kNoSessionManager);
   int log_level = cl->HasSwitch(switches::kLogLevel) ?
       GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel)) : 0;
 
@@ -134,7 +139,7 @@ int main(int argc, char** argv) {
   CHECK(server_conn.acquire_name(cros_disks::kCrosDisksServiceName))
       << "Failed to acquire D-Bus name " << cros_disks::kCrosDisksServiceName;
 
-  Daemon daemon(&server_conn);
+  Daemon daemon(&server_conn, /* has_session_manager= */ !no_session_manager);
   daemon.Initialize();
 
   // Set up a monitor for handling device events.
