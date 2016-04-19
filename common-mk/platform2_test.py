@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -35,14 +35,14 @@ from chromite.lib import signals
 # beginning of an environment variable matches one of the regular expression
 # patterns (i.e. matching via re.match), the environment variable is let
 # through.
-ENV_PASSTHRU_REGEX_LIST = [re.compile(x) for x in (
+ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
     # Used by various sanitizers.
     '[AL]SAN_OPTIONS$',
     # Used by QEMU.
     'QEMU_',
     # Used to select profiling output location for gcov.
     'GCOV_',
-)]
+])
 
 
 class Platform2Test(object):
