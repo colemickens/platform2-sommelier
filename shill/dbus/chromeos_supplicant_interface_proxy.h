@@ -66,6 +66,8 @@ class ChromeosSupplicantInterfaceProxy
   bool TDLSStatus(const std::string& peer, std::string* status) override;
   bool TDLSTeardown(const std::string& peer) override;
   bool SetHT40Enable(const std::string& network, bool enable) override;
+  bool EnableMACAddressRandomization(const std::vector<unsigned char>& mask) override;
+  bool DisableMACAddressRandomization() override;
   // The below set functions will always return true, since PropertySet::Set
   // is an async method. Any failures will be logged in the callback.
   bool SetFastReauth(bool enabled) override;

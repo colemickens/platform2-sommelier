@@ -611,6 +611,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         .WillByDefault(Return(true));
     ON_CALL(*supplicant_interface_proxy_.get(), Scan(_))
         .WillByDefault(Return(true));
+    ON_CALL(*supplicant_interface_proxy_.get(),
+            EnableMACAddressRandomization(_))
+        .WillByDefault(Return(true));
+    ON_CALL(*supplicant_interface_proxy_.get(),
+            DisableMACAddressRandomization())
+        .WillByDefault(Return(true));
     ON_CALL(*supplicant_network_proxy_.get(), SetEnabled(_))
         .WillByDefault(Return(true));
 
@@ -1271,6 +1277,25 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   uint32_t GetWiphyIndex() { return wifi_->wiphy_index_; }
 
   void SetWiphyIndex(uint32_t index) { wifi_->wiphy_index_ = index; }
+
+  void ParseFeatureFlags(const Nl80211Message& nl80211_message) {
+    wifi_->ParseFeatureFlags(nl80211_message);
+  }
+
+  bool GetRandomMACSupported() { return wifi_->random_mac_supported_; }
+
+  void SetRandomMACSupported(bool supported) {
+    wifi_->random_mac_supported_ = supported;
+  }
+
+  bool GetRandomMACEnabled() { return wifi_->random_mac_enabled_; }
+
+  void SetRandomMACEnabled(bool enabled) {
+    Error error;
+    wifi_->SetRandomMACEnabled(enabled, &error);
+  }
+
+  std::vector<unsigned char> GetRandomMACMask() { return WiFi::kRandomMACMask; }
 
   std::set<uint16_t>* GetAllScanFrequencies() {
     return &wifi_->all_scan_frequencies_;
@@ -4179,6 +4204,80 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Failure) {
                        "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY"));
   EXPECT_FALSE(ParseWiphyIndex(msg));
   EXPECT_CALL(*wake_on_wifi_, OnWiphyIndexReceived(_)).Times(0);
+}
+
+TEST_F(WiFiMainTest, ParseFeatureFlags_RandomMACSupport) {
+  NewWiphyMessage msg;
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  // Make sure the feature is marked unsupported
+  uint32_t flags;
+  msg.const_attributes()->GetU32AttributeValue(
+      NL80211_ATTR_FEATURE_FLAGS, &flags);
+  flags &= ~(NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR |
+             NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR);
+  msg.attributes()->SetU32AttributeValue(NL80211_ATTR_FEATURE_FLAGS, flags);
+  ParseFeatureFlags(msg);
+  EXPECT_FALSE(GetRandomMACSupported());
+
+  // Make sure the feature is marked supported
+  msg.const_attributes()->GetU32AttributeValue(
+      NL80211_ATTR_FEATURE_FLAGS, &flags);
+  flags |= (NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR |
+            NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR);
+  msg.attributes()->SetU32AttributeValue(NL80211_ATTR_FEATURE_FLAGS, flags);
+  ParseFeatureFlags(msg);
+  EXPECT_TRUE(GetRandomMACSupported());
+}
+
+TEST_F(WiFiMainTest, RandomMACProperty_Unsupported) {
+  StartWiFi();
+  SetRandomMACSupported(false);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              EnableMACAddressRandomization(_)).Times(0);
+  SetRandomMACEnabled(true);
+  EXPECT_FALSE(GetRandomMACEnabled());
+}
+
+TEST_F(WiFiMainTest, RandomMACProperty_Supported) {
+  StartWiFi();
+  SetRandomMACSupported(true);
+
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              EnableMACAddressRandomization(GetRandomMACMask())).Times(1);
+  SetRandomMACEnabled(true);
+  EXPECT_TRUE(GetRandomMACEnabled());
+
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              DisableMACAddressRandomization()).Times(1);
+  SetRandomMACEnabled(false);
+  EXPECT_FALSE(GetRandomMACEnabled());
+}
+
+TEST_F(WiFiMainTest, RandomMACProperty_SupplicantFailed) {
+  StartWiFi();
+  SetRandomMACSupported(true);
+
+  // Test wpa_supplicant failing to enable random MAC.
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              EnableMACAddressRandomization(GetRandomMACMask()))
+                  .WillOnce(Return(false));
+  SetRandomMACEnabled(true);
+  EXPECT_FALSE(GetRandomMACEnabled());
+
+  // Enable random MAC.
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  SetRandomMACEnabled(true);
+
+  // Test wpa_supplicant failing to disable random MAC.
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              DisableMACAddressRandomization()).WillOnce(Return(false));
+  SetRandomMACEnabled(false);
+  EXPECT_TRUE(GetRandomMACEnabled());
 }
 
 TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {

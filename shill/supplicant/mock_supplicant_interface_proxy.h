@@ -61,6 +61,9 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD2(TDLSStatus, bool(const std::string& peer, std::string* status));
   MOCK_METHOD1(TDLSTeardown, bool(const std::string& peer));
   MOCK_METHOD2(SetHT40Enable, bool(const std::string& network, bool enable));
+  MOCK_METHOD1(EnableMACAddressRandomization,
+               bool(const std::vector<unsigned char>& mask));
+  MOCK_METHOD0(DisableMACAddressRandomization, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantInterfaceProxy);

@@ -372,6 +372,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Used to distinguish between a disconnect reason explicitly set by
   // supplicant and a default.
   static const int kDefaultDisconnectReason;
+  // Used when enabling MAC randomization to request that the OUI remain constant
+  // and the last three octets are randomized.
+  static const std::vector<unsigned char> kRandomMACMask;
 
   void GetPhyInfo();
   void AppendBgscan(WiFiService* service,
@@ -405,6 +408,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool SetRoamThreshold(const uint16_t& threshold, Error* /*error*/);
   bool SetScanInterval(const uint16_t& seconds, Error* error);
   void ClearBgscanMethod(const int& argument, Error* error);
+
+  bool GetRandomMACEnabled(Error* error);
+  bool SetRandomMACEnabled(const bool& enabled, Error* error);
 
   void CurrentBSSChanged(const std::string& new_bss);
   void DisconnectReasonChanged(const int32_t new_disconnect_reason);
@@ -458,6 +464,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       const std::string& name,
       uint16_t(WiFi::*get)(Error* error),
       bool(WiFi::*set)(const uint16_t& value, Error* error));
+  void HelpRegisterDerivedBool(
+      PropertyStore* store,
+      const std::string& name,
+      bool(WiFi::*get)(Error* error),
+      bool(WiFi::*set)(const bool& value, Error* error));
   void HelpRegisterConstDerivedBool(
       PropertyStore* store,
       const std::string& name,
@@ -602,6 +613,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Returns true iff the wiphy index was parsed successfully, false otherwise.
   bool ParseWiphyIndex(const Nl80211Message& nl80211_message);
 
+  // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
+  // feature flags and sets members of this WiFi class appropriately.
+  void ParseFeatureFlags(const Nl80211Message& nl80211_message);
+
   // Callback invoked when the kernel broadcasts a notification that a scan has
   // started.
   virtual void OnScanStarted(const NetlinkMessage& netlink_message);
@@ -690,6 +705,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   size_t min_frequencies_to_scan_;
   size_t max_frequencies_to_scan_;
   bool scan_all_frequencies_;
+
+  bool random_mac_supported_;
+  bool random_mac_enabled_;
 
   // Holds the list of scan results waiting to be processed and a cancelable
   // closure for processing the pending tasks in PendingScanResultsHandler().

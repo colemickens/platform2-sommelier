@@ -341,6 +341,29 @@ bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(const string& network,
   return true;
 }
 
+bool ChromeosSupplicantInterfaceProxy::EnableMACAddressRandomization(
+    const std::vector<unsigned char>& mask) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  brillo::ErrorPtr error;
+  if (!interface_proxy_->EnableMACAddressRandomization(mask, &error)) {
+    LOG(ERROR) << "Failed to enable MAC address randomization: "
+               << error->GetCode() << " " << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
+bool ChromeosSupplicantInterfaceProxy::DisableMACAddressRandomization() {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  brillo::ErrorPtr error;
+  if (!interface_proxy_->DisableMACAddressRandomization(&error)) {
+    LOG(ERROR) << "Failed to enable MAC address randomization: "
+               << error->GetCode() << " " << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
 bool ChromeosSupplicantInterfaceProxy::TDLSDiscover(const string& peer) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << peer;
   brillo::ErrorPtr error;

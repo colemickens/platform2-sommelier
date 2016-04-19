@@ -117,6 +117,12 @@ const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
 // Invalid 802.11 disconnect reason code.
 const int WiFi::kDefaultDisconnectReason = INT32_MAX;
 
+// The default random MAC mask is FF:FF:FF:00:00:00. Bits which are a 1 in
+// the mask stay the same during randomization, and bits which are 0 are
+// randomized. This mask means the OUI will remain unchanged but the last
+// three octets will be different.
+const std::vector<unsigned char> WiFi::kRandomMACMask{255, 255, 255, 0, 0, 0};
+
 namespace {
 bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');
@@ -172,6 +178,8 @@ WiFi::WiFi(ControlInterface* control_interface,
       min_frequencies_to_scan_(kMinumumFrequenciesToScan),
       max_frequencies_to_scan_(std::numeric_limits<int>::max()),
       scan_all_frequencies_(true),
+      random_mac_supported_(false),
+      random_mac_enabled_(false),
       fraction_per_scan_(kDefaultFractionPerScan),
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
@@ -203,6 +211,10 @@ WiFi::WiFi(ControlInterface* control_interface,
                            kBgscanSignalThresholdProperty,
                            &WiFi::GetBgscanSignalThreshold,
                            &WiFi::SetBgscanSignalThreshold);
+  HelpRegisterDerivedBool(store,
+                          kMACAddressRandomizationProperty,
+                          &WiFi::GetRandomMACEnabled,
+                          &WiFi::SetRandomMACEnabled);
 
   store->RegisterDerivedKeyValueStore(
       kLinkStatisticsProperty,
@@ -749,6 +761,30 @@ bool WiFi::SetScanInterval(const uint16_t& seconds, Error* /*error*/) {
   return true;
 }
 
+bool WiFi::GetRandomMACEnabled(Error* /*error*/) {
+  return random_mac_enabled_;
+}
+
+bool WiFi::SetRandomMACEnabled(const bool& enabled, Error* error) {
+  if (!random_mac_supported_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+            "This WiFi device does not support MAC address randomization");
+    return false;
+  }
+  if (random_mac_enabled_ == enabled) {
+    return false;
+  }
+  if ((enabled &&
+       supplicant_interface_proxy_->EnableMACAddressRandomization(
+           kRandomMACMask)) ||
+      (!enabled &&
+       supplicant_interface_proxy_->DisableMACAddressRandomization())) {
+    random_mac_enabled_ = enabled;
+    return true;
+  }
+  return false;
+}
+
 void WiFi::ClearBgscanMethod(const int& /*argument*/, Error* /*error*/) {
   bgscan_method_.clear();
 }
@@ -1163,6 +1199,27 @@ bool WiFi::ParseWiphyIndex(const Nl80211Message& nl80211_message) {
     return false;
   }
   return true;
+}
+
+void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
+  // Verify NL80211_CMD_NEW_WIPHY.
+  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
+    LOG(ERROR) << "Received unexpected command: " << nl80211_message.command();
+    return;
+  }
+
+  uint32_t flags;
+  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
+          NL80211_ATTR_FEATURE_FLAGS, &flags)) {
+    LOG(WARNING) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_FEATURE_FLAGS";
+    return;
+  }
+
+  random_mac_supported_ =
+        (flags & NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR) &&
+        (flags & NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR);
+  SLOG(this, 7) << __func__ << ": "
+                << "Supports random MAC: " << random_mac_supported_;
 }
 
 void WiFi::OnScanStarted(const NetlinkMessage& netlink_message) {
@@ -1734,6 +1791,16 @@ void WiFi::HelpRegisterDerivedUint16(
   store->RegisterDerivedUint16(
       name,
       Uint16Accessor(new CustomAccessor<WiFi, uint16_t>(this, get, set)));
+}
+
+void WiFi::HelpRegisterDerivedBool(
+    PropertyStore* store,
+    const string& name,
+    bool(WiFi::*get)(Error* error),
+    bool(WiFi::*set)(const bool& value, Error* error)) {
+  store->RegisterDerivedBool(
+      name,
+      BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, set)));
 }
 
 void WiFi::HelpRegisterConstDerivedBool(
@@ -2316,6 +2383,9 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
   if (ParseWiphyIndex(nl80211_message)) {
     wake_on_wifi_->OnWiphyIndexReceived(wiphy_index_);
   }
+
+  // This checks NL80211_ATTR_FEATURE_FLAGS.
+  ParseFeatureFlags(nl80211_message);
 
   // The attributes, for this message, are complicated.
   // NL80211_ATTR_BANDS contains an array of bands...
