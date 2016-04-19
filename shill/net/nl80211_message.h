@@ -521,6 +521,28 @@ class SHILL_EXPORT SurveyResultsMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(SurveyResultsMessage);
 };
 
+class SHILL_EXPORT GetMeshPathInfoMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetMeshPathInfoMessage();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetMeshPathInfoMessage);
+};
+
+class SHILL_EXPORT GetMeshProxyPathMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetMeshProxyPathMessage();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetMeshProxyPathMessage);
+};
+
 // Nl80211MessageDataCollector - this class is used to collect data to be
 // used for unit tests.  It is only invoked in this case.
 

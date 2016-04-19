@@ -131,6 +131,9 @@ NetlinkAttribute* NetlinkAttribute::NewNl80211AttributeFromId(
     case NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN:
       attr.reset(new Nl80211AttributeMaxSchedScanIeLen());
       break;
+    case NL80211_ATTR_MPATH_INFO:
+      attr.reset(new Nl80211AttributeMPathInfo());
+      break;
     case NL80211_ATTR_OFFCHANNEL_TX_OK:
       attr.reset(new Nl80211AttributeOffchannelTxOk());
       break;

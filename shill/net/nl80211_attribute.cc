@@ -662,6 +662,39 @@ Nl80211AttributeScanSsids::Nl80211AttributeScanSsids()
       kArrayAttrEnumVal, NestedData(kTypeString, "NL80211_SCAN_SSID", true)));
 }
 
+const int Nl80211AttributeMPathInfo::kName = NL80211_ATTR_MPATH_INFO;
+const char Nl80211AttributeMPathInfo::kNameString[] = "NL80211_ATTR_MPATH_INFO";
+
+Nl80211AttributeMPathInfo::Nl80211AttributeMPathInfo()
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(
+      AttrDataPair(__NL80211_MPATH_INFO_INVALID,
+                   NestedData(kTypeU32, "__NL80211_MPATH_INFO_INVALID", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_MPATH_INFO_FRAME_QLEN,
+      NestedData(kTypeU32, "NL80211_MPATH_INFO_FRAME_QLEN", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_MPATH_INFO_SN,
+                   NestedData(kTypeU32, "NL80211_MPATH_INFO_SN", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_MPATH_INFO_METRIC,
+                   NestedData(kTypeU32, "NL80211_MPATH_INFO_METRIC", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_MPATH_INFO_EXPTIME,
+                   NestedData(kTypeU32, "NL80211_MPATH_INFO_EXPTIME", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_MPATH_INFO_FLAGS,
+                   NestedData(kTypeU8, "NL80211_MPATH_INFO_FLAGS", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_MPATH_INFO_DISCOVERY_TIMEOUT,
+                   NestedData(kTypeU32, "NL80211_MPATH_INFO_DISCOVERY_TIMEOUT",
+                              false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_MPATH_INFO_DISCOVERY_RETRIES,
+                   NestedData(kTypeU8, "NL80211_MPATH_INFO_DISCOVERY_RETRIES",
+                              false)));
+}
+
 const int Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
 const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
 

@@ -603,6 +603,32 @@ const uint8_t SurveyResultsMessage::kCommand = NL80211_CMD_NEW_SURVEY_RESULTS;
 const char SurveyResultsMessage::kCommandString[] =
     "NL80211_CMD_NEW_SURVEY_RESULTS";
 
+const uint8_t GetMeshPathInfoMessage::kCommand = NL80211_CMD_GET_MPATH;
+const char GetMeshPathInfoMessage::kCommandString[] = "NL80211_CMD_GET_MPATH";
+
+GetMeshPathInfoMessage::GetMeshPathInfoMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
+  attributes()->CreateAttribute(
+      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                             NetlinkMessage::MessageContext()));
+}
+
+const uint8_t GetMeshProxyPathMessage::kCommand = NL80211_CMD_GET_MPP;
+const char GetMeshProxyPathMessage::kCommandString[] = "NL80211_CMD_GET_MPP";
+
+GetMeshProxyPathMessage::GetMeshProxyPathMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
+  attributes()->CreateAttribute(
+      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                             NetlinkMessage::MessageContext()));
+}
+
 // static
 NetlinkMessage* Nl80211Message::CreateMessage(const NetlinkPacket& packet) {
   genlmsghdr header;
@@ -679,6 +705,10 @@ NetlinkMessage* Nl80211Message::CreateMessage(const NetlinkPacket& packet) {
       return new GetSurveyMessage();
     case SurveyResultsMessage::kCommand:
       return new SurveyResultsMessage();
+    case GetMeshPathInfoMessage::kCommand:
+      return new GetMeshPathInfoMessage();
+    case GetMeshProxyPathMessage::kCommand:
+      return new GetMeshProxyPathMessage();
     default:
       LOG(WARNING) << base::StringPrintf(
           "Unknown/unhandled netlink nl80211 message 0x%02x", header.cmd);
