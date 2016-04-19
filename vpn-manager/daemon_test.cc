@@ -44,6 +44,11 @@ class DaemonTest : public ::testing::Test {
     daemon_.reset(new Daemon(pid_file_path_.value()));
   }
 
+  void TearDown() override {
+    if (real_process_)
+      KillRealProcess();
+  }
+
   // Needs to be public so we can use the testing::Invoke() family of functions.
   bool KillRealProcess() {
     return real_process_->Kill(SIGTERM, 5);
