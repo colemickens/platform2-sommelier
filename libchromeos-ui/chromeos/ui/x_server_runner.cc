@@ -8,6 +8,7 @@
 #include <grp.h>
 #include <signal.h>
 #include <stdint.h>
+#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/signalfd.h>
 #include <sys/wait.h>
@@ -196,6 +197,8 @@ bool ExecAndWaitForServer(const std::string& user,
       PLOG(ERROR) << "fork() failed";
       break;
     case 0:
+      prctl(PR_SET_NAME, "XServer", 0, 0, 0);
+
       // Forked process: exec the X server.
       base::CloseSuperfluousFds(base::InjectiveMultimap());
       PCHECK(sigprocmask(SIG_UNBLOCK, &mask, nullptr) == 0);
@@ -211,6 +214,8 @@ bool ExecAndWaitForServer(const std::string& user,
       LOG(FATAL) << "Server closure returned unexpectedly";
       break;
     default:
+      prctl(PR_SET_NAME, "XServerRunner", 0, 0, 0);
+
       // Original process: wait for the forked process to become ready or exit.
       success = WaitForSignalFromServer(pid, fd);
       break;

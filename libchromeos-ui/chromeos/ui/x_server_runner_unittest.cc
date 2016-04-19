@@ -102,7 +102,16 @@ class XServerRunnerTest : public testing::Test {
     if (!runner_.WaitForServer())
       return false;
 
+    // Kill the server process (server_pid_) and wait until it has been reaped
+    // by the init process. waitpid does not work because server_pid_, initially
+    // a grandchild of this process, may become a child of the init process,
+    // since server_pid_'s parent process may exit during the test.
     LOG(INFO) << "Killing server process " << server_pid_;
+    while (kill(server_pid_, SIGTERM) != -1)
+      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(50));
+    if (errno != ESRCH)
+      PLOG(ERROR) << "kill failed";
+
     kill(server_pid_, SIGTERM);
     return true;
   }
