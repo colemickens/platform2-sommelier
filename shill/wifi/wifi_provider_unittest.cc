@@ -708,7 +708,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(manager_, IsTechnologyConnected(Technology::kWifi))
       .WillOnce(Return(false));
-  EXPECT_CALL(manager_, RequestScan(Device::kProgressiveScan,
+  EXPECT_CALL(manager_, RequestScan(Device::kFullScan,
                                     kTypeWifi, _)).Times(1);
   EXPECT_CALL(metrics_, SendToUMA(
       Metrics::kMetricRememberedWiFiNetworkCount,

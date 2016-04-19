@@ -144,8 +144,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void Start(Error* error,
              const EnabledStateChangedCallback& callback) override;
   void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
-  void Scan(ScanType scan_type, Error* error,
-            const std::string& reason) override;
+  void Scan(ScanType scan_type, Error* error, const std::string& reason) override;
   void SetSchedScan(bool enable, Error* error) override;
   // Callback for system suspend.
   void OnBeforeSuspend(const ResultCallback& callback) override;
@@ -249,10 +248,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
  private:
   enum ScanMethod {
     kScanMethodNone,
-    kScanMethodFull,
-    kScanMethodProgressive,
-    kScanMethodProgressiveErrorToFull,
-    kScanMethodProgressiveFinishedToFull
+    kScanMethodFull
   };
   enum ScanState {
     kScanIdle,
@@ -688,11 +684,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint16_t roam_threshold_db_;
   uint16_t scan_interval_seconds_;
 
-  bool progressive_scan_enabled_;
   std::string scan_configuration_;
   NetlinkManager* netlink_manager_;
   std::set<uint16_t> all_scan_frequencies_;
-  std::unique_ptr<ScanSession> scan_session_;
   size_t min_frequencies_to_scan_;
   size_t max_frequencies_to_scan_;
   bool scan_all_frequencies_;

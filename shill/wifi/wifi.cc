@@ -64,7 +64,6 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/wifi/mac80211_monitor.h"
-#include "shill/wifi/scan_session.h"
 #include "shill/wifi/tdls_manager.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
@@ -168,7 +167,6 @@ WiFi::WiFi(ControlInterface* control_interface,
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       roam_threshold_db_(kDefaultRoamThresholdDb),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
-      progressive_scan_enabled_(false),
       scan_configuration_("Full scan"),
       netlink_manager_(NetlinkManager::GetInstance()),
       min_frequencies_to_scan_(kMinumumFrequenciesToScan),
@@ -317,55 +315,18 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 }
 
-void WiFi::Scan(ScanType scan_type, Error* /*error*/, const string& reason) {
+void WiFi::Scan(ScanType /* scan_type */, Error* /*error*/, const string& reason) {
   if ((scan_state_ != kScanIdle) ||
       (current_service_.get() && current_service_->IsConnecting())) {
     SLOG(this, 2) << "Ignoring scan request while scanning or connecting.";
     return;
   }
-  if (progressive_scan_enabled_ && scan_type == kProgressiveScan) {
-    LOG(INFO) << __func__ << " [progressive] on " << link_name() << " from "
-              << reason;
-    LOG(INFO) << scan_configuration_;
-    if (!scan_session_) {
-      // TODO(wdg): Perform in-depth testing to determine the best values for
-      // the different scans. chromium:235293
-      ScanSession::FractionList scan_fractions;
-      float total_fraction = 0.0;
-      do {
-        total_fraction += fraction_per_scan_;
-        scan_fractions.push_back(fraction_per_scan_);
-      } while (total_fraction < 1.0);
-      scan_session_.reset(
-          new ScanSession(netlink_manager_,
-                          dispatcher(),
-                          provider_->GetScanFrequencies(),
-                          (scan_all_frequencies_ ? all_scan_frequencies_ :
-                           set<uint16_t>()),
-                          interface_index(),
-                          scan_fractions,
-                          min_frequencies_to_scan_,
-                          max_frequencies_to_scan_,
-                          Bind(&WiFi::OnFailedProgressiveScan,
-                               weak_ptr_factory_.GetWeakPtr()),
-                          metrics()));
-      for (const auto& ssid : provider_->GetHiddenSSIDList()) {
-        scan_session_->AddSsid(ByteString(&ssid.front(), ssid.size()));
-      }
-    }
-    dispatcher()->PostTask(
-        Bind(&WiFi::ProgressiveScanTask, weak_ptr_factory_.GetWeakPtr()));
-  } else {
-    LOG(INFO) << __func__ << " [full] on " << link_name()
-              << " (progressive scan "
-              << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED")
-              << ") from " << reason;
-    // Needs to send a D-Bus message, but may be called from D-Bus
-    // signal handler context (via Manager::RequestScan). So defer work
-    // to event loop.
-    dispatcher()->PostTask(
-        Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
-  }
+  LOG(INFO) << __func__ << " on " << link_name() << " from " << reason;
+  // Needs to send a D-Bus message, but may be called from D-Bus
+  // signal handler context (via Manager::RequestScan). So defer work
+  // to event loop.
+  dispatcher()->PostTask(
+      Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void WiFi::SetSchedScan(bool enable, Error* /*error*/) {
@@ -822,7 +783,7 @@ void WiFi::CurrentBSSChanged(const string& new_bss) {
       // We may want to reconsider this immediate scan, if/when shill
       // takes greater responsibility for scanning (vs. letting
       // supplicant handle most of it).
-      Scan(kProgressiveScan, nullptr, __func__);
+      Scan(kFullScan, nullptr, __func__);
     }
   } else {
     HandleRoam(new_bss);
@@ -1389,29 +1350,20 @@ void WiFi::ScanDoneTask() {
   if (wake_on_wifi_->in_dark_resume()) {
     metrics()->NotifyDarkResumeScanResultsReceived();
   }
-  if (scan_session_) {
-    // Post |ProgressiveScanTask| so it runs after any pending scan results
-    // have been processed.  This allows connections on new BSSes to be
-    // started before we decide whether to abort the progressive scan or
-    // continue scanning.
-    dispatcher()->PostTask(
-        Bind(&WiFi::ProgressiveScanTask, weak_ptr_factory_.GetWeakPtr()));
-  } else {
-    // Post |UpdateScanStateAfterScanDone| so it runs after any pending scan
-    // results have been processed.  This allows connections on new BSSes to be
-    // started before we decide whether the scan was fruitful.
-    dispatcher()->PostTask(Bind(&WiFi::UpdateScanStateAfterScanDone,
-                                weak_ptr_factory_.GetWeakPtr()));
-    if ((provider_->NumAutoConnectableServices() < 1) && IsIdle()) {
-      // Ensure we are also idle in case we are in the midst of connecting to
-      // the only service that was available for auto-connect on the previous
-      // scan (which will cause it to show up as unavailable for auto-connect
-      // when we query the WiFiProvider this time).
-      wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
-          provider_->GetSsidsConfiguredForAutoConnect(),
-          Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
-          Bind(&WiFi::TriggerPassiveScan, weak_ptr_factory_.GetWeakPtr()));
-    }
+  // Post |UpdateScanStateAfterScanDone| so it runs after any pending scan
+  // results have been processed.  This allows connections on new BSSes to be
+  // started before we decide whether the scan was fruitful.
+  dispatcher()->PostTask(Bind(&WiFi::UpdateScanStateAfterScanDone,
+                              weak_ptr_factory_.GetWeakPtr()));
+  if ((provider_->NumAutoConnectableServices() < 1) && IsIdle()) {
+    // Ensure we are also idle in case we are in the midst of connecting to
+    // the only service that was available for auto-connect on the previous
+    // scan (which will cause it to show up as unavailable for auto-connect
+    // when we query the WiFiProvider this time).
+    wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
+        provider_->GetSsidsConfiguredForAutoConnect(),
+        Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
+        Bind(&WiFi::TriggerPassiveScan, weak_ptr_factory_.GetWeakPtr()));
   }
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_);
@@ -1497,51 +1449,11 @@ void WiFi::ScanTask() {
   }
 
   // Only set the scan state/method if we are starting a full scan from
-  // scratch.  Keep the existing method if this is a failover from a
-  // progressive scan.
+  // scratch.
   if (scan_state_ != kScanScanning) {
     SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
                  kScanMethodFull, __func__);
   }
-}
-
-void WiFi::ProgressiveScanTask() {
-  SLOG(this, 2) << __func__ << " - scan requested for " << link_name();
-  if (!enabled()) {
-    LOG(INFO) << "Ignoring scan request while device is not enabled.";
-    SetScanState(kScanIdle, kScanMethodNone, __func__);  // Probably redundant.
-    return;
-  }
-  if (!scan_session_) {
-    SLOG(this, 2) << "No scan session -- returning";
-    SetScanState(kScanIdle, kScanMethodNone, __func__);
-    return;
-  }
-  // TODO(wdg): We don't currently support progressive background scans.  If
-  // we did, we couldn't bail out, here, if we're connected. Progressive scan
-  // state will have to be modified to include whether there was a connection
-  // when the scan started. Then, this code would only bail out if we didn't
-  // start with a connection but one exists at this point.
-  if (!IsIdle()) {
-    SLOG(this, 2) << "Ignoring scan request while connecting to an AP.";
-    scan_session_.reset();
-    return;
-  }
-  if (scan_session_->HasMoreFrequencies()) {
-    SLOG(this, 2) << "Initiating a scan -- returning";
-    SetScanState(kScanScanning, kScanMethodProgressive, __func__);
-    // After us initiating a scan, supplicant will gather the scan results and
-    // send us zero or more |BSSAdded| events followed by a |ScanDone|.
-    scan_session_->InitiateScan();
-    return;
-  }
-  LOG(ERROR) << "A complete progressive scan turned-up nothing -- "
-             << "do a regular scan";
-  scan_session_.reset();
-  SetScanState(kScanScanning, kScanMethodProgressiveFinishedToFull, __func__);
-  LOG(INFO) << "Scan [full] on " << link_name()
-            << " (connected to nothing on progressive scan) from " << __func__;
-  ScanTask();
 }
 
 void WiFi::SetSchedScanTask(bool enable) {
@@ -1553,16 +1465,6 @@ void WiFi::SetSchedScanTask(bool enable) {
   if (!supplicant_interface_proxy_->SetSchedScan(enable)) {
     LOG(WARNING) << "Failed to set SchedScan";
   }
-}
-
-void WiFi::OnFailedProgressiveScan() {
-  LOG(ERROR) << "Couldn't issue a scan on " << link_name()
-             << " -- doing a regular scan";
-  scan_session_.reset();
-  SetScanState(kScanScanning, kScanMethodProgressiveErrorToFull, __func__);
-  LOG(INFO) << "Scan [full] on " << link_name()
-            << " (failover from progressive scan) from " << __func__;
-  ScanTask();
 }
 
 string WiFi::GetServiceLeaseName(const WiFiService& service) {
@@ -1912,7 +1814,7 @@ void WiFi::OnAfterResume() {
   need_bss_flush_ = true;
 
   if (!IsConnectedToCurrentService()) {
-    InitiateScan(kProgressiveScan);
+    InitiateScan(kFullScan);
   }
 
   // Since we stopped the scan timer before suspending, start it again here.
@@ -1926,9 +1828,6 @@ void WiFi::OnAfterResume() {
 }
 
 void WiFi::AbortScan() {
-  if (scan_session_) {
-    scan_session_.reset();
-  }
   SetScanState(kScanIdle, kScanMethodNone, __func__);
 }
 
@@ -2096,7 +1995,7 @@ void WiFi::ScanTimerHandler() {
     return;
   }
   if (scan_state_ == kScanIdle && IsIdle()) {
-    Scan(kProgressiveScan, nullptr, __func__);
+    Scan(kFullScan, nullptr, __func__);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
     }
@@ -2367,7 +2266,7 @@ void WiFi::ConnectToSupplicant() {
                << "May be running an older version of wpa_supplicant.";
   }
 
-  Scan(kProgressiveScan, nullptr, __func__);
+  Scan(kFullScan, nullptr, __func__);
   StartScanTimer();
 }
 
@@ -2546,9 +2445,6 @@ void WiFi::SetScanState(ScanState new_state,
     case kScanIdle:
       metrics()->ResetScanTimer(interface_index());
       metrics()->ResetConnectTimer(interface_index());
-      if (scan_session_) {
-        scan_session_.reset();
-      }
       break;
     case kScanScanning:  // FALLTHROUGH
     case kScanBackgroundScanning:
@@ -2593,12 +2489,6 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
       switch (method) {
         case kScanMethodFull:
           return "FULL_START";
-        case kScanMethodProgressive:
-          return "PROGRESSIVE_START";
-        case kScanMethodProgressiveErrorToFull:
-          return "PROGRESSIVE_ERROR_FULL_START";
-        case kScanMethodProgressiveFinishedToFull:
-          return "PROGRESSIVE_FINISHED_FULL_START";
         default:
           NOTREACHED();
       }
@@ -2612,12 +2502,6 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
           return "CONNECTING (not scan related)";
         case kScanMethodFull:
           return "FULL_CONNECTING";
-        case kScanMethodProgressive:
-          return "PROGRESSIVE_CONNECTING";
-        case kScanMethodProgressiveErrorToFull:
-          return "PROGRESSIVE_ERROR_FULL_CONNECTING";
-        case kScanMethodProgressiveFinishedToFull:
-          return "PROGRESSIVE_FINISHED_FULL_CONNECTING";
         default:
           NOTREACHED();
       }
@@ -2627,12 +2511,6 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
           return "CONNECTED (not scan related; e.g., from a supplicant roam)";
         case kScanMethodFull:
           return "FULL_CONNECTED";
-        case kScanMethodProgressive:
-          return "PROGRESSIVE_CONNECTED";
-        case kScanMethodProgressiveErrorToFull:
-          return "PROGRESSIVE_ERROR_FULL_CONNECTED";
-        case kScanMethodProgressiveFinishedToFull:
-          return "PROGRESSIVE_FINISHED_FULL_CONNECTED";
         default:
           NOTREACHED();
       }
@@ -2642,14 +2520,6 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
           return "CONNECT FAILED (not scan related)";
         case kScanMethodFull:
           return "FULL_NOCONNECTION";
-        case kScanMethodProgressive:
-          // This is possible if shill started to connect but timed out before
-          // the connection was completed.
-          return "PROGRESSIVE_FINISHED_NOCONNECTION";
-        case kScanMethodProgressiveErrorToFull:
-          return "PROGRESSIVE_ERROR_FULL_NOCONNECTION";
-        case kScanMethodProgressiveFinishedToFull:
-          return "PROGRESSIVE_FINISHED_FULL_NOCONNECTION";
         default:
           NOTREACHED();
       }
@@ -2666,15 +2536,6 @@ void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
       case kScanMethodFull:
         result = Metrics::kScanResultFullScanConnected;
         break;
-      case kScanMethodProgressive:
-        result = Metrics::kScanResultProgressiveConnected;
-        break;
-      case kScanMethodProgressiveErrorToFull:
-        result = Metrics::kScanResultProgressiveErrorButFullConnected;
-        break;
-      case kScanMethodProgressiveFinishedToFull:
-        result = Metrics::kScanResultProgressiveAndFullConnected;
-        break;
       default:
         // OK: Connect resulting from something other than scan.
         break;
@@ -2683,12 +2544,6 @@ void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
     switch (method) {
       case kScanMethodFull:
         result = Metrics::kScanResultFullScanFoundNothing;
-        break;
-      case kScanMethodProgressiveErrorToFull:
-        result = Metrics::kScanResultProgressiveErrorAndFullFoundNothing;
-        break;
-      case kScanMethodProgressiveFinishedToFull:
-        result = Metrics::kScanResultProgressiveAndFullFoundNothing;
         break;
       default:
         // OK: Connect failed, not scan related.

@@ -62,15 +62,7 @@ class TrafficMonitor;
 // this class.
 class Device : public base::RefCounted<Device> {
  public:
-  // Progressively scanning for access points (APs) is done with multiple scans,
-  // each containing a group of channels.  The scans are performed in order of
-  // decreasing likelihood of connecting on one of the channels in a group
-  // (the number of channels in a group is a matter for system tuning).  Fully
-  // scanning for APs does a complete scan of all the channels in a single scan.
-  // Progressive scanning is supported for wifi devices; technologies that
-  // support scan but don't support progressive scan will always perform a full
-  // scan, regardless of the requested scan type.
-  enum ScanType { kProgressiveScan, kFullScan };
+  enum ScanType { kFullScan };
 
   // A constructor for the Device object
   Device(ControlInterface* control_interface,
