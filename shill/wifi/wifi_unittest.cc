@@ -698,11 +698,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->all_scan_frequencies_.size();
   }
 
-  void SetScanSize(int min, int max) {
-    wifi_->min_frequencies_to_scan_ = min;
-    wifi_->max_frequencies_to_scan_ = max;
-  }
-
   void InstallMockWakeOnWiFi() {
     wake_on_wifi_ = new MockWakeOnWiFi(&netlink_manager_, event_dispatcher_,
                                        &metrics_);

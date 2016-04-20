@@ -702,9 +702,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::string scan_configuration_;
   NetlinkManager* netlink_manager_;
   std::set<uint16_t> all_scan_frequencies_;
-  size_t min_frequencies_to_scan_;
-  size_t max_frequencies_to_scan_;
-  bool scan_all_frequencies_;
 
   bool random_mac_supported_;
   bool random_mac_enabled_;
@@ -712,12 +709,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Holds the list of scan results waiting to be processed and a cancelable
   // closure for processing the pending tasks in PendingScanResultsHandler().
   std::unique_ptr<PendingScanResults> pending_scan_results_;
-
-  // Fraction of previously seen scan frequencies to include in each
-  // progressive scan batch (since the frequencies are sorted, the sum of the
-  // fraction_per_scan_ over the scans in a session (* 100) is the percentile
-  // of the frequencies that have been scanned).
-  float fraction_per_scan_;
 
   ScanState scan_state_;
   ScanMethod scan_method_;
