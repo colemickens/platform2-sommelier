@@ -27,7 +27,6 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/daemons/dbus_daemon.h>
-#include <brillo/minijail/minijail.h>
 #endif  // __ANDROID__
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -63,8 +62,6 @@ const char kDefaultConfigFilePath[] = "/etc/webservd/config";
 #ifndef __ANDROID__
 const char kServiceName[] = "org.chromium.WebServer";
 const char kRootServicePath[] = "/org/chromium/WebServer";
-const char kWebServerUserName[] = "webservd";
-const char kWebServerGroupName[] = "webservd";
 #endif  // !defined(__ANDROID__)
 
 class Daemon final : public BaseDaemon {
@@ -175,8 +172,7 @@ int main(int argc, char* argv[]) {
   }
 
   // For protocol handlers bound to specific network interfaces, we need root
-  // access to create those bound sockets. Do that here before we drop
-  // privileges.
+  // access to create those bound sockets.
   for (auto& handler_config : config.protocol_handlers) {
     if (!handler_config.interface_name.empty()) {
       int socket_fd =
@@ -192,21 +188,6 @@ int main(int argc, char* argv[]) {
 
   config.use_debug = FLAGS_debug;
   Daemon daemon{std::move(config)};
-
-  // TODO: Re-enable this for Android once minijail works with libcap-ng.
-#if !defined(__ANDROID__)
-  // Drop privileges and use 'webservd' user. We need to do this after Daemon
-  // object is constructed since it creates an instance of base::AtExitManager
-  // which is required for brillo::Minijail::GetInstance() to work.
-  brillo::Minijail* minijail_instance = brillo::Minijail::GetInstance();
-  minijail* jail = minijail_instance->New();
-  minijail_instance->DropRoot(jail, kWebServerUserName, kWebServerGroupName);
-  // Permissions needed for the daemon to allow it to bind to ports like TCP
-  // 80.
-  minijail_instance->UseCapabilities(jail, CAP_TO_MASK(CAP_NET_BIND_SERVICE));
-  minijail_enter(jail);
-  minijail_instance->Destroy(jail);
-#endif  // !defined(__ANDROID__)
 
   return daemon.Run();
 }
