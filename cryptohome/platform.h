@@ -414,6 +414,29 @@ class Platform {
   //  buf - buffer to store results into
   virtual bool Stat(const std::string& path, struct stat *buf);
 
+  // Get extended file attribute associated with the |name|, possibly following
+  // symlink. Set |size| as zero to only get the attribute size.
+  // Returns the size (in bytes) of the extended attribute value or -1 on
+  // failure.
+  //
+  // Parameters
+  //  path - absolute file or directory path to look up
+  //  name - name including a namespace prefix. See getxattr(2).
+  //  value - buffer the value is placed. Could be nullptr if |size| is zero.
+  //  size - the maximum size of the value or zero to see the attribute size.
+  virtual int64_t GetExtendedFileAttributes(
+      const std::string& path, const std::string& name, std::string* value,
+      size_t size);
+
+  // Get ext file attributes associated with the |name|, possibly following
+  // symlink.
+  // Returns bitset representing the attributes, e.g. FS_NODUMP_FL, or -1 on
+  // failure. See linux/fs.h.
+  //
+  // Parameters
+  //  path -  absolute file or directory path to look up
+  virtual int64_t GetFileAttributes(const std::string& path);
+
   // Rename a file or directory
   //
   // Parameters
@@ -421,7 +444,7 @@ class Platform {
   //  to
   virtual bool Rename(const std::string& from, const std::string& to);
 
-  // Retuns the current time.
+  // Returns the current time.
   virtual base::Time GetCurrentTime() const;
 
   // Copies from to to.

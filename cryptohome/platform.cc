@@ -17,12 +17,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
+#include <linux/fs.h>
 #include <limits>
 #include <sstream>
 #include <utility>
@@ -720,6 +724,39 @@ base::Time Platform::GetCurrentTime() const {
 
 bool Platform::Stat(const std::string& path, struct stat *buf) {
   return lstat(path.c_str(), buf) == 0;
+}
+
+int64_t Platform::GetExtendedFileAttributes(
+    const std::string& path, const std::string& name, std::string* value,
+    size_t size) {
+  char *v;
+  if (size == 0) {
+    v = nullptr;
+  } else {
+    value->resize(size);
+    v = string_as_array(value);
+  }
+  ssize_t ret = getxattr(path.c_str(), name.c_str(), v, size);
+  if (ret < 0) {
+    PLOG(ERROR) << "getxattr: " << path;
+  }
+  return static_cast<int64_t>(ret);
+}
+
+int64_t Platform::GetFileAttributes(const std::string& path) {
+  int fd = HANDLE_EINTR(open(path.c_str(), O_RDONLY));
+  if (fd < 0) {
+    PLOG(ERROR) << "open: " << path;
+    return -1;
+  }
+  long flags;  // NOLINT(runtime/int)
+  if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
+    PLOG(ERROR) << "ioctl: " << path;
+    IGNORE_EINTR(close(fd));
+    return -1;
+  }
+  IGNORE_EINTR(close(fd));
+  return static_cast<int64_t>(flags);
 }
 
 bool Platform::Rename(const std::string& from, const std::string& to) {
