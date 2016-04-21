@@ -15,8 +15,20 @@ CLOBBER_LOG_FILE="clobber.log"
 STATEFUL_LOG_FOLDER="/mnt/stateful_partition/unencrypted/"
 STATEFUL_LOG_PATH="$STATEFUL_LOG_FOLDER/$CLOBBER_LOG_FILE"
 TMP_LOG_PATH="/tmp/$CLOBBER_LOG_FILE"
-MAX_KEEP_LOG_LINES=512
+RAMOOPS_LOG="/dev/pstore/console-ramoops"
+MAX_KEEP_LOG_LINES=1024
+RAMOOPS_DUMP_LINES=128
 BLOCK_DUMP_LINES=64
+
+mount_pstore() {
+  # Copied from pstore.conf. clobber-state is always executed before
+  # boot-services so pstore.conf won't be ready at that time and we have to
+  # mount now.
+  if [ ! -d /dev/pstore ]; then
+    mkdir -p /dev/pstore
+    mount -n -t pstore -o nodev,nosuid,noexec none /dev/pstore || true
+  fi
+}
 
 log_prefix() {
   echo "$(date --utc '+%Y/%m/%d %H:%M:%S') UTC"
@@ -77,6 +89,14 @@ repair_log() {
   echo "$(log_prefix) (repair): $@" >>"$dest_path"
   # "fsck -n" and "mount -v" may also help.
   dumpe2fs -fh "$1" >>"$dest_path" 2>&1
+
+  mount_pstore
+  echo "-- Ramoops (logs from last boot):" >>"${dest_path}"
+  if [ -f "${RAMOOPS_LOG}" ]; then
+    tail -n ${RAMOOPS_DUMP_LINES} ${RAMOOPS_LOG} >>"${dest_path}" 2>/dev/null
+  else
+    echo "(No ramoops found, sorry)"
+  fi
 
   # try to dump first several blocks
   echo "-- File system $1 block data (gz+base64):" >>"$dest_path"
