@@ -1128,7 +1128,7 @@ usage () {
   echo "    --wifi-mon:  Monitor WiFi performance metrics"
   echo "    --help:      Display this message"
   echo "    [host]       Hostname to perform web access test on " \
-                         "(default: www.google.com)"
+                         "(default: clients3.google.com)"
 }
 
 check_no_arg () {
@@ -1140,7 +1140,7 @@ check_no_arg () {
 }
 
 main () {
-  local test_host=www.google.com
+  local test_host=clients3.google.com
   local proxy
   local option_and_arg_provided=no
   local option
