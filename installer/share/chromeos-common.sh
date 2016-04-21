@@ -265,7 +265,7 @@ edit_mbr() {
   locate_gpt
   local start_esp=$(partoffset "$1" ${PARTITION_NUM_EFI_SYSTEM})
   local num_esp_sectors=$(partsize "$1" ${PARTITION_NUM_EFI_SYSTEM})
-  sfdisk "${1}" <<EOF
+  sfdisk -X dos "${1}" <<EOF
 unit: sectors
 
 disk1 : start=   $start_esp, size=    $num_esp_sectors, Id= c, bootable
