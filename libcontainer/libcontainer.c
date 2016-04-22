@@ -650,8 +650,15 @@ static int container_teardown(struct container *c)
 
 int container_wait(struct container *c)
 {
-	minijail_wait(c->jail);
-	return container_teardown(c);
+	int rc;
+
+	do {
+		rc = minijail_wait(c->jail);
+	} while (rc == -1 && errno == EINTR);
+
+	if (rc == 0)
+		rc = container_teardown(c);
+	return rc;
 }
 
 int container_kill(struct container *c)
