@@ -744,16 +744,23 @@ void Daemon::UndoPrepareToSuspend(bool success,
   if (canceled_while_in_dark_resume && !ExitDarkResume())
     ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED);
 
-  if (audio_client_)
-    audio_client_->SetSuspended(false);
-  power_supply_->SetSuspended(false);
+  // Do this first so we have the correct settings (including for the
+  // backlight).
+  state_controller_->HandleResume();
+
+  // Resume the backlight right after announcing resume. This might be where we
+  // turn on the display, so we want to do this as early as possible. This
+  // happens when we idle suspend (and the requested power state in Chrome is
+  // off for the displays).
+  SetBacklightsSuspended(false);
 
   // Allow virtual terminal switching again.
   if (lock_vt_before_suspend_)
     util::RunSetuidHelper("unlock_vt", "", true);
 
-  SetBacklightsSuspended(false);
-  state_controller_->HandleResume();
+  if (audio_client_)
+    audio_client_->SetSuspended(false);
+  power_supply_->SetSuspended(false);
 
   if (success)
     metrics_collector_->HandleResume(num_suspend_attempts);
