@@ -14,11 +14,13 @@
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <brillo/flag_helper.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
+#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
@@ -27,16 +29,24 @@
 #include "power_manager/powerd/system/udev_stub.h"
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(keyboard, false, "Display initial keyboard (rather than panel) "
+              "backlight brightness. The level corresponds to that used when "
+              "hovering is detected and ambient light is at its lowest level "
+              "(if applicable).");
+  brillo::FlagHelper::Init(argc, argv, "Print initial backlight levels.");
+
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
   // Get the max and current brightness from the real backlight and use them to
-  // initialize a stub backlight (so that InternalBacklightController can do its
-  // thing without changing the actual brightness level).
+  // initialize a stub backlight (so that the controller can do its thing
+  // without changing the actual brightness level).
   power_manager::system::InternalBacklight real_backlight;
   CHECK(real_backlight.Init(
-     base::FilePath(power_manager::kInternalBacklightPath),
-     power_manager::kInternalBacklightPattern));
+      base::FilePath(FLAGS_keyboard ? power_manager::kKeyboardBacklightPath
+                                    : power_manager::kInternalBacklightPath),
+      FLAGS_keyboard ? power_manager::kKeyboardBacklightPattern
+                     : power_manager::kInternalBacklightPattern));
   power_manager::system::BacklightStub stub_backlight(
       real_backlight.GetMaxBrightnessLevel(),
       real_backlight.GetCurrentBrightnessLevel());
@@ -51,10 +61,24 @@ int main(int argc, char* argv[]) {
   if (prefs.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
       has_als)
     light_sensor.reset(new power_manager::system::AmbientLightSensorStub(0));
-  power_manager::system::DisplayPowerSetterStub display_power_setter;
-  power_manager::policy::InternalBacklightController backlight_controller;
-  backlight_controller.Init(&stub_backlight, &prefs, light_sensor.get(),
-                            &display_power_setter);
+
+  scoped_ptr<power_manager::policy::BacklightController> backlight_controller;
+  scoped_ptr<power_manager::system::DisplayPowerSetterStub>
+      display_power_setter;
+
+  if (FLAGS_keyboard) {
+    auto controller = new power_manager::policy::KeyboardBacklightController;
+    controller->Init(&stub_backlight, &prefs, light_sensor.get(), nullptr);
+    controller->HandleHoverStateChanged(true /* hovering */);
+    backlight_controller.reset(controller);
+  } else {
+    display_power_setter.reset(
+        new power_manager::system::DisplayPowerSetterStub);
+    auto controller = new power_manager::policy::InternalBacklightController;
+    controller->Init(&stub_backlight, &prefs, light_sensor.get(),
+                     display_power_setter.get());
+    backlight_controller.reset(controller);
+  }
 
   // Get the power source.
   power_manager::system::UdevStub udev;
@@ -70,7 +94,7 @@ int main(int argc, char* argv[]) {
   // Mimic powerd startup and grab the brightness level that's used.
   if (light_sensor.get())
     light_sensor->NotifyObservers();
-  backlight_controller.HandlePowerSourceChange(power_source);
+  backlight_controller->HandlePowerSourceChange(power_source);
   printf("%" PRId64 "\n", stub_backlight.current_level());
   return 0;
 }

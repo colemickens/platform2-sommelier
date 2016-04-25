@@ -201,7 +201,7 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
 }
 
 void KeyboardBacklightController::HandleHoverStateChanged(bool hovering) {
-  if (hovering == hovering_)
+  if (!supports_hover_ || hovering == hovering_)
     return;
 
   hovering_ = hovering;
