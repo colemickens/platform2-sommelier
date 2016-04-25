@@ -13,11 +13,8 @@ from __future__ import print_function
 
 import argparse
 import contextlib
-import ctypes
-import ctypes.util
 import errno
 import os
-import psutil
 import re
 import signal
 import sys
@@ -31,47 +28,6 @@ from chromite.lib import proctitle
 from chromite.lib import qemu
 from chromite.lib import retry_util
 from chromite.lib import signals
-
-
-PR_SET_CHILD_SUBREAPER = 0x24
-libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
-
-def _MakeProcessSubreaper():
-  """Marks the current process as a subreaper.
-
-  This causes all child orphaned processes to be reparented to this process
-  instead of the init process.
-  """
-  if libc.prctl(ctypes.c_int(PR_SET_CHILD_SUBREAPER), ctypes.c_int(1)) != 0:
-    e = ctypes.get_errno()
-    raise OSError(e, os.strerror(e))
-
-
-def _ReapUntilProcessExits(monitored_pid):
-  """Reap processes until |monitored_pid| exits and return its exit status.
-
-  This will also reap any other processes ready to be reaped immediately after
-  monitored_pid is reaped.
-  """
-  pid_status = None
-  while True:
-    try:
-      (pid, status, _) = os.wait3(os.WNOHANG)
-
-      # Capture status of monitored_pid so we can return it.
-      if pid == monitored_pid:
-        pid_status = status
-
-      # There might be some more child processes still running, but none of them
-      # want to be reaped yet.
-      if pid_status != None and pid == 0 and status == 0:
-        break
-    except OSError as e:
-      if e.errno == errno.ECHILD:
-        break
-      elif e.errno != errno.EINTR:
-        raise
-  return pid_status
 
 
 # Compiled regular expressions for determining what environment variables to
@@ -308,11 +264,6 @@ class Platform2Test(object):
     # and dropping them into / would make them fail.
     cwd = self.removeSysrootPrefix(os.getcwd())
 
-    # Make orphaned child processes reparent to this process instead of the init
-    # process. This allows us to kill them if they do not terminate after the
-    # test has finished running.
-    _MakeProcessSubreaper()
-
     # Fork off a child to run the test.  This way we can make tweaks to the
     # env that only affect the child (gid/uid/chroot/cwd/etc...).  We have
     # to fork anyways to run the test, so might as well do it all ourselves
@@ -325,11 +276,6 @@ class Platform2Test(object):
       print('cmd: {%s} %s' % (cmd, ' '.join(map(repr, argv))))
       os.chroot(self.sysroot)
       os.chdir(cwd)
-
-      # Set the childs pgid to its pid, so we can kill any processes that the
-      # child creates after the child terminates.
-      os.setpgid(0, 0)
-
       # The TERM the user is leveraging might not exist in the sysroot.
       # Force a sane default that supports standard color sequences.
       os.environ['TERM'] = 'ansi'
@@ -347,29 +293,7 @@ class Platform2Test(object):
     # Mask SIGINT with the assumption that the child will catch & process it.
     # We'll pass that back up below.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-    # Reap any processes that were reparented to us until the child exits.
-    status = _ReapUntilProcessExits(child)
-
-    leaked_children = psutil.Process().get_children(recursive=True)
-    if leaked_children:
-      # It's possible the child forked and the forked processes are still
-      # running. Kill the forked processes.
-      try:
-        os.killpg(child, signal.SIGTERM)
-      except OSError as e:
-        if e.errno != errno.ESRCH:
-          print('Warning: while trying to kill pgid %s caught exception\n%s' %
-                (child, e), file=sys.stderr)
-
-      # Kill any orphaned processes originally created by the test that were in
-      # a different process group. This will also kill any processes that did
-      # not respond to the SIGTERM.
-      for child in leaked_children:
-        try:
-          child.kill()
-        except psutil.NoSuchProcess:
-          pass
+    _, status = os.waitpid(child, 0)
 
     failmsg = None
     if os.WIFSIGNALED(status):
@@ -381,12 +305,6 @@ class Platform2Test(object):
         failmsg = 'exit code %i' % exit_status
     if failmsg:
       print('Error: %s: failed with %s' % (cmd, failmsg), file=sys.stderr)
-
-    if leaked_children:
-      for p in leaked_children:
-        print('Error: the test leaked process %s with pid %s (it was forcefully'
-              ' killed)' % (p.name(), p.pid), file=sys.stderr)
-      sys.exit(100)
 
     process_util.ExitAsStatus(status)
 
