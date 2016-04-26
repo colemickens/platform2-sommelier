@@ -487,6 +487,11 @@ bool HTTPProxy::ReadClientHTTPVersion(string* header) {
 void HTTPProxy::ReadFromClient(InputData* data) {
   SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
 
+  if (data->len < 0) {
+    // Read error from client, error callback has already stopped the client.
+    return;
+  }
+
   if (data->len == 0) {
     // EOF from client.
     StopClient();

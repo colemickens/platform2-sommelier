@@ -51,7 +51,7 @@ void IOInputHandler::OnFileCanReadWithoutBlocking(int fd) {
   CHECK_EQ(fd_, fd);
 
   unsigned char buf[IOHandler::kDataBufferSize];
-  int len = read(fd, buf, sizeof(buf));
+  ssize_t len = read(fd, buf, sizeof(buf));
   if (len < 0) {
     std::string condition = base::StringPrintf(
         "File read error: %d", errno);
