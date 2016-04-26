@@ -228,7 +228,7 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
 
   const int exit_code = core_collector.Run();
   if (exit_code == EX_OK) {
-    AddArcMetaData("arc_native_crash", true);
+    AddArcMetaData("native_crash", true);
     return kErrorNone;
   }
 
@@ -372,10 +372,10 @@ bool ReadCrashLogFromStdin(std::stringstream *stream) {
 
 bool HasExceptionInfo(const std::string &type) {
   static std::unordered_set<std::string> types = {
-    "arc_app_crash",
-    "arc_app_wtf",
-    "arc_server_crash",
-    "arc_server_wtf"
+    "system_app_crash",
+    "system_app_wtf",
+    "system_server_crash",
+    "system_server_wtf"
   };
   return types.count(type);
 }
