@@ -13,6 +13,17 @@ fi
 # Load functions and constants for chromeos-install.
 . /usr/share/misc/chromeos-common.sh || exit 1
 
+get_dev_by_part_uuid() {
+  local dev guid="$1"
+  # Look through the root device, the most likely place to find the partition.
+  dev="$(cgpt find -1 -u "${guid}" "$(rootdev -d -s)")"
+  if [ -z "${dev}" ]; then
+    # Look through all the known devices to find that one partition.
+    dev="$(cgpt find -1 -u "${guid}")"
+  fi
+  echo "${dev}"
+}
+
 FAFT_LOCKFILE="/var/tmp/faft/lock"
 if [ -f "$FAFT_LOCKFILE" ]; then
   echo "FAFT lockfile exists, skipping chromeos-setgoodkernel actions"
@@ -27,32 +38,37 @@ fi
 
 # Extract the kernel partition's UniqueGuid from the command line.
 if [ $is_efi -eq 1 ]; then
-  guid=$(sed 's/.*root=PARTUUID=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+  guid=$(sed -n 's/.*root=PARTUUID=\([0-9a-fA-F-]\+\).*/\1/p' /proc/cmdline)
+  if [ -n "${guid}" ]; then
+    root_dev=$(get_dev_by_part_uuid "${guid}")
+  fi
 else
-  guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+  guid=$(sed -n 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/p' /proc/cmdline)
+  if [ -n "${guid}" ]; then
+    kern_dev=$(get_dev_by_part_uuid "${guid}")
+  fi
 fi
 
-# Look through the root device, most likely place to find the kernel partition.
-kern_dev="$(cgpt find -1 -u "${guid}" "$(rootdev -d -s)")"
-
-if [ -z "${kern_dev}" ]; then
-  # Look through all the known devices to find that one partition.
-  kern_dev="$(cgpt find -1 -u "${guid}")"
+# If no Guid extracted from cmdline, get the root partition.
+if [ -z "${guid}" ]; then
+  root_dev=$(rootdev -s)
 fi
 
 # Split the kernel device into the base device and paritition number.
-base_dev="$(get_block_dev_from_partition_dev ${kern_dev})"
+if [ -n "${kern_dev:+x}" ]; then
+  base_dev=$(get_block_dev_from_partition_dev "${kern_dev}")
+  kern_num=$(get_partition_number "${kern_dev}")
+else
+  base_dev=$(get_block_dev_from_partition_dev "${root_dev}")
+  # EFI and legacy BIOSes boot the ROOT-x partition which is KERN-x + 1
+  kern_num=$(($(get_partition_number "${root_dev}") - 1))
+fi
+
 # kern_dev would be /dev/mtd2 or /dev/mtd4 on NAND, base_dev will be /dev/mtd.
 # But that's wrong, it should be /dev/mtd0 because there is no /dev/mtd device.
 # ChromeOS only supports one NAND device, we use /dev/mtd0 for that.
 if [ "${base_dev}" = "/dev/mtd" ]; then
   base_dev="/dev/mtd0"
-fi
-kern_num=$(get_partition_number "${kern_dev}")
-
-# EFI BIOS boots the ROOT-x partition which is KERN-x + 1
-if [ $is_efi -eq 1 ]; then
-  kern_num=$(($kern_num - 1))
 fi
 
 # Mark the kernel as successfully booted (success=1, tries=0).
