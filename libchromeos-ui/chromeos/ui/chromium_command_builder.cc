@@ -342,7 +342,7 @@ bool ChromiumCommandBuilder::SetUpASAN() {
   // (crbug.com/156308).
   // TODO(derat): It's weird that this lives in a Chrome directory that's
   // created by ChromeInitializer; move it somewhere else, maybe.
-  AddEnvVar("ASAN_OPTIONS", "log_path=/var/log/chrome/asan_log");
+  AddEnvVar("ASAN_OPTIONS", "log_path=/var/log/chrome/asan_log:detect_odr_violation=0");
 
   return true;
 }
