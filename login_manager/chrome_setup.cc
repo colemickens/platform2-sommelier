@@ -218,6 +218,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddArg("--ash-hide-notifications-for-factory");
     builder->AddArg("--allow-data-roaming-by-default");
     builder->AddArg("--load-and-launch-app=/usr/share/app_shell/apps/rialto");
+    builder->AddArg("--enable-logging=stderr");
+    builder->AddArg("--log-level=0");
     builder->AddArg("about:blank");
   } else {
     builder->AddArg("--login-manager");
