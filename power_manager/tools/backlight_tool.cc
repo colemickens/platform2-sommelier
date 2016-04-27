@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(get_brightness_percent, false,
               "Print current brightness as linearly-calculated percent");
   DEFINE_bool(get_max_brightness, false, "Print max brightness level");
+  DEFINE_bool(keyboard, false, "Use keyboard (rather than panel) backlight");
   DEFINE_int64(set_brightness, -1, "Set brightness level");
   DEFINE_double(set_brightness_percent, -1.0, "Set brightness as "
                 "linearly-calculated percent in [0.0, 100.0]");
@@ -43,7 +44,7 @@ int main(int argc, char* argv[]) {
                 "[0.0, 100.0]");
 
   brillo::FlagHelper::Init(argc, argv,
-      "Print or set the internal panel's backlight brightness.");
+      "Print or set the internal panel or keyboard backlight's brightness.");
 
   CHECK_LT((FLAGS_get_brightness + FLAGS_get_max_brightness +
             FLAGS_get_brightness_percent), 2)
@@ -57,9 +58,14 @@ int main(int argc, char* argv[]) {
       << "mutually exclusive";
 
   power_manager::system::InternalBacklight backlight;
-  if (!backlight.Init(base::FilePath(power_manager::kInternalBacklightPath),
-                      power_manager::kInternalBacklightPattern))
+  if (!backlight.Init(
+          base::FilePath(FLAGS_keyboard
+                             ? power_manager::kKeyboardBacklightPath
+                             : power_manager::kInternalBacklightPath),
+          FLAGS_keyboard ? power_manager::kKeyboardBacklightPattern
+                         : power_manager::kInternalBacklightPattern)) {
     return 1;
+  }
 
   const int64_t level = backlight.GetCurrentBrightnessLevel();
   const int64_t max_level = backlight.GetMaxBrightnessLevel();
