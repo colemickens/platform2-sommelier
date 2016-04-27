@@ -178,6 +178,14 @@
       'sources': ['tools/backlight_tool.cc'],
     },
     {
+      'target_name': 'check_powerd_config',
+      'type': 'executable',
+      'dependencies': [
+        'libutil',
+      ],
+      'sources': ['tools/check_powerd_config.cc'],
+    },
+    {
       'target_name': 'get_powerd_initial_backlight_level',
       'type': 'executable',
       'dependencies': [
