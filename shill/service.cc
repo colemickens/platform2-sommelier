@@ -148,7 +148,7 @@ Service::Service(ControlInterface* control_interface,
     : weak_ptr_factory_(this),
       state_(kStateIdle),
       previous_state_(kStateIdle),
-      failure_(kFailureNone),
+      failure_(kFailureUnknown),
       auto_connect_(false),
       retain_auto_connect_(false),
       check_portal_(kCheckPortalAuto),
@@ -426,7 +426,7 @@ void Service::SetState(ConnectState state) {
   previous_state_ = state_;
   state_ = state;
   if (state != kStateFailure) {
-    failure_ = kFailureNone;
+    failure_ = kFailureUnknown;
     SetErrorDetails(kErrorDetailsNone);
   }
   if (state == kStateConnected) {
@@ -895,10 +895,7 @@ void Service::SetAutoConnect(bool connect) {
 const char* Service::ConnectFailureToString(const ConnectFailure& state) {
   switch (state) {
     case kFailureUnknown:
-      return kErrorUnknownFailure;
-    case kFailureNone:
-      LOG(WARNING) << "Requesting failure string when nothing failed";
-      return kErrorNoFailure;
+      return "Unknown";
     case kFailureAAA:
       return kErrorAaaFailed;
     case kFailureActivation:
@@ -939,12 +936,10 @@ const char* Service::ConnectFailureToString(const ConnectFailure& state) {
       return kErrorPinMissing;
     case kFailurePPPAuth:
       return kErrorPppAuthFailed;
-    case kFailureMax:  // compiler wants this
-      break;
+    case kFailureMax:
+      NOTREACHED();
   }
-  LOG(WARNING) << "requesting failure string for invalid ConnectFailure:"
-               << state;
-  return kErrorInvalidFailure;
+  return "Invalid";
 }
 
 // static

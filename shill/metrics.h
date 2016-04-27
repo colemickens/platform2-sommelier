@@ -430,7 +430,7 @@ class Metrics {
   };
 
   enum NetworkServiceError {
-    kNetworkServiceErrorNone = 0,
+    kNetworkServiceErrorUnknown = 0,
     kNetworkServiceErrorAAA = 1,
     kNetworkServiceErrorActivation = 2,
     kNetworkServiceErrorBadPassphrase = 3,
@@ -451,7 +451,6 @@ class Metrics {
     kNetworkServiceErrorOutOfRange = 18,
     kNetworkServiceErrorPPPAuth = 19,
     kNetworkServiceErrorPinMissing = 20,
-    kNetworkServiceErrorUnknown = 21,
     kNetworkServiceErrorMax
   };
 

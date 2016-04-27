@@ -106,7 +106,7 @@ class Service : public base::RefCounted<Service> {
   static const uint8_t kStrengthMin;
 
   enum ConnectFailure {
-    kFailureNone,
+    kFailureUnknown,
     kFailureAAA,
     kFailureActivation,
     kFailureBadPassphrase,
@@ -127,7 +127,6 @@ class Service : public base::RefCounted<Service> {
     kFailureOutOfRange,
     kFailurePPPAuth,
     kFailurePinMissing,
-    kFailureUnknown,
     kFailureMax
   };
   enum ConnectState {

@@ -180,7 +180,7 @@ string L2TPIPSecDriver::GetProviderType() const {
 }
 
 void L2TPIPSecDriver::IdleService() {
-  Cleanup(Service::kStateIdle, Service::kFailureNone);
+  Cleanup(Service::kStateIdle, Service::kFailureUnknown);
 }
 
 void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
@@ -402,8 +402,6 @@ Service::ConnectFailure L2TPIPSecDriver::TranslateExitStatusToFailure(
     return Service::kFailureInternal;
   }
   switch (WEXITSTATUS(status)) {
-    case 0:
-      return Service::kFailureNone;
     case vpn_manager::kServiceErrorResolveHostnameFailed:
       return Service::kFailureDNSLookup;
     case vpn_manager::kServiceErrorIpsecConnectionFailed:
@@ -417,8 +415,9 @@ Service::ConnectFailure L2TPIPSecDriver::TranslateExitStatusToFailure(
     case vpn_manager::kServiceErrorPppAuthenticationFailed:
       return Service::kFailurePPPAuth;
     default:
-      return Service::kFailureUnknown;
+      break;
   }
+  return Service::kFailureUnknown;
 }
 
 void L2TPIPSecDriver::GetLogin(string* user, string* password) {

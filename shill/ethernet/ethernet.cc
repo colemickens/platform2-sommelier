@@ -396,7 +396,7 @@ void Ethernet::EAPEventTask(const string& status, const string& parameter) {
   if (eap_state_handler_.ParseStatus(status, parameter, &failure)) {
     LOG(INFO) << "EAP authentication succeeded!";
     SetIsEapAuthenticated(true);
-  } else if (failure != Service::Service::kFailureNone) {
+  } else if (failure != Service::Service::kFailureUnknown) {
     LOG(INFO) << "EAP authentication failed!";
     SetIsEapAuthenticated(false);
   }
