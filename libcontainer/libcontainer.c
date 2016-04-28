@@ -398,6 +398,65 @@ static int run_setfiles_command(const struct container *c, const char *dest)
 	return status;
 }
 
+static int do_container_mounts(struct container *c)
+{
+	unsigned int i;
+	int rc;
+
+	for (i = 0; i < c->config->num_mounts; ++i) {
+		const struct container_mount *mnt = &c->config->mounts[i];
+		char *dest;
+
+		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
+			return -errno;
+
+		if (mnt->create) {
+			rc = setup_mount_destination(mnt, dest);
+			if (rc) {
+				free(dest);
+				return -errno;
+			}
+		}
+		if (mnt->mount_in_ns) {
+			/*
+			 * We can mount this with minijail.
+			 * If relative to rootfs, append source to rootfs.
+			 */
+			char *tmpsrc = NULL;
+			if ((mnt->flags & MS_BIND) && mnt->source[0] != '/') {
+				if (asprintf(&tmpsrc, "%s/%s", c->runfsroot,
+					     mnt->source) < 0) {
+					free(dest);
+					return -errno;
+				}
+			}
+			rc = minijail_mount(c->jail,
+					    tmpsrc ? tmpsrc : mnt->source,
+					    mnt->destination, mnt->type,
+					    mnt->flags);
+			free(tmpsrc);
+			if (rc) {
+				free(dest);
+				return -errno;
+			}
+		} else {
+			/*
+			 * Mount this externally and unmount it on exit. Don't
+			 * allow execution from external mounts.
+			 */
+			rc = mount(mnt->source, dest, mnt->type,
+				   mnt->flags | MS_NOEXEC, mnt->data);
+			if (rc) {
+				free(dest);
+				return -errno;
+			}
+
+		}
+		free(dest);
+	}
+	return 0;
+}
+
 int container_start(struct container *c)
 {
 	int rc;
@@ -429,57 +488,8 @@ int container_start(struct container *c)
 
 	c->jail = minijail_new();
 
-	for (i = 0; i < c->config->num_mounts; ++i) {
-		const struct container_mount *mnt = &c->config->mounts[i];
-		char *dest;
-
-		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
-			goto error_rmdir;
-
-		if (mnt->create) {
-			rc = setup_mount_destination(mnt, dest);
-			if (rc) {
-				free(dest);
-				goto error_rmdir;
-			}
-		}
-		if (mnt->mount_in_ns) {
-			/*
-			 * We can mount this with minijail.
-			 * If relative to rootfs, append source to rootfs.
-			 */
-			char *tmpsrc = NULL;
-			if ((mnt->flags & MS_BIND) && mnt->source[0] != '/') {
-				if (asprintf(&tmpsrc, "%s/%s", c->runfsroot,
-					     mnt->source) < 0) {
-					free(dest);
-					goto error_rmdir;
-				}
-			}
-			rc = minijail_mount(c->jail,
-					    tmpsrc ? tmpsrc : mnt->source,
-					    mnt->destination, mnt->type,
-					    mnt->flags);
-			free(tmpsrc);
-			if (rc) {
-				free(dest);
-				goto error_rmdir;
-			}
-		} else {
-			/*
-			 * Mount this externally and unmount it on exit. Don't
-			 * allow execution from external mounts.
-			 */
-			rc = mount(mnt->source, dest, mnt->type,
-				   mnt->flags | MS_NOEXEC, mnt->data);
-			if (rc) {
-				free(dest);
-				goto error_rmdir;
-			}
-
-		}
-		free(dest);
-	}
+	if (do_container_mounts(c))
+		goto error_rmdir;
 
 	c->cgroup->ops->deny_all_devices(c->cgroup);
 
