@@ -114,6 +114,9 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(CloseFile, bool(FILE*));  // NOLINT(readability/function)
   MOCK_METHOD1(CreateAndOpenTemporaryFile, FILE*(std::string*));
   MOCK_METHOD2(Stat, bool(const std::string&, struct stat*));
+  MOCK_METHOD2(HasExtendedFileAttribute,
+               bool(const std::string&, const std::string&));
+  MOCK_METHOD1(HasNoDumpFileAttribute, bool(const std::string&));
   MOCK_METHOD2(ReadFile, bool(const std::string&, brillo::Blob*));
   MOCK_METHOD2(ReadFileToString, bool(const std::string&, std::string*));
   MOCK_METHOD2(Rename, bool(const std::string&, const std::string&));

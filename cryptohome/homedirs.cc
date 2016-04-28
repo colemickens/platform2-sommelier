@@ -34,6 +34,7 @@ namespace cryptohome {
 
 const char *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
+const char kGCacheFilesAttribute[] = "user.GCacheFiles";
 
 HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
@@ -805,11 +806,48 @@ void HomeDirs::DeleteCacheCallback(const FilePath& vault) {
   DeleteDirectoryContents(cache);
 }
 
+bool HomeDirs::FindGCacheFilesDir(const FilePath& vault, std::string* dir) {
+  // Start search from GCache/v1.
+  scoped_ptr<FileEnumerator> enumerator(
+      platform_->GetFileEnumerator(vault.Append(kUserHomeSuffix)
+                                        .Append(kGCacheDir)
+                                        .Append(kGCacheVersionDir)
+                                        .value(),
+                                   true, base::FileEnumerator::DIRECTORIES));
+  for (std::string current = enumerator->Next();
+       !current.empty();
+       current = enumerator->Next()) {
+    if (platform_->HasNoDumpFileAttribute(current) &&
+        platform_->HasExtendedFileAttribute(current, kGCacheFilesAttribute)) {
+      *dir = current;
+      return true;
+    }
+  }
+  return false;
+}
+
 void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
-  const FilePath gcachetmp = vault.Append(kUserHomeSuffix).Append(kGCacheDir)
-      .Append(kGCacheVersionDir).Append(kGCacheTmpDir);
+  const FilePath gcachetmp = vault.Append(kUserHomeSuffix)
+                                  .Append(kGCacheDir)
+                                  .Append(kGCacheVersionDir)
+                                  .Append(kGCacheTmpDir);
   LOG(WARNING) << "Deleting GCache " << gcachetmp.value();
   DeleteDirectoryContents(gcachetmp);
+
+  std::string cacheDir;
+  if (!FindGCacheFilesDir(vault, &cacheDir)) return;
+
+  scoped_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
+      cacheDir, false, base::FileEnumerator::FILES));
+  for (std::string current = enumerator->Next();
+       !current.empty();
+       current = enumerator->Next()) {
+    if (platform_->HasNoDumpFileAttribute(current)) {
+      if (!platform_->DeleteFile(current, false)) {
+        PLOG(WARNING) << "DeleteFile: " << current;
+      }
+    }
+  }
 }
 
 void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {

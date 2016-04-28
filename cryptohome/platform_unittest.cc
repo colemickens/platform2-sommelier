@@ -265,7 +265,7 @@ TEST_F(PlatformTest, SyncDirectoryHasSaneReturnCodes) {
   platform_.DeleteFile(dirname, true /* recursive */);
 }
 
-TEST_F(PlatformTest, GetExtendedFileAttributes) {
+TEST_F(PlatformTest, HasExtendedFileAttribute) {
   const std::string filename(GetTempName());
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
@@ -275,34 +275,26 @@ TEST_F(PlatformTest, GetExtendedFileAttributes) {
   ASSERT_EQ(0, setxattr(filename.c_str(), name.c_str(), value.c_str(),
                         value.length(), 0));
 
-  std::string res;
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(filename, name, &res, 3), 3);
-  EXPECT_STREQ(value.c_str(), res.c_str());
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(filename, name, &res, 100), 3);
-  EXPECT_STREQ(value.c_str(), res.c_str());
+  EXPECT_TRUE(platform_.HasExtendedFileAttribute(filename, name));
 
-  // If |size| is zero, it should return the current size of the named
-  // extended attribute with |value| unchanged.
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(filename, name, nullptr, 0), 3);
-
-  // Failures
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(
-      "file_not_exist", name, nullptr, 0), -1);
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(
-      filename, "user.name_not_exist", nullptr, 0), -1);
+  EXPECT_FALSE(platform_.HasExtendedFileAttribute("file_not_exist", name));
+  EXPECT_FALSE(
+      platform_.HasExtendedFileAttribute(filename, "user.name_not_exist"));
 }
 
-TEST_F(PlatformTest, GetFileAttributes) {
+TEST_F(PlatformTest, HasNoDumpFileAttribute) {
   const std::string filename(GetTempName());
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+
+  EXPECT_FALSE(platform_.HasNoDumpFileAttribute(filename));
+
   int fd;
   ASSERT_GT(fd = open(filename.c_str(), O_RDONLY), 0);
   int flags = FS_UNRM_FL | FS_NODUMP_FL;
-  ASSERT_GT(flags, 0);
-  EXPECT_GE(ioctl(fd, FS_IOC_SETFLAGS, &flags), 0);
+  ASSERT_GE(ioctl(fd, FS_IOC_SETFLAGS, &flags), 0);
 
-  EXPECT_EQ(flags, platform_.GetFileAttributes(filename));
+  EXPECT_TRUE(platform_.HasNoDumpFileAttribute(filename));
   close(fd);
 }
 

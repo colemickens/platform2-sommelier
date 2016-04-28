@@ -33,6 +33,7 @@
 namespace cryptohome {
 
 const int64_t kEnoughFreeSpace = 1LL << 30;
+extern const char kGCacheFilesAttribute[];
 
 class Credentials;
 class Platform;
@@ -212,6 +213,8 @@ class HomeDirs {
   void RemoveNonOwnerCryptohomesCallback(const base::FilePath& vault);
   // Callback used during FreeDiskSpace().
   void DeleteCacheCallback(const base::FilePath& vault);
+  // Finds Drive cache directory.
+  bool FindGCacheFilesDir(const base::FilePath& vault, std::string* dir);
   // Callback used during FreeDiskSpace().
   void DeleteGCacheTmpCallback(const base::FilePath& vault);
   // Recursively deletes all contents of a directory while leaving the directory

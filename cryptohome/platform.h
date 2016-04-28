@@ -414,28 +414,21 @@ class Platform {
   //  buf - buffer to store results into
   virtual bool Stat(const std::string& path, struct stat *buf);
 
-  // Get extended file attribute associated with the |name|, possibly following
-  // symlink. Set |size| as zero to only get the attribute size.
-  // Returns the size (in bytes) of the extended attribute value or -1 on
-  // failure.
+  // Return true if |path| has extended attribute |name|, possibly following
+  // symlink.
   //
   // Parameters
   //  path - absolute file or directory path to look up
   //  name - name including a namespace prefix. See getxattr(2).
-  //  value - buffer the value is placed. Could be nullptr if |size| is zero.
-  //  size - the maximum size of the value or zero to see the attribute size.
-  virtual int64_t GetExtendedFileAttributes(
-      const std::string& path, const std::string& name, std::string* value,
-      size_t size);
+  virtual bool HasExtendedFileAttribute(const std::string& path,
+                                        const std::string& name);
 
-  // Get ext file attributes associated with the |name|, possibly following
-  // symlink.
-  // Returns bitset representing the attributes, e.g. FS_NODUMP_FL, or -1 on
-  // failure. See linux/fs.h.
+  // Return if ext file attributes associated with the |name| has FS_NODUMP_FL,
+  // possibly following symlink.
   //
   // Parameters
-  //  path -  absolute file or directory path to look up
-  virtual int GetFileAttributes(const std::string& path);
+  //  path - absolute file or directory path to look up
+  virtual bool HasNoDumpFileAttribute(const std::string& path);
 
   // Rename a file or directory
   //
