@@ -217,13 +217,13 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
 
   // Crash log should not be empty.
   EXPECT_FALSE(ArcCollector::ParseCrashLog(
-      "arc_app_crash", &stream, &map, &exception_info));
+      "system_app_crash", &stream, &map, &exception_info));
 
   // Header key should be followed by a colon.
   stream.clear();
   stream.str("Key");
   EXPECT_FALSE(ArcCollector::ParseCrashLog(
-      "arc_app_crash", &stream, &map, &exception_info));
+      "system_app_crash", &stream, &map, &exception_info));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
@@ -232,7 +232,7 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   stream.clear();
   stream.str("Key:   ");
   EXPECT_FALSE(ArcCollector::ParseCrashLog(
-      "arc_app_crash", &stream, &map, &exception_info));
+      "system_app_crash", &stream, &map, &exception_info));
 
   EXPECT_TRUE(FindLog("Header has unexpected format"));
   ClearLog();
@@ -241,7 +241,7 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   stream.clear();
   stream.str(kCrashLog + 1);  // Skip EOL.
   EXPECT_TRUE(ArcCollector::ParseCrashLog(
-      "arc_app_crash", &stream, &map, &exception_info));
+      "system_app_crash", &stream, &map, &exception_info));
 
   EXPECT_TRUE(GetLog().empty());
 
@@ -256,7 +256,7 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   map.clear();
   exception_info.clear();
   EXPECT_TRUE(ArcCollector::ParseCrashLog(
-      "arc_app_anr", &stream, &map, &exception_info));
+      "system_app_anr", &stream, &map, &exception_info));
 
   EXPECT_TRUE(GetLog().empty());
 
