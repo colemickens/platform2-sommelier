@@ -262,7 +262,7 @@ void container_config_run_setfiles(struct container_config *c,
  * Container manipulation
  */
 struct container {
-	struct container_config *config;
+	const struct container_config *config;
 	struct container_cgroup *cgroup;
 	struct minijail *jail;
 	pid_t init_pid;
@@ -275,7 +275,7 @@ struct container {
 
 struct container *container_new(const char *name,
 				const char *rundir,
-				struct container_config *config)
+				const struct container_config *config)
 {
 	struct container *c;
 
@@ -300,7 +300,6 @@ struct container *container_new(const char *name,
 
 void container_destroy(struct container *c)
 {
-	container_config_destroy(c->config);
 	container_cgroup_destroy(c->cgroup);
 	free(c->rundir);
 	free(c);

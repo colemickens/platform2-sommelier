@@ -110,11 +110,12 @@ struct container;
  *
  * name - Name of the directory holding the container config files.
  * rundir - Where to build the temporary rootfs.
- * config - Details of how the container should be run.
+ * config - Details of how the container should be run.  The caller of the
+ *   function retains ownership of the config struct.
  */
 struct container *container_new(const char *name,
 				const char *rundir,
-				struct container_config *config);
+				const struct container_config *config);
 
 /* Destroy a container created with container_new. */
 void container_destroy(struct container *c);
