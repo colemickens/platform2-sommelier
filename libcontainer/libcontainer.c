@@ -478,12 +478,6 @@ int container_start(struct container *c)
 				goto error_rmdir;
 			}
 
-			rc = run_setfiles_command(c, dest);
-			if (rc) {
-				free(dest);
-				goto error_rmdir;
-			}
-
 		}
 		free(dest);
 	}
@@ -530,6 +524,21 @@ int container_start(struct container *c)
 						dev->minor, dev->read_allowed,
 						dev->write_allowed,
 						dev->modify_allowed, dev->type);
+		if (rc)
+			goto error_rmdir;
+	}
+
+	/* Potentailly run setfiles on mounts configured outside of the jail */
+	for (i = 0; i < c->config->num_mounts; i++) {
+		const struct container_mount *mnt = &c->config->mounts[i];
+		char *dest;
+
+		if (mnt->mount_in_ns)
+			continue;
+		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
+			goto error_rmdir;
+		rc = run_setfiles_command(c, dest);
+		free(dest);
 		if (rc)
 			goto error_rmdir;
 	}
