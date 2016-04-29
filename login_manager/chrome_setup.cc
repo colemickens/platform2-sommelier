@@ -309,6 +309,9 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // the login code path.
   // TODO(xiyuan): Remove after http://crbug.com/547857 is resolved.
   builder->AddVmodulePattern("*chromeos/login/*=1");
+
+  if (builder->UseFlagIsSet("arc"))
+    builder->AddVmodulePattern("*arc/*=1");
 }
 
 }  // namespace
