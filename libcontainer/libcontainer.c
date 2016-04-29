@@ -42,6 +42,7 @@ struct container_device {
 	int fs_permissions;
 	int major;
 	int minor;
+	int copy_minor; /* Copy the minor from existing node, ignores |minor| */
 	int uid;
 	int gid;
 	int read_allowed;
@@ -221,6 +222,7 @@ int container_config_add_device(struct container_config *c,
 				int fs_permissions,
 				int major,
 				int minor,
+				int copy_minor,
 				int uid,
 				int gid,
 				int read_allowed,
@@ -231,6 +233,10 @@ int container_config_add_device(struct container_config *c,
 
 	if (path == NULL)
 		return -EINVAL;
+	/* If using a dynamic minor number, ensure that minor is -1. */
+	if (copy_minor && (minor != -1))
+		return -EINVAL;
+
 	dev_ptr = realloc(c->devices,
 			  sizeof(c->devices[0]) * (c->num_devices + 1));
 	if (!dev_ptr)
@@ -243,6 +249,7 @@ int container_config_add_device(struct container_config *c,
 	c->devices[c->num_devices].fs_permissions = fs_permissions;
 	c->devices[c->num_devices].major = major;
 	c->devices[c->num_devices].minor = minor;
+	c->devices[c->num_devices].copy_minor = copy_minor;
 	c->devices[c->num_devices].uid = uid;
 	c->devices[c->num_devices].gid = gid;
 	c->devices[c->num_devices].read_allowed = read_allowed;
@@ -495,7 +502,7 @@ int container_start(struct container *c)
 	for (i = 0; i < c->config->num_devices; i++) {
 		const struct container_device *dev = &c->config->devices[i];
 		int mode;
-		char *path;
+		int minor = dev->minor;
 
 		switch (dev->type) {
 		case  'b':
@@ -509,10 +516,19 @@ int container_start(struct container *c)
 		}
 		mode |= dev->fs_permissions;
 
-		if (asprintf(&path, "%s%s", c->runfsroot, dev->path) < 0)
-			goto error_rmdir;
-		if (dev->minor >= 0) {
-			rc = mknod(path, mode, makedev(dev->major, dev->minor));
+		if (dev->copy_minor) {
+			struct stat st_buff;
+			if (stat(dev->path, &st_buff) < 0)
+				goto error_rmdir;
+			/* Use the minor macro to extract the device number. */
+			minor = minor(st_buff.st_rdev);
+		}
+		if (minor >= 0) {
+			char *path;
+
+			if (asprintf(&path, "%s%s", c->runfsroot, dev->path) < 0)
+				goto error_rmdir;
+			rc = mknod(path, mode, makedev(dev->major, minor));
 			if (rc && errno != EEXIST) {
 				free(path);
 				goto error_rmdir;
@@ -529,7 +545,7 @@ int container_start(struct container *c)
 		}
 
 		rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
-						dev->minor, dev->read_allowed,
+						minor, dev->read_allowed,
 						dev->write_allowed,
 						dev->modify_allowed, dev->type);
 		if (rc)

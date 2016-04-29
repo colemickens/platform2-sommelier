@@ -51,6 +51,7 @@ static int mount_ret;
 static char *mkdtemp_root;
 
 /* global mock cgroup. */
+#define MAX_ADD_DEVICE_CALLS 2
 struct mock_cgroup {
 	struct container_cgroup cg;
 	int freeze_ret;
@@ -61,12 +62,13 @@ struct mock_cgroup {
 	int init_called_count;
 	int deny_all_devs_called_count;
 
-	int add_dev_major;
-	int add_dev_minor;
-	int add_dev_read;
-	int add_dev_write;
-	int add_dev_modify;
-	char add_dev_type;
+	int add_dev_major[MAX_ADD_DEVICE_CALLS];
+	int add_dev_minor[MAX_ADD_DEVICE_CALLS];
+	int add_dev_read[MAX_ADD_DEVICE_CALLS];
+	int add_dev_write[MAX_ADD_DEVICE_CALLS];
+	int add_dev_modify[MAX_ADD_DEVICE_CALLS];
+	char add_dev_type[MAX_ADD_DEVICE_CALLS];
+	int add_dev_called_count;
 };
 
 static struct mock_cgroup gmcg;
@@ -95,12 +97,16 @@ static int mock_add_device(const struct container_cgroup *cg, int major,
 			   char type)
 {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
-	mcg->add_dev_major = major;
-	mcg->add_dev_minor = minor;
-	mcg->add_dev_read = read;
-	mcg->add_dev_write = write;
-	mcg->add_dev_modify = modify;
-	mcg->add_dev_type = type;
+
+	if (mcg->add_dev_called_count >= MAX_ADD_DEVICE_CALLS)
+		return mcg->add_device_ret;
+	mcg->add_dev_major[mcg->add_dev_called_count] = major;
+	mcg->add_dev_minor[mcg->add_dev_called_count] = minor;
+	mcg->add_dev_read[mcg->add_dev_called_count] = read;
+	mcg->add_dev_write[mcg->add_dev_called_count] = write;
+	mcg->add_dev_modify[mcg->add_dev_called_count] = modify;
+	mcg->add_dev_type[mcg->add_dev_called_count] = type;
+	mcg->add_dev_called_count++;
 	return mcg->add_device_ret;
 }
 
@@ -189,6 +195,20 @@ FIXTURE_SETUP(container_test)
 				    S_IRWXU | S_IRWXG,
 				    245,
 				    2,
+				    0,
+				    1000,
+				    1001,
+				    1,
+				    1,
+				    0);
+	/* test dynamic minor on /dev/null */
+	container_config_add_device(self->config,
+				    'c',
+				    "/dev/null",
+				    S_IRWXU | S_IRWXG,
+				    1,
+				    -1,
+				    1,
 				    1000,
 				    1001,
 				    1,
@@ -248,12 +268,19 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(mknod_call_args.mode, S_IRWXU | S_IRWXG | S_IFCHR);
 	EXPECT_EQ(mknod_call_args.dev, makedev(245, 2));
 
-	EXPECT_EQ(245, gmcg.add_dev_major);
-	EXPECT_EQ(2, gmcg.add_dev_minor);
-	EXPECT_EQ(1, gmcg.add_dev_read);
-	EXPECT_EQ(1, gmcg.add_dev_write);
-	EXPECT_EQ(0, gmcg.add_dev_modify);
-	EXPECT_EQ('c', gmcg.add_dev_type);
+	EXPECT_EQ(245, gmcg.add_dev_major[0]);
+	EXPECT_EQ(2, gmcg.add_dev_minor[0]);
+	EXPECT_EQ(1, gmcg.add_dev_read[0]);
+	EXPECT_EQ(1, gmcg.add_dev_write[0]);
+	EXPECT_EQ(0, gmcg.add_dev_modify[0]);
+	EXPECT_EQ('c', gmcg.add_dev_type[0]);
+
+	EXPECT_EQ(1, gmcg.add_dev_major[1]);
+	EXPECT_EQ(3, gmcg.add_dev_minor[1]);
+	EXPECT_EQ(1, gmcg.add_dev_read[1]);
+	EXPECT_EQ(1, gmcg.add_dev_write[1]);
+	EXPECT_EQ(0, gmcg.add_dev_modify[1]);
+	EXPECT_EQ('c', gmcg.add_dev_type[1]);
 
 	ASSERT_NE(NULL, minijail_alt_syscall_table);
 	EXPECT_EQ(0, strcmp(minijail_alt_syscall_table,

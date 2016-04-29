@@ -77,6 +77,9 @@ int container_config_add_mount(struct container_config *c,
  * fs_permissions - Permissions to set on the node.
  * major - Major device number.
  * minor - Minor device number.
+ * copy_minor - Overwrite minor with the minor of the existing device node.  If
+ *   this is true minor will be copied from an existing node.  The |minor| param
+ *   should be set to -1 in this case.
  * uid - User to own the device.
  * gid - Group to own the device.
  * read_allowed - If true allow reading from the device via "devices" cgroup.
@@ -89,6 +92,7 @@ int container_config_add_device(struct container_config *c,
 				int fs_permissions,
 				int major,
 				int minor,
+				int copy_minor,
 				int uid,
 				int gid,
 				int read_allowed,
