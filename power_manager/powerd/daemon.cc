@@ -614,7 +614,7 @@ bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
   if (base::ReadFileToString(path, &buf)) {
     base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
     if (base::StringToUint64(buf, wakeup_count)) {
-      LOG(INFO) << "Read wakeup count " << wakeup_count;
+      LOG(INFO) << "Read wakeup count " << *wakeup_count;
       return true;
     }
     LOG(ERROR) << "Could not parse wakeup count from \"" << buf << "\"";
