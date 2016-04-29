@@ -334,6 +334,7 @@ static int touch_file(const char *path, int uid, int gid, int mode)
  * possible.
  */
 static int setup_mount_destination(const struct container_mount *mnt,
+				   const char *source,
 				   const char *dest)
 {
 	int rc;
@@ -346,7 +347,7 @@ static int setup_mount_destination(const struct container_mount *mnt,
 	/* Try to create the destination. Either make directory or touch a file
 	 * depending on the source type.
 	 */
-	rc = stat(mnt->source, &st_buf);
+	rc = stat(source, &st_buf);
 	if (rc || S_ISDIR(st_buf.st_mode) || S_ISBLK(st_buf.st_mode))
 		return make_dir(dest, mnt->uid, mnt->gid, mnt->mode);
 
@@ -401,60 +402,58 @@ static int run_setfiles_command(const struct container *c, const char *dest)
 static int do_container_mounts(struct container *c)
 {
 	unsigned int i;
-	int rc;
+	char *source;
+	char *dest;
 
 	for (i = 0; i < c->config->num_mounts; ++i) {
 		const struct container_mount *mnt = &c->config->mounts[i];
-		char *dest;
 
+		source = NULL;
+		dest = NULL;
 		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
 			return -errno;
 
+		/*
+		 * If it's a bind mount relative to rootfs, append source to
+		 * rootfs path, otherwise source path is absolute.
+		 */
+		if ((mnt->flags & MS_BIND) && mnt->source[0] != '/') {
+			if (asprintf(&source, "%s/%s", c->runfsroot,
+				     mnt->source) < 0)
+				goto error_free_return;
+		} else {
+			if (asprintf(&source, "%s", mnt->source) < 0)
+				goto error_free_return;
+		}
+
 		if (mnt->create) {
-			rc = setup_mount_destination(mnt, dest);
-			if (rc) {
-				free(dest);
-				return -errno;
-			}
+			if (setup_mount_destination(mnt, source, dest))
+				goto error_free_return;
 		}
 		if (mnt->mount_in_ns) {
-			/*
-			 * We can mount this with minijail.
-			 * If relative to rootfs, append source to rootfs.
-			 */
-			char *tmpsrc = NULL;
-			if ((mnt->flags & MS_BIND) && mnt->source[0] != '/') {
-				if (asprintf(&tmpsrc, "%s/%s", c->runfsroot,
-					     mnt->source) < 0) {
-					free(dest);
-					return -errno;
-				}
-			}
-			rc = minijail_mount(c->jail,
-					    tmpsrc ? tmpsrc : mnt->source,
-					    mnt->destination, mnt->type,
-					    mnt->flags);
-			free(tmpsrc);
-			if (rc) {
-				free(dest);
-				return -errno;
-			}
+			/* We can mount this with minijail. */
+			if (minijail_mount(c->jail, source, mnt->destination,
+					   mnt->type, mnt->flags))
+				goto error_free_return;
 		} else {
 			/*
 			 * Mount this externally and unmount it on exit. Don't
 			 * allow execution from external mounts.
 			 */
-			rc = mount(mnt->source, dest, mnt->type,
-				   mnt->flags | MS_NOEXEC, mnt->data);
-			if (rc) {
-				free(dest);
-				return -errno;
-			}
+			if (mount(source, dest, mnt->type,
+				  mnt->flags | MS_NOEXEC, mnt->data))
+				goto error_free_return;
 
 		}
+		free(source);
 		free(dest);
 	}
 	return 0;
+
+error_free_return:
+	free(dest);
+	free(source);
+	return -errno;
 }
 
 int container_start(struct container *c)
