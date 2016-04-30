@@ -889,7 +889,7 @@ TEST_F(SessionManagerImplStaticTest, EmailAddressTest) {
 
 TEST_F(SessionManagerImplStaticTest, EmailAddressNonAsciiTest) {
   char invalid[4] = "a@m";
-  invalid[2] = 254;
+  invalid[2] = static_cast<char>(254);
   EXPECT_FALSE(ValidateEmail(invalid));
 }
 
