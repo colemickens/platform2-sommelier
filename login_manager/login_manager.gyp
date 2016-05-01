@@ -12,6 +12,7 @@
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libchromeos-ui-<(libbase_ver)',
+        'libcontainer',
         'libmetrics-<(libbase_ver)',
         'nss',
         # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -57,6 +58,7 @@
         'child_exit_handler.cc',
         'child_job.cc',
         'chrome_setup.cc',
+        'container_config_parser.cc',
         'crossystem.cc',
         'crossystem_impl.cc',
         'dbus_signal_emitter.cc',
@@ -99,7 +101,10 @@
     {
       'target_name': 'session_manager',
       'type': 'executable',
-      'libraries': ['-lrootdev'],
+      'libraries': [
+        '-lrootdev',
+        '-lcontainer',
+      ],
       'dependencies': ['libsession_manager'],
       'sources': ['session_manager_main.cc'],
     },
@@ -122,6 +127,7 @@
           'sources': [
             'browser_job_unittest.cc',
             'child_exit_handler_unittest.cc',
+            'container_config_parser_unittest.cc',
             'device_local_account_policy_service_unittest.cc',
             'device_policy_service_unittest.cc',
             'fake_browser_job.cc',
