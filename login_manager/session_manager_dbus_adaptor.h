@@ -80,6 +80,8 @@ class SessionManagerDBusAdaptor {
   void GetServerBackedStateKeys(dbus::MethodCall* call,
                                 dbus::ExportedObject::ResponseSender sender);
   scoped_ptr<dbus::Response> InitMachineInfo(dbus::MethodCall* call);
+  scoped_ptr<dbus::Response> StartContainer(dbus::MethodCall* call);
+  scoped_ptr<dbus::Response> StopContainer(dbus::MethodCall* call);
 
   scoped_ptr<dbus::Response> CheckArcAvailability(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> StartArcInstance(dbus::MethodCall* call);

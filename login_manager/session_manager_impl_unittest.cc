@@ -43,6 +43,7 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_process_manager_service.h"
+#include "login_manager/mock_session_containers.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 #include "login_manager/mock_vpd_process.h"
@@ -96,7 +97,8 @@ class SessionManagerImplTest : public ::testing::Test {
               &utils_,
               &crossystem_,
               &vpd_process_,
-              &owner_key_),
+              &owner_key_,
+              &containers_),
         fake_salt_("fake salt"),
         actual_locks_(0),
         expected_locks_(0),
@@ -208,6 +210,7 @@ class SessionManagerImplTest : public ::testing::Test {
   FakeCrossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
+  MockSessionContainers containers_;
 
   SessionManagerImpl impl_;
   SessionManagerImpl::Error error_;
@@ -782,6 +785,17 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
 
   impl_.OnKeyGenerated(kSaneEmail, key_file_path);
   EXPECT_FALSE(base::PathExists(key_file_path));
+}
+
+TEST_F(SessionManagerImplTest, ContainerStart) {
+  const std::string kContainerName = "testc";
+
+  ExpectAndRunStartSession(kSaneEmail);
+
+  EXPECT_CALL(containers_, StartContainer(StrEq(kContainerName)))
+      .Times(1)
+      .WillOnce(Return(true));
+  impl_.StartContainer(kContainerName, &error_);
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart) {

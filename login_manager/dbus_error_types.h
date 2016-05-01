@@ -9,6 +9,8 @@ namespace login_manager {
 namespace dbus_error {
 
 extern const char kNone[];
+extern const char kContainerStartupFail[];
+extern const char kContainerShutdownFail[];
 extern const char kEmitFailed[];
 extern const char kInitMachineInfoFail[];
 extern const char kInvalidAccount[];

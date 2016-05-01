@@ -386,6 +386,27 @@
     </method>
 
     <!--
+        StartContainer:
+        @name: A string containing the name of the container to start.
+
+        Starts a container.  Containers must be bundled with the rootfs so they
+        are signed.
+    -->
+    <method name="StartContainer">
+      <arg type="s" name="name" direction="in" />
+    </method>
+
+    <!--
+        StopContainer:
+        @name: A string containing the name of the container to stop.
+
+        Stops a currently running container.
+    -->
+    <method name="StopContainer">
+      <arg type="s" name="name" direction="in" />
+    </method>
+
+    <!--
         StartArcInstance:
         @socket_path: A string containing the path of the ARC IPC socket.
 

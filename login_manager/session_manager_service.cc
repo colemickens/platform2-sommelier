@@ -36,6 +36,7 @@
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
+#include "login_manager/session_containers_impl.h"
 #include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
@@ -54,6 +55,10 @@ const int kNumSignals = sizeof(kSignals) / sizeof(int);
 // Constants for susend delays and ARC cgroup control.
 const int kSuspendDelayMs = 1000;
 const char kSuspendDelayDescription[] = "session_manager";
+
+// The only path where containers are allowed to be installed.  They must be
+// part of the read-only, signed root image.
+const char kContainerInstallDirectory[] = "/opt/google/containers";
 
 const base::FilePath::CharType kArcCgroupFreezerStatePath[] =
     FILE_PATH_LITERAL("/sys/fs/cgroup/freezer/android/freezer.state");
@@ -179,6 +184,9 @@ bool SessionManagerService::Initialize() {
                                                   enable_browser_abort_on_hang_,
                                                   liveness_checking_interval_));
 
+  session_containers_.reset(
+      new SessionContainersImpl(base::FilePath(kContainerInstallDirectory)));
+
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
   scoped_ptr<InitDaemonController> init_controller(
@@ -205,7 +213,8 @@ bool SessionManagerService::Initialize() {
       system_,
       &crossystem_,
       &vpd_process_,
-      &owner_key_);
+      &owner_key_,
+      session_containers_.get());
 
   adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);

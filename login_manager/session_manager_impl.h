@@ -21,6 +21,7 @@
 #include "login_manager/policy_service.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/server_backed_state_key_generator.h"
+#include "login_manager/session_containers_interface.h"
 
 class Crossystem;
 
@@ -93,7 +94,8 @@ class SessionManagerImpl : public SessionManagerInterface,
                      SystemUtils* utils,
                      Crossystem* crossystem,
                      VpdProcess* vpd_process,
-                     PolicyKey* owner_key);
+                     PolicyKey* owner_key,
+                     SessionContainersInterface* containers);
   virtual ~SessionManagerImpl();
 
   void InjectPolicyServices(
@@ -172,6 +174,9 @@ class SessionManagerImpl : public SessionManagerInterface,
       const ServerBackedStateKeyGenerator::StateKeyCallback& callback);
   void InitMachineInfo(const std::string& data, Error* error);
 
+  void StartContainer(const std::string& name, Error* error);
+  void StopContainer(const std::string& name, Error* error);
+
   bool CheckArcAvailability();
   void StartArcInstance(const std::string& socket_path, Error* error);
   void StopArcInstance(Error* error);
@@ -240,6 +245,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   Crossystem* crossystem_;                              // Owned by the caller.
   VpdProcess* vpd_process_;                             // Owned by the caller.
   PolicyKey* owner_key_;                                // Owned by the caller.
+  SessionContainersInterface* containers_;              // Owned by the caller.
 
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;

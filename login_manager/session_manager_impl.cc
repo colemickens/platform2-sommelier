@@ -143,7 +143,8 @@ SessionManagerImpl::SessionManagerImpl(
     SystemUtils* utils,
     Crossystem* crossystem,
     VpdProcess* vpd_process,
-    PolicyKey* owner_key)
+    PolicyKey* owner_key,
+    SessionContainersInterface* containers)
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
@@ -162,6 +163,7 @@ SessionManagerImpl::SessionManagerImpl(
       crossystem_(crossystem),
       vpd_process_(vpd_process),
       owner_key_(owner_key),
+      containers_(containers),
       mitigator_(key_gen) {
 }
 
@@ -230,6 +232,9 @@ void SessionManagerImpl::Finalize() {
     if (it->second)
       it->second->policy_service->PersistPolicySync();
   }
+  // We want to stop any running containers.  Containers are per-session and
+  // cannot persist across sessions.
+  containers_->KillAllContainers();
 }
 
 void SessionManagerImpl::EmitLoginPromptVisible(Error* error) {
@@ -638,6 +643,22 @@ base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
 #endif  // !USE_ARC
   return arc_start_time_;
+}
+
+void SessionManagerImpl::StartContainer(const std::string& name, Error* error) {
+  if (!containers_->StartContainer(name)) {
+    const char msg[] = "Error starting the container.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kContainerStartupFail, msg);
+  }
+}
+
+void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
+  if (!containers_->KillContainer(name)) {
+    const char msg[] = "Error killing the container.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kContainerShutdownFail, msg);
+  }
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {

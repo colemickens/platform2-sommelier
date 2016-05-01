@@ -277,6 +277,12 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerCheckArcAvailability,
                        &SessionManagerDBusAdaptor::CheckArcAvailability);
   ExportSyncDBusMethod(object,
+                       kSessionManagerStartContainer,
+                       &SessionManagerDBusAdaptor::StartContainer);
+  ExportSyncDBusMethod(object,
+                       kSessionManagerStopContainer,
+                       &SessionManagerDBusAdaptor::StopContainer);
+  ExportSyncDBusMethod(object,
                        kSessionManagerStartArcInstance,
                        &SessionManagerDBusAdaptor::StartArcInstance);
   ExportSyncDBusMethod(object,
@@ -562,6 +568,35 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::CheckArcAvailability(
   SessionManagerImpl::Error error;
   bool available = impl_->CheckArcAvailability();
   return CraftAppropriateResponseWithBool(call, error, available);
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartContainer(
+    dbus::MethodCall* call) {
+  dbus::MessageReader reader(call);
+  std::string name;
+  if (!reader.PopString(&name))
+    return CreateInvalidArgsError(call, call->GetSignature());
+
+  SessionManagerImpl::Error error;
+  impl_->StartContainer(name, &error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
+    dbus::MethodCall* call) {
+  dbus::MessageReader reader(call);
+  std::string name;
+  if (!reader.PopString(&name))
+    return CreateInvalidArgsError(call, call->GetSignature());
+
+  SessionManagerImpl::Error error;
+
+  impl_->StopContainer(name, &error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(

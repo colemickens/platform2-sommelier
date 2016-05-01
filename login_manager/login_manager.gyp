@@ -14,6 +14,7 @@
         'libchromeos-ui-<(libbase_ver)',
         'libcontainer',
         'libmetrics-<(libbase_ver)',
+        'libminijail',
         'nss',
         # system_api depends on protobuf (or protobuf-lite). It must appear
         # before protobuf here or the linker flags won't be in the right
@@ -77,6 +78,7 @@
         'policy_store.cc',
         'regen_mitigator.cc',
         'server_backed_state_key_generator.cc',
+        'session_containers_impl.cc',
         'session_manager_dbus_adaptor.cc',
         'session_manager_impl.cc',
         'session_manager_service.cc',
@@ -104,6 +106,7 @@
       'type': 'executable',
       'libraries': [
         '-lrootdev',
+        '-lminijail',
         '-lcontainer',
       ],
       'dependencies': ['libsession_manager'],
