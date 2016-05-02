@@ -119,6 +119,8 @@
           'target_name': 'core_collector',
           'type': 'executable',
           'variables': {
+            'USE_amd64%': 0,
+            'USE_cros_i686%': 0,
             'deps': [
               'breakpad-client',
             ],
@@ -127,6 +129,18 @@
             'core-collector/core_collector.cc',
             'core-collector/coredump_writer.cc',
             'core-collector/coredump_writer.h',
+          ],
+          'conditions': [
+            # This condition matches the "use_i686" helper in the "cros-i686"
+            # eclass. The "amd64" check allows the "cros_i686" USE flag to be
+            # enabled for an overlay inherited by non-x86 boards.
+            ['USE_cros_i686 == 1 and USE_amd64 == 1', {
+              # Link to libc and libstdc++ statically, because the i686 shared
+              # libraries are not available on x86_64.
+              'cflags!': ['-fPIE'],
+              'ldflags': ['-static'],
+              'ldflags!': ['-pie'],
+            }],
           ],
         },
       ],

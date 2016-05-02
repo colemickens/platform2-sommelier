@@ -32,7 +32,14 @@ const FilePath kContainerPidFile("/run/arc/container.pid");
 const FilePath kArcRootPrefix("/opt/google/containers/android/rootfs/root");
 const FilePath kArcBuildProp("system/build.prop");  // Relative to ARC root.
 
-const char kCoreCollectorPath[] = "/usr/bin/core_collector";
+// TODO(domlaskowski): Dispatch to core_collector{,32} at run time. Note that
+// ARC processes are always 32-bit on 64-bit platforms.
+const char kCoreCollectorPath[] = "/usr/bin/core_collector"
+#if __WORDSIZE == 64
+    "32"
+#endif
+    "";
+
 const char kChromePath[] = "/opt/google/chrome/chrome";
 
 const char kArcProduct[] = "ChromeOS_ARC";
@@ -218,11 +225,6 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
     const base::FilePath &container_dir,
     const base::FilePath &core_path,
     const base::FilePath &minidump_path) {
-// TODO(domlaskowski): Dispatch to core_collector{32,64}.
-#if __WORDSIZE == 64
-  LOG(ERROR) << kCoreCollectorPath << "{32,64} not implemented";
-  return kErrorUnsupported32BitCoreFile;
-#else
   ProcessImpl core_collector;
   core_collector.AddArg(kCoreCollectorPath);
   core_collector.AddArg("--minidump");
@@ -263,7 +265,6 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
       return base::PathExists(core_path) ? kErrorSystemIssue :
                                            kErrorReadCoreData;
   }
-#endif
 }
 
 void ArcCollector::AddArcMetaData(const std::string &type,
