@@ -315,8 +315,8 @@ struct container *container_new(const char *name,
 	c->name = name;
 	c->cgroup = container_cgroup_new(name, "/sys/fs/cgroup");
 	c->rundir = strdup(rundir);
-	if (!c->rundir) {
-		free(c);
+	if (!c->cgroup || !c->rundir) {
+		container_destroy(c);
 		return NULL;
 	}
 	return c;
@@ -324,7 +324,8 @@ struct container *container_new(const char *name,
 
 void container_destroy(struct container *c)
 {
-	container_cgroup_destroy(c->cgroup);
+	if (c->cgroup)
+		container_cgroup_destroy(c->cgroup);
 	free(c->rundir);
 	free(c);
 }
