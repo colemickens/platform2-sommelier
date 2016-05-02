@@ -54,6 +54,8 @@ class VPNService : public Service {
   // Power management events.
   virtual void OnBeforeSuspend(const ResultCallback& callback) override;
   virtual void OnAfterResume() override;
+  virtual void OnDefaultServiceStateChanged(
+      const ServiceRefPtr& service) override;
 
   virtual void InitDriverPropertyStore();
 

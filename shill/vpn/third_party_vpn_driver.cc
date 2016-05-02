@@ -547,6 +547,21 @@ void ThirdPartyVpnDriver::OnConnectionDisconnected() {
   SLOG(this, 2) << __func__;
 }
 
+void ThirdPartyVpnDriver::TriggerReconnect(const ServiceRefPtr& new_service) {
+  StartConnectTimeout(kConnectTimeoutSeconds);
+  SLOG(this, 2) << __func__
+                << " - requesting reconnection via "
+                << new_service->unique_name();
+  if (link_down_) {
+    adaptor_interface_->EmitPlatformMessage(
+        static_cast<uint32_t>(PlatformMessage::kLinkUp));
+    link_down_ = false;
+  } else {
+    adaptor_interface_->EmitPlatformMessage(
+        static_cast<uint32_t>(PlatformMessage::kLinkChanged));
+  }
+}
+
 void ThirdPartyVpnDriver::OnDefaultServiceChanged(
     const ServiceRefPtr& service) {
   if (!service_ || !device_)
@@ -561,29 +576,29 @@ void ThirdPartyVpnDriver::OnDefaultServiceChanged(
   device_->SetServiceState(Service::kStateConfiguring);
   device_->ResetConnection();
 
-  if (!service || !service->IsConnected()) {
-    // No physical connection, so all we can do is wait.
+  if (service && service->state() == Service::kStateOnline) {
+    // The original service is no longer the default, but manager was able
+    // to find another physical service that is already Online.
+    // Ask the vpnProvider to reconnect.
+    TriggerReconnect(service);
+  } else {
+    // The default physical service went away, and nothing else is available
+    // right now.  All we can do is wait.
+    if (link_down_)
+      return;
     StopConnectTimeout();
     SLOG(this, 2) << __func__
                   << " - physical connection lost";
     link_down_ = true;
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kLinkDown));
-  } else {
-    // Ask the vpnProvider to reconnect.
-    StartConnectTimeout(kConnectTimeoutSeconds);
-    SLOG(this, 2) << __func__
-                  << " - requesting reconnection via "
-                  << service->unique_name();
-    if (link_down_) {
-      adaptor_interface_->EmitPlatformMessage(
-          static_cast<uint32_t>(PlatformMessage::kLinkUp));
-      link_down_ = false;
-    } else {
-      adaptor_interface_->EmitPlatformMessage(
-          static_cast<uint32_t>(PlatformMessage::kLinkChanged));
-    }
   }
+}
+
+void ThirdPartyVpnDriver::OnDefaultServiceStateChanged(
+    const ServiceRefPtr& service) {
+  if (link_down_ && service->state() == Service::kStateOnline)
+    TriggerReconnect(service);
 }
 
 void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {

@@ -267,4 +267,8 @@ void VPNService::OnAfterResume() {
   Service::OnAfterResume();
 }
 
+void VPNService::OnDefaultServiceStateChanged(const ServiceRefPtr& service) {
+  driver_->OnDefaultServiceStateChanged(service);
+}
+
 }  // namespace shill

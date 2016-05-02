@@ -62,6 +62,7 @@ class VPNDriver {
   // Power management events.
   virtual void OnBeforeSuspend(const ResultCallback& callback);
   virtual void OnAfterResume();
+  virtual void OnDefaultServiceStateChanged(const ServiceRefPtr& service);
 
   std::string GetHost() const;
 

@@ -306,6 +306,9 @@ void VPNDriver::OnBeforeSuspend(const ResultCallback& callback) {
 void VPNDriver::OnAfterResume() {
 }
 
+void VPNDriver::OnDefaultServiceStateChanged(const ServiceRefPtr& service) {
+}
+
 string VPNDriver::GetHost() const {
   return args_.LookupString(kProviderHostProperty, "");
 }

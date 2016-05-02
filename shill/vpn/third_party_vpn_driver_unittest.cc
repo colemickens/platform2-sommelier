@@ -16,8 +16,10 @@
 
 #include "shill/vpn/third_party_vpn_driver.h"
 
+#include <base/bind.h>
 #include <gtest/gtest.h>
 
+#include "shill/callbacks.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
@@ -65,6 +67,8 @@ class ThirdPartyVpnDriverTest : public testing::Test {
     driver_->service_ = nullptr;
     driver_->file_io_ = nullptr;
   }
+
+  MOCK_METHOD1(TestCallback, void(const Error& error));
 
  protected:
   static const char kConfigName[];
@@ -121,6 +125,105 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   EXPECT_CALL(mock_file_io_, Close(fd));
   driver_->Disconnect();
   EXPECT_EQ(driver_->io_handler_.get(), nullptr);
+}
+
+TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
+  const std::string interface = kInterfaceName;
+  IOHandler* io_handler = new IOHandler();  // Owned by |driver_|
+  int fd = 1;
+
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(interface), Return(true)));
+  Error error;
+  driver_->Connect(service_, &error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
+      .WillOnce(Return(fd));
+  EXPECT_CALL(dispatcher_, CreateInputHandler(fd, _, _))
+      .WillOnce(Return(io_handler));
+  EXPECT_TRUE(driver_->ClaimInterface(interface, kInterfaceIndex));
+
+  driver_->reconnect_supported_ = true;
+
+  // Roam from one Online network to another -> kLinkChanged.
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(&control_, &dispatcher_, &metrics_, &manager_));
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kLinkChanged)));
+  EXPECT_CALL(*mock_service, state())
+      .WillOnce(Return(Service::kStateOnline));
+  driver_->OnDefaultServiceChanged(mock_service);
+
+  // Default physical service has no connection -> kLinkDown.
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kLinkDown)));
+  driver_->OnDefaultServiceChanged(nullptr);
+
+  // New default physical service not online yet -> no change.
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(_))
+      .Times(0);
+  EXPECT_CALL(*mock_service, state())
+      .WillOnce(Return(Service::kStateConnected));
+  driver_->OnDefaultServiceChanged(mock_service);
+
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(_))
+      .Times(0);
+  EXPECT_CALL(*mock_service, state())
+      .WillOnce(Return(Service::kStatePortal));
+  driver_->OnDefaultServiceStateChanged(mock_service);
+
+  // Default physical service comes Online -> kLinkUp.
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kLinkUp)));
+  EXPECT_CALL(*mock_service, state())
+      .WillOnce(Return(Service::kStateOnline));
+  driver_->OnDefaultServiceStateChanged(mock_service);
+
+  // Default physical service vanishes, but the app doesn't support
+  // reconnecting -> kDisconnected.
+  driver_->reconnect_supported_ = false;
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kDisconnected)));
+  driver_->OnDefaultServiceChanged(nullptr);
+
+  driver_->Disconnect();
+}
+
+TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
+  const std::string interface = kInterfaceName;
+  IOHandler* io_handler = new IOHandler();  // Owned by |driver_|
+  int fd = 1;
+
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(interface), Return(true)));
+  Error error;
+  driver_->Connect(service_, &error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
+      .WillOnce(Return(fd));
+  EXPECT_CALL(dispatcher_, CreateInputHandler(fd, _, _))
+      .WillOnce(Return(io_handler));
+  EXPECT_TRUE(driver_->ClaimInterface(interface, kInterfaceIndex));
+
+  driver_->reconnect_supported_ = true;
+
+  ResultCallback callback =
+      base::Bind(&ThirdPartyVpnDriverTest::TestCallback,
+                 base::Unretained(this));
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kSuspend)));
+  EXPECT_CALL(*this, TestCallback(_));
+  driver_->OnBeforeSuspend(callback);
+
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kResume)));
+  driver_->OnAfterResume();
+
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kDisconnected)));
+  driver_->Disconnect();
 }
 
 TEST_F(ThirdPartyVpnDriverTest, SendPacket) {

@@ -85,6 +85,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   void Disconnect() override;
   void OnConnectionDisconnected() override;
   void OnDefaultServiceChanged(const ServiceRefPtr& service);
+  void OnDefaultServiceStateChanged(const ServiceRefPtr& service) override;
   bool Load(StoreInterface* storage, const std::string& storage_id) override;
   bool Save(StoreInterface* storage, const std::string& storage_id,
             bool save_credentials) override;
@@ -100,6 +101,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
  private:
   friend class ThirdPartyVpnDriverTest;
   FRIEND_TEST(ThirdPartyVpnDriverTest, ConnectAndDisconnect);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, ReconnectionEvents);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, PowerEvents);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(ThirdPartyVpnDriverTest, UpdateConnectionState);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SendPacket);
@@ -192,6 +195,10 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // interface.
   void OnInput(InputData* data);
   void OnInputError(const std::string& error);
+
+  // This function is called when a new default service first comes online,
+  // so the app knows it needs to reconnect to the VPN gateway.
+  void TriggerReconnect(const ServiceRefPtr& service);
 
   static const Property kProperties[];
 
