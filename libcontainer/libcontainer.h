@@ -23,9 +23,19 @@ void container_config_destroy(struct container_config *c);
 /* rootfs - Path to the root of the container's filesystem. */
 int container_config_rootfs(struct container_config *c, const char *rootfs);
 
+/* Get the configured rootfs path. */
+const char *container_config_get_rootfs(const struct container_config *c);
+
 /* The program to run and args, e.g. "/sbin/init", "--second-stage". */
 int container_config_program_argv(struct container_config *c,
 				  char **argv, size_t num_args);
+
+/* Get the number of command line args for the program to be run. */
+size_t container_config_get_num_program_args(const struct container_config *c);
+
+/* Get the program argument at the given index. */
+const char *container_config_get_program_arg(const struct container_config *c,
+					     size_t index);
 
 /* The pid of the program will be written here. */
 int container_config_pid_file(struct container_config *c, const char *path);
@@ -105,6 +115,9 @@ int container_config_add_device(struct container_config *c,
  */
 void container_config_run_setfiles(struct container_config *c,
 				   const char *setfiles_cmd);
+
+/* Get the setfiles command that is configured to be run. */
+const char *container_config_get_run_setfiles(const struct container_config *c);
 
 /* Container manipulation. */
 struct container;

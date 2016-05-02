@@ -120,6 +120,11 @@ int container_config_rootfs(struct container_config *c, const char *rootfs)
 	return 0;
 }
 
+const char *container_config_get_rootfs(const struct container_config *c)
+{
+	return c->rootfs;
+}
+
 int container_config_program_argv(struct container_config *c,
 				  char **argv, size_t num_args)
 {
@@ -136,6 +141,19 @@ int container_config_program_argv(struct container_config *c,
 	}
 	c->program_argv[num_args] = NULL;
 	return 0;
+}
+
+size_t container_config_get_num_program_args(const struct container_config *c)
+{
+	return c->num_args;
+}
+
+const char *container_config_get_program_arg(const struct container_config *c,
+					     size_t index)
+{
+	if (index >= c->num_args)
+		return NULL;
+	return c->program_argv[index];
 }
 
 int container_config_uid_map(struct container_config *c, const char *uid_map)
@@ -263,6 +281,11 @@ void container_config_run_setfiles(struct container_config *c,
 				   const char *setfiles_cmd)
 {
 	c->run_setfiles = setfiles_cmd;
+}
+
+const char *container_config_get_run_setfiles(const struct container_config *c)
+{
+	return c->run_setfiles;
 }
 
 /*
