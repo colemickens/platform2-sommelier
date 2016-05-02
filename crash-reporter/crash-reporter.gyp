@@ -5,7 +5,6 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'libbrillo-<(libbase_ver)',
       ],
     },
   },
@@ -15,6 +14,7 @@
       'type': 'static_library',
       'variables': {
         'exported_deps': [
+          'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
           'libdebugd-client',
           'libpcrecpp',
@@ -72,6 +72,7 @@
       'variables': {
         'deps': [
           'dbus-1',
+          'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
         ],
       },
@@ -120,7 +121,6 @@
           'variables': {
             'deps': [
               'breakpad-client',
-              'libchrome-<(libbase_ver)'
             ],
           },
           'sources': [

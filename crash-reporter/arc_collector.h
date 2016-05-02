@@ -67,7 +67,7 @@ class ArcCollector : public UserCollectorBase {
     bool GetCommand(pid_t pid, std::string *command) const override;
 
    private:
-    ArcCollector *const collector_;
+    ArcCollector * const collector_;
   };
 
   // CrashCollector overrides.

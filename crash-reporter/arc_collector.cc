@@ -24,6 +24,8 @@ using base::File;
 using base::FilePath;
 using base::ReadFileToString;
 
+using brillo::ProcessImpl;
+
 namespace {
 
 const FilePath kContainerPidFile("/run/arc/container.pid");
@@ -53,6 +55,10 @@ bool HasExceptionInfo(const std::string &type);
 
 bool GetChromeVersion(std::string *version);
 bool GetArcVersion(std::string *version);
+
+// Runs |process| and redirects |fd| to |output|. Returns the exit code, or -1
+// if the process failed to start.
+int RunAndCaptureOutput(ProcessImpl *process, int fd, std::string *output);
 
 }  // namespace
 
@@ -217,19 +223,35 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   LOG(ERROR) << kCoreCollectorPath << "{32,64} not implemented";
   return kErrorUnsupported32BitCoreFile;
 #else
-  brillo::ProcessImpl core_collector;
+  ProcessImpl core_collector;
   core_collector.AddArg(kCoreCollectorPath);
-  core_collector.AddArg("--minidump=" + minidump_path.value());
-  core_collector.AddArg("--coredump=" + core_path.value());
-  core_collector.AddArg("--proc=" + container_dir.value());
-  core_collector.AddArg("--prefix=" + kArcRootPrefix.value());
-  core_collector.AddArg("--syslog");
+  core_collector.AddArg("--minidump");
+  core_collector.AddArg(minidump_path.value());
+  core_collector.AddArg("--coredump");
+  core_collector.AddArg(core_path.value());
+  core_collector.AddArg("--proc");
+  core_collector.AddArg(container_dir.value());
+  core_collector.AddArg("--prefix");
+  core_collector.AddArg(kArcRootPrefix.value());
 
-  const int exit_code = core_collector.Run();
+  std::string error;
+  int exit_code = RunAndCaptureOutput(&core_collector, STDERR_FILENO, &error);
+
+  if (exit_code < 0) {
+    LOG(ERROR) << "Failed to start " << kCoreCollectorPath;
+    return kErrorSystemIssue;
+  }
+
   if (exit_code == EX_OK) {
     AddArcMetaData("native_crash", true);
     return kErrorNone;
   }
+
+  std::istringstream in(error);
+  std::string line;
+
+  while (std::getline(in, line))
+    LOG(ERROR) << line;
 
   LOG(ERROR) << kCoreCollectorPath << " failed with exit code " << exit_code;
   switch (exit_code) {
@@ -373,34 +395,18 @@ bool HasExceptionInfo(const std::string &type) {
 }
 
 bool GetChromeVersion(std::string *version) {
-  brillo::ProcessImpl chrome;
+  ProcessImpl chrome;
   chrome.AddArg(kChromePath);
   chrome.AddArg("--product-version");
-  chrome.RedirectUsingPipe(STDOUT_FILENO, false);
-  if (chrome.Start()) {
-    const int out = chrome.GetPipe(STDOUT_FILENO);
-    char buffer[kBufferSize];
-    version->clear();
 
-    while (true) {
-      const ssize_t count = HANDLE_EINTR(read(out, buffer, kBufferSize));
-      if (count < 0)
-        break;
-
-      if (count == 0) {
-        if (chrome.Wait() != EX_OK || version->empty())
-          break;
-
-        version->pop_back();  // Discard EOL.
-        return true;
-      }
-
-      version->append(buffer, count);
-    }
+  int exit_code = RunAndCaptureOutput(&chrome, STDOUT_FILENO, version);
+  if (exit_code != EX_OK || version->empty()) {
+    LOG(ERROR) << "Failed to get Chrome version";
+    return false;
   }
 
-  LOG(ERROR) << "Failed to get Chrome version";
-  return false;
+  version->pop_back();  // Discard EOL.
+  return true;
 }
 
 bool GetArcVersion(std::string *version) {
@@ -411,6 +417,30 @@ bool GetArcVersion(std::string *version) {
 
   LOG(ERROR) << "Failed to get ARC version";
   return false;
+}
+
+int RunAndCaptureOutput(ProcessImpl *process, int fd, std::string *output) {
+  process->RedirectUsingPipe(fd, false);
+  if (process->Start()) {
+    const int out = process->GetPipe(fd);
+    char buffer[kBufferSize];
+    output->clear();
+
+    while (true) {
+      const ssize_t count = HANDLE_EINTR(read(out, buffer, kBufferSize));
+      if (count < 0) {
+        process->Wait();
+        break;
+      }
+
+      if (count == 0)
+        return process->Wait();
+
+      output->append(buffer, count);
+    }
+  }
+
+  return -1;
 }
 
 }  // namespace
