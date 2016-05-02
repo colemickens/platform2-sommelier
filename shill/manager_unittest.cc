@@ -2760,6 +2760,42 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 }
 
+TEST_F(ManagerTest, DefaultServiceStateChange) {
+  MockMetrics mock_metrics(dispatcher());
+  SetMetrics(&mock_metrics);
+
+  scoped_refptr<MockService> mock_service0(
+      new NiceMock<MockService>(
+          control_interface(), dispatcher(), metrics(), manager()));
+  scoped_refptr<MockService> mock_service1(
+      new NiceMock<MockService>(
+          control_interface(), dispatcher(), metrics(), manager()));
+
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
+  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+
+  // Changing the default service's state should notify both services.
+  EXPECT_CALL(*mock_service0.get(), OnDefaultServiceStateChanged(_));
+  EXPECT_CALL(*mock_service1.get(), OnDefaultServiceStateChanged(_));
+  manager()->NotifyServiceStateChanged(mock_service0);
+  Mock::VerifyAndClearExpectations(mock_service0.get());
+  Mock::VerifyAndClearExpectations(mock_service1.get());
+
+  // Changing the non-default service's state shouldn't notify anyone.
+  EXPECT_CALL(*mock_service0.get(), OnDefaultServiceStateChanged(_)).Times(0);
+  EXPECT_CALL(*mock_service1.get(), OnDefaultServiceStateChanged(_)).Times(0);
+  manager()->NotifyServiceStateChanged(mock_service1);
+
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
+  manager()->UpdateDefaultServices(nullptr, nullptr);
+
+  manager()->DeregisterService(mock_service1);
+  manager()->DeregisterService(mock_service0);
+}
+
 TEST_F(ManagerTest, ReportServicesOnSameNetwork) {
   int connection_id1 = 100;
   int connection_id2 = 200;

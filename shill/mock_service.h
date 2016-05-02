@@ -90,6 +90,8 @@ class MockService : public Service {
   MOCK_METHOD0(EnableAndRetainAutoConnect, void());
   MOCK_METHOD1(OnBeforeSuspend, void(const ResultCallback& callback));
   MOCK_METHOD0(OnAfterResume, void());
+  MOCK_METHOD1(OnDefaultServiceStateChanged,
+      void(const ServiceRefPtr& service));
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

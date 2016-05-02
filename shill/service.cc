@@ -440,7 +440,7 @@ void Service::SetState(ConnectState state) {
     reenable_auto_connect_task_.Cancel();
   }
   UpdateErrorProperty();
-  manager_->UpdateService(this);
+  manager_->NotifyServiceStateChanged(this);
   metrics_->NotifyServiceStateChanged(*this, state);
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
@@ -1229,6 +1229,10 @@ void Service::OnAfterResume() {
 }
 
 void Service::OnDarkResume() {
+  // Nothing to do in the general case.
+}
+
+void Service::OnDefaultServiceStateChanged(const ServiceRefPtr& parent) {
   // Nothing to do in the general case.
 }
 

@@ -502,6 +502,10 @@ class Service : public base::RefCounted<Service> {
   // Called by the manager once when entering dark resume.
   virtual void OnDarkResume();
 
+  // Called by the manager when the default physical service's state has
+  // changed.
+  virtual void OnDefaultServiceStateChanged(const ServiceRefPtr& parent);
+
   // Called by the manager to clear remembered state of being explicitly
   // disconnected.
   virtual void ClearExplicitlyDisconnected();

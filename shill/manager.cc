@@ -1466,6 +1466,16 @@ void Manager::UpdateService(const ServiceRefPtr& to_update) {
   SortServices();
 }
 
+void Manager::NotifyServiceStateChanged(const ServiceRefPtr& to_update) {
+  UpdateService(to_update);
+  if (to_update != last_default_physical_service_) {
+    return;
+  }
+  for (const auto& service : services_) {
+    service->OnDefaultServiceStateChanged(to_update);
+  }
+}
+
 void Manager::UpdateDevice(const DeviceRefPtr& to_update) {
   LOG(INFO) << "Device " << to_update->link_name() << " updated: "
             << (to_update->enabled_persistent() ? "enabled" : "disabled");

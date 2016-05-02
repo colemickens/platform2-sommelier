@@ -159,6 +159,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // for disconnecting the Service before-hand.
   virtual void DeregisterService(const ServiceRefPtr& to_forget);
   virtual void UpdateService(const ServiceRefPtr& to_update);
+  // Called when any service's state changes.  Informs other services
+  // (e.g. VPNs) if the default physical service's state has changed.
+  virtual void NotifyServiceStateChanged(const ServiceRefPtr& to_update);
 
   // Persists |to_update| into an appropriate profile.
   virtual void UpdateDevice(const DeviceRefPtr& to_update);
@@ -590,6 +593,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
+  FRIEND_TEST(ManagerTest, DefaultServiceStateChange);
   FRIEND_TEST(ManagerTest, DetectMultiHomedDevices);
   FRIEND_TEST(ManagerTest, DeviceClaimerVanishedTask);
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
