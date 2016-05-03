@@ -292,7 +292,6 @@ const char *container_config_get_run_setfiles(const struct container_config *c)
  * Container manipulation
  */
 struct container {
-	const struct container_config *config;
 	struct container_cgroup *cgroup;
 	struct minijail *jail;
 	pid_t init_pid;
@@ -300,25 +299,20 @@ struct container {
 	char *rundir;
 	char *runfsroot;
 	char *pid_file_path;
+	char **ext_mounts; /* Mounts made outside of the minijail */
+	size_t num_ext_mounts;
 	const char *name;
 };
 
 struct container *container_new(const char *name,
-				const char *rundir,
-				const struct container_config *config)
+				const char *rundir)
 {
 	struct container *c;
-
-	if (!config)
-		return NULL;
-	if (!config->program_argv || !config->program_argv[0])
-		return NULL;
 
 	c = calloc(1, sizeof(*c));
 	if (!c)
 		return NULL;
 	c->name = name;
-	c->config = config;
 	c->cgroup = container_cgroup_new(name, "/sys/fs/cgroup");
 	c->rundir = strdup(rundir);
 	if (!c->rundir) {
@@ -385,14 +379,16 @@ static int setup_mount_destination(const struct container_mount *mnt,
 }
 
 /* Fork and exec the setfiles command to configure the selinux policy. */
-static int run_setfiles_command(const struct container *c, const char *dest)
+static int run_setfiles_command(const struct container *c,
+				const struct container_config *config,
+				const char *dest)
 {
 	int rc;
 	int status;
 	int pid;
 	char *context_path;
 
-	if (!c->config->run_setfiles)
+	if (!config->run_setfiles)
 		return 0;
 
 	if (asprintf(&context_path, "%s/file_contexts",
@@ -402,7 +398,7 @@ static int run_setfiles_command(const struct container *c, const char *dest)
 	pid = fork();
 	if (pid == 0) {
 		const char *argv[] = {
-			c->config->run_setfiles,
+			config->run_setfiles,
 			"-r",
 			c->runfsroot,
 			context_path,
@@ -429,14 +425,41 @@ static int run_setfiles_command(const struct container *c, const char *dest)
 	return status;
 }
 
-static int do_container_mounts(struct container *c)
+/*
+ * Unmounts anything we mounted in this mount namespace in the opposite order
+ * that they were mounted.
+ */
+static int unmount_external_mounts(struct container *c)
+{
+	int ret = 0;
+
+	while (c->num_ext_mounts) {
+		c->num_ext_mounts--;
+		if (umount(c->ext_mounts[c->num_ext_mounts]))
+			ret = -errno;
+		free(c->ext_mounts[c->num_ext_mounts]);
+	}
+	free(c->ext_mounts);
+	return ret;
+}
+
+static int do_container_mounts(struct container *c,
+			       const struct container_config *config)
 {
 	unsigned int i;
 	char *source;
 	char *dest;
 
-	for (i = 0; i < c->config->num_mounts; ++i) {
-		const struct container_mount *mnt = &c->config->mounts[i];
+	/*
+	 * Allocate space to track anything we mount in our mount namespace.
+	 * This over-allocates as it has space for all mounts.
+	 */
+	c->ext_mounts = calloc(config->num_mounts, sizeof(*c->ext_mounts));
+	if (!c->ext_mounts)
+		return -errno;
+
+	for (i = 0; i < config->num_mounts; ++i) {
+		const struct container_mount *mnt = &config->mounts[i];
 
 		source = NULL;
 		dest = NULL;
@@ -473,7 +496,9 @@ static int do_container_mounts(struct container *c)
 			if (mount(source, dest, mnt->type,
 				  mnt->flags | MS_NOEXEC, mnt->data))
 				goto error_free_return;
-
+			/* Save this to unmount when shutting down. */
+			c->ext_mounts[c->num_ext_mounts] = strdup(dest);
+			c->num_ext_mounts++;
 		}
 		free(source);
 		free(dest);
@@ -483,15 +508,21 @@ static int do_container_mounts(struct container *c)
 error_free_return:
 	free(dest);
 	free(source);
+	unmount_external_mounts(c);
 	return -errno;
 }
 
-int container_start(struct container *c)
+int container_start(struct container *c, const struct container_config *config)
 {
 	int rc;
 	unsigned int i;
-	const char *rootfs = c->config->rootfs;
+	const char *rootfs = config->rootfs;
 	char *runfs_template;
+
+	if (!config)
+		return -EINVAL;
+	if (!config->program_argv || !config->program_argv[0])
+		return -EINVAL;
 
 	if (asprintf(&runfs_template, "%s/%s_XXXXXX", c->rundir, c->name) < 0)
 		return -errno;
@@ -517,13 +548,13 @@ int container_start(struct container *c)
 
 	c->jail = minijail_new();
 
-	if (do_container_mounts(c))
+	if (do_container_mounts(c, config))
 		goto error_rmdir;
 
 	c->cgroup->ops->deny_all_devices(c->cgroup);
 
-	for (i = 0; i < c->config->num_devices; i++) {
-		const struct container_device *dev = &c->config->devices[i];
+	for (i = 0; i < config->num_devices; i++) {
+		const struct container_device *dev = &config->devices[i];
 		int mode;
 		int minor = dev->minor;
 
@@ -576,15 +607,15 @@ int container_start(struct container *c)
 	}
 
 	/* Potentailly run setfiles on mounts configured outside of the jail */
-	for (i = 0; i < c->config->num_mounts; i++) {
-		const struct container_mount *mnt = &c->config->mounts[i];
+	for (i = 0; i < config->num_mounts; i++) {
+		const struct container_mount *mnt = &config->mounts[i];
 		char *dest;
 
 		if (mnt->mount_in_ns)
 			continue;
 		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
 			goto error_rmdir;
-		rc = run_setfiles_command(c, dest);
+		rc = run_setfiles_command(c, config, dest);
 		free(dest);
 		if (rc)
 			goto error_rmdir;
@@ -603,10 +634,10 @@ int container_start(struct container *c)
 	minijail_namespace_pids(c->jail);
 /*	TODO(dgreid) - Enable user namespaces
 	minijail_namespace_user(c->jail);
-	rc = minijail_uidmap(c->jail, c->config->uid_map);
+	rc = minijail_uidmap(c->jail, config->uid_map);
 	if (rc)
 		goto error_rmdir;
-	rc = minijail_gidmap(c->jail, c->config->gid_map);
+	rc = minijail_gidmap(c->jail, config->gid_map);
 	if (rc)
 		goto error_rmdir;
 */
@@ -632,8 +663,8 @@ int container_start(struct container *c)
 	if (rc)
 		goto error_rmdir;
 
-	if (c->config->alt_syscall_table)
-		minijail_use_alt_syscall(c->jail, c->config->alt_syscall_table);
+	if (config->alt_syscall_table)
+		minijail_use_alt_syscall(c->jail, config->alt_syscall_table);
 
 	minijail_run_as_init(c->jail);
 
@@ -644,8 +675,8 @@ int container_start(struct container *c)
 		goto error_rmdir;
 
 	rc = minijail_run_pid_pipes_no_preload(c->jail,
-					       c->config->program_argv[0],
-					       c->config->program_argv,
+					       config->program_argv[0],
+					       config->program_argv,
 					       &c->init_pid, NULL, NULL,
 					       NULL);
 	if (rc)
@@ -675,25 +706,9 @@ int container_pid(struct container *c)
 
 static int container_teardown(struct container *c)
 {
-	int i;
 	int ret = 0;
 
-	/*
-	 * Unmount anything we mounted in this mount namespace in the opposite
-	 * order that they were mounted.
-	 */
-	for (i = (int)c->config->num_mounts - 1; i >= 0; --i) {
-		const struct container_mount *mnt = &c->config->mounts[i];
-		char *dest;
-
-		if (mnt->mount_in_ns)
-			continue;
-		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
-			continue;
-		if (umount(dest))
-			ret = -errno;
-		free(dest);
-	}
+	unmount_external_mounts(c);
 	if (umount(c->runfsroot))
 		ret = -errno;
 	if (rmdir(c->runfsroot))

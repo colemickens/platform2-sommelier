@@ -127,18 +127,19 @@ struct container;
  *
  * name - Name of the directory holding the container config files.
  * rundir - Where to build the temporary rootfs.
- * config - Details of how the container should be run.  The caller of the
- *   function retains ownership of the config struct.
  */
 struct container *container_new(const char *name,
-				const char *rundir,
-				const struct container_config *config);
+				const char *rundir);
 
 /* Destroy a container created with container_new. */
 void container_destroy(struct container *c);
 
-/* Start the container. Returns 0 on success. */
-int container_start(struct container *c);
+/* Start the container. Returns 0 on success.
+ * c - The container to run.
+ * config - Details of how the container should be run.
+ */
+int container_start(struct container *c,
+		    const struct container_config *config);
 
 /* Get the path to the root of the container. */
 const char *container_root(struct container *c);

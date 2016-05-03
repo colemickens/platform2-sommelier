@@ -216,7 +216,7 @@ FIXTURE_SETUP(container_test)
 				    0);
 
 	rundir = mkdtemp(rundir_template);
-	self->container = container_new("containerUT", rundir, self->config);
+	self->container = container_new("containerUT", rundir);
 	ASSERT_NE(NULL, self->container);
 }
 
@@ -243,7 +243,7 @@ TEST_F(container_test, test_mount_tmp_start)
 {
 	char *path;
 
-	EXPECT_EQ(0, container_start(self->container));
+	EXPECT_EQ(0, container_start(self->container, self->config));
 	EXPECT_EQ(2, mount_called);
 	EXPECT_EQ(0, strcmp(mount_call_args[1].source, "tmpfs"));
 	EXPECT_LT(0, asprintf(&path, "%s/root/tmp", mkdtemp_root));
@@ -293,7 +293,7 @@ TEST_F(container_test, test_mount_tmp_start)
 
 TEST_F(container_test, test_kill_container)
 {
-	EXPECT_EQ(0, container_start(self->container));
+	EXPECT_EQ(0, container_start(self->container, self->config));
 	EXPECT_EQ(0, container_kill(self->container));
 	EXPECT_EQ(1, kill_called);
 	EXPECT_EQ(SIGKILL, kill_sig);
