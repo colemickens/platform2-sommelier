@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <utils/StrongPointer.h>
 
 #include "android/system/connectivity/shill/BnManager.h"
@@ -49,10 +50,8 @@ class Manager;
 // instances.  Furthermore, the Manager owns the ManagerBinderAdaptor
 // and manages its lifetime, so we're OK with ManagerBinderAdaptor
 // having a bare pointer to its owner manager.
-class ManagerBinderAdaptor
-    : public android::system::connectivity::shill::BnManager,
-      public BinderAdaptor,
-      public ManagerAdaptorInterface {
+class ManagerBinderAdaptor : public BinderAdaptor,
+                             public ManagerAdaptorInterface {
  public:
   ManagerBinderAdaptor(BinderControl* control, Manager* manager,
                        const std::string& id);
@@ -69,44 +68,48 @@ class ManagerBinderAdaptor
                          const std::string& value) override;
   void EmitStringsChanged(const std::string& name,
                           const std::vector<std::string>& value) override;
-  void EmitRpcIdentifierChanged(
-      const std::string& name, const std::string& value) override;
+  void EmitRpcIdentifierChanged(const std::string& name,
+                                const std::string& value) override;
   void EmitRpcIdentifierArrayChanged(
       const std::string& name, const std::vector<std::string>& value) override;
 
-  // Implementation of BnManager.
+  // Implementation of BnManager methods. Called by ManagerBinderService.
   android::binder::Status SetupApModeInterface(
-      const android::sp<IBinder>& ap_mode_setter,
-      std::string* _aidl_return) override;
-  android::binder::Status SetupStationModeInterface(
-      std::string* _aidl_return) override;
+      const android::sp<android::IBinder>& ap_mode_setter,
+      std::string* _aidl_return);
+  android::binder::Status SetupStationModeInterface(std::string* _aidl_return);
   android::binder::Status ClaimInterface(
-      const android::sp<IBinder>& claimer, const std::string& claimer_name,
-      const std::string& interface_name) override;
+      const android::sp<android::IBinder>& claimer,
+      const std::string& claimer_name, const std::string& interface_name);
   android::binder::Status ReleaseInterface(
-      const android::sp<IBinder>& claimer, const std::string& claimer_name,
-      const std::string& interface_name) override;
+      const android::sp<android::IBinder>& claimer,
+      const std::string& claimer_name, const std::string& interface_name);
   android::binder::Status ConfigureService(
       const android::os::PersistableBundle& properties,
-      android::sp<android::system::connectivity::shill::IService>* _aidl_return)
-      override;
-  android::binder::Status RequestScan(int32_t type) override;
+      android::sp<android::system::connectivity::shill::IService>*
+          _aidl_return);
+  android::binder::Status RequestScan(int32_t type);
   android::binder::Status GetDevices(
-      std::vector<android::sp<android::IBinder>>* _aidl_return) override;
+      std::vector<android::sp<android::IBinder>>* _aidl_return);
   android::binder::Status GetDefaultService(
-      android::sp<android::IBinder>* _aidl_return) override;
+      android::sp<android::IBinder>* _aidl_return);
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&
-          callback) override;
+          callback);
 
  private:
   void OnApModeSetterVanished();
   void OnDeviceClaimerVanished();
 
   Manager* manager_;
-  android::sp<IBinder> ap_mode_setter_;
-  android::sp<IBinder> device_claimer_;
+  android::sp<android::IBinder> ap_mode_setter_;
+  android::sp<android::IBinder> device_claimer_;
+
+  // IMPORTANT: this needs to be the last member of the class, so that it is
+  // destroyed first, invalidating all weak pointers before the remaining state
+  // of the object is destroyed.
+  base::WeakPtrFactory<ManagerBinderAdaptor> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ManagerBinderAdaptor);
 };

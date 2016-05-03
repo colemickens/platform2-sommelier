@@ -29,8 +29,9 @@
 #endif  // __ANDROID__
 
 #include "shill/binder/binder_control.h"
-#include "shill/binder/device_binder_adaptor.h"
-#include "shill/binder/service_binder_adaptor.h"
+#include "shill/binder/device_binder_service.h"
+#include "shill/binder/manager_binder_service.h"
+#include "shill/binder/service_binder_service.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -41,6 +42,7 @@ using android::IBinder;
 using android::interface_cast;
 using android::sp;
 using android::String8;
+using android::system::connectivity::shill::IManager;
 using android::system::connectivity::shill::IPropertyChangedCallback;
 using android::system::connectivity::shill::IService;
 using base::Bind;
@@ -62,7 +64,11 @@ ManagerBinderAdaptor::ManagerBinderAdaptor(BinderControl* control,
     : BinderAdaptor(control, id),
       manager_(manager),
       ap_mode_setter_(nullptr),
-      device_claimer_(nullptr) {}
+      device_claimer_(nullptr),
+      weak_ptr_factory_(this) {
+  set_binder_service(
+      new ManagerBinderService(weak_ptr_factory_.GetWeakPtr(), id));
+}
 
 ManagerBinderAdaptor::~ManagerBinderAdaptor() {
   if (ap_mode_setter_ != nullptr) {
@@ -77,7 +83,8 @@ void ManagerBinderAdaptor::RegisterAsync(
     const base::Callback<void(bool)>& /*completion_callback*/) {
   // Registration is performed synchronously in Binder.
   BinderWrapper::Get()->RegisterService(
-      String8(getInterfaceDescriptor()).string(), this);
+      String8(binder_service()->getInterfaceDescriptor()).string(),
+      binder_service());
 }
 
 void ManagerBinderAdaptor::EmitBoolChanged(const string& name, bool /*value*/) {
@@ -215,9 +222,9 @@ Status ManagerBinderAdaptor::ConfigureService(
   if (e.IsFailure()) {
     return e.ToBinderStatus();
   }
-  *_aidl_return = interface_cast<IService>(static_cast<ServiceBinderAdaptor*>(
-      control()->GetBinderAdaptorForRpcIdentifier(
-          service->GetRpcIdentifier())));
+  *_aidl_return = interface_cast<IService>(static_cast<ServiceBinderService*>(
+      control()->GetBinderServiceForRpcIdentifier(
+          service->GetRpcIdentifier()).get()));
   return Status::ok();
 }
 
@@ -252,8 +259,8 @@ Status ManagerBinderAdaptor::GetDevices(vector<sp<IBinder>>* _aidl_return) {
     return e.ToBinderStatus();
   }
   for (const auto& device_rpc_id : device_rpc_ids) {
-    _aidl_return->emplace_back(static_cast<DeviceBinderAdaptor*>(
-        control()->GetBinderAdaptorForRpcIdentifier(device_rpc_id)));
+    _aidl_return->emplace_back(static_cast<DeviceBinderService*>(
+        control()->GetBinderServiceForRpcIdentifier(device_rpc_id).get()));
   }
   return Status::ok();
 }
@@ -266,8 +273,8 @@ Status ManagerBinderAdaptor::GetDefaultService(sp<IBinder>* _aidl_return) {
   if (e.IsFailure()) {
     return e.ToBinderStatus();
   }
-  *_aidl_return = static_cast<ServiceBinderAdaptor*>(
-      control()->GetBinderAdaptorForRpcIdentifier(default_service_rpc_id));
+  *_aidl_return = static_cast<ServiceBinderService*>(
+      control()->GetBinderServiceForRpcIdentifier(default_service_rpc_id).get());
   return Status::ok();
 }
 

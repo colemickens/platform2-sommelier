@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <utils/StrongPointer.h>
 
 #include "android/system/connectivity/shill/BnDevice.h"
@@ -49,14 +50,12 @@ class Device;
 // Furthermore, the Device owns the DeviceBinderAdaptor and manages its
 // lifetime, so we're OK with DeviceBinderAdaptor having a bare pointer to its
 // owner device.
-class DeviceBinderAdaptor
-    : public android::system::connectivity::shill::BnDevice,
-      public BinderAdaptor,
-      public DeviceAdaptorInterface {
+class DeviceBinderAdaptor : public BinderAdaptor,
+                            public DeviceAdaptorInterface {
  public:
   DeviceBinderAdaptor(BinderControl* control, Device* device,
                       const std::string& id);
-  ~DeviceBinderAdaptor() override;
+  ~DeviceBinderAdaptor() override {};
 
   // Implementation of DeviceAdaptorInterface.
   const std::string& GetRpcIdentifier() override { return rpc_id(); }
@@ -79,19 +78,24 @@ class DeviceBinderAdaptor
   void EmitRpcIdentifierArrayChanged(
       const std::string& name, const std::vector<std::string>& value) override;
 
-  // Implementation of BnDevice.
-  android::binder::Status GetInterface(std::string* _aidl_return) override;
+  // Implementation of BnDevice methods. Called by DeviceBinderService.
+  android::binder::Status GetInterface(std::string* _aidl_return);
   android::binder::Status GetSelectedService(
-      android::sp<IBinder>* _aidl_return) override;
+      android::sp<android::IBinder>* _aidl_return);
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&
-          callback) override;
+          callback);
 
   Device* device() const { return device_; }
 
  private:
   Device* device_;
+
+  // IMPORTANT: this needs to be the last member of the class, so that it is
+  // destroyed first, invalidating all weak pointers before the remaining state
+  // of the object is destroyed.
+  base::WeakPtrFactory<DeviceBinderAdaptor> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceBinderAdaptor);
 };

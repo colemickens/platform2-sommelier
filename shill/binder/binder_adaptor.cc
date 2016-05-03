@@ -18,13 +18,24 @@
 
 #include <string>
 
+#include <binder/Status.h>
+#include <utils/String8.h>
+
 #include "android/system/connectivity/shill/IPropertyChangedCallback.h"
 #include "shill/binder/binder_control.h"
 #include "shill/logging.h"
 
+using android::binder::Status;
 using android::sp;
+using android::String8;
 using android::system::connectivity::shill::IPropertyChangedCallback;
 using std::string;
+
+namespace {
+const int kShillObjectNotAliveErrorCode = -2;
+const char kShillObjectNotAliveErrorMessage[] =
+    "shill object is no longer alive.";
+}
 
 namespace shill {
 
@@ -40,7 +51,14 @@ BinderAdaptor::BinderAdaptor(BinderControl* control, const string& rpc_id)
   SLOG(this, 2) << "BinderAdaptor: " << rpc_id;
 }
 
-BinderAdaptor::~BinderAdaptor() { control_->OnAdaptorDestructed(rpc_id()); }
+BinderAdaptor::~BinderAdaptor() {
+    control_->OnAdaptorDestructed(rpc_id());
+}
+
+Status BinderAdaptor::GenerateShillObjectNotAliveErrorStatus() {
+  return Status::fromServiceSpecificError(
+      kShillObjectNotAliveErrorCode, String8(kShillObjectNotAliveErrorMessage));
+}
 
 void BinderAdaptor::AddPropertyChangedSignalHandler(
     const sp<IPropertyChangedCallback>& property_changed_callback) {

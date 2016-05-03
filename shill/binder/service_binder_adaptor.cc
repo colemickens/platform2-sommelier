@@ -26,6 +26,7 @@
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
 
+#include "shill/binder/service_binder_service.h"
 #include "shill/logging.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_service.h"
@@ -35,6 +36,7 @@ using android::IBinder;
 using android::sp;
 using android::String8;
 using android::system::connectivity::shill::IPropertyChangedCallback;
+using android::system::connectivity::shill::IService;
 using std::string;
 
 namespace {
@@ -56,9 +58,10 @@ static string ObjectID(ServiceBinderAdaptor* s) {
 ServiceBinderAdaptor::ServiceBinderAdaptor(BinderControl* control,
                                            Service* service,
                                            const std::string& id)
-    : BinderAdaptor(control, id), service_(service) {}
-
-ServiceBinderAdaptor::~ServiceBinderAdaptor() { service_ = nullptr; }
+    : BinderAdaptor(control, id), service_(service), weak_ptr_factory_(this) {
+  set_binder_service(
+      new ServiceBinderService(weak_ptr_factory_.GetWeakPtr(), id));
+}
 
 void ServiceBinderAdaptor::EmitBoolChanged(const string& name, bool /*value*/) {
   SLOG(this, 2) << __func__ << ": " << name;

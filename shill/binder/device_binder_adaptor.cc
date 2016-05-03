@@ -19,7 +19,8 @@
 #include <binder/Status.h>
 
 #include "shill/binder/binder_control.h"
-#include "shill/binder/service_binder_adaptor.h"
+#include "shill/binder/device_binder_service.h"
+#include "shill/binder/service_binder_service.h"
 #include "shill/device.h"
 #include "shill/logging.h"
 #include "shill/refptr_types.h"
@@ -43,9 +44,10 @@ static string ObjectID(DeviceBinderAdaptor* d) {
 
 DeviceBinderAdaptor::DeviceBinderAdaptor(BinderControl* control, Device* device,
                                          const string& id)
-    : BinderAdaptor(control, id), device_(device) {}
-
-DeviceBinderAdaptor::~DeviceBinderAdaptor() { device_ = nullptr; }
+    : BinderAdaptor(control, id), device_(device), weak_ptr_factory_(this) {
+  set_binder_service(
+      new DeviceBinderService(weak_ptr_factory_.GetWeakPtr(), id));
+}
 
 void DeviceBinderAdaptor::EmitBoolChanged(const string& name, bool /*value*/) {
   SLOG(this, 2) << __func__ << ": " << name;
@@ -123,9 +125,9 @@ Status DeviceBinderAdaptor::GetSelectedService(sp<IBinder>* _aidl_return) {
   if (!selected_service) {
     *_aidl_return = NULL;
   } else {
-    *_aidl_return = static_cast<ServiceBinderAdaptor*>(
-        control()->GetBinderAdaptorForRpcIdentifier(
-            selected_service->GetRpcIdentifier()));
+    *_aidl_return = static_cast<ServiceBinderService*>(
+        control()->GetBinderServiceForRpcIdentifier(
+            selected_service->GetRpcIdentifier()).get());
   }
   return Status::ok();
 }

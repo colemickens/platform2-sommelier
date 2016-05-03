@@ -21,9 +21,13 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <binder/IBinder.h>
 #include <utils/StrongPointer.h>
 
 namespace android {
+namespace binder {
+class Status;
+}  // namespace binder
 namespace system {
 namespace connectivity {
 namespace shill {
@@ -37,11 +41,42 @@ namespace shill {
 
 class BinderControl;
 
-// Superclass for all Binder-backed Adaptor objects.
+// Superclass for all Binder Adaptor objects.
+//
+// The following diagram illustrates the relationship between shill objects
+// (e.g. Manager, Service), Binder adaptor objects (e.g. ManagerBinderAdaptor,
+// ServiceBinderAdaptor), and Binder service objects (e.g. ManagerBinderService,
+// ServiceBinderService):
+//
+// [Shill Object] <-----> [BinderAdaptor] <-----> [BinderService]
+//                  1:1                     1:1
+//
+// Each shill object exposed on shill's Binder interface will own a single
+// BinderAdaptor. This BinderAdaptor contains all the logic and state to
+// service the methods exposed on the shill object's Binder interface.
+//
+// Each BinderAdaptor object, in turn, owns a single binder service object. The
+// Binder service object actually inherits from the AIDL-generated Bn* class
+// (e.g. ManagerBinderService implements BnManager), and is therefore a Binder
+// object. The methods implementations in the Binder service class are thin
+// wrappers around the actual method handling logic in the corresponding
+// BinderAdaptor.
+//
+// The Binder service object is ref-counted across process boundaries via
+// the Binder driver and Android Strong Pointers (android::sp). By having each
+// BinderAdaptor hold a Strong Pointer to its corresponding Binder service,
+// we ensure that the Binder service backing the shill object will stay alive
+// for at least as long as the shill object does.
 class BinderAdaptor {
  public:
-  explicit BinderAdaptor(BinderControl* control, const std::string& rpc_id);
-  ~BinderAdaptor();
+  BinderAdaptor(BinderControl* control, const std::string& rpc_id);
+  virtual ~BinderAdaptor();
+
+  static android::binder::Status GenerateShillObjectNotAliveErrorStatus();
+
+  const android::sp<android::IBinder>& binder_service() {
+    return binder_service_;
+  }
 
  protected:
   // Add a IPropertyChangedCallback binder to |property_changed_callbacks_|.
@@ -59,6 +94,9 @@ class BinderAdaptor {
 
   BinderControl* control() { return control_; }
   const std::string& rpc_id() { return rpc_id_; }
+  void set_binder_service(const android::sp<android::IBinder>& binder_service) {
+    binder_service_ = binder_service;
+  }
 
  private:
   // Storing this pointer is safe since the ordering of the members of
@@ -67,6 +105,8 @@ class BinderAdaptor {
 
   // Used to uniquely identify this Binder adaptor.
   std::string rpc_id_;
+
+  android::sp<android::IBinder> binder_service_;
 
   std::vector<android::sp<
       android::system::connectivity::shill::IPropertyChangedCallback>>

@@ -20,6 +20,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <utils/StrongPointer.h>
 
 #include "android/system/connectivity/shill/BnService.h"
@@ -48,14 +49,12 @@ class Service;
 // instances.  Furthermore, the Service owns the ServiceBinderAdaptor
 // and manages its lifetime, so we're OK with ServiceBinderAdaptor
 // having a bare pointer to its owner service.
-class ServiceBinderAdaptor
-    : public android::system::connectivity::shill::BnService,
-      public BinderAdaptor,
-      public ServiceAdaptorInterface {
+class ServiceBinderAdaptor : public BinderAdaptor,
+                             public ServiceAdaptorInterface {
  public:
   ServiceBinderAdaptor(BinderControl* control, Service* service,
                        const std::string& id);
-  ~ServiceBinderAdaptor() override;
+  ~ServiceBinderAdaptor() override {};
 
   // Implementation of ServiceAdaptorInterface.
   const std::string& GetRpcIdentifier() override { return rpc_id(); }
@@ -66,25 +65,25 @@ class ServiceBinderAdaptor
                           const Uint16s& value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
   void EmitIntChanged(const std::string& name, int value) override;
-  void EmitRpcIdentifierChanged(
-      const std::string& name, const std::string& value) override;
-  void EmitStringChanged(
-      const std::string& name, const std::string& value) override;
+  void EmitRpcIdentifierChanged(const std::string& name,
+                                const std::string& value) override;
+  void EmitStringChanged(const std::string& name,
+                         const std::string& value) override;
   void EmitStringmapChanged(const std::string& name,
                             const Stringmap& value) override;
 
-  // Implementation of BnService.
-  android::binder::Status Connect() override;
-  android::binder::Status GetState(int32_t* _aidl_return) override;
-  android::binder::Status GetStrength(int8_t* _aidl_return) override;
-  android::binder::Status GetError(int32_t* _aidl_return) override;
-  android::binder::Status GetTethering(int32_t* _aidl_return) override;
-  android::binder::Status GetType(int32_t* _aidl_return) override;
-  android::binder::Status GetPhysicalTechnology(int32_t* _aidl_return) override;
+  // Implementation of BnService methods. Called by ServiceBinderService.
+  android::binder::Status Connect();
+  android::binder::Status GetState(int32_t* _aidl_return);
+  android::binder::Status GetStrength(int8_t* _aidl_return);
+  android::binder::Status GetError(int32_t* _aidl_return);
+  android::binder::Status GetTethering(int32_t* _aidl_return);
+  android::binder::Status GetType(int32_t* _aidl_return);
+  android::binder::Status GetPhysicalTechnology(int32_t* _aidl_return);
   android::binder::Status RegisterPropertyChangedSignalHandler(
       const android::sp<
           android::system::connectivity::shill::IPropertyChangedCallback>&
-          callback) override;
+          callback);
 
   Service* service() const { return service_; }
 
@@ -95,6 +94,11 @@ class ServiceBinderAdaptor
       const std::string& error, int32_t* error_type);
 
   Service* service_;
+
+  // IMPORTANT: this needs to be the last member of the class, so that it is
+  // destroyed first, invalidating all weak pointers before the remaining state
+  // of the object is destroyed.
+  base::WeakPtrFactory<ServiceBinderAdaptor> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceBinderAdaptor);
 };

@@ -20,6 +20,9 @@
 #include <map>
 #include <string>
 
+#include <binder/IBinder.h>
+#include <utils/StrongPointer.h>
+
 #include <brillo/binder_watcher.h>
 
 #include "shill/control_interface.h"
@@ -82,9 +85,10 @@ class BinderControl : public ControlInterface {
 
   FirewallProxyInterface* CreateFirewallProxy() override;
 
-  // Returns a Binder reference to the object uniquely identified by |rpc_id|,
-  // if it exists, NULL otherwise.
-  BinderAdaptor* GetBinderAdaptorForRpcIdentifier(const std::string& rpc_id);
+  // Returns a Binder reference to the Binder service backing the object
+  // uniquely identified by |rpc_id| if it exists, nullptr otherwise.
+  android::sp<android::IBinder> GetBinderServiceForRpcIdentifier(
+      const std::string& rpc_id);
 
   // Called by binder adaptors on destruction to clear their entries in
   // |rpc_id_to_adaptor_map_|.
