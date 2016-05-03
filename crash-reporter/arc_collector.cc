@@ -37,10 +37,9 @@ const char kArcProduct[] = "ChromeOS_ARC";
 const char kArcVersionField[] = "arc_version";
 
 // Keys for crash log headers.
-const char kActivityKey[] = "Activity";
 const char kBuildKey[] = "Build";
-const char kPackageKey[] = "Package";
 const char kProcessKey[] = "Process";
+const char kSubjectKey[] = "Subject";
 
 const size_t kBufferSize = 4096;
 
@@ -325,16 +324,9 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &type,
   AddCrashMetaUploadData(kArcVersionField, GetCrashLogHeader(map, kBuildKey));
 
   if (exception_info.empty()) {
-    // Use the activity, package or process as the signature.
-    std::string sig;
-    if (map.count(kActivityKey)) {
-      sig = GetCrashLogHeader(map, kActivityKey);
-    } else if (map.count(kPackageKey)) {
-      sig = GetCrashLogHeader(map, kPackageKey);
-    } else {
-      sig = process;
-    }
-    AddCrashMetaData("sig", sig);
+    static const char *kTags[] = { "[system server watchdog] ", "[ANR] " };
+    const auto subject = GetCrashLogHeader(map, kSubjectKey);
+    AddCrashMetaData("sig", kTags[type == "system_app_anr"] + subject);
   } else {
     const FilePath info_path = GetCrashPath(crash_dir, basename, "info");
     const int size = static_cast<int>(exception_info.size());
