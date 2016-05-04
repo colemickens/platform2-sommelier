@@ -28,10 +28,16 @@ class EventDeviceStub : public EventDeviceInterface {
   void set_debug_name(const std::string &name) { debug_name_ = name; }
   void set_phys_path(const std::string &path) { phys_path_ = path; }
   void set_is_lid_switch(bool is_switch) { is_lid_switch_ = is_switch; }
+  void set_is_tablet_mode_switch(bool is_switch) {
+    is_tablet_mode_switch_ = is_switch;
+  }
   void set_is_power_button(bool is_button) { is_power_button_ = is_button; }
   void set_hover_supported(bool supported) { hover_supported_ = supported; }
   void set_has_left_button(bool has_button) { has_left_button_ = has_button; }
   void set_initial_lid_state(LidState state) { initial_lid_state_ = state; }
+  void set_initial_tablet_mode(TabletMode mode) {
+    initial_tablet_mode_ = mode;
+  }
 
   // Appends an event with the passed-in values to the list to be returned by
   // the next call to ReadEvents(). Arguments correspond to fields in the
@@ -45,10 +51,12 @@ class EventDeviceStub : public EventDeviceInterface {
   std::string GetDebugName() override;
   std::string GetPhysPath() override;
   bool IsLidSwitch() override;
+  bool IsTabletModeSwitch() override;
   bool IsPowerButton() override;
   bool HoverSupported() override;
   bool HasLeftButton() override;
   LidState GetInitialLidState() override;
+  TabletMode GetInitialTabletMode() override;
   bool ReadEvents(std::vector<input_event>* events_out) override;
   void WatchForEvents(base::Closure new_events_cb) override;
 
@@ -56,10 +64,12 @@ class EventDeviceStub : public EventDeviceInterface {
   std::string debug_name_;
   std::string phys_path_;
   bool is_lid_switch_;
+  bool is_tablet_mode_switch_;
   bool is_power_button_;
   bool hover_supported_;
   bool has_left_button_;
   LidState initial_lid_state_;
+  TabletMode initial_tablet_mode_;
 
   // Events to be returned by the next call to ReadEvents().
   std::vector<input_event> events_;

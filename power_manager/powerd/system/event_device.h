@@ -29,10 +29,12 @@ class EventDevice : public EventDeviceInterface,
   std::string GetDebugName() override;
   std::string GetPhysPath() override;
   bool IsLidSwitch() override;
+  bool IsTabletModeSwitch() override;
   bool IsPowerButton() override;
   bool HoverSupported() override;
   bool HasLeftButton() override;
   LidState GetInitialLidState() override;
+  TabletMode GetInitialTabletMode() override;
   bool ReadEvents(std::vector<input_event>* events_out) override;
   void WatchForEvents(base::Closure new_events_cb) override;
 

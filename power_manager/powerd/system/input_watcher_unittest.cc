@@ -27,6 +27,8 @@ namespace {
 // Strings that can be compared against TestObserver::GetActions().
 const char kLidClosedAction[] = "lid-closed";
 const char kLidOpenAction[] = "lid-open";
+const char kTabletModeOnAction[] = "tablet-mode-on";
+const char kTabletModeOffAction[] = "tablet-mode-off";
 const char kPowerButtonDownAction[] = "power-down";
 const char kPowerButtonUpAction[] = "power-down";
 const char kHoverOnAction[] = "hover-on";
@@ -51,6 +53,11 @@ class TestObserver : public InputObserver,
   void OnLidEvent(LidState state) override {
     CHECK(state == LID_OPEN || state == LID_CLOSED);
     AppendAction(state == LID_OPEN ? kLidOpenAction : kLidClosedAction);
+  }
+  void OnTabletModeEvent(TabletMode mode) override {
+    CHECK(mode == TABLET_MODE_ON || mode == TABLET_MODE_OFF);
+    AppendAction(mode == TABLET_MODE_ON ? kTabletModeOnAction :
+                 kTabletModeOffAction);
   }
   void OnPowerButtonEvent(ButtonState state) override {
     CHECK(state == BUTTON_DOWN || state == BUTTON_UP);
@@ -282,6 +289,33 @@ TEST_F(InputWatcherTest, LidSwitch) {
   EXPECT_EQ(kNoActions, observer_->GetActions());
 }
 
+TEST_F(InputWatcherTest, TabletModeSwitch) {
+  linked_ptr<EventDeviceStub> tablet_mode_switch(new EventDeviceStub);
+  tablet_mode_switch->set_is_tablet_mode_switch(true);
+  tablet_mode_switch->set_initial_tablet_mode(TABLET_MODE_ON);
+  AddDevice("event0", tablet_mode_switch);
+
+  // Before any events have been received, check that the initially-read mode is
+  // returned.
+  Init();
+  EXPECT_EQ(TABLET_MODE_ON, input_watcher_->GetTabletMode());
+
+  // Add an event, run the message loop, and check that the observer was
+  // notified and that GetTabletMode() returns the updated mode.
+  tablet_mode_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 0);
+  tablet_mode_switch->NotifyAboutEvents();
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(kTabletModeOffAction, observer_->GetActions());
+  EXPECT_EQ(TABLET_MODE_OFF, input_watcher_->GetTabletMode());
+
+  // Now enable tablet mode.
+  tablet_mode_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
+  tablet_mode_switch->NotifyAboutEvents();
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(kTabletModeOnAction, observer_->GetActions());
+  EXPECT_EQ(TABLET_MODE_ON, input_watcher_->GetTabletMode());
+}
+
 TEST_F(InputWatcherTest, Hover) {
   linked_ptr<EventDeviceStub> touchpad(new EventDeviceStub);
   touchpad->set_debug_name("touchpad");
@@ -395,33 +429,45 @@ TEST_F(InputWatcherTest, IgnoreUnexpectedEvents) {
   lid_switch->set_initial_lid_state(LID_OPEN);
   AddDevice("event2", lid_switch);
 
+  linked_ptr<EventDeviceStub> tablet_mode_switch(new EventDeviceStub);
+  tablet_mode_switch->set_debug_name("tablet_mode_switch");
+  tablet_mode_switch->set_is_tablet_mode_switch(true);
+  tablet_mode_switch->set_initial_tablet_mode(TABLET_MODE_ON);
+  AddDevice("event3", tablet_mode_switch);
+
   detect_hover_pref_ = 1;
   Init();
 
-  // Bizarro world: lid switch reports power-button-down, touchpad reports
-  // lid-closed, and power button reports hover. All of these events should be
-  // ignored.
-  lid_switch->AppendEvent(EV_KEY, KEY_POWER, 1);
-  lid_switch->NotifyAboutEvents();
-  touchpad->AppendEvent(EV_SW, SW_LID, 1);
+  // Bizarro world: touchpad reports power-button-down, power button reports
+  // lid-closed, lid switch reports tablet-mode-on, tablet mode switch reports
+  // hover. All of these events should be ignored.
+  touchpad->AppendEvent(EV_KEY, KEY_POWER, 1);
   touchpad->NotifyAboutEvents();
-  power_button->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
-  power_button->AppendEvent(EV_SYN, SYN_REPORT, 0);
+  power_button->AppendEvent(EV_SW, SW_LID, 1);
+  power_button->NotifyAboutEvents();
+  lid_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
+  lid_switch->NotifyAboutEvents();
+  tablet_mode_switch->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
+  tablet_mode_switch->AppendEvent(EV_SYN, SYN_REPORT, 0);
+  tablet_mode_switch->NotifyAboutEvents();
   power_button->NotifyAboutEvents();
   EXPECT_EQ(kNoActions, observer_->GetActions());
 
-  // Now send the same events from the correct devices and check that they're
-  // reported to the observer.
+  // Now send events from the correct devices and check that they're reported to
+  // the observer.
+  touchpad->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
+  touchpad->AppendEvent(EV_SYN, SYN_REPORT, 0);
+  touchpad->NotifyAboutEvents();
   power_button->AppendEvent(EV_KEY, KEY_POWER, 1);
   power_button->NotifyAboutEvents();
   lid_switch->AppendEvent(EV_SW, SW_LID, 1);
   lid_switch->NotifyAboutEvents();
-  touchpad->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
-  touchpad->AppendEvent(EV_SYN, SYN_REPORT, 0);
-  touchpad->NotifyAboutEvents();
-  EXPECT_EQ(JoinActions(kPowerButtonDownAction,
+  tablet_mode_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
+  tablet_mode_switch->NotifyAboutEvents();
+  EXPECT_EQ(JoinActions(kHoverOnAction,
+                        kPowerButtonDownAction,
                         kLidClosedAction,
-                        kHoverOnAction,
+                        kTabletModeOnAction,
                         NULL),
             observer_->GetActions());
 }
@@ -435,6 +481,8 @@ TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
   device->set_is_power_button(true);
   device->set_is_lid_switch(true);
   device->set_initial_lid_state(LID_OPEN);
+  device->set_is_tablet_mode_switch(true);
+  device->set_initial_tablet_mode(TABLET_MODE_OFF);
   AddDevice("event0", device);
   detect_hover_pref_ = 1;
   Init();
@@ -442,10 +490,12 @@ TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
   device->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
   device->AppendEvent(EV_KEY, KEY_POWER, 1);
   device->AppendEvent(EV_SW, SW_LID, 1);
+  device->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
   device->AppendEvent(EV_SYN, SYN_REPORT, 0);
   device->NotifyAboutEvents();
   EXPECT_EQ(JoinActions(kPowerButtonDownAction,
                         kLidClosedAction,
+                        kTabletModeOnAction,
                         kHoverOnAction,
                         NULL),
             observer_->GetActions());

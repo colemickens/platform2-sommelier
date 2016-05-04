@@ -98,6 +98,7 @@ class InputController : public system::InputObserver {
 
   // system::InputObserver implementation:
   void OnLidEvent(LidState state) override;
+  void OnTabletModeEvent(TabletMode mode) override;
   void OnPowerButtonEvent(ButtonState state) override;
   void OnHoverStateChanged(bool hovering) override;
 
@@ -123,6 +124,7 @@ class InputController : public system::InputObserver {
   bool only_has_external_display_;
 
   LidState lid_state_;
+  TabletMode tablet_mode_;
 
   // Timestamp from the most recent power-button-down event that Chrome is
   // expected to acknowledge. Unset when the power button isn't pressed or if

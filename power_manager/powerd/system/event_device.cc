@@ -57,6 +57,10 @@ bool EventDevice::IsLidSwitch() {
   return HasEventBit(0, EV_SW) && HasEventBit(EV_SW, SW_LID);
 }
 
+bool EventDevice::IsTabletModeSwitch() {
+  return HasEventBit(0, EV_SW) && HasEventBit(EV_SW, SW_TABLET_MODE);
+}
+
 bool EventDevice::IsPowerButton() {
   return HasEventBit(0, EV_KEY) && HasEventBit(EV_KEY, KEY_POWER);
 }
@@ -72,6 +76,11 @@ bool EventDevice::HasLeftButton() {
 LidState EventDevice::GetInitialLidState() {
   CHECK(!fd_watcher_) << "GetInitialLidState called after WatchForEvents";
   return GetSwitchBit(SW_LID) ? LID_CLOSED : LID_OPEN;
+}
+
+TabletMode EventDevice::GetInitialTabletMode() {
+  CHECK(!fd_watcher_) << "GetInitialTabletMode called after WatchForEvents";
+  return GetSwitchBit(SW_TABLET_MODE) ? TABLET_MODE_ON : TABLET_MODE_OFF;
 }
 
 bool EventDevice::HasEventBit(int event_type, int bit) {

@@ -78,6 +78,7 @@ class InputWatcher : public InputWatcherInterface,
   void AddObserver(InputObserver* observer) override;
   void RemoveObserver(InputObserver* observer) override;
   LidState QueryLidState() override;
+  TabletMode GetTabletMode() override;
   bool IsUSBInputDeviceConnected() const override;
   int GetActiveVT() override;
 
@@ -90,10 +91,11 @@ class InputWatcher : public InputWatcherInterface,
   // Different types of devices monitored by InputWatcher. It's possible for a
   // given device to fulfill more than one role.
   enum DeviceType {
-    DEVICE_NONE         = 0,
-    DEVICE_POWER_BUTTON = 1 << 0,
-    DEVICE_LID_SWITCH   = 1 << 1,
-    DEVICE_HOVER        = 1 << 2,
+    DEVICE_NONE                = 0,
+    DEVICE_POWER_BUTTON        = 1 << 0,
+    DEVICE_LID_SWITCH          = 1 << 1,
+    DEVICE_TABLET_MODE_SWITCH  = 1 << 2,
+    DEVICE_HOVER               = 1 << 3,
   };
 
   // Returns a bitfield of DeviceType values describing |device|.
@@ -134,11 +136,16 @@ class InputWatcher : public InputWatcherInterface,
   std::set<const EventDeviceInterface*> power_button_devices_;
 
   // The event device exposing the lid switch. Weak pointer to an element in
-  // |event_devices_|, or NULL if no lid device was found.
+  // |event_devices_|, or null if no lid device was found.
   EventDeviceInterface* lid_device_;
 
+  // The event device exposing the tablet mode switch. Weak pointer to an
+  // element in |event_devices_|, or null if no tablet mode switch device was
+  // found.
+  EventDeviceInterface* tablet_mode_device_;
+
   // The event device reporting hover events. Weak pointer to an element in
-  // |event_devices_|, or NULL if no hover device was found.
+  // |event_devices_|, or null if no hover device was found.
   EventDeviceInterface* hover_device_;
 
   // Should the lid be watched for events if present?
@@ -146,6 +153,9 @@ class InputWatcher : public InputWatcherInterface,
 
   // Most-recently-seen lid state.
   LidState lid_state_;
+
+  // Most-recently-seen tablet mode.
+  TabletMode tablet_mode_;
 
   // Should hover events be reported?
   bool detect_hover_;

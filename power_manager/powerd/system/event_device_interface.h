@@ -37,6 +37,9 @@ class EventDeviceInterface {
   // Returns true if the device can report lid events.
   virtual bool IsLidSwitch() = 0;
 
+  // Returns true if the device can report tablet mode events.
+  virtual bool IsTabletModeSwitch() = 0;
+
   // Returns true if the device can report power button events.
   virtual bool IsPowerButton() = 0;
 
@@ -47,9 +50,13 @@ class EventDeviceInterface {
   // distinguish touchpads from touchscreens.
   virtual bool HasLeftButton() = 0;
 
-  // Returns the current state of the lid switch or LID_NOT_PRESENT on error.
-  // May not be called after ReadEvents() or WatchForEvents().
+  // Returns the current state of the lid switch.
+  // Must not be called after ReadEvents() or WatchForEvents().
   virtual LidState GetInitialLidState() = 0;
+
+  // Returns the current state of the tablet mode switch.
+  // Must not be called after ReadEvents() or WatchForEvents().
+  virtual TabletMode GetInitialTabletMode() = 0;
 
   // Reads a number of events into |events_out|. Returns true if the operation
   // was successful and events were present.

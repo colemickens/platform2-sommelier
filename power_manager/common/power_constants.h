@@ -245,6 +245,13 @@ enum LidState {
   LID_NOT_PRESENT,
 };
 
+// Convertible Chromebooks may either be folded into a tablet or used as a
+// clamshell.
+enum TabletMode {
+  TABLET_MODE_ON,
+  TABLET_MODE_OFF,
+};
+
 enum SessionState {
   SESSION_STOPPED,
   SESSION_STARTED,
@@ -293,6 +300,7 @@ enum ShutdownReason {
 // Returns human-readable descriptions of enum values.
 std::string PowerSourceToString(PowerSource source);
 std::string LidStateToString(LidState state);
+std::string TabletModeToString(TabletMode mode);
 std::string SessionStateToString(SessionState state);
 std::string UpdaterStateToString(UpdaterState state);
 std::string DisplayModeToString(DisplayMode mode);

@@ -19,6 +19,9 @@ class InputObserver {
   // Called when the lid is opened or closed.
   virtual void OnLidEvent(LidState state) = 0;
 
+  // Called when the tablet mode changes.
+  virtual void OnTabletModeEvent(TabletMode mode) = 0;
+
   // Called when a power button event occurs.
   virtual void OnPowerButtonEvent(ButtonState state) = 0;
 

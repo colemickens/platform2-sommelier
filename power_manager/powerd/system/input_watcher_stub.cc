@@ -11,6 +11,7 @@ namespace system {
 
 InputWatcherStub::InputWatcherStub()
     : lid_state_(LID_OPEN),
+      tablet_mode_(TABLET_MODE_OFF),
       usb_input_device_connected_(true),
       active_vt_(1) {
 }
@@ -41,6 +42,10 @@ void InputWatcherStub::RemoveObserver(InputObserver* observer) {
 
 LidState InputWatcherStub::QueryLidState() {
   return lid_state_;
+}
+
+TabletMode InputWatcherStub::GetTabletMode() {
+  return tablet_mode_;
 }
 
 bool InputWatcherStub::IsUSBInputDeviceConnected() const {

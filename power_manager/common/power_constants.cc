@@ -115,6 +115,17 @@ std::string LidStateToString(LidState state) {
   }
 }
 
+std::string TabletModeToString(TabletMode mode) {
+  switch (mode) {
+    case TABLET_MODE_ON:
+      return "on";
+    case TABLET_MODE_OFF:
+      return "off";
+    default:
+      return base::StringPrintf("unknown (%d)", mode);
+  }
+}
+
 std::string SessionStateToString(SessionState state) {
   switch (state) {
     case SESSION_STOPPED:

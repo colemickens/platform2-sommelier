@@ -33,12 +33,14 @@ class InputWatcherStub : public InputWatcherInterface {
   void AddObserver(InputObserver* observer) override;
   void RemoveObserver(InputObserver* observer) override;
   LidState QueryLidState() override;
+  TabletMode GetTabletMode() override;
   bool IsUSBInputDeviceConnected() const override;
   int GetActiveVT() override;
 
  private:
   // Current input state.
   LidState lid_state_;
+  TabletMode tablet_mode_;
   bool usb_input_device_connected_;
   int active_vt_;
 

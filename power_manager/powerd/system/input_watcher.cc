@@ -68,6 +68,17 @@ bool GetLidStateFromEvent(const input_event& event, LidState* state_out) {
   return true;
 }
 
+// If |event| came from a tablet mode switch, copies its state to |mode_out| and
+// returns true. Otherwise, leaves |mode_out| untouched and returns false.
+bool GetTabletModeFromEvent(const input_event& event,
+                            TabletMode* mode_out) {
+  if (event.type != EV_SW || event.code != SW_TABLET_MODE)
+    return false;
+
+  *mode_out = event.value == 1 ? TABLET_MODE_ON : TABLET_MODE_OFF;
+  return true;
+}
+
 // If |event| came from a power button, copies its state to |state_out| and
 // returns true. Otherwise, leaves |state_out| untouched and returns false.
 bool GetPowerButtonStateFromEvent(const input_event& event,
@@ -93,17 +104,19 @@ const char InputWatcher::kPowerButtonToSkipForLegacy[] = "isa";
 InputWatcher::InputWatcher()
     : dev_input_path_(kDevInputPath),
       sys_class_input_path_(kSysClassInputPath),
-      lid_device_(NULL),
-      hover_device_(NULL),
+      lid_device_(nullptr),
+      tablet_mode_device_(nullptr),
+      hover_device_(nullptr),
       use_lid_(true),
       lid_state_(LID_OPEN),
+      tablet_mode_(TABLET_MODE_OFF),
       detect_hover_(false),
       hovering_(false),
       current_multitouch_slot_(0),
       multitouch_slots_hover_state_(0),
       power_button_to_skip_(kPowerButtonToSkip),
       console_fd_(-1),
-      udev_(NULL),
+      udev_(nullptr),
       weak_ptr_factory_(this) {
 }
 
@@ -197,6 +210,10 @@ LidState InputWatcher::QueryLidState() {
   return lid_state_;
 }
 
+TabletMode InputWatcher::GetTabletMode() {
+  return tablet_mode_;
+}
+
 bool InputWatcher::IsUSBInputDeviceConnected() const {
   base::FileEnumerator enumerator(sys_class_input_path_, false,
       static_cast<::base::FileEnumerator::FileType>(
@@ -266,6 +283,8 @@ uint32_t InputWatcher::GetDeviceTypes(
     device_types |= DEVICE_POWER_BUTTON;
   if (device == lid_device_)
     device_types |= DEVICE_LID_SWITCH;
+  if (device == tablet_mode_device_)
+    device_types |= DEVICE_TABLET_MODE_SWITCH;
   if (device == hover_device_)
     device_types |= DEVICE_HOVER;
   return device_types;
@@ -298,6 +317,16 @@ void InputWatcher::ProcessEvent(const input_event& event,
     VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
             << " event";
     FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
+  }
+
+  TabletMode tablet_mode = TABLET_MODE_OFF;
+  if (device_types & DEVICE_TABLET_MODE_SWITCH &&
+      GetTabletModeFromEvent(event, &tablet_mode)) {
+    tablet_mode_ = tablet_mode;
+    VLOG(1) << "Notifying observers about tablet mode "
+            << TabletModeToString(tablet_mode) << " event";
+    FOR_EACH_OBSERVER(InputObserver, observers_,
+                      OnTabletModeEvent(tablet_mode));
   }
 
   ButtonState button_state = BUTTON_DOWN;
@@ -399,6 +428,20 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     }
   }
 
+  if (device->IsTabletModeSwitch()) {
+    if (tablet_mode_device_) {
+      LOG(WARNING) << "Skipping additional tablet mode switch "
+                   << device->GetDebugName();
+    } else {
+      LOG(INFO) << "Watching tablet mode switch: " << device->GetDebugName();
+      should_watch = true;
+      tablet_mode_device_ = device.get();
+      tablet_mode_ = device->GetInitialTabletMode();
+      VLOG(1) << "Initial tablet mode state is "
+              << TabletModeToString(tablet_mode_);
+    }
+  }
+
   if (detect_hover_ && device->HoverSupported() && device->HasLeftButton()) {
     if (hover_device_) {
       LOG(WARNING) << "Skipping additional hover device "
@@ -426,9 +469,11 @@ void InputWatcher::HandleRemovedInput(int input_num) {
   LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
   power_button_devices_.erase(it->second.get());
   if (lid_device_ == it->second.get())
-    lid_device_ = NULL;
+    lid_device_ = nullptr;
+  if (tablet_mode_device_ == it->second.get())
+    tablet_mode_device_ = nullptr;
   if (hover_device_ == it->second.get())
-    hover_device_ = NULL;
+    hover_device_ = nullptr;
   event_devices_.erase(it);
 }
 

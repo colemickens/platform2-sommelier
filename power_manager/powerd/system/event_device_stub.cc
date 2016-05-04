@@ -11,10 +11,12 @@ namespace system {
 
 EventDeviceStub::EventDeviceStub()
     : is_lid_switch_(false),
+      is_tablet_mode_switch_(false),
       is_power_button_(false),
       hover_supported_(false),
       has_left_button_(false),
-      initial_lid_state_(LID_OPEN) {}
+      initial_lid_state_(LID_OPEN),
+      initial_tablet_mode_(TABLET_MODE_OFF) {}
 
 EventDeviceStub::~EventDeviceStub() {}
 
@@ -40,6 +42,8 @@ std::string EventDeviceStub::GetPhysPath() { return phys_path_; }
 
 bool EventDeviceStub::IsLidSwitch() { return is_lid_switch_; }
 
+bool EventDeviceStub::IsTabletModeSwitch() { return is_tablet_mode_switch_; }
+
 bool EventDeviceStub::IsPowerButton() { return is_power_button_; }
 
 bool EventDeviceStub::HoverSupported() { return hover_supported_; }
@@ -47,6 +51,10 @@ bool EventDeviceStub::HoverSupported() { return hover_supported_; }
 bool EventDeviceStub::HasLeftButton() { return has_left_button_; }
 
 LidState EventDeviceStub::GetInitialLidState() { return initial_lid_state_; }
+
+TabletMode EventDeviceStub::GetInitialTabletMode() {
+  return initial_tablet_mode_;
+}
 
 bool EventDeviceStub::ReadEvents(std::vector<input_event>* events_out) {
   if (events_.empty())

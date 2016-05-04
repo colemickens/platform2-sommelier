@@ -28,6 +28,10 @@ class InputWatcherInterface {
   // returned on error.
   virtual LidState QueryLidState() = 0;
 
+  // Returns the most-recently-observed state from the tablet mode switch (if
+  // any). TABLE_MODE_OFF is returned if no switch is present.
+  virtual TabletMode GetTabletMode() = 0;
+
   // Checks if any USB input devices are connected.
   virtual bool IsUSBInputDeviceConnected() const = 0;
 

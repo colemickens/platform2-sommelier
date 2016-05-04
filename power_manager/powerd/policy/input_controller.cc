@@ -34,7 +34,8 @@ InputController::InputController()
       dbus_sender_(NULL),
       clock_(new Clock),
       only_has_external_display_(false),
-      lid_state_(LID_NOT_PRESENT) {
+      lid_state_(LID_NOT_PRESENT),
+      tablet_mode_(TABLET_MODE_OFF) {
 }
 
 InputController::~InputController() {
@@ -58,6 +59,8 @@ void InputController::Init(system::InputWatcherInterface* input_watcher,
   bool use_lid = false;
   if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
     lid_state_ = input_watcher_->QueryLidState();
+
+  tablet_mode_ = input_watcher_->GetTabletMode();
 
   bool check_active_vt = false;
   if (prefs->GetBool(kCheckActiveVTPref, &check_active_vt) && check_active_vt) {
@@ -114,6 +117,11 @@ void InputController::OnLidEvent(LidState state) {
   }
   proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+}
+
+void InputController::OnTabletModeEvent(TabletMode mode) {
+  tablet_mode_ = mode;
+  // TODO(wnhuang): Update wifi transmit power if needed.
 }
 
 void InputController::OnPowerButtonEvent(ButtonState state) {
