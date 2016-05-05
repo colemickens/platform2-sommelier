@@ -690,7 +690,8 @@ int container_start(struct container *c, const struct container_config *config)
 error_rmdir:
 	umount(c->runfsroot);
 	rmdir(c->runfsroot);
-	unlink(c->pid_file_path);
+	if (c->pid_file_path)
+		unlink(c->pid_file_path);
 	free(c->pid_file_path);
 	rmdir(c->runfs);
 	free(c->runfsroot);
@@ -717,7 +718,7 @@ static int container_teardown(struct container *c)
 		ret = -errno;
 	if (rmdir(c->runfsroot))
 		ret = -errno;
-	if (unlink(c->pid_file_path))
+	if (c->pid_file_path && unlink(c->pid_file_path))
 		ret = -errno;
 	if (rmdir(c->runfs))
 		ret = -errno;
