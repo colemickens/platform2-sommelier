@@ -42,6 +42,13 @@ static const char *kCrosEventNames[] = {
   "SpringPowerSupply.ChargerIdle",  // 10
   "TPM.NonZeroDictionaryAttackCounter",  // 11
   "TPM.EarlyResetDuringCommand",  // 12
+  "VeyronEmmcUpgrade.Success",  // 13
+  "VeyronEmmcUpgrade.WaitForKernelRollup",  // 14
+  "VeyronEmmcUpgrade.WaitForFirmwareRollup",  // 15
+  "VeyronEmmcUpgrade.BadEmmcProperties",  // 16
+  "VeyronEmmcUpgrade.FailedDiskAccess",  // 17
+  "VeyronEmmcUpgrade.FailedWPEnable",  // 18
+  "VeyronEmmcUpgrade.SignatureDetected",  // 19
 };
 
 time_t MetricsLibrary::cached_enabled_time_ = 0;
