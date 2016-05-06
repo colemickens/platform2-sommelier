@@ -32,18 +32,23 @@ else
   guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
 fi
 
-# Look through all the known devices to find that one partition.
-kern_dev=$(cgpt find -1 -u $guid)
+# Look through the root device, most likely place to find the kernel partition.
+kern_dev="$(cgpt find -1 -u "${guid}" "$(rootdev -d -s)")"
+
+if [ -z "${kern_dev}" ]; then
+  # Look through all the known devices to find that one partition.
+  kern_dev="$(cgpt find -1 -u "${guid}")"
+fi
 
 # Split the kernel device into the base device and paritition number.
-base_dev=$(get_block_dev_from_partition_dev $kern_dev)
+base_dev="$(get_block_dev_from_partition_dev ${kern_dev})"
 # kern_dev would be /dev/mtd2 or /dev/mtd4 on NAND, base_dev will be /dev/mtd.
 # But that's wrong, it should be /dev/mtd0 because there is no /dev/mtd device.
 # ChromeOS only supports one NAND device, we use /dev/mtd0 for that.
 if [ "${base_dev}" = "/dev/mtd" ]; then
   base_dev="/dev/mtd0"
 fi
-kern_num=$(get_partition_number $kern_dev)
+kern_num=$(get_partition_number "${kern_dev}")
 
 # EFI BIOS boots the ROOT-x partition which is KERN-x + 1
 if [ $is_efi -eq 1 ]; then
@@ -51,24 +56,24 @@ if [ $is_efi -eq 1 ]; then
 fi
 
 # Mark the kernel as successfully booted (success=1, tries=0).
-cgpt add $base_dev -i $kern_num -S1 -T0
+cgpt add "${base_dev}" -i $kern_num -S1 -T0
 # Mark the kernel as highest priority
-cgpt prioritize $base_dev -i $kern_num
+cgpt prioritize "${base_dev}" -i $kern_num
 
 # Collect any startup time firmware updater logs (see chromeos_startup)
 FIRMWARE_UPDATE_LOG='/mnt/stateful_partition/update_firmware.log'
-if [ -f "$FIRMWARE_UPDATE_LOG" ]; then
+if [ -f "${FIRMWARE_UPDATE_LOG}" ]; then
   echo "Found startup-time firmware updating logs:"
-  stat -c "%y" "$FIRMWARE_UPDATE_LOG"
+  stat -c "%y" "${FIRMWARE_UPDATE_LOG}"
   echo "------------------------------------------"
-  cat "$FIRMWARE_UPDATE_LOG" && rm -f "$FIRMWARE_UPDATE_LOG"
+  cat "${FIRMWARE_UPDATE_LOG}" && rm -f "${FIRMWARE_UPDATE_LOG}"
   echo "------------------------------------------"
 fi
 
 # Run the firmware updater
 FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
-if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-  "$FIRMWARE_UPDATE_SCRIPT" --mode=bootok
+if [ -x "${FIRMWARE_UPDATE_SCRIPT}" ]; then
+  "${FIRMWARE_UPDATE_SCRIPT}" --mode=bootok
 fi
 
 # Run the verified boot debugging tool now, because we won't be able to run it
