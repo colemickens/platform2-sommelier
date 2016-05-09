@@ -332,32 +332,28 @@ send_crash() {
   done
 
   # When uploading Chrome reports we need to report the right product and
-  # version. If the meta file does not specify it, use GOOGLE_CRASH_ID
-  # as the product and GOOGLE_CRASH_VERSION_ID as the version.
-  if [ "${product}" = "undefined" ]; then
-    product="$(get_key_value /etc/os-release 'GOOGLE_CRASH_ID')"
-  fi
-  if [ "${version}" = "undefined" ]; then
-    version="$(get_key_value /etc/os-release 'GOOGLE_CRASH_VERSION_ID')"
-  fi
+  # version. If the meta file does not specify it we try to examine os-release
+  # content. If not available there product gets assigned default product name
+  # and version is derived from CHROMEOS_RELEASE_VERSION in /etc/lsb-release.
 
-  # If GOOGLE_CRASH_* is undefined, we look for ID and VERSION_ID in
-  # /etc/os-release.
-  if [ "${product}" = "undefined" ]; then
-    product="$(get_key_value /etc/os-release 'ID')"
-  fi
-  if [ "${version}" = "undefined" ]; then
-    version="$(get_key_value /etc/os-release 'VERSION_ID')"
-  fi
-
-  # If ID or VERSION_ID is undefined, we use the default product name
-  # and CHROMEOS_RELEASE_VERSION from /etc/lsb-release.
+  local key
+  for key in GOOGLE_CRASH_ID ID; do
+    if [ "${product}" = "undefined" ]; then
+      product="$(get_key_value /etc/os-release "${key}")"
+    fi
+  done
   if [ "${product}" = "undefined" ]; then
     product="${CHROMEOS_PRODUCT}"
   fi
+
   if [ "${version}" = "undefined" ]; then
     version="${chromeos_version}"
   fi
+  for key in GOOGLE_CRASH_VERSION_ID BUILD_ID VERSION_ID; do
+    if [ "${version}" = "undefined" ]; then
+      version="$(get_key_value /etc/os-release "${key}")"
+    fi
+  done
 
   local image_type
   if is_test_image; then
