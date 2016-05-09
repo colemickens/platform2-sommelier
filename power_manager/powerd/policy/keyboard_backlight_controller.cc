@@ -32,6 +32,11 @@ namespace {
 // messages ~5 seconds when video is playing.
 const int64_t kVideoTimeoutIntervalMs = 7000;
 
+// Delay to wait before logging that hovering has stopped. This is ideally
+// smaller than kKeyboardBacklightKeepOnMsPref; otherwise the backlight can be
+// turned off before the hover-off event that triggered it is logged.
+const int64_t kLogHoverOffDelayMs = 20000;
+
 // Returns the total duration for |style|.
 base::TimeDelta GetTransitionDuration(
     BacklightController::TransitionStyle style) {
@@ -213,11 +218,24 @@ void KeyboardBacklightController::HandleHoverStateChanged(bool hovering) {
     // a little while. If this is updated to do something else instead of
     // calling UpdateState(), TestApi::TriggerTurnOffTimeout() must also be
     // updated.
-    last_hover_or_user_activity_time_ = clock_->GetCurrentTime();
+    last_hover_time_ = clock_->GetCurrentTime();
     turn_off_timer_.Start(FROM_HERE, keep_on_delay_, this,
                           &KeyboardBacklightController::UpdateState);
+
+    // Hovering can start and stop frequently. To avoid spamming the logs, wait
+    // a while before logging that it's stopped.
+    log_hover_off_timer_.Start(
+        FROM_HERE, base::TimeDelta::FromMilliseconds(kLogHoverOffDelayMs), this,
+        &KeyboardBacklightController::LogHoverOff);
   } else {
-    last_hover_or_user_activity_time_ = base::TimeTicks();
+    last_hover_time_ = base::TimeTicks();
+
+    // Only log that hovering has started if we weren't waiting to log that it'd
+    // stopped.
+    if (!log_hover_off_timer_.IsRunning())
+      LOG(INFO) << "Hovering on";
+    else
+      log_hover_off_timer_.Stop();
   }
 
   UpdateState();
@@ -238,8 +256,8 @@ void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
 void KeyboardBacklightController::HandlePowerButtonPress() {}
 
 void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {
+  last_user_activity_time_ = clock_->GetCurrentTime();
   if ((supports_hover_ || turn_on_for_user_activity_) && !hovering_) {
-    last_hover_or_user_activity_time_ = clock_->GetCurrentTime();
     turn_off_timer_.Start(FROM_HERE, keep_on_delay_, this,
                           &KeyboardBacklightController::UpdateState);
     UpdateState();
@@ -398,9 +416,11 @@ void KeyboardBacklightController::InitUserStepIndex() {
 }
 
 bool KeyboardBacklightController::RecentlyHoveringOrUserActive() const {
-  return !last_hover_or_user_activity_time_.is_null() &&
-      (clock_->GetCurrentTime() - last_hover_or_user_activity_time_ <
-       keep_on_delay_);
+  const base::TimeTicks now = clock_->GetCurrentTime();
+  return (!last_hover_time_.is_null() &&
+          (now - last_hover_time_ < keep_on_delay_)) ||
+         (!last_user_activity_time_.is_null() &&
+          (now - last_user_activity_time_ < keep_on_delay_));
 }
 
 double KeyboardBacklightController::GetUndimmedPercent() const {
@@ -483,6 +503,11 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
                     OnBrightnessChanged(percent, cause, this));
   return true;
+}
+
+void KeyboardBacklightController::LogHoverOff() {
+  const base::TimeDelta delay = clock_->GetCurrentTime() - last_hover_time_;
+  LOG(INFO) << "Hovering off " << delay.InMilliseconds() << " ms ago";
 }
 
 }  // namespace policy

@@ -557,7 +557,7 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
 }
 
 void Daemon::HandleHoverStateChanged(bool hovering) {
-  LOG(INFO) << "Hovering " << (hovering ? "on" : "off");
+  VLOG(1) << "Hovering " << (hovering ? "on" : "off");
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandleHoverStateChanged(hovering);
 }

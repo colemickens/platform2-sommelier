@@ -145,6 +145,10 @@ class KeyboardBacklightController
                               TransitionStyle transition,
                               BrightnessChangeCause cause);
 
+  // Logs that hovering stopped at |last_hover_time_|. Called by
+  // |log_hover_off_timer_| after a delay to avoid spamming logs.
+  void LogHoverOff();
+
   mutable scoped_ptr<Clock> clock_;
 
   // Backlight used for dimming. Weak pointer.
@@ -204,11 +208,12 @@ class KeyboardBacklightController
   // initialized from kKeyboardBacklightNoAlsBrightnessPref.
   double automated_percent_;
 
-  // Time at which the user's hands stopped hovering over the touchpad or at
-  // which user activity was last observed (whichever is greater). Unset if
-  // |hovering_| is true or both |supports_hover_| and
-  // |turn_on_for_user_activity_| are false.
-  base::TimeTicks last_hover_or_user_activity_time_;
+  // Time at which the user's hands stopped hovering over the touchpad. Unset if
+  // |hovering_| is true or |supports_hover_| is false.
+  base::TimeTicks last_hover_time_;
+
+  // Time at which user activity was last observed.
+  base::TimeTicks last_user_activity_time_;
 
   // Duration the backlight should remain on after hovering stops (on systems
   // that support hover detection) or after user activity (if
@@ -222,6 +227,9 @@ class KeyboardBacklightController
 
   // Runs HandleVideoTimeout().
   base::OneShotTimer video_timer_;
+
+  // Runs LogHoverOff().
+  base::OneShotTimer log_hover_off_timer_;
 
   // Counters for stat tracking.
   int num_als_adjustments_;
