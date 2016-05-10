@@ -43,6 +43,7 @@ class SystemUtilsImpl : public SystemUtils {
   bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file) override;
   bool GetUniqueFilenameInWriteOnlyTempDir(
       base::FilePath* temp_file_path) override;
+  bool RemoveDirTree(const base::FilePath& dir) override;
   bool RemoveFile(const base::FilePath& filename) override;
   bool AtomicFileWrite(const base::FilePath& filename,
                        const std::string& data) override;

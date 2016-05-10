@@ -9,6 +9,7 @@ namespace login_manager {
 namespace dbus_error {
 
 extern const char kNone[];
+extern const char kArcInstanceRunning[];
 extern const char kContainerStartupFail[];
 extern const char kContainerShutdownFail[];
 extern const char kEmitFailed[];
@@ -17,6 +18,7 @@ extern const char kInvalidAccount[];
 extern const char kNoOwnerKey[];
 extern const char kNoUserNssDb[];
 extern const char kNotAvailable[];
+extern const char kNotStarted[];
 extern const char kPolicyInitFail[];
 extern const char kPubkeySetIllegal[];
 extern const char kSessionDoesNotExist[];
@@ -26,7 +28,6 @@ extern const char kSigEncodeFail[];
 extern const char kTestingChannelError[];
 extern const char kUnknownPid[];
 extern const char kVerifyFail[];
-extern const char kNotStarted[];
 extern const char kVpdUpdateFailed[];
 
 }  // namespace dbus_error

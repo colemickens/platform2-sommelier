@@ -826,6 +826,44 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 #endif
 }
 
+TEST_F(SessionManagerImplTest, ArcRemoveData) {
+  base::FilePath arc_data_dir(SessionManagerImpl::kArcDataDir);
+  base::FilePath arc_cache_dir(SessionManagerImpl::kArcCacheDir);
+  EXPECT_TRUE(utils_.AtomicFileWrite(arc_data_dir.Append("foo"), "test"));
+  EXPECT_TRUE(utils_.AtomicFileWrite(
+      arc_cache_dir.Append("bar").Append("baz"), "test"));
+  EXPECT_TRUE(utils_.Exists(arc_data_dir));
+  EXPECT_TRUE(utils_.Exists(arc_cache_dir));
+  impl_.RemoveArcData(&error_);
+#if USE_ARC
+  EXPECT_FALSE(utils_.Exists(arc_data_dir));
+  EXPECT_FALSE(utils_.Exists(arc_cache_dir));
+#else
+  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+#endif
+}
+
+TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
+#if USE_ARC
+  // An arbitrary path. Doesn't need to exist or be accessible.
+  const char kSocketPath[] = "/tmp/arc.sock";
+
+  ExpectAndRunStartSession(kSaneEmail);
+  base::FilePath arc_data_dir(SessionManagerImpl::kArcDataDir);
+  base::FilePath arc_cache_dir(SessionManagerImpl::kArcCacheDir);
+  EXPECT_TRUE(utils_.AtomicFileWrite(arc_data_dir.Append("foo"), "test"));
+  EXPECT_TRUE(utils_.AtomicFileWrite(
+      arc_cache_dir.Append("bar").Append("baz"), "test"));
+  EXPECT_TRUE(utils_.Exists(arc_data_dir));
+  EXPECT_TRUE(utils_.Exists(arc_cache_dir));
+  impl_.StartArcInstance(kSocketPath, &error_);
+  impl_.RemoveArcData(&error_);
+  EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
+  EXPECT_TRUE(utils_.Exists(arc_data_dir));
+  EXPECT_TRUE(utils_.Exists(arc_cache_dir));
+#endif
+}
+
 class SessionManagerImplStaticTest : public ::testing::Test {
  public:
   SessionManagerImplStaticTest() {}

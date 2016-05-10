@@ -64,6 +64,10 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
+  // ARC data directories to be deleted on opt-out.
+  static const base::FilePath::CharType kArcDataDir[];
+  static const base::FilePath::CharType kArcCacheDir[];
+
   class Error {
    public:
     Error();
@@ -181,6 +185,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartArcInstance(const std::string& socket_path, Error* error);
   void StopArcInstance(Error* error);
   base::TimeTicks GetArcStartTime(Error* error);
+  void RemoveArcData(Error* error);
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;

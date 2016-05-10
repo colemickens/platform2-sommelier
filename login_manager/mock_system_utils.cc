@@ -48,6 +48,10 @@ bool MockSystemUtils::EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                                   file_size_32));
 }
 
+bool MockSystemUtils::RemoveDirTree(const base::FilePath& dir) {
+  return EnsureTempDir() && real_utils_.RemoveDirTree(PutInsideTempdir(dir));
+}
+
 bool MockSystemUtils::RemoveFile(const base::FilePath& file) {
   return EnsureTempDir() && real_utils_.RemoveFile(PutInsideTempdir(file));
 }

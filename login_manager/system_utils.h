@@ -68,6 +68,9 @@ class SystemUtils {
   virtual bool GetUniqueFilenameInWriteOnlyTempDir(
       base::FilePath* temp_file_path) = 0;
 
+  // Removes a directory tree.
+  virtual bool RemoveDirTree(const base::FilePath& dir) = 0;
+
   // Removes a file.
   virtual bool RemoveFile(const base::FilePath& filename) = 0;
 

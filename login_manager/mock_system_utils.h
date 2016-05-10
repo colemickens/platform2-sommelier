@@ -42,6 +42,7 @@ class MockSystemUtils : public SystemUtils {
   bool ReadFileToString(const base::FilePath& file, std::string* out);
   bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                    int32_t* file_size_32) override;
+  bool RemoveDirTree(const base::FilePath& dir) override;
   bool RemoveFile(const base::FilePath& file) override;
 
   bool GetUniqueFilenameInWriteOnlyTempDir(

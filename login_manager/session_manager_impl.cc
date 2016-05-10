@@ -59,6 +59,13 @@ const char SessionManagerImpl::kLoggedInFlag[] =
 const char SessionManagerImpl::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
 
+// TODO(dspaid): Migrate to using /home/root/$hash once it is supported
+// see http://b/26700652
+const base::FilePath::CharType SessionManagerImpl::kArcDataDir[] =
+    FILE_PATH_LITERAL("/home/chronos/user/android-data/data");
+const base::FilePath::CharType SessionManagerImpl::kArcCacheDir[] =
+    FILE_PATH_LITERAL("/home/chronos/user/android-data/cache");
+
 namespace {
 
 // Constants used in email validation.
@@ -659,6 +666,19 @@ void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
     LOG(ERROR) << msg;
     error->Set(dbus_error::kContainerShutdownFail, msg);
   }
+}
+
+void SessionManagerImpl::RemoveArcData(Error* error) {
+#if USE_ARC
+  if (!arc_start_time_.is_null()) {
+    error->Set(dbus_error::kArcInstanceRunning, "ARC is currently running.");
+    return;
+  }
+  system_->RemoveDirTree(base::FilePath(SessionManagerImpl::kArcDataDir));
+  system_->RemoveDirTree(base::FilePath(SessionManagerImpl::kArcCacheDir));
+#else
+  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+#endif  // USE_ARC
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {

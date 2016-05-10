@@ -154,6 +154,12 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
   return true;
 }
 
+bool SystemUtilsImpl::RemoveDirTree(const base::FilePath& dir) {
+  if (!base::DirectoryExists(dir))
+    return false;
+  return base::DeleteFile(dir, true);
+}
+
 bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
   if (base::DirectoryExists(filename))
     return false;
