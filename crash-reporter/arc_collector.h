@@ -41,9 +41,12 @@ class ArcCollector : public UserCollectorBase {
   // during teardown.
   bool IsArcProcess(pid_t pid) const;
 
-  // Reads a Java crash log of the given |type| from standard input, or closes
-  // the stream if reporting is disabled.
-  bool HandleJavaCrash(const std::string &type);
+  // Reads a Java crash log for the given |crash_type| from standard input, or
+  // closes the stream if reporting is disabled.
+  bool HandleJavaCrash(const std::string &crash_type,
+                       const std::string &device,
+                       const std::string &board,
+                       const std::string &cpu_abi);
 
   static bool IsArcRunning();
 
@@ -84,9 +87,11 @@ class ArcCollector : public UserCollectorBase {
                                   const base::FilePath &core_path,
                                   const base::FilePath &minidump_path) override;
 
-  // Adds the crash |type| and Chrome version as metadata. The |add_arc_version|
-  // option requires privilege to access the ARC root.
-  void AddArcMetaData(const std::string &type, bool add_arc_version);
+  // Adds the |process|, |crash_type| and Chrome version as metadata. The
+  // |add_arc_properties| option requires privilege to access the ARC root.
+  void AddArcMetaData(const std::string &process,
+                      const std::string &crash_type,
+                      bool add_arc_properties);
 
   using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
   static std::string GetCrashLogHeader(const CrashLogHeaderMap &map,
@@ -97,7 +102,10 @@ class ArcCollector : public UserCollectorBase {
                             CrashLogHeaderMap *map,
                             std::string *exception_info);
 
-  bool CreateReportForJavaCrash(const std::string &type,
+  bool CreateReportForJavaCrash(const std::string &crash_type,
+                                const std::string &device,
+                                const std::string &board,
+                                const std::string &cpu_abi,
                                 const CrashLogHeaderMap &map,
                                 const std::string &exception_info,
                                 const std::string &log,

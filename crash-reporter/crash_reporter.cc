@@ -176,9 +176,13 @@ static int HandleArcCrash(ArcCollector *arc_collector,
 }
 
 static int HandleArcJavaCrash(ArcCollector *arc_collector,
-                              const std::string& type) {
+                              const std::string& crash_type,
+                              const std::string& device,
+                              const std::string& board,
+                              const std::string& cpu_abi) {
   brillo::LogToString(true);
-  bool handled = arc_collector->HandleJavaCrash(type);
+  bool handled = arc_collector->HandleJavaCrash(
+      crash_type, device, board, cpu_abi);
   brillo::LogToString(false);
   if (!handled)
     return 1;
@@ -291,6 +295,9 @@ int main(int argc, char *argv[]) {
 #if USE_ARC
   DEFINE_string(arc_java_crash, "",
       "Read Java crash log of the given type from standard input");
+  DEFINE_string(arc_device, "", "Metadata for --arc_java_crash");
+  DEFINE_string(arc_board, "", "Metadata for --arc_java_crash");
+  DEFINE_string(arc_cpu_abi, "", "Metadata for --arc_java_crash");
 #endif
 
   OpenStandardFileDescriptors();
@@ -373,7 +380,8 @@ int main(int argc, char *argv[]) {
 
 #if USE_ARC
   if (!FLAGS_arc_java_crash.empty())
-    return HandleArcJavaCrash(&arc_collector, FLAGS_arc_java_crash);
+    return HandleArcJavaCrash(&arc_collector, FLAGS_arc_java_crash,
+        FLAGS_arc_device, FLAGS_arc_board, FLAGS_arc_cpu_abi);
 #endif
 
   int exit_code = HandleUserCrash(&user_collector,

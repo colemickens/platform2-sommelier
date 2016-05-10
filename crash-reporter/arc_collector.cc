@@ -44,12 +44,29 @@ const char kCoreCollectorPath[] = "/usr/bin/core_collector"
 const char kChromePath[] = "/opt/google/chrome/chrome";
 
 const char kArcProduct[] = "ChromeOS_ARC";
+
+// Metadata fields included in reports.
 const char kArcVersionField[] = "arc_version";
+const char kBoardField[] = "board";
+const char kChromeVersionField[] = "chrome_version";
+const char kCpuAbiField[] = "cpu_abi";
+const char kCrashTypeField[] = "crash_type";
+const char kDeviceField[] = "device";
+const char kExceptionInfoField[] = "exception_info";
+const char kProcessField[] = "process";
+const char kProductField[] = "prod";
+const char kSignatureField[] = "sig";
 
 // Keys for crash log headers.
 const char kBuildKey[] = "Build";
 const char kProcessKey[] = "Process";
 const char kSubjectKey[] = "Subject";
+
+// Keys for build properties.
+const char kBoardProperty[] = "ro.product.board";
+const char kCpuAbiProperty[] = "ro.product.cpu.abi";
+const char kDeviceProperty[] = "ro.product.device";
+const char kFingerprintProperty[] = "ro.build.fingerprint";
 
 const size_t kBufferSize = 4096;
 
@@ -63,7 +80,10 @@ bool HasExceptionInfo(const std::string &type);
 const char *GetSubjectTag(const std::string &type);
 
 bool GetChromeVersion(std::string *version);
-bool GetArcVersion(std::string *version);
+bool GetArcProperties(std::string *version,
+                      std::string *device,
+                      std::string *board,
+                      std::string *cpu_abi);
 
 // Runs |process| and redirects |fd| to |output|. Returns the exit code, or -1
 // if the process failed to start.
@@ -99,13 +119,16 @@ bool ArcCollector::IsArcProcess(pid_t pid) const {
   return ns == arc_ns;
 }
 
-bool ArcCollector::HandleJavaCrash(const std::string &type) {
+bool ArcCollector::HandleJavaCrash(const std::string &crash_type,
+                                   const std::string &device,
+                                   const std::string &board,
+                                   const std::string &cpu_abi) {
   std::string reason;
   const bool should_dump = UserCollectorBase::ShouldDump(
       is_feedback_allowed_function_(), IsDeveloperImage(), &reason);
 
   std::ostringstream message;
-  message << "Received " << type << " notification";
+  message << "Received " << crash_type << " notification";
 
   if (!should_dump) {
     LogCrash(message.str(), reason);
@@ -121,7 +144,7 @@ bool ArcCollector::HandleJavaCrash(const std::string &type) {
 
   CrashLogHeaderMap map;
   std::string exception_info;
-  if (!ParseCrashLog(type, &stream, &map, &exception_info)) {
+  if (!ParseCrashLog(crash_type, &stream, &map, &exception_info)) {
     LOG(ERROR) << "Failed to parse crash log";
     return false;
   }
@@ -133,8 +156,9 @@ bool ArcCollector::HandleJavaCrash(const std::string &type) {
   count_crash_function_();
 
   bool out_of_capacity = false;
-  if (!CreateReportForJavaCrash(type, map, exception_info,
-                                stream.str(), &out_of_capacity)) {
+  if (!CreateReportForJavaCrash(crash_type, device, board, cpu_abi,
+                                map, exception_info, stream.str(),
+                                &out_of_capacity)) {
     if (!out_of_capacity)
       EnqueueCollectionErrorLog(0, kErrorSystemIssue, exec);
 
@@ -250,7 +274,9 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   }
 
   if (exit_code == EX_OK) {
-    AddArcMetaData("native_crash", true);
+    std::string process;
+    ArcCollector::GetExecutableBaseNameFromPid(pid, &process);
+    AddArcMetaData(process, "native_crash", true);
     return kErrorNone;
   }
 
@@ -272,17 +298,26 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   }
 }
 
-void ArcCollector::AddArcMetaData(const std::string &type,
-                                  bool add_arc_version) {
-  AddCrashMetaUploadData("prod", kArcProduct);
-  AddCrashMetaUploadData("type", type);
+void ArcCollector::AddArcMetaData(const std::string &process,
+                                  const std::string &crash_type,
+                                  bool add_arc_properties) {
+  AddCrashMetaUploadData(kProductField, kArcProduct);
+  AddCrashMetaUploadData(kProcessField, process);
+  AddCrashMetaUploadData(kCrashTypeField, crash_type);
 
   std::string version;
   if (GetChromeVersion(&version))
-    AddCrashMetaUploadData("chrome_version", version);
+    AddCrashMetaUploadData(kChromeVersionField, version);
 
-  if (add_arc_version && GetArcVersion(&version))
+  std::string device, board, cpu_abi;
+
+  if (add_arc_properties &&
+      GetArcProperties(&version, &device, &board, &cpu_abi)) {
     AddCrashMetaUploadData(kArcVersionField, version);
+    AddCrashMetaUploadData(kDeviceField, device);
+    AddCrashMetaUploadData(kBoardField, board);
+    AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
+  }
 }
 
 std::string ArcCollector::GetCrashLogHeader(const CrashLogHeaderMap &map,
@@ -327,7 +362,10 @@ bool ArcCollector::ParseCrashLog(const std::string &type,
   return true;
 }
 
-bool ArcCollector::CreateReportForJavaCrash(const std::string &type,
+bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
+                                            const std::string &device,
+                                            const std::string &board,
+                                            const std::string &cpu_abi,
                                             const CrashLogHeaderMap &map,
                                             const std::string &exception_info,
                                             const std::string &log,
@@ -348,17 +386,20 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &type,
     return false;
   }
 
-  AddArcMetaData(type, false);
+  AddArcMetaData(process, crash_type, false);
   AddCrashMetaUploadData(kArcVersionField, GetCrashLogHeader(map, kBuildKey));
+  AddCrashMetaUploadData(kDeviceField, device);
+  AddCrashMetaUploadData(kBoardField, board);
+  AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
 
   if (exception_info.empty()) {
-    if (const char * const tag = GetSubjectTag(type)) {
+    if (const char * const tag = GetSubjectTag(crash_type)) {
       std::ostringstream out;
       out << '[' << tag << "] " << GetCrashLogHeader(map, kSubjectKey);
 
-      AddCrashMetaData("sig", out.str());
+      AddCrashMetaData(kSignatureField, out.str());
     } else {
-      LOG(ERROR) << "Invalid crash type: " << type;
+      LOG(ERROR) << "Invalid crash type: " << crash_type;
       return false;
     }
   } else {
@@ -370,7 +411,7 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &type,
       return false;
     }
 
-    AddCrashMetaUploadText("exception_info", info_path.value());
+    AddCrashMetaUploadText(kExceptionInfoField, info_path.value());
   }
 
   const FilePath meta_path = GetCrashPath(crash_dir, basename, "meta");
@@ -438,13 +479,19 @@ bool GetChromeVersion(std::string *version) {
   return true;
 }
 
-bool GetArcVersion(std::string *version) {
+bool GetArcProperties(std::string *version,
+                      std::string *device,
+                      std::string *board,
+                      std::string *cpu_abi) {
   brillo::KeyValueStore store;
   if (store.Load(kArcRootPrefix.Append(kArcBuildProp)) &&
-      store.GetString("ro.build.fingerprint", version))
+      store.GetString(kFingerprintProperty, version) &&
+      store.GetString(kDeviceProperty, device) &&
+      store.GetString(kBoardProperty, board) &&
+      store.GetString(kCpuAbiProperty, cpu_abi))
     return true;
 
-  LOG(ERROR) << "Failed to get ARC version";
+  LOG(ERROR) << "Failed to get ARC properties";
   return false;
 }
 
