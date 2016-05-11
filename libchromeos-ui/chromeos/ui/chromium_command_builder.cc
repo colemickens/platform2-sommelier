@@ -342,7 +342,8 @@ bool ChromiumCommandBuilder::SetUpASAN() {
   // (crbug.com/156308).
   // TODO(derat): It's weird that this lives in a Chrome directory that's
   // created by ChromeInitializer; move it somewhere else, maybe.
-  AddEnvVar("ASAN_OPTIONS", "log_path=/var/log/chrome/asan_log:detect_odr_violation=0");
+  AddEnvVar("ASAN_OPTIONS",
+            "log_path=/var/log/chrome/asan_log:detect_odr_violation=0");
 
   return true;
 }
@@ -448,10 +449,6 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
 }
 
 void ChromiumCommandBuilder::AddUiFlags() {
-  AddArg("--enable-fixed-position-compositing");
-  AddArg("--enable-impl-side-painting");
-  AddArg("--max-tiles-for-interest-area=512");
-  AddArg("--ui-enable-per-tile-painting");
   AddArg("--ui-prioritize-in-gpu-process");
 
   if (UseFlagIsSet("opengles"))
