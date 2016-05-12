@@ -443,7 +443,25 @@ REGIONS_LIST = [
     Region(
         'ch.usintl', 'xkb:us:intl:eng', 'Europe/Zurich', 'en-US',
         _KML.ANSI, 'Switzerland (US Intl)',
-        'Switzerland with US International keyboard layout.', 50)]
+        'Switzerland with US International keyboard layout.', 50),
+    Region(
+        'pe', 'xkb:pe::spa', 'America/Lima', 'es-PE',
+        _KML.ANSI, 'Peru', None, 115),
+    Region(
+        'sa', 'xkb:us::eng', 'Asia/Riyadh', ['ar-SA', 'en'], _KML.ANSI,
+        'Saudi Arabia', None, 128),
+    Region(
+        'mx', 'xkb:mx::spa', 'America/Mexico_City', 'es-MX', _KML.ANSI,
+        'Mexico', None, 154),
+    Region(
+        'cl', 'xkb:cl::spa', 'America/Santiago', 'es-CL', _KML.ANSI, 'Chile',
+        None, 176),
+    Region(
+        'kw', 'xkb:kw::ara', 'Asia/Kuwait', ['ar-KW', 'en'], _KML.ANSI,
+        'Kuwait', None, 201),
+    Region(
+        'uy', 'xkb:uy::spa', 'America/Montevideo', 'es-UY', _KML.ANSI,
+        'Uruguay', None, 216)]
 """A list of :py:class:`regions.Region` objects for
 all **confirmed** regions.  A confirmed region is a region whose
 properties are known to be correct and valid: all contents (locale / timezone /
@@ -650,9 +668,6 @@ UNCONFIRMED_REGIONS_LIST = [
         ['en-PG', 'ho', 'meu', 'tpi'], _KML.ANSI, 'Papua New Guinea', None,
         114),
     Region(
-        'pe', 'xkb:pe::spa', 'America/Lima', ['es-PE', 'qu', 'ay'],
-        _KML.ANSI, 'Peru', None, 115),
-    Region(
         'pk', 'xkb:pk::urd', 'Asia/Karachi',
         ['ur-PK', 'en-PK', 'pa', 'sd', 'ps', 'brh'], _KML.ANSI,
         'Pakistan', None, 116),
@@ -691,9 +706,6 @@ UNCONFIRMED_REGIONS_LIST = [
     Region(
         'zw', 'xkb:zw::eng', 'Africa/Harare', ['en-ZW', 'sn', 'nr', 'nd'],
         _KML.ANSI, 'Zimbabwe', None, 127),
-    Region(
-        'sa', 'xkb:us::eng', 'Asia/Riyadh', 'ar-SA', _KML.ANSI,
-        'Saudi Arabia', None, 128),
     Region(
         'er', 'xkb:er::aar', 'Africa/Asmara',
         ['aa-ER', 'ar', 'tig', 'kun', 'ti-ER'], _KML.ANSI, 'Eritrea', None,
@@ -775,13 +787,6 @@ UNCONFIRMED_REGIONS_LIST = [
         'tz', 'xkb:tz::swa', 'Africa/Dar_es_Salaam',
         ['sw-TZ', 'en', 'ar'], _KML.ANSI, 'Tanzania', None, 153),
     Region(
-        'mx', 'xkb:mx::spa',
-        ['America/Mexico_City', 'America/Cancun', 'America/Merida',
-         'America/Monterrey', 'America/Matamoros', 'America/Mazatlan',
-         'America/Chihuahua', 'America/Ojinaga', 'America/Hermosillo',
-         'America/Tijuana', 'America/Santa_Isabel',
-         'America/Bahia_Banderas'], 'es-MX', _KML.ANSI, 'Mexico', None, 154),
-    Region(
         'io', 'xkb:io::eng', 'Indian/Chagos', 'en-IO', _KML.ANSI,
         'British Indian Ocean Territory', None, 155),
     Region(
@@ -846,9 +851,6 @@ UNCONFIRMED_REGIONS_LIST = [
     Region(
         'cm', 'xkb:cm::eng', 'Africa/Douala', ['en-CM', 'fr-CM'],
         _KML.ANSI, 'Cameroon', None, 175),
-    Region(
-        'cl', 'xkb:cl::spa', ['America/Santiago', 'Pacific/Easter'],
-        'es-CL', _KML.ANSI, 'Chile', None, 176),
     Region(
         'cc', 'xkb:cc::msa', 'Indian/Cocos', ['ms-CC', 'en'], _KML.ANSI,
         'Cocos Islands', None, 177),
@@ -927,9 +929,6 @@ UNCONFIRMED_REGIONS_LIST = [
         'kp', 'xkb:kp::kor', 'Asia/Pyongyang', 'ko-KP', _KML.ANSI,
         'North Korea', None, 200),
     Region(
-        'kw', 'xkb:kw::ara', 'Asia/Kuwait', ['ar-KW', 'en'], _KML.ANSI,
-        'Kuwait', None, 201),
-    Region(
         'sn', 'xkb:sn::fra', 'Africa/Dakar',
         ['fr-SN', 'wo', 'fuc', 'mnk'], _KML.ANSI, 'Senegal', None, 202),
     Region(
@@ -972,9 +971,6 @@ UNCONFIRMED_REGIONS_LIST = [
     Region(
         'dz', 'xkb:dz::ara', 'Africa/Algiers', 'ar-DZ', _KML.ANSI,
         'Algeria', None, 215),
-    Region(
-        'uy', 'xkb:uy::spa', 'America/Montevideo', 'es-UY', _KML.ANSI,
-        'Uruguay', None, 216),
     Region(
         'yt', 'xkb:yt::fra', 'Indian/Mayotte', 'fr-YT', _KML.ANSI,
         'Mayotte', None, 217),
@@ -1104,7 +1100,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ['Europe/Kiev', 'Europe/Uzhgorod', 'Europe/Zaporozhye'],
         ['uk', 'ru-UA', 'rom', 'pl', 'hu'], _KML.ANSI, 'Ukraine', None, 255),
     Region(
-        'qa', 'xkb:qa::ara', 'Asia/Qatar', ['ar-QA', 'es'], _KML.ANSI,
+        'qa', 'xkb:qa::ara', 'Asia/Bahrain', ['ar-QA', 'en'], _KML.ANSI,
         'Qatar', None, 256),
     Region(
         'mz', 'xkb:mz::por', 'Africa/Maputo', ['pt-MZ', 'vmw'],
