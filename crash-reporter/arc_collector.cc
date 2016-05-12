@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <ctime>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -59,6 +60,7 @@ inline bool IsAppProcess(const std::string &name) {
 bool ReadCrashLogFromStdin(std::stringstream *stream);
 
 bool HasExceptionInfo(const std::string &type);
+const char *GetSubjectTag(const std::string &type);
 
 bool GetChromeVersion(std::string *version);
 bool GetArcVersion(std::string *version);
@@ -210,11 +212,14 @@ bool ArcCollector::ShouldDump(pid_t pid,
     return false;
   }
 
+  // TODO(domlaskowski): Restore filter for system processes.
+#if 0
   // TODO(domlaskowski): Convert between UID namespaces.
   if (uid >= kSystemUserEnd) {
     *reason = "ignoring - not a system process";
     return false;
   }
+#endif
 
   return UserCollectorBase::ShouldDump(
       is_feedback_allowed_function_(), IsDeveloperImage(), reason);
@@ -347,9 +352,15 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &type,
   AddCrashMetaUploadData(kArcVersionField, GetCrashLogHeader(map, kBuildKey));
 
   if (exception_info.empty()) {
-    static const char *kTags[] = { "[system server watchdog] ", "[ANR] " };
-    const auto subject = GetCrashLogHeader(map, kSubjectKey);
-    AddCrashMetaData("sig", kTags[type == "system_app_anr"] + subject);
+    if (const char * const tag = GetSubjectTag(type)) {
+      std::ostringstream out;
+      out << '[' << tag << "] " << GetCrashLogHeader(map, kSubjectKey);
+
+      AddCrashMetaData("sig", out.str());
+    } else {
+      LOG(ERROR) << "Invalid crash type: " << type;
+      return false;
+    }
   } else {
     const FilePath info_path = GetCrashPath(crash_dir, basename, "info");
     const int size = static_cast<int>(exception_info.size());
@@ -386,13 +397,30 @@ bool ReadCrashLogFromStdin(std::stringstream *stream) {
 }
 
 bool HasExceptionInfo(const std::string &type) {
-  static std::unordered_set<std::string> types = {
+  static const std::unordered_set<std::string> kTypes = {
+    // TODO(domlaskowski): Remove after restoring filter for system crashes.
+    "data_app_crash",
+    "data_app_wtf",
+
     "system_app_crash",
     "system_app_wtf",
     "system_server_crash",
     "system_server_wtf"
   };
-  return types.count(type);
+  return kTypes.count(type);
+}
+
+const char *GetSubjectTag(const std::string &type) {
+  static const std::unordered_map<std::string, const char *> kTags = {
+    // TODO(domlaskowski): Remove after restoring filter for system crashes.
+    { "data_app_anr", "data app ANR" },
+
+    { "system_app_anr", "ANR" },
+    { "system_server_watchdog", "system server watchdog" }
+  };
+
+  const auto it = kTags.find(type);
+  return it == kTags.cend() ? nullptr : it->second;
 }
 
 bool GetChromeVersion(std::string *version) {

@@ -191,7 +191,8 @@ TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
   EXPECT_EQ("com.arc.app", exe);
 }
 
-TEST_F(ArcCollectorTest, ShouldDump) {
+// TODO(domlaskowski): Enable after restoring filter for system crashes.
+TEST_F(ArcCollectorTest, DISABLED_ShouldDump) {
   context_->SetArcPid(100);
   context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome");
   context_->AddProcess(100, "arc", "init", "/sbin/init");

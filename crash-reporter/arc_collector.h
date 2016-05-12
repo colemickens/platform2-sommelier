@@ -50,7 +50,7 @@ class ArcCollector : public UserCollectorBase {
  private:
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForUserCrash);
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForArcCrash);
-  FRIEND_TEST(ArcCollectorTest, ShouldDump);
+  FRIEND_TEST(ArcCollectorTest, DISABLED_ShouldDump);
   FRIEND_TEST(ArcCollectorTest, ParseCrashLog);
 
   // Upper bound for system UIDs in ARC.
