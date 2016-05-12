@@ -79,7 +79,13 @@ TEST(SimpleProcess, BindFd) {
   EXPECT_EQ(std::string(kMsg) + "\n", std::string(buf));
 }
 
-TEST(SimpleProcess, BindFdToSameFd) {
+// The test framework uses the device's dash shell as "sh", which doesn't
+// support redirecting stdout to arbitrary large file descriptor numbers
+// directly, nor has /proc mounted to open /proc/self/fd/NN. This test would
+// fail if pipe.writer is big enough.
+// TODO(deymo): Write a helper program that writes "hello_world" to the passed
+// file descriptor and re-enabled this test.
+TEST(DISABLED_SimpleProcess, BindFdToSameFd) {
   static const char* kMsg = "hello_world";
   ScopedPipe pipe;
   ProcessImpl process;
