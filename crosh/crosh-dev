@@ -118,3 +118,22 @@ cmd_systrace() (
     ;;
   esac
 )
+
+USAGE_live_in_a_coal_mine=''
+HELP_live_in_a_coal_mine='
+  Switch to the canary channel.
+
+  WARNING: This is bleeding edge software and is often more buggy than the dev
+  channel.  Please do not use this unless you are a developer.  This is often
+  updated daily and has only passed automated tests -- the QA level is low!
+'
+cmd_live_in_a_coal_mine() {
+  shell_read "Are you sure you want to change to the canary channel? [y/N] "
+  case "${REPLY}" in
+  [yY])
+    /usr/bin/update_engine_client -channel=canary-channel
+    /usr/bin/update_engine_client --show_channel
+    ;;
+  *) echo "Fly, my pretties, fly! (not changing channels)";;
+  esac
+}
