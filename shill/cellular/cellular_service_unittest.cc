@@ -408,7 +408,7 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   // We should not auto-connect to a Service that a user has
   // deliberately disconnected.
   Error error;
-  service_->UserInitiatedDisconnect(&error);
+  service_->UserInitiatedDisconnect("RPC", &error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnExplicitDisconnect, reason);
 
@@ -425,7 +425,7 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A resume also re-enables auto-connect.
-  service_->UserInitiatedDisconnect(&error);
+  service_->UserInitiatedDisconnect("RPC", &error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   service_->OnAfterResume();
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
