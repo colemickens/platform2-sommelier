@@ -69,16 +69,21 @@ DevicePolicyService* DevicePolicyService::Create(
     LoginMetrics* metrics,
     PolicyKey* owner_key,
     OwnerKeyLossMitigator* mitigator,
-    NssUtil* nss) {
+    NssUtil* nss,
+    Crossystem* crossystem,
+    VpdProcess* vpd_process) {
   return new DevicePolicyService(
       base::FilePath(kSerialRecoveryFlagFile),
       base::FilePath(kPolicyPath),
       base::FilePath(kInstallAttributesPath),
-      scoped_ptr<PolicyStore>(new PolicyStore(base::FilePath(kPolicyPath))),
+      std::unique_ptr<PolicyStore>(
+          new PolicyStore(base::FilePath(kPolicyPath))),
       owner_key,
       metrics,
       mitigator,
-      nss);
+      nss,
+      crossystem,
+      vpd_process);
 }
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
@@ -92,7 +97,7 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
 
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
-  scoped_ptr<RSAPrivateKey> signing_key(
+  std::unique_ptr<RSAPrivateKey> signing_key(
       GetOwnerKeyForGivenUser(key()->public_key_der(), slot, error));
 
   // Now, the flip side...if we believe the current user to be the owner based
@@ -114,7 +119,7 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   NssUtil::BlobFromBuffer(buf, &pub_key);
 
   Error error;
-  scoped_ptr<RSAPrivateKey> signing_key(
+  std::unique_ptr<RSAPrivateKey> signing_key(
       GetOwnerKeyForGivenUser(pub_key, slot, &error));
   if (!signing_key.get())
     return false;
@@ -149,18 +154,22 @@ DevicePolicyService::DevicePolicyService(
     const base::FilePath& serial_recovery_flag_file,
     const base::FilePath& policy_file,
     const base::FilePath& install_attributes_file,
-    scoped_ptr<PolicyStore> policy_store,
+    std::unique_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key,
     LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
-    NssUtil* nss)
+    NssUtil* nss,
+    Crossystem* crossystem,
+    VpdProcess* vpd_process)
     : PolicyService(std::move(policy_store), policy_key),
       serial_recovery_flag_file_(serial_recovery_flag_file),
       policy_file_(policy_file),
       install_attributes_file_(install_attributes_file),
       metrics_(metrics),
       mitigator_(mitigator),
-      nss_(nss) {
+      nss_(nss),
+      crossystem_(crossystem),
+      vpd_process_(vpd_process) {
 }
 
 bool DevicePolicyService::KeyMissing() {
@@ -196,7 +205,7 @@ bool DevicePolicyService::Initialize() {
 
 bool DevicePolicyService::Store(const uint8_t* policy_blob,
                                 uint32_t len,
-                                Completion completion,
+                                const Completion& completion,
                                 int flags) {
   bool result = PolicyService::Store(policy_blob, len, completion, flags);
 
@@ -441,23 +450,10 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
 
   // Expose serial number on "spontaneously unenrolled" devices to allow them to
   // go through the enrollment flow again:  https://crbug.com/389481
-  if (policy_parsed && policy_data.request_token().empty()) {
-    std::string contents;
-    base::ReadFileToString(install_attributes_file_, &contents);
-    cryptohome::SerializedInstallAttributes install_attributes;
-    if (install_attributes.ParseFromString(contents)) {
-      for (int i = 0; i < install_attributes.attributes_size(); ++i) {
-        const cryptohome::SerializedInstallAttributes_Attribute& attribute =
-            install_attributes.attributes(i);
-        // Cast value to C string and back to remove trailing zero.
-        if (attribute.name() == kAttrEnterpriseMode &&
-            std::string(attribute.value().c_str()) == kEnterpriseDeviceMode) {
-          LOG(WARNING) << "DM token missing on enrolled device.";
-          recovery_needed = true;
-          break;
-        }
-      }
-    }
+  if (policy_parsed && policy_data.request_token().empty() &&
+      InstallAttributesEnterpriseMode()) {
+    LOG(WARNING) << "DM token missing on enrolled device.";
+    recovery_needed = true;
   }
 
   // We need to recreate the machine info file if |valid_serial_number_missing|
@@ -478,4 +474,114 @@ void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
   }
 }
 
+void DevicePolicyService::PersistPolicyOnLoop(const Completion& completion) {
+  if (!store()->Persist()) {
+    OnPolicyPersisted(completion, dbus_error::kSigEncodeFail);
+    return;
+  }
+
+  if (!MayUpdateSystemSettings()) {
+    OnPolicyPersisted(completion, dbus_error::kNone);
+    return;
+  }
+
+  if (UpdateSystemSettings(completion)) {
+    // |vpd_process_| will run |completion| when it's done, so pass a null
+    // completion to OnPolicyPersisted().
+    OnPolicyPersisted(Completion(), dbus_error::kNone);
+  } else {
+    OnPolicyPersisted(completion, dbus_error::kVpdUpdateFailed);
+  }
+}
+
+bool DevicePolicyService::InstallAttributesEnterpriseMode() {
+  std::string contents;
+  base::ReadFileToString(install_attributes_file_, &contents);
+  cryptohome::SerializedInstallAttributes install_attributes;
+  if (install_attributes.ParseFromString(contents)) {
+    for (int i = 0; i < install_attributes.attributes_size(); ++i) {
+      const cryptohome::SerializedInstallAttributes_Attribute& attribute =
+          install_attributes.attributes(i);
+      // Cast value to C string and back to remove trailing zero.
+      if (attribute.name() == kAttrEnterpriseMode &&
+          std::string(attribute.value().c_str()) == kEnterpriseDeviceMode) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool DevicePolicyService::MayUpdateSystemSettings() {
+  // Check if device ownership is established.
+  if (!key()->IsPopulated()) {
+    return false;
+  }
+
+  // Check whether device is running on Chrome OS firmware.
+  char buffer[Crossystem::kVbMaxStringProperty];
+  if (!crossystem_->VbGetSystemPropertyString(Crossystem::kMainfwType, buffer,
+                                              sizeof(buffer)) ||
+      strcmp(Crossystem::kMainfwTypeNonchrome, buffer) == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+bool DevicePolicyService::UpdateSystemSettings(
+    const Completion& completion) {
+  const int block_devmode_setting =
+      GetSettings().system_settings().block_devmode();
+  int block_devmode_value =
+      crossystem_->VbGetSystemPropertyInt(Crossystem::kBlockDevmode);
+  if (block_devmode_value == -1) {
+    LOG(ERROR) << "Failed to read block_devmode flag!";
+  }
+
+  // Set crossystem block_devmode flag.
+  if (block_devmode_value != block_devmode_setting) {
+    if (crossystem_->VbSetSystemPropertyInt(Crossystem::kBlockDevmode,
+                                            block_devmode_setting) != 0) {
+      LOG(ERROR) << "Failed to write block_devmode flag!";
+    } else {
+      block_devmode_value = block_devmode_setting;
+    }
+  }
+
+  // Clear nvram_cleared if block_devmode has the correct state now.  (This is
+  // OK as long as block_devmode is the only consumer of nvram_cleared.  Once
+  // other use cases crop up, clearing has to be done in cooperation.)
+  if (block_devmode_value == block_devmode_setting) {
+    const int nvram_cleared_value =
+        crossystem_->VbGetSystemPropertyInt(Crossystem::kNvramCleared);
+    if (nvram_cleared_value == -1) {
+      LOG(ERROR) << "Failed to read nvram_cleared flag!";
+    }
+    if (nvram_cleared_value != 0) {
+      if (crossystem_->VbSetSystemPropertyInt(
+          Crossystem::kNvramCleared, 0) != 0) {
+        LOG(ERROR) << "Failed to clear nvram_cleared flag!";
+      }
+    }
+  }
+
+  // Used to keep the command line flags for the VPD updater script.
+  std::vector<std::string> flags;
+  std::vector<int> values;
+
+  flags.push_back(Crossystem::kBlockDevmode);
+  values.push_back(block_devmode_setting);
+
+  // Check if device is enrolled. The flag for enrolled device is written to VPD
+  // but will never get deleted. Existence of the flag is one of the triggers
+  // for FRE check during OOBE.
+  if (InstallAttributesEnterpriseMode()) {
+    flags.push_back(Crossystem::kCheckEnrollment);
+    values.push_back(1);
+  }
+
+  return vpd_process_->RunInBackground(flags, values, completion);
+}
 }  // namespace login_manager

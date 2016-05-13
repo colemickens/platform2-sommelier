@@ -5,17 +5,21 @@
 #ifndef LOGIN_MANAGER_VPD_PROCESS_H_
 #define LOGIN_MANAGER_VPD_PROCESS_H_
 
-namespace login_manager {
+#include <string>
+#include <vector>
 
-class SystemUtils;
+#include "login_manager/policy_service.h"
+
+namespace login_manager {
 
 class VpdProcess {
  public:
-  virtual ~VpdProcess() {}
-
-  // Run VPD setter script as a separate process.  Returns whether fork() was
+  // Run VPD setter script as a separate process. Takes ownership of
+  // |completion| if process starts successfully. Returns whether fork() was
   // successful.
-  virtual bool RunInBackground(SystemUtils* utils, bool block_devmode) = 0;
+  virtual bool RunInBackground(const std::vector<std::string>& flags,
+                               const std::vector<int>& values,
+                               const PolicyService::Completion& completion) = 0;
 };
 
 }  // namespace login_manager

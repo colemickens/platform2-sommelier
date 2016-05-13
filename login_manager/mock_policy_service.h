@@ -26,7 +26,7 @@ class MockPolicyService : public PolicyService {
  public:
   MockPolicyService();
   virtual ~MockPolicyService();
-  MOCK_METHOD4(Store, bool(const uint8_t*, uint32_t, Completion, int));
+  MOCK_METHOD4(Store, bool(const uint8_t*, uint32_t, const Completion&, int));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
   MOCK_METHOD0(PersistKey, void(void));
   MOCK_METHOD1(PersistPolicy, void(Completion));

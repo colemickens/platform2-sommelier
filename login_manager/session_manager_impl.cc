@@ -15,7 +15,6 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
@@ -115,7 +114,7 @@ struct SessionManagerImpl::UserSession {
               const std::string& userhash,
               bool is_incognito,
               crypto::ScopedPK11Slot slot,
-              scoped_ptr<PolicyService> policy_service)
+              std::unique_ptr<PolicyService> policy_service)
       : username(username),
         userhash(userhash),
         is_incognito(is_incognito),
@@ -127,7 +126,7 @@ struct SessionManagerImpl::UserSession {
   const std::string userhash;
   const bool is_incognito;
   crypto::ScopedPK11Slot slot;
-  scoped_ptr<PolicyService> policy_service;
+  std::unique_ptr<PolicyService> policy_service;
 };
 
 SessionManagerImpl::SessionManagerImpl(
@@ -172,9 +171,10 @@ SessionManagerImpl::~SessionManagerImpl() {
 }
 
 void SessionManagerImpl::InjectPolicyServices(
-    scoped_ptr<DevicePolicyService> device_policy,
-    scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
-    scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy) {
+    std::unique_ptr<DevicePolicyService> device_policy,
+    std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
+    std::unique_ptr<DeviceLocalAccountPolicyService>
+    device_local_account_policy) {
   device_policy_ = std::move(device_policy);
   user_policy_factory_ = std::move(user_policy_factory);
   device_local_account_policy_ = std::move(device_local_account_policy);
@@ -198,12 +198,12 @@ bool SessionManagerImpl::ShouldEndSession() {
   return screen_locked_ || supervised_user_creation_ongoing_;
 }
 
-
 bool SessionManagerImpl::Initialize() {
   key_gen_->set_delegate(this);
 
   device_policy_.reset(DevicePolicyService::Create(
-      login_metrics_, owner_key_, &mitigator_, nss_));
+      login_metrics_, owner_key_, &mitigator_, nss_, crossystem_,
+      vpd_process_));
   device_policy_->set_delegate(this);
 
   user_policy_factory_.reset(
@@ -214,7 +214,9 @@ bool SessionManagerImpl::Initialize() {
   if (device_policy_->Initialize()) {
     device_local_account_policy_->UpdateDeviceSettings(
         device_policy_->GetSettings());
-    UpdateSystemSettings();
+    if (device_policy_->MayUpdateSystemSettings()) {
+      device_policy_->UpdateSystemSettings(PolicyService::Completion());
+    }
     return true;
   }
   return false;
@@ -306,7 +308,7 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
 
   // Create a UserSession object for this user.
   std::string error_name;
-  scoped_ptr<UserSession> user_session(
+  std::unique_ptr<UserSession> user_session(
       CreateUserSession(actual_user_id, is_incognito, &error_name));
   if (!user_session.get()) {
     error->Set(error_name, "Can't create session.");
@@ -377,9 +379,10 @@ bool SessionManagerImpl::StopSession() {
   return true;
 }
 
-void SessionManagerImpl::StorePolicy(const uint8_t* policy_blob,
-                                     size_t policy_blob_len,
-                                     PolicyService::Completion completion) {
+void SessionManagerImpl::StorePolicy(
+    const uint8_t* policy_blob,
+    size_t policy_blob_len,
+    const PolicyService::Completion& completion) {
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
@@ -400,7 +403,7 @@ void SessionManagerImpl::StorePolicyForUser(
     const std::string& user_id,
     const uint8_t* policy_blob,
     size_t policy_blob_len,
-    PolicyService::Completion completion) {
+    const PolicyService::Completion& completion) {
   PolicyService* policy_service = GetPolicyService(user_id);
   if (!policy_service) {
     PolicyService::Error error(
@@ -441,7 +444,7 @@ void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     const std::string& account_id,
     const uint8_t* policy_blob,
     size_t policy_blob_len,
-    PolicyService::Completion completion) {
+    const PolicyService::Completion& completion) {
   device_local_account_policy_->Store(
       account_id, policy_blob, policy_blob_len, completion);
 }
@@ -640,7 +643,6 @@ base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
-  UpdateSystemSettings();
   dbus_emitter_->EmitSignalWithSuccessFailure(kPropertyChangeCompleteSignal,
                                               success);
 }
@@ -725,7 +727,8 @@ SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
     const std::string& username,
     bool is_incognito,
     std::string* error_message) {
-  scoped_ptr<PolicyService> user_policy(user_policy_factory_->Create(username));
+  std::unique_ptr<PolicyService>
+  user_policy(user_policy_factory_->Create(username));
   if (!user_policy) {
     LOG(ERROR) << "User policy failed to initialize.";
     if (error_message)
@@ -749,57 +752,6 @@ SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
 PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
   UserSessionMap::const_iterator it = user_sessions_.find(user);
   return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
-}
-
-void SessionManagerImpl::UpdateSystemSettings() {
-  // Only write settings when device ownership is established.
-  if (!owner_key_->IsPopulated())
-    return;
-
-  // Only write verified boot settings if running on Chrome OS firmware.
-  char buffer[Crossystem::kVbMaxStringProperty];
-  if (crossystem_->VbGetSystemPropertyString(Crossystem::kMainfwType, buffer,
-                                             sizeof(buffer)) &&
-      strcmp(Crossystem::kMainfwTypeNonchrome, buffer)) {
-    const int block_devmode_setting =
-        device_policy_->GetSettings().system_settings().block_devmode();
-    int block_devmode_value =
-        crossystem_->VbGetSystemPropertyInt(Crossystem::kBlockDevmode);
-    if (block_devmode_value == -1) {
-      LOG(ERROR) << "Failed to read block_devmode flag!";
-    }
-
-    // Set crossystem block_devmode flag.
-    if (block_devmode_value != block_devmode_setting) {
-      if (crossystem_->VbSetSystemPropertyInt(Crossystem::kBlockDevmode,
-                                              block_devmode_setting)) {
-        LOG(ERROR) << "Failed to write block_devmode flag!";
-      } else {
-        block_devmode_value = block_devmode_setting;
-      }
-    }
-
-    // Clear nvram_cleared if block_devmode has the correct state now.  (This is
-    // OK as long as block_devmode is the only consumer of nvram_cleared.  Once
-    // other use cases crop up, clearing has to be done in cooperation.)
-    if (block_devmode_value == block_devmode_setting) {
-      const int nvram_cleared_value =
-          crossystem_->VbGetSystemPropertyInt(Crossystem::kNvramCleared);
-      if (nvram_cleared_value == -1) {
-        LOG(ERROR) << "Failed to read nvram_cleared flag!";
-      }
-      if (nvram_cleared_value != 0) {
-        if (crossystem_->VbSetSystemPropertyInt(Crossystem::kNvramCleared, 0)) {
-          LOG(ERROR) << "Failed to clear nvram_cleared flag!";
-        }
-      }
-    }
-
-    // Back up block_devmode flag in VPD.
-    if (!vpd_process_->RunInBackground(system_, block_devmode_setting)) {
-      LOG(ERROR) << "Could not start VPD process!";
-    }
-  }
 }
 
 }  // namespace login_manager

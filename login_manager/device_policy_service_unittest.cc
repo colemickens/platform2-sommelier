@@ -22,13 +22,17 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "bindings/install_attributes.pb.h"
+#include "login_manager/fake_crossystem.h"
 #include "login_manager/matchers.h"
+#include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
+#include "login_manager/mock_system_utils.h"
+#include "login_manager/mock_vpd_process.h"
 
 namespace em = enterprise_management;
 
@@ -116,15 +120,54 @@ class DevicePolicyServiceTest : public ::testing::Test {
     service_.reset(new DevicePolicyService(serial_recovery_flag_file_,
                                            policy_file_,
                                            install_attributes_file_,
-                                           scoped_ptr<PolicyStore>(store_),
+                                           std::unique_ptr<PolicyStore>(store_),
                                            &key_,
                                            metrics_.get(),
                                            mitigator_.get(),
-                                           nss));
+                                           nss,
+                                           &crossystem_,
+                                           &vpd_process_));
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der())
         .WillRepeatedly(ReturnRef(fake_key_vector_));
+  }
+
+  void SetDefaultSettings() {
+    crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+    crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
+    crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+
+    EXPECT_CALL(key_, IsPopulated())
+        .WillRepeatedly(Return(true));
+
+    em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+    proto->mutable_system_settings()->set_block_devmode(false);
+    SetSettings(proto);
+
+    EXPECT_CALL(vpd_process_, RunInBackground(_, _, _))
+        .WillRepeatedly(Return(true));
+  }
+
+  void SetSettings(em::ChromeDeviceSettingsProto* proto) {
+    service_->settings_.reset(proto);
+  }
+
+  void SetSettings(DevicePolicyService* service,
+                   em::ChromeDeviceSettingsProto* proto) {
+    service->settings_.reset(proto);
+  }
+
+  void SetPolicyKey(DevicePolicyService* service, PolicyKey* key) {
+    service->set_policy_key_for_test(key);
+  }
+
+  bool UpdateSystemSettings(DevicePolicyService* service) {
+    return service->UpdateSystemSettings(completion_);
+  }
+
+  void PersistPolicyOnLoop(DevicePolicyService* service) {
+    service->PersistPolicyOnLoop(completion_);
   }
 
   void RecordNewPolicy(const em::PolicyFetchResponse& policy) {
@@ -172,9 +215,11 @@ class DevicePolicyServiceTest : public ::testing::Test {
                             Return(false)));
   }
 
-  void ExpectPersistKeyAndPolicy() {
+  void ExpectPersistKeyAndPolicy(bool is_populated) {
     Mock::VerifyAndClearExpectations(&key_);
     Mock::VerifyAndClearExpectations(store_);
+
+    EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(is_populated));
 
     EXPECT_CALL(key_, Persist()).WillOnce(Return(true));
     EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
@@ -262,11 +307,14 @@ class DevicePolicyServiceTest : public ::testing::Test {
   // occur without the test failing.
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_;
-  scoped_ptr<MockMetrics> metrics_;
-  scoped_ptr<StrictMock<MockMitigator>> mitigator_;
+  std::unique_ptr<MockMetrics> metrics_;
+  std::unique_ptr<StrictMock<MockMitigator>> mitigator_;
   PolicyService::Completion completion_;
+  FakeCrossystem crossystem_;
+  MockSystemUtils utils_;
+  MockVpdProcess vpd_process_;
 
-  scoped_ptr<DevicePolicyService> service_;
+  std::unique_ptr<DevicePolicyService> service_;
 };
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
@@ -438,15 +486,17 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
+  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, PopulateFromBuffer(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s, &nss);
 
+  SetDefaultSettings();
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 
-  ExpectPersistKeyAndPolicy();
+  ExpectPersistKeyAndPolicy(true);
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
@@ -463,10 +513,11 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(0);
   ExpectInstallNewOwnerPolicy(s, &nss);
+  SetDefaultSettings();
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 
-  ExpectPersistKeyAndPolicy();
+  ExpectPersistKeyAndPolicy(true);
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
@@ -505,10 +556,169 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s, &nss);
+  SetDefaultSettings();
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 
-  ExpectPersistKeyAndPolicy();
+  ExpectPersistKeyAndPolicy(true);
+}
+
+// Ensure block devmode is set properly in NVRAM.
+TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
+  MockNssUtil nss;
+  InitService(&nss);
+
+  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
+  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+
+  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  proto->mutable_system_settings()->set_block_devmode(true);
+  SetSettings(proto);
+
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(UpdateSystemSettings(service_.get()));
+
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
+  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+}
+
+// Ensure block devmode is unset properly in NVRAM.
+TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
+  MockNssUtil nss;
+  InitService(&nss);
+
+  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
+  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+
+  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  proto->mutable_system_settings()->set_block_devmode(false);
+  SetSettings(proto);
+
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(UpdateSystemSettings(service_.get()));
+
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+}
+
+// Ensure non-enrolled and non-blockdevmode device will call VPD update
+// process to clean block_devmode only.
+TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
+  MockNssUtil nss;
+  InitService(&nss);
+
+  MockPolicyKey key;
+  MockPolicyStore* store = new MockPolicyStore();
+  MockDevicePolicyService service(
+    std::unique_ptr<MockPolicyStore>(store),
+    &key);
+
+  service.set_crossystem(&crossystem_);
+  service.set_vpd_process(&vpd_process_);
+  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+
+  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  proto->mutable_system_settings()->set_block_devmode(false);
+  SetSettings(&service, proto);
+  SetPolicyKey(&service, &key);
+  service.set_mock_proto(false);
+
+  EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
+  EXPECT_CALL(service, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(false));
+
+
+  std::vector<std::string> flag_names;
+  std::vector<int> flag_values;
+  flag_names.push_back(Crossystem::kBlockDevmode);
+  flag_values.push_back(0);
+  EXPECT_CALL(vpd_process_, RunInBackground(flag_names, flag_values, _))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  PersistPolicyOnLoop(&service);
+}
+
+// Ensure enrolled device gets VPD updated. A MockDevicePolicyService object is
+// used.
+TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
+  MockNssUtil nss;
+  InitService(&nss);
+
+  MockPolicyKey key;
+  MockPolicyStore* store = new MockPolicyStore();
+  MockDevicePolicyService service(
+    std::unique_ptr<MockPolicyStore>(store),
+    &key);
+
+  service.set_crossystem(&crossystem_);
+  service.set_vpd_process(&vpd_process_);
+  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+
+  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  proto->mutable_system_settings()->set_block_devmode(false);
+  SetSettings(&service, proto);
+  SetPolicyKey(&service, &key);
+  service.set_mock_proto(false);
+
+  EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
+  EXPECT_CALL(service, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(true));
+
+
+  std::vector<std::string> flag_names;
+  std::vector<int> flag_values;
+  flag_names.push_back(Crossystem::kBlockDevmode);
+  flag_values.push_back(0);
+  flag_names.push_back(Crossystem::kCheckEnrollment);
+  flag_values.push_back(1);
+  EXPECT_CALL(vpd_process_, RunInBackground(flag_names, flag_values, _))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  PersistPolicyOnLoop(&service);
+}
+
+// Check enrolled device that fails at VPD update.
+TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
+  MockNssUtil nss;
+  InitService(&nss);
+
+  MockPolicyKey key;
+  MockDevicePolicyService service;
+
+  service.set_crossystem(&crossystem_);
+  service.set_vpd_process(&vpd_process_);
+  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+
+  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  proto->mutable_system_settings()->set_block_devmode(false);
+  SetSettings(&service, proto);
+  SetPolicyKey(&service, &key);
+  service.set_mock_proto(false);
+
+  EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
+  EXPECT_CALL(service, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(true));
+  std::vector<std::string> flag_names;
+  std::vector<int> flag_values;
+  flag_names.push_back(Crossystem::kBlockDevmode);
+  flag_values.push_back(0);
+  flag_names.push_back(Crossystem::kCheckEnrollment);
+  flag_values.push_back(1);
+  EXPECT_CALL(vpd_process_, RunInBackground(flag_names, flag_values, _))
+      .Times(1)
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(UpdateSystemSettings(&service));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {
@@ -826,6 +1036,7 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   settings.mutable_metrics_enabled()->set_metrics_enabled(true);
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
   EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
@@ -855,6 +1066,7 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   settings.mutable_start_up_flags()->add_flags("--");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
   EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));

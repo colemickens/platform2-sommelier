@@ -13,7 +13,6 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -72,7 +71,7 @@ class PolicyService {
     virtual void OnKeyPersisted(bool success) = 0;
   };
 
-  PolicyService(scoped_ptr<PolicyStore> policy_store,
+  PolicyService(std::unique_ptr<PolicyStore> policy_store,
                 PolicyKey* policy_key);
   virtual ~PolicyService();
 
@@ -85,7 +84,7 @@ class PolicyService {
   // status of the operation through |completion|.
   virtual bool Store(const uint8_t* policy_blob,
                      uint32_t len,
-                     Completion completion,
+                     const Completion& completion,
                      int flags);
 
   // Retrieves the current policy blob. Returns true if successful, false
@@ -106,6 +105,7 @@ class PolicyService {
 
   PolicyStore* store() { return policy_store_.get(); }
   PolicyKey* key() { return policy_key_; }
+  void set_policy_key_for_test(PolicyKey* key) { policy_key_ = key; }
 
   // Schedules the key to be persisted.
   void PersistKey();
@@ -115,33 +115,36 @@ class PolicyService {
 
   // Triggers persisting the policy to disk and reports the result to the given
   // completion context.
-  void PersistPolicyWithCompletion(Completion completion);
+  void PersistPolicyWithCompletion(const Completion& completion);
 
   // Store a policy blob. This does the heavy lifting for Store(), making the
   // signature checks, taking care of key changes and persisting policy and key
   // data to disk.
   bool StorePolicy(const enterprise_management::PolicyFetchResponse& policy,
-                   Completion completion,
+                   const Completion& completion,
                    int flags);
 
   // Completes a key storage operation on the UI thread, reporting the result to
   // the delegate.
   virtual void OnKeyPersisted(bool status);
 
+  // Persists policy to disk on the main thread. If |completion| is non-null
+  // it will be signaled when done.
+  virtual void PersistPolicyOnLoop(const Completion& completion);
+
+  // Finishes persisting policy, notifying the delegate and reporting the
+  // |dbus_error_type| through |completion|. |completion| may be null, and
+  // in that case the reporting part is not done. |dbus_error_type| is a
+  // dbus_error constant and can be a non-error, like kNone.
+  void OnPolicyPersisted(const Completion& completion,
+                         const char* dbus_error_type);
+
  private:
   // Takes care of persisting the policy key to disk.
   void PersistKeyOnLoop();
 
-  // Persists policy to disk on the main thread. If |completion| is non-NULL
-  // it will be signaled when done.
-  void PersistPolicyOnLoop(Completion completion);
-
-  // Finishes persisting policy with |status|, notifying the delegate and
-  // reporting the status through |completion|.
-  void OnPolicyPersisted(Completion completion, bool status);
-
  private:
-  scoped_ptr<PolicyStore> policy_store_;
+  std::unique_ptr<PolicyStore> policy_store_;
   PolicyKey* policy_key_;
   Delegate* delegate_;
 

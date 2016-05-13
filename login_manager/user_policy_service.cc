@@ -60,7 +60,7 @@ void UserPolicyService::PersistKeyCopy() {
 
 bool UserPolicyService::Store(const uint8_t* policy_blob,
                               uint32_t len,
-                              Completion completion,
+                              const Completion& completion,
                               int flags) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;

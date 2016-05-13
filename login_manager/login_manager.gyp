@@ -61,6 +61,7 @@
         'container_config_parser.cc',
         'crossystem.cc',
         'crossystem_impl.cc',
+        'dbus_error_types.cc',
         'dbus_signal_emitter.cc',
         'device_local_account_policy_service.cc',
         'device_policy_service.cc',

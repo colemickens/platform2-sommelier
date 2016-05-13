@@ -18,8 +18,11 @@ class Crossystem {
   // VbGetSystemPropertyString().
   static const std::size_t kVbMaxStringProperty = 8192;
 
-  // The name of the flag that indicates whether dev mode should be blocked.
+  // The name of the flag that indicates whether dev mode must be blocked.
   static const char kBlockDevmode[];
+
+  // The name of the flag that indicates whether enrollment check must be run.
+  static const char kCheckEnrollment[];
 
   // The name of the flag that indicates whether NVRAM has been cleared (eg. due
   // to loss of power).

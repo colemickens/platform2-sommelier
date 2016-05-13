@@ -12,11 +12,12 @@
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <crypto/scoped_nss_types.h>
 
+#include "login_manager/crossystem.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_service.h"
+#include "login_manager/vpd_process.h"
 
 namespace crypto {
 class RSAPrivateKey;
@@ -47,7 +48,9 @@ class DevicePolicyService : public PolicyService {
       LoginMetrics* metrics,
       PolicyKey* owner_key,
       OwnerKeyLossMitigator* mitigator,
-      NssUtil* nss);
+      NssUtil* nss,
+      Crossystem* crossystem,
+      VpdProcess* vpd_process);
 
   // Checks whether the given |current_user| is the device owner. The result of
   // the check is returned in |is_owner|. If so, it is validated that the device
@@ -90,11 +93,29 @@ class DevicePolicyService : public PolicyService {
   // Returns the currently active device settings.
   virtual const enterprise_management::ChromeDeviceSettingsProto& GetSettings();
 
+  // Returns whether the device is enrolled by checking enterprise mode in
+  // install attributes from disk.
+  virtual bool InstallAttributesEnterpriseMode();
+
+  // Returns whether system settings can be updated by checking that PolicyKey
+  // is populated and the device is running on Chrome OS firmware.
+  bool MayUpdateSystemSettings();
+
+  // Updates the system settings flags in NVRAM and in VPD. A failure in NVRAM
+  // update is not considered a fatal error because new functionality relies on
+  // VPD when checking the settings. The old code is using NVRAM however, which
+  // means we have to update that memory too. Returns whether VPD process
+  // started succesfully and is running in a separate process. In this case,
+  // |vpd_process_| is responsible for running |completion|; otherwise,
+  // OnPolicyPersisted() is.
+  bool UpdateSystemSettings(const Completion& completion);
+
   // PolicyService:
   bool Store(const uint8_t* policy_blob,
              uint32_t len,
-             Completion completion,
+             const Completion& completion,
              int flags) override;
+  void PersistPolicyOnLoop(const Completion& completion) override;
 
   static const char kPolicyPath[];
   static const char kSerialRecoveryFlagFile[];
@@ -112,15 +133,17 @@ class DevicePolicyService : public PolicyService {
   friend class DevicePolicyServiceTest;
   friend class MockDevicePolicyService;
 
-  // Takes ownership of |policy_store| and |mitigator|.
+  // Takes ownership of |policy_store|.
   DevicePolicyService(const base::FilePath& serial_recovery_flag_file,
                       const base::FilePath& policy_file,
                       const base::FilePath& install_attributes_file,
-                      scoped_ptr<PolicyStore> policy_store,
+                      std::unique_ptr<PolicyStore> policy_store,
                       PolicyKey* owner_key,
                       LoginMetrics* metrics,
                       OwnerKeyLossMitigator* mitigator,
-                      NssUtil* nss);
+                      NssUtil* nss,
+                      Crossystem* crossystem,
+                      VpdProcess* vpd_process);
 
   // Returns true if |policy| allows arbitrary new users to sign in.
   // Only exposed for testing.
@@ -158,11 +181,13 @@ class DevicePolicyService : public PolicyService {
   LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
+  Crossystem* crossystem_;     // Owned by the caller.
+  VpdProcess* vpd_process_;    // Owned by the caller.
 
   // Cached copy of the decoded device settings. Decoding happens on first
   // access, the cache is cleared whenever a new policy gets installed via
   // Store().
-  scoped_ptr<enterprise_management::ChromeDeviceSettingsProto> settings_;
+  std::unique_ptr<enterprise_management::ChromeDeviceSettingsProto> settings_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyService);
 };

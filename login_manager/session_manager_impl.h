@@ -133,21 +133,22 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   void StorePolicy(const uint8_t* policy_blob,
                    size_t policy_blob_len,
-                   PolicyService::Completion completion);
+                   const PolicyService::Completion& completion);
   void RetrievePolicy(std::vector<uint8_t>* policy_data, Error* error);
 
   void StorePolicyForUser(const std::string& user_id,
                           const uint8_t* policy_blob,
                           size_t policy_blob_len,
-                          PolicyService::Completion completion);
+                          const PolicyService::Completion& completion);
   void RetrievePolicyForUser(const std::string& user_id,
                              std::vector<uint8_t>* policy_data,
                              Error* error);
 
-  void StoreDeviceLocalAccountPolicy(const std::string& account_id,
-                                     const uint8_t* policy_blob,
-                                     size_t policy_blob_len,
-                                     PolicyService::Completion completion);
+  void StoreDeviceLocalAccountPolicy(
+      const std::string& account_id,
+      const uint8_t* policy_blob,
+      size_t policy_blob_len,
+      const PolicyService::Completion& completion);
   void RetrieveDeviceLocalAccountPolicy(const std::string& account_id,
                                         std::vector<uint8_t>* policy_data,
                                         Error* error);
@@ -212,9 +213,6 @@ class SessionManagerImpl : public SessionManagerInterface,
                                  std::string* error);
 
   PolicyService* GetPolicyService(const std::string& user_id);
-
-  // Updates system settings according to |device_policy_|.
-  void UpdateSystemSettings();
 
   bool session_started_;
   bool session_stopping_;

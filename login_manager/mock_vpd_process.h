@@ -5,9 +5,13 @@
 #ifndef LOGIN_MANAGER_MOCK_VPD_PROCESS_H_
 #define LOGIN_MANAGER_MOCK_VPD_PROCESS_H_
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 #include "login_manager/vpd_process.h"
+#include "login_manager/vpd_process_impl.h"
 
 namespace login_manager {
 
@@ -15,7 +19,11 @@ class SystemUtils;
 
 class MockVpdProcess : public VpdProcess {
  public:
-  MOCK_METHOD2(RunInBackground, bool(SystemUtils* utils, bool block_devmode));
+  MockVpdProcess() : VpdProcess() {}
+  MOCK_METHOD3(RunInBackground, bool(const std::vector<std::string>& flags,
+                                     const std::vector<int>& values,
+                                     const PolicyService::Completion&
+                                       completion));
 };
 
 }  // namespace login_manager

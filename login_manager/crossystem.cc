@@ -10,6 +10,7 @@ static_assert(Crossystem::kVbMaxStringProperty == VB_MAX_STRING_PROPERTY,
               "VB_MAX_STRING_PROPERTY got out of sync!");
 
 const char Crossystem::kBlockDevmode[] = "block_devmode";
+const char Crossystem::kCheckEnrollment[] = "check_enrollment";
 const char Crossystem::kNvramCleared[] = "nvram_cleared";
 const char Crossystem::kMainfwType[] = "mainfw_type";
 const char Crossystem::kMainfwTypeNonchrome[] = "nonchrome";

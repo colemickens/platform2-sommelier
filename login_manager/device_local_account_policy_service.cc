@@ -46,7 +46,7 @@ bool DeviceLocalAccountPolicyService::Store(
     const std::string& account_id,
     const uint8_t* policy_data,
     uint32_t policy_data_size,
-    PolicyService::Completion completion) {
+    const PolicyService::Completion& completion) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service) {
     PolicyService::Error error(dbus_error::kInvalidAccount,

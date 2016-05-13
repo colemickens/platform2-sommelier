@@ -59,7 +59,7 @@ PolicyService::~PolicyService() {
 
 bool PolicyService::Store(const uint8_t* policy_blob,
                           uint32_t len,
-                          Completion completion,
+                          const Completion& completion,
                           int flags) {
   em::PolicyFetchResponse policy;
   if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
@@ -84,9 +84,13 @@ bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
 }
 
 bool PolicyService::PersistPolicySync() {
-  bool status = store()->Persist();
-  OnPolicyPersisted(Completion(), status);
-  return status;
+  if (store()->Persist()) {
+    OnPolicyPersisted(Completion(), dbus_error::kNone);
+    return true;
+  } else {
+    OnPolicyPersisted(Completion(), dbus_error::kSigEncodeFail);
+    return false;
+  }
 }
 
 void PolicyService::PersistKey() {
@@ -101,14 +105,14 @@ void PolicyService::PersistPolicy() {
                             weak_ptr_factory_.GetWeakPtr(), Completion()));
 }
 
-void PolicyService::PersistPolicyWithCompletion(Completion completion) {
+void PolicyService::PersistPolicyWithCompletion(const Completion& completion) {
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE, base::Bind(&PolicyService::PersistPolicyOnLoop,
                             weak_ptr_factory_.GetWeakPtr(), completion));
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
-                                Completion completion,
+                                const Completion& completion,
                                 int flags) {
   // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
@@ -178,27 +182,29 @@ void PolicyService::PersistKeyOnLoop() {
   OnKeyPersisted(key()->Persist());
 }
 
-void PolicyService::PersistPolicyOnLoop(Completion completion) {
-  OnPolicyPersisted(completion, store()->Persist());
+void PolicyService::PersistPolicyOnLoop(const Completion& completion) {
+  if (store()->Persist()) {
+    OnPolicyPersisted(completion, dbus_error::kNone);
+  } else {
+    OnPolicyPersisted(completion, dbus_error::kSigEncodeFail);
+  }
 }
 
-void PolicyService::OnPolicyPersisted(Completion completion,
-                                      bool status) {
-  if (status) {
+void PolicyService::OnPolicyPersisted(const Completion& completion,
+                                      const char* dbus_error_type) {
+  std::string msg;
+  if (dbus_error_type == dbus_error::kNone) {
     LOG(INFO) << "Persisted policy to disk.";
-    if (!completion.is_null())
-      completion.Run(Error());
   } else {
-    std::string msg = "Failed to persist policy to disk.";
-    LOG(ERROR) << msg;
-    if (!completion.is_null()) {
-      Error error(dbus_error::kSigEncodeFail, msg);
-      completion.Run(error);
-    }
+    msg = "Failed to persist policy to disk.";
+    LOG(ERROR) << msg << dbus_error_type;
   }
 
+  if (!completion.is_null())
+    completion.Run(Error(dbus_error_type, msg));
+
   if (delegate_)
-    delegate_->OnPolicyPersisted(status);
+    delegate_->OnPolicyPersisted(dbus_error_type == dbus_error::kNone);
 }
 
 }  // namespace login_manager

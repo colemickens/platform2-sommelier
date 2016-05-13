@@ -140,6 +140,7 @@ SessionManagerService::SessionManagerService(
       owner_key_(nss_->GetOwnerKeyFilePath(), nss_.get()),
       key_gen_(uid, utils),
       state_key_generator_(utils, metrics),
+      vpd_process_(utils),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       shutting_down_(false),
@@ -385,6 +386,7 @@ void SessionManagerService::SetUpHandlers() {
   std::vector<JobManagerInterface*> job_managers;
   job_managers.push_back(this);
   job_managers.push_back(&key_gen_);
+  job_managers.push_back(&vpd_process_);
   signal_handler_.Init();
   child_exit_handler_.Init(&signal_handler_, job_managers);
   for (int i = 0; i < kNumSignals; ++i) {

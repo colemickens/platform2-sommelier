@@ -7,27 +7,26 @@
 
 namespace login_manager {
 namespace dbus_error {
-#define INTERFACE "org.chromium.SessionManagerInterface"
 
-static const char kNone[] = INTERFACE ".None";
-static const char kEmitFailed[] = INTERFACE ".EmitFailed";
-static const char kInitMachineInfoFail[] = INTERFACE ".InitMachineInfoFail";
-static const char kInvalidAccount[] = INTERFACE ".InvalidAccount";
-static const char kNoOwnerKey[] = INTERFACE ".NoOwnerKey";
-static const char kNoUserNssDb[] = INTERFACE ".NoUserNssDb";
-static const char kNotAvailable[] = INTERFACE ".NotAvailable";
-static const char kPolicyInitFail[] = INTERFACE ".PolicyInitFail";
-static const char kPubkeySetIllegal[] = INTERFACE ".PubkeySetIllegal";
-static const char kSessionDoesNotExist[] = INTERFACE ".SessionDoesNotExist";
-static const char kSessionExists[] = INTERFACE ".SessionExists";
-static const char kSigDecodeFail[] = INTERFACE ".SigDecodeFail";
-static const char kSigEncodeFail[] = INTERFACE ".SigEncodeFail";
-static const char kTestingChannelError[] = INTERFACE ".TestingChannelError";
-static const char kUnknownPid[] = INTERFACE ".UnknownPid";
-static const char kVerifyFail[] = INTERFACE ".VerifyFail";
-static const char kNotStarted[] = INTERFACE ".NotStarted";
+extern const char kNone[];
+extern const char kEmitFailed[];
+extern const char kInitMachineInfoFail[];
+extern const char kInvalidAccount[];
+extern const char kNoOwnerKey[];
+extern const char kNoUserNssDb[];
+extern const char kNotAvailable[];
+extern const char kPolicyInitFail[];
+extern const char kPubkeySetIllegal[];
+extern const char kSessionDoesNotExist[];
+extern const char kSessionExists[];
+extern const char kSigDecodeFail[];
+extern const char kSigEncodeFail[];
+extern const char kTestingChannelError[];
+extern const char kUnknownPid[];
+extern const char kVerifyFail[];
+extern const char kNotStarted[];
+extern const char kVpdUpdateFailed[];
 
-#undef INTERFACE
 }  // namespace dbus_error
 }  // namespace login_manager
 

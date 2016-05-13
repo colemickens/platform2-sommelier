@@ -50,7 +50,7 @@ class DeviceLocalAccountPolicyService {
   bool Store(const std::string& account_id,
              const uint8_t* policy_data,
              uint32_t policy_data_size,
-             PolicyService::Completion completion);
+             const PolicyService::Completion& completion);
 
   // Load policy for a given |account_id| and places the result in
   // |policy_data|. Returns true if the account exists and policy could be read

@@ -126,10 +126,6 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_EQ(actual_restarts_, expected_restarts_);
   }
 
-  void UpdateSystemSettings() {
-    impl_.UpdateSystemSettings();
-  }
-
  protected:
   void ExpectStartSession(const string& user_id_string) {
     ExpectSessionBoilerplate(user_id_string, false, false);
@@ -814,58 +810,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
 #endif
-}
-
-// Ensure block devmode is set properly.
-TEST_F(SessionManagerImplTest, UpdateSystemSettingsSetBlockDevMode) {
-  crossystem_.VbSetSystemPropertyString("mainfw_type", "normal");
-  crossystem_.VbSetSystemPropertyInt("block_devmode", 0);
-  crossystem_.VbSetSystemPropertyInt("nvram_cleared", 1);
-
-  EXPECT_CALL(owner_key_, IsPopulated())
-      .Times(1)
-      .WillOnce(Return(true));
-
-  ChromeDeviceSettingsProto proto;
-  proto.mutable_system_settings()->set_block_devmode(true);
-  EXPECT_CALL(*device_policy_service_, GetSettingsProxy())
-      .Times(1)
-      .WillOnce(Return(proto));
-
-  EXPECT_CALL(vpd_process_, RunInBackground(_, true))
-      .Times(1)
-      .WillOnce(Return(true));
-
-  UpdateSystemSettings();
-
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt("nvram_cleared"));
-  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt("block_devmode"));
-}
-
-// Ensure block devmode is unset properly.
-TEST_F(SessionManagerImplTest, UpdateSystemSettingsUnsetBlockDevMode) {
-  crossystem_.VbSetSystemPropertyString("mainfw_type", "normal");
-  crossystem_.VbSetSystemPropertyInt("block_devmode", 1);
-  crossystem_.VbSetSystemPropertyInt("nvram_cleared", 1);
-
-  EXPECT_CALL(owner_key_, IsPopulated())
-      .Times(1)
-      .WillOnce(Return(true));
-
-  ChromeDeviceSettingsProto proto;
-  proto.mutable_system_settings()->set_block_devmode(false);
-  EXPECT_CALL(*device_policy_service_, GetSettingsProxy())
-      .Times(1)
-      .WillOnce(Return(proto));
-
-  EXPECT_CALL(vpd_process_, RunInBackground(_, false))
-      .Times(1)
-      .WillOnce(Return(true));
-
-  UpdateSystemSettings();
-
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt("nvram_cleared"));
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt("block_devmode"));
 }
 
 class SessionManagerImplStaticTest : public ::testing::Test {
