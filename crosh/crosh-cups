@@ -7,12 +7,11 @@
 # this command is just a stopgap measure and should be dropped once
 # a proper UI is formed. See http://crbug.com/593139
 
-USAGE_cups='[--start | --stop | --status | --restart | --reset]'
+USAGE_cups='[--reset]'
 HELP_cups='
-  Start, stop, check the status of, restart, or reset the CUPS daemon. --reset
-  will stop cupsd (if running) and remove any local state (e.g., saved
-  printers, jobs, etc.). For initial development only; will be removed in a
-  future release.
+  Reset the state of the CUPS daemon. Will stop cupsd (if running) and remove
+  any local state (e.g., saved printers, jobs, etc.). For initial development
+  only; will be removed in a future release.
 '
 
 cups_initctl() {
@@ -35,18 +34,6 @@ cmd_cups() {
     return 1
   fi
   case "$1" in
-    "--start")
-      cups_initctl "start"
-      ;;
-    "--stop")
-      cups_initctl "stop"
-      ;;
-    "--status")
-      cups_initctl "status"
-      ;;
-    "--restart")
-      cups_initctl "restart"
-      ;;
     "--reset")
       cups_reset
       ;;
