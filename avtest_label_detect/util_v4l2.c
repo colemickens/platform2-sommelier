@@ -43,9 +43,8 @@ bool is_hw_video_acc_device(int fd) {
   struct v4l2_capability cap;
   int ret = do_ioctl(fd, VIDIOC_QUERYCAP, &cap);
   if (ret == 0) {
-    if ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) &&
-        (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE) &&
-        (cap.capabilities & V4L2_CAP_STREAMING)) {
+    if ((cap.capabilities & V4L2_CAP_STREAMING) &&
+        (cap.capabilities & V4L2_CAP_VIDEO_M2M_MPLANE)) {
       TRACE("is_hw_video_acc_device: true\n");
       return true;
     }
