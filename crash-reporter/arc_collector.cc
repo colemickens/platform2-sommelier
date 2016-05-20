@@ -24,6 +24,7 @@
 using base::File;
 using base::FilePath;
 using base::ReadFileToString;
+using base::TimeTicks;
 
 using brillo::ProcessImpl;
 
@@ -56,6 +57,7 @@ const char kExceptionInfoField[] = "exception_info";
 const char kProcessField[] = "process";
 const char kProductField[] = "prod";
 const char kSignatureField[] = "sig";
+const char kUptimeField[] = "uptime";
 
 // Keys for crash log headers.
 const char kBuildKey[] = "Build";
@@ -88,6 +90,8 @@ bool GetArcProperties(std::string *version,
 // Runs |process| and redirects |fd| to |output|. Returns the exit code, or -1
 // if the process failed to start.
 int RunAndCaptureOutput(ProcessImpl *process, int fd, std::string *output);
+
+std::string FormatDuration(uint64_t seconds);
 
 }  // namespace
 
@@ -318,6 +322,17 @@ void ArcCollector::AddArcMetaData(const std::string &process,
     AddCrashMetaUploadData(kBoardField, board);
     AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
   }
+
+  int64_t start_time;
+  brillo::ErrorPtr error;
+  if (!session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
+    LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
+    return;
+  }
+
+  const uint64_t delta = static_cast<uint64_t>((TimeTicks::Now() -
+      TimeTicks::FromInternalValue(start_time)).InSeconds());
+  AddCrashMetaUploadData(kUptimeField, FormatDuration(delta));
 }
 
 std::string ArcCollector::GetCrashLogHeader(const CrashLogHeaderMap &map,
@@ -517,6 +532,31 @@ int RunAndCaptureOutput(ProcessImpl *process, int fd, std::string *output) {
   }
 
   return -1;
+}
+
+std::string FormatDuration(uint64_t seconds) {
+  constexpr uint64_t kSecondsPerMinute = 60;
+  constexpr uint64_t kSecondsPerHour = 60 * kSecondsPerMinute;
+  constexpr uint64_t kSecondsPerDay = 24 * kSecondsPerHour;
+
+  const auto days = seconds / kSecondsPerDay;
+  seconds %= kSecondsPerDay;
+  const auto hours = seconds / kSecondsPerHour;
+  seconds %= kSecondsPerHour;
+  const auto minutes = seconds / kSecondsPerMinute;
+  seconds %= kSecondsPerMinute;
+
+  std::ostringstream out;
+
+  if (days > 0)
+    out << days << "d ";
+  if (days > 0 || hours > 0)
+    out << hours << "h ";
+  if (days > 0 || hours > 0 || minutes > 0)
+    out << minutes << "min ";
+
+  out << seconds << 's';
+  return out.str();
 }
 
 }  // namespace

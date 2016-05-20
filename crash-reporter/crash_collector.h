@@ -171,11 +171,12 @@ class CrashCollector {
 
   scoped_refptr<dbus::Bus> bus_;
 
- private:
+ protected:
   // D-Bus proxy for session manager interface.
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy>
       session_manager_proxy_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(CrashCollector);
 };
 
