@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/strings/string_utils.h>
 

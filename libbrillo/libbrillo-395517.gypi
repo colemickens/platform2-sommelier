@@ -1,6 +1,6 @@
 {
   'variables': {
-    'libbase_ver': 381699,
+    'libbase_ver': 395517,
   },
   'includes': [
     '../libbrillo/libbrillo.gypi',
