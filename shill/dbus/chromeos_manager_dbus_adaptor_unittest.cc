@@ -86,7 +86,7 @@ TEST_F(ChromeosManagerDBusAdaptorTest, ClaimInterface) {
   string kDefaultClaimerName = "";
   string kNonDefaultClaimerName = "test_claimer";
   string kInterfaceName = "test_interface";
-  scoped_ptr<Response> message(Response::CreateEmpty());
+  std::unique_ptr<Response> message(Response::CreateEmpty());
 
   // Watcher for device claimer is not created when we fail to claim the device.
   EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());
@@ -125,7 +125,7 @@ TEST_F(ChromeosManagerDBusAdaptorTest, ReleaseInterface) {
   brillo::ErrorPtr error;
   string kClaimerName = "test_claimer";
   string kInterfaceName = "test_interface";
-  scoped_ptr<Response> message(Response::CreateEmpty());
+  std::unique_ptr<Response> message(Response::CreateEmpty());
 
   // Setup watcher for device claimer.
   manager_adaptor_.watcher_for_device_claimer_.reset(
@@ -150,7 +150,7 @@ TEST_F(ChromeosManagerDBusAdaptorTest, ReleaseInterface) {
 TEST_F(ChromeosManagerDBusAdaptorTest, SetupApModeInterface) {
   brillo::ErrorPtr error;
   string out_interface_name;
-  scoped_ptr<Response> message(Response::CreateEmpty());
+  std::unique_ptr<Response> message(Response::CreateEmpty());
 
 #if !defined(DISABLE_WIFI) && defined(__BRILLO__)
   // Watcher for AP mode setter is not created when we fail to setup AP mode

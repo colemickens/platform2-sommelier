@@ -18,12 +18,12 @@
 #define SHILL_VPN_THIRD_PARTY_VPN_DRIVER_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>
 
 #include "shill/ipconfig.h"

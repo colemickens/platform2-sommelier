@@ -30,7 +30,7 @@
 #include <base/files/important_file_writer.h>
 #include <base/files/file_util.h>
 #include <base/json/json_string_value_serializer.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -269,9 +269,9 @@ ConvertDictionaryValueToVariantDictionary(
 
 // Serialization helpers.
 
-scoped_ptr<base::DictionaryValue> MakeCoercedValue(
+std::unique_ptr<base::DictionaryValue> MakeCoercedValue(
     const string& native_type, const string& encoded_value) {
-  auto coerced_value(make_scoped_ptr(new base::DictionaryValue()));
+  auto coerced_value = base::MakeUnique<base::DictionaryValue>();
   coerced_value->SetStringWithoutPathExpansion(
       kCoercedValuePropertyNativeType, native_type);
   coerced_value->SetStringWithoutPathExpansion(
@@ -279,7 +279,7 @@ scoped_ptr<base::DictionaryValue> MakeCoercedValue(
   return coerced_value;
 }
 
-scoped_ptr<base::Value> MakeValueForString(const string& native_string) {
+std::unique_ptr<base::Value> MakeValueForString(const string& native_string) {
   // Strictly speaking, we don't need to escape non-ASCII text, if
   // that text is UTF-8.  Practically speaking, however, it'll be
   // easier to inspect config files if all non-ASCII strings are
@@ -287,7 +287,7 @@ scoped_ptr<base::Value> MakeValueForString(const string& native_string) {
   // similar-looking glyphs.)
   if (base::IsStringASCII(native_string) &&
       native_string.find('\0') == string::npos) {
-    return make_scoped_ptr(new base::StringValue(native_string));
+    return base::MakeUnique<base::StringValue>(native_string);
   } else {
     const string hex_encoded_string(
         base::HexEncode(native_string.data(), native_string.size()));
@@ -295,9 +295,9 @@ scoped_ptr<base::Value> MakeValueForString(const string& native_string) {
   }
 }
 
-scoped_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
+std::unique_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
     const brillo::VariantDictionary& variant_dictionary) {
-  auto dictionary_value(make_scoped_ptr(new base::DictionaryValue()));
+  auto dictionary_value = base::MakeUnique<base::DictionaryValue>();
   for (const auto& key_and_value : variant_dictionary) {
     const auto& key = key_and_value.first;
     const auto& value = key_and_value.second;
@@ -314,7 +314,7 @@ scoped_ptr<base::DictionaryValue> ConvertVariantDictionaryToDictionaryValue(
       dictionary_value->SetWithoutPathExpansion(
           key, MakeCoercedValue(kNativeTypeUint64, encoded_value));
     } else if (value.IsTypeCompatible<vector<string>>()) {
-      auto list_value(make_scoped_ptr(new base::ListValue()));
+      auto list_value = base::MakeUnique<base::ListValue>();
       for (const auto& string_list_item : value.Get<vector<string>>()) {
         list_value->Append(MakeValueForString(string_list_item));
       }
@@ -425,10 +425,10 @@ bool JsonStore::Close() {
 }
 
 bool JsonStore::Flush() {
-  auto groups(make_scoped_ptr(new base::DictionaryValue()));
+  auto groups = base::MakeUnique<base::DictionaryValue>();
   for (const auto& group_name_and_settings : group_name_to_settings_) {
     const auto& group_name = group_name_and_settings.first;
-    scoped_ptr<base::DictionaryValue> group_settings(
+    std::unique_ptr<base::DictionaryValue> group_settings(
         ConvertVariantDictionaryToDictionaryValue(
             group_name_and_settings.second));
     if (!group_settings) {
