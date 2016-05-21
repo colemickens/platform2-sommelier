@@ -19,6 +19,7 @@
 
 #include "trunks/policy_session.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -74,7 +75,7 @@ class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
   HmacAuthorizationDelegate hmac_delegate_;
   // This object is used to manage the TPM session associated with this
   // AuthorizationSession.
-  scoped_ptr<SessionManager> session_manager_;
+  std::unique_ptr<SessionManager> session_manager_;
 
   friend class PolicySessionTest;
   DISALLOW_COPY_AND_ASSIGN(PolicySessionImpl);

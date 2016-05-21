@@ -16,6 +16,9 @@
 
 #include "trunks/trunks_factory_for_test.h"
 
+#include <memory>
+
+#include <base/memory/ptr_util.h>
 #include <gmock/gmock.h>
 
 #include "trunks/authorization_delegate.h"
@@ -508,40 +511,39 @@ Tpm* TrunksFactoryForTest::GetTpm() const {
   return tpm_;
 }
 
-scoped_ptr<TpmState> TrunksFactoryForTest::GetTpmState() const {
-  return scoped_ptr<TpmState>(new TpmStateForwarder(tpm_state_));
+std::unique_ptr<TpmState> TrunksFactoryForTest::GetTpmState() const {
+  return base::MakeUnique<TpmStateForwarder>(tpm_state_);
 }
 
-scoped_ptr<TpmUtility> TrunksFactoryForTest::GetTpmUtility() const {
-  return scoped_ptr<TpmUtility>(new TpmUtilityForwarder(tpm_utility_));
+std::unique_ptr<TpmUtility> TrunksFactoryForTest::GetTpmUtility() const {
+  return base::MakeUnique<TpmUtilityForwarder>(tpm_utility_);
 }
 
-scoped_ptr<AuthorizationDelegate>
+std::unique_ptr<AuthorizationDelegate>
 TrunksFactoryForTest::GetPasswordAuthorization(
     const std::string& password) const {
-  return scoped_ptr<AuthorizationDelegate>(
-      new AuthorizationDelegateForwarder(password_authorization_delegate_));
+  return base::MakeUnique<AuthorizationDelegateForwarder>(
+      password_authorization_delegate_);
 }
 
-scoped_ptr<SessionManager> TrunksFactoryForTest::GetSessionManager() const {
-  return scoped_ptr<SessionManager>(
-      new SessionManagerForwarder(session_manager_));
+std::unique_ptr<SessionManager> TrunksFactoryForTest::GetSessionManager() const {
+  return base::MakeUnique<SessionManagerForwarder>(session_manager_);
 }
 
-scoped_ptr<HmacSession> TrunksFactoryForTest::GetHmacSession() const {
-  return scoped_ptr<HmacSession>(new HmacSessionForwarder(hmac_session_));
+std::unique_ptr<HmacSession> TrunksFactoryForTest::GetHmacSession() const {
+  return base::MakeUnique<HmacSessionForwarder>(hmac_session_);
 }
 
-scoped_ptr<PolicySession> TrunksFactoryForTest::GetPolicySession() const {
-  return scoped_ptr<PolicySession>(new PolicySessionForwarder(policy_session_));
+std::unique_ptr<PolicySession> TrunksFactoryForTest::GetPolicySession() const {
+  return base::MakeUnique<PolicySessionForwarder>(policy_session_);
 }
 
-scoped_ptr<PolicySession> TrunksFactoryForTest::GetTrialSession() const {
-  return scoped_ptr<PolicySession>(new PolicySessionForwarder(policy_session_));
+std::unique_ptr<PolicySession> TrunksFactoryForTest::GetTrialSession() const {
+  return base::MakeUnique<PolicySessionForwarder>(policy_session_);
 }
 
-scoped_ptr<BlobParser> TrunksFactoryForTest::GetBlobParser() const {
-  return scoped_ptr<BlobParser>(new BlobParserForwarder(blob_parser_));
+std::unique_ptr<BlobParser> TrunksFactoryForTest::GetBlobParser() const {
+  return base::MakeUnique<BlobParserForwarder>(blob_parser_);
 }
 
 }  // namespace trunks

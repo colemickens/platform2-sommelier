@@ -18,10 +18,12 @@
 // does not provide direct access to the trunksd D-Bus interface.
 
 #include <stdio.h>
+#include <memory>
 #include <string>
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <brillo/syslog_logging.h>
 
 #include "trunks/error_codes.h"
@@ -91,7 +93,7 @@ int TakeOwnership(const std::string& owner_password, TrunksFactory* factory) {
 }
 
 int DumpStatus(TrunksFactory* factory) {
-  scoped_ptr<trunks::TpmState> state = factory->GetTpmState();
+  std::unique_ptr<trunks::TpmState> state = factory->GetTpmState();
   trunks::TPM_RC result = state->Initialize();
   if (result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to read TPM state: "
@@ -136,8 +138,8 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  scoped_ptr<TrunksFactory> factory = scoped_ptr<TrunksFactory>(
-      new trunks::TrunksFactoryImpl(true /* failure_is_fatal */));
+  std::unique_ptr<TrunksFactory> factory =
+      base::MakeUnique<trunks::TrunksFactoryImpl>(true /* failure_is_fatal */);
 
   if (cl->HasSwitch("status")) {
     return DumpStatus(factory.get());

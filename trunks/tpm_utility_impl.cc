@@ -16,8 +16,9 @@
 
 #include "trunks/tpm_utility_impl.h"
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/sha1.h>
 #include <base/stl_util.h>
 #include <crypto/openssl_util.h>
@@ -97,7 +98,7 @@ TPM_RC TpmUtilityImpl::Startup() {
 
 TPM_RC TpmUtilityImpl::Clear() {
   TPM_RC result = TPM_RC_SUCCESS;
-  scoped_ptr<AuthorizationDelegate> password_delegate(
+  std::unique_ptr<AuthorizationDelegate> password_delegate(
       factory_.GetPasswordAuthorization(""));
   result = factory_.GetTpm()->ClearSync(TPM_RH_PLATFORM,
                                         NameFromHandle(TPM_RH_PLATFORM),
@@ -105,7 +106,7 @@ TPM_RC TpmUtilityImpl::Clear() {
   // If there was an error in the initialization, platform auth is in a bad
   // state.
   if (result == TPM_RC_AUTH_MISSING) {
-    scoped_ptr<AuthorizationDelegate> authorization(
+    std::unique_ptr<AuthorizationDelegate> authorization(
         factory_.GetPasswordAuthorization(kPlatformPassword));
     result = factory_.GetTpm()->ClearSync(
         TPM_RH_PLATFORM, NameFromHandle(TPM_RH_PLATFORM), authorization.get());
@@ -131,7 +132,7 @@ void TpmUtilityImpl::Shutdown() {
 
 TPM_RC TpmUtilityImpl::InitializeTpm() {
   TPM_RC result = TPM_RC_SUCCESS;
-  scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
   result = tpm_state->Initialize();
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
@@ -148,7 +149,7 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
   // We expect the firmware has already locked down the platform hierarchy. If
   // it hasn't, do it now.
   if (tpm_state->IsPlatformHierarchyEnabled()) {
-    scoped_ptr<AuthorizationDelegate> empty_password(
+    std::unique_ptr<AuthorizationDelegate> empty_password(
         factory_.GetPasswordAuthorization(""));
     result = SetHierarchyAuthorization(TPM_RH_PLATFORM, kPlatformPassword,
                                        empty_password.get());
@@ -165,7 +166,7 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
       LOG(ERROR) << __func__ << ": " << GetErrorString(result);
       return result;
     }
-    scoped_ptr<AuthorizationDelegate> authorization(
+    std::unique_ptr<AuthorizationDelegate> authorization(
         factory_.GetPasswordAuthorization(kPlatformPassword));
     result = DisablePlatformHierarchy(authorization.get());
     if (result != TPM_RC_SUCCESS) {
@@ -217,7 +218,7 @@ TPM_RC TpmUtilityImpl::AllocatePCR(const std::string& platform_password) {
         PCR_SELECT_MAX;
     ++pcr_allocation.count;
   }
-  scoped_ptr<AuthorizationDelegate> platform_delegate(
+  std::unique_ptr<AuthorizationDelegate> platform_delegate(
       factory_.GetPasswordAuthorization(platform_password));
   TPMI_YES_NO allocation_success;
   uint32_t max_pcr;
@@ -261,14 +262,14 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
     return result;
   }
 
-  scoped_ptr<HmacSession> session = factory_.GetHmacSession();
+  std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
   result = session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error initializing AuthorizationSession: "
                << GetErrorString(result);
     return result;
   }
-  scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
   result = tpm_state->Initialize();
   session->SetEntityAuthorizationValue("");
   session->SetFutureAuthorizationValue(endorsement_password);
@@ -654,7 +655,7 @@ TPM_RC TpmUtilityImpl::CertifyCreation(TPM_HANDLE key_handle,
   in_scheme.scheme = TPM_ALG_NULL;
   TPM2B_ATTEST certify_info;
   TPMT_SIGNATURE signature;
-  scoped_ptr<AuthorizationDelegate> delegate =
+  std::unique_ptr<AuthorizationDelegate> delegate =
       factory_.GetPasswordAuthorization("");
   TPM_RC result = factory_.GetTpm()->CertifyCreationSync(
       TPM_RH_NULL, "", key_handle, "", qualifying_data, creation_hash,
@@ -1024,7 +1025,7 @@ TPM_RC TpmUtilityImpl::UnsealData(const std::string& sealed_data,
     return result;
   }
   TPM_HANDLE object_handle;
-  scoped_ptr<AuthorizationDelegate> password_delegate =
+  std::unique_ptr<AuthorizationDelegate> password_delegate =
       factory_.GetPasswordAuthorization("");
   result = LoadKey(sealed_data, password_delegate.get(), &object_handle);
   if (result != TPM_RC_SUCCESS) {
@@ -1063,7 +1064,7 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValue(int pcr_index,
                                                   const std::string& pcr_value,
                                                   std::string* policy_digest) {
   CHECK(policy_digest);
-  scoped_ptr<PolicySession> session = factory_.GetTrialSession();
+  std::unique_ptr<PolicySession> session = factory_.GetTrialSession();
   TPM_RC result = session->StartUnboundSession(false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting unbound trial session: "
@@ -1352,13 +1353,13 @@ TPM_RC TpmUtilityImpl::GetNVSpacePublicArea(uint32_t index,
 
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(
     const std::string& known_owner_password) {
-  scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
   TPM_RC result = tpm_state->Initialize();
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
-  scoped_ptr<AuthorizationDelegate> delegate =
+  std::unique_ptr<AuthorizationDelegate> delegate =
       factory_.GetPasswordAuthorization("");
   if (tpm_state->IsOwnerPasswordSet()) {
     LOG(INFO) << "Owner password is already set. "
@@ -1378,7 +1379,7 @@ TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(
 TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
     const std::string& owner_password) {
   TPM_RC result = TPM_RC_SUCCESS;
-  scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
   result = tpm_state->Initialize();
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
@@ -1396,7 +1397,7 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
   TPMT_TK_CREATION creation_ticket;
   TPM2B_NAME object_name;
   object_name.size = 0;
-  scoped_ptr<AuthorizationDelegate> delegate =
+  std::unique_ptr<AuthorizationDelegate> delegate =
       factory_.GetPasswordAuthorization(owner_password);
   if (tpm_state->IsRSASupported()) {
     bool exists = false;
@@ -1525,7 +1526,7 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
   // TODO(usanghi): MITM vulnerability with SaltingKey creation.
   // Currently we cannot verify the key returned by the TPM.
   // crbug.com/442331
-  scoped_ptr<AuthorizationDelegate> delegate =
+  std::unique_ptr<AuthorizationDelegate> delegate =
       factory_.GetPasswordAuthorization("");
   result = factory_.GetTpm()->CreateSync(
       kRSAStorageRootKey, parent_name, sensitive_create,
@@ -1547,7 +1548,7 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
     return result;
   }
   ScopedKeyHandle key(factory_, key_handle);
-  scoped_ptr<AuthorizationDelegate> owner_delegate =
+  std::unique_ptr<AuthorizationDelegate> owner_delegate =
       factory_.GetPasswordAuthorization(owner_password);
   result = factory_.GetTpm()->EvictControlSync(
       TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), key_handle,

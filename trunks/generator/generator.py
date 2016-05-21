@@ -115,6 +115,7 @@ _HEADER_FILE_INCLUDES = """
 #include "trunks/trunks_export.h"
 """
 _IMPLEMENTATION_FILE_INCLUDES = """
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
@@ -1252,7 +1253,7 @@ TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
     %(var_name)s_bytes.replace(2, std::string::npos, tmp);
   }"""
   _HASH_START = """
-  scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
+  std::unique_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));"""
   _HASH_UPDATE = """
   hash->Update(%(var_name)s.data(),

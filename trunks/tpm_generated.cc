@@ -18,6 +18,7 @@
 
 #include "trunks/tpm_generated.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
@@ -8116,7 +8117,7 @@ TPM_RC Tpm::SerializeCommand_Startup(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(startup_type_bytes.data(), startup_type_bytes.size());
@@ -8215,7 +8216,7 @@ TPM_RC Tpm::ParseResponse_Startup(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -8307,7 +8308,7 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(shutdown_type_bytes.data(), shutdown_type_bytes.size());
@@ -8406,7 +8407,7 @@ TPM_RC Tpm::ParseResponse_Shutdown(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -8498,7 +8499,7 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(full_test_bytes.data(), full_test_bytes.size());
@@ -8597,7 +8598,7 @@ TPM_RC Tpm::ParseResponse_SelfTest(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -8689,7 +8690,7 @@ TPM_RC Tpm::SerializeCommand_IncrementalSelfTest(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(to_test_bytes.data(), to_test_bytes.size());
@@ -8789,7 +8790,7 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -8887,7 +8888,7 @@ TPM_RC Tpm::SerializeCommand_GetTestResult(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   std::string command_hash(32, 0);
@@ -8985,7 +8986,7 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -9148,7 +9149,7 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
     }
     nonce_caller_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(tpm_key_name.data(), tpm_key_name.size());
@@ -9273,7 +9274,7 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -9411,7 +9412,7 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(session_handle_name.data(), session_handle_name.size());
@@ -9510,7 +9511,7 @@ TPM_RC Tpm::ParseResponse_PolicyRestart(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -9638,7 +9639,7 @@ TPM_RC Tpm::SerializeCommand_Create(
     }
     in_sensitive_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(parent_handle_name.data(), parent_handle_name.size());
@@ -9754,7 +9755,7 @@ TPM_RC Tpm::ParseResponse_Create(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -9933,7 +9934,7 @@ TPM_RC Tpm::SerializeCommand_Load(
     }
     in_private_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(parent_handle_name.data(), parent_handle_name.size());
@@ -10044,7 +10045,7 @@ TPM_RC Tpm::ParseResponse_Load(const std::string& response,
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -10188,7 +10189,7 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
     }
     in_private_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(in_private_bytes.data(), in_private_bytes.size());
@@ -10300,7 +10301,7 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -10421,7 +10422,7 @@ TPM_RC Tpm::SerializeCommand_ReadPublic(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(object_handle_name.data(), object_handle_name.size());
@@ -10523,7 +10524,7 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -10681,7 +10682,7 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
     }
     credential_blob_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(activate_handle_name.data(), activate_handle_name.size());
@@ -10790,7 +10791,7 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -10940,7 +10941,7 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
     }
     credential_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(handle_name.data(), handle_name.size());
@@ -11047,7 +11048,7 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -11178,7 +11179,7 @@ TPM_RC Tpm::SerializeCommand_Unseal(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(item_handle_name.data(), item_handle_name.size());
@@ -11278,7 +11279,7 @@ TPM_RC Tpm::ParseResponse_Unseal(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -11415,7 +11416,7 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
     }
     new_auth_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(object_handle_name.data(), object_handle_name.size());
@@ -11521,7 +11522,7 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -11676,7 +11677,7 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
     }
     encryption_key_in_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(object_handle_name.data(), object_handle_name.size());
@@ -11787,7 +11788,7 @@ TPM_RC Tpm::ParseResponse_Duplicate(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -11966,7 +11967,7 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
     }
     in_duplicate_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(old_parent_name.data(), old_parent_name.size());
@@ -12079,7 +12080,7 @@ TPM_RC Tpm::ParseResponse_Rewrap(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -12253,7 +12254,7 @@ TPM_RC Tpm::SerializeCommand_Import(
     }
     encryption_key_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(parent_handle_name.data(), parent_handle_name.size());
@@ -12368,7 +12369,7 @@ TPM_RC Tpm::ParseResponse_Import(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -12522,7 +12523,7 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
     }
     message_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_handle_name.data(), key_handle_name.size());
@@ -12631,7 +12632,7 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -12781,7 +12782,7 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
     }
     cipher_text_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_handle_name.data(), key_handle_name.size());
@@ -12890,7 +12891,7 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -13014,7 +13015,7 @@ TPM_RC Tpm::SerializeCommand_ECDH_KeyGen(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_handle_name.data(), key_handle_name.size());
@@ -13115,7 +13116,7 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -13253,7 +13254,7 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
     }
     in_point_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_handle_name.data(), key_handle_name.size());
@@ -13356,7 +13357,7 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -13473,7 +13474,7 @@ TPM_RC Tpm::SerializeCommand_ECC_Parameters(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(curve_id_bytes.data(), curve_id_bytes.size());
@@ -13573,7 +13574,7 @@ TPM_RC Tpm::ParseResponse_ECC_Parameters(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -13707,7 +13708,7 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
     }
     in_qs_b_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_a_name.data(), key_a_name.size());
@@ -13820,7 +13821,7 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -13978,7 +13979,7 @@ TPM_RC Tpm::SerializeCommand_EncryptDecrypt(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_handle_name.data(), key_handle_name.size());
@@ -14091,7 +14092,7 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -14244,7 +14245,7 @@ TPM_RC Tpm::SerializeCommand_Hash(
     }
     data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(data_bytes.data(), data_bytes.size());
@@ -14350,7 +14351,7 @@ TPM_RC Tpm::ParseResponse_Hash(const std::string& response,
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -14496,7 +14497,7 @@ TPM_RC Tpm::SerializeCommand_HMAC(
     }
     buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(handle_name.data(), handle_name.size());
@@ -14601,7 +14602,7 @@ TPM_RC Tpm::ParseResponse_HMAC(const std::string& response,
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -14720,7 +14721,7 @@ TPM_RC Tpm::SerializeCommand_GetRandom(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(bytes_requested_bytes.data(), bytes_requested_bytes.size());
@@ -14820,7 +14821,7 @@ TPM_RC Tpm::ParseResponse_GetRandom(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -14941,7 +14942,7 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
     }
     in_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(in_data_bytes.data(), in_data_bytes.size());
@@ -15040,7 +15041,7 @@ TPM_RC Tpm::ParseResponse_StirRandom(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -15153,7 +15154,7 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
     }
     auth_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(handle_name.data(), handle_name.size());
@@ -15264,7 +15265,7 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -15380,7 +15381,7 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
     }
     auth_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_bytes.data(), auth_bytes.size());
@@ -15488,7 +15489,7 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -15604,7 +15605,7 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
     }
     buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(sequence_handle_name.data(), sequence_handle_name.size());
@@ -15706,7 +15707,7 @@ TPM_RC Tpm::ParseResponse_SequenceUpdate(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -15826,7 +15827,7 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
     }
     buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(sequence_handle_name.data(), sequence_handle_name.size());
@@ -15933,7 +15934,7 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -16087,7 +16088,7 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
     }
     buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(pcr_handle_name.data(), pcr_handle_name.size());
@@ -16193,7 +16194,7 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -16335,7 +16336,7 @@ TPM_RC Tpm::SerializeCommand_Certify(
     }
     qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(object_handle_name.data(), object_handle_name.size());
@@ -16445,7 +16446,7 @@ TPM_RC Tpm::ParseResponse_Certify(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -16618,7 +16619,7 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
     }
     qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(sign_handle_name.data(), sign_handle_name.size());
@@ -16734,7 +16735,7 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -16901,7 +16902,7 @@ TPM_RC Tpm::SerializeCommand_Quote(
     }
     qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(sign_handle_name.data(), sign_handle_name.size());
@@ -17010,7 +17011,7 @@ TPM_RC Tpm::ParseResponse_Quote(const std::string& response,
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -17176,7 +17177,7 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
     }
     qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(privacy_admin_handle_name.data(),
@@ -17290,7 +17291,7 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -17460,7 +17461,7 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
     }
     qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(privacy_handle_name.data(), privacy_handle_name.size());
@@ -17570,7 +17571,7 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -17735,7 +17736,7 @@ TPM_RC Tpm::SerializeCommand_GetTime(
     }
     qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(privacy_admin_handle_name.data(),
@@ -17846,7 +17847,7 @@ TPM_RC Tpm::ParseResponse_GetTime(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -18006,7 +18007,7 @@ TPM_RC Tpm::SerializeCommand_Commit(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(sign_handle_name.data(), sign_handle_name.size());
@@ -18122,7 +18123,7 @@ TPM_RC Tpm::ParseResponse_Commit(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -18270,7 +18271,7 @@ TPM_RC Tpm::SerializeCommand_EC_Ephemeral(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(param_size_bytes.data(), param_size_bytes.size());
@@ -18375,7 +18376,7 @@ TPM_RC Tpm::ParseResponse_EC_Ephemeral(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -18513,7 +18514,7 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
     }
     digest_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_handle_name.data(), key_handle_name.size());
@@ -18619,7 +18620,7 @@ TPM_RC Tpm::ParseResponse_VerifySignature(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -18756,7 +18757,7 @@ TPM_RC Tpm::SerializeCommand_Sign(
     }
     digest_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(key_handle_name.data(), key_handle_name.size());
@@ -18864,7 +18865,7 @@ TPM_RC Tpm::ParseResponse_Sign(const std::string& response,
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -18993,7 +18994,7 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_name.data(), auth_name.size());
@@ -19101,7 +19102,7 @@ TPM_RC Tpm::ParseResponse_SetCommandCodeAuditStatus(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -19217,7 +19218,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(pcr_handle_name.data(), pcr_handle_name.size());
@@ -19319,7 +19320,7 @@ TPM_RC Tpm::ParseResponse_PCR_Extend(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -19430,7 +19431,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
     }
     event_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(pcr_handle_name.data(), pcr_handle_name.size());
@@ -19533,7 +19534,7 @@ TPM_RC Tpm::ParseResponse_PCR_Event(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -19639,7 +19640,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Read(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(pcr_selection_in_bytes.data(), pcr_selection_in_bytes.size());
@@ -19741,7 +19742,7 @@ TPM_RC Tpm::ParseResponse_PCR_Read(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -19865,7 +19866,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Allocate(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -19971,7 +19972,7 @@ TPM_RC Tpm::ParseResponse_PCR_Allocate(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -20130,7 +20131,7 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
     }
     auth_policy_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -20238,7 +20239,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthPolicy(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -20361,7 +20362,7 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
     }
     auth_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(pcr_handle_name.data(), pcr_handle_name.size());
@@ -20463,7 +20464,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthValue(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -20564,7 +20565,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(pcr_handle_name.data(), pcr_handle_name.size());
@@ -20663,7 +20664,7 @@ TPM_RC Tpm::ParseResponse_PCR_Reset(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -20803,7 +20804,7 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
     }
     nonce_tpm_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_object_name.data(), auth_object_name.size());
@@ -20922,7 +20923,7 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -21103,7 +21104,7 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
     }
     nonce_tpm_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -21219,7 +21220,7 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -21397,7 +21398,7 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
     }
     timeout_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -21511,7 +21512,7 @@ TPM_RC Tpm::ParseResponse_PolicyTicket(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -21624,7 +21625,7 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -21726,7 +21727,7 @@ TPM_RC Tpm::ParseResponse_PolicyOR(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -21845,7 +21846,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
     }
     pcr_digest_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -21950,7 +21951,7 @@ TPM_RC Tpm::ParseResponse_PolicyPCR(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -22057,7 +22058,7 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -22159,7 +22160,7 @@ TPM_RC Tpm::ParseResponse_PolicyLocality(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -22299,7 +22300,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
     }
     operand_b_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -22413,7 +22414,7 @@ TPM_RC Tpm::ParseResponse_PolicyNV(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -22552,7 +22553,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
     }
     operand_b_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -22660,7 +22661,7 @@ TPM_RC Tpm::ParseResponse_PolicyCounterTimer(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -22773,7 +22774,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -22875,7 +22876,7 @@ TPM_RC Tpm::ParseResponse_PolicyCommandCode(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -22978,7 +22979,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -23077,7 +23078,7 @@ TPM_RC Tpm::ParseResponse_PolicyPhysicalPresence(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -23191,7 +23192,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
     }
     cp_hash_a_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -23293,7 +23294,7 @@ TPM_RC Tpm::ParseResponse_PolicyCpHash(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -23406,7 +23407,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
     }
     name_hash_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -23508,7 +23509,7 @@ TPM_RC Tpm::ParseResponse_PolicyNameHash(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -23634,7 +23635,7 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
     }
     object_name_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -23742,7 +23743,7 @@ TPM_RC Tpm::ParseResponse_PolicyDuplicationSelect(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -23882,7 +23883,7 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
     }
     approved_policy_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -23993,7 +23994,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthorize(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -24100,7 +24101,7 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -24199,7 +24200,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthValue(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -24296,7 +24297,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -24395,7 +24396,7 @@ TPM_RC Tpm::ParseResponse_PolicyPassword(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -24491,7 +24492,7 @@ TPM_RC Tpm::SerializeCommand_PolicyGetDigest(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -24591,7 +24592,7 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -24715,7 +24716,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(policy_session_name.data(), policy_session_name.size());
@@ -24817,7 +24818,7 @@ TPM_RC Tpm::ParseResponse_PolicyNvWritten(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -24950,7 +24951,7 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
     }
     in_sensitive_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(primary_handle_name.data(), primary_handle_name.size());
@@ -25072,7 +25073,7 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -25246,7 +25247,7 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -25351,7 +25352,7 @@ TPM_RC Tpm::ParseResponse_HierarchyControl(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -25476,7 +25477,7 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
     }
     auth_policy_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -25581,7 +25582,7 @@ TPM_RC Tpm::ParseResponse_SetPrimaryPolicy(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -25686,7 +25687,7 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -25785,7 +25786,7 @@ TPM_RC Tpm::ParseResponse_ChangePPS(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -25880,7 +25881,7 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -25979,7 +25980,7 @@ TPM_RC Tpm::ParseResponse_ChangeEPS(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -26074,7 +26075,7 @@ TPM_RC Tpm::SerializeCommand_Clear(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -26172,7 +26173,7 @@ TPM_RC Tpm::ParseResponse_Clear(const std::string& response,
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -26273,7 +26274,7 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_name.data(), auth_name.size());
@@ -26375,7 +26376,7 @@ TPM_RC Tpm::ParseResponse_ClearControl(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -26486,7 +26487,7 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
     }
     new_auth_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -26588,7 +26589,7 @@ TPM_RC Tpm::ParseResponse_HierarchyChangeAuth(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -26691,7 +26692,7 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(lock_handle_name.data(), lock_handle_name.size());
@@ -26790,7 +26791,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackLockReset(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -26910,7 +26911,7 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(lock_handle_name.data(), lock_handle_name.size());
@@ -27018,7 +27019,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackParameters(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -27140,7 +27141,7 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_name.data(), auth_name.size());
@@ -27245,7 +27246,7 @@ TPM_RC Tpm::ParseResponse_PP_Commands(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -27350,7 +27351,7 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -27452,7 +27453,7 @@ TPM_RC Tpm::ParseResponse_SetAlgorithmSet(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -27580,7 +27581,7 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
     }
     fu_digest_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(authorization_name.data(), authorization_name.size());
@@ -27689,7 +27690,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeStart(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -27805,7 +27806,7 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
     }
     fu_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(fu_data_bytes.data(), fu_data_bytes.size());
@@ -27906,7 +27907,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -28017,7 +28018,7 @@ TPM_RC Tpm::SerializeCommand_FirmwareRead(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(sequence_number_bytes.data(), sequence_number_bytes.size());
@@ -28117,7 +28118,7 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -28231,7 +28232,7 @@ TPM_RC Tpm::SerializeCommand_ContextSave(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(save_handle_name.data(), save_handle_name.size());
@@ -28331,7 +28332,7 @@ TPM_RC Tpm::ParseResponse_ContextSave(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -28433,7 +28434,7 @@ TPM_RC Tpm::SerializeCommand_ContextLoad(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(context_bytes.data(), context_bytes.size());
@@ -28538,7 +28539,7 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -28634,7 +28635,7 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(flush_handle_bytes.data(), flush_handle_bytes.size());
@@ -28733,7 +28734,7 @@ TPM_RC Tpm::ParseResponse_FlushContext(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -28840,7 +28841,7 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_name.data(), auth_name.size());
@@ -28945,7 +28946,7 @@ TPM_RC Tpm::ParseResponse_EvictControl(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -29041,7 +29042,7 @@ TPM_RC Tpm::SerializeCommand_ReadClock(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   std::string command_hash(32, 0);
@@ -29138,7 +29139,7 @@ TPM_RC Tpm::ParseResponse_ReadClock(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -29241,7 +29242,7 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_name.data(), auth_name.size());
@@ -29343,7 +29344,7 @@ TPM_RC Tpm::ParseResponse_ClockSet(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -29446,7 +29447,7 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_name.data(), auth_name.size());
@@ -29548,7 +29549,7 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -29658,7 +29659,7 @@ TPM_RC Tpm::SerializeCommand_GetCapability(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(capability_bytes.data(), capability_bytes.size());
@@ -29765,7 +29766,7 @@ TPM_RC Tpm::ParseResponse_GetCapability(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -29878,7 +29879,7 @@ TPM_RC Tpm::SerializeCommand_TestParms(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(parameters_bytes.data(), parameters_bytes.size());
@@ -29977,7 +29978,7 @@ TPM_RC Tpm::ParseResponse_TestParms(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -30090,7 +30091,7 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
     }
     auth_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -30195,7 +30196,7 @@ TPM_RC Tpm::ParseResponse_NV_DefineSpace(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -30304,7 +30305,7 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -30406,7 +30407,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpace(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -30518,7 +30519,7 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(nv_index_name.data(), nv_index_name.size());
@@ -30620,7 +30621,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpaceSpecial(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -30726,7 +30727,7 @@ TPM_RC Tpm::SerializeCommand_NV_ReadPublic(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(nv_index_name.data(), nv_index_name.size());
@@ -30827,7 +30828,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -30978,7 +30979,7 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
     }
     data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -31086,7 +31087,7 @@ TPM_RC Tpm::ParseResponse_NV_Write(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -31198,7 +31199,7 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -31300,7 +31301,7 @@ TPM_RC Tpm::ParseResponse_NV_Increment(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -31422,7 +31423,7 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
     }
     data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -31527,7 +31528,7 @@ TPM_RC Tpm::ParseResponse_NV_Extend(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -31643,7 +31644,7 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -31748,7 +31749,7 @@ TPM_RC Tpm::ParseResponse_NV_SetBits(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -31858,7 +31859,7 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -31960,7 +31961,7 @@ TPM_RC Tpm::ParseResponse_NV_WriteLock(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -32061,7 +32062,7 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -32160,7 +32161,7 @@ TPM_RC Tpm::ParseResponse_NV_GlobalWriteLock(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -32278,7 +32279,7 @@ TPM_RC Tpm::SerializeCommand_NV_Read(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -32387,7 +32388,7 @@ TPM_RC Tpm::ParseResponse_NV_Read(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -32520,7 +32521,7 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(auth_handle_name.data(), auth_handle_name.size());
@@ -32622,7 +32623,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadLock(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -32737,7 +32738,7 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
     }
     new_auth_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(nv_index_name.data(), nv_index_name.size());
@@ -32839,7 +32840,7 @@ TPM_RC Tpm::ParseResponse_NV_ChangeAuth(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
@@ -32983,7 +32984,7 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
     }
     qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(sign_handle_name.data(), sign_handle_name.size());
@@ -33102,7 +33103,7 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
     // Keep the parameter section in |buffer|.
     buffer.erase(parameter_section_size);
   }
-  scoped_ptr<crypto::SecureHash> hash(
+  std::unique_ptr<crypto::SecureHash> hash(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   hash->Update(response_code_bytes.data(), response_code_bytes.size());
   hash->Update(command_code_bytes.data(), command_code_bytes.size());

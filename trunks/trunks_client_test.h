@@ -17,9 +17,8 @@
 #ifndef TRUNKS_TRUNKS_CLIENT_TEST_H_
 #define TRUNKS_TRUNKS_CLIENT_TEST_H_
 
+#include <memory>
 #include <string>
-
-#include <base/memory/scoped_ptr.h>
 
 #include "trunks/scoped_key_handle.h"
 #include "trunks/tpm_generated.h"
@@ -38,7 +37,7 @@ class TrunksClientTest {
  public:
   TrunksClientTest();
   // Takes ownership of factory.
-  explicit TrunksClientTest(scoped_ptr<TrunksFactory> factory);
+  explicit TrunksClientTest(std::unique_ptr<TrunksFactory> factory);
   virtual ~TrunksClientTest();
 
   // This test verifies that the Random Number Generator on the TPM is working
@@ -137,7 +136,7 @@ class TrunksClientTest {
                      AuthorizationDelegate* delegate);
 
   // Factory for instantiation of Tpm classes
-  scoped_ptr<TrunksFactory> factory_;
+  std::unique_ptr<TrunksFactory> factory_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksClientTest);
 };

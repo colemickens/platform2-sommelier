@@ -19,10 +19,10 @@
 
 #include "trunks/trunks_factory.h"
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "trunks/command_transceiver.h"
 #include "trunks/trunks_export.h"
@@ -45,20 +45,20 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
 
   // TrunksFactory methods.
   Tpm* GetTpm() const override;
-  scoped_ptr<TpmState> GetTpmState() const override;
-  scoped_ptr<TpmUtility> GetTpmUtility() const override;
-  scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
+  std::unique_ptr<TpmState> GetTpmState() const override;
+  std::unique_ptr<TpmUtility> GetTpmUtility() const override;
+  std::unique_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override;
-  scoped_ptr<SessionManager> GetSessionManager() const override;
-  scoped_ptr<HmacSession> GetHmacSession() const override;
-  scoped_ptr<PolicySession> GetPolicySession() const override;
-  scoped_ptr<PolicySession> GetTrialSession() const override;
-  scoped_ptr<BlobParser> GetBlobParser() const override;
+  std::unique_ptr<SessionManager> GetSessionManager() const override;
+  std::unique_ptr<HmacSession> GetHmacSession() const override;
+  std::unique_ptr<PolicySession> GetPolicySession() const override;
+  std::unique_ptr<PolicySession> GetTrialSession() const override;
+  std::unique_ptr<BlobParser> GetBlobParser() const override;
 
  private:
-  scoped_ptr<CommandTransceiver> default_transceiver_;
+  std::unique_ptr<CommandTransceiver> default_transceiver_;
   CommandTransceiver* transceiver_;
-  scoped_ptr<Tpm> tpm_;
+  std::unique_ptr<Tpm> tpm_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFactoryImpl);
 };

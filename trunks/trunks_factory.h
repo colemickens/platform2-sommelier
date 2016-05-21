@@ -17,10 +17,10 @@
 #ifndef TRUNKS_TRUNKS_FACTORY_H_
 #define TRUNKS_TRUNKS_FACTORY_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "trunks/trunks_export.h"
 
@@ -48,30 +48,30 @@ class TRUNKS_EXPORT TrunksFactory {
   virtual Tpm* GetTpm() const = 0;
 
   // Returns an uninitialized TpmState instance. The caller takes ownership.
-  virtual scoped_ptr<TpmState> GetTpmState() const = 0;
+  virtual std::unique_ptr<TpmState> GetTpmState() const = 0;
 
   // Returns a TpmUtility instance. The caller takes ownership.
-  virtual scoped_ptr<TpmUtility> GetTpmUtility() const = 0;
+  virtual std::unique_ptr<TpmUtility> GetTpmUtility() const = 0;
 
   // Returns an AuthorizationDelegate instance for basic password authorization.
   // The caller takes ownership.
-  virtual scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
+  virtual std::unique_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const = 0;
 
   // Returns a SessionManager instance. The caller takes ownership.
-  virtual scoped_ptr<SessionManager> GetSessionManager() const = 0;
+  virtual std::unique_ptr<SessionManager> GetSessionManager() const = 0;
 
   // Returns a HmacSession instance. The caller takes ownership.
-  virtual scoped_ptr<HmacSession> GetHmacSession() const = 0;
+  virtual std::unique_ptr<HmacSession> GetHmacSession() const = 0;
 
   // Returns a PolicySession instance. The caller takes ownership.
-  virtual scoped_ptr<PolicySession> GetPolicySession() const = 0;
+  virtual std::unique_ptr<PolicySession> GetPolicySession() const = 0;
 
   // Returns a TrialSession instance. The caller takes ownership.
-  virtual scoped_ptr<PolicySession> GetTrialSession() const = 0;
+  virtual std::unique_ptr<PolicySession> GetTrialSession() const = 0;
 
   // Returns a BlobParser instance. The caller takes ownership.
-  virtual scoped_ptr<BlobParser> GetBlobParser() const = 0;
+  virtual std::unique_ptr<BlobParser> GetBlobParser() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TrunksFactory);

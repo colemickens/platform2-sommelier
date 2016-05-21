@@ -17,7 +17,6 @@
 #include "trunks/hmac_authorization_delegate.h"
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <crypto/secure_util.h>
 #include <openssl/aes.h>

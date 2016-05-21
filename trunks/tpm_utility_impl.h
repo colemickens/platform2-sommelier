@@ -23,7 +23,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>
 
 #include "trunks/trunks_export.h"
