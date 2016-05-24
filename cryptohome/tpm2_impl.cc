@@ -19,7 +19,7 @@
 #include <trunks/tpm_generated.h>
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
-#include <trunks/trunks_proxy.h>
+#include <trunks/trunks_dbus_proxy.h>
 
 #include "cryptohome/cryptolib.h"
 
@@ -32,7 +32,8 @@ using trunks::TrunksFactory;
 namespace cryptohome {
 
 Tpm2Impl::Tpm2Impl()
-    : trunks_factory_(new trunks::TrunksFactoryImpl()),
+    : trunks_factory_(
+        new trunks::TrunksFactoryImpl(false /* !failure_is_fatal */)),
       tpm_state_(trunks_factory_->GetTpmState()),
       trunks_utility_(trunks_factory_->GetTpmUtility()) {}
 

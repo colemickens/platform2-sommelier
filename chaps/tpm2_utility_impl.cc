@@ -20,8 +20,8 @@
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_state.h>
+#include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory_impl.h>
-#include <trunks/trunks_proxy.h>
 
 using base::AutoLock;
 using brillo::SecureBlob;
@@ -54,7 +54,8 @@ void InitTransceiver(trunks::CommandTransceiver* transceiver) {
 namespace chaps {
 
 TPM2UtilityImpl::TPM2UtilityImpl()
-    : default_factory_(new trunks::TrunksFactoryImpl()),
+    : default_factory_(
+        new trunks::TrunksFactoryImpl(false /* !failure_is_fatal */)),
       factory_(default_factory_.get()),
       is_initialized_(false),
       is_enabled_ready_(false),
@@ -64,7 +65,7 @@ TPM2UtilityImpl::TPM2UtilityImpl()
 
 TPM2UtilityImpl::TPM2UtilityImpl(
     const scoped_refptr<base::SequencedTaskRunner>& task_runner)
-        : default_trunks_proxy_(new trunks::TrunksProxy),
+        : default_trunks_proxy_(new trunks::TrunksDBusProxy),
           is_initialized_(false),
           is_enabled_ready_(false),
           is_enabled_(false) {

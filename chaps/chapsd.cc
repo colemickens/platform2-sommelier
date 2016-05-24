@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     CHECK(tpm_background_thread.StartWithOptions(
         base::Thread::Options(base::MessageLoop::TYPE_IO,
                               0 /* use default stack size */)));
-    chaps::TPM2UtilityImpl tpm(tpm_background_thread.message_loop_proxy());
+    chaps::TPM2UtilityImpl tpm(tpm_background_thread.task_runner());
 #else
     // Instantiate a TPM1.2 Utility.
     chaps::TPMUtilityImpl tpm(srk_auth_data);
