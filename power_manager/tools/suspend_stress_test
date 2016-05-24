@@ -18,6 +18,7 @@ DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
 DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
+DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 
 # Minimum value for --suspend_min when --memory_check is true.
 readonly MEMORY_TEST_SUSPEND_MIN_DELAY=10
@@ -27,6 +28,18 @@ readonly DISABLE_DARK_RESUME=/var/lib/power_manager/disable_dark_resume
 
 # Location of the temporary preference file. Set by disable_dark_resume.
 MUTABLE_PREF_FILE=
+
+# Record the dmesg for the last iteration.
+# Accepts iteration number as an argument (to name the file dmesg_<iter_num>)
+record_dmesg_for_iteration() {
+  local lines=0
+  local filename=${FLAGS_record_dmesg_dir}/dmesg_$1
+
+  echo -n " (dmesg > ${filename})..."
+  lines=$(dmesg | tac | grep -m1 -n "PM: Syncing filesystems" \
+          | cut -f1 -d:)
+  dmesg | tail -${lines} > ${filename}
+}
 
 get_success_count() {
   awk '$1 == "success:" { print $2 }' /sys/kernel/debug/suspend_stats
@@ -132,6 +145,16 @@ else
   suspend_cmd="powerd_dbus_suspend --delay=0"
 fi
 
+if [ ! -z "${FLAGS_record_dmesg_dir}" ]; then
+  mkdir -p ${FLAGS_record_dmesg_dir}
+  touch ${FLAGS_record_dmesg_dir}/dmesg_test
+  if [ $? -ne 0 ]; then
+    echo "${FLAGS_record_dmesg_dir} not writable for recording dmesg(s)"
+    exit 1
+  fi
+  rm -rf ${FLAGS_record_dmesg_dir}/dmesg_*
+fi
+
 echo "Running ${FLAGS_count} iterations with:"
 echo "  suspend: ${FLAGS_suspend_min}-${FLAGS_suspend_max} seconds"
 echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
@@ -142,6 +165,7 @@ echo "  warnings fatal:  $(boolean_value ${FLAGS_warn_fatal})"
 echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
 echo "  suspend command: ${suspend_cmd}"
 echo "  wakeup source to ignore: ${FLAGS_ignore_wakeup_source}"
+echo "  record_dmesg_dir: ${FLAGS_record_dmesg_dir}"
 
 initial_successes=$(get_success_count)
 suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
@@ -203,6 +227,9 @@ while true; do
       echo "Suspend failed."
       exit_loop=1
     else
+      if [ ! -z "${FLAGS_record_dmesg_dir}" ]; then
+        record_dmesg_for_iteration ${cur}
+      fi
       printf "(suspend failed, ignoring)"
     fi
   fi
@@ -229,6 +256,10 @@ while true; do
   fi
   # Exit the loop if requested from errors or done with iterations
   if [ ${cur} -eq ${FLAGS_count} ] || [ ${exit_loop} -eq 1 ]; then
+    if [ ${exit_loop} -eq 1 -a \
+         ! -z "${FLAGS_record_dmesg_dir}" ]; then
+      record_dmesg_for_iteration ${cur}
+    fi
     echo ""
     break
   fi
