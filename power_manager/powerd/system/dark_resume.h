@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -95,7 +96,7 @@ class DarkResume : public DarkResumeInterface {
     wakeup_state_path_ = path;
   }
 
-  void set_timer_for_testing(scoped_ptr<base::Timer> timer) {
+  void set_timer_for_testing(std::unique_ptr<base::Timer> timer) {
     timer_ = std::move(timer);
   }
 
@@ -159,7 +160,7 @@ class DarkResume : public DarkResumeInterface {
   PrefsInterface* prefs_;
 
   // Timer used to schedule system wakeups and check if we need to shut down.
-  scoped_ptr<base::Timer> timer_;
+  std::unique_ptr<base::Timer> timer_;
 
   // Two possible dark resume state paths.
   base::FilePath legacy_state_path_;

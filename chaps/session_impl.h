@@ -8,10 +8,10 @@
 #include "chaps/session.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
@@ -208,7 +208,7 @@ class SessionImpl : public Session {
   std::map<const Object*, int> object_tpm_handle_map_;
   OperationContext operation_context_[kNumOperationTypes];
   int slot_id_;
-  scoped_ptr<ObjectPool> session_object_pool_;
+  std::unique_ptr<ObjectPool> session_object_pool_;
   ObjectPool* token_object_pool_;
   TPMUtility* tpm_utility_;
   bool is_legacy_loaded_;  // Tracks whether the legacy root keys are loaded.

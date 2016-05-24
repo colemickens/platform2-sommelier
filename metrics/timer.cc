@@ -6,8 +6,6 @@
 
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
-
 #include "metrics/metrics_library.h"
 
 namespace chromeos_metrics {

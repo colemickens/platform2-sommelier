@@ -7,7 +7,6 @@
 #include <cmath>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/clock.h"

@@ -122,7 +122,7 @@ class ExternalDisplayTest : public testing::Test {
  public:
   ExternalDisplayTest()
       : delegate_(new TestDelegate),
-        display_(scoped_ptr<ExternalDisplay::Delegate>(delegate_)),
+        display_(std::unique_ptr<ExternalDisplay::Delegate>(delegate_)),
         test_api_(&display_) {
     request_brightness_message_ =
         // Message header.

@@ -4,6 +4,7 @@
 
 #include "chaps/chaps_service.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -55,7 +56,7 @@ class TestService : public ::testing::Test {
   SlotManagerMock slot_manager_;
   SessionMock session_;
   ObjectMock object_;
-  scoped_ptr<ChapsServiceImpl> service_;
+  std::unique_ptr<ChapsServiceImpl> service_;
   vector<uint8_t> bad_attributes_;
   vector<uint8_t> good_attributes_;
   vector<uint8_t> good_attributes2_;

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -29,11 +30,11 @@ static chaps::ChapsInterface* CreateChapsInstance() {
   }
 
   if (use_dbus) {
-    scoped_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
+    std::unique_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
     if (proxy->Init())
       return proxy.release();
   } else {
-    scoped_ptr<chaps::ChapsServiceRedirect> service(
+    std::unique_ptr<chaps::ChapsServiceRedirect> service(
         new chaps::ChapsServiceRedirect("libchaps.so"));
     if (service->Init())
       return service.release();
@@ -76,7 +77,7 @@ class TestP11 : public ::testing::Test {
     user_pin_ = "111111";
     credential_ = IsolateCredentialManager::GetDefaultIsolateCredential();
   }
-  scoped_ptr<chaps::ChapsInterface> chaps_;
+  std::unique_ptr<chaps::ChapsInterface> chaps_;
   string so_pin_;
   string user_pin_;
   SecureBlob credential_;

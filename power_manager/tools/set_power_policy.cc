@@ -7,6 +7,8 @@
 // fact, it will overwrite any policy set by Chrome.  To revert to powerd's
 // default policy, run it without any arguments.
 
+#include <memory>
+
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -174,7 +176,7 @@ int main(int argc, char* argv[]) {
       power_manager::kSetPolicyMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(policy);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       proxy->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   CHECK(response.get());

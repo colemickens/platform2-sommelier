@@ -7,12 +7,12 @@
 
 #include "power_manager/powerd/system/event_device_interface.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/memory/linked_ptr.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
 
 namespace power_manager {
@@ -54,7 +54,7 @@ class EventDevice : public EventDeviceInterface,
   int fd_;
   base::FilePath path_;
   base::Closure new_events_cb_;
-  scoped_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
+  std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDevice);
 };

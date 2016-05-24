@@ -15,7 +15,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -738,7 +737,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
   // This event can be handled whether or not we are already managing the token
   // but if we're not, we won't start until a Load Token event comes in.
   ObjectPool* object_pool = NULL;
-  scoped_ptr<ObjectPool> scoped_object_pool;
+  std::unique_ptr<ObjectPool> scoped_object_pool;
   int slot_id = 0;
   bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {

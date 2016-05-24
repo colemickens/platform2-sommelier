@@ -5,10 +5,11 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_INPUT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_INPUT_CONTROLLER_H_
 
+#include <memory>
+
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
@@ -118,7 +119,7 @@ class InputController : public system::InputObserver {
   system::DisplayWatcherInterface* display_watcher_;  // weak
   DBusSenderInterface* dbus_sender_;  // weak
 
-  scoped_ptr<Clock> clock_;
+  std::unique_ptr<Clock> clock_;
 
   // True if the device doesn't have an internal display.
   bool only_has_external_display_;

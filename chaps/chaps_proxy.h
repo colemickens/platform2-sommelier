@@ -6,10 +6,10 @@
 #ifndef CHAPS_CHAPS_PROXY_H_
 #define CHAPS_CHAPS_PROXY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 
@@ -404,7 +404,7 @@ class ChapsProxyImpl : public ChapsInterface {
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
-  scoped_ptr<Proxy> proxy_;
+  std::unique_ptr<Proxy> proxy_;
   // TODO(dkrahn): Once crosbug.com/35421 has been fixed this lock must be
   // removed.  Currently this is needed to avoid flooding the chapsd dbus
   // dispatcher which seems to drop requests under pressure.

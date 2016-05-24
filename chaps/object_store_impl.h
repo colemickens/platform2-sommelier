@@ -8,11 +8,11 @@
 #include "chaps/object_store.h"
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 #include <leveldb/db.h>
@@ -120,8 +120,8 @@ class ObjectStoreImpl : public ObjectStore {
   static const int kBlobVersion;
 
   brillo::SecureBlob key_;
-  scoped_ptr<leveldb::Env> env_;
-  scoped_ptr<leveldb::DB> db_;
+  std::unique_ptr<leveldb::Env> env_;
+  std::unique_ptr<leveldb::DB> db_;
   std::map<int, BlobType> blob_type_map_;
 
   friend class TestObjectStoreEncryption;

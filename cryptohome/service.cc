@@ -1982,7 +1982,7 @@ gboolean Service::AsyncMount(const gchar *userid,
                  std::string(userid),
                  base::Owned(key_blob.release()),
                  false,
-                 mount_task));
+                 base::RetainedRef(mount_task)));
 
   return TRUE;
 }
@@ -2113,7 +2113,7 @@ gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
                  std::string(public_mount_id),
                  base::Owned(key_blob.release()),
                  true,
-                 mount_task));
+                 base::RetainedRef(mount_task)));
   return TRUE;
 }
 

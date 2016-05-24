@@ -5,10 +5,10 @@
 #include "chaps/object_pool_impl.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -86,8 +86,8 @@ class TestObjectPool : public ::testing::Test {
   ObjectStoreMock* store_;
   ObjectImporterMock* importer_;
   HandleGeneratorMock handle_generator_;
-  scoped_ptr<ObjectPoolImpl> pool_;
-  scoped_ptr<ObjectPoolImpl> pool2_;
+  std::unique_ptr<ObjectPoolImpl> pool_;
+  std::unique_ptr<ObjectPoolImpl> pool2_;
 };
 
 // Test object pool initialization when using an object store.
@@ -136,7 +136,7 @@ TEST_F(TestObjectPool, Init) {
   EXPECT_TRUE(pool_->SetEncryptionKey(key));
   EXPECT_TRUE(pool_->SetEncryptionKey(key));
   vector<const Object*> v;
-  scoped_ptr<Object> find_all(CreateObjectMock());
+  std::unique_ptr<Object> find_all(CreateObjectMock());
   EXPECT_TRUE(pool_->Find(find_all.get(), &v));
   ASSERT_EQ(3, v.size());
   EXPECT_TRUE(v[0]->GetAttributeString(CKA_ID) == string("value"));
@@ -184,7 +184,7 @@ TEST_F(TestObjectPool, InsertFindUpdateDelete) {
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   vector<const Object*> v;
-  scoped_ptr<Object> find_all(CreateObjectMock());
+  std::unique_ptr<Object> find_all(CreateObjectMock());
   EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
   EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
@@ -218,7 +218,7 @@ TEST_F(TestObjectPool, InsertFindUpdateDelete) {
 
 // Test handling of an invalid object pointer.
 TEST_F(TestObjectPool, UnknownObject) {
-  scoped_ptr<Object> o(CreateObjectMock());
+  std::unique_ptr<Object> o(CreateObjectMock());
   EXPECT_FALSE(pool_->Flush(o.get()));
   EXPECT_FALSE(pool_->Delete(o.get()));
   EXPECT_FALSE(pool2_->Flush(o.get()));
@@ -247,7 +247,7 @@ TEST_F(TestObjectPool, DeleteAll) {
   EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
   EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
   vector<const Object*> v;
-  scoped_ptr<Object> find_all(CreateObjectMock());
+  std::unique_ptr<Object> find_all(CreateObjectMock());
   EXPECT_TRUE(pool_->Find(find_all.get(), &v));
   EXPECT_EQ(3, v.size());
   // Test the store failure is passed back but cached objects are still deleted.

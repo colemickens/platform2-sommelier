@@ -7,9 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
@@ -80,7 +81,7 @@ class InternalBacklight : public BacklightInterface {
   // Cancels |transition_timeout_id_| if set.
   void CancelTransition();
 
-  scoped_ptr<Clock> clock_;
+  std::unique_ptr<Clock> clock_;
 
   // Paths to the actual_brightness, brightness, max_brightness and
   // resume_brightness files under /sys/class/backlight.

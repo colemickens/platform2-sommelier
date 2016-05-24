@@ -70,7 +70,7 @@ class InputWatcher : public InputWatcherInterface,
   }
 
   // Returns true on success.
-  bool Init(scoped_ptr<EventDeviceFactoryInterface> event_device_factory,
+  bool Init(std::unique_ptr<EventDeviceFactoryInterface> event_device_factory,
             PrefsInterface* prefs,
             UdevInterface* udev);
 
@@ -129,7 +129,7 @@ class InputWatcher : public InputWatcherInterface,
   base::FilePath sys_class_input_path_;
 
   // Factory to access EventDevices.
-  scoped_ptr<EventDeviceFactoryInterface> event_device_factory_;
+  std::unique_ptr<EventDeviceFactoryInterface> event_device_factory_;
 
   // Event devices reporting power button events. Weak pointers to elements in
   // |event_devices_|.

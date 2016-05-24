@@ -5,11 +5,11 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_STATE_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_STATE_CONTROLLER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
@@ -282,7 +282,7 @@ class StateController : public PrefsObserver {
 
   PrefsInterface* prefs_;  // not owned
 
-  scoped_ptr<Clock> clock_;
+  std::unique_ptr<Clock> clock_;
 
   // Has Init() been called?
   bool initialized_;

@@ -4,11 +4,11 @@
 
 #include "power_manager/powerd/system/display/display_power_setter.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -64,7 +64,7 @@ void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
                                chromeos::kSetDisplaySoftwareDimming);
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(dimmed);
-  scoped_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
+  std::unique_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 }
 
@@ -74,7 +74,7 @@ void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
                                chromeos::kSetDisplayPower);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(state);
-  scoped_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
+  std::unique_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 }
 

@@ -7,9 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -169,9 +170,9 @@ class InternalBacklightController : public BacklightController,
   // Used to turn displays on and off.
   system::DisplayPowerSetterInterface* display_power_setter_;
 
-  scoped_ptr<AmbientLightHandler> ambient_light_handler_;
+  std::unique_ptr<AmbientLightHandler> ambient_light_handler_;
 
-  scoped_ptr<Clock> clock_;
+  std::unique_ptr<Clock> clock_;
 
   // Observers for changes to the brightness level.
   base::ObserverList<BacklightControllerObserver> observers_;

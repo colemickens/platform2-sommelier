@@ -88,7 +88,7 @@ class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
 class AcpiWakeupHelperTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    scoped_ptr<FakeAcpiWakeupFile> file(new FakeAcpiWakeupFile());
+    std::unique_ptr<FakeAcpiWakeupFile> file(new FakeAcpiWakeupFile());
     file_ = file.get();
     helper_.set_file_for_testing(std::move(file));
   }

@@ -4,8 +4,9 @@
 
 #include "power_manager/common/dbus_sender_stub.h"
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace power_manager {
 
@@ -54,7 +55,7 @@ void DBusSenderStub::ClearSentSignals() {
 }
 
 void DBusSenderStub::EmitBareSignal(const std::string& signal_name) {
-  scoped_ptr<SignalInfo> info(new SignalInfo);
+  std::unique_ptr<SignalInfo> info(new SignalInfo);
   info->signal_name = signal_name;
   sent_signals_.push_back(info.release());
 }
@@ -62,7 +63,7 @@ void DBusSenderStub::EmitBareSignal(const std::string& signal_name) {
 void DBusSenderStub::EmitSignalWithProtocolBuffer(
     const std::string& signal_name,
     const google::protobuf::MessageLite& protobuf) {
-  scoped_ptr<SignalInfo> info(new SignalInfo);
+  std::unique_ptr<SignalInfo> info(new SignalInfo);
   info->signal_name = signal_name;
   info->protobuf_type = protobuf.GetTypeName();
   protobuf.SerializeToString(&(info->serialized_data));

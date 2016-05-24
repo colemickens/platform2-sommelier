@@ -1108,7 +1108,7 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
 }
 
 void MetricsDaemon::SendAndResetDailyUseSample(
-    const scoped_ptr<PersistentInteger>& use) {
+    const std::unique_ptr<PersistentInteger>& use) {
   SendSample(use->Name(),
              use->GetAndClear(),
              1,                        // value of first bucket
@@ -1117,7 +1117,7 @@ void MetricsDaemon::SendAndResetDailyUseSample(
 }
 
 void MetricsDaemon::SendAndResetCrashIntervalSample(
-    const scoped_ptr<PersistentInteger>& interval) {
+    const std::unique_ptr<PersistentInteger>& interval) {
   SendSample(interval->Name(),
              interval->GetAndClear(),
              1,                        // value of first bucket
@@ -1126,7 +1126,7 @@ void MetricsDaemon::SendAndResetCrashIntervalSample(
 }
 
 void MetricsDaemon::SendAndResetCrashFrequencySample(
-    const scoped_ptr<PersistentInteger>& frequency) {
+    const std::unique_ptr<PersistentInteger>& frequency) {
   SendSample(frequency->Name(),
              frequency->GetAndClear(),
              1,                        // value of first bucket

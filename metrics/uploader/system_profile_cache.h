@@ -7,11 +7,11 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include "base/compiler_specific.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/scoped_ptr.h"
 #include "brillo/osrelease_reader.h"
 #include "metrics/persistent_integer.h"
 #include "metrics/uploader/proto/system_profile.pb.h"
@@ -84,7 +84,7 @@ class SystemProfileCache : public SystemProfileSetter {
   bool initialized_;
   bool testing_;
   std::string config_root_;
-  scoped_ptr<chromeos_metrics::PersistentInteger> session_id_;
+  std::unique_ptr<chromeos_metrics::PersistentInteger> session_id_;
   SystemProfile profile_;
 };
 

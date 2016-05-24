@@ -5,7 +5,7 @@
 #include "wimax_manager/event_dispatcher.h"
 
 #include <base/location.h>
-#include <base/thread_task_runner_handle.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 namespace wimax_manager {
 

@@ -5,10 +5,10 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_ACPI_WAKEUP_HELPER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_ACPI_WAKEUP_HELPER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 
@@ -43,7 +43,7 @@ class AcpiWakeupHelper : public AcpiWakeupHelperInterface {
 
   // Forces use of a fake implementation instead of /proc/acpi/wakeup. Only for
   // testing.
-  void set_file_for_testing(scoped_ptr<AcpiWakeupFileInterface> file);
+  void set_file_for_testing(std::unique_ptr<AcpiWakeupFileInterface> file);
 
   // Implementation of AcpiWakeupHelperInterface.
   bool IsSupported() override;
@@ -57,7 +57,7 @@ class AcpiWakeupHelper : public AcpiWakeupHelperInterface {
   // to set it directly.
   bool ToggleWakeupEnabled(const std::string& device_name);
 
-  scoped_ptr<AcpiWakeupFileInterface> file_;
+  std::unique_ptr<AcpiWakeupFileInterface> file_;
 
   DISALLOW_COPY_AND_ASSIGN(AcpiWakeupHelper);
 };

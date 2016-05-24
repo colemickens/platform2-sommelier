@@ -5,13 +5,13 @@
 #include "power_manager/powerd/system/async_file_reader.h"
 
 #include <algorithm>
+#include <memory>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/test_main_loop_runner.h"
@@ -120,8 +120,8 @@ class AsyncFileReaderTest : public ::testing::Test {
 
   TestMainLoopRunner loop_runner_;
 
-  scoped_ptr<base::ScopedTempDir> temp_dir_;
-  scoped_ptr<AsyncFileReader> file_reader_;
+  std::unique_ptr<base::ScopedTempDir> temp_dir_;
+  std::unique_ptr<AsyncFileReader> file_reader_;
 
   // Test file.
   base::FilePath path_;

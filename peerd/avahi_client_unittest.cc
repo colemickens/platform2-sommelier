@@ -4,6 +4,8 @@
 
 #include "peerd/avahi_client.h"
 
+#include <memory>
+
 #include <avahi-common/defs.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_param_writer.h>
@@ -53,7 +55,7 @@ const char kDiscovererPath[] = "/path/to/avahi/discoverer";
 
 Response* ReturnsDiscovererPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
-  scoped_ptr<Response> response = Response::FromMethodCall(method_call);
+  std::unique_ptr<Response> response = Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   brillo::dbus_utils::AppendValueToWriter(
       &writer, ObjectPath{string{kDiscovererPath}});
@@ -119,11 +121,11 @@ class AvahiClientTest : public ::testing::Test {
 
   Response *ReturnsCurrentState(dbus::MethodCall* method_call, Unused, Unused) {
     method_call->SetSerial(87);
-    scoped_ptr<Response> response = Response::FromMethodCall(method_call);
+    std::unique_ptr<Response> response = Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
     brillo::dbus_utils::AppendValueToWriter(&writer,
                                             int32_t{current_avahi_state_});
-    // The mock wraps this back in a scoped_ptr in the function calling us.
+    // The mock wraps this back in a std::unique_ptr in the function calling us.
     return response.release();
   }
 

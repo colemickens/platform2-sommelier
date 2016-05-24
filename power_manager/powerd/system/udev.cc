@@ -6,9 +6,11 @@
 
 #include <libudev.h>
 
+#include <memory>
 #include <utility>
 
 #include <base/logging.h>
+#include <base/memory/free_deleter.h>
 
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
@@ -156,7 +158,7 @@ bool Udev::SetSysattr(const std::string& syspath,
     return false;
   }
   // udev can modify this value, hence we copy it first.
-  scoped_ptr<char, base::FreeDeleter> value_mutable(strdup(value.c_str()));
+  std::unique_ptr<char, base::FreeDeleter> value_mutable(strdup(value.c_str()));
   int rv = udev_device_set_sysattr_value(device, sysattr.c_str(),
                                          value_mutable.get());
   udev_device_unref(device);

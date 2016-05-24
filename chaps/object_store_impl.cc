@@ -208,7 +208,8 @@ bool ObjectStoreImpl::DeleteObjectBlob(int handle) {
 
 bool ObjectStoreImpl::DeleteAllObjectBlobs() {
   vector<string> blobs_to_delete;
-  scoped_ptr<leveldb::Iterator> it(db_->NewIterator(leveldb::ReadOptions()));
+  std::unique_ptr<leveldb::Iterator>
+      it(db_->NewIterator(leveldb::ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType type;
     int id = 0;
@@ -259,7 +260,8 @@ bool ObjectStoreImpl::LoadPrivateObjectBlobs(map<int, ObjectBlob>* blobs) {
 
 bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
                                       map<int, ObjectBlob>* blobs) {
-  scoped_ptr<leveldb::Iterator> it(db_->NewIterator(leveldb::ReadOptions()));
+  std::unique_ptr<leveldb::Iterator>
+      it(db_->NewIterator(leveldb::ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType it_type;
     int id = 0;

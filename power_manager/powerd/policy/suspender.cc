@@ -189,7 +189,7 @@ void Suspender::RecordDarkResumeWakeReason(
   if (!reader.PopArrayOfBytesAsProto(&proto)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
     response_sender.Run(
-        scoped_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+        std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
             method_call, DBUS_ERROR_INVALID_ARGS,
             "Expected wake reason proto")));
     return;
@@ -256,7 +256,7 @@ void Suspender::RegisterSuspendDelayInternal(
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(scoped_ptr<dbus::Response>(
+    response_sender.Run(std::unique_ptr<dbus::Response>(
         dbus::ErrorResponse::FromMethodCall(method_call,
             DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
     return;
@@ -265,7 +265,7 @@ void Suspender::RegisterSuspendDelayInternal(
   controller->RegisterSuspendDelay(
       request, method_call->GetSender(), &reply_proto);
 
-  scoped_ptr<dbus::Response> response =
+  std::unique_ptr<dbus::Response> response =
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(reply_proto);
@@ -280,7 +280,7 @@ void Suspender::UnregisterSuspendDelayInternal(
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(scoped_ptr<dbus::Response>(
+    response_sender.Run(std::unique_ptr<dbus::Response>(
         dbus::ErrorResponse::FromMethodCall(method_call,
             DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
     return;
@@ -297,7 +297,7 @@ void Suspender::HandleSuspendReadinessInternal(
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&info)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(scoped_ptr<dbus::Response>(
+    response_sender.Run(std::unique_ptr<dbus::Response>(
         dbus::ErrorResponse::FromMethodCall(method_call,
             DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
     return;

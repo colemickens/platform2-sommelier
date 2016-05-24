@@ -43,7 +43,7 @@ ObjectPool* ChapsFactoryImpl::CreateObjectPool(
     HandleGenerator* handle_generator,
     ObjectStore* object_store,
     ObjectImporter* object_importer) {
-  scoped_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(this,
+  std::unique_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(this,
                                                      handle_generator,
                                                      object_store,
                                                      object_importer));
@@ -54,7 +54,7 @@ ObjectPool* ChapsFactoryImpl::CreateObjectPool(
 }
 
 ObjectStore* ChapsFactoryImpl::CreateObjectStore(const FilePath& file_name) {
-  scoped_ptr<ObjectStoreImpl> store(new ObjectStoreImpl());
+  std::unique_ptr<ObjectStoreImpl> store(new ObjectStoreImpl());
   if (!store->Init(file_name)) {
     // The approach here is to limp along without a persistent object store so
     // crypto services do not become unavailable. The side-effect is that all

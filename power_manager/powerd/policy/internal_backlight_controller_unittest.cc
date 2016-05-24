@@ -4,10 +4,10 @@
 
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 
+#include <memory>
 #include <string>
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -114,7 +114,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
   system::BacklightStub backlight_;
   system::AmbientLightSensorStub light_sensor_;
   system::DisplayPowerSetterStub display_power_setter_;
-  scoped_ptr<InternalBacklightController> controller_;
+  std::unique_ptr<InternalBacklightController> controller_;
 };
 
 TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {

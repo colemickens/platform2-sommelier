@@ -5,6 +5,7 @@
 // Isolate login client unit tests.
 //
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -70,7 +71,7 @@ class TestIsolateLoginClient : public ::testing::Test {
   IsolateCredentialManagerMock isolate_manager_mock_;
   TokenFileManagerMock file_manager_mock_;
   TokenManagerClientMock token_manager_mock_;
-  scoped_ptr<IsolateLoginClient> isolate_login_client_;
+  std::unique_ptr<IsolateLoginClient> isolate_login_client_;
 };
 
 TEST_F(TestIsolateLoginClient, TestLoginUserSuccess) {

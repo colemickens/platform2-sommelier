@@ -7,13 +7,13 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -64,8 +64,8 @@ class Udev;
 class Daemon;
 
 // Pointer to a member function for handling D-Bus method calls. If an empty
-// scoped_ptr is returned, an empty (but successful) response will be sent.
-typedef scoped_ptr<dbus::Response> (Daemon::*DBusMethodCallMemberFunction)(
+// std::unique_ptr is returned, an empty (but successful) response will be sent.
+typedef std::unique_ptr<dbus::Response> (Daemon::*DBusMethodCallMemberFunction)(
     dbus::MethodCall*);
 
 // Main class within the powerd daemon that ties all other classes together.
@@ -185,37 +185,37 @@ class Daemon : public policy::BacklightControllerObserver,
   void HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal);
   void HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal);
   void HandleGetTpmStatusResponse(dbus::Response* response);
-  scoped_ptr<dbus::Response> HandleRequestShutdownMethod(
+  std::unique_ptr<dbus::Response> HandleRequestShutdownMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleRequestRestartMethod(
+  std::unique_ptr<dbus::Response> HandleRequestRestartMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleRequestSuspendMethod(
+  std::unique_ptr<dbus::Response> HandleRequestSuspendMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleDecreaseScreenBrightnessMethod(
+  std::unique_ptr<dbus::Response> HandleDecreaseScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleIncreaseScreenBrightnessMethod(
+  std::unique_ptr<dbus::Response> HandleIncreaseScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleGetScreenBrightnessMethod(
+  std::unique_ptr<dbus::Response> HandleGetScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleSetScreenBrightnessMethod(
+  std::unique_ptr<dbus::Response> HandleSetScreenBrightnessMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleDecreaseKeyboardBrightnessMethod(
+  std::unique_ptr<dbus::Response> HandleDecreaseKeyboardBrightnessMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleIncreaseKeyboardBrightnessMethod(
+  std::unique_ptr<dbus::Response> HandleIncreaseKeyboardBrightnessMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleGetPowerSupplyPropertiesMethod(
+  std::unique_ptr<dbus::Response> HandleGetPowerSupplyPropertiesMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleVideoActivityMethod(
+  std::unique_ptr<dbus::Response> HandleVideoActivityMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleUserActivityMethod(
+  std::unique_ptr<dbus::Response> HandleUserActivityMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleSetIsProjectingMethod(
+  std::unique_ptr<dbus::Response> HandleSetIsProjectingMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleSetPolicyMethod(
+  std::unique_ptr<dbus::Response> HandleSetPolicyMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandleSetPowerSourceMethod(
+  std::unique_ptr<dbus::Response> HandleSetPowerSourceMethod(
       dbus::MethodCall* method_call);
-  scoped_ptr<dbus::Response> HandlePowerButtonAcknowledgment(
+  std::unique_ptr<dbus::Response> HandlePowerButtonAcknowledgment(
       dbus::MethodCall* method_call);
 
   // Handles information from the session manager about the session state.
@@ -243,7 +243,7 @@ class Daemon : public policy::BacklightControllerObserver,
   void SetBacklightsSuspended(bool suspended);
   void SetBacklightsDocked(bool docked);
 
-  scoped_ptr<Prefs> prefs_;
+  std::unique_ptr<Prefs> prefs_;
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* powerd_dbus_object_;  // weak; owned by |bus_|
@@ -254,35 +254,35 @@ class Daemon : public policy::BacklightControllerObserver,
   // May be null if the TPM status is not needed.
   dbus::ObjectProxy* cryptohomed_dbus_proxy_;  // weak; owned by |bus_|
 
-  scoped_ptr<StateControllerDelegate> state_controller_delegate_;
-  scoped_ptr<MetricsSender> metrics_sender_;
-  scoped_ptr<DBusSender> dbus_sender_;
+  std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
+  std::unique_ptr<MetricsSender> metrics_sender_;
+  std::unique_ptr<DBusSender> dbus_sender_;
 
   // Many of these members may be null depending on the device's hardware
   // configuration.
-  scoped_ptr<system::AmbientLightSensor> light_sensor_;
-  scoped_ptr<system::DisplayWatcher> display_watcher_;
-  scoped_ptr<system::DisplayPowerSetter> display_power_setter_;
-  scoped_ptr<system::InternalBacklight> display_backlight_;
-  scoped_ptr<policy::BacklightController> display_backlight_controller_;
-  scoped_ptr<system::InternalBacklight> keyboard_backlight_;
-  scoped_ptr<policy::KeyboardBacklightController>
+  std::unique_ptr<system::AmbientLightSensor> light_sensor_;
+  std::unique_ptr<system::DisplayWatcher> display_watcher_;
+  std::unique_ptr<system::DisplayPowerSetter> display_power_setter_;
+  std::unique_ptr<system::InternalBacklight> display_backlight_;
+  std::unique_ptr<policy::BacklightController> display_backlight_controller_;
+  std::unique_ptr<system::InternalBacklight> keyboard_backlight_;
+  std::unique_ptr<policy::KeyboardBacklightController>
       keyboard_backlight_controller_;
 
-  scoped_ptr<system::Udev> udev_;
-  scoped_ptr<system::InputWatcher> input_watcher_;
-  scoped_ptr<policy::StateController> state_controller_;
-  scoped_ptr<policy::InputController> input_controller_;
-  scoped_ptr<system::AcpiWakeupHelper> acpi_wakeup_helper_;
-  scoped_ptr<system::EcWakeupHelper> ec_wakeup_helper_;
-  scoped_ptr<policy::WakeupController> wakeup_controller_;
-  scoped_ptr<system::AudioClient> audio_client_;  // May be NULL.
-  scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
-  scoped_ptr<system::PowerSupply> power_supply_;
-  scoped_ptr<system::DarkResume> dark_resume_;
-  scoped_ptr<policy::Suspender> suspender_;
+  std::unique_ptr<system::Udev> udev_;
+  std::unique_ptr<system::InputWatcher> input_watcher_;
+  std::unique_ptr<policy::StateController> state_controller_;
+  std::unique_ptr<policy::InputController> input_controller_;
+  std::unique_ptr<system::AcpiWakeupHelper> acpi_wakeup_helper_;
+  std::unique_ptr<system::EcWakeupHelper> ec_wakeup_helper_;
+  std::unique_ptr<policy::WakeupController> wakeup_controller_;
+  std::unique_ptr<system::AudioClient> audio_client_;  // May be NULL.
+  std::unique_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
+  std::unique_ptr<system::PowerSupply> power_supply_;
+  std::unique_ptr<system::DarkResume> dark_resume_;
+  std::unique_ptr<policy::Suspender> suspender_;
 
-  scoped_ptr<MetricsCollector> metrics_collector_;
+  std::unique_ptr<MetricsCollector> metrics_collector_;
 
   // True once the shutdown process has started. Remains true until the
   // system has powered off.

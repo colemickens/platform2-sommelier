@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/audio_client.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 
 #include <chromeos/dbus/service_constants.h>
@@ -69,7 +70,7 @@ void AudioClient::UpdateDevices() {
   hdmi_active_ = false;
 
   dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
   if (!response)
     return;
@@ -118,7 +119,7 @@ void AudioClient::UpdateDevices() {
 void AudioClient::UpdateNumActiveStreams() {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
                                cras::kGetNumberOfActiveStreams);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
   int num_streams = 0;
   if (response) {
@@ -147,7 +148,7 @@ void AudioClient::SetSuspended(bool suspended) {
                                cras::kSetSuspendAudio);
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(suspended);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
 }
 

@@ -56,14 +56,15 @@ int main(int argc, char* argv[]) {
       base::FilePath(power_manager::kReadWritePrefsDir),
       base::FilePath(power_manager::kReadOnlyPrefsDir))));
 
-  scoped_ptr<power_manager::system::AmbientLightSensorStub> light_sensor;
+  std::unique_ptr<power_manager::system::AmbientLightSensorStub> light_sensor;
   bool has_als = false;
   if (prefs.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
       has_als)
     light_sensor.reset(new power_manager::system::AmbientLightSensorStub(0));
 
-  scoped_ptr<power_manager::policy::BacklightController> backlight_controller;
-  scoped_ptr<power_manager::system::DisplayPowerSetterStub>
+  std::unique_ptr<power_manager::policy::BacklightController>
+      backlight_controller;
+  std::unique_ptr<power_manager::system::DisplayPowerSetterStub>
       display_power_setter;
 
   if (FLAGS_keyboard) {

@@ -4,6 +4,8 @@
 
 #include "peerd/test_util.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <brillo/dbus/mock_dbus_object.h>
 #include <dbus/mock_bus.h>
@@ -63,8 +65,8 @@ void HandleConnectToSignal(
 
 Response* ReturnsEmptyResponse(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
-  scoped_ptr<Response> response = Response::FromMethodCall(method_call);
-  // The mock wraps this back in a scoped_ptr in the function calling us.
+  unique_ptr<Response> response = Response::FromMethodCall(method_call);
+  // The mock wraps this back in a unique_ptr in the function calling us.
   return response.release();
 }
 

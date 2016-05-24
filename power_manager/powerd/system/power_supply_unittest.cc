@@ -7,11 +7,11 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
@@ -222,8 +222,8 @@ class PowerSupplyTest : public ::testing::Test {
   base::FilePath ac_dir_;
   base::FilePath battery_dir_;
   UdevStub udev_;
-  scoped_ptr<PowerSupply> power_supply_;
-  scoped_ptr<PowerSupply::TestApi> test_api_;
+  std::unique_ptr<PowerSupply> power_supply_;
+  std::unique_ptr<PowerSupply::TestApi> test_api_;
 };
 
 // Test system without power supply sysfs (e.g. virtual machine).

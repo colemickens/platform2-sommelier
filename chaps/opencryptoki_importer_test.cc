@@ -7,12 +7,12 @@
 #include <stdlib.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -180,7 +180,7 @@ class TestImporterBase {
 
   ChapsFactoryMock factory_;
   ObjectPoolMock pool_;
-  scoped_ptr<OpencryptokiImporter> importer_;
+  std::unique_ptr<OpencryptokiImporter> importer_;
   TPMUtilityMock tpm_;
   base::ScopedTempDir temp_dir_;
 };

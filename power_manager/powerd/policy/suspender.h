@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <queue>
 #include <string>
 #include <utility>
@@ -14,7 +15,6 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
@@ -334,9 +334,9 @@ class Suspender : public SuspendDelayObserver {
   DBusSenderInterface* dbus_sender_;  // weak
   system::DarkResumeInterface* dark_resume_;  // weak
 
-  scoped_ptr<Clock> clock_;
-  scoped_ptr<SuspendDelayController> suspend_delay_controller_;
-  scoped_ptr<SuspendDelayController> dark_suspend_delay_controller_;
+  std::unique_ptr<Clock> clock_;
+  std::unique_ptr<SuspendDelayController> suspend_delay_controller_;
+  std::unique_ptr<SuspendDelayController> dark_suspend_delay_controller_;
 
   // Current state of the object, updated just before returning control to the
   // event loop.

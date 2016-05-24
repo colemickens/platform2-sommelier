@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdio>
+#include <memory>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -22,7 +23,7 @@ bool GetCurrentBrightness(dbus::ObjectProxy* proxy, double* percent) {
   dbus::MethodCall method_call(
       power_manager::kPowerManagerInterface,
       power_manager::kGetScreenBrightnessPercentMethod);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       proxy->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response)
@@ -40,7 +41,7 @@ bool SetCurrentBrightness(dbus::ObjectProxy* proxy, double percent, int style) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(percent);
   writer.AppendInt32(style);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       proxy->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   return response.get() != NULL;

@@ -132,7 +132,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   }
   // If we're not using a mock proxy instance we need to create one.
   if (!g_is_using_mock) {
-    scoped_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
+    std::unique_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
     CHECK(proxy.get());
     if (!proxy->Init())
       LOG_CK_RV_AND_RETURN(CKR_GENERAL_ERROR);

@@ -10,6 +10,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/callback.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -128,7 +130,7 @@ InputWatcher::~InputWatcher() {
 }
 
 bool InputWatcher::Init(
-    scoped_ptr<EventDeviceFactoryInterface> event_device_factory,
+    std::unique_ptr<EventDeviceFactoryInterface> event_device_factory,
     PrefsInterface* prefs,
     UdevInterface* udev) {
   event_device_factory_ = std::move(event_device_factory);

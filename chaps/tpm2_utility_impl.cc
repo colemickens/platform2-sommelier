@@ -108,7 +108,7 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
 
 bool TPM2UtilityImpl::Init() {
   AutoLock lock(lock_);
-  scoped_ptr<trunks::TpmState> tpm_state = factory_->GetTpmState();
+  std::unique_ptr<trunks::TpmState> tpm_state = factory_->GetTpmState();
   TPM_RC result;
   result = tpm_state->Initialize();
   if (result != TPM_RC_SUCCESS) {
@@ -149,7 +149,7 @@ bool TPM2UtilityImpl::IsTPMAvailable() {
     is_enabled_ = true;
     return true;
   }
-  scoped_ptr<trunks::TpmState> tpm_state = factory_->GetTpmState();
+  std::unique_ptr<trunks::TpmState> tpm_state = factory_->GetTpmState();
   TPM_RC result = tpm_state->Initialize();
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting TPM state information: "

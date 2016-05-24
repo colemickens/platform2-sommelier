@@ -130,7 +130,7 @@ bool ExternalDisplay::TestApi::TriggerTimeout() {
   return true;
 }
 
-ExternalDisplay::ExternalDisplay(scoped_ptr<Delegate> delegate)
+ExternalDisplay::ExternalDisplay(std::unique_ptr<Delegate> delegate)
     : delegate_(std::move(delegate)),
       state_(STATE_IDLE),
       current_brightness_percent_(0.0),

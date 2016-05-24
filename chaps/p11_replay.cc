@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -682,7 +683,7 @@ int main(int argc, char** argv) {
   }
   if (digest_test) {
     const int kNumThreads = 100;
-    scoped_ptr<DigestTestThread> threads[kNumThreads];
+    std::unique_ptr<DigestTestThread> threads[kNumThreads];
     base::PlatformThreadHandle handles[kNumThreads];
     for (int i = 0; i < kNumThreads; ++i) {
       LOG(INFO) << "Creating thread " << i;

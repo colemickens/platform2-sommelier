@@ -4,11 +4,12 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 
+#include <memory>
+
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
@@ -95,7 +96,7 @@ class AmbientLightSensorTest : public ::testing::Test {
 
   TestObserver observer_;
 
-  scoped_ptr<AmbientLightSensor> sensor_;
+  std::unique_ptr<AmbientLightSensor> sensor_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensorTest);

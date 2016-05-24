@@ -5,15 +5,15 @@
 #ifndef CHAPS_TOKEN_MANAGER_CLIENT_H_
 #define CHAPS_TOKEN_MANAGER_CLIENT_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
+#include "brillo/secure_blob.h"
 #include "chaps/chaps.h"
 #include "chaps/token_manager_interface.h"
-#include "brillo/secure_blob.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -59,7 +59,7 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
                             std::vector<std::string>* results);
 
  private:
-  scoped_ptr<ChapsProxyImpl> proxy_;
+  std::unique_ptr<ChapsProxyImpl> proxy_;
   bool is_connected_;
 
   // Attempts to connect to the Chaps daemon. Returns true on success.

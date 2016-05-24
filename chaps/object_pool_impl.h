@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 
@@ -73,8 +72,8 @@ class ObjectPoolImpl : public ObjectPool {
   HandleObjectMap handle_object_map_;
   ChapsFactory* factory_;
   HandleGenerator* handle_generator_;
-  scoped_ptr<ObjectStore> store_;
-  scoped_ptr<ObjectImporter> importer_;
+  std::unique_ptr<ObjectStore> store_;
+  std::unique_ptr<ObjectImporter> importer_;
   bool is_private_loaded_;
   base::Lock lock_;
   base::WaitableEvent private_loaded_event_;

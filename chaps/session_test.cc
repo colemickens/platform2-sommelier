@@ -4,11 +4,11 @@
 
 #include "chaps/session_impl.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/bn.h>
@@ -176,7 +176,7 @@ class TestSession: public ::testing::Test {
   ChapsFactoryMock factory_;
   StrictMock<TPMUtilityMock> tpm_;
   HandleGeneratorMock handle_generator_;
-  scoped_ptr<SessionImpl> session_;
+  std::unique_ptr<SessionImpl> session_;
 };
 
 typedef TestSession TestSession_DeathTest;

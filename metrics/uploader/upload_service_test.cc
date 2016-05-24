@@ -46,7 +46,7 @@ class UploadServiceTest : public testing::Test {
         dir_.path().Append("session_id").value()));
   }
 
-  scoped_ptr<metrics::MetricSample> Crash(const std::string& name) {
+  std::unique_ptr<metrics::MetricSample> Crash(const std::string& name) {
     return metrics::MetricSample::CrashSample(name);
   }
 
@@ -56,7 +56,7 @@ class UploadServiceTest : public testing::Test {
   UploadService upload_service_;
   MetricsLibraryMock metrics_lib_;
 
-  scoped_ptr<base::AtExitManager> exit_manager_;
+  std::unique_ptr<base::AtExitManager> exit_manager_;
 };
 
 // Tests that the right crash increments a values.
@@ -159,12 +159,12 @@ TEST_F(UploadServiceTest, LogEmptyAfterUpload) {
 }
 
 TEST_F(UploadServiceTest, LogContainsAggregatedValues) {
-  scoped_ptr<metrics::MetricSample> histogram =
+  std::unique_ptr<metrics::MetricSample> histogram =
       metrics::MetricSample::HistogramSample("foo", 10, 0, 42, 10);
   upload_service_.AddSample(*histogram.get());
 
 
-  scoped_ptr<metrics::MetricSample> histogram2 =
+  std::unique_ptr<metrics::MetricSample> histogram2 =
       metrics::MetricSample::HistogramSample("foo", 11, 0, 42, 10);
   upload_service_.AddSample(*histogram2.get());
 
@@ -198,7 +198,7 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
       "CHROMEOS_RELEASE_BOARD=myboard");
 
   base::SysInfo::SetChromeOSVersionInfoForTest(content, base::Time());
-  scoped_ptr<metrics::MetricSample> histogram =
+  std::unique_ptr<metrics::MetricSample> histogram =
       metrics::MetricSample::SparseHistogramSample("myhistogram", 1);
   SystemProfileCache* local_cache_ = new SystemProfileCache(true, "/");
   local_cache_->session_id_.reset(new chromeos_metrics::PersistentInteger(

@@ -36,7 +36,8 @@ class PersistentIntegerTest : public testing::Test {
 };
 
 TEST_F(PersistentIntegerTest, BasicChecks) {
-  scoped_ptr<PersistentInteger> pi(new PersistentInteger(kBackingFileName));
+  std::unique_ptr<PersistentInteger> pi(
+      new PersistentInteger(kBackingFileName));
 
   // Test initialization.
   EXPECT_EQ(0, pi->Get());

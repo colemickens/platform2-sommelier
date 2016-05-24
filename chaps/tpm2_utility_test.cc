@@ -62,7 +62,7 @@ class TPM2UtilityTest : public testing::Test {
   }
 
  protected:
-  scoped_ptr<trunks::TrunksFactoryForTest> factory_;
+  std::unique_ptr<trunks::TrunksFactoryForTest> factory_;
   NiceMock<trunks::MockTpm> mock_tpm_;
   NiceMock<trunks::MockTpmState> mock_tpm_state_;
   NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;

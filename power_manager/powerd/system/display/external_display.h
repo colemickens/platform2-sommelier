@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <queue>
 #include <string>
 #include <vector>
@@ -15,7 +16,6 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
@@ -193,7 +193,7 @@ class ExternalDisplay {
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
-  explicit ExternalDisplay(scoped_ptr<Delegate> delegate);
+  explicit ExternalDisplay(std::unique_ptr<Delegate> delegate);
   ~ExternalDisplay();
 
   // Adjusts the display's brightness by |offset_percent|, a linearly-calculated
@@ -251,7 +251,7 @@ class ExternalDisplay {
   // |body|'s size determines the expected size of the message body.
   ReceiveResult ReceiveMessage(std::vector<uint8_t>* body);
 
-  scoped_ptr<Delegate> delegate_;
+  std::unique_ptr<Delegate> delegate_;
   Clock clock_;
 
   // Current state of the object.

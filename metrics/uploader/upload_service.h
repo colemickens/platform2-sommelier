@@ -137,13 +137,13 @@ class UploadService : public base::HistogramFlattener {
   // Returns the current log. If there is no current log, creates it first.
   MetricsLog* GetOrCreateCurrentLog();
 
-  scoped_ptr<SystemProfileSetter> system_profile_setter_;
+  std::unique_ptr<SystemProfileSetter> system_profile_setter_;
   MetricsLibraryInterface* metrics_lib_;
   base::HistogramSnapshotManager histogram_snapshot_manager_;
-  scoped_ptr<Sender> sender_;
+  std::unique_ptr<Sender> sender_;
   int failed_upload_count_;
-  scoped_ptr<MetricsLog> current_log_;
-  scoped_ptr<MetricsLog> staged_log_;
+  std::unique_ptr<MetricsLog> current_log_;
+  std::unique_ptr<MetricsLog> staged_log_;
 
   std::string metrics_file_;
 

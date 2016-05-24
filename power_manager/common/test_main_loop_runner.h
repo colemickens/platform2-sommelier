@@ -5,8 +5,9 @@
 #ifndef POWER_MANAGER_COMMON_TEST_MAIN_LOOP_RUNNER_H_
 #define POWER_MANAGER_COMMON_TEST_MAIN_LOOP_RUNNER_H_
 
+#include <memory>
+
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
@@ -46,7 +47,7 @@ class TestMainLoopRunner {
   // Called when |timeout_delay| elapses without the loop having been stopped.
   void OnTimeout();
 
-  scoped_ptr<base::RunLoop> runner_;
+  std::unique_ptr<base::RunLoop> runner_;
 
   // Invokes OnTimeout().
   base::OneShotTimer timeout_timer_;

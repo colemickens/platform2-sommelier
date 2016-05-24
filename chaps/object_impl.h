@@ -7,11 +7,11 @@
 
 #include "chaps/object.h"
 
+#include <memory>
 #include <set>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "pkcs11/cryptoki.h"
 
@@ -59,7 +59,7 @@ class ObjectImpl : public Object {
   AttributeMap attributes_;
   // Tracks attributes which have been set by the user.
   std::set<CK_ATTRIBUTE_TYPE> external_attributes_;
-  scoped_ptr<ObjectPolicy> policy_;
+  std::unique_ptr<ObjectPolicy> policy_;
   int handle_;
   int store_id_;
 

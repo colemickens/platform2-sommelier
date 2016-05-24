@@ -4,9 +4,10 @@
 
 #include "power_manager/common/prefs.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
@@ -90,7 +91,8 @@ class PrefsTest : public testing::Test {
 
  protected:
   std::vector<base::FilePath> paths_;
-  scoped_ptr<base::ScopedTempDir> temp_dir_generators_[kNumPrefDirectories];
+  std::unique_ptr<base::ScopedTempDir>
+      temp_dir_generators_[kNumPrefDirectories];
 
   Prefs prefs_;
   Prefs::TestApi test_api_;

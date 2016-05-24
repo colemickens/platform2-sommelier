@@ -4,10 +4,11 @@
 
 #include "power_manager/powerd/system/dark_resume.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/timer/mock_timer.h>
 #include <gtest/gtest.h>
 
@@ -32,7 +33,7 @@ class SystemAbstraction {
   virtual ~SystemAbstraction() {}
 
   // Get a timer.
-  virtual scoped_ptr<base::Timer> CreateTimer() = 0;
+  virtual std::unique_ptr<base::Timer> CreateTimer() = 0;
 
   // Perform a fake suspend preparation using |dark_resume|,
   // putting the next action to take and time to suspend for
@@ -58,8 +59,8 @@ class LegacySystem : public SystemAbstraction {
   static const char kEnabled[];
   static const char kDisabled[];
 
-  scoped_ptr<base::Timer> CreateTimer() override {
-    return scoped_ptr<base::Timer>();
+  std::unique_ptr<base::Timer> CreateTimer() override {
+    return std::unique_ptr<base::Timer>();
   }
 
   // In the legacy case, we prepare the action synchronously,
@@ -93,10 +94,10 @@ class WakeupTypeSystem : public SystemAbstraction {
   static const char kEnabled[];
   static const char kDisabled[];
 
-  scoped_ptr<base::Timer> CreateTimer() override {
+  std::unique_ptr<base::Timer> CreateTimer() override {
     timer_ = new base::MockTimer(true /* retain_user_task */,
                                  false /* is_repeating */);
-    return scoped_ptr<base::Timer>(timer_);
+    return std::unique_ptr<base::Timer>(timer_);
   }
 
   // In the asynchronous case, we are actually scheduling the action
@@ -205,7 +206,7 @@ class DarkResumeTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   FakePrefs prefs_;
   PowerSupplyStub power_supply_;
-  scoped_ptr<DarkResume> dark_resume_;
+  std::unique_ptr<DarkResume> dark_resume_;
 
   SystemType system_;
 };

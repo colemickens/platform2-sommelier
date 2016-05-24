@@ -56,10 +56,10 @@ const char kTestPeerId[] = "This is a uuid for ourselves.";
 
 Response* ReturnsGroupPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
-  scoped_ptr<Response> response = Response::FromMethodCall(method_call);
+  unique_ptr<Response> response = Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   brillo::dbus_utils::AppendValueToWriter(&writer, ObjectPath(kGroupPath));
-  // The mock wraps this back in a scoped_ptr in the function calling us.
+  // The mock wraps this back in a unique_ptr in the function calling us.
   return response.release();
 }
 

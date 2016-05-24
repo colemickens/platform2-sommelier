@@ -5,7 +5,6 @@
 #include "chaps/chaps_service.h"
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"

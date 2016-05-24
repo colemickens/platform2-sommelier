@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/command_line.h>
@@ -37,7 +39,7 @@ bool CallMethod(dbus::ObjectProxy* powerd_proxy,
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(request);
 
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       powerd_proxy->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response)

@@ -136,12 +136,12 @@ class InputWatcherTest : public testing::Test {
   base::FilePath sys_class_input_path_;
 
   // Passed to |input_watcher_| in Init(); use |device_factory_| instead.
-  scoped_ptr<EventDeviceFactoryStub> scoped_device_factory_;
+  std::unique_ptr<EventDeviceFactoryStub> scoped_device_factory_;
 
   UdevStub udev_;
   EventDeviceFactoryStub* device_factory_;  // Owned by |input_watcher_|.
-  scoped_ptr<InputWatcher> input_watcher_;
-  scoped_ptr<TestObserver> observer_;
+  std::unique_ptr<InputWatcher> input_watcher_;
+  std::unique_ptr<TestObserver> observer_;
 
   // Initial values for prefs.
   int64_t use_lid_pref_;

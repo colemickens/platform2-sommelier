@@ -5,11 +5,11 @@
 #ifndef METRICS_SERIALIZATION_METRIC_SAMPLE_H_
 #define METRICS_SERIALIZATION_METRIC_SAMPLE_H_
 
+#include <memory>
 #include <string>
 
 #include "base/gtest_prod_util.h"
 #include "base/macros.h"
-#include "base/memory/scoped_ptr.h"
 
 namespace metrics {
 
@@ -59,37 +59,39 @@ class MetricSample {
   std::string ToString() const;
 
   // Builds a crash sample.
-  static scoped_ptr<MetricSample> CrashSample(const std::string& crash_name);
+  static std::unique_ptr<MetricSample> CrashSample(
+      const std::string& crash_name);
 
   // Builds a histogram sample.
-  static scoped_ptr<MetricSample> HistogramSample(
+  static std::unique_ptr<MetricSample> HistogramSample(
       const std::string& histogram_name,
       int sample,
       int min,
       int max,
       int bucket_count);
   // Deserializes a histogram sample.
-  static scoped_ptr<MetricSample> ParseHistogram(const std::string& serialized);
+  static std::unique_ptr<MetricSample> ParseHistogram(
+      const std::string& serialized);
 
   // Builds a sparse histogram sample.
-  static scoped_ptr<MetricSample> SparseHistogramSample(
+  static std::unique_ptr<MetricSample> SparseHistogramSample(
       const std::string& histogram_name,
       int sample);
   // Deserializes a sparse histogram sample.
-  static scoped_ptr<MetricSample> ParseSparseHistogram(
+  static std::unique_ptr<MetricSample> ParseSparseHistogram(
       const std::string& serialized);
 
   // Builds a linear histogram sample.
-  static scoped_ptr<MetricSample> LinearHistogramSample(
+  static std::unique_ptr<MetricSample> LinearHistogramSample(
       const std::string& histogram_name,
       int sample,
       int max);
   // Deserializes a linear histogram sample.
-  static scoped_ptr<MetricSample> ParseLinearHistogram(
+  static std::unique_ptr<MetricSample> ParseLinearHistogram(
       const std::string& serialized);
 
   // Builds a user action sample.
-  static scoped_ptr<MetricSample> UserActionSample(
+  static std::unique_ptr<MetricSample> UserActionSample(
       const std::string& action_name);
 
   // Returns true if sample and this object represent the same sample (type,

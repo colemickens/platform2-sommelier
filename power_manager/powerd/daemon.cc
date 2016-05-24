@@ -156,29 +156,29 @@ bool ExitDarkResume() {
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  scoped_ptr<dbus::Response> response = handler.Run(method_call);
+  std::unique_ptr<dbus::Response> response = handler.Run(method_call);
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
   response_sender.Run(std::move(response));
 }
 
 // Creates a new "not supported" reply to |method_call|.
-scoped_ptr<dbus::Response> CreateNotSupportedError(
+std::unique_ptr<dbus::Response> CreateNotSupportedError(
     dbus::MethodCall* method_call,
     std::string message) {
-  return scoped_ptr<dbus::Response>(
+  return std::unique_ptr<dbus::Response>(
       dbus::ErrorResponse::FromMethodCall(
           method_call, DBUS_ERROR_NOT_SUPPORTED, message));
 }
 
 // Creates a new "invalid args" reply to |method_call|.
-scoped_ptr<dbus::Response> CreateInvalidArgsError(
+std::unique_ptr<dbus::Response> CreateInvalidArgsError(
     dbus::MethodCall* method_call,
     std::string message) {
-  return scoped_ptr<dbus::Response>(
+  return std::unique_ptr<dbus::Response>(
       dbus::ErrorResponse::FromMethodCall(
           method_call, DBUS_ERROR_INVALID_ARGS, message));
 }
@@ -274,7 +274,7 @@ class Daemon::StateControllerDelegate
     dbus::MethodCall method_call(
         login_manager::kSessionManagerInterface,
         login_manager::kSessionManagerLockScreen);
-    scoped_ptr<dbus::Response> response(
+    std::unique_ptr<dbus::Response> response(
         daemon_->session_manager_dbus_proxy_->CallMethodAndBlock(
             &method_call, kSessionManagerDBusTimeoutMs));
   }
@@ -291,7 +291,7 @@ class Daemon::StateControllerDelegate
         login_manager::kSessionManagerStopSession);
     dbus::MessageWriter writer(&method_call);
     writer.AppendString("");
-    scoped_ptr<dbus::Response> response(
+    std::unique_ptr<dbus::Response> response(
         daemon_->session_manager_dbus_proxy_->CallMethodAndBlock(
             &method_call, kSessionManagerDBusTimeoutMs));
   }
@@ -366,7 +366,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       can_safely_exit_dark_resume_(
           base::PathExists(base::FilePath(kPMTestDelayPath))),
       weak_ptr_factory_(this) {
-  scoped_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary);
+  std::unique_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary);
   metrics_lib->Init();
   metrics_sender_.reset(new MetricsSender(std::move(metrics_lib)));
 
@@ -456,7 +456,7 @@ void Daemon::Init() {
   suspender_->Init(this, dbus_sender_.get(), dark_resume_.get(), prefs_.get());
 
   CHECK(input_watcher_->Init(
-      scoped_ptr<system::EventDeviceFactoryInterface>(
+      std::unique_ptr<system::EventDeviceFactoryInterface>(
           new system::EventDeviceFactory),
       prefs_.get(), udev_.get()));
   input_controller_->Init(input_watcher_.get(), this, display_watcher_.get(),
@@ -1032,7 +1032,7 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
   dbus::MethodCall method_call(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrieveSessionState);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       session_manager_dbus_proxy_->CallMethodAndBlock(
           &method_call, kSessionManagerDBusTimeoutMs));
   if (!response)
@@ -1065,7 +1065,7 @@ void Daemon::HandleUpdateEngineAvailable(bool available) {
 
   dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
                                update_engine::kGetStatus);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       update_engine_dbus_proxy_->CallMethodAndBlock(
           &method_call, kUpdateEngineDBusTimeoutMs));
   if (!response)
@@ -1210,15 +1210,15 @@ void Daemon::HandleGetTpmStatusResponse(dbus::Response* response) {
   state_controller_->HandleTpmStatus(tpm_reply.dictionary_attack_counter());
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestShutdownMethod << " message from "
             << method_call->GetSender();
   ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestRestartMethod << " message from "
             << method_call->GetSender();
@@ -1239,10 +1239,10 @@ scoped_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
     }
   }
   ShutDown(SHUTDOWN_MODE_REBOOT, shutdown_reason);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
     dbus::MethodCall* method_call) {
   // Read an optional uint64_t argument specifying the wakeup count that is
   // expected.
@@ -1256,10 +1256,10 @@ scoped_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
                                    external_wakeup_count).c_str() : "")
             << " from " << method_call->GetSender();
   Suspend(got_external_wakeup_count, external_wakeup_count);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
@@ -1277,10 +1277,10 @@ scoped_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
         percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
@@ -1293,10 +1293,10 @@ scoped_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
         percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleSetScreenBrightnessMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleSetScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
@@ -1322,51 +1322,51 @@ scoped_ptr<dbus::Response> Daemon::HandleSetScreenBrightnessMethod(
       LOG(ERROR) << "Invalid transition style (" << dbus_style << ")";
   }
   display_backlight_controller_->SetUserBrightnessPercent(percent, style);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleGetScreenBrightnessMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleGetScreenBrightnessMethod(
     dbus::MethodCall* method_call) {
   if (!display_backlight_controller_)
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
 
   double percent = 0.0;
   if (!display_backlight_controller_->GetBrightnessPercent(&percent)) {
-    return scoped_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+    return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
         method_call, DBUS_ERROR_FAILED, "Couldn't fetch brightness"));
   }
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());
   writer.AppendDouble(percent);
   return response;
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleDecreaseKeyboardBrightnessMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleDecreaseKeyboardBrightnessMethod(
     dbus::MethodCall* method_call) {
   AdjustKeyboardBrightness(-1);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
     dbus::MethodCall* method_call) {
   AdjustKeyboardBrightness(1);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
     dbus::MethodCall* method_call) {
   PowerSupplyProperties protobuf;
   system::CopyPowerStatusToProtocolBuffer(power_supply_->GetPowerStatus(),
                                           &protobuf);
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());
   writer.AppendProtoAsArrayOfBytes(protobuf);
   return response;
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {
   bool fullscreen = false;
   dbus::MessageReader reader(method_call);
@@ -1378,10 +1378,10 @@ scoped_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandleVideoActivity(fullscreen);
   state_controller_->HandleVideoActivity();
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
     dbus::MethodCall* method_call) {
   int type_int = USER_ACTIVITY_OTHER;
   dbus::MessageReader reader(method_call);
@@ -1396,10 +1396,10 @@ scoped_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
     display_backlight_controller_->HandleUserActivity(type);
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandleUserActivity(type);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
     dbus::MethodCall* method_call) {
   bool is_projecting = false;
   dbus::MessageReader reader(method_call);
@@ -1415,10 +1415,10 @@ scoped_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
   wakeup_controller_->SetDisplayMode(mode);
   if (display_backlight_controller_)
     display_backlight_controller_->HandleDisplayModeChange(mode);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
     dbus::MethodCall* method_call) {
   PowerManagementPolicy policy;
   dbus::MessageReader reader(method_call);
@@ -1432,10 +1432,10 @@ scoped_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
   state_controller_->HandlePolicyChange(policy);
   if (display_backlight_controller_)
     display_backlight_controller_->HandlePolicyChange(policy);
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandleSetPowerSourceMethod(
+std::unique_ptr<dbus::Response> Daemon::HandleSetPowerSourceMethod(
     dbus::MethodCall* method_call) {
   std::string id;
   dbus::MessageReader reader(method_call);
@@ -1446,13 +1446,13 @@ scoped_ptr<dbus::Response> Daemon::HandleSetPowerSourceMethod(
 
   LOG(INFO) << "Received request to switch to power source " << id;
   if (!power_supply_->SetPowerSource(id)) {
-    return scoped_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+    return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
         method_call, DBUS_ERROR_FAILED, "Couldn't set power source"));
   }
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
-scoped_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
+std::unique_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
     dbus::MethodCall* method_call) {
   int64_t timestamp_internal = 0;
   dbus::MessageReader reader(method_call);
@@ -1463,7 +1463,7 @@ scoped_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
   }
   input_controller_->HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(timestamp_internal));
-  return scoped_ptr<dbus::Response>();
+  return std::unique_ptr<dbus::Response>();
 }
 
 void Daemon::OnSessionStateChange(const std::string& state_str) {

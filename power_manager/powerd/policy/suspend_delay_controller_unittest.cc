@@ -5,7 +5,6 @@
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 
 #include <base/compiler_specific.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>

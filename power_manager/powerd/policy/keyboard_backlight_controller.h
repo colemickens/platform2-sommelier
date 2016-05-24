@@ -7,10 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <vector>
 
 #include <base/compiler_specific.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -149,7 +149,7 @@ class KeyboardBacklightController
   // |log_hover_off_timer_| after a delay to avoid spamming logs.
   void LogHoverOff();
 
-  mutable scoped_ptr<Clock> clock_;
+  mutable std::unique_ptr<Clock> clock_;
 
   // Backlight used for dimming. Weak pointer.
   system::BacklightInterface* backlight_;
@@ -161,7 +161,7 @@ class KeyboardBacklightController
   BacklightController* display_backlight_controller_;
 
   // May be NULL if no ambient light sensor is present.
-  scoped_ptr<AmbientLightHandler> ambient_light_handler_;
+  std::unique_ptr<AmbientLightHandler> ambient_light_handler_;
 
   // Observers to notify about changes.
   base::ObserverList<BacklightControllerObserver> observers_;

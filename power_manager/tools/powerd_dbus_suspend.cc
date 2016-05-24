@@ -10,6 +10,8 @@
 
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/command_line.h>
@@ -102,7 +104,7 @@ int main(int argc, char* argv[]) {
     dbus::MessageWriter writer(&method_call);
     writer.AppendUint64(FLAGS_wakeup_count);
   }
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       powerd_proxy->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   CHECK(response) << power_manager::kRequestSuspendMethod << " failed";

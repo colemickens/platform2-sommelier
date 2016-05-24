@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
-
 #include "chaps/chaps_interface.h"
 #include "chaps/slot_manager.h"
 #include "pkcs11/cryptoki.h"

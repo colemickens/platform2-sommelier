@@ -5,11 +5,11 @@
 #include "chaps/slot_manager_impl.h"
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -165,7 +165,7 @@ class TestSlotManager: public ::testing::Test {
  protected:
   ChapsFactoryMock factory_;
   TPMUtilityMock tpm_;
-  scoped_ptr<SlotManagerImpl> slot_manager_;
+  std::unique_ptr<SlotManagerImpl> slot_manager_;
   SecureBlob ic_;
 };
 

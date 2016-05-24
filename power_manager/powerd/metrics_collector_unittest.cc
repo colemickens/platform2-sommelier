@@ -42,7 +42,7 @@ class MetricsCollectorTest : public Test {
   MetricsCollectorTest()
       : metrics_lib_(new StrictMock<MetricsLibraryMock>),
         metrics_sender_(
-            scoped_ptr<MetricsLibraryInterface>(metrics_lib_)) {
+            std::unique_ptr<MetricsLibraryInterface>(metrics_lib_)) {
     collector_.clock_.set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
     collector_.clock_.set_current_wall_time_for_testing(

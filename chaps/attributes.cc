@@ -4,11 +4,11 @@
 
 #include "chaps/attributes.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/proto_bindings/attributes.pb.h"
@@ -133,7 +133,7 @@ bool Attributes::ParseInternal(const string& serialized,
     LOG(ERROR) << "Failed to parse proto-buffer.";
     return false;
   }
-  scoped_ptr<CK_ATTRIBUTE[]> attribute_array(
+  std::unique_ptr<CK_ATTRIBUTE[]> attribute_array(
       new CK_ATTRIBUTE[attribute_list.attribute_size()]);
   CHECK(attribute_array.get());
   for (int i = 0; i < attribute_list.attribute_size(); ++i) {

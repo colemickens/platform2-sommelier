@@ -8,6 +8,8 @@
 
 #include <unistd.h>
 
+#include <memory>
+
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/file_descriptor.h>
@@ -35,7 +37,7 @@ int main(int argc, char* argv[]) {
   stdout_fd.CheckValidity();
   writer.AppendFileDescriptor(stdout_fd);
 
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       debugd_proxy->CallMethodAndBlock(
           &method_call, kBigLogsDBusTimeoutMS));
   CHECK(response) << debugd::kGetBigFeedbackLogs << " failed";

@@ -5,13 +5,13 @@
 #ifndef METRICS_METRICS_LIBRARY_H_
 #define METRICS_METRICS_LIBRARY_H_
 
-#include <sys/types.h>
+#include <memory>
 #include <string>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "policy/libpolicy.h"
@@ -143,7 +143,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   std::string uma_events_file_;
   std::string consent_file_;
 
-  scoped_ptr<policy::PolicyProvider> policy_provider_;
+  std::unique_ptr<policy::PolicyProvider> policy_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(MetricsLibrary);
 };

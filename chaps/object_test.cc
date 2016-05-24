@@ -52,8 +52,9 @@ class TestObject: public ::testing::Test {
   ChapsFactoryMock factory_;
   ObjectPolicyMock* policy_;  // The policy in use (if any).
   ObjectPolicyMock* next_policy_;  // The policy to be used next.
-  scoped_ptr<ObjectPolicyMock> scoped_policy_;  // Owns next_policy_ until used.
-  scoped_ptr<ObjectImpl> object_;
+  // Owns next_policy_ until used.
+  std::unique_ptr<ObjectPolicyMock> scoped_policy_;
+  std::unique_ptr<ObjectImpl> object_;
 };
 
 // Test that the Object class asserts when ChapsFactory fails.

@@ -13,7 +13,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/sequenced_task_runner.h>
 #include <base/synchronization/lock.h>
 #include <gtest/gtest_prod.h>
@@ -116,8 +115,8 @@ class TPM2UtilityImpl : public TPMUtility {
   bool is_enabled_ready_;
   bool is_enabled_;
   base::Lock lock_;
-  scoped_ptr<trunks::HmacSession> session_;
-  scoped_ptr<trunks::TpmUtility> trunks_tpm_utility_;
+  std::unique_ptr<trunks::HmacSession> session_;
+  std::unique_ptr<trunks::TpmUtility> trunks_tpm_utility_;
   std::map<int, std::set<int>> slot_handles_;
   std::map<int, brillo::SecureBlob> handle_auth_data_;
   std::map<int, std::string> handle_name_;

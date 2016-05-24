@@ -4,7 +4,8 @@
 
 #include <stdint.h>
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -49,7 +50,7 @@ class TimerTest : public testing::Test {
   virtual void TearDown() {}
 
   Timer timer_;
-  scoped_ptr<ClockWrapperMock> clock_wrapper_mock_;
+  std::unique_ptr<ClockWrapperMock> clock_wrapper_mock_;
   base::TimeTicks stime, etime, stime2, etime2, stime3, etime3;
 };
 
@@ -424,7 +425,7 @@ class TimerReporterTest : public testing::Test {
 
   TimerReporter timer_reporter_;
   MetricsLibraryMock lib_;
-  scoped_ptr<ClockWrapperMock> clock_wrapper_mock_;
+  std::unique_ptr<ClockWrapperMock> clock_wrapper_mock_;
   base::TimeTicks stime, etime;
 };
 

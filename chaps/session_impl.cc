@@ -6,6 +6,7 @@
 
 #include <limits>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -153,7 +154,7 @@ CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                    int num_attributes) {
   if (find_results_valid_)
     return CKR_OPERATION_ACTIVE;
-  scoped_ptr<Object> search_template(factory_->CreateObject());
+  std::unique_ptr<Object> search_template(factory_->CreateObject());
   CHECK(search_template.get());
   search_template->SetAttributes(attributes, num_attributes);
   vector<const Object*> objects;
@@ -474,7 +475,7 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
                                int num_attributes,
                                int* new_key_handle) {
   CHECK(new_key_handle);
-  scoped_ptr<Object> object(factory_->CreateObject());
+  std::unique_ptr<Object> object(factory_->CreateObject());
   CHECK(object.get());
   CK_RV result = object->SetAttributes(attributes, num_attributes);
   if (result != CKR_OK)
@@ -555,9 +556,9 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
                << mechanism;
     return CKR_MECHANISM_INVALID;
   }
-  scoped_ptr<Object> public_object(factory_->CreateObject());
+  std::unique_ptr<Object> public_object(factory_->CreateObject());
   CHECK(public_object.get());
-  scoped_ptr<Object> private_object(factory_->CreateObject());
+  std::unique_ptr<Object> private_object(factory_->CreateObject());
   CHECK(private_object.get());
   CK_RV result = public_object->SetAttributes(public_attributes,
                                               num_public_attributes);
@@ -647,7 +648,7 @@ CK_RV SessionImpl::GenerateRandom(int num_bytes, string* random_data) {
 }
 
 void SessionImpl::WaitForPrivateObjects() {
-  scoped_ptr<Object> all_private(factory_->CreateObject());
+  std::unique_ptr<Object> all_private(factory_->CreateObject());
   CHECK(all_private.get());
   all_private->SetAttributeBool(CKA_PRIVATE, true);
   vector<const Object*> found;
@@ -843,7 +844,7 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
                                         int* new_object_handle) {
   CHECK(new_object_handle);
   CHECK(attributes || num_attributes == 0);
-  scoped_ptr<Object> object(factory_->CreateObject());
+  std::unique_ptr<Object> object(factory_->CreateObject());
   CHECK(object.get());
   CK_RV result = CKR_OK;
   if (copy_from_object) {

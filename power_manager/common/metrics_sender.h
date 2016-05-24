@@ -5,11 +5,11 @@
 #ifndef POWER_MANAGER_COMMON_METRICS_SENDER_H_
 #define POWER_MANAGER_COMMON_METRICS_SENDER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 class MetricsLibraryInterface;
 
@@ -50,7 +50,7 @@ class MetricsSender : public MetricsSenderInterface {
  public:
   // The c'tor and d'tor call SetInstance() to register and unregister this
   // instance.
-  explicit MetricsSender(scoped_ptr<MetricsLibraryInterface> metrics_lib);
+  explicit MetricsSender(std::unique_ptr<MetricsLibraryInterface> metrics_lib);
   virtual ~MetricsSender();
 
   // MetricsSenderInterface implementation:
@@ -62,7 +62,7 @@ class MetricsSender : public MetricsSenderInterface {
   bool SendEnumMetric(const std::string& name, int sample, int max) override;
 
  private:
-  scoped_ptr<MetricsLibraryInterface> metrics_lib_;
+  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 
   DISALLOW_COPY_AND_ASSIGN(MetricsSender);
 };

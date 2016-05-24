@@ -186,7 +186,7 @@ void ExternalBacklightController::UpdateDisplays(
       // TODO(derat): Need to handle changed I2C paths?
       updated_displays[info.drm_path] = existing_display_it->second;
     } else {
-      scoped_ptr<system::ExternalDisplay::RealDelegate> delegate(
+      std::unique_ptr<system::ExternalDisplay::RealDelegate> delegate(
           new system::ExternalDisplay::RealDelegate);
       if (!delegate->Init(info.i2c_path))
         continue;

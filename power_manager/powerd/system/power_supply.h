@@ -7,13 +7,13 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -365,7 +365,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   PrefsInterface* prefs_;  // non-owned
   UdevInterface* udev_;  // non-owned
 
-  scoped_ptr<Clock> clock_;
+  std::unique_ptr<Clock> clock_;
 
   base::ObserverList<PowerSupplyObserver> observers_;
 
@@ -414,13 +414,13 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // time-to-full and time-to-empty estimates collected while on line or
   // battery power. Values are positive when the battery is charging and
   // negative when it's discharging.
-  scoped_ptr<RollingAverage> current_samples_on_line_power_;
-  scoped_ptr<RollingAverage> current_samples_on_battery_power_;
+  std::unique_ptr<RollingAverage> current_samples_on_line_power_;
+  std::unique_ptr<RollingAverage> current_samples_on_battery_power_;
 
   // A collection of recent charge readings (in ampere-hours) used to measure
   // the rate at which the battery is charging or discharging. Reset when the
   // system resumes from suspend or the power source changes.
-  scoped_ptr<RollingAverage> charge_samples_;
+  std::unique_ptr<RollingAverage> charge_samples_;
 
   // The fraction of the full charge at which the battery is considered "full",
   // in the range (0.0, 1.0]. Initialized from kPowerSupplyFullFactorPref.

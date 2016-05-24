@@ -5,9 +5,9 @@
 #ifndef METRICS_SERIALIZATION_SERIALIZATION_UTILS_H_
 #define METRICS_SERIALIZATION_SERIALIZATION_UTILS_H_
 
+#include <memory>
 #include <string>
 
-#include "base/memory/scoped_ptr.h"
 #include "base/memory/scoped_vector.h"
 
 namespace metrics {
@@ -19,9 +19,9 @@ class MetricSample;
 namespace SerializationUtils {
 
 // Deserializes a sample passed as a string and return a sample.
-// The return value will either be a scoped_ptr to a Metric sample (if the
-// deserialization was successful) or a NULL scoped_ptr.
-scoped_ptr<MetricSample> ParseSample(const std::string& sample);
+// The return value will either be a std::unique_ptr to a Metric sample (if the
+// deserialization was successful) or a NULL std::unique_ptr.
+std::unique_ptr<MetricSample> ParseSample(const std::string& sample);
 
 // Reads all samples from a file and truncate the file when done.
 void ReadAndTruncateMetricsFromFile(const std::string& filename,

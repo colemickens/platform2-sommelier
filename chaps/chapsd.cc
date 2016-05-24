@@ -13,7 +13,6 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
@@ -95,7 +94,7 @@ class AsyncInitThread : public PlatformThread::Delegate {
   ChapsServiceImpl* service_;
 };
 
-scoped_ptr<DBus::BusDispatcher> g_dispatcher;
+std::unique_ptr<DBus::BusDispatcher> g_dispatcher;
 
 void RunDispatcher(Lock* lock,
                    chaps::ChapsInterface* service,
