@@ -802,10 +802,11 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
     LOG(WARNING) << "cannot read " << meminfo_path.value().c_str();
     return;
   }
-  // Make both calls even if the first one fails.
+  // Make both calls even if the first one fails.  Only stop rescheduling if
+  // both calls fail, since some platforms do not support zram.
   bool success = ProcessMeminfo(meminfo_raw);
   bool reschedule =
-      ReportZram(base::FilePath(FILE_PATH_LITERAL("/sys/block/zram0"))) &&
+      ReportZram(base::FilePath(FILE_PATH_LITERAL("/sys/block/zram0"))) ||
       success;
   if (reschedule) {
     base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
