@@ -123,21 +123,23 @@ void PowerManager::OnSuspendImminent(int suspend_id) {
     // Also, we must set this before running the callback below, because the
     // callback may synchronously report suspend readiness.
     suspending_ = true;
+    suspend_duration_us_ = 0;
     suspend_imminent_callback_.Run();
   }
 }
 
-void PowerManager::OnSuspendDone(int suspend_id) {
+void PowerManager::OnSuspendDone(int suspend_id, int64_t suspend_duration_us) {
   // NB: |suspend_id| could be -1. See OnPowerManagerVanished.
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
   if (!suspending_) {
-    LOG(WARNING) << "Recieved unexpected SuspendDone ("
+    LOG(WARNING) << "Received unexpected SuspendDone ("
                  << suspend_id << "). Ignoring.";
     return;
   }
 
   suspending_ = false;
   in_dark_resume_ = false;
+  suspend_duration_us_ = suspend_duration_us;
   suspend_done_callback_.Run();
 }
 
@@ -174,7 +176,7 @@ void PowerManager::OnPowerManagerVanished() {
   LOG(INFO) << __func__;
   // If powerd vanished during a suspend, we need to wake ourselves up.
   if (suspending_)
-    OnSuspendDone(kInvalidSuspendId);
+    OnSuspendDone(kInvalidSuspendId, 0);
   suspend_delay_registered_ = false;
   dark_suspend_delay_registered_ = false;
 }

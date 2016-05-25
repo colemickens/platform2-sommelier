@@ -3087,7 +3087,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
 
 TEST_F(WiFiMainTest, ReportConnectedToServiceAfterWake_CallsWakeOnWiFi) {
   EXPECT_CALL(*wake_on_wifi_,
-              ReportConnectedToServiceAfterWake(IsConnectedToCurrentService()));
+              ReportConnectedToServiceAfterWake(IsConnectedToCurrentService(),_));
   ReportConnectedToServiceAfterWake();
 }
 

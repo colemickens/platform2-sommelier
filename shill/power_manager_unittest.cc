@@ -89,6 +89,7 @@ class PowerManagerTest : public Test {
   static const char kPowerManagerDefaultOwner[];
   static const int kSuspendId1 = 123;
   static const int kSuspendId2 = 456;
+  static const int64_t kSuspendDurationUsecs = 1000000;
   static const int kDelayId = 4;
   static const int kDelayId2 = 5;
 
@@ -180,8 +181,8 @@ class PowerManagerTest : public Test {
     EXPECT_TRUE(power_manager_.suspending());
   }
 
-  void OnSuspendDone(int suspend_id) {
-    control_.delegate()->OnSuspendDone(suspend_id);
+  void OnSuspendDone(int suspend_id, int64_t suspend_duration_us) {
+    control_.delegate()->OnSuspendDone(suspend_id, suspend_duration_us);
     EXPECT_FALSE(power_manager_.suspending());
   }
 
@@ -220,8 +221,10 @@ TEST_F(PowerManagerTest, SuspendingState) {
   EXPECT_FALSE(power_manager_.suspending());
   OnSuspendImminent(kSuspendId);
   EXPECT_TRUE(power_manager_.suspending());
-  OnSuspendDone(kSuspendId);
+  EXPECT_TRUE(power_manager_.suspend_duration_us() == 0);
+  OnSuspendDone(kSuspendId, kSuspendDurationUsecs);
   EXPECT_FALSE(power_manager_.suspending());
+  EXPECT_TRUE(power_manager_.suspend_duration_us() == kSuspendDurationUsecs);
 }
 
 TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
@@ -243,7 +246,7 @@ TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
   //   path in this black swan case.
   EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
-  OnSuspendDone(kSuspendId1);
+  OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
   Mock::VerifyAndClearExpectations(this);
 }
 
@@ -342,7 +345,7 @@ TEST_F(PowerManagerTest, StopFailure) {
   EXPECT_CALL(*this, SuspendImminentAction());
   EXPECT_CALL(*this, SuspendDoneAction());
   OnSuspendImminent(kSuspendId1);
-  OnSuspendDone(kSuspendId1);
+  OnSuspendDone(kSuspendId1, kSuspendDurationUsecs);
 }
 
 TEST_F(PowerManagerTest, OnPowerManagerReappeared) {

@@ -216,6 +216,20 @@ const char Metrics::kMetricDarkResumeScanNumRetries[] =
 const int Metrics::kMetricDarkResumeScanNumRetriesMax = 20;
 const int Metrics::kMetricDarkResumeScanNumRetriesMin = 0;
 
+const char Metrics::kMetricSuspendDurationWoWOnConnected[] =
+    "Network.Shill.WiFi.SuspendDurationWoWOnConnected";
+const char Metrics::kMetricSuspendDurationWoWOnDisconnected[] =
+    "Network.Shill.WiFi.SuspendDurationWoWOnDisconnected";
+const char Metrics::kMetricSuspendDurationWoWOffConnected[] =
+    "Network.Shill.WiFi.SuspendDurationWoWOffConnected";
+const char Metrics::kMetricSuspendDurationWoWOffDisconnected[] =
+    "Network.Shill.WiFi.SuspendDurationWoWOffDisconnected";
+const int Metrics::kSuspendDurationMin = 0;
+// Max suspend duration that we care about, for the purpose
+// of tracking wifi disconnect on resume. Set to 1 day.
+const int Metrics::kSuspendDurationMax = 86400;
+const int Metrics::kSuspendDurationNumBuckets = 60;
+
 // static
 const char Metrics::kMetricServiceFixupEntriesSuffix[] = "ServiceFixupEntries";
 
@@ -766,6 +780,30 @@ string Metrics::GetFullMetricName(const char* metric_suffix,
                             metric_suffix);
 }
 
+string Metrics::GetSuspendDurationMetricNameFromStatus(
+        WiFiConnectionStatusAfterWake status) {
+    switch (status)
+    {
+        case kWiFiConnectionStatusAfterWakeWoWOnConnected:
+            return kMetricSuspendDurationWoWOnConnected;
+
+        case kWiFiConnectionStatusAfterWakeWoWOnDisconnected:
+            return kMetricSuspendDurationWoWOnDisconnected;
+
+        case kWiFiConnectionStatusAfterWakeWoWOffConnected:
+            return kMetricSuspendDurationWoWOffConnected;
+
+        case kWiFiConnectionStatusAfterWakeWoWOffDisconnected:
+            return kMetricSuspendDurationWoWOffDisconnected;
+
+        default:
+            // The return type is std::string, which cannot
+            // be assigned NULL. Return an empty string instead.
+            std::string value;
+            return value;
+  };
+}
+
 void Metrics::NotifyServiceDisconnect(const Service& service) {
   Technology::Identifier technology = service.technology();
   string histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
@@ -809,7 +847,20 @@ void Metrics::NotifyVerifyWakeOnWiFiSettingsResult(
 void Metrics::NotifyConnectedToServiceAfterWake(
     WiFiConnectionStatusAfterWake status) {
   SendEnumToUMA(kMetricWiFiConnectionStatusAfterWake, status,
-                kWiFiConnetionStatusAfterWakeMax);
+                kWiFiConnectionStatusAfterWakeMax);
+}
+
+void Metrics::NotifySuspendDurationAfterWake(
+    WiFiConnectionStatusAfterWake status, int seconds_in_suspend) {
+    string metric = GetSuspendDurationMetricNameFromStatus(status);
+
+    if (!metric.empty())
+    {
+        SendToUMA(metric, seconds_in_suspend,
+                kSuspendDurationMin,
+                kSuspendDurationMax,
+                kSuspendDurationNumBuckets);
+    }
 }
 
 void Metrics::NotifyTerminationActionsStarted() {

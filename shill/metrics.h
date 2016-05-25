@@ -240,11 +240,11 @@ class Metrics {
   };
 
   enum WiFiConnectionStatusAfterWake {
-    kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected = 0,
-    kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeNotConnected = 1,
-    kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected = 2,
-    kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected = 3,
-    kWiFiConnetionStatusAfterWakeMax
+    kWiFiConnectionStatusAfterWakeWoWOnConnected = 0,
+    kWiFiConnectionStatusAfterWakeWoWOnDisconnected = 1,
+    kWiFiConnectionStatusAfterWakeWoWOffConnected = 2,
+    kWiFiConnectionStatusAfterWakeWoWOffDisconnected = 3,
+    kWiFiConnectionStatusAfterWakeMax
   };
 
   enum Cellular3GPPRegistrationDelayedDrop {
@@ -568,6 +568,20 @@ class Metrics {
   static const int kTimerHistogramMillisecondsMin;
   static const int kTimerHistogramNumBuckets;
 
+  // The 4 histograms below track the time spent in suspended
+  // state for each of the 4 scenarios in WiFiConnectionStatusAfterWake
+  // We consider it normal that wifi disconnects after a resume after
+  // a long time spent in suspend, but not after a short time.
+  // See bug chromium:614790.
+  static const char kMetricSuspendDurationWoWOnConnected[];
+  static const char kMetricSuspendDurationWoWOnDisconnected[];
+  static const char kMetricSuspendDurationWoWOffConnected[];
+  static const char kMetricSuspendDurationWoWOffDisconnected[];
+  static const int  kSuspendDurationMin;
+  static const int  kSuspendDurationMax;
+  static const int  kSuspendDurationNumBuckets;
+
+
   // The number of portal detections attempted for each pass.
   // This includes both failure/timeout attempts and successful attempt
   // (if any).
@@ -830,6 +844,9 @@ class Metrics {
   std::string GetFullMetricName(const char* metric_suffix,
                                 Technology::Identifier technology_id);
 
+  std::string GetSuspendDurationMetricNameFromStatus(
+        WiFiConnectionStatusAfterWake status);
+
   // Notifies this object that the default service has changed.
   // |service| is the new default service.
   virtual void NotifyDefaultServiceChanged(const Service* service);
@@ -869,6 +886,9 @@ class Metrics {
   // Notifies this object that termination actions have been completed.
   // |success| is true, if the termination actions completed successfully.
   void NotifyTerminationActionsCompleted(bool success);
+
+  virtual void NotifySuspendDurationAfterWake(
+    WiFiConnectionStatusAfterWake status, int seconds_in_suspend);
 
   // Notifies this object that suspend actions started executing.
   void NotifySuspendActionsStarted();

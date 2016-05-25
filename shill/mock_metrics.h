@@ -89,6 +89,8 @@ class MockMetrics : public Metrics {
                void(VerifyWakeOnWiFiSettingsResult result));
   MOCK_METHOD1(NotifyConnectedToServiceAfterWake,
                void(WiFiConnectionStatusAfterWake status));
+  MOCK_METHOD2(NotifySuspendDurationAfterWake,
+	       void(WiFiConnectionStatusAfterWake status, int seconds_in_suspend));
   MOCK_METHOD0(NotifyWakeOnWiFiThrottled, void());
   MOCK_METHOD0(NotifySuspendWithWakeOnWiFiEnabledDone, void());
   MOCK_METHOD0(NotifyDarkResumeInitiateScan, void());

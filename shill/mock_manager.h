@@ -119,6 +119,7 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(ignore_unknown_ethernet, bool());
   MOCK_CONST_METHOD1(FilterPrependDNSServersByFamily,
                      std::vector<std::string>(IPAddress::Family family));
+  MOCK_CONST_METHOD0(GetSuspendDurationUsecs, int64_t());
   MOCK_METHOD0(OnInnerDevicesChanged, void());
   MOCK_METHOD3(ClaimDevice,
                void(const std::string& claimer_name,

@@ -274,7 +274,8 @@ class WakeOnWiFi {
                                        uint32_t time_to_next_lease_renewal);
   // Callback invoked to report whether this WiFi device is connected to
   // a service after waking from suspend.
-  virtual void ReportConnectedToServiceAfterWake(bool is_connected);
+  virtual void ReportConnectedToServiceAfterWake(bool is_connected,
+          int seconds_in_suspend);
   // Called in WiFi::ScanDoneTask when there are no WiFi services available
   // for auto-connect after a scan. |initiate_scan_callback| is used for dark
   // resume scan retries.
@@ -288,6 +289,8 @@ class WakeOnWiFi {
   virtual void OnScanStarted(bool is_active_scan);
 
   bool in_dark_resume() { return in_dark_resume_; }
+
+  bool connected_before_suspend() { return connected_before_suspend_;}
 
   virtual void OnWiphyIndexReceived(uint32_t index);
 
@@ -580,6 +583,11 @@ class WakeOnWiFi {
   // How many more times to retry the last dark resume scan that shill launched
   // if no auto-connectable services were found.
   int dark_resume_scan_retries_left_;
+
+  // connected_before_suspend_ is written once in OnBeforeSuspend
+  // and never reset. It can be read by anyone until it is overwritten
+  // by the next invocation of OnBeforeSuspend
+  bool connected_before_suspend_;
 
   // Callback invoked to report the wake reason for the current dark resume to
   // powerd.

@@ -403,6 +403,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     return health_checker_remote_ips_.get();
   }
 
+  virtual int64_t GetSuspendDurationUsecs() const {
+      return power_manager_->suspend_duration_us(); }
+
   bool GetArpGateway() const { return props_.arp_gateway; }
 
   virtual int GetMinimumMTU() const { return props_.minimum_mtu; }

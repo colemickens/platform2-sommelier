@@ -115,6 +115,7 @@ WakeOnWiFi::WakeOnWiFi(
       last_wake_reason_(kWakeTriggerUnsupported),
       force_wake_to_scan_timer_(false),
       dark_resume_scan_retries_left_(0),
+      connected_before_suspend_(false),
       record_wake_reason_callback_(record_wake_reason_callback),
       weak_ptr_factory_(this) {
   netlink_manager_->AddBroadcastHandler(Bind(
@@ -1242,6 +1243,7 @@ void WakeOnWiFi::OnBeforeSuspend(
     const Closure& renew_dhcp_lease_callback,
     const Closure& remove_supplicant_networks_callback, bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
+  connected_before_suspend_ = is_connected;
 #if defined(DISABLE_WAKE_ON_WIFI)
   // Wake on WiFi not supported, so immediately report success.
   done_callback.Run(Error(Error::kSuccess));
@@ -1561,30 +1563,39 @@ void WakeOnWiFi::OnConnectedAndReachable(bool start_lease_renewal_timer,
   }
 }
 
-void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected) {
+void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
+        int seconds_in_suspend) {
+    Metrics::WiFiConnectionStatusAfterWake status;
 #if defined(DISABLE_WAKE_ON_WIFI)
-  metrics_->NotifyConnectedToServiceAfterWake(
-      is_connected
-          ? Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected
-          : Metrics::
-                kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected);
+      status = is_connected
+          ? Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected
+          : Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected;
 #else
   if (WakeOnWiFiDarkConnectEnabledAndSupported()) {
     // Only logged if wake on WiFi is supported and wake on SSID was enabled to
     // maintain connectivity while suspended.
-    metrics_->NotifyConnectedToServiceAfterWake(
+    status =
         is_connected
-            ? Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected
-            : Metrics::
-                  kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeNotConnected);
+            ? Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected
+            : Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected;
   } else {
-    metrics_->NotifyConnectedToServiceAfterWake(
+    status =
         is_connected
-            ? Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected
-            : Metrics::
-                  kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected);
+            ? Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected
+            : Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected;
   }
 #endif  // DISABLE_WAKE_ON_WIFI
+    metrics_->NotifyConnectedToServiceAfterWake(status);
+
+    // Only log time spent in suspended state for each
+    // connection status if wifi was connected before suspending
+    if (connected_before_suspend_)
+    {
+	LOG(INFO) << "NotifySuspendDurationAfterWake: "
+		  << "status: " << status
+		  << "seconds_in_suspend: " << seconds_in_suspend;
+        metrics_->NotifySuspendDurationAfterWake(status, seconds_in_suspend);
+    }
 }
 
 void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(

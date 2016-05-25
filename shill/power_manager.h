@@ -64,6 +64,7 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   bool suspending() const { return suspending_; }
   bool in_dark_resume() const { return in_dark_resume_; }
+  int64_t suspend_duration_us() const { return suspend_duration_us_; }
 
   // Starts the PowerManager: Registers a suspend delay with the power manager
   // for |suspend_delay|. See PowerManagerProxyInterface::RegisterSuspendDelay()
@@ -93,7 +94,7 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // Methods inherited from PowerManagerProxyDelegate.
   void OnSuspendImminent(int suspend_id) override;
-  void OnSuspendDone(int suspend_id) override;
+  void OnSuspendDone(int suspend_id, int64_t suspend_duration_us) override;
   void OnDarkSuspendImminent(int suspend_id) override;
 
  private:
@@ -145,6 +146,10 @@ class PowerManager : public PowerManagerProxyDelegate {
   bool in_dark_resume_;
   int current_suspend_id_;
   int current_dark_suspend_id_;
+
+  // Set to time spent in suspended state during the last suspend in
+  // OnSuspendDone() and reset to 0 by OnSuspendImminent()
+  int64_t suspend_duration_us_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);
 };

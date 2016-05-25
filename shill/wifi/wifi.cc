@@ -2890,8 +2890,9 @@ bool WiFi::IsConnectedToCurrentService() {
 }
 
 void WiFi::ReportConnectedToServiceAfterWake() {
+  int seconds_in_suspend = (manager()->GetSuspendDurationUsecs() / 1000000);
   wake_on_wifi_->ReportConnectedToServiceAfterWake(
-      IsConnectedToCurrentService());
+      IsConnectedToCurrentService(), seconds_in_suspend);
 }
 
 bool WiFi::RequestRoam(const std::string& addr, Error* error) {

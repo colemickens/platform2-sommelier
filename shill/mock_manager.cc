@@ -33,10 +33,15 @@ MockManager::MockManager(ControlInterface* control_interface,
                          Metrics* metrics)
     : Manager(control_interface, dispatcher, metrics, "", "", ""),
       mock_device_info_(nullptr) {
+
+  const int64_t kSuspendDurationUsecs = 1000000;
+
   EXPECT_CALL(*this, device_info())
       .WillRepeatedly(Invoke(this, &MockManager::mock_device_info));
   ON_CALL(*this, FilterPrependDNSServersByFamily(_))
       .WillByDefault(Return(vector<string>()));
+  ON_CALL(*this, GetSuspendDurationUsecs())
+      .WillByDefault(Return(kSuspendDurationUsecs));
 }
 
 MockManager::~MockManager() {}

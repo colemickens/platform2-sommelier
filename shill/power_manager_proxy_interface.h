@@ -84,7 +84,7 @@ class PowerManagerProxyDelegate {
   virtual void OnSuspendImminent(int suspend_id) = 0;
 
   // Broadcast by the power manager when a suspend attempt has completed.
-  virtual void OnSuspendDone(int suspend_id) = 0;
+  virtual void OnSuspendDone(int suspend_id, int64_t suspend_duration_us) = 0;
 
   // Broadcast by the power manager when the system enters dark resume.
   // Delegates that have registered through RegisterDarkSuspendDelay() should
