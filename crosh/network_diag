@@ -1262,7 +1262,7 @@ if [ -d "/home/${USER}/user/Downloads" ] && \
   # Log this output to somewhere the user can upload from
   main "$@" 2>&1 | \
     tee "$(unique_file \
-           "/home/${USER}/user/Downloads/network_diagnostics_\*.txt")"
+           "/home/${USER}/user/Downloads/network_diagnostics_*.txt")"
 else
   main "$@"
 fi
