@@ -410,6 +410,7 @@ check_removable() {
 wipe_stateful() {
   echo "Clearing the stateful partition..."
   local stateful_fs_format=$(get_fs_format ${PARTITION_NUM_STATE})
+  local state_options=""
 
   case ${STATEFUL_FORMAT} in
   ubi)
@@ -424,10 +425,15 @@ wipe_stateful() {
     ;;
   esac
 
+  # Check if the kernel we are going to install support ext4 crypto.
+  if ext4_dir_encryption_supported; then
+    state_options="-O encrypt"
+  fi
+
   # We always make any ext* stateful partitions ext4.
   case ${stateful_fs_format} in
   ext[234])
-    mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+    mkfs.ext4 -F -b 4096 -L "H-STATE" ${state_options} ${LOOP_DEV} \
       $((NUM_STATEFUL_SECTORS / 8))
     ;;
   ubifs)
