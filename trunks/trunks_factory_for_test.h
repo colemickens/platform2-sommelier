@@ -95,6 +95,10 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
     policy_session_ = policy_session;
   }
 
+  void set_trial_session(PolicySession* trial_session) {
+    trial_session_ = trial_session;
+  }
+
   void set_blob_parser(BlobParser* blob_parser) { blob_parser_ = blob_parser; }
 
  private:
@@ -104,7 +108,8 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   TpmState* tpm_state_;
   std::unique_ptr<MockTpmUtility> default_tpm_utility_;
   TpmUtility* tpm_utility_;
-  std::unique_ptr<PasswordAuthorizationDelegate> default_authorization_delegate_;
+  std::unique_ptr<PasswordAuthorizationDelegate>
+      default_authorization_delegate_;
   AuthorizationDelegate* password_authorization_delegate_;
   std::unique_ptr<MockSessionManager> default_session_manager_;
   SessionManager* session_manager_;
@@ -112,6 +117,8 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   HmacSession* hmac_session_;
   std::unique_ptr<MockPolicySession> default_policy_session_;
   PolicySession* policy_session_;
+  std::unique_ptr<MockPolicySession> default_trial_session_;
+  PolicySession* trial_session_;
   std::unique_ptr<MockBlobParser> default_blob_parser_;
   BlobParser* blob_parser_;
 

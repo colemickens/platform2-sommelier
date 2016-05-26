@@ -29,19 +29,26 @@
 
 namespace trunks {
 
-class Tpm;
-
-// TrunksFactoryImpl is the default TrunksFactory implementation.
+// TrunksFactoryImpl is the default TrunksFactory implementation. This class is
+// thread-safe with the exception of Initialize() but created objects are not
+// necessarily thread-safe. Example usage:
+//
+// TrunksFactoryImpl factory;
+// factory.Initialize(true /*failure_is_fatal*/);
+// Tpm* tpm = factory.GetTpm();
 class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
  public:
-  // Uses an IPC proxy as the default CommandTransceiver. If |failure_is_fatal|
-  // is set then a failure to initialize the proxy will abort.
-  explicit TrunksFactoryImpl(bool failure_is_fatal);
+  // Uses an IPC proxy as the default CommandTransceiver.
+  TrunksFactoryImpl();
   // TrunksFactoryImpl does not take ownership of |transceiver|. This
   // transceiver is forwarded down to the Tpm instance maintained by
-  // this factory.
+  // this factory. It is assumed that the |transceiver| is already initialized.
   explicit TrunksFactoryImpl(CommandTransceiver* transceiver);
   ~TrunksFactoryImpl() override;
+
+  // Initialize the factory. This must be called before any other methods.
+  // Returns true on success.
+  bool Initialize();
 
   // TrunksFactory methods.
   Tpm* GetTpm() const override;
@@ -59,6 +66,7 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
   std::unique_ptr<CommandTransceiver> default_transceiver_;
   CommandTransceiver* transceiver_;
   std::unique_ptr<Tpm> tpm_;
+  bool initialized_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFactoryImpl);
 };

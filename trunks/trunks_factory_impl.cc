@@ -35,29 +35,37 @@
 
 namespace trunks {
 
-TrunksFactoryImpl::TrunksFactoryImpl(bool failure_is_fatal) {
+TrunksFactoryImpl::TrunksFactoryImpl() {
 #if defined(USE_BINDER_IPC)
   default_transceiver_.reset(new TrunksBinderProxy());
 #else
   default_transceiver_.reset(new TrunksDBusProxy());
 #endif
   transceiver_ = default_transceiver_.get();
-  tpm_.reset(new Tpm(transceiver_));
-  if (!transceiver_->Init()) {
-    if (failure_is_fatal) {
-      LOG(FATAL) << "Error initializing default IPC proxy.";
-    } else {
-      LOG(ERROR) << "Error initializing default IPC proxy.";
-    }
-  }
 }
 
 TrunksFactoryImpl::TrunksFactoryImpl(CommandTransceiver* transceiver) {
   transceiver_ = transceiver;
-  tpm_.reset(new Tpm(transceiver_));
 }
 
 TrunksFactoryImpl::~TrunksFactoryImpl() {}
+
+bool TrunksFactoryImpl::Initialize() {
+  if (initialized_) {
+    return true;
+  }
+  tpm_.reset(new Tpm(transceiver_));
+  if (transceiver_ != default_transceiver_.get()) {
+    initialized_ = true;
+  } else {
+    initialized_ = transceiver_->Init();
+    if (!initialized_) {
+      LOG(WARNING) << "Failed to initialize the trunks IPC proxy; "
+                   << "trunksd is not ready.";
+    }
+  }
+  return initialized_;
+}
 
 Tpm* TrunksFactoryImpl::GetTpm() const {
   return tpm_.get();

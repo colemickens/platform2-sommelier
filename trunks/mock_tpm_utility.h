@@ -114,17 +114,36 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD1(StartSession, TPM_RC(HmacSession*));
   MOCK_METHOD3(GetPolicyDigestForPcrValue,
                TPM_RC(int, const std::string&, std::string*));
-  MOCK_METHOD3(DefineNVSpace, TPM_RC(uint32_t, size_t, AuthorizationDelegate*));
+  MOCK_METHOD6(DefineNVSpace,
+               TPM_RC(uint32_t,
+                      size_t,
+                      TPMA_NV,
+                      const std::string&,
+                      const std::string&,
+                      AuthorizationDelegate*));
   MOCK_METHOD2(DestroyNVSpace, TPM_RC(uint32_t, AuthorizationDelegate*));
-  MOCK_METHOD2(LockNVSpace, TPM_RC(uint32_t, AuthorizationDelegate*));
-  MOCK_METHOD4(
-      WriteNVSpace,
-      TPM_RC(uint32_t, uint32_t, const std::string&, AuthorizationDelegate*));
-  MOCK_METHOD5(
-      ReadNVSpace,
-      TPM_RC(uint32_t, uint32_t, size_t, std::string*, AuthorizationDelegate*));
+  MOCK_METHOD5(LockNVSpace,
+               TPM_RC(uint32_t, bool, bool, bool, AuthorizationDelegate*));
+  MOCK_METHOD6(WriteNVSpace,
+               TPM_RC(uint32_t,
+                      uint32_t,
+                      const std::string&,
+                      bool,
+                      bool,
+                      AuthorizationDelegate*));
+  MOCK_METHOD6(ReadNVSpace,
+               TPM_RC(uint32_t,
+                      uint32_t,
+                      size_t,
+                      bool,
+                      std::string*,
+                      AuthorizationDelegate*));
   MOCK_METHOD2(GetNVSpaceName, TPM_RC(uint32_t, std::string*));
   MOCK_METHOD2(GetNVSpacePublicArea, TPM_RC(uint32_t, TPMS_NV_PUBLIC*));
+  MOCK_METHOD1(ListNVSpaces, TPM_RC(std::vector<uint32_t>*));
+  MOCK_METHOD4(SetDictionaryAttackParameters,
+               TPM_RC(uint32_t, uint32_t, uint32_t, AuthorizationDelegate*));
+  MOCK_METHOD1(ResetDictionaryAttackLock, TPM_RC(AuthorizationDelegate*));
 };
 
 }  // namespace trunks

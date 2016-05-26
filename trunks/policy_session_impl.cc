@@ -170,6 +170,18 @@ TPM_RC PolicySessionImpl::PolicyAuthValue() {
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC PolicySessionImpl::PolicyRestart() {
+  TPM_RC result = factory_.GetTpm()->PolicyAuthValueSync(
+      session_manager_->GetSessionHandle(),
+      "",  // No policy name is needed as we do no authorization checks.
+      nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error performing PolicyRestart: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 void PolicySessionImpl::SetEntityAuthorizationValue(const std::string& value) {
   hmac_delegate_.set_entity_authorization_value(value);
 }

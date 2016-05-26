@@ -62,13 +62,10 @@ ResourceManager::ResourceManager(const TrunksFactory& factory,
 ResourceManager::~ResourceManager() {}
 
 void ResourceManager::Initialize() {
-  TPM_RC result = factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr);
-  // Ignore TPM_RC_INITIALIZE, that means it was already started.
-  CHECK(result == TPM_RC_SUCCESS || result == TPM_RC_INITIALIZE)
-      << "TPM startup failure: " << GetErrorString(result);
-  result = factory_.GetTpm()->SelfTestSync(YES /* Full test. */, nullptr);
-  CHECK_EQ(result, TPM_RC_SUCCESS) << "TPM self-test failure: "
-                                   << GetErrorString(result);
+  // Abort if the TPM is not in a reasonable state and we can't get it into one.
+  std::unique_ptr<TpmUtility> tpm_utility = factory_.GetTpmUtility();
+  CHECK_EQ(tpm_utility->Startup(), TPM_RC_SUCCESS);
+  CHECK_EQ(tpm_utility->InitializeTpm(), TPM_RC_SUCCESS);
   // Full control of the TPM is assumed and required. Existing transient object
   // and session handles are mercilessly flushed.
   for (UINT32 handle_type :
@@ -77,7 +74,7 @@ void ResourceManager::Initialize() {
     TPMS_CAPABILITY_DATA data;
     UINT32 handle_range = handle_type;
     while (more_data) {
-      result = factory_.GetTpm()->GetCapabilitySync(
+      TPM_RC result = factory_.GetTpm()->GetCapabilitySync(
           TPM_CAP_HANDLES, handle_range, MAX_CAP_HANDLES, &more_data, &data,
           nullptr);
       if (result != TPM_RC_SUCCESS) {

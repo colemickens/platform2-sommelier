@@ -44,10 +44,10 @@ bool TpmSimulatorHandle::Init() {
 #if defined(USE_SIMULATOR)
   // Initialize TPM.
   CHECK_EQ(chdir("/data/misc/trunksd"), 0);
+  TPM_Manufacture(TRUE);
+  _plat__SetNvAvail();
   _plat__Signal_PowerOn();
   _TPM_Init();
-  _plat__SetNvAvail();
-  CHECK_EQ(TPM_Manufacture(TRUE), 0);
   LOG(INFO) << "Simulator initialized.";
 #else
   LOG(FATAL) << "Simulator not configured.";

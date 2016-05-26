@@ -269,8 +269,12 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC DefineNVSpace(uint32_t index,
                        size_t num_bytes,
+                       TPMA_NV attributes,
+                       const std::string& authorization_value,
+                       const std::string& policy_digest,
                        AuthorizationDelegate* delegate) override {
-    return target_->DefineNVSpace(index, num_bytes, delegate);
+    return target_->DefineNVSpace(index, num_bytes, attributes,
+                                  authorization_value, policy_digest, delegate);
   }
 
   TPM_RC DestroyNVSpace(uint32_t index,
@@ -278,23 +282,34 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->DestroyNVSpace(index, delegate);
   }
 
-  TPM_RC LockNVSpace(uint32_t index, AuthorizationDelegate* delegate) override {
-    return target_->LockNVSpace(index, delegate);
+  TPM_RC LockNVSpace(uint32_t index,
+                     bool lock_read,
+                     bool lock_write,
+                     bool using_owner_authorization,
+                     AuthorizationDelegate* delegate) override {
+    return target_->LockNVSpace(index, lock_read, lock_write,
+                                using_owner_authorization, delegate);
   }
 
   TPM_RC WriteNVSpace(uint32_t index,
                       uint32_t offset,
                       const std::string& nvram_data,
+                      bool using_owner_authorization,
+                      bool extend,
                       AuthorizationDelegate* delegate) override {
-    return target_->WriteNVSpace(index, offset, nvram_data, delegate);
+    return target_->WriteNVSpace(index, offset, nvram_data,
+                                 using_owner_authorization, extend, delegate);
   }
 
   TPM_RC ReadNVSpace(uint32_t index,
                      uint32_t offset,
                      size_t num_bytes,
+                     bool using_owner_authorization,
                      std::string* nvram_data,
                      AuthorizationDelegate* delegate) override {
-    return target_->ReadNVSpace(index, offset, num_bytes, nvram_data, delegate);
+    return target_->ReadNVSpace(index, offset, num_bytes,
+                                using_owner_authorization, nvram_data,
+                                delegate);
   }
 
   TPM_RC GetNVSpaceName(uint32_t index, std::string* name) override {
@@ -304,6 +319,23 @@ class TpmUtilityForwarder : public TpmUtility {
   TPM_RC GetNVSpacePublicArea(uint32_t index,
                               TPMS_NV_PUBLIC* public_data) override {
     return target_->GetNVSpacePublicArea(index, public_data);
+  }
+
+  TPM_RC ListNVSpaces(std::vector<uint32_t>* index_list) override {
+    return target_->ListNVSpaces(index_list);
+  }
+
+  TPM_RC SetDictionaryAttackParameters(
+      uint32_t max_tries,
+      uint32_t recovery_time,
+      uint32_t lockout_recovery,
+      AuthorizationDelegate* delegate) override {
+    return target_->SetDictionaryAttackParameters(max_tries, recovery_time,
+                                                  lockout_recovery, delegate);
+  }
+
+  TPM_RC ResetDictionaryAttackLock(AuthorizationDelegate* delegate) override {
+    return target_->ResetDictionaryAttackLock(delegate);
   }
 
  private:
@@ -441,6 +473,8 @@ class PolicySessionForwarder : public PolicySession {
 
   TPM_RC PolicyAuthValue() override { return target_->PolicyAuthValue(); }
 
+  TPM_RC PolicyRestart() override { return target_->PolicyRestart(); }
+
   void SetEntityAuthorizationValue(const std::string& value) override {
     return target_->SetEntityAuthorizationValue(value);
   }
@@ -502,6 +536,8 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       hmac_session_(default_hmac_session_.get()),
       default_policy_session_(new NiceMock<MockPolicySession>()),
       policy_session_(default_policy_session_.get()),
+      default_trial_session_(new NiceMock<MockPolicySession>()),
+      trial_session_(default_trial_session_.get()),
       default_blob_parser_(new NiceMock<MockBlobParser>()),
       blob_parser_(default_blob_parser_.get()) {}
 
@@ -526,7 +562,8 @@ TrunksFactoryForTest::GetPasswordAuthorization(
       password_authorization_delegate_);
 }
 
-std::unique_ptr<SessionManager> TrunksFactoryForTest::GetSessionManager() const {
+std::unique_ptr<SessionManager> TrunksFactoryForTest::GetSessionManager()
+    const {
   return base::MakeUnique<SessionManagerForwarder>(session_manager_);
 }
 

@@ -22,29 +22,28 @@
 
 #include <base/macros.h>
 
+#include "trunks/authorization_delegate.h"
+#include "trunks/blob_parser.h"
+#include "trunks/hmac_session.h"
+#include "trunks/policy_session.h"
+#include "trunks/session_manager.h"
+#include "trunks/tpm_state.h"
+#include "trunks/tpm_utility.h"
 #include "trunks/trunks_export.h"
 
 namespace trunks {
 
-class AuthorizationDelegate;
-class BlobParser;
-class CommandTransceiver;
-class HmacSession;
-class PolicySession;
-class SessionManager;
 class Tpm;
-class TpmState;
-class TpmUtility;
 
 // TrunksFactory is an interface to act as a factory for trunks objects. This
-// mechanism assists in injecting mocks for testing. This class is not
-// thread-safe.
+// mechanism assists in injecting mocks for testing.
 class TRUNKS_EXPORT TrunksFactory {
  public:
   TrunksFactory() {}
   virtual ~TrunksFactory() {}
 
-  // Returns a Tpm instance. The caller does not take ownership.
+  // Returns a Tpm instance. The caller does not take ownership. All calls to
+  // this method on a given TrunksFactory instance will return the same value.
   virtual Tpm* GetTpm() const = 0;
 
   // Returns an uninitialized TpmState instance. The caller takes ownership.

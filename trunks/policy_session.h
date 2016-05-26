@@ -74,6 +74,9 @@ class PolicySession {
   // HMAC computation done by the AuthorizationDelegate.
   virtual TPM_RC PolicyAuthValue() = 0;
 
+  // Reset a policy session to its original state.
+  virtual TPM_RC PolicyRestart() = 0;
+
   // Sets the current entity authorization value. This can be safely called
   // while the session is active and subsequent commands will use the value.
   virtual void SetEntityAuthorizationValue(const std::string& value) = 0;

@@ -30,14 +30,13 @@ namespace trunks {
 // method defines a different test to perform.
 // NOTE: All these tests require that the TPM be owned, and SRKs exist.
 // Example usage:
-// TrunksClientTest test;
+// TrunksClientTest test(factory);
 // CHECK(test.RNGTest());
 // CHECK(test.SimplePolicyTest());
 class TrunksClientTest {
  public:
-  TrunksClientTest();
-  // Takes ownership of factory.
-  explicit TrunksClientTest(std::unique_ptr<TrunksFactory> factory);
+  // Does not take ownership of factory.
+  explicit TrunksClientTest(const TrunksFactory& factory);
   virtual ~TrunksClientTest();
 
   // This test verifies that the Random Number Generator on the TPM is working
@@ -136,7 +135,7 @@ class TrunksClientTest {
                      AuthorizationDelegate* delegate);
 
   // Factory for instantiation of Tpm classes
-  std::unique_ptr<TrunksFactory> factory_;
+  const TrunksFactory& factory_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksClientTest);
 };

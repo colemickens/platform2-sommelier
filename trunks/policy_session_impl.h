@@ -33,7 +33,6 @@ namespace trunks {
 // keeping track of the HmacAuthorizationDelegate used for commands, and to
 // provide authorization for commands that need it. It can also be used to
 // create custom policies to restrict the usage of keys.
-// TrunksFactoryImpl factory;
 // PolicySessionImpl session(factory);
 // session.StartBoundSession(bind_entity, bind_authorization, true);
 // session.PolicyPCR(pcr_index, pcr_value);
@@ -61,6 +60,7 @@ class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
   TPM_RC PolicyPCR(uint32_t pcr_index, const std::string& pcr_value) override;
   TPM_RC PolicyCommandCode(TPM_CC command_code) override;
   TPM_RC PolicyAuthValue() override;
+  TPM_RC PolicyRestart() override;
   void SetEntityAuthorizationValue(const std::string& value) override;
 
  private:

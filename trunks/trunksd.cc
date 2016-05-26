@@ -109,6 +109,7 @@ int main(int argc, char** argv) {
   base::Thread background_thread(kBackgroundThreadName);
   CHECK(background_thread.Start()) << "Failed to start background thread.";
   trunks::TrunksFactoryImpl factory(low_level_transceiver);
+  CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
   trunks::ResourceManager resource_manager(factory, low_level_transceiver);
   background_thread.task_runner()->PostNonNestableTask(
       FROM_HERE, base::Bind(&trunks::ResourceManager::Initialize,
