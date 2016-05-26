@@ -98,6 +98,8 @@ class UserCollector : public UserCollectorBase {
                          const base::FilePath &minidump_path,
                          const base::FilePath &temp_directory);
 
+  bool RunFilter(pid_t pid);
+
   bool ShouldDump(pid_t pid,
                   bool has_owner_consent,
                   bool is_developer,

@@ -34,6 +34,8 @@ const char kCorePipeLimitFile[] = "/proc/sys/kernel/core_pipe_limit";
 const char kCorePipeLimit[] = "4";
 const char kCoreToMinidumpConverterPath[] = "/usr/bin/core2md";
 
+const char kFilterPath[] = "/opt/google/crash-reporter/filter";
+
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
 bool IsChromeExecName(const std::string &exec);
@@ -227,6 +229,24 @@ bool UserCollector::RunCoreToMinidump(const FilePath &core_path,
   return true;
 }
 
+bool UserCollector::RunFilter(pid_t pid) {
+  int mode;
+  int exec_mode = base::FILE_PERMISSION_EXECUTE_BY_USER |
+      base::FILE_PERMISSION_EXECUTE_BY_GROUP |
+      base::FILE_PERMISSION_EXECUTE_BY_OTHERS;
+  if (!base::GetPosixFilePermissions(base::FilePath(kFilterPath), &mode) ||
+      (mode & exec_mode) != exec_mode) {
+    // Filter does not exist or is not executable.
+    return true;
+  }
+
+  brillo::ProcessImpl filter;
+  filter.AddArg(kFilterPath);
+  filter.AddArg(StringPrintf("%d", pid));
+
+  return filter.Run() == 0;
+}
+
 bool UserCollector::ShouldDump(pid_t pid,
                                bool has_owner_consent,
                                bool is_developer,
@@ -246,6 +266,11 @@ bool UserCollector::ShouldDump(pid_t pid,
   if (!handle_chrome_crashes && IsChromeExecName(exec)) {
     *reason = "ignoring call by kernel - chrome crash; "
               "waiting for chrome to call us directly";
+    return false;
+  }
+
+  if (!RunFilter(pid)) {
+    *reason = "filtered out";
     return false;
   }
 
