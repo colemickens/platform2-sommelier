@@ -17,18 +17,15 @@
 #include <string>
 
 #include <brillo/bind_lambda.h>
-#include <brillo/dbus/dbus_object_test_helpers.h>
-#include <dbus/mock_bus.h>
-#include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "tpm_manager/client/tpm_nvram_binder_proxy.h"
+#include "tpm_manager/client/tpm_ownership_binder_proxy.h"
 #include "tpm_manager/common/mock_tpm_nvram_interface.h"
 #include "tpm_manager/common/mock_tpm_ownership_interface.h"
 #include "tpm_manager/common/tpm_manager_constants.h"
-#include "tpm_manager/common/tpm_nvram_dbus_interface.h"
-#include "tpm_manager/common/tpm_ownership_dbus_interface.h"
-#include "tpm_manager/server/dbus_service.h"
+#include "tpm_manager/server/binder_service.h"
 
 using testing::_;
 using testing::Invoke;
@@ -39,57 +36,37 @@ using testing::WithArgs;
 
 namespace tpm_manager {
 
-class DBusServiceTest : public testing::Test {
+// A test fixture to exercise both proxy and service layers. Tpm*BinderProxy
+// classes get coverage here and do not need additional unit tests.
+class BinderServiceTest : public testing::Test {
  public:
-  ~DBusServiceTest() override = default;
+  ~BinderServiceTest() override = default;
   void SetUp() override {
-    dbus::Bus::Options options;
-    mock_bus_ = new NiceMock<dbus::MockBus>(options);
-    dbus::ObjectPath path(kTpmManagerServicePath);
-    mock_exported_object_ =
-        new NiceMock<dbus::MockExportedObject>(mock_bus_.get(), path);
-    ON_CALL(*mock_bus_, GetExportedObject(path))
-        .WillByDefault(Return(mock_exported_object_.get()));
-    dbus_service_.reset(new DBusService(mock_bus_, &mock_nvram_service_,
-                                        &mock_ownership_service_));
-    scoped_refptr<brillo::dbus_utils::AsyncEventSequencer> sequencer(
-        new brillo::dbus_utils::AsyncEventSequencer());
-    dbus_service_->RegisterDBusObjectsAsync(sequencer.get());
+    binder_service_.reset(
+        new BinderService(&mock_nvram_service_, &mock_ownership_service_));
+    binder_service_->InitForTesting();
+    nvram_proxy_.reset(
+        new TpmNvramBinderProxy(binder_service_->GetITpmNvram()));
+    ownership_proxy_.reset(
+        new TpmOwnershipBinderProxy(binder_service_->GetITpmOwnership()));
   }
 
-  template <typename RequestProtobufType, typename ReplyProtobufType>
-  void ExecuteMethod(const std::string& method_name,
-                     const RequestProtobufType& request,
-                     ReplyProtobufType* reply,
-                     const std::string& interface) {
-    std::unique_ptr<dbus::MethodCall> call =
-        CreateMethodCall(method_name, interface);
-    dbus::MessageWriter writer(call.get());
-    writer.AppendProtoAsArrayOfBytes(request);
-    auto response = brillo::dbus_utils::testing::CallMethod(
-        dbus_service_->dbus_object_, call.get());
-    dbus::MessageReader reader(response.get());
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+  template <typename ResponseProtobufType>
+  base::Callback<void(const ResponseProtobufType&)> GetCallback(
+      ResponseProtobufType* proto) {
+    return base::Bind(
+        [proto](const ResponseProtobufType& response) { *proto = response; });
   }
 
  protected:
-  std::unique_ptr<dbus::MethodCall> CreateMethodCall(
-      const std::string& method_name,
-      const std::string& interface) {
-    std::unique_ptr<dbus::MethodCall> call(
-        new dbus::MethodCall(interface, method_name));
-    call->SetSerial(1);
-    return call;
-  }
-
-  scoped_refptr<dbus::MockBus> mock_bus_;
-  scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   StrictMock<MockTpmNvramInterface> mock_nvram_service_;
   StrictMock<MockTpmOwnershipInterface> mock_ownership_service_;
-  std::unique_ptr<DBusService> dbus_service_;
+  std::unique_ptr<BinderService> binder_service_;
+  std::unique_ptr<TpmNvramBinderProxy> nvram_proxy_;
+  std::unique_ptr<TpmOwnershipBinderProxy> ownership_proxy_;
 };
 
-TEST_F(DBusServiceTest, CopyableCallback) {
+TEST_F(BinderServiceTest, CopyableCallback) {
   EXPECT_CALL(mock_ownership_service_, GetTpmStatus(_, _))
       .WillOnce(WithArgs<1>(Invoke(
           [](const TpmOwnershipInterface::GetTpmStatusCallback& callback) {
@@ -100,10 +77,11 @@ TEST_F(DBusServiceTest, CopyableCallback) {
           })));
   GetTpmStatusRequest request;
   GetTpmStatusReply reply;
-  ExecuteMethod(kGetTpmStatus, request, &reply, kTpmOwnershipInterface);
+  ownership_proxy_->GetTpmStatus(request,
+                                 GetCallback<GetTpmStatusReply>(&reply));
 }
 
-TEST_F(DBusServiceTest, GetTpmStatus) {
+TEST_F(BinderServiceTest, GetTpmStatus) {
   GetTpmStatusRequest request;
   EXPECT_CALL(mock_ownership_service_, GetTpmStatus(_, _))
       .WillOnce(Invoke(
@@ -120,7 +98,8 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
             callback.Run(reply);
           }));
   GetTpmStatusReply reply;
-  ExecuteMethod(kGetTpmStatus, request, &reply, kTpmOwnershipInterface);
+  ownership_proxy_->GetTpmStatus(request,
+                                 GetCallback<GetTpmStatusReply>(&reply));
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
   EXPECT_TRUE(reply.enabled());
   EXPECT_TRUE(reply.owned());
@@ -130,7 +109,7 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
   EXPECT_EQ(5, reply.dictionary_attack_lockout_seconds_remaining());
 }
 
-TEST_F(DBusServiceTest, TakeOwnership) {
+TEST_F(BinderServiceTest, TakeOwnership) {
   EXPECT_CALL(mock_ownership_service_, TakeOwnership(_, _))
       .WillOnce(Invoke(
           [](const TakeOwnershipRequest& request,
@@ -141,11 +120,12 @@ TEST_F(DBusServiceTest, TakeOwnership) {
           }));
   TakeOwnershipRequest request;
   TakeOwnershipReply reply;
-  ExecuteMethod(kTakeOwnership, request, &reply, kTpmOwnershipInterface);
+  ownership_proxy_->TakeOwnership(request,
+                                  GetCallback<TakeOwnershipReply>(&reply));
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
 }
 
-TEST_F(DBusServiceTest, RemoveOwnerDependency) {
+TEST_F(BinderServiceTest, RemoveOwnerDependency) {
   std::string owner_dependency("owner_dependency");
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(owner_dependency);
@@ -161,12 +141,12 @@ TEST_F(DBusServiceTest, RemoveOwnerDependency) {
         callback.Run(reply);
       }));
   RemoveOwnerDependencyReply reply;
-  ExecuteMethod(kRemoveOwnerDependency, request, &reply,
-                kTpmOwnershipInterface);
+  ownership_proxy_->RemoveOwnerDependency(
+      request, GetCallback<RemoveOwnerDependencyReply>(&reply));
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
 }
 
-TEST_F(DBusServiceTest, DefineSpace) {
+TEST_F(BinderServiceTest, DefineSpace) {
   uint32_t nvram_index = 5;
   size_t nvram_length = 32;
   DefineSpaceRequest request;
@@ -185,11 +165,11 @@ TEST_F(DBusServiceTest, DefineSpace) {
         callback.Run(reply);
       }));
   DefineSpaceReply reply;
-  ExecuteMethod(kDefineSpace, request, &reply, kTpmNvramInterface);
+  nvram_proxy_->DefineSpace(request, GetCallback<DefineSpaceReply>(&reply));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
 }
 
-TEST_F(DBusServiceTest, DestroySpace) {
+TEST_F(BinderServiceTest, DestroySpace) {
   uint32_t nvram_index = 5;
   DestroySpaceRequest request;
   request.set_index(nvram_index);
@@ -204,11 +184,11 @@ TEST_F(DBusServiceTest, DestroySpace) {
         callback.Run(reply);
       }));
   DestroySpaceReply reply;
-  ExecuteMethod(kDestroySpace, request, &reply, kTpmNvramInterface);
+  nvram_proxy_->DestroySpace(request, GetCallback<DestroySpaceReply>(&reply));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
 }
 
-TEST_F(DBusServiceTest, WriteSpace) {
+TEST_F(BinderServiceTest, WriteSpace) {
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
   WriteSpaceRequest request;
@@ -227,11 +207,11 @@ TEST_F(DBusServiceTest, WriteSpace) {
         callback.Run(reply);
       }));
   WriteSpaceReply reply;
-  ExecuteMethod(kWriteSpace, request, &reply, kTpmNvramInterface);
+  nvram_proxy_->WriteSpace(request, GetCallback<WriteSpaceReply>(&reply));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
 }
 
-TEST_F(DBusServiceTest, ReadSpace) {
+TEST_F(BinderServiceTest, ReadSpace) {
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
   ReadSpaceRequest request;
@@ -248,13 +228,13 @@ TEST_F(DBusServiceTest, ReadSpace) {
         callback.Run(reply);
       }));
   ReadSpaceReply reply;
-  ExecuteMethod(kReadSpace, request, &reply, kTpmNvramInterface);
+  nvram_proxy_->ReadSpace(request, GetCallback<ReadSpaceReply>(&reply));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   EXPECT_TRUE(reply.has_data());
   EXPECT_EQ(nvram_data, reply.data());
 }
 
-TEST_F(DBusServiceTest, LockSpace) {
+TEST_F(BinderServiceTest, LockSpace) {
   uint32_t nvram_index = 5;
   LockSpaceRequest request;
   request.set_index(nvram_index);
@@ -273,11 +253,11 @@ TEST_F(DBusServiceTest, LockSpace) {
             callback.Run(reply);
           }));
   LockSpaceReply reply;
-  ExecuteMethod(kLockSpace, request, &reply, kTpmNvramInterface);
+  nvram_proxy_->LockSpace(request, GetCallback<LockSpaceReply>(&reply));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
 }
 
-TEST_F(DBusServiceTest, ListSpaces) {
+TEST_F(BinderServiceTest, ListSpaces) {
   constexpr uint32_t nvram_index_list[] = {3, 4, 5};
   ListSpacesRequest request;
   EXPECT_CALL(mock_nvram_service_, ListSpaces(_, _))
@@ -292,7 +272,7 @@ TEST_F(DBusServiceTest, ListSpaces) {
         callback.Run(reply);
       }));
   ListSpacesReply reply;
-  ExecuteMethod(kListSpaces, request, &reply, kTpmNvramInterface);
+  nvram_proxy_->ListSpaces(request, GetCallback<ListSpacesReply>(&reply));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   EXPECT_EQ(arraysize(nvram_index_list), reply.index_list_size());
   for (size_t i = 0; i < 3; i++) {
@@ -300,7 +280,7 @@ TEST_F(DBusServiceTest, ListSpaces) {
   }
 }
 
-TEST_F(DBusServiceTest, GetSpaceInfo) {
+TEST_F(BinderServiceTest, GetSpaceInfo) {
   uint32_t nvram_index = 5;
   size_t nvram_size = 32;
   GetSpaceInfoRequest request;
@@ -319,7 +299,7 @@ TEST_F(DBusServiceTest, GetSpaceInfo) {
         callback.Run(reply);
       }));
   GetSpaceInfoReply reply;
-  ExecuteMethod(kGetSpaceInfo, request, &reply, kTpmNvramInterface);
+  nvram_proxy_->GetSpaceInfo(request, GetCallback<GetSpaceInfoReply>(&reply));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   EXPECT_TRUE(reply.has_size());
   EXPECT_EQ(nvram_size, reply.size());

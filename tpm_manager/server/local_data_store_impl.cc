@@ -28,7 +28,11 @@ using base::FilePath;
 
 namespace tpm_manager {
 
+#if defined(__ANDROID__)
+const char kTpmLocalDataFile[] = "/data/misc/tpm_managerd/local_tpm_data";
+#else
 const char kTpmLocalDataFile[] = "/var/lib/tpm_manager/local_tpm_data";
+#endif
 const mode_t kLocalDataPermissions = 0600;
 
 bool LocalDataStoreImpl::Read(LocalData* data) {

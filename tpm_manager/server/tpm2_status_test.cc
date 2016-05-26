@@ -32,17 +32,17 @@ namespace tpm_manager {
 
 class Tpm2StatusTest : public testing::Test {
  public:
-  Tpm2StatusTest() : factory_(new trunks::TrunksFactoryForTest()) {}
+  Tpm2StatusTest() = default;
   virtual ~Tpm2StatusTest() = default;
 
   void SetUp() {
-    factory_->set_tpm_state(&mock_tpm_state_);
-    tpm_status_.reset(new Tpm2StatusImpl(factory_.get()));
+    factory_.set_tpm_state(&mock_tpm_state_);
+    tpm_status_.reset(new Tpm2StatusImpl(factory_));
   }
 
  protected:
   NiceMock<trunks::MockTpmState> mock_tpm_state_;
-  std::unique_ptr<trunks::TrunksFactoryForTest> factory_;
+  trunks::TrunksFactoryForTest factory_;
   std::unique_ptr<TpmStatus> tpm_status_;
 };
 

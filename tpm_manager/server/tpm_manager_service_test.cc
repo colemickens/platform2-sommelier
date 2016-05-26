@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+#include <base/at_exit.h>
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -37,7 +38,10 @@ namespace {
 const char kOwnerPassword[] = "owner";
 const char kOwnerDependency[] = "owner_dependency";
 const char kOtherDependency[] = "other_dependency";
-}
+
+base::AtExitManager dummy;
+
+}  // namespace
 
 namespace tpm_manager {
 
@@ -215,7 +219,7 @@ TEST_F(TpmManagerServiceTest, TakeOwnershipFailure) {
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm())
       .WillRepeatedly(Return(false));
   auto callback = [this](const TakeOwnershipReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
     Quit();
   };
   TakeOwnershipRequest request;
@@ -237,7 +241,7 @@ TEST_F(TpmManagerServiceTest, TakeOwnershipNoTpm) {
 TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyReadFailure) {
   EXPECT_CALL(mock_local_data_store_, Read(_)).WillRepeatedly(Return(false));
   auto callback = [this](const RemoveOwnerDependencyReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
     Quit();
   };
   RemoveOwnerDependencyRequest request;
@@ -249,7 +253,7 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyReadFailure) {
 TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyWriteFailure) {
   EXPECT_CALL(mock_local_data_store_, Write(_)).WillRepeatedly(Return(false));
   auto callback = [this](const RemoveOwnerDependencyReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
     Quit();
   };
   RemoveOwnerDependencyRequest request;
@@ -323,215 +327,193 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyNotPresent) {
   Run();
 }
 
-TEST_F(TpmManagerServiceTest, DefineNvramFailure) {
+TEST_F(TpmManagerServiceTest, DefineSpaceFailure) {
   uint32_t nvram_index = 5;
-  size_t nvram_length = 32;
-  EXPECT_CALL(mock_tpm_nvram_, DefineNvram(nvram_index, nvram_length))
-      .WillRepeatedly(Return(false));
-  auto callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+  size_t nvram_size = 32;
+  std::vector<NvramSpaceAttribute> attributes{NVRAM_BOOT_WRITE_LOCK};
+  NvramSpacePolicy policy = NVRAM_POLICY_PCR0;
+  std::string auth_value = "1234";
+  EXPECT_CALL(mock_tpm_nvram_, DefineSpace(nvram_index, nvram_size, attributes,
+                                           auth_value, policy))
+      .WillRepeatedly(Return(NVRAM_RESULT_INVALID_PARAMETER));
+  auto callback = [this](const DefineSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_INVALID_PARAMETER, reply.result());
     Quit();
   };
-  DefineNvramRequest request;
+  DefineSpaceRequest request;
   request.set_index(nvram_index);
-  request.set_length(nvram_length);
-  service_->DefineNvram(request, base::Bind(callback));
+  request.set_size(nvram_size);
+  request.add_attributes(NVRAM_BOOT_WRITE_LOCK);
+  request.set_policy(policy);
+  request.set_authorization_value(auth_value);
+  service_->DefineSpace(request, base::Bind(callback));
   Run();
 }
 
-TEST_F(TpmManagerServiceTest, DefineNvramSuccess) {
+TEST_F(TpmManagerServiceTest, DefineSpaceSuccess) {
   uint32_t nvram_index = 5;
-  uint32_t nvram_length = 32;
-  auto define_callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  uint32_t nvram_size = 32;
+  auto define_callback = [](const DefineSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto is_defined_callback = [this](const IsNvramDefinedReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(true, reply.is_defined());
+  auto list_callback = [nvram_index](const ListSpacesReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
+    EXPECT_EQ(1, reply.index_list_size());
+    EXPECT_EQ(nvram_index, reply.index_list(0));
   };
-  auto size_callback = [this, nvram_length](const GetNvramSizeReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(nvram_length, reply.size());
+  auto info_callback = [nvram_size](const GetSpaceInfoReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
+    EXPECT_EQ(nvram_size, reply.size());
   };
-  DefineNvramRequest define_request;
+  DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
-  define_request.set_length(nvram_length);
-  service_->DefineNvram(define_request, base::Bind(define_callback));
-  IsNvramDefinedRequest is_defined_request;
-  is_defined_request.set_index(nvram_index);
-  service_->IsNvramDefined(is_defined_request, base::Bind(is_defined_callback));
-  GetNvramSizeRequest size_request;
-  size_request.set_index(nvram_index);
-  service_->GetNvramSize(size_request, base::Bind(size_callback));
+  define_request.set_size(nvram_size);
+  service_->DefineSpace(define_request, base::Bind(define_callback));
+  ListSpacesRequest list_request;
+  service_->ListSpaces(list_request, base::Bind(list_callback));
+  GetSpaceInfoRequest info_request;
+  info_request.set_index(nvram_index);
+  service_->GetSpaceInfo(info_request, base::Bind(info_callback));
   RunServiceWorkerAndQuit();
 }
 
 TEST_F(TpmManagerServiceTest, DestroyUnitializedNvram) {
-  auto callback = [this](const DestroyNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+  auto callback = [this](const DestroySpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SPACE_DOES_NOT_EXIST, reply.result());
     Quit();
   };
-  DestroyNvramRequest request;
-  service_->DestroyNvram(request, base::Bind(callback));
+  DestroySpaceRequest request;
+  service_->DestroySpace(request, base::Bind(callback));
   Run();
 }
 
-TEST_F(TpmManagerServiceTest, DestroyNvramSuccess) {
+TEST_F(TpmManagerServiceTest, DestroySpaceSuccess) {
   uint32_t nvram_index = 5;
-  uint32_t nvram_length = 32;
-  auto define_callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  uint32_t nvram_size = 32;
+  auto define_callback = [](const DefineSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto destroy_callback = [this](const DestroyNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto destroy_callback = [](const DestroySpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  DefineNvramRequest define_request;
+  DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
-  define_request.set_length(nvram_length);
-  service_->DefineNvram(define_request, base::Bind(define_callback));
-  DestroyNvramRequest destroy_request;
+  define_request.set_size(nvram_size);
+  service_->DefineSpace(define_request, base::Bind(define_callback));
+  DestroySpaceRequest destroy_request;
   destroy_request.set_index(nvram_index);
-  service_->DestroyNvram(destroy_request, base::Bind(destroy_callback));
+  service_->DestroySpace(destroy_request, base::Bind(destroy_callback));
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest, DoubleDestroyNvram) {
+TEST_F(TpmManagerServiceTest, DoubleDestroySpace) {
   uint32_t nvram_index = 5;
-  uint32_t nvram_length = 32;
-  auto define_callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  uint32_t nvram_size = 32;
+  auto define_callback = [](const DefineSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto destroy_callback_success = [this](const DestroyNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto destroy_callback_success = [](const DestroySpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto destroy_callback_failure = [this](const DestroyNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+  auto destroy_callback_failure = [](const DestroySpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SPACE_DOES_NOT_EXIST, reply.result());
   };
-  DefineNvramRequest define_request;
+  DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
-  define_request.set_length(nvram_length);
-  service_->DefineNvram(define_request, base::Bind(define_callback));
-  DestroyNvramRequest destroy_request;
+  define_request.set_size(nvram_size);
+  service_->DefineSpace(define_request, base::Bind(define_callback));
+  DestroySpaceRequest destroy_request;
   destroy_request.set_index(nvram_index);
-  service_->DestroyNvram(destroy_request, base::Bind(destroy_callback_success));
-  service_->DestroyNvram(destroy_request, base::Bind(destroy_callback_failure));
+  service_->DestroySpace(destroy_request, base::Bind(destroy_callback_success));
+  service_->DestroySpace(destroy_request, base::Bind(destroy_callback_failure));
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest, WriteUninitializedNvram) {
-  auto callback = [this](const WriteNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
-    Quit();
-  };
-  WriteNvramRequest request;
-  service_->WriteNvram(request, base::Bind(callback));
-  Run();
-}
-
-TEST_F(TpmManagerServiceTest, WriteNvramIncorrectSize) {
+TEST_F(TpmManagerServiceTest, WriteSpaceIncorrectSize) {
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
-  auto define_callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto define_callback = [](const DefineSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto write_callback = [this](const WriteNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+  auto write_callback = [](const WriteSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_INVALID_PARAMETER, reply.result());
   };
-  DefineNvramRequest define_request;
+  DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
-  define_request.set_length(nvram_data.size() - 1);
-  service_->DefineNvram(define_request, base::Bind(define_callback));
-  WriteNvramRequest write_request;
+  define_request.set_size(nvram_data.size() - 1);
+  service_->DefineSpace(define_request, base::Bind(define_callback));
+  WriteSpaceRequest write_request;
   write_request.set_index(nvram_index);
   write_request.set_data(nvram_data);
-  service_->WriteNvram(write_request, base::Bind(write_callback));
+  service_->WriteSpace(write_request, base::Bind(write_callback));
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest, DoubleWrite) {
+TEST_F(TpmManagerServiceTest, WriteBeforeAfterLock) {
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
-  auto define_callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto define_callback = [](const DefineSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto write_callback_success = [this](const WriteNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto write_callback_success = [](const WriteSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto write_callback_failure = [this](const WriteNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+  auto lock_callback = [](const LockSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  DefineNvramRequest define_request;
+  auto write_callback_failure = [](const WriteSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_OPERATION_DISABLED, reply.result());
+  };
+  DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
-  define_request.set_length(nvram_data.size());
-  service_->DefineNvram(define_request, base::Bind(define_callback));
-  WriteNvramRequest write_request;
+  define_request.set_size(nvram_data.size());
+  service_->DefineSpace(define_request, base::Bind(define_callback));
+  WriteSpaceRequest write_request;
   write_request.set_index(nvram_index);
   write_request.set_data(nvram_data);
-  service_->WriteNvram(write_request, base::Bind(write_callback_success));
-  service_->WriteNvram(write_request, base::Bind(write_callback_failure));
+  service_->WriteSpace(write_request, base::Bind(write_callback_success));
+  LockSpaceRequest lock_request;
+  lock_request.set_index(nvram_index);
+  lock_request.set_lock_write(true);
+  service_->LockSpace(lock_request, base::Bind(lock_callback));
+  service_->WriteSpace(write_request, base::Bind(write_callback_failure));
   RunServiceWorkerAndQuit();
 }
 
 TEST_F(TpmManagerServiceTest, ReadUninitializedNvram) {
-  auto callback = [this](const ReadNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
+  auto callback = [this](const ReadSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SPACE_DOES_NOT_EXIST, reply.result());
     Quit();
   };
-  ReadNvramRequest request;
-  service_->ReadNvram(request, base::Bind(callback));
+  ReadSpaceRequest request;
+  service_->ReadSpace(request, base::Bind(callback));
   Run();
 }
 
-TEST_F(TpmManagerServiceTest, ReadUnwrittenNvram) {
-  uint32_t nvram_index = 5;
-  uint32_t nvram_length = 32;
-  auto define_callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-  };
-  auto read_callback = [this](const ReadNvramReply& reply) {
-    EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
-  };
-  DefineNvramRequest define_request;
-  define_request.set_index(nvram_index);
-  define_request.set_length(nvram_length);
-  service_->DefineNvram(define_request, base::Bind(define_callback));
-  ReadNvramRequest read_request;
-  read_request.set_index(nvram_index);
-  service_->ReadNvram(read_request, base::Bind(read_callback));
-  RunServiceWorkerAndQuit();
-}
-
-TEST_F(TpmManagerServiceTest, ReadWriteNvramSuccess) {
+TEST_F(TpmManagerServiceTest, ReadWriteSpaceSuccess) {
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
-  auto define_callback = [this](const DefineNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto define_callback = [](const DefineSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto write_callback = [this](const WriteNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto write_callback = [](const WriteSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
   };
-  auto read_callback = [this, nvram_data](const ReadNvramReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  auto read_callback = [nvram_data](const ReadSpaceReply& reply) {
+    EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
     EXPECT_EQ(nvram_data, reply.data());
   };
-  auto locked_callback = [this](const IsNvramLockedReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ(true, reply.is_locked());
-  };
-  DefineNvramRequest define_request;
+  DefineSpaceRequest define_request;
   define_request.set_index(nvram_index);
-  define_request.set_length(nvram_data.size());
-  service_->DefineNvram(define_request, base::Bind(define_callback));
-  WriteNvramRequest write_request;
+  define_request.set_size(nvram_data.size());
+  service_->DefineSpace(define_request, base::Bind(define_callback));
+  WriteSpaceRequest write_request;
   write_request.set_index(nvram_index);
   write_request.set_data(nvram_data);
-  service_->WriteNvram(write_request, base::Bind(write_callback));
-  ReadNvramRequest read_request;
+  service_->WriteSpace(write_request, base::Bind(write_callback));
+  ReadSpaceRequest read_request;
   read_request.set_index(nvram_index);
-  service_->ReadNvram(read_request, base::Bind(read_callback));
-  IsNvramLockedRequest locked_request;
-  locked_request.set_index(nvram_index);
-  service_->IsNvramLocked(locked_request, base::Bind(locked_callback));
+  service_->ReadSpace(read_request, base::Bind(read_callback));
   RunServiceWorkerAndQuit();
 }
 

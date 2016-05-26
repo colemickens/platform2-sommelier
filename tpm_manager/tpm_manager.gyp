@@ -25,7 +25,11 @@
         'protobuf-lite',
       ],
     },
-    'defines': [ 'USE_TPM2=<(USE_tpm2)' ],
+    'conditions': [
+      ['USE_tpm2 == 1', {
+        'defines': [ 'USE_TPM2' ],
+      }],
+    ],
   },
   'targets': [
     # A library for just the protobufs.
@@ -38,11 +42,9 @@
       },
       'sources': [
         '<(proto_in_dir)/local_data.proto',
-        '<(proto_in_dir)/tpm_manager_status.proto',
         '<(proto_in_dir)/tpm_nvram_interface.proto',
         '<(proto_in_dir)/tpm_ownership_interface.proto',
         'common/print_local_data_proto.cc',
-        'common/print_tpm_manager_status_proto.cc',
         'common/print_tpm_nvram_interface_proto.cc',
         'common/print_tpm_ownership_interface_proto.cc',
       ],
