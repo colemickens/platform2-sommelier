@@ -34,7 +34,7 @@ constexpr const char* kTestDependency = "Test";
 // Array to easily access the list of ownership dependencies.
 // Note: When dependencies are added/removed from the above list, they should
 // be modified here as well.
-constexpr const char* kInitialTpmOwnerDependencies[] = { kTestDependency };
+constexpr const char* kInitialTpmOwnerDependencies[] = {kTestDependency};
 
 }  // namespace tpm_manager
 

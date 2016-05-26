@@ -54,21 +54,17 @@ class TpmManagerDaemon : public brillo::DBusServiceDaemon {
 #if USE_TPM2
     tpm_status_.reset(new tpm_manager::Tpm2StatusImpl);
     tpm_initializer_.reset(new tpm_manager::Tpm2InitializerImpl(
-        local_data_store_.get(),
-        tpm_status_.get()));
+        local_data_store_.get(), tpm_status_.get()));
     tpm_nvram_.reset(new tpm_manager::Tpm2NvramImpl(local_data_store_.get()));
 #else
     tpm_status_.reset(new tpm_manager::TpmStatusImpl);
     tpm_initializer_.reset(new tpm_manager::TpmInitializerImpl(
-        local_data_store_.get(),
-        tpm_status_.get()));
+        local_data_store_.get(), tpm_status_.get()));
     tpm_nvram_.reset(new tpm_manager::TpmNvramImpl(local_data_store_.get()));
 #endif
     tpm_manager_service_.reset(new tpm_manager::TpmManagerService(
         command_line->HasSwitch(kWaitForOwnershipTriggerSwitch),
-        local_data_store_.get(),
-        tpm_status_.get(),
-        tpm_initializer_.get(),
+        local_data_store_.get(), tpm_status_.get(), tpm_initializer_.get(),
         tpm_nvram_.get()));
   }
 
@@ -104,7 +100,7 @@ class TpmManagerDaemon : public brillo::DBusServiceDaemon {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int flags = brillo::kLogToSyslog;
   if (cl->HasSwitch("log_to_stderr")) {
     flags |= brillo::kLogToStderr;

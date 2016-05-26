@@ -39,8 +39,8 @@ bool TpmManagerService::Initialize() {
   worker_thread_.reset(new base::Thread("TpmManager Service Worker"));
   worker_thread_->StartWithOptions(
       base::Thread::Options(base::MessageLoop::TYPE_IO, 0));
-  base::Closure task = base::Bind(&TpmManagerService::InitializeTask,
-                                  base::Unretained(this));
+  base::Closure task =
+      base::Bind(&TpmManagerService::InitializeTask, base::Unretained(this));
   worker_thread_->task_runner()->PostNonNestableTask(FROM_HERE, task);
   return true;
 }
@@ -136,7 +136,8 @@ void TpmManagerService::RemoveOwnerDependencyTask(
 }
 
 void TpmManagerService::RemoveOwnerDependency(
-    const std::string& owner_dependency, LocalData* local_data) {
+    const std::string& owner_dependency,
+    LocalData* local_data) {
   google::protobuf::RepeatedPtrField<std::string>* dependencies =
       local_data->mutable_owner_dependency();
   for (int i = 0; i < dependencies->size(); i++) {
@@ -155,8 +156,8 @@ void TpmManagerService::RemoveOwnerDependency(
 
 void TpmManagerService::DefineNvram(const DefineNvramRequest& request,
                                     const DefineNvramCallback& callback) {
-  PostTaskToWorkerThread<DefineNvramReply>(
-      request, callback, &TpmManagerService::DefineNvramTask);
+  PostTaskToWorkerThread<DefineNvramReply>(request, callback,
+                                           &TpmManagerService::DefineNvramTask);
 }
 
 void TpmManagerService::DefineNvramTask(
@@ -189,8 +190,8 @@ void TpmManagerService::DestroyNvramTask(
 
 void TpmManagerService::WriteNvram(const WriteNvramRequest& request,
                                    const WriteNvramCallback& callback) {
-  PostTaskToWorkerThread<WriteNvramReply>(
-      request, callback, &TpmManagerService::WriteNvramTask);
+  PostTaskToWorkerThread<WriteNvramReply>(request, callback,
+                                          &TpmManagerService::WriteNvramTask);
 }
 
 void TpmManagerService::WriteNvramTask(
@@ -206,8 +207,8 @@ void TpmManagerService::WriteNvramTask(
 
 void TpmManagerService::ReadNvram(const ReadNvramRequest& request,
                                   const ReadNvramCallback& callback) {
-  PostTaskToWorkerThread<ReadNvramReply>(
-      request, callback, &TpmManagerService::ReadNvramTask);
+  PostTaskToWorkerThread<ReadNvramReply>(request, callback,
+                                         &TpmManagerService::ReadNvramTask);
 }
 
 void TpmManagerService::ReadNvramTask(
@@ -278,32 +279,27 @@ void TpmManagerService::GetNvramSizeTask(
   result->set_status(STATUS_SUCCESS);
 }
 
-template<typename ReplyProtobufType>
+template <typename ReplyProtobufType>
 void TpmManagerService::TaskRelayCallback(
     const base::Callback<void(const ReplyProtobufType&)> callback,
     const std::shared_ptr<ReplyProtobufType>& reply) {
   callback.Run(*reply);
 }
 
-template<typename ReplyProtobufType,
-         typename RequestProtobufType,
-         typename ReplyCallbackType,
-         typename TaskType>
+template <typename ReplyProtobufType,
+          typename RequestProtobufType,
+          typename ReplyCallbackType,
+          typename TaskType>
 void TpmManagerService::PostTaskToWorkerThread(RequestProtobufType& request,
                                                ReplyCallbackType& callback,
                                                TaskType task) {
   auto result = std::make_shared<ReplyProtobufType>();
-  base::Closure background_task = base::Bind(task,
-                                             base::Unretained(this),
-                                             request,
-                                             result);
-  base::Closure reply = base::Bind(
-      &TpmManagerService::TaskRelayCallback<ReplyProtobufType>,
-      weak_factory_.GetWeakPtr(),
-      callback,
-      result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE,
-                                                  background_task,
+  base::Closure background_task =
+      base::Bind(task, base::Unretained(this), request, result);
+  base::Closure reply =
+      base::Bind(&TpmManagerService::TaskRelayCallback<ReplyProtobufType>,
+                 weak_factory_.GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, background_task,
                                                   reply);
 }
 

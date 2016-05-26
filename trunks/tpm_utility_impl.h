@@ -108,8 +108,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                  AuthorizationDelegate* delegate,
                  TPM_HANDLE* key_handle) override;
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override;
-  TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
-                          TPMT_PUBLIC* public_data) override;
+  TPM_RC GetKeyPublicArea(TPM_HANDLE handle, TPMT_PUBLIC* public_data) override;
   TPM_RC SealData(const std::string& data_to_seal,
                   const std::string& policy_digest,
                   AuthorizationDelegate* delegate,

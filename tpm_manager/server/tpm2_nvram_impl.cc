@@ -97,8 +97,8 @@ bool Tpm2NvramImpl::DestroyNvram(uint32_t index) {
   if (!InitializeWithOwnerPassword()) {
     return false;
   }
-  TPM_RC result = trunks_utility_->DestroyNVSpace(
-      index, trunks_session_->GetDelegate());
+  TPM_RC result =
+      trunks_utility_->DestroyNVSpace(index, trunks_session_->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error destroying nvram space:" << GetErrorString(result);
     return false;
@@ -110,10 +110,10 @@ bool Tpm2NvramImpl::WriteNvram(uint32_t index, const std::string& data) {
   if (!InitializeWithOwnerPassword()) {
     return false;
   }
-  TPM_RC result = trunks_utility_->WriteNVSpace(index,
-                                                0,  // offset
-                                                data,
-                                                trunks_session_->GetDelegate());
+  TPM_RC result =
+      trunks_utility_->WriteNVSpace(index,
+                                    0,  // offset
+                                    data, trunks_session_->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error writing to nvram space: " << GetErrorString(result);
     return false;
@@ -138,8 +138,7 @@ bool Tpm2NvramImpl::ReadNvram(uint32_t index, std::string* data) {
   trunks_session_->SetEntityAuthorizationValue("");
   TPM_RC result = trunks_utility_->ReadNVSpace(index,
                                                0,  // offset
-                                               nvram_size,
-                                               data,
+                                               nvram_size, data,
                                                trunks_session_->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading nvram space: " << GetErrorString(result);

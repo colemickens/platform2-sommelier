@@ -66,9 +66,9 @@ class TPM_MANAGER_EXPORT TpmNvramDBusProxy : public TpmNvramInterface {
 
  private:
   // Template method to call a given |method_name| remotely via dbus.
-  template<typename ReplyProtobufType,
-           typename RequestProtobufType,
-           typename CallbackType>
+  template <typename ReplyProtobufType,
+            typename RequestProtobufType,
+            typename CallbackType>
   void CallMethod(const std::string& method_name,
                   const RequestProtobufType& request,
                   const CallbackType& callback);

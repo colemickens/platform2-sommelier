@@ -49,8 +49,7 @@ TpmStateImpl::TpmStateImpl(const TrunksFactory& factory)
       permanent_flags_(0),
       startup_clear_flags_(0),
       rsa_flags_(0),
-      ecc_flags_(0) {
-}
+      ecc_flags_(0) {}
 
 TpmStateImpl::~TpmStateImpl() {}
 
@@ -88,11 +87,9 @@ TPM_RC TpmStateImpl::Initialize() {
 
   TPMI_YES_NO more_data;
   TPMS_CAPABILITY_DATA capability_data;
-  result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_ALGS,
-                                                TPM_ALG_RSA,
+  result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_ALGS, TPM_ALG_RSA,
                                                 1,  // There is only one value.
-                                                &more_data,
-                                                &capability_data,
+                                                &more_data, &capability_data,
                                                 nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
@@ -107,11 +104,9 @@ TPM_RC TpmStateImpl::Initialize() {
     rsa_flags_ =
         capability_data.data.algorithms.alg_properties[0].alg_properties;
   }
-  result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_ALGS,
-                                                TPM_ALG_ECC,
+  result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_ALGS, TPM_ALG_ECC,
                                                 1,  // There is only one value.
-                                                &more_data,
-                                                &capability_data,
+                                                &more_data, &capability_data,
                                                 nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
@@ -147,8 +142,7 @@ bool TpmStateImpl::IsLockoutPasswordSet() {
 }
 
 bool TpmStateImpl::IsOwned() {
-  return (IsOwnerPasswordSet() &&
-          IsEndorsementPasswordSet() &&
+  return (IsOwnerPasswordSet() && IsEndorsementPasswordSet() &&
           IsLockoutPasswordSet());
 }
 
@@ -160,31 +154,30 @@ bool TpmStateImpl::IsInLockout() {
 bool TpmStateImpl::IsPlatformHierarchyEnabled() {
   CHECK(initialized_);
   return ((startup_clear_flags_ & kPlatformHierarchyMask) ==
-      kPlatformHierarchyMask);
+          kPlatformHierarchyMask);
 }
 
 bool TpmStateImpl::IsStorageHierarchyEnabled() {
   CHECK(initialized_);
   return ((startup_clear_flags_ & kStorageHierarchyMask) ==
-      kStorageHierarchyMask);
+          kStorageHierarchyMask);
 }
 
 bool TpmStateImpl::IsEndorsementHierarchyEnabled() {
   CHECK(initialized_);
   return ((startup_clear_flags_ & kEndorsementHierarchyMask) ==
-      kEndorsementHierarchyMask);
+          kEndorsementHierarchyMask);
 }
 
 bool TpmStateImpl::IsEnabled() {
-  return (!IsPlatformHierarchyEnabled() &&
-          IsStorageHierarchyEnabled() &&
+  return (!IsPlatformHierarchyEnabled() && IsStorageHierarchyEnabled() &&
           IsEndorsementHierarchyEnabled());
 }
 
 bool TpmStateImpl::WasShutdownOrderly() {
   CHECK(initialized_);
   return ((startup_clear_flags_ & kOrderlyShutdownMask) ==
-      kOrderlyShutdownMask);
+          kOrderlyShutdownMask);
 }
 
 bool TpmStateImpl::IsRSASupported() {
@@ -217,17 +210,14 @@ uint32_t TpmStateImpl::GetLockoutRecovery() {
   return lockout_recovery_;
 }
 
-TPM_RC TpmStateImpl::GetTpmProperty(uint32_t property,
-                                    uint32_t* value) {
+TPM_RC TpmStateImpl::GetTpmProperty(uint32_t property, uint32_t* value) {
   CHECK(value);
   TPMI_YES_NO more_data;
   TPMS_CAPABILITY_DATA capability_data;
-  TPM_RC result = factory_.GetTpm()->GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
-                                                       property,
-                                                       1,  // Only one property.
-                                                       &more_data,
-                                                       &capability_data,
-                                                       nullptr);
+  TPM_RC result = factory_.GetTpm()->GetCapabilitySync(
+      TPM_CAP_TPM_PROPERTIES, property,
+      1,  // Only one property.
+      &more_data, &capability_data, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -235,7 +225,7 @@ TPM_RC TpmStateImpl::GetTpmProperty(uint32_t property,
   if (capability_data.capability != TPM_CAP_TPM_PROPERTIES ||
       capability_data.data.tpm_properties.count != 1 ||
       capability_data.data.tpm_properties.tpm_property[0].property !=
-      property) {
+          property) {
     LOG(ERROR) << __func__ << ": Unexpected capability data.";
     return SAPI_RC_MALFORMED_RESPONSE;
   }

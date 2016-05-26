@@ -82,8 +82,8 @@ bool TrunksClientTest::RNGTest() {
     LOG(ERROR) << "Error stirring TPM RNG: " << GetErrorString(result);
     return false;
   }
-  result = utility->GenerateRandom(num_bytes, session->GetDelegate(),
-                                   &random_data);
+  result =
+      utility->GenerateRandom(num_bytes, session->GetDelegate(), &random_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting random bytes from TPM: "
                << GetErrorString(result);
@@ -121,9 +121,9 @@ bool TrunksClientTest::SignTest() {
   ScopedKeyHandle scoped_key(*factory_.get(), signing_key);
   session->SetEntityAuthorizationValue(key_authorization);
   std::string signature;
-  result = utility->Sign(signing_key, TPM_ALG_NULL, TPM_ALG_NULL,
-                         std::string(32, 'a'), session->GetDelegate(),
-                         &signature);
+  result =
+      utility->Sign(signing_key, TPM_ALG_NULL, TPM_ALG_NULL,
+                    std::string(32, 'a'), session->GetDelegate(), &signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
@@ -160,8 +160,7 @@ bool TrunksClientTest::DecryptTest() {
     LOG(ERROR) << "Error loading decrypt key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(*factory_.get(), decrypt_key);
-  return PerformRSAEncrpytAndDecrpyt(scoped_key.get(),
-                                     key_authorization,
+  return PerformRSAEncrpytAndDecrpyt(scoped_key.get(), key_authorization,
                                      session.get());
 }
 
@@ -205,8 +204,8 @@ bool TrunksClientTest::AuthChangeTest() {
   std::string key_authorization("new_pass");
   std::string key_blob;
   TPM_RC result = utility->CreateRSAKeyPair(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
-      "old_pass", "", false,  // use_only_policy_authorization
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "old_pass",
+      "", false,  // use_only_policy_authorization
       kNoCreationPCR, session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating change auth key: " << GetErrorString(result);
@@ -219,9 +218,8 @@ bool TrunksClientTest::AuthChangeTest() {
   }
   ScopedKeyHandle scoped_key(*factory_.get(), key_handle);
   session->SetEntityAuthorizationValue("old_pass");
-  result = utility->ChangeKeyAuthorizationData(key_handle, key_authorization,
-                                               session->GetDelegate(),
-                                               &key_blob);
+  result = utility->ChangeKeyAuthorizationData(
+      key_handle, key_authorization, session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error changing auth data: " << GetErrorString(result);
     return false;
@@ -248,8 +246,8 @@ bool TrunksClientTest::VerifyKeyCreationTest() {
   std::string creation_blob;
   session->SetEntityAuthorizationValue("");
   TPM_RC result = utility->CreateRSAKeyPair(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
-      "", "", false,  // use_only_policy_authorization
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "", "",
+      false,  // use_only_policy_authorization
       kNoCreationPCR, session->GetDelegate(), &key_blob, &creation_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating certify key: " << GetErrorString(result);
@@ -257,10 +255,9 @@ bool TrunksClientTest::VerifyKeyCreationTest() {
   }
   std::string alternate_key_blob;
   result = utility->CreateRSAKeyPair(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
-      "", "", false,  // use_only_policy_authorization
-      kNoCreationPCR, session->GetDelegate(), &alternate_key_blob,
-      nullptr);
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "", "",
+      false,  // use_only_policy_authorization
+      kNoCreationPCR, session->GetDelegate(), &alternate_key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating alternate key: " << GetErrorString(result);
     return false;
@@ -272,8 +269,7 @@ bool TrunksClientTest::VerifyKeyCreationTest() {
     return false;
   }
   TPM_HANDLE alternate_key_handle;
-  result = utility->LoadKey(alternate_key_blob,
-                            session->GetDelegate(),
+  result = utility->LoadKey(alternate_key_blob, session->GetDelegate(),
                             &alternate_key_handle);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading alternate key: " << GetErrorString(result);
@@ -303,8 +299,8 @@ bool TrunksClientTest::SealedDataTest() {
   }
   int pcr_index = 5;
   std::string policy_digest;
-  TPM_RC result = utility->GetPolicyDigestForPcrValue(pcr_index, "",
-                                                      &policy_digest);
+  TPM_RC result =
+      utility->GetPolicyDigestForPcrValue(pcr_index, "", &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy_digest: " << GetErrorString(result);
     return false;
@@ -477,10 +473,9 @@ bool TrunksClientTest::PolicyAuthValueTest() {
     return false;
   }
   std::string ciphertext;
-  result = utility->AsymmetricEncrypt(scoped_key.get(), TPM_ALG_NULL,
-                                      TPM_ALG_NULL, "plaintext",
-                                      nullptr,
-                                      &ciphertext);
+  result =
+      utility->AsymmetricEncrypt(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
+                                 "plaintext", nullptr, &ciphertext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting using RSA key: " << GetErrorString(result);
     return false;
@@ -493,10 +488,9 @@ bool TrunksClientTest::PolicyAuthValueTest() {
   }
   std::string plaintext;
   policy_session->SetEntityAuthorizationValue("password");
-  result = utility->AsymmetricDecrypt(scoped_key.get(), TPM_ALG_NULL,
-                                      TPM_ALG_NULL, ciphertext,
-                                      policy_session->GetDelegate(),
-                                      &plaintext);
+  result = utility->AsymmetricDecrypt(
+      scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL, ciphertext,
+      policy_session->GetDelegate(), &plaintext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting using RSA key: " << GetErrorString(result);
     return false;
@@ -829,8 +823,8 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
   uint32_t index = 1;
   session->SetEntityAuthorizationValue(owner_password);
   std::string nv_data("nv_data");
-  result = utility->DefineNVSpace(index, nv_data.size(),
-                                  session->GetDelegate());
+  result =
+      utility->DefineNVSpace(index, nv_data.size(), session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error defining nvram: " << GetErrorString(result);
     return false;
@@ -843,8 +837,8 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
   }
   std::string new_nvdata;
   session->SetEntityAuthorizationValue("");
-  result = utility->ReadNVSpace(index, 0, nv_data.size(),
-                                &new_nvdata, session->GetDelegate());
+  result = utility->ReadNVSpace(index, 0, nv_data.size(), &new_nvdata,
+                                session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading nvram: " << GetErrorString(result);
     return false;
@@ -860,8 +854,8 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
     return false;
   }
   session->SetEntityAuthorizationValue("");
-  result = utility->ReadNVSpace(index, 0, nv_data.size(),
-                            &new_nvdata, session->GetDelegate());
+  result = utility->ReadNVSpace(index, 0, nv_data.size(), &new_nvdata,
+                                session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading nvram: " << GetErrorString(result);
     return false;
@@ -961,19 +955,18 @@ bool TrunksClientTest::PerformRSAEncrpytAndDecrpyt(
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   std::string ciphertext;
   session->SetEntityAuthorizationValue("");
-  TPM_RC result = utility->AsymmetricEncrypt(key_handle, TPM_ALG_NULL,
-                                             TPM_ALG_NULL, "plaintext",
-                                             session->GetDelegate(),
-                                             &ciphertext);
+  TPM_RC result = utility->AsymmetricEncrypt(
+      key_handle, TPM_ALG_NULL, TPM_ALG_NULL, "plaintext",
+      session->GetDelegate(), &ciphertext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to encrypt: " << GetErrorString(result);
     return false;
   }
   std::string plaintext;
   session->SetEntityAuthorizationValue(key_authorization);
-  result = utility->AsymmetricDecrypt(key_handle, TPM_ALG_NULL,
-                                      TPM_ALG_NULL, ciphertext,
-                                      session->GetDelegate(), &plaintext);
+  result = utility->AsymmetricDecrypt(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
+                                      ciphertext, session->GetDelegate(),
+                                      &plaintext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to decrypt: " << GetErrorString(result);
     return false;
@@ -1017,16 +1010,16 @@ bool TrunksClientTest::VerifyRSASignature(const std::string& public_key,
                                           const std::string& data,
                                           const std::string& signature) {
   auto asn1_ptr = reinterpret_cast<const unsigned char*>(public_key.data());
-  crypto::ScopedRSA rsa(d2i_RSAPublicKey(nullptr, &asn1_ptr,
-                                         public_key.size()));
+  crypto::ScopedRSA rsa(
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, public_key.size()));
   CHECK(rsa.get());
   std::string digest = crypto::SHA256HashString(data);
   auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
   std::string mutable_signature(signature);
   unsigned char* signature_buffer =
       reinterpret_cast<unsigned char*>(string_as_array(&mutable_signature));
-  return (RSA_verify(NID_sha256, digest_buffer, digest.size(),
-                     signature_buffer, signature.size(), rsa.get()) == 1);
+  return (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
+                     signature.size(), rsa.get()) == 1);
 }
 
 bool TrunksClientTest::LoadSigningKey(ScopedKeyHandle* key_handle,
@@ -1037,19 +1030,16 @@ bool TrunksClientTest::LoadSigningKey(ScopedKeyHandle* key_handle,
   std::string key_blob;
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   TPM_RC result = utility->ImportRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kSignKey,
-      modulus, 0x10001, prime_factor,
+      TpmUtility::AsymmetricKeyUsage::kSignKey, modulus, 0x10001, prime_factor,
       "",  // password
-      factory_->GetPasswordAuthorization("").get(),
-      &key_blob);
+      factory_->GetPasswordAuthorization("").get(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "ImportRSAKey: " << GetErrorString(result);
     return false;
   }
   TPM_HANDLE raw_key_handle;
-  result = utility->LoadKey(key_blob,
-                            factory_->GetPasswordAuthorization("").get(),
-                            &raw_key_handle);
+  result = utility->LoadKey(
+      key_blob, factory_->GetPasswordAuthorization("").get(), &raw_key_handle);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "LoadKey: " << GetErrorString(result);
     return false;
@@ -1064,12 +1054,9 @@ bool TrunksClientTest::SignAndVerify(const ScopedKeyHandle& key_handle,
   std::string signature;
   std::string data_to_sign("sign_this");
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
-  TPM_RC result = utility->Sign(key_handle.get(),
-                                TPM_ALG_RSASSA,
-                                TPM_ALG_SHA256,
-                                data_to_sign,
-                                delegate,
-                                &signature);
+  TPM_RC result =
+      utility->Sign(key_handle.get(), TPM_ALG_RSASSA, TPM_ALG_SHA256,
+                    data_to_sign, delegate, &signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Sign: " << GetErrorString(result);
     return false;

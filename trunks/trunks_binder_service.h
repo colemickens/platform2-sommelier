@@ -86,5 +86,4 @@ class TrunksBinderService : public brillo::Daemon {
 
 }  // namespace trunks
 
-
 #endif  // TRUNKS_TRUNKS_BINDER_SERVICE_H_

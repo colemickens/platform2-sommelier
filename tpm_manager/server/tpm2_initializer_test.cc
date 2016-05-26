@@ -45,10 +45,8 @@ class Tpm2InitializerTest : public testing::Test {
   void SetUp() {
     trunks::TrunksFactoryForTest* factory = new trunks::TrunksFactoryForTest();
     factory->set_tpm_utility(&mock_tpm_utility_);
-    tpm_initializer_.reset(new Tpm2InitializerImpl(factory,
-                                                   &mock_openssl_util_,
-                                                   &mock_data_store_,
-                                                   &mock_tpm_status_));
+    tpm_initializer_.reset(new Tpm2InitializerImpl(
+        factory, &mock_openssl_util_, &mock_data_store_, &mock_tpm_status_));
   }
 
  protected:
@@ -66,51 +64,40 @@ TEST_F(Tpm2InitializerTest, InitializeTpmNoSeedTpm) {
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmAlreadyOwned) {
-  EXPECT_CALL(mock_tpm_status_, IsTpmOwned())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
-      .Times(0);
+  EXPECT_CALL(mock_tpm_status_, IsTpmOwned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
   EXPECT_TRUE(tpm_initializer_->InitializeTpm());
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataReadError) {
-  EXPECT_CALL(mock_tpm_status_, IsTpmOwned())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_data_store_, Read(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
-      .Times(0);
+  EXPECT_CALL(mock_tpm_status_, IsTpmOwned()).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_data_store_, Read(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
   EXPECT_FALSE(tpm_initializer_->InitializeTpm());
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataWriteError) {
-  EXPECT_CALL(mock_tpm_status_, IsTpmOwned())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_data_store_, Write(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
-      .Times(0);
+  EXPECT_CALL(mock_tpm_status_, IsTpmOwned()).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_data_store_, Write(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
   EXPECT_FALSE(tpm_initializer_->InitializeTpm());
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmOwnershipError) {
-  EXPECT_CALL(mock_tpm_status_, IsTpmOwned())
-      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_status_, IsTpmOwned()).WillOnce(Return(false));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
       .WillRepeatedly(Return(trunks::TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_initializer_->InitializeTpm());
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
-  EXPECT_CALL(mock_tpm_status_, IsTpmOwned())
-      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_status_, IsTpmOwned()).WillOnce(Return(false));
   std::string owner_password;
   std::string endorsement_password;
   std::string lockout_password;
   LocalData local_data;
   EXPECT_CALL(mock_data_store_, Read(_))
-      .WillOnce(DoAll(SetArgPointee<0>(local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(_, _, _))
       .Times(3)  // Once for owner, endorsement and lockout passwords
       .WillRepeatedly(Return(trunks::TPM_RC_SUCCESS));
@@ -120,8 +107,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
-  EXPECT_CALL(mock_tpm_status_, IsTpmOwned())
-      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_status_, IsTpmOwned()).WillOnce(Return(false));
   std::string owner_password("owner");
   std::string endorsement_password("endorsement");
   std::string lockout_password("lockout");
@@ -131,19 +117,17 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
   local_data.set_endorsement_password(endorsement_password);
   local_data.set_lockout_password(lockout_password);
   EXPECT_CALL(mock_data_store_, Read(_))
-      .WillOnce(DoAll(SetArgPointee<0>(local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
   EXPECT_CALL(mock_data_store_, Write(_))
-      .WillOnce(DoAll(SaveArg<0>(&local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SaveArg<0>(&local_data), Return(true)));
   EXPECT_EQ(1, local_data.owner_dependency_size());
   EXPECT_EQ(kTestDependency, local_data.owner_dependency(0));
   EXPECT_EQ(owner_password, local_data.owner_password());
   EXPECT_EQ(endorsement_password, local_data.endorsement_password());
   EXPECT_EQ(lockout_password, local_data.lockout_password());
-  EXPECT_CALL(mock_tpm_utility_, TakeOwnership(owner_password,
-                                               endorsement_password,
-                                               lockout_password))
+  EXPECT_CALL(
+      mock_tpm_utility_,
+      TakeOwnership(owner_password, endorsement_password, lockout_password))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   EXPECT_TRUE(tpm_initializer_->InitializeTpm());
 }

@@ -43,8 +43,7 @@ namespace tpm_manager {
 class Tpm2InitializerImpl : public TpmInitializer {
  public:
   // Does not take ownership of |local_data_store| or |tpm_status|.
-  Tpm2InitializerImpl(LocalDataStore* local_data_store,
-                      TpmStatus* tpm_status);
+  Tpm2InitializerImpl(LocalDataStore* local_data_store, TpmStatus* tpm_status);
   // Does not take ownership of |openssl_util|, |local_data_store| or
   // |tpm_status|. Takes ownership of |factory|.
   Tpm2InitializerImpl(trunks::TrunksFactory* factory,

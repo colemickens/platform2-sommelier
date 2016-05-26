@@ -49,28 +49,28 @@ class DBusService {
  private:
   friend class DBusServiceTest;
 
-  template<typename RequestProtobufType,
-           typename ReplyProtobufType,
-           typename TpmInterface>
-  using HandlerFunction = void(TpmInterface::*)(
+  template <typename RequestProtobufType,
+            typename ReplyProtobufType,
+            typename TpmInterface>
+  using HandlerFunction = void (TpmInterface::*)(
       const RequestProtobufType&,
       const base::Callback<void(const ReplyProtobufType&)>&);
 
   // Templates to handle D-Bus calls.
-  template<typename RequestProtobufType,
-           typename ReplyProtobufType,
-           DBusService::HandlerFunction<RequestProtobufType,
-                                        ReplyProtobufType,
-                                        TpmNvramInterface> func>
+  template <typename RequestProtobufType,
+            typename ReplyProtobufType,
+            DBusService::HandlerFunction<RequestProtobufType,
+                                         ReplyProtobufType,
+                                         TpmNvramInterface> func>
   void HandleNvramDBusMethod(
       std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
       const RequestProtobufType& request);
 
-  template<typename RequestProtobufType,
-           typename ReplyProtobufType,
-           DBusService::HandlerFunction<RequestProtobufType,
-                                        ReplyProtobufType,
-                                        TpmOwnershipInterface> func>
+  template <typename RequestProtobufType,
+            typename ReplyProtobufType,
+            DBusService::HandlerFunction<RequestProtobufType,
+                                         ReplyProtobufType,
+                                         TpmOwnershipInterface> func>
   void HandleOwnershipDBusMethod(
       std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
       const RequestProtobufType& request);

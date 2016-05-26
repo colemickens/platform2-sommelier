@@ -28,20 +28,27 @@ class MockTpmNvramInterface : public TpmNvramInterface {
   MockTpmNvramInterface();
   ~MockTpmNvramInterface() override;
 
-  MOCK_METHOD2(DefineNvram, void(const DefineNvramRequest& request,
-                                 const DefineNvramCallback& callback));
-  MOCK_METHOD2(DestroyNvram, void(const DestroyNvramRequest& request,
-                                  const DestroyNvramCallback& callback));
-  MOCK_METHOD2(WriteNvram, void(const WriteNvramRequest& request,
-                                const WriteNvramCallback& callback));
-  MOCK_METHOD2(ReadNvram, void(const ReadNvramRequest& request,
-                               const ReadNvramCallback& callback));
-  MOCK_METHOD2(IsNvramDefined, void(const IsNvramDefinedRequest& request,
-                                    const IsNvramDefinedCallback& callback));
-  MOCK_METHOD2(IsNvramLocked, void(const IsNvramLockedRequest& request,
-                                   const IsNvramLockedCallback& callback));
-  MOCK_METHOD2(GetNvramSize, void(const GetNvramSizeRequest& request,
-                                  const GetNvramSizeCallback& callback));
+  MOCK_METHOD2(DefineNvram,
+               void(const DefineNvramRequest& request,
+                    const DefineNvramCallback& callback));
+  MOCK_METHOD2(DestroyNvram,
+               void(const DestroyNvramRequest& request,
+                    const DestroyNvramCallback& callback));
+  MOCK_METHOD2(WriteNvram,
+               void(const WriteNvramRequest& request,
+                    const WriteNvramCallback& callback));
+  MOCK_METHOD2(ReadNvram,
+               void(const ReadNvramRequest& request,
+                    const ReadNvramCallback& callback));
+  MOCK_METHOD2(IsNvramDefined,
+               void(const IsNvramDefinedRequest& request,
+                    const IsNvramDefinedCallback& callback));
+  MOCK_METHOD2(IsNvramLocked,
+               void(const IsNvramLockedRequest& request,
+                    const IsNvramLockedCallback& callback));
+  MOCK_METHOD2(GetNvramSize,
+               void(const GetNvramSizeRequest& request,
+                    const GetNvramSizeCallback& callback));
 };
 
 }  // namespace tpm_manager

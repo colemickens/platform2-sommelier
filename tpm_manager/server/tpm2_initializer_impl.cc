@@ -90,7 +90,7 @@ bool Tpm2InitializerImpl::InitializeTpm() {
   // We write the passwords to disk, in case there is an error while taking
   // ownership.
   local_data.clear_owner_dependency();
-  for (auto dependency: kInitialTpmOwnerDependencies) {
+  for (auto dependency : kInitialTpmOwnerDependencies) {
     local_data.add_owner_dependency(dependency);
   }
   local_data.set_owner_password(owner_password);
@@ -115,7 +115,7 @@ bool Tpm2InitializerImpl::SeedTpmRng() {
     return false;
   }
   trunks::TPM_RC result = trunks_factory_->GetTpmUtility()->StirRandom(
-      random_bytes, nullptr  /* No Authorization */);
+      random_bytes, nullptr /* No Authorization */);
   if (result != trunks::TPM_RC_SUCCESS) {
     return false;
   }
@@ -125,7 +125,7 @@ bool Tpm2InitializerImpl::SeedTpmRng() {
 bool Tpm2InitializerImpl::GetTpmRandomData(size_t num_bytes,
                                            std::string* random_data) {
   trunks::TPM_RC result = trunks_factory_->GetTpmUtility()->GenerateRandom(
-      num_bytes, nullptr  /* No Authorization */, random_data);
+      num_bytes, nullptr /* No Authorization */, random_data);
   if (result != trunks::TPM_RC_SUCCESS) {
     return false;
   }

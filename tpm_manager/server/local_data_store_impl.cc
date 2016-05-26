@@ -76,7 +76,7 @@ bool LocalDataStoreImpl::Write(const LocalData& data) {
   }
   // Sync the parent directory.
   std::string dir_name = path.DirName().value();
-  int dir_fd = HANDLE_EINTR(open(dir_name.c_str(), O_RDONLY|O_DIRECTORY));
+  int dir_fd = HANDLE_EINTR(open(dir_name.c_str(), O_RDONLY | O_DIRECTORY));
   if (dir_fd < 0) {
     PLOG(WARNING) << "Could not open " << dir_name << " for syncing";
     return false;

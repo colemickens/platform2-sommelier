@@ -97,7 +97,7 @@ class TpmManagerService : public TpmNvramInterface,
  private:
   // A relay callback which allows the use of weak pointer semantics for a reply
   // to TaskRunner::PostTaskAndReply.
-  template<typename ReplyProtobufType>
+  template <typename ReplyProtobufType>
   void TaskRelayCallback(
       const base::Callback<void(const ReplyProtobufType&)> callback,
       const std::shared_ptr<ReplyProtobufType>& reply);
@@ -105,10 +105,10 @@ class TpmManagerService : public TpmNvramInterface,
   // This templated method posts the provided |TaskType| to the background
   // thread with the provided |RequestProtobufType|. When |TaskType| finishes
   // executing, the |ReplyCallbackType| is called with the |ReplyProtobufType|.
-  template<typename ReplyProtobufType,
-           typename RequestProtobufType,
-           typename ReplyCallbackType,
-           typename TaskType>
+  template <typename ReplyProtobufType,
+            typename RequestProtobufType,
+            typename ReplyCallbackType,
+            typename TaskType>
   void PostTaskToWorkerThread(RequestProtobufType& request,
                               ReplyCallbackType& callback,
                               TaskType task);

@@ -212,8 +212,8 @@ TEST_F(TpmNvramDBusProxyTest, IsNvramDefined) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count, nvram_defined](
-      const IsNvramDefinedReply& reply) {
+  auto callback = [&callback_count,
+                   nvram_defined](const IsNvramDefinedReply& reply) {
     callback_count++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_is_defined());
@@ -250,8 +250,8 @@ TEST_F(TpmNvramDBusProxyTest, IsNvramLocked) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count, nvram_locked](
-      const IsNvramLockedReply& reply) {
+  auto callback = [&callback_count,
+                   nvram_locked](const IsNvramLockedReply& reply) {
     callback_count++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_is_locked());
@@ -288,8 +288,8 @@ TEST_F(TpmNvramDBusProxyTest, GetNvramSize) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count, nvram_size](
-      const GetNvramSizeReply& reply) {
+  auto callback = [&callback_count,
+                   nvram_size](const GetNvramSizeReply& reply) {
     callback_count++;
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.has_size());

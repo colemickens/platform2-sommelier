@@ -137,8 +137,7 @@ class ClientLoop : public ClientLoopBase {
                         weak_factory_.GetWeakPtr());
     } else if (command_line->HasSwitch(kRemoveOwnerDependencyCommand)) {
       task = base::Bind(
-          &ClientLoop::HandleRemoveOwnerDependency,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleRemoveOwnerDependency, weak_factory_.GetWeakPtr(),
           command_line->GetSwitchValueASCII(kRemoveOwnerDependencyCommand));
     } else if (command_line->HasSwitch(kDefineNvramCommand)) {
       if (!command_line->HasSwitch(kNvramIndexArg) ||
@@ -147,8 +146,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_USAGE;
       }
       task = base::Bind(
-          &ClientLoop::HandleDefineNvram,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleDefineNvram, weak_factory_.GetWeakPtr(),
           atoi(command_line->GetSwitchValueASCII(kNvramIndexArg).c_str()),
           atoi(command_line->GetSwitchValueASCII(kNvramLengthArg).c_str()));
     } else if (command_line->HasSwitch(kDestroyNvramCommand)) {
@@ -157,8 +155,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_USAGE;
       }
       task = base::Bind(
-          &ClientLoop::HandleDestroyNvram,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleDestroyNvram, weak_factory_.GetWeakPtr(),
           atoi(command_line->GetSwitchValueASCII(kNvramIndexArg).c_str()));
     } else if (command_line->HasSwitch(kWriteNvramCommand)) {
       if (!command_line->HasSwitch(kNvramIndexArg) ||
@@ -167,8 +164,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_USAGE;
       }
       task = base::Bind(
-          &ClientLoop::HandleWriteNvram,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleWriteNvram, weak_factory_.GetWeakPtr(),
           atoi(command_line->GetSwitchValueASCII(kNvramIndexArg).c_str()),
           command_line->GetSwitchValueASCII(kNvramDataArg));
     } else if (command_line->HasSwitch(kReadNvramCommand)) {
@@ -177,8 +173,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_USAGE;
       }
       task = base::Bind(
-          &ClientLoop::HandleReadNvram,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleReadNvram, weak_factory_.GetWeakPtr(),
           atoi(command_line->GetSwitchValueASCII(kNvramIndexArg).c_str()));
     } else if (command_line->HasSwitch(kIsNvramDefinedCommand)) {
       if (!command_line->HasSwitch(kNvramIndexArg)) {
@@ -186,8 +181,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_USAGE;
       }
       task = base::Bind(
-          &ClientLoop::HandleIsNvramDefined,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleIsNvramDefined, weak_factory_.GetWeakPtr(),
           atoi(command_line->GetSwitchValueASCII(kNvramIndexArg).c_str()));
     } else if (command_line->HasSwitch(kIsNvramLockedCommand)) {
       if (!command_line->HasSwitch(kNvramIndexArg)) {
@@ -195,8 +189,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_USAGE;
       }
       task = base::Bind(
-          &ClientLoop::HandleIsNvramLocked,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleIsNvramLocked, weak_factory_.GetWeakPtr(),
           atoi(command_line->GetSwitchValueASCII(kNvramIndexArg).c_str()));
     } else if (command_line->HasSwitch(kGetNvramSizeCommand)) {
       if (!command_line->HasSwitch(kNvramIndexArg)) {
@@ -204,8 +197,7 @@ class ClientLoop : public ClientLoopBase {
         return EX_USAGE;
       }
       task = base::Bind(
-          &ClientLoop::HandleGetNvramSize,
-          weak_factory_.GetWeakPtr(),
+          &ClientLoop::HandleGetNvramSize, weak_factory_.GetWeakPtr(),
           atoi(command_line->GetSwitchValueASCII(kNvramIndexArg).c_str()));
     } else {
       // Command line arguments did not match any valid commands.
@@ -226,17 +218,15 @@ class ClientLoop : public ClientLoopBase {
   void HandleGetTpmStatus() {
     GetTpmStatusRequest request;
     tpm_ownership_->GetTpmStatus(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleTakeOwnership() {
     TakeOwnershipRequest request;
     tpm_ownership_->TakeOwnership(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<TakeOwnershipReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<TakeOwnershipReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleRemoveOwnerDependency(const std::string& owner_dependency) {
@@ -253,18 +243,16 @@ class ClientLoop : public ClientLoopBase {
     request.set_index(index);
     request.set_length(length);
     tpm_nvram_->DefineNvram(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<DefineNvramReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<DefineNvramReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleDestroyNvram(uint32_t index) {
     DestroyNvramRequest request;
     request.set_index(index);
     tpm_nvram_->DestroyNvram(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<DestroyNvramReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<DestroyNvramReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleWriteNvram(uint32_t index, const std::string& data) {
@@ -272,45 +260,40 @@ class ClientLoop : public ClientLoopBase {
     request.set_index(index);
     request.set_data(data);
     tpm_nvram_->WriteNvram(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<WriteNvramReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<WriteNvramReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleReadNvram(uint32_t index) {
     ReadNvramRequest request;
     request.set_index(index);
     tpm_nvram_->ReadNvram(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<ReadNvramReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<ReadNvramReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleIsNvramDefined(uint32_t index) {
     IsNvramDefinedRequest request;
     request.set_index(index);
     tpm_nvram_->IsNvramDefined(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<IsNvramDefinedReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<IsNvramDefinedReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleIsNvramLocked(uint32_t index) {
     IsNvramLockedRequest request;
     request.set_index(index);
     tpm_nvram_->IsNvramLocked(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<IsNvramLockedReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<IsNvramLockedReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void HandleGetNvramSize(uint32_t index) {
     GetNvramSizeRequest request;
     request.set_index(index);
     tpm_nvram_->GetNvramSize(
-        request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetNvramSizeReply>,
-                   weak_factory_.GetWeakPtr()));
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetNvramSizeReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   // Pointer to a DBus proxy to tpm_managerd.

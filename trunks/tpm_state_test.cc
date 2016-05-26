@@ -53,40 +53,37 @@ class TpmStateTest : public testing::Test {
     lockout_recovery_ = GetValidCapabilityData(TPM_PT_LOCKOUT_RECOVERY, 0);
     EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
                                              TPM_PT_PERMANENT, 1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLivePermanent)));
+        .WillRepeatedly(
+            WithArgs<4>(Invoke(this, &TpmStateTest::GetLivePermanent)));
     EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
                                              TPM_PT_STARTUP_CLEAR, 1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLiveStartupClear)));
-    EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_ALGS,
-                                             TPM_ALG_RSA, 1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLiveRSA)));
-    EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_ALGS,
-                                             TPM_ALG_ECC, 1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLiveECC)));
+        .WillRepeatedly(
+            WithArgs<4>(Invoke(this, &TpmStateTest::GetLiveStartupClear)));
+    EXPECT_CALL(mock_tpm_,
+                GetCapabilitySync(TPM_CAP_ALGS, TPM_ALG_RSA, 1, _, _, _))
+        .WillRepeatedly(WithArgs<4>(Invoke(this, &TpmStateTest::GetLiveRSA)));
+    EXPECT_CALL(mock_tpm_,
+                GetCapabilitySync(TPM_CAP_ALGS, TPM_ALG_ECC, 1, _, _, _))
+        .WillRepeatedly(WithArgs<4>(Invoke(this, &TpmStateTest::GetLiveECC)));
+    EXPECT_CALL(mock_tpm_,
+                GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
+                                  TPM_PT_LOCKOUT_COUNTER, 1, _, _, _))
+        .WillRepeatedly(
+            WithArgs<4>(Invoke(this, &TpmStateTest::GetLiveLockoutCounter)));
     EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
-                                             TPM_PT_LOCKOUT_COUNTER,
-                                             1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLiveLockoutCounter)));
-    EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
-                                             TPM_PT_MAX_AUTH_FAIL,
-                                             1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLiveLockoutThreshold)));
-    EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
-                                             TPM_PT_LOCKOUT_INTERVAL,
-                                             1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLiveLockoutInterval)));
-    EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
-                                             TPM_PT_LOCKOUT_RECOVERY,
-                                             1, _, _, _))
-        .WillRepeatedly(WithArgs<4>(
-            Invoke(this, &TpmStateTest::GetLiveLockoutRecovery)));
+                                             TPM_PT_MAX_AUTH_FAIL, 1, _, _, _))
+        .WillRepeatedly(
+            WithArgs<4>(Invoke(this, &TpmStateTest::GetLiveLockoutThreshold)));
+    EXPECT_CALL(mock_tpm_,
+                GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
+                                  TPM_PT_LOCKOUT_INTERVAL, 1, _, _, _))
+        .WillRepeatedly(
+            WithArgs<4>(Invoke(this, &TpmStateTest::GetLiveLockoutInterval)));
+    EXPECT_CALL(mock_tpm_,
+                GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
+                                  TPM_PT_LOCKOUT_RECOVERY, 1, _, _, _))
+        .WillRepeatedly(
+            WithArgs<4>(Invoke(this, &TpmStateTest::GetLiveLockoutRecovery)));
   }
 
   TPM_RC GetLivePermanent(TPMS_CAPABILITY_DATA* capability_data) {

@@ -69,14 +69,14 @@ void TpmNvramDBusProxy::ReadNvram(const ReadNvramRequest& request,
 
 void TpmNvramDBusProxy::IsNvramDefined(const IsNvramDefinedRequest& request,
                                        const IsNvramDefinedCallback& callback) {
-  CallMethod<IsNvramDefinedReply>(
-      tpm_manager::kIsNvramDefined, request, callback);
+  CallMethod<IsNvramDefinedReply>(tpm_manager::kIsNvramDefined, request,
+                                  callback);
 }
 
 void TpmNvramDBusProxy::IsNvramLocked(const IsNvramLockedRequest& request,
                                       const IsNvramLockedCallback& callback) {
-  CallMethod<IsNvramLockedReply>(
-      tpm_manager::kIsNvramLocked, request, callback);
+  CallMethod<IsNvramLockedReply>(tpm_manager::kIsNvramLocked, request,
+                                 callback);
 }
 
 void TpmNvramDBusProxy::GetNvramSize(const GetNvramSizeRequest& request,
@@ -84,9 +84,9 @@ void TpmNvramDBusProxy::GetNvramSize(const GetNvramSizeRequest& request,
   CallMethod<GetNvramSizeReply>(tpm_manager::kGetNvramSize, request, callback);
 }
 
-template<typename ReplyProtobufType,
-         typename RequestProtobufType,
-         typename CallbackType>
+template <typename ReplyProtobufType,
+          typename RequestProtobufType,
+          typename CallbackType>
 void TpmNvramDBusProxy::CallMethod(const std::string& method_name,
                                    const RequestProtobufType& request,
                                    const CallbackType& callback) {
@@ -96,13 +96,8 @@ void TpmNvramDBusProxy::CallMethod(const std::string& method_name,
     callback.Run(reply);
   };
   brillo::dbus_utils::CallMethodWithTimeout(
-      kDBusTimeoutMS,
-      object_proxy_,
-      tpm_manager::kTpmNvramInterface,
-      method_name,
-      callback,
-      base::Bind(on_error),
-      request);
+      kDBusTimeoutMS, object_proxy_, tpm_manager::kTpmNvramInterface,
+      method_name, callback, base::Bind(on_error), request);
 }
 
 }  // namespace tpm_manager

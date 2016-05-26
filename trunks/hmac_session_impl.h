@@ -30,7 +30,6 @@
 
 namespace trunks {
 
-
 // This class implements the HmacSession interface. It is used for
 // keeping track of the HmacAuthorizationDelegate used for commands, and to
 // provide authorization for commands that need it. It is instantiated by
@@ -44,7 +43,7 @@ namespace trunks {
 // NOTE: StartBoundSession/StartUnboundSession should not be called before
 // TPM Ownership is taken. This is because starting a session uses the
 // SaltingKey, which is only created after ownership is taken.
-class TRUNKS_EXPORT HmacSessionImpl: public HmacSession {
+class TRUNKS_EXPORT HmacSessionImpl : public HmacSession {
  public:
   // The constructor for HmacAuthroizationSession needs a factory. In
   // producation code, this factory is used to access the TPM class to forward

@@ -56,7 +56,7 @@ bool TpmSimulatorHandle::Init() {
 }
 
 void TpmSimulatorHandle::SendCommand(const std::string& command,
-                            const ResponseCallback& callback) {
+                                     const ResponseCallback& callback) {
   callback.Run(SendCommandAndWait(command));
 }
 

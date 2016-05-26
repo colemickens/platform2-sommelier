@@ -51,8 +51,7 @@ std::string GetOpenSSLError() {
 namespace trunks {
 
 SessionManagerImpl::SessionManagerImpl(const TrunksFactory& factory)
-    : factory_(factory),
-      session_handle_(kUninitializedHandle) {
+    : factory_(factory), session_handle_(kUninitializedHandle) {
   crypto::EnsureOpenSSLInit();
 }
 
@@ -119,30 +118,22 @@ TPM_RC SessionManagerImpl::StartSession(
   // The TPM2 command below needs no authorization. This is why we can use
   // the empty string "", when referring to the handle names for the salting
   // key and the bind entity.
-  TPM_RC tpm_result = tpm->StartAuthSessionSync(kSaltingKey,
-                                                "",  // salt_handle_name.
-                                                bind_entity,
-                                                "",  // bind_entity_name.
-                                                nonce_caller,
-                                                encrypted_secret,
-                                                session_type,
-                                                symmetric_algorithm,
-                                                hash_algorithm,
-                                                &session_handle_,
-                                                &nonce_tpm,
-                                                nullptr);  // No Authorization.
+  TPM_RC tpm_result = tpm->StartAuthSessionSync(
+      kSaltingKey,
+      "",  // salt_handle_name.
+      bind_entity,
+      "",  // bind_entity_name.
+      nonce_caller, encrypted_secret, session_type, symmetric_algorithm,
+      hash_algorithm, &session_handle_, &nonce_tpm,
+      nullptr);  // No Authorization.
   if (tpm_result) {
     LOG(ERROR) << "Error creating an authorization session: "
                << GetErrorString(tpm_result);
     return tpm_result;
   }
-  bool hmac_result = delegate->InitSession(
-    session_handle_,
-    nonce_tpm,
-    nonce_caller,
-    salt,
-    bind_authorization_value,
-    enable_encryption);
+  bool hmac_result =
+      delegate->InitSession(session_handle_, nonce_tpm, nonce_caller, salt,
+                            bind_authorization_value, enable_encryption);
   if (!hmac_result) {
     LOG(ERROR) << "Failed to initialize an authorization session delegate.";
     return TPM_RC_FAILURE;

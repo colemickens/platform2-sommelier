@@ -32,10 +32,10 @@ class MockPolicySession : public PolicySession {
   ~MockPolicySession() override;
 
   MOCK_METHOD0(GetDelegate, AuthorizationDelegate*());
-  MOCK_METHOD3(StartBoundSession, TPM_RC(
-      TPMI_DH_ENTITY bind_entity,
-      const std::string& bind_authorization_value,
-      bool enable_encryption));
+  MOCK_METHOD3(StartBoundSession,
+               TPM_RC(TPMI_DH_ENTITY bind_entity,
+                      const std::string& bind_authorization_value,
+                      bool enable_encryption));
   MOCK_METHOD1(StartUnboundSession, TPM_RC(bool enable_encryption));
   MOCK_METHOD1(GetDigest, TPM_RC(std::string*));
   MOCK_METHOD1(PolicyOR, TPM_RC(const std::vector<std::string>&));

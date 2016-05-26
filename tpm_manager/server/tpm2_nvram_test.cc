@@ -50,16 +50,14 @@ class Tpm2NvramTest : public testing::Test {
     factory->set_hmac_session(&mock_hmac_session_);
     factory->set_tpm_utility(&mock_tpm_utility_);
     tpm_nvram_.reset(new Tpm2NvramImpl(
-        std::unique_ptr<trunks::TrunksFactory>(factory),
-        &mock_data_store_));
+        std::unique_ptr<trunks::TrunksFactory>(factory), &mock_data_store_));
   }
 
   void InitializeNvram(const std::string& owner_password) {
     LocalData local_data;
     local_data.set_owner_password(owner_password);
     ON_CALL(mock_data_store_, Read(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(local_data),
-                             Return(true)));
+        .WillByDefault(DoAll(SetArgPointee<0>(local_data), Return(true)));
     tpm_nvram_->Initialize();
     Mock::VerifyAndClearExpectations(&mock_data_store_);
     Mock::VerifyAndClearExpectations(&mock_hmac_session_);
@@ -157,13 +155,11 @@ TEST_F(Tpm2NvramTest, ReadNvramSuccess) {
   trunks::TPMS_NV_PUBLIC nvram_public;
   nvram_public.data_size = size;
   EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public),
-                      Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
 
   EXPECT_CALL(mock_hmac_session_, SetEntityAuthorizationValue(""));
   EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(index, 0, size, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(tpm_data),
-                      Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<3>(tpm_data), Return(TPM_RC_SUCCESS)));
   std::string read_data;
   EXPECT_TRUE(tpm_nvram_->ReadNvram(index, &read_data));
   EXPECT_EQ(read_data, tpm_data);
@@ -181,8 +177,7 @@ TEST_F(Tpm2NvramTest, ReadNvramFailure) {
   uint32_t index = 42;
   trunks::TPMS_NV_PUBLIC nvram_public;
   EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public),
-                      Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(index, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   std::string read_data;
@@ -220,8 +215,7 @@ TEST_F(Tpm2NvramTest, IsNvramLockedSuccess) {
   trunks::TPMS_NV_PUBLIC nvram_public;
   nvram_public.attributes = trunks::TPMA_NV_WRITELOCKED;
   EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public),
-                      Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
   bool locked;
   EXPECT_TRUE(tpm_nvram_->IsNvramLocked(index, &locked));
   EXPECT_TRUE(locked);
@@ -232,8 +226,7 @@ TEST_F(Tpm2NvramTest, IsNvramLockedUnlocked) {
   trunks::TPMS_NV_PUBLIC nvram_public;
   nvram_public.attributes = 0;
   EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public),
-                      Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
   bool locked;
   EXPECT_TRUE(tpm_nvram_->IsNvramLocked(index, &locked));
   EXPECT_FALSE(locked);
@@ -253,8 +246,7 @@ TEST_F(Tpm2NvramTest, GetNvramSizeSuccess) {
   trunks::TPMS_NV_PUBLIC nvram_public;
   nvram_public.data_size = nvram_size;
   EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public),
-                      Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
   size_t size;
   EXPECT_TRUE(tpm_nvram_->GetNvramSize(index, &size));
   EXPECT_EQ(size, nvram_size);

@@ -39,11 +39,7 @@ const int kNoCreationPCR = -1;
 // An interface which provides convenient methods for common TPM operations.
 class TRUNKS_EXPORT TpmUtility {
  public:
-  enum AsymmetricKeyUsage {
-    kDecryptKey,
-    kSignKey,
-    kDecryptAndSignKey
-  };
+  enum AsymmetricKeyUsage { kDecryptKey, kSignKey, kDecryptAndSignKey };
 
   TpmUtility() {}
   virtual ~TpmUtility() {}

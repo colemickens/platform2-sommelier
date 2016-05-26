@@ -37,7 +37,6 @@ namespace {
 const char kOwnerPassword[] = "owner";
 const char kOwnerDependency[] = "owner_dependency";
 const char kOtherDependency[] = "other_dependency";
-
 }
 
 namespace tpm_manager {
@@ -48,37 +47,27 @@ class TpmManagerServiceTest : public testing::Test {
  public:
   ~TpmManagerServiceTest() override = default;
   void SetUp() override {
-    service_.reset(new TpmManagerService(true /*wait_for_ownership*/,
-                                         &mock_local_data_store_,
-                                         &mock_tpm_status_,
-                                         &mock_tpm_initializer_,
-                                         &mock_tpm_nvram_));
+    service_.reset(new TpmManagerService(
+        true /*wait_for_ownership*/, &mock_local_data_store_, &mock_tpm_status_,
+        &mock_tpm_initializer_, &mock_tpm_nvram_));
     SetupService();
   }
 
  protected:
-  void Run() {
-    run_loop_.Run();
-  }
+  void Run() { run_loop_.Run(); }
 
   void RunServiceWorkerAndQuit() {
     // Run out the service worker loop by posting a new command and waiting for
     // the response.
-    auto callback = [this](const GetTpmStatusReply& reply) {
-      Quit();
-    };
+    auto callback = [this](const GetTpmStatusReply& reply) { Quit(); };
     GetTpmStatusRequest request;
     service_->GetTpmStatus(request, base::Bind(callback));
     Run();
   }
 
-  void Quit() {
-    run_loop_.Quit();
-  }
+  void Quit() { run_loop_.Quit(); }
 
-  void SetupService() {
-    CHECK(service_->Initialize());
-  }
+  void SetupService() { CHECK(service_->Initialize()); }
 
   NiceMock<MockLocalDataStore> mock_local_data_store_;
   NiceMock<MockTpmInitializer> mock_tpm_initializer_;
@@ -96,11 +85,9 @@ class TpmManagerServiceTest_NoWaitForOwnership : public TpmManagerServiceTest {
  public:
   ~TpmManagerServiceTest_NoWaitForOwnership() override = default;
   void SetUp() override {
-    service_.reset(new TpmManagerService(false /*wait_for_ownership*/,
-                                         &mock_local_data_store_,
-                                         &mock_tpm_status_,
-                                         &mock_tpm_initializer_,
-                                         &mock_tpm_nvram_));
+    service_.reset(new TpmManagerService(
+        false /*wait_for_ownership*/, &mock_local_data_store_,
+        &mock_tpm_status_, &mock_tpm_initializer_, &mock_tpm_nvram_));
   }
 };
 
@@ -175,8 +162,7 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusSuccess) {
 }
 
 TEST_F(TpmManagerServiceTest, GetTpmStatusLocalDataFailure) {
-  EXPECT_CALL(mock_local_data_store_, Read(_))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_local_data_store_, Read(_)).WillRepeatedly(Return(false));
   auto callback = [this](const GetTpmStatusReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.enabled());
@@ -249,8 +235,7 @@ TEST_F(TpmManagerServiceTest, TakeOwnershipNoTpm) {
 }
 
 TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyReadFailure) {
-  EXPECT_CALL(mock_local_data_store_, Read(_))
-    .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_local_data_store_, Read(_)).WillRepeatedly(Return(false));
   auto callback = [this](const RemoveOwnerDependencyReply& reply) {
     EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
     Quit();
@@ -262,8 +247,7 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyReadFailure) {
 }
 
 TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyWriteFailure) {
-  EXPECT_CALL(mock_local_data_store_, Write(_))
-    .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_local_data_store_, Write(_)).WillRepeatedly(Return(false));
   auto callback = [this](const RemoveOwnerDependencyReply& reply) {
     EXPECT_EQ(STATUS_UNEXPECTED_DEVICE_ERROR, reply.status());
     Quit();
@@ -280,11 +264,9 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyNotCleared) {
   local_data.add_owner_dependency(kOwnerDependency);
   local_data.add_owner_dependency(kOtherDependency);
   EXPECT_CALL(mock_local_data_store_, Read(_))
-      .WillOnce(DoAll(SetArgPointee<0>(local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
   EXPECT_CALL(mock_local_data_store_, Write(_))
-      .WillOnce(DoAll(SaveArg<0>(&local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SaveArg<0>(&local_data), Return(true)));
   auto callback = [this, &local_data](const RemoveOwnerDependencyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(1, local_data.owner_dependency_size());
@@ -304,11 +286,9 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyCleared) {
   local_data.set_owner_password(kOwnerPassword);
   local_data.add_owner_dependency(kOwnerDependency);
   EXPECT_CALL(mock_local_data_store_, Read(_))
-      .WillOnce(DoAll(SetArgPointee<0>(local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
   EXPECT_CALL(mock_local_data_store_, Write(_))
-      .WillOnce(DoAll(SaveArg<0>(&local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SaveArg<0>(&local_data), Return(true)));
   auto callback = [this, &local_data](const RemoveOwnerDependencyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(0, local_data.owner_dependency_size());
@@ -326,11 +306,9 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyNotPresent) {
   local_data.set_owner_password(kOwnerPassword);
   local_data.add_owner_dependency(kOwnerDependency);
   EXPECT_CALL(mock_local_data_store_, Read(_))
-      .WillOnce(DoAll(SetArgPointee<0>(local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
   EXPECT_CALL(mock_local_data_store_, Write(_))
-      .WillOnce(DoAll(SaveArg<0>(&local_data),
-                      Return(true)));
+      .WillOnce(DoAll(SaveArg<0>(&local_data), Return(true)));
   auto callback = [this, &local_data](const RemoveOwnerDependencyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(1, local_data.owner_dependency_size());

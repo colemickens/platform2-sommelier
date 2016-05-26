@@ -73,17 +73,11 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   scoped_ptr<BlobParser> GetBlobParser() const override;
 
   // Mutators to inject custom mocks.
-  void set_tpm(Tpm* tpm) {
-    tpm_ = tpm;
-  }
+  void set_tpm(Tpm* tpm) { tpm_ = tpm; }
 
-  void set_tpm_state(TpmState* tpm_state) {
-    tpm_state_ = tpm_state;
-  }
+  void set_tpm_state(TpmState* tpm_state) { tpm_state_ = tpm_state; }
 
-  void set_tpm_utility(TpmUtility* tpm_utility) {
-    tpm_utility_ = tpm_utility;
-  }
+  void set_tpm_utility(TpmUtility* tpm_utility) { tpm_utility_ = tpm_utility; }
 
   void set_password_authorization_delegate(AuthorizationDelegate* delegate) {
     password_authorization_delegate_ = delegate;
@@ -101,9 +95,7 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
     policy_session_ = policy_session;
   }
 
-  void set_blob_parser(BlobParser* blob_parser) {
-    blob_parser_ = blob_parser;
-  }
+  void set_blob_parser(BlobParser* blob_parser) { blob_parser_ = blob_parser; }
 
  private:
   scoped_ptr<MockTpm> default_tpm_;

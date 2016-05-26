@@ -54,22 +54,22 @@ bool TpmNvramImpl::DefineNvram(uint32_t index, size_t length) {
     return false;
   }
   TSS_RESULT result;
-  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_DATASIZE,
-                                0, length);
+  result =
+      Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_DATASIZE, 0, length);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set size on NVRAM object: " << length;
     return false;
   }
   // Restrict to only one write.
-  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_PERMISSIONS,
-                                0, TPM_NV_PER_WRITEDEFINE);
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_PERMISSIONS, 0,
+                                TPM_NV_PER_WRITEDEFINE);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set PER_WRITEDEFINE on NVRAM object";
     return false;
   }
   // Restrict to writing only with owner authorization.
-  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_PERMISSIONS,
-                                0, TPM_NV_PER_OWNERWRITE);
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_PERMISSIONS, 0,
+                                TPM_NV_PER_OWNERWRITE);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set PER_OWNERWRITE on NVRAM object";
     return false;
@@ -118,7 +118,7 @@ bool TpmNvramImpl::WriteNvram(uint32_t index, const std::string& data) {
   }
   TSS_RESULT result = Tspi_NV_WriteValue(
       nv_handle, 0 /* offset */, data.size(),
-      reinterpret_cast<BYTE *>(const_cast<char*>(data.data())));
+      reinterpret_cast<BYTE*>(const_cast<char*>(data.data())));
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not write to NVRAM space: " << index;
     return false;
@@ -155,10 +155,8 @@ bool TpmNvramImpl::ReadNvram(uint32_t index, std::string* data) {
       return false;
     }
     CHECK_LE((offset + chunk_size), data->size());
-    data->replace(offset,
-                  chunk_size,
-                  reinterpret_cast<char*>(space_data.value()),
-                  chunk_size);
+    data->replace(offset, chunk_size,
+                  reinterpret_cast<char*>(space_data.value()), chunk_size);
     offset += chunk_size;
   }
   return true;
@@ -168,12 +166,9 @@ bool TpmNvramImpl::IsNvramDefined(uint32_t index, bool* defined) {
   CHECK(defined);
   uint32_t nv_list_data_length = 0;
   ScopedTssMemory nv_list_data(tpm_connection_.GetContext());
-  TSS_RESULT result = Tspi_TPM_GetCapability(tpm_connection_.GetTpm(),
-                                             TSS_TPMCAP_NV_LIST,
-                                             0,
-                                             NULL,
-                                             &nv_list_data_length,
-                                             nv_list_data.ptr());
+  TSS_RESULT result =
+      Tspi_TPM_GetCapability(tpm_connection_.GetTpm(), TSS_TPMCAP_NV_LIST, 0,
+                             NULL, &nv_list_data_length, nv_list_data.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
     return false;
@@ -196,12 +191,10 @@ bool TpmNvramImpl::IsNvramLocked(uint32_t index, bool* locked) {
   CHECK(locked);
   uint32_t nv_index_data_length = 0;
   ScopedTssMemory nv_index_data(tpm_connection_.GetContext());
-  TSS_RESULT result = Tspi_TPM_GetCapability(tpm_connection_.GetTpm(),
-                                             TSS_TPMCAP_NV_INDEX,
-                                             sizeof(index),
-                                             reinterpret_cast<BYTE*>(&index),
-                                             &nv_index_data_length,
-                                             nv_index_data.ptr());
+  TSS_RESULT result =
+      Tspi_TPM_GetCapability(tpm_connection_.GetTpm(), TSS_TPMCAP_NV_INDEX,
+                             sizeof(index), reinterpret_cast<BYTE*>(&index),
+                             &nv_index_data_length, nv_index_data.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
     return false;
@@ -211,9 +204,9 @@ bool TpmNvramImpl::IsNvramLocked(uint32_t index, bool* locked) {
   }
   // TPM_NV_DATA_PUBLIC->bWriteDefine is the second to last element in the
   // struct.
-  uint32_t* nv_data_public = reinterpret_cast<uint32_t*>(
-                               nv_index_data.value() + nv_index_data_length -
-                               (sizeof(uint32_t) + sizeof(TPM_BOOL)));
+  uint32_t* nv_data_public =
+      reinterpret_cast<uint32_t*>(nv_index_data.value() + nv_index_data_length -
+                                  (sizeof(uint32_t) + sizeof(TPM_BOOL)));
   *locked = (*nv_data_public != 0);
   return true;
 }
@@ -222,12 +215,10 @@ bool TpmNvramImpl::GetNvramSize(uint32_t index, size_t* size) {
   CHECK(size);
   UINT32 nv_index_data_length = 0;
   ScopedTssMemory nv_index_data(tpm_connection_.GetContext());
-  TSS_RESULT result = Tspi_TPM_GetCapability(tpm_connection_.GetTpm(),
-                                             TSS_TPMCAP_NV_INDEX,
-                                             sizeof(index),
-                                             reinterpret_cast<BYTE*>(&index),
-                                             &nv_index_data_length,
-                                             nv_index_data.ptr());
+  TSS_RESULT result =
+      Tspi_TPM_GetCapability(tpm_connection_.GetTpm(), TSS_TPMCAP_NV_INDEX,
+                             sizeof(index), reinterpret_cast<BYTE*>(&index),
+                             &nv_index_data_length, nv_index_data.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
     return false;
@@ -237,25 +228,21 @@ bool TpmNvramImpl::GetNvramSize(uint32_t index, size_t* size) {
   }
   // TPM_NV_DATA_PUBLIC->dataSize is the last element in the struct.
   uint32_t* nv_data_public = reinterpret_cast<uint32_t*>(
-                               nv_index_data.value() + nv_index_data_length -
-                               sizeof(uint32_t));
+      nv_index_data.value() + nv_index_data_length - sizeof(uint32_t));
   *size = htonl(*nv_data_public);
   return true;
 }
 
 bool TpmNvramImpl::InitializeNvramHandle(ScopedTssNvStore* nv_handle,
                                          uint32_t index) {
-
-  TSS_RESULT result = Tspi_Context_CreateObject(tpm_connection_.GetContext(),
-                                                TSS_OBJECT_TYPE_NV,
-                                                0,
-                                                nv_handle->ptr());
+  TSS_RESULT result = Tspi_Context_CreateObject(
+      tpm_connection_.GetContext(), TSS_OBJECT_TYPE_NV, 0, nv_handle->ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
     return false;
   }
-  result = Tspi_SetAttribUint32(
-      nv_handle->value(), TSS_TSPATTRIB_NV_INDEX, 0, index);
+  result = Tspi_SetAttribUint32(nv_handle->value(), TSS_TSPATTRIB_NV_INDEX, 0,
+                                index);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
     return false;
@@ -267,8 +254,7 @@ bool TpmNvramImpl::SetOwnerPolicy(ScopedTssNvStore* nv_handle) {
   trousers::ScopedTssPolicy policy_handle(tpm_connection_.GetContext());
   TSS_RESULT result;
   result = Tspi_Context_CreateObject(tpm_connection_.GetContext(),
-                                     TSS_OBJECT_TYPE_POLICY,
-                                     TSS_POLICY_USAGE,
+                                     TSS_OBJECT_TYPE_POLICY, TSS_POLICY_USAGE,
                                      policy_handle.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
@@ -279,16 +265,14 @@ bool TpmNvramImpl::SetOwnerPolicy(ScopedTssNvStore* nv_handle) {
     return false;
   }
   result = Tspi_Policy_SetSecret(
-      policy_handle,
-      TSS_SECRET_MODE_PLAIN,
-      owner_password.size(),
-      reinterpret_cast<BYTE *>(const_cast<char*>(owner_password.data())));
+      policy_handle, TSS_SECRET_MODE_PLAIN, owner_password.size(),
+      reinterpret_cast<BYTE*>(const_cast<char*>(owner_password.data())));
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
-  result = Tspi_Policy_AssignToObject(policy_handle.value(),
-                                      nv_handle->value());
+  result =
+      Tspi_Policy_AssignToObject(policy_handle.value(), nv_handle->value());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set NVRAM object policy.";
     return false;
@@ -297,10 +281,9 @@ bool TpmNvramImpl::SetOwnerPolicy(ScopedTssNvStore* nv_handle) {
 }
 
 bool TpmNvramImpl::SetCompositePcr0(ScopedTssPcrs* pcr_handle) {
-  TSS_RESULT result = Tspi_Context_CreateObject(tpm_connection_.GetContext(),
-                                                TSS_OBJECT_TYPE_PCRS,
-                                                TSS_PCRS_STRUCT_INFO_SHORT,
-                                                pcr_handle->ptr());
+  TSS_RESULT result = Tspi_Context_CreateObject(
+      tpm_connection_.GetContext(), TSS_OBJECT_TYPE_PCRS,
+      TSS_PCRS_STRUCT_INFO_SHORT, pcr_handle->ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not acquire PCR object handle";
     return false;
@@ -312,23 +295,19 @@ bool TpmNvramImpl::SetCompositePcr0(ScopedTssPcrs* pcr_handle) {
   }
   ScopedTssMemory pcr_value(tpm_connection_.GetContext());
   result = Tspi_TPM_PcrRead(tpm_connection_.GetTpmWithAuth(owner_password),
-                            kTpmBootPCR,
-                            &pcr_len,
-                            pcr_value.ptr());
+                            kTpmBootPCR, &pcr_len, pcr_value.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not read PCR0 value";
     return false;
   }
-  result = Tspi_PcrComposite_SetPcrValue(pcr_handle->value(),
-                                         kTpmBootPCR,
-                                         pcr_len,
-                                         pcr_value.value());
+  result = Tspi_PcrComposite_SetPcrValue(pcr_handle->value(), kTpmBootPCR,
+                                         pcr_len, pcr_value.value());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set value for PCR0 in PCR handle";
     return false;
   }
-  result = Tspi_PcrComposite_SetPcrLocality(pcr_handle->value(),
-                                            kTpmPCRLocality);
+  result =
+      Tspi_PcrComposite_SetPcrLocality(pcr_handle->value(), kTpmPCRLocality);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not set locality for PCR0 in PCR handle";
     return false;

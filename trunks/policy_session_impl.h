@@ -40,7 +40,7 @@ namespace trunks {
 // NOTE: StartBoundSession/StartUnboundSession should not be called before
 // TPM Ownership is taken. This is because starting a session uses the
 // SaltingKey, which is only created after ownership is taken.
-class TRUNKS_EXPORT PolicySessionImpl: public PolicySession {
+class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
  public:
   explicit PolicySessionImpl(const TrunksFactory& factory);
   // |session_type| specifies what type of session this is. It can only

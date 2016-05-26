@@ -46,24 +46,23 @@ class DBusServiceTest : public testing::Test {
     dbus::Bus::Options options;
     mock_bus_ = new NiceMock<dbus::MockBus>(options);
     dbus::ObjectPath path(kTpmManagerServicePath);
-    mock_exported_object_ = new NiceMock<dbus::MockExportedObject>(
-        mock_bus_.get(), path);
+    mock_exported_object_ =
+        new NiceMock<dbus::MockExportedObject>(mock_bus_.get(), path);
     ON_CALL(*mock_bus_, GetExportedObject(path))
         .WillByDefault(Return(mock_exported_object_.get()));
-    dbus_service_.reset(new DBusService(mock_bus_,
-                                        &mock_nvram_service_,
+    dbus_service_.reset(new DBusService(mock_bus_, &mock_nvram_service_,
                                         &mock_ownership_service_));
-    dbus_service_->Register(brillo::dbus_utils::AsyncEventSequencer::
-                                GetDefaultCompletionAction());
+    dbus_service_->Register(
+        brillo::dbus_utils::AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
-  template<typename RequestProtobufType, typename ReplyProtobufType>
+  template <typename RequestProtobufType, typename ReplyProtobufType>
   void ExecuteMethod(const std::string& method_name,
                      const RequestProtobufType& request,
                      ReplyProtobufType* reply,
                      const std::string& interface) {
-    std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name,
-                                                              interface);
+    std::unique_ptr<dbus::MethodCall> call =
+        CreateMethodCall(method_name, interface);
     dbus::MessageWriter writer(call.get());
     writer.AppendProtoAsArrayOfBytes(request);
     auto response = brillo::dbus_utils::testing::CallMethod(
@@ -74,9 +73,10 @@ class DBusServiceTest : public testing::Test {
 
  protected:
   std::unique_ptr<dbus::MethodCall> CreateMethodCall(
-      const std::string& method_name, const std::string& interface) {
-    std::unique_ptr<dbus::MethodCall> call(new dbus::MethodCall(
-        interface, method_name));
+      const std::string& method_name,
+      const std::string& interface) {
+    std::unique_ptr<dbus::MethodCall> call(
+        new dbus::MethodCall(interface, method_name));
     call->SetSerial(1);
     return call;
   }
@@ -90,8 +90,8 @@ class DBusServiceTest : public testing::Test {
 
 TEST_F(DBusServiceTest, CopyableCallback) {
   EXPECT_CALL(mock_ownership_service_, GetTpmStatus(_, _))
-      .WillOnce(WithArgs<1>(Invoke([](
-          const TpmOwnershipInterface::GetTpmStatusCallback& callback) {
+      .WillOnce(WithArgs<1>(Invoke(
+          [](const TpmOwnershipInterface::GetTpmStatusCallback& callback) {
             // Copy the callback, then call the original.
             GetTpmStatusReply reply;
             base::Closure copy = base::Bind(callback, reply);
@@ -105,19 +105,19 @@ TEST_F(DBusServiceTest, CopyableCallback) {
 TEST_F(DBusServiceTest, GetTpmStatus) {
   GetTpmStatusRequest request;
   EXPECT_CALL(mock_ownership_service_, GetTpmStatus(_, _))
-      .WillOnce(Invoke([](
-          const GetTpmStatusRequest& request,
-          const TpmOwnershipInterface::GetTpmStatusCallback& callback) {
-        GetTpmStatusReply reply;
-        reply.set_status(STATUS_SUCCESS);
-        reply.set_enabled(true);
-        reply.set_owned(true);
-        reply.set_dictionary_attack_counter(3);
-        reply.set_dictionary_attack_threshold(4);
-        reply.set_dictionary_attack_lockout_in_effect(true);
-        reply.set_dictionary_attack_lockout_seconds_remaining(5);
-        callback.Run(reply);
-      }));
+      .WillOnce(Invoke(
+          [](const GetTpmStatusRequest& request,
+             const TpmOwnershipInterface::GetTpmStatusCallback& callback) {
+            GetTpmStatusReply reply;
+            reply.set_status(STATUS_SUCCESS);
+            reply.set_enabled(true);
+            reply.set_owned(true);
+            reply.set_dictionary_attack_counter(3);
+            reply.set_dictionary_attack_threshold(4);
+            reply.set_dictionary_attack_lockout_in_effect(true);
+            reply.set_dictionary_attack_lockout_seconds_remaining(5);
+            callback.Run(reply);
+          }));
   GetTpmStatusReply reply;
   ExecuteMethod(kGetTpmStatus, request, &reply, kTpmOwnershipInterface);
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -131,13 +131,13 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
 
 TEST_F(DBusServiceTest, TakeOwnership) {
   EXPECT_CALL(mock_ownership_service_, TakeOwnership(_, _))
-      .WillOnce(Invoke([](
-          const TakeOwnershipRequest& request,
-          const TpmOwnershipInterface::TakeOwnershipCallback& callback) {
-        TakeOwnershipReply reply;
-        reply.set_status(STATUS_SUCCESS);
-        callback.Run(reply);
-      }));
+      .WillOnce(Invoke(
+          [](const TakeOwnershipRequest& request,
+             const TpmOwnershipInterface::TakeOwnershipCallback& callback) {
+            TakeOwnershipReply reply;
+            reply.set_status(STATUS_SUCCESS);
+            callback.Run(reply);
+          }));
   TakeOwnershipRequest request;
   TakeOwnershipReply reply;
   ExecuteMethod(kTakeOwnership, request, &reply, kTpmOwnershipInterface);
@@ -151,8 +151,8 @@ TEST_F(DBusServiceTest, RemoveOwnerDependency) {
   EXPECT_CALL(mock_ownership_service_, RemoveOwnerDependency(_, _))
       .WillOnce(Invoke([&owner_dependency](
           const RemoveOwnerDependencyRequest& request,
-          const TpmOwnershipInterface::RemoveOwnerDependencyCallback& callback)
-      {
+          const TpmOwnershipInterface::RemoveOwnerDependencyCallback&
+              callback) {
         EXPECT_TRUE(request.has_owner_dependency());
         EXPECT_EQ(owner_dependency, request.owner_dependency());
         RemoveOwnerDependencyReply reply;
@@ -160,9 +160,7 @@ TEST_F(DBusServiceTest, RemoveOwnerDependency) {
         callback.Run(reply);
       }));
   RemoveOwnerDependencyReply reply;
-  ExecuteMethod(kRemoveOwnerDependency,
-                request,
-                &reply,
+  ExecuteMethod(kRemoveOwnerDependency, request, &reply,
                 kTpmOwnershipInterface);
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
 }

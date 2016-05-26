@@ -73,6 +73,7 @@ from __future__ import print_function
 
 import argparse
 import re
+import subprocess
 
 import union_selectors
 
@@ -2066,6 +2067,10 @@ def GenerateImplementation(types, structs, typemap, commands):
   out_file.close()
 
 
+def FormatFile(filename):
+    subprocess.call(['clang-format', '-i', '-style=file', filename])
+
+
 def main():
   """A main function.
 
@@ -2086,6 +2091,8 @@ def main():
   commands = command_parser.Parse()
   GenerateHeader(types, constants, structs, defines, typemap, commands)
   GenerateImplementation(types, structs, typemap, commands)
+  FormatFile(_OUTPUT_FILE_H)
+  FormatFile(_OUTPUT_FILE_CC)
   print('Processed %d commands.' % len(commands))
 
 

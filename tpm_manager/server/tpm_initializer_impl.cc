@@ -41,8 +41,7 @@ namespace tpm_manager {
 
 TpmInitializerImpl::TpmInitializerImpl(LocalDataStore* local_data_store,
                                        TpmStatus* tpm_status)
-    : local_data_store_(local_data_store),
-      tpm_status_(tpm_status) {}
+    : local_data_store_(local_data_store), tpm_status_(tpm_status) {}
 
 bool TpmInitializerImpl::InitializeTpm() {
   if (tpm_status_->IsTpmOwned() && !TestTpmAuth(kDefaultOwnerPassword)) {
@@ -54,8 +53,7 @@ bool TpmInitializerImpl::InitializeTpm() {
   if (tpm_handle == 0) {
     return false;
   }
-  if (!InitializeEndorsementKey(tpm_handle) ||
-      !TakeOwnership(tpm_handle) ||
+  if (!InitializeEndorsementKey(tpm_handle) || !TakeOwnership(tpm_handle) ||
       !InitializeSrk(tpm_handle)) {
     return false;
   }
@@ -65,7 +63,7 @@ bool TpmInitializerImpl::InitializeTpm() {
   }
   LocalData local_data;
   local_data.clear_owner_dependency();
-  for (auto value: kInitialTpmOwnerDependencies) {
+  for (auto value : kInitialTpmOwnerDependencies) {
     local_data.add_owner_dependency(value);
   }
   local_data.set_owner_password(owner_password);
@@ -81,9 +79,7 @@ bool TpmInitializerImpl::InitializeTpm() {
 
 bool TpmInitializerImpl::InitializeEndorsementKey(TSS_HTPM tpm_handle) {
   trousers::ScopedTssKey local_key_handle(tpm_connection_.GetContext());
-  TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(tpm_handle,
-                                                    false,
-                                                    nullptr,
+  TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(tpm_handle, false, nullptr,
                                                     local_key_handle.ptr());
   if (TPM_ERROR(result) == TPM_SUCCESS) {
     // In this case the EK already exists, so we can return true here.
@@ -91,16 +87,14 @@ bool TpmInitializerImpl::InitializeEndorsementKey(TSS_HTPM tpm_handle) {
   }
   // At this point the EK does not exist, so we create it.
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_SIZE_2048;
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(tpm_connection_.GetContext(),
-                                                   TSS_OBJECT_TYPE_RSAKEY,
-                                                   init_flags,
-                                                   local_key_handle.ptr()))) {
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(
+                    tpm_connection_.GetContext(), TSS_OBJECT_TYPE_RSAKEY,
+                    init_flags, local_key_handle.ptr()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
-  if (TPM_ERROR(result = Tspi_TPM_CreateEndorsementKey(tpm_handle,
-                                                       local_key_handle,
-                                                       NULL))) {
+  if (TPM_ERROR(result = Tspi_TPM_CreateEndorsementKey(
+                    tpm_handle, local_key_handle, NULL))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_CreateEndorsementKey";
     return false;
   }
@@ -115,26 +109,23 @@ bool TpmInitializerImpl::TakeOwnership(TSS_HTPM tpm_handle) {
   TSS_RESULT result;
   trousers::ScopedTssKey srk_handle(tpm_connection_.GetContext());
   TSS_FLAG init_flags = TSS_KEY_TSP_SRK | TSS_KEY_AUTHORIZATION;
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(tpm_connection_.GetContext(),
-                                                   TSS_OBJECT_TYPE_RSAKEY,
-                                                   init_flags,
-                                                   srk_handle.ptr()))) {
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(
+                    tpm_connection_.GetContext(), TSS_OBJECT_TYPE_RSAKEY,
+                    init_flags, srk_handle.ptr()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
   TSS_HPOLICY srk_usage_policy;
-  if (TPM_ERROR(result = Tspi_GetPolicyObject(srk_handle,
-                                              TSS_POLICY_USAGE,
+  if (TPM_ERROR(result = Tspi_GetPolicyObject(srk_handle, TSS_POLICY_USAGE,
                                               &srk_usage_policy))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
     return false;
   }
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(
-      srk_usage_policy,
-      TSS_SECRET_MODE_PLAIN,
-      strlen(kWellKnownSrkSecret),
-      const_cast<BYTE *>(reinterpret_cast<const BYTE *>(
-          kWellKnownSrkSecret))))) {
+                    srk_usage_policy, TSS_SECRET_MODE_PLAIN,
+                    strlen(kWellKnownSrkSecret),
+                    const_cast<BYTE*>(
+                        reinterpret_cast<const BYTE*>(kWellKnownSrkSecret))))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
@@ -152,8 +143,8 @@ bool TpmInitializerImpl::TakeOwnership(TSS_HTPM tpm_handle) {
             (result == (TSS_LAYER_TDDL | TDDL_E_IOERROR))) &&
            (retry_count < kMaxOwnershipTimeoutRetries));
   if (result) {
-    TPM_LOG(ERROR, result)
-        << "Error calling Tspi_TPM_TakeOwnership, attempts: " << retry_count;
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_TakeOwnership, attempts: "
+                           << retry_count;
     return false;
   }
   return true;
@@ -164,34 +155,28 @@ bool TpmInitializerImpl::InitializeSrk(TSS_HTPM tpm_handle) {
   trousers::ScopedTssKey srk_handle(tpm_connection_.GetContext());
   TSS_UUID SRK_UUID = TSS_UUID_SRK;
   if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(
-      tpm_connection_.GetContext(),
-      TSS_PS_TYPE_SYSTEM,
-      SRK_UUID,
-      srk_handle.ptr()))) {
+                    tpm_connection_.GetContext(), TSS_PS_TYPE_SYSTEM, SRK_UUID,
+                    srk_handle.ptr()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_LoadKeyByUUID";
     return false;
   }
 
   trousers::ScopedTssPolicy policy_handle(tpm_connection_.GetContext());
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(tpm_connection_.GetContext(),
-                                                   TSS_OBJECT_TYPE_POLICY,
-                                                   TSS_POLICY_USAGE,
-                                                   policy_handle.ptr()))) {
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(
+                    tpm_connection_.GetContext(), TSS_OBJECT_TYPE_POLICY,
+                    TSS_POLICY_USAGE, policy_handle.ptr()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
   BYTE new_password[0];
-  if (TPM_ERROR(result = Tspi_Policy_SetSecret(policy_handle,
-                                               TSS_SECRET_MODE_PLAIN,
-                                               0,
-                                               new_password))) {
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
+                    policy_handle, TSS_SECRET_MODE_PLAIN, 0, new_password))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_ChangeAuth(srk_handle,
-                                         tpm_handle,
-                                         policy_handle))) {
+  if (TPM_ERROR(result =
+                    Tspi_ChangeAuth(srk_handle, tpm_handle, policy_handle))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_ChangeAuth";
     return false;
   }
@@ -204,9 +189,8 @@ bool TpmInitializerImpl::InitializeSrk(TSS_HTPM tpm_handle) {
   }
   // If the SRK is restricted, we unrestrict it.
   if (is_srk_restricted) {
-    if (TPM_ERROR(result = Tspi_TPM_SetStatus(tpm_handle,
-                                              TSS_TPMSTATUS_DISABLEPUBSRKREAD,
-                                              false))) {
+    if (TPM_ERROR(result = Tspi_TPM_SetStatus(
+                      tpm_handle, TSS_TPMSTATUS_DISABLEPUBSRKREAD, false))) {
       TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_SetStatus";
       return false;
     }
@@ -215,21 +199,21 @@ bool TpmInitializerImpl::InitializeSrk(TSS_HTPM tpm_handle) {
 }
 
 bool TpmInitializerImpl::ChangeOwnerPassword(
-    TSS_HTPM tpm_handle, const std::string& owner_password) {
+    TSS_HTPM tpm_handle,
+    const std::string& owner_password) {
   TSS_RESULT result;
   trousers::ScopedTssPolicy policy_handle(tpm_connection_.GetContext());
-  if (TPM_ERROR(result = Tspi_Context_CreateObject(tpm_connection_.GetContext(),
-                                                   TSS_OBJECT_TYPE_POLICY,
-                                                   TSS_POLICY_USAGE,
-                                                   policy_handle.ptr()))) {
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(
+                    tpm_connection_.GetContext(), TSS_OBJECT_TYPE_POLICY,
+                    TSS_POLICY_USAGE, policy_handle.ptr()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
   std::string mutable_owner_password(owner_password);
-  if (TPM_ERROR(result = Tspi_Policy_SetSecret(policy_handle,
-      TSS_SECRET_MODE_PLAIN,
-      owner_password.size(),
-      reinterpret_cast<BYTE *>(string_as_array(&mutable_owner_password))))) {
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
+                    policy_handle, TSS_SECRET_MODE_PLAIN, owner_password.size(),
+                    reinterpret_cast<BYTE*>(
+                        string_as_array(&mutable_owner_password))))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
@@ -250,8 +234,7 @@ bool TpmInitializerImpl::TestTpmAuth(const std::string& owner_password) {
   // Call Tspi_TPM_GetStatus to test the |owner_password| provided.
   TSS_RESULT result;
   TSS_BOOL current_status = false;
-  if (TPM_ERROR(result = Tspi_TPM_GetStatus(tpm_handle,
-                                            TSS_TPMSTATUS_DISABLED,
+  if (TPM_ERROR(result = Tspi_TPM_GetStatus(tpm_handle, TSS_TPMSTATUS_DISABLED,
                                             &current_status))) {
     return false;
   }

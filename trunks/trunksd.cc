@@ -69,17 +69,17 @@ void InitMinijailSandbox() {
 
 }  // namespace
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
-  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int flags = brillo::kLogToSyslog;
   if (cl->HasSwitch("log_to_stderr")) {
     flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(flags);
 
-  // Create a service instance before anything else so objects like
-  // AtExitManager exist.
+// Create a service instance before anything else so objects like
+// AtExitManager exist.
 #if defined(USE_BINDER_IPC)
   trunks::TrunksBinderService service;
 #else
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
   //         --> ResourceManager
   //         --> TpmHandle
   //         --> [TPM]
-  trunks::CommandTransceiver *low_level_transceiver;
+  trunks::CommandTransceiver* low_level_transceiver;
   if (cl->HasSwitch("ftdi")) {
     LOG(INFO) << "Sending commands to FTDI SPI.";
     low_level_transceiver = new trunks::TrunksFtdiSpi();

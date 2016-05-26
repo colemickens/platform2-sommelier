@@ -41,103 +41,80 @@ void DBusService::Register(const CompletionAction& callback) {
       dbus_object_.AddOrGetInterface(kTpmOwnershipInterface);
 
   ownership_dbus_interface->AddMethodHandler(
-      kGetTpmStatus,
-      base::Unretained(this),
+      kGetTpmStatus, base::Unretained(this),
       &DBusService::HandleOwnershipDBusMethod<
-          GetTpmStatusRequest,
-          GetTpmStatusReply,
+          GetTpmStatusRequest, GetTpmStatusReply,
           &TpmOwnershipInterface::GetTpmStatus>);
 
   ownership_dbus_interface->AddMethodHandler(
-      kTakeOwnership,
-      base::Unretained(this),
+      kTakeOwnership, base::Unretained(this),
       &DBusService::HandleOwnershipDBusMethod<
-          TakeOwnershipRequest,
-          TakeOwnershipReply,
+          TakeOwnershipRequest, TakeOwnershipReply,
           &TpmOwnershipInterface::TakeOwnership>);
 
   ownership_dbus_interface->AddMethodHandler(
-      kRemoveOwnerDependency,
-      base::Unretained(this),
+      kRemoveOwnerDependency, base::Unretained(this),
       &DBusService::HandleOwnershipDBusMethod<
-          RemoveOwnerDependencyRequest,
-          RemoveOwnerDependencyReply,
+          RemoveOwnerDependencyRequest, RemoveOwnerDependencyReply,
           &TpmOwnershipInterface::RemoveOwnerDependency>);
 
   brillo::dbus_utils::DBusInterface* nvram_dbus_interface =
       dbus_object_.AddOrGetInterface(kTpmNvramInterface);
 
   nvram_dbus_interface->AddMethodHandler(
-      kDefineNvram,
-      base::Unretained(this),
-      &DBusService::HandleNvramDBusMethod<
-          DefineNvramRequest,
-          DefineNvramReply,
-          &TpmNvramInterface::DefineNvram>);
+      kDefineNvram, base::Unretained(this),
+      &DBusService::HandleNvramDBusMethod<DefineNvramRequest, DefineNvramReply,
+                                          &TpmNvramInterface::DefineNvram>);
 
   nvram_dbus_interface->AddMethodHandler(
-      kDestroyNvram,
-      base::Unretained(this),
-      &DBusService::HandleNvramDBusMethod<
-          DestroyNvramRequest,
-          DestroyNvramReply,
-          &TpmNvramInterface::DestroyNvram>);
+      kDestroyNvram, base::Unretained(this),
+      &DBusService::HandleNvramDBusMethod<DestroyNvramRequest,
+                                          DestroyNvramReply,
+                                          &TpmNvramInterface::DestroyNvram>);
 
   nvram_dbus_interface->AddMethodHandler(
-      kWriteNvram,
-      base::Unretained(this),
-      &DBusService::HandleNvramDBusMethod<
-          WriteNvramRequest,
-          WriteNvramReply,
-          &TpmNvramInterface::WriteNvram>);
+      kWriteNvram, base::Unretained(this),
+      &DBusService::HandleNvramDBusMethod<WriteNvramRequest, WriteNvramReply,
+                                          &TpmNvramInterface::WriteNvram>);
 
   nvram_dbus_interface->AddMethodHandler(
-      kReadNvram,
-      base::Unretained(this),
-      &DBusService::HandleNvramDBusMethod<
-          ReadNvramRequest,
-          ReadNvramReply,
-          &TpmNvramInterface::ReadNvram>);
+      kReadNvram, base::Unretained(this),
+      &DBusService::HandleNvramDBusMethod<ReadNvramRequest, ReadNvramReply,
+                                          &TpmNvramInterface::ReadNvram>);
 
   nvram_dbus_interface->AddMethodHandler(
-      kIsNvramDefined,
-      base::Unretained(this),
-      &DBusService::HandleNvramDBusMethod<
-          IsNvramDefinedRequest,
-          IsNvramDefinedReply,
-          &TpmNvramInterface::IsNvramDefined>);
+      kIsNvramDefined, base::Unretained(this),
+      &DBusService::HandleNvramDBusMethod<IsNvramDefinedRequest,
+                                          IsNvramDefinedReply,
+                                          &TpmNvramInterface::IsNvramDefined>);
 
   nvram_dbus_interface->AddMethodHandler(
-      kIsNvramLocked,
-      base::Unretained(this),
-      &DBusService::HandleNvramDBusMethod<
-          IsNvramLockedRequest,
-          IsNvramLockedReply,
-          &TpmNvramInterface::IsNvramLocked>);
+      kIsNvramLocked, base::Unretained(this),
+      &DBusService::HandleNvramDBusMethod<IsNvramLockedRequest,
+                                          IsNvramLockedReply,
+                                          &TpmNvramInterface::IsNvramLocked>);
 
   nvram_dbus_interface->AddMethodHandler(
-      kGetNvramSize,
-      base::Unretained(this),
-      &DBusService::HandleNvramDBusMethod<
-          GetNvramSizeRequest,
-          GetNvramSizeReply,
-          &TpmNvramInterface::GetNvramSize>);
+      kGetNvramSize, base::Unretained(this),
+      &DBusService::HandleNvramDBusMethod<GetNvramSizeRequest,
+                                          GetNvramSizeReply,
+                                          &TpmNvramInterface::GetNvramSize>);
 
   dbus_object_.RegisterAsync(callback);
 }
 
-template<typename RequestProtobufType,
-         typename ReplyProtobufType,
-         DBusService::HandlerFunction<RequestProtobufType,
-                                      ReplyProtobufType,
-                                      TpmNvramInterface> func>
+template <typename RequestProtobufType,
+          typename ReplyProtobufType,
+          DBusService::HandlerFunction<RequestProtobufType,
+                                       ReplyProtobufType,
+                                       TpmNvramInterface> func>
 void DBusService::HandleNvramDBusMethod(
     std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
     const RequestProtobufType& request) {
   // Convert |response| to a shared_ptr so |nvram_service_| can safely copy the
   // callback.
-  using SharedResponsePointer = std::shared_ptr<
-      DBusMethodResponse<const ReplyProtobufType&>>;
+  using SharedResponsePointer =
+      std::shared_ptr<DBusMethodResponse<const ReplyProtobufType&>>;
   // A callback that sends off the reply protobuf.
   auto callback = [](const SharedResponsePointer& response,
                      const ReplyProtobufType& reply) {
@@ -148,18 +125,18 @@ void DBusService::HandleNvramDBusMethod(
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }
 
-template<typename RequestProtobufType,
-         typename ReplyProtobufType,
-         DBusService::HandlerFunction<RequestProtobufType,
-                                      ReplyProtobufType,
-                                      TpmOwnershipInterface> func>
+template <typename RequestProtobufType,
+          typename ReplyProtobufType,
+          DBusService::HandlerFunction<RequestProtobufType,
+                                       ReplyProtobufType,
+                                       TpmOwnershipInterface> func>
 void DBusService::HandleOwnershipDBusMethod(
     std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
     const RequestProtobufType& request) {
   // Convert |response| to a shared_ptr so |ownership_service_| can safely
   // copy the callback.
-  using SharedResponsePointer = std::shared_ptr<
-      DBusMethodResponse<const ReplyProtobufType&>>;
+  using SharedResponsePointer =
+      std::shared_ptr<DBusMethodResponse<const ReplyProtobufType&>>;
   // A callback that sends off the reply protobuf.
   auto callback = [](const SharedResponsePointer& response,
                      const ReplyProtobufType& reply) {

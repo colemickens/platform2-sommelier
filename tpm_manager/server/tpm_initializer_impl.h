@@ -44,8 +44,7 @@ class TpmStatus;
 class TpmInitializerImpl : public TpmInitializer {
  public:
   // Does not take ownership of |local_data_store| or |tpm_status|.
-  TpmInitializerImpl(LocalDataStore* local_data_store,
-                     TpmStatus* tpm_status);
+  TpmInitializerImpl(LocalDataStore* local_data_store, TpmStatus* tpm_status);
   ~TpmInitializerImpl() override = default;
 
   // TpmInitializer methods.

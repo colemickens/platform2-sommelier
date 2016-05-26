@@ -60,17 +60,14 @@ void BackgroundCommandTransceiver::SendCommand(
     const std::string& command,
     const ResponseCallback& callback) {
   if (task_runner_.get()) {
-    ResponseCallback background_callback = base::Bind(
-        PostCallbackToTaskRunner,
-        callback,
-        base::ThreadTaskRunnerHandle::Get());
+    ResponseCallback background_callback =
+        base::Bind(PostCallbackToTaskRunner, callback,
+                   base::ThreadTaskRunnerHandle::Get());
     // Use SendCommandTask instead of binding to next_transceiver_ directly to
     // leverage weak pointer semantics.
-    base::Closure task = base::Bind(
-        &BackgroundCommandTransceiver::SendCommandTask,
-        GetWeakPtr(),
-        command,
-        background_callback);
+    base::Closure task =
+        base::Bind(&BackgroundCommandTransceiver::SendCommandTask, GetWeakPtr(),
+                   command, background_callback);
     task_runner_->PostNonNestableTask(FROM_HERE, task);
   } else {
     next_transceiver_->SendCommand(command, callback);
@@ -87,11 +84,9 @@ std::string BackgroundCommandTransceiver::SendCommandAndWait(
         base::Bind(&AssignAndSignal, &response, &response_ready);
     // Use SendCommandTask instead of binding to next_transceiver_ directly to
     // leverage weak pointer semantics.
-    base::Closure task = base::Bind(
-        &BackgroundCommandTransceiver::SendCommandTask,
-        GetWeakPtr(),
-        command,
-        callback);
+    base::Closure task =
+        base::Bind(&BackgroundCommandTransceiver::SendCommandTask, GetWeakPtr(),
+                   command, callback);
     task_runner_->PostNonNestableTask(FROM_HERE, task);
     response_ready.Wait();
     return response;
