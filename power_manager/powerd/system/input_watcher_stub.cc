@@ -22,6 +22,10 @@ void InputWatcherStub::NotifyObserversAboutLidState() {
   FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state_));
 }
 
+void InputWatcherStub::NotifyObserversAboutTabletMode() {
+  FOR_EACH_OBSERVER(InputObserver, observers_, OnTabletModeEvent(tablet_mode_));
+}
+
 void InputWatcherStub::NotifyObserversAboutPowerButtonEvent(ButtonState state) {
   FOR_EACH_OBSERVER(InputObserver, observers_, OnPowerButtonEvent(state));
 }

@@ -121,6 +121,13 @@ void InputController::OnLidEvent(LidState state) {
 
 void InputController::OnTabletModeEvent(TabletMode mode) {
   tablet_mode_ = mode;
+  InputEvent proto;
+  proto.set_type(tablet_mode_ == TABLET_MODE_ON ?
+                 InputEvent_Type_TABLET_MODE_ON :
+                 InputEvent_Type_TABLET_MODE_OFF);
+  proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
+  dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+
   // TODO(wnhuang): Update wifi transmit power if needed.
 }
 

@@ -161,6 +161,26 @@ TEST_F(InputControllerTest, LidEvents) {
   dbus_sender_.ClearSentSignals();
 }
 
+TEST_F(InputControllerTest, TabletModeEvents) {
+  Init();
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  dbus_sender_.ClearSentSignals();
+
+  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  input_watcher_.set_tablet_mode(TABLET_MODE_ON);
+  input_watcher_.NotifyObserversAboutTabletMode();
+  EXPECT_EQ(InputEvent_Type_TABLET_MODE_ON, GetInputEventSignalType());
+  EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
+  dbus_sender_.ClearSentSignals();
+
+  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  input_watcher_.set_tablet_mode(TABLET_MODE_OFF);
+  input_watcher_.NotifyObserversAboutTabletMode();
+  EXPECT_EQ(InputEvent_Type_TABLET_MODE_OFF, GetInputEventSignalType());
+  EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
+  dbus_sender_.ClearSentSignals();
+}
+
 TEST_F(InputControllerTest, PowerButtonEvents) {
   prefs_.SetInt64(kExternalDisplayOnlyPref, 1);
   std::vector<system::DisplayInfo> displays(1, system::DisplayInfo());

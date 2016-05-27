@@ -19,6 +19,7 @@ class InputWatcherStub : public InputWatcherInterface {
   virtual ~InputWatcherStub();
 
   void set_lid_state(LidState state) { lid_state_ = state; }
+  void set_tablet_mode(TabletMode tablet_mode) { tablet_mode_ = tablet_mode; }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
   }
@@ -26,6 +27,7 @@ class InputWatcherStub : public InputWatcherInterface {
 
   // Notifies registered observers about various events.
   void NotifyObserversAboutLidState();
+  void NotifyObserversAboutTabletMode();
   void NotifyObserversAboutPowerButtonEvent(ButtonState state);
   void NotifyObserversAboutHoverState(bool hovering);
 
