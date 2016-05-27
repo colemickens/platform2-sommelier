@@ -578,7 +578,7 @@ bool PerfParser::MapForkEvent(const PerfDataProto_ForkEvent& event) {
     return true;
 
   if (!GetOrCreateProcessMapper(pid, event.ppid()).second) {
-    DLOG(INFO) << "Found an existing process mapper with pid: " << pid;
+    DVLOG(1) << "Found an existing process mapper with pid: " << pid;
   }
 
   return true;

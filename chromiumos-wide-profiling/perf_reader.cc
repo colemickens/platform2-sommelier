@@ -245,7 +245,7 @@ bool PerfReader::ReadFromData(DataReader* data) {
 
   // Check if it is normal perf data.
   if (header_.size == sizeof(header_)) {
-    DLOG(INFO) << "Perf data is in normal format.";
+    DVLOG(1) << "Perf data is in normal format.";
 
     // Make sure sections are within the size of the file. This check prevents
     // more obscure messages later when attempting to read from one of these

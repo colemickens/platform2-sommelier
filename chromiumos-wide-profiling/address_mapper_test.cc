@@ -99,8 +99,8 @@ class AddressMapperTest : public ::testing::Test {
   // Maps a range using the AddressMapper and makes sure that it was successful.
   // Uses all fields of |range|, including id and base_offset.
   bool MapRange(const Range& range, bool remove_old_mappings) {
-    LOG(INFO) << "Mapping range at " << std::hex << range.addr
-              << " with length of " << range.size << " and id " << range.id;
+    VLOG(1) << "Mapping range at " << std::hex << range.addr
+            << " with length of " << range.size << " and id " << range.id;
     return mapper_->MapWithID(range.addr, range.size, range.id,
                               range.base_offset, remove_old_mappings);
   }
@@ -112,8 +112,8 @@ class AddressMapperTest : public ::testing::Test {
   void TestMappedRange(const Range& range, uint64_t expected_mapped_addr) {
     uint64_t mapped_addr = UINT64_MAX;
 
-    LOG(INFO) << "Testing range at " << std::hex << range.addr
-              << " with length of " << std::hex << range.size;
+    VLOG(1) << "Testing range at " << std::hex << range.addr
+            << " with length of " << std::hex << range.size;
 
     // Check address at the beginning of the range and at subsequent intervals.
     for (int i = 0; i < kNumRangeTestIntervals; ++i) {

@@ -133,6 +133,7 @@ class VLog : public LogBase {
 #define CHECK_EQ(x, y) if (!(x == y)) LOG(FATAL) << #x << " == " << #y \
                                                  << "failed"
 #define DLOG(x) LOG(x)
+#define DVLOG(x) VLOG(x)
 #define DCHECK(x) CHECK(x)
 
 #endif  // CHROMIUMOS_WIDE_PROFILING_MYBASE_BASE_LOGGING_H_
