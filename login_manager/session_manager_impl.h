@@ -64,8 +64,8 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
-  // ARC android-data directory path.
-  static const base::FilePath::CharType kFixedAndroidDataDir[];
+  // Name of android-data directory.
+  static const base::FilePath::CharType kAndroidDataDirName[];
 
   // ARC data directories to be deleted on opt-out.
   static const base::FilePath::CharType kArcDataDir[];
@@ -194,7 +194,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StopContainer(const std::string& name, Error* error);
 
   bool CheckArcAvailability();
-  void StartArcInstance(const std::string& socket_path, Error* error);
+  void StartArcInstance(const std::string& user_id, Error* error);
   void StopArcInstance(Error* error);
   base::TimeTicks GetArcStartTime(Error* error);
   void RemoveArcData(Error* error);
@@ -224,6 +224,13 @@ class SessionManagerImpl : public SessionManagerInterface,
   // stored for the future in the provided user's NSSDB.
   void ImportValidateAndStoreGeneratedKey(const std::string& username,
                                           const base::FilePath& temp_key_file);
+
+  // Normalizes a user ID in the case of a legacy email address.
+  // Returns true on success, false otherwise. In case of an error, some
+  // appropriate message is set to |error|.
+  static bool NormalizeUserId(const std::string& user_id,
+                              std::string* actual_user_id_out,
+                              Error* error_out);
 
   // Checks if string looks like valid cryptohome user id.
   static bool ValidateUserId(const std::string& user_id);

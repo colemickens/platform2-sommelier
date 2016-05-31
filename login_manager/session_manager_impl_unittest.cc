@@ -63,6 +63,7 @@ using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
+using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::_;
 
@@ -800,9 +801,6 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart) {
-  // An arbitrary path. Doesn't need to exist or be accessible.
-  const char kSocketPath[] = "/tmp/arc.sock";
-
   ExpectAndRunStartSession(kSaneEmail);
   bool available = impl_.CheckArcAvailability();
   SessionManagerImpl::Error start_time_error;
@@ -817,9 +815,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(
           StrEq(SessionManagerImpl::kArcStartSignal),
-          ElementsAre(
-              std::string("ANDROID_DATA_DIR=") +
-              SessionManagerImpl::kFixedAndroidDataDir)))
+          ElementsAre(StartsWith("ANDROID_DATA_DIR="))))
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -841,7 +837,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                       ElementsAre()))
       .Times(1);
-  impl_.StartArcInstance(kSocketPath, &error_);
+  impl_.StartArcInstance(kSaneEmail, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
   impl_.StopArcInstance(&error_);
@@ -849,25 +845,28 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   EXPECT_FALSE(android_container_.running());
 #else
   EXPECT_FALSE(available);
-  impl_.StartArcInstance(kSocketPath, &error_);
+  impl_.StartArcInstance(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
 #endif
 }
 
+TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
+#if USE_ARC
+  impl_.StartArcInstance(kSaneEmail, &error_);
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
+#endif
+}
+
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
 #if USE_ARC
-  // An arbitrary path. Doesn't need to exist or be accessible.
-  const char kSocketPath[] = "/tmp/arc.sock";
-
   ExpectAndRunStartSession(kSaneEmail);
 
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
-                      ElementsAre(std::string("ANDROID_DATA_DIR=") +
-                                  SessionManagerImpl::kFixedAndroidDataDir)))
+                      ElementsAre(StartsWith("ANDROID_DATA_DIR="))))
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -894,7 +893,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                       ElementsAre()))
       .Times(1);
-  impl_.StartArcInstance(kSocketPath, &error_);
+  impl_.StartArcInstance(kSaneEmail, &error_);
   EXPECT_TRUE(android_container_.running());
   android_container_.SimulateCrash();
   EXPECT_FALSE(android_container_.running());
@@ -923,9 +922,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
 
 TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
 #if USE_ARC
-  // An arbitrary path. Doesn't need to exist or be accessible.
-  const char kSocketPath[] = "/tmp/arc.sock";
-
   ExpectAndRunStartSession(kSaneEmail);
   base::FilePath arc_data_dir(SessionManagerImpl::kArcDataDir);
   base::FilePath arc_cache_dir(SessionManagerImpl::kArcCacheDir);
@@ -934,7 +930,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
                                      "test"));
   EXPECT_TRUE(utils_.Exists(arc_data_dir));
   EXPECT_TRUE(utils_.Exists(arc_cache_dir));
-  impl_.StartArcInstance(kSocketPath, &error_);
+  impl_.StartArcInstance(kSaneEmail, &error_);
   impl_.RemoveArcData(&error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
   EXPECT_TRUE(utils_.Exists(arc_data_dir));

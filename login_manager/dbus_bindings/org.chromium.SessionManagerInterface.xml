@@ -408,7 +408,8 @@
 
     <!--
         StartArcInstance:
-        @socket_path: A string containing the path of the ARC IPC socket.
+        @email_address: Human-readable ID of the user to start ARC for. This
+                        must be the same as the one given in StartSession.
 
         Starts an ARC instance. Only one instance of ARC can be executing at a
         given point in time. This method is only available if
@@ -416,7 +417,7 @@
         Chrome.
     -->
     <method name="StartArcInstance">
-      <arg type="s" name="socket_path" direction="in" />
+      <arg type="s" name="email_address" direction="in" />
     </method>
 
     <!--

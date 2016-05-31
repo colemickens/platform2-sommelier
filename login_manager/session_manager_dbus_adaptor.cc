@@ -605,12 +605,12 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  std::string socket_path;
-  if (!reader.PopString(&socket_path))
+  std::string user_id;
+  if (!reader.PopString(&user_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
   SessionManagerImpl::Error error;
-  impl_->StartArcInstance(socket_path, &error);
+  impl_->StartArcInstance(user_id, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));

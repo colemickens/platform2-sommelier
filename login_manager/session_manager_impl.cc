@@ -43,6 +43,7 @@
 #include "login_manager/vpd_process.h"
 
 using base::FilePath;
+using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::kGuestUserName;
@@ -66,8 +67,8 @@ const char SessionManagerImpl::kArcStopSignal[] = "stop-arc-instance";
 const char SessionManagerImpl::kArcNetworkStartSignal[] = "start-arc-network";
 const char SessionManagerImpl::kArcNetworkStopSignal[] = "stop-arc-network";
 
-const base::FilePath::CharType SessionManagerImpl::kFixedAndroidDataDir[] =
-    FILE_PATH_LITERAL("/home/chronos/user/android-data");
+const base::FilePath::CharType SessionManagerImpl::kAndroidDataDirName[] =
+    FILE_PATH_LITERAL("android-data");
 
 // TODO(dspaid): Migrate to using /home/root/$hash once it is supported
 // see http://b/26700652
@@ -303,21 +304,9 @@ std::string SessionManagerImpl::EnableChromeTesting(
 bool SessionManagerImpl::StartSession(const std::string& user_id,
                                       const std::string& unique_id,
                                       Error* error) {
-  std::string actual_user_id = user_id;
-  const bool is_incognito = IsIncognitoUserId(actual_user_id);
-  // Validate the |user_id|.
-  if (!ValidateUserId(actual_user_id) && !is_incognito) {
-    // Support legacy email addresses.
-    // TODO(alemate): remove this after ChromeOS will stop using email as
-    // cryptohome identifier.
-    actual_user_id = base::ToLowerASCII(user_id);
-    if (!ValidateEmail(actual_user_id)) {
-      static const char msg[] =
-          "Provided email address is not valid.  ASCII only.";
-      LOG(ERROR) << msg;
-      error->Set(dbus_error::kInvalidAccount, msg);
-      return false;
-    }
+  std::string actual_user_id;
+  if (!NormalizeUserId(user_id, &actual_user_id, error)) {
+    return false;
   }
 
   // Check if this user already started a session.
@@ -329,6 +318,7 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
   }
 
   // Create a UserSession object for this user.
+  const bool is_incognito = IsIncognitoUserId(actual_user_id);
   std::string error_name;
   std::unique_ptr<UserSession> user_session(
       CreateUserSession(actual_user_id, is_incognito, &error_name));
@@ -602,13 +592,27 @@ bool SessionManagerImpl::CheckArcAvailability() {
 #endif  // USE_ARC
 }
 
-void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
+void SessionManagerImpl::StartArcInstance(const std::string& user_id,
                                           Error* error) {
 #if USE_ARC
   arc_start_time_ = base::TimeTicks::Now();
 
+  std::string actual_user_id;
+  if (!NormalizeUserId(user_id, &actual_user_id, error)) {
+    return;
+  }
+  if (user_sessions_.count(actual_user_id) == 0) {
+    static const char msg[] = "Provided user ID does not have a session.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kSessionDoesNotExist, msg);
+    return;
+  }
+
+  const base::FilePath& android_data_dir =
+      GetRootPath(actual_user_id).Append(kAndroidDataDirName);
   const std::vector<std::string>& keyvals = {
-      base::StringPrintf("ANDROID_DATA_DIR=%s", kFixedAndroidDataDir),
+      base::StringPrintf("ANDROID_DATA_DIR=%s",
+                         android_data_dir.value().c_str()),
   };
 
   if (!init_controller_->TriggerImpulse(kArcStartSignal, keyvals)) {
@@ -738,6 +742,31 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   system_->AtomicFileWrite(reset_path,
                            "fast safe keepimg reason=" + sanitized_reason);
   restart_device_closure_.Run();
+}
+
+// static
+bool SessionManagerImpl::NormalizeUserId(const std::string& user_id,
+                                         std::string* actual_user_id_out,
+                                         Error* error_out) {
+  // Validate the |user_id|.
+  if (IsIncognitoUserId(user_id) || ValidateUserId(user_id)) {
+    *actual_user_id_out = user_id;
+    return true;
+  }
+
+  // Support legacy email addresses.
+  // TODO(alemate): remove this after ChromeOS will stop using email as
+  // cryptohome identifier.
+  const std::string& lower_user_id = base::ToLowerASCII(user_id);
+  if (!ValidateEmail(lower_user_id)) {
+    static const char msg[] =
+        "Provided email address is not valid.  ASCII only.";
+    LOG(ERROR) << msg;
+    error_out->Set(dbus_error::kInvalidAccount, msg);
+    return false;
+  }
+  *actual_user_id_out = lower_user_id;
+  return true;
 }
 
 // static
