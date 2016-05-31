@@ -5,6 +5,6 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_COMPAT_TEST_H_
 #define CHROMIUMOS_WIDE_PROFILING_COMPAT_TEST_H_
 
-#include <gtest/gtest.h>
+#include "detail/test.h"
 
 #endif  // CHROMIUMOS_WIDE_PROFILING_COMPAT_TEST_H_
