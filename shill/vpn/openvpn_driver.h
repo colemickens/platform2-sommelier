@@ -262,6 +262,7 @@ class OpenVPNDriver : public VPNDriver,
               const std::map<std::string, std::string>& dict) override;
 
   void OnDefaultServiceChanged(const ServiceRefPtr& service);
+  void OnDefaultServiceStateChanged(const ServiceRefPtr& service) override;
 
   void ReportConnectionMetrics();
 
@@ -290,6 +291,11 @@ class OpenVPNDriver : public VPNDriver,
 
   // Default service watch callback tag.
   int default_service_callback_tag_;
+
+  // Helps distinguish between a network->network transition (where the
+  // client simply reconnects), and a network->link_down->network transition
+  // (where the client should disconnect, wait for link up, then reconnect).
+  bool link_down_;
 
   DISALLOW_COPY_AND_ASSIGN(OpenVPNDriver);
 };

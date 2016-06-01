@@ -177,7 +177,8 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface* control,
       lsb_release_file_(kLSBReleaseFile),
       openvpn_config_directory_(kDefaultOpenVPNConfigurationDirectory),
       pid_(0),
-      default_service_callback_tag_(0) {}
+      default_service_callback_tag_(0),
+      link_down_(false) {}
 
 OpenVPNDriver::~OpenVPNDriver() {
   IdleService();
@@ -950,14 +951,6 @@ void OpenVPNDriver::Disconnect() {
 
 void OpenVPNDriver::OnConnectionDisconnected() {
   LOG(INFO) << "Underlying connection disconnected.";
-  // Restart the OpenVPN client forcing a reconnect attempt.
-  management_server_->Restart();
-  // Indicate reconnect state right away to drop the VPN connection and start
-  // the connect timeout. This ensures that any miscommunication between shill
-  // and openvpn will not lead to a permanently stale connectivity state. Note
-  // that a subsequent invocation of OnReconnecting due to a RECONNECTING
-  // message will essentially be a no-op.
-  OnReconnecting(kReconnectReasonOffline);
 }
 
 void OpenVPNDriver::OnConnectTimeout() {
@@ -984,10 +977,8 @@ void OpenVPNDriver::OnReconnecting(ReconnectReason reason) {
   // new default service connects. This ensures that the client will use a fully
   // functional underlying connection to reconnect.
   if (device_) {
-    device_->DropConnection();
-  }
-  if (service_) {
-    service_->SetState(Service::kStateAssociating);
+    device_->SetServiceState(Service::kStateConfiguring);
+    device_->ResetConnection();
   }
 }
 
@@ -1048,16 +1039,41 @@ map<string, string> OpenVPNDriver::GetEnvironment() {
 void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr& service) {
   SLOG(this, 2) << __func__
                 << "(" << (service ? service->unique_name() : "-") << ")";
-  // Allow the openvpn client to connect/reconnect only over a connected
-  // underlying default service. If there's no default connected service, hold
-  // the openvpn client until an underlying connection is established. If the
-  // default service is our VPN service, hold the openvpn client on reconnect so
-  // that the VPN connection can be torn down fully before a new connection
-  // attempt is made over the underlying service.
-  if (service && service != service_ && service->IsConnected()) {
+  if (!device_)
+    return;
+
+  // Inform the user that the VPN is reconnecting.
+  device_->SetServiceState(Service::kStateConfiguring);
+  device_->ResetConnection();
+  StopConnectTimeout();
+
+  if (service && service->state() == Service::kStateOnline) {
+    // The original service is no longer the default, but manager was able
+    // to find another physical service that is already Online.
+    // Ask the management server to reconnect immediately.
     management_server_->ReleaseHold();
+    management_server_->Restart();
+    StartConnectTimeout(GetReconnectTimeoutSeconds(kReconnectReasonOffline));
   } else {
+    // The default physical service went away, and nothing else is available
+    // right now.  All we can do is wait.
+    if (link_down_)
+      return;
+    SLOG(this, 2) << __func__
+                  << " - physical connection lost";
+    link_down_ = true;
+
     management_server_->Hold();
+    management_server_->Restart();
+  }
+}
+
+void OpenVPNDriver::OnDefaultServiceStateChanged(
+    const ServiceRefPtr& service) {
+  if (link_down_ && service->state() == Service::kStateOnline) {
+    link_down_ = false;
+    management_server_->ReleaseHold();
+    StartConnectTimeout(GetReconnectTimeoutSeconds(kReconnectReasonOffline));
   }
 }
 

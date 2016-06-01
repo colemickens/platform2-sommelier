@@ -41,6 +41,8 @@ class MockVirtualDevice : public VirtualDevice {
   MOCK_METHOD1(UpdateIPConfig,
                void(const IPConfig::Properties& properties));
   MOCK_METHOD0(DropConnection, void());
+  MOCK_METHOD0(ResetConnection, void());
+  MOCK_METHOD1(SetServiceState, void(Service::ConnectState state));
   MOCK_METHOD1(SetEnabled, void(bool));
 
  private:

@@ -1263,16 +1263,6 @@ TEST_F(OpenVPNDriverTest, Disconnect) {
   EXPECT_FALSE(driver_->service_);
 }
 
-TEST_F(OpenVPNDriverTest, OnConnectionDisconnected) {
-  EXPECT_CALL(*management_server_, Restart());
-  SetDevice(device_);
-  SetService(service_);
-  EXPECT_CALL(*device_, DropConnection());
-  EXPECT_CALL(*service_, SetState(Service::kStateAssociating));
-  OnConnectionDisconnected();
-  EXPECT_TRUE(IsConnectTimeoutStarted());
-}
-
 TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
   StartConnectTimeout(0);
   SetService(service_);
@@ -1298,8 +1288,8 @@ TEST_F(OpenVPNDriverTest, OnReconnectingUnknown) {
               PostDelayedTask(_, GetDefaultConnectTimeoutSeconds() * 1000));
   SetDevice(device_);
   SetService(service_);
-  EXPECT_CALL(*device_, DropConnection());
-  EXPECT_CALL(*service_, SetState(Service::kStateAssociating));
+  EXPECT_CALL(*device_, SetServiceState(Service::kStateConfiguring));
+  EXPECT_CALL(*device_, ResetConnection());
   driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonUnknown);
   EXPECT_TRUE(IsConnectTimeoutStarted());
 }
@@ -1386,24 +1376,41 @@ TEST_F(OpenVPNDriverTest, OnOpenVPNExited) {
 
 TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
   driver_->service_ = service_;
+  driver_->device_ = device_;
 
+  // Switch from Online service -> no service.  VPN should be put on hold.
   ServiceRefPtr null_service;
   EXPECT_CALL(*management_server_, Hold());
   driver_->OnDefaultServiceChanged(null_service);
+  Mock::VerifyAndClearExpectations(management_server_);
 
-  EXPECT_CALL(*management_server_, Hold());
-  driver_->OnDefaultServiceChanged(service_);
-
+  // Switch from no service -> Portal service.  VPN should stay on
+  // hold.
   scoped_refptr<MockService> mock_service(
       new MockService(&control_, &dispatcher_, &metrics_, &manager_));
 
-  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(false));
-  EXPECT_CALL(*management_server_, Hold());
+  EXPECT_CALL(*mock_service, state())
+      .WillOnce(Return(Service::kStatePortal));
+  EXPECT_CALL(*management_server_, Hold()).Times(0);
+  EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
   driver_->OnDefaultServiceChanged(mock_service);
+  Mock::VerifyAndClearExpectations(management_server_);
 
-  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
+  // Current service transitions from Portal -> Online.  VPN should release
+  // the hold.
+  EXPECT_CALL(*mock_service, state()).WillOnce(Return(Service::kStateOnline));
   EXPECT_CALL(*management_server_, ReleaseHold());
-  driver_->OnDefaultServiceChanged(mock_service);
+  driver_->OnDefaultServiceStateChanged(mock_service);
+  Mock::VerifyAndClearExpectations(management_server_);
+
+  // Switch from Online service -> another Online service.  VPN should restart
+  // immediately.
+  scoped_refptr<MockService> mock_service2(
+      new MockService(&control_, &dispatcher_, &metrics_, &manager_));
+
+  EXPECT_CALL(*mock_service2, state()).WillOnce(Return(Service::kStateOnline));
+  EXPECT_CALL(*management_server_, Restart());
+  driver_->OnDefaultServiceChanged(mock_service2);
 }
 
 TEST_F(OpenVPNDriverTest, GetReconnectTimeoutSeconds) {
