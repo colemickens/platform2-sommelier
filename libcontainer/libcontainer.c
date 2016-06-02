@@ -739,7 +739,7 @@ int container_wait(struct container *c)
 
 	do {
 		rc = minijail_wait(c->jail);
-	} while (rc == -1 && errno == EINTR);
+	} while (rc == -EINTR);
 
 	if (rc >= 0)
 		rc = container_teardown(c);
