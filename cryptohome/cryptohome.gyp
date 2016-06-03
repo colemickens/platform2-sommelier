@@ -120,6 +120,7 @@
         'platform.cc',
         'tpm.cc',
         'tpm_init.cc',
+        'tpm_metrics.cc',
       ],
       'conditions': [
         ['USE_tpm2 == 1', {
