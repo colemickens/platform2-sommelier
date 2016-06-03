@@ -301,7 +301,7 @@ struct container {
 	char *pid_file_path;
 	char **ext_mounts; /* Mounts made outside of the minijail */
 	size_t num_ext_mounts;
-	const char *name;
+	char *name;
 };
 
 struct container *container_new(const char *name,
@@ -312,10 +312,10 @@ struct container *container_new(const char *name,
 	c = calloc(1, sizeof(*c));
 	if (!c)
 		return NULL;
-	c->name = name;
 	c->cgroup = container_cgroup_new(name, "/sys/fs/cgroup");
 	c->rundir = strdup(rundir);
-	if (!c->cgroup || !c->rundir) {
+	c->name = strdup(name);
+	if (!c->cgroup || !c->rundir || !c->name) {
 		container_destroy(c);
 		return NULL;
 	}
@@ -326,6 +326,9 @@ void container_destroy(struct container *c)
 {
 	if (c->cgroup)
 		container_cgroup_destroy(c->cgroup);
+	if (c->jail)
+		minijail_destroy(c->jail);
+	free(c->name);
 	free(c->rundir);
 	free(c);
 }
@@ -456,6 +459,7 @@ static int do_container_mounts(struct container *c,
 			       const struct container_config *config)
 {
 	unsigned int i;
+	int rc = 0;
 	char *source;
 	char *dest;
 
@@ -494,8 +498,9 @@ static int do_container_mounts(struct container *c,
 		}
 		if (mnt->mount_in_ns) {
 			/* We can mount this with minijail. */
-			if (minijail_mount(c->jail, source, mnt->destination,
-					   mnt->type, mnt->flags))
+			rc = minijail_mount(c->jail, source, mnt->destination,
+					    mnt->type, mnt->flags);
+			if (rc)
 				goto error_free_return;
 		} else {
 			/* Mount this externally and unmount it on exit. */
@@ -512,10 +517,12 @@ static int do_container_mounts(struct container *c,
 	return 0;
 
 error_free_return:
+	if (!rc)
+		rc = -errno;
 	free(dest);
 	free(source);
 	unmount_external_mounts(c);
-	return -errno;
+	return rc;
 }
 
 int container_start(struct container *c, const struct container_config *config)
@@ -562,7 +569,8 @@ int container_start(struct container *c, const struct container_config *config)
 
 	c->jail = minijail_new();
 
-	if (do_container_mounts(c, config))
+	rc = do_container_mounts(c, config);
+	if (rc)
 		goto error_rmdir;
 
 	c->cgroup->ops->deny_all_devices(c->cgroup);
@@ -748,10 +756,7 @@ int container_wait(struct container *c)
 
 int container_kill(struct container *c)
 {
-	int rc;
-
-	rc = kill(c->init_pid, SIGKILL);
-	if (rc)
+	if (kill(c->init_pid, SIGKILL))
 		return -errno;
 	return container_wait(c);
 }
