@@ -22,6 +22,8 @@
 #include "libcontainer.h"
 #include "libminijail.h"
 
+static int container_teardown(struct container *c);
+
 struct container_mount {
 	char *name;
 	char *source;
@@ -528,7 +530,7 @@ error_free_return:
 int container_start(struct container *c, const struct container_config *config)
 {
 	static const mode_t root_dir_mode = 0660;
-	int rc;
+	int rc = 0;
 	unsigned int i;
 	const char *rootfs = config->rootfs;
 	char *runfs_template;
@@ -547,27 +549,25 @@ int container_start(struct container *c, const struct container_config *config)
 		return -errno;
 	}
 	/* Make sure the container uid can access the rootfs. */
-	rc = chmod(c->runfs, 0755);
-	if (rc)
+	if (chmod(c->runfs, 0755))
 		goto error_rmdir;
 
-	if (asprintf(&c->runfsroot, "%s/root", c->runfs) < 0) {
-		free(runfs_template);
-		return -errno;
-	}
-
-	rc = mkdir(c->runfsroot, root_dir_mode);
-	if (rc)
-		goto error_rmdir;
-	rc = chmod(c->runfsroot, root_dir_mode);
-	if (rc)
+	if (asprintf(&c->runfsroot, "%s/root", c->runfs) < 0)
 		goto error_rmdir;
 
-	rc = mount(rootfs, c->runfsroot, "", MS_BIND | MS_RDONLY, NULL);
-	if (rc)
+	if (mkdir(c->runfsroot, root_dir_mode))
+		goto error_rmdir;
+	if (chmod(c->runfsroot, root_dir_mode))
+		goto error_rmdir;
+
+	if (mount(rootfs, c->runfsroot, "", MS_BIND | MS_RDONLY, NULL))
 		goto error_rmdir;
 
 	c->jail = minijail_new();
+	if (!c->jail) {
+		rc = -ENOMEM;
+		goto error_rmdir;
+	}
 
 	rc = do_container_mounts(c, config);
 	if (rc)
@@ -588,6 +588,7 @@ int container_start(struct container *c, const struct container_config *config)
 			mode = S_IFCHR;
 			break;
 		default:
+			rc = -EINVAL;
 			goto error_rmdir;
 		}
 		mode |= dev->fs_permissions;
@@ -604,20 +605,19 @@ int container_start(struct container *c, const struct container_config *config)
 
 			if (asprintf(&path, "%s%s", c->runfsroot, dev->path) < 0)
 				goto error_rmdir;
-			rc = mknod(path, mode, makedev(dev->major, minor));
-			if (rc && errno != EEXIST) {
+			if (mknod(path, mode, makedev(dev->major, minor)) && errno != EEXIST) {
 				free(path);
 				goto error_rmdir;
 			}
-			rc = chown(path, dev->uid, dev->gid);
-			if (rc) {
+			if (chown(path, dev->uid, dev->gid)) {
 				free(path);
 				goto error_rmdir;
 			}
-			rc = chmod(path, dev->fs_permissions);
+			if (chmod(path, dev->fs_permissions)) {
+				free(path);
+				goto error_rmdir;
+			}
 			free(path);
-			if (rc)
-				goto error_rmdir;
 		}
 
 		rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
@@ -701,14 +701,9 @@ int container_start(struct container *c, const struct container_config *config)
 	return 0;
 
 error_rmdir:
-	umount(c->runfsroot);
-	rmdir(c->runfsroot);
-	if (c->pid_file_path)
-		unlink(c->pid_file_path);
-	free(c->pid_file_path);
-	rmdir(c->runfs);
-	free(c->runfsroot);
-	free(c->runfs);
+	if (!rc)
+		rc = -errno;
+	container_teardown(c);
 	return rc;
 }
 
@@ -727,17 +722,26 @@ static int container_teardown(struct container *c)
 	int ret = 0;
 
 	unmount_external_mounts(c);
-	if (umount(c->runfsroot))
-		ret = -errno;
-	if (rmdir(c->runfsroot))
-		ret = -errno;
-	if (c->pid_file_path && unlink(c->pid_file_path))
-		ret = -errno;
-	if (rmdir(c->runfs))
-		ret = -errno;
-	free(c->pid_file_path);
-	free(c->runfsroot);
-	free(c->runfs);
+	if (c->runfsroot) {
+		if (umount(c->runfsroot))
+			ret = -errno;
+		if (rmdir(c->runfsroot))
+			ret = -errno;
+		free(c->runfsroot);
+		c->runfsroot = NULL;
+	}
+	if (c->pid_file_path) {
+		if (unlink(c->pid_file_path))
+			ret = -errno;
+		free(c->pid_file_path);
+		c->pid_file_path = NULL;
+	}
+	if (c->runfs) {
+		if (rmdir(c->runfs))
+			ret = -errno;
+		free(c->runfs);
+		c->runfs = NULL;
+	}
 	return ret;
 }
 
@@ -749,14 +753,16 @@ int container_wait(struct container *c)
 		rc = minijail_wait(c->jail);
 	} while (rc == -EINTR);
 
-	if (rc >= 0)
+	// If the process had already been reaped, still perform teardown.
+	if (rc == -ECHILD || rc >= 0) {
 		rc = container_teardown(c);
+	}
 	return rc;
 }
 
 int container_kill(struct container *c)
 {
-	if (kill(c->init_pid, SIGKILL))
+	if (kill(c->init_pid, SIGKILL) && errno != ESRCH)
 		return -errno;
 	return container_wait(c);
 }
