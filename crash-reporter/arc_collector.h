@@ -54,11 +54,14 @@ class ArcCollector : public UserCollectorBase {
  private:
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForUserCrash);
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForArcCrash);
-  FRIEND_TEST(ArcCollectorTest, DISABLED_ShouldDump);
+  FRIEND_TEST(ArcCollectorTest, ShouldDump);
   FRIEND_TEST(ArcCollectorTest, ParseCrashLog);
 
+  // Shift for UID namespace in ARC.
+  static constexpr uid_t kUserShift = 655360;
+
   // Upper bound for system UIDs in ARC.
-  static const uid_t kSystemUserEnd = 10000;
+  static constexpr uid_t kSystemUserEnd = kUserShift + 10000;
 
   class ArcContext : public Context {
    public:

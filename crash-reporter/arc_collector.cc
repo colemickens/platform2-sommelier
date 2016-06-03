@@ -271,14 +271,10 @@ bool ArcCollector::ShouldDump(pid_t pid,
     return false;
   }
 
-  // TODO(domlaskowski): Restore filter for system processes.
-#if 0
-  // TODO(domlaskowski): Convert between UID namespaces.
   if (uid >= kSystemUserEnd) {
     *reason = "ignoring - not a system process";
     return false;
   }
-#endif
 
   return UserCollectorBase::ShouldDump(
       is_feedback_allowed_function_(), IsDeveloperImage(), reason);
@@ -487,10 +483,6 @@ bool ReadCrashLogFromStdin(std::stringstream *stream) {
 
 bool HasExceptionInfo(const std::string &type) {
   static const std::unordered_set<std::string> kTypes = {
-    // TODO(domlaskowski): Remove after restoring filter for system crashes.
-    "data_app_crash",
-    "data_app_wtf",
-
     "system_app_crash",
     "system_app_wtf",
     "system_server_crash",
@@ -501,9 +493,6 @@ bool HasExceptionInfo(const std::string &type) {
 
 const char *GetSubjectTag(const std::string &type) {
   static const std::unordered_map<std::string, const char *> kTags = {
-    // TODO(domlaskowski): Remove after restoring filter for system crashes.
-    { "data_app_anr", "data app ANR" },
-
     { "system_app_anr", "ANR" },
     { "system_server_watchdog", "system server watchdog" }
   };
