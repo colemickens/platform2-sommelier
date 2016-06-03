@@ -49,6 +49,7 @@ class ArcCollector : public UserCollectorBase {
                        const std::string &cpu_abi);
 
   static bool IsArcRunning();
+  static bool GetArcPid(pid_t *arc_pid);
 
  private:
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForUserCrash);

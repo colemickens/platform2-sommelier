@@ -299,6 +299,7 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   return true;
 }
 
+// static
 FilePath CrashCollector::GetProcessPath(pid_t pid) {
   return FilePath(StringPrintf("/proc/%d", pid));
 }

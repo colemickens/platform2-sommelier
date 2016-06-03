@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/files/file.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -30,7 +31,10 @@ using brillo::ProcessImpl;
 
 namespace {
 
-const FilePath kContainerPidFile("/run/arc/container.pid");
+const FilePath kContainersDir("/run/containers");
+const FilePath::StringType kArcDirPattern("android_*");
+const FilePath kContainerPid("container.pid");
+
 const FilePath kArcRootPrefix("/opt/google/containers/android/rootfs/root");
 const FilePath kArcBuildProp("system/build.prop");  // Relative to ARC root.
 
@@ -172,20 +176,47 @@ bool ArcCollector::HandleJavaCrash(const std::string &crash_type,
   return true;
 }
 
+// static
 bool ArcCollector::IsArcRunning() {
-  return base::PathExists(kContainerPidFile);
+  return GetArcPid(nullptr);
+}
+
+// static
+bool ArcCollector::GetArcPid(pid_t *arc_pid) {
+  base::FileEnumerator containers(
+      kContainersDir, false, base::FileEnumerator::DIRECTORIES, kArcDirPattern);
+
+  for (FilePath container = containers.Next();
+       !container.empty();
+       container = containers.Next()) {
+    std::string contents;
+    if (!ReadFileToString(container.Append(kContainerPid), &contents) ||
+        contents.empty())
+      continue;
+
+    contents.pop_back();  // Trim EOL.
+
+    pid_t pid;
+    if (!base::StringToInt(contents, &pid) ||
+        !base::PathExists(GetProcessPath(pid)))
+      continue;
+
+    if (arc_pid)
+      *arc_pid = pid;
+
+    return true;
+  }
+
+  return false;
 }
 
 bool ArcCollector::ArcContext::GetArcPid(pid_t *pid) const {
-  std::string buf;
-  return ReadFileToString(kContainerPidFile, &buf) && base::StringToInt(
-      base::StringPiece(buf.begin(), buf.end() - 1), pid);  // Trim EOL.
+  return ArcCollector::GetArcPid(pid);
 }
 
 bool ArcCollector::ArcContext::GetPidNamespace(pid_t pid,
                                                std::string *ns) const {
-  const FilePath path =
-      collector_->GetProcessPath(pid).Append("ns").Append("pid");
+  const FilePath path = GetProcessPath(pid).Append("ns").Append("pid");
 
   // The /proc/[pid]/ns/pid file is a special symlink that resolves to a string
   // containing the inode number of the PID namespace, e.g. "pid:[4026531838]".
@@ -204,7 +235,7 @@ bool ArcCollector::ArcContext::GetExeBaseName(pid_t pid,
 
 bool ArcCollector::ArcContext::GetCommand(pid_t pid,
                                           std::string *command) const {
-  const FilePath path = collector_->GetProcessPath(pid).Append("cmdline");
+  const FilePath path = GetProcessPath(pid).Append("cmdline");
   // The /proc/[pid]/cmdline file contains the command line separated and
   // terminated by a null byte, e.g. "command\0arg\0arg\0". The file is
   // empty if the process is a zombie.
@@ -335,12 +366,14 @@ void ArcCollector::AddArcMetaData(const std::string &process,
   AddCrashMetaUploadData(kUptimeField, FormatDuration(delta));
 }
 
+// static
 std::string ArcCollector::GetCrashLogHeader(const CrashLogHeaderMap &map,
                                             const char *key) {
   const auto it = map.find(key);
   return it == map.end() ? "unknown" : it->second;
 }
 
+// static
 bool ArcCollector::ParseCrashLog(const std::string &type,
                                  std::stringstream *stream,
                                  CrashLogHeaderMap *map,
