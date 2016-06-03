@@ -861,6 +861,7 @@ bool SessionManagerImpl::StartArcInstanceInternal(
     *error_message_out = "Emitting start-arc-network signal failed.";
     return false;
   }
+  LOG(INFO) << "Started Android container pid " << pid;
 
   return true;
 }

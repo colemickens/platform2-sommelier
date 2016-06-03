@@ -14,12 +14,25 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/posix/safe_strerror.h>
+#include <base/strings/stringprintf.h>
 
 #include <libcontainer/libcontainer.h>
 #include <login_manager/container_config_parser.h>
 
 namespace {
 const char kContainerRunPath[] = "/run/containers";
+
+std::string libcontainer_strerror(int err) {
+  if (err < 0) {
+    // Negative values come from -errno. Change the sign back for
+    // safe_strerror().
+    return base::safe_strerror(-err);
+  } else {
+    // Otherwise, it might have been a libminijail error code.
+    return base::StringPrintf("libminijail error code %d", err);
+  }
+}
+
 }  // anonymous namespace
 
 namespace login_manager {
@@ -75,7 +88,7 @@ bool SessionContainersImpl::StartContainer(const std::string& name) {
   int rc = container_start(new_container.get(), config.get());
   if (rc != 0) {
     LOG(ERROR) << "Failed to start container " << name << ": "
-               << base::safe_strerror(rc);
+               << libcontainer_strerror(rc);
     return false;
   }
 
@@ -92,7 +105,7 @@ bool SessionContainersImpl::WaitForContainerToExit(const std::string& name) {
   int rc = container_wait(iter->second.get());
   if (rc != 0) {
     LOG(ERROR) << "Failed to wait for container " << name << ": "
-               << base::safe_strerror(rc);
+               << libcontainer_strerror(rc);
     return false;
   }
   container_map_.erase(iter);
@@ -108,7 +121,7 @@ bool SessionContainersImpl::KillContainer(const std::string& name) {
   container_map_.erase(iter);
   if (rc != 0) {
     LOG(ERROR) << "Failed to kill container " << name << ": "
-               << base::safe_strerror(rc);
+               << libcontainer_strerror(rc);
     return false;
   }
   return true;
@@ -122,7 +135,7 @@ bool SessionContainersImpl::KillAllContainers() {
     int rc = container_kill(it->second.get());
     if (rc != 0) {
       LOG(ERROR) << "Failed to kill container " << it->first << ": "
-                 << base::safe_strerror(rc);
+                 << libcontainer_strerror(rc);
       all_killed = false;
     }
   }
