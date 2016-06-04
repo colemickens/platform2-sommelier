@@ -138,7 +138,7 @@ TEST_F(VPNProviderTest, GetService) {
     EXPECT_CALL(manager_, RegisterService(_));
     service = provider_.GetService(args, &error);
     EXPECT_TRUE(error.IsSuccess());
-    ASSERT_TRUE(service);
+    ASSERT_TRUE(service.get());
     testing::Mock::VerifyAndClearExpectations(&manager_);
   }
 
@@ -304,7 +304,7 @@ TEST_F(VPNProviderTest, CreateService) {
     Error error;
     VPNServiceRefPtr service =
         provider_.CreateService(kTypes[i], kName, kStorageID, &error);
-    ASSERT_TRUE(service) << kTypes[i];
+    ASSERT_TRUE(service.get()) << kTypes[i];
     ASSERT_TRUE(service->driver()) << kTypes[i];
     EXPECT_EQ(kTypes[i], service->driver()->GetProviderType());
     EXPECT_EQ(kName, GetServiceFriendlyName(service)) << kTypes[i];

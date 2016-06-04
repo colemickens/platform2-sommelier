@@ -524,7 +524,7 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
                                                     IsIPAddress(address)));
   DeviceRefPtr device = CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kEthernet);
-  EXPECT_TRUE(device);
+  EXPECT_TRUE(device.get());
   Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
@@ -545,7 +545,7 @@ TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
   DeviceRefPtr device = CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex,
       Technology::kVirtioEthernet);
-  EXPECT_TRUE(device);
+  EXPECT_TRUE(device.get());
   Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 }
@@ -676,7 +676,8 @@ TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_TRUE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kUnknown));
+      kTestDeviceName, "address", kTestDeviceIndex,
+      Technology::kUnknown).get());
 }
 
 TEST_F(DeviceInfoTest, DeviceBlackList) {

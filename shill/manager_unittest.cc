@@ -1569,7 +1569,7 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
 
   // If we explicitly deregister a service, the effect should be the same
   // with respect to the profile reference.
-  ASSERT_TRUE(s_will_not_remove0->profile());
+  ASSERT_TRUE(s_will_not_remove0->profile().get());
   manager()->DeregisterService(s_will_not_remove0);
   EXPECT_FALSE(s_will_not_remove0->profile());
 }
@@ -1744,7 +1744,7 @@ TEST_F(ManagerTest, GetServiceVPN) {
       .WillOnce(DoAll(SaveArg<0>(&configured_service), Return(true)));
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
-  EXPECT_TRUE(service);
+  EXPECT_TRUE(service.get());
   EXPECT_EQ(service, updated_service);
   EXPECT_EQ(service, configured_service);
 
@@ -1771,7 +1771,7 @@ TEST_F(ManagerTest, GetServiceWiMax) {
   args.SetString(kNameProperty, "WiMAX Network");
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
-  EXPECT_TRUE(service);
+  EXPECT_TRUE(service.get());
 }
 
 #endif  // DISABLE_WIMAX

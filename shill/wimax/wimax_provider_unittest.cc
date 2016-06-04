@@ -405,14 +405,14 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
   provider_.services_[service0->GetStorageIdentifier()] = service0;
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   WiMaxServiceRefPtr service = provider_.GetUniqueService(kNetworkId, kName0);
-  ASSERT_TRUE(service);
+  ASSERT_TRUE(service.get());
   EXPECT_EQ(service0.get(), service.get());
   EXPECT_EQ(1, provider_.services_.size());
 
   // Create a new service.
   EXPECT_CALL(manager_, RegisterService(_));
   service = provider_.GetUniqueService(kNetworkId, kName1);
-  ASSERT_TRUE(service);
+  ASSERT_TRUE(service.get());
   EXPECT_NE(service0.get(), service.get());
   EXPECT_EQ(2, provider_.services_.size());
   EXPECT_EQ(WiMaxService::CreateStorageIdentifier(kNetworkId, kName1),
@@ -422,7 +422,7 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
   // Service already exists -- it was just created.
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   WiMaxServiceRefPtr service1 = provider_.GetUniqueService(kNetworkId, kName1);
-  ASSERT_TRUE(service1);
+  ASSERT_TRUE(service1.get());
   EXPECT_EQ(service.get(), service1.get());
   EXPECT_EQ(2, provider_.services_.size());
   EXPECT_FALSE(service->is_default());
@@ -476,7 +476,7 @@ TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
   EXPECT_EQ(nullptr,
             provider_.CreateTemporaryServiceFromProfile(profile,
                                                         "no_type",
-                                                        &error));
+                                                        &error).get());
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Unspecified or invalid network type"));
@@ -486,7 +486,7 @@ TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
   EXPECT_EQ(nullptr,
             provider_.CreateTemporaryServiceFromProfile(profile,
                                                         "no_wimax",
-                                                        &error));
+                                                        &error).get());
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Unspecified or invalid network type"));
@@ -496,7 +496,7 @@ TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
   EXPECT_TRUE(
       provider_.CreateTemporaryServiceFromProfile(profile,
                                                   "wimax_network_01234567",
-                                                  &error));
+                                                  &error).get());
   EXPECT_TRUE(error.IsSuccess());
 
   // Network ID not specified.
@@ -504,7 +504,7 @@ TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
   EXPECT_EQ(nullptr,
             provider_.CreateTemporaryServiceFromProfile(profile,
                                                         "no_network_id",
-                                                        &error));
+                                                        &error).get());
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Network ID not specified"));
@@ -514,7 +514,7 @@ TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
   EXPECT_EQ(nullptr,
             provider_.CreateTemporaryServiceFromProfile(profile,
                                                         "no_name",
-                                                        &error));
+                                                        &error).get());
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Network name not specified"));
@@ -529,7 +529,7 @@ TEST_F(WiMaxProviderTest, GetService) {
   // No network id property.
   ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
-  EXPECT_FALSE(service);
+  EXPECT_FALSE(service.get());
 
   // No name property.
   static const char kNetworkId[] = "1234abcd";
@@ -537,7 +537,7 @@ TEST_F(WiMaxProviderTest, GetService) {
   e.Reset();
   service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
-  EXPECT_FALSE(service);
+  EXPECT_FALSE(service.get());
 
   // Service created and configured.
   static const char kName[] = "Test WiMAX Network";
@@ -547,14 +547,14 @@ TEST_F(WiMaxProviderTest, GetService) {
 
   e.Reset();
   service = provider_.FindSimilarService(args, &e);
-  EXPECT_EQ(ServiceRefPtr(), service);
+  EXPECT_EQ(ServiceRefPtr(), service.get());
   EXPECT_EQ(Error::kNotFound, e.type());
 
   e.Reset();
   EXPECT_CALL(manager_, RegisterService(_));
   service = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
-  ASSERT_TRUE(service);
+  ASSERT_TRUE(service.get());
   testing::Mock::VerifyAndClearExpectations(&manager_);
 
   // GetService should create a service with only identifying parameters set.
@@ -563,7 +563,7 @@ TEST_F(WiMaxProviderTest, GetService) {
 
   e.Reset();
   ServiceRefPtr similar_service = provider_.FindSimilarService(args, &e);
-  EXPECT_EQ(service, similar_service);
+  EXPECT_EQ(service.get(), similar_service);
   EXPECT_TRUE(e.IsSuccess());
 
   // After configuring the service, other parameters should be set.
@@ -575,7 +575,7 @@ TEST_F(WiMaxProviderTest, GetService) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   ServiceRefPtr temporary_service = provider_.CreateTemporaryService(args, &e);
   EXPECT_NE(ServiceRefPtr(), temporary_service);
-  EXPECT_NE(service, temporary_service);
+  EXPECT_NE(service.get(), temporary_service);
   EXPECT_TRUE(e.IsSuccess());
 }
 

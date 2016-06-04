@@ -1146,7 +1146,7 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_CALL(manager_, RegisterDefaultServiceCallback(_))
       .WillOnce(Return(kServiceCallbackTag));
   EXPECT_TRUE(driver_->ClaimInterface(kInterfaceName, kInterfaceIndex));
-  ASSERT_TRUE(driver_->device_);
+  ASSERT_TRUE(driver_->device_.get());
   EXPECT_EQ(kInterfaceIndex, driver_->device_->interface_index());
   EXPECT_EQ(kServiceCallbackTag, driver_->default_service_callback_tag_);
 }

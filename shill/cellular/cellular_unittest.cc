@@ -2136,7 +2136,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   device_->EstablishLink();
   EXPECT_EQ(service, device_->selected_service());
-  ASSERT_TRUE(device_->ipconfig());
+  ASSERT_TRUE(device_->ipconfig().get());
   EXPECT_EQ(kAddressFamily, device_->ipconfig()->properties().address_family);
   EXPECT_EQ(kAddress, device_->ipconfig()->properties().address);
   EXPECT_EQ(kGateway, device_->ipconfig()->properties().gateway);

@@ -313,12 +313,12 @@ TEST_F(WiMaxServiceTest, SetState) {
   EXPECT_CALL(manager_, UpdateService(_));
   service_->SetState(Service::kStateAssociating);
   EXPECT_EQ(Service::kStateAssociating, service_->state());
-  EXPECT_TRUE(service_->device_);
+  EXPECT_TRUE(service_->device_.get());
 
   EXPECT_CALL(manager_, UpdateService(_));
   service_->SetState(Service::kStateFailure);
   EXPECT_EQ(Service::kStateFailure, service_->state());
-  EXPECT_FALSE(service_->device_);
+  EXPECT_FALSE(service_->device_.get());
 }
 
 TEST_F(WiMaxServiceTest, IsAutoConnectable) {

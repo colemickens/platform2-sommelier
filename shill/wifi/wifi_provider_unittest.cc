@@ -959,7 +959,7 @@ TEST_F(WiFiProviderTest, GetServiceJustLongEnoughSSID) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_TRUE(GetService(ssid.c_str(), kModeManaged,
                          kSecurityNone, false, false,
-                         &error));
+                         &error).get());
   EXPECT_TRUE(error.IsSuccess());
 }
 
@@ -967,7 +967,7 @@ TEST_F(WiFiProviderTest, GetServiceBadSecurityClass) {
   Error error;
   EXPECT_FALSE(GetService("foo", kModeManaged,
                           kSecurityRsn, false, false,
-                          &error));
+                          &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("security class is unsupported", error.message());
 }
@@ -1188,11 +1188,11 @@ TEST_F(WiFiProviderTest, FindServiceWPA) {
       kSSID.c_str(), kModeManaged, nullptr, false, false, &args);
   args.SetString(kSecurityProperty, kSecurityRsn);
   WiFiServiceRefPtr service = GetWiFiService(args, &error);
-  ASSERT_TRUE(service);
+  ASSERT_TRUE(service.get());
   const vector<uint8_t> ssid_bytes(kSSID.begin(), kSSID.end());
   WiFiServiceRefPtr wpa_service(FindService(ssid_bytes, kModeManaged,
                                             kSecurityWpa));
-  EXPECT_TRUE(wpa_service);
+  EXPECT_TRUE(wpa_service.get());
   EXPECT_EQ(service.get(), wpa_service.get());
   WiFiServiceRefPtr rsn_service(FindService(ssid_bytes, kModeManaged,
                                             kSecurityRsn));
@@ -1213,7 +1213,7 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   const string kSSID("an_ssid");
   WiFiServiceRefPtr service = GetService(
       kSSID.c_str(), kModeManaged, kSecurityNone, false, true, &error);
-  ASSERT_TRUE(service);
+  ASSERT_TRUE(service.get());
   WiFiEndpointRefPtr endpoint = MakeEndpoint(kSSID, "00:00:00:00:00:00", 0, 0);
   WiFiServiceRefPtr endpoint_service =
       provider_.FindServiceForEndpoint(endpoint);
@@ -1237,7 +1237,7 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   EXPECT_EQ(1, GetServices().size());
   WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
                                          kSecurityNone));
-  EXPECT_TRUE(service0);
+  EXPECT_TRUE(service0.get());
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(1, GetServiceByEndpoint().size());
   WiFiServiceRefPtr endpoint_service =
@@ -1265,7 +1265,7 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
 
   WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
                                          kSecurityNone));
-  EXPECT_TRUE(service1);
+  EXPECT_TRUE(service1.get());
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_TRUE(service1 != service0);
 }
@@ -1285,7 +1285,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   EXPECT_EQ(1, GetServices().size());
   WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
                                          kSecurityWpa));
-  EXPECT_TRUE(service0);
+  EXPECT_TRUE(service0.get());
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(kSecurityPsk, service0->security_);
 
@@ -1311,7 +1311,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
 
   WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
                                          kSecurityRsn));
-  EXPECT_TRUE(service1);
+  EXPECT_TRUE(service1.get());
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_EQ(kSecurityPsk, service1->security_);
   EXPECT_TRUE(service1 != service0);

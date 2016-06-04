@@ -117,7 +117,7 @@ TEST_F(WiMaxTest, StartStop) {
   device_->Stop(nullptr, EnabledStateChangedCallback());
   EXPECT_TRUE(device_->networks_.empty());
   EXPECT_FALSE(device_->IsConnectTimeoutStarted());
-  EXPECT_FALSE(device_->pending_service_);
+  EXPECT_FALSE(device_->pending_service_.get());
 }
 
 TEST_F(WiMaxTest, OnServiceStopped) {
@@ -129,16 +129,16 @@ TEST_F(WiMaxTest, OnServiceStopped) {
   device_->pending_service_ = service1;
 
   device_->OnServiceStopped(nullptr);
-  EXPECT_TRUE(device_->selected_service());
-  EXPECT_TRUE(device_->pending_service_);
+  EXPECT_TRUE(device_->selected_service().get());
+  EXPECT_TRUE(device_->pending_service_.get());
 
   device_->OnServiceStopped(service0);
-  EXPECT_FALSE(device_->selected_service());
-  EXPECT_TRUE(device_->pending_service_);
+  EXPECT_FALSE(device_->selected_service().get());
+  EXPECT_TRUE(device_->pending_service_.get());
 
   device_->OnServiceStopped(service1);
-  EXPECT_FALSE(device_->selected_service());
-  EXPECT_FALSE(device_->pending_service_);
+  EXPECT_FALSE(device_->selected_service().get());
+  EXPECT_FALSE(device_->pending_service_.get());
 }
 
 TEST_F(WiMaxTest, OnNetworksChanged) {
@@ -161,10 +161,10 @@ TEST_F(WiMaxTest, OnConnectComplete) {
       new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
   EXPECT_CALL(*service, SetState(_)).Times(0);
-  EXPECT_TRUE(device_->pending_service_);
+  EXPECT_TRUE(device_->pending_service_.get());
   EXPECT_CALL(*service, SetState(Service::kStateFailure));
   device_->OnConnectComplete(Error(Error::kOperationFailed));
-  EXPECT_FALSE(device_->pending_service_);
+  EXPECT_FALSE(device_->pending_service_.get());
 }
 
 TEST_F(WiMaxTest, OnStatusChanged) {
@@ -176,14 +176,14 @@ TEST_F(WiMaxTest, OnStatusChanged) {
   EXPECT_CALL(*service, SetState(_)).Times(0);
   EXPECT_CALL(*service, ClearPassphrase()).Times(0);
   device_->OnStatusChanged(wimax_manager::kDeviceStatusScanning);
-  EXPECT_TRUE(device_->pending_service_);
+  EXPECT_TRUE(device_->pending_service_.get());
   EXPECT_EQ(wimax_manager::kDeviceStatusScanning, device_->status_);
 
   device_->status_ = wimax_manager::kDeviceStatusConnecting;
   EXPECT_CALL(*service, SetState(Service::kStateFailure));
   EXPECT_CALL(*service, ClearPassphrase()).Times(0);
   device_->OnStatusChanged(wimax_manager::kDeviceStatusScanning);
-  EXPECT_FALSE(device_->pending_service_);
+  EXPECT_FALSE(device_->pending_service_.get());
 
   device_->status_ = wimax_manager::kDeviceStatusConnecting;
   device_->SelectService(service);
@@ -191,15 +191,15 @@ TEST_F(WiMaxTest, OnStatusChanged) {
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
   EXPECT_CALL(*service, ClearPassphrase()).Times(0);
   device_->OnStatusChanged(wimax_manager::kDeviceStatusScanning);
-  EXPECT_FALSE(device_->selected_service());
+  EXPECT_FALSE(device_->selected_service().get());
 
   device_->pending_service_ = service;
   device_->SelectService(service);
   EXPECT_CALL(*service, SetState(_)).Times(0);
   EXPECT_CALL(*service, ClearPassphrase()).Times(0);
   device_->OnStatusChanged(wimax_manager::kDeviceStatusConnecting);
-  EXPECT_TRUE(device_->pending_service_);
-  EXPECT_TRUE(device_->selected_service());
+  EXPECT_TRUE(device_->pending_service_.get());
+  EXPECT_TRUE(device_->selected_service().get());
   EXPECT_EQ(wimax_manager::kDeviceStatusConnecting, device_->status_);
 
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
@@ -224,8 +224,8 @@ TEST_F(WiMaxTest, DropService) {
   EXPECT_CALL(*service0, SetState(Service::kStateIdle)).Times(2);
   EXPECT_CALL(*service1, SetState(Service::kStateIdle));
   device_->DropService(Service::kStateIdle);
-  EXPECT_FALSE(device_->selected_service());
-  EXPECT_FALSE(device_->pending_service_);
+  EXPECT_FALSE(device_->selected_service().get());
+  EXPECT_FALSE(device_->pending_service_.get());
   EXPECT_FALSE(device_->IsConnectTimeoutStarted());
 
   // Expect no crash.
@@ -240,7 +240,7 @@ TEST_F(WiMaxTest, OnDeviceVanished) {
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
   device_->OnDeviceVanished();
   EXPECT_FALSE(device_->proxy_.get());
-  EXPECT_FALSE(device_->pending_service_);
+  EXPECT_FALSE(device_->pending_service_.get());
 }
 
 TEST_F(WiMaxTest, OnEnableComplete) {
@@ -285,7 +285,7 @@ TEST_F(WiMaxTest, ConnectTimeout) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_TRUE(device_->connect_timeout_callback_.IsCancelled());
   EXPECT_FALSE(device_->IsConnectTimeoutStarted());
-  EXPECT_FALSE(device_->pending_service_);
+  EXPECT_FALSE(device_->pending_service_.get());
 }
 
 TEST_F(WiMaxTest, ConnectTo) {

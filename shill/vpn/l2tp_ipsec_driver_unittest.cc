@@ -665,11 +665,11 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 
   // Make sure that a notification of an intermediate state doesn't cause
   // the driver to fail the connection.
-  ASSERT_TRUE(driver_->service_);
+  ASSERT_TRUE(driver_->service_.get());
   VPNServiceConstRefPtr service = driver_->service_;
   InvokeNotify(kPPPReasonAuthenticating, config);
   InvokeNotify(kPPPReasonAuthenticated, config);
-  EXPECT_TRUE(driver_->service_);
+  EXPECT_TRUE(driver_->service_.get());
   EXPECT_FALSE(service->IsFailed());
 
   ExpectDeviceConnected(config);
