@@ -457,13 +457,67 @@ static int unmount_external_mounts(struct container *c)
 	return ret;
 }
 
+static int do_container_mount(struct container *c,
+			      const struct container_mount *mnt)
+{
+	char *source = NULL;
+	char *dest = NULL;
+	int rc = 0;
+
+	if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
+		return -errno;
+
+	/*
+	 * If it's a bind mount relative to rootfs, append source to
+	 * rootfs path, otherwise source path is absolute.
+	 */
+	if ((mnt->flags & MS_BIND) && mnt->source[0] != '/') {
+		if (asprintf(&source, "%s/%s", c->runfsroot, mnt->source) < 0)
+			goto error_free_return;
+	} else {
+		if (asprintf(&source, "%s", mnt->source) < 0)
+			goto error_free_return;
+	}
+
+	if (mnt->create) {
+		rc = setup_mount_destination(mnt, source, dest);
+		if (rc)
+			goto error_free_return;
+	}
+	if (mnt->mount_in_ns) {
+		/* We can mount this with minijail. */
+		rc = minijail_mount(c->jail, source, mnt->destination,
+				    mnt->type, mnt->flags);
+		if (rc)
+			goto error_free_return;
+	} else {
+		/* Mount this externally and unmount it on exit. */
+		if (mount(source, dest, mnt->type, mnt->flags,
+			  mnt->data))
+			goto error_free_return;
+		/* Save this to unmount when shutting down. */
+		c->ext_mounts[c->num_ext_mounts] = strdup(dest);
+		if (!c->ext_mounts[c->num_ext_mounts])
+			goto error_free_return;
+		c->num_ext_mounts++;
+	}
+
+	goto exit;
+
+error_free_return:
+	if (!rc)
+		rc = -errno;
+exit:
+	free(source);
+	free(dest);
+	return rc;
+}
+
 static int do_container_mounts(struct container *c,
 			       const struct container_config *config)
 {
 	unsigned int i;
 	int rc = 0;
-	char *source;
-	char *dest;
 
 	/*
 	 * Allocate space to track anything we mount in our mount namespace.
@@ -474,55 +528,13 @@ static int do_container_mounts(struct container *c,
 		return -errno;
 
 	for (i = 0; i < config->num_mounts; ++i) {
-		const struct container_mount *mnt = &config->mounts[i];
-
-		source = NULL;
-		dest = NULL;
-		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
-			return -errno;
-
-		/*
-		 * If it's a bind mount relative to rootfs, append source to
-		 * rootfs path, otherwise source path is absolute.
-		 */
-		if ((mnt->flags & MS_BIND) && mnt->source[0] != '/') {
-			if (asprintf(&source, "%s/%s", c->runfsroot,
-				     mnt->source) < 0)
-				goto error_free_return;
-		} else {
-			if (asprintf(&source, "%s", mnt->source) < 0)
-				goto error_free_return;
-		}
-
-		if (mnt->create) {
-			if (setup_mount_destination(mnt, source, dest))
-				goto error_free_return;
-		}
-		if (mnt->mount_in_ns) {
-			/* We can mount this with minijail. */
-			rc = minijail_mount(c->jail, source, mnt->destination,
-					    mnt->type, mnt->flags);
-			if (rc)
-				goto error_free_return;
-		} else {
-			/* Mount this externally and unmount it on exit. */
-			if (mount(source, dest, mnt->type, mnt->flags,
-				  mnt->data))
-				goto error_free_return;
-			/* Save this to unmount when shutting down. */
-			c->ext_mounts[c->num_ext_mounts] = strdup(dest);
-			c->num_ext_mounts++;
-		}
-		free(source);
-		free(dest);
+		rc = do_container_mount(c, &config->mounts[i]);
+		if (rc)
+			goto error_free_return;
 	}
 	return 0;
 
 error_free_return:
-	if (!rc)
-		rc = -errno;
-	free(dest);
-	free(source);
 	unmount_external_mounts(c);
 	return rc;
 }
