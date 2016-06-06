@@ -298,6 +298,10 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   browser_->WaitAndAbort(GetKillTimeout());
   browser_->ClearPid();
 
+  // Also ensure all containers are gone, if present.
+  if (session_containers_)
+    session_containers_->KillAllContainers();
+
   // Do nothing if already shutting down.
   if (shutting_down_)
     return;
