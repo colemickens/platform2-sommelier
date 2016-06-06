@@ -4,10 +4,12 @@
 
 #include "login_manager/container_config_parser.h"
 
-#include <sys/types.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
+
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/json/json_reader.h>
@@ -477,8 +479,13 @@ bool ParseContainerConfig(const std::string& config_json_data,
     return false;
 
   // Hack for android containers that need selinux commands run.
-  if (container_name.find("android") != std::string::npos)
-    container_config_run_setfiles(config_out->get(), "/sbin/setfiles");
+  if (container_name.find("android") != std::string::npos) {
+    if (container_config_run_setfiles(config_out->get(), "/sbin/setfiles")) {
+      LOG(ERROR) << "Fail to set setfiles for "
+                 << container_name;
+      return false;
+    }
+  }
 
   return true;
 }

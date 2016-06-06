@@ -22,7 +22,24 @@
 #include "libcontainer.h"
 #include "libminijail.h"
 
+#define FREE_AND_NULL(ptr) \
+do { \
+	free(ptr); \
+	ptr = NULL; \
+} while(0)
+
 static int container_teardown(struct container *c);
+
+static int strdup_and_free(char **dest, const char *src)
+{
+	char *copy = strdup(src);
+	if (!copy)
+		return -ENOMEM;
+	if (*dest)
+		free(*dest);
+	*dest = copy;
+	return 0;
+}
 
 struct container_mount {
 	char *name;
@@ -78,12 +95,38 @@ struct container_config {
 	size_t num_mounts;
 	struct container_device *devices;
 	size_t num_devices;
-	const char *run_setfiles;
+	char *run_setfiles;
 };
 
 struct container_config *container_config_create()
 {
 	return calloc(1, sizeof(struct container_config));
+}
+
+static void container_free_program_args(struct container_config *c)
+{
+	int i;
+
+	if (!c->program_argv)
+		return;
+	for (i = 0; i < c->num_args; ++i) {
+		FREE_AND_NULL(c->program_argv[i]);
+	}
+	FREE_AND_NULL(c->program_argv);
+}
+
+static void container_config_free_mount(struct container_mount *mount)
+{
+	FREE_AND_NULL(mount->name);
+	FREE_AND_NULL(mount->source);
+	FREE_AND_NULL(mount->destination);
+	FREE_AND_NULL(mount->type);
+	FREE_AND_NULL(mount->data);
+}
+
+static void container_config_free_device(struct container_device *device)
+{
+	FREE_AND_NULL(device->path);
 }
 
 void container_config_destroy(struct container_config *c)
@@ -92,34 +135,26 @@ void container_config_destroy(struct container_config *c)
 
 	if (c == NULL)
 		return;
-	free(c->rootfs);
-	for (i = 0; i < c->num_args; ++i)
-		free(c->program_argv[i]);
-	free(c->program_argv);
-	free(c->uid_map);
-	free(c->gid_map);
-	free(c->alt_syscall_table);
+	FREE_AND_NULL(c->rootfs);
+	container_free_program_args(c);
+	FREE_AND_NULL(c->uid_map);
+	FREE_AND_NULL(c->gid_map);
+	FREE_AND_NULL(c->alt_syscall_table);
 	for (i = 0; i < c->num_mounts; ++i) {
-		free(c->mounts[i].name);
-		free(c->mounts[i].source);
-		free(c->mounts[i].destination);
-		free(c->mounts[i].type);
-		free(c->mounts[i].data);
+		container_config_free_mount(&c->mounts[i]);
 	}
-	free(c->mounts);
+	FREE_AND_NULL(c->mounts);
 	for (i = 0; i < c->num_devices; ++i) {
-		free(c->devices[i].path);
+		container_config_free_device(&c->devices[i]);
 	}
-	free(c->devices);
-	free(c);
+	FREE_AND_NULL(c->devices);
+	FREE_AND_NULL(c->run_setfiles);
+	FREE_AND_NULL(c);
 }
 
 int container_config_rootfs(struct container_config *c, const char *rootfs)
 {
-	c->rootfs = strdup(rootfs);
-	if (!c->rootfs)
-		return -ENOMEM;
-	return 0;
+	return strdup_and_free(&c->rootfs, rootfs);
 }
 
 const char *container_config_get_rootfs(const struct container_config *c)
@@ -132,17 +167,21 @@ int container_config_program_argv(struct container_config *c,
 {
 	size_t i;
 
+	container_free_program_args(c);
 	c->num_args = num_args;
 	c->program_argv = calloc(num_args + 1, sizeof(char *));
 	if (!c->program_argv)
 		return -ENOMEM;
 	for (i = 0; i < num_args; ++i) {
-		c->program_argv[i] = strdup(argv[i]);
-		if (!c->program_argv[i])
-			return -ENOMEM;
+		if (strdup_and_free(&c->program_argv[i], argv[i]))
+			goto error_free_return;
 	}
 	c->program_argv[num_args] = NULL;
 	return 0;
+
+error_free_return:
+	container_free_program_args(c);
+	return -ENOMEM;
 }
 
 size_t container_config_get_num_program_args(const struct container_config *c)
@@ -160,27 +199,18 @@ const char *container_config_get_program_arg(const struct container_config *c,
 
 int container_config_uid_map(struct container_config *c, const char *uid_map)
 {
-	c->uid_map = strdup(uid_map);
-	if (!c->uid_map)
-		return -ENOMEM;
-	return 0;
+	return strdup_and_free(&c->uid_map, uid_map);
 }
 
 int container_config_gid_map(struct container_config *c, const char *gid_map)
 {
-	c->gid_map = strdup(gid_map);
-	if (!c->gid_map)
-		return -ENOMEM;
-	return 0;
+	return strdup_and_free(&c->gid_map, gid_map);
 }
 
 int container_config_alt_syscall_table(struct container_config *c,
 				       const char *alt_syscall_table)
 {
-	c->alt_syscall_table = strdup(alt_syscall_table);
-	if (!c->alt_syscall_table)
-		return -ENOMEM;
-	return 0;
+	return strdup_and_free(&c->alt_syscall_table, alt_syscall_table);
 }
 
 int container_config_add_mount(struct container_config *c,
@@ -197,6 +227,7 @@ int container_config_add_mount(struct container_config *c,
 			       int create)
 {
 	struct container_mount *mount_ptr;
+	struct container_mount *current_mount;
 
 	if (name == NULL || source == NULL ||
 	    destination == NULL || type == NULL)
@@ -207,33 +238,31 @@ int container_config_add_mount(struct container_config *c,
 	if (!mount_ptr)
 		return -ENOMEM;
 	c->mounts = mount_ptr;
-	c->mounts[c->num_mounts].name = strdup(name);
-	if (!c->mounts[c->num_mounts].name)
-		return -ENOMEM;
-	c->mounts[c->num_mounts].source = strdup(source);
-	if (!c->mounts[c->num_mounts].source)
-		return -ENOMEM;
-	c->mounts[c->num_mounts].destination = strdup(destination);
-	if (!c->mounts[c->num_mounts].destination)
-		return -ENOMEM;
-	c->mounts[c->num_mounts].type = strdup(type);
-	if (!c->mounts[c->num_mounts].type)
-		return -ENOMEM;
-	if (data) {
-		c->mounts[c->num_mounts].data = strdup(data);
-		if (!c->mounts[c->num_mounts].data)
-			return -ENOMEM;
-	} else {
-		c->mounts[c->num_mounts].data = NULL;
-	}
-	c->mounts[c->num_mounts].flags = flags;
-	c->mounts[c->num_mounts].uid = uid;
-	c->mounts[c->num_mounts].gid = gid;
-	c->mounts[c->num_mounts].mode = mode;
-	c->mounts[c->num_mounts].mount_in_ns = mount_in_ns;
-	c->mounts[c->num_mounts].create = create;
+	current_mount = &c->mounts[c->num_mounts];
+	memset(current_mount, 0, sizeof(struct container_mount));
+
+	if (strdup_and_free(&current_mount->name, name))
+		goto error_free_return;
+	if (strdup_and_free(&current_mount->source, source))
+		goto error_free_return;
+	if (strdup_and_free(&current_mount->destination, destination))
+		goto error_free_return;
+	if (strdup_and_free(&current_mount->type, type))
+		goto error_free_return;
+	if (data && strdup_and_free(&current_mount->data, data))
+		goto error_free_return;
+	current_mount->flags = flags;
+	current_mount->uid = uid;
+	current_mount->gid = gid;
+	current_mount->mode = mode;
+	current_mount->mount_in_ns = mount_in_ns;
+	current_mount->create = create;
 	++c->num_mounts;
 	return 0;
+
+error_free_return:
+	container_config_free_mount(current_mount);
+	return -ENOMEM;
 }
 
 int container_config_add_device(struct container_config *c,
@@ -250,6 +279,7 @@ int container_config_add_device(struct container_config *c,
 				int modify_allowed)
 {
 	struct container_device *dev_ptr;
+	struct container_device *current_dev;
 
 	if (path == NULL)
 		return -EINVAL;
@@ -262,27 +292,33 @@ int container_config_add_device(struct container_config *c,
 	if (!dev_ptr)
 		return -ENOMEM;
 	c->devices = dev_ptr;
-	c->devices[c->num_devices].type = type;
-	c->devices[c->num_devices].path = strdup(path);
-	if (!c->devices[c->num_devices].path)
-		return -ENOMEM;
-	c->devices[c->num_devices].fs_permissions = fs_permissions;
-	c->devices[c->num_devices].major = major;
-	c->devices[c->num_devices].minor = minor;
-	c->devices[c->num_devices].copy_minor = copy_minor;
-	c->devices[c->num_devices].uid = uid;
-	c->devices[c->num_devices].gid = gid;
-	c->devices[c->num_devices].read_allowed = read_allowed;
-	c->devices[c->num_devices].write_allowed = write_allowed;
-	c->devices[c->num_devices].modify_allowed = modify_allowed;
+	current_dev = &c->devices[c->num_devices];
+	memset(current_dev, 0, sizeof(struct container_device));
+
+	current_dev->type = type;
+	if (strdup_and_free(&current_dev->path, path))
+		goto error_free_return;
+	current_dev->fs_permissions = fs_permissions;
+	current_dev->major = major;
+	current_dev->minor = minor;
+	current_dev->copy_minor = copy_minor;
+	current_dev->uid = uid;
+	current_dev->gid = gid;
+	current_dev->read_allowed = read_allowed;
+	current_dev->write_allowed = write_allowed;
+	current_dev->modify_allowed = modify_allowed;
 	++c->num_devices;
 	return 0;
+
+error_free_return:
+	container_config_free_device(current_dev);
+	return -ENOMEM;
 }
 
-void container_config_run_setfiles(struct container_config *c,
+int container_config_run_setfiles(struct container_config *c,
 				   const char *setfiles_cmd)
 {
-	c->run_setfiles = setfiles_cmd;
+	return strdup_and_free(&c->run_setfiles, setfiles_cmd);
 }
 
 const char *container_config_get_run_setfiles(const struct container_config *c)
@@ -330,9 +366,9 @@ void container_destroy(struct container *c)
 		container_cgroup_destroy(c->cgroup);
 	if (c->jail)
 		minijail_destroy(c->jail);
-	free(c->name);
-	free(c->rundir);
-	free(c);
+	FREE_AND_NULL(c->name);
+	FREE_AND_NULL(c->rundir);
+	FREE_AND_NULL(c);
 }
 
 static int make_dir(const char *path, int uid, int gid, int mode)
@@ -449,11 +485,13 @@ static int unmount_external_mounts(struct container *c)
 
 	while (c->num_ext_mounts) {
 		c->num_ext_mounts--;
+		if (!c->ext_mounts[c->num_ext_mounts])
+			continue;
 		if (umount(c->ext_mounts[c->num_ext_mounts]))
 			ret = -errno;
-		free(c->ext_mounts[c->num_ext_mounts]);
+		FREE_AND_NULL(c->ext_mounts[c->num_ext_mounts]);
 	}
-	free(c->ext_mounts);
+	FREE_AND_NULL(c->ext_mounts);
 	return ret;
 }
 
@@ -496,8 +534,8 @@ static int do_container_mount(struct container *c,
 			  mnt->data))
 			goto error_free_return;
 		/* Save this to unmount when shutting down. */
-		c->ext_mounts[c->num_ext_mounts] = strdup(dest);
-		if (!c->ext_mounts[c->num_ext_mounts])
+		rc = strdup_and_free(&c->ext_mounts[c->num_ext_mounts], dest);
+		if (rc)
 			goto error_free_return;
 		c->num_ext_mounts++;
 	}
@@ -519,6 +557,7 @@ static int do_container_mounts(struct container *c,
 	unsigned int i;
 	int rc = 0;
 
+	unmount_external_mounts(c);
 	/*
 	 * Allocate space to track anything we mount in our mount namespace.
 	 * This over-allocates as it has space for all mounts.
@@ -532,10 +571,49 @@ static int do_container_mounts(struct container *c,
 		if (rc)
 			goto error_free_return;
 	}
+
 	return 0;
 
 error_free_return:
 	unmount_external_mounts(c);
+	return rc;
+}
+
+static int container_create_device(const struct container *c,
+				   const struct container_device *dev,
+				   int minor)
+{
+	char *path = NULL;
+	int rc = 0;
+	int mode;
+
+	switch (dev->type) {
+	case  'b':
+		mode = S_IFBLK;
+		break;
+	case 'c':
+		mode = S_IFCHR;
+		break;
+	default:
+		return -EINVAL;
+	}
+	mode |= dev->fs_permissions;
+
+	if (asprintf(&path, "%s%s", c->runfsroot, dev->path) < 0)
+		goto error_free_return;
+	if (mknod(path, mode, makedev(dev->major, minor)) && errno != EEXIST)
+		goto error_free_return;
+	if (chown(path, dev->uid, dev->gid))
+		goto error_free_return;
+	if (chmod(path, dev->fs_permissions))
+		goto error_free_return;
+
+	goto exit;
+
+error_free_return:
+	rc = -errno;
+exit:
+	free(path);
 	return rc;
 }
 
@@ -545,8 +623,10 @@ int container_start(struct container *c, const struct container_config *config)
 	int rc = 0;
 	unsigned int i;
 	const char *rootfs = config->rootfs;
-	char *runfs_template;
+	char *runfs_template = NULL;
 
+	if (!c)
+		return -EINVAL;
 	if (!config)
 		return -EINVAL;
 	if (!config->program_argv || !config->program_argv[0])
@@ -576,10 +656,8 @@ int container_start(struct container *c, const struct container_config *config)
 		goto error_rmdir;
 
 	c->jail = minijail_new();
-	if (!c->jail) {
-		rc = -ENOMEM;
+	if (!c->jail)
 		goto error_rmdir;
-	}
 
 	rc = do_container_mounts(c, config);
 	if (rc)
@@ -589,21 +667,7 @@ int container_start(struct container *c, const struct container_config *config)
 
 	for (i = 0; i < config->num_devices; i++) {
 		const struct container_device *dev = &config->devices[i];
-		int mode;
 		int minor = dev->minor;
-
-		switch (dev->type) {
-		case  'b':
-			mode = S_IFBLK;
-			break;
-		case 'c':
-			mode = S_IFCHR;
-			break;
-		default:
-			rc = -EINVAL;
-			goto error_rmdir;
-		}
-		mode |= dev->fs_permissions;
 
 		if (dev->copy_minor) {
 			struct stat st_buff;
@@ -613,23 +677,9 @@ int container_start(struct container *c, const struct container_config *config)
 			minor = minor(st_buff.st_rdev);
 		}
 		if (minor >= 0) {
-			char *path;
-
-			if (asprintf(&path, "%s%s", c->runfsroot, dev->path) < 0)
+			rc = container_create_device(c, dev, minor);
+			if (rc)
 				goto error_rmdir;
-			if (mknod(path, mode, makedev(dev->major, minor)) && errno != EEXIST) {
-				free(path);
-				goto error_rmdir;
-			}
-			if (chown(path, dev->uid, dev->gid)) {
-				free(path);
-				goto error_rmdir;
-			}
-			if (chmod(path, dev->fs_permissions)) {
-				free(path);
-				goto error_rmdir;
-			}
-			free(path);
 		}
 
 		rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
@@ -739,20 +789,17 @@ static int container_teardown(struct container *c)
 			ret = -errno;
 		if (rmdir(c->runfsroot))
 			ret = -errno;
-		free(c->runfsroot);
-		c->runfsroot = NULL;
+		FREE_AND_NULL(c->runfsroot);
 	}
 	if (c->pid_file_path) {
 		if (unlink(c->pid_file_path))
 			ret = -errno;
-		free(c->pid_file_path);
-		c->pid_file_path = NULL;
+		FREE_AND_NULL(c->pid_file_path);
 	}
 	if (c->runfs) {
 		if (rmdir(c->runfs))
 			ret = -errno;
-		free(c->runfs);
-		c->runfs = NULL;
+		FREE_AND_NULL(c->runfs);
 	}
 	return ret;
 }
