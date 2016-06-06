@@ -6,6 +6,7 @@
 #define _GNU_SOURCE /* For asprintf */
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,30 +20,36 @@ static const char *cgroup_names[NUM_CGROUP_TYPES] = {
 	"cpu", "cpuacct", "devices", "freezer",
 };
 
-static FILE *open_cgroup_file(const char *cgroup_path, const char *name)
+static int open_cgroup_file(const char *cgroup_path, const char *name)
 {
-	FILE *fp;
+	int fd;
 	char *path = NULL;
 
 	if (asprintf(&path, "%s/%s", cgroup_path, name) < 0)
-		return NULL;
+		return -errno;
 
-	fp = fopen(path, "w");
+	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+	if (fd == -1)
+		fd = -errno;
 	free(path);
-	return fp;
+	return fd;
 }
 
 static int write_cgroup_file(const char *cgroup_path, const char *name,
 			     const char *str)
 {
-	FILE *fp;
+	int fd;
+	int rc = 0;
 
-	fp = open_cgroup_file(cgroup_path, name);
-	if (!fp)
-		return -errno;
-	fputs(str, fp);
-	fclose(fp);
-	return 0;
+	fd = open_cgroup_file(cgroup_path, name);
+	if (fd < 0)
+		return fd;
+	const char *buffer = str;
+	size_t len = strlen(str);
+	if (write(fd, buffer, len) != len)
+		rc = -errno;
+	close(fd);
+	return rc;
 }
 
 static int freeze(const struct container_cgroup *cg)
