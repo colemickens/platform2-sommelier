@@ -97,6 +97,17 @@ class TpmStateForwarder : public TpmState {
     return target_->GetLockoutRecovery();
   }
 
+  uint32_t GetMaxNVSize() override { return target_->GetMaxNVSize(); }
+
+  bool GetTpmProperty(TPM_PT property, uint32_t* value) override {
+    return target_->GetTpmProperty(property, value);
+  }
+
+  bool GetAlgorithmProperties(TPM_ALG_ID algorithm,
+                              TPMA_ALGORITHM* properties) override {
+    return target_->GetAlgorithmProperties(algorithm, properties);
+  }
+
  private:
   TpmState* target_;
 };
@@ -576,7 +587,7 @@ std::unique_ptr<PolicySession> TrunksFactoryForTest::GetPolicySession() const {
 }
 
 std::unique_ptr<PolicySession> TrunksFactoryForTest::GetTrialSession() const {
-  return base::MakeUnique<PolicySessionForwarder>(policy_session_);
+  return base::MakeUnique<PolicySessionForwarder>(trial_session_);
 }
 
 std::unique_ptr<BlobParser> TrunksFactoryForTest::GetBlobParser() const {
