@@ -19,12 +19,14 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringize_macros.h>
+#include <base/time/time.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 
 using base::File;
 using base::FilePath;
 using base::ReadFileToString;
+using base::TimeDelta;
 using base::TimeTicks;
 
 using brillo::ProcessImpl;
@@ -78,6 +80,12 @@ const size_t kBufferSize = 4096;
 
 inline bool IsAppProcess(const std::string &name) {
   return name == "app_process32" || name == "app_process64";
+}
+
+inline TimeTicks ToSeconds(const TimeTicks &time) {
+  return TimeTicks::FromInternalValue(
+      TimeDelta::FromSeconds(TimeDelta::FromInternalValue(
+          time.ToInternalValue()).InSeconds()).ToInternalValue());
 }
 
 bool ReadCrashLogFromStdin(std::stringstream *stream);
@@ -421,12 +429,22 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
   }
 
   const auto process = GetCrashLogHeader(map, kProcessKey);
-  const auto basename = FormatDumpBasename(process, std::time(nullptr), 0);
+
+  // FormatDumpBasename relies on the assumption that the combination of process
+  // name, timestamp, and PID is unique. This does not hold if a process crashes
+  // more than once in the span of a second. While this is improbable for native
+  // crashes, Java crashes are not always fatal and may happen in bursts. Hence,
+  // ensure uniqueness by replacing the PID with the number of microseconds
+  // since the current second.
+  const auto now = TimeTicks::Now();
+  const pid_t dt = static_cast<pid_t>((now - ToSeconds(now)).InMicroseconds());
+
+  const auto basename = FormatDumpBasename(process, std::time(nullptr), dt);
   const FilePath log_path = GetCrashPath(crash_dir, basename, "log");
 
   const int size = static_cast<int>(log.size());
   if (WriteNewFile(log_path, log.c_str(), size) != size) {
-    LOG(ERROR) << "Failed to write log";
+    PLOG(ERROR) << "Failed to write log";
     return false;
   }
 
@@ -451,7 +469,7 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
     const int size = static_cast<int>(exception_info.size());
 
     if (WriteNewFile(info_path, exception_info.c_str(), size) != size) {
-      LOG(ERROR) << "Failed to write exception info";
+      PLOG(ERROR) << "Failed to write exception info";
       return false;
     }
 

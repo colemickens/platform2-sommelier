@@ -20,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/scoped_clear_errno.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -124,6 +125,7 @@ int CrashCollector::WriteNewFile(const FilePath &filename,
   }
 
   int rv = base::WriteFileDescriptor(fd, data, size) ? size : -1;
+  base::ScopedClearErrno restore_error;
   IGNORE_EINTR(close(fd));
   return rv;
 }
