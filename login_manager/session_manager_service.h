@@ -285,7 +285,7 @@ class SessionManagerService
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;
-  scoped_ptr<SessionContainersInterface> session_containers_;
+  scoped_ptr<ContainerManagerInterface> session_containers_;
 
   // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
   scoped_ptr<SessionManagerInterface> impl_;

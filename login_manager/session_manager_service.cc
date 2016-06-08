@@ -185,7 +185,7 @@ bool SessionManagerService::Initialize() {
                                                   liveness_checking_interval_));
 
   session_containers_.reset(
-      new SessionContainersImpl(base::FilePath(kContainerInstallDirectory)));
+      new ContainerManagerImpl(base::FilePath(kContainerInstallDirectory)));
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.

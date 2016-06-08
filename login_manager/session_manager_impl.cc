@@ -103,16 +103,13 @@ bool IsIncognitoUserId(const std::string& user_id) {
 
 }  // namespace
 
-SessionManagerImpl::Error::Error() : set_(false) {
-}
+SessionManagerImpl::Error::Error() : set_(false) {}
 
 SessionManagerImpl::Error::Error(const std::string& name,
                                  const std::string& message)
-    : name_(name), message_(message), set_(true) {
-}
+    : name_(name), message_(message), set_(true) {}
 
-SessionManagerImpl::Error::~Error() {
-}
+SessionManagerImpl::Error::~Error() {}
 
 void SessionManagerImpl::Error::Set(const std::string& name,
                                     const std::string& message) {
@@ -157,7 +154,7 @@ SessionManagerImpl::SessionManagerImpl(
     Crossystem* crossystem,
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
-    SessionContainersInterface* containers)
+    ContainerManagerInterface* containers)
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
@@ -177,8 +174,7 @@ SessionManagerImpl::SessionManagerImpl(
       vpd_process_(vpd_process),
       owner_key_(owner_key),
       containers_(containers),
-      mitigator_(key_gen) {
-}
+      mitigator_(key_gen) {}
 
 SessionManagerImpl::~SessionManagerImpl() {
   STLDeleteValues(&user_sessions_);
@@ -189,7 +185,7 @@ void SessionManagerImpl::InjectPolicyServices(
     std::unique_ptr<DevicePolicyService> device_policy,
     std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
     std::unique_ptr<DeviceLocalAccountPolicyService>
-    device_local_account_policy) {
+        device_local_account_policy) {
   device_policy_ = std::move(device_policy);
   user_policy_factory_ = std::move(user_policy_factory);
   device_local_account_policy_ = std::move(device_local_account_policy);
@@ -216,9 +212,9 @@ bool SessionManagerImpl::ShouldEndSession() {
 bool SessionManagerImpl::Initialize() {
   key_gen_->set_delegate(this);
 
-  device_policy_.reset(DevicePolicyService::Create(
-      login_metrics_, owner_key_, &mitigator_, nss_, crossystem_,
-      vpd_process_));
+  device_policy_.reset(DevicePolicyService::Create(login_metrics_, owner_key_,
+                                                   &mitigator_, nss_,
+                                                   crossystem_, vpd_process_));
   device_policy_->set_delegate(this);
 
   user_policy_factory_.reset(
@@ -240,8 +236,7 @@ bool SessionManagerImpl::Initialize() {
 void SessionManagerImpl::Finalize() {
   device_policy_->PersistPolicySync();
   for (UserSessionMap::const_iterator it = user_sessions_.begin();
-       it != user_sessions_.end();
-       ++it) {
+       it != user_sessions_.end(); ++it) {
     if (it->second)
       it->second->policy_service->PersistPolicySync();
   }
@@ -253,9 +248,8 @@ void SessionManagerImpl::Finalize() {
 void SessionManagerImpl::EmitLoginPromptVisible(Error* error) {
   login_metrics_->RecordStats("login-prompt-visible");
   dbus_emitter_->EmitSignal(kLoginPromptVisibleSignal);
-  scoped_ptr<dbus::Response> response =
-      init_controller_->TriggerImpulse("login-prompt-visible",
-                                       std::vector<std::string>());
+  scoped_ptr<dbus::Response> response = init_controller_->TriggerImpulse(
+      "login-prompt-visible", std::vector<std::string>());
   if (!response) {
     static const char msg[] =
         "Emitting login-prompt-visible upstart signal failed.";
@@ -317,8 +311,7 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
 
   // Check if this user already started a session.
   if (user_sessions_.count(actual_user_id) > 0) {
-    static const char msg[] =
-        "Provided user id already started a session.";
+    static const char msg[] = "Provided user id already started a session.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSessionExists, msg);
     return false;
@@ -336,10 +329,9 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
   // whitelisted and has an owner key.
   bool user_is_owner = false;
   PolicyService::Error policy_error;
-  if (!device_policy_->CheckAndHandleOwnerLogin(user_session->username,
-                                                user_session->slot.get(),
-                                                &user_is_owner,
-                                                &policy_error)) {
+  if (!device_policy_->CheckAndHandleOwnerLogin(
+          user_session->username, user_session->slot.get(), &user_is_owner,
+          &policy_error)) {
     error->Set(policy_error.code(), policy_error.message());
     return false;
   }
@@ -353,10 +345,9 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
   if (dev_mode > -1)
     login_metrics_->SendLoginUserType(dev_mode, is_incognito, user_is_owner);
 
-  scoped_ptr<dbus::Response> response =
-      init_controller_->TriggerImpulse(
-          "start-user-session",
-          std::vector<std::string>(1, "CHROMEOS_USER=" + actual_user_id));
+  scoped_ptr<dbus::Response> response = init_controller_->TriggerImpulse(
+      "start-user-session",
+      std::vector<std::string>(1, "CHROMEOS_USER=" + actual_user_id));
 
   if (!response) {
     static const char msg[] =
@@ -433,9 +424,7 @@ void SessionManagerImpl::StorePolicyForUser(
   }
 
   policy_service->Store(
-      policy_blob,
-      policy_blob_len,
-      completion,
+      policy_blob, policy_blob_len, completion,
       PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE);
 }
 
@@ -463,8 +452,8 @@ void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     const uint8_t* policy_blob,
     size_t policy_blob_len,
     const PolicyService::Completion& completion) {
-  device_local_account_policy_->Store(
-      account_id, policy_blob, policy_blob_len, completion);
+  device_local_account_policy_->Store(account_id, policy_blob, policy_blob_len,
+                                      completion);
 }
 
 void SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
@@ -489,8 +478,7 @@ const char* SessionManagerImpl::RetrieveSessionState() {
 void SessionManagerImpl::RetrieveActiveSessions(
     std::map<std::string, std::string>* active_sessions) {
   for (UserSessionMap::const_iterator it = user_sessions_.begin();
-       it != user_sessions_.end();
-       ++it) {
+       it != user_sessions_.end(); ++it) {
     if (it->second) {
       (*active_sessions)[it->second->username] = it->second->userhash;
     }
@@ -648,8 +636,7 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
   // init job will ignore shutting it down.
   env.emplace_back("ANDROID_PID=" + std::to_string(pid));
   if (!init_controller_->TriggerImpulse(kArcStopSignal, env)) {
-    static const char msg[] =
-        "Emitting stop-arc-instance init signal failed.";
+    static const char msg[] = "Emitting stop-arc-instance init signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }
@@ -658,8 +645,7 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
   // so the container shouldn't be affected.
   if (!init_controller_->TriggerImpulse(kArcNetworkStopSignal,
                                         std::vector<std::string>())) {
-    static const char msg[] =
-        "Emitting stop-arc-network init signal failed.";
+    static const char msg[] = "Emitting stop-arc-network init signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
   }
@@ -789,8 +775,7 @@ bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
 bool SessionManagerImpl::AllSessionsAreIncognito() {
   size_t incognito_count = 0;
   for (UserSessionMap::const_iterator it = user_sessions_.begin();
-       it != user_sessions_.end();
-       ++it) {
+       it != user_sessions_.end(); ++it) {
     if (it->second)
       incognito_count += it->second->is_incognito;
   }
@@ -801,8 +786,8 @@ SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
     const std::string& username,
     bool is_incognito,
     std::string* error_message) {
-  std::unique_ptr<PolicyService>
-  user_policy(user_policy_factory_->Create(username));
+  std::unique_ptr<PolicyService> user_policy(
+      user_policy_factory_->Create(username));
   if (!user_policy) {
     LOG(ERROR) << "User policy failed to initialize.";
     if (error_message)
@@ -816,11 +801,9 @@ SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
       *error_message = dbus_error::kNoUserNssDb;
     return NULL;
   }
-  return new SessionManagerImpl::UserSession(username,
-                                             SanitizeUserName(username),
-                                             is_incognito,
-                                             std::move(slot),
-                                             std::move(user_policy));
+  return new SessionManagerImpl::UserSession(
+      username, SanitizeUserName(username), is_incognito, std::move(slot),
+      std::move(user_policy));
 }
 
 PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {

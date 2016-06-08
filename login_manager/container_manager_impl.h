@@ -21,12 +21,12 @@ namespace login_manager {
 
 // Manages containers running in a session.
 // Handles parsing of config.json and runtime.json to configure the container.
-class SessionContainersImpl : public SessionContainersInterface {
+class ContainerManagerImpl : public ContainerManagerInterface {
  public:
-  SessionContainersImpl(const base::FilePath& containers_directory);
-  ~SessionContainersImpl() override;
+  ContainerManagerImpl(const base::FilePath& containers_directory);
+  ~ContainerManagerImpl() override;
 
-  //  SessionContainersInterface
+  // ContainerManagerInterface:
   bool StartContainer(const std::string& name) override;
   bool WaitForContainerToExit(const std::string& name) override;
   bool KillContainer(const std::string& name) override;
@@ -43,7 +43,7 @@ class SessionContainersImpl : public SessionContainersInterface {
   // Directory that holds the container config files.
   const base::FilePath containers_directory_;
 
-  DISALLOW_COPY_AND_ASSIGN(SessionContainersImpl);
+  DISALLOW_COPY_AND_ASSIGN(ContainerManagerImpl);
 };
 
 }  // namespace login_manager

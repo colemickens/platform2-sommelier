@@ -17,23 +17,23 @@
 
 namespace login_manager {
 
-class MockSessionContainers : public SessionContainersInterface {
+class MockContainerManager : public ContainerManagerInterface {
  public:
-  MockSessionContainers() {}
-  ~MockSessionContainers() override {}
+  MockContainerManager() {}
+  ~MockContainerManager() override {}
 
   MOCK_METHOD1(StartContainer, bool(const std::string& name));
   MOCK_METHOD1(WaitForContainerToExit, bool(const std::string& name));
   MOCK_METHOD1(KillContainer, bool(const std::string& name));
   MOCK_METHOD0(KillAllContainers, bool(void));
 
-  MOCK_CONST_METHOD2(GetRootFsPath, bool(const std::string& name,
-                                         base::FilePath* path_out));
-  MOCK_CONST_METHOD2(GetContainerPID, bool(const std::string& name,
-                                           pid_t* pid_out));
+  MOCK_CONST_METHOD2(GetRootFsPath,
+                     bool(const std::string& name, base::FilePath* path_out));
+  MOCK_CONST_METHOD2(GetContainerPID,
+                     bool(const std::string& name, pid_t* pid_out));
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockSessionContainers);
+  DISALLOW_COPY_AND_ASSIGN(MockContainerManager);
 };
 
 }  // namespace login_manager

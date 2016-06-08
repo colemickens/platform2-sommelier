@@ -37,16 +37,15 @@ std::string libcontainer_strerror(int err) {
 
 namespace login_manager {
 
-SessionContainersImpl::SessionContainersImpl(
+ContainerManagerImpl::ContainerManagerImpl(
     const base::FilePath& containers_directory)
-    : containers_directory_(containers_directory) {
-}
+    : containers_directory_(containers_directory) {}
 
-SessionContainersImpl::~SessionContainersImpl() {
+ContainerManagerImpl::~ContainerManagerImpl() {
   KillAllContainers();
 }
 
-bool SessionContainersImpl::StartContainer(const std::string& name) {
+bool ContainerManagerImpl::StartContainer(const std::string& name) {
   const base::FilePath named_path = containers_directory_.Append(name);
 
   LOG(INFO) << "Starting container " << name;
@@ -78,8 +77,7 @@ bool SessionContainersImpl::StartContainer(const std::string& name) {
   }
 
   std::unique_ptr<container, decltype(&container_destroy)> new_container(
-      container_new(name.c_str(), kContainerRunPath),
-      container_destroy);
+      container_new(name.c_str(), kContainerRunPath), container_destroy);
   if (!new_container) {
     LOG(ERROR) << "Failed to create the new container named " << name;
     return false;
@@ -97,7 +95,7 @@ bool SessionContainersImpl::StartContainer(const std::string& name) {
   return true;
 }
 
-bool SessionContainersImpl::WaitForContainerToExit(const std::string& name) {
+bool ContainerManagerImpl::WaitForContainerToExit(const std::string& name) {
   LOG(INFO) << "Waiting for container " << name;
   auto iter = container_map_.find(name);
   if (iter == container_map_.end())
@@ -112,7 +110,7 @@ bool SessionContainersImpl::WaitForContainerToExit(const std::string& name) {
   return true;
 }
 
-bool SessionContainersImpl::KillContainer(const std::string& name) {
+bool ContainerManagerImpl::KillContainer(const std::string& name) {
   LOG(INFO) << "Killing off container " << name;
   auto iter = container_map_.find(name);
   if (iter == container_map_.end())
@@ -127,7 +125,7 @@ bool SessionContainersImpl::KillContainer(const std::string& name) {
   return true;
 }
 
-bool SessionContainersImpl::KillAllContainers() {
+bool ContainerManagerImpl::KillAllContainers() {
   LOG(INFO) << "Killing off all containers";
   bool all_killed = true;
   for (auto it = container_map_.begin(); it != container_map_.end(); ++it) {
@@ -143,8 +141,8 @@ bool SessionContainersImpl::KillAllContainers() {
   return all_killed;
 }
 
-bool SessionContainersImpl::GetRootFsPath(const std::string& name,
-                                          base::FilePath* path_out) const {
+bool ContainerManagerImpl::GetRootFsPath(const std::string& name,
+                                         base::FilePath* path_out) const {
   auto iter = container_map_.find(name);
   if (iter == container_map_.end())
     return false;
@@ -152,8 +150,8 @@ bool SessionContainersImpl::GetRootFsPath(const std::string& name,
   return true;
 }
 
-bool SessionContainersImpl::GetContainerPID(const std::string& name,
-                                            pid_t* pid_out) const {
+bool ContainerManagerImpl::GetContainerPID(const std::string& name,
+                                           pid_t* pid_out) const {
   auto iter = container_map_.find(name);
   if (iter == container_map_.end())
     return false;

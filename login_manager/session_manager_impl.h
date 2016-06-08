@@ -108,7 +108,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                      Crossystem* crossystem,
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
-                     SessionContainersInterface* containers);
+                     ContainerManagerInterface* containers);
   virtual ~SessionManagerImpl();
 
   void InjectPolicyServices(
@@ -202,7 +202,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   // KeyGenerator::Delegate implementation:
   void OnKeyGenerated(const std::string& username,
-                              const base::FilePath& temp_key_file) override;
+                      const base::FilePath& temp_key_file) override;
 
  private:
   // Holds the state related to one of the signed in users.
@@ -268,7 +268,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   Crossystem* crossystem_;                              // Owned by the caller.
   VpdProcess* vpd_process_;                             // Owned by the caller.
   PolicyKey* owner_key_;                                // Owned by the caller.
-  SessionContainersInterface* containers_;              // Owned by the caller.
+  ContainerManagerInterface* containers_;               // Owned by the caller.
 
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;

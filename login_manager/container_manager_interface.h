@@ -14,9 +14,9 @@ namespace login_manager {
 // Provides methods for running and stopping containers.
 //
 // Containers can only be run from the verified rootfs.
-class SessionContainersInterface {
+class ContainerManagerInterface {
  public:
-  virtual ~SessionContainersInterface() {}
+  virtual ~ContainerManagerInterface() {}
 
   // Starts a container with the given name.
   // Returns true on success.

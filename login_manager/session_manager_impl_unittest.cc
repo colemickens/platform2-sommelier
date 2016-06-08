@@ -113,8 +113,9 @@ class SessionManagerImplTest : public ::testing::Test {
     SetSystemSalt(&fake_salt_);
 
     MockUserPolicyServiceFactory* factory = new MockUserPolicyServiceFactory;
-    EXPECT_CALL(*factory, Create(_)).WillRepeatedly(
-        Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
+    EXPECT_CALL(*factory, Create(_))
+        .WillRepeatedly(
+            Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
     scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
         new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL));
     impl_.InjectPolicyServices(
@@ -184,8 +185,7 @@ class SessionManagerImplTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(device_policy_service_);
     for (map<string, MockPolicyService*>::iterator it =
              user_policy_services_.begin();
-         it != user_policy_services_.end();
-         ++it) {
+         it != user_policy_services_.end(); ++it) {
       Mock::VerifyAndClearExpectations(it->second);
     }
     Mock::VerifyAndClearExpectations(&manager_);
@@ -211,7 +211,7 @@ class SessionManagerImplTest : public ::testing::Test {
   FakeCrossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
-  MockSessionContainers containers_;
+  MockContainerManager containers_;
 
   SessionManagerImpl impl_;
   SessionManagerImpl::Error error_;
@@ -240,7 +240,8 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(
         dbus_emitter_,
         EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
-                             StrEq(SessionManagerImpl::kStarted))).Times(1);
+                             StrEq(SessionManagerImpl::kStarted)))
+        .Times(1);
     EXPECT_CALL(utils_, IsDevMode()).WillOnce(Return(false));
   }
 
@@ -270,7 +271,8 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(
         dbus_emitter_,
         EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
-                             StrEq(SessionManagerImpl::kStarted))).Times(1);
+                             StrEq(SessionManagerImpl::kStarted)))
+        .Times(1);
     EXPECT_CALL(utils_, IsDevMode()).WillOnce(Return(false));
   }
 
@@ -314,11 +316,11 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   ASSERT_FALSE(expected.empty());
   string expected_testing_path = expected.value();
 
-  EXPECT_CALL(
-      manager_,
-      RestartBrowserWithArgs(
-          ElementsAre(args[0], args[1], HasSubstr(expected_testing_path)),
-          true)).Times(1);
+  EXPECT_CALL(manager_, RestartBrowserWithArgs(
+                            ElementsAre(args[0], args[1],
+                                        HasSubstr(expected_testing_path)),
+                            true))
+      .Times(1);
 
   string testing_path = impl_.EnableChromeTesting(false, args, NULL);
   EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
@@ -334,11 +336,11 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   args[0] = "--dummy";
   args[1] = "--repeat-arg";
   testing_path.empty();
-  EXPECT_CALL(
-      manager_,
-      RestartBrowserWithArgs(
-          ElementsAre(args[0], args[1], HasSubstr(expected_testing_path)),
-          true)).Times(1);
+  EXPECT_CALL(manager_, RestartBrowserWithArgs(
+                            ElementsAre(args[0], args[1],
+                                        HasSubstr(expected_testing_path)),
+                            true))
+      .Times(1);
 
   testing_path = impl_.EnableChromeTesting(true, args, NULL);
   EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
@@ -434,8 +436,7 @@ TEST_F(SessionManagerImplTest, StopSession) {
 TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
-  ExpectStorePolicy(device_policy_service_,
-                    fake_policy,
+  ExpectStorePolicy(device_policy_service_, fake_policy,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
                         PolicyService::KEY_CLOBBER);
   impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
@@ -446,8 +447,8 @@ TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
-  ExpectStorePolicy(
-      device_policy_service_, fake_policy, PolicyService::KEY_ROTATE);
+  ExpectStorePolicy(device_policy_service_, fake_policy,
+                    PolicyService::KEY_ROTATE);
   impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
                     MockPolicyService::CreateDoNothing());
 }
@@ -477,9 +478,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   string error_code;
-  impl_.StorePolicyForUser(
-      kSaneEmail, policy_blob.data(), policy_blob.size(),
-      base::Bind(&CaptureErrorCode, &error_code));
+  impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           base::Bind(&CaptureErrorCode, &error_code));
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
 }
 
@@ -488,9 +488,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(CastEq(fake_policy),
-                    fake_policy.size(),
-                    _,
+              Store(CastEq(fake_policy), fake_policy.size(), _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
@@ -505,9 +503,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   const std::string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(CastEq(fake_policy),
-                    fake_policy.size(),
-                    _,
+              Store(CastEq(fake_policy), fake_policy.size(), _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
@@ -517,9 +513,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   // Storing policy for another username fails before his session starts.
   const char user2[] = "user2@somewhere.com";
   string error_code;
-  impl_.StorePolicyForUser(
-      user2, policy_blob.data(), policy_blob.size(),
-      base::Bind(&CaptureErrorCode, &error_code));
+  impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
+                           base::Bind(&CaptureErrorCode, &error_code));
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
 
   // Now start another session for the 2nd user.
@@ -528,9 +523,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   // Storing policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[user2],
-              Store(CastEq(fake_policy),
-                    fake_policy.size(),
-                    _,
+              Store(CastEq(fake_policy), fake_policy.size(), _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
@@ -619,7 +612,6 @@ TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
   EXPECT_FALSE(impl_.RestartJob(-1, {}, &error_));
   EXPECT_EQ("GetPeerCredsFailed", error_.name());
 }
-
 
 TEST_F(SessionManagerImplTest, RestartJobBadPid) {
   int sockets[2] = {-1, -1};
@@ -733,7 +725,8 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 
   EXPECT_CALL(dbus_emitter_,
-              EmitSignal(StrEq(login_manager::kScreenIsLockedSignal))).Times(1);
+              EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
+      .Times(1);
   impl_.HandleLockScreenShown();
   EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 
@@ -815,30 +808,30 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   // TODO(lhchavez): Once session_manager controls the ARC instance process and
   // upstart is not used, verify that the instance is killed when the session
   // ends.
-  EXPECT_CALL(
-      upstart_signal_emitter_delegate_,
-      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
-                      ElementsAre())).Times(1);
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
+                              ElementsAre()))
+      .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStartSignal),
-          ElementsAre(std::string("CONTAINER_NAME=") +
-                          SessionManagerImpl::kArcContainerName,
-                      std::string("CONTAINER_PATH="),
-                      std::string("CONTAINER_PID=") +
-                          std::to_string(kAndroidPid))))
-          .Times(1);
+                      ElementsAre(std::string("CONTAINER_NAME=") +
+                                      SessionManagerImpl::kArcContainerName,
+                                  std::string("CONTAINER_PATH="),
+                                  std::string("CONTAINER_PID=") +
+                                      std::to_string(kAndroidPid))))
+      .Times(1);
   EXPECT_CALL(containers_,
               StartContainer(StrEq(SessionManagerImpl::kArcContainerName)))
       .Times(1)
       .WillOnce(Return(true));
-  EXPECT_CALL(containers_,
-              GetRootFsPath(StrEq(SessionManagerImpl::kArcContainerName),
-                            NotNull()))
+  EXPECT_CALL(
+      containers_,
+      GetRootFsPath(StrEq(SessionManagerImpl::kArcContainerName), NotNull()))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(containers_,
-              GetContainerPID(StrEq(SessionManagerImpl::kArcContainerName),
-                              NotNull()))
+  EXPECT_CALL(
+      containers_,
+      GetContainerPID(StrEq(SessionManagerImpl::kArcContainerName), NotNull()))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(kAndroidPid), Return(true)));
   impl_.StartArcInstance(kSocketPath, &error_);
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
@@ -855,8 +848,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
   base::FilePath arc_data_dir(SessionManagerImpl::kArcDataDir);
   base::FilePath arc_cache_dir(SessionManagerImpl::kArcCacheDir);
   EXPECT_TRUE(utils_.AtomicFileWrite(arc_data_dir.Append("foo"), "test"));
-  EXPECT_TRUE(utils_.AtomicFileWrite(
-      arc_cache_dir.Append("bar").Append("baz"), "test"));
+  EXPECT_TRUE(utils_.AtomicFileWrite(arc_cache_dir.Append("bar").Append("baz"),
+                                     "test"));
   EXPECT_TRUE(utils_.Exists(arc_data_dir));
   EXPECT_TRUE(utils_.Exists(arc_cache_dir));
   impl_.RemoveArcData(&error_);
@@ -877,8 +870,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   base::FilePath arc_data_dir(SessionManagerImpl::kArcDataDir);
   base::FilePath arc_cache_dir(SessionManagerImpl::kArcCacheDir);
   EXPECT_TRUE(utils_.AtomicFileWrite(arc_data_dir.Append("foo"), "test"));
-  EXPECT_TRUE(utils_.AtomicFileWrite(
-      arc_cache_dir.Append("bar").Append("baz"), "test"));
+  EXPECT_TRUE(utils_.AtomicFileWrite(arc_cache_dir.Append("bar").Append("baz"),
+                                     "test"));
   EXPECT_TRUE(utils_.Exists(arc_data_dir));
   EXPECT_TRUE(utils_.Exists(arc_cache_dir));
   impl_.StartArcInstance(kSocketPath, &error_);
