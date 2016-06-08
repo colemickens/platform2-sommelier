@@ -256,7 +256,8 @@ REGIONS_LIST = [
     Region(
         'ca.ansi', 'xkb:us::eng', 'America/Toronto', 'en-CA', _KML.ANSI,
         'Canada (US keyboard)',
-        'Canada with US (ANSI) keyboard. Not for en/fr hybrid ANSI '
+        'Canada with US (ANSI) keyboard. Only allowed if there are separate US '
+        'English, Canadian English, and French SKUs. Not for en/fr hybrid ANSI '
         'keyboards; for that you would want ca.hybridansi. See '
         'http://goto/cros-canada', 6),
     Region(
