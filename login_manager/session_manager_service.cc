@@ -31,12 +31,12 @@
 
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_handler.h"
+#include "login_manager/container_manager_impl.h"
 #include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/session_containers_impl.h"
 #include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"

@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_SESSION_CONTAINERS_IMPL_H_
-#define LOGIN_MANAGER_SESSION_CONTAINERS_IMPL_H_
+#ifndef LOGIN_MANAGER_CONTAINER_MANAGER_IMPL_H_
+#define LOGIN_MANAGER_CONTAINER_MANAGER_IMPL_H_
 
-#include "login_manager/session_containers_interface.h"
+#include "login_manager/container_manager_interface.h"
 
 #include <stdlib.h>
 
@@ -47,4 +47,5 @@ class SessionContainersImpl : public SessionContainersInterface {
 };
 
 }  // namespace login_manager
-#endif  // LOGIN_MANAGER_SESSION_CONTAINERS_IMPL_H_
+
+#endif  // LOGIN_MANAGER_CONTAINER_MANAGER_IMPL_H_

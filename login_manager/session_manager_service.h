@@ -20,6 +20,7 @@
 #include <dbus/message.h>
 
 #include "login_manager/child_exit_handler.h"
+#include "login_manager/container_manager_interface.h"
 #include "login_manager/crossystem_impl.h"
 #include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
@@ -27,7 +28,6 @@
 #include "login_manager/policy_key.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/server_backed_state_key_generator.h"
-#include "login_manager/session_containers_interface.h"
 #include "login_manager/session_manager_interface.h"
 #include "login_manager/vpd_process_impl.h"
 

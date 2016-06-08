@@ -1,9 +1,9 @@
-// Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_MOCK_SESSION_CONTAINERS_H_
-#define LOGIN_MANAGER_MOCK_SESSION_CONTAINERS_H_
+#ifndef LOGIN_MANAGER_MOCK_CONTAINER_MANAGER_H_
+#define LOGIN_MANAGER_MOCK_CONTAINER_MANAGER_H_
 
 #include <stdint.h>
 #include <unistd.h>
@@ -13,7 +13,7 @@
 
 #include <gmock/gmock.h>
 
-#include "login_manager/session_containers_interface.h"
+#include "login_manager/container_manager_interface.h"
 
 namespace login_manager {
 
@@ -38,4 +38,4 @@ class MockSessionContainers : public SessionContainersInterface {
 
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_MOCK_SESSION_CONTAINERS_H_
+#endif  // LOGIN_MANAGER_MOCK_CONTAINER_MANAGER_H_
