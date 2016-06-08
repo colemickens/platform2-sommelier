@@ -146,6 +146,8 @@ SessionManagerService::SessionManagerService(
       key_gen_(uid, utils),
       state_key_generator_(utils, metrics),
       vpd_process_(utils),
+      android_container_(utils, base::FilePath(kContainerInstallDirectory),
+                         SessionManagerImpl::kArcContainerName),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       shutting_down_(false),
@@ -184,9 +186,6 @@ bool SessionManagerService::Initialize() {
                                                   enable_browser_abort_on_hang_,
                                                   liveness_checking_interval_));
 
-  session_containers_.reset(
-      new ContainerManagerImpl(base::FilePath(kContainerInstallDirectory)));
-
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
   scoped_ptr<InitDaemonController> init_controller(
@@ -214,7 +213,7 @@ bool SessionManagerService::Initialize() {
       &crossystem_,
       &vpd_process_,
       &owner_key_,
-      session_containers_.get());
+      &android_container_);
 
   adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);
@@ -298,9 +297,9 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
   browser_->WaitAndAbort(GetKillTimeout());
   browser_->ClearPid();
 
-  // Also ensure all containers are gone, if present.
-  if (session_containers_)
-    session_containers_->KillAllContainers();
+  // Also ensure all containers are gone.
+  android_container_.RequestJobExit();
+  android_container_.EnsureJobExit(GetKillTimeout());
 
   // Do nothing if already shutting down.
   if (shutting_down_)
@@ -400,6 +399,7 @@ void SessionManagerService::SetUpHandlers() {
   job_managers.push_back(this);
   job_managers.push_back(&key_gen_);
   job_managers.push_back(&vpd_process_);
+  job_managers.push_back(&android_container_);
   signal_handler_.Init();
   child_exit_handler_.Init(&signal_handler_, job_managers);
   for (int i = 0; i < kNumSignals; ++i) {
@@ -590,8 +590,10 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
 void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
   RequestJobExit();
   key_gen_.RequestJobExit();
+  android_container_.RequestJobExit();
   EnsureJobExit(timeout);
   key_gen_.EnsureJobExit(timeout);
+  android_container_.EnsureJobExit(timeout);
 }
 
 bool SessionManagerService::OnTerminationSignal(

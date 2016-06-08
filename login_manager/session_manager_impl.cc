@@ -95,6 +95,10 @@ const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
     FILE_PATH_LITERAL("/var/lib/device_local_accounts");
 
+// SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
+// minimum amount of time we must wait before killing the containers.
+constexpr int kContainerTimeoutSec = 1;
+
 bool IsIncognitoUserId(const std::string& user_id) {
   const std::string lower_case_id(base::ToLowerASCII(user_id));
   return (lower_case_id == kGuestUserName) ||
@@ -154,7 +158,7 @@ SessionManagerImpl::SessionManagerImpl(
     Crossystem* crossystem,
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
-    ContainerManagerInterface* containers)
+    ContainerManagerInterface* android_container)
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
@@ -173,7 +177,7 @@ SessionManagerImpl::SessionManagerImpl(
       crossystem_(crossystem),
       vpd_process_(vpd_process),
       owner_key_(owner_key),
-      containers_(containers),
+      android_container_(android_container),
       mitigator_(key_gen) {}
 
 SessionManagerImpl::~SessionManagerImpl() {
@@ -242,7 +246,9 @@ void SessionManagerImpl::Finalize() {
   }
   // We want to stop any running containers.  Containers are per-session and
   // cannot persist across sessions.
-  containers_->KillAllContainers();
+  android_container_->RequestJobExit();
+  android_container_->EnsureJobExit(
+      base::TimeDelta::FromSeconds(kContainerTimeoutSec));
 }
 
 void SessionManagerImpl::EmitLoginPromptVisible(Error* error) {
@@ -613,8 +619,11 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
     error->Set(dbus_error, error_message);
     init_controller_->TriggerImpulse(kArcStopSignal,
                                      std::vector<std::string>());
-    if (started_container)
-      containers_->KillContainer(kArcContainerName);
+    if (started_container) {
+      android_container_->RequestJobExit();
+      android_container_->EnsureJobExit(
+          base::TimeDelta::FromSeconds(kContainerTimeoutSec));
+    }
     return;
   }
   start_arc_instance_closure_.Run();
@@ -626,7 +635,7 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
 void SessionManagerImpl::StopArcInstance(Error* error) {
 #if USE_ARC
   pid_t pid = 0;
-  if (!containers_->GetContainerPID(kArcContainerName, &pid)) {
+  if (!android_container_->GetContainerPID(&pid)) {
     static const char msg[] = "Error getting Android container pid.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kContainerShutdownFail, msg);
@@ -650,11 +659,9 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
     error->Set(dbus_error::kEmitFailed, msg);
   }
 
-  if (!containers_->KillContainer(kArcContainerName)) {
-    static const char msg[] = "Killing Android failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kContainerShutdownFail, msg);
-  }
+  android_container_->RequestJobExit();
+  android_container_->EnsureJobExit(
+      base::TimeDelta::FromSeconds(kContainerTimeoutSec));
   arc_start_time_ = base::TimeTicks();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
@@ -672,7 +679,13 @@ base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
 }
 
 void SessionManagerImpl::StartContainer(const std::string& name, Error* error) {
-  if (!containers_->StartContainer(name)) {
+  if (name != kArcContainerName) {
+    const char msg[] = "Container not found.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kContainerStartupFail, msg);
+    return;
+  }
+  if (!android_container_->StartContainer()) {
     const char msg[] = "Error starting the container.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kContainerStartupFail, msg);
@@ -680,11 +693,15 @@ void SessionManagerImpl::StartContainer(const std::string& name, Error* error) {
 }
 
 void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
-  if (!containers_->KillContainer(name)) {
-    const char msg[] = "Error killing the container.";
+  if (name != kArcContainerName) {
+    const char msg[] = "Container not found.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kContainerShutdownFail, msg);
+    return;
   }
+  android_container_->RequestJobExit();
+  android_container_->EnsureJobExit(
+      base::TimeDelta::FromSeconds(kContainerTimeoutSec));
 }
 
 void SessionManagerImpl::RemoveArcData(Error* error) {
@@ -818,7 +835,7 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   *started_container_out = false;
   *dbus_error_out = nullptr;
   error_message_out->clear();
-  if (!containers_->StartContainer(kArcContainerName)) {
+  if (!android_container_->StartContainer()) {
     *dbus_error_out = dbus_error::kContainerStartupFail;
     *error_message_out = "Starting Android container failed.";
     return false;
@@ -827,8 +844,8 @@ bool SessionManagerImpl::StartArcInstanceInternal(
 
   base::FilePath root_path;
   pid_t pid = 0;
-  if (!containers_->GetRootFsPath(kArcContainerName, &root_path) ||
-      !containers_->GetContainerPID(kArcContainerName, &pid)) {
+  if (!android_container_->GetRootFsPath(&root_path) ||
+      !android_container_->GetContainerPID(&pid)) {
     *dbus_error_out = dbus_error::kContainerStartupFail;
     *error_message_out = "Getting Android container info failed.";
     return false;

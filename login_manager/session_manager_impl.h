@@ -108,7 +108,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                      Crossystem* crossystem,
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
-                     ContainerManagerInterface* containers);
+                     ContainerManagerInterface* android_container);
   virtual ~SessionManagerImpl();
 
   void InjectPolicyServices(
@@ -268,7 +268,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   Crossystem* crossystem_;                              // Owned by the caller.
   VpdProcess* vpd_process_;                             // Owned by the caller.
   PolicyKey* owner_key_;                                // Owned by the caller.
-  ContainerManagerInterface* containers_;               // Owned by the caller.
+  ContainerManagerInterface* android_container_;        // Owned by the caller.
 
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;

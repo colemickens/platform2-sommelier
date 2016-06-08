@@ -22,15 +22,14 @@ class MockContainerManager : public ContainerManagerInterface {
   MockContainerManager() {}
   ~MockContainerManager() override {}
 
-  MOCK_METHOD1(StartContainer, bool(const std::string& name));
-  MOCK_METHOD1(WaitForContainerToExit, bool(const std::string& name));
-  MOCK_METHOD1(KillContainer, bool(const std::string& name));
-  MOCK_METHOD0(KillAllContainers, bool(void));
+  MOCK_METHOD1(IsManagedJob, bool(pid_t pid));
+  MOCK_METHOD1(HandleExit, void(const siginfo_t& status));
+  MOCK_METHOD0(RequestJobExit, void());
+  MOCK_METHOD1(EnsureJobExit, void(base::TimeDelta timeout));
 
-  MOCK_CONST_METHOD2(GetRootFsPath,
-                     bool(const std::string& name, base::FilePath* path_out));
-  MOCK_CONST_METHOD2(GetContainerPID,
-                     bool(const std::string& name, pid_t* pid_out));
+  MOCK_METHOD0(StartContainer, bool());
+  MOCK_CONST_METHOD1(GetRootFsPath, bool(base::FilePath* path_out));
+  MOCK_CONST_METHOD1(GetContainerPID, bool(pid_t* pid_out));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockContainerManager);

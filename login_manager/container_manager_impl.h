@@ -9,7 +9,6 @@
 
 #include <stdlib.h>
 
-#include <map>
 #include <memory>
 #include <string>
 
@@ -19,33 +18,48 @@
 
 namespace login_manager {
 
+class SystemUtils;
+
 // Manages containers running in a session.
 // Handles parsing of config.json and runtime.json to configure the container.
 class ContainerManagerImpl : public ContainerManagerInterface {
  public:
-  ContainerManagerImpl(const base::FilePath& containers_directory);
+  ContainerManagerImpl(SystemUtils* system_utils,
+                       const base::FilePath& containers_directory,
+                       const std::string& name);
   ~ContainerManagerImpl() override;
 
+  // JobManagerInterface:
+  bool IsManagedJob(pid_t pid) override;
+  void HandleExit(const siginfo_t& status) override;
+  void RequestJobExit() override;
+  void EnsureJobExit(base::TimeDelta timeout) override;
+
   // ContainerManagerInterface:
-  bool StartContainer(const std::string& name) override;
-  bool WaitForContainerToExit(const std::string& name) override;
-  bool KillContainer(const std::string& name) override;
-  bool KillAllContainers() override;
-  bool GetRootFsPath(const std::string& name,
-                     base::FilePath* path_out) const override;
-  bool GetContainerPID(const std::string& name, pid_t* pid_out) const override;
+  bool StartContainer() override;
+  bool GetRootFsPath(base::FilePath* path_out) const override;
+  bool GetContainerPID(pid_t* pid_out) const override;
+
+  using ContainerPtr = std::unique_ptr<container, decltype(&container_destroy)>;
 
  private:
-  // Map of the currently running containers.
-  using ContainerPtr = std::unique_ptr<container, decltype(&container_destroy)>;
-  std::map<std::string, ContainerPtr> container_map_;
+  // Frees any resources used by the container.
+  void CleanUpContainer();
+
+  // Owned by the caller.
+  SystemUtils* const system_utils_;
 
   // Directory that holds the container config files.
-  const base::FilePath containers_directory_;
+  const base::FilePath container_directory_;
+
+  // Name of the container.
+  const std::string name_;
+
+  // Currently running container.
+  ContainerPtr container_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerManagerImpl);
 };
 
 }  // namespace login_manager
-
 #endif  // LOGIN_MANAGER_CONTAINER_MANAGER_IMPL_H_

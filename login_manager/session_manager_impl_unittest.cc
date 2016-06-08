@@ -99,7 +99,7 @@ class SessionManagerImplTest : public ::testing::Test {
               &crossystem_,
               &vpd_process_,
               &owner_key_,
-              &containers_),
+              &android_container_),
         fake_salt_("fake salt"),
         actual_locks_(0),
         expected_locks_(0),
@@ -211,7 +211,7 @@ class SessionManagerImplTest : public ::testing::Test {
   FakeCrossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
-  MockContainerManager containers_;
+  MockContainerManager android_container_;
 
   SessionManagerImpl impl_;
   SessionManagerImpl::Error error_;
@@ -786,9 +786,8 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
 
   ExpectAndRunStartSession(kSaneEmail);
 
-  EXPECT_CALL(containers_, StartContainer(StrEq(kContainerName)))
-      .Times(1)
-      .WillOnce(Return(true));
+  EXPECT_CALL(android_container_, StartContainer())
+      .Times(0);
   impl_.StartContainer(kContainerName, &error_);
 }
 
@@ -821,18 +820,13 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
                                   std::string("CONTAINER_PID=") +
                                       std::to_string(kAndroidPid))))
       .Times(1);
-  EXPECT_CALL(containers_,
-              StartContainer(StrEq(SessionManagerImpl::kArcContainerName)))
+  EXPECT_CALL(android_container_, StartContainer())
       .Times(1)
       .WillOnce(Return(true));
-  EXPECT_CALL(
-      containers_,
-      GetRootFsPath(StrEq(SessionManagerImpl::kArcContainerName), NotNull()))
+  EXPECT_CALL(android_container_, GetRootFsPath(NotNull()))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(
-      containers_,
-      GetContainerPID(StrEq(SessionManagerImpl::kArcContainerName), NotNull()))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(kAndroidPid), Return(true)));
+  EXPECT_CALL(android_container_, GetContainerPID(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kAndroidPid), Return(true)));
   impl_.StartArcInstance(kSocketPath, &error_);
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
 #else

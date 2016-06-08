@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -17,9 +18,14 @@
 #include <base/strings/stringprintf.h>
 
 #include <libcontainer/libcontainer.h>
-#include <login_manager/container_config_parser.h>
+
+#include "login_manager/container_config_parser.h"
+#include "login_manager/system_utils.h"
+
+namespace login_manager {
 
 namespace {
+
 const char kContainerRunPath[] = "/run/containers";
 
 std::string libcontainer_strerror(int err) {
@@ -33,130 +39,149 @@ std::string libcontainer_strerror(int err) {
   }
 }
 
-}  // anonymous namespace
-
-namespace login_manager {
-
-ContainerManagerImpl::ContainerManagerImpl(
-    const base::FilePath& containers_directory)
-    : containers_directory_(containers_directory) {}
-
-ContainerManagerImpl::~ContainerManagerImpl() {
-  KillAllContainers();
+ContainerManagerImpl::ContainerPtr CreateContainer(const std::string& name) {
+  return ContainerManagerImpl::ContainerPtr(
+      container_new(name.c_str(), kContainerRunPath), &container_destroy);
 }
 
-bool ContainerManagerImpl::StartContainer(const std::string& name) {
-  const base::FilePath named_path = containers_directory_.Append(name);
+}  // anonymous namespace
 
-  LOG(INFO) << "Starting container " << name;
-  if (container_map_.count(name)) {
-    LOG(ERROR) << "Container " << name << " already running";
+ContainerManagerImpl::ContainerManagerImpl(
+    SystemUtils* system_utils,
+    const base::FilePath& containers_directory,
+    const std::string& name)
+    : system_utils_(system_utils),
+      container_directory_(containers_directory.Append(name)),
+      name_(name),
+      container_(nullptr, &container_destroy) {
+  DCHECK(system_utils_);
+}
+
+ContainerManagerImpl::~ContainerManagerImpl() {}
+
+bool ContainerManagerImpl::IsManagedJob(pid_t pid) {
+  pid_t container_pid;
+  return GetContainerPID(&container_pid) && container_pid == pid;
+}
+
+void ContainerManagerImpl::HandleExit(const siginfo_t& status) {
+  if (!container_) {
+    LOG(ERROR) << "Container " << name_ << " unexpected exit.";
+    return;
+  }
+
+  CleanUpContainer();
+}
+
+void ContainerManagerImpl::RequestJobExit() {
+  if (!container_)
+    return;
+
+  // TODO(lhchavez): Make this less aggressive by giving the container a chance
+  // to cleanup.
+  LOG(INFO) << "Killing off container " << name_;
+  int rc = container_kill(container_.get());
+  if (rc != 0) {
+    LOG(ERROR) << "Failed to kill container " << name_ << ": "
+               << libcontainer_strerror(rc);
+  }
+}
+
+void ContainerManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
+  if (!container_)
+    return;
+
+  pid_t pid;
+  if (!GetContainerPID(&pid))
+    return;
+
+  if (system_utils_->ProcessGroupIsGone(pid, timeout)) {
+    CleanUpContainer();
+  } else {
+    LOG(INFO) << "Killing off container " << name_;
+    int rc = container_kill(container_.get());
+    if (rc != 0) {
+      LOG(ERROR) << "Failed to kill container " << name_ << ": "
+                 << libcontainer_strerror(rc);
+    }
+  }
+}
+
+bool ContainerManagerImpl::StartContainer() {
+  // TODO(lhchavez): Make logging less verbose once we're comfortable that
+  // everything works correctly. See b/29266253.
+  LOG(INFO) << "Starting container " << name_;
+  if (container_) {
+    LOG(ERROR) << "Container " << name_ << " already running";
     return false;
   }
 
   std::string config_json_data;
-  if (!base::ReadFileToString(named_path.Append("config.json"),
+  if (!base::ReadFileToString(container_directory_.Append("config.json"),
                               &config_json_data)) {
-    LOG(ERROR) << "Fail to read config for " << name;
+    PLOG(ERROR) << "Fail to read config for " << name_;
     return false;
   }
 
   std::string runtime_json_data;
-  if (!base::ReadFileToString(named_path.Append("runtime.json"),
+  if (!base::ReadFileToString(container_directory_.Append("runtime.json"),
                               &runtime_json_data)) {
-    LOG(ERROR) << "Fail to read runtime config for " << name;
+    LOG(ERROR) << "Fail to read runtime config for " << name_;
     return false;
   }
 
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);
-  if (!ParseContainerConfig(config_json_data, runtime_json_data, name,
-                            named_path, &config)) {
-    LOG(ERROR) << "Failed to parse container configuration for " << name;
+  if (!ParseContainerConfig(config_json_data, runtime_json_data, name_,
+                            container_directory_, &config)) {
+    LOG(ERROR) << "Failed to parse container configuration for " << name_;
     return false;
   }
 
-  std::unique_ptr<container, decltype(&container_destroy)> new_container(
-      container_new(name.c_str(), kContainerRunPath), container_destroy);
+  ContainerPtr new_container = CreateContainer(name_);
   if (!new_container) {
-    LOG(ERROR) << "Failed to create the new container named " << name;
+    LOG(ERROR) << "Failed to create the new container named " << name_;
     return false;
   }
 
   int rc = container_start(new_container.get(), config.get());
   if (rc != 0) {
-    LOG(ERROR) << "Failed to start container " << name << ": "
+    LOG(ERROR) << "Failed to start container " << name_ << ": "
                << libcontainer_strerror(rc);
     return false;
   }
 
-  container_map_.insert(std::make_pair(name, std::move(new_container)));
+  container_ = std::move(new_container);
 
   return true;
 }
 
-bool ContainerManagerImpl::WaitForContainerToExit(const std::string& name) {
-  LOG(INFO) << "Waiting for container " << name;
-  auto iter = container_map_.find(name);
-  if (iter == container_map_.end())
+bool ContainerManagerImpl::GetRootFsPath(base::FilePath* path_out) const {
+  if (!container_)
     return false;
-  int rc = container_wait(iter->second.get());
+  *path_out = base::FilePath(container_root(container_.get()));
+  return true;
+}
+
+bool ContainerManagerImpl::GetContainerPID(pid_t* pid_out) const {
+  if (!container_)
+    return false;
+  *pid_out = container_pid(container_.get());
+  return true;
+}
+
+void ContainerManagerImpl::CleanUpContainer() {
+  if (!container_)
+    return;
+
+  LOG(INFO) << "Cleaning up container " << name_;
+  int rc = container_wait(container_.get());
   if (rc != 0) {
-    LOG(ERROR) << "Failed to wait for container " << name << ": "
+    LOG(ERROR) << "Failed to clean up container " << name_ << ": "
                << libcontainer_strerror(rc);
-    return false;
   }
-  container_map_.erase(iter);
-  return true;
-}
 
-bool ContainerManagerImpl::KillContainer(const std::string& name) {
-  LOG(INFO) << "Killing off container " << name;
-  auto iter = container_map_.find(name);
-  if (iter == container_map_.end())
-    return false;
-  int rc = container_kill(iter->second.get());
-  container_map_.erase(iter);
-  if (rc != 0) {
-    LOG(ERROR) << "Failed to kill container " << name << ": "
-               << libcontainer_strerror(rc);
-    return false;
-  }
-  return true;
-}
-
-bool ContainerManagerImpl::KillAllContainers() {
-  LOG(INFO) << "Killing off all containers";
-  bool all_killed = true;
-  for (auto it = container_map_.begin(); it != container_map_.end(); ++it) {
-    LOG(INFO) << "Killing container " << it->first;
-    int rc = container_kill(it->second.get());
-    if (rc != 0) {
-      LOG(ERROR) << "Failed to kill container " << it->first << ": "
-                 << libcontainer_strerror(rc);
-      all_killed = false;
-    }
-  }
-  container_map_.clear();
-  return all_killed;
-}
-
-bool ContainerManagerImpl::GetRootFsPath(const std::string& name,
-                                         base::FilePath* path_out) const {
-  auto iter = container_map_.find(name);
-  if (iter == container_map_.end())
-    return false;
-  *path_out = base::FilePath(container_root(iter->second.get()));
-  return true;
-}
-
-bool ContainerManagerImpl::GetContainerPID(const std::string& name,
-                                           pid_t* pid_out) const {
-  auto iter = container_map_.find(name);
-  if (iter == container_map_.end())
-    return false;
-  *pid_out = container_pid(iter->second.get());
-  return true;
+  container_.reset();
 }
 
 }  // namespace login_manager

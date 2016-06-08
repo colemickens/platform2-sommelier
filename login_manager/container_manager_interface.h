@@ -9,35 +9,25 @@
 
 #include <base/files/file_path.h>
 
+#include "login_manager/job_manager.h"
+
 namespace login_manager {
 
 // Provides methods for running and stopping containers.
 //
 // Containers can only be run from the verified rootfs.
-class ContainerManagerInterface {
+class ContainerManagerInterface : public JobManagerInterface {
  public:
   virtual ~ContainerManagerInterface() {}
 
-  // Starts a container with the given name.
-  // Returns true on success.
-  virtual bool StartContainer(const std::string& name) = 0;
+  // Starts the container. Returns true on success.
+  virtual bool StartContainer() = 0;
 
-  // Waits for a running container to exit.
-  virtual bool WaitForContainerToExit(const std::string& name) = 0;
+  // Gets the path of the rootfs of the container.
+  virtual bool GetRootFsPath(base::FilePath* path_out) const = 0;
 
-  // Kills the container and wait for it to exit.
-  virtual bool KillContainer(const std::string& name) = 0;
-
-  // Kills all the running containers and wait for them to exit.
-  virtual bool KillAllContainers() = 0;
-
-  // Gets the path of the rootfs of the container with the given name.
-  virtual bool GetRootFsPath(const std::string& name,
-                             base::FilePath* path_out) const = 0;
-
-  // Gets the process ID of the container with the given name.
-  virtual bool GetContainerPID(const std::string& name,
-                               pid_t* pid_out) const = 0;
+  // Gets the process ID of the container.
+  virtual bool GetContainerPID(pid_t* pid_out) const = 0;
 };
 
 }  // namespace login_manager
