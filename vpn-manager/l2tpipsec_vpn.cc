@@ -108,14 +108,23 @@ int main(int argc, char* argv[]) {
   DEFINE_string(xauth_credentials_file, "", "File with Xauth user credentials");
 
   // IpsecManager related flags.
+
+  // Phase 1 ciphersuites:
+  // aes128-sha1-modp2048: strongSwan default
+  // 3des-sha1-modp1536: strongSwan fallback
+  // 3des-sha1-modp1024: for compatibility with Windows RRAS, which requires
+  //                     using the modp1024 dh-group
+  DEFINE_string(ike, "aes128-sha1-modp2048,3des-sha1-modp1536,"
+                     "3des-sha1-modp1024",
+                "ike proposals");
+
+  // Phase 2 ciphersuites:
   // Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
   // authentication for the IPsec SA.  Default StrongS/WAN setup is
   // to only propose SHA1.
   DEFINE_string(esp, "aes128-sha1,3des-sha1,aes128-md5,3des-md5",
                 "esp proposals");
-  // Windows RRAS requires modp1024 dh-group.  Strongswan's
-  // default is modp1536 which it does not support.
-  DEFINE_string(ike, "3des-sha1-modp1024", "ike proposals");
+
   DEFINE_int32(ipsec_timeout, 30, "timeout for ipsec to be established");
   DEFINE_string(leftprotoport, "17/1701", "client protocol/port");
   DEFINE_bool(nat_traversal, true, "Enable NAT-T nat traversal");
