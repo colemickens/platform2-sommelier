@@ -83,8 +83,13 @@ using base::FilePath;
 using base::StringPrintf;
 
 CrashCollector::CrashCollector()
+    : CrashCollector(false) {
+}
+
+CrashCollector::CrashCollector(bool force_user_crash_dir)
     : lsb_release_(kLsbRelease),
-      log_config_path_(kDefaultLogConfig) {
+      log_config_path_(kDefaultLogConfig),
+      force_user_crash_dir_(force_user_crash_dir) {
 }
 
 CrashCollector::~CrashCollector() {
@@ -211,7 +216,8 @@ FilePath CrashCollector::GetCrashDirectoryInfo(
   // collecting chrome crashes during autotesting, we want to put them in
   // the system crash directory so they are outside the cryptohome -- in
   // case we are being run during logout (see crosbug.com/18637).
-  if (process_euid == default_user_id && IsUserSpecificDirectoryEnabled()) {
+  if ((process_euid == default_user_id && IsUserSpecificDirectoryEnabled()) ||
+      force_user_crash_dir_) {
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
     *directory_group = default_user_group;

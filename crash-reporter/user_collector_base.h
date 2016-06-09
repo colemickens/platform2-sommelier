@@ -15,7 +15,7 @@
 // Common functionality shared by user collectors.
 class UserCollectorBase : public CrashCollector {
  public:
-  explicit UserCollectorBase(const char *tag);
+  UserCollectorBase(const char *tag, bool force_user_crash_dir);
 
   void Initialize(CountCrashFunction count_crash,
                   IsFeedbackAllowedFunction is_metrics_allowed,

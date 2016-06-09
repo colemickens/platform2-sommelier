@@ -27,8 +27,9 @@ const char kStatePrefix[] = "State:\t";
 const char *UserCollectorBase::kUserId = "Uid:\t";
 const char *UserCollectorBase::kGroupId = "Gid:\t";
 
-UserCollectorBase::UserCollectorBase(const char *tag)
-    : tag_(tag) {
+UserCollectorBase::UserCollectorBase(const char *tag,
+                                     bool force_user_crash_dir)
+    : CrashCollector(force_user_crash_dir), tag_(tag) {
 }
 
 void UserCollectorBase::Initialize(

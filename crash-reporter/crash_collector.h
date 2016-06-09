@@ -23,6 +23,7 @@ class CrashCollector {
   typedef bool (*IsFeedbackAllowedFunction)();
 
   CrashCollector();
+  explicit CrashCollector(bool force_user_crash_dir);
 
   virtual ~CrashCollector();
 
@@ -171,12 +172,14 @@ class CrashCollector {
 
   scoped_refptr<dbus::Bus> bus_;
 
- protected:
   // D-Bus proxy for session manager interface.
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy>
       session_manager_proxy_;
 
  private:
+  // True if reports should always be stored in the user crash directory.
+  const bool force_user_crash_dir_;
+
   DISALLOW_COPY_AND_ASSIGN(CrashCollector);
 };
 

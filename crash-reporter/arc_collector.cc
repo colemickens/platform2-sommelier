@@ -112,7 +112,7 @@ ArcCollector::ArcCollector()
 }
 
 ArcCollector::ArcCollector(ContextPtr context)
-    : UserCollectorBase("ARC"),
+    : UserCollectorBase("ARC", true),
       context_(std::move(context)) {
 }
 
