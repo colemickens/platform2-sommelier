@@ -4,14 +4,8 @@
 
 #include "cryptohome/platform.h"
 
-#include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/xattr.h>
 
-#include <linux/fs.h>
-
-#include <fcntl.h>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -263,47 +257,6 @@ TEST_F(PlatformTest, SyncDirectoryHasSaneReturnCodes) {
   EXPECT_TRUE(platform_.SyncDirectory(dirname));
   platform_.DeleteFile(filename, false /* recursive */);
   platform_.DeleteFile(dirname, true /* recursive */);
-}
-
-TEST_F(PlatformTest, GetExtendedFileAttributes) {
-  const std::string filename(GetTempName());
-  const std::string content("blablabla");
-  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
-  const std::string name("user.foo");
-  const std::string value("bar");
-
-  ASSERT_EQ(0, setxattr(filename.c_str(), name.c_str(), value.c_str(),
-                        value.length(), 0));
-
-  std::string res;
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(filename, name, &res, 3), 3);
-  EXPECT_STREQ(value.c_str(), res.c_str());
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(filename, name, &res, 100), 3);
-  EXPECT_STREQ(value.c_str(), res.c_str());
-
-  // If |size| is zero, it should return the current size of the named
-  // extended attribute with |value| unchanged.
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(filename, name, nullptr, 0), 3);
-
-  // Failures
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(
-      "file_not_exist", name, nullptr, 0), -1);
-  EXPECT_EQ(platform_.GetExtendedFileAttributes(
-      filename, "user.name_not_exist", nullptr, 0), -1);
-}
-
-TEST_F(PlatformTest, GetFileAttributes) {
-  const std::string filename(GetTempName());
-  const std::string content("blablabla");
-  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
-  int fd;
-  ASSERT_GT(fd = open(filename.c_str(), O_RDONLY), 0);
-  const int64_t flags = FS_UNRM_FL | FS_NODUMP_FL;
-  ASSERT_GT(flags, 0);
-  EXPECT_GE(ioctl(fd, FS_IOC_SETFLAGS, &flags), 0);
-
-  EXPECT_EQ(flags, platform_.GetFileAttributes(filename));
-  close(fd);
 }
 
 }  // namespace cryptohome
