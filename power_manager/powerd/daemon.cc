@@ -76,8 +76,8 @@ const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 // Files where flashrom or battery_tool store their PIDs while performing a
 // potentially-destructive action that powerd shouldn't interrupt by suspending
 // or shutting down the system.
-const char kFlashromLockPath[] = "/var/lock/flashrom_powerd.lock";
-const char kBatteryToolLockPath[] = "/var/lock/battery_tool_powerd.lock";
+const char kFlashromLockPath[] = "/run/lock/flashrom_powerd.lock";
+const char kBatteryToolLockPath[] = "/run/lock/battery_tool_powerd.lock";
 
 // When noticing that the firmware is being updated while suspending, wait up to
 // this long for the update to finish before reporting a suspend failure. The
