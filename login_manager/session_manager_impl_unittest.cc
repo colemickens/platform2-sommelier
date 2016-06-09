@@ -807,9 +807,13 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   // TODO(lhchavez): Once session_manager controls the ARC instance process and
   // upstart is not used, verify that the instance is killed when the session
   // ends.
-  EXPECT_CALL(upstart_signal_emitter_delegate_,
-              OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
-                              ElementsAre()))
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(
+          StrEq(SessionManagerImpl::kArcStartSignal),
+          ElementsAre(
+              std::string("ANDROID_DATA_DIR=") +
+              SessionManagerImpl::kFixedAndroidDataDir)))
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,

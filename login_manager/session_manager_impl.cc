@@ -18,6 +18,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
@@ -64,6 +65,9 @@ const char SessionManagerImpl::kArcStartSignal[] = "start-arc-instance";
 const char SessionManagerImpl::kArcStopSignal[] = "stop-arc-instance";
 const char SessionManagerImpl::kArcNetworkStartSignal[] = "start-arc-network";
 const char SessionManagerImpl::kArcNetworkStopSignal[] = "stop-arc-network";
+
+const base::FilePath::CharType SessionManagerImpl::kFixedAndroidDataDir[] =
+    FILE_PATH_LITERAL("/home/chronos/user/android-data");
 
 // TODO(dspaid): Migrate to using /home/root/$hash once it is supported
 // see http://b/26700652
@@ -602,8 +606,11 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
 #if USE_ARC
   arc_start_time_ = base::TimeTicks::Now();
 
-  if (!init_controller_->TriggerImpulse(kArcStartSignal,
-                                        std::vector<std::string>())) {
+  const std::vector<std::string>& keyvals = {
+      base::StringPrintf("ANDROID_DATA_DIR=%s", kFixedAndroidDataDir),
+  };
+
+  if (!init_controller_->TriggerImpulse(kArcStartSignal, keyvals)) {
     static const char msg[] = "Emitting start-arc-instance signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);

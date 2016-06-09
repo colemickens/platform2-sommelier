@@ -64,6 +64,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
+  // ARC android-data directory path.
+  static const base::FilePath::CharType kFixedAndroidDataDir[];
+
   // ARC data directories to be deleted on opt-out.
   static const base::FilePath::CharType kArcDataDir[];
   static const base::FilePath::CharType kArcCacheDir[];
