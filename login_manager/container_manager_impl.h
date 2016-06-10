@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 
 #include <libcontainer/libcontainer.h>
@@ -36,7 +37,7 @@ class ContainerManagerImpl : public ContainerManagerInterface {
   void EnsureJobExit(base::TimeDelta timeout) override;
 
   // ContainerManagerInterface:
-  bool StartContainer() override;
+  bool StartContainer(const ExitCallback& exit_callback) override;
   bool GetRootFsPath(base::FilePath* path_out) const override;
   bool GetContainerPID(pid_t* pid_out) const override;
 
@@ -44,7 +45,7 @@ class ContainerManagerImpl : public ContainerManagerInterface {
 
  private:
   // Frees any resources used by the container.
-  void CleanUpContainer();
+  void CleanUpContainer(pid_t pid);
 
   // Owned by the caller.
   SystemUtils* const system_utils_;
@@ -57,6 +58,12 @@ class ContainerManagerImpl : public ContainerManagerInterface {
 
   // Currently running container.
   ContainerPtr container_;
+
+  // Callback that will get invoked when the process exits.
+  ExitCallback exit_callback_;
+
+  // True if RequestJobExit was called before the container process exits.
+  bool clean_exit_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerManagerImpl);
 };

@@ -31,10 +31,10 @@
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/device_local_account_policy_service.h"
+#include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_crossystem.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
-#include "login_manager/mock_container_manager.h"
 #include "login_manager/mock_dbus_signal_emitter.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
@@ -51,11 +51,13 @@
 #include "login_manager/stub_upstart_signal_emitter.h"
 
 using ::testing::AnyNumber;
+using ::testing::AtLeast;
 using ::testing::AtMost;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::HasSubstr;
+using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NotNull;
@@ -76,11 +78,18 @@ using std::vector;
 
 namespace login_manager {
 
+namespace {
+
+constexpr pid_t kAndroidPid = 10;
+
+}  // anonymous namespace
+
 class SessionManagerImplTest : public ::testing::Test {
  public:
   SessionManagerImplTest()
       : device_policy_service_(new MockDevicePolicyService),
         state_key_generator_(&utils_, &metrics_),
+        android_container_(kAndroidPid),
         impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter(
                   &upstart_signal_emitter_delegate_)),
               &dbus_emitter_,
@@ -211,7 +220,7 @@ class SessionManagerImplTest : public ::testing::Test {
   FakeCrossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
-  MockContainerManager android_container_;
+  FakeContainerManager android_container_;
 
   SessionManagerImpl impl_;
   SessionManagerImpl::Error error_;
@@ -786,9 +795,8 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
 
   ExpectAndRunStartSession(kSaneEmail);
 
-  EXPECT_CALL(android_container_, StartContainer())
-      .Times(0);
   impl_.StartContainer(kContainerName, &error_);
+  EXPECT_FALSE(android_container_.running());
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart) {
@@ -799,8 +807,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   bool available = impl_.CheckArcAvailability();
   SessionManagerImpl::Error start_time_error;
 #if USE_ARC
-  const pid_t kAndroidPid = 10;
-
   EXPECT_TRUE(available);
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
@@ -817,6 +823,12 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
+                      ElementsAre(std::string("ANDROID_PID=") +
+                                      std::to_string(kAndroidPid))))
+      .Times(1);
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStartSignal),
                       ElementsAre(std::string("CONTAINER_NAME=") +
                                       SessionManagerImpl::kArcContainerName,
@@ -824,21 +836,71 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
                                   std::string("CONTAINER_PID=") +
                                       std::to_string(kAndroidPid))))
       .Times(1);
-  EXPECT_CALL(android_container_, StartContainer())
-      .Times(1)
-      .WillOnce(Return(true));
-  EXPECT_CALL(android_container_, GetRootFsPath(NotNull()))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(android_container_, GetContainerPID(NotNull()))
-      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kAndroidPid), Return(true)));
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
+                      ElementsAre()))
+      .Times(1);
   impl_.StartArcInstance(kSocketPath, &error_);
+  EXPECT_TRUE(android_container_.running());
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
+  impl_.StopArcInstance(&error_);
+  EXPECT_FALSE(error_.is_set());
+  EXPECT_FALSE(android_container_.running());
 #else
   EXPECT_FALSE(available);
   impl_.StartArcInstance(kSocketPath, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
+#endif
+}
+
+TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
+#if USE_ARC
+  // An arbitrary path. Doesn't need to exist or be accessible.
+  const char kSocketPath[] = "/tmp/arc.sock";
+
+  ExpectAndRunStartSession(kSaneEmail);
+
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
+                      ElementsAre(std::string("ANDROID_DATA_DIR=") +
+                                  SessionManagerImpl::kFixedAndroidDataDir)))
+      .Times(1);
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
+                      ElementsAre(std::string("ANDROID_PID=") +
+                                      std::to_string(kAndroidPid))))
+      .Times(1);
+  EXPECT_CALL(
+      dbus_emitter_,
+      EmitSignalWithBool(StrEq(login_manager::kArcInstanceStopped),
+                         false))
+      .Times(1);
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStartSignal),
+                      ElementsAre(std::string("CONTAINER_NAME=") +
+                                      SessionManagerImpl::kArcContainerName,
+                                  std::string("CONTAINER_PATH="),
+                                  std::string("CONTAINER_PID=") +
+                                      std::to_string(kAndroidPid))))
+      .Times(1);
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
+                      ElementsAre()))
+      .Times(1);
+  impl_.StartArcInstance(kSocketPath, &error_);
+  EXPECT_TRUE(android_container_.running());
+  android_container_.SimulateCrash();
+  EXPECT_FALSE(android_container_.running());
+  // This should now fail since the container was cleaned up already.
+  impl_.StopArcInstance(&error_);
+  EXPECT_EQ(dbus_error::kContainerShutdownFail, error_.name());
 #endif
 }
 

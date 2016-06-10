@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/device_policy_service.h"
@@ -208,6 +208,9 @@ class SessionManagerImpl : public SessionManagerInterface,
                       const base::FilePath& temp_key_file) override;
 
  private:
+  // Called when the Android container is stopped.
+  void OnAndroidContainerStopped(pid_t pid, bool clean);
+
   // Holds the state related to one of the signed in users.
   struct UserSession;
 
@@ -280,6 +283,8 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   // Map of the currently signed-in users to their state.
   UserSessionMap user_sessions_;
+
+  base::WeakPtrFactory<SessionManagerImpl> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerImpl);
 };

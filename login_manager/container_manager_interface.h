@@ -5,8 +5,11 @@
 #ifndef LOGIN_MANAGER_CONTAINER_MANAGER_INTERFACE_H_
 #define LOGIN_MANAGER_CONTAINER_MANAGER_INTERFACE_H_
 
+#include <sys/types.h>
+
 #include <string>
 
+#include <base/callback_forward.h>
 #include <base/files/file_path.h>
 
 #include "login_manager/job_manager.h"
@@ -18,10 +21,14 @@ namespace login_manager {
 // Containers can only be run from the verified rootfs.
 class ContainerManagerInterface : public JobManagerInterface {
  public:
+  // |clean| is true if the container was shut down through RequestJobExit.
+  using ExitCallback = base::Callback<void(pid_t, bool clean)>;
+
   virtual ~ContainerManagerInterface() {}
 
   // Starts the container. Returns true on success.
-  virtual bool StartContainer() = 0;
+  // If successful, |exit_callback| will be notified when the process exits.
+  virtual bool StartContainer(const ExitCallback& exit_callback) = 0;
 
   // Gets the path of the rootfs of the container.
   virtual bool GetRootFsPath(base::FilePath* path_out) const = 0;

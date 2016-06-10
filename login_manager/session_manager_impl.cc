@@ -12,7 +12,7 @@
 #include <locale>
 #include <string>
 
-#include <base/callback.h>
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/stl_util.h>
@@ -182,7 +182,8 @@ SessionManagerImpl::SessionManagerImpl(
       vpd_process_(vpd_process),
       owner_key_(owner_key),
       android_container_(android_container),
-      mitigator_(key_gen) {}
+      mitigator_(key_gen),
+      weak_ptr_factory_(this) {}
 
 SessionManagerImpl::~SessionManagerImpl() {
   STLDeleteValues(&user_sessions_);
@@ -641,35 +642,17 @@ void SessionManagerImpl::StartArcInstance(const std::string& socket_path,
 
 void SessionManagerImpl::StopArcInstance(Error* error) {
 #if USE_ARC
-  pid_t pid = 0;
+  pid_t pid;
   if (!android_container_->GetContainerPID(&pid)) {
     static const char msg[] = "Error getting Android container pid.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kContainerShutdownFail, msg);
-  }
-  std::vector<std::string> env;
-  // pid can be zero here if the container isn't running, that's OK as the
-  // init job will ignore shutting it down.
-  env.emplace_back("ANDROID_PID=" + std::to_string(pid));
-  if (!init_controller_->TriggerImpulse(kArcStopSignal, env)) {
-    static const char msg[] = "Emitting stop-arc-instance init signal failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kEmitFailed, msg);
-  }
-
-  // Stopping arc-network doesn't stop the bridge or steal the interface
-  // so the container shouldn't be affected.
-  if (!init_controller_->TriggerImpulse(kArcNetworkStopSignal,
-                                        std::vector<std::string>())) {
-    static const char msg[] = "Emitting stop-arc-network init signal failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kEmitFailed, msg);
+    return;
   }
 
   android_container_->RequestJobExit();
   android_container_->EnsureJobExit(
       base::TimeDelta::FromSeconds(kContainerTimeoutSec));
-  arc_start_time_ = base::TimeTicks();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
 #endif  // USE_ARC
@@ -686,29 +669,17 @@ base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
 }
 
 void SessionManagerImpl::StartContainer(const std::string& name, Error* error) {
-  if (name != kArcContainerName) {
-    const char msg[] = "Container not found.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kContainerStartupFail, msg);
-    return;
-  }
-  if (!android_container_->StartContainer()) {
-    const char msg[] = "Error starting the container.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kContainerStartupFail, msg);
-  }
+  // TODO(dgreid): Add support for other containers.
+  const char msg[] = "Container not found.";
+  LOG(ERROR) << msg;
+  error->Set(dbus_error::kContainerStartupFail, msg);
 }
 
 void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
-  if (name != kArcContainerName) {
-    const char msg[] = "Container not found.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kContainerShutdownFail, msg);
-    return;
-  }
-  android_container_->RequestJobExit();
-  android_container_->EnsureJobExit(
-      base::TimeDelta::FromSeconds(kContainerTimeoutSec));
+  // TODO(dgreid): Add support for other containers.
+  const char msg[] = "Container not found.";
+  LOG(ERROR) << msg;
+  error->Set(dbus_error::kContainerShutdownFail, msg);
 }
 
 void SessionManagerImpl::RemoveArcData(Error* error) {
@@ -842,7 +813,9 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   *started_container_out = false;
   *dbus_error_out = nullptr;
   error_message_out->clear();
-  if (!android_container_->StartContainer()) {
+  if (!android_container_->StartContainer(
+          base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
+                     weak_ptr_factory_.GetWeakPtr()))) {
     *dbus_error_out = dbus_error::kContainerStartupFail;
     *error_message_out = "Starting Android container failed.";
     return false;
@@ -871,6 +844,29 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   LOG(INFO) << "Started Android container pid " << pid;
 
   return true;
+}
+
+void SessionManagerImpl::OnAndroidContainerStopped(pid_t pid, bool clean) {
+  if (clean) {
+    LOG(INFO) << "Android Container with pid " << pid << " stopped";
+  } else {
+    LOG(ERROR) << "Android Container with pid " << pid << " crashed";
+  }
+
+  std::vector<std::string> env;
+  env.emplace_back("ANDROID_PID=" + std::to_string(pid));
+  if (!init_controller_->TriggerImpulse(kArcStopSignal, env)) {
+    static const char msg[] = "Emitting stop-arc-instance init signal failed.";
+    LOG(ERROR) << msg;
+  }
+
+  if (!init_controller_->TriggerImpulse(kArcNetworkStopSignal,
+                                        std::vector<std::string>())) {
+    static const char msg[] = "Emitting stop-arc-network init signal failed.";
+    LOG(ERROR) << msg;
+  }
+
+  dbus_emitter_->EmitSignalWithBool(kArcInstanceStopped, clean);
 }
 
 }  // namespace login_manager

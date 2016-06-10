@@ -8,10 +8,12 @@
 #include <stdint.h>
 #include <sys/mount.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/posix/safe_strerror.h>
@@ -53,7 +55,8 @@ ContainerManagerImpl::ContainerManagerImpl(
     : system_utils_(system_utils),
       container_directory_(containers_directory.Append(name)),
       name_(name),
-      container_(nullptr, &container_destroy) {
+      container_(nullptr, &container_destroy),
+      clean_exit_(false) {
   DCHECK(system_utils_);
 }
 
@@ -65,17 +68,21 @@ bool ContainerManagerImpl::IsManagedJob(pid_t pid) {
 }
 
 void ContainerManagerImpl::HandleExit(const siginfo_t& status) {
-  if (!container_) {
+  pid_t pid;
+  if (!GetContainerPID(&pid)) {
     LOG(ERROR) << "Container " << name_ << " unexpected exit.";
     return;
   }
 
-  CleanUpContainer();
+  CleanUpContainer(pid);
 }
 
 void ContainerManagerImpl::RequestJobExit() {
   if (!container_)
     return;
+
+  // If HandleExit() is called after this point, it is considered clean.
+  clean_exit_ = true;
 
   // TODO(lhchavez): Make this less aggressive by giving the container a chance
   // to cleanup.
@@ -95,9 +102,7 @@ void ContainerManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
   if (!GetContainerPID(&pid))
     return;
 
-  if (system_utils_->ProcessGroupIsGone(pid, timeout)) {
-    CleanUpContainer();
-  } else {
+  if (!system_utils_->ProcessGroupIsGone(pid, timeout)) {
     LOG(INFO) << "Killing off container " << name_;
     int rc = container_kill(container_.get());
     if (rc != 0) {
@@ -105,9 +110,11 @@ void ContainerManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
                  << libcontainer_strerror(rc);
     }
   }
+  CleanUpContainer(pid);
 }
 
-bool ContainerManagerImpl::StartContainer() {
+bool ContainerManagerImpl::StartContainer(
+    const ExitCallback& exit_callback) {
   // TODO(lhchavez): Make logging less verbose once we're comfortable that
   // everything works correctly. See b/29266253.
   LOG(INFO) << "Starting container " << name_;
@@ -152,6 +159,8 @@ bool ContainerManagerImpl::StartContainer() {
   }
 
   container_ = std::move(new_container);
+  exit_callback_ = exit_callback;
+  clean_exit_ = false;
 
   return true;
 }
@@ -170,7 +179,7 @@ bool ContainerManagerImpl::GetContainerPID(pid_t* pid_out) const {
   return true;
 }
 
-void ContainerManagerImpl::CleanUpContainer() {
+void ContainerManagerImpl::CleanUpContainer(pid_t pid) {
   if (!container_)
     return;
 
@@ -181,7 +190,15 @@ void ContainerManagerImpl::CleanUpContainer() {
                << libcontainer_strerror(rc);
   }
 
+  // Save callbacks until after everything has been cleaned up.
+  ExitCallback exit_callback;
+  std::swap(exit_callback_, exit_callback);
+
   container_.reset();
+  exit_callback_.Reset();
+
+  if (!exit_callback.is_null())
+    exit_callback.Run(pid, clean_exit_);
 }
 
 }  // namespace login_manager

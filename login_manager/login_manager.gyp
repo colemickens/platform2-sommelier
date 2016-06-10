@@ -136,6 +136,7 @@
             'device_policy_service_unittest.cc',
             'fake_browser_job.cc',
             'fake_child_process.cc',
+            'fake_container_manager.cc',
             'fake_crossystem.cc',
             'fake_generated_key_handler.cc',
             'fake_generator_job.cc',

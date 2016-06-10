@@ -38,6 +38,11 @@ class DBusSignalEmitterInterface {
   // optionally adding |payload| as args if it is not empty.
   virtual void EmitSignalWithString(const std::string& signal_name,
                                     const std::string& payload) = 0;
+
+  // Broadcasts |signal_name| from the session manager DBus interface,
+  // with |payload| as a boolean.
+  virtual void EmitSignalWithBool(const std::string& signal_name,
+                                  bool payload) = 0;
 };
 
 // Simple mockable interface for emitting DBus signals.
@@ -51,6 +56,8 @@ class DBusSignalEmitter : public DBusSignalEmitterInterface {
                                     const bool success) override;
   void EmitSignalWithString(const std::string& signal_name,
                             const std::string& payload) override;
+  void EmitSignalWithBool(const std::string& signal_name,
+                          bool payload) override;
 
  private:
   dbus::ExportedObject* object_;  // Weak, owned by caller.
