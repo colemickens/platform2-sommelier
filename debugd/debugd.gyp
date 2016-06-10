@@ -238,6 +238,11 @@
         'src/helpers/network_status.cc',
       ]
     },
+    {
+      'target_name': 'get_feedback_logs',
+      'type': 'executable',
+      'sources': ['tools/get_feedback_logs.cc'],
+    },
   ],
   'conditions': [
     ['USE_cellular == 1', {

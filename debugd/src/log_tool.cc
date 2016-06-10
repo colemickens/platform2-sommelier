@@ -28,6 +28,7 @@ using std::vector;
 typedef vector<string> Strings;
 
 const char *kDebugfsGroup = "debugfs-access";
+const char *kRoot = "root";
 
 namespace {
 
@@ -183,7 +184,13 @@ const Log feedback_logs[] = {
 // must be sent back to the client via the file descriptor using
 // LogTool::GetBigFeedbackLogs().
 const Log big_feedback_logs[] = {
-  // TODO(olofj): Add the huge cheets logs here.
+  { "arc-bugreport",
+    "/bin/cat /var/run/arc/bugreport/pipe 2> /dev/null",
+    // ARC bugreport permissions are weird. Since we're just running cat, this
+    // shouldn't cause any issues.
+    kRoot,
+    kRoot
+  },
   { NULL, NULL }
 };
 
