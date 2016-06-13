@@ -79,10 +79,6 @@ const char ChromiumCommandBuilder::kDefaultZoneinfoPath[] =
     "/usr/share/zoneinfo/US/Pacific";
 const char ChromiumCommandBuilder::kPepperPluginsPath[] =
     "/opt/google/chrome/pepper";
-const char ChromiumCommandBuilder::kDeepMemoryProfilerPrefixPath[] =
-    "/var/tmp/deep_memory_profiler_prefix.txt";
-const char ChromiumCommandBuilder::kDeepMemoryProfilerTimeIntervalPath[] =
-    "/var/tmp/deep_memory_profiler_time_interval.txt";
 
 ChromiumCommandBuilder::ChromiumCommandBuilder()
     : uid_(0),
@@ -188,7 +184,6 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   // Disable sandboxing as it causes crashes in ASAN: crbug.com/127536
   bool disable_sandbox = false;
   disable_sandbox |= SetUpASAN();
-  disable_sandbox |= SetUpDeepMemoryProfiler();
   if (disable_sandbox)
     AddArg("--no-sandbox");
 
@@ -344,35 +339,6 @@ bool ChromiumCommandBuilder::SetUpASAN() {
   // created by ChromeInitializer; move it somewhere else, maybe.
   AddEnvVar("ASAN_OPTIONS",
             "log_path=/var/log/chrome/asan_log:detect_odr_violation=0");
-
-  return true;
-}
-
-bool ChromiumCommandBuilder::SetUpDeepMemoryProfiler() {
-  if (!UseFlagIsSet("deep_memory_profiler"))
-    return false;
-
-  // Dump heap profiles to /tmp/dmprof.*.
-  std::string prefix;
-  if (!base::ReadFileToString(
-          GetPath(kDeepMemoryProfilerPrefixPath), &prefix)) {
-    return false;
-  }
-  base::TrimWhitespaceASCII(prefix, base::TRIM_TRAILING, &prefix);
-  AddEnvVar("HEAPPROFILE", prefix);
-
-  // Dump every |interval| seconds.
-  std::string interval;
-  base::ReadFileToString(
-      GetPath(kDeepMemoryProfilerTimeIntervalPath), &interval);
-  base::TrimWhitespaceASCII(interval, base::TRIM_TRAILING, &interval);
-  AddEnvVar("HEAP_PROFILE_TIME_INTERVAL", interval);
-
-  // Turn on profiling mmap.
-  AddEnvVar("HEAP_PROFILE_MMAP", "1");
-
-  // Turn on Deep Memory Profiler.
-  AddEnvVar("DEEP_HEAP_PROFILE", "1");
 
   return true;
 }

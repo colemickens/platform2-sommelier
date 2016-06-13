@@ -301,22 +301,6 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
   EXPECT_EQ(kExpected, GetFirstArgWithPrefix("--register-pepper-plugins"));
 }
 
-TEST_F(ChromiumCommandBuilderTest, DeepMemoryProfiler) {
-  use_flags_data_ = "deep_memory_profiler";
-  WriteFileUnderBasePath(
-      ChromiumCommandBuilder::kDeepMemoryProfilerPrefixPath, "/foo\n");
-  WriteFileUnderBasePath(
-      ChromiumCommandBuilder::kDeepMemoryProfilerTimeIntervalPath, "5\n");
-  ASSERT_TRUE(Init());
-  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
-
-  EXPECT_EQ("/foo", ReadEnvVar("HEAPPROFILE"));
-  EXPECT_EQ("5", ReadEnvVar("HEAP_PROFILE_TIME_INTERVAL"));
-  EXPECT_EQ("1", ReadEnvVar("HEAP_PROFILE_MMAP"));
-  EXPECT_EQ("1", ReadEnvVar("DEEP_HEAP_PROFILE"));
-  EXPECT_EQ("--no-sandbox", GetFirstArgWithPrefix("--no-sandbox"));
-}
-
 TEST_F(ChromiumCommandBuilderTest, SetUpX11) {
   const base::FilePath kXauthPath(base_path_.Append("test_xauth"));
   const char kXauthData[] = "foo";

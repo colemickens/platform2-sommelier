@@ -44,10 +44,6 @@ class ChromiumCommandBuilder {
   // Default zoneinfo file used if the time zone hasn't been explicitly set.
   static const char kDefaultZoneinfoPath[];
 
-  // Deep-memory-profiler-related files.
-  static const char kDeepMemoryProfilerPrefixPath[];
-  static const char kDeepMemoryProfilerTimeIntervalPath[];
-
   ChromiumCommandBuilder();
   ~ChromiumCommandBuilder();
 
@@ -134,11 +130,9 @@ class ChromiumCommandBuilder {
   // InitChromium().
   bool SetUpX11(const base::FilePath& xauth_path);
 
-  // Checks if an ASAN or deep-memory-profiler build was requested, doing
-  // appropriate initialization and returning true if so. Called by
-  // InitChromium().
+  // Checks if an ASAN build was requested, doing appropriate initialization and
+  // returning true if so. Called by InitChromium().
   bool SetUpASAN();
-  bool SetUpDeepMemoryProfiler();
 
   // Reads .info files in |pepper_plugins_path_| and adds the appropriate
   // arguments to |arguments_|. Called by InitChromium().
