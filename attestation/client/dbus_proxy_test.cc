@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+#include <memory>
 #include <string>
 
 #include <brillo/bind_lambda.h>
@@ -313,7 +314,7 @@ TEST_F(DBusProxyTest, Decrypt) {
     EXPECT_EQ("user", request_proto.username());
     EXPECT_EQ("data", request_proto.encrypted_data());
     // Create reply protobuf.
-    scoped_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+    std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
     DecryptReply reply_proto;
     reply_proto.set_status(STATUS_SUCCESS);
