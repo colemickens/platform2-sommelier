@@ -1,0 +1,14 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+[Unit]
+Description=Media Transfer Protocol Daemon
+PartOf=system-services.target
+After=system-services.target
+[Service]
+Restart=always
+Environment="MTPD_MINLOGLEVEL=1"
+ExecStart=/sbin/minijail0 -u mtp -g mtp -G -n -S \
+	/opt/google/mtpd/mtpd-seccomp.policy -- \
+	/opt/google/mtpd/mtpd -minloglevel="${MTPD_MINLOGLEVEL}"
