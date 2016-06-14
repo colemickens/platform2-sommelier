@@ -641,8 +641,13 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::GetArcStartTimeTicks(
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RemoveArcData(
     dbus::MethodCall* call) {
+  dbus::MessageReader reader(call);
+  std::string user_id;
+  if (!reader.PopString(&user_id))
+    return CreateInvalidArgsError(call, call->GetSignature());
+
   SessionManagerImpl::Error error;
-  impl_->RemoveArcData(&error);
+  impl_->RemoveArcData(user_id, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
 

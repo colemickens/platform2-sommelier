@@ -70,13 +70,6 @@ const char SessionManagerImpl::kArcNetworkStopSignal[] = "stop-arc-network";
 const base::FilePath::CharType SessionManagerImpl::kAndroidDataDirName[] =
     FILE_PATH_LITERAL("android-data");
 
-// TODO(dspaid): Migrate to using /home/root/$hash once it is supported
-// see http://b/26700652
-const base::FilePath::CharType SessionManagerImpl::kArcDataDir[] =
-    FILE_PATH_LITERAL("/home/chronos/user/android-data/data");
-const base::FilePath::CharType SessionManagerImpl::kArcCacheDir[] =
-    FILE_PATH_LITERAL("/home/chronos/user/android-data/cache");
-
 namespace {
 
 // Constants used in email validation.
@@ -109,6 +102,13 @@ bool IsIncognitoUserId(const std::string& user_id) {
   return (lower_case_id == kGuestUserName) ||
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
+
+#if USE_ARC
+base::FilePath GetAndroidDataDirForUser(const std::string& normalized_user_id) {
+  return GetRootPath(normalized_user_id).Append(
+      SessionManagerImpl::kAndroidDataDirName);
+}
+#endif  // USE_ARC
 
 }  // namespace
 
@@ -608,8 +608,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& user_id,
     return;
   }
 
-  const base::FilePath& android_data_dir =
-      GetRootPath(actual_user_id).Append(kAndroidDataDirName);
+  const base::FilePath android_data_dir =
+      GetAndroidDataDirForUser(actual_user_id);
   const std::vector<std::string>& keyvals = {
       base::StringPrintf("ANDROID_DATA_DIR=%s",
                          android_data_dir.value().c_str()),
@@ -686,14 +686,21 @@ void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
   error->Set(dbus_error::kContainerShutdownFail, msg);
 }
 
-void SessionManagerImpl::RemoveArcData(Error* error) {
+void SessionManagerImpl::RemoveArcData(const std::string& user_id,
+                                       Error* error) {
 #if USE_ARC
   if (!arc_start_time_.is_null()) {
     error->Set(dbus_error::kArcInstanceRunning, "ARC is currently running.");
     return;
   }
-  system_->RemoveDirTree(base::FilePath(SessionManagerImpl::kArcDataDir));
-  system_->RemoveDirTree(base::FilePath(SessionManagerImpl::kArcCacheDir));
+
+  std::string actual_user_id;
+  if (!NormalizeUserId(user_id, &actual_user_id, error)) {
+    return;
+  }
+  const base::FilePath android_data_dir =
+      GetAndroidDataDirForUser(actual_user_id);
+  system_->RemoveDirTree(android_data_dir);
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
 #endif  // USE_ARC

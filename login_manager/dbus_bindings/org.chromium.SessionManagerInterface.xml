@@ -446,11 +446,14 @@
     </method>
     <!--
          RemoveArcData:
+         @email_address: Human-readable ID of the user whose ARC data is
+                         removed.
 
          Removes ARC data from the user's profile.  This does not remove ARC
          system data such as root images.
     -->
     <method name="RemoveArcData">
+      <arg type="s" name="email_address" direction="in" />
     </method>
   </interface>
   <!-- ********************************************************************* -->

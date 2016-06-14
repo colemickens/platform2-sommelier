@@ -67,6 +67,7 @@ using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::_;
 
+using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SetSystemSalt;
 using brillo::cryptohome::home::kGuestUserName;
@@ -904,17 +905,13 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
 }
 
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
-  base::FilePath arc_data_dir(SessionManagerImpl::kArcDataDir);
-  base::FilePath arc_cache_dir(SessionManagerImpl::kArcCacheDir);
-  EXPECT_TRUE(utils_.AtomicFileWrite(arc_data_dir.Append("foo"), "test"));
-  EXPECT_TRUE(utils_.AtomicFileWrite(arc_cache_dir.Append("bar").Append("baz"),
-                                     "test"));
-  EXPECT_TRUE(utils_.Exists(arc_data_dir));
-  EXPECT_TRUE(utils_.Exists(arc_cache_dir));
-  impl_.RemoveArcData(&error_);
+  base::FilePath android_data_dir(
+      GetRootPath(kSaneEmail).Append(SessionManagerImpl::kAndroidDataDirName));
+  EXPECT_TRUE(utils_.AtomicFileWrite(android_data_dir.Append("foo"), "test"));
+  EXPECT_TRUE(utils_.Exists(android_data_dir));
+  impl_.RemoveArcData(kSaneEmail, &error_);
 #if USE_ARC
-  EXPECT_FALSE(utils_.Exists(arc_data_dir));
-  EXPECT_FALSE(utils_.Exists(arc_cache_dir));
+  EXPECT_FALSE(utils_.Exists(android_data_dir));
 #else
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
 #endif
@@ -923,18 +920,14 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
 TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
 #if USE_ARC
   ExpectAndRunStartSession(kSaneEmail);
-  base::FilePath arc_data_dir(SessionManagerImpl::kArcDataDir);
-  base::FilePath arc_cache_dir(SessionManagerImpl::kArcCacheDir);
-  EXPECT_TRUE(utils_.AtomicFileWrite(arc_data_dir.Append("foo"), "test"));
-  EXPECT_TRUE(utils_.AtomicFileWrite(arc_cache_dir.Append("bar").Append("baz"),
-                                     "test"));
-  EXPECT_TRUE(utils_.Exists(arc_data_dir));
-  EXPECT_TRUE(utils_.Exists(arc_cache_dir));
+  base::FilePath android_data_dir(
+      GetRootPath(kSaneEmail).Append(SessionManagerImpl::kAndroidDataDirName));
+  EXPECT_TRUE(utils_.AtomicFileWrite(android_data_dir.Append("foo"), "test"));
+  EXPECT_TRUE(utils_.Exists(android_data_dir));
   impl_.StartArcInstance(kSaneEmail, &error_);
-  impl_.RemoveArcData(&error_);
+  impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
-  EXPECT_TRUE(utils_.Exists(arc_data_dir));
-  EXPECT_TRUE(utils_.Exists(arc_cache_dir));
+  EXPECT_TRUE(utils_.Exists(android_data_dir));
 #endif
 }
 

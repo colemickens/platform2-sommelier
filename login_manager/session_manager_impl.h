@@ -67,10 +67,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Name of android-data directory.
   static const base::FilePath::CharType kAndroidDataDirName[];
 
-  // ARC data directories to be deleted on opt-out.
-  static const base::FilePath::CharType kArcDataDir[];
-  static const base::FilePath::CharType kArcCacheDir[];
-
   // Name of the Android container.
   static const char kArcContainerName[];
 
@@ -197,7 +193,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartArcInstance(const std::string& user_id, Error* error);
   void StopArcInstance(Error* error);
   base::TimeTicks GetArcStartTime(Error* error);
-  void RemoveArcData(Error* error);
+  void RemoveArcData(const std::string& user_id, Error* error);
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
