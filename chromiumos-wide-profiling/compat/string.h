@@ -12,4 +12,6 @@ using std::string;
 using std::stringstream;
 #endif
 
+#include "detail/string.h"
+
 #endif  // CHROMIUMOS_WIDE_PROFILING_COMPAT_STRING_H_
