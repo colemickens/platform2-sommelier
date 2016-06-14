@@ -1100,16 +1100,16 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   // If the vault keyset's TPM state is not the same as that configured for
   // the device, re-save the keyset (this will save in the device's default
   // method).
-  //                      1   2   3   4   5   6   7   8   9  10  11  12
-  // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -
+  //                      1   2   3   4   5   6   7   8   9  10  11  12  13
+  // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -   *
   //
-  // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X
+  // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X   *
   //
-  // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -
+  // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -   X
   //
-  // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X
+  // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X   X
   //
-  // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N
+  // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N   Y
   bool tpm_wrapped =
       (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
   bool scrypt_wrapped =
@@ -1121,9 +1121,9 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
     if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
-      if (tpm_wrapped && should_tpm)
+      if (tpm_wrapped && should_tpm && !scrypt_wrapped)
         break;  // 5, 8
-      if (scrypt_wrapped && should_scrypt && !should_tpm)
+      if (scrypt_wrapped && should_scrypt && !should_tpm && !tpm_wrapped)
         break;  // 12
       if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
         break;  // 1
