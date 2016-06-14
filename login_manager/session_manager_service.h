@@ -19,8 +19,8 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
+#include "login_manager/android_container_manager_impl.h"
 #include "login_manager/child_exit_handler.h"
-#include "login_manager/container_manager_impl.h"
 #include "login_manager/crossystem_impl.h"
 #include "login_manager/job_manager.h"
 #include "login_manager/key_generator.h"
@@ -281,7 +281,7 @@ class SessionManagerService
   ServerBackedStateKeyGenerator state_key_generator_;
   CrossystemImpl crossystem_;
   VpdProcessImpl vpd_process_;
-  ContainerManagerImpl android_container_;
+  AndroidContainerManagerImpl android_container_;
   scoped_ptr<DBusSignalEmitterInterface> dbus_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;

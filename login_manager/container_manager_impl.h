@@ -43,6 +43,17 @@ class ContainerManagerImpl : public ContainerManagerInterface {
 
   using ContainerPtr = std::unique_ptr<container, decltype(&container_destroy)>;
 
+ protected:
+  // This will be called from RequestJobExit(). If this method returns false,
+  // the container will be forcibly terminated.
+  virtual bool RequestTermination();
+
+  // This will be called once the container has been considered to be terminated
+  // but before |exit_callback_| is run. This will allow subclasses to measure
+  // shutdown timing. |clean| is true only if the container was cleanly shut
+  // down.
+  virtual void OnContainerStopped(bool clean);
+
  private:
   // Frees any resources used by the container.
   void CleanUpContainer(pid_t pid);

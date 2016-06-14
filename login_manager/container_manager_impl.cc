@@ -78,19 +78,20 @@ void ContainerManagerImpl::HandleExit(const siginfo_t& status) {
 }
 
 void ContainerManagerImpl::RequestJobExit() {
-  if (!container_)
+  pid_t pid;
+  if (!GetContainerPID(&pid))
     return;
 
   // If HandleExit() is called after this point, it is considered clean.
   clean_exit_ = true;
 
-  // TODO(lhchavez): Make this less aggressive by giving the container a chance
-  // to cleanup.
-  LOG(INFO) << "Killing off container " << name_;
-  int rc = container_kill(container_.get());
-  if (rc != 0) {
-    LOG(ERROR) << "Failed to kill container " << name_ << ": "
-               << libcontainer_strerror(rc);
+  if (!RequestTermination()) {
+    LOG(INFO) << "Killing off container " << name_;
+    int rc = container_kill(container_.get());
+    if (rc != 0) {
+      LOG(ERROR) << "Failed to kill container " << name_ << ": "
+                 << libcontainer_strerror(rc);
+    }
   }
 }
 
@@ -113,8 +114,7 @@ void ContainerManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
   CleanUpContainer(pid);
 }
 
-bool ContainerManagerImpl::StartContainer(
-    const ExitCallback& exit_callback) {
+bool ContainerManagerImpl::StartContainer(const ExitCallback& exit_callback) {
   // TODO(lhchavez): Make logging less verbose once we're comfortable that
   // everything works correctly. See b/29266253.
   LOG(INFO) << "Starting container " << name_;
@@ -179,6 +179,12 @@ bool ContainerManagerImpl::GetContainerPID(pid_t* pid_out) const {
   return true;
 }
 
+bool ContainerManagerImpl::RequestTermination() {
+  return false;
+}
+
+void ContainerManagerImpl::OnContainerStopped(bool clean) {}
+
 void ContainerManagerImpl::CleanUpContainer(pid_t pid) {
   if (!container_)
     return;
@@ -196,6 +202,8 @@ void ContainerManagerImpl::CleanUpContainer(pid_t pid) {
 
   container_.reset();
   exit_callback_.Reset();
+
+  OnContainerStopped(clean_exit_);
 
   if (!exit_callback.is_null())
     exit_callback.Run(pid, clean_exit_);
