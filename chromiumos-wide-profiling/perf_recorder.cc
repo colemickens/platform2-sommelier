@@ -39,6 +39,8 @@ bool ParsePerfDataFileToString(const string& filename, string* output_string) {
   options.do_remap = true;
   // Discard unused perf events to reduce the protobuf size.
   options.discard_unused_events = true;
+  // Read buildids from the filesystem ourself.
+  options.read_missing_buildids = true;
 
   PerfDataProto perf_data;
   return SerializeFromFileWithOptions(filename, options, &perf_data) &&
@@ -113,6 +115,10 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
                         perf_args.begin() + 1,  // skip "perf"
                         perf_args.end());
   full_perf_args.insert(full_perf_args.end(), {"-o", output_file.path()});
+
+  // For 'record', skip buildid collection. We'll do it ourselves.
+  if (perf_type == kPerfRecordCommand || perf_type == kPerfMemCommand)
+    full_perf_args.emplace_back("-B");
 
   // The perf stat output parser requires raw data from verbose output.
   if (perf_type == kPerfStatCommand)

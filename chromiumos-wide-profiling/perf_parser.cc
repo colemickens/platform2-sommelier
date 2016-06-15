@@ -16,6 +16,7 @@
 #include "chromiumos-wide-profiling/address_mapper.h"
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/dso.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
@@ -128,14 +129,6 @@ bool PerfParser::ProcessEvents() {
   pidtid_to_comm_map_[std::make_pair(kSwapperPid, kSwapperPid)] =
       &(*commands_.find(kSwapperCommandName));
 
-  std::map<string, string> filenames_to_build_ids;
-  reader_->GetFilenamesToBuildIDs(&filenames_to_build_ids);
-  const auto& build_id_for_filename =
-      [&filenames_to_build_ids](const string& filename) -> string {
-    const auto it = filenames_to_build_ids.find(filename);
-    return (it != filenames_to_build_ids.end()) ? it->second : "";
-  };
-
   // NB: Not necessarily actually sorted by time.
   for (size_t i = 0; i < parsed_events_.size(); ++i) {
     ParsedEvent& parsed_event = parsed_events_[i];
@@ -163,8 +156,6 @@ bool PerfParser::ProcessEvents() {
         parsed_event.num_samples_in_mmap_region = 0;
         DSOInfo dso_info;
         dso_info.name = event.mmap_event().filename();
-        dso_info.build_id =
-            build_id_for_filename(event.mmap_event().filename());
         name_to_dso_.emplace(dso_info.name, dso_info);
         break;
       }
@@ -209,6 +200,9 @@ bool PerfParser::ProcessEvents() {
         return false;
     }
   }
+  if (!FillInDsoBuildIds())
+    return false;
+
   // Print stats collected from parsing.
   LOG(INFO) << "Parser processed: "
             << stats_.num_mmap_events << " MMAP/MMAP2 events, "
@@ -230,6 +224,31 @@ bool PerfParser::ProcessEvents() {
   }
   stats_.did_remap = options_.do_remap;
   return true;
+}
+
+bool PerfParser::FillInDsoBuildIds() {
+  std::map<string, string> filenames_to_build_ids;
+  reader_->GetFilenamesToBuildIDs(&filenames_to_build_ids);
+
+  std::map<string, string> new_buildids;
+
+  for (std::pair<const string, DSOInfo>& kv : name_to_dso_) {
+    DSOInfo& dso_info = kv.second;
+    const auto it = filenames_to_build_ids.find(dso_info.name);
+    if (it != filenames_to_build_ids.end()) {
+      dso_info.build_id = it->second;
+    } else if (options_.read_missing_buildids && dso_info.hit) {
+      string buildid_bin;
+      if (ReadElfBuildId(dso_info.name, &buildid_bin)) {
+        dso_info.build_id = RawDataToHexString(buildid_bin);
+        new_buildids[dso_info.name] = dso_info.build_id;
+      }
+    }
+  }
+
+  if (new_buildids.empty())
+    return true;
+  return reader_->InjectBuildIDs(new_buildids);
 }
 
 void PerfParser::MaybeSortParsedEvents() {

@@ -49,6 +49,17 @@ TEST_F(PerfRecorderTest, RecordToProtobuf) {
 
   quipper::PerfDataProto perf_data_proto;
   EXPECT_TRUE(perf_data_proto.ParseFromString(output_string));
+
+  const auto& string_meta = perf_data_proto.string_metadata();
+  const auto& command = string_meta.perf_command_line_token();
+  EXPECT_EQ(GetPerfPath(), command.Get(0).value());
+  EXPECT_EQ("record", command.Get(1).value());
+  EXPECT_EQ("-o", command.Get(2).value());
+  // Unpredictable: EXPECT_EQ("/tmp/quipper.XXXXXX", command.Get(3).value());
+  EXPECT_EQ("-B", command.Get(4).value());
+  EXPECT_EQ("--", command.Get(5).value());
+  EXPECT_EQ("sleep", command.Get(6).value());
+  EXPECT_EQ("0.2", command.Get(7).value());
 }
 
 TEST_F(PerfRecorderTest, StatToProtobuf) {

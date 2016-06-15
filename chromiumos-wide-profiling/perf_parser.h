@@ -149,6 +149,9 @@ struct PerfParserOptions {
   // PerfSerializerTest. However, we should look at restructuring PerfParser not
   // to need it, while still providing some PerfParserStats.
   bool sort_events_by_time = true;
+  // If buildids are missing from the input data, they can be retrieved from
+  // the filesystem.
+  bool read_missing_buildids = false;
 };
 
 class PerfParser {
@@ -186,6 +189,8 @@ class PerfParser {
  private:
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
+
+  bool FillInDsoBuildIds();
 
   // Sort |parsed_events_| by time, and updates the events in |reader_| in
   // sorted order.
