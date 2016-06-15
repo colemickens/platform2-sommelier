@@ -35,12 +35,12 @@ bool FileReader::ReadData(const size_t size, void* dest) {
 }
 
 bool FileReader::ReadString(const size_t size, string* str) {
-  std::unique_ptr<char[]> buffer(new char[size]);
-  if (!ReadData(size, buffer.get()))
+  if (!ReadDataString(size, str))
     return false;
 
-  size_t actual_length = strnlen(buffer.get(), size);
-  *str = string(buffer.get(), actual_length);
+  // Truncate anything after a terminating null.
+  size_t actual_length = strnlen(str->data(), size);
+  str->resize(actual_length);
   return true;
 }
 

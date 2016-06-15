@@ -4,11 +4,25 @@
 
 #include "chromiumos-wide-profiling/data_reader.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
+
+bool DataReader::ReadDataString(const size_t size, string* dest) {
+  if (size == 0) {
+    dest->clear();
+    return true;
+  }
+  const size_t orig_size = dest->size();
+  dest->resize(std::max(size, orig_size));
+  bool ret = ReadData(size, &(*dest)[0]);
+  dest->resize(ret ? size : orig_size);
+  return ret;
+}
 
 bool DataReader::ReadDataValue(const size_t size, const string& value_name,
                                void* dest) {

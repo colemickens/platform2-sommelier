@@ -34,6 +34,9 @@ class DataReader {
   // bytes.
   virtual bool ReadData(const size_t size, void* dest) = 0;
 
+  // Reads raw data into a string.
+  virtual bool ReadDataString(const size_t size, string* dest);
+
   // Like ReadData(), but prints an error if it doesn't read all |size| bytes.
   virtual bool ReadDataValue(const size_t size, const string& value_name,
                              void* dest);

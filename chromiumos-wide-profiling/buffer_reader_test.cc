@@ -4,9 +4,11 @@
 
 #include <stdint.h>
 
+#include <algorithm>
 #include <vector>
 
 #include "chromiumos-wide-profiling/buffer_reader.h"
+#include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
 
 namespace quipper {
@@ -206,6 +208,50 @@ TEST(BufferReaderTest, ReadString) {
   // The reader should have read past the padding too.
   EXPECT_EQ(input_vector.size(), vector_reader.Tell());
   EXPECT_EQ(input, vector_reader_output);
+}
+
+string MakeStringWithNullsForSpaces(string str) {
+  std::replace(str.begin(), str.end(), ' ', '\0');
+  return str;
+}
+
+TEST(BufferReaderTest, ReadDataString) {
+  // Construct an input string.
+  string input = MakeStringWithNullsForSpaces(
+      "The quick brown fox jumps over the lazy dog.");
+
+  BufferReader reader(input.data(), input.size());
+
+  string expected_out;
+  string out;
+  out.resize(5);
+  EXPECT_TRUE(reader.ReadDataString(10, &out));
+  expected_out = MakeStringWithNullsForSpaces("The quick ");
+  EXPECT_EQ(10, expected_out.size()) << "Sanity";
+  EXPECT_EQ(expected_out, out);
+
+  out.resize(15);
+  EXPECT_TRUE(reader.ReadDataString(10, &out));
+  expected_out = MakeStringWithNullsForSpaces("brown fox ");
+  EXPECT_EQ(10, expected_out.size()) << "Sanity";
+  EXPECT_EQ(expected_out, out);
+
+  reader.SeekSet(reader.size());
+
+  // Check destination contents don't get modified on failure.
+  out.resize(5);
+  expected_out = out;
+  EXPECT_FALSE(reader.ReadDataString(10, &out));
+  EXPECT_EQ(expected_out, out) << "Should be unchanged.";
+
+  out.resize(15);
+  expected_out = out;
+  EXPECT_FALSE(reader.ReadDataString(10, &out));
+  EXPECT_EQ(expected_out, out) << "Should be unchanged.";
+
+  EXPECT_FALSE(out.empty()) << "Sanity";
+  EXPECT_TRUE(reader.ReadDataString(0, &out));
+  EXPECT_TRUE(out.empty()) << "Read zero-length should clear output.";
 }
 
 // Reads data to a buffer and verifies that the buffer has not been modified
