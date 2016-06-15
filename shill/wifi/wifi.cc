@@ -762,6 +762,11 @@ bool WiFi::GetRandomMACEnabled(Error* /*error*/) {
 }
 
 bool WiFi::SetRandomMACEnabled(const bool& enabled, Error* error) {
+  if (!supplicant_present_ || !supplicant_interface_proxy_.get()) {
+    SLOG(this, 2) << "Ignoring random MAC while supplicant is not present.";
+    return false;
+  }
+
   if (!random_mac_supported_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
             "This WiFi device does not support MAC address randomization");
@@ -2326,6 +2331,13 @@ void WiFi::ConnectToSupplicant() {
 
   if (!supplicant_interface_proxy_->SetDisableHighBitrates(true)) {
     LOG(ERROR) << "Failed to disable high bitrates. "
+               << "May be running an older version of wpa_supplicant.";
+  }
+
+  if (random_mac_enabled_ &&
+      !supplicant_interface_proxy_->EnableMACAddressRandomization(
+           kRandomMACMask)) {
+    LOG(ERROR) << "Failed to enable MAC address randomization. "
                << "May be running an older version of wpa_supplicant.";
   }
 
