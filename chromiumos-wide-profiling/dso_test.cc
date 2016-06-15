@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "chromiumos-wide-profiling/buffer_reader.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
 #include "chromiumos-wide-profiling/dso_test_utils.h"
@@ -95,6 +96,37 @@ TEST(DsoTest, ReadsBuildId_PrefersGnuBuildid) {
 
   EXPECT_TRUE(ReadElfBuildId(elf.path(), &buildid));
   EXPECT_EQ(buildid_notes, buildid);
+}
+
+TEST(DsoTest, ReadsSysfsModuleBuildidNote) {
+  // Mimic contents of a /sys/module/<name>/notes/.note.gnu.build-id file.
+  const size_t namesz = 4;
+  const size_t descsz = 0x14;
+  const GElf_Nhdr note_header = {
+    .n_namesz = namesz,
+    .n_descsz = descsz,
+    .n_type = NT_GNU_BUILD_ID,
+  };
+
+  const char note_name[namesz] = ELF_NOTE_GNU;
+  const char note_desc[descsz] {
+    // Note \0 here. This is not null-terminated.
+    '\x1c', '\0',   '\x69', '\x27', '\x15', '\x26', '\x6b', '\xe7',
+    '\xcc', '\x69', '\x2c', '\x12', '\xe8', '\x09', '\x20', '\x18',
+    '\x03', '\x5b', '\xb6', '\x4f',
+  };
+
+  string data;
+  data.append(reinterpret_cast<const char*>(&note_header), sizeof(note_header));
+  data.append(note_name, sizeof(note_name));
+  data.append(note_desc, sizeof(note_desc));
+
+  ASSERT_EQ(0x24, data.size()) << "Sanity";
+
+  BufferReader data_reader(data.data(), data.size());
+  string buildid;
+  EXPECT_TRUE(ReadBuildIdNote(&data_reader, &buildid));
+  EXPECT_EQ(string(note_desc, sizeof(note_desc)), buildid);
 }
 
 }  // namespace quipper

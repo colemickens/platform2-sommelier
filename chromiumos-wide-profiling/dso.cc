@@ -17,6 +17,7 @@
 
 #include "base/logging.h"
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/file_reader.h"
 
 namespace quipper {
 
@@ -124,6 +125,55 @@ bool ReadElfBuildId(string filename, string* buildid) {
   close(fd);
 
   return err;
+}
+
+// read /sys/module/<module_name>/notes/.note.gnu.build-id
+bool ReadModuleBuildId(string module_name, string* buildid) {
+  string note_filename =
+      "/sys/module/" + module_name + "/notes/.note.gnu.build-id";
+
+  FileReader file(note_filename);
+  if (!file.IsOpen())
+    return false;
+
+  return ReadBuildIdNote(&file, buildid);
+}
+
+bool ReadBuildIdNote(DataReader* data, string* buildid) {
+  GElf_Nhdr note_header;
+
+  while (data->ReadData(sizeof(note_header), &note_header)) {
+    size_t name_size = Align<4>(note_header.n_namesz);
+    size_t desc_size = Align<4>(note_header.n_descsz);
+
+    string name;
+    if (!data->ReadString(name_size, &name))
+      return false;
+    string desc;
+    if (!data->ReadDataString(desc_size, &desc))
+      return false;
+    if (note_header.n_type == NT_GNU_BUILD_ID && name == ELF_NOTE_GNU) {
+      *buildid = desc;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsKernelNonModuleName(string name) {
+  // List from kernel: tools/perf/util/dso.c : __kmod_path__parse()
+  static const std::vector<string> kKernelNonModuleNames {
+    "[kernel.kallsyms]",
+    "[guest.kernel.kallsyms",
+    "[vdso]",
+    "[vsyscall]",
+  };
+
+  for (const auto &n : kKernelNonModuleNames) {
+    if (name.compare(0, n.size(), n) == 0)
+      return true;
+  }
+  return false;
 }
 
 }  // namespace quipper
