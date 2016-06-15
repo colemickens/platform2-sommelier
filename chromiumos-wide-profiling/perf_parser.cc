@@ -165,7 +165,7 @@ bool PerfParser::ProcessEvents() {
         dso_info.name = event.mmap_event().filename();
         dso_info.build_id =
             build_id_for_filename(event.mmap_event().filename());
-        dso_set_.insert(dso_info);
+        name_to_dso_.emplace(dso_info.name, dso_info);
         break;
       }
       case PERF_RECORD_FORK:
@@ -454,16 +454,10 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
       const auto& event = parsed_event.event_ptr;
       DCHECK(event->has_mmap_event()) << "Expected MMAP or MMAP2 event";
 
-      DSOInfo dso_info;
-      dso_info.name = event->mmap_event().filename();
-
       // Find the mmap DSO filename in the set of known DSO names.
-      // TODO(dhsharp): the comparator for DSOInfo only uses the dso name,
-      // excluding buildid, so that this lookup works. Consider if std::set
-      // is actually the right data structure for this task.
-      std::set<DSOInfo>::const_iterator dso_iter = dso_set_.find(dso_info);
-      CHECK(dso_iter != dso_set_.end());
-      dso_and_offset->dso_info_ = &(*dso_iter);
+      auto dso_iter = name_to_dso_.find(event->mmap_event().filename());
+      CHECK(dso_iter != name_to_dso_.end());
+      dso_and_offset->dso_info_ = &dso_iter->second;
 
       ++parsed_event.num_samples_in_mmap_region;
     }

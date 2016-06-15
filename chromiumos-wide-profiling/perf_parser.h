@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -34,11 +35,6 @@ class PerfDataProto_PerfEvent;
 struct DSOInfo {
   string name;
   string build_id;
-
-  // Comparator that allows this to be stored in a STL set.
-  bool operator<(const DSOInfo& other) const {
-    return name < other.name;
-  }
 };
 
 struct ParsedEvent {
@@ -278,7 +274,7 @@ class PerfParser {
   PerfEventStats stats_;
 
   // A set of unique DSOs that may be referenced by multiple events.
-  std::set<DSOInfo> dso_set_;
+  std::unordered_map<string, DSOInfo> name_to_dso_;
 
   // Maps process ID to an address mapper for that process.
   std::map<uint32_t, std::unique_ptr<AddressMapper>> process_mappers_;
