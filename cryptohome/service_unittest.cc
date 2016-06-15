@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
+#include <chromeos/constants/cryptohome.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/make_tests.h"
@@ -323,6 +324,9 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   policy::PolicyProvider policy_provider(
       new NiceMock<policy::MockDevicePolicy>);
   real_homedirs.set_policy_provider(&policy_provider);
+  // Avoid calling FreeDiskSpace routine.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillRepeatedly(Return(kMinFreeSpaceInBytes * 2));
   service_.set_homedirs(&real_homedirs);
   service_.set_crypto(&real_crypto);
   service_.Initialize();
