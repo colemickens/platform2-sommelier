@@ -239,10 +239,18 @@ bool PerfParser::FillInDsoBuildIds() {
       dso_info.build_id = it->second;
     } else if (options_.read_missing_buildids && dso_info.hit) {
       string buildid_bin;
-      if (ReadElfBuildId(dso_info.name, &buildid_bin)) {
-        dso_info.build_id = RawDataToHexString(buildid_bin);
-        new_buildids[dso_info.name] = dso_info.build_id;
+      string dso_name = dso_info.name;
+      if (IsKernelNonModuleName(dso_name))
+        continue;
+      if (dso_name.size() >= 2 && dso_name[0] == '[' && dso_name.back() == ']') {
+        if (!ReadModuleBuildId(dso_name.substr(1, dso_name.size() - 2),
+                          &buildid_bin))
+          continue;
+      } else if (!ReadElfBuildId(dso_name, &buildid_bin)) {
+        continue;
       }
+      dso_info.build_id = RawDataToHexString(buildid_bin);
+      new_buildids[dso_info.name] = dso_info.build_id;
     }
   }
 
