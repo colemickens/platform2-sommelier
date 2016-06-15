@@ -46,9 +46,9 @@ class BrowserJobInterface : public ChildJobInterface {
   virtual bool ShouldStop() const = 0;
 
   // Called when a session is started for a user, to update internal
-  // bookkeeping wrt command-line flags. |user_id| should be a valid cryptohome
-  // user id.
-  virtual void StartSession(const std::string& user_id,
+  // bookkeeping wrt command-line flags. |account_id| should be a valid account
+  // ID.
+  virtual void StartSession(const std::string& account_id,
                             const std::string& userhash) = 0;
 
   // Called when the session is ended.
@@ -91,7 +91,7 @@ class BrowserJob : public BrowserJobInterface {
   pid_t CurrentPid() const override { return subprocess_.pid(); }
   bool ShouldRunBrowser() override;
   bool ShouldStop() const override;
-  void StartSession(const std::string& user_id,
+  void StartSession(const std::string& account_id,
                     const std::string& userhash) override;
   void StopSession() override;
   const std::string GetName() const override;
