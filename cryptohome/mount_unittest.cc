@@ -59,7 +59,7 @@ using ::testing::NiceMock;
 using ::testing::Not;
 using ::testing::Return;
 using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
 using ::testing::Unused;
@@ -151,15 +151,15 @@ class MountTest : public ::testing::Test {
 
   bool DoMountInit() {
     EXPECT_CALL(platform_, GetUserId("chronos", _, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(chronos_uid_),
-                      SetArgumentPointee<2>(chronos_gid_),
+      .WillOnce(DoAll(SetArgPointee<1>(chronos_uid_),
+                      SetArgPointee<2>(chronos_gid_),
                       Return(true)));
     EXPECT_CALL(platform_, GetUserId("chaps", _, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(chaps_uid_),
-                      SetArgumentPointee<2>(shared_gid_),
+      .WillOnce(DoAll(SetArgPointee<1>(chaps_uid_),
+                      SetArgPointee<2>(shared_gid_),
                       Return(true)));
     EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(shared_gid_),
+      .WillOnce(DoAll(SetArgPointee<1>(shared_gid_),
                       Return(true)));
     return mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get());
   }
@@ -237,13 +237,13 @@ TEST_F(MountTest, BadInitTest) {
   EXPECT_CALL(platform_, WriteFileAtomicDurable("/dev/null/salt", _, _))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, GetUserId("chronos", _, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(1000), SetArgumentPointee<2>(1000),
+    .WillOnce(DoAll(SetArgPointee<1>(1000), SetArgPointee<2>(1000),
                     Return(true)));
   EXPECT_CALL(platform_, GetUserId("chaps", _, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(1001), SetArgumentPointee<2>(1001),
+    .WillOnce(DoAll(SetArgPointee<1>(1001), SetArgPointee<2>(1001),
                     Return(true)));
   EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(1002), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(1002), Return(true)));
   EXPECT_FALSE(mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get()));
   ASSERT_FALSE(mount_->AreValid(up));
 }
@@ -307,7 +307,7 @@ TEST_F(MountTest, MountCryptohomeNoPrivileges) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   EXPECT_CALL(platform_, ClearUserKeyring())
@@ -350,7 +350,7 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
@@ -425,7 +425,7 @@ class ChapsDirectoryTest : public ::testing::Test {
     EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, Stat(kBaseDir, _))
-        .WillRepeatedly(DoAll(SetArgumentPointee<1>(base_stat_), Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<1>(base_stat_), Return(true)));
 
     // Configure a fake enumerator.
     MockFileEnumerator* enumerator = platform_.mock_enumerator();
@@ -588,7 +588,7 @@ TEST_F(MountTest, CheckChapsDirectoryMigration) {
   base_stat.st_uid = 1;
   base_stat.st_gid = 2;
   EXPECT_CALL(platform_, Stat(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(base_stat), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(base_stat), Return(true)));
 
   // Configure a fake enumerator.
   MockFileEnumerator* enumerator = platform_.mock_enumerator();
@@ -677,7 +677,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   }
 
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(creds), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(creds), Return(true)));
 
   ASSERT_TRUE(homedirs.AreCredentialsValid(up));
 }
@@ -733,12 +733,12 @@ TEST_F(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_, FileExists(user->keyset_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->credentials),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
   EXPECT_CALL(platform_, FileExists(user->salt_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->user_salt),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->user_salt),
                           Return(true)));
 
   // Allow the "backup" to be written
@@ -764,7 +764,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
   brillo::SecureBlob fake_pub_key("A");
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(fake_pub_key),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(fake_pub_key),
                           Return(Tpm::kTpmRetryNone)));
 
   brillo::Blob migrated_keyset;
@@ -775,7 +775,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   EXPECT_TRUE(mount_->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
@@ -796,12 +796,12 @@ TEST_F(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_, FileExists(user->keyset_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(migrated_keyset),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(migrated_keyset),
                           Return(true)));
   EXPECT_CALL(platform_, FileExists(user->salt_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->user_salt),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->user_salt),
                           Return(true)));
   EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
@@ -839,7 +839,7 @@ TEST_F(MountTest, MountCryptohome) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
@@ -890,7 +890,7 @@ TEST_F(MountTest, MountCryptohomeChapsKey) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   // First we decrypt the vault to load the chaps key.
@@ -945,10 +945,10 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(user->credentials),
+    .WillOnce(DoAll(SetArgPointee<1>(user->credentials),
                          Return(true)));
 
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
@@ -966,7 +966,7 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
   ASSERT_TRUE(mount_->ReEncryptVaultKeyset(up, vault_keyset, key_index,
                                            &serialized));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->credentials),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
                                         &key_index, &error));
@@ -989,7 +989,7 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
 
   ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->credentials),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
                                         &key_index, &error));
@@ -1016,7 +1016,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
@@ -1068,7 +1068,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   // Doesn't exist.
@@ -1148,7 +1148,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   // Mount()
@@ -1267,7 +1267,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
   // TPM-wrapped is just plaintext
   brillo::SecureBlob fake_pub_key("A");
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(fake_pub_key),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(fake_pub_key),
                           Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
@@ -1302,7 +1302,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   // Allow the "backup"s to be written during migrations
@@ -1328,7 +1328,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
   EXPECT_CALL(platform_, FileExists(user->salt_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->user_salt),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->user_salt),
                           Return(true)));
 
   // Step 1: TPM is present. Get a TPM-wrapped key.
@@ -1352,7 +1352,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
   // TPM-wrapped keys with correct flags
   error = MOUNT_ERROR_NONE;
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(migrated_keyset),
+    .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
                     Return(true)));
 
   EXPECT_TRUE(mount_->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
@@ -1365,7 +1365,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
 
   if (flags & SerializedVaultKeyset::SCRYPT_WRAPPED) {
     EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(migrated_keyset),
+      .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
                       Return(true)));
     serialized.set_flags(flags & ~SerializedVaultKeyset::SCRYPT_WRAPPED);
     EXPECT_TRUE(mount_->ReEncryptVaultKeyset(up, vault_keyset, 0, &serialized));
@@ -1378,7 +1378,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
 
   error = MOUNT_ERROR_NONE;
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(migrated_keyset),
+    .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
                     Return(true)));
 
   EXPECT_TRUE(mount_->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
@@ -1394,7 +1394,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
 
   error = MOUNT_ERROR_NONE;
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(migrated_keyset),
+    .WillOnce(DoAll(SetArgPointee<1>(migrated_keyset),
                     Return(true)));
 
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
@@ -1555,7 +1555,7 @@ class AltImageTest : public MountTest {
         EXPECT_CALL(homedirs_,
                     GetVaultKeysets(helper_.users[user].obfuscated_username,
                                     _))
-            .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices_),
+            .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices_),
                            Return(true)));
       }
       if (delete_user) {
@@ -1608,10 +1608,10 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->credentials),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
   EXPECT_CALL(platform_, DirectoryExists(StartsWith(user->user_vault_path)))
     .WillRepeatedly(Return(true));
@@ -1645,7 +1645,7 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   // Always removes non-owner cryptohomes.
   std::vector<std::string> empty;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
@@ -1719,7 +1719,7 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   // Always removes non-owner cryptohomes.
   std::vector<std::string> empty;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
@@ -1802,7 +1802,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   owner_only.push_back(owner->base_path);
 
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(owner_only), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(owner_only), Return(true)));
 
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
@@ -1873,7 +1873,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
   owner_only.push_back(owner->base_path);
 
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(owner_only), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(owner_only), Return(true)));
 
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
@@ -1965,7 +1965,7 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
 
   std::vector<std::string> empty;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
-    .WillOnce(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
 
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
@@ -1998,7 +1998,7 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   std::vector<int> key_indices;
   key_indices.push_back(0);
   EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(key_indices),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
@@ -2050,9 +2050,9 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   // Let Mount know how many vaults there are.
   std::vector<std::string> no_vaults;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
-    .WillOnce(DoAll(SetArgumentPointee<2>(vaults_), Return(true)))
+    .WillOnce(DoAll(SetArgPointee<2>(vaults_), Return(true)))
     // Don't re-delete on Unmount.
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(no_vaults), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
     .WillRepeatedly(Return(false));
@@ -2060,7 +2060,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(AnyOf("/home/root/",
                                       "/home/user/"), _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home/chronos",
                  mount_->GetNewUserPath(user->username)),
@@ -2145,9 +2145,9 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   // Let Mount know how many vaults there are.
   std::vector<std::string> no_vaults;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
-    .WillOnce(DoAll(SetArgumentPointee<2>(vaults_), Return(true)))
+    .WillOnce(DoAll(SetArgPointee<2>(vaults_), Return(true)))
     // Don't re-delete on Unmount.
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(no_vaults), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
     .WillRepeatedly(Return(false));
@@ -2155,7 +2155,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(AnyOf("/home/root/",
                                       "/home/user/"), _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home/chronos",
                  mount_->GetNewUserPath(user->username)),
@@ -2246,7 +2246,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(vaults_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
 
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
@@ -2255,7 +2255,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(AnyOf("/home/root/",
                                       "/home/user/"), _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(0));
@@ -2277,7 +2277,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(vaults_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
 
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
@@ -2286,7 +2286,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(AnyOf("/home/root/",
                                       "/home/user/"), _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(0));
@@ -2309,7 +2309,7 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(vaults_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
     .WillRepeatedly(Return(false));
@@ -2317,7 +2317,7 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(AnyOf("/home/root/",
                                       "/home/user/"), _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home/chronos", mount_->GetNewUserPath(user->username)), _))
      .WillRepeatedly(Return(false));
@@ -2392,7 +2392,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(vaults_), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
   // Don't say any cryptohomes are mounted
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
     .WillRepeatedly(Return(false));
@@ -2400,7 +2400,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_,
       EnumerateDirectoryEntries(AnyOf("/home/root/",
                                       "/home/user/"), _, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
       Stat(AnyOf("/home/chronos",
                  mount_->GetNewUserPath(user->username)),
@@ -2466,15 +2466,15 @@ TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
   fake_root_st.st_mode = S_IFDIR | S_IRWXU;
   EXPECT_CALL(platform_, Stat("/home", _))
     .Times(3)
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(fake_root_st),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(fake_root_st),
                           Return(true)));
   EXPECT_CALL(platform_, Stat("/home/root", _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
+    .WillOnce(DoAll(SetArgPointee<1>(fake_root_st),
                     Return(true)));
   EXPECT_CALL(platform_, Stat(StartsWith("/home/root/"), _))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, Stat("/home/user", _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
+    .WillOnce(DoAll(SetArgPointee<1>(fake_root_st),
                     Return(true)));
   EXPECT_CALL(platform_, Stat(StartsWith("/home/user/"), _))
     .WillOnce(Return(false));
@@ -2483,7 +2483,7 @@ TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
   fake_user_st.st_gid = chronos_gid_;
   fake_user_st.st_mode = S_IFDIR | S_IRWXU;
   EXPECT_CALL(platform_, Stat("/home/chronos", _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(fake_user_st),
+    .WillOnce(DoAll(SetArgPointee<1>(fake_user_st),
                     Return(true)));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));

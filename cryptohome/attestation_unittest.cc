@@ -35,7 +35,7 @@ using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::WithArgs;
 
@@ -355,7 +355,7 @@ TEST_F(AttestationTest, Enroll) {
 
 TEST_F(AttestationTest, CertRequest) {
   EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
+      .WillRepeatedly(DoAll(SetArgPointee<3>(GetPKCS1PublicKey()),
                             Return(true)));
   SecureBlob blob;
   EXPECT_FALSE(attestation_.CreateCertRequest(Attestation::kDefaultPCA,
@@ -393,7 +393,7 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
   EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<3>(GetCertifiedKeyBlob("", true)),
+          SetArgPointee<3>(GetCertifiedKeyBlob("", true)),
           Return(true)));
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -431,7 +431,7 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
 TEST_F(AttestationTest, SimpleChallenge) {
   EXPECT_CALL(tpm_, Sign(_, _, _, _))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
+      .WillRepeatedly(DoAll(SetArgPointee<3>(SecureBlob("signature")),
                             Return(true)));
   brillo::SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -462,7 +462,7 @@ TEST_F(AttestationTest, SimpleChallenge) {
 
 TEST_F(AttestationTest, EMKChallenge) {
   EXPECT_CALL(tpm_, Sign(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
+      .WillRepeatedly(DoAll(SetArgPointee<3>(SecureBlob("signature")),
                             Return(true)));
   brillo::SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -505,11 +505,11 @@ TEST_F(AttestationTest, EMKChallenge) {
 
 TEST_F(AttestationTest, EUKChallenge) {
   EXPECT_CALL(tpm_, Sign(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
+      .WillRepeatedly(DoAll(SetArgPointee<3>(SecureBlob("signature")),
                             Return(true)));
   EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<3>(GetCertifiedKeyBlob("", true)),
+          SetArgPointee<3>(GetCertifiedKeyBlob("", true)),
           Return(true)));
   brillo::SecureBlob blob;
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
@@ -536,10 +536,10 @@ TEST_F(AttestationTest, Payload) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<3>(GetCertifiedKeyBlob("stored_payload", true)),
+          SetArgPointee<3>(GetCertifiedKeyBlob("stored_payload", true)),
           Return(true)));
   EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
+      .WillRepeatedly(DoAll(SetArgPointee<3>(GetPKCS1PublicKey()),
                             Return(true)));
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -669,7 +669,7 @@ TEST_F(AttestationTest, RetainEndorsementData) {
 TEST_F(AttestationTest, CertChainWithNoIntermediateCA) {
   EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<3>(GetCertifiedKeyBlob("", false)),
+          SetArgPointee<3>(GetCertifiedKeyBlob("", false)),
           Return(true)));
   SecureBlob blob;
   EXPECT_TRUE(attestation_.GetCertificateChain(true, kTestUser, "test",
@@ -694,7 +694,7 @@ TEST_F(AttestationTest, AlternatePCAEnabled) {
   EXPECT_CALL(install_attributes_, Get(_, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(GetX509PublicKey()),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
                             Return(true)));
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
       .WillRepeatedly(Return(true));
@@ -712,7 +712,7 @@ TEST_F(AttestationTest, AlternatePCAEnroll) {
   EXPECT_CALL(install_attributes_, Get(_, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(GetX509PublicKey()),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
                             Return(true)));
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
       .WillRepeatedly(Return(true));
@@ -734,12 +734,12 @@ TEST_F(AttestationTest, AlternatePCAEnroll) {
 
 TEST_F(AttestationTest, AlternatePCACertRequest) {
   EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
+      .WillRepeatedly(DoAll(SetArgPointee<3>(GetPKCS1PublicKey()),
                             Return(true)));
   EXPECT_CALL(install_attributes_, Get(_, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(GetX509PublicKey()),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
                             Return(true)));
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
       .WillRepeatedly(Return(true));
@@ -804,7 +804,7 @@ TEST_F(AttestationTest, PCARequest_GetCertificate) {
 TEST_F(AttestationTest, AlternatePCARequest) {
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_url", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<1>(SecureBlob("https://alternate")),
+          SetArgPointee<1>(SecureBlob("https://alternate")),
           Return(true)));
   std::string expected_url = "https://alternate/enroll";
   http_transport_->AddSimpleReplyHandler(
@@ -846,7 +846,7 @@ class AttestationTestNoInitialize : public AttestationTest {
 TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
   SecureBlob default_pcr(std::string(20, 0));
   EXPECT_CALL(tpm_, ReadPCR(1, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(default_pcr), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(default_pcr), Return(true)));
   std::string fake_hwid = "hwid";
   brillo::SecureBlob fake_hwid_expected_extension;
   // First 20 bytes of SHA-256.
@@ -862,7 +862,7 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
 TEST_F(AttestationTestNoInitialize, AutoExtendPCR1NoHwID) {
   SecureBlob default_pcr(std::string(20, 0));
   EXPECT_CALL(tpm_, ReadPCR(1, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(default_pcr), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(default_pcr), Return(true)));
   std::string no_hwid = "";
   EXPECT_CALL(tpm_, ExtendPCR(_, _)).Times(0);
   EXPECT_CALL(platform_, GetHardwareID()).WillRepeatedly(Return(no_hwid));

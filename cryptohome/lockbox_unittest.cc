@@ -30,7 +30,7 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 // Provides a test fixture for ensuring Lockbox-flows work as expected.
 //
@@ -99,7 +99,7 @@ class LockboxTest : public ::testing::Test {
       brillo::Blob salt(salt_size, 'A');
       EXPECT_CALL(tpm_, GetRandomData(salt_size, _))
         .Times(1)
-        .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<1>(salt), Return(true)));
       EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, _))
         .Times(1)
         .WillOnce(DoAll(SaveArg<1>(nvram_data), Return(true)));
@@ -162,7 +162,7 @@ TEST_F(LockboxTest, CreateFirstInstall) {
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(2)
-    .WillRepeatedly(DoAll(SetArgumentPointee<0>(pw), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
 
   // Destory calls with no file or existing NVRAM space.
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
@@ -192,7 +192,7 @@ TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(2)
-    .WillRepeatedly(DoAll(SetArgumentPointee<0>(pw), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
 
   // Destory calls with no file or existing NVRAM space.
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
@@ -239,7 +239,7 @@ TEST_F(LockboxTest, DestroyPristine) {
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(1)
-    .WillRepeatedly(DoAll(SetArgumentPointee<0>(pw), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
 
   // Destory calls with no file or existing NVRAM space.
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
@@ -262,7 +262,7 @@ TEST_F(LockboxTest, DestroyWithOldData) {
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
     .Times(1)
-    .WillRepeatedly(DoAll(SetArgumentPointee<0>(pw), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
 
   // Destory calls with no file or existing NVRAM space.
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
@@ -368,7 +368,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmDefault) {
     .WillOnce(Return(true));
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
   Lockbox::ErrorId error;
   EXPECT_TRUE(lockbox_.Load(&error));
@@ -393,7 +393,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV1) {
     .WillOnce(Return(true));
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
   Lockbox::ErrorId error;
   EXPECT_TRUE(lockbox_.Load(&error));
@@ -418,7 +418,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV2) {
     .WillOnce(Return(true));
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
   Lockbox::ErrorId error;
   EXPECT_TRUE(lockbox_.Load(&error));
@@ -443,7 +443,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV2Downgrade) {
     .WillOnce(Return(true));
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
   Lockbox::ErrorId error;
   EXPECT_TRUE(lockbox_.Load(&error));
@@ -473,7 +473,7 @@ TEST_F(LockboxTest, LoadAndVerifyBadSize) {
   nvram_data[3] = 0;
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
   Lockbox::ErrorId error;
   EXPECT_TRUE(lockbox_.Load(&error));
@@ -503,7 +503,7 @@ TEST_F(LockboxTest, LoadAndVerifyBadHash) {
   nvram_data.resize(Lockbox::kReservedNvramBytesV2);
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
   Lockbox::ErrorId error;
   EXPECT_TRUE(lockbox_.Load(&error));
@@ -529,7 +529,7 @@ TEST_F(LockboxTest, LoadAndVerifyBadData) {
     .WillOnce(Return(true));
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(nvram_data), Return(true)));
 
   Lockbox::ErrorId error;
   EXPECT_TRUE(lockbox_.Load(&error));

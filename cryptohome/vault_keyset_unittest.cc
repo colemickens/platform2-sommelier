@@ -21,7 +21,7 @@ using std::string;
 
 using ::testing::_;
 using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::Return;
 using ::testing::WithArg;
 

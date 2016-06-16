@@ -29,7 +29,7 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 // Provides a test fixture for ensuring Lockbox-flows work as expected.
 //
@@ -204,7 +204,7 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
 
   EXPECT_CALL(platform_, ReadFile(_, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(serialized_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(Return(true));
@@ -236,7 +236,7 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
 
   EXPECT_CALL(platform_, ReadFile(_, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(serialized_data), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -269,7 +269,7 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramData;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -297,7 +297,7 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(Return(true));
@@ -319,7 +319,7 @@ TEST_F(InstallAttributesTest, NormalBootLoadError) {
   Lockbox::ErrorId error_id = Lockbox::kErrorIdTpmError;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
@@ -367,7 +367,7 @@ TEST_F(InstallAttributesTest, NormalBootVerifyError) {
 
   EXPECT_CALL(lockbox_, Verify(_, _))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<1>(error_id), Return(false)));
 
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -387,11 +387,11 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
   Lockbox::ErrorId create_error_id = Lockbox::kErrorIdInsufficientAuthorization;
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<0>(create_error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(create_error_id), Return(false)));
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -412,11 +412,11 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
   Lockbox::ErrorId create_error_id = Lockbox::kErrorIdTpmError;
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<0>(create_error_id), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<0>(create_error_id), Return(false)));
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());

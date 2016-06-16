@@ -11,7 +11,7 @@ using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 
 namespace cryptohome {
 
@@ -22,7 +22,7 @@ chaps::TokenManagerClient* MockChapsClientFactory::New() {
   NiceMock<chaps::TokenManagerClientMock>* mock =
       new NiceMock<chaps::TokenManagerClientMock>();
   ON_CALL(*mock, LoadToken(_, _, _, _, _))
-      .WillByDefault(DoAll(SetArgumentPointee<4>(0), Return(true)));
+      .WillByDefault(DoAll(SetArgPointee<4>(0), Return(true)));
   return mock;
 }
 

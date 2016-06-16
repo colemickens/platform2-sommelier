@@ -41,7 +41,7 @@ using ::testing::NiceMock;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::_;
 
@@ -106,10 +106,10 @@ void MakeTests::InjectSystemSalt(MockPlatform* platform,
   EXPECT_CALL(*platform, FileExists(path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, GetFileSize(path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(system_salt.size()),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(system_salt.size()),
                           Return(true)));
   EXPECT_CALL(*platform, ReadFile(path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(system_salt), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(system_salt), Return(true)));
 }
 
 void MakeTests::InjectEphemeralSkeleton(MockPlatform* platform,
@@ -199,9 +199,9 @@ void TestUser::GenerateCredentials() {
   EXPECT_CALL(platform, FileExists(salt_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, GetFileSize(salt_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt_size), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(salt_size), Return(true)));
   EXPECT_CALL(platform, ReadFile(salt_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(salt), Return(true)));
   EXPECT_CALL(platform, DirectoryExists(shadow_root))
     .WillRepeatedly(Return(true));
   mount->Init(&platform, &crypto, &timestamp_cache);
@@ -252,7 +252,7 @@ void TestUser::InjectKeyset(MockPlatform* platform, bool enumerate) {
   EXPECT_CALL(*platform, FileExists(StartsWith(keyset_path)))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, ReadFile(keyset_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(credentials),
+    .WillRepeatedly(DoAll(SetArgPointee<1>(credentials),
                           Return(true)));
   if (enumerate) {
     MockFileEnumerator* files = new MockFileEnumerator();
@@ -287,7 +287,7 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
               user_mount_prefix,
               root_mount_path,
               user_vault_path), _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(root_dir), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(root_dir), Return(true)));
   // Avoid triggering vault migration.  (Is there another test for that?)
   struct stat root_vault_dir;
   memset(&root_vault_dir, 0, sizeof(root_vault_dir));
@@ -296,7 +296,7 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   root_vault_dir.st_gid = daemon_gid;
   EXPECT_CALL(*platform,
       Stat(root_vault_path, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(root_vault_dir), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(root_vault_dir), Return(true)));
   struct stat user_dir;
   memset(&user_dir, 0, sizeof(user_dir));
   user_dir.st_mode = S_IFDIR;
@@ -305,7 +305,7 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   EXPECT_CALL(*platform,
       Stat(AnyOf(user_mount_path,
                  temp_mount->GetNewUserPath(username)), _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(user_dir), Return(true)));
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user_dir), Return(true)));
   struct stat chronos_dir;
   memset(&chronos_dir, 0, sizeof(chronos_dir));
   chronos_dir.st_mode = S_IFDIR;
@@ -313,7 +313,7 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   chronos_dir.st_gid = chronos_gid;
   EXPECT_CALL(*platform,
       Stat("/home/chronos", _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(chronos_dir),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(chronos_dir),
                             Return(true)));
   EXPECT_CALL(*platform,
       DirectoryExists(

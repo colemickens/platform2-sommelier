@@ -54,7 +54,7 @@ using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::WithArgs;
 
 namespace {
@@ -476,7 +476,7 @@ TEST_F(ServiceTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
   EXPECT_CALL(platform_, GetProcessesWithOpenFiles(
       "/home/chronos/user", _))
     .Times(1)
-    .WillRepeatedly(SetArgumentPointee<1>(processes));
+    .WillRepeatedly(SetArgPointee<1>(processes));
   EXPECT_CALL(platform_, Unmount(EndsWith("/1"), true, _))
     .Times(2)
     .WillRepeatedly(Return(true));
@@ -538,7 +538,7 @@ TEST_F(ServiceTestNotInitialized,
   fake_token_list.push_back("/home/user/1/token");
   fake_token_list.push_back("/home/root/1/token");
   EXPECT_CALL(chaps_client_, GetTokenList(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(fake_token_list),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(fake_token_list),
                             Return(true)));
 
   EXPECT_CALL(chaps_client_,
@@ -566,7 +566,7 @@ TEST_F(ServiceTest, StoreEnrollmentState) {
 
   // Set us as non-enterprise enrolled.
   EXPECT_CALL(attrs_, Get("enterprise.owned", _)).WillOnce(
-      DoAll(SetArgumentPointee<1>(false_value), Return(true)));
+      DoAll(SetArgPointee<1>(false_value), Return(true)));
   service_.DetectEnterpriseOwnership();
 
   // Should not enterprise-enroll this device.
@@ -576,14 +576,14 @@ TEST_F(ServiceTest, StoreEnrollmentState) {
 
   // Set us as enterprise enrolled.
   EXPECT_CALL(attrs_, Get("enterprise.owned", _)).WillOnce(
-      DoAll(SetArgumentPointee<1>(true_value), Return(true)));
+      DoAll(SetArgPointee<1>(true_value), Return(true)));
   service_.DetectEnterpriseOwnership();
 
   std::string encrypted_data = "so_encrypted";
 
   // Test successful encryption.
   EXPECT_CALL(crypto_, EncryptWithTpm(_, _)).WillOnce(DoAll(
-      SetArgumentPointee<1>(encrypted_data), Return(true)));
+      SetArgPointee<1>(encrypted_data), Return(true)));
 
   // Should write file as this device is enterprise enrolled.
   EXPECT_CALL(platform_, WriteStringToFileAtomicDurable(
@@ -610,10 +610,10 @@ TEST_F(ServiceTest, LoadEnrollmentState) {
   // Assume the data is there, we should return the value and success.
   EXPECT_CALL(platform_, ReadFile(
       "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
-      _)).WillOnce(DoAll(SetArgumentPointee<1>(data_blob), Return(true)));
+      _)).WillOnce(DoAll(SetArgPointee<1>(data_blob), Return(true)));
 
   EXPECT_CALL(crypto_, DecryptWithTpm(_, _)).WillOnce(DoAll(
-      SetArgumentPointee<1>(decrypted_blob), Return(TRUE)));
+      SetArgPointee<1>(decrypted_blob), Return(TRUE)));
 
   EXPECT_TRUE(service_.LoadEnrollmentState(
       &(brillo::Resetter(&output).lvalue()), &success, &error));
@@ -899,7 +899,7 @@ TEST_F(ServiceExTest, BootLockboxSignSuccess) {
   SetupReply();
   SecureBlob test_signature("test");
   EXPECT_CALL(lockbox_, Sign(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(test_signature),
+      .WillRepeatedly(DoAll(SetArgPointee<1>(test_signature),
                             Return(true)));
 
   SignBootLockboxRequest request;

@@ -8,7 +8,7 @@
 
 using testing::_;
 using testing::DoAll;
-using testing::SetArgumentPointee;
+using testing::SetArgPointee;
 using testing::Return;
 
 namespace cryptohome {
@@ -23,7 +23,7 @@ MockTpm::MockTpm() {
   ON_CALL(*this, GetEndorsementPublicKey(_))
       .WillByDefault(Return(true));
   ON_CALL(*this, GetEndorsementCredential(_))
-      .WillByDefault(DoAll(SetArgumentPointee<0>(brillo::SecureBlob("test")),
+      .WillByDefault(DoAll(SetArgPointee<0>(brillo::SecureBlob("test")),
                            Return(true)));
   ON_CALL(*this, MakeIdentity(_, _, _, _, _, _, _, _, _))
       .WillByDefault(Return(true));

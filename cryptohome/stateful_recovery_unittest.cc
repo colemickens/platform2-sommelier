@@ -18,14 +18,14 @@ using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::StrEq;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 
 TEST(StatefulRecovery, ValidRequestV1) {
   MockPlatform platform;
   MockService service;
   std::string flag_content = "1";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(platform, FirmwareWriteProtected())
@@ -53,7 +53,7 @@ TEST(StatefulRecovery, ValidRequestV1WriteProtected) {
   MockService service;
   std::string flag_content = "1";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(platform, FirmwareWriteProtected())
@@ -73,21 +73,21 @@ TEST(StatefulRecovery, ValidRequestV2) {
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string mount_path = "/home/.shadow/hashhashash/mount";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
 
   // CopyUserContents
   EXPECT_CALL(service, Mount(StrEq(user), StrEq(passkey), false, false,
                              _, _, _))
-    .WillOnce(DoAll(SetArgumentPointee<5>(result), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<5>(result), Return(true)));
   EXPECT_CALL(service, GetMountPointForUser(StrEq(user), _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(mount_path), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(mount_path), Return(true)));
   EXPECT_CALL(platform, Copy(StrEq(mount_path),
                              StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(service, UnmountForUser(StrEq(user), _, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(result), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(result), Return(true)));
 
   EXPECT_CALL(service, IsOwner(_))
     .WillOnce(Return(true));
@@ -124,21 +124,21 @@ TEST(StatefulRecovery, ValidRequestV2NotOwner) {
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string mount_path = "/home/.shadow/hashhashash/mount";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
 
   // CopyUserContents
   EXPECT_CALL(service, Mount(StrEq(user), StrEq(passkey), false, false,
                              _, _, _))
-    .WillOnce(DoAll(SetArgumentPointee<5>(result), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<5>(result), Return(true)));
   EXPECT_CALL(service, GetMountPointForUser(StrEq(user), _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(mount_path), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(mount_path), Return(true)));
   EXPECT_CALL(platform, Copy(StrEq(mount_path),
                              StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(service, UnmountForUser(StrEq(user), _, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(result), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(result), Return(true)));
 
   EXPECT_CALL(service, IsOwner(_))
     .WillOnce(Return(false));
@@ -159,14 +159,14 @@ TEST(StatefulRecovery, ValidRequestV2BadUser) {
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string mount_path = "/home/.shadow/hashhashash/mount";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
 
   // CopyUserContents
   EXPECT_CALL(service, Mount(StrEq(user), StrEq(passkey), false, false,
                              _, _, _))
-    .WillOnce(DoAll(SetArgumentPointee<5>(result), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<5>(result), Return(false)));
 
   EXPECT_CALL(platform, FirmwareWriteProtected())
     .WillOnce(Return(true));
@@ -185,14 +185,14 @@ TEST(StatefulRecovery, ValidRequestV2BadUserNotWriteProtected) {
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string mount_path = "/home/.shadow/hashhashash/mount";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
 
   // CopyUserContents
   EXPECT_CALL(service, Mount(StrEq(user), StrEq(passkey), false, false,
                              _, _, _))
-    .WillOnce(DoAll(SetArgumentPointee<5>(result), Return(false)));
+    .WillOnce(DoAll(SetArgPointee<5>(result), Return(false)));
 
   EXPECT_CALL(platform, FirmwareWriteProtected())
     .WillOnce(Return(false));
@@ -227,21 +227,21 @@ TEST(StatefulRecovery, ValidRequestV2NotOwnerNotWriteProtected) {
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string mount_path = "/home/.shadow/hashhashash/mount";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
 
   // CopyUserContents
   EXPECT_CALL(service, Mount(StrEq(user), StrEq(passkey), false, false,
                              _, _, _))
-    .WillOnce(DoAll(SetArgumentPointee<5>(result), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<5>(result), Return(true)));
   EXPECT_CALL(service, GetMountPointForUser(StrEq(user), _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(mount_path), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(mount_path), Return(true)));
   EXPECT_CALL(platform, Copy(StrEq(mount_path),
                              StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(service, UnmountForUser(StrEq(user), _, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(result), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(result), Return(true)));
 
   EXPECT_CALL(service, IsOwner(_))
     .WillOnce(Return(false));
@@ -274,7 +274,7 @@ TEST(StatefulRecovery, InvalidFlagFileContents) {
   MockService service;
   std::string flag_content = "0 hello";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   StatefulRecovery recovery(&platform, &service);
   EXPECT_FALSE(recovery.Requested());
   EXPECT_FALSE(recovery.Recover());
@@ -295,7 +295,7 @@ TEST(StatefulRecovery, UncopyableData) {
   MockService service;
   std::string flag_content = "1";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(platform, FirmwareWriteProtected())
@@ -314,7 +314,7 @@ TEST(StatefulRecovery, DirectoryCreationFailure) {
   MockService service;
   std::string flag_content = "1";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(false));
 
@@ -328,7 +328,7 @@ TEST(StatefulRecovery, StatVFSFailure) {
   MockService service;
   std::string flag_content = "1";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(platform, FirmwareWriteProtected())
@@ -349,7 +349,7 @@ TEST(StatefulRecovery, FilesystemDetailsFailure) {
   MockService service;
   std::string flag_content = "1";
   EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+    .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .WillOnce(Return(true));
   EXPECT_CALL(platform, FirmwareWriteProtected())

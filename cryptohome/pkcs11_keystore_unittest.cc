@@ -28,7 +28,7 @@ using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 
 namespace {
@@ -107,7 +107,7 @@ class KeyStoreTest : public testing::Test {
   void SetUp() {
     helper_.SetUpSystemSalt();
     ON_CALL(pkcs11_, OpenSession(_, 0, _, _))
-        .WillByDefault(DoAll(SetArgumentPointee<3>(kSession), Return(0)));
+        .WillByDefault(DoAll(SetArgPointee<3>(kSession), Return(0)));
     ON_CALL(pkcs11_, CloseSession(_, _))
         .WillByDefault(Return(0));
     ON_CALL(pkcs11_, CreateObject(_, _, _, _))
@@ -125,7 +125,7 @@ class KeyStoreTest : public testing::Test {
     ON_CALL(pkcs11_, FindObjectsFinal(_, _))
         .WillByDefault(Return(0));
     ON_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
-        .WillByDefault(DoAll(SetArgumentPointee<1>(0), Return(true)));
+        .WillByDefault(DoAll(SetArgPointee<1>(0), Return(true)));
   }
 
   void TearDown() {
@@ -415,7 +415,7 @@ TEST_F(KeyStoreTest, FindFail) {
 TEST_F(KeyStoreTest, FindNoObjects) {
   vector<uint64_t> empty;
   EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(empty), Return(CKR_OK)));
+      .WillRepeatedly(DoAll(SetArgPointee<3>(empty), Return(CKR_OK)));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
   EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
