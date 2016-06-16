@@ -6,8 +6,6 @@
 
 #include "cryptohome/mount_task.h"
 
-#include <string>
-
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/logging.h>
@@ -23,7 +21,6 @@
 using base::PlatformThread;
 
 namespace cryptohome {
-using std::string;
 using ::testing::Return;
 using ::testing::_;
 

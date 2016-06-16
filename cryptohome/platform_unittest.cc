@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
+
 namespace cryptohome {
 
 class PlatformTest : public ::testing::Test {

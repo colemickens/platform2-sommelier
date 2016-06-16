@@ -22,7 +22,6 @@
 #include "cryptohome/mock_tpm_init.h"
 
 namespace cryptohome {
-using std::string;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Mock;

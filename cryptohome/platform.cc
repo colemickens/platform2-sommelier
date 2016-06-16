@@ -61,13 +61,12 @@ extern "C" {
 using base::FilePath;
 using base::SplitString;
 using base::StringPrintf;
-using std::string;
 
 namespace {
 
 class ScopedPath {
  public:
-  ScopedPath(cryptohome::Platform* platform, const string& dir)
+  ScopedPath(cryptohome::Platform* platform, const std::string& dir)
       : platform_(platform), dir_(dir) {}
   ~ScopedPath() {
     if (!dir_.empty() && !platform_->DeleteFile(dir_, true)) {
@@ -79,7 +78,7 @@ class ScopedPath {
   }
  private:
   cryptohome::Platform* platform_;
-  string dir_;
+  std::string dir_;
 };
 
 bool IsDirectory(const struct stat& file_info) {
@@ -145,10 +144,10 @@ bool Platform::IsDirectoryMounted(const std::string& directory) {
   // Trivial string match from /etc/mtab to see if the cryptohome mount point is
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
-  string contents;
+  std::string contents;
   if (base::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if (contents.find(StringPrintf(" %s ", directory.c_str()))
-        != string::npos) {
+        != std::string::npos) {
       return true;
     }
   }
@@ -160,13 +159,13 @@ bool Platform::IsDirectoryMountedWith(const std::string& directory,
   // Trivial string match from /etc/mtab to see if the cryptohome mount point
   // and the user's vault path are present.  Assumes this user is mounted if it
   // finds both.  This will need to change if simultaneous login is implemented.
-  string contents;
+  std::string contents;
   if (base::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if ((contents.find(StringPrintf(" %s ", directory.c_str()))
-         != string::npos)
+         != std::string::npos)
         && (contents.find(StringPrintf("%s ",
                                        from.c_str()).c_str())
-            != string::npos)) {
+            != std::string::npos)) {
       return true;
     }
   }
@@ -252,7 +251,7 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   process_info->set_process_id(pid);
   FilePath pid_path(StringPrintf("/proc/%d", pid));
   FilePath cmdline_file = pid_path.Append("cmdline");
-  string contents;
+  std::string contents;
   std::vector<std::string> cmd_line;
   if (base::ReadFileToString(cmdline_file, &contents)) {
     // Can't split at null characters, so replace them with \n.
@@ -372,7 +371,7 @@ bool Platform::IsPathChild(const std::string& parent,
   return false;
 }
 
-bool Platform::GetOwnership(const string& path,
+bool Platform::GetOwnership(const std::string& path,
                             uid_t* user_id, gid_t* group_id) const {
   struct stat path_status;
   if (stat(path.c_str(), &path_status) != 0) {
@@ -396,7 +395,7 @@ bool Platform::SetOwnership(const std::string& path, uid_t user_id,
   return true;
 }
 
-bool Platform::GetPermissions(const string& path, mode_t* mode) const {
+bool Platform::GetPermissions(const std::string& path, mode_t* mode) const {
   struct stat path_status;
   if (stat(path.c_str(), &path_status) != 0) {
     PLOG(ERROR) << "stat() of " << path << " failed.";
@@ -415,7 +414,7 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   return true;
 }
 
-bool Platform::SetGroupAccessible(const string& path, gid_t group_id,
+bool Platform::SetGroupAccessible(const std::string& path, gid_t group_id,
                                   mode_t group_mode) const {
   uid_t user_id;
   mode_t mode;
@@ -467,7 +466,7 @@ bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
   return true;
 }
 
-int64_t Platform::AmountOfFreeDiskSpace(const string& path) const {
+int64_t Platform::AmountOfFreeDiskSpace(const std::string& path) const {
   return base::SysInfo::AmountOfFreeDiskSpace(FilePath(path));
 }
 

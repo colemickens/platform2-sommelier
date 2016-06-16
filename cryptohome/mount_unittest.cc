@@ -46,7 +46,6 @@
 
 using base::StringPrintf;
 using brillo::SecureBlob;
-using std::string;
 using ::testing::AllOf;
 using ::testing::AnyNumber;
 using ::testing::AnyOf;
@@ -180,7 +179,7 @@ class MountTest : public ::testing::Test {
   }
 
   void set_policy(bool owner_known,
-                  const string& owner,
+                  const std::string& owner,
                   bool ephemeral_users_enabled) {
     policy::MockDevicePolicy* device_policy = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy, LoadPolicy())

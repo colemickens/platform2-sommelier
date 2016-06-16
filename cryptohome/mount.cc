@@ -44,7 +44,6 @@ using base::FilePath;
 using base::StringPrintf;
 using chaps::IsolateCredentialManager;
 using brillo::SecureBlob;
-using std::string;
 
 namespace cryptohome {
 
@@ -96,7 +95,7 @@ class ScopedUmask {
 };
 
 Mount::ScopedMountPoint::ScopedMountPoint(Mount* mount,
-                                          const string& path)
+                                          const std::string& path)
   : mount_(mount), path_(path) {
 }
 
@@ -275,7 +274,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                  MountError* mount_error) {
   current_user_->Reset();
 
-  string username = credentials.username();
+  std::string username = credentials.username();
   if (username.compare(kIncognitoUser) == 0) {
     // TODO(fes): Have guest set error conditions?
     if (mount_error) {
@@ -286,7 +285,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   ReloadDevicePolicy();
   bool ephemeral_users = AreEphemeralUsersEnabled();
-  const string obfuscated_owner = GetObfuscatedOwner();
+  const std::string obfuscated_owner = GetObfuscatedOwner();
   if (ephemeral_users)
     homedirs_->RemoveNonOwnerCryptohomes();
 
@@ -406,7 +405,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   // Add the decrypted key to the keyring so that ecryptfs can use it.
-  string key_signature, fnek_signature;
+  std::string key_signature, fnek_signature;
   if (!crypto_->AddKeyset(vault_keyset, &key_signature, &fnek_signature)) {
     LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
     if (mount_error) {
@@ -416,7 +415,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   // Specify the ecryptfs options for mounting the user's cryptohome.
-  string ecryptfs_options = StringPrintf("ecryptfs_cipher=aes"
+  std::string ecryptfs_options = StringPrintf("ecryptfs_cipher=aes"
                                          ",ecryptfs_key_bytes=%d"
                                          ",ecryptfs_fnek_sig=%s"
                                          ",ecryptfs_sig=%s"
@@ -437,8 +436,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // /home/user/$hash: owned by chronos
   // /home/root/$hash: owned by root
 
-  string obfuscated_username = credentials.GetObfuscatedUsername(system_salt_);
-  string vault_path = GetUserVaultPath(obfuscated_username);
+  std::string obfuscated_username =
+    credentials.GetObfuscatedUsername(system_salt_);
+  std::string vault_path = GetUserVaultPath(obfuscated_username);
   // Create vault_path/user as a passthrough directory, move all the (encrypted)
   // contents of vault_path into vault_path/user, create vault_path/root.
   MigrateToUserHome(vault_path);
@@ -489,7 +489,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (created)
     CopySkeleton();
 
-  string user_home = GetMountedUserHomePath(obfuscated_username);
+  std::string user_home = GetMountedUserHomePath(obfuscated_username);
   if (!SetupGroupAccess(FilePath(user_home))) {
     UnmountAllForUser(current_user_);
     if (mount_error) {
@@ -501,7 +501,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (legacy_mount_)
     MountLegacyHome(user_home, mount_error);
 
-  string user_multi_home =
+  std::string user_multi_home =
       brillo::cryptohome::home::GetUserPath(username).value();
   if (!BindForUser(current_user_, user_home, user_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
@@ -515,7 +515,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // Temporary while we do the migration involved in http://crbug.com/224291
   // TODO(ellyjones): remove this to fix http://crbug.com/229411
-  string temp_multi_home = GetNewUserPath(username);
+  std::string temp_multi_home = GetNewUserPath(username);
   if (!BindForUser(current_user_, user_home, temp_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << temp_multi_home;
@@ -525,8 +525,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  string root_home = GetMountedRootHomePath(obfuscated_username);
-  string root_multi_home =
+  std::string root_home = GetMountedRootHomePath(obfuscated_username);
+  std::string root_multi_home =
       brillo::cryptohome::home::GetRootPath(username).value();
   if (!BindForUser(current_user_, root_home, root_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << root_home << " -> "
@@ -552,12 +552,12 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 }
 
 bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
-  const string username = credentials.username();
-  string path = GetUserEphemeralPath(credentials.GetObfuscatedUsername(
+  const std::string username = credentials.username();
+  std::string path = GetUserEphemeralPath(credentials.GetObfuscatedUsername(
       system_salt_));
-  const string user_multi_home =
+  const std::string user_multi_home =
       brillo::cryptohome::home::GetUserPath(username).value();
-  const string root_multi_home =
+  const std::string root_multi_home =
       brillo::cryptohome::home::GetRootPath(username).value();
 
   // If we're mounting as a guest, as source use just "guestfs" instead of an
@@ -584,7 +584,7 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   if (legacy_mount_)
     MountLegacyHome(user_multi_home, NULL);
 
-  string temp_multi_home = GetNewUserPath(username);
+  std::string temp_multi_home = GetNewUserPath(username);
   if (!BindForUser(current_user_, user_multi_home, temp_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_multi_home << " -> "
                 << temp_multi_home;
@@ -595,11 +595,11 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   return true;
 }
 
-bool Mount::SetUpEphemeralCryptohome(const string& source_path,
-                                     const string& home_dir) {
+bool Mount::SetUpEphemeralCryptohome(const std::string& source_path,
+                                     const std::string& home_dir) {
   // First, build up the home dir at a mount point not accessible to chronos.
   // This helps to avoid chown race conditions.
-  const string ephemeral_skeleton_path = GetEphemeralSkeletonPath();
+  const std::string ephemeral_skeleton_path = GetEphemeralSkeletonPath();
   if (!platform_->CreateDirectory(ephemeral_skeleton_path)) {
     LOG(ERROR) << "Failed to create " << ephemeral_skeleton_path << ": "
                << errno;
@@ -742,7 +742,7 @@ bool Mount::IsMounted() const {
 }
 
 bool Mount::IsVaultMounted() const {
-  string obfuscated_username;
+  std::string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
   const std::string vault_path = GetUserMountDirectory(obfuscated_username);
   return mounts_.Contains(vault_path);
@@ -864,7 +864,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 }
 
 bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
-  string obfuscated_username;
+  std::string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
   if (!obfuscated_username.empty() && !ephemeral_mount_) {
     SerializedVaultKeyset serialized;
@@ -971,7 +971,7 @@ bool Mount::LoadVaultKeyset(const Credentials& credentials,
                                 serialized);
 }
 
-bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
+bool Mount::LoadVaultKeysetForUser(const std::string& obfuscated_username,
                                    int index,
                                    SerializedVaultKeyset* serialized) const {
   if (index < 0 || index > kKeyFileMax) {
@@ -997,7 +997,7 @@ bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
 }
 
 bool Mount::StoreVaultKeysetForUser(
-    const string& obfuscated_username,
+    const std::string& obfuscated_username,
     int index,
     const SerializedVaultKeyset& serialized) const {
   if (index < 0 || index > kKeyFileMax) {
@@ -1206,8 +1206,9 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
   // master.<index> to label=<kKeyLegacyFormat,index> for checking on
   // label uniqueness.  This means that we will still be able to use the
   // lack of KeyData in the future as input to migration.
-  if (!StoreVaultKeysetForUser(credentials.GetObfuscatedUsername(system_salt_),
-                               key_index, *serialized)) {
+  if (!StoreVaultKeysetForUser(
+        credentials.GetObfuscatedUsername(system_salt_),
+        key_index, *serialized)) {
     LOG(ERROR) << "Write to master key failed";
     RevertCacheFiles(files);
     return false;
@@ -1228,19 +1229,21 @@ bool Mount::MountGuestCryptohome() {
   return MountEphemeralCryptohome(guest_creds);
 }
 
-string Mount::GetUserDirectory(const Credentials& credentials) const {
+std::string Mount::GetUserDirectory(
+    const Credentials& credentials) const {
   return GetUserDirectoryForUser(
       credentials.GetObfuscatedUsername(system_salt_));
 }
 
-string Mount::GetUserDirectoryForUser(const string& obfuscated_username) const {
+std::string Mount::GetUserDirectoryForUser(
+    const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s",
                       shadow_root_.c_str(),
                       obfuscated_username.c_str());
 }
 
-string Mount::GetUserSaltFileForUser(const string& obfuscated_username,
-                                    int index) const {
+std::string Mount::GetUserSaltFileForUser(
+    const std::string& obfuscated_username, int index) const {
   DCHECK(index < kKeyFileMax && index >= 0);
   return StringPrintf("%s/%s/master.%d.salt",
                       shadow_root_.c_str(),
@@ -1248,8 +1251,8 @@ string Mount::GetUserSaltFileForUser(const string& obfuscated_username,
                       index);
 }
 
-string Mount::GetUserLegacyKeyFileForUser(const string& obfuscated_username,
-                                          int index) const {
+std::string Mount::GetUserLegacyKeyFileForUser(
+    const std::string& obfuscated_username, int index) const {
   DCHECK(index < kKeyFileMax && index >= 0);
   return StringPrintf("%s/%s/%s%d",
                       shadow_root_.c_str(),
@@ -1259,13 +1262,13 @@ string Mount::GetUserLegacyKeyFileForUser(const string& obfuscated_username,
 }
 
 // This is the new planned format for keyfile storage.
-string Mount::GetUserKeyFileForUser(const string& obfuscated_username,
-                                    const string& label) const {
+std::string Mount::GetUserKeyFileForUser(
+    const std::string& obfuscated_username, const std::string& label) const {
   DCHECK(!label.empty());
   // SHA1 is not for any other purpose than to provide a reasonably
   // collision-resistant, fixed length, path-safe file suffix.
-  string digest = base::SHA1HashString(label);
-  string safe_label = base::HexEncode(digest.c_str(), digest.length());
+  std::string digest = base::SHA1HashString(label);
+  std::string safe_label = base::HexEncode(digest.c_str(), digest.length());
   return StringPrintf("%s/%s/%s%s",
                       shadow_root_.c_str(),
                       obfuscated_username.c_str(),
@@ -1273,18 +1276,20 @@ string Mount::GetUserKeyFileForUser(const string& obfuscated_username,
                       safe_label.c_str());
 }
 
-string Mount::GetUserEphemeralPath(const string& obfuscated_username) const {
+std::string Mount::GetUserEphemeralPath(
+    const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s", kEphemeralDir, obfuscated_username.c_str());
 }
 
-string Mount::GetUserVaultPath(const std::string& obfuscated_username) const {
+std::string Mount::GetUserVaultPath(
+    const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s/%s",
                       shadow_root_.c_str(),
                       obfuscated_username.c_str(),
                       kVaultDir);
 }
 
-string Mount::GetUserMountDirectory(
+std::string Mount::GetUserMountDirectory(
     const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s/%s",
                       shadow_root_.c_str(),
@@ -1292,22 +1297,22 @@ string Mount::GetUserMountDirectory(
                       kMountDir);
 }
 
-string Mount::VaultPathToUserPath(const std::string& vault) const {
+std::string Mount::VaultPathToUserPath(const std::string& vault) const {
   return StringPrintf("%s/%s", vault.c_str(), kUserHomeSuffix);
 }
 
-string Mount::VaultPathToRootPath(const std::string& vault) const {
+std::string Mount::VaultPathToRootPath(const std::string& vault) const {
   return StringPrintf("%s/%s", vault.c_str(), kRootHomeSuffix);
 }
 
-string Mount::GetMountedUserHomePath(
+std::string Mount::GetMountedUserHomePath(
     const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s",
                       GetUserMountDirectory(obfuscated_username).c_str(),
                       kUserHomeSuffix);
 }
 
-string Mount::GetMountedRootHomePath(
+std::string Mount::GetMountedRootHomePath(
     const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s",
                       GetUserMountDirectory(obfuscated_username).c_str(),
@@ -1316,13 +1321,13 @@ string Mount::GetMountedRootHomePath(
 
 // TODO(dkrahn,wad) Makes this unique so we don't have to worry about
 //                  parallelism.
-string Mount::GetEphemeralSkeletonPath() const {
+std::string Mount::GetEphemeralSkeletonPath() const {
   return StringPrintf("%s/%s", shadow_root_.c_str(), kSkeletonDir);
 }
 
-string Mount::GetObfuscatedOwner() {
+std::string Mount::GetObfuscatedOwner() {
   EnsureDevicePolicyLoaded(false);
-  string owner;
+  std::string owner;
   if (policy_provider_->device_policy_is_loaded())
     policy_provider_->GetDevicePolicy().GetOwner(&owner);
 
@@ -1467,8 +1472,8 @@ void Mount::RemovePkcs11Token() {
 }
 
 void Mount::MigrateToUserHome(const std::string& vault_path) const {
-  std::vector<string> ent_list;
-  std::vector<string>::iterator ent_iter;
+  std::vector<std::string> ent_list;
+  std::vector<std::string>::iterator ent_iter;
   FilePath user_path(VaultPathToUserPath(vault_path));
   FilePath root_path(VaultPathToRootPath(vault_path));
   struct stat st;

@@ -29,7 +29,6 @@
 #include "attestation.pb.h"  // NOLINT(build/include)
 
 using brillo::SecureBlob;
-using std::string;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Invoke;
@@ -81,11 +80,11 @@ class AttestationTest : public testing::Test {
                             false /* retain_endorsement_data */);
   }
 
-  virtual bool WriteDB(const string& db) {
+  virtual bool WriteDB(const std::string& db) {
     serialized_db_.assign(db);
     return true;
   }
-  virtual bool ReadDB(string* db) {
+  virtual bool ReadDB(std::string* db) {
     if (serialized_db_.empty()) {
       return false;
     }
@@ -94,7 +93,7 @@ class AttestationTest : public testing::Test {
   }
 
  protected:
-  string serialized_db_;
+  std::string serialized_db_;
   NiceMock<MockTpm> tpm_;
   NiceMock<MockTpmInit> tpm_init_;
   NiceMock<MockPlatform> platform_;
@@ -120,7 +119,7 @@ class AttestationTest : public testing::Test {
     pb.set_detail("");
     pb.mutable_encrypted_identity_credential()->set_asym_ca_contents("1234");
     pb.mutable_encrypted_identity_credential()->set_sym_ca_attestation("5678");
-    string tmp;
+    std::string tmp;
     pb.SerializeToString(&tmp);
     return SecureBlob(tmp.begin(), tmp.end());
   }
@@ -134,29 +133,31 @@ class AttestationTest : public testing::Test {
     pb.set_detail("");
     pb.set_certified_key_credential("response_cert");
     pb.set_intermediate_ca_cert("response_ca_cert");
-    string tmp;
+    std::string tmp;
     pb.SerializeToString(&tmp);
     return SecureBlob(tmp.begin(), tmp.end());
   }
 
-  SecureBlob GetCertifiedKeyBlob(const string& payload, bool include_ca_cert) {
+  SecureBlob GetCertifiedKeyBlob(const std::string& payload,
+                                 bool include_ca_cert) {
     CertifiedKey pb;
     pb.set_certified_key_credential("stored_cert");
     if (include_ca_cert)
       pb.set_intermediate_ca_cert("stored_ca_cert");
     pb.set_public_key(GetPKCS1PublicKey().to_string());
     pb.set_payload(payload);
-    string tmp;
+    std::string tmp;
     pb.SerializeToString(&tmp);
     return SecureBlob(tmp.begin(), tmp.end());
   }
 
-  bool CompareBlob(const SecureBlob& blob, const string& str) {
+  bool CompareBlob(const SecureBlob& blob, const std::string& str) {
     return (blob.to_string() == str);
   }
 
-  string EncodeCertChain(const string& cert1, const string& cert2) {
-    string chain = "-----BEGIN CERTIFICATE-----\n";
+  std::string EncodeCertChain(const std::string& cert1,
+                              const std::string& cert2) {
+    std::string chain = "-----BEGIN CERTIFICATE-----\n";
     chain += brillo::data_encoding::Base64EncodeWrapLines(cert1);
     chain += "-----END CERTIFICATE-----";
     if (!cert2.empty()) {
@@ -188,8 +189,8 @@ class AttestationTest : public testing::Test {
   }
 
   bool VerifySimpleChallenge(const SecureBlob& response,
-                             const string& challenge,
-                             const string& signature) {
+                             const std::string& challenge,
+                             const std::string& signature) {
     SignedData signed_data;
     if (!signed_data.ParseFromArray(response.data(), response.size()))
       return false;
@@ -203,21 +204,21 @@ class AttestationTest : public testing::Test {
 
   bool VerifyEnterpriseChallenge(const SecureBlob& response,
                                  KeyType key_type,
-                                 const string& domain,
-                                 const string& device_id,
-                                 const string& cert_chain,
-                                 const string& signature) {
+                                 const std::string& domain,
+                                 const std::string& device_id,
+                                 const std::string& cert_chain,
+                                 const std::string& signature) {
     SignedData signed_data;
     if (!signed_data.ParseFromArray(response.data(), response.size()))
       return false;
     ChallengeResponse response_pb;
     if (!response_pb.ParseFromString(signed_data.data()))
       return false;
-    string expected_challenge =
+    std::string expected_challenge =
         GetEnterpriseChallenge("EnterpriseKeyChallenge", false).to_string();
     if (response_pb.challenge().data() != expected_challenge)
       return false;
-    string key_info;
+    std::string key_info;
     if (!DecryptData(response_pb.encrypted_key_info(), &key_info))
       return false;
     KeyInfo key_info_pb;
@@ -233,12 +234,12 @@ class AttestationTest : public testing::Test {
     return true;
   }
 
-  SecureBlob GetEnterpriseChallenge(const string& prefix, bool sign) {
+  SecureBlob GetEnterpriseChallenge(const std::string& prefix, bool sign) {
     Challenge challenge;
     challenge.set_prefix(prefix);
     challenge.set_nonce("nonce");
     challenge.set_timestamp(123456789);
-    string serialized;
+    std::string serialized;
     challenge.SerializeToString(&serialized);
     if (sign) {
       unsigned char buffer[256];
@@ -256,7 +257,7 @@ class AttestationTest : public testing::Test {
     return SecureBlob(serialized);
   }
 
-  bool DecryptData(const EncryptedData& input, string* output) {
+  bool DecryptData(const EncryptedData& input, std::string* output) {
     // Unwrap the AES key.
     unsigned char* wrapped_key_buffer = reinterpret_cast<unsigned char*>(
         const_cast<char*>(input.wrapped_key().data()));
@@ -609,7 +610,7 @@ TEST_F(AttestationTest, DeleteByPrefixUser) {
 }
 
 TEST_F(AttestationTest, GetEKInfo) {
-  string info;
+  std::string info;
   EXPECT_TRUE(attestation_.GetEKInfo(&info));
   EXPECT_TRUE(base::IsStringASCII(info));
 

@@ -11,7 +11,6 @@
 #include "cryptohome/mock_service.h"
 
 namespace cryptohome {
-using std::string;
 using std::ostringstream;
 using ::testing::_;
 using ::testing::DoAll;

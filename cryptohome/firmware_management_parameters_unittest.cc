@@ -6,9 +6,6 @@
 
 #include "cryptohome/firmware_management_parameters.h"
 
-#include <string>
-#include <vector>
-
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/process_mock.h>
@@ -25,7 +22,6 @@ extern "C" {
 
 namespace cryptohome {
 using brillo::SecureBlob;
-using std::string;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;

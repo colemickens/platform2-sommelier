@@ -28,7 +28,6 @@
 using base::FilePath;
 using brillo::Blob;
 using brillo::SecureBlob;
-using std::string;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
@@ -474,8 +473,8 @@ TEST_F(CryptoTest, ComputeEncryptedDataHMAC) {
   MockPlatform platform;
   Crypto crypto(&platform);
   EncryptedData pb;
-  string data = "iamsoawesome";
-  string iv = "123456";
+  std::string data = "iamsoawesome";
+  std::string iv = "123456";
   pb.set_encrypted_data(data.data(), data.size());
   pb.set_iv(iv.data(), iv.size());
 
@@ -484,13 +483,13 @@ TEST_F(CryptoTest, ComputeEncryptedDataHMAC) {
   CryptoLib::GetSecureRandom(hmac_key.data(), hmac_key.size());
 
   // Perturb iv and data slightly. Verify hashes are all different.
-  string hmac1 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  std::string hmac1 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
   data = "iamsoawesomf";
   pb.set_encrypted_data(data.data(), data.size());
-  string hmac2 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  std::string hmac2 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
   iv = "123457";
   pb.set_iv(iv.data(), iv.size());
-  string hmac3 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
+  std::string hmac3 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
 
   EXPECT_NE(hmac1, hmac2);
   EXPECT_NE(hmac2, hmac3);
@@ -507,10 +506,10 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   crypto.set_use_tpm(true);
   crypto.Init(&tpm_init);
 
-  string data = "iamsomestufftoencrypt";
+  std::string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data);
 
-  string encrypted_data;
+  std::string encrypted_data;
   SecureBlob output_blob;
 
   brillo::Blob aes_key(32, 'A');
@@ -550,10 +549,10 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   crypto.set_use_tpm(true);
   crypto.Init(&tpm_init);
 
-  string data = "iamsomestufftoencrypt";
+  std::string data = "iamsomestufftoencrypt";
   SecureBlob data_blob(data);
 
-  string encrypted_data;
+  std::string encrypted_data;
   SecureBlob output_blob;
 
   brillo::Blob aes_key(32, 'A');

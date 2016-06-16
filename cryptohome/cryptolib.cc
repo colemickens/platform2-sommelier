@@ -28,7 +28,6 @@ extern "C" {
 #include "cryptohome/platform.h"
 
 using brillo::SecureBlob;
-using std::string;
 
 namespace cryptohome {
 
@@ -585,8 +584,8 @@ void CryptoLib::BlobToHexToBuffer(const brillo::Blob& blob,
     *char_buffer = '\x00';
 }
 
-string CryptoLib::ComputeEncryptedDataHMAC(const EncryptedData& encrypted_data,
-                                           const SecureBlob& hmac_key) {
+std::string CryptoLib::ComputeEncryptedDataHMAC(
+    const EncryptedData& encrypted_data, const SecureBlob& hmac_key) {
   SecureBlob blob1(encrypted_data.iv().begin(), encrypted_data.iv().end());
   SecureBlob blob2(encrypted_data.encrypted_data().begin(),
                    encrypted_data.encrypted_data().end());

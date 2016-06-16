@@ -22,7 +22,6 @@
 #include "cryptohome/pkcs11_init.h"
 
 using brillo::SecureBlob;
-using std::string;
 
 namespace cryptohome {
 
@@ -79,8 +78,8 @@ Pkcs11KeyStore::Pkcs11KeyStore(Pkcs11Init* pkcs11_init)
 Pkcs11KeyStore::~Pkcs11KeyStore() {}
 
 bool Pkcs11KeyStore::Read(bool is_user_specific,
-                          const string& username,
-                          const string& key_name,
+                          const std::string& username,
+                          const std::string& key_name,
                           SecureBlob* key_data) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(is_user_specific, username, &slot))
@@ -112,8 +111,8 @@ bool Pkcs11KeyStore::Read(bool is_user_specific,
 }
 
 bool Pkcs11KeyStore::Write(bool is_user_specific,
-                           const string& username,
-                           const string& key_name,
+                           const std::string& username,
+                           const std::string& key_name,
                            const SecureBlob& key_data) {
   // Delete any existing key with the same name.
   if (!Delete(is_user_specific, username, key_name))
@@ -161,7 +160,7 @@ bool Pkcs11KeyStore::Write(bool is_user_specific,
 }
 
 bool Pkcs11KeyStore::Delete(bool is_user_specific,
-                            const string& username,
+                            const std::string& username,
                             const std::string& key_name) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(is_user_specific, username, &slot))
@@ -201,8 +200,8 @@ bool Pkcs11KeyStore::DeleteByPrefix(bool is_user_specific,
 }
 
 bool Pkcs11KeyStore::Register(bool is_user_specific,
-                              const string& username,
-                              const string& label,
+                              const std::string& username,
+                              const std::string& label,
                               const brillo::SecureBlob& private_key_blob,
                               const brillo::SecureBlob& public_key_der,
                               const brillo::SecureBlob& certificate) {
@@ -337,7 +336,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
 
 bool Pkcs11KeyStore::RegisterCertificate(
     bool is_user_specific,
-    const string& username,
+    const std::string& username,
     const brillo::SecureBlob& certificate) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(is_user_specific, username, &slot))
@@ -380,7 +379,7 @@ bool Pkcs11KeyStore::RegisterCertificate(
 }
 
 CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
-                                            const string& key_name) {
+                                            const std::string& key_name) {
   // Assemble a search template.
   CK_OBJECT_CLASS object_class = CKO_DATA;
   CK_BBOOL true_value = CK_TRUE;
@@ -389,7 +388,7 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
     {CKA_CLASS, &object_class, sizeof(object_class)},
     {
       CKA_LABEL,
-      string_as_array(const_cast<string*>(&key_name)),
+      string_as_array(const_cast<std::string*>(&key_name)),
       key_name.size()
     },
     {
@@ -417,7 +416,7 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
 }
 
 bool Pkcs11KeyStore::GetUserSlot(bool is_user_specific,
-                                 const string& username,
+                                 const std::string& username,
                                  CK_SLOT_ID_PTR slot) {
   const char kChapsDaemonName[] = "chaps";
   const char kChapsSystemToken[] = "/var/lib/chaps";

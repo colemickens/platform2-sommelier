@@ -13,7 +13,6 @@
 #include "cryptohome/attestation.h"
 
 using brillo::SecureBlob;
-using std::string;
 
 namespace cryptohome {
 
@@ -69,8 +68,8 @@ CreateCertRequestTask::CreateCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
                                              Attestation::PCAType pca_type,
                                              CertificateProfile profile,
-                                             const string& username,
-                                             const string& origin)
+                                             const std::string& username,
+                                             const std::string& origin)
     : AttestationTask(observer, attestation),
       pca_type_(pca_type),
       profile_(profile),
@@ -99,8 +98,8 @@ FinishCertRequestTask::FinishCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
                                              const SecureBlob& pca_response,
                                              bool is_user_specific,
-                                             const string& username,
-                                             const string& key_name)
+                                             const std::string& username,
+                                             const std::string& key_name)
     : AttestationTask(observer, attestation),
       pca_response_(pca_response),
       is_user_specific_(is_user_specific),
@@ -128,8 +127,8 @@ void FinishCertRequestTask::Run() {
 SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      Attestation* attestation,
                                      bool is_user_specific,
-                                     const string& username,
-                                     const string& key_name,
+                                     const std::string& username,
+                                     const std::string& key_name,
                                      const SecureBlob& challenge)
     : AttestationTask(observer, attestation),
       is_enterprise_(false),
@@ -142,9 +141,9 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
 SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      Attestation* attestation,
                                      bool is_user_specific,
-                                     const string& username,
-                                     const string& key_name,
-                                     const string& domain,
+                                     const std::string& username,
+                                     const std::string& key_name,
+                                     const std::string& domain,
                                      const SecureBlob& device_id,
                                      bool include_signed_public_key,
                                      const SecureBlob& challenge)
@@ -193,8 +192,8 @@ void SignChallengeTask::Run() {
 RegisterKeyTask::RegisterKeyTask(AttestationTaskObserver* observer,
                                  Attestation* attestation,
                                  bool is_user_specific,
-                                 const string& username,
-                                 const string& key_name)
+                                 const std::string& username,
+                                 const std::string& key_name)
     : AttestationTask(observer, attestation),
       is_user_specific_(is_user_specific),
       username_(username),

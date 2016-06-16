@@ -36,7 +36,6 @@
 #include "attestation.pb.h"  // NOLINT(build/include)
 
 using brillo::SecureBlob;
-using std::string;
 
 namespace {
 
@@ -293,7 +292,7 @@ void Attestation::Initialize(Tpm* tpm,
       LOG(WARNING) << "Attestation: Falling back to root.";
     }
     ExtendPCR1IfClear();
-    string serial_encrypted_db;
+    std::string serial_encrypted_db;
     if (!LoadDatabase(&serial_encrypted_db)) {
       LOG(INFO) << "Attestation: Attestation data not found.";
       return;
@@ -569,7 +568,7 @@ void Attestation::PrepareForEnrollment() {
   delegate_pb->set_secret(delegate_secret.data(), delegate_secret.size());
   delegate_pb->set_has_reset_lock_permissions(true);
 
-  string serial_encrypted_db;
+  std::string serial_encrypted_db;
   if (!EncryptDatabase(database_pb_, &serial_encrypted_db)) {
     LOG(ERROR) << "Attestation: Failed to encrypt db.";
     return;
@@ -724,7 +723,7 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
   *request_pb.mutable_pcr1_quote() = use_alternate_pca ?
       database_pb_.alternate_pcr1_quote() :
       database_pb_.pcr1_quote();
-  string tmp;
+  std::string tmp;
   if (!request_pb.SerializeToString(&tmp)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
@@ -780,8 +779,8 @@ bool Attestation::Enroll(PCAType pca_type,
 
 bool Attestation::CreateCertRequest(PCAType pca_type,
                                     CertificateProfile profile,
-                                    const string& username,
-                                    const string& origin,
+                                    const std::string& username,
+                                    const std::string& origin,
                                     SecureBlob* pca_request) {
   if (!IsTPMReady())
     return false;
@@ -827,7 +826,7 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
   request_pb.set_certified_public_key(public_key.to_string());
   request_pb.set_certified_key_info(key_info.to_string());
   request_pb.set_certified_key_proof(proof.to_string());
-  string tmp;
+  std::string tmp;
   if (!request_pb.SerializeToString(&tmp)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
@@ -849,8 +848,8 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
 
 bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
                                     bool is_user_specific,
-                                    const string& username,
-                                    const string& key_name,
+                                    const std::string& username,
+                                    const std::string& key_name,
                                     SecureBlob* certificate_chain) {
   if (!IsTPMReady())
     return false;
@@ -896,8 +895,8 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
 }
 
 bool Attestation::GetCertificateChain(bool is_user_specific,
-                                      const string& username,
-                                      const string& key_name,
+                                      const std::string& username,
+                                      const std::string& key_name,
                                       SecureBlob* certificate_chain) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
@@ -909,8 +908,8 @@ bool Attestation::GetCertificateChain(bool is_user_specific,
 }
 
 bool Attestation::GetPublicKey(bool is_user_specific,
-                               const string& username,
-                               const string& key_name,
+                               const std::string& username,
+                               const std::string& key_name,
                                SecureBlob* public_key) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
@@ -942,8 +941,8 @@ bool Attestation::GetPublicKey(bool is_user_specific,
 }
 
 bool Attestation::DoesKeyExist(bool is_user_specific,
-                               const string& username,
-                               const string& key_name) {
+                               const std::string& username,
+                               const std::string& key_name) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
   return FindKeyByName(is_user_specific, username, key_name, &key);
@@ -951,9 +950,9 @@ bool Attestation::DoesKeyExist(bool is_user_specific,
 
 bool Attestation::SignEnterpriseChallenge(
       bool is_user_specific,
-      const string& username,
-      const string& key_name,
-      const string& domain,
+      const std::string& username,
+      const std::string& key_name,
+      const std::string& domain,
       const SecureBlob& device_id,
       bool include_signed_public_key,
       const SecureBlob& challenge,
@@ -1018,7 +1017,7 @@ bool Attestation::SignEnterpriseChallenge(
   }
 
   // Serialize and sign the response protobuf.
-  string serialized;
+  std::string serialized;
   if (!response_pb.SerializeToString(&serialized)) {
     LOG(ERROR) << __func__ << ": Failed to serialize response protobuf.";
     return false;
@@ -1033,8 +1032,8 @@ bool Attestation::SignEnterpriseChallenge(
 }
 
 bool Attestation::SignSimpleChallenge(bool is_user_specific,
-                                      const string& username,
-                                      const string& key_name,
+                                      const std::string& username,
+                                      const std::string& key_name,
                                       const SecureBlob& challenge,
                                       SecureBlob* response) {
   if (!IsTPMReady())
@@ -1060,8 +1059,8 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
 }
 
 bool Attestation::RegisterKey(bool is_user_specific,
-                              const string& username,
-                              const string& key_name,
+                              const std::string& username,
+                              const std::string& key_name,
                               bool include_certificates) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
@@ -1106,8 +1105,8 @@ bool Attestation::RegisterKey(bool is_user_specific,
 }
 
 bool Attestation::GetKeyPayload(bool is_user_specific,
-                                const string& username,
-                                const string& key_name,
+                                const std::string& username,
+                                const std::string& key_name,
                                 SecureBlob* payload) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
@@ -1121,8 +1120,8 @@ bool Attestation::GetKeyPayload(bool is_user_specific,
 }
 
 bool Attestation::SetKeyPayload(bool is_user_specific,
-                                const string& username,
-                                const string& key_name,
+                                const std::string& username,
+                                const std::string& key_name,
                                 const SecureBlob& payload) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
@@ -1135,8 +1134,8 @@ bool Attestation::SetKeyPayload(bool is_user_specific,
 }
 
 bool Attestation::DeleteKeysByPrefix(bool is_user_specific,
-                                     const string& username,
-                                     const string& key_prefix) {
+                                     const std::string& username,
+                                     const std::string& key_prefix) {
   base::AutoLock lock(lock_);
   if (is_user_specific) {
     return key_store_->DeleteByPrefix(is_user_specific, username, key_prefix);
@@ -1176,7 +1175,7 @@ bool Attestation::GetEKInfo(std::string* ek_info) {
   return true;
 }
 
-bool Attestation::GetIdentityResetRequest(const string& reset_token,
+bool Attestation::GetIdentityResetRequest(const std::string& reset_token,
                                           SecureBlob* reset_request) {
   base::AutoLock lock(lock_);
   AttestationResetRequest proto;
@@ -1219,9 +1218,9 @@ bool Attestation::IsPCR0VerifiedMode() {
 }
 
 bool Attestation::EncryptDatabase(const AttestationDatabase& db,
-                                  string* serial_encrypted_db) {
+                                  std::string* serial_encrypted_db) {
   CHECK(crypto_);
-  string serial_string;
+  std::string serial_string;
   if (!db.SerializeToString(&serial_string)) {
     LOG(ERROR) << "Failed to serialize db.";
     return false;
@@ -1241,7 +1240,7 @@ bool Attestation::EncryptDatabase(const AttestationDatabase& db,
   return true;
 }
 
-bool Attestation::DecryptDatabase(const string& serial_encrypted_db,
+bool Attestation::DecryptDatabase(const std::string& serial_encrypted_db,
                                   AttestationDatabase* db) {
   CHECK(crypto_);
   if (!crypto_->UnsealKey(serial_encrypted_db, &database_key_,
@@ -1254,7 +1253,7 @@ bool Attestation::DecryptDatabase(const string& serial_encrypted_db,
     LOG(ERROR) << "Attestation: Failed to decrypt database with Tpm.";
     return false;
   }
-  string serial_string = serial_blob.to_string();
+  std::string serial_string = serial_blob.to_string();
   if (!db->ParseFromString(serial_string)) {
     // Previously the DB was encrypted with CryptoLib::AesEncrypt which appends
     // a SHA-1.  This can be safely ignored.
@@ -1269,7 +1268,7 @@ bool Attestation::DecryptDatabase(const string& serial_encrypted_db,
   return true;
 }
 
-bool Attestation::StoreDatabase(const string& serial_encrypted_db) {
+bool Attestation::StoreDatabase(const std::string& serial_encrypted_db) {
   if (!platform_->WriteStringToFileAtomicDurable(database_path_.value(),
                                                  serial_encrypted_db,
                                                  kDatabasePermissions)) {
@@ -1284,7 +1283,7 @@ bool Attestation::StoreDatabase(const string& serial_encrypted_db) {
   return true;
 }
 
-bool Attestation::LoadDatabase(string* serial_encrypted_db) {
+bool Attestation::LoadDatabase(std::string* serial_encrypted_db) {
   CheckDatabasePermissions();
   if (!platform_->ReadFileToString(database_path_.value(),
                                    serial_encrypted_db)) {
@@ -1295,7 +1294,7 @@ bool Attestation::LoadDatabase(string* serial_encrypted_db) {
 }
 
 bool Attestation::PersistDatabaseChanges() {
-  string serial_encrypted_db;
+  std::string serial_encrypted_db;
   if (!EncryptDatabase(database_pb_, &serial_encrypted_db))
     return false;
   return StoreDatabase(serial_encrypted_db);
@@ -1376,7 +1375,7 @@ bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
 bool Attestation::VerifyIdentityBinding(const IdentityBinding& binding) {
   // Reconstruct and hash a serialized TPM_IDENTITY_CONTENTS structure.
   const unsigned char header[] = {1, 1, 0, 0, 0, 0, 0, 0x79};
-  string label_ca = binding.identity_label() + binding.pca_public_key();
+  std::string label_ca = binding.identity_label() + binding.pca_public_key();
   SecureBlob label_ca_digest = CryptoLib::Sha1(
       SecureBlob(label_ca));
   ClearString(&label_ca);
@@ -1416,7 +1415,7 @@ bool Attestation::VerifyPCR0Quote(const SecureBlob& aik_public_key,
     if (quote.quoted_pcr_value().size() == final_pcr_value.size() &&
         0 == memcmp(quote.quoted_pcr_value().data(), final_pcr_value.data(),
                     final_pcr_value.size())) {
-      string description = "Developer Mode: ";
+      std::string description = "Developer Mode: ";
       description += kKnownPCRValues[i].developer_mode_enabled ? "On" : "Off";
       description += ", Recovery Mode: ";
       description += kKnownPCRValues[i].recovery_mode_enabled ? "On" : "Off";
@@ -1508,7 +1507,7 @@ bool Attestation::VerifyCertifiedKey(
     const SecureBlob& certified_public_key,
     const SecureBlob& certified_key_info,
     const SecureBlob& proof) {
-  string key_info = certified_key_info.to_string();
+  std::string key_info = certified_key_info.to_string();
   if (!VerifySignature(aik_public_key, certified_key_info, proof)) {
     LOG(ERROR) << "Failed to verify certified key proof signature.";
     return false;
@@ -1613,7 +1612,7 @@ void Attestation::ClearIdentity(IdentityBinding* binding, IdentityKey* key) {
   ClearString(key->mutable_identity_credential());
 }
 
-void Attestation::ClearString(string* s) {
+void Attestation::ClearString(std::string* s) {
   brillo::SecureMemset(string_as_array(s), 0, s->length());
   s->clear();
 }
@@ -1694,7 +1693,7 @@ bool Attestation::EncryptEndorsementCredential(
     const SecureBlob& credential,
     EncryptedData* encrypted_credential) {
   scoped_ptr<RSA, RSADeleter> rsa;
-  string key_id;
+  std::string key_id;
   switch (pca_type) {
     case kDefaultPCA:
       rsa = CreateRSAFromHexModulus(kDefaultPCAPublicKey);
@@ -1727,7 +1726,7 @@ bool Attestation::EncryptEndorsementCredential(
   return EncryptData(credential, rsa.get(), key_id, encrypted_credential);
 }
 
-bool Attestation::AddDeviceKey(const string& key_name,
+bool Attestation::AddDeviceKey(const std::string& key_name,
                                const CertifiedKey& key) {
   // If a key by this name already exists, reuse the field.
   bool found = false;
@@ -1764,8 +1763,8 @@ void Attestation::RemoveDeviceKey(const std::string& key_name) {
 }
 
 bool Attestation::FindKeyByName(bool is_user_specific,
-                                const string& username,
-                                const string& key_name,
+                                const std::string& username,
+                                const std::string& key_name,
                                 CertifiedKey* key) {
   if (is_user_specific) {
     SecureBlob key_data;
@@ -1790,11 +1789,11 @@ bool Attestation::FindKeyByName(bool is_user_specific,
 }
 
 bool Attestation::SaveKey(bool is_user_specific,
-                          const string& username,
-                          const string& key_name,
+                          const std::string& username,
+                          const std::string& key_name,
                           const CertifiedKey& key) {
   if (is_user_specific) {
-    string tmp;
+    std::string tmp;
     if (!key.SerializeToString(&tmp)) {
       LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
       return false;
@@ -1815,8 +1814,8 @@ bool Attestation::SaveKey(bool is_user_specific,
 }
 
 void Attestation::DeleteKey(bool is_user_specific,
-                            const string& username,
-                            const string& key_name) {
+                            const std::string& username,
+                            const std::string& key_name) {
   if (is_user_specific) {
     key_store_->Delete(is_user_specific, username, key_name);
   } else {
@@ -1830,7 +1829,7 @@ bool Attestation::CreatePEMCertificateChain(const CertifiedKey& key,
     LOG(ERROR) << "Certificate is empty.";
     return false;
   }
-  string pem = CreatePEMCertificate(key.certified_key_credential());
+  std::string pem = CreatePEMCertificate(key.certified_key_credential());
   if (!key.intermediate_ca_cert().empty()) {
     pem += "\n";
     pem += CreatePEMCertificate(key.intermediate_ca_cert());
@@ -1844,11 +1843,11 @@ bool Attestation::CreatePEMCertificateChain(const CertifiedKey& key,
   return true;
 }
 
-string Attestation::CreatePEMCertificate(const string& certificate) {
+std::string Attestation::CreatePEMCertificate(const std::string& certificate) {
   const char kBeginCertificate[] = "-----BEGIN CERTIFICATE-----\n";
   const char kEndCertificate[] = "-----END CERTIFICATE-----";
 
-  string pem = kBeginCertificate;
+  std::string pem = kBeginCertificate;
   pem += brillo::data_encoding::Base64EncodeWrapLines(certificate);
   pem += kEndCertificate;
   return pem;
@@ -1868,7 +1867,7 @@ bool Attestation::SignChallengeData(const CertifiedKey& key,
   SignedData signed_data;
   signed_data.set_data(data_to_sign.to_string());
   signed_data.set_signature(signature.to_string());
-  string serialized;
+  std::string serialized;
   if (!signed_data.SerializeToString(&serialized)) {
     LOG(ERROR) << "Failed to serialize signed data.";
     return false;
@@ -1916,13 +1915,13 @@ bool Attestation::EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
-  string serialized;
+  std::string serialized;
   if (!key_info.SerializeToString(&serialized)) {
     LOG(ERROR) << "Failed to serialize key info.";
     return false;
   }
   RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
-  string enterprise_key_id(kEnterpriseEncryptionPublicKeyID,
+  std::string enterprise_key_id(kEnterpriseEncryptionPublicKeyID,
                            arraysize(kEnterpriseEncryptionPublicKeyID) - 1);
   bool result = EncryptData(SecureBlob(serialized),
                             enterprise_key,
@@ -1934,7 +1933,7 @@ bool Attestation::EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
 
 bool Attestation::EncryptData(const SecureBlob& input,
                               RSA* wrapping_key,
-                              const string& wrapping_key_id,
+                              const std::string& wrapping_key_id,
                               EncryptedData* output) {
   // Encrypt with a randomly generated AES key.
   SecureBlob aes_key;
@@ -1973,7 +1972,7 @@ bool Attestation::EncryptData(const SecureBlob& input,
 }
 
 scoped_ptr<RSA, Attestation::RSADeleter> Attestation::CreateRSAFromHexModulus(
-    const string& hex_modulus) {
+    const std::string& hex_modulus) {
   scoped_ptr<RSA, RSADeleter> rsa(RSA_new());
   if (!rsa.get())
     return scoped_ptr<RSA, RSADeleter>();
@@ -2015,7 +2014,8 @@ bool Attestation::CreateSignedPublicKey(
   SecureBlob challenge;
   if (!tpm_->GetRandomData(kNonceSize, &challenge))
     return false;
-  string challenge_hex = base::HexEncode(challenge.data(), challenge.size());
+  std::string challenge_hex = base::HexEncode(challenge.data(),
+                                              challenge.size());
   if (!ASN1_STRING_set(spki.get()->spkac->challenge,
                        challenge_hex.data(),
                        challenge_hex.size()))
@@ -2133,8 +2133,8 @@ bool Attestation::TpmCompatibleOAEPEncrypt(RSA* key,
 
 int Attestation::ChooseTemporalIndex(const std::string& user,
                                      const std::string& origin) {
-  string user_hash = CryptoLib::Sha256(SecureBlob(user)).to_string();
-  string origin_hash = CryptoLib::Sha256(SecureBlob(origin)).to_string();
+  std::string user_hash = CryptoLib::Sha256(SecureBlob(user)).to_string();
+  std::string origin_hash = CryptoLib::Sha256(SecureBlob(origin)).to_string();
   int histogram[kNumTemporalValues] = {0};
   for (int i = 0; i < database_pb_.temporal_index_record_size(); ++i) {
     const AttestationDatabase::TemporalIndexRecord& record =

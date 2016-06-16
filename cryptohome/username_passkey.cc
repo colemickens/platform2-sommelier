@@ -15,7 +15,6 @@
 
 namespace cryptohome {
 using brillo::SecureBlob;
-using std::string;
 
 UsernamePasskey::UsernamePasskey(const char *username,
                                  const brillo::Blob& passkey)
@@ -47,7 +46,7 @@ std::string UsernamePasskey::username() const {
   return username_;
 }
 
-string UsernamePasskey::GetObfuscatedUsername(
+std::string UsernamePasskey::GetObfuscatedUsername(
     const brillo::Blob &system_salt) const {
   CHECK(!username_.empty());
 

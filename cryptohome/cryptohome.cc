@@ -51,7 +51,6 @@
 using base::FilePath;
 using base::StringPrintf;
 using brillo::SecureBlob;
-using std::string;
 
 namespace {
 // Number of days that the set_current_user_old action uses when updating the
@@ -326,7 +325,7 @@ bool ConfirmRemove(const std::string& user) {
     printf("Error while reading username.\n");
     return false;
   }
-  string verification = buffer;
+  std::string verification = buffer;
   // fgets will append the newline character, remove it.
   base::TrimWhitespaceASCII(verification, base::TRIM_ALL, &verification);
   if (user != verification) {
@@ -452,7 +451,7 @@ class ClientLoop {
     return return_code_;
   }
 
-  string get_return_data() {
+  std::string get_return_data() {
     return return_data_;
   }
 
@@ -472,7 +471,7 @@ class ClientLoop {
   void CallbackWithData(int async_call_id, bool return_status, GArray* data) {
     if (async_call_id == async_call_id_) {
       return_status_ = return_status;
-      return_data_ = string(static_cast<char*>(data->data), data->len);
+      return_data_ = std::string(static_cast<char*>(data->data), data->len);
       g_main_loop_quit(loop_);
     }
   }
@@ -509,7 +508,7 @@ class ClientLoop {
   int async_call_id_;
   bool return_status_;
   int return_code_;
-  string return_data_;
+  std::string return_data_;
   cryptohome::BaseReply reply_;
 };
 
@@ -1430,7 +1429,7 @@ int main(int argc, char **argv) {
 
     cryptohome::UsernamePasskey up(account_id.c_str(), SecureBlob());
 
-    string vault_path = StringPrintf("/home/.shadow/%s/master.0",
+    std::string vault_path = StringPrintf("/home/.shadow/%s/master.0",
         up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
 
     SecureBlob contents;
@@ -1814,7 +1813,7 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_PKCS11_TOKEN_STATUS],
       action.c_str())) {
     // If no account_id is specified, proceed with the empty string.
-    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
     if (!account_id.empty()) {
       brillo::glib::ScopedError error;
       gchar* label = NULL;
@@ -1847,7 +1846,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_PKCS11_TERMINATE],
                      action.c_str())) {
     // If no account_id is specified, proceed with the empty string.
-    string account_id;
+    std::string account_id;
     GetAccountId(cl, &account_id);
     brillo::glib::ScopedError error;
     if (!org_chromium_CryptohomeInterface_pkcs11_terminate(
@@ -1916,7 +1915,7 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_TPM_ATTESTATION_START_ENROLL],
       action.c_str())) {
     brillo::glib::ScopedError error;
-    string response_data;
+    std::string response_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       brillo::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(  // NOLINT
@@ -1928,7 +1927,7 @@ int main(int argc, char **argv) {
                error->message);
         return 1;
       }
-      response_data = string(static_cast<char*>(data->data), data->len);
+      response_data = std::string(static_cast<char*>(data->data), data->len);
     } else {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
@@ -1954,7 +1953,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_ENROLL],
       action.c_str())) {
-    string contents;
+    std::string contents;
     if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file.\n");
       return 1;
@@ -1992,7 +1991,7 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
       action.c_str())) {
     brillo::glib::ScopedError error;
-    string response_data;
+    std::string response_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       brillo::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
@@ -2006,7 +2005,7 @@ int main(int argc, char **argv) {
                error->message);
         return 1;
       }
-      response_data = string(static_cast<char*>(data->data), data->len);
+      response_data = std::string(static_cast<char*>(data->data), data->len);
     } else {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
@@ -2034,14 +2033,14 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
       action.c_str())) {
-    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
              switches::kAttrNameSwitch);
       return 1;
     }
-    string contents;
+    std::string contents;
     if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file.\n");
       return 1;
@@ -2051,7 +2050,7 @@ int main(int argc, char **argv) {
     g_array_append_vals(data.get(), contents.data(), contents.length());
     gboolean success = FALSE;
     brillo::glib::ScopedError error;
-    string cert_data;
+    std::string cert_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       brillo::glib::ScopedArray cert;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
@@ -2067,7 +2066,7 @@ int main(int argc, char **argv) {
                error->message);
         return 1;
       }
-      cert_data = string(static_cast<char*>(cert->data), cert->len);
+      cert_data = std::string(static_cast<char*>(cert->data), cert->len);
     } else {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
@@ -2097,8 +2096,8 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
       action.c_str())) {
-    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
              switches::kAttrNameSwitch);
@@ -2146,16 +2145,18 @@ int main(int argc, char **argv) {
       printf("TpmAttestationGetPublicKey call failed: %s.\n", error->message);
       return 1;
     }
-    string cert_pem = string(static_cast<char*>(cert->data), cert->len);
-    string public_key_hex = base::HexEncode(public_key->data, public_key->len);
+    std::string cert_pem =
+      std::string(static_cast<char*>(cert->data), cert->len);
+    std::string public_key_hex =
+      base::HexEncode(public_key->data, public_key->len);
     printf("Public Key:\n%s\n\nCertificate:\n%s\n",
            public_key_hex.c_str(),
            cert_pem.c_str());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_REGISTER_KEY],
       action.c_str())) {
-    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
              switches::kAttrNameSwitch);
@@ -2182,15 +2183,15 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE],
       action.c_str())) {
-    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
              switches::kAttrNameSwitch);
       return 1;
     }
     gboolean is_user_specific = (key_name != "attest-ent-machine");
-    string contents;
+    std::string contents;
     if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
@@ -2198,7 +2199,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(challenge.get(), contents.data(), contents.length());
     brillo::glib::ScopedArray device_id(g_array_new(FALSE, FALSE, 1));
-    string device_id_str = "fake_device_id";
+    std::string device_id_str = "fake_device_id";
     g_array_append_vals(device_id.get(),
                         device_id_str.data(),
                         device_id_str.length());
@@ -2226,15 +2227,15 @@ int main(int argc, char **argv) {
       printf("Attestation challenge response failed.\n");
       return 1;
     }
-    string response_data = client_loop.get_return_data();
+    std::string response_data = client_loop.get_return_data();
     base::WriteFileDescriptor(STDOUT_FILENO,
                               response_data.data(),
                               response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_DELETE],
       action.c_str())) {
-    string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
       printf("No key name specified (--%s=<name>)\n",
              switches::kAttrNameSwitch);
@@ -2321,7 +2322,7 @@ int main(int argc, char **argv) {
       switches::kActions[
           switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT],
       action.c_str())) {
-    string contents;
+    std::string contents;
     if (!base::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
@@ -2354,7 +2355,7 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SIGN_LOCKBOX],
                      action.c_str())) {
-    string data;
+    std::string data;
     if (!base::ReadFileToString(GetFile(cl), &data)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
@@ -2382,12 +2383,12 @@ int main(int argc, char **argv) {
     printf("SignBootLockbox success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_VERIFY_LOCKBOX],
                      action.c_str())) {
-    string data;
+    std::string data;
     if (!base::ReadFileToString(GetFile(cl), &data)) {
       printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
       return 1;
     }
-    string signature;
+    std::string signature;
     FilePath signature_file = GetFile(cl).AddExtension("signature");
     if (!base::ReadFileToString(signature_file, &signature)) {
       printf("Failed to read input file: %s\n", signature_file.value().c_str());

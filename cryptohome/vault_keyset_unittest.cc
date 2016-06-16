@@ -17,7 +17,6 @@
 
 namespace cryptohome {
 using brillo::SecureBlob;
-using std::string;
 
 using ::testing::_;
 using ::testing::SaveArg;

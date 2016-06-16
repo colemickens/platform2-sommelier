@@ -41,7 +41,6 @@ extern "C" {
 }
 
 using brillo::SecureBlob;
-using std::string;
 
 namespace cryptohome {
 
@@ -268,7 +267,7 @@ void Crypto::PasswordToPasskey(const char* password,
   passkey->swap(local_passkey);
 }
 
-bool Crypto::IsTPMPubkeyHash(const string& hash,
+bool Crypto::IsTPMPubkeyHash(const std::string& hash,
                              CryptoError* error) const {
   SecureBlob pub_key_hash;
   Tpm::TpmRetryAction retry_action = tpm_->GetPublicKeyHash(
@@ -774,7 +773,7 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
 }
 
 bool Crypto::EncryptWithTpm(const SecureBlob& data,
-                            string* encrypted_data) const {
+                            std::string* encrypted_data) const {
   SecureBlob aes_key;
   SecureBlob sealed_key;
   if (!CreateSealedKey(&aes_key, &sealed_key))
@@ -782,7 +781,7 @@ bool Crypto::EncryptWithTpm(const SecureBlob& data,
   return EncryptData(data, aes_key, sealed_key, encrypted_data);
 }
 
-bool Crypto::DecryptWithTpm(const string& encrypted_data,
+bool Crypto::DecryptWithTpm(const std::string& encrypted_data,
                             SecureBlob* data) const {
   SecureBlob aes_key;
   SecureBlob sealed_key;
@@ -810,7 +809,7 @@ bool Crypto::CreateSealedKey(SecureBlob* aes_key,
 bool Crypto::EncryptData(const SecureBlob& data,
                          const SecureBlob& aes_key,
                          const SecureBlob& sealed_key,
-                         string* encrypted_data) const {
+                         std::string* encrypted_data) const {
   if (!use_tpm_)
     return false;
   SecureBlob iv;
@@ -840,7 +839,7 @@ bool Crypto::EncryptData(const SecureBlob& data,
   return true;
 }
 
-bool Crypto::UnsealKey(const string& encrypted_data,
+bool Crypto::UnsealKey(const std::string& encrypted_data,
                        SecureBlob* aes_key,
                        SecureBlob* sealed_key) const {
   if (!use_tpm_)
@@ -861,7 +860,7 @@ bool Crypto::UnsealKey(const string& encrypted_data,
   return true;
 }
 
-bool Crypto::DecryptData(const string& encrypted_data,
+bool Crypto::DecryptData(const std::string& encrypted_data,
                          const brillo::SecureBlob& aes_key,
                          brillo::SecureBlob* data) const {
   EncryptedData encrypted_pb;

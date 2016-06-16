@@ -19,7 +19,6 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/service.h"
 
-using std::string;
 
 namespace cryptohome {
 

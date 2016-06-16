@@ -32,7 +32,6 @@
 using base::FilePath;
 using base::StringPrintf;
 using brillo::SecureBlob;
-using std::string;
 using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
@@ -137,9 +136,9 @@ class HomeDirsTest : public ::testing::Test {
   }
 
   void set_policy(bool owner_known,
-                  const string& owner,
+                  const std::string& owner,
                   bool ephemeral_users_enabled,
-                  const string& clean_up_strategy) {
+                  const std::string& clean_up_strategy) {
     policy::MockDevicePolicy* device_policy = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy, LoadPolicy())
         .WillRepeatedly(Return(true));

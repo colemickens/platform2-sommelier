@@ -21,7 +21,6 @@
 using chaps::Attributes;
 using brillo::SecureBlob;
 using std::map;
-using std::string;
 using std::vector;
 using ::testing::_;
 using ::testing::DoAll;
@@ -138,7 +137,7 @@ class KeyStoreTest : public testing::Test {
                                 const vector<uint8_t>& attributes,
                                 uint64_t* new_object_handle) {
     *new_object_handle = next_handle_++;
-    string label = GetValue(attributes, CKA_LABEL);
+    std::string label = GetValue(attributes, CKA_LABEL);
     handles_[*new_object_handle] = label;
     values_[label] = GetValue(attributes, CKA_VALUE);
     labels_[label] = *new_object_handle;
@@ -149,7 +148,7 @@ class KeyStoreTest : public testing::Test {
   virtual uint32_t DestroyObject(const SecureBlob& isolate_credential,
                                  uint64_t session_id,
                                  uint64_t object_handle) {
-    string label = handles_[object_handle];
+    std::string label = handles_[object_handle];
     handles_.erase(object_handle);
     values_.erase(label);
     labels_.erase(label);
@@ -162,8 +161,8 @@ class KeyStoreTest : public testing::Test {
                                      uint64_t object_handle,
                                      const vector<uint8_t>& attributes_in,
                                      vector<uint8_t>* attributes_out) {
-    string label = handles_[object_handle];
-    string value = values_[label];
+    std::string label = handles_[object_handle];
+    std::string value = values_[label];
     Attributes parsed;
     parsed.Parse(attributes_in);
     if (parsed.num_attributes() == 1 &&
@@ -197,8 +196,8 @@ class KeyStoreTest : public testing::Test {
   virtual uint32_t FindObjectsInit(const SecureBlob& isolate_credential,
                                    uint64_t session_id,
                                    const vector<uint8_t>& attributes) {
-    string label = GetValue(attributes, CKA_LABEL);
-    string value = GetValue(attributes, CKA_VALUE);
+    std::string label = GetValue(attributes, CKA_LABEL);
+    std::string value = GetValue(attributes, CKA_VALUE);
     found_objects_.clear();
     if (label.empty() && value.empty()) {
       // Find all objects.
@@ -235,33 +234,34 @@ class KeyStoreTest : public testing::Test {
   NiceMock<Pkcs11Mock> pkcs11_;
   NiceMock<MockPkcs11Init> pkcs11_init_;
 
-  bool CompareBlob(const brillo::SecureBlob& blob, const string& str) {
+  bool CompareBlob(const brillo::SecureBlob& blob, const std::string& str) {
     return (blob.to_string() == str);
   }
 
  private:
   MakeTests helper_;
-  map<string, string> values_;      // The fake object store: label->value
-  map<uint64_t, string> handles_;   // The fake object store: handle->label
-  map<string, uint64_t> labels_;    // The fake object store: label->handle
+  map<std::string, std::string> values_;  // The fake object store: label->value
+  map<uint64_t, std::string> handles_;   // The fake object store: handle->label
+  map<std::string, uint64_t> labels_;    // The fake object store: label->handle
   vector<uint64_t> found_objects_;  // The most recent objects searched.
   uint64_t next_handle_;            // Tracks handle assignment.
 
   // A helper to pull the value for a given attribute out of a serialized
   // template.
-  string GetValue(const vector<uint8_t>& attributes, CK_ATTRIBUTE_TYPE type) {
+  std::string GetValue(const vector<uint8_t>& attributes,
+                       CK_ATTRIBUTE_TYPE type) {
     Attributes parsed;
     parsed.Parse(attributes);
     CK_ATTRIBUTE_PTR array = parsed.attributes();
     for (CK_ULONG i = 0; i < parsed.num_attributes(); ++i) {
       if (array[i].type == type) {
         if (!array[i].pValue)
-          return string();
-        return string(reinterpret_cast<char*>(array[i].pValue),
+          return std::string();
+        return std::string(reinterpret_cast<char*>(array[i].pValue),
                       array[i].ulValueLen);
       }
     }
-    return string();
+    return std::string();
   }
 
   DISALLOW_COPY_AND_ASSIGN(KeyStoreTest);
@@ -547,7 +547,7 @@ TEST_F(KeyStoreTest, DeleteByPrefix) {
   const int kNumKeys = 110;  // Pkcs11KeyStore max is 100 for FindObjects.
   key_store.Write(true, kDefaultUser, "other1", SecureBlob("test"));
   for (int i = 0; i < kNumKeys; ++i) {
-    string key_name = string("prefix") + base::IntToString(i);
+    std::string key_name = std::string("prefix") + base::IntToString(i);
     key_store.Write(true, kDefaultUser, key_name, SecureBlob(key_name));
   }
   ASSERT_TRUE(key_store.Write(true, kDefaultUser, "other2",
@@ -556,7 +556,7 @@ TEST_F(KeyStoreTest, DeleteByPrefix) {
   EXPECT_TRUE(key_store.Read(true, kDefaultUser, "other1", &blob));
   EXPECT_TRUE(key_store.Read(true, kDefaultUser, "other2", &blob));
   for (int i = 0; i < kNumKeys; ++i) {
-    string key_name = string("prefix") + base::IntToString(i);
+    std::string key_name = std::string("prefix") + base::IntToString(i);
     EXPECT_FALSE(key_store.Read(true, kDefaultUser, key_name, &blob));
   }
 }
