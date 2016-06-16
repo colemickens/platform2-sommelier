@@ -542,13 +542,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   force_reload - Whether to force a reload to pick up any policy changes.
   void EnsureDevicePolicyLoaded(bool force_reload);
 
-  // Invokes given callback for every unmounted cryptohome
-  //
-  // Parameters
-  //   callback - Routine to invoke.
-  typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
-  void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
-
   // Same as MountCryptohome but specifies if the cryptohome directory should be
   // recreated on a fatal error
   //

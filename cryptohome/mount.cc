@@ -897,29 +897,6 @@ void Mount::EnsureDevicePolicyLoaded(bool force_reload) {
   }
 }
 
-void Mount::DoForEveryUnmountedCryptohome(
-    const CryptohomeCallback& cryptohome_cb) {
-  std::vector<std::string> entries;
-  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries))
-    return;
-  for (std::vector<std::string>::iterator it = entries.begin();
-       it != entries.end(); ++it) {
-    FilePath path(*it);
-    const std::string dir_name = path.BaseName().value();
-    if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
-      continue;
-    std::string vault_path = path.Append(kVaultDir).value();
-    std::string mount_path = path.Append(kMountDir).value();
-    if (!platform_->DirectoryExists(vault_path)) {
-      continue;
-    }
-    if (platform_->IsDirectoryMountedWith(mount_path, vault_path)) {
-      continue;
-    }
-    cryptohome_cb.Run(FilePath(vault_path));
-  }
-}
-
 bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
   // Make the following directories group accessible by other system daemons:
   //   {home_dir}
