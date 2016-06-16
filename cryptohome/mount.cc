@@ -277,9 +277,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   std::string username = credentials.username();
   if (username.compare(kIncognitoUser) == 0) {
     // TODO(fes): Have guest set error conditions?
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_NONE;
-    }
+    *mount_error = MOUNT_ERROR_NONE;
     return MountGuestCryptohome();
   }
 
@@ -325,19 +323,15 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   if (!mount_args.create_if_missing && !DoesCryptohomeExist(credentials)) {
-    if (mount_error) {
-      LOG(ERROR) << "Asked to mount nonexistent user";
-      *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
-    }
+    LOG(ERROR) << "Asked to mount nonexistent user";
+    *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
     return false;
   }
 
   bool created = false;
   if (!EnsureCryptohome(credentials, &created)) {
     LOG(ERROR) << "Error creating cryptohome.";
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
@@ -350,9 +344,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   int index = -1;
   if (!DecryptVaultKeyset(credentials, true, &vault_keyset, &serialized,
                           &index, &local_mount_error)) {
-    if (mount_error) {
-      *mount_error = local_mount_error;
-    }
+    *mount_error = local_mount_error;
     if (recreate_decrypt_fatal & (local_mount_error & MOUNT_ERROR_FATAL)) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
                  << "error.";
@@ -369,7 +361,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                                mount_error);
       // If the mount was successful, set the status to indicate that the
       // cryptohome was recreated.
-      if (local_result && mount_error) {
+      if (local_result) {
         *mount_error = MOUNT_ERROR_RECREATED;
       }
       return local_result;
@@ -408,9 +400,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   std::string key_signature, fnek_signature;
   if (!crypto_->AddKeyset(vault_keyset, &key_signature, &fnek_signature)) {
     LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
@@ -447,9 +437,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   mount_point_ = GetUserMountDirectory(obfuscated_username);
   if (!platform_->CreateDirectory(mount_point_)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point_;
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
@@ -458,18 +446,14 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (platform_->IsDirectoryMounted(mount_point_)) {
     LOG(ERROR) << "Mount point is busy: " << mount_point_
                << " for " << vault_path;
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
   // TODO(wad,ellyjones) Why does Mount take current_user_?
   if (!MountForUser(current_user_, vault_path, mount_point_, "ecryptfs",
                     ecryptfs_options)) {
     PLOG(ERROR) << "Cryptohome mount failed for vault " << vault_path;
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
@@ -492,9 +476,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   std::string user_home = GetMountedUserHomePath(obfuscated_username);
   if (!SetupGroupAccess(FilePath(user_home))) {
     UnmountAllForUser(current_user_);
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
@@ -507,9 +489,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << user_multi_home;
     UnmountAllForUser(current_user_);
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
@@ -520,8 +500,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << temp_multi_home;
     UnmountAllForUser(current_user_);
-    if (mount_error)
-      *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
@@ -532,18 +511,14 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     PLOG(ERROR) << "Bind mount failed: " << root_home << " -> "
                 << root_multi_home;
     UnmountAllForUser(current_user_);
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
 
   // TODO(ellyjones): Expose the path to the root directory over dbus for use by
   // daemons. We may also want to bind-mount it somewhere stable.
 
-  if (mount_error) {
-    *mount_error = MOUNT_ERROR_NONE;
-  }
+  *mount_error = MOUNT_ERROR_NONE;
 
   if (is_pkcs11_passkey_migration_required_) {
     credentials.GetPasskey(&legacy_pkcs11_passkey_);
