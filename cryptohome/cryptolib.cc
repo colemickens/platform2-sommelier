@@ -32,10 +32,6 @@ using std::string;
 
 namespace cryptohome {
 
-// The OpenSSL "magic" value that prefixes the encrypted data blob.  This is
-// only used in migrating legacy keysets, which were stored in this manner.
-const std::string kOpenSSLMagic = "Salted__";
-
 // The well-known exponent used when generating RSA keys.  Cryptohome only
 // generates one RSA key, which is the system-wide cryptohome key.  This is the
 // common public exponent.

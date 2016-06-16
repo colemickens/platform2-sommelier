@@ -45,10 +45,6 @@ using std::string;
 
 namespace cryptohome {
 
-// The OpenSSL "magic" value that prefixes the encrypted data blob.  This is
-// only used in migrating legacy keysets, which were stored in this manner.
-const std::string kOpenSSLMagic = "Salted__";
-
 // An upper bound on the amount of memory that we allow Scrypt to use when
 // performing key strengthening (32MB).  A large size is okay since we only use
 // Scrypt during the login process, before the user is logged in.  This memory

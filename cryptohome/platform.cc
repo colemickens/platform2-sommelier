@@ -101,9 +101,9 @@ const int kDefaultMountOptions = MS_NOEXEC | MS_NOSUID | MS_NODEV;
 const int kDefaultPwnameLength = 1024;
 const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
                                | S_IXOTH;
-const std::string kMtab = "/etc/mtab";
-const std::string kProcDir = "/proc";
-const std::string kPathTune2fs = "/sbin/tune2fs";
+const char kMtab[] = "/etc/mtab";
+const char kProcDir[] = "/proc";
+const char kPathTune2fs[] = "/sbin/tune2fs";
 
 Platform::Platform()
   : mtab_path_(kMtab) {
