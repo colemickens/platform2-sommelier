@@ -260,22 +260,42 @@ class ExampleMmapEvent : public StreamWriteable {
 // Produces a PERF_RECORD_MMAP2 event with the given file and mapping.
 class ExampleMmap2Event : public StreamWriteable {
  public:
+  typedef ExampleMmap2Event SelfT;
   // pid is used as both pid and tid.
-  ExampleMmap2Event(u32 pid, u64 start, u64 len, u64 pgoff, string filename,
-                    const SampleInfo& sample_id)
+  ExampleMmap2Event(u32 pid, u64 start, u64 len, u64 pgoff,
+                    string filename, const SampleInfo& sample_id)
+      : ExampleMmap2Event(pid, pid, start, len, pgoff, filename, sample_id) {}
+  ExampleMmap2Event(u32 pid, u32 tid, u64 start, u64 len, u64 pgoff,
+                    string filename, const SampleInfo& sample_id)
       : pid_(pid),
+        tid_(tid),
         start_(start),
         len_(len),
         pgoff_(pgoff),
+        maj_(6),
+        min_(7),
+        ino_(8),
         filename_(filename),
         sample_id_(sample_id) {
   }
+
+  SelfT& WithDeviceInfo(u32 maj, u32 min, u64 ino) {
+    maj_ = maj;
+    min_ = min;
+    ino_ = ino;
+    return *this;
+  }
+
   void WriteTo(std::ostream* out) const override;
  private:
   const u32 pid_;
+  const u32 tid_;
   const u64 start_;
   const u64 len_;
   const u64 pgoff_;
+  u32 maj_;
+  u32 min_;
+  u64 ino_;
   const string filename_;
   const SampleInfo sample_id_;
 };

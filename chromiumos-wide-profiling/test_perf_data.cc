@@ -282,13 +282,14 @@ void ExampleMmap2Event::WriteTo(std::ostream* out) const {
       .misc = 0,
       .size = static_cast<u16>(event_size),
     },
-    .pid = pid_, .tid = pid_,
+    .pid = pid_,
+    .tid = tid_,
     .start = start_,
     .len = len_,
     .pgoff = pgoff_,
-    .maj = 6,
-    .min = 7,
-    .ino = 8,
+    .maj = maj_,
+    .min = min_,
+    .ino = ino_,
     .ino_generation = 9,
     .prot = 1|2,  // == PROT_READ | PROT_WRITE
     .flags = 2,   // == MAP_PRIVATE

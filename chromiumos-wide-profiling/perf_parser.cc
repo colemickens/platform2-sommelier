@@ -156,6 +156,11 @@ bool PerfParser::ProcessEvents() {
         parsed_event.num_samples_in_mmap_region = 0;
         DSOInfo dso_info;
         dso_info.name = event.mmap_event().filename();
+        if (event.header().type() == PERF_RECORD_MMAP2) {
+          dso_info.maj = event.mmap_event().maj();
+          dso_info.min = event.mmap_event().min();
+          dso_info.ino = event.mmap_event().ino();
+        }
         name_to_dso_.emplace(dso_info.name, dso_info);
         break;
       }

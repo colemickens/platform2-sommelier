@@ -21,6 +21,9 @@ using PidTid = std::pair<u32, u32>;
 struct DSOInfo {
   string name;
   string build_id;
+  u32 maj = 0;
+  u32 min = 0;
+  u64 ino = 0;
   bool hit = false;  // Have we seen any samples in this DSO?
   std::set<PidTid> threads;  // Set of pids this DSO had samples in.
 };
