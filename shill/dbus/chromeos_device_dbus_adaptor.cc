@@ -180,7 +180,7 @@ bool ChromeosDeviceDBusAdaptor::ProposeScan(brillo::ErrorPtr* error) {
   // User scan requests, which are the likely source of DBus requests, probably
   // aren't time-critical so we might as well perform a complete scan.  It
   // also provides a failsafe for progressive scan.
-  device_->Scan(Device::kFullScan, &e, __func__);
+  device_->Scan(&e, __func__);
 
   return !e.ToChromeosError(error);
 }

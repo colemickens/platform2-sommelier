@@ -175,8 +175,7 @@ class Cellular : public Device, public RPCTaskDelegate {
              const EnabledStateChangedCallback& callback) override;
   void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
   void LinkEvent(unsigned int flags, unsigned int change) override;
-  void Scan(ScanType /*scan_type*/, Error* error,
-            const std::string& /*reason*/) override;
+  void Scan(Error* error, const std::string& /*reason*/) override;
   void RegisterOnNetwork(const std::string& network_id,
                          Error* error,
                          const ResultCallback& callback) override;

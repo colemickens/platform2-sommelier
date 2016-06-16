@@ -126,8 +126,7 @@ void WiMax::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   }
 }
 
-void WiMax::Scan(ScanType /*scan_type*/, Error* error,
-                 const string& /*reason*/) {
+void WiMax::Scan(Error* error, const string& /*reason*/) {
   SLOG(this, 2) << __func__;
   if (scanning_) {
     Error::PopulateAndLog(

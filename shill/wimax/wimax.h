@@ -53,8 +53,7 @@ class WiMax : public Device {
   void Start(Error* error,
              const EnabledStateChangedCallback& callback) override;
   void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
-  void Scan(ScanType /*scan_type*/, Error* error,
-            const std::string& /*reason*/) override;
+  void Scan(Error* error, const std::string& /*reason*/) override;
 
   virtual void ConnectTo(const WiMaxServiceRefPtr& service, Error* error);
   virtual void DisconnectFrom(const ServiceRefPtr& service, Error* error);

@@ -2602,12 +2602,11 @@ void Manager::RecheckPortalOnService(const ServiceRefPtr& service) {
   }
 }
 
-void Manager::RequestScan(Device::ScanType scan_type,
-                          const string& technology, Error* error) {
+void Manager::RequestScan(const string& technology, Error* error) {
   if (technology == kTypeWifi || technology == "") {
     for (const auto& wifi_device : FilterByTechnology(Technology::kWifi)) {
       metrics_->NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
-      wifi_device->Scan(scan_type, error, __func__);
+      wifi_device->Scan(error, __func__);
     }
   } else {
     // TODO(quiche): support scanning for other technologies?

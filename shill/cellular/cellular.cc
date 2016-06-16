@@ -533,8 +533,7 @@ void Cellular::OnAfterResume() {
   Device::OnAfterResume();
 }
 
-void Cellular::Scan(ScanType /*scan_type*/, Error* error,
-                    const string& /*reason*/) {
+void Cellular::Scan(Error* error, const string& /*reason*/) {
   SLOG(this, 2) << __func__;
   CHECK(error);
   if (proposed_scan_in_progress_) {

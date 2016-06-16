@@ -255,7 +255,7 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
                 << std::dec << std::noshowbase;
 }
 
-void Device::Scan(ScanType scan_type, Error* error, const string& reason) {
+void Device::Scan(Error* error, const string& reason) {
   SLOG(this, 2) << __func__ << " [Device] on " << link_name() << " from "
                 << reason;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,

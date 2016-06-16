@@ -247,7 +247,7 @@ Status ManagerBinderAdaptor::RequestScan(int32_t type) {
 
   SLOG(this, 2) << __func__ << ": " << technology;
   Error e;
-  manager_->RequestScan(Device::kFullScan, technology, &e);
+  manager_->RequestScan(technology, &e);
   return e.ToBinderStatus();
 }
 

@@ -144,7 +144,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void Start(Error* error,
              const EnabledStateChangedCallback& callback) override;
   void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
-  void Scan(ScanType scan_type, Error* error, const std::string& reason) override;
+  void Scan(Error* error, const std::string& reason) override;
   void SetSchedScan(bool enable, Error* error) override;
   // Callback for system suspend.
   void OnBeforeSuspend(const ResultCallback& callback) override;
@@ -521,7 +521,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void AbortScan();
   // Abort any current scan and start a new scan of type |type| if shill is
   // currently idle.
-  void InitiateScan(ScanType scan_type);
+  void InitiateScan();
   // Suppresses manager auto-connects and flushes supplicant BSS cache, then
   // triggers the passive scan. Meant for use in dark resume where we want to
   // ensure that shill and supplicant do not use stale information to launch

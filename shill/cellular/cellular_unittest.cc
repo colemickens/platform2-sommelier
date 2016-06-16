@@ -2011,7 +2011,7 @@ TEST_F(CellularTest, ScanImmediateFailure) {
   // Warning: The test loses all references to the proxies when |InitProxies| is
   // called.
   GetCapabilityGSM()->InitProxies();
-  device_->Scan(Device::kFullScan, &error, "");
+  device_->Scan(&error, "");
   EXPECT_TRUE(error.IsFailure());
   EXPECT_FALSE(device_->scanning_);
   EXPECT_EQ(kTestNetworksCellular, device_->found_networks());
@@ -2031,7 +2031,7 @@ TEST_F(CellularTest, ScanAsynchronousFailure) {
   // Warning: The test loses all references to the proxies when |InitProxies| is
   // called.
   GetCapabilityGSM()->InitProxies();
-  device_->Scan(Device::kFullScan, &error, "");
+  device_->Scan(&error, "");
   EXPECT_TRUE(error.IsOngoing());
   EXPECT_TRUE(device_->scanning_);
 
@@ -2056,7 +2056,7 @@ TEST_F(CellularTest, ScanSuccess) {
   // Warning: The test loses all references to the proxies when |InitProxies| is
   // called.
   GetCapabilityGSM()->InitProxies();
-  device_->Scan(Device::kFullScan, &error, "");
+  device_->Scan(&error, "");
   EXPECT_TRUE(error.IsOngoing());
   EXPECT_TRUE(device_->scanning_);
 

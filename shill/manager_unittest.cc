@@ -1616,13 +1616,13 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[1].get());
     EXPECT_CALL(*mock_devices_[0], technology())
         .WillRepeatedly(Return(Technology::kWifi));
-    EXPECT_CALL(*mock_devices_[0], Scan(Device::kFullScan, _, _));
+    EXPECT_CALL(*mock_devices_[0], Scan(_, _));
     EXPECT_CALL(*mock_devices_[1], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
-    EXPECT_CALL(*mock_devices_[1], Scan(_, _, _)).Times(0);
+    EXPECT_CALL(*mock_devices_[1], Scan(_, _)).Times(0);
     EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
         Metrics::kUserInitiatedEventWifiScan)).Times(1);
-    manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
+    manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     manager()->DeregisterDevice(mock_devices_[1].get());
     Mock::VerifyAndClearExpectations(mock_devices_[0].get());
@@ -1633,8 +1633,8 @@ TEST_F(ManagerTest, RequestScan) {
         .WillRepeatedly(Return(Technology::kWifi));
     EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
         Metrics::kUserInitiatedEventWifiScan)).Times(1);
-    EXPECT_CALL(*mock_devices_[0], Scan(Device::kFullScan, _, _));
-    manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
+    EXPECT_CALL(*mock_devices_[0], Scan(_, _));
+    manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     Mock::VerifyAndClearExpectations(mock_devices_[0].get());
 
@@ -1643,15 +1643,15 @@ TEST_F(ManagerTest, RequestScan) {
         .WillRepeatedly(Return(Technology::kUnknown));
     EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
         Metrics::kUserInitiatedEventWifiScan)).Times(0);
-    EXPECT_CALL(*mock_devices_[0], Scan(_, _, _)).Times(0);
-    manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
+    EXPECT_CALL(*mock_devices_[0], Scan(_, _)).Times(0);
+    manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     Mock::VerifyAndClearExpectations(mock_devices_[0].get());
   }
 
   {
     Error error;
-    manager()->RequestScan(Device::kFullScan, "bogus_device_type", &error);
+    manager()->RequestScan("bogus_device_type", &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }

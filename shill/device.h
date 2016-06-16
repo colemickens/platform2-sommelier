@@ -62,8 +62,6 @@ class TrafficMonitor;
 // this class.
 class Device : public base::RefCounted<Device> {
  public:
-  enum ScanType { kFullScan };
-
   // A constructor for the Device object
   Device(ControlInterface* control_interface,
          EventDispatcher* dispatcher,
@@ -121,8 +119,7 @@ class Device : public base::RefCounted<Device> {
   virtual void LinkEvent(unsigned flags, unsigned change);
 
   // The default implementation sets |error| to kNotSupported.
-  virtual void Scan(ScanType scan_type, Error* error,
-                    const std::string& reason);
+  virtual void Scan(Error* error, const std::string& reason);
   // The default implementation sets |error| to kNotSupported.
   virtual void SetSchedScan(bool enable, Error* error);
   virtual void RegisterOnNetwork(const std::string& network_id, Error* error,

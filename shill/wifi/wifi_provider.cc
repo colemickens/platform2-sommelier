@@ -161,7 +161,7 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
   if (created_hidden_service &&
       !manager_->IsTechnologyConnected(Technology::kWifi)) {
     Error unused_error;
-    manager_->RequestScan(Device::kFullScan, kTypeWifi, &unused_error);
+    manager_->RequestScan(kTypeWifi, &unused_error);
   }
 
   ReportRememberedNetworkCount();

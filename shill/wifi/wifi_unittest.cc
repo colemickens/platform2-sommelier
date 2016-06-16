@@ -917,7 +917,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->ScanTimerHandler();
   }
   void TriggerScan() {
-    wifi_->Scan(Device::kFullScan, nullptr, __func__);
+    wifi_->Scan(nullptr, __func__);
   }
   const WiFiServiceRefPtr& GetCurrentService() {
     return wifi_->current_service_;
@@ -1114,7 +1114,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->RemoveSupplicantNetworks();
   }
   void InitiateScan() {
-    wifi_->InitiateScan(Device::kFullScan);
+    wifi_->InitiateScan();
   }
   void InitiateScanInDarkResume(const WiFi::FreqSet& freqs) {
     wifi_->InitiateScanInDarkResume(freqs);

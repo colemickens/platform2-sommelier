@@ -209,8 +209,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // |service|.
   virtual void RecheckPortalOnService(const ServiceRefPtr& service);
 
-  virtual void RequestScan(Device::ScanType scan_type,
-                           const std::string& technology, Error* error);
+  virtual void RequestScan(const std::string& technology, Error* error);
   // Configure scheduled scan for wifi devices.
   virtual void SetSchedScan(bool enable, Error* error);
   std::string GetTechnologyOrder();

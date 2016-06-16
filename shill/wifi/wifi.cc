@@ -323,7 +323,7 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 }
 
-void WiFi::Scan(ScanType /* scan_type */, Error* /*error*/, const string& reason) {
+void WiFi::Scan(Error* /*error*/, const string& reason) {
   if ((scan_state_ != kScanIdle) ||
       (current_service_.get() && current_service_->IsConnecting())) {
     SLOG(this, 2) << "Ignoring scan request while scanning or connecting.";
@@ -820,7 +820,7 @@ void WiFi::CurrentBSSChanged(const string& new_bss) {
       // We may want to reconsider this immediate scan, if/when shill
       // takes greater responsibility for scanning (vs. letting
       // supplicant handle most of it).
-      Scan(kFullScan, nullptr, __func__);
+      Scan(nullptr, __func__);
     }
   } else {
     HandleRoam(new_bss);
@@ -1882,7 +1882,7 @@ void WiFi::OnAfterResume() {
   need_bss_flush_ = true;
 
   if (!IsConnectedToCurrentService()) {
-    InitiateScan(kFullScan);
+    InitiateScan();
   }
 
   // Since we stopped the scan timer before suspending, start it again here.
@@ -1899,7 +1899,7 @@ void WiFi::AbortScan() {
   SetScanState(kScanIdle, kScanMethodNone, __func__);
 }
 
-void WiFi::InitiateScan(ScanType scan_type) {
+void WiFi::InitiateScan() {
   LOG(INFO) << __func__;
   // Abort any current scan (at the shill-level; let any request that's
   // already gone out finish) since we don't know when it started.
@@ -1907,7 +1907,7 @@ void WiFi::InitiateScan(ScanType scan_type) {
 
   if (IsIdle()) {
     // Not scanning/connecting/connected, so let's get things rolling.
-    Scan(scan_type, nullptr, __func__);
+    Scan(nullptr, __func__);
     RestartFastScanAttempts();
   } else {
     SLOG(this, 1) << __func__
@@ -2063,7 +2063,7 @@ void WiFi::ScanTimerHandler() {
     return;
   }
   if (scan_state_ == kScanIdle && IsIdle()) {
-    Scan(kFullScan, nullptr, __func__);
+    Scan(nullptr, __func__);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
     }
@@ -2341,7 +2341,7 @@ void WiFi::ConnectToSupplicant() {
                << "May be running an older version of wpa_supplicant.";
   }
 
-  Scan(kFullScan, nullptr, __func__);
+  Scan(nullptr, __func__);
   StartScanTimer();
 }
 
