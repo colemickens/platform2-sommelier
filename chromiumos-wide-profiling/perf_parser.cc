@@ -431,6 +431,7 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
     uint32_t pid,
     uint64_t* new_ip,
     ParsedEvent::DSOAndOffset* dso_and_offset) {
+  DCHECK(dso_and_offset);
   // Attempt to find the synthetic address of the IP sample in this order:
   // 1. Address space of the kernel.
   // 2. Address space of its own process.
@@ -445,22 +446,21 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
   // TODO(asharif): What should we do when we cannot map a SAMPLE event?
 
   if (mapped) {
-    if (dso_and_offset) {
-      uint64_t id = UINT64_MAX;
-      CHECK(mapper->GetMappedIDAndOffset(ip, &id, &dso_and_offset->offset_));
-      // Make sure the ID points to a valid event.
-      CHECK_LE(id, parsed_events_.size());
-      ParsedEvent& parsed_event = parsed_events_[id];
-      const auto& event = parsed_event.event_ptr;
-      DCHECK(event->has_mmap_event()) << "Expected MMAP or MMAP2 event";
+    uint64_t id = UINT64_MAX;
+    CHECK(mapper->GetMappedIDAndOffset(ip, &id, &dso_and_offset->offset_));
+    // Make sure the ID points to a valid event.
+    CHECK_LE(id, parsed_events_.size());
+    ParsedEvent& parsed_event = parsed_events_[id];
+    const auto& event = parsed_event.event_ptr;
+    DCHECK(event->has_mmap_event()) << "Expected MMAP or MMAP2 event";
 
-      // Find the mmap DSO filename in the set of known DSO names.
-      auto dso_iter = name_to_dso_.find(event->mmap_event().filename());
-      CHECK(dso_iter != name_to_dso_.end());
-      dso_and_offset->dso_info_ = &dso_iter->second;
+    // Find the mmap DSO filename in the set of known DSO names.
+    auto dso_iter = name_to_dso_.find(event->mmap_event().filename());
+    CHECK(dso_iter != name_to_dso_.end());
+    dso_and_offset->dso_info_ = &dso_iter->second;
 
-      ++parsed_event.num_samples_in_mmap_region;
-    }
+    ++parsed_event.num_samples_in_mmap_region;
+
     if (options_.do_remap) {
       if (GetPageAlignedOffset(mapped_addr) != GetPageAlignedOffset(ip)) {
         LOG(ERROR) << "Remapped address " << std::hex << mapped_addr << " "
