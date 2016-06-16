@@ -291,7 +291,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
 
   // Map the event IP itself.
   if (!MapIPAndPidAndGetNameAndOffset(sample_info.ip(),
-                                      sample_info.pid(),
+                                      pidtid,
                                       &remapped_event_ip,
                                       &parsed_event->dso_and_offset)) {
     mapping_failed = true;
@@ -301,7 +301,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
 
   if (sample_info.callchain_size() &&
       !MapCallchain(sample_info.ip(),
-                    sample_info.pid(),
+                    pidtid,
                     unmapped_event_ip,
                     sample_info.mutable_callchain(),
                     parsed_event)) {
@@ -309,7 +309,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   }
 
   if (sample_info.branch_stack_size() &&
-      !MapBranchStack(sample_info.pid(),
+      !MapBranchStack(pidtid,
                       sample_info.mutable_branch_stack(),
                       parsed_event)) {
     mapping_failed = true;
@@ -319,7 +319,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
 }
 
 bool PerfParser::MapCallchain(const uint64_t ip,
-                              const uint32_t pid,
+                              const PidTid pidtid,
                               const uint64_t original_event_addr,
                               RepeatedField<uint64>* callchain,
                               ParsedEvent* parsed_event) {
@@ -351,7 +351,7 @@ bool PerfParser::MapCallchain(const uint64_t ip,
     uint64_t mapped_addr = 0;
     if (!MapIPAndPidAndGetNameAndOffset(
             entry,
-            pid,
+            pidtid,
             &mapped_addr,
             &parsed_event->callchain[num_entries_mapped++])) {
       mapping_failed = true;
@@ -367,7 +367,7 @@ bool PerfParser::MapCallchain(const uint64_t ip,
 }
 
 bool PerfParser::MapBranchStack(
-    const uint32_t pid,
+    const PidTid pidtid,
     RepeatedPtrField<BranchStackEntry>* branch_stack,
     ParsedEvent* parsed_event) {
   if (!branch_stack) {
@@ -404,7 +404,7 @@ bool PerfParser::MapBranchStack(
 
     uint64_t from_mapped = 0;
     if (!MapIPAndPidAndGetNameAndOffset(entry->from_ip(),
-                                        pid,
+                                        pidtid,
                                         &from_mapped,
                                         &parsed_entry.from)) {
       return false;
@@ -413,7 +413,7 @@ bool PerfParser::MapBranchStack(
 
     uint64_t to_mapped = 0;
     if (!MapIPAndPidAndGetNameAndOffset(entry->to_ip(),
-                                        pid,
+                                        pidtid,
                                         &to_mapped,
                                         &parsed_entry.to)) {
       return false;
@@ -428,7 +428,7 @@ bool PerfParser::MapBranchStack(
 
 bool PerfParser::MapIPAndPidAndGetNameAndOffset(
     uint64_t ip,
-    uint32_t pid,
+    PidTid pidtid,
     uint64_t* new_ip,
     ParsedEvent::DSOAndOffset* dso_and_offset) {
   DCHECK(dso_and_offset);
@@ -441,7 +441,7 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
 
   // Sometimes the first event we see is a SAMPLE event and we don't have the
   // time to create an address mapper for a process. Example, for pid 0.
-  AddressMapper* mapper = GetOrCreateProcessMapper(pid).first;
+  AddressMapper* mapper = GetOrCreateProcessMapper(pidtid.first).first;
   bool mapped = mapper->GetMappedAddress(ip, &mapped_addr);
   // TODO(asharif): What should we do when we cannot map a SAMPLE event?
 
@@ -459,6 +459,8 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
     CHECK(dso_iter != name_to_dso_.end());
     dso_and_offset->dso_info_ = &dso_iter->second;
 
+    dso_iter->second.hit = true;
+    dso_iter->second.threads.insert(pidtid);
     ++parsed_event.num_samples_in_mmap_region;
 
     if (options_.do_remap) {

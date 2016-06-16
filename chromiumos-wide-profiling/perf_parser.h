@@ -18,6 +18,7 @@
 
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/dso.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -29,13 +30,6 @@ class PerfDataProto_CommEvent;
 class PerfDataProto_ForkEvent;
 class PerfDataProto_MMapEvent;
 class PerfDataProto_PerfEvent;
-
-// A struct containing all relevant info for a mapped DSO, independent of any
-// samples.
-struct DSOInfo {
-  string name;
-  string build_id;
-};
 
 struct ParsedEvent {
   // TODO(sque): Turn this struct into a class to privatize member variables.
@@ -190,9 +184,6 @@ class PerfParser {
   }
 
  private:
-  // Defines a type for a pid:tid pair.
-  typedef std::pair<uint32_t, uint32_t> PidTid;
-
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
 
@@ -212,7 +203,7 @@ class PerfParser {
 
   // Calls MapIPAndPidAndGetNameAndOffset() on the callchain of a sample event.
   bool MapCallchain(const uint64_t ip,
-                    const uint32_t pid,
+                    const PidTid pidtid,
                     uint64_t original_event_addr,
                     RepeatedField<uint64>* callchain,
                     ParsedEvent* parsed_event);
@@ -220,7 +211,7 @@ class PerfParser {
   // Trims the branch stack for null entries and calls
   // MapIPAndPidAndGetNameAndOffset() on each entry.
   bool MapBranchStack(
-      const uint32_t pid,
+      const PidTid pidtid,
       RepeatedPtrField<PerfDataProto_BranchStackEntry>* branch_stack,
       ParsedEvent* parsed_event);
 
@@ -230,7 +221,7 @@ class PerfParser {
   // obsolete API.
   bool MapIPAndPidAndGetNameAndOffset(
       uint64_t ip,
-      uint32_t pid,
+      const PidTid pidtid,
       uint64_t* new_ip,
       ParsedEvent::DSOAndOffset* dso_and_offset);
 

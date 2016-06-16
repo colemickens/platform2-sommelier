@@ -5,10 +5,25 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_DSO_H_
 #define CHROMIUMOS_WIDE_PROFILING_DSO_H_
 
+#include <set>
+#include <utility>
+
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/data_reader.h"
 
 namespace quipper {
+
+// Defines a type for a pid:tid pair.
+using PidTid = std::pair<u32, u32>;
+
+// A struct containing all relevant info for a mapped DSO, independent of any
+// samples.
+struct DSOInfo {
+  string name;
+  string build_id;
+  bool hit = false;  // Have we seen any samples in this DSO?
+  std::set<PidTid> threads;  // Set of pids this DSO had samples in.
+};
 
 void InitializeLibelf();
 bool ReadElfBuildId(string filename, string* buildid);
