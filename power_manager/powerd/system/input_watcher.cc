@@ -147,20 +147,22 @@ bool InputWatcher::Init(
 
   udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
-  if (!base::DirectoryExists(dev_input_path_) ||
-      access(dev_input_path_.value().c_str(), R_OK|X_OK) != 0) {
-    LOG(ERROR) << dev_input_path_.value() << " isn't a readable directory";
-    return false;
+  if (base::DirectoryExists(dev_input_path_)) {
+    if (access(dev_input_path_.value().c_str(), R_OK|X_OK) != 0) {
+      LOG(ERROR) << dev_input_path_.value() << " isn't readable";
+      return false;
+    }
+    base::FileEnumerator enumerator(
+        dev_input_path_, false, base::FileEnumerator::FILES);
+    for (base::FilePath path = enumerator.Next(); !path.empty();
+         path = enumerator.Next()) {
+      const std::string name = path.BaseName().value();
+      int num = -1;
+      if (GetInputNumber(name, &num))
+        HandleAddedInput(name, num);
+    }
   }
-  base::FileEnumerator enumerator(
-      dev_input_path_, false, base::FileEnumerator::FILES);
-  for (base::FilePath path = enumerator.Next(); !path.empty();
-       path = enumerator.Next()) {
-    const std::string name = path.BaseName().value();
-    int num = -1;
-    if (GetInputNumber(name, &num))
-      HandleAddedInput(name, num);
-  }
+
   return true;
 }
 

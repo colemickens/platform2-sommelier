@@ -529,5 +529,27 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
                                           dead_ptr));
 }
 
+TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {
+  // /dev/input may not exist on systems that lack lid switches or power
+  // buttons: http://b/29239109. Check that InputWatcher doesn't report failure
+  // in this case.
+  use_lid_pref_ = 0;
+  dev_input_path_ = base::FilePath("nonexistent/path");
+  Init();
+  EXPECT_EQ(LID_NOT_PRESENT, input_watcher_->QueryLidState());
+  EXPECT_EQ(TABLET_MODE_OFF, input_watcher_->GetTabletMode());
+  EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
+}
+
+TEST_F(InputWatcherTest, DevInputDirectoryMustBeReadable) {
+  // Init() should report failure if /dev/input exists but isn't readable.
+  ASSERT_TRUE(base::SetPosixFilePermissions(dev_input_path_, 0000));
+  InputWatcher input_watcher;
+  input_watcher.set_dev_input_path_for_testing(dev_input_path_);
+  input_watcher.set_sys_class_input_path_for_testing(sys_class_input_path_);
+  EXPECT_FALSE(input_watcher.Init(
+      std::move(scoped_device_factory_), &prefs_, &udev_));
+}
+
 }  // namespace system
 }  // namespace power_manager
