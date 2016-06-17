@@ -310,7 +310,7 @@ TEST_F(MountTest, MountCryptohomeNoPrivileges) {
                           Return(true)));
 
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(0));
+    .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
@@ -354,9 +354,9 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
 
   EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
     .Times(2)
-    .WillRepeatedly(Return(0));
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(0));
+    .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
@@ -389,7 +389,7 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(0));
+    .WillOnce(Return(true));
   EXPECT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -843,9 +843,9 @@ TEST_F(MountTest, MountCryptohome) {
 
   EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
     .Times(2)
-    .WillRepeatedly(Return(0));
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillRepeatedly(Return(0));
+    .WillRepeatedly(Return(true));
 
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
@@ -903,6 +903,9 @@ TEST_F(MountTest, MountCryptohomeChapsKey) {
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid);
 
+  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
@@ -976,6 +979,9 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid);
 
+  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
@@ -1025,6 +1031,9 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid);
 
+  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
@@ -1102,6 +1111,9 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)))
     .WillRepeatedly(Return(true));
 
+  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
     .WillOnce(Return(false));  // mount precondition
   EXPECT_CALL(platform_, Mount(_, _, _, _))
@@ -1152,6 +1164,9 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 
   // Mount()
   MountError error;
+  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
@@ -1600,6 +1615,9 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
@@ -1772,7 +1790,7 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, Unmount("/home/chronos/user", _, _))
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
-      .WillRepeatedly(Return(0));
+      .WillRepeatedly(Return(true));
   EXPECT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -1854,7 +1872,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   EXPECT_CALL(platform_, Unmount("/home/chronos/user", _, _))
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
-      .WillRepeatedly(Return(0));
+      .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -1973,9 +1991,9 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
 
   EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
     .Times(2)
-    .WillRepeatedly(Return(0));
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(0));
+    .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, CreateDirectory(user->vault_path))
     .Times(0);
@@ -2027,7 +2045,7 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   EXPECT_CALL(platform_, Unmount("/home/chronos/user", _, _))
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
-      .WillRepeatedly(Return(0));
+      .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -2122,7 +2140,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   EXPECT_CALL(platform_, Unmount("/home/chronos/user", _, _))
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
-      .WillRepeatedly(Return(0));
+      .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -2217,7 +2235,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_, Unmount("/home/chronos/user", _, _))
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
-      .WillRepeatedly(Return(0));
+      .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -2226,7 +2244,7 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownUnmountNoRemoveTest) {
   // known owner, no stale cryptohomes are removed while unmounting.
   set_policy(false, "", true);
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(0));
+    .WillOnce(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -2257,7 +2275,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
     .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(0));
+    .WillOnce(Return(true));
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
@@ -2288,7 +2306,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
     .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
   EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(0));
+    .WillOnce(Return(true));
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }

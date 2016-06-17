@@ -146,9 +146,9 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(DeleteFileDurable, bool(const std::string&, bool));
   MOCK_METHOD1(DirectoryExists, bool(const std::string&));
   MOCK_METHOD1(CreateDirectory, bool(const std::string&));
-  MOCK_METHOD0(ClearUserKeyring, long(void));  // NOLINT(runtime/int)
+  MOCK_METHOD0(ClearUserKeyring, bool(void));
   MOCK_METHOD3(AddEcryptfsAuthToken,
-               long(const brillo::SecureBlob&,  // NOLINT(runtime/int)
+               bool(const brillo::SecureBlob&,
                     const std::string&,
                     const brillo::SecureBlob&));
   MOCK_METHOD3(GetFileEnumerator, FileEnumerator*(const std::string&,

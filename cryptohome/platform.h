@@ -479,7 +479,7 @@ class Platform {
 
 
   // Clears the kernel-managed user keyring
-  virtual long ClearUserKeyring();  // NOLINT(runtime/int)
+  virtual bool ClearUserKeyring();
 
   // Creates an ecryptfs auth token and installs it in the kernel keyring.
   //
@@ -487,7 +487,7 @@ class Platform {
   //   key - The key to add
   //   key_sig - The key's (ascii) signature
   //   salt - The salt
-  virtual long AddEcryptfsAuthToken(const brillo::SecureBlob& key,  // NOLINT
+  virtual bool AddEcryptfsAuthToken(const brillo::SecureBlob& key,
                                     const std::string& key_sig,
                                     const brillo::SecureBlob& salt);
 

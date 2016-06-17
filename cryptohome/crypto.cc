@@ -186,39 +186,6 @@ bool Crypto::GetOrCreateSalt(const base::FilePath& path,
   return true;
 }
 
-bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
-                       std::string* key_signature,
-                       std::string* filename_key_signature) const {
-  // Add the File Encryption key (FEK) from the vault keyset.  This is the key
-  // that is used to encrypt the file contents when it is persisted to the lower
-  // filesystem by eCryptfs.
-  *key_signature = CryptoLib::BlobToHex(vault_keyset.fek_sig());
-  if (!PushVaultKey(vault_keyset.fek(), *key_signature,
-                    vault_keyset.fek_salt())) {
-    LOG(ERROR) << "Couldn't add ecryptfs key to keyring";
-    return false;
-  }
-
-  // Add the File Name Encryption Key (FNEK) from the vault keyset.  This is the
-  // key that is used to encrypt the file name when it is persisted to the lower
-  // filesystem by eCryptfs.
-  *filename_key_signature = CryptoLib::BlobToHex(vault_keyset.fnek_sig());
-  if (!PushVaultKey(vault_keyset.fnek(), *filename_key_signature,
-                    vault_keyset.fnek_salt())) {
-    LOG(ERROR) << "Couldn't add ecryptfs filename encryption key to keyring";
-    return false;
-  }
-
-  return true;
-}
-
-void Crypto::ClearKeyset() const {
-  errno = 0;
-  long ret = platform_->ClearUserKeyring();  // NOLINT(runtime/int)
-  if (ret == -1)
-    LOG(ERROR) << "Failed to clear user keyring: " << errno;
-}
-
 Crypto::CryptoError Crypto::TpmErrorToCrypto(
     Tpm::TpmRetryAction retry_action) const {
   switch (retry_action) {
@@ -235,13 +202,6 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
     default:
       return Crypto::CE_NONE;
   }
-}
-
-bool Crypto::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
-                          const SecureBlob& salt) const {
-  if (platform_->AddEcryptfsAuthToken(key, key_sig, salt) < 0)
-    LOG(ERROR) << "PushVaultKey failed";
-  return true;
 }
 
 void Crypto::PasswordToPasskey(const char* password,

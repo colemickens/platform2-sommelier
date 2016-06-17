@@ -345,6 +345,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
                                int index,
                                SerializedVaultKeyset* encrypted_keyset) const;
 
+  virtual bool AddEcryptfsAuthToken(const VaultKeyset& vault_keyset,
+                       std::string* key_signature,
+                       std::string* filename_key_signature) const;
+
   virtual bool LoadVaultKeysetForUser(
       const std::string& obfuscated_username,
       int index,

@@ -98,22 +98,6 @@ class Crypto {
                                bool force,
                                brillo::SecureBlob* salt) const;
 
-  // Adds the specified key to the ecryptfs keyring so that the cryptohome can
-  // be mounted.  Clears the user keyring first.
-  //
-  // Parameters
-  //   vault_keyset - The keyset to add
-  //   key_signature (OUT) - The signature of the cryptohome key that should be
-  //     used in subsequent calls to mount(2)
-  //   filename_key_signature (OUT) - The signature of the cryptohome filename
-  //     encryption key that should be used in subsequent calls to mount(2)
-  virtual bool AddKeyset(const VaultKeyset& vault_keyset,
-                         std::string* key_signature,
-                         std::string* filename_key_signature) const;
-
-  // Clears the user's kernel keyring
-  virtual void ClearKeyset() const;
-
   // Converts a null-terminated password to a passkey (ascii-encoded first half
   // of the salted SHA1 hash of the password).
   //
@@ -215,16 +199,6 @@ class Crypto {
  private:
   // Converts a TPM error to a Crypto error
   CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) const;
-
-  // Adds the specified key to the user keyring
-  //
-  // Parameters
-  //   key - The key to add
-  //   key_sig - The key's (ascii) signature
-  //   salt - The salt
-  bool PushVaultKey(const brillo::SecureBlob& key,
-                    const std::string& key_sig,
-                    const brillo::SecureBlob& salt) const;
 
   bool EncryptTPM(const VaultKeyset& vault_keyset,
                   const brillo::SecureBlob& key,

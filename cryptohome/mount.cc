@@ -268,6 +268,34 @@ bool Mount::MountCryptohome(const Credentials& credentials,
   return result;
 }
 
+bool Mount::AddEcryptfsAuthToken(const VaultKeyset& vault_keyset,
+                                 std::string* key_signature,
+                                 std::string* filename_key_signature) const {
+  // Add the File Encryption key (FEK) from the vault keyset.  This is the key
+  // that is used to encrypt the file contents when it is persisted to the lower
+  // filesystem by eCryptfs.
+  *key_signature = CryptoLib::BlobToHex(vault_keyset.fek_sig());
+  if (!platform_->AddEcryptfsAuthToken(
+        vault_keyset.fek(), *key_signature,
+        vault_keyset.fek_salt())) {
+    LOG(ERROR) << "Couldn't add ecryptfs key to keyring";
+    return false;
+  }
+
+  // Add the File Name Encryption Key (FNEK) from the vault keyset.  This is the
+  // key that is used to encrypt the file name when it is persisted to the lower
+  // filesystem by eCryptfs.
+  *filename_key_signature = CryptoLib::BlobToHex(vault_keyset.fnek_sig());
+  if (!platform_->AddEcryptfsAuthToken(
+        vault_keyset.fnek(), *filename_key_signature,
+        vault_keyset.fnek_salt())) {
+    LOG(ERROR) << "Couldn't add ecryptfs filename encryption key to keyring";
+    return false;
+  }
+
+  return true;
+}
+
 bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                  const Mount::MountArgs& mount_args,
                                  bool recreate_decrypt_fatal,
@@ -378,7 +406,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   SecureBlob local_chaps_key(vault_keyset.chaps_key().begin(),
                              vault_keyset.chaps_key().end());
   pkcs11_token_auth_data_.swap(local_chaps_key);
-  crypto_->ClearKeyset();
+  platform_->ClearUserKeyring();
 
   // Before we use the matching keyset, make sure it isn't being misused.
   // Note, privileges don't protect against information leakage, they are
@@ -398,7 +426,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // Add the decrypted key to the keyring so that ecryptfs can use it.
   std::string key_signature, fnek_signature;
-  if (!crypto_->AddKeyset(vault_keyset, &key_signature, &fnek_signature)) {
+  if (!AddEcryptfsAuthToken(vault_keyset, &key_signature, &fnek_signature)) {
     LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
@@ -707,7 +735,7 @@ bool Mount::UnmountCryptohome() {
   RemovePkcs11Token();
   current_user_->Reset();
   ephemeral_mount_ = false;
-  crypto_->ClearKeyset();
+  platform_->ClearUserKeyring();
 
   return true;
 }

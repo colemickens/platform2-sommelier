@@ -1023,16 +1023,17 @@ long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
 }
 }  // namespace ecryptfs
 
-long Platform::ClearUserKeyring() {  // NOLINT(runtime/int)
+bool Platform::ClearUserKeyring() {
   /* Flush cache to prevent corruption */
   Sync();
-  return ecryptfs::ClearUserKeyring();
+  int ret = ecryptfs::ClearUserKeyring();
+  return (ret == 0);
 }
 
-long Platform::AddEcryptfsAuthToken(  // NOLINT(runtime/int)
+bool Platform::AddEcryptfsAuthToken(
     const brillo::SecureBlob& key, const std::string& key_sig,
     const brillo::SecureBlob& salt) {
-  return ecryptfs::AddEcryptfsAuthToken(key, key_sig, salt);
+  return (ecryptfs::AddEcryptfsAuthToken(key, key_sig, salt) >= 0);
 }
 
 FileEnumerator* Platform::GetFileEnumerator(const std::string& root_path,
