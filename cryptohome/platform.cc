@@ -1024,6 +1024,8 @@ long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
 }  // namespace ecryptfs
 
 long Platform::ClearUserKeyring() {  // NOLINT(runtime/int)
+  /* Flush cache to prevent corruption */
+  Sync();
   return ecryptfs::ClearUserKeyring();
 }
 
