@@ -51,7 +51,7 @@ class ProcessManager {
   // Call on shutdown to release async_signal_handler_.
   virtual void Stop();
 
-  // Create and start a process for |program| with |arguments|. |enivronment|
+  // Create and start a process for |program| with |arguments|. |environment|
   // variables will be setup in the child process before exec the |program|.
   // |terminate_with_parent| is used to indicate if child process should
   // self terminate if the parent process exits.  |exit_callback| will be

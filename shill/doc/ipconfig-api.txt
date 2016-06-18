@@ -6,7 +6,7 @@ IP basics
 =========
 
 Layer 3 configuration state is managed on a per-device basis.  When
-a device is connected, it will have an IPConifg record associated with
+a device is connected, it will have an IPConfig record associated with
 it.  In addition, connected services will have an "IPConfig" property
 which will contain the path to this record.  These properties of the
 IPConfig record represent the current state of connectivity of the
