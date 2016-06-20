@@ -105,16 +105,23 @@ void InitializeLibelf() {
 }
 
 bool ReadElfBuildId(string filename, string* buildid) {
-  InitializeLibelf();
   int fd = open(filename.c_str(), O_RDONLY);
   if (fd < 0) {
-    LOG(ERROR) << "Failed to open ELF file: " << filename;
+    if (errno != ENOENT)
+      LOG(ERROR) << "Failed to open ELF file: " << filename;
     return false;
   }
+  bool ret = ReadElfBuildId(fd, buildid);
+  close(fd);
+  return ret;
+}
+
+bool ReadElfBuildId(int fd, string* buildid) {
+  InitializeLibelf();
 
   Elf *elf = elf_begin(fd, ELF_C_READ_MMAP, nullptr);
   if (elf == nullptr) {
-    LOG(ERROR) << "Could not read ELF file: " << filename;
+    LOG(ERROR) << "Could not read ELF file.";
     close(fd);
     return false;
   }
@@ -122,7 +129,6 @@ bool ReadElfBuildId(string filename, string* buildid) {
   bool err = GetBuildID(elf, buildid);
 
   elf_end(elf);
-  close(fd);
 
   return err;
 }
@@ -174,6 +180,13 @@ bool IsKernelNonModuleName(string name) {
       return true;
   }
   return false;
+}
+
+// Do the |DSOInfo| and |struct stat| refer to the same inode?
+bool SameInode(const DSOInfo& dso, const struct stat* s) {
+  return dso.maj == major(s->st_dev) &&
+      dso.min == minor(s->st_dev) &&
+      dso.ino == s->st_ino;
 }
 
 }  // namespace quipper

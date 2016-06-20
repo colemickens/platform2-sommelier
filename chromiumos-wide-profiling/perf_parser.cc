@@ -4,8 +4,11 @@
 
 #include "chromiumos-wide-profiling/perf_parser.h"
 
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -231,6 +234,76 @@ bool PerfParser::ProcessEvents() {
   return true;
 }
 
+class FdCloser {
+ public:
+  explicit FdCloser(int fd) : fd_(fd) {}
+  ~FdCloser() { if (fd_ != -1) close(fd_); }
+ private:
+  FdCloser() = delete;
+  FdCloser(FdCloser&) = delete;
+
+  int fd_;
+};
+
+bool ReadElfBuildIdIfSameInode(const string& dso_path, const DSOInfo& dso,
+                               string* buildid) {
+  int fd = open(dso_path.c_str(), O_RDONLY);
+  FdCloser fd_closer(fd);
+  if (fd == -1) {
+    if (errno != ENOENT)
+      LOG(ERROR) << "Failed to open ELF file: " << dso_path;
+    return false;
+  }
+
+  struct stat s;
+  CHECK_GE(fstat(fd, &s), 0);
+  // Only reject based on inode if we actually have device info (from MMAP2).
+  if (dso.maj != 0 && dso.min != 0 && !SameInode(dso, &s))
+    return false;
+
+  return ReadElfBuildId(fd, buildid);
+}
+
+string FindDsoBuildId(const DSOInfo& dso_info) {
+  string buildid_bin;
+  const string& dso_name = dso_info.name;
+  if (IsKernelNonModuleName(dso_name))
+    return buildid_bin;  // still empty
+  // Does this look like a kernel module?
+  if (dso_name.size() >= 2 && dso_name[0] == '[' && dso_name.back() == ']') {
+    // This may not be successful, but either way, just return. buildid_bin
+    // will be empty if the module was not found.
+    ReadModuleBuildId(dso_name.substr(1, dso_name.size() - 2),
+                      &buildid_bin);
+    return buildid_bin;
+  }
+  // Try normal files, possibly inside containers.
+  u32 last_pid = 0;
+  for (PidTid pidtid : dso_info.threads) {
+    u32 pid, tid;
+    std::tie(pid, tid) = pidtid;
+    string dso_path = StringPrintf("/proc/%d/root/%s", tid, dso_name.c_str());
+    if (ReadElfBuildIdIfSameInode(dso_path, dso_info, &buildid_bin)) {
+      return buildid_bin;
+    }
+    // Avoid re-trying the parent process if it's the same for multiple threads.
+    // dso_info.threads is sorted, so threads in a process should be adjacent.
+    if (pid == last_pid || pid == tid)
+      continue;
+    last_pid = pid;
+    // Try the parent process:
+    dso_path = StringPrintf("/proc/%d/root/%s", pid, dso_name.c_str());
+    if (ReadElfBuildIdIfSameInode(dso_path, dso_info, &buildid_bin)) {
+      return buildid_bin;
+    }
+  }
+  // Still don't have a buildid. Try our own filesystem:
+  if (ReadElfBuildIdIfSameInode(dso_name, dso_info, &buildid_bin)) {
+    return buildid_bin;
+  }
+  return buildid_bin;  // still empty.
+}
+
 bool PerfParser::FillInDsoBuildIds() {
   std::map<string, string> filenames_to_build_ids;
   reader_->GetFilenamesToBuildIDs(&filenames_to_build_ids);
@@ -243,19 +316,11 @@ bool PerfParser::FillInDsoBuildIds() {
     if (it != filenames_to_build_ids.end()) {
       dso_info.build_id = it->second;
     } else if (options_.read_missing_buildids && dso_info.hit) {
-      string buildid_bin;
-      string dso_name = dso_info.name;
-      if (IsKernelNonModuleName(dso_name))
-        continue;
-      if (dso_name.size() >= 2 && dso_name[0] == '[' && dso_name.back() == ']') {
-        if (!ReadModuleBuildId(dso_name.substr(1, dso_name.size() - 2),
-                          &buildid_bin))
-          continue;
-      } else if (!ReadElfBuildId(dso_name, &buildid_bin)) {
-        continue;
+      string buildid_bin = FindDsoBuildId(dso_info);
+      if (!buildid_bin.empty()) {
+        dso_info.build_id = RawDataToHexString(buildid_bin);
+        new_buildids[dso_info.name] = dso_info.build_id;
       }
-      dso_info.build_id = RawDataToHexString(buildid_bin);
-      new_buildids[dso_info.name] = dso_info.build_id;
     }
   }
 

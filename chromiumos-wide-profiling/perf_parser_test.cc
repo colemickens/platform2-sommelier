@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include <stdint.h>
+#include <sys/mount.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <map>
@@ -14,6 +17,8 @@
 
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/compat/test.h"
+#include "chromiumos-wide-profiling/compat/thread.h"
+#include "chromiumos-wide-profiling/dso_test_utils.h"
 #include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/perf_test_files.h"
@@ -584,6 +589,647 @@ TEST(PerfParserTest, DsoInfoHasBuildId) {
             events[2].dso_and_offset.build_id());
   EXPECT_EQ("/usr/lib/bar.so", events[3].dso_and_offset.dso_name());
   EXPECT_EQ("", events[3].dso_and_offset.build_id());
+}
+
+class RunInMountNamespaceThread : public quipper::Thread {
+ public:
+  explicit RunInMountNamespaceThread(string tmpdir, string mntdir)
+      : quipper::Thread("MntNamespace"),
+        tmpdir_(tmpdir), mntdir_(mntdir) {
+  }
+
+  void Start() override {
+    quipper::Thread::Start();
+    ready.Wait();
+  }
+
+  void Join() override {
+    exit.Notify();
+    quipper::Thread::Join();
+  }
+
+ private:
+  void Run() override {
+    CHECK_EQ(unshare(CLONE_NEWNS), 0);
+    CHECK_EQ(mount(tmpdir_.c_str(), mntdir_.c_str(),
+                   nullptr, MS_BIND, nullptr), 0);
+    ready.Notify();
+    exit.Wait();
+  }
+
+  Notification ready;
+  Notification exit;
+  string tmpdir_;
+  string mntdir_;
+};
+
+// Root task <pid>/<pid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+//   "/tmp/quipper_mnt.../file_in_namespace"  (Doesn't exist)
+// Container task <pid>/<tid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: deadbeef  ino: X
+// <path> = marked with *
+// MMAP2: <pid+10>/<tid+1>, <path>, ino: X
+// MMAP2: <pid>/<tid>, <path>, ino: X
+// Reject (doesn't exist): /proc/<tid+10>/root/<path>
+// Reject (doesn't exist): /proc/<pid+1>/root/<path>
+// Accept:                 /proc/<tid>/root/<path>
+// (Not tried):            /proc/<pid>/root/<path>
+// (Not tried): /<path>
+// Expected buildid for <path>: "deadbeef"
+TEST(PerfParserTest, ReadsBuildidsInMountNamespace) {
+  ScopedTempDir tmpdir("/tmp/quipper_tmp.");
+  ScopedTempDir mntdir("/tmp/quipper_mnt.");
+  RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
+  thread.Start();
+  const pid_t pid = getpid();
+  const pid_t tid = thread.tid();
+
+  const string tmpfile = tmpdir.path() + "file_in_namespace";
+  const string tmpfile_in_ns = mntdir.path() + "file_in_namespace";
+  InitializeLibelf();
+  testing::WriteElfWithBuildid(tmpfile, ".note.gnu.build-id",
+                               "\xde\xad\xbe\xef");
+  struct stat tmp_stat;
+  ASSERT_NE(stat(tmpfile_in_ns.c_str(), &tmp_stat), 0);
+  ASSERT_EQ(stat(tmpfile.c_str(), &tmp_stat), 0);
+
+  // Create perf.data
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP2
+  // - mmap from a process and thread that doesn't exist
+  testing::ExampleMmap2Event(
+      pid, tid, 0x1c1000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid+10, tid+1))
+      .WithDeviceInfo(major(tmp_stat.st_dev), minor(tmp_stat.st_dev),
+                      tmp_stat.st_ino)
+      .WriteTo(&input);                                            // 0
+  // - mmap from a running thread
+  testing::ExampleMmap2Event(
+      pid, tid, 0x1c2000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid, tid))
+      .WithDeviceInfo(major(tmp_stat.st_dev), minor(tmp_stat.st_dev),
+                      tmp_stat.st_ino)
+      .WriteTo(&input);                                            // 1
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(pid, tid))  // 2
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader reader;
+  EXPECT_TRUE(reader.ReadFromString(input.str()));
+
+  PerfParserOptions options;
+  options.read_missing_buildids = true;
+  options.sample_mapping_percentage_threshold = 0;
+  PerfParser parser(&reader, options);
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(2, parser.stats().num_mmap_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(3, events.size());
+
+  EXPECT_EQ(tmpfile_in_ns, events[2].dso_and_offset.dso_name());
+  EXPECT_EQ("deadbeef", events[2].dso_and_offset.build_id());
+
+  thread.Join();
+}
+
+class RunInMountNamespaceProcess {
+ public:
+  RunInMountNamespaceProcess(string tmpdir, string mntdir)
+      : pid_(0), tmpdir_(tmpdir), mntdir_(mntdir) {
+  }
+
+  void Start() {
+    int pipe_fd[2];
+    int nonce = 0;
+    CHECK_EQ(pipe(pipe_fd), 0) << "pipe: " << strerror(errno);
+
+    pid_ = fork();
+    CHECK_NE(-1, pid_) << "fork: " << strerror(errno);
+    if (pid_ == 0) {  // child
+      close(pipe_fd[0]);
+      CHECK_EQ(unshare(CLONE_NEWNS), 0);
+      CHECK_EQ(mount(tmpdir_.c_str(), mntdir_.c_str(),
+                     nullptr, MS_BIND, nullptr), 0);
+      // Tell parent mounting is done.
+      CHECK_EQ(write(pipe_fd[1], &nonce, sizeof(nonce)),
+               static_cast<ssize_t>(sizeof(nonce)));
+      close(pipe_fd[1]);
+      pause();  // Wait to be killed. (So morbid.)
+      std::_Exit(-1);
+    }
+    close(pipe_fd[1]);
+
+    // Wait for child to tell us it has mounted the dir.
+    ssize_t sz = read(pipe_fd[0], &nonce, sizeof(nonce));
+    CHECK_EQ(sz, static_cast<ssize_t>(sizeof(nonce)))
+        << "read: " << strerror(errno);
+    close(pipe_fd[0]);
+  }
+
+  void Exit() {
+    kill(pid_, SIGTERM);
+    waitpid(pid_, nullptr, 0);
+  }
+
+  pid_t pid() { return pid_; }
+
+ private:
+  pid_t pid_;
+  string tmpdir_;
+  string mntdir_;
+};
+
+// Root task <pid>/<pid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: baadf00d  ino: Y
+// Container task <pid2>/<pid2> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: deadbeef  ino: X
+// <path> = marked with *
+// MMAP2: <pid2>/<pid2+1>, <path>, ino: X
+// Reject (doesn't exist): /proc/<pid2+1>/root/<path>
+// Accept:                 /proc/<pid2>/root/<path>
+// (Not tried): /<path>
+// Expected buildid for <path>: "deadbeef"
+TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesOwningProcess) {
+  ScopedTempDir tmpdir("/tmp/quipper_tmp.");
+  ScopedTempDir mntdir("/tmp/quipper_mnt.");
+  RunInMountNamespaceProcess process(tmpdir.path(), mntdir.path());
+  process.Start();
+
+  // Pretend we launched a thread in the other process, it mapped the file,
+  // and then exited. Let's make up a tid for it that's not likely to exist.
+  const pid_t pid = process.pid();
+  const pid_t tid = pid + 1;
+
+  const string tmpfile = tmpdir.path() + "file_in_namespace";
+  const string tmpfile_in_ns = mntdir.path() + "file_in_namespace";
+  InitializeLibelf();
+  testing::WriteElfWithBuildid(tmpfile, ".note.gnu.build-id",
+                               "\xde\xad\xbe\xef");
+  // It's a trap! If "baadf00d" is seen, we read the wrong file.
+  testing::WriteElfWithBuildid(tmpfile_in_ns, ".note.gnu.build-id",
+                               "\xba\xad\xf0\x0d");
+  struct stat tmp_stat;
+  ASSERT_EQ(stat(tmpfile.c_str(), &tmp_stat), 0);
+
+  // Create perf.data
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP2
+  testing::ExampleMmap2Event(
+      pid, tid, 0x1c1000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid, tid))
+      .WithDeviceInfo(major(tmp_stat.st_dev), minor(tmp_stat.st_dev),
+                      tmp_stat.st_ino)
+      .WriteTo(&input);                                            // 0
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(pid, tid))  // 1
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader reader;
+  EXPECT_TRUE(reader.ReadFromString(input.str()));
+
+  PerfParserOptions options;
+  options.read_missing_buildids = true;
+  options.sample_mapping_percentage_threshold = 0;
+  PerfParser parser(&reader, options);
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(1, parser.stats().num_mmap_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(2, events.size());
+
+  EXPECT_EQ(tmpfile_in_ns, events[1].dso_and_offset.dso_name());
+  EXPECT_EQ("deadbeef", events[1].dso_and_offset.build_id());
+
+  process.Exit();
+}
+
+// Root task <pid>/<pid> Filesystem:
+// * "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+//   "/tmp/quipper_mnt.../file_in_namespace"  buildid: baadf00d  ino: Y
+// Container task <pid>/<tid> Filesystem:
+// * "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+//   "/tmp/quipper_mnt.../file_in_namespace"  buildid: deadbeef  ino: X
+// <path> = marked with *
+// MMAP2: <pid+10>/<tid+1>, <path>, ino: X
+// Reject (doesn't exist): /proc/<tid+1>/root/<path>
+// Reject (doesn't exist): /proc/<pid+10>/root/<path>
+// Accept (same inode): /<path>
+// Expected buildid for <path>: "deadbeef"
+TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFs) {
+  ScopedTempDir tmpdir("/tmp/quipper_tmp.");
+  ScopedTempDir mntdir("/tmp/quipper_mnt.");
+  RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
+  thread.Start();
+  const pid_t pid = getpid();
+  const pid_t tid = thread.tid();
+
+  const string tmpfile = tmpdir.path() + "file_in_namespace";
+  const string tmpfile_in_ns = mntdir.path() + "file_in_namespace";
+  InitializeLibelf();
+  testing::WriteElfWithBuildid(tmpfile, ".note.gnu.build-id",
+                               "\xde\xad\xbe\xef");
+  // It's a trap! If "baadf00d" is seen, we read the wrong file.
+  testing::WriteElfWithBuildid(tmpfile_in_ns, ".note.gnu.build-id",
+                               "\xba\xad\xf0\x0d");
+  struct stat tmp_stat;
+  ASSERT_EQ(stat(tmpfile.c_str(), &tmp_stat), 0);
+
+  // Create perf.data
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP2
+  // - Process doesn't exist, but file exists in our own namespace.
+  testing::ExampleMmap2Event(
+      pid, pid, 0x1c1000, 0x1000, 0, tmpfile,
+      testing::SampleInfo().Tid(pid+10, tid+1))
+      .WithDeviceInfo(major(tmp_stat.st_dev), minor(tmp_stat.st_dev),
+                      tmp_stat.st_ino)
+      .WriteTo(&input);                                            // 0
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(pid))       // 1
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader reader;
+  EXPECT_TRUE(reader.ReadFromString(input.str()));
+
+  PerfParserOptions options;
+  options.read_missing_buildids = true;
+  options.sample_mapping_percentage_threshold = 0;
+  PerfParser parser(&reader, options);
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(1, parser.stats().num_mmap_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(2, events.size());
+
+  EXPECT_EQ(tmpfile, events[1].dso_and_offset.dso_name());
+  // Finds file in root FS.
+  EXPECT_EQ("deadbeef", events[1].dso_and_offset.build_id());
+
+  thread.Join();
+}
+
+// Root task <pid>/<pid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+//   "/tmp/quipper_mnt.../file_in_namespace"  buildid: baadf00d  ino: Y
+// Container task <pid>/<tid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: deadbeef  ino: X
+// <path> = marked with *
+// MMAP2: <pid>/<tid>, <path>, ino: X+1
+// Reject (wrong inode): /proc/<tid>/root/<path>
+// Reject (wrong inode): /proc/<pid>/root/<path>
+// Reject (wrong inode): /<path>
+// Expected buildid for <path>: ""
+TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFsRejectsInode) {
+  ScopedTempDir tmpdir("/tmp/quipper_tmp.");
+  ScopedTempDir mntdir("/tmp/quipper_mnt.");
+  RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
+  thread.Start();
+  const pid_t pid = getpid();
+  const pid_t tid = thread.tid();
+
+  const string tmpfile = tmpdir.path() + "file_in_namespace";
+  const string tmpfile_in_ns = mntdir.path() + "file_in_namespace";
+  InitializeLibelf();
+  testing::WriteElfWithBuildid(tmpfile, ".note.gnu.build-id",
+                               "\xde\xad\xbe\xef");
+  // It's a trap! If "baadf00d" is seen, we read the wrong file.
+  testing::WriteElfWithBuildid(tmpfile_in_ns, ".note.gnu.build-id",
+                               "\xba\xad\xf0\x0d");
+  struct stat tmp_stat;
+  struct stat tmp_in_ns_stat;
+  ASSERT_EQ(stat(tmpfile.c_str(), &tmp_stat), 0);
+  ASSERT_EQ(stat(tmpfile_in_ns.c_str(), &tmp_in_ns_stat), 0);
+  // inodes are often issued sequentially, so go backwards rather than forwards.
+  const ino_t bad_ino = tmp_stat.st_ino - 1;
+  ASSERT_NE(bad_ino, tmp_in_ns_stat.st_ino);
+
+  // Create perf.data
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP2
+  // - Process doesn't exist, but file exists in our own namespace.
+  testing::ExampleMmap2Event(
+      pid, pid, 0x1c1000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid, tid))
+      .WithDeviceInfo(major(tmp_stat.st_dev), minor(tmp_stat.st_dev), bad_ino)
+      .WriteTo(&input);                                            // 0
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(pid))       // 1
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader reader;
+  EXPECT_TRUE(reader.ReadFromString(input.str()));
+
+  PerfParserOptions options;
+  options.read_missing_buildids = true;
+  options.sample_mapping_percentage_threshold = 0;
+  PerfParser parser(&reader, options);
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(1, parser.stats().num_mmap_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(2, events.size());
+
+  EXPECT_EQ(tmpfile_in_ns, events[1].dso_and_offset.dso_name());
+  // Wrong inode, so rejects all candidates.
+  EXPECT_EQ("", events[1].dso_and_offset.build_id());
+
+  thread.Join();
+}
+
+// Root task <pid>/<pid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: baadf00d  ino: Y
+// Container task <pid>/<tid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: deadbeef  ino: X
+// <path> = marked with *
+// MMAP: <pid+10>/<tid+1>, <path>, ino: Not available
+// Reject (not found): /proc/<tid+1>/root/<path>
+// Reject (not found): /proc/<pid+10>/root/<path>
+// Accept (falsely): /<path>
+// Expected buildid for <path>: "baadf00d" (even though incorrect)
+TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFsNoInodeToReject) {
+  ScopedTempDir tmpdir("/tmp/quipper_tmp.");
+  ScopedTempDir mntdir("/tmp/quipper_mnt.");
+  RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
+  thread.Start();
+  const pid_t pid = getpid();
+  const pid_t tid = thread.tid();
+
+  const string tmpfile = tmpdir.path() + "file_in_namespace";
+  const string tmpfile_in_ns = mntdir.path() + "file_in_namespace";
+  InitializeLibelf();
+  testing::WriteElfWithBuildid(tmpfile, ".note.gnu.build-id",
+                               "\xde\xad\xf0\x0d");
+  // It's a trap! If "baadf00d" is seen, we read the wrong file.
+  testing::WriteElfWithBuildid(tmpfile_in_ns, ".note.gnu.build-id",
+                               "\xba\xad\xf0\x0d");
+  struct stat tmp_stat;
+  ASSERT_EQ(stat(tmpfile.c_str(), &tmp_stat), 0);
+
+  // Create perf.data
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP
+  // - Process & thread don't exist, but file exists in our own namespace.
+  testing::ExampleMmapEvent(
+      pid, 0x1c1000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid+10, tid+1))
+      .WriteTo(&input);                                            // 0
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(pid))       // 1
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader reader;
+  EXPECT_TRUE(reader.ReadFromString(input.str()));
+
+  PerfParserOptions options;
+  options.read_missing_buildids = true;
+  options.sample_mapping_percentage_threshold = 0;
+  PerfParser parser(&reader, options);
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(1, parser.stats().num_mmap_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events);
+  EXPECT_EQ(1, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(2, events.size());
+
+  EXPECT_EQ(tmpfile_in_ns, events[1].dso_and_offset.dso_name());
+  // We'll read the wrong file b/c we couldn't reject based on inode:
+  EXPECT_EQ("baadf00d", events[1].dso_and_offset.build_id());
+
+  thread.Join();
+}
+
+// Root task <pid>/<pid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: baadf00d  ino: Y
+// Container task <pid>/<tid> Filesystem:
+//   "/tmp/quipper_tmp.../file_in_namespace"  buildid: deadbeef  ino: X
+// * "/tmp/quipper_mnt.../file_in_namespace"  buildid: deadbeef  ino: X
+// <path> = marked with *
+// MMAP2(0): <pid>/<tid>, <path>, <maj+1>/<min>,  ino: X
+// MMAP2(1): <pid>/<tid>, <path>, <maj>/<min+1>,  ino: X
+// MMAP2(2): <pid>/<tid>, <path>, <maj>/<min>,    ino: X+1
+// SAMPLE(3): <pid>/<tid>, addr in MMAP2(0)
+// SAMPLE(4): <pid>/<tid>, addr in MMAP2(1)
+// SAMPLE(5): <pid>/<tid>, addr in MMAP2(2)
+// Expected buildid for <path>: ""
+//
+// TODO(dhsharp): This test runs into an odd situation: the same path is seen
+// with multiple device/ino numbers. This is really a shortcoming of perf--
+// it can only associate a buildid with a path. If the same path exists in
+// multiple containers but refers to different files (device/inode), then
+// it's hard to know what to do. Similarly, PerfParser associates a DSO name
+// (path) with a single DSOInfo and device/inode info therein, although it
+// tracks all threads the DSO name was seen in. This test is set up such that
+// all MMAPs should be rejected, but in truth PerfParser only compares the
+// device/inode of the file against the device/inode of one of the MMAPs.
+// A better thing to do might be to track a
+// map<tuple<maj,min,ino,path>, DSOInfo>, but even so, it will be impossible
+// to store unambiguously in perf.data.
+TEST(PerfParserTest, ReadsBuildidsInMountNamespace_DifferentDevOrIno) {
+  ScopedTempDir tmpdir("/tmp/quipper_tmp.");
+  ScopedTempDir mntdir("/tmp/quipper_mnt.");
+  RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
+  thread.Start();
+  const pid_t pid = getpid();
+  const pid_t tid = thread.tid();
+
+  const string tmpfile = tmpdir.path() + "file_in_namespace";
+  const string tmpfile_in_ns = mntdir.path() + "file_in_namespace";
+  InitializeLibelf();
+  testing::WriteElfWithBuildid(tmpfile, ".note.gnu.build-id",
+                               "\xde\xad\xf0\x0d");
+  // It's a trap! If "baadf00d" is seen, we read the wrong file.
+  testing::WriteElfWithBuildid(tmpfile_in_ns, ".note.gnu.build-id",
+                               "\xba\xad\xf0\x0d");
+  struct stat tmp_stat;
+  struct stat tmp_in_ns_stat;
+  ASSERT_EQ(stat(tmpfile.c_str(), &tmp_stat), 0);
+  ASSERT_EQ(stat(tmpfile_in_ns.c_str(), &tmp_in_ns_stat), 0);
+  // inodes are often issued sequentially, so go backwards rather than forwards.
+  const ino_t bad_ino = tmp_stat.st_ino - 1;
+  ASSERT_NE(bad_ino, tmp_in_ns_stat.st_ino);
+
+  // Create perf.data
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP2
+  // - Wrong major number
+  testing::ExampleMmap2Event(
+      pid, tid, 0x1c1000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid, tid))
+      .WithDeviceInfo(major(tmp_stat.st_dev)+1, minor(tmp_stat.st_dev),
+                      tmp_stat.st_ino)
+      .WriteTo(&input);                                            // 0
+  // - Wrong minor number
+  testing::ExampleMmap2Event(
+      pid, tid, 0x1c2000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid, tid))
+      .WithDeviceInfo(major(tmp_stat.st_dev), minor(tmp_stat.st_dev)+1,
+                      tmp_stat.st_ino)
+      .WriteTo(&input);                                            // 1
+  // - Wrong inode number
+  testing::ExampleMmap2Event(
+      pid, tid, 0x1c3000, 0x1000, 0, tmpfile_in_ns,
+      testing::SampleInfo().Tid(pid, tid))
+      .WithDeviceInfo(major(tmp_stat.st_dev), minor(tmp_stat.st_dev),
+                      bad_ino)
+      .WriteTo(&input);                                            // 2
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(pid, tid))  // 3
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c2000).Tid(pid, tid))  // 4
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c3000).Tid(pid, tid))  // 5
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader reader;
+  EXPECT_TRUE(reader.ReadFromString(input.str()));
+
+  PerfParserOptions options;
+  options.read_missing_buildids = true;
+  options.sample_mapping_percentage_threshold = 0;
+  PerfParser parser(&reader, options);
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(3, parser.stats().num_mmap_events);
+  EXPECT_EQ(3, parser.stats().num_sample_events);
+  EXPECT_EQ(3, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(6, events.size());
+
+  // Buildid should not be found for any of the samples.
+  for (int i : {3, 4, 5}) {
+    EXPECT_EQ(tmpfile_in_ns, events[i].dso_and_offset.dso_name());
+    EXPECT_EQ("", events[i].dso_and_offset.build_id());
+  }
+
+  thread.Join();
 }
 
 TEST(PerfParserTest, NoReadBuildidIfAlreadyKnown) {
