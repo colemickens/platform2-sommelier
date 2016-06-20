@@ -55,20 +55,19 @@ namespace chaps {
 
 TPM2UtilityImpl::TPM2UtilityImpl()
     : default_factory_(
-        new trunks::TrunksFactoryImpl(false /* !failure_is_fatal */)),
-      factory_(default_factory_.get()),
-      is_initialized_(false),
-      is_enabled_ready_(false),
-      is_enabled_(false),
-      session_(factory_->GetHmacSession()),
-      trunks_tpm_utility_(factory_->GetTpmUtility()) {}
+        new trunks::TrunksFactoryImpl()),
+      factory_(default_factory_.get()) {
+  if (!default_factory_->Initialize()) {
+    LOG(ERROR) << "Unable to initialize trunks.";
+    return;
+  }
+  session_ = factory_->GetHmacSession();
+  trunks_tpm_utility_ = factory_->GetTpmUtility();
+}
 
 TPM2UtilityImpl::TPM2UtilityImpl(
     const scoped_refptr<base::SequencedTaskRunner>& task_runner)
-        : default_trunks_proxy_(new trunks::TrunksDBusProxy),
-          is_initialized_(false),
-          is_enabled_ready_(false),
-          is_enabled_(false) {
+        : default_trunks_proxy_(new trunks::TrunksDBusProxy) {
   task_runner->PostNonNestableTask(
       FROM_HERE,
       base::Bind(&InitTransceiver,
@@ -82,6 +81,7 @@ TPM2UtilityImpl::TPM2UtilityImpl(
           task_runner));
   default_factory_.reset(
       new trunks::TrunksFactoryImpl(default_background_transceiver_.get()));
+  CHECK(default_factory_->Initialize());
   factory_ = default_factory_.get();
   session_ = factory_->GetHmacSession();
   trunks_tpm_utility_ = factory_->GetTpmUtility();
@@ -89,9 +89,6 @@ TPM2UtilityImpl::TPM2UtilityImpl(
 
 TPM2UtilityImpl::TPM2UtilityImpl(TrunksFactory* factory)
     : factory_(factory),
-      is_initialized_(false),
-      is_enabled_ready_(false),
-      is_enabled_(false),
       session_(factory_->GetHmacSession()),
       trunks_tpm_utility_(factory_->GetTpmUtility()) {}
 

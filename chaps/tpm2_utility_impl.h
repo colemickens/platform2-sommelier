@@ -20,6 +20,7 @@
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_utility.h>
 #include <trunks/trunks_factory.h>
+#include <trunks/trunks_factory_impl.h>
 
 namespace chaps {
 
@@ -109,11 +110,11 @@ class TPM2UtilityImpl : public TPMUtility {
 
   std::unique_ptr<trunks::CommandTransceiver> default_trunks_proxy_;
   std::unique_ptr<trunks::CommandTransceiver> default_background_transceiver_;
-  std::unique_ptr<trunks::TrunksFactory> default_factory_;
+  std::unique_ptr<trunks::TrunksFactoryImpl> default_factory_;
   trunks::TrunksFactory* factory_;
-  bool is_initialized_;
-  bool is_enabled_ready_;
-  bool is_enabled_;
+  bool is_initialized_ = false;
+  bool is_enabled_ready_ = false;
+  bool is_enabled_ = false;
   base::Lock lock_;
   std::unique_ptr<trunks::HmacSession> session_;
   std::unique_ptr<trunks::TpmUtility> trunks_tpm_utility_;
