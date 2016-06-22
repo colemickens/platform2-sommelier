@@ -917,8 +917,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
 #endif
 }
 
-TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
 #if USE_ARC
+TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ExpectAndRunStartSession(kSaneEmail);
   base::FilePath android_data_dir(
       GetRootPath(kSaneEmail).Append(SessionManagerImpl::kAndroidDataDirName));
@@ -928,8 +928,20 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
   EXPECT_TRUE(utils_.Exists(android_data_dir));
-#endif
 }
+
+TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
+  ExpectAndRunStartSession(kSaneEmail);
+  base::FilePath android_data_dir(
+      GetRootPath(kSaneEmail).Append(SessionManagerImpl::kAndroidDataDirName));
+  EXPECT_TRUE(utils_.AtomicFileWrite(android_data_dir.Append("foo"), "test"));
+  EXPECT_TRUE(utils_.Exists(android_data_dir));
+  impl_.StartArcInstance(kSaneEmail, &error_);
+  impl_.StopArcInstance(&error_);
+  impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(utils_.Exists(android_data_dir));
+}
+#endif
 
 class SessionManagerImplStaticTest : public ::testing::Test {
  public:

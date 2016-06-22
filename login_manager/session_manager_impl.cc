@@ -689,7 +689,8 @@ void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
 void SessionManagerImpl::RemoveArcData(const std::string& user_id,
                                        Error* error) {
 #if USE_ARC
-  if (!arc_start_time_.is_null()) {
+  pid_t pid = 0;
+  if (android_container_->GetContainerPID(&pid)) {
     error->Set(dbus_error::kArcInstanceRunning, "ARC is currently running.");
     return;
   }
