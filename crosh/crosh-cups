@@ -14,18 +14,8 @@ HELP_cups='
   only; will be removed in a future release.
 '
 
-cups_initctl() {
-  sudo /sbin/initctl $1 cupsd
-}
-
 cups_reset() {
-  # Stop the daemon first; ignore errors in case it's already stopped.
-  cups_initctl "stop" > /dev/null 2>&1
-  echo "Clearing CUPS daemon state"
-  sudo rm -rf \
-      /var/cache/cups/ \
-      /run/cups/ \
-      /var/spool/cups/
+  debugd CupsResetState > /dev/null
 }
 
 cmd_cups() {
