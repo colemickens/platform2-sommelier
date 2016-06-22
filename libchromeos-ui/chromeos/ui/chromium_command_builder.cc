@@ -193,6 +193,9 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   if (UseFlagIsSet("arc"))
     AddArg("--enable-arc");
 
+  if (UseFlagIsSet("pointer_events"))
+    AddArg("--enable-features=PointerEvent");
+
   AddArg("--enable-logging");
   AddArg("--log-level=1");
   AddArg("--use-cras");
