@@ -88,6 +88,7 @@
         'src/battery_tool.cc',
         'src/constants.cc',
         'src/crash_sender_tool.cc',
+        'src/cups_tool.cc',
         'src/debug_daemon.cc',
         'src/debug_logs_tool.cc',
         'src/debug_mode_tool.cc',

@@ -30,6 +30,7 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
 bool DebugDaemon::Init() {
   battery_tool_ = new BatteryTool();
   crash_sender_tool_ = new CrashSenderTool();
+  cups_tool_ = new CupsTool();
   debug_logs_tool_ = new DebugLogsTool();
   debug_mode_tool_ = new DebugModeTool(dbus_);
   dev_features_tool_wrapper_ =
@@ -200,6 +201,10 @@ std::map<std::string, std::string> DebugDaemon::GetUserLogFiles(
 
 std::string DebugDaemon::GetExample(DBus::Error& error) {  // NOLINT
   return example_tool_->GetExample(&error);
+}
+
+void DebugDaemon::CupsResetState(DBus::Error& error) { // NOLINT
+  cups_tool_->ResetState(&error);
 }
 
 std::string DebugDaemon::GetInterfaces(DBus::Error& error) {  // NOLINT

@@ -17,6 +17,7 @@
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "debugd/src/battery_tool.h"
 #include "debugd/src/crash_sender_tool.h"
+#include "debugd/src/cups_tool.h"
 #include "debugd/src/debug_logs_tool.h"
 #include "debugd/src/debug_mode_tool.h"
 #include "debugd/src/dev_features_tool.h"
@@ -139,6 +140,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   std::map<std::string, std::string> GetUserLogFiles(
       DBus::Error& error) override;  // NOLINT
   std::string GetExample(DBus::Error& error) override;  // NOLINT
+  void CupsResetState(DBus::Error& error) override;  // NOLINT
   std::string GetInterfaces(DBus::Error& error) override;  // NOLINT
   std::string TestICMP(const std::string& host,
                        DBus::Error& error) override;  // NOLINT
@@ -187,6 +189,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
   // TODO(xiaohuic) Consider using unique_ptr for the pointers below.
   CrashSenderTool* crash_sender_tool_ = nullptr;
+  CupsTool* cups_tool_ = nullptr;
   DebugLogsTool* debug_logs_tool_ = nullptr;
   DebugModeTool* debug_mode_tool_ = nullptr;
   RestrictedToolWrapper<DevFeaturesTool>* dev_features_tool_wrapper_ = nullptr;
