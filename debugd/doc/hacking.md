@@ -3,7 +3,7 @@
 [iface]: ../share/org.chromium.debugd.xml
 [impl]: implementation.md
 [design]: design.md
-[makefile]: ../src/Makefile
+[makefile]: ../debugd.gyp
 
 If you're reading this doc, you hopefully want to add a new feature to debugd
 (or fix a bug). You should have a look at [the implementation doc][impl] and
@@ -24,8 +24,8 @@ you'd go about adding a new piece of data debugd can return:
 so, you're going to want to hack the tool that returns the existing data; if
 not, you're going to need to add a new tool.
 
-2. If you're adding a new tool, append it to TOOLS in
-[`/src/makefile`][makefile]. Tools follow the general pattern of having a header
+2. If you're adding a new tool, append it to `targets` in
+[`/debugd.gyp`][makefile]. Tools follow the general pattern of having a header
 called `/src/foo_tool.h` and an implementation file called `/src/foo_tool.cc`.
 
 3. If you're doing anything at all complicated, add a helper (see
@@ -35,9 +35,7 @@ that we can launch in sandboxes.
 
 4. Once you've added your new tool (or hacked an existing one) and added your
 new helper (if necessary), write an autotest (or extended the existing
-`platform_DebugDaemon` test) to cover the feature you added. The new helper does
-not need to be added to `/src/helpers/module.mk`; common.mk will automagically
-pick it up and compile it.
+`platform_DebugDaemon` test) to cover the feature you added.
 
 5. Test, review, submit.
 
