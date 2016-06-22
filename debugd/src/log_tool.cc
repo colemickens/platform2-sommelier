@@ -42,6 +42,7 @@ struct Log {
   const char *command;
   const char *user;
   const char *group;
+  const char *size_cap;  // passed as arg to 'tail'
 };
 
 const Log common_logs[] = {
@@ -189,7 +190,8 @@ const Log big_feedback_logs[] = {
     // ARC bugreport permissions are weird. Since we're just running cat, this
     // shouldn't cause any issues.
     kRoot,
-    kRoot
+    kRoot,
+    "10M",
   },
   { NULL, NULL }
 };
@@ -237,7 +239,8 @@ string EnsureUTF8String(const string& value) {
 string Run(const Log& log) {
   string output;
   ProcessWithOutput p;
-  string tailed_cmdline = std::string(log.command) + " | tail -c 256K";
+  string tailed_cmdline = std::string(log.command) + " | tail -c " +
+                          (log.size_cap ? log.size_cap : "256K");
   if (log.user && log.group)
     p.SandboxAs(log.user, log.group);
   if (!p.Init())
