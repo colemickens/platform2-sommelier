@@ -665,7 +665,7 @@ int container_start(struct container *c, const struct container_config *config)
 		return -errno;
 	}
 	/* Make sure the container uid can access the rootfs. */
-	if (chmod(c->runfs, 0755))
+	if (chmod(c->runfs, 0700))
 		goto error_rmdir;
 	if (chown(c->runfs, config->uid, config->gid))
 		goto error_rmdir;
