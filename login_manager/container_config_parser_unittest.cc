@@ -122,6 +122,8 @@ TEST(ContainerConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(1, container_config_get_num_program_args(config.get()));
   EXPECT_EQ(std::string("/sbin/init"),
             container_config_get_program_arg(config.get(), 0));
+  EXPECT_EQ(100, container_config_get_uid(config.get()));
+  EXPECT_EQ(200, container_config_get_gid(config.get()));
 }
 
 TEST(ContainerConfigParserTest, TestBasicConfigAndroid) {

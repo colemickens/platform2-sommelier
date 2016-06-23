@@ -68,12 +68,14 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
     LOG(ERROR) << "Failed to get uid info from config";
     return false;
   }
+  container_config_uid(config_out->get(), uid_val);
   *uid_out = uid_val;
   int gid_val;
   if (!user_dict->GetInteger("gid", &gid_val)) {
     LOG(ERROR) << "Failed to get gid info from config";
     return false;
   }
+  container_config_gid(config_out->get(), gid_val);
   *gid_out = gid_val;
   // |args_dict| stays owned by |process_dict|
   const base::ListValue* args_list = nullptr;
