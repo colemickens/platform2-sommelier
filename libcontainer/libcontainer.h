@@ -40,8 +40,16 @@ const char *container_config_get_program_arg(const struct container_config *c,
 /* The pid of the program will be written here. */
 int container_config_pid_file(struct container_config *c, const char *path);
 
+/* Sets/Gets the uid the container will run as. */
+void container_config_uid(struct container_config *c, uid_t uid);
+uid_t container_config_get_uid(const struct container_config *c);
+
 /* Mapping of UIDs in the container, e.g. "0 100000 1024" */
 int container_config_uid_map(struct container_config *c, const char *uid_map);
+
+/* Sets/Gets the gid the container will run as. */
+void container_config_gid(struct container_config *c, gid_t gid);
+gid_t container_config_get_gid(const struct container_config *c);
 
 /* Mapping of GIDs in the container, e.g. "0 100000 1024" */
 int container_config_gid_map(struct container_config *c, const char *gid_map);

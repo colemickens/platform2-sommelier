@@ -75,7 +75,9 @@ struct container_device {
  * rootfs - Path to the root of the container's filesystem.
  * program_argv - The program to run and args, e.g. "/sbin/init".
  * num_args - Number of args in program_argv.
+ * uid - The uid the container will run as.
  * uid_map - Mapping of UIDs in the container, e.g. "0 100000 1024"
+ * gid - The gid the container will run as.
  * gid_map - Mapping of GIDs in the container, e.g. "0 100000 1024"
  * alt_syscall_table - Syscall table to use or NULL if none.
  * mounts - Filesystems to mount in the new namespace.
@@ -88,7 +90,9 @@ struct container_config {
 	char *rootfs;
 	char **program_argv;
 	size_t num_args;
+	uid_t uid;
 	char *uid_map;
+	gid_t gid;
 	char *gid_map;
 	char *alt_syscall_table;
 	struct container_mount *mounts;
@@ -197,9 +201,29 @@ const char *container_config_get_program_arg(const struct container_config *c,
 	return c->program_argv[index];
 }
 
+void container_config_uid(struct container_config *c, uid_t uid)
+{
+	c->uid = uid;
+}
+
+uid_t container_config_get_uid(const struct container_config *c)
+{
+	return c->uid;
+}
+
 int container_config_uid_map(struct container_config *c, const char *uid_map)
 {
 	return strdup_and_free(&c->uid_map, uid_map);
+}
+
+void container_config_gid(struct container_config *c, gid_t gid)
+{
+	c->gid = gid;
+}
+
+gid_t container_config_get_gid(const struct container_config *c)
+{
+	return c->gid;
 }
 
 int container_config_gid_map(struct container_config *c, const char *gid_map)
@@ -642,6 +666,8 @@ int container_start(struct container *c, const struct container_config *config)
 	}
 	/* Make sure the container uid can access the rootfs. */
 	if (chmod(c->runfs, 0755))
+		goto error_rmdir;
+	if (chown(c->runfs, config->uid, config->gid))
 		goto error_rmdir;
 
 	if (asprintf(&c->runfsroot, "%s/root", c->runfs) < 0)
