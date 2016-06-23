@@ -43,6 +43,7 @@
     'USE_tcmalloc%': 0,
     'USE_test%': 0,
     'USE_tpm2%': 0,
+    'USE_tpm2_simulator%': 0,
     'USE_vpn%': 0,
     'USE_wake_on_wifi%': 0,
     'USE_wifi%': 0,
