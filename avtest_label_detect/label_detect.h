@@ -14,6 +14,9 @@
 extern int verbose;
 #define TRACE(...) do { if (verbose) printf(__VA_ARGS__); } while (0)
 
+/* table_lookup.c */
+extern void detect_label_by_board_name(void);
+
 /* util.c */
 extern int do_ioctl(int fd, int request, void* arg);
 extern bool is_any_device(const char* pattern, bool (*func)(int fd));

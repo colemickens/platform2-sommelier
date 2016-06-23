@@ -48,5 +48,8 @@ int main(int argc, char *argv[]) {
     }
     TRACE("\n");
   }
+
+  TRACE("Detect via table look up\n");
+  detect_label_by_board_name();
   return 0;
 }
