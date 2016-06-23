@@ -25,6 +25,13 @@
         'protobuf-lite',
       ],
     },
+    'conditions': [
+      ['USE_tpm2_simulator == 1', {
+        'defines': [
+          'USE_SIMULATOR=1',
+        ],
+      }],
+    ],
   },
   'targets': [
     {
@@ -139,6 +146,12 @@
         ['USE_ftdi_tpm == 1', {
             'defines': [
               'SPI_OVER_FTDI=1',
+            ],
+          },
+        ],
+        ['USE_tpm2_simulator == 1', {
+            'libraries': [
+              '-ltpm2',
             ],
           },
         ],

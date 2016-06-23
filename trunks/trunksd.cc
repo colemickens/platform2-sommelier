@@ -57,8 +57,9 @@ void InitMinijailSandbox() {
   CHECK_EQ(getuid(), kRootUID) << "trunksd not initialized as root.";
   brillo::Minijail* minijail = brillo::Minijail::GetInstance();
   struct minijail* jail = minijail->New();
-  minijail->DropRoot(jail, kTrunksUser, kTrunksGroup);
+  minijail_log_seccomp_filter_failures(jail);
   minijail->UseSeccompFilter(jail, kTrunksSeccompPath);
+  minijail->DropRoot(jail, kTrunksUser, kTrunksGroup);
   minijail->Enter(jail);
   minijail->Destroy(jail);
   CHECK_EQ(getuid(), trunks_uid)

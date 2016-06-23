@@ -20,6 +20,7 @@
 
 #if defined(USE_SIMULATOR)
 extern "C" {
+#include <tpm2/BaseTypes.h>
 #include <tpm2/TpmBuildSwitches.h>
 #include <tpm2/_TPM_Init_fp.h>
 #include <tpm2/ExecCommand_fp.h>
@@ -34,6 +35,16 @@ extern "C" {
 
 #include "trunks/error_codes.h"
 
+namespace {
+
+#if defined(__ANDROID__)
+const char kSimulatorStateDirectory[] = "/data/misc/trunksd";
+#else
+const char kSimulatorStateDirectory[] = "/var/lib/trunks";
+#endif
+
+}  // namespace
+
 namespace trunks {
 
 TpmSimulatorHandle::TpmSimulatorHandle() {}
@@ -41,9 +52,14 @@ TpmSimulatorHandle::TpmSimulatorHandle() {}
 TpmSimulatorHandle::~TpmSimulatorHandle() {}
 
 bool TpmSimulatorHandle::Init() {
+  CHECK_EQ(chdir(kSimulatorStateDirectory), 0);
+  InitializeSimulator();
+  return true;
+}
+
+void TpmSimulatorHandle::InitializeSimulator() {
 #if defined(USE_SIMULATOR)
   // Initialize TPM.
-  CHECK_EQ(chdir("/data/misc/trunksd"), 0);
   TPM_Manufacture(TRUE);
   _plat__SetNvAvail();
   _plat__Signal_PowerOn();
@@ -52,7 +68,6 @@ bool TpmSimulatorHandle::Init() {
 #else
   LOG(FATAL) << "Simulator not configured.";
 #endif
-  return true;
 }
 
 void TpmSimulatorHandle::SendCommand(const std::string& command,
@@ -61,6 +76,10 @@ void TpmSimulatorHandle::SendCommand(const std::string& command,
 }
 
 std::string TpmSimulatorHandle::SendCommandAndWait(const std::string& command) {
+  if (!init_) {
+    InitializeSimulator();
+    init_ = true;
+  }
 #if defined(USE_SIMULATOR)
   unsigned int response_size;
   unsigned char* response;

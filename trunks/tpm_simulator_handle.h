@@ -40,17 +40,18 @@ class TpmSimulatorHandle : public CommandTransceiver {
   TpmSimulatorHandle();
   ~TpmSimulatorHandle() override;
 
-  // Initializes a TpmSimulatorHandle instance. This method must be called
-  // successfully before any other method. Returns true on success.
-  bool Init() override;
-
   // CommandTranceiver methods.
+  bool Init() override;
   void SendCommand(const std::string& command,
                    const ResponseCallback& callback) override;
   std::string SendCommandAndWait(const std::string& command) override;
 
  private:
-  std::vector<unsigned char> command_buffer;
+  // Initializes the simulator instance.
+  void InitializeSimulator();
+
+  bool init_ = false;
+
   DISALLOW_COPY_AND_ASSIGN(TpmSimulatorHandle);
 };
 

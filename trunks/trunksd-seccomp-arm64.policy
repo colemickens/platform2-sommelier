@@ -44,6 +44,9 @@ pipe2: 1
 socket: 1
 connect: 1
 sendto: 1
+getsockname: 1
+sendmsg: 1
+recvmsg: 1
 
 futex: 1
 
@@ -67,6 +70,7 @@ set_robust_list: 1
 prctl: return 1
 gettid: 1
 set_tid_address: 1
+tgkill: 1
 
 rt_sigprocmask: 1
 signalfd4: 1
@@ -76,3 +80,4 @@ setpriority: 1
 exit: 1
 exit_group: 1
 chdir: 1
+nanosleep: 1
