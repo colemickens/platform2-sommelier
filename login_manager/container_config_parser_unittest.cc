@@ -105,6 +105,47 @@ const std::string kExtraMountJsonConfigData = R"json(
       ]
     })json";
 
+const char kCpuCgroupJsonRuntimeData[] = R"json(
+    {
+      "mounts": {
+        "mount_0": {
+          "source": "tmpfs_source",
+          "type": "tmpfs",
+          "options": [ "nodev" ]
+        },
+        "mount_1": {
+          "source": "/bind_source",
+          "type": "bind",
+          "options": [ "bind", "mount_outside", "noexec" ]
+        }
+      },
+      "linux": {
+        "uidMappings": "0 0 0",
+        "gidMappings": "0 0 0",
+        "cpu": {
+          "shares": 1024,
+          "quota": 50000,
+          "period": 100000,
+          "realtimeRuntime": 200000,
+          "realtimePeriod": 1000000
+        },
+        "devices": [
+          {
+            "path": "/dev/null",
+            "type": 99,
+            "major": 1,
+            "minor": 3,
+            "permissions": "rw",
+            "fileMode": 438,
+            "uid": 100,
+            "gid": 200
+          }
+        ],
+        "altSysCallTable": "android"
+      }
+    }
+)json";
+
 }  // anonymous namespace
 
 namespace login_manager {
@@ -124,6 +165,12 @@ TEST(ContainerConfigParserTest, TestBasicConfig) {
             container_config_get_program_arg(config.get(), 0));
   EXPECT_EQ(100, container_config_get_uid(config.get()));
   EXPECT_EQ(200, container_config_get_gid(config.get()));
+  // No CPU cgroup params in runtime config, so should be 0.
+  EXPECT_EQ(0, container_config_get_cpu_shares(config.get()));
+  EXPECT_EQ(0, container_config_get_cpu_quota(config.get()));
+  EXPECT_EQ(0, container_config_get_cpu_period(config.get()));
+  EXPECT_EQ(0, container_config_get_cpu_rt_runtime(config.get()));
+  EXPECT_EQ(0, container_config_get_cpu_rt_period(config.get()));
 }
 
 TEST(ContainerConfigParserTest, TestBasicConfigAndroid) {
@@ -164,6 +211,21 @@ TEST(ContainerConfigParserTest, TestFailedConfigUnknownMount) {
   EXPECT_FALSE(ParseContainerConfig(kExtraMountJsonConfigData,
                                     kBasicJsonRuntimeData, "testc",
                                     kNamedContainerPath, &config));
+}
+
+TEST(ContainerConfigParserTest, TestCpuCgroupConfig) {
+  const base::FilePath kNamedContainerPath("/var/run/containers/testc");
+
+  ContainerConfigPtr config(container_config_create(),
+                            &container_config_destroy);
+  EXPECT_TRUE(ParseContainerConfig(kBasicJsonConfigData,
+                                   kCpuCgroupJsonRuntimeData, "testc",
+                                   kNamedContainerPath, &config));
+  EXPECT_EQ(1024, container_config_get_cpu_shares(config.get()));
+  EXPECT_EQ(50000, container_config_get_cpu_quota(config.get()));
+  EXPECT_EQ(100000, container_config_get_cpu_period(config.get()));
+  EXPECT_EQ(200000, container_config_get_cpu_rt_runtime(config.get()));
+  EXPECT_EQ(1000000, container_config_get_cpu_rt_period(config.get()));
 }
 
 }  // namespace login_manager

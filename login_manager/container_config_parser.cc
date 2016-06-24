@@ -364,6 +364,36 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
   return true;
 }
 
+// Parse the CPU cgroup settings for the container.
+// CPU cgroup params are optional.
+bool ParseCpuDict(const base::DictionaryValue& linux_dict,
+                  ContainerConfigPtr* config_out) {
+  // |cpu_dict| is owned by |linux_dict|.
+  const base::DictionaryValue* cpu_dict = nullptr;
+  if (!linux_dict.GetDictionary("cpu", &cpu_dict))
+    return false;
+
+  int shares;
+  if (cpu_dict->GetInteger("shares", &shares))
+    container_config_set_cpu_shares(config_out->get(), shares);
+
+  int quota, period;
+  if (cpu_dict->GetInteger("quota", &quota) &&
+      cpu_dict->GetInteger("period", &period)) {
+    container_config_set_cpu_cfs_params(config_out->get(), quota, period);
+  }
+
+  int rt_runtime, rt_period;
+  if (cpu_dict->GetInteger("realtimeRuntime", &rt_runtime) &&
+      cpu_dict->GetInteger("realtimePeriod", &rt_period)) {
+    container_config_set_cpu_rt_params(config_out->get(),
+                                       rt_runtime,
+                                       rt_period);
+  }
+
+  return true;
+}
+
 // Parses the linux node which has information about setting up a user
 // namespace, alt-syscall table and the list of devices for the container.
 bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
@@ -401,6 +431,9 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
 
   if (!ParseDeviceList(*linux_dict, config_out))
     return false;
+
+  // CPU cgroup params are optional.
+  ParseCpuDict(*linux_dict, config_out);
 
   return true;
 }
