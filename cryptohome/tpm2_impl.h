@@ -5,12 +5,17 @@
 #ifndef CRYPTOHOME_TPM2_IMPL_H_
 #define CRYPTOHOME_TPM2_IMPL_H_
 
-#include "cryptohome/tpm.h"
+#include <map>
+#include <memory>
 
+#include <base/threading/platform_thread.h>
 #include <trunks/hmac_session.h>
 #include <trunks/tpm_state.h>
 #include <trunks/tpm_utility.h>
 #include <trunks/trunks_factory.h>
+#include <trunks/trunks_factory_impl.h>
+
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -20,10 +25,11 @@ const uint32_t kLockboxPCR = 15;
 
 class Tpm2Impl : public Tpm {
  public:
-  Tpm2Impl();
-  // Takes ownership of factory.
+  Tpm2Impl() = default;
+  // Does not take ownership of |factory|.
   explicit Tpm2Impl(trunks::TrunksFactory* factory);
-  virtual ~Tpm2Impl();
+  virtual ~Tpm2Impl() = default;
+
   // Tpm methods
   TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
                              const brillo::SecureBlob& plaintext,
@@ -72,16 +78,14 @@ class Tpm2Impl : public Tpm {
                 brillo::SecureBlob* quote) override;
   bool SealToPCR0(const brillo::Blob& value,
                   brillo::Blob* sealed_value) override;
-  bool Unseal(const brillo::Blob& sealed_value,
-              brillo::Blob* value) override;
-  bool CreateCertifiedKey(
-      const brillo::SecureBlob& identity_key_blob,
-      const brillo::SecureBlob& external_data,
-      brillo::SecureBlob* certified_public_key,
-      brillo::SecureBlob* certified_public_key_der,
-      brillo::SecureBlob* certified_key_blob,
-      brillo::SecureBlob* certified_key_info,
-      brillo::SecureBlob* certified_key_proof) override;
+  bool Unseal(const brillo::Blob& sealed_value, brillo::Blob* value) override;
+  bool CreateCertifiedKey(const brillo::SecureBlob& identity_key_blob,
+                          const brillo::SecureBlob& external_data,
+                          brillo::SecureBlob* certified_public_key,
+                          brillo::SecureBlob* certified_public_key_der,
+                          brillo::SecureBlob* certified_key_blob,
+                          brillo::SecureBlob* certified_key_info,
+                          brillo::SecureBlob* certified_key_proof) override;
   bool CreateDelegate(const brillo::SecureBlob& identity_key_blob,
                       brillo::SecureBlob* delegate_blob,
                       brillo::SecureBlob* delegate_secret) override;
@@ -134,18 +138,37 @@ class Tpm2Impl : public Tpm {
       const brillo::SecureBlob& delegate_secret) override;
 
  private:
+  // This object may be used across multiple threads but the Trunks D-Bus proxy
+  // can only be used on a single thread. This structure holds all Trunks client
+  // objects for a particular thread.
+  struct TrunksClientContext {
+    trunks::TrunksFactory* factory;
+    std::unique_ptr<trunks::TrunksFactoryImpl> factory_impl;
+    std::unique_ptr<trunks::TpmState> tpm_state;
+    std::unique_ptr<trunks::TpmUtility> tpm_utility;
+  };
+
+  // Gets the trunks objects for the current thread, initializing new ones if
+  // necessary. Returns true on success.
+  bool GetTrunksContext(TrunksClientContext** trunks);
+
   // This method given a Tpm generated public area, returns the DER encoded
   // public key.
   bool PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
                                 brillo::SecureBlob* public_key_der);
 
-  scoped_ptr<trunks::TrunksFactory> trunks_factory_;
-  scoped_ptr<trunks::TpmState> tpm_state_;
-  scoped_ptr<trunks::TpmUtility> trunks_utility_;
+  std::map<base::PlatformThreadId, std::unique_ptr<TrunksClientContext>>
+      trunks_contexts_;
+  TrunksClientContext external_trunks_context_;
+  bool has_external_trunks_context_ = false;
 
+  // For now, be optimistic by default because tpm_managerd should be taking
+  // care of this and until the integration is farther along we're blind to the
+  // detailed status.
+  // TODO(dkrahn): crbug.com/623100 - Finish tpm_managerd integration.
   bool is_disabled_ = false;
-  bool is_owned_ = false;
-  bool initialized_ = false;
+  bool is_owned_ = true;
+  bool initialized_ = true;
   bool is_being_owned_ = false;
 
   brillo::SecureBlob owner_password_;

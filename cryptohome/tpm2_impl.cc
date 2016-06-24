@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <trunks/authorization_delegate.h>
@@ -31,18 +32,12 @@ using trunks::TrunksFactory;
 
 namespace cryptohome {
 
-Tpm2Impl::Tpm2Impl()
-    : trunks_factory_(
-        new trunks::TrunksFactoryImpl(false /* !failure_is_fatal */)),
-      tpm_state_(trunks_factory_->GetTpmState()),
-      trunks_utility_(trunks_factory_->GetTpmUtility()) {}
-
 Tpm2Impl::Tpm2Impl(TrunksFactory* factory)
-    : trunks_factory_(factory),
-      tpm_state_(trunks_factory_->GetTpmState()),
-      trunks_utility_(trunks_factory_->GetTpmUtility()) {}
-
-Tpm2Impl::~Tpm2Impl() {}
+    : has_external_trunks_context_(true) {
+  external_trunks_context_.factory = factory;
+  external_trunks_context_.tpm_state = factory->GetTpmState();
+  external_trunks_context_.tpm_utility = factory->GetTpmUtility();
+}
 
 bool Tpm2Impl::GetOwnerPassword(brillo::Blob* owner_password) {
   if (!owner_password_.empty()) {
@@ -59,7 +54,11 @@ void Tpm2Impl::SetOwnerPassword(const SecureBlob& owner_password) {
 }
 
 bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
-  TPM_RC result = tpm_state_->Initialize();
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  TPM_RC result = trunks->tpm_state->Initialize();
   if (result != TPM_RC_SUCCESS) {
     if (enabled) {
       *enabled = false;
@@ -72,20 +71,25 @@ bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
     return false;
   }
   if (enabled) {
-    *enabled = tpm_state_->IsEnabled();
+    *enabled = trunks->tpm_state->IsEnabled();
   }
   if (owned) {
-    *owned = tpm_state_->IsOwned();
+    *owned = trunks->tpm_state->IsOwned();
   }
   return true;
 }
 
 bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
   CHECK(data);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   std::string random_data;
-  TPM_RC result = trunks_utility_->GenerateRandom(length,
-                                                  nullptr,  // No authorization.
-                                                  &random_data);
+  TPM_RC result =
+      trunks->tpm_utility->GenerateRandom(length,
+                                          nullptr,  // No authorization.
+                                          &random_data);
   if ((result != TPM_RC_SUCCESS) || (random_data.size() != length)) {
     LOG(ERROR) << "Error getting random data: " << GetErrorString(result);
     return false;
@@ -95,26 +99,35 @@ bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
 }
 
 bool Tpm2Impl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
-  // TODO(rspangler): Refactor the trunks DefineNVSpace() API so it
-  // doesn't hard-code these flags.
-  if (flags != (Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0)) {
-    LOG(ERROR) << "Defining NVram with flags unsupported by trunks.";
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
     return false;
   }
-
+  if (flags != (Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0)) {
+    LOG(ERROR) << "Defining NVram with unsupported flags.";
+    return false;
+  }
+  trunks::TPMA_NV attributes =
+      trunks::TPMA_NV_OWNERWRITE | trunks::TPMA_NV_WRITEDEFINE |
+      trunks::TPMA_NV_POLICYREAD | trunks::TPMA_NV_NO_DA;
   if (owner_password_.empty()) {
     LOG(ERROR) << "Defining NVram needs owner_password.";
     return false;
   }
-  scoped_ptr<trunks::HmacSession> session = trunks_factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  std::unique_ptr<trunks::HmacSession> session =
+      trunks->factory->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
   }
   session->SetEntityAuthorizationValue(owner_password_.to_string());
-  result = trunks_utility_->DefineNVSpace(index, length,
-                                          session->GetDelegate());
+  std::string policy;
+  result = trunks->tpm_utility->GetPolicyDigestForPcrValue(
+      0 /* PCR_0 */, std::string() /* Use the current PCR value */, &policy);
+  result = trunks->tpm_utility->DefineNVSpace(
+      index, length, attributes, std::string() /* No authorization value */,
+      policy, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error defining NVram space: " << GetErrorString(result);
     return false;
@@ -123,18 +136,23 @@ bool Tpm2Impl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
 }
 
 bool Tpm2Impl::DestroyNvram(uint32_t index) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   if (owner_password_.empty()) {
     LOG(ERROR) << "Destroying NVram needs owner_password.";
     return false;
   }
-  scoped_ptr<trunks::HmacSession> session = trunks_factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  std::unique_ptr<trunks::HmacSession> session =
+      trunks->factory->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
   }
   session->SetEntityAuthorizationValue(owner_password_.to_string());
-  result = trunks_utility_->DestroyNVSpace(index, session->GetDelegate());
+  result = trunks->tpm_utility->DestroyNVSpace(index, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error destroying NVram space: " << GetErrorString(result);
     return false;
@@ -143,26 +161,33 @@ bool Tpm2Impl::DestroyNvram(uint32_t index) {
 }
 
 bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   if (owner_password_.empty()) {
     LOG(ERROR) << "Writing NVram needs owner_password.";
     return false;
   }
-  scoped_ptr<trunks::HmacSession> session = trunks_factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  std::unique_ptr<trunks::HmacSession> session =
+      trunks->factory->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
   }
   session->SetEntityAuthorizationValue(owner_password_.to_string());
-  result = trunks_utility_->WriteNVSpace(index,
-                                         0,  // offset
-                                         blob.to_string(),
-                                         session->GetDelegate());
+  result = trunks->tpm_utility->WriteNVSpace(
+      index, 0, /* offset */
+      blob.to_string(), true /* using_owner_authorization */,
+      false /* extend */, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error writing to NVSpace: " << GetErrorString(result);
     return false;
   }
-  result = trunks_utility_->LockNVSpace(index, session->GetDelegate());
+  result = trunks->tpm_utility->LockNVSpace(
+      index, false /* lock_read */, true /* lock_write */,
+      true /* using_owner_authorization */, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error locking NVSpace: " << GetErrorString(result);
     return false;
@@ -171,18 +196,28 @@ bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
 }
 
 bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
-  scoped_ptr<trunks::HmacSession> session = trunks_factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  std::unique_ptr<trunks::PolicySession> session =
+      trunks->factory->GetPolicySession();
+  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
   }
+  result = session->PolicyPCR(0 /* PCR_0 */,
+                              std::string() /* Use current PCR value */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error setting up policy session: " << GetErrorString(result);
+    return false;
+  }
   std::string nvram_data;
-  result = trunks_utility_->ReadNVSpace(index,
-                                        0,  // offset
-                                        GetNvramSize(index),
-                                        &nvram_data,
-                                        session->GetDelegate());
+  result = trunks->tpm_utility->ReadNVSpace(
+      index, 0 /* offset */, GetNvramSize(index),
+      false /* using_owner_authorization */, &nvram_data,
+      session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading from nvram: " << GetErrorString(result);
     return false;
@@ -192,8 +227,13 @@ bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
 }
 
 bool Tpm2Impl::IsNvramDefined(uint32_t index) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   trunks::TPMS_NV_PUBLIC nvram_public;
-  TPM_RC result = trunks_utility_->GetNVSpacePublicArea(index, &nvram_public);
+  TPM_RC result =
+      trunks->tpm_utility->GetNVSpacePublicArea(index, &nvram_public);
   if (trunks::GetFormatOneError(result) == trunks::TPM_RC_HANDLE) {
     return false;
   } else if (result == TPM_RC_SUCCESS) {
@@ -206,8 +246,13 @@ bool Tpm2Impl::IsNvramDefined(uint32_t index) {
 }
 
 bool Tpm2Impl::IsNvramLocked(uint32_t index) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   trunks::TPMS_NV_PUBLIC nvram_public;
-  TPM_RC result = trunks_utility_->GetNVSpacePublicArea(index, &nvram_public);
+  TPM_RC result =
+      trunks->tpm_utility->GetNVSpacePublicArea(index, &nvram_public);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading NV space for index " << index
                << " with error: " << GetErrorString(result);
@@ -217,8 +262,13 @@ bool Tpm2Impl::IsNvramLocked(uint32_t index) {
 }
 
 unsigned int Tpm2Impl::GetNvramSize(uint32_t index) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   trunks::TPMS_NV_PUBLIC nvram_public;
-  TPM_RC result = trunks_utility_->GetNVSpacePublicArea(index, &nvram_public);
+  TPM_RC result =
+      trunks->tpm_utility->GetNVSpacePublicArea(index, &nvram_public);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading NV space for index " << index
                << " with error: " << GetErrorString(result);
@@ -228,22 +278,22 @@ unsigned int Tpm2Impl::GetNvramSize(uint32_t index) {
 }
 
 bool Tpm2Impl::IsEndorsementKeyAvailable() {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::CreateEndorsementKey() {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::GetEndorsementCredential(SecureBlob* credential) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
@@ -256,7 +306,7 @@ bool Tpm2Impl::MakeIdentity(SecureBlob* identity_public_key_der,
                             SecureBlob* endorsement_credential,
                             SecureBlob* platform_credential,
                             SecureBlob* conformance_credential) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
@@ -266,30 +316,33 @@ bool Tpm2Impl::QuotePCR(int pcr_index,
                         SecureBlob* pcr_value,
                         SecureBlob* quoted_data,
                         SecureBlob* quote) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
                           brillo::Blob* sealed_value) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   std::string policy_digest;
-  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValue(0, "",
-                                                              &policy_digest);
+  TPM_RC result =
+      trunks->tpm_utility->GetPolicyDigestForPcrValue(0, "", &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;
   }
-  scoped_ptr<trunks::HmacSession> session = trunks_factory_->GetHmacSession();
-  if (trunks_utility_->StartSession(session.get()) != TPM_RC_SUCCESS) {
+  std::unique_ptr<trunks::HmacSession> session =
+      trunks->factory->GetHmacSession();
+  if (trunks->tpm_utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
   std::string data_to_seal(value.begin(), value.end());
   std::string sealed_data;
-  result = trunks_utility_->SealData(data_to_seal,
-                                     policy_digest,
-                                     session->GetDelegate(),
-                                     &sealed_data);
+  result = trunks->tpm_utility->SealData(data_to_seal, policy_digest,
+                                         session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
     return false;
@@ -298,10 +351,13 @@ bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
   return true;
 }
 
-bool Tpm2Impl::Unseal(const brillo::Blob& sealed_value,
-                      brillo::Blob* value) {
-  scoped_ptr<trunks::PolicySession> policy_session =
-      trunks_factory_->GetPolicySession();
+bool Tpm2Impl::Unseal(const brillo::Blob& sealed_value, brillo::Blob* value) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  std::unique_ptr<trunks::PolicySession> policy_session =
+      trunks->factory->GetPolicySession();
   TPM_RC result = policy_session->StartUnboundSession(false);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
@@ -315,9 +371,8 @@ bool Tpm2Impl::Unseal(const brillo::Blob& sealed_value,
   }
   std::string sealed_data(sealed_value.begin(), sealed_value.end());
   std::string unsealed_data;
-  result = trunks_utility_->UnsealData(sealed_data,
-                                       policy_session->GetDelegate(),
-                                       &unsealed_data);
+  result = trunks->tpm_utility->UnsealData(
+      sealed_data, policy_session->GetDelegate(), &unsealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error unsealing object: " << GetErrorString(result);
     return false;
@@ -333,14 +388,14 @@ bool Tpm2Impl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
                                   SecureBlob* certified_key_blob,
                                   SecureBlob* certified_key_info,
                                   SecureBlob* certified_key_proof) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::CreateDelegate(const SecureBlob& identity_key_blob,
                               SecureBlob* delegate_blob,
                               SecureBlob* delegate_secret) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
@@ -350,34 +405,33 @@ bool Tpm2Impl::ActivateIdentity(const SecureBlob& delegate_blob,
                                 const SecureBlob& encrypted_asym_ca,
                                 const SecureBlob& encrypted_sym_ca,
                                 SecureBlob* identity_credential) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::TakeOwnership(int max_timeout_tries,
                              const SecureBlob& owner_password) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::InitializeSrk(const SecureBlob& owner_password) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::ChangeOwnerPassword(const SecureBlob& previous_owner_password,
                                    const SecureBlob& owner_password) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::TestTpmAuth(const SecureBlob& owner_password) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::IsTransient(TpmRetryAction retry_action) {
-  LOG(FATAL) << "Not Implemented.";
   return false;
 }
 
@@ -385,12 +439,16 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
                     const SecureBlob& input,
                     int bound_pcr_index,
                     SecureBlob* signature) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   trunks::AuthorizationDelegate* delegate;
-  scoped_ptr<trunks::PolicySession> policy_session;
-  scoped_ptr<trunks::HmacSession> hmac_session;
+  std::unique_ptr<trunks::PolicySession> policy_session;
+  std::unique_ptr<trunks::HmacSession> hmac_session;
   TPM_RC result;
   if (bound_pcr_index >= 0) {
-    policy_session = trunks_factory_->GetPolicySession();
+    policy_session = trunks->factory->GetPolicySession();
     result = policy_session->StartUnboundSession(false);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
@@ -403,7 +461,7 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
     }
     delegate = policy_session->GetDelegate();
   } else {
-    hmac_session = trunks_factory_->GetHmacSession();
+    hmac_session = trunks->factory->GetHmacSession();
     result = hmac_session->StartUnboundSession(true);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
@@ -420,12 +478,9 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
     return false;
   }
   std::string tpm_signature;
-  result = trunks_utility_->Sign(handle.value(),
-                                 trunks::TPM_ALG_RSASSA,
-                                 trunks::TPM_ALG_SHA256,
-                                 input.to_string(),
-                                 delegate,
-                                 &tpm_signature);
+  result = trunks->tpm_utility->Sign(handle.value(), trunks::TPM_ALG_RSASSA,
+                                     trunks::TPM_ALG_SHA256, input.to_string(),
+                                     delegate, &tpm_signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error signing: " << GetErrorString(result);
     return false;
@@ -441,8 +496,12 @@ bool Tpm2Impl::CreatePCRBoundKey(int pcr_index,
                                  SecureBlob* creation_blob) {
   CHECK(key_blob) << "No key blob argument provided.";
   CHECK(creation_blob) << "No creation blob argument provided.";
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   std::string policy_digest;
-  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValue(
+  TPM_RC result = trunks->tpm_utility->GetPolicyDigestForPcrValue(
       pcr_index, pcr_value.to_string(), &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
@@ -450,19 +509,16 @@ bool Tpm2Impl::CreatePCRBoundKey(int pcr_index,
   }
   std::string tpm_key_blob;
   std::string tpm_creation_blob;
-  scoped_ptr<trunks::AuthorizationDelegate> delegate =
-      trunks_factory_->GetPasswordAuthorization("");
-  result = trunks_utility_->CreateRSAKeyPair(
-      trunks::TpmUtility::kSignKey,
-      kDefaultTpmRsaModulusSize,
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
+  result = trunks->tpm_utility->CreateRSAKeyPair(
+      trunks::TpmUtility::kSignKey, kDefaultTpmRsaModulusSize,
       kDefaultTpmPublicExponent,
       "",  // No authorization
       policy_digest,
       true,  // use_only_policy_authorization
-      pcr_index,
-      delegate.get(),
-      &tpm_key_blob,
-      &tpm_creation_blob  /* No creation_blob */);
+      pcr_index, delegate.get(), &tpm_key_blob,
+      &tpm_creation_blob /* No creation_blob */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating a pcr bound key: " << GetErrorString(result);
     return false;
@@ -474,9 +530,8 @@ bool Tpm2Impl::CreatePCRBoundKey(int pcr_index,
   if (public_key_der) {
     trunks::TPM2B_PUBLIC public_data;
     trunks::TPM2B_PRIVATE private_data;
-    if (!trunks_factory_->GetBlobParser()->ParseKeyBlob(key_blob->to_string(),
-                                                        &public_data,
-                                                        &private_data)) {
+    if (!trunks->factory->GetBlobParser()->ParseKeyBlob(
+            key_blob->to_string(), &public_data, &private_data)) {
       return false;
     }
     if (!PublicAreaToPublicKeyDER(public_data.public_area, public_key_der)) {
@@ -490,14 +545,18 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
                                  const SecureBlob& pcr_value,
                                  const SecureBlob& key_blob,
                                  const SecureBlob& creation_blob) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   // First we verify that the PCR were in a known good state at the time of
   // Key creation.
   trunks::TPM2B_CREATION_DATA creation_data;
   trunks::TPM2B_DIGEST creation_hash;
   trunks::TPMT_TK_CREATION creation_ticket;
-  if (!trunks_factory_->GetBlobParser()->ParseCreationBlob(
-      creation_blob.to_string(), &creation_data,
-      &creation_hash, &creation_ticket)) {
+  if (!trunks->factory->GetBlobParser()->ParseCreationBlob(
+          creation_blob.to_string(), &creation_data, &creation_hash,
+          &creation_ticket)) {
     LOG(ERROR) << "Error parsing creation_blob.";
     return false;
   }
@@ -507,8 +566,7 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
     LOG(ERROR) << "Creation data missing creation PCR value.";
     return false;
   }
-  if (pcr_select.pcr_selections[0].hash !=
-      trunks::TPM_ALG_SHA256) {
+  if (pcr_select.pcr_selections[0].hash != trunks::TPM_ALG_SHA256) {
     LOG(ERROR) << "Creation PCR extended with wrong hash algorithm.";
     return false;
   }
@@ -533,16 +591,16 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
   if (LoadWrappedKey(key_blob, &scoped_handle) != Tpm::kTpmRetryNone) {
     return false;
   }
-  TPM_RC result = trunks_utility_->CertifyCreation(scoped_handle.value(),
-                                                   creation_blob.to_string());
+  TPM_RC result = trunks->tpm_utility->CertifyCreation(
+      scoped_handle.value(), creation_blob.to_string());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error certifying that key was created by TPM: "
                << trunks::GetErrorString(result);
     return false;
   }
   // Finally we verify that the key's policy_digest is the expected value.
-  scoped_ptr<trunks::PolicySession> trial_session =
-      trunks_factory_->GetTrialSession();
+  std::unique_ptr<trunks::PolicySession> trial_session =
+      trunks->factory->GetTrialSession();
   result = trial_session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a trial session: " << GetErrorString(result);
@@ -561,16 +619,16 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
     return false;
   }
   trunks::TPMT_PUBLIC public_area;
-  result = trunks_utility_->GetKeyPublicArea(scoped_handle.value(),
-                                             &public_area);
+  result = trunks->tpm_utility->GetKeyPublicArea(scoped_handle.value(),
+                                                 &public_area);
   if (result != TPM_RC_SUCCESS) {
     return false;
   }
   if (public_area.auth_policy.size != policy_digest.size()) {
-    LOG(ERROR) << "Key auth policy and policy digest are of different length.";
+    LOG(ERROR) << "Key auth policy and policy digest are of different length."
+               << public_area.auth_policy.size << "," << policy_digest.size();
     return false;
-  } else if (memcmp(public_area.auth_policy.buffer,
-                    policy_digest.data(),
+  } else if (memcmp(public_area.auth_policy.buffer, policy_digest.data(),
                     policy_digest.size()) != 0) {
     LOG(ERROR) << "Key auth policy is different from policy digest.";
     return false;
@@ -582,11 +640,14 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
 }
 
 bool Tpm2Impl::ExtendPCR(int pcr_index, const SecureBlob& extension) {
-  scoped_ptr<trunks::AuthorizationDelegate> delegate =
-      trunks_factory_->GetPasswordAuthorization("");
-  TPM_RC result = trunks_utility_->ExtendPCR(pcr_index,
-                                             extension.to_string(),
-                                             delegate.get());
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
+  TPM_RC result = trunks->tpm_utility->ExtendPCR(
+      pcr_index, extension.to_string(), delegate.get());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error extending PCR: " << GetErrorString(result);
     return false;
@@ -596,8 +657,12 @@ bool Tpm2Impl::ExtendPCR(int pcr_index, const SecureBlob& extension) {
 
 bool Tpm2Impl::ReadPCR(int pcr_index, SecureBlob* pcr_value) {
   CHECK(pcr_value);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   std::string pcr_digest;
-  TPM_RC result = trunks_utility_->ReadPCR(pcr_index, &pcr_digest);
+  TPM_RC result = trunks->tpm_utility->ReadPCR(pcr_index, &pcr_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading from PCR: " << GetErrorString(result);
     return false;
@@ -609,17 +674,18 @@ bool Tpm2Impl::ReadPCR(int pcr_index, SecureBlob* pcr_value) {
 bool Tpm2Impl::WrapRsaKey(const SecureBlob& public_modulus,
                           const SecureBlob& prime_factor,
                           SecureBlob* wrapped_key) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
   std::string key_blob;
-  scoped_ptr<trunks::AuthorizationDelegate> delegate =
-      trunks_factory_->GetPasswordAuthorization("");
-  TPM_RC result = trunks_utility_->ImportRSAKey(
-      trunks::TpmUtility::kDecryptKey,
-      public_modulus.to_string(),
-      kDefaultTpmPublicExponent,
-      prime_factor.to_string(),
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
+  TPM_RC result = trunks->tpm_utility->ImportRSAKey(
+      trunks::TpmUtility::kDecryptKey, public_modulus.to_string(),
+      kDefaultTpmPublicExponent, prime_factor.to_string(),
       "",  // No authorization,
-      delegate.get(),
-      &key_blob);
+      delegate.get(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating SRK wrapped key: " << GetErrorString(result);
     return false;
@@ -631,12 +697,15 @@ bool Tpm2Impl::WrapRsaKey(const SecureBlob& public_modulus,
 Tpm::TpmRetryAction Tpm2Impl::LoadWrappedKey(const SecureBlob& wrapped_key,
                                              ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return Tpm::kTpmRetryFailNoRetry;
+  }
   trunks::TPM_HANDLE handle;
-  scoped_ptr<trunks::AuthorizationDelegate> delegate =
-      trunks_factory_->GetPasswordAuthorization("");
-  TPM_RC result = trunks_utility_->LoadKey(wrapped_key.to_string(),
-                                           delegate.get(),
-                                           &handle);
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
+  TPM_RC result = trunks->tpm_utility->LoadKey(wrapped_key.to_string(),
+                                               delegate.get(), &handle);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading SRK wrapped key: " << GetErrorString(result);
     return Tpm::kTpmRetryFailNoRetry;
@@ -647,13 +716,17 @@ Tpm::TpmRetryAction Tpm2Impl::LoadWrappedKey(const SecureBlob& wrapped_key,
 
 bool Tpm2Impl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                        SecureBlob* key_blob) {
-  LOG(ERROR) << "This functionality is not available in TPM2.0.";
+  // This doesn't apply to devices with TPM 2.0.
   return false;
 }
 
 void Tpm2Impl::CloseHandle(TpmKeyHandle key_handle) {
-  TPM_RC result = trunks_factory_->GetTpm()->FlushContextSync(key_handle,
-                                                              nullptr);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return;
+  }
+  TPM_RC result =
+      trunks->factory->GetTpm()->FlushContextSync(key_handle, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(WARNING) << "Error flushing tpm handle " << key_handle << ": "
                  << GetErrorString(result);
@@ -665,19 +738,20 @@ Tpm::TpmRetryAction Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
                                           const SecureBlob& key,
                                           SecureBlob* ciphertext) {
   CHECK(ciphertext);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return Tpm::kTpmRetryFailNoRetry;
+  }
   std::string tpm_ciphertext;
-  TPM_RC result = trunks_utility_->AsymmetricEncrypt(key_handle,
-                                                     trunks::TPM_ALG_OAEP,
-                                                     trunks::TPM_ALG_SHA256,
-                                                     plaintext.to_string(),
-                                                     nullptr,
-                                                     &tpm_ciphertext);
+  TPM_RC result = trunks->tpm_utility->AsymmetricEncrypt(
+      key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
+      plaintext.to_string(), nullptr, &tpm_ciphertext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting plaintext: " << GetErrorString(result);
     return Tpm::kTpmRetryFailNoRetry;
   }
-  if (!CryptoLib::ObscureRSAMessage(SecureBlob(tpm_ciphertext),
-                                    key, ciphertext)) {
+  if (!CryptoLib::ObscureRSAMessage(SecureBlob(tpm_ciphertext), key,
+                                    ciphertext)) {
     LOG(ERROR) << "Error obscuring tpm encrypted blob.";
     return Tpm::kTpmRetryFailNoRetry;
   }
@@ -689,20 +763,21 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
                                           const SecureBlob& key,
                                           SecureBlob* plaintext) {
   CHECK(plaintext);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return Tpm::kTpmRetryFailNoRetry;
+  }
   SecureBlob local_data;
   if (!CryptoLib::UnobscureRSAMessage(ciphertext, key, &local_data)) {
     LOG(ERROR) << "Error unobscureing message.";
     return Tpm::kTpmRetryFailNoRetry;
   }
-  scoped_ptr<trunks::AuthorizationDelegate> delegate =
-      trunks_factory_->GetPasswordAuthorization("");
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
   std::string tpm_plaintext;
-  TPM_RC result = trunks_utility_->AsymmetricDecrypt(key_handle,
-                                                     trunks::TPM_ALG_OAEP,
-                                                     trunks::TPM_ALG_SHA256,
-                                                     local_data.to_string(),
-                                                     delegate.get(),
-                                                     &tpm_plaintext);
+  TPM_RC result = trunks->tpm_utility->AsymmetricDecrypt(
+      key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
+      local_data.to_string(), delegate.get(), &tpm_plaintext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting plaintext: " << GetErrorString(result);
     return Tpm::kTpmRetryFailNoRetry;
@@ -714,8 +789,13 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
 Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
                                                SecureBlob* hash) {
   CHECK(hash);
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return Tpm::kTpmRetryFailNoRetry;
+  }
   trunks::TPMT_PUBLIC public_data;
-  TPM_RC result = trunks_utility_->GetKeyPublicArea(key_handle, &public_data);
+  TPM_RC result =
+      trunks->tpm_utility->GetKeyPublicArea(key_handle, &public_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key public area: " << GetErrorString(result);
     return Tpm::kTpmRetryFailNoRetry;
@@ -727,22 +807,44 @@ Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
 }
 
 void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
 }
 
 bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
                                        int* threshold,
                                        bool* lockout,
                                        int* seconds_remaining) {
-  LOG(FATAL) << "Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::ResetDictionaryAttackMitigation(
-      const SecureBlob& delegate_blob,
-      const SecureBlob& delegate_secret) {
-  LOG(FATAL) << "Not Implemented.";
+    const SecureBlob& delegate_blob,
+    const SecureBlob& delegate_secret) {
+  LOG(ERROR) << __func__ << ": Not Implemented.";
   return false;
+}
+
+bool Tpm2Impl::GetTrunksContext(TrunksClientContext** trunks) {
+  if (has_external_trunks_context_) {
+    *trunks = &external_trunks_context_;
+    return true;
+  }
+  base::PlatformThreadId thread_id = base::PlatformThread::CurrentId();
+  if (trunks_contexts_.count(thread_id) == 0) {
+    std::unique_ptr<TrunksClientContext> new_context(new TrunksClientContext);
+    new_context->factory_impl = base::MakeUnique<trunks::TrunksFactoryImpl>();
+    if (!new_context->factory_impl->Initialize()) {
+      LOG(ERROR) << "Failed to initialize trunks factory.";
+      return false;
+    }
+    new_context->factory = new_context->factory_impl.get();
+    new_context->tpm_state = new_context->factory->GetTpmState();
+    new_context->tpm_utility = new_context->factory->GetTpmUtility();
+    trunks_contexts_[thread_id] = std::move(new_context);
+  }
+  *trunks = trunks_contexts_[thread_id].get();
+  return true;
 }
 
 bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
@@ -752,8 +854,7 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
   CHECK(rsa.get()->e) << "Error setting exponent for RSA.";
   BN_set_word(rsa.get()->e, kDefaultTpmPublicExponent);
   rsa.get()->n = BN_bin2bn(public_area.unique.rsa.buffer,
-                           public_area.unique.rsa.size,
-                           nullptr);
+                           public_area.unique.rsa.size, nullptr);
   CHECK(rsa.get()->n) << "Error setting modulus for RSA.";
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
   if (der_length < 0) {
@@ -769,6 +870,5 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
   }
   return true;
 }
-
 
 }  // namespace cryptohome
