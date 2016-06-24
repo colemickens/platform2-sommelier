@@ -6,8 +6,9 @@
 #ifndef CRYPTOHOME_TPM_INIT_H_
 #define CRYPTOHOME_TPM_INIT_H_
 
+#include <memory>
+
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/tpm.h"
@@ -174,7 +175,7 @@ class TpmInit {
 
   // The background task for initializing the TPM, implemented as a
   // PlatformThread::Delegate
-  scoped_ptr<TpmInitTask> tpm_init_task_;
+  std::unique_ptr<TpmInitTask> tpm_init_task_;
   base::PlatformThreadHandle init_thread_;
 
   TpmInitCallback* notify_callback_;

@@ -6,6 +6,7 @@
 
 #include "cryptohome/mount.h"
 
+#include <memory>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <pwd.h>
@@ -209,7 +210,7 @@ class MountTest : public ::testing::Test {
   Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
   MockChapsClientFactory chaps_client_factory_;
-  scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+  std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
   scoped_refptr<Mount> mount_;
 
  private:
@@ -461,7 +462,7 @@ class ChapsDirectoryTest : public ::testing::Test {
   scoped_refptr<Mount> mount_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCrypto> crypto_;
-  scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+  std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
 
  private:
   void InitStat(struct stat* s, mode_t mode, uid_t uid, gid_t gid) {

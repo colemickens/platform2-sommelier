@@ -6,7 +6,6 @@
 
 #include "cryptohome/tpm_live_test.h"
 
-#include <base/memory/scoped_ptr.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>

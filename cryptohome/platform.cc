@@ -12,6 +12,7 @@
 #include <grp.h>
 #include <limits.h>
 #include <mntent.h>
+#include <memory>
 #include <pwd.h>
 #include <signal.h>
 #include <stdint.h>
@@ -1058,7 +1059,7 @@ bool Platform::WalkPath(const std::string& path,
   if (IsDirectory(base_entry_info)) {
     int file_types = base::FileEnumerator::FILES |
                      base::FileEnumerator::DIRECTORIES;
-    scoped_ptr<FileEnumerator> file_enumerator(
+    std::unique_ptr<FileEnumerator> file_enumerator(
         GetFileEnumerator(path, true, file_types));
     std::string entry_path;
     while (!(entry_path = file_enumerator->Next()).empty()) {

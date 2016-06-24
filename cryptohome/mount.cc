@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include <map>
+#include <memory>
 #include <set>
 
 #include <base/bind.h>
@@ -1407,7 +1408,7 @@ bool Mount::InsertPkcs11Token() {
   // Derive authorization data for the token from the passkey.
   FilePath salt_file = homedirs_->GetChapsTokenSaltPath(username);
 
-  scoped_ptr<chaps::TokenManagerClient> chaps_client(
+  std::unique_ptr<chaps::TokenManagerClient> chaps_client(
       chaps_client_factory_->New());
 
   // If migration is required, send it before the login event.
@@ -1444,7 +1445,7 @@ bool Mount::InsertPkcs11Token() {
 void Mount::RemovePkcs11Token() {
   std::string username = current_user_->username();
   FilePath token_dir = homedirs_->GetChapsTokenDir(username);
-  scoped_ptr<chaps::TokenManagerClient> chaps_client(
+  std::unique_ptr<chaps::TokenManagerClient> chaps_client(
       chaps_client_factory_->New());
   chaps_client->UnloadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
@@ -1569,7 +1570,7 @@ bool Mount::CacheOldFiles(const std::vector<std::string>& files) const {
 
 void Mount::RecursiveCopy(const FilePath& destination,
                           const FilePath& source) const {
-  scoped_ptr<FileEnumerator> file_enumerator(
+  std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(source.value(), false,
                                    base::FileEnumerator::FILES));
   std::string next_path;
@@ -1584,7 +1585,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
                  << destination_file.value().c_str();
     }
   }
-  scoped_ptr<FileEnumerator> dir_enumerator(
+  std::unique_ptr<FileEnumerator> dir_enumerator(
       platform_->GetFileEnumerator(source.value(), false,
                                    base::FileEnumerator::DIRECTORIES));
   while (!(next_path = dir_enumerator->Next()).empty()) {

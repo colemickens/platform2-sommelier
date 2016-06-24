@@ -5,6 +5,7 @@
 #include "cryptohome/service.h"
 
 #include <inttypes.h>
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -15,7 +16,6 @@
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -278,7 +278,7 @@ CryptohomeErrorCode Service::MountErrorToCryptohomeError(
 void Service::SendReply(DBusGMethodInvocation* context,
                         const BaseReply& reply) {
   // DBusReply will take ownership of the |reply_str|.
-  scoped_ptr<std::string> reply_str(new std::string);
+  std::unique_ptr<std::string> reply_str(new std::string);
   reply.SerializeToString(reply_str.get());
   event_source_.AddEvent(reply_factory_->NewReply(context,
                                                   reply_str.release()));
@@ -834,9 +834,9 @@ gboolean Service::CheckKeyEx(GArray* account_id,
                              GArray* authorization_request,
                              GArray* check_key_request,
                              DBusGMethodInvocation *context) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
-  scoped_ptr<CheckKeyRequest> request(new CheckKeyRequest);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  std::unique_ptr<CheckKeyRequest> request(new CheckKeyRequest);
 
   // On parsing failure, pass along a NULL.
   if (!identifier->ParseFromArray(account_id->data, account_id->len))
@@ -908,9 +908,9 @@ gboolean Service::RemoveKeyEx(GArray* account_id,
                              GArray* authorization_request,
                              GArray* remove_key_request,
                              DBusGMethodInvocation *context) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
-  scoped_ptr<RemoveKeyRequest> request(new RemoveKeyRequest);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  std::unique_ptr<RemoveKeyRequest> request(new RemoveKeyRequest);
 
   // On parsing failure, pass along a NULL.
   if (!identifier->ParseFromArray(account_id->data, account_id->len))
@@ -969,9 +969,9 @@ gboolean Service::ListKeysEx(GArray* account_id,
                              GArray* authorization_request,
                              GArray* list_keys_request,
                              DBusGMethodInvocation *context) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
-  scoped_ptr<ListKeysRequest> request(new ListKeysRequest);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  std::unique_ptr<ListKeysRequest> request(new ListKeysRequest);
 
   // On parsing failure, pass along a NULL.
   if (!identifier->ParseFromArray(account_id->data, account_id->len))
@@ -1023,7 +1023,7 @@ void Service::DoGetKeyDataEx(AccountIdentifier* identifier,
   GetKeyDataReply* sub_reply = reply.MutableExtension(GetKeyDataReply::reply);
   credentials.set_key_data(get_key_data_request->key().data());
   // Requests only support using the key label at present.
-  scoped_ptr<VaultKeyset> vk(homedirs_->GetVaultKeyset(credentials));
+  std::unique_ptr<VaultKeyset> vk(homedirs_->GetVaultKeyset(credentials));
   if (vk) {
     KeyData* new_kd = sub_reply->add_key_data();
     *new_kd = vk->serialized().key_data();
@@ -1045,9 +1045,9 @@ gboolean Service::GetKeyDataEx(GArray* account_id,
                                GArray* authorization_request,
                                GArray* get_key_data_request,
                                DBusGMethodInvocation *context) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
-  scoped_ptr<GetKeyDataRequest> request(new GetKeyDataRequest);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  std::unique_ptr<GetKeyDataRequest> request(new GetKeyDataRequest);
 
   // On parsing failure, pass along a NULL.
   if (!identifier->ParseFromArray(account_id->data, account_id->len)) {
@@ -1230,9 +1230,9 @@ gboolean Service::AddKeyEx(GArray* account_id,
                            GArray* authorization_request,
                            GArray* add_key_request,
                            DBusGMethodInvocation *context) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
-  scoped_ptr<AddKeyRequest> request(new AddKeyRequest);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  std::unique_ptr<AddKeyRequest> request(new AddKeyRequest);
 
   // On parsing failure, pass along a NULL.
   if (!identifier->ParseFromArray(account_id->data, account_id->len))
@@ -1324,9 +1324,9 @@ gboolean Service::UpdateKeyEx(GArray* account_id,
                               GArray* authorization_request,
                               GArray* update_key_request,
                               DBusGMethodInvocation *context) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
-  scoped_ptr<UpdateKeyRequest> request(new UpdateKeyRequest);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  std::unique_ptr<UpdateKeyRequest> request(new UpdateKeyRequest);
 
   // On parsing failure, pass along a NULL.
   if (!identifier->ParseFromArray(account_id->data, account_id->len))
@@ -1399,8 +1399,8 @@ gboolean Service::AsyncRemove(gchar *userid,
 gboolean Service::RenameCryptohome(const GArray* account_id_from,
                                    const GArray* account_id_to,
                                    DBusGMethodInvocation* response) {
-  scoped_ptr<AccountIdentifier> id_from(new AccountIdentifier);
-  scoped_ptr<AccountIdentifier> id_to(new AccountIdentifier);
+  std::unique_ptr<AccountIdentifier> id_from(new AccountIdentifier);
+  std::unique_ptr<AccountIdentifier> id_to(new AccountIdentifier);
   if (!id_from->ParseFromArray(account_id_from->data, account_id_from->len)) {
     id_from.reset(NULL);
   }
@@ -1451,7 +1451,7 @@ void Service::DoRenameCryptohome(AccountIdentifier* id_from,
 
 gboolean Service::GetAccountDiskUsage(const GArray* account_id,
                                       DBusGMethodInvocation* response) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
   if (!identifier->ParseFromArray(account_id->data, account_id->len)) {
     identifier.reset(NULL);
   }
@@ -1850,9 +1850,9 @@ gboolean Service::MountEx(const GArray *account_id,
                           const GArray *authorization_request,
                           const GArray *mount_request,
                           DBusGMethodInvocation *context) {
-  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
-  scoped_ptr<MountRequest> request(new MountRequest);
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  std::unique_ptr<MountRequest> request(new MountRequest);
 
   // On parsing failure, pass along a NULL.
   if (!identifier->ParseFromArray(account_id->data, account_id->len))
@@ -1991,7 +1991,7 @@ gboolean Service::AsyncMount(const gchar *userid,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
-  scoped_ptr<SecureBlob> key_blob(new SecureBlob(key, key + strlen(key)));
+  std::unique_ptr<SecureBlob> key_blob(new SecureBlob(key, key + strlen(key)));
   UsernamePasskey credentials(userid, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
                                                             NULL,
@@ -2125,7 +2125,7 @@ gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
-  scoped_ptr<SecureBlob> key_blob(new SecureBlob());
+  std::unique_ptr<SecureBlob> key_blob(new SecureBlob());
   UsernamePasskey credentials(public_mount_id, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
                                                             NULL,
@@ -3202,7 +3202,7 @@ void Service::DoSetFirmwareManagementParameters(
     flags = request_pb.flags();
   }
 
-  scoped_ptr<brillo::Blob> hash;
+  std::unique_ptr<brillo::Blob> hash;
   if (request_pb.has_developer_key_hash()) {
     hash.reset(new SecureBlob(request_pb.developer_key_hash()));
   }

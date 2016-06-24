@@ -6,6 +6,7 @@
 #define CRYPTOHOME_MOCK_PLATFORM_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -197,7 +198,7 @@ class MockPlatform : public Platform {
     mock_enumerator_->entries_.assign(e->entries_.begin(), e->entries_.end());
     return e;
   }
-  scoped_ptr<MockFileEnumerator> mock_enumerator_;
+  std::unique_ptr<MockFileEnumerator> mock_enumerator_;
 };
 
 }  // namespace cryptohome

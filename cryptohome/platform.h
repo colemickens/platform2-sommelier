@@ -10,6 +10,7 @@
 #include <sys/statvfs.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -17,7 +18,6 @@
 #include <base/callback_forward.h>
 #include <base/files/file_enumerator.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
@@ -61,7 +61,7 @@ class FileEnumerator {
    private:
     void Assign(const base::FileEnumerator::FileInfo& file_info);
 
-    scoped_ptr<base::FileEnumerator::FileInfo> info_;
+    std::unique_ptr<base::FileEnumerator::FileInfo> info_;
     std::string name_;
     struct stat stat_;
   };
@@ -84,7 +84,7 @@ class FileEnumerator {
   virtual FileInfo GetInfo();
 
  private:
-  scoped_ptr<base::FileEnumerator> enumerator_;
+  std::unique_ptr<base::FileEnumerator> enumerator_;
 };
 
 // Platform specific routines abstraction layer.

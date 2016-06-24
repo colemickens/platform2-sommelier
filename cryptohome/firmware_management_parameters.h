@@ -7,8 +7,9 @@
 #ifndef CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 #define CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 
+#include <memory>
+
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>

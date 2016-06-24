@@ -6,6 +6,7 @@
 
 #include "cryptohome/tpm2_impl.h"
 
+#include <memory>
 #include <string>
 
 #include <base/logging.h>
@@ -116,7 +117,7 @@ bool Tpm2Impl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
   }
   std::unique_ptr<trunks::HmacSession> session =
       trunks->factory->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
@@ -146,7 +147,7 @@ bool Tpm2Impl::DestroyNvram(uint32_t index) {
   }
   std::unique_ptr<trunks::HmacSession> session =
       trunks->factory->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
@@ -171,7 +172,7 @@ bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
   }
   std::unique_ptr<trunks::HmacSession> session =
       trunks->factory->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
@@ -202,7 +203,7 @@ bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
   }
   std::unique_ptr<trunks::PolicySession> session =
       trunks->factory->GetPolicySession();
-  TPM_RC result = session->StartUnboundSession(true /* Enable encryption */);
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
     return false;
@@ -601,6 +602,7 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
   // Finally we verify that the key's policy_digest is the expected value.
   std::unique_ptr<trunks::PolicySession> trial_session =
       trunks->factory->GetTrialSession();
+      trunks_factory_->GetTrialSession();
   result = trial_session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a trial session: " << GetErrorString(result);

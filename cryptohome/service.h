@@ -6,13 +6,13 @@
 #define CRYPTOHOME_SERVICE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
 #include <base/gtest_prod_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/threading/thread.h>
 #include <brillo/glib/abstract_dbus_service.h>
 #include <brillo/glib/dbus.h>
@@ -680,19 +680,19 @@ class Service : public brillo::dbus::AbstractDbusService,
   bool use_tpm_;
 
   GMainLoop* loop_;
-  // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
+  // Can't use unique_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome* cryptohome_;
   brillo::SecureBlob system_salt_;
-  scoped_ptr<cryptohome::Platform> default_platform_;
+  std::unique_ptr<cryptohome::Platform> default_platform_;
   cryptohome::Platform* platform_;
-  scoped_ptr<cryptohome::Crypto> default_crypto_;
+  std::unique_ptr<cryptohome::Crypto> default_crypto_;
   cryptohome::Crypto* crypto_;
-  // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
+  // TPM doesn't use the unique_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
   Tpm* tpm_;
-  scoped_ptr<TpmInit> default_tpm_init_;
+  std::unique_ptr<TpmInit> default_tpm_init_;
   TpmInit* tpm_init_;
-  scoped_ptr<Pkcs11Init> default_pkcs11_init_;
+  std::unique_ptr<Pkcs11Init> default_pkcs11_init_;
   Pkcs11Init* pkcs11_init_;
   bool initialize_tpm_;
   base::Thread mount_thread_;
@@ -703,7 +703,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   CryptohomeEventSource event_source_;
   CryptohomeEventSourceSink* event_source_sink_;
   int auto_cleanup_period_;
-  scoped_ptr<cryptohome::InstallAttributes> default_install_attrs_;
+  std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
   cryptohome::InstallAttributes* install_attrs_;
   int update_user_activity_period_;
   // Keeps track of whether a failure on PKCS#11 initialization was reported
@@ -718,30 +718,31 @@ class Service : public brillo::dbus::AbstractDbusService,
       MountMap;
   MountMap mounts_;
   base::Lock mounts_lock_;  // Protects against parallel insertions only.
-  scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
-  scoped_ptr<cryptohome::MountFactory> default_mount_factory_;
+  std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+  std::unique_ptr<cryptohome::MountFactory> default_mount_factory_;
   cryptohome::MountFactory* mount_factory_;
-  scoped_ptr<cryptohome::DBusReplyFactory> default_reply_factory_;
+  std::unique_ptr<cryptohome::DBusReplyFactory> default_reply_factory_;
   cryptohome::DBusReplyFactory* reply_factory_;
 
   typedef std::map<int, scoped_refptr<MountTaskPkcs11Init>> Pkcs11TaskMap;
   Pkcs11TaskMap pkcs11_tasks_;
-  scoped_ptr<HomeDirs> default_homedirs_;
+  std::unique_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
   std::string guest_user_;
   bool legacy_mount_;
   brillo::SecureBlob public_mount_salt_;
-  scoped_ptr<chaps::TokenManagerClient> default_chaps_client_;
+  std::unique_ptr<chaps::TokenManagerClient> default_chaps_client_;
   chaps::TokenManagerClient* chaps_client_;
-  scoped_ptr<Attestation> default_attestation_;
+  std::unique_ptr<Attestation> default_attestation_;
   Attestation* attestation_;
-  scoped_ptr<BootLockbox> default_boot_lockbox_;
+  std::unique_ptr<BootLockbox> default_boot_lockbox_;
   // After construction, this should only be used on the mount thread.
   BootLockbox* boot_lockbox_;
-  scoped_ptr<BootAttributes> default_boot_attributes_;
+  std::unique_ptr<BootAttributes> default_boot_attributes_;
   // After construction, this should only be used on the mount thread.
   BootAttributes* boot_attributes_;
-  scoped_ptr<FirmwareManagementParameters> default_firmware_management_params_;
+  std::unique_ptr<FirmwareManagementParameters>
+      default_firmware_management_params_;
   FirmwareManagementParameters* firmware_management_parameters_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);

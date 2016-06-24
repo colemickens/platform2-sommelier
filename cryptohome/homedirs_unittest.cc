@@ -4,6 +4,7 @@
 
 #include "cryptohome/homedirs.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/stl_util.h>
@@ -1028,7 +1029,7 @@ class KeysetManagementTest : public HomeDirsTest {
   MockVaultKeyset* active_vks_[MAX_VKS];
   std::vector<std::string> keyset_paths_;
   std::vector<brillo::SecureBlob> keys_;
-  scoped_ptr<UsernamePasskey> up_;
+  std::unique_ptr<UsernamePasskey> up_;
   SecureBlob system_salt_;
   SerializedVaultKeyset serialized_;
 };

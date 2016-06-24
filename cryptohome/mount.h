@@ -12,6 +12,7 @@
 #ifndef CRYPTOHOME_MOUNT_H_
 #define CRYPTOHOME_MOUNT_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -19,7 +20,6 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/secure_blob.h>
@@ -725,7 +725,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   brillo::SecureBlob system_salt_;
 
   // The platform-specific calls
-  scoped_ptr<Platform> default_platform_;
+  std::unique_ptr<Platform> default_platform_;
   Platform *platform_;
 
   // The crypto implementation
@@ -733,21 +733,21 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // TODO(wad,ellyjones) Require HomeDirs at Init().
   // HomeDirs encapsulates operations on Cryptohomes at rest.
-  scoped_ptr<HomeDirs> default_homedirs_;
+  std::unique_ptr<HomeDirs> default_homedirs_;
   HomeDirs *homedirs_;
 
   // Whether to use the TPM for added security
   bool use_tpm_;
 
   // Used to keep track of the current logged-in user
-  scoped_ptr<UserSession> default_current_user_;
+  std::unique_ptr<UserSession> default_current_user_;
   UserSession* current_user_;
 
   // Cache of last access timestamp for existing users.
   UserOldestActivityTimestampCache* user_timestamp_cache_;
 
   // Used to retrieve the owner user.
-  scoped_ptr<policy::PolicyProvider> policy_provider_;
+  std::unique_ptr<policy::PolicyProvider> policy_provider_;
 
   // True if the machine is enterprise owned, false if not or we have
   // not discovered it in this session.
@@ -778,11 +778,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // This is only valid when IsMounted() is true.
   bool ephemeral_mount_;
 
-  scoped_ptr<ChapsClientFactory> default_chaps_client_factory_;
+  std::unique_ptr<ChapsClientFactory> default_chaps_client_factory_;
   ChapsClientFactory* chaps_client_factory_;
 
   BootLockbox* boot_lockbox_;
-  scoped_ptr<BootLockbox> default_boot_lockbox_;
+  std::unique_ptr<BootLockbox> default_boot_lockbox_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
   FRIEND_TEST(MountTest, MountCryptohomeChapsKey);

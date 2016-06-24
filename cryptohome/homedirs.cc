@@ -5,6 +5,7 @@
 #include "cryptohome/homedirs.h"
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include <base/bind.h>
@@ -179,7 +180,8 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
 }
 
 bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
-  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
+              platform_, crypto_));
   return GetValidKeyset(creds, vk.get());
 }
 
@@ -235,7 +237,8 @@ VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices))
     return NULL;
-  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
+              platform_, crypto_));
   for (int index : key_indices) {
     if (!LoadVaultKeysetForUser(obfuscated, index, vk.get())) {
       continue;
@@ -259,7 +262,7 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
   CHECK(keysets);
   std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
 
-  scoped_ptr<FileEnumerator> file_enumerator(
+  std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(user_dir, false,
                                    base::FileEnumerator::FILES));
   std::string next_path;
@@ -295,11 +298,12 @@ bool HomeDirs::GetVaultKeysetLabels(const Credentials& credentials,
   std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
   std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
 
-  scoped_ptr<FileEnumerator> file_enumerator(
+  std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(user_dir, false /* Not recursive. */,
                                    base::FileEnumerator::FILES));
   std::string next_path;
-  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
+              platform_, crypto_));
   while (!(next_path = file_enumerator->Next()).empty()) {
     std::string file_name = FilePath(next_path).BaseName().value();
     // Scan for "master." files.
@@ -422,7 +426,8 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
     const Key* key_changes,
     const std::string& authorization_signature) {
 
-  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
+              platform_, crypto_));
   if (!GetValidKeyset(credentials, vk.get())) {
     // Differentiate between failure and non-existent.
     if (!credentials.key_data().label().empty()) {
@@ -514,7 +519,8 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   std::string obfuscated = existing_credentials.GetObfuscatedUsername(
     system_salt_);
 
-  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
+              platform_, crypto_));
   if (!GetValidKeyset(existing_credentials, vk.get())) {
     // Differentiate between failure and non-existent.
     if (!existing_credentials.key_data().label().empty()) {
@@ -568,7 +574,7 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
     UsernamePasskey search_cred(existing_credentials.username().c_str(),
                                 SecureBlob());
     search_cred.set_key_data(*new_data);
-    scoped_ptr<VaultKeyset> match(GetVaultKeyset(search_cred));
+    std::unique_ptr<VaultKeyset> match(GetVaultKeyset(search_cred));
     if (match.get()) {
       LOG(INFO) << "Label already exists.";
       platform_->DeleteFile(vk_path, false);
@@ -608,7 +614,8 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
   if (key_data.label().empty())
     return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
 
-  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
+              platform_, crypto_));
   if (!GetValidKeyset(credentials, vk.get())) {
     // Differentiate between failure and non-existent.
     if (!credentials.key_data().label().empty()) {
@@ -632,7 +639,7 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
 
   UsernamePasskey removal_creds(credentials.username().c_str(), SecureBlob());
   removal_creds.set_key_data(key_data);
-  scoped_ptr<VaultKeyset> remove_vk(GetVaultKeyset(removal_creds));
+  std::unique_ptr<VaultKeyset> remove_vk(GetVaultKeyset(removal_creds));
   if (!remove_vk.get()) {
     LOG(WARNING) << "RemoveKeyset: key to remove not found";
     return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
@@ -772,7 +779,8 @@ int HomeDirs::CountMountedCryptohomes() const {
 }
 
 void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {
-  scoped_ptr<FileEnumerator> subdir_enumerator(platform_->GetFileEnumerator(
+  std::unique_ptr<FileEnumerator> subdir_enumerator(
+    platform_->GetFileEnumerator(
       dir.value(),
       false,
       base::FileEnumerator::FILES |
@@ -815,7 +823,7 @@ void HomeDirs::DeleteCacheCallback(const FilePath& vault) {
 
 bool HomeDirs::FindGCacheFilesDir(const FilePath& vault, std::string* dir) {
   // Start search from GCache/v1.
-  scoped_ptr<FileEnumerator> enumerator(
+  std::unique_ptr<FileEnumerator> enumerator(
       platform_->GetFileEnumerator(vault.Append(kUserHomeSuffix)
                                         .Append(kGCacheDir)
                                         .Append(kGCacheVersionDir)
@@ -844,7 +852,7 @@ void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
   std::string cacheDir;
   if (!FindGCacheFilesDir(vault, &cacheDir)) return;
 
-  scoped_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
+  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       cacheDir, false, base::FileEnumerator::FILES));
   for (std::string current = enumerator->Next();
        !current.empty();
@@ -864,7 +872,7 @@ void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
   std::vector<int> key_indices;
   // Failure is okay since the loop falls through.
   GetVaultKeysets(obfuscated_username, &key_indices);
-  scoped_ptr<VaultKeyset> keyset(
+  std::unique_ptr<VaultKeyset> keyset(
       vault_keyset_factory()->New(platform_, crypto_));
   // Collect the most recent time for a given user by walking all
   // vaults.  This avoids trying to keep them in sync atomically.
@@ -1092,7 +1100,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   // Grab the current key and check its permissions early.
   // add() and remove() are required.  mount() was checked
   // already during MountCryptohome().
-  scoped_ptr<VaultKeyset> vk(
+  std::unique_ptr<VaultKeyset> vk(
     vault_keyset_factory()->New(platform_, crypto_));
   if (!LoadVaultKeysetForUser(obfuscated, key_index, vk.get())) {
     LOG(ERROR) << "Migrate: failed to reload the active keyset";

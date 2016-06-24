@@ -6,10 +6,11 @@
 #ifndef CRYPTOHOME_LOCKBOX_H_
 #define CRYPTOHOME_LOCKBOX_H_
 
+#include <memory>
+
 #include <openssl/sha.h>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
 #include <brillo/process.h>
 #include <brillo/secure_blob.h>
@@ -192,10 +193,10 @@ class Lockbox {
   Tpm* tpm_;
   uint32_t nvram_index_;
   uint32_t nvram_version_;
-  scoped_ptr<brillo::Process> default_process_;
+  std::unique_ptr<brillo::Process> default_process_;
   brillo::Process* process_;
-  scoped_ptr<LockboxContents> contents_;
-  scoped_ptr<Platform> default_platform_;
+  std::unique_ptr<LockboxContents> contents_;
+  std::unique_ptr<Platform> default_platform_;
   Platform* platform_;
 
   DISALLOW_COPY_AND_ASSIGN(Lockbox);

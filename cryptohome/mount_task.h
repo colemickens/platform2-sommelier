@@ -24,6 +24,8 @@
 #ifndef CRYPTOHOME_MOUNT_TASK_H_
 #define CRYPTOHOME_MOUNT_TASK_H_
 
+#include <memory>
+
 #include <base/atomic_sequence_num.h>
 #include <base/atomicops.h>
 #include <base/memory/ref_counted.h>
@@ -169,7 +171,7 @@ class MountTaskResult : public CryptohomeEventBase {
   int sequence_id_;
   bool return_status_;
   MountError return_code_;
-  scoped_ptr<SecureBlob> return_data_;
+  std::unique_ptr<SecureBlob> return_data_;
   const char* event_name_;
   scoped_refptr<Mount> mount_;
   bool pkcs11_init_;
@@ -276,7 +278,7 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
 
   // The default instance of MountTaskResult to use if it is not set by the
   // caller
-  scoped_ptr<MountTaskResult> default_result_;
+  std::unique_ptr<MountTaskResult> default_result_;
 
   // The actual instance of MountTaskResult to use
   MountTaskResult* result_;
@@ -497,7 +499,7 @@ class MountTaskPkcs11Init : public MountTask {
   virtual void Run();
 
  private:
-  scoped_ptr<MountTaskResult> pkcs11_init_result_;
+  std::unique_ptr<MountTaskResult> pkcs11_init_result_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskPkcs11Init);
 };
 

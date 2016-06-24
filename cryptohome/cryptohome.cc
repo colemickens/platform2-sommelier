@@ -13,6 +13,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -1500,7 +1501,7 @@ int main(int argc, char **argv) {
       if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
         continue;
       // TODO(wad): change it so that it uses GetVaultKeysets().
-      scoped_ptr<cryptohome::FileEnumerator> file_enumerator(
+      std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
           platform.GetFileEnumerator(path.value(), false,
                                      base::FileEnumerator::FILES));
       base::Time max_activity = base::Time::UnixEpoch();

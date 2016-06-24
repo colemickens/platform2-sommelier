@@ -5,6 +5,7 @@
 #include "cryptohome/boot_attributes.h"
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/compiler_specific.h>
@@ -82,7 +83,7 @@ class BootAttributesTest : public testing::Test {
   NiceMock<MockBootLockbox> mock_boot_lockbox_;
   NiceMock<MockPlatform> mock_platform_;
 
-  scoped_ptr<BootAttributes> boot_attributes_;
+  std::unique_ptr<BootAttributes> boot_attributes_;
 
   std::map<std::string, brillo::Blob> files_;
 };

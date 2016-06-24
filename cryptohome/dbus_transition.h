@@ -21,9 +21,9 @@
 #ifndef CRYPTOHOME_DBUS_TRANSITION_H_
 #define CRYPTOHOME_DBUS_TRANSITION_H_
 
+#include <memory>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <brillo/glib/dbus.h>
 
 #include "cryptohome/cryptohome_event_source.h"
@@ -53,7 +53,7 @@ class DBusErrorReply : public CryptohomeEventBase {
  private:
   // If this event is not serviced, the memory will be leaked.
   DBusGMethodInvocation* context_;
-  scoped_ptr<GError, GErrorDeleter> error_;
+  std::unique_ptr<GError, GErrorDeleter> error_;
 };
 
 class DBusReply : public CryptohomeEventBase {
@@ -74,7 +74,7 @@ class DBusReply : public CryptohomeEventBase {
  private:
   // If this event is not serviced, the memory will be leaked.
   DBusGMethodInvocation* context_;
-  scoped_ptr<std::string> reply_;
+  std::unique_ptr<std::string> reply_;
 };
 
 class DBusReplyFactory {

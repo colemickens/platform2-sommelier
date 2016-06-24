@@ -9,11 +9,11 @@
 
 #include "cryptohome/keystore.h"
 
+#include <memory>
 #include <string>
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/secure_blob.h>
 
@@ -70,7 +70,7 @@ class Pkcs11KeyStore : public KeyStore {
                               CK_OBJECT_HANDLE object_handle)>
       EnumObjectsCallback;
 
-  scoped_ptr<Pkcs11Init> default_pkcs11_init_;
+  std::unique_ptr<Pkcs11Init> default_pkcs11_init_;
   Pkcs11Init* pkcs11_init_;
 
   // Searches for a PKCS #11 object for a given key name.  If one exists, the

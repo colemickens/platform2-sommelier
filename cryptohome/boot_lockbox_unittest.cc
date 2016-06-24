@@ -5,6 +5,7 @@
 #include "cryptohome/boot_lockbox.h"
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/stl_util.h>
@@ -136,8 +137,8 @@ class BootLockboxTest : public testing::Test {
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCrypto> crypto_;
-  scoped_ptr<BootLockbox> lockbox_;
-  scoped_ptr<BootLockbox> lockbox2_;
+  std::unique_ptr<BootLockbox> lockbox_;
+  std::unique_ptr<BootLockbox> lockbox2_;
   bool is_fake_extended_;
   std::map<std::string, std::string> fake_files_;
   RSA* rsa_;  // Access with rsa().

@@ -9,7 +9,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/cryptohome.h>

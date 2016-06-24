@@ -6,18 +6,20 @@
 
 #include "cryptohome/tpm_impl.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <algorithm>
+#include <memory>
 
 #include <arpa/inet.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/free_deleter.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <crypto/scoped_openssl_types.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
@@ -37,7 +39,7 @@ using trousers::ScopedTssPolicy;
 
 namespace {
 
-typedef scoped_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
+typedef std::unique_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
 
 // The DER encoding of SHA-256 DigestInfo as defined in PKCS #1.
 const unsigned char kSha256DigestInfo[] = {
@@ -1321,7 +1323,7 @@ bool TpmImpl::WriteNvram(uint32_t index, const SecureBlob& blob) {
     return false;
   }
 
-  scoped_ptr<BYTE[]> nv_data(new BYTE[blob.size()]);
+  std::unique_ptr<BYTE[]> nv_data(new BYTE[blob.size()]);
   memcpy(nv_data.get(), blob.data(), blob.size());
   result = Tspi_NV_WriteValue(nv_handle, 0, blob.size(), nv_data.get());
   if (TPM_ERROR(result)) {

@@ -7,10 +7,10 @@
 
 #include "cryptohome/install_attributes.h"
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 

@@ -10,13 +10,13 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <chaps/token_manager_client.h>
 #include <brillo/secure_blob.h>
@@ -242,19 +242,19 @@ class HomeDirs {
     policy_provider_ = value;
   }
 
-  scoped_ptr<Platform> default_platform_;
+  std::unique_ptr<Platform> default_platform_;
   Platform* platform_;
   std::string shadow_root_;
   UserOldestActivityTimestampCache* timestamp_cache_;
   bool enterprise_owned_;
-  scoped_ptr<policy::PolicyProvider> default_policy_provider_;
+  std::unique_ptr<policy::PolicyProvider> default_policy_provider_;
   policy::PolicyProvider* policy_provider_;
   Crypto* crypto_;
-  scoped_ptr<MountFactory> default_mount_factory_;
+  std::unique_ptr<MountFactory> default_mount_factory_;
   MountFactory* mount_factory_;
   // TODO(wad) Collapse all factories into a single manufacturing plant to save
   //           some pointers.
-  scoped_ptr<VaultKeysetFactory> default_vault_keyset_factory_;
+  std::unique_ptr<VaultKeysetFactory> default_vault_keyset_factory_;
   VaultKeysetFactory* vault_keyset_factory_;
   brillo::SecureBlob system_salt_;
   chaps::TokenManagerClient chaps_client_;

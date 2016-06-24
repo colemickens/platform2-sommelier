@@ -7,6 +7,7 @@
 #include "cryptohome/service.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -193,9 +194,9 @@ TEST_F(ServiceTest, CheckKeyMountTest) {
   static const char kUser[] = "chromeos-user";
   static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
   SetupMount(kUser);
-  scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
-  scoped_ptr<CheckKeyRequest> req(new CheckKeyRequest);
+  std::unique_ptr<AccountIdentifier> id(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
+  std::unique_ptr<CheckKeyRequest> req(new CheckKeyRequest);
   id->set_account_id(kUser);
   auth->mutable_key()->set_secret(kKey);
 
@@ -252,9 +253,9 @@ TEST_F(ServiceTest, CheckKeyHomedirsTest) {
   static const char kUser[] = "chromeos-user";
   static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
   SetupMount(kUser);
-  scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
-  scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
-  scoped_ptr<CheckKeyRequest> req(new CheckKeyRequest);
+  std::unique_ptr<AccountIdentifier> id(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
+  std::unique_ptr<CheckKeyRequest> req(new CheckKeyRequest);
   // Expect an error about missing email.
   // |error| will be cleaned up by event_source_
   MockDBusReply* reply = new MockDBusReply();
@@ -691,7 +692,7 @@ class ServiceExTest : public ServiceTest {
   }
 
   VaultKeyset* GetNiceMockVaultKeyset(const Credentials& credentials) const {
-    scoped_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
+    std::unique_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
     *(mvk->mutable_serialized()->mutable_key_data()) = credentials.key_data();
     return mvk.release();
   }
@@ -704,13 +705,13 @@ class ServiceExTest : public ServiceTest {
   }
 
  protected:
-  scoped_ptr<AccountIdentifier> id_;
-  scoped_ptr<AuthorizationRequest> auth_;
-  scoped_ptr<AddKeyRequest> add_req_;
-  scoped_ptr<CheckKeyRequest> check_req_;
-  scoped_ptr<MountRequest> mount_req_;
-  scoped_ptr<RemoveKeyRequest> remove_req_;
-  scoped_ptr<ListKeysRequest> list_keys_req_;
+  std::unique_ptr<AccountIdentifier> id_;
+  std::unique_ptr<AuthorizationRequest> auth_;
+  std::unique_ptr<AddKeyRequest> add_req_;
+  std::unique_ptr<CheckKeyRequest> check_req_;
+  std::unique_ptr<MountRequest> mount_req_;
+  std::unique_ptr<RemoveKeyRequest> remove_req_;
+  std::unique_ptr<ListKeysRequest> list_keys_req_;
 
   GError* g_error_{nullptr};
   std::string* reply_{nullptr};

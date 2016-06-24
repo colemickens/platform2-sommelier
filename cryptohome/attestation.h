@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -393,7 +394,7 @@ class Attestation : public base::PlatformThread::Delegate,
     kVerified,
     kDeveloper
   };
-  // So we can use scoped_ptr with openssl types.
+  // So we can use std::unique_ptr with openssl types.
   struct RSADeleter {
     inline void operator()(void* ptr) const;
   };
@@ -452,7 +453,7 @@ class Attestation : public base::PlatformThread::Delegate,
   AttestationDatabase database_pb_;
   base::PlatformThreadHandle thread_;
   CertRequestMap pending_cert_requests_;
-  scoped_ptr<Pkcs11KeyStore> pkcs11_key_store_;
+  std::unique_ptr<Pkcs11KeyStore> pkcs11_key_store_;
   KeyStore* key_store_;
   // If set, this will be used to sign / encrypt enterprise challenge-response
   // data instead of using kEnterprise*PublicKey.
@@ -520,7 +521,7 @@ class Attestation : public base::PlatformThread::Delegate,
                           const brillo::SecureBlob& proof);
 
   // Creates a public key based on a known credential issuer.
-  scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> GetAuthorityPublicKey(
+  std::unique_ptr<EVP_PKEY, EVP_PKEYDeleter> GetAuthorityPublicKey(
       const char* issuer_name,
       bool is_cros_core);
 
@@ -607,7 +608,7 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Creates an RSA* given a modulus in hex format.  The exponent is always set
   // to 65537.  If an error occurs, NULL is returned.
-  scoped_ptr<RSA, RSADeleter> CreateRSAFromHexModulus(
+  std::unique_ptr<RSA, RSADeleter> CreateRSAFromHexModulus(
       const std::string& hex_modulus);
 
   // Creates a SignedPublicKeyAndChallenge with a random challenge.

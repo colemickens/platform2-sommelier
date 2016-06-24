@@ -11,11 +11,11 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <glib.h>
 
@@ -60,7 +60,7 @@ class Pkcs11Init {
   bool CheckTokenInSlot(CK_SLOT_ID slot_id,
                         const std::string& expected_label_prefix);
 
-  scoped_ptr<Platform> default_platform_;
+  std::unique_ptr<Platform> default_platform_;
   Platform* platform_;
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11Init);

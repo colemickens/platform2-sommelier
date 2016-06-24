@@ -7,10 +7,10 @@
 #ifndef CRYPTOHOME_INSTALL_ATTRIBUTES_H_
 #define CRYPTOHOME_INSTALL_ATTRIBUTES_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/values.h>
 #include <brillo/secure_blob.h>
@@ -208,9 +208,9 @@ class InstallAttributes {
   std::string cache_file_;  // World-readable data cache file.
   uint64_t version_;  // Default implementation version.
   // Default implementations of dependencies
-  scoped_ptr<SerializedInstallAttributes> default_attributes_;
-  scoped_ptr<Lockbox> default_lockbox_;
-  scoped_ptr<Platform> default_platform_;
+  std::unique_ptr<SerializedInstallAttributes> default_attributes_;
+  std::unique_ptr<Lockbox> default_lockbox_;
+  std::unique_ptr<Platform> default_platform_;
   // Overridable dependency pointer which allow for easy injection.
   SerializedInstallAttributes* attributes_;
   Lockbox* lockbox_;

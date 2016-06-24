@@ -6,6 +6,7 @@
 
 #include "cryptohome/pkcs11_init.h"
 
+#include <memory>
 #include <string.h>
 
 #include <base/logging.h>
@@ -71,7 +72,7 @@ bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,
     LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
     return false;
   }
-  scoped_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
+  std::unique_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
   rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
   if (rv != CKR_OK) {
     LOG(WARNING) << __func__ << ": C_GetSlotList failed.";
@@ -110,7 +111,7 @@ bool Pkcs11Init::IsUserTokenOK() {
     LOG(WARNING) << __func__ << ": C_GetSlotList(NULL) failed.";
     return false;
   }
-  scoped_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
+  std::unique_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
   rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
   if (rv != CKR_OK) {
     LOG(WARNING) << __func__ << ": C_GetSlotList failed.";

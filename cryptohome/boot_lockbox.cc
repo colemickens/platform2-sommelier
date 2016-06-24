@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
 #include <base/stl_util.h>
@@ -32,7 +33,7 @@ const char kKeyFilePath[] = "/var/lib/boot-lockbox/key";
 
 const mode_t kKeyFilePermissions = 0600;
 
-// So we can use scoped_ptr with openssl types.
+// So we can use std::unique_ptr with openssl types.
 struct RSADeleter {
   void operator()(void* ptr) const {
     if (ptr)
@@ -193,7 +194,7 @@ bool BootLockbox::VerifySignature(const brillo::SecureBlob& public_key,
                                   const brillo::SecureBlob& signed_data,
                                   const brillo::SecureBlob& signature) {
   const unsigned char* asn1_ptr = public_key.data();
-  scoped_ptr<RSA, RSADeleter> rsa(
+  std::unique_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode public key.";
