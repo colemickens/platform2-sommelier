@@ -15,6 +15,7 @@
 //
 
 #include "shill/shill_daemon.h"
+#include "shill/logging.h"
 
 #include <sysexits.h>
 
@@ -48,6 +49,9 @@ int ShillDaemon::OnInit() {
 }
 
 void ShillDaemon::OnShutdown(int* return_code) {
+
+  LOG(INFO) << "ShillDaemon received shutdown.";
+
   if (!DaemonTask::Quit(base::Bind(&DaemonTask::BreakTerminationLoop,
                                    base::Unretained(this)))) {
     // Run a message loop to allow shill to complete its termination
