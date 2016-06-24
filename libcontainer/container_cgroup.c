@@ -52,6 +52,20 @@ static int write_cgroup_file(const char *cgroup_path, const char *name,
 	return rc;
 }
 
+static int write_cgroup_file_int(const char *cgroup_path, const char *name,
+				 const int value)
+{
+	char *str = NULL;
+	int rc;
+
+	if (asprintf(&str, "%d", value) < 0)
+		return -errno;
+
+	rc = write_cgroup_file(cgroup_path, name, str);
+	free(str);
+	return rc;
+}
+
 static int freeze(const struct container_cgroup *cg)
 {
 	return write_cgroup_file(cg->cgroup_paths[CGROUP_FREEZER],
@@ -101,11 +115,46 @@ static int add_device(const struct container_cgroup *cg, int major, int minor,
 	return rc;
 }
 
+static int set_cpu_shares(const struct container_cgroup *cg, int shares)
+{
+	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
+				     "cpu.shares", shares);
+}
+
+static int set_cpu_quota(const struct container_cgroup *cg, int quota)
+{
+	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
+				     "cpu.cfs_quota_us", quota);
+}
+
+static int set_cpu_period(const struct container_cgroup *cg, int period)
+{
+	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
+				     "cpu.cfs_period_us", period);
+}
+
+static int set_cpu_rt_runtime(const struct container_cgroup *cg, int rt_runtime)
+{
+	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
+				     "cpu.rt_runtime_us", rt_runtime);
+}
+
+static int set_cpu_rt_period(const struct container_cgroup *cg, int rt_period)
+{
+	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
+				     "cpu.rt_period_us", rt_period);
+}
+
 static const struct cgroup_ops cgroup_ops = {
 	.freeze = freeze,
 	.thaw = thaw,
 	.deny_all_devices = deny_all_devices,
 	.add_device = add_device,
+	.set_cpu_shares = set_cpu_shares,
+	.set_cpu_quota = set_cpu_quota,
+	.set_cpu_period = set_cpu_period,
+	.set_cpu_rt_runtime = set_cpu_rt_runtime,
+	.set_cpu_rt_period = set_cpu_rt_period,
 };
 
 

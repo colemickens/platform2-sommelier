@@ -29,6 +29,13 @@ struct cgroup_ops {
 	int (*add_device)(const struct container_cgroup *cg, int major,
 			  int minor, int read, int write, int modify,
 			  char type);
+	int (*set_cpu_shares)(const struct container_cgroup *cg, int shares);
+	int (*set_cpu_quota)(const struct container_cgroup *cg, int quota);
+	int (*set_cpu_period)(const struct container_cgroup *cg, int period);
+	int (*set_cpu_rt_runtime)(const struct container_cgroup *cg,
+				  int rt_runtime);
+	int (*set_cpu_rt_period)(const struct container_cgroup *cg,
+				 int rt_period);
 };
 
 struct container_cgroup {

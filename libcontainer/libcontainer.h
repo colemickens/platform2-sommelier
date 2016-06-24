@@ -127,6 +127,19 @@ int container_config_run_setfiles(struct container_config *c,
 /* Get the setfiles command that is configured to be run. */
 const char *container_config_get_run_setfiles(const struct container_config *c);
 
+/* Set the CPU shares cgroup param for container. */
+int container_config_set_cpu_shares(struct container_config *c, int shares);
+
+/* Set the CFS CPU cgroup params for container. */
+int container_config_set_cpu_cfs_params(struct container_config *c,
+					int quota,
+					int period);
+
+/* Set the RT CPU cgroup params for container. */
+int container_config_set_cpu_rt_params(struct container_config *c,
+				       int rt_runtime,
+				       int rt_period);
+
 /* Container manipulation. */
 struct container;
 

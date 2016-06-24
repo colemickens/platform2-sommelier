@@ -69,6 +69,14 @@ struct container_device {
 	int modify_allowed;
 };
 
+struct container_cpu_cgroup {
+	int shares;
+	int quota;
+	int period;
+	int rt_runtime;
+	int rt_period;
+};
+
 /*
  * Structure that configures how the container is run.
  *
@@ -85,6 +93,7 @@ struct container_device {
  * devices - Device nodes to create.
  * num_devices - Number of above.
  * run_setfiles - Should run setfiles on mounts to enable selinux.
+ * cpu_cgparams - CPU cgroup params.
  */
 struct container_config {
 	char *rootfs;
@@ -100,6 +109,7 @@ struct container_config {
 	struct container_device *devices;
 	size_t num_devices;
 	char *run_setfiles;
+	struct container_cpu_cgroup cpu_cgparams;
 };
 
 struct container_config *container_config_create()
@@ -348,6 +358,51 @@ int container_config_run_setfiles(struct container_config *c,
 const char *container_config_get_run_setfiles(const struct container_config *c)
 {
 	return c->run_setfiles;
+}
+
+int container_config_set_cpu_shares(struct container_config *c, int shares)
+{
+	/* CPU shares must be 2 or higher. */
+	if (shares < 2)
+		return -EINVAL;
+
+	c->cpu_cgparams.shares = shares;
+	return 0;
+}
+
+int container_config_set_cpu_cfs_params(struct container_config *c,
+					int quota,
+					int period)
+{
+	/*
+	 * quota could be set higher than period to utilize more than one CPU.
+	 * quota could also be set as -1 to indicate the cgroup does not adhere
+	 * to any CPU time restrictions.
+	 */
+	if (quota <= 0 && quota != -1)
+		return -EINVAL;
+	if (period <= 0)
+		return -EINVAL;
+
+	c->cpu_cgparams.quota = quota;
+	c->cpu_cgparams.period = period;
+	return 0;
+}
+
+int container_config_set_cpu_rt_params(struct container_config *c,
+				       int rt_runtime,
+				       int rt_period)
+{
+	/*
+	 * rt_runtime could be set as 0 to prevent the cgroup from using
+	 * realtime CPU.
+	 */
+	if (rt_runtime < 0 || rt_runtime >= rt_period)
+		return -EINVAL;
+
+	c->cpu_cgparams.rt_runtime = rt_runtime;
+	c->cpu_cgparams.rt_period = rt_period;
+	return 0;
 }
 
 /*
@@ -727,6 +782,34 @@ int container_start(struct container *c, const struct container_config *config)
 			goto error_rmdir;
 		rc = run_setfiles_command(c, config, dest);
 		free(dest);
+		if (rc)
+			goto error_rmdir;
+	}
+
+	/* Setup CPU cgroup params. */
+	if (config->cpu_cgparams.shares) {
+		rc = c->cgroup->ops->set_cpu_shares(
+				c->cgroup, config->cpu_cgparams.shares);
+		if (rc)
+			goto error_rmdir;
+	}
+	if (config->cpu_cgparams.period) {
+		rc = c->cgroup->ops->set_cpu_quota(
+				c->cgroup, config->cpu_cgparams.quota);
+		if (rc)
+			goto error_rmdir;
+		rc = c->cgroup->ops->set_cpu_period(
+				c->cgroup, config->cpu_cgparams.period);
+		if (rc)
+			goto error_rmdir;
+	}
+	if (config->cpu_cgparams.rt_period) {
+		rc = c->cgroup->ops->set_cpu_rt_runtime(
+				c->cgroup, config->cpu_cgparams.rt_runtime);
+		if (rc)
+			goto error_rmdir;
+		rc = c->cgroup->ops->set_cpu_rt_period(
+				c->cgroup, config->cpu_cgparams.rt_period);
 		if (rc)
 			goto error_rmdir;
 	}

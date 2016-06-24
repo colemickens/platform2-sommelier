@@ -127,6 +127,16 @@ FIXTURE_SETUP(basic_manipulation)
 
 	snprintf(path, sizeof(path), "%s/tasks", self->cpu_cg);
 	create_file(path);
+	snprintf(path, sizeof(path), "%s/cpu.shares", self->cpu_cg);
+	create_file(path);
+	snprintf(path, sizeof(path), "%s/cpu.cfs_quota_us", self->cpu_cg);
+	create_file(path);
+	snprintf(path, sizeof(path), "%s/cpu.cfs_period_us", self->cpu_cg);
+	create_file(path);
+	snprintf(path, sizeof(path), "%s/cpu.rt_runtime_us", self->cpu_cg);
+	create_file(path);
+	snprintf(path, sizeof(path), "%s/cpu.rt_period_us", self->cpu_cg);
+	create_file(path);
 	snprintf(path, sizeof(path), "%s/tasks", self->cpuacct_cg);
 	create_file(path);
 	snprintf(path, sizeof(path), "%s/tasks", self->devices_cg);
@@ -241,6 +251,46 @@ TEST_F(basic_manipulation, add_device_block)
 						'b'));
 	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "b 14:3 rw\n"));
+}
+
+TEST_F(basic_manipulation, set_cpu_shares)
+{
+	char path[256];
+	EXPECT_EQ(0, self->ccg->ops->set_cpu_shares(self->ccg, 500));
+	snprintf(path, sizeof(path), "%s/cpu.shares", self->cpu_cg);
+	EXPECT_TRUE(string_in_file(path, "500"));
+}
+
+TEST_F(basic_manipulation, set_cpu_quota)
+{
+	char path[256];
+	EXPECT_EQ(0, self->ccg->ops->set_cpu_quota(self->ccg, 200000));
+	snprintf(path, sizeof(path), "%s/cpu.cfs_quota_us", self->cpu_cg);
+	EXPECT_TRUE(string_in_file(path, "200000"));
+}
+
+TEST_F(basic_manipulation, set_cpu_period)
+{
+	char path[256];
+	EXPECT_EQ(0, self->ccg->ops->set_cpu_period(self->ccg, 800000));
+	snprintf(path, sizeof(path), "%s/cpu.cfs_period_us", self->cpu_cg);
+	EXPECT_TRUE(string_in_file(path, "800000"));
+}
+
+TEST_F(basic_manipulation, set_cpu_rt_runtime)
+{
+	char path[256];
+	EXPECT_EQ(0, self->ccg->ops->set_cpu_rt_runtime(self->ccg, 100000));
+	snprintf(path, sizeof(path), "%s/cpu.rt_runtime_us", self->cpu_cg);
+	EXPECT_TRUE(string_in_file(path, "100000"));
+}
+
+TEST_F(basic_manipulation, set_cpu_rt_period)
+{
+	char path[256];
+	EXPECT_EQ(0, self->ccg->ops->set_cpu_rt_period(self->ccg, 500000));
+	snprintf(path, sizeof(path), "%s/cpu.rt_period_us", self->cpu_cg);
+	EXPECT_TRUE(string_in_file(path, "500000"));
 }
 
 TEST_HARNESS_MAIN

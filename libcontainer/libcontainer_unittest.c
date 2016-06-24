@@ -59,6 +59,7 @@ struct mock_cgroup {
 	int thaw_ret;
 	int deny_all_devs_ret;
 	int add_device_ret;
+	int set_cpu_ret;
 
 	int init_called_count;
 	int deny_all_devs_called_count;
@@ -70,6 +71,12 @@ struct mock_cgroup {
 	int add_dev_modify[MAX_ADD_DEVICE_CALLS];
 	char add_dev_type[MAX_ADD_DEVICE_CALLS];
 	int add_dev_called_count;
+
+	int set_cpu_shares_count;
+	int set_cpu_quota_count;
+	int set_cpu_period_count;
+	int set_cpu_rt_runtime_count;
+	int set_cpu_rt_period_count;
 };
 
 static struct mock_cgroup gmcg;
@@ -109,6 +116,41 @@ static int mock_add_device(const struct container_cgroup *cg, int major,
 	mcg->add_dev_type[mcg->add_dev_called_count] = type;
 	mcg->add_dev_called_count++;
 	return mcg->add_device_ret;
+}
+
+static int mock_set_cpu_shares(const struct container_cgroup *cg, int shares)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	mcg->set_cpu_shares_count++;
+	return mcg->set_cpu_ret;
+}
+
+static int mock_set_cpu_quota(const struct container_cgroup *cg, int quota)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	mcg->set_cpu_quota_count++;
+	return mcg->set_cpu_ret;
+}
+
+static int mock_set_cpu_period(const struct container_cgroup *cg, int period)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	mcg->set_cpu_period_count++;
+	return mcg->set_cpu_ret;
+}
+
+static int mock_set_cpu_rt_runtime(const struct container_cgroup *cg, int rt_runtime)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	mcg->set_cpu_rt_runtime_count++;
+	return mcg->set_cpu_ret;
+}
+
+static int mock_set_cpu_rt_period(const struct container_cgroup *cg, int rt_period)
+{
+	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
+	mcg->set_cpu_rt_period_count++;
+	return mcg->set_cpu_ret;
 }
 
 struct container_cgroup *container_cgroup_new(const char *name,
@@ -152,6 +194,11 @@ FIXTURE_SETUP(container_test)
 		.thaw = mock_thaw,
 		.deny_all_devices = mock_deny_all_devices,
 		.add_device = mock_add_device,
+		.set_cpu_shares = mock_set_cpu_shares,
+		.set_cpu_quota = mock_set_cpu_quota,
+		.set_cpu_period = mock_set_cpu_period,
+		.set_cpu_rt_runtime = mock_set_cpu_rt_runtime,
+		.set_cpu_rt_period = mock_set_cpu_rt_period,
 	};
 	gmcg.cg.ops = &cgops;
 
@@ -216,6 +263,11 @@ FIXTURE_SETUP(container_test)
 				    1,
 				    1,
 				    0);
+
+	container_config_set_cpu_shares(self->config, 200);
+	container_config_set_cpu_cfs_params(self->config, 20000, 50000);
+	/* Invalid params, so this won't be applied. */
+	container_config_set_cpu_rt_params(self->config, 20000, 20000);
 
 	rundir = mkdtemp(rundir_template);
 	self->container = container_new("containerUT", rundir);
@@ -283,6 +335,12 @@ TEST_F(container_test, test_mount_tmp_start)
 	free(path);
 	EXPECT_EQ(mknod_call_args.mode, S_IRWXU | S_IRWXG | S_IFCHR);
 	EXPECT_EQ(mknod_call_args.dev, makedev(1, 3));
+
+	EXPECT_EQ(1, gmcg.set_cpu_shares_count);
+	EXPECT_EQ(1, gmcg.set_cpu_quota_count);
+	EXPECT_EQ(1, gmcg.set_cpu_period_count);
+	EXPECT_EQ(0, gmcg.set_cpu_rt_runtime_count);
+	EXPECT_EQ(0, gmcg.set_cpu_rt_period_count);
 
 	ASSERT_NE(NULL, minijail_alt_syscall_table);
 	EXPECT_EQ(0, strcmp(minijail_alt_syscall_table,
