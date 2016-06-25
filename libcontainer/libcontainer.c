@@ -635,8 +635,8 @@ static int do_container_mount(struct container *c,
 	}
 	if (mnt->mount_in_ns) {
 		/* We can mount this with minijail. */
-		rc = minijail_mount(c->jail, source, mnt->destination,
-				    mnt->type, mnt->flags);
+		rc = minijail_mount_with_data(c->jail, source, mnt->destination,
+					      mnt->type, mnt->flags, mnt->data);
 		if (rc)
 			goto error_free_return;
 	} else {
