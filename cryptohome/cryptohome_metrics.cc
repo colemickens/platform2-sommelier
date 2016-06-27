@@ -27,6 +27,8 @@ constexpr char kDictionaryAttackCounterHistogram[] =
 constexpr int kDictionaryAttackCounterNumBuckets = 100;
 constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
 constexpr char kCryptohomeTpmResultsHistogram[] = "Cryptohome.TpmResults";
+constexpr char kCryptohomeFreedGCacheDiskSpaceInMbHistogram[] =
+    "Cryptohome.FreedGCacheDiskSpaceInMb";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -157,6 +159,16 @@ void ReportChecksum(ChecksumStatus status) {
   g_metrics->SendEnumToUMA(kChecksumStatusHistogram,
                            status,
                            kChecksumStatusNumBuckets);
+}
+
+void ReportFreedGCacheDiskSpaceInMb(int mb) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendToUMA(kCryptohomeFreedGCacheDiskSpaceInMbHistogram, mb,
+                       0 /* minimum value of the histogram samples */,
+                       1000 /* maximum value of the histogram samples (1GB) */,
+                       50 /* number of buckets */);
 }
 
 }  // namespace cryptohome

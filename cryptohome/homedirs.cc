@@ -17,6 +17,7 @@
 #include <chromeos/constants/cryptohome.h>
 
 #include "cryptohome/credentials.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/platform.h"
@@ -81,14 +82,20 @@ bool HomeDirs::FreeDiskSpace() {
   DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteCacheCallback,
                                            base::Unretained(this)));
 
-  if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
+  int64_t freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
+  if (freeDiskSpace >= kEnoughFreeSpace)
     return true;
 
   // Clean Cache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteGCacheTmpCallback,
                                            base::Unretained(this)));
 
-  if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
+  int64_t oldFreeDiskSpace = freeDiskSpace;
+  freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
+  ReportFreedGCacheDiskSpaceInMb((freeDiskSpace - oldFreeDiskSpace) / 1024 /
+                                 1024);
+
+  if (freeDiskSpace >= kEnoughFreeSpace)
     return true;
 
   // Initialize user timestamp cache if it has not been yet. This reads the

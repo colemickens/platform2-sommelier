@@ -100,6 +100,10 @@ void ReportDictionaryAttackCounter(int counter);
 
 void ReportChecksum(ChecksumStatus status);
 
+// Reports removed GCache size by cryptohome to the
+// "Cryptohome.FreedGCacheDiskSpaceInMb" histogram.
+void ReportFreedGCacheDiskSpaceInMb(int mb);
+
 // Initialization helper.
 class ScopedMetricsInitializer {
  public:
