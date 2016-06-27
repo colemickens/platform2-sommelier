@@ -57,8 +57,13 @@ namespace cryptohome {
 
 const size_t Attestation::kQuoteExternalDataSize = 20;
 const size_t Attestation::kCipherKeySize = 32;
+#if defined(USE_TPM2)
+const size_t Attestation::kNonceSize = 32;
+const size_t Attestation::kDigestSize = 32;
+#else
 const size_t Attestation::kNonceSize = 20;  // As per TPM_NONCE definition.
 const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
+#endif
 const mode_t Attestation::kDatabasePermissions = 0600;
 const char Attestation::kDatabaseOwner[] = "attestation";
 const char Attestation::kDefaultDatabasePath[] =
@@ -2300,7 +2305,7 @@ void Attestation::ExtendPCR1IfClear() {
   // would do. (Using SHA-256 allows a single precomputed hash to be stored
   // along with the HWID for both TPM 1.2 and 2.0 platforms).
   SecureBlob hwid_hash = CryptoLib::Sha256(SecureBlob(hwid));
-  SecureBlob extension(hwid_hash.begin(), hwid_hash.begin() + 20);
+  SecureBlob extension(hwid_hash.begin(), hwid_hash.begin() + kDigestSize);
   if (hwid.length() == 0 || !tpm_->ExtendPCR(1, extension)) {
     LOG(WARNING) << "Failed to extend PCR1.";
   }

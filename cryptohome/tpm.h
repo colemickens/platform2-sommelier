@@ -123,13 +123,13 @@ class Tpm {
   // Returns whether or not the TPM is enabled.  This method call returns a
   // cached result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
-  virtual bool IsEnabled() const = 0;
+  virtual bool IsEnabled() = 0;
   virtual void SetIsEnabled(bool enabled) = 0;
 
   // Returns whether or not the TPM is owned.  This method call returns a cached
   // result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
-  virtual bool IsOwned() const = 0;
+  virtual bool IsOwned() = 0;
   virtual void SetIsOwned(bool owned) = 0;
 
   // Returns whether or not the TPM is enabled and owned using a call to
@@ -147,11 +147,11 @@ class Tpm {
 
   // Returns whether or not this instance has been setup'd by an external
   // entity (such as cryptohome::TpmInit).
-  virtual bool IsInitialized() const = 0;
+  virtual bool IsInitialized() = 0;
   virtual void SetIsInitialized(bool done) = 0;
 
   // Returns whether or not the TPM is being owned
-  virtual bool IsBeingOwned() const = 0;
+  virtual bool IsBeingOwned() = 0;
   virtual void SetIsBeingOwned(bool value) = 0;
 
   // Gets random bytes from the TPM

@@ -11,6 +11,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <trunks/authorization_delegate.h>
@@ -33,51 +34,80 @@ using trunks::TrunksFactory;
 
 namespace cryptohome {
 
-Tpm2Impl::Tpm2Impl(TrunksFactory* factory)
-    : has_external_trunks_context_(true) {
+Tpm2Impl::Tpm2Impl(TrunksFactory* factory,
+                   tpm_manager::TpmOwnershipInterface* tpm_owner,
+                   tpm_manager::TpmNvramInterface* tpm_nvram)
+    : has_external_trunks_context_(true),
+      tpm_owner_(tpm_owner),
+      tpm_nvram_(tpm_nvram) {
   external_trunks_context_.factory = factory;
   external_trunks_context_.tpm_state = factory->GetTpmState();
   external_trunks_context_.tpm_utility = factory->GetTpmUtility();
 }
 
 bool Tpm2Impl::GetOwnerPassword(brillo::Blob* owner_password) {
-  if (!owner_password_.empty()) {
-    owner_password->assign(owner_password_.begin(), owner_password_.end());
-  } else {
-    owner_password->clear();
+  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
+    return false;
   }
+  SecureBlob tmp(tpm_status_.local_data().owner_password());
+  owner_password->swap(tmp);
   return true;
 }
 
-void Tpm2Impl::SetOwnerPassword(const SecureBlob& owner_password) {
-  SecureBlob tmp(owner_password);
-  owner_password_.swap(tmp);
+void Tpm2Impl::SetOwnerPassword(const SecureBlob& /* owner_password */) {
+  LOG(ERROR) << __func__ << ": Not Implemented.";
+}
+
+bool Tpm2Impl::IsEnabled() {
+  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
+    return false;
+  }
+  return tpm_status_.enabled();
+}
+
+void Tpm2Impl::SetIsEnabled(bool /* enabled */) {
+  LOG(ERROR) << __func__ << ": Not Implemented.";
+}
+
+bool Tpm2Impl::IsOwned() {
+  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
+    return false;
+  }
+  return tpm_status_.owned();
+}
+
+void Tpm2Impl::SetIsOwned(bool /* owned */) {
+  LOG(ERROR) << __func__ << ": Not Implemented.";
 }
 
 bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
-    return false;
-  }
-  TPM_RC result = trunks->tpm_state->Initialize();
-  if (result != TPM_RC_SUCCESS) {
-    if (enabled) {
-      *enabled = false;
-    }
-    if (owned) {
-      *owned = false;
-    }
-    LOG(ERROR) << "Error getting tpm status for owned check: "
-               << GetErrorString(result);
+  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
     return false;
   }
   if (enabled) {
-    *enabled = trunks->tpm_state->IsEnabled();
+    *enabled = tpm_status_.enabled();
   }
   if (owned) {
-    *owned = trunks->tpm_state->IsOwned();
+    *owned = tpm_status_.owned();
   }
   return true;
+}
+
+bool Tpm2Impl::IsInitialized() {
+  return UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED);
+}
+
+void Tpm2Impl::SetIsInitialized(bool done) {
+  LOG(ERROR) << __func__ << ": Not Implemented.";
+}
+
+bool Tpm2Impl::IsBeingOwned() {
+  LOG(ERROR) << __func__ << ": Not Implemented.";
+  return false;
+}
+
+void Tpm2Impl::SetIsBeingOwned(bool /* value */) {
+  LOG(ERROR) << __func__ << ": Not Implemented.";
 }
 
 bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
@@ -100,187 +130,154 @@ bool Tpm2Impl::GetRandomData(size_t length, brillo::Blob* data) {
 }
 
 bool Tpm2Impl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  if (flags != (Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0)) {
-    LOG(ERROR) << "Defining NVram with unsupported flags.";
-    return false;
+  tpm_manager::DefineSpaceRequest request;
+  request.set_index(index);
+  request.set_size(length);
+  if (flags & Tpm::kTpmNvramWriteDefine) {
+    request.add_attributes(tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK);
   }
-  trunks::TPMA_NV attributes =
-      trunks::TPMA_NV_OWNERWRITE | trunks::TPMA_NV_WRITEDEFINE |
-      trunks::TPMA_NV_POLICYREAD | trunks::TPMA_NV_NO_DA;
-  if (owner_password_.empty()) {
-    LOG(ERROR) << "Defining NVram needs owner_password.";
-    return false;
+  if (flags & Tpm::kTpmNvramBindToPCR0) {
+    request.set_policy(tpm_manager::NVRAM_POLICY_PCR0);
   }
-  std::unique_ptr<trunks::HmacSession> session =
-      trunks->factory->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
-    return false;
-  }
-  session->SetEntityAuthorizationValue(owner_password_.to_string());
-  std::string policy;
-  result = trunks->tpm_utility->GetPolicyDigestForPcrValue(
-      0 /* PCR_0 */, std::string() /* Use the current PCR value */, &policy);
-  result = trunks->tpm_utility->DefineNVSpace(
-      index, length, attributes, std::string() /* No authorization value */,
-      policy, session->GetDelegate());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error defining NVram space: " << GetErrorString(result);
+  auto method = base::Bind(&tpm_manager::TpmNvramInterface::DefineSpace,
+                           base::Unretained(tpm_nvram_), request);
+  tpm_manager::DefineSpaceReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to define nvram space: " << reply.result();
     return false;
   }
   return true;
 }
 
 bool Tpm2Impl::DestroyNvram(uint32_t index) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  if (owner_password_.empty()) {
-    LOG(ERROR) << "Destroying NVram needs owner_password.";
-    return false;
-  }
-  std::unique_ptr<trunks::HmacSession> session =
-      trunks->factory->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
-    return false;
-  }
-  session->SetEntityAuthorizationValue(owner_password_.to_string());
-  result = trunks->tpm_utility->DestroyNVSpace(index, session->GetDelegate());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error destroying NVram space: " << GetErrorString(result);
+  tpm_manager::DestroySpaceRequest request;
+  request.set_index(index);
+  auto method = base::Bind(&tpm_manager::TpmNvramInterface::DestroySpace,
+                           base::Unretained(tpm_nvram_), request);
+  tpm_manager::DestroySpaceReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to destroy nvram space: " << reply.result();
     return false;
   }
   return true;
 }
 
 bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  if (owner_password_.empty()) {
-    LOG(ERROR) << "Writing NVram needs owner_password.";
+  tpm_manager::WriteSpaceRequest write_request;
+  write_request.set_index(index);
+  write_request.set_data(blob.to_string());
+  auto write_method = base::Bind(&tpm_manager::TpmNvramInterface::WriteSpace,
+                                 base::Unretained(tpm_nvram_), write_request);
+  tpm_manager::WriteSpaceReply write_reply;
+  SendTpmManagerRequestAndWait(write_method, &write_reply);
+  if (write_reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to write nvram space: " << write_reply.result();
     return false;
   }
-  std::unique_ptr<trunks::HmacSession> session =
-      trunks->factory->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
-    return false;
-  }
-  session->SetEntityAuthorizationValue(owner_password_.to_string());
-  result = trunks->tpm_utility->WriteNVSpace(
-      index, 0, /* offset */
-      blob.to_string(), true /* using_owner_authorization */,
-      false /* extend */, session->GetDelegate());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error writing to NVSpace: " << GetErrorString(result);
-    return false;
-  }
-  result = trunks->tpm_utility->LockNVSpace(
-      index, false /* lock_read */, true /* lock_write */,
-      true /* using_owner_authorization */, session->GetDelegate());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error locking NVSpace: " << GetErrorString(result);
+  tpm_manager::LockSpaceRequest lock_request;
+  lock_request.set_index(index);
+  lock_request.set_lock_write(true);
+  auto lock_method = base::Bind(&tpm_manager::TpmNvramInterface::LockSpace,
+                                base::Unretained(tpm_nvram_), lock_request);
+  tpm_manager::LockSpaceReply lock_reply;
+  SendTpmManagerRequestAndWait(lock_method, &lock_reply);
+  if (lock_reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to lock nvram space: " << lock_reply.result();
     return false;
   }
   return true;
 }
 
 bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  std::unique_ptr<trunks::PolicySession> session =
-      trunks->factory->GetPolicySession();
-  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
+  tpm_manager::ReadSpaceRequest request;
+  request.set_index(index);
+  auto method = base::Bind(&tpm_manager::TpmNvramInterface::ReadSpace,
+                           base::Unretained(tpm_nvram_), request);
+  tpm_manager::ReadSpaceReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to read nvram space: " << reply.result();
     return false;
   }
-  result = session->PolicyPCR(0 /* PCR_0 */,
-                              std::string() /* Use current PCR value */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error setting up policy session: " << GetErrorString(result);
-    return false;
-  }
-  std::string nvram_data;
-  result = trunks->tpm_utility->ReadNVSpace(
-      index, 0 /* offset */, GetNvramSize(index),
-      false /* using_owner_authorization */, &nvram_data,
-      session->GetDelegate());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error reading from nvram: " << GetErrorString(result);
-    return false;
-  }
-  blob->assign(nvram_data.begin(), nvram_data.end());
+  SecureBlob tmp(reply.data());
+  blob->swap(tmp);
   return true;
 }
 
 bool Tpm2Impl::IsNvramDefined(uint32_t index) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  trunks::TPMS_NV_PUBLIC nvram_public;
-  TPM_RC result =
-      trunks->tpm_utility->GetNVSpacePublicArea(index, &nvram_public);
-  if (trunks::GetFormatOneError(result) == trunks::TPM_RC_HANDLE) {
+  auto method = base::Bind(&tpm_manager::TpmNvramInterface::ListSpaces,
+                           base::Unretained(tpm_nvram_),
+                           tpm_manager::ListSpacesRequest());
+  tpm_manager::ListSpacesReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to list nvram spaces: " << reply.result();
     return false;
-  } else if (result == TPM_RC_SUCCESS) {
-    return true;
-  } else {
-    LOG(ERROR) << "Error reading NV space for index " << index
-               << " with error: " << GetErrorString(result);
+  }
+  for (int i = 0; i < reply.index_list_size(); ++i) {
+    if (index == reply.index_list(i)) {
+      return true;
+    }
   }
   return false;
 }
 
 bool Tpm2Impl::IsNvramLocked(uint32_t index) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  trunks::TPMS_NV_PUBLIC nvram_public;
-  TPM_RC result =
-      trunks->tpm_utility->GetNVSpacePublicArea(index, &nvram_public);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error reading NV space for index " << index
-               << " with error: " << GetErrorString(result);
+  tpm_manager::GetSpaceInfoRequest request;
+  request.set_index(index);
+  auto method = base::Bind(&tpm_manager::TpmNvramInterface::GetSpaceInfo,
+                           base::Unretained(tpm_nvram_), request);
+  tpm_manager::GetSpaceInfoReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to get space info for space " << index << ": "
+               << reply.result();
     return false;
   }
-  return (nvram_public.attributes & trunks::TPMA_NV_WRITELOCKED) != 0;
+  return reply.is_write_locked();
 }
 
 unsigned int Tpm2Impl::GetNvramSize(uint32_t index) {
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  trunks::TPMS_NV_PUBLIC nvram_public;
-  TPM_RC result =
-      trunks->tpm_utility->GetNVSpacePublicArea(index, &nvram_public);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error reading NV space for index " << index
-               << " with error: " << GetErrorString(result);
+  tpm_manager::GetSpaceInfoRequest request;
+  request.set_index(index);
+  auto method = base::Bind(&tpm_manager::TpmNvramInterface::GetSpaceInfo,
+                           base::Unretained(tpm_nvram_), request);
+  tpm_manager::GetSpaceInfoReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to get space info for space " << index << ": "
+               << reply.result();
     return 0;
   }
-  return nvram_public.data_size;
+  return reply.size();
 }
 
 bool Tpm2Impl::IsEndorsementKeyAvailable() {
   LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  return true;
 }
 
 bool Tpm2Impl::CreateEndorsementKey() {
@@ -412,13 +409,21 @@ bool Tpm2Impl::ActivateIdentity(const SecureBlob& delegate_blob,
 
 bool Tpm2Impl::TakeOwnership(int max_timeout_tries,
                              const SecureBlob& owner_password) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  if (!InitializeTpmManagerClients()) {
+    return false;
+  }
+  auto method = base::Bind(&tpm_manager::TpmOwnershipInterface::TakeOwnership,
+                           base::Unretained(tpm_owner_),
+                           tpm_manager::TakeOwnershipRequest());
+  tpm_manager::TakeOwnershipReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  return (reply.status() == tpm_manager::STATUS_SUCCESS);
 }
 
 bool Tpm2Impl::InitializeSrk(const SecureBlob& owner_password) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  // Not necessary, tpm_managerd takes care of all this.
+  LOG(WARNING) << __func__ << ": Not Implemented.";
+  return true;
 }
 
 bool Tpm2Impl::ChangeOwnerPassword(const SecureBlob& previous_owner_password,
@@ -602,7 +607,6 @@ bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
   // Finally we verify that the key's policy_digest is the expected value.
   std::unique_ptr<trunks::PolicySession> trial_session =
       trunks->factory->GetTrialSession();
-      trunks_factory_->GetTrialSession();
   result = trial_session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting a trial session: " << GetErrorString(result);
@@ -809,22 +813,89 @@ Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
 }
 
 void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  memset(status, 0, sizeof(TpmStatusInfo));
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return;
+  }
+  status->this_instance_has_context = true;
+  status->this_instance_has_key_handle = (key != 0);
+  status->last_tpm_error = trunks->tpm_state->Initialize();
+  if (status->last_tpm_error != TPM_RC_SUCCESS) {
+    return;
+  }
+  status->can_connect = true;
+  trunks::TPMT_PUBLIC public_srk;
+  status->last_tpm_error = trunks->tpm_utility->GetKeyPublicArea(
+      trunks::kRSAStorageRootKey, &public_srk);
+  if (status->last_tpm_error != TPM_RC_SUCCESS) {
+    return;
+  }
+  status->can_load_srk = true;
+  status->can_load_srk_public_key = true;
+
+  // Check the Cryptohome key by using what we have been told.
+  status->has_cryptohome_key = (key != 0);
+
+  if (status->has_cryptohome_key) {
+    // Check encryption (we don't care about the contents, just whether or not
+    // there was an error)
+    SecureBlob data(16);
+    SecureBlob password(16);
+    SecureBlob salt(8);
+    SecureBlob data_out(16);
+    memset(data.data(), 'A', data.size());
+    memset(password.data(), 'B', password.size());
+    memset(salt.data(), 'C', salt.size());
+    memset(data_out.data(), 'D', data_out.size());
+    SecureBlob aes_key;
+    CryptoLib::PasskeyToAesKey(password, salt, 13, &aes_key, NULL);
+    if (EncryptBlob(key, data, aes_key, &data_out) != kTpmRetryNone) {
+      return;
+    }
+    status->can_encrypt = true;
+
+    // Check decryption (we don't care about the contents, just whether or not
+    // there was an error)
+    if (DecryptBlob(key, data_out, aes_key, &data) != kTpmRetryNone) {
+      return;
+    }
+    status->can_decrypt = true;
+  }
 }
 
 bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
                                        int* threshold,
                                        bool* lockout,
                                        int* seconds_remaining) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  if (!UpdateTpmStatus(RefreshType::FORCE_REFRESH)) {
+    return false;
+  }
+  *counter = tpm_status_.dictionary_attack_counter();
+  *threshold = tpm_status_.dictionary_attack_threshold();
+  *lockout = tpm_status_.dictionary_attack_lockout_in_effect();
+  *seconds_remaining =
+      tpm_status_.dictionary_attack_lockout_seconds_remaining();
+  return true;
 }
 
 bool Tpm2Impl::ResetDictionaryAttackMitigation(
     const SecureBlob& delegate_blob,
     const SecureBlob& delegate_secret) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
+    return false;
+  }
+  if (!tpm_status_.local_data().has_lockout_password()) {
+    return false;
+  }
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  auto authorization = trunks->factory->GetPasswordAuthorization(
+      tpm_status_.local_data().lockout_password());
+  return (trunks->tpm_utility->ResetDictionaryAttackLock(authorization.get()) ==
+          TPM_RC_SUCCESS);
 }
 
 bool Tpm2Impl::GetTrunksContext(TrunksClientContext** trunks) {
@@ -871,6 +942,74 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
     return false;
   }
   return true;
+}
+
+bool Tpm2Impl::InitializeTpmManagerClients() {
+  if (!tpm_manager_thread_.IsRunning() &&
+      !tpm_manager_thread_.StartWithOptions(base::Thread::Options(
+          base::MessageLoopForIO::TYPE_IO, 0 /* Default stack size. */))) {
+    LOG(ERROR) << "Failed to start tpm_manager thread.";
+    return false;
+  }
+  if (!tpm_owner_ || !tpm_nvram_) {
+    base::WaitableEvent event(true /* manual_reset */,
+                              false /* initially_signaled */);
+    tpm_manager_thread_.task_runner()->PostTask(
+        FROM_HERE, base::Bind([this, &event]() {
+          default_tpm_owner_ =
+              base::MakeUnique<tpm_manager::TpmOwnershipDBusProxy>();
+          default_tpm_nvram_ =
+              base::MakeUnique<tpm_manager::TpmNvramDBusProxy>();
+          if (default_tpm_owner_->Initialize()) {
+            tpm_owner_ = default_tpm_owner_.get();
+          }
+          if (default_tpm_nvram_->Initialize()) {
+            tpm_nvram_ = default_tpm_nvram_.get();
+          }
+          event.Signal();
+        }));
+    event.Wait();
+  }
+  if (!tpm_owner_ || !tpm_nvram_) {
+    LOG(ERROR) << "Failed to initialize tpm_managerd clients.";
+    return false;
+  }
+  return true;
+}
+
+template <typename ReplyProtoType, typename MethodType>
+void Tpm2Impl::SendTpmManagerRequestAndWait(const MethodType& method,
+                                            ReplyProtoType* reply_proto) {
+  base::WaitableEvent event(true /* manual_reset */,
+                            false /* initially_signaled */);
+  auto callback =
+      base::Bind([reply_proto, &event](const ReplyProtoType& reply) {
+        *reply_proto = reply;
+        event.Signal();
+      });
+  tpm_manager_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind([this, &method, &callback]() {
+        method.Run(callback); }));
+  event.Wait();
+}
+
+bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {
+  if (!InitializeTpmManagerClients()) {
+    return false;
+  }
+  if (refresh_type != RefreshType::FORCE_REFRESH &&
+      tpm_status_.status() == tpm_manager::STATUS_SUCCESS &&
+      tpm_status_.enabled() && tpm_status_.owned()) {
+    // We have a valid status and we're not waiting on ownership so we don't
+    // need to refresh our cached status.
+    return true;
+  }
+  auto method = base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
+                           base::Unretained(tpm_owner_),
+                           tpm_manager::GetTpmStatusRequest());
+  SendTpmManagerRequestAndWait(method, &tpm_status_);
+  return (tpm_status_.status() == tpm_manager::STATUS_SUCCESS);
 }
 
 }  // namespace cryptohome

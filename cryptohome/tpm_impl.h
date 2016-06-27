@@ -29,14 +29,14 @@ class TpmImpl : public Tpm {
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::Blob* owner_password) override;
-  bool IsEnabled() const override { return !is_disabled_; }
+  bool IsEnabled() override { return !is_disabled_; }
   void SetIsEnabled(bool enabled) override { is_disabled_ = !enabled; }
-  bool IsOwned() const override { return is_owned_; }
+  bool IsOwned() override { return is_owned_; }
   void SetIsOwned(bool owned) override { is_owned_ = owned; }
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
-  bool IsInitialized() const override { return initialized_; }
+  bool IsInitialized() override { return initialized_; }
   void SetIsInitialized(bool done) override { initialized_ = done; }
-  bool IsBeingOwned() const override { return is_being_owned_; }
+  bool IsBeingOwned() override { return is_being_owned_; }
   void SetIsBeingOwned(bool value) override { is_being_owned_ = value; }
   bool GetRandomData(size_t length, brillo::Blob* data) override;
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override;

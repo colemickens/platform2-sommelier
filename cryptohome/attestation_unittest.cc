@@ -303,6 +303,10 @@ class AttestationTest : public testing::Test {
   std::string GetDefaultPCAWebOrigin() const {
     return attestation_.kDefaultPCAWebOrigin;
   }
+
+  size_t GetDigestSize() const {
+    return Attestation::kDigestSize;
+  }
 };
 
 TEST(AttestationTest_, NullTpm) {
@@ -845,14 +849,15 @@ class AttestationTestNoInitialize : public AttestationTest {
 };
 
 TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
-  SecureBlob default_pcr(std::string(20, 0));
+  SecureBlob default_pcr(std::string(GetDigestSize(), 0));
   EXPECT_CALL(tpm_, ReadPCR(1, _))
       .WillOnce(DoAll(SetArgPointee<1>(default_pcr), Return(true)));
   std::string fake_hwid = "hwid";
   brillo::SecureBlob fake_hwid_expected_extension;
-  // First 20 bytes of SHA-256.
-  ASSERT_TRUE(base::HexStringToBytes("bc45e91a086497cd817cb3024ac5c0d733111a74",
-                                     &fake_hwid_expected_extension));
+  ASSERT_TRUE(base::HexStringToBytes(
+      "bc45e91a086497cd817cb3024ac5c0d733111a74378257b11991e1e435b7e71e",
+      &fake_hwid_expected_extension));
+  fake_hwid_expected_extension.resize(GetDigestSize());
   EXPECT_CALL(tpm_, ExtendPCR(1, fake_hwid_expected_extension))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, GetHardwareID()).WillRepeatedly(Return(fake_hwid));
@@ -861,7 +866,7 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
 }
 
 TEST_F(AttestationTestNoInitialize, AutoExtendPCR1NoHwID) {
-  SecureBlob default_pcr(std::string(20, 0));
+  SecureBlob default_pcr(std::string(GetDigestSize(), 0));
   EXPECT_CALL(tpm_, ReadPCR(1, _))
       .WillOnce(DoAll(SetArgPointee<1>(default_pcr), Return(true)));
   std::string no_hwid = "";

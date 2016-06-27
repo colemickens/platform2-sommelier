@@ -33,9 +33,9 @@ class StubTpm : public Tpm {
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   SecureBlob* hash) override
     { return kTpmRetryNone; }
-  bool IsEnabled() const override { return false; }
+  bool IsEnabled() override { return false; }
   void SetIsEnabled(bool enabled) override {}
-  bool IsOwned() const override { return false; }
+  bool IsOwned() override { return false; }
   void SetIsOwned(bool owned) override {}
   bool ReadNvram(uint32_t index, SecureBlob* blob) override { return false; }
   bool IsNvramDefined(uint32_t index) override { return false; }
@@ -45,9 +45,9 @@ class StubTpm : public Tpm {
     { return false; }
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override
     { return false; }
-  bool IsInitialized() const override { return false; }
+  bool IsInitialized() override { return false; }
   void SetIsInitialized(bool done) override {}
-  bool IsBeingOwned() const override { return false; }
+  bool IsBeingOwned() override { return false; }
   void SetIsBeingOwned(bool value) override {}
   bool GetRandomData(size_t length, brillo::Blob* data) override
     { return false; }

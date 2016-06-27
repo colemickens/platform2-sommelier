@@ -130,6 +130,7 @@
           'all_dependent_settings': {
             'libraries': [
               '-ltrunks',
+              '-ltpm_manager',
             ],
           },
         }],
@@ -408,6 +409,7 @@
             ['USE_tpm2 == 1', {
               'libraries': [
                 '-ltrunks_test',
+                '-ltpm_manager_test',
               ],
               'sources': [
                 'tpm2_test.cc',

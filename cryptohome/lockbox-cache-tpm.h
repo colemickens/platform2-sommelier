@@ -34,12 +34,12 @@ class LockboxCacheTpm : public StubTpm {
   }
 
   // Pretend the TPM is enabled.
-  virtual bool IsEnabled() const { return true; }
+  virtual bool IsEnabled() { return true; }
 
   // Indicate if the TPM is owned based on if there is an NVRAM area or not.
   // If there is no NVRAM data, we assume an unowned TPM, not a failure to
   // verify.
-  virtual bool IsOwned() const { return !!nvram_data_.size(); }
+  virtual bool IsOwned() { return !!nvram_data_.size(); }
 
   // Populates |blob| with the prepared contents if the |index|
   // matches.  If |blob| is unpopulated, it returns false.  On

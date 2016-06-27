@@ -9,6 +9,12 @@
 #include <memory>
 
 #include <base/threading/platform_thread.h>
+#include <base/threading/thread.h>
+#include <tpm_manager/client/tpm_nvram_dbus_proxy.h>
+#include <tpm_manager/client/tpm_ownership_dbus_proxy.h>
+#include <tpm_manager/common/tpm_manager.pb.h>
+#include <tpm_manager/common/tpm_nvram_interface.h>
+#include <tpm_manager/common/tpm_ownership_interface.h>
 #include <trunks/hmac_session.h>
 #include <trunks/tpm_state.h>
 #include <trunks/tpm_utility.h>
@@ -26,8 +32,10 @@ const uint32_t kLockboxPCR = 15;
 class Tpm2Impl : public Tpm {
  public:
   Tpm2Impl() = default;
-  // Does not take ownership of |factory|.
-  explicit Tpm2Impl(trunks::TrunksFactory* factory);
+  // Does not take ownership of pointers.
+  Tpm2Impl(trunks::TrunksFactory* factory,
+           tpm_manager::TpmOwnershipInterface* tpm_owner,
+           tpm_manager::TpmNvramInterface* tpm_nvram);
   virtual ~Tpm2Impl() = default;
 
   // Tpm methods
@@ -42,15 +50,15 @@ class Tpm2Impl : public Tpm {
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::Blob* owner_password) override;
-  bool IsEnabled() const override { return !is_disabled_; }
-  void SetIsEnabled(bool enabled) override { is_disabled_ = !enabled; }
-  bool IsOwned() const override { return is_owned_; }
-  void SetIsOwned(bool owned) override { is_owned_ = owned; }
+  bool IsEnabled() override;
+  void SetIsEnabled(bool enabled) override;
+  bool IsOwned() override;
+  void SetIsOwned(bool owned) override;
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
-  bool IsInitialized() const override { return initialized_; }
-  void SetIsInitialized(bool done) override { initialized_ = done; }
-  bool IsBeingOwned() const override { return is_being_owned_; }
-  void SetIsBeingOwned(bool value) override { is_being_owned_ = value; }
+  bool IsInitialized() override;
+  void SetIsInitialized(bool done) override;
+  bool IsBeingOwned() override;
+  void SetIsBeingOwned(bool value) override;
   bool GetRandomData(size_t length, brillo::Blob* data) override;
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override;
   bool DestroyNvram(uint32_t index) override;
@@ -157,21 +165,43 @@ class Tpm2Impl : public Tpm {
   bool PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
                                 brillo::SecureBlob* public_key_der);
 
+  // Starts tpm_manager_thread_ and initiates initialization of
+  // default_tpm_owner_ and default_tpm_nvram_ if necessary. Returns true if the
+  // thread was started and both tpm_owner_ and tpm_nvram_ are valid.
+  bool InitializeTpmManagerClients();
+
+  // Sends a request to the TPM Manager daemon that expects a ReplyProtoType and
+  // waits for a reply. The |method| will be called on the |tpm_manager_thread_|
+  // and must take a callback argument as defined in TpmOwnershipInterface or
+  // TpmNvramInterface. InitializeTpmManagerClients() must be called
+  // successfully before calling this method.
+  template <typename ReplyProtoType, typename MethodType>
+  void SendTpmManagerRequestAndWait(const MethodType& method,
+                                    ReplyProtoType* reply_proto);
+
+  // Updates tpm_status_ according to the requested |refresh_type|. Returns
+  // true on success. Use |REFRESH_IF_NEEDED| for most calls. Use
+  // |FORCE_REFRESH| for calls which are querying a field that can change at any
+  // time, like the dictionary attack counter.
+  enum class RefreshType { REFRESH_IF_NEEDED, FORCE_REFRESH };
+  bool UpdateTpmStatus(RefreshType refresh_type);
+
+  // Per-thread trunks object management.
   std::map<base::PlatformThreadId, std::unique_ptr<TrunksClientContext>>
       trunks_contexts_;
   TrunksClientContext external_trunks_context_;
   bool has_external_trunks_context_ = false;
 
-  // For now, be optimistic by default because tpm_managerd should be taking
-  // care of this and until the integration is farther along we're blind to the
-  // detailed status.
-  // TODO(dkrahn): crbug.com/623100 - Finish tpm_managerd integration.
-  bool is_disabled_ = false;
-  bool is_owned_ = true;
-  bool initialized_ = true;
-  bool is_being_owned_ = false;
+  // The most recent status from tpm_managerd.
+  tpm_manager::GetTpmStatusReply tpm_status_;
 
-  brillo::SecureBlob owner_password_;
+  // A message loop thread dedicated for asynchronous communication with
+  // tpm_managerd.
+  base::Thread tpm_manager_thread_{"tpm_manager_thread"};
+  tpm_manager::TpmOwnershipInterface* tpm_owner_ = nullptr;
+  std::unique_ptr<tpm_manager::TpmOwnershipDBusProxy> default_tpm_owner_;
+  tpm_manager::TpmNvramInterface* tpm_nvram_ = nullptr;
+  std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2Impl);
 };

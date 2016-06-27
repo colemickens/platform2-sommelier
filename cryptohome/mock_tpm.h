@@ -35,14 +35,14 @@ class MockTpm : public Tpm {
   MOCK_METHOD2(GetPublicKeyHash, TpmRetryAction(TpmKeyHandle,
                                                 brillo::SecureBlob*));
   MOCK_METHOD1(GetOwnerPassword, bool(brillo::Blob*));
-  MOCK_CONST_METHOD0(IsEnabled, bool());
+  MOCK_METHOD0(IsEnabled, bool());
   MOCK_METHOD1(SetIsEnabled, void(bool));
-  MOCK_CONST_METHOD0(IsOwned, bool());
+  MOCK_METHOD0(IsOwned, bool());
   MOCK_METHOD1(SetIsOwned, void(bool));
   MOCK_METHOD2(PerformEnabledOwnedCheck, bool(bool*, bool*));
-  MOCK_CONST_METHOD0(IsInitialized, bool());
+  MOCK_METHOD0(IsInitialized, bool());
   MOCK_METHOD1(SetIsInitialized, void(bool));
-  MOCK_CONST_METHOD0(IsBeingOwned, bool());
+  MOCK_METHOD0(IsBeingOwned, bool());
   MOCK_METHOD1(SetIsBeingOwned, void(bool));
   MOCK_METHOD2(GetRandomData, bool(size_t, brillo::Blob*));
   MOCK_METHOD3(DefineNvram, bool(uint32_t, size_t, uint32_t));

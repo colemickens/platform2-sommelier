@@ -8,6 +8,8 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <tpm_manager/common/mock_tpm_nvram_interface.h>
+#include <tpm_manager/common/mock_tpm_ownership_interface.h>
 #include <trunks/mock_authorization_delegate.h>
 #include <trunks/mock_blob_parser.h>
 #include <trunks/mock_hmac_session.h>
@@ -25,13 +27,23 @@
 using brillo::SecureBlob;
 using testing::_;
 using testing::DoAll;
+using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
+using testing::WithArg;
+using tpm_manager::NVRAM_RESULT_IPC_ERROR;
 using trunks::TPM_RC_FAILURE;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
+
+namespace {
+
+const char kDefaultPassword[] = "password";
+const int kDefaultCounter = 3;
+
+}  // namespace
 
 namespace cryptohome {
 
@@ -48,10 +60,107 @@ class Tpm2Test : public testing::Test {
     factory_.set_hmac_session(&mock_hmac_session_);
     factory_.set_policy_session(&mock_policy_session_);
     factory_.set_trial_session(&mock_trial_session_);
-    tpm_ = new Tpm2Impl(&factory_);
+    tpm_ = new Tpm2Impl(&factory_, &mock_tpm_owner_, &mock_tpm_nvram_);
+    // Setup default status data.
+    tpm_status_.set_status(tpm_manager::STATUS_SUCCESS);
+    tpm_status_.set_enabled(true);
+    tpm_status_.set_owned(true);
+    tpm_status_.mutable_local_data()->set_owner_password(kDefaultPassword);
+    tpm_status_.set_dictionary_attack_counter(kDefaultCounter);
+    ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
+        .WillByDefault(WithArg<1>(Invoke(this, &Tpm2Test::FakeGetTpmStatus)));
+    SetupFakeNvram();
+  }
+
+  void SetupFakeNvram() {
+    ON_CALL(mock_tpm_nvram_, DefineSpace(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeDefineSpace));
+    ON_CALL(mock_tpm_nvram_, DestroySpace(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeDestroySpace));
+    ON_CALL(mock_tpm_nvram_, WriteSpace(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeWriteSpace));
+    ON_CALL(mock_tpm_nvram_, ReadSpace(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeReadSpace));
+    ON_CALL(mock_tpm_nvram_, LockSpace(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeLockSpace));
+    ON_CALL(mock_tpm_nvram_, ListSpaces(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeListSpaces));
+    ON_CALL(mock_tpm_nvram_, GetSpaceInfo(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeGetSpaceInfo));
   }
 
  protected:
+  void FakeGetTpmStatus(
+      const tpm_manager::TpmOwnershipInterface::GetTpmStatusCallback&
+          callback) {
+    callback.Run(tpm_status_);
+  }
+
+  void FakeDefineSpace(
+      const tpm_manager::DefineSpaceRequest& request,
+      const tpm_manager::TpmNvramInterface::DefineSpaceCallback& callback) {
+    last_define_space_request = request;
+    callback.Run(next_define_space_reply);
+  }
+
+  void FakeDestroySpace(
+      const tpm_manager::DestroySpaceRequest& request,
+      const tpm_manager::TpmNvramInterface::DestroySpaceCallback& callback) {
+    last_destroy_space_request = request;
+    callback.Run(next_destroy_space_reply);
+  }
+
+  void FakeWriteSpace(
+      const tpm_manager::WriteSpaceRequest& request,
+      const tpm_manager::TpmNvramInterface::WriteSpaceCallback& callback) {
+    last_write_space_request = request;
+    callback.Run(next_write_space_reply);
+  }
+
+  void FakeReadSpace(
+      const tpm_manager::ReadSpaceRequest& request,
+      const tpm_manager::TpmNvramInterface::ReadSpaceCallback& callback) {
+    last_read_space_request = request;
+    callback.Run(next_read_space_reply);
+  }
+
+  void FakeLockSpace(
+      const tpm_manager::LockSpaceRequest& request,
+      const tpm_manager::TpmNvramInterface::LockSpaceCallback& callback) {
+    last_lock_space_request = request;
+    callback.Run(next_lock_space_reply);
+  }
+
+  void FakeListSpaces(
+      const tpm_manager::ListSpacesRequest& request,
+      const tpm_manager::TpmNvramInterface::ListSpacesCallback& callback) {
+    last_list_spaces_request = request;
+    callback.Run(next_list_spaces_reply);
+  }
+
+  void FakeGetSpaceInfo(
+      const tpm_manager::GetSpaceInfoRequest& request,
+      const tpm_manager::TpmNvramInterface::GetSpaceInfoCallback& callback) {
+    last_get_space_info_request = request;
+    callback.Run(next_get_space_info_reply);
+  }
+
+  tpm_manager::GetTpmStatusReply tpm_status_;
+  tpm_manager::DefineSpaceRequest last_define_space_request;
+  tpm_manager::DestroySpaceRequest last_destroy_space_request;
+  tpm_manager::WriteSpaceRequest last_write_space_request;
+  tpm_manager::ReadSpaceRequest last_read_space_request;
+  tpm_manager::LockSpaceRequest last_lock_space_request;
+  tpm_manager::ListSpacesRequest last_list_spaces_request;
+  tpm_manager::GetSpaceInfoRequest last_get_space_info_request;
+  tpm_manager::DefineSpaceReply next_define_space_reply;
+  tpm_manager::DestroySpaceReply next_destroy_space_reply;
+  tpm_manager::WriteSpaceReply next_write_space_reply;
+  tpm_manager::ReadSpaceReply next_read_space_reply;
+  tpm_manager::LockSpaceReply next_lock_space_reply;
+  tpm_manager::ListSpacesReply next_list_spaces_reply;
+  tpm_manager::GetSpaceInfoReply next_get_space_info_reply;
+
   trunks::TrunksFactoryForTest factory_;
   Tpm* tpm_;
   NiceMock<trunks::MockAuthorizationDelegate> mock_authorization_delegate_;
@@ -62,51 +171,30 @@ class Tpm2Test : public testing::Test {
   NiceMock<trunks::MockHmacSession> mock_hmac_session_;
   NiceMock<trunks::MockPolicySession> mock_policy_session_;
   NiceMock<trunks::MockPolicySession> mock_trial_session_;
+  NiceMock<tpm_manager::MockTpmOwnershipInterface> mock_tpm_owner_;
+  NiceMock<tpm_manager::MockTpmNvramInterface> mock_tpm_nvram_;
 };
 
 TEST_F(Tpm2Test, GetOwnerPassword) {
-  brillo::Blob owner_pass;
-  EXPECT_TRUE(tpm_->GetOwnerPassword(&owner_pass));
-  EXPECT_EQ(owner_pass.size(), 0);
-  SecureBlob password("password");
-  tpm_->SetOwnerPassword(password);
-  EXPECT_TRUE(tpm_->GetOwnerPassword(&owner_pass));
-  EXPECT_EQ(owner_pass.size(), password.size());
-  EXPECT_EQ(owner_pass, password);
+  brillo::SecureBlob owner_password;
+  EXPECT_TRUE(tpm_->GetOwnerPassword(&owner_password));
+  EXPECT_EQ(kDefaultPassword, owner_password.to_string());
 }
 
 TEST_F(Tpm2Test, EnabledOwnedCheckSuccess) {
-  bool enabled;
-  bool owned;
+  bool enabled = false;
+  bool owned = false;
   EXPECT_TRUE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
   EXPECT_TRUE(enabled);
   EXPECT_TRUE(owned);
 }
 
 TEST_F(Tpm2Test, EnabledOwnedCheckStateError) {
-  bool enabled;
-  bool owned;
-  EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_FAILURE));
+  tpm_status_.set_status(tpm_manager::STATUS_NOT_AVAILABLE);
+  bool enabled = false;
+  bool owned = false;
   EXPECT_FALSE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
   EXPECT_FALSE(enabled);
-  EXPECT_FALSE(owned);
-}
-
-TEST_F(Tpm2Test, EnabledOwnedNotEnabled) {
-  bool enabled;
-  bool owned;
-  EXPECT_CALL(mock_tpm_state_, IsEnabled()).WillOnce(Return(false));
-  EXPECT_TRUE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
-  EXPECT_FALSE(enabled);
-  EXPECT_TRUE(owned);
-}
-
-TEST_F(Tpm2Test, EnabledOwnedNotOwned) {
-  bool enabled;
-  bool owned;
-  EXPECT_CALL(mock_tpm_state_, IsOwned()).WillOnce(Return(false));
-  EXPECT_TRUE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
-  EXPECT_TRUE(enabled);
   EXPECT_FALSE(owned);
 }
 
@@ -140,197 +228,120 @@ TEST_F(Tpm2Test, GetRandomDataBadLength) {
 }
 
 TEST_F(Tpm2Test, DefineNvramSuccess) {
-  SecureBlob owner_pass("password");
-  tpm_->SetOwnerPassword(owner_pass);
   uint32_t index = 2;
   size_t length = 5;
-  trunks::TPMA_NV attributes =
-      trunks::TPMA_NV_OWNERWRITE | trunks::TPMA_NV_WRITEDEFINE |
-      trunks::TPMA_NV_POLICYREAD | trunks::TPMA_NV_NO_DA;
-  std::string recovered_password;
-  EXPECT_CALL(mock_hmac_session_, SetEntityAuthorizationValue(_))
-      .WillOnce(SaveArg<0>(&recovered_password));
-  EXPECT_CALL(mock_tpm_utility_,
-              DefineNVSpace(index, length, attributes, std::string(), _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(tpm_->DefineNvram(
       index, length, Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0));
-  EXPECT_EQ(recovered_password.size(), owner_pass.size());
-  EXPECT_EQ(recovered_password, owner_pass.to_string());
-}
-
-TEST_F(Tpm2Test, DefineNvramWithoutOwnerPassword) {
-  uint32_t index = 2;
-  size_t length = 5;
-  tpm_->SetOwnerPassword(SecureBlob(""));
-  EXPECT_FALSE(tpm_->DefineNvram(
-      index, length, Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0));
+  EXPECT_EQ(index, last_define_space_request.index());
+  EXPECT_EQ(length, last_define_space_request.size());
+  ASSERT_EQ(1, last_define_space_request.attributes_size());
+  EXPECT_EQ(tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK,
+            last_define_space_request.attributes(0));
+  EXPECT_EQ(tpm_manager::NVRAM_POLICY_PCR0, last_define_space_request.policy());
 }
 
 TEST_F(Tpm2Test, DefineNvramFailure) {
-  uint32_t index = 2;
-  size_t length = 5;
-  tpm_->SetOwnerPassword(SecureBlob("password"));
-  EXPECT_CALL(mock_tpm_utility_, DefineNVSpace(index, length, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->DefineNvram(
-      index, length, Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0));
+  next_define_space_reply.set_result(NVRAM_RESULT_IPC_ERROR);
+  EXPECT_FALSE(tpm_->DefineNvram(0, 0, 0));
 }
 
 TEST_F(Tpm2Test, DestroyNvramSuccess) {
-  SecureBlob owner_pass("password");
-  tpm_->SetOwnerPassword(owner_pass);
   uint32_t index = 2;
-  std::string recovered_password;
-  EXPECT_CALL(mock_hmac_session_, SetEntityAuthorizationValue(_))
-      .WillOnce(SaveArg<0>(&recovered_password));
-  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(index, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(tpm_->DestroyNvram(index));
-  EXPECT_EQ(recovered_password.size(), owner_pass.size());
-  EXPECT_EQ(recovered_password, owner_pass.to_string());
-}
-
-TEST_F(Tpm2Test, DestroyNvramOwnerPassword) {
-  uint32_t index = 2;
-  tpm_->SetOwnerPassword(SecureBlob(""));
-  EXPECT_FALSE(tpm_->DestroyNvram(index));
+  EXPECT_EQ(index, last_destroy_space_request.index());
 }
 
 TEST_F(Tpm2Test, DestroyNvramFailure) {
-  uint32_t index = 2;
-  tpm_->SetOwnerPassword(SecureBlob("password"));
-  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(index, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->DestroyNvram(index));
+  next_destroy_space_reply.set_result(NVRAM_RESULT_IPC_ERROR);
+  EXPECT_FALSE(tpm_->DestroyNvram(0));
 }
 
 TEST_F(Tpm2Test, WriteNvramSuccess) {
-  SecureBlob owner_pass("password");
-  tpm_->SetOwnerPassword(owner_pass);
-  SecureBlob data("nvram_data");
   uint32_t index = 2;
-  std::string written_data;
-  EXPECT_CALL(mock_tpm_utility_,
-              WriteNVSpace(index, 0, "nvram_data", true, false, _))
-      .WillOnce(DoAll(SaveArg<2>(&written_data), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, false, true, true, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(tpm_->WriteNvram(index, data));
-  EXPECT_EQ(written_data, data.to_string());
-}
-
-TEST_F(Tpm2Test, WriteNvramNoOwnerPassword) {
-  SecureBlob data("nvram_data");
-  uint32_t index = 2;
-  EXPECT_FALSE(tpm_->WriteNvram(index, data));
+  std::string data("nvram_data");
+  EXPECT_TRUE(tpm_->WriteNvram(index, SecureBlob(data)));
+  EXPECT_EQ(index, last_write_space_request.index());
+  EXPECT_EQ(data, last_write_space_request.data());
+  EXPECT_EQ(index, last_lock_space_request.index());
+  EXPECT_TRUE(last_lock_space_request.lock_write());
+  EXPECT_FALSE(last_lock_space_request.lock_read());
 }
 
 TEST_F(Tpm2Test, WriteNvramFailure) {
-  SecureBlob owner_pass("password");
-  tpm_->SetOwnerPassword(owner_pass);
-  SecureBlob data("nvram_data");
-  uint32_t index = 2;
-  EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(index, 0, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->WriteNvram(index, data));
+  next_write_space_reply.set_result(NVRAM_RESULT_IPC_ERROR);
+  EXPECT_FALSE(tpm_->WriteNvram(0, SecureBlob()));
 }
 
-TEST_F(Tpm2Test, WriteNvramLockoutFailure) {
-  SecureBlob owner_pass("password");
-  tpm_->SetOwnerPassword(owner_pass);
-  SecureBlob data("nvram_data");
-  uint32_t index = 2;
-  std::string written_data;
-  EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(index, 0, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<2>(&written_data), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->WriteNvram(index, data));
-  EXPECT_EQ(written_data, data.to_string());
+TEST_F(Tpm2Test, WriteNvramLockFailure) {
+  next_lock_space_reply.set_result(NVRAM_RESULT_IPC_ERROR);
+  EXPECT_FALSE(tpm_->WriteNvram(0, SecureBlob()));
 }
 
 TEST_F(Tpm2Test, ReadNvramSuccess) {
   uint32_t index = 2;
   SecureBlob read_data;
   std::string nvram_data("nvram_data");
-  size_t nvram_size = nvram_data.size();
-  trunks::TPMS_NV_PUBLIC nvram_public;
-  nvram_public.data_size = nvram_size;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(index, 0, nvram_size, false, _, _))
-      .WillOnce(DoAll(SetArgPointee<4>(nvram_data), Return(TPM_RC_SUCCESS)));
+  next_read_space_reply.set_data(nvram_data);
   EXPECT_TRUE(tpm_->ReadNvram(index, &read_data));
   EXPECT_EQ(nvram_data, read_data.to_string());
+  EXPECT_EQ(index, last_read_space_request.index());
 }
 
 TEST_F(Tpm2Test, ReadNvramFailure) {
-  uint32_t index = 2;
-  SecureBlob data;
-  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(index, 0, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->ReadNvram(index, &data));
+  next_read_space_reply.set_result(NVRAM_RESULT_IPC_ERROR);
+  SecureBlob read_data;
+  EXPECT_FALSE(tpm_->ReadNvram(0, &read_data));
 }
 
 TEST_F(Tpm2Test, IsNvramDefinedSuccess) {
   uint32_t index = 2;
+  next_list_spaces_reply.add_index_list(index);
   EXPECT_TRUE(tpm_->IsNvramDefined(index));
 }
 
-TEST_F(Tpm2Test, IsNvramDefinedError) {
+TEST_F(Tpm2Test, IsNvramDefinedFailure) {
   uint32_t index = 2;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
+  next_list_spaces_reply.set_result(NVRAM_RESULT_IPC_ERROR);
+  next_list_spaces_reply.add_index_list(index);
   EXPECT_FALSE(tpm_->IsNvramDefined(index));
 }
 
 TEST_F(Tpm2Test, IsNvramDefinedUnknownHandle) {
   uint32_t index = 2;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(Return(trunks::TPM_RC_HANDLE));
+  next_list_spaces_reply.add_index_list(index + 1);
   EXPECT_FALSE(tpm_->IsNvramDefined(index));
 }
 
 TEST_F(Tpm2Test, IsNvramLockedSuccess) {
   uint32_t index = 2;
-  trunks::TPMS_NV_PUBLIC nvram_public;
-  nvram_public.attributes = trunks::TPMA_NV_WRITELOCKED;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
+  next_get_space_info_reply.set_is_write_locked(true);
   EXPECT_TRUE(tpm_->IsNvramLocked(index));
+  EXPECT_EQ(index, last_get_space_info_request.index());
+}
+
+TEST_F(Tpm2Test, IsNvramLockedNotLocked) {
+  next_get_space_info_reply.set_is_write_locked(false);
+  EXPECT_FALSE(tpm_->IsNvramLocked(0));
 }
 
 TEST_F(Tpm2Test, IsNvramLockedFailure) {
-  uint32_t index = 2;
-  trunks::TPMS_NV_PUBLIC nvram_public;
-  nvram_public.attributes = (~trunks::TPMA_NV_WRITELOCKED);
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
-  EXPECT_FALSE(tpm_->IsNvramLocked(index));
-}
-
-TEST_F(Tpm2Test, IsNvramLockedError) {
-  uint32_t index = 2;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->IsNvramLocked(index));
+  next_get_space_info_reply.set_is_write_locked(true);
+  next_get_space_info_reply.set_result(NVRAM_RESULT_IPC_ERROR);
+  EXPECT_FALSE(tpm_->IsNvramLocked(0));
 }
 
 TEST_F(Tpm2Test, GetNvramSizeSuccess) {
   uint32_t index = 2;
   unsigned int size = 42;
-  trunks::TPMS_NV_PUBLIC nvram_public;
-  nvram_public.data_size = size;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(DoAll(SetArgPointee<1>(nvram_public), Return(TPM_RC_SUCCESS)));
+  next_get_space_info_reply.set_size(size);
   EXPECT_EQ(tpm_->GetNvramSize(index), size);
 }
 
 TEST_F(Tpm2Test, GetNvramSizeFailure) {
   uint32_t index = 2;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
+  unsigned int size = 42;
+  next_get_space_info_reply.set_size(size);
+  next_get_space_info_reply.set_result(NVRAM_RESULT_IPC_ERROR);
   EXPECT_EQ(tpm_->GetNvramSize(index), 0);
 }
 
