@@ -367,7 +367,8 @@ chmod 1775 /var/log
 # Force the correct ones.
 chmod 0755 /var/cache /var/db /var/empty
 
-mount -n -t tmpfs -o nodev,noexec,nosuid media /media
+# "--make-shared" to let ARC container access mount points under /media.
+mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 # Mount stateful partition for dev packages.
 if [ ${CROS_DEBUG} -eq 1 ]; then
