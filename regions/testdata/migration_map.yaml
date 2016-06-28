@@ -9,10 +9,10 @@
   - nacl_mozc_us
 - !!python/tuple
   - ime:ko:hangul_2set
-  - hangul_2set
+  - ko-t-i0-und
 - !!python/tuple
   - ime:ko:hangul
-  - hangul_2set
+  - ko-t-i0-und
 - !!python/tuple
   - ime:zh-t:array
   - zh-hant-t-i0-array-1992

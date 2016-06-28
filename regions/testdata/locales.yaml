@@ -3,7 +3,9 @@
 
 - af
 - am
+- an
 - ar
+- ast
 - az
 - be
 - bg
@@ -27,12 +29,17 @@
 - en-AU
 - en-CA
 - en-GB
+- en-IN
 - en-NZ
 - en-US
 - en-ZA
 - eo
 - es
 - es-419
+- es-AR
+- es-ES
+- es-MX
+- es-US
 - et
 - eu
 - fa
@@ -129,10 +136,12 @@
 - ur
 - uz
 - vi
+- wa
 - xh
 - yi
 - yo
 - zh
 - zh-CN
+- zh-HK
 - zh-TW
 - zu
