@@ -36,6 +36,12 @@
     {
       'target_name': 'proto_library',
       'type': 'static_library',
+      # Use -fPIC so this code can be linked into a shared library.
+      'cflags!': ['-fPIE'],
+      'cflags': [
+        '-fPIC',
+        '-fvisibility=default',
+      ],
       'variables': {
         'proto_in_dir': 'common',
         'proto_out_dir': 'include/tpm_manager/common',
@@ -67,7 +73,6 @@
       ],
       'dependencies': [
         'libtpm_manager',
-        'proto_library',
       ]
     },
     # A library for server code.
