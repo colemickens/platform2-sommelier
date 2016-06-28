@@ -110,6 +110,9 @@ gboolean cryptohome_rename_cryptohome(Cryptohome* self,
                                       GArray* cryptohome_id_from,
                                       GArray* cryptohome_id_to,
                                       DBusGMethodInvocation* resp);
+gboolean cryptohome_get_account_disk_usage(Cryptohome* self,
+                                           GArray* account_id,
+                                           DBusGMethodInvocation* resp);
 gboolean cryptohome_get_system_salt(Cryptohome* self,
                                     GArray** OUT_salt,
                                     GError** error);

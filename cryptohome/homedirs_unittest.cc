@@ -211,6 +211,47 @@ TEST_F(HomeDirsTest, RenameCryptohome) {
   EXPECT_TRUE(homedirs_.Rename(kNewUserId, kDefaultUsers[0].username));
 }
 
+TEST_F(HomeDirsTest, ComputeSize) {
+  base::FilePath base_path(test_helper_.users[0].base_path);
+  base::FilePath user_path = brillo::cryptohome::home::GetUserPathPrefix()
+      .Append(test_helper_.users[0].obfuscated_username);
+  base::FilePath root_path = brillo::cryptohome::home::GetRootPathPrefix()
+      .Append(test_helper_.users[0].obfuscated_username);
+
+  ASSERT_TRUE(base::CreateDirectory(base_path));
+
+  // Put test files under base_path and user_path.
+  const char kTestFileName0[] = "test.txt";
+  const char kExpectedData0[] = "file content";
+  int expected_bytes_0 = arraysize(kExpectedData0);
+  ASSERT_EQ(expected_bytes_0,
+            base::WriteFile(base_path.Append(kTestFileName0),
+                            kExpectedData0, expected_bytes_0));
+  const char kTestFileName1[] = "test1.txt";
+  const char kExpectedData1[] = "file content";
+  int expected_bytes_1 = arraysize(kExpectedData1);
+  ASSERT_EQ(expected_bytes_1,
+            base::WriteFile(base_path.Append(kTestFileName1),
+                            kExpectedData1, expected_bytes_1));
+
+  EXPECT_CALL(platform_, ComputeDirectorySize(base_path.value()))
+    .WillOnce(Return(expected_bytes_0));
+  EXPECT_CALL(platform_, ComputeDirectorySize(user_path.value()))
+    .WillOnce(Return(expected_bytes_1));
+  EXPECT_CALL(platform_, ComputeDirectorySize(root_path.value()))
+    .WillOnce(Return(0));
+
+  EXPECT_EQ(expected_bytes_0 + expected_bytes_1,
+            homedirs_.ComputeSize(kDefaultUsers[0].username));
+}
+
+TEST_F(HomeDirsTest, ComputeSizeWithNonexistentUser) {
+  // If the specified user doesn't exist, there is no directory for the user, so
+  // ComputeSize should return 0.
+  const char kNonExistentUserId[] = "non_existent_user";
+  EXPECT_EQ(0, homedirs_.ComputeSize(kNonExistentUserId));
+}
+
 class FreeDiskSpaceTest : public HomeDirsTest {
  public:
   FreeDiskSpaceTest() { }

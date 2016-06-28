@@ -94,6 +94,9 @@ class HomeDirs {
   virtual bool Rename(const std::string& account_id_from,
                       const std::string& account_id_to);
 
+  // Computes the size of cryptohome for the named user.
+  virtual int64_t ComputeSize(const std::string& account_id);
+
   // Returns true if the supplied Credentials are a valid (username, passkey)
   // pair.
   virtual bool AreCredentialsValid(const Credentials& credentials);

@@ -167,6 +167,11 @@ gboolean cryptohome_rename_cryptohome(Cryptohome* self,
                                       DBusGMethodInvocation* error) {
   CRYPTOHOME_WRAP_METHOD(RenameCryptohome, account_id_from, account_id_to);
 }
+gboolean cryptohome_get_account_disk_usage(Cryptohome* self,
+                                           GArray* account_id,
+                                           DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetAccountDiskUsage, account_id);
+}
 gboolean cryptohome_get_system_salt(Cryptohome* self,
                                     GArray** OUT_salt,
                                     GError** error) {

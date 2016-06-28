@@ -1046,6 +1046,28 @@ bool HomeDirs::Rename(const std::string& account_id_from,
   return user_dir_renamed;
 }
 
+int64_t HomeDirs::ComputeSize(const std::string& account_id) {
+  UsernamePasskey passkey(account_id.c_str(), SecureBlob());
+  std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
+  FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
+  FilePath user_path = brillo::cryptohome::home::GetUserPath(account_id);
+  FilePath root_path = brillo::cryptohome::home::GetRootPath(account_id);
+  int64_t total_size = 0;
+  int64_t size = platform_->ComputeDirectorySize(user_dir.value());
+  if (size > 0) {
+    total_size += size;
+  }
+  size = platform_->ComputeDirectorySize(user_path.value());
+  if (size > 0) {
+    total_size += size;
+  }
+  size = platform_->ComputeDirectorySize(root_path.value());
+  if (size > 0) {
+    total_size += size;
+  }
+  return total_size;
+}
+
 bool HomeDirs::Migrate(const Credentials& newcreds,
                        const SecureBlob& oldkey) {
   SecureBlob newkey;

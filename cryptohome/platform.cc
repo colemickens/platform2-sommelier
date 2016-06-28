@@ -482,6 +482,10 @@ bool Platform::GetFileSize(const std::string& path, int64_t* size) {
   return base::GetFileSize(FilePath(path), size);
 }
 
+int64_t Platform::ComputeDirectorySize(const std::string& path) {
+  return base::ComputeDirectorySize(FilePath(path));
+}
+
 FILE* Platform::CreateAndOpenTemporaryFile(std::string* path) {
   FilePath created_path;
   FILE* f = base::CreateAndOpenTemporaryFile(&created_path);

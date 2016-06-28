@@ -72,6 +72,9 @@ ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
 ACTION(CallReadFileToString) { return Platform().ReadFileToString(arg0, arg1); }
 ACTION(CallCopy) { return Platform().Copy(arg0, arg1); }
 ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
+ACTION(CallComputeDirectorySize) {
+  return Platform().ComputeDirectorySize(arg0);
+}
 ACTION(CallStatVFS) { return Platform().StatVFS(arg0, arg1); }
 ACTION(CallReportFilesystemDetails) {
   return Platform().ReportFilesystemDetails(arg0, arg1);
@@ -110,6 +113,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Symlink, bool(const std::string&, const std::string&));
   MOCK_METHOD1(FileExists, bool(const std::string&));
   MOCK_METHOD2(GetFileSize, bool(const std::string&, int64_t*));
+  MOCK_METHOD1(ComputeDirectorySize, int64_t(const std::string&));
   MOCK_METHOD2(OpenFile, FILE*(const std::string&, const char*));
   MOCK_METHOD1(CloseFile, bool(FILE*));  // NOLINT(readability/function)
   MOCK_METHOD1(CreateAndOpenTemporaryFile, FILE*(std::string*));

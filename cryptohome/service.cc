@@ -1402,11 +1402,11 @@ gboolean Service::RenameCryptohome(const GArray* account_id_from,
   scoped_ptr<AccountIdentifier> id_from(new AccountIdentifier);
   scoped_ptr<AccountIdentifier> id_to(new AccountIdentifier);
   if (!id_from->ParseFromArray(account_id_from->data, account_id_from->len)) {
-    id_from.reset();
+    id_from.reset(NULL);
   }
 
   if (!id_to->ParseFromArray(account_id_to->data, account_id_to->len)) {
-    id_to.reset();
+    id_to.reset(NULL);
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
@@ -1445,6 +1445,36 @@ void Service::DoRenameCryptohome(AccountIdentifier* id_from,
   } else if (!homedirs_->Rename(GetAccountId(*id_from), GetAccountId(*id_to))) {
     reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
+
+  SendReply(context, reply);
+}
+
+gboolean Service::GetAccountDiskUsage(const GArray* account_id,
+                                      DBusGMethodInvocation* response) {
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  if (!identifier->ParseFromArray(account_id->data, account_id->len)) {
+    identifier.reset(NULL);
+  }
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::DoGetAccountDiskUsage, base::Unretained(this),
+                 base::Owned(identifier.release()),
+                 base::Unretained(response)));
+  return TRUE;
+}
+
+void Service::DoGetAccountDiskUsage(AccountIdentifier* identifier,
+                                    DBusGMethodInvocation* context) {
+  if (!identifier) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  BaseReply reply;
+  reply.MutableExtension(GetAccountDiskUsageReply::reply)->set_size(
+      homedirs_->ComputeSize(GetAccountId(*identifier)));
 
   SendReply(context, reply);
 }

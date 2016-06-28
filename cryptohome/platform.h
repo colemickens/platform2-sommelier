@@ -277,6 +277,13 @@ class Platform {
   // Returns true if the size was acquired and false otherwise.
   virtual bool GetFileSize(const std::string& path, int64_t* size);
 
+  // Returns the size of a directory at |path| if it exists.
+  //
+  // Parameters
+  //   path - Path of the directory to check
+  // Returns the directory size if it was acquired, and -1 on failure.
+  virtual int64_t ComputeDirectorySize(const std::string& path);
+
   // Opens a file, if possible, returning a FILE*. If not, returns NULL.
   //
   // Parameters

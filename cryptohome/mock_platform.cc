@@ -50,6 +50,8 @@ MockPlatform::MockPlatform()
       .WillByDefault(CallReadFileToString());
   ON_CALL(*this, Rename(_, _))
       .WillByDefault(CallRename());
+  ON_CALL(*this, ComputeDirectorySize(_))
+      .WillByDefault(CallComputeDirectorySize());
 }
 
 MockPlatform::~MockPlatform() {}
