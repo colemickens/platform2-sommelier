@@ -16,9 +16,32 @@
 
 #include "tpm_manager/common/mock_tpm_ownership_interface.h"
 
+using testing::_;
+using testing::Invoke;
+using testing::WithArgs;
+
+namespace {
+
+template <typename ReplyProtoType>
+void RunCallback(const base::Callback<void(const ReplyProtoType&)>& callback) {
+  ReplyProtoType empty_proto;
+  callback.Run(empty_proto);
+}
+
+}  // namespace
+
 namespace tpm_manager {
 
-MockTpmOwnershipInterface::MockTpmOwnershipInterface() {}
+MockTpmOwnershipInterface::MockTpmOwnershipInterface() {
+  ON_CALL(*this, GetTpmStatus(_, _))
+      .WillByDefault(WithArgs<1>(Invoke(RunCallback<GetTpmStatusReply>)));
+  ON_CALL(*this, TakeOwnership(_, _))
+      .WillByDefault(WithArgs<1>(Invoke(RunCallback<TakeOwnershipReply>)));
+  ON_CALL(*this, RemoveOwnerDependency(_, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(RunCallback<RemoveOwnerDependencyReply>)));
+}
+
 MockTpmOwnershipInterface::~MockTpmOwnershipInterface() {}
 
 }  // namespace tpm_manager
