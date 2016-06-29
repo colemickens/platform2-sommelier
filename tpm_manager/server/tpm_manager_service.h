@@ -21,6 +21,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
 #include <brillo/bind_lambda.h>
@@ -28,10 +29,21 @@
 #include "tpm_manager/common/tpm_nvram_interface.h"
 #include "tpm_manager/common/tpm_ownership_interface.h"
 #include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_nvram.h"
 #include "tpm_manager/server/tpm_status.h"
+#if defined(USE_TPM2)
+#include "tpm_manager/server/tpm2_initializer_impl.h"
+#include "tpm_manager/server/tpm2_nvram_impl.h"
+#include "tpm_manager/server/tpm2_status_impl.h"
+#else
+#include "tpm_manager/server/tpm_initializer_impl.h"
+#include "tpm_manager/server/tpm_nvram_impl.h"
+#include "tpm_manager/server/tpm_status_impl.h"
+#endif
 #include "trunks/trunks_factory.h"
+#include "trunks/trunks_factory_impl.h"
 
 namespace tpm_manager {
 
@@ -57,13 +69,18 @@ class TpmManagerService : public TpmNvramInterface,
                           public TpmOwnershipInterface {
  public:
   // If |wait_for_ownership| is set, TPM initialization will be postponed until
+  // an explicit TakeOwnership request is received.
+  explicit TpmManagerService(bool wait_for_ownership);
+
+  // If |wait_for_ownership| is set, TPM initialization will be postponed until
   // an explicit TakeOwnership request is received. Does not take ownership of
-  // |local_data_store|, |tpm_status| or |tpm_initializer|.
-  explicit TpmManagerService(bool wait_for_ownership,
-                             LocalDataStore* local_data_store,
-                             TpmStatus* tpm_status,
-                             TpmInitializer* tpm_initializer,
-                             TpmNvram* tpm_nvram);
+  // |local_data_store|, |tpm_status|, |tpm_initializer|, or |tpm_nvram|.
+  TpmManagerService(bool wait_for_ownership,
+                    LocalDataStore* local_data_store,
+                    TpmStatus* tpm_status,
+                    TpmInitializer* tpm_initializer,
+                    TpmNvram* tpm_nvram);
+
   ~TpmManagerService() override = default;
 
   // Performs initialization tasks. This method must be called before calling
@@ -139,8 +156,9 @@ class TpmManagerService : public TpmNvramInterface,
   // Removes a |owner_dependency| from the list of owner dependencies in
   // |local_data|. If |owner_dependency| is not present in |local_data|,
   // this method does nothing.
-  static void RemoveOwnerDependency(const std::string& owner_dependency,
-                                    LocalData* local_data);
+  static void RemoveOwnerDependencyFromLocalData(
+      const std::string& owner_dependency,
+      LocalData* local_data);
 
   // Blocking implementation of DefineSpace that can be executed on the
   // background worker thread.
@@ -181,10 +199,24 @@ class TpmManagerService : public TpmNvramInterface,
   // owner password is not available.
   std::string GetOwnerPassword();
 
-  LocalDataStore* local_data_store_;
-  TpmStatus* tpm_status_;
-  TpmInitializer* tpm_initializer_;
-  TpmNvram* tpm_nvram_;
+  LocalDataStore* local_data_store_ = nullptr;
+  TpmStatus* tpm_status_ = nullptr;
+  TpmInitializer* tpm_initializer_ = nullptr;
+  TpmNvram* tpm_nvram_ = nullptr;
+
+  // Default objects to be used under normal operation (e.g. not unit tests).
+  LocalDataStoreImpl default_local_data_store_;
+#if defined(USE_TPM2)
+  trunks::TrunksFactoryImpl default_trunks_factory_;
+  std::unique_ptr<Tpm2StatusImpl> default_tpm_status_;
+  std::unique_ptr<Tpm2InitializerImpl> default_tpm_initializer_;
+  std::unique_ptr<Tpm2NvramImpl> default_tpm_nvram_;
+#else
+  std::unique_ptr<TpmStatusImpl> default_tpm_status_;
+  std::unique_ptr<TpmInitializerImpl> default_tpm_initializer_;
+  std::unique_ptr<TpmNvramImpl> default_tpm_nvram_;
+#endif
+
   // Whether to wait for an explicit call to 'TakeOwnership' before initializing
   // the TPM. Normally tracks the --wait_for_ownership command line option.
   bool wait_for_ownership_;
@@ -192,7 +224,7 @@ class TpmManagerService : public TpmNvramInterface,
   // in the background.
   std::unique_ptr<base::Thread> worker_thread_;
   // Declared last so any weak pointers are destroyed first.
-  base::WeakPtrFactory<TpmManagerService> weak_factory_;
+  base::WeakPtrFactory<TpmManagerService> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(TpmManagerService);
 };

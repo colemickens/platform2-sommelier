@@ -28,18 +28,7 @@
 #else
 #include "tpm_manager/server/dbus_service.h"
 #endif
-#include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_manager_service.h"
-
-#if defined(USE_TPM2)
-#include "tpm_manager/server/tpm2_initializer_impl.h"
-#include "tpm_manager/server/tpm2_nvram_impl.h"
-#include "tpm_manager/server/tpm2_status_impl.h"
-#else
-#include "tpm_manager/server/tpm_initializer_impl.h"
-#include "tpm_manager/server/tpm_nvram_impl.h"
-#include "tpm_manager/server/tpm_status_impl.h"
-#endif
 
 namespace {
 
@@ -57,30 +46,8 @@ int main(int argc, char* argv[]) {
   }
   brillo::InitLog(flags);
 
-  tpm_manager::LocalDataStoreImpl local_data_store;
-#if defined(USE_TPM2)
-  trunks::TrunksFactoryImpl trunks_factory;
-  // Tolerate some delay in trunksd being up and ready.
-  constexpr int kTrunksDaemonTimeoutMS = 30000;  // 30 seconds
-  int ms_waited = 0;
-  while (!trunks_factory.Initialize() && ms_waited < kTrunksDaemonTimeoutMS) {
-    usleep(300000);
-    ms_waited += 300;
-  }
-  tpm_manager::Tpm2StatusImpl tpm_status(trunks_factory);
-  tpm_manager::Tpm2InitializerImpl tpm_initializer(
-      trunks_factory, &local_data_store, &tpm_status);
-  tpm_manager::Tpm2NvramImpl tpm_nvram(trunks_factory, &local_data_store);
-#else
-  tpm_manager::TpmStatusImpl tpm_status;
-  tpm_manager::TpmInitializerImpl tpm_initializer(&local_data_store,
-                                                  &tpm_status);
-  tpm_manager::TpmNvramImpl tpm_nvram(&local_data_store);
-#endif
   tpm_manager::TpmManagerService tpm_manager_service(
-      cl->HasSwitch(kWaitForOwnershipTriggerSwitch), &local_data_store,
-      &tpm_status, &tpm_initializer, &tpm_nvram);
-
+      cl->HasSwitch(kWaitForOwnershipTriggerSwitch));
 #if defined(USE_BINDER_IPC)
   tpm_manager::BinderService ipc_service(&tpm_manager_service,
                                          &tpm_manager_service);

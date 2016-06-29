@@ -22,6 +22,9 @@
 
 namespace tpm_manager {
 
+TpmManagerService::TpmManagerService(bool wait_for_ownership)
+    : wait_for_ownership_(wait_for_ownership) {}
+
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
                                      LocalDataStore* local_data_store,
                                      TpmStatus* tpm_status,
@@ -31,8 +34,7 @@ TpmManagerService::TpmManagerService(bool wait_for_ownership,
       tpm_status_(tpm_status),
       tpm_initializer_(tpm_initializer),
       tpm_nvram_(tpm_nvram),
-      wait_for_ownership_(wait_for_ownership),
-      weak_factory_(this) {}
+      wait_for_ownership_(wait_for_ownership) {}
 
 bool TpmManagerService::Initialize() {
   worker_thread_.reset(new base::Thread("TpmManager Service Worker"));
@@ -47,6 +49,38 @@ bool TpmManagerService::Initialize() {
 
 void TpmManagerService::InitializeTask() {
   VLOG(1) << "Initializing service...";
+  if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_) {
+    // Setup default objects.
+#if defined(USE_TPM2)
+    // Tolerate some delay in trunksd being up and ready.
+    constexpr int kTrunksDaemonTimeoutMS = 30000;  // 30 seconds
+    int ms_waited = 0;
+    while (!default_trunks_factory_.Initialize() &&
+           ms_waited < kTrunksDaemonTimeoutMS) {
+      usleep(300000);
+      ms_waited += 300;
+    }
+    local_data_store_ = &default_local_data_store_;
+    default_tpm_status_ =
+        base::MakeUnique<Tpm2StatusImpl>(default_trunks_factory_);
+    tpm_status_ = default_tpm_status_.get();
+    default_tpm_initializer_ = base::MakeUnique<Tpm2InitializerImpl>(
+        default_trunks_factory_, local_data_store_, tpm_status_);
+    tpm_initializer_ = default_tpm_initializer_.get();
+    default_tpm_nvram_ = base::MakeUnique<Tpm2NvramImpl>(
+        default_trunks_factory_, local_data_store_);
+    tpm_nvram_ = default_tpm_nvram_.get();
+#else
+    default_tpm_status_ =
+        base::MakeUnique<TpmStatusImpl>();
+    tpm_status_ = default_tpm_status_.get();
+    default_tpm_initializer_ =
+        base::MakeUnique<Tpm2InitializerImpl>(local_data_store_, tpm_status_);
+    tpm_initializer_ = default_tpm_initializer_.get();
+    default_tpm_nvram_ = base::MakeUnique<Tpm2NvramImpl>(local_data_store_);
+    tpm_nvram_ = default_tpm_nvram_.get();
+#endif
+  }
   if (!tpm_status_->IsTpmEnabled()) {
     LOG(WARNING) << __func__ << ": TPM is disabled.";
     return;
@@ -129,7 +163,7 @@ void TpmManagerService::RemoveOwnerDependencyTask(
     reply->set_status(STATUS_DEVICE_ERROR);
     return;
   }
-  RemoveOwnerDependency(request.owner_dependency(), &local_data);
+  RemoveOwnerDependencyFromLocalData(request.owner_dependency(), &local_data);
   if (!local_data_store_->Write(local_data)) {
     reply->set_status(STATUS_DEVICE_ERROR);
     return;
@@ -137,7 +171,7 @@ void TpmManagerService::RemoveOwnerDependencyTask(
   reply->set_status(STATUS_SUCCESS);
 }
 
-void TpmManagerService::RemoveOwnerDependency(
+void TpmManagerService::RemoveOwnerDependencyFromLocalData(
     const std::string& owner_dependency,
     LocalData* local_data) {
   google::protobuf::RepeatedPtrField<std::string>* dependencies =

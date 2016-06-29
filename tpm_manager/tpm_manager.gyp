@@ -160,7 +160,7 @@
           'sources': [
             'client/tpm_nvram_dbus_proxy_test.cc',
             'client/tpm_ownership_dbus_proxy_test.cc',
-            'server/dbus_service_test.cc',
+            #'server/dbus_service_test.cc',
             'server/mock_local_data_store.cc',
             'server/mock_openssl_crypto_util.cc',
             'server/mock_tpm_initializer.cc',

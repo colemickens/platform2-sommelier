@@ -39,8 +39,6 @@ const char kOwnerPassword[] = "owner";
 const char kOwnerDependency[] = "owner_dependency";
 const char kOtherDependency[] = "other_dependency";
 
-base::AtExitManager dummy;
-
 }  // namespace
 
 namespace tpm_manager {
