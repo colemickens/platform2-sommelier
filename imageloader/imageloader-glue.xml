@@ -9,7 +9,7 @@
     <method name="RegisterComponent">
       <arg type="s" name="name" direction="in"/>
       <arg type="s" name="version" direction="in" />
-      <arg type="s" name="fs_image_abs_path" direction="in"/>
+      <arg type="s" name="component_folder_abs_path" direction="in"/>
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="GetComponentVersion">

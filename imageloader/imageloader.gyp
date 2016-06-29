@@ -1,7 +1,6 @@
 # Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 {
   'target_defaults': {
     'variables': {
@@ -13,7 +12,7 @@
       'enable_exceptions': 1,
     },
   },
-  'targets': [
+    'targets': [
     {
       'target_name': 'libimageloader_common',
       'type': 'static_library',
@@ -49,19 +48,30 @@
       'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
     },
     {
+      'target_name': 'libimageloader_static',
+      'type': 'static_library',
+      'dependencies': [
+        'libimageloader_common',
+      ],
+      'sources': [
+        'imageloader.cc',
+        'imageloader.h',
+      ],
+    },
+    {
       'target_name': 'imageloader',
       'type': 'executable',
       'variables': {
         'deps': ['libbrillo-<(libbase_ver)'],
       },
       'dependencies': [
+        'libimageloader_static',
         'imageloader-glue',
-        'libimageloader_common',
       ],
       'sources': [
-        'imageloader.cc',
         'imageloader.h',
         'imageloader-glue.h',
+        'imageloader_main.cc',
       ],
     },
     {
@@ -78,23 +88,28 @@
       ],
       'libraries': ['-lpthread'],
     },
-  ],
-  'conditions': [
-    ['USE_test == 1', {
-      'targets': [
+    ],
+    'conditions': [
+      ['USE_test == 1', {
+        'targets': [
         {
           'target_name': 'run_tests',
           'type': 'executable',
+          'variables': {
+            'deps': ['libbrillo-<(libbase_ver)', 'libcrypto'],
+          },
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'dependencies': [
+            'libimageloader_static',
             'libimageloader_common',
           ],
           'sources': [
             'run_tests.cc',
-            'imageloader_common_unittest.cc'
+            'imageloader_unittest.cc',
+            'imageloader.h',
           ],
         },
-      ],
-    }],
-  ],
+        ],
+      }],
+    ],
 }
