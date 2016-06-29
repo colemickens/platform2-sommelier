@@ -35,6 +35,7 @@ struct mknod_args {
 	dev_t dev;
 };
 static struct mknod_args mknod_call_args;
+static dev_t stat_rdev_ret;
 
 static int kill_called;
 static int kill_sig;
@@ -167,6 +168,7 @@ FIXTURE_SETUP(container_test)
 	minijail_wait_called = 0;
 	minijail_reset_signal_mask_called = 0;
 	mount_ret = 0;
+	stat_rdev_ret = makedev(2, 3);
 
 	snprintf(path, sizeof(path), "%s/dev", self->rootfs);
 	//mkdir(path, S_IRWXU | S_IRWXG);
@@ -262,12 +264,6 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(1, minijail_run_as_init_called);
 	EXPECT_EQ(1, gmcg.deny_all_devs_called_count);
 
-	EXPECT_LT(0, asprintf(&path, "%s/root/dev/foo", mkdtemp_root));
-	EXPECT_EQ(0, strcmp(mknod_call_args.pathname, path));
-	free(path);
-	EXPECT_EQ(mknod_call_args.mode, S_IRWXU | S_IRWXG | S_IFCHR);
-	EXPECT_EQ(mknod_call_args.dev, makedev(245, 2));
-
 	EXPECT_EQ(245, gmcg.add_dev_major[0]);
 	EXPECT_EQ(2, gmcg.add_dev_minor[0]);
 	EXPECT_EQ(1, gmcg.add_dev_read[0]);
@@ -281,6 +277,12 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(1, gmcg.add_dev_write[1]);
 	EXPECT_EQ(0, gmcg.add_dev_modify[1]);
 	EXPECT_EQ('c', gmcg.add_dev_type[1]);
+
+	EXPECT_LT(0, asprintf(&path, "%s/root/dev/null", mkdtemp_root));
+	EXPECT_EQ(0, strcmp(mknod_call_args.pathname, path));
+	free(path);
+	EXPECT_EQ(mknod_call_args.mode, S_IRWXU | S_IRWXG | S_IFCHR);
+	EXPECT_EQ(mknod_call_args.dev, makedev(1, 3));
 
 	ASSERT_NE(NULL, minijail_alt_syscall_table);
 	EXPECT_EQ(0, strcmp(minijail_alt_syscall_table,
@@ -344,6 +346,7 @@ int kill(pid_t pid, int sig)
 
 int stat(const char *path, struct stat *buf)
 {
+	buf->st_rdev = stat_rdev_ret;
 	return 0;
 }
 
@@ -376,7 +379,11 @@ int unlink(const char *pathname)
 /* Minijail stubs */
 struct minijail *minijail_new(void)
 {
-	return NULL;
+	return (struct minijail *)0x55;
+}
+
+void minijail_destroy(struct minijail *j)
+{
 }
 
 int minijail_mount(struct minijail *j, const char *src, const char *dest,
@@ -456,13 +463,18 @@ int minijail_use_alt_syscall(struct minijail *j, const char *table)
 	return 0;
 }
 
-void minijail_add_to_cgroup(struct minijail *j, const char *cg_path)
+int minijail_add_to_cgroup(struct minijail *j, const char *cg_path)
 {
+	return 0;
 }
 
 void minijail_reset_signal_mask(struct minijail *j)
 {
 	++minijail_reset_signal_mask_called;
+}
+
+void minijail_skip_remount_private(struct minijail *j)
+{
 }
 
 TEST_HARNESS_MAIN
