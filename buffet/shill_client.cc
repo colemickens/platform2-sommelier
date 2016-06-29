@@ -284,14 +284,17 @@ void ShillClient::OnManagerPropertyChange(const string& property_name,
     if (!IsMonitoredDevice(device.get())) {
       continue;
     }
-    device->RegisterPropertyChangedSignalHandler(
+    VLOG(3) << "Creating device proxy at " << device_path.value();
+    devices_[device_path].device = std::move(device);
+    // Register after adding to devices list as registration callback will be
+    // invoked directly.
+    devices_[device_path].device->RegisterPropertyChangedSignalHandler(
         base::Bind(&ShillClient::OnDevicePropertyChange,
                    weak_factory_.GetWeakPtr(), device_path),
         base::Bind(&ShillClient::OnDevicePropertyChangeRegistration,
                    weak_factory_.GetWeakPtr(), device_path));
-    VLOG(3) << "Creating device proxy at " << device_path.value();
-    devices_[device_path].device = std::move(device);
   }
+
   // Clean up devices/services related to removed devices.
   if (!device_paths_to_remove.empty()) {
     for (const ObjectPath& device_path : device_paths_to_remove) {
@@ -361,6 +364,7 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
   const bool reuse_connecting_service =
       service_path.value() != "/" && connecting_service_ &&
       connecting_service_->GetObjectPath() == service_path;
+  bool register_service = false;
   if (reuse_connecting_service) {
     new_service = connecting_service_;
     // When we reuse the connecting service, we need to make sure that our
@@ -377,15 +381,20 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
   } else if (service_path.value() != "/") {
     // The device has selected a new service we haven't see before.
     new_service.reset(new ServiceProxy{bus_, service_path});
+    register_service = true;
+  }
+  device_state.selected_service = new_service;
+  if (reuse_connecting_service || removed_old_service) {
+    UpdateConnectivityState();
+  }
+  if (register_service) {
+    // Register after setting selected_service as registration callback will be
+    // invoked directly.
     new_service->RegisterPropertyChangedSignalHandler(
         base::Bind(&ShillClient::OnServicePropertyChange,
                    weak_factory_.GetWeakPtr(), service_path),
         base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
                    weak_factory_.GetWeakPtr(), service_path));
-  }
-  device_state.selected_service = new_service;
-  if (reuse_connecting_service || removed_old_service) {
-    UpdateConnectivityState();
   }
 }
 
