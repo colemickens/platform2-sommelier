@@ -679,6 +679,8 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagDisableIPv6[];
   static const char kIPFlagUseTempAddr[];
   static const char kIPFlagUseTempAddrUsedAndDefault[];
+  static const char kIPFlagAcceptRouterAdvertisements[];
+  static const char kIPFlagAcceptRouterAdvertisementsAlways[];
   static const char kIPFlagReversePathFilter[];
   static const char kIPFlagReversePathFilterEnabled[];
   static const char kIPFlagReversePathFilterLooseMode[];

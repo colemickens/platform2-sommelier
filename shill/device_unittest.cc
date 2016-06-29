@@ -513,6 +513,9 @@ TEST_F(DeviceTest, EnableIPv6) {
                                   StrEq(Device::kIPFlagDisableIPv6),
                                   StrEq("0")))
       .WillOnce(Return(true));
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv6,
+      StrEq(Device::kIPFlagAcceptRouterAdvertisements), StrEq("2")))
+      .WillOnce(Return(true));
   device_->EnableIPv6();
 }
 

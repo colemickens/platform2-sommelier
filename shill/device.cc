@@ -100,6 +100,10 @@ const char Device::kIPFlagUseTempAddr[] = "use_tempaddr";
 // static
 const char Device::kIPFlagUseTempAddrUsedAndDefault[] = "2";
 // static
+const char Device::kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
+// static
+const char Device::kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
+// static
 const char Device::kIPFlagReversePathFilter[] = "rp_filter";
 // static
 const char Device::kIPFlagReversePathFilterEnabled[] = "1";
@@ -335,6 +339,11 @@ void Device::EnableIPv6() {
     return;
   }
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
+
+  // Force the kernel to accept RAs even when global IPv6 forwarding is
+  // enabled.  Unfortunately this needs to be set on a per-interface basis.
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptRouterAdvertisements,
+            kIPFlagAcceptRouterAdvertisementsAlways);
 }
 
 void Device::EnableIPv6Privacy() {
