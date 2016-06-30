@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
@@ -73,7 +74,7 @@ ACTION_P(SetCleanUpStrategy, clean_up_strategy) {
 }
 
 namespace {
-const char *kTestRoot = "alt_test_home_dir";
+const FilePath kTestRoot("alt_test_home_dir");
 
 struct homedir {
   const char *name;
@@ -112,8 +113,7 @@ class HomeDirsTest : public ::testing::Test {
     // TODO(wad) Only generate the user data we need. This is time consuming.
     test_helper_.InitTestData(kTestRoot, kDefaultUsers, kDefaultUserCount);
     homedirs_.set_shadow_root(kTestRoot);
-    test_helper_.InjectSystemSalt(&platform_,
-                                  StringPrintf("%s/salt", kTestRoot));
+    test_helper_.InjectSystemSalt(&platform_, kTestRoot.Append("salt"));
     set_policy(true, kOwner, false, "");
 
     homedirs_.Init(&platform_, &crypto_, &timestamp_cache_);
@@ -126,7 +126,7 @@ class HomeDirsTest : public ::testing::Test {
       path = fp.Append(hd->name);
       if (!strcmp(hd->name, kOwner))
         path = fp.Append(owner);
-      homedir_paths_.push_back(path.value());
+      homedir_paths_.push_back(path);
       base::Time t = base::Time::FromUTCExploded(hd->time);
       homedir_times_.push_back(t);
     }
@@ -154,7 +154,7 @@ class HomeDirsTest : public ::testing::Test {
   MakeTests test_helper_;
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
-  std::vector<std::string> homedir_paths_;
+  std::vector<FilePath> homedir_paths_;
   MockUserOldestActivityTimestampCache timestamp_cache_;
   std::vector<base::Time> homedir_times_;
   MockVaultKeysetFactory vault_keyset_factory_;
@@ -172,9 +172,9 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
               Return(true)));
   FilePath user_prefix = brillo::cryptohome::home::GetUserPathPrefix();
   FilePath root_prefix = brillo::cryptohome::home::GetRootPathPrefix();
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(user_prefix.value(), _, _))
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(user_prefix, _, _))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(root_prefix.value(), _, _))
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(root_prefix, _, _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
@@ -192,11 +192,11 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
 
 TEST_F(HomeDirsTest, RenameCryptohome) {
   ASSERT_TRUE(
-      base::CreateDirectory(base::FilePath(test_helper_.users[0].base_path)));
+      base::CreateDirectory(FilePath(test_helper_.users[0].base_path)));
   ASSERT_TRUE(
-      base::CreateDirectory(base::FilePath(test_helper_.users[1].base_path)));
+      base::CreateDirectory(FilePath(test_helper_.users[1].base_path)));
   ASSERT_TRUE(
-      base::CreateDirectory(base::FilePath(test_helper_.users[2].base_path)));
+      base::CreateDirectory(FilePath(test_helper_.users[2].base_path)));
 
   const char kNewUserId[] = "some_new_user";
   EXPECT_TRUE(homedirs_.Rename(kDefaultUsers[0].username, kNewUserId));
@@ -213,10 +213,10 @@ TEST_F(HomeDirsTest, RenameCryptohome) {
 }
 
 TEST_F(HomeDirsTest, ComputeSize) {
-  base::FilePath base_path(test_helper_.users[0].base_path);
-  base::FilePath user_path = brillo::cryptohome::home::GetUserPathPrefix()
+  FilePath base_path(test_helper_.users[0].base_path);
+  FilePath user_path = brillo::cryptohome::home::GetUserPathPrefix()
       .Append(test_helper_.users[0].obfuscated_username);
-  base::FilePath root_path = brillo::cryptohome::home::GetRootPathPrefix()
+  FilePath root_path = brillo::cryptohome::home::GetRootPathPrefix()
       .Append(test_helper_.users[0].obfuscated_username);
 
   ASSERT_TRUE(base::CreateDirectory(base_path));
@@ -235,11 +235,11 @@ TEST_F(HomeDirsTest, ComputeSize) {
             base::WriteFile(base_path.Append(kTestFileName1),
                             kExpectedData1, expected_bytes_1));
 
-  EXPECT_CALL(platform_, ComputeDirectorySize(base_path.value()))
+  EXPECT_CALL(platform_, ComputeDirectorySize(base_path))
     .WillOnce(Return(expected_bytes_0));
-  EXPECT_CALL(platform_, ComputeDirectorySize(user_path.value()))
+  EXPECT_CALL(platform_, ComputeDirectorySize(user_path))
     .WillOnce(Return(expected_bytes_1));
-  EXPECT_CALL(platform_, ComputeDirectorySize(root_path.value()))
+  EXPECT_CALL(platform_, ComputeDirectorySize(root_path))
     .WillOnce(Return(0));
 
   EXPECT_EQ(expected_bytes_0 + expected_bytes_1,
@@ -307,21 +307,27 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
     .Times(4).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   // Empty enumerators per-user per-cache dirs plus
   // enumerators for empty vaults.
-  EXPECT_CALL(platform_, GetFileEnumerator(HasSubstr("user/Cache"), false, _))
-    .Times(4).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_,
-              GetFileEnumerator(EndsWith("user/GCache/v1/tmp"), false, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_,
-              GetFileEnumerator(EndsWith("user/GCache/v1"), true, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_,
-              GetFileEnumerator(EndsWith(
-                  std::string(kVaultDir) + "/root"), true, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(&FilePath::value, HasSubstr("user/Cache")),
+        false, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("user/GCache/v1/tmp")),
+        false, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("user/GCache/v1")),
+        true, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(&FilePath::value,
+          EndsWith(std::string(kVaultDir) + "/root")),
+        true, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // Now cover the actual initialization piece
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -372,22 +378,31 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
     .Times(3).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   // Empty enumerators per-user per-cache dirs plus
   // enumerators for empty vaults.
-  EXPECT_CALL(platform_, GetFileEnumerator(HasSubstr("user/Cache"), false, _))
+  EXPECT_CALL(platform_,
+      GetFileEnumerator(
+        Property(&FilePath::value, HasSubstr("user/Cache")),
+        false, _))
     .Times(4).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   EXPECT_CALL(platform_,
-              GetFileEnumerator(EndsWith("/GCache/v1/tmp"), false, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith(std::string(kVaultDir) +
-                                                    "/user/GCache/v1"),
-                                           true, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith(std::string(kVaultDir) +
-                                                    "/root"),
-                                           true, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+      GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("user/GCache/v1/tmp")),
+        false, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_,
+      GetFileEnumerator(
+        Property(&FilePath::value,
+          EndsWith(std::string(kVaultDir) + "/user/GCache/v1")),
+        true, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_,
+      GetFileEnumerator(
+        Property(&FilePath::value,
+          EndsWith(std::string(kVaultDir) + "/root")),
+        true, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // Now cover the actual initialization piece
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -395,7 +410,9 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
   EXPECT_CALL(timestamp_cache_, Initialize())
     .Times(1);
   // Skip vault keyset loading to cause "Notime".
-  EXPECT_CALL(platform_, FileExists(StartsWith(homedir_paths_[0])))
+  EXPECT_CALL(platform_,
+      FileExists(
+        Property(&FilePath::value, StartsWith(homedir_paths_[0].value()))))
     .WillRepeatedly(Return(true));
 
   MockVaultKeyset* vk[arraysize(kHomedirs)];
@@ -415,9 +432,8 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
   EXPECT_CALL(platform_, GetFileEnumerator(homedir_paths_[3], false, _))
     .WillOnce(Return(master0 = new NiceMock<MockFileEnumerator>));
   EXPECT_CALL(*master0, Next())
-    .WillOnce(Return(StringPrintf("%s/%s0",
-                       homedir_paths_[3].c_str(), kKeyFile)))
-    .WillRepeatedly(Return(""));
+    .WillOnce(Return(homedir_paths_[3].Append(kKeyFile).AddExtension("0")))
+    .WillRepeatedly(Return(FilePath()));
 
   // The owner will have a time.
   EXPECT_CALL(*vk[i], Load(_))
@@ -434,7 +450,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
     .Times(3);
   // Adding the owner
   EXPECT_CALL(timestamp_cache_,
-              AddExistingUser(FilePath(homedir_paths_[3]), homedir_times_[3]))
+              AddExistingUser(homedir_paths_[3], homedir_times_[3]))
     .Times(1);
 
   // Now skip the deletion steps by not having a legit owner.
@@ -472,11 +488,13 @@ TEST_F(FreeDiskSpaceTest, OnlyCacheCleanup) {
   // Exercise the delete file path.
   for (size_t f = 0; f < arraysize(fe); ++f) {
     EXPECT_CALL(*fe[f], Next())
-      .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[f].c_str(),
-                                             "Cache/foo")))
-      .WillRepeatedly(Return(""));
+      .WillOnce(Return(homedir_paths_[f].Append("Cache/foo")))
+      .WillRepeatedly(Return(FilePath()));
   }
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("/Cache/foo"), true))
+  EXPECT_CALL(platform_,
+      DeleteFile(
+        Property(&FilePath::value, EndsWith("/Cache/foo")),
+        true))
     .Times(4)
     .WillRepeatedly(Return(true));
 
@@ -495,66 +513,86 @@ TEST_F(FreeDiskSpaceTest, GCacheCleanup) {
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   // Empty enumerators per-user per-cache dirs
-  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith("/Cache"), false, _))
-      .Times(4).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_,
+      GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("/Cache")),
+        false, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // DeleteGCacheTmpCallback enumerate all directories to find GCache files
   // directory.
   NiceMock<MockFileEnumerator>* fe[arraysize(kHomedirs)];
   EXPECT_CALL(
       platform_,
-      GetFileEnumerator(EndsWith(std::string(kVaultDir) + "/user/GCache/v1"),
-                        true, base::FileEnumerator::DIRECTORIES))
+      GetFileEnumerator(
+        Property(&FilePath::value,
+          EndsWith(std::string(kVaultDir) + "/user/GCache/v1")),
+        true, base::FileEnumerator::DIRECTORIES))
       .WillOnce(Return(fe[0] = new NiceMock<MockFileEnumerator>))
       .WillOnce(Return(fe[1] = new NiceMock<MockFileEnumerator>))
       .WillOnce(Return(fe[2] = new NiceMock<MockFileEnumerator>))
       .WillOnce(Return(fe[3] = new NiceMock<MockFileEnumerator>));
   EXPECT_CALL(platform_,
-              GetFileEnumerator(EndsWith("/GCache/v1/tmp"), false, _))
+      GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("/GCache/v1/tmp")),
+        false, _))
       .Times(4)
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   EXPECT_CALL(*fe[0], Next())
-    .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[0].c_str(),
-                                           "irrelevant_dir")))
-    .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[0].c_str(),
-                                           "GCache/v1/files")))
-    .WillRepeatedly(Return(""));
+    .WillOnce(Return(homedir_paths_[0].Append("irrelevant_dir")))
+    .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files")))
+    .WillRepeatedly(Return(FilePath()));
   // Do nothing for users 1-3.
   for (size_t f = 1; f < arraysize(fe); ++f) {
-    EXPECT_CALL(*fe[f], Next()).WillRepeatedly(Return(""));
+    EXPECT_CALL(*fe[f], Next()).WillRepeatedly(Return(FilePath()));
   }
   // Irrelevant directory without +d file attribute.
-  EXPECT_CALL(platform_, HasNoDumpFileAttribute(EndsWith("irrelevant_dir")))
-      .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+      HasNoDumpFileAttribute(
+        Property(&FilePath::value, EndsWith("irrelevant_dir"))))
+    .WillOnce(Return(false));
   // GCache file directory has +d file attribute and the appropriate
   // extended file attribute.
-  EXPECT_CALL(platform_, HasNoDumpFileAttribute(EndsWith("GCache/v1/files")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, HasExtendedFileAttribute(EndsWith("GCache/v1/files"),
-                                                  kGCacheFilesAttribute))
-      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      HasNoDumpFileAttribute(
+        Property(&FilePath::value, EndsWith("GCache/v1/files"))))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      HasExtendedFileAttribute(
+        Property(&FilePath::value, EndsWith("GCache/v1/files")),
+        kGCacheFilesAttribute))
+    .WillOnce(Return(true));
 
   NiceMock<MockFileEnumerator>* fe2 = new NiceMock<MockFileEnumerator>;
   // The cache directory contains removable (having +d) and unremovable files.
   EXPECT_CALL(platform_,
-              GetFileEnumerator(EndsWith("GCache/v1/files"), false, _))
+      GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("GCache/v1/files")),
+        false, _))
     .WillOnce(Return(fe2));
   EXPECT_CALL(*fe2, Next())
-    .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[0].c_str(),
-                                           "GCache/v1/files/removable")))
-    .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[0].c_str(),
-                                           "GCache/v1/files/unremovable")))
-    .WillRepeatedly(Return(""));
+    .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files/removable")))
+    .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files/unremovable")))
+    .WillRepeatedly(Return(FilePath()));
   EXPECT_CALL(platform_,
-              HasNoDumpFileAttribute(EndsWith("GCache/v1/files/removable")))
-      .WillOnce(Return(true));
+      HasNoDumpFileAttribute(
+        Property(&FilePath::value,
+          EndsWith("GCache/v1/files/removable"))))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_,
-              HasNoDumpFileAttribute(EndsWith("GCache/v1/files/unremovable")))
-      .WillOnce(Return(false));
+      HasNoDumpFileAttribute(
+        Property(&FilePath::value,
+          EndsWith("GCache/v1/files/unremovable"))))
+    .WillOnce(Return(false));
 
   // Confirm removable file is removed.
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("/GCache/v1/files/removable"), _))
+  EXPECT_CALL(platform_,
+      DeleteFile(
+        Property(&FilePath::value,
+          EndsWith("/GCache/v1/files/removable")),
+        _))
     .WillOnce(Return(true));
 
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
@@ -573,60 +611,75 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
 
-  // Skip per-cache and GCache enumerations done per user in order to
+  // Skip per-cache and Cache enumerations done per user in order to
   // test Android cache deletions.
-  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith("/Cache"), false, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("/user/Cache")),
+        false, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // DeleteGCacheTmpCallback enumerate all directories to find GCache files
   // directory.
-  EXPECT_CALL(
-      platform_,
-      GetFileEnumerator(EndsWith(std::string(kVaultDir) + "/user/GCache/v1"),
-                        true, base::FileEnumerator::DIRECTORIES))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_,
-              GetFileEnumerator(EndsWith("/GCache/v1/tmp"), false, _))
-      .Times(4)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(
+          &FilePath::value,
+          EndsWith(std::string(kVaultDir) + "/user/GCache/v1")),
+        true, base::FileEnumerator::DIRECTORIES))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(&FilePath::value, EndsWith("user/GCache/v1/tmp")),
+        false, _))
+    .Times(4)
+    .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // Now test for the Android user, just test for the first user.
   NiceMock<MockFileEnumerator>* fe = new NiceMock<MockFileEnumerator>;
-  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith(
-      std::string(kVaultDir) + "/root"), true, _))
-      .WillOnce(Return(fe))
-      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
-      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
-      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+        Property(
+          &FilePath::value,
+          EndsWith(std::string(kVaultDir) + "/root")),
+        true, _))
+    .WillOnce(Return(fe))
+    .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
+    .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
+    .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // Return a cache and non-cache directory.
   EXPECT_CALL(*fe, Next())
-      .WillOnce(Return(StringPrintf(
-          "%s/%s", homedir_paths_[0].c_str(),
-          "android-data/data/data/com.google.hogehoge/cache")))
-      .WillOnce(Return(StringPrintf(
-          "%s/%s", homedir_paths_[0].c_str(),
-          "android-data/data/data/com.google.hogehoge/data")))
-      .WillRepeatedly(Return(""));
+    .WillOnce(Return(homedir_paths_[0].Append(
+            "android-data/data/data/com.google.hogehoge/cache")))
+    .WillOnce(Return(homedir_paths_[0].Append(
+            "android-data/data/data/com.google.hogehoge/data")))
+    .WillRepeatedly(Return(FilePath()));
 
   EXPECT_CALL(platform_, HasExtendedFileAttribute(
-      EndsWith("android-data/data/data/com.google.hogehoge/cache"),
-      kAndroidCacheFilesAttribute))
-      .WillOnce(Return(true));
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.hogehoge/cache")),
+        kAndroidCacheFilesAttribute))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_, HasExtendedFileAttribute(
-      EndsWith("android-data/data/data/com.google.hogehoge/data"),
-      kAndroidCacheFilesAttribute))
-      .WillOnce(Return(false));
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.hogehoge/data")),
+        kAndroidCacheFilesAttribute))
+    .WillOnce(Return(false));
 
   // Confirm android cache dir is removed and data directory is not.
   EXPECT_CALL(platform_, DeleteFile(
-      EndsWith("android-data/data/data/com.google.hogehoge/cache"), _))
-      .WillOnce(Return(true));
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.hogehoge/cache")),
+        _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(
-      EndsWith("android-data/data/data/com.google.hogehoge/data"), _))
-      .Times(0);
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.hogehoge/data")),
+        _))
+    .Times(0);
 
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
@@ -641,7 +694,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpOneUser) {
     .WillOnce(Return(false));
 
   EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
-    .WillOnce(Return(FilePath(homedir_paths_[0])));
+    .WillOnce(Return(homedir_paths_[0]));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(kEnoughFreeSpace + 1));
@@ -664,8 +717,8 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleUsers) {
     .WillOnce(Return(false));
 
   EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
-    .WillOnce(Return(FilePath(homedir_paths_[0])))
-    .WillOnce(Return(FilePath(homedir_paths_[1])));
+    .WillOnce(Return(homedir_paths_[0]))
+    .WillOnce(Return(homedir_paths_[1]));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(kEnoughFreeSpace - 1))
@@ -687,10 +740,10 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
   cache.Initialize();
   homedirs_.Init(&platform_, &crypto_, &cache);
 
-  cache.AddExistingUser(FilePath(homedir_paths_[0]), homedir_times_[0]);
-  cache.AddExistingUser(FilePath(homedir_paths_[1]), homedir_times_[1]);
-  cache.AddExistingUser(FilePath(homedir_paths_[2]), homedir_times_[2]);
-  cache.AddExistingUser(FilePath(homedir_paths_[3]), homedir_times_[3]);
+  cache.AddExistingUser(homedir_paths_[0], homedir_times_[0]);
+  cache.AddExistingUser(homedir_paths_[1], homedir_times_[1]);
+  cache.AddExistingUser(homedir_paths_[2], homedir_times_[2]);
+  cache.AddExistingUser(homedir_paths_[3], homedir_times_[3]);
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillRepeatedly(Return(0));
@@ -720,10 +773,10 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
   cache.Initialize();
   homedirs_.Init(&platform_, &crypto_, &cache);
 
-  cache.AddExistingUser(FilePath(homedir_paths_[0]), homedir_times_[0]);
-  cache.AddExistingUser(FilePath(homedir_paths_[1]), homedir_times_[1]);
+  cache.AddExistingUser(homedir_paths_[0], homedir_times_[0]);
+  cache.AddExistingUser((homedir_paths_[1]), homedir_times_[1]);
   // User 2 is logged in, and hence not added to cache during initialization.
-  cache.AddExistingUser(FilePath(homedir_paths_[3]), homedir_times_[3]);
+  cache.AddExistingUser((homedir_paths_[3]), homedir_times_[3]);
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillRepeatedly(Return(0));
@@ -742,8 +795,10 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
       IsDirectoryMountedWith(_, _))
           .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,
-      IsDirectoryMountedWith(StartsWith(homedir_paths_[2]), _))
-          .WillRepeatedly(Return(true));
+      IsDirectoryMountedWith(
+        Property(&FilePath::value, StartsWith(homedir_paths_[2].value())),
+        _))
+      .WillRepeatedly(Return(true));
 
   ExpectCacheDirCleanupCalls(3);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
@@ -764,9 +819,9 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
     .WillOnce(Return(false));
 
   EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
-    .WillOnce(Return(FilePath(homedir_paths_[0])))
-    .WillOnce(Return(FilePath(homedir_paths_[3])))
-    .WillOnce(Return(FilePath(homedir_paths_[1])));
+    .WillOnce(Return((homedir_paths_[0])))
+    .WillOnce(Return((homedir_paths_[3])))
+    .WillOnce(Return((homedir_paths_[1])));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(0))
@@ -820,15 +875,13 @@ TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_,
-      EnumerateDirectoryEntries(
-          brillo::cryptohome::home::GetUserPathPrefix().value(),
+      EnumerateDirectoryEntries(brillo::cryptohome::home::GetUserPathPrefix(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_,
-      EnumerateDirectoryEntries(
-          brillo::cryptohome::home::GetRootPathPrefix().value(),
+      EnumerateDirectoryEntries(brillo::cryptohome::home::GetRootPathPrefix(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -868,15 +921,13 @@ TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_,
-      EnumerateDirectoryEntries(
-          brillo::cryptohome::home::GetUserPathPrefix().value(),
+      EnumerateDirectoryEntries(brillo::cryptohome::home::GetUserPathPrefix(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
               Return(true)));
   EXPECT_CALL(platform_,
-      EnumerateDirectoryEntries(
-          brillo::cryptohome::home::GetRootPathPrefix().value(),
+      EnumerateDirectoryEntries(brillo::cryptohome::home::GetRootPathPrefix(),
           false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -917,7 +968,7 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
 
   // This will only be called once (see time below).
   EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
-    .WillOnce(Return(FilePath(homedir_paths_[0])));
+    .WillOnce(Return((homedir_paths_[0])));
 
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
@@ -930,7 +981,9 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
 
   // Ensure the mounted user never has (G)Cache traversed!
   EXPECT_CALL(platform_, GetFileEnumerator(
-      StartsWith(homedir_paths_[0]), false, _))
+        Property(&FilePath::value,
+          StartsWith(homedir_paths_[0].value())),
+        false, _))
     .Times(0);
 
   // 3 users * (1 Cache dir + 1 GCache tmp dir)
@@ -941,12 +994,18 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
     .Times(6).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   EXPECT_CALL(platform_,
-      IsDirectoryMountedWith(StartsWith(homedir_paths_[0]), _))
+      IsDirectoryMountedWith(
+        Property(&FilePath::value,
+          StartsWith(homedir_paths_[0].value())),
+        _))
     .Times(5)  // Cache, GCache, android, mounted dir count, user removal
     .WillRepeatedly(Return(true));
   for (size_t i = 1; i < arraysize(kHomedirs); ++i) {
     EXPECT_CALL(platform_,
-        IsDirectoryMountedWith(StartsWith(homedir_paths_[i]), _))
+        IsDirectoryMountedWith(
+          Property(&FilePath::value,
+            StartsWith(homedir_paths_[i].value())),
+          _))
       .Times(4)  // Cache, GCache, android, mounted dir count
       .WillRepeatedly(Return(false));
   }
@@ -1036,7 +1095,7 @@ class KeysetManagementTest : public HomeDirsTest {
       EXPECT_CALL(*files, Next())
         .WillOnce(Return(keyset_paths_[0]));
       EXPECT_CALL(*files, Next())
-        .WillOnce(Return(""));
+        .WillOnce(Return(FilePath()));
     }
     return files;
   }
@@ -1097,7 +1156,7 @@ class KeysetManagementTest : public HomeDirsTest {
   int last_vk_;
   MockVaultKeyset* active_vk_;
   MockVaultKeyset* active_vks_[MAX_VKS];
-  std::vector<std::string> keyset_paths_;
+  std::vector<FilePath> keyset_paths_;
   std::vector<brillo::SecureBlob> keys_;
   std::unique_ptr<UsernamePasskey> up_;
   SecureBlob system_salt_;
@@ -1111,13 +1170,20 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.0")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(NULL)));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.1")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
-  EXPECT_CALL(*active_vk_, Save(EndsWith("master.1")))
+  EXPECT_CALL(*active_vk_,
+      Save(Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
@@ -1135,12 +1201,18 @@ TEST_F(KeysetManagementTest, AddKeysetClobber) {
   serialized_.mutable_key_data()->set_label("current label");
   KeyData key_data;
   key_data.set_label("current label");
-  std::string vk_path = "/some/path/master.0";
+  FilePath vk_path("/some/path/master.0");
   // Show that 0 is taken.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.0")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(NULL)));
   // Let it claim 1 until it searches the labels.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.1")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
@@ -1151,7 +1223,10 @@ TEST_F(KeysetManagementTest, AddKeysetClobber) {
     .WillOnce(ReturnRef(vk_path));
   EXPECT_CALL(*active_vk_, Save(vk_path))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("master.1"), _))
+  EXPECT_CALL(platform_,
+      DeleteFile(
+        Property(&FilePath::value, EndsWith("master.1")),
+        _))
     .Times(1);
 
   int index = -1;
@@ -1171,9 +1246,15 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
   KeyData key_data;
   key_data.set_label("current label");
   // The injected keyset in the fixture handles the up_ validation.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.0")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(NULL)));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.1")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
 
   EXPECT_EQ(CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
@@ -1193,7 +1274,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
   new_key.mutable_data()->set_label("new label");
   // The injected keyset in the fixture handles the up_ validation.
   serialized_.mutable_key_data()->set_label("current label");
-  std::string vk_path = "some/path/master.0";
+  FilePath vk_path("/some/path/master.0");
   EXPECT_CALL(*active_vk_, source_file())
     .WillOnce(ReturnRef(vk_path));
   EXPECT_CALL(*active_vk_, Encrypt(new_secret))
@@ -1260,7 +1341,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   const std::string kSomeHMACKey("abc123");
   auth_secret->set_symmetric_key(kSomeHMACKey);
 
-  std::string vk_path = "some/path/master.0";
+  FilePath vk_path("/some/path/master.0");
   EXPECT_CALL(*active_vk_, source_file())
     .WillOnce(ReturnRef(vk_path));
   EXPECT_CALL(*active_vk_, Encrypt(new_pass))
@@ -1329,7 +1410,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
                                                     &signing_key));
   auth_secret->set_symmetric_key(signing_key);
 
-  std::string vk_path = "some/path/master.0";
+  FilePath vk_path("/some/path/master.0");
   EXPECT_CALL(*active_vk_, source_file())
     .WillOnce(ReturnRef(vk_path));
   EXPECT_CALL(*active_vk_, Encrypt(new_pass))
@@ -1503,7 +1584,8 @@ TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
   // Return a different slot to make sure the code is using the right object.
   EXPECT_CALL(*active_vks_[1], legacy_index())
     .WillOnce(Return(1));
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(true));
 
   serialized_.mutable_key_data()->mutable_privileges()->set_remove(true);
@@ -1582,20 +1664,24 @@ TEST_F(KeysetManagementTest, AddKeyset0Available) {
   // While this doesn't affect the hole-finding logic, it's good to cover the
   // full logical behavior by changing which key auths too.
   // master.0 -> master.1
-  test_helper_.users[1].keyset_path.erase(
-    test_helper_.users[1].keyset_path.end() - 1);
-  test_helper_.users[1].keyset_path.append("1");
+  FilePath new_keyset = test_helper_.users[1].keyset_path
+    .ReplaceExtension("1");
+  test_helper_.users[1].keyset_path = new_keyset;
   KeysetSetUp();
 
   // The injected keyset in the fixture handles the up_ validation.
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.0")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
-  EXPECT_CALL(*active_vk_, Save(EndsWith("master.0")))
+  EXPECT_CALL(*active_vk_,
+      Save(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
@@ -1614,16 +1700,24 @@ TEST_F(KeysetManagementTest, AddKeyset10Available) {
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
-  EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..$"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value,
+          MatchesRegex(".*/master\\..$")),
+        StrEq("wx")))
     .Times(10)
     .WillRepeatedly(Return(reinterpret_cast<FILE*>(NULL)));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.10"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.10")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
-  EXPECT_CALL(*active_vk_, Save(EndsWith("master.10")))
+  EXPECT_CALL(*active_vk_,
+      Save(Property(&FilePath::value, EndsWith("master.10"))))
     .WillOnce(Return(true));
 
   int index = -1;
@@ -1639,7 +1733,9 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
-  EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..*$"), StrEq("wx")))
+  EXPECT_CALL(platform_, OpenFile(
+        Property(&FilePath::value, MatchesRegex(".*/master\\..*$")),
+        StrEq("wx")))
     .Times(kKeyFileMax)
     .WillRepeatedly(Return(reinterpret_cast<FILE*>(NULL)));
   EXPECT_CALL(platform_, DeleteFile(_, _))
@@ -1658,13 +1754,19 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.0")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, CloseFile(reinterpret_cast<FILE*>(0xbeefbeef)))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("master.0"), false))
+  EXPECT_CALL(platform_,
+      DeleteFile(
+        Property(&FilePath::value, EndsWith("master.0")),
+        false))
     .WillOnce(Return(true));
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
             homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
@@ -1678,15 +1780,20 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.0")), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
-  EXPECT_CALL(*active_vk_, Save(EndsWith("master.0")))
+  EXPECT_CALL(*active_vk_,
+      Save(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, CloseFile(reinterpret_cast<FILE*>(0xbeefbeef)))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("master.0"), false))
+  EXPECT_CALL(platform_,
+      DeleteFile(
+        Property(&FilePath::value, EndsWith("master.0")), false))
     .WillOnce(Return(true));
   ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
             homedirs_.AddKeyset(*up_, newkey, NULL, false, &index));
@@ -1694,15 +1801,20 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 }
 
 TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("master.0"), false))
+  EXPECT_CALL(platform_,
+      DeleteFile(
+        Property(&FilePath::value, EndsWith("master.0")), false))
     .WillOnce(Return(true));
   ASSERT_TRUE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
 TEST_F(KeysetManagementTest, ForceRemoveKeysetMissingKeyset) {
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(
+        Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(false));
   ASSERT_TRUE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
@@ -1716,22 +1828,34 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetOverMaxIndex) {
 }
 
 TEST_F(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(
+        Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("master.0"), false))
+  EXPECT_CALL(platform_,
+      DeleteFile(
+        Property(&FilePath::value, EndsWith("master.0")),
+        false))
     .WillOnce(Return(false));
   ASSERT_FALSE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
 TEST_F(KeysetManagementTest, MoveKeysetSuccess_0_to_1) {
   const std::string obfuscated = "a0b0c0";
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.1")), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(platform_, Rename(EndsWith("master.0"), EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      Rename(
+        Property(&FilePath::value, EndsWith("master.0")),
+        Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, CloseFile(reinterpret_cast<FILE*>(0xbeefbeef)))
     .WillOnce(Return(true));
@@ -1740,13 +1864,21 @@ TEST_F(KeysetManagementTest, MoveKeysetSuccess_0_to_1) {
 
 TEST_F(KeysetManagementTest, MoveKeysetSuccess_1_to_99) {
   const std::string obfuscated = "a0b0c0";
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.99")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.99"))))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.99"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.99")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(platform_, Rename(EndsWith("master.1"), EndsWith("master.99")))
+  EXPECT_CALL(platform_,
+      Rename(
+        Property(&FilePath::value, EndsWith("master.1")),
+        Property(&FilePath::value, EndsWith("master.99"))))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, CloseFile(reinterpret_cast<FILE*>(0xbeefbeef)))
     .WillOnce(Return(true));
@@ -1775,40 +1907,56 @@ TEST_F(KeysetManagementTest, MoveKeysetTooLargeSource) {
 
 TEST_F(KeysetManagementTest, MoveKeysetMissingSource) {
   const std::string obfuscated = "a0b0c0";
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(false));
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
 
 TEST_F(KeysetManagementTest, MoveKeysetDestinationExists) {
   const std::string obfuscated = "a0b0c0";
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(true));
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
 
 TEST_F(KeysetManagementTest, MoveKeysetExclusiveOpenFailed) {
   const std::string obfuscated = "a0b0c0";
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.1")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(NULL)));
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
 
 TEST_F(KeysetManagementTest, MoveKeysetRenameFailed) {
   const std::string obfuscated = "a0b0c0";
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.0")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
-  EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      FileExists(Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
+  EXPECT_CALL(platform_,
+      OpenFile(
+        Property(&FilePath::value, EndsWith("master.1")),
+        StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
-  EXPECT_CALL(platform_, Rename(EndsWith("master.0"), EndsWith("master.1")))
+  EXPECT_CALL(platform_,
+      Rename(
+        Property(&FilePath::value, EndsWith("master.0")),
+        Property(&FilePath::value, EndsWith("master.1"))))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, CloseFile(reinterpret_cast<FILE*>(0xbeefbeef)))
     .WillOnce(Return(true));

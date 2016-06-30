@@ -6,6 +6,7 @@
 
 #include "cryptohome/vault_keyset.h"
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -17,6 +18,7 @@
 
 namespace cryptohome {
 using brillo::SecureBlob;
+using base::FilePath;
 
 using ::testing::_;
 using ::testing::SaveArg;
@@ -143,18 +145,18 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  EXPECT_CALL(platform, WriteFileAtomicDurable("foo", _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath("foo"), _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-  EXPECT_CALL(platform, ReadFile("foo", _))
+  EXPECT_CALL(platform, ReadFile(FilePath("foo"), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   SecureBlob key("key");
   EXPECT_TRUE(keyset.Encrypt(key));
-  EXPECT_TRUE(keyset.Save("foo"));
+  EXPECT_TRUE(keyset.Save(FilePath("foo")));
 
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform, &crypto);
-  EXPECT_TRUE(new_keyset.Load("foo"));
+  EXPECT_TRUE(new_keyset.Load(FilePath("foo")));
   EXPECT_TRUE(new_keyset.Decrypt(key));
 }
 
@@ -167,12 +169,12 @@ TEST_F(VaultKeysetTest, WriteError) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  EXPECT_CALL(platform, WriteFileAtomicDurable("foo", _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath("foo"), _, _))
       .WillOnce(Return(false));
 
   SecureBlob key("key");
   EXPECT_TRUE(keyset.Encrypt(key));
-  EXPECT_FALSE(keyset.Save("foo"));
+  EXPECT_FALSE(keyset.Save(FilePath("foo")));
 }
 
 // TODO(wad) Mock crypto.cc to test En/decrypt failures.

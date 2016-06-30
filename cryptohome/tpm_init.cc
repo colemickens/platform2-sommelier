@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
@@ -18,6 +19,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/interface.h"
 
+using base::FilePath;
 using base::PlatformThread;
 using base::PlatformThreadHandle;
 using brillo::SecureBlob;
@@ -26,16 +28,16 @@ namespace cryptohome {
 
 const int kMaxTimeoutRetries = 5;
 
-const char* kMiscTpmCheckEnabledFile = "/sys/class/misc/tpm0/device/enabled";
-const char* kMiscTpmCheckOwnedFile = "/sys/class/misc/tpm0/device/owned";
-const char* kTpmTpmCheckEnabledFile = "/sys/class/tpm/tpm0/device/enabled";
-const char* kTpmTpmCheckOwnedFile = "/sys/class/tpm/tpm0/device/owned";
-const char* kTpmOwnedFileOld = "/var/lib/.tpm_owned";
-const char* kTpmStatusFileOld = "/var/lib/.tpm_status";
-const char* kTpmOwnedFile = "/mnt/stateful_partition/.tpm_owned";
-const char* kTpmStatusFile = "/mnt/stateful_partition/.tpm_status";
-const char* kOpenCryptokiPath = "/var/lib/opencryptoki";
-const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
+const FilePath kMiscTpmCheckEnabledFile("/sys/class/misc/tpm0/device/enabled");
+const FilePath kMiscTpmCheckOwnedFile("/sys/class/misc/tpm0/device/owned");
+const FilePath kTpmTpmCheckEnabledFile("/sys/class/tpm/tpm0/device/enabled");
+const FilePath kTpmTpmCheckOwnedFile("/sys/class/tpm/tpm0/device/owned");
+const FilePath kTpmOwnedFileOld("/var/lib/.tpm_owned");
+const FilePath kTpmStatusFileOld("/var/lib/.tpm_status");
+extern const FilePath kTpmOwnedFile("/mnt/stateful_partition/.tpm_owned");
+const FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
+const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
+const FilePath kDefaultCryptohomeKeyFile("/home/.shadow/cryptohome.key");
 
 const int kOwnerPasswordLength = 12;
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
@@ -480,7 +482,7 @@ void TpmInit::RemoveTpmOwnerDependency(TpmOwnerDependency dependency) {
   StoreTpmStatus(tpm_status);
 }
 
-bool TpmInit::CheckSysfsForOne(const char* file_name) const {
+bool TpmInit::CheckSysfsForOne(const FilePath& file_name) const {
   std::string contents;
   if (!platform_->ReadFileToString(file_name, &contents)) {
     return false;
@@ -491,11 +493,11 @@ bool TpmInit::CheckSysfsForOne(const char* file_name) const {
   return (contents[0] == '1');
 }
 
-bool TpmInit::IsEnabledCheckViaSysfs(const char* enabled_file) {
+bool TpmInit::IsEnabledCheckViaSysfs(const FilePath& enabled_file) {
   return CheckSysfsForOne(enabled_file);
 }
 
-bool TpmInit::IsOwnedCheckViaSysfs(const char* owned_file) {
+bool TpmInit::IsOwnedCheckViaSysfs(const FilePath& owned_file) {
   return CheckSysfsForOne(owned_file);
 }
 

@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 namespace cryptohome {
@@ -31,7 +32,7 @@ class MockService : public Service {
                                GError **));
   MOCK_METHOD3(UnmountForUser, gboolean(const gchar*, gboolean *,
                                         GError **));
-  MOCK_METHOD2(GetMountPointForUser, bool(const std::string&, std::string*));
+  MOCK_METHOD2(GetMountPointForUser, bool(const std::string&, base::FilePath*));
   MOCK_METHOD1(IsOwner, bool(const std::string&));
 };
 

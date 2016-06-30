@@ -115,8 +115,8 @@ class HomeDirs {
   virtual bool GetValidKeyset(const Credentials& creds, VaultKeyset* vk);
 
   // Returns the vault keyset path for the supplied obfuscated username.
-  virtual std::string GetVaultKeysetPath(const std::string& obfuscated,
-                                         int index) const;
+  virtual base::FilePath GetVaultKeysetPath(const std::string& obfuscated,
+                                            int index) const;
 
   // Adds a new vault keyset for the user using the |existing_credentials| to
   // unwrap the homedir key and the |new_credentials| to rewrap and persist to
@@ -187,8 +187,8 @@ class HomeDirs {
   // TODO(wad) Should this update default_crypto_.set_platform()?
   void set_platform(Platform *value) { platform_ = value; }
   Platform* platform() { return platform_; }
-  void set_shadow_root(const std::string& value) { shadow_root_ = value; }
-  const std::string& shadow_root() const { return shadow_root_; }
+  void set_shadow_root(const base::FilePath& value) { shadow_root_ = value; }
+  const base::FilePath& shadow_root() const { return shadow_root_; }
   void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
   bool enterprise_owned() const { return enterprise_owned_; }
   void set_policy_provider(policy::PolicyProvider* value) {
@@ -222,7 +222,7 @@ class HomeDirs {
   // Callback used during FreeDiskSpace().
   void DeleteCacheCallback(const base::FilePath& vault);
   // Finds Drive cache directory.
-  bool FindGCacheFilesDir(const base::FilePath& vault, std::string* dir);
+  bool FindGCacheFilesDir(const base::FilePath& vault, base::FilePath* dir);
   // Callback used during FreeDiskSpace().
   void DeleteGCacheTmpCallback(const base::FilePath& vault);
   // Callback used during FreeDiskSpace().
@@ -251,7 +251,7 @@ class HomeDirs {
 
   std::unique_ptr<Platform> default_platform_;
   Platform* platform_;
-  std::string shadow_root_;
+  base::FilePath shadow_root_;
   UserOldestActivityTimestampCache* timestamp_cache_;
   bool enterprise_owned_;
   std::unique_ptr<policy::PolicyProvider> default_policy_provider_;

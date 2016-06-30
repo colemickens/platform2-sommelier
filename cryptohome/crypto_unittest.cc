@@ -12,6 +12,7 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
@@ -237,9 +238,9 @@ TEST_F(CryptoTest, SaltCreateTest) {
   Blob salt_written;
   Blob *salt_ptr = &salt_written;
   FilePath salt_path(FilePath(kImageDir).Append("crypto_test_salt"));
-  EXPECT_CALL(platform, FileExists(salt_path.value()))
+  EXPECT_CALL(platform, FileExists(salt_path))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform, WriteFileAtomicDurable(salt_path.value(), _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(salt_path, _, _))
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, false, &salt);
 
@@ -250,12 +251,12 @@ TEST_F(CryptoTest, SaltCreateTest) {
   SecureBlob new_salt;
   salt_written.resize(0);
   salt_ptr = &salt_written;
-  EXPECT_CALL(platform, FileExists(salt_path.value()))
+  EXPECT_CALL(platform, FileExists(salt_path))
       .WillOnce(Return(true));
   int64_t salt_size = 32;
-  EXPECT_CALL(platform, GetFileSize(salt_path.value(), _))
+  EXPECT_CALL(platform, GetFileSize(salt_path, _))
       .WillOnce(DoAll(SetArgPointee<1>(salt_size), Return(true)));
-  EXPECT_CALL(platform, WriteFileAtomicDurable(salt_path.value(), _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(salt_path, _, _))
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, true, &new_salt);
   ASSERT_EQ(32, new_salt.size());

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <algorithm>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -22,6 +23,7 @@
 #include "cryptohome/mock_tpm_init.h"
 
 namespace cryptohome {
+using base::FilePath;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Mock;
@@ -97,12 +99,15 @@ class InstallAttributesTest : public ::testing::Test {
         .WillOnce(Return(true));
     }
     EXPECT_CALL(platform_,
-                WriteFileAtomicDurable(InstallAttributes::kDefaultDataFile,
-                                       _, _))
+        WriteFileAtomicDurable(
+          FilePath(InstallAttributes::kDefaultDataFile),
+          _, _))
       .Times(1)
       .WillOnce(DoAll(SaveArg<1>(serialized_data), Return(true)));
     brillo::Blob cached_data;
-    EXPECT_CALL(platform_, WriteFile(InstallAttributes::kDefaultCacheFile, _))
+    EXPECT_CALL(platform_,
+        WriteFile(
+          FilePath(InstallAttributes::kDefaultCacheFile), _))
       .Times(1)
       .WillOnce(DoAll(SaveArg<1>(&cached_data), Return(true)));
 

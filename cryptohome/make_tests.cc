@@ -32,13 +32,14 @@
 #include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
-using base::StringPrintf;
+using base::FilePath;
 using brillo::SecureBlob;
 using ::testing::AnyOf;
 using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::NiceMock;
 using ::testing::Mock;
+using ::testing::Property;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
@@ -73,7 +74,7 @@ const size_t kDefaultUserCount = arraysize(kDefaultUsers);
 
 MakeTests::MakeTests() { }
 
-void MakeTests::InitTestData(const std::string& image_dir,
+void MakeTests::InitTestData(const FilePath& image_dir,
                              const TestUserInfo* test_users,
                              size_t test_user_count) {
   CHECK(system_salt.size()) << "Call SetUpSystemSalt() first";
@@ -82,7 +83,7 @@ void MakeTests::InitTestData(const std::string& image_dir,
   const TestUserInfo* user_info = test_users;
   for (size_t id = 0; id < test_user_count; ++id, ++user_info) {
     TestUser* user = &users[id];
-    user->FromInfo(user_info, image_dir.c_str());
+    user->FromInfo(user_info, image_dir);
     user->GenerateCredentials();
   }
 }
@@ -101,7 +102,7 @@ void MakeTests::TearDownSystemSalt() {
 }
 
 void MakeTests::InjectSystemSalt(MockPlatform* platform,
-                                 const std::string& path) {
+                                 const FilePath& path) {
   CHECK(brillo::cryptohome::home::GetSystemSalt());
   EXPECT_CALL(*platform, FileExists(path))
     .WillRepeatedly(Return(true));
@@ -113,26 +114,37 @@ void MakeTests::InjectSystemSalt(MockPlatform* platform,
 }
 
 void MakeTests::InjectEphemeralSkeleton(MockPlatform* platform,
-                                        const std::string& root,
+                                        const FilePath& root,
                                         bool exists) {
-  const std::string skel = StringPrintf("%s/skeleton", root.c_str());
-  EXPECT_CALL(*platform, CreateDirectory(StartsWith(skel)))
+  const FilePath skel = root.Append("skeleton");
+  EXPECT_CALL(*platform, CreateDirectory(
+        Property(&FilePath::value, StartsWith(skel.value()))))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(*platform, SetOwnership(StartsWith(skel), _, _))
+  EXPECT_CALL(*platform,
+      SetOwnership(
+        Property(&FilePath::value, StartsWith(skel.value())),
+        _, _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(*platform, DirectoryExists(StartsWith(skel)))
+  EXPECT_CALL(*platform,
+      DirectoryExists(
+        Property(&FilePath::value, StartsWith(skel.value()))))
     .WillRepeatedly(Return(exists));
-  EXPECT_CALL(*platform, FileExists(StartsWith(skel)))
+  EXPECT_CALL(*platform,
+      FileExists(
+        Property(&FilePath::value, StartsWith(skel.value()))))
     .WillRepeatedly(Return(exists));
   if (!exists) {
-    EXPECT_CALL(*platform, SetGroupAccessible(StartsWith(skel), _, _))
+    EXPECT_CALL(*platform,
+        SetGroupAccessible(
+          Property(&FilePath::value, StartsWith(skel.value())),
+          _, _))
       .WillRepeatedly(Return(true));
   }
 }
 
 
 void TestUser::FromInfo(const struct TestUserInfo* info,
-                        const char* image_dir) {
+                        const FilePath& image_dir) {
   username = info->username;
   password = info->password;
   create = info->create;
@@ -150,27 +162,26 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   DCHECK(brillo::cryptohome::home::IsSanitizedUserName(
            obfuscated_username));
   shadow_root = image_dir;
-  skel_dir = StringPrintf("%s/skel", image_dir);
-  base_path = StringPrintf("%s/%s", image_dir, obfuscated_username.c_str());
-  image_path = StringPrintf("%s/image", base_path.c_str());
-  vault_path = StringPrintf("%s/vault", base_path.c_str());
-  vault_mount_path = StringPrintf("%s/mount", base_path.c_str());
-  root_vault_path = StringPrintf("%s/root", vault_path.c_str());
-  user_vault_path = StringPrintf("%s/user", vault_path.c_str());
-  keyset_path = StringPrintf("%s/master.0", base_path.c_str());
-  salt_path = StringPrintf("%s/master.0.salt", base_path.c_str());
+  skel_dir = image_dir.Append("skel");
+  base_path = image_dir.Append(obfuscated_username);
+  image_path = base_path.Append("image");
+  vault_path = base_path.Append("vault");
+  vault_mount_path = base_path.Append("mount");
+  root_vault_path = vault_path.Append("root");
+  user_vault_path = vault_path.Append("user");
+  keyset_path = base_path.Append("master.0");
+  salt_path = base_path.Append("master.0.salt");
   user_salt.assign('A', PKCS5_SALT_LEN);
-  mount_prefix =
-    brillo::cryptohome::home::GetUserPathPrefix().DirName().value();
-  legacy_user_mount_path = "/home/chronos/user";
+  mount_prefix = brillo::cryptohome::home::GetUserPathPrefix().DirName();
+  legacy_user_mount_path = FilePath("/home/chronos/user");
   user_mount_path = brillo::cryptohome::home::GetUserPath(username)
-    .StripTrailingSeparators().value();
+    .StripTrailingSeparators();
   user_mount_prefix = brillo::cryptohome::home::GetUserPathPrefix()
-    .StripTrailingSeparators().value();
+    .StripTrailingSeparators();
   root_mount_path = brillo::cryptohome::home::GetRootPath(username)
-    .StripTrailingSeparators().value();
+    .StripTrailingSeparators();
   root_mount_prefix = brillo::cryptohome::home::GetRootPathPrefix()
-    .StripTrailingSeparators().value();
+    .StripTrailingSeparators();
 }
 
 void TestUser::GenerateCredentials() {
@@ -194,7 +205,7 @@ void TestUser::GenerateCredentials() {
   mount->set_policy_provider(new policy::PolicyProvider(device_policy));
   EXPECT_CALL(*device_policy, LoadPolicy())
     .WillRepeatedly(Return(true));
-  std::string salt_path = StringPrintf("%s/salt", shadow_root.c_str());
+  FilePath salt_path = shadow_root.Append("salt");
   int64_t salt_size = salt.size();
   EXPECT_CALL(platform, FileExists(salt_path))
     .WillRepeatedly(Return(true));
@@ -224,17 +235,21 @@ void TestUser::GenerateCredentials() {
     .WillRepeatedly(Return(false));
   // Use 'stat' failures to trigger default-allow the creation of the paths.
   EXPECT_CALL(platform,
-      Stat(AnyOf("/home",
-                 "/home/root",
-                 brillo::cryptohome::home::GetRootPath(username).value(),
-                 "/home/user",
-                 brillo::cryptohome::home::GetUserPath(username).value()),
-           _))
+      Stat(
+        Property(&FilePath::value,
+          AnyOf("/home",
+                "/home/root",
+                brillo::cryptohome::home::GetRootPath(username).value(),
+                "/home/user",
+                brillo::cryptohome::home::GetUserPath(username).value())),
+        _))
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform,
-      Stat(AnyOf("/home/chronos",
-                 mount->GetNewUserPath(username)),
-           _))
+      Stat(
+        Property(&FilePath::value,
+          AnyOf("/home/chronos",
+                mount->GetNewUserPath(username).value())),
+          _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(platform, DirectoryExists(vault_path))
     .WillOnce(Return(false));
@@ -249,7 +264,9 @@ void TestUser::GenerateCredentials() {
 
 void TestUser::InjectKeyset(MockPlatform* platform, bool enumerate) {
   // TODO(wad) Update to support multiple keys
-  EXPECT_CALL(*platform, FileExists(StartsWith(keyset_path)))
+  EXPECT_CALL(*platform,
+      FileExists(
+        Property(&FilePath::value, StartsWith(keyset_path.value()))))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, ReadFile(keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(credentials),
@@ -264,7 +281,7 @@ void TestUser::InjectKeyset(MockPlatform* platform, bool enumerate) {
       EXPECT_CALL(*files, Next())
         .WillOnce(Return(keyset_path));
       EXPECT_CALL(*files, Next())
-        .WillOnce(Return(""));
+        .WillOnce(Return(FilePath()));
     }
   }
 }
@@ -281,21 +298,20 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   memset(&root_dir, 0, sizeof(root_dir));
   root_dir.st_mode = S_IFDIR|S_ISVTX;
   EXPECT_CALL(*platform,
-      Stat(
-        AnyOf(mount_prefix,
-              root_mount_prefix,
-              user_mount_prefix,
-              root_mount_path,
-              user_vault_path), _))
-    .WillRepeatedly(DoAll(SetArgPointee<1>(root_dir), Return(true)));
+      Stat(AnyOf(mount_prefix,
+                 root_mount_prefix,
+                 user_mount_prefix,
+                 root_mount_path,
+                 user_vault_path),
+           _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(root_dir), Return(true)));
   // Avoid triggering vault migration.  (Is there another test for that?)
   struct stat root_vault_dir;
   memset(&root_vault_dir, 0, sizeof(root_vault_dir));
   root_vault_dir.st_mode = S_IFDIR|S_ISVTX;
   root_vault_dir.st_uid = 0;
   root_vault_dir.st_gid = daemon_gid;
-  EXPECT_CALL(*platform,
-      Stat(root_vault_path, _))
+  EXPECT_CALL(*platform, Stat(root_vault_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(root_vault_dir), Return(true)));
   struct stat user_dir;
   memset(&user_dir, 0, sizeof(user_dir));
@@ -312,34 +328,37 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   chronos_dir.st_uid = chronos_uid;
   chronos_dir.st_gid = chronos_gid;
   EXPECT_CALL(*platform,
-      Stat("/home/chronos", _))
+      Stat(FilePath("/home/chronos"), _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(chronos_dir),
                             Return(true)));
   EXPECT_CALL(*platform,
       DirectoryExists(
-        AnyOf(shadow_root,
-              mount_prefix,
-              StartsWith(legacy_user_mount_path),
-              StartsWith(vault_mount_path),
-              StartsWith(vault_path))))
+        Property(&FilePath::value,
+          AnyOf(shadow_root.value(),
+                mount_prefix.value(),
+                StartsWith(legacy_user_mount_path.value()),
+                StartsWith(vault_mount_path.value()),
+                StartsWith(vault_path.value())))))
     .WillRepeatedly(Return(true));
   // TODO(wad) Bounce this out if needed elsewhere.
-  std::string user_vault_mount = StringPrintf("%s/user",
-                                              vault_mount_path.c_str());
-  std::string new_user_path = temp_mount->GetNewUserPath(username);
+  FilePath user_vault_mount = vault_mount_path.Append("user");
+  FilePath new_user_path = temp_mount->GetNewUserPath(username);
   EXPECT_CALL(*platform,
-      FileExists(AnyOf(StartsWith(legacy_user_mount_path),
-                       StartsWith(vault_mount_path),
-                       StartsWith(user_mount_path),
-                       StartsWith(root_mount_path),
-                       StartsWith(new_user_path),
-                       StartsWith(keyset_path))))
+      FileExists(
+        Property(&FilePath::value,
+          AnyOf(StartsWith(legacy_user_mount_path.value()),
+                StartsWith(vault_mount_path.value()),
+                StartsWith(user_mount_path.value()),
+                StartsWith(root_mount_path.value()),
+                StartsWith(new_user_path.value()),
+                StartsWith(keyset_path.value())))))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(*platform, SetGroupAccessible(
-                            AnyOf(StartsWith(legacy_user_mount_path),
-                                  StartsWith(user_vault_mount)),
-                            chronos_access_gid,
-                            _))
+  EXPECT_CALL(*platform,
+      SetGroupAccessible(
+        Property(&FilePath::value,
+          AnyOf(StartsWith(legacy_user_mount_path.value()),
+                StartsWith(user_vault_mount.value()))),
+        chronos_access_gid, _))
     .WillRepeatedly(Return(true));
 }
 

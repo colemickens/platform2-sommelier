@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 
 #include "cryptohome/crypto.h"
@@ -42,13 +43,13 @@ class MakeTests {
   virtual ~MakeTests() { }
 
   void SetUpSystemSalt();
-  void InitTestData(const std::string& image_dir,
+  void InitTestData(const base::FilePath& image_dir,
                     const TestUserInfo* test_users,
                     size_t test_user_count);
-  void InjectSystemSalt(MockPlatform* platform, const std::string& path);
+  void InjectSystemSalt(MockPlatform* platform, const base::FilePath& path);
   // Inject mocks needed for skeleton population.
   void InjectEphemeralSkeleton(MockPlatform* platform,
-                               const std::string& root,
+                               const base::FilePath& root,
                                bool exists);
   void TearDownSystemSalt();
 
@@ -63,7 +64,8 @@ class TestUser {
   TestUser() { }
   virtual ~TestUser() { }
   // Populate from struct TestUserInfo.
-  void FromInfo(const struct TestUserInfo* info, const char* image_dir);
+  void FromInfo(const struct TestUserInfo* info,
+                const base::FilePath& image_dir);
   // Generate a valid vault keyset using scrypt.
   void GenerateCredentials();
   // Inject the keyset so it can be accessed via platform.
@@ -78,24 +80,24 @@ class TestUser {
   const char* username;
   const char* password;
   bool create;
-  std::string shadow_root;
-  std::string skel_dir;
   std::string obfuscated_username;
   std::string sanitized_username;
-  std::string base_path;
-  std::string image_path;
-  std::string vault_path;
-  std::string vault_mount_path;
-  std::string user_vault_path;
-  std::string root_vault_path;
-  std::string keyset_path;
-  std::string salt_path;
-  std::string mount_prefix;
-  std::string legacy_user_mount_path;
-  std::string user_mount_path;
-  std::string root_mount_path;
-  std::string user_mount_prefix;
-  std::string root_mount_prefix;
+  base::FilePath shadow_root;
+  base::FilePath skel_dir;
+  base::FilePath base_path;
+  base::FilePath image_path;
+  base::FilePath vault_path;
+  base::FilePath vault_mount_path;
+  base::FilePath user_vault_path;
+  base::FilePath root_vault_path;
+  base::FilePath keyset_path;
+  base::FilePath salt_path;
+  base::FilePath mount_prefix;
+  base::FilePath legacy_user_mount_path;
+  base::FilePath user_mount_path;
+  base::FilePath root_mount_path;
+  base::FilePath user_mount_prefix;
+  base::FilePath root_mount_prefix;
   brillo::Blob credentials;
   brillo::Blob user_salt;
   brillo::SecureBlob passkey;

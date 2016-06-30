@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
@@ -86,12 +87,12 @@ const char kMountThreadName[] = "MountThread";
 const char kTpmInitStatusEventType[] = "TpmInitStatus";
 
 // The default entropy source to seed with random data from the TPM on startup.
-const char kDefaultEntropySource[] = "/dev/urandom";
+const FilePath kDefaultEntropySource("/dev/urandom");
 
 // Location of the path to store basic device enrollment information that
 // will persist across powerwashes.
-const char kPreservedEnrollmentStatePath[] =
-    "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb";
+const FilePath kPreservedEnrollmentStatePath(
+    "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb");
 const mode_t kPreservedEnrollmentStatePermissions = 0600;
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
@@ -225,23 +226,24 @@ Service::~Service() {
 }
 
 bool Service::GetExistingMounts(
-    std::multimap<const std::string, const std::string>* mounts) {
+    std::multimap<const FilePath, const FilePath>* mounts) {
   bool found = platform_->GetMountsBySourcePrefix("/home/.shadow/", mounts);
   found |= platform_->GetMountsBySourcePrefix(kEphemeralDir, mounts);
   found |= platform_->GetMountsBySourcePrefix(kGuestMountPath, mounts);
   return found;
 }
 
-static bool PrefixPresent(const std::vector<std::string>& prefixes,
-                          const std::string& path) {
-  std::vector<std::string>::const_iterator it;
+static bool PrefixPresent(const std::vector<FilePath>& prefixes,
+                          const std::string path) {
+  std::vector<FilePath>::const_iterator it;
   for (it = prefixes.begin(); it != prefixes.end(); ++it)
-    if (base::StartsWith(path, *it, base::CompareCase::INSENSITIVE_ASCII))
+    if (base::StartsWith(path, it->value(),
+                         base::CompareCase::INSENSITIVE_ASCII))
       return true;
   return false;
 }
 
-bool Service::UnloadPkcs11Tokens(const std::vector<std::string>& exclude) {
+bool Service::UnloadPkcs11Tokens(const std::vector<FilePath>& exclude) {
   SecureBlob isolate =
       chaps::IsolateCredentialManager::GetDefaultIsolateCredential();
   std::vector<std::string> tokens;
@@ -317,8 +319,8 @@ bool Service::CleanUpStaleMounts(bool force) {
   //
   // (*) Relies on the expectation that all processes have been killed off.
   bool skipped = false;
-  std::multimap<const std::string, const std::string> matches;
-  std::vector<std::string> exclude;
+  std::multimap<const FilePath, const FilePath> matches;
+  std::vector<FilePath> exclude;
   if (!GetExistingMounts(&matches)) {
     // If there's no existing mounts, go ahead and unload all chaps tokens by
     // passing an empty exclude list.
@@ -326,9 +328,9 @@ bool Service::CleanUpStaleMounts(bool force) {
     return skipped;
   }
 
-  std::multimap<const std::string, const std::string>::iterator match;
+  std::multimap<const FilePath, const FilePath>::iterator match;
   for (match = matches.begin(); match != matches.end(); ) {
-    std::multimap<const std::string, const std::string>::iterator curr = match;
+    std::multimap<const FilePath, const FilePath>::iterator curr = match;
     bool keep = false;
     // Walk each set of sources as one group since multimaps are key ordered.
     for (; match != matches.end() && match->first == curr->first; ++match) {
@@ -345,8 +347,8 @@ bool Service::CleanUpStaleMounts(bool force) {
         std::vector<ProcessInformation> processes;
         platform_->GetProcessesWithOpenFiles(match->second, &processes);
         if (processes.size()) {
-          LOG(WARNING) << "Stale mount " << match->second
-                       << " from " << match->first
+          LOG(WARNING) << "Stale mount " << match->second.value()
+                       << " from " << match->first.value()
                        << " has active holders.";
           keep = true;
           skipped = true;
@@ -356,7 +358,7 @@ bool Service::CleanUpStaleMounts(bool force) {
 
     // Delete anything that shouldn't be unmounted.
     if (keep) {
-      std::multimap<const std::string, const std::string>::iterator it;
+      std::multimap<const FilePath, const FilePath>::iterator it;
       for (it = curr; it != match; ++it)
         exclude.push_back(it->second);
       matches.erase(curr, match);
@@ -365,8 +367,8 @@ bool Service::CleanUpStaleMounts(bool force) {
   UnloadPkcs11Tokens(exclude);
   // Unmount anything left.
   for (match = matches.begin(); match != matches.end(); ++match) {
-    LOG(WARNING) << "Lazily unmounting stale mount: " << match->second
-                 << " from " << match->first;
+    LOG(WARNING) << "Lazily unmounting stale mount: " << match->second.value()
+                 << " from " << match->first.value();
     platform_->Unmount(match->second, true, NULL);
   }
   return skipped;
@@ -607,7 +609,7 @@ bool Service::SeedUrandom() {
     return false;
   }
   if (!platform_->WriteFile(kDefaultEntropySource, random)) {
-    LOG(ERROR) << "Error writing data to " << kDefaultEntropySource;
+    LOG(ERROR) << "Error writing data to " << kDefaultEntropySource.value();
     return false;
   }
   return true;
@@ -2776,7 +2778,7 @@ gboolean Service::StoreEnrollmentState(GArray* enrollment_state,
           encrypted_data,
           kPreservedEnrollmentStatePermissions)) {
     LOG(ERROR) << "Failed to write out enrollment state to "
-               << kPreservedEnrollmentStatePath;
+               << kPreservedEnrollmentStatePath.value();
     return TRUE;
   }
   *OUT_success = true;
@@ -2794,7 +2796,7 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
   if (!platform_->ReadFile(kPreservedEnrollmentStatePath,
                            &enrollment_blob)) {
     LOG(ERROR) << "Failed to read out enrollment state from "
-               << kPreservedEnrollmentStatePath;
+               << kPreservedEnrollmentStatePath.value();
     return TRUE;
   }
   std::string enrollment_string(
@@ -3485,7 +3487,7 @@ bool Service::RemoveAllMounts(bool unmount) {
 }
 
 bool Service::GetMountPointForUser(const std::string& username,
-                                   std::string* path) {
+                                   FilePath* path) {
   scoped_refptr<cryptohome::Mount> mount;
 
   mount = GetMountForUser(username);

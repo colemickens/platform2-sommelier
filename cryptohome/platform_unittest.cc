@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
+using base::FilePath;
 
 namespace cryptohome {
 
@@ -29,17 +30,17 @@ class PlatformTest : public ::testing::Test {
   std::string GetRandomSuffix() {
     return platform_.GetRandomSuffix();
   }
-  std::string GetTempName() {
-    base::FilePath temp_directory;
+  FilePath GetTempName() {
+    FilePath temp_directory;
     EXPECT_TRUE(base::GetTempDir(&temp_directory));
-    return temp_directory.Append(GetRandomSuffix()).value();
+    return temp_directory.Append(GetRandomSuffix());
   }
 
   Platform platform_;
 };
 
 TEST_F(PlatformTest, WriteFileCanBeReadBack) {
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   EXPECT_TRUE(platform_.WriteStringToFile(filename, content));
   std::string output;
@@ -51,7 +52,7 @@ TEST_F(PlatformTest, WriteFileCanBeReadBack) {
 TEST_F(PlatformTest, WriteFileSets0666) {
   const mode_t mask = 0000;
   const mode_t mode = 0666;
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   const mode_t old_mask = platform_.SetMask(mask);
   EXPECT_TRUE(platform_.WriteStringToFile(filename, content));
@@ -65,11 +66,9 @@ TEST_F(PlatformTest, WriteFileSets0666) {
 TEST_F(PlatformTest, WriteFileCreatesMissingParentDirectoriesWith0700) {
   const mode_t mask = 0000;
   const mode_t mode = 0700;
-  const std::string dirname(GetTempName());
-  const std::string subdirname(
-      base::FilePath(dirname).Append(GetRandomSuffix()).value());
-  const std::string filename(
-      base::FilePath(subdirname).Append(GetRandomSuffix()).value());
+  const FilePath dirname(GetTempName());
+  const FilePath subdirname(dirname.Append(GetRandomSuffix()));
+  const FilePath filename(subdirname.Append(GetRandomSuffix()));
   const std::string content("blablabla");
   EXPECT_TRUE(platform_.WriteStringToFile(filename, content));
   mode_t dir_mode = 0;
@@ -84,7 +83,7 @@ TEST_F(PlatformTest, WriteFileCreatesMissingParentDirectoriesWith0700) {
 }
 
 TEST_F(PlatformTest, WriteStringToFileAtomicCanBeReadBack) {
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   EXPECT_TRUE(platform_.WriteStringToFileAtomic(filename, content, 0644));
   std::string output;
@@ -96,7 +95,7 @@ TEST_F(PlatformTest, WriteStringToFileAtomicCanBeReadBack) {
 TEST_F(PlatformTest, WriteStringToFileAtomicHonorsMode) {
   const mode_t mask = 0000;
   const mode_t mode = 0616;
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   const mode_t old_mask = platform_.SetMask(mask);
   EXPECT_TRUE(platform_.WriteStringToFileAtomic(filename, content, mode));
@@ -110,7 +109,7 @@ TEST_F(PlatformTest, WriteStringToFileAtomicHonorsMode) {
 TEST_F(PlatformTest, WriteStringToFileAtomicHonorsUmask) {
   const mode_t mask = 0073;
   const mode_t mode = 0777;
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   const mode_t old_mask = platform_.SetMask(mask);
   EXPECT_TRUE(platform_.WriteStringToFileAtomic(filename, content, mode));
@@ -125,11 +124,9 @@ TEST_F(PlatformTest,
        WriteStringToFileAtomicCreatesMissingParentDirectoriesWith0700) {
   const mode_t mask = 0000;
   const mode_t mode = 0700;
-  const std::string dirname(GetTempName());
-  const std::string subdirname(
-      base::FilePath(dirname).Append(GetRandomSuffix()).value());
-  const std::string filename(
-      base::FilePath(subdirname).Append(GetRandomSuffix()).value());
+  const FilePath dirname(GetTempName());
+  const FilePath subdirname(dirname.Append(GetRandomSuffix()));
+  const FilePath filename(subdirname.Append(GetRandomSuffix()));
   const std::string content("blablabla");
   EXPECT_TRUE(platform_.WriteStringToFileAtomic(filename, content, 0777));
   mode_t dir_mode = 0;
@@ -144,7 +141,7 @@ TEST_F(PlatformTest,
 }
 
 TEST_F(PlatformTest, WriteStringToFileAtomicDurableCanBeReadBack) {
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   EXPECT_TRUE(
       platform_.WriteStringToFileAtomicDurable(filename, content, 0644));
@@ -157,7 +154,7 @@ TEST_F(PlatformTest, WriteStringToFileAtomicDurableCanBeReadBack) {
 TEST_F(PlatformTest, WriteStringToFileAtomicDurableHonorsMode) {
   const mode_t mask = 0000;
   const mode_t mode = 0616;
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   const mode_t old_mask = platform_.SetMask(mask);
   EXPECT_TRUE(
@@ -172,7 +169,7 @@ TEST_F(PlatformTest, WriteStringToFileAtomicDurableHonorsMode) {
 TEST_F(PlatformTest, WriteStringToFileAtomicDurableHonorsUmask) {
   const mode_t mask = 0073;
   const mode_t mode = 0777;
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   const mode_t old_mask = platform_.SetMask(mask);
   EXPECT_TRUE(
@@ -188,11 +185,9 @@ TEST_F(PlatformTest,
        WriteStringToFileAtomicDurableCreatesMissingParentDirectoriesWith0700) {
   const mode_t mask = 0000;
   const mode_t mode = 0700;
-  const std::string dirname(GetTempName());
-  const std::string subdirname(
-      base::FilePath(dirname).Append(GetRandomSuffix()).value());
-  const std::string filename(
-      base::FilePath(subdirname).Append(GetRandomSuffix()).value());
+  const FilePath dirname(GetTempName());
+  const FilePath subdirname(dirname.Append(GetRandomSuffix()));
+  const FilePath filename(subdirname.Append(GetRandomSuffix()));
   const std::string content("blablabla");
   EXPECT_TRUE(platform_.WriteStringToFileAtomicDurable(
       filename, content, 0777));
@@ -208,7 +203,7 @@ TEST_F(PlatformTest,
 }
 
 TEST_F(PlatformTest, TouchFileDurable) {
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   EXPECT_TRUE(platform_.TouchFileDurable(filename));
   int64_t size = -1;
   EXPECT_TRUE(platform_.GetFileSize(filename, &size));
@@ -219,7 +214,7 @@ TEST_F(PlatformTest, TouchFileDurable) {
 TEST_F(PlatformTest, TouchFileDurableSets0666) {
   const mode_t mask = 0000;
   const mode_t mode = 0666;
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const mode_t old_mask = platform_.SetMask(mask);
   EXPECT_TRUE(platform_.TouchFileDurable(filename));
   mode_t file_mode = 0;
@@ -232,7 +227,7 @@ TEST_F(PlatformTest, TouchFileDurableSets0666) {
 TEST_F(PlatformTest, TouchFileDurableHonorsUmask) {
   const mode_t mask = 0066;
   const mode_t mode = 0640;
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const mode_t old_mask = platform_.SetMask(mask);
   EXPECT_TRUE(platform_.TouchFileDurable(filename));
   mode_t file_mode = 0;
@@ -243,8 +238,8 @@ TEST_F(PlatformTest, TouchFileDurableHonorsUmask) {
 }
 
 TEST_F(PlatformTest, DataSyncFileHasSaneReturnCodes) {
-  const std::string filename(GetTempName());
-  const std::string dirname(GetTempName());
+  const FilePath filename(GetTempName());
+  const FilePath dirname(GetTempName());
   platform_.CreateDirectory(dirname);
   EXPECT_FALSE(platform_.DataSyncFile(dirname));
   EXPECT_FALSE(platform_.DataSyncFile(filename));
@@ -255,8 +250,8 @@ TEST_F(PlatformTest, DataSyncFileHasSaneReturnCodes) {
 }
 
 TEST_F(PlatformTest, SyncDirectoryHasSaneReturnCodes) {
-  const std::string filename(GetTempName());
-  const std::string dirname(GetTempName());
+  const FilePath filename(GetTempName());
+  const FilePath dirname(GetTempName());
   platform_.WriteStringToFile(filename, "bla");
   EXPECT_FALSE(platform_.SyncDirectory(filename));
   EXPECT_FALSE(platform_.SyncDirectory(dirname));
@@ -267,31 +262,32 @@ TEST_F(PlatformTest, SyncDirectoryHasSaneReturnCodes) {
 }
 
 TEST_F(PlatformTest, HasExtendedFileAttribute) {
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
   const std::string name("user.foo");
   const std::string value("bar");
 
-  ASSERT_EQ(0, setxattr(filename.c_str(), name.c_str(), value.c_str(),
+  ASSERT_EQ(0, setxattr(filename.value().c_str(), name.c_str(), value.c_str(),
                         value.length(), 0));
 
   EXPECT_TRUE(platform_.HasExtendedFileAttribute(filename, name));
 
-  EXPECT_FALSE(platform_.HasExtendedFileAttribute("file_not_exist", name));
-  EXPECT_FALSE(
-      platform_.HasExtendedFileAttribute(filename, "user.name_not_exist"));
+  EXPECT_FALSE(platform_.HasExtendedFileAttribute(
+        FilePath("file_not_exist"), name));
+  EXPECT_FALSE(platform_.HasExtendedFileAttribute(
+        filename, "user.name_not_exist"));
 }
 
 TEST_F(PlatformTest, HasNoDumpFileAttribute) {
-  const std::string filename(GetTempName());
+  const FilePath filename(GetTempName());
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
 
   EXPECT_FALSE(platform_.HasNoDumpFileAttribute(filename));
 
   int fd;
-  ASSERT_GT(fd = open(filename.c_str(), O_RDONLY), 0);
+  ASSERT_GT(fd = open(filename.value().c_str(), O_RDONLY), 0);
   int flags = FS_UNRM_FL | FS_NODUMP_FL;
   ASSERT_GE(ioctl(fd, FS_IOC_SETFLAGS, &flags), 0);
 

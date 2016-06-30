@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
 
@@ -45,11 +46,11 @@ class VaultKeyset {
   virtual const brillo::SecureBlob& fnek_sig() const;
   virtual const brillo::SecureBlob& fnek_salt() const;
 
-  virtual bool Load(const std::string& filename);
+  virtual bool Load(const base::FilePath& filename);
   // Load must be called first.
   virtual bool Decrypt(const brillo::SecureBlob& key);
   // Encrypt must be called first.
-  virtual bool Save(const std::string& filename);
+  virtual bool Save(const base::FilePath& filename);
   virtual bool Encrypt(const brillo::SecureBlob& key);
   virtual const SerializedVaultKeyset& serialized() const {
     return serialized_;
@@ -57,7 +58,7 @@ class VaultKeyset {
   virtual SerializedVaultKeyset* mutable_serialized() {
     return &serialized_;
   }
-  virtual const std::string& source_file() const {
+  virtual const base::FilePath& source_file() const {
     return source_file_;
   }
   virtual void set_legacy_index(int index) {
@@ -88,7 +89,7 @@ class VaultKeyset {
   SerializedVaultKeyset serialized_;
   bool loaded_;
   bool encrypted_;
-  std::string source_file_;
+  base::FilePath source_file_;
   int legacy_index_;
 
   DISALLOW_COPY_AND_ASSIGN(VaultKeyset);

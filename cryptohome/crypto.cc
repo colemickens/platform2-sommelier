@@ -16,6 +16,7 @@
 #include <openssl/sha.h>
 #include <unistd.h>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -40,6 +41,7 @@ extern "C" {
 #include <keyutils.h>
 }
 
+using base::FilePath;
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -117,7 +119,7 @@ Crypto::CryptoError Crypto::EnsureTpm(bool reload_key) const {
 }
 
 bool Crypto::PasskeyToTokenAuthData(const brillo::Blob& passkey,
-                                    const base::FilePath& salt_file,
+                                    const FilePath& salt_file,
                                     SecureBlob* auth_data) const {
   // Use the scrypt algorithm to derive auth data from the passkey.
   const size_t kAuthDataSizeBytes = 32;
@@ -152,13 +154,13 @@ bool Crypto::PasskeyToTokenAuthData(const brillo::Blob& passkey,
   return true;
 }
 
-bool Crypto::GetOrCreateSalt(const base::FilePath& path,
+bool Crypto::GetOrCreateSalt(const FilePath& path,
                              size_t length,
                              bool force,
                              SecureBlob* salt) const {
   int64_t file_len = 0;
-  if (platform_->FileExists(path.value())) {
-    if (!platform_->GetFileSize(path.value(), &file_len)) {
+  if (platform_->FileExists(path)) {
+    if (!platform_->GetFileSize(path, &file_len)) {
       LOG(ERROR) << "Can't get file len for " << path.value();
       return false;
     }
@@ -170,14 +172,14 @@ bool Crypto::GetOrCreateSalt(const base::FilePath& path,
     // If this salt doesn't exist, automatically create it
     local_salt.resize(length);
     CryptoLib::GetSecureRandom(local_salt.data(), local_salt.size());
-    if (!platform_->WriteFileAtomicDurable(path.value(), local_salt,
+    if (!platform_->WriteFileAtomicDurable(path, local_salt,
                                            kSaltFilePermissions)) {
       LOG(ERROR) << "Could not write user salt";
       return false;
     }
   } else {
     local_salt.resize(file_len);
-    if (!platform_->ReadFile(path.value(), &local_salt)) {
+    if (!platform_->ReadFile(path, &local_salt)) {
       LOG(ERROR) << "Could not read salt file of length " << file_len;
       return false;
     }

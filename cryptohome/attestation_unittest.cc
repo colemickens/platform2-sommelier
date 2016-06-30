@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -28,6 +29,7 @@
 
 #include "attestation.pb.h"  // NOLINT(build/include)
 
+using base::FilePath;
 using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::DoAll;
@@ -62,10 +64,11 @@ class AttestationTest : public testing::Test {
     http_transport_ = std::make_shared<brillo::http::fake::Transport>();
     attestation_.set_http_transport(http_transport_);
     // Fake up a single file by default.
-    ON_CALL(platform_,
-            WriteStringToFileAtomicDurable(StartsWith(kTestPath), _, _))
+    ON_CALL(platform_, WriteStringToFileAtomicDurable(
+          Property(&FilePath::value, StartsWith(kTestPath)), _, _))
         .WillByDefault(WithArgs<1>(Invoke(this, &AttestationTest::WriteDB)));
-    ON_CALL(platform_, ReadFileToString(StartsWith(kTestPath), _))
+    ON_CALL(platform_, ReadFileToString(
+          Property(&FilePath::value, StartsWith(kTestPath)), _))
         .WillByDefault(WithArgs<1>(Invoke(this, &AttestationTest::ReadDB)));
     // Configure a TPM that is ready.
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -1430,20 +1431,22 @@ int main(int argc, char **argv) {
 
     cryptohome::UsernamePasskey up(account_id.c_str(), SecureBlob());
 
-    std::string vault_path = StringPrintf("/home/.shadow/%s/master.0",
-        up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
-
+    FilePath vault_path = FilePath("/home/.shadow")
+        .Append(up.GetObfuscatedUsername(GetSystemSalt(proxy)))
+        .Append("master.0");
     SecureBlob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
-      printf("Couldn't load keyset contents: %s.\n", vault_path.c_str());
+      printf("Couldn't load keyset contents: %s.\n",
+             vault_path.value().c_str());
       return 1;
     }
     cryptohome::SerializedVaultKeyset serialized;
     if (!serialized.ParseFromArray(contents.data(), contents.size())) {
-      printf("Couldn't parse keyset contents: %s.\n", vault_path.c_str());
+      printf("Couldn't parse keyset contents: %s.\n",
+             vault_path.value().c_str());
       return 1;
     }
-    printf("For keyset: %s\n", vault_path.c_str());
+    printf("For keyset: %s\n", vault_path.value().c_str());
     printf("  Flags:\n");
     if ((serialized.flags() & cryptohome::SerializedVaultKeyset::TPM_WRAPPED)
         && serialized.has_tpm_key()) {
@@ -1488,38 +1491,35 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_LAST_ACTIVITY],
                      action.c_str())) {
-    std::vector<std::string> user_dirs;
-    if (!platform.
-            EnumerateDirectoryEntries("/home/.shadow/", false, &user_dirs)) {
+    std::vector<FilePath> user_dirs;
+    if (!platform.EnumerateDirectoryEntries(
+          FilePath("/home/.shadow/"), false, &user_dirs)) {
       LOG(ERROR) << "Can not list shadow root.";
       return 1;
     }
-    for (std::vector<std::string>::iterator it = user_dirs.begin();
+    for (std::vector<FilePath>::iterator it = user_dirs.begin();
          it != user_dirs.end(); ++it) {
-      FilePath path(*it);
-      const std::string dir_name = path.BaseName().value();
+      const std::string dir_name = it->BaseName().value();
       if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
         continue;
       // TODO(wad): change it so that it uses GetVaultKeysets().
       std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
-          platform.GetFileEnumerator(path.value(), false,
-                                     base::FileEnumerator::FILES));
+          platform.GetFileEnumerator(*it, false, base::FileEnumerator::FILES));
       base::Time max_activity = base::Time::UnixEpoch();
-      std::string next_path;
+      FilePath next_path;
       while (!(next_path = file_enumerator->Next()).empty()) {
-        std::string file_name = FilePath(next_path).BaseName().value();
+        FilePath file_name = next_path.BaseName().RemoveFinalExtension();
         // Scan for "master." files.
-        if (file_name.find(cryptohome::kKeyFile, 0,
-                           strlen(cryptohome::kKeyFile) == std::string::npos))
+        if (file_name.value() != cryptohome::kKeyFile)
           continue;
         SecureBlob contents;
         if (!platform.ReadFile(next_path, &contents)) {
-          LOG(ERROR) << "Couldn't load keyset contents: " << next_path;
+          LOG(ERROR) << "Couldn't load keyset: " << next_path.value();
           continue;
         }
         cryptohome::SerializedVaultKeyset keyset;
         if (!keyset.ParseFromArray(contents.data(), contents.size())) {
-          LOG(ERROR) << "Couldn't parse keyset contents: " << next_path;
+          LOG(ERROR) << "Couldn't parse keyset: " << next_path.value();
           continue;
         }
         if (keyset.has_last_activity_timestamp()) {

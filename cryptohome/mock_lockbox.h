@@ -7,7 +7,6 @@
 
 #include "cryptohome/lockbox.h"
 
-#include <base/logging.h>
 #include <brillo/secure_blob.h>
 
 #include <gmock/gmock.h>

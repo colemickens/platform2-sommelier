@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -17,6 +18,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
+using base::FilePath;
 using testing::NiceMock;
 using testing::WithArgs;
 using testing::Return;
@@ -111,15 +113,15 @@ class BootLockboxTest : public testing::Test {
     return true;
   }
 
-  bool FakeWriteFile(const std::string& path, const std::string& data) {
-    fake_files_[path] = data;
+  bool FakeWriteFile(const FilePath& path, const std::string& data) {
+    fake_files_[path.value()] = data;
     return true;
   }
 
-  bool FakeReadFile(const std::string& path, std::string* data) {
-    if (fake_files_.count(path) == 0)
+  bool FakeReadFile(const FilePath& path, std::string* data) {
+    if (fake_files_.count(path.value()) == 0)
       return false;
-    *data = fake_files_[path];
+    *data = fake_files_[path.value()];
     return true;
   }
 

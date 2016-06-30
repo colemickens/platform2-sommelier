@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
@@ -13,6 +14,8 @@
 #include "cryptohome/lockbox-cache.h"
 #include "cryptohome/lockbox-cache-tpm.h"
 #include "cryptohome/platform.h"
+
+using base::FilePath;
 
 namespace switches {
 // Keeps std* open for debugging
@@ -24,9 +27,9 @@ static const char *kCachePath = "cache";
 
 namespace {
 bool CacheLockbox(cryptohome::Platform* platform,
-                  const std::string& nvram_path,
-                  const std::string& lockbox_path,
-                  const std::string& cache_path) {
+                  const FilePath& nvram_path,
+                  const FilePath& lockbox_path,
+                  const FilePath& cache_path) {
   static const uint32_t kBogusNvramIndex = 0;
   cryptohome::LockboxCacheTpm cache_tpm(kBogusNvramIndex, nvram_path);
   cache_tpm.Init(platform, false);
@@ -45,9 +48,9 @@ int main(int argc, char **argv) {
 
   // Allow the commands to be configurable.
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
-  std::string nvram_path = cl->GetSwitchValueASCII(switches::kNvramPath);
-  std::string lockbox_path = cl->GetSwitchValueASCII(switches::kLockboxPath);
-  std::string cache_path = cl->GetSwitchValueASCII(switches::kCachePath);
+  FilePath nvram_path(cl->GetSwitchValueASCII(switches::kNvramPath));
+  FilePath lockbox_path(cl->GetSwitchValueASCII(switches::kLockboxPath));
+  FilePath cache_path(cl->GetSwitchValueASCII(switches::kCachePath));
   if (nvram_path.empty() || lockbox_path.empty() || cache_path.empty()) {
     LOG(ERROR) << "Paths for --cache, --lockbox, and --nvram must be supplied.";
     return 1;

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/compiler_specific.h>
+#include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -20,6 +21,7 @@
 
 #include "install_attributes.pb.h"  // NOLINT(build/include)
 
+using base::FilePath;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -61,18 +63,18 @@ class BootAttributesTest : public testing::Test {
 
     brillo::Blob blob(message.ByteSize());
     message.SerializeWithCachedSizesToArray(blob.data());
-    files_[BootAttributes::kAttributeFile] = blob;
+    files_[FilePath(BootAttributes::kAttributeFile)] = blob;
 
     blob.clear();
-    files_[BootAttributes::kSignatureFile] = blob;
+    files_[FilePath(BootAttributes::kSignatureFile)] = blob;
   }
 
-  bool FakeReadFile(const std::string filename, brillo::Blob* blob) {
+  bool FakeReadFile(const FilePath& filename, brillo::Blob* blob) {
     *blob = files_[filename];
     return true;
   }
 
-  bool FakeWriteFile(const std::string filename, brillo::Blob blob) {
+  bool FakeWriteFile(const FilePath& filename, brillo::Blob blob) {
     files_[filename] = blob;
     return true;
   }
@@ -85,7 +87,7 @@ class BootAttributesTest : public testing::Test {
 
   std::unique_ptr<BootAttributes> boot_attributes_;
 
-  std::map<std::string, brillo::Blob> files_;
+  std::map<FilePath, brillo::Blob> files_;
 };
 
 TEST_F(BootAttributesTest, BasicOperations) {
@@ -115,7 +117,7 @@ TEST_F(BootAttributesTest, BasicOperations) {
   EXPECT_EQ("abcd", value);
 
   // Verify the attribute file content.
-  brillo::Blob blob = files_[BootAttributes::kAttributeFile];
+  brillo::Blob blob = files_[FilePath(BootAttributes::kAttributeFile)];
   SerializedInstallAttributes message;
   message.ParseFromString(
       std::string(reinterpret_cast<char*>(blob.data()), blob.size()));
@@ -140,7 +142,7 @@ TEST_F(BootAttributesTest, BasicOperations) {
   EXPECT_TRUE(has_test2);
 
   // Verify the signature file content.
-  blob = files_[BootAttributes::kSignatureFile];
+  blob = files_[FilePath(BootAttributes::kSignatureFile)];
   EXPECT_EQ("fake signature", std::string(
       reinterpret_cast<char*>(blob.data()), blob.size()));
 }

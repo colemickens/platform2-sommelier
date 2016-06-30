@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/threading/platform_thread.h>
@@ -21,6 +22,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
+using base::FilePath;
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -403,7 +405,7 @@ bool Lockbox::ParseSizeBlob(const brillo::Blob& blob, uint32_t* size) const {
 // TODO(keescook) Write unittests for this.
 void Lockbox::FinalizeMountEncrypted(const brillo::Blob &entropy) const {
   std::string hex;
-  std::string outfile_path;
+  FilePath outfile_path;
   FILE *outfile;
   int rc;
 

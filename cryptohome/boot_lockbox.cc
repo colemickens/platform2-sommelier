@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/stl_util.h>
 #include <openssl/objects.h>
 #include <openssl/rsa.h>
@@ -18,6 +19,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
 
+using base::FilePath;
 using brillo::SecureBlob;
 
 namespace {
@@ -29,7 +31,7 @@ const unsigned char kPCRValue[20] = {0};
 // This is an arbitrary value, our only goal is for the PCR to be non-zero.
 const char kPCRExtension[] = "CROS_PCR15_845A4A757B94";
 
-const char kKeyFilePath[] = "/var/lib/boot-lockbox/key";
+const FilePath::CharType kKeyFilePath[] = "/var/lib/boot-lockbox/key";
 
 const mode_t kKeyFilePermissions = 0600;
 
@@ -138,7 +140,7 @@ bool BootLockbox::GetCreationBlob(brillo::SecureBlob* creation_blob) {
 
 bool BootLockbox::LoadKey() {
   std::string file_contents;
-  if (!platform_->ReadFileToString(kKeyFilePath, &file_contents)) {
+  if (!platform_->ReadFileToString(FilePath(kKeyFilePath), &file_contents)) {
     return false;
   }
   brillo::SecureBlob protobuf;
@@ -164,7 +166,7 @@ bool BootLockbox::SaveKey() {
     LOG(ERROR) << "Failed to encrypt boot-lockbox key.";
     return false;
   }
-  if (!platform_->WriteStringToFileAtomicDurable(kKeyFilePath,
+  if (!platform_->WriteStringToFileAtomicDurable(FilePath(kKeyFilePath),
                                                  encrypted_protobuf,
                                                  kKeyFilePermissions)) {
     LOG(ERROR) << "Failed to write boot-lockbox key.";

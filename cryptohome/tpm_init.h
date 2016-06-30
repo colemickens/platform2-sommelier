@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
 
@@ -155,11 +156,11 @@ class TpmInit {
 
   // Returns whether or not the TPM is enabled by checking a flag in the TPM's
   // entry in either /sys/class/misc or /sys/class/tpm
-  bool IsEnabledCheckViaSysfs(const char* enabled_file);
+  bool IsEnabledCheckViaSysfs(const base::FilePath& enabled_file);
 
   // Returns whether or not the TPM is owned by checking a flag in the TPM's
   // entry in either /sys/class/misc or /sys/class/tpm
-  bool IsOwnedCheckViaSysfs(const char* owned_file);
+  bool IsOwnedCheckViaSysfs(const base::FilePath& owned_file);
 
 
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
@@ -171,7 +172,7 @@ class TpmInit {
   bool LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle);
 
   // Returns true if the first byte of the file |file_name| is "1"
-  bool CheckSysfsForOne(const char* file_name) const;
+  bool CheckSysfsForOne(const base::FilePath& file_name) const;
 
   // The background task for initializing the TPM, implemented as a
   // PlatformThread::Delegate

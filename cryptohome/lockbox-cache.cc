@@ -7,9 +7,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 
 #include "cryptohome/lockbox.h"
+
+using base::FilePath;
 
 namespace {
 // Permissions of cache file (modulo umask).
@@ -31,13 +34,14 @@ void LockboxCache::Reset() {
 }
 
 bool LockboxCache::LoadAndVerify(uint32_t index,
-                                 const std::string& lockbox_path) {
+                                 const FilePath& lockbox_path) {
   if (loaded_) {
     LOG(INFO) << "Load() called in succession without a Reset()";
     return false;
   }
   if (!platform_->ReadFile(lockbox_path, &contents_)) {
-    LOG(ERROR) << "Failed to read lockbox contents from " << lockbox_path;
+    LOG(ERROR) << "Failed to read lockbox contents from "
+               << lockbox_path.value();
     return false;
   }
   Lockbox lockbox(tpm_, index);
@@ -54,7 +58,7 @@ bool LockboxCache::LoadAndVerify(uint32_t index,
   return true;
 }
 
-bool LockboxCache::Write(const std::string& cache_path) const {
+bool LockboxCache::Write(const FilePath& cache_path) const {
   // Write atomically (not durably) because cache file resides on tmpfs.
   if (!platform_->WriteFileAtomic(cache_path, contents_,
                                   kCacheFilePermissions)) {

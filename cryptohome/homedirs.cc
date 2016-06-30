@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -34,7 +35,7 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-const char *kShadowRoot = "/home/.shadow";
+const FilePath::CharType *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
 const char kGCacheFilesAttribute[] = "user.GCacheFiles";
 const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
@@ -42,7 +43,7 @@ const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
 HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
       platform_(default_platform_.get()),
-      shadow_root_(kShadowRoot),
+      shadow_root_(FilePath(kShadowRoot)),
       timestamp_cache_(NULL),
       enterprise_owned_(false),
       default_policy_provider_(new policy::PolicyProvider()),
@@ -156,14 +157,14 @@ bool HomeDirs::FreeDiskSpace() {
         }
       }
 
-      std::string mountdir = deleted_user_dir.Append(kMountDir).value();
-      std::string vaultdir = deleted_user_dir.Append(kVaultDir).value();
+      FilePath mountdir = deleted_user_dir.Append(kMountDir);
+      FilePath vaultdir = deleted_user_dir.Append(kVaultDir);
       if (platform_->IsDirectoryMountedWith(mountdir, vaultdir)) {
         LOG(INFO) << "Attempt to delete currently logged in user. Skipped...";
       } else {
         LOG(INFO) << "Freeing disk space by deleting user "
                   << deleted_user_dir.value();
-        platform_->DeleteFile(deleted_user_dir.value(), true);
+        platform_->DeleteFile(deleted_user_dir, true);
         if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
           return true;
       }
@@ -236,7 +237,7 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
 
 bool HomeDirs::Exists(const Credentials& credentials) const {
   std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
-  std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
+  FilePath user_dir = shadow_root_.Append(obfuscated);
   return platform_->DirectoryExists(user_dir);
 }
 
@@ -273,24 +274,23 @@ VaultKeyset* HomeDirs::GetVaultKeyset(const Credentials& credentials) const {
 bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
                                std::vector<int>* keysets) const {
   CHECK(keysets);
-  std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
+  FilePath user_dir = shadow_root_.Append(obfuscated);
 
   std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(user_dir, false,
                                    base::FileEnumerator::FILES));
-  std::string next_path;
+  FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
-    std::string file_name = FilePath(next_path).BaseName().value();
+    FilePath file_name = next_path.BaseName();
     // Scan for "master." files.
-    if (file_name.find(kKeyFile, 0, strlen(kKeyFile) == std::string::npos))
+    if (file_name.RemoveFinalExtension().value() != kKeyFile) {
       continue;
-    char *end = NULL;
-    std::string index_str = file_name.substr(strlen(kKeyFile));
-    const char * index_c_str = index_str.c_str();
-    long index = strtol(index_c_str, &end, 10);  // NOLINT(runtime/int)
-    // Ensure the entire suffix is consumed.
-    if (end && *end != '\0')
+    }
+    std::string index_str = file_name.FinalExtension();
+    int index;
+    if (!base::StringToInt(&index_str[1], &index)) {
       continue;
+    }
     // The test below will catch all strtol(3) error conditions.
     if (index < 0 || index >= kKeyFileMax) {
       LOG(ERROR) << "Invalid key file range: " << index;
@@ -309,24 +309,24 @@ bool HomeDirs::GetVaultKeysetLabels(const Credentials& credentials,
                                     std::vector<std::string>* labels) const {
   CHECK(labels);
   std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
-  std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
+  FilePath user_dir = shadow_root_.Append(obfuscated);
 
   std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(user_dir, false /* Not recursive. */,
                                    base::FileEnumerator::FILES));
-  std::string next_path;
+  FilePath next_path;
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
   while (!(next_path = file_enumerator->Next()).empty()) {
-    std::string file_name = FilePath(next_path).BaseName().value();
+    FilePath file_name = next_path.BaseName();
     // Scan for "master." files.
-    if (file_name.find(kKeyFile, 0, strlen(kKeyFile) == std::string::npos)) {
+    if (file_name.RemoveFinalExtension().value() != kKeyFile) {
       continue;
     }
     int index = 0;
-    std::string index_str = file_name.substr(strlen(kKeyFile));
+    std::string index_str = file_name.FinalExtension();
     // StringToInt will only return true for a perfect conversion.
-    if (!base::StringToInt(index_str, &index)) {
+    if (!base::StringToInt(&index_str[1], &index)) {
       continue;
     }
     if (index < 0 || index >= kKeyFileMax) {
@@ -563,7 +563,7 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   // or enforcing mandatory locking.
   int new_index = 0;
   FILE* vk_file = NULL;
-  std::string vk_path;
+  FilePath vk_path;
   for ( ; new_index < kKeyFileMax; ++new_index) {
     vk_path = GetVaultKeysetPath(obfuscated, new_index);
     // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
@@ -672,7 +672,7 @@ bool HomeDirs::ForceRemoveKeyset(const std::string& obfuscated, int index) {
   if (index < 0 || index >= kKeyFileMax)
     return false;
 
-  std::string path = GetVaultKeysetPath(obfuscated, index);
+  FilePath path = GetVaultKeysetPath(obfuscated, index);
   if (!platform_->FileExists(path)) {
     LOG(WARNING) << "ForceRemoveKeyset: keyset " << index << " for "
                  << obfuscated << " does not exist";
@@ -687,8 +687,8 @@ bool HomeDirs::MoveKeyset(const std::string& obfuscated, int src, int dst) {
   if (src < 0 || dst < 0 || src >= kKeyFileMax || dst >= kKeyFileMax)
     return false;
 
-  std::string src_path = GetVaultKeysetPath(obfuscated, src);
-  std::string dst_path = GetVaultKeysetPath(obfuscated, dst);
+  FilePath src_path = GetVaultKeysetPath(obfuscated, src);
+  FilePath dst_path = GetVaultKeysetPath(obfuscated, dst);
   if (!platform_->FileExists(src_path))
     return false;
   if (platform_->FileExists(dst_path))
@@ -704,13 +704,12 @@ bool HomeDirs::MoveKeyset(const std::string& obfuscated, int src, int dst) {
   return true;
 }
 
-std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated,
+FilePath HomeDirs::GetVaultKeysetPath(const std::string& obfuscated,
                                          int index) const {
-  return base::StringPrintf("%s/%s/%s%d",
-                            shadow_root_.c_str(),
-                            obfuscated.c_str(),
-                            kKeyFile,
-                            index);
+  return shadow_root_
+    .Append(obfuscated)
+    .Append(kKeyFile)
+    .AddExtension(base::IntToString(index));
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
@@ -719,11 +718,11 @@ void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
     if (!GetOwner(&owner) ||  // No owner? bail.
         // Don't delete the owner's vault!
         // TODO(wad,ellyjones) Add GetUser*Path-helpers
-        vault == FilePath(shadow_root_).Append(owner).Append(kVaultDir))
+        vault == shadow_root_.Append(owner).Append(kVaultDir))
     return;
   }
   // Once we're sure this is not the owner vault, delete it.
-  platform_->DeleteFile(vault.DirName().value(), true);
+  platform_->DeleteFile(vault.DirName(), true);
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomes() {
@@ -742,44 +741,42 @@ void HomeDirs::RemoveNonOwnerCryptohomes() {
 
 void HomeDirs::DoForEveryUnmountedCryptohome(
     const CryptohomeCallback& cryptohome_cb) {
-  std::vector<std::string> entries;
+  std::vector<FilePath> entries;
   if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
     return;
   }
-  for (std::vector<std::string>::iterator it = entries.begin();
+  for (std::vector<FilePath>::iterator it = entries.begin();
        it != entries.end(); ++it) {
-    FilePath path(*it);
-    const std::string dir_name = path.BaseName().value();
+    const std::string dir_name = it->BaseName().value();
     if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name)) {
       continue;
     }
-    std::string vault_path = path.Append(kVaultDir).value();
-    std::string mount_path = path.Append(kMountDir).value();
+    FilePath vault_path = it->Append(kVaultDir);
+    FilePath mount_path = it->Append(kMountDir);
     if (!platform_->DirectoryExists(vault_path)) {
       continue;
     }
     if (platform_->IsDirectoryMountedWith(mount_path, vault_path)) {
       continue;
     }
-    cryptohome_cb.Run(FilePath(vault_path));
+    cryptohome_cb.Run(vault_path);
   }
 }
 
 int HomeDirs::CountMountedCryptohomes() const {
-  std::vector<std::string> entries;
+  std::vector<FilePath> entries;
   int mounts = 0;
   if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
     return 0;
   }
-  for (std::vector<std::string>::iterator it = entries.begin();
+  for (std::vector<FilePath>::iterator it = entries.begin();
        it != entries.end(); ++it) {
-    FilePath path(*it);
-    const std::string dir_name = path.BaseName().value();
+    const std::string dir_name = it->BaseName().value();
     if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name)) {
       continue;
     }
-    std::string vault_path = path.Append(kVaultDir).value();
-    std::string mount_path = path.Append(kMountDir).value();
+    FilePath vault_path = it->Append(kVaultDir);
+    FilePath mount_path = it->Append(kMountDir);
     if (!platform_->DirectoryExists(vault_path)) {
       continue;
     }
@@ -793,13 +790,11 @@ int HomeDirs::CountMountedCryptohomes() const {
 
 void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {
   std::unique_ptr<FileEnumerator> subdir_enumerator(
-    platform_->GetFileEnumerator(
-      dir.value(),
-      false,
+    platform_->GetFileEnumerator(dir, false,
       base::FileEnumerator::FILES |
           base::FileEnumerator::DIRECTORIES |
           base::FileEnumerator::SHOW_SYM_LINKS));
-  for (std::string subdir_path = subdir_enumerator->Next();
+  for (FilePath subdir_path = subdir_enumerator->Next();
        !subdir_path.empty();
        subdir_path = subdir_enumerator->Next()) {
     platform_->DeleteFile(subdir_path, true);
@@ -807,24 +802,23 @@ void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {
 }
 
 void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
-  std::vector<std::string> dirents;
-  if (!platform_->EnumerateDirectoryEntries(prefix.value(), false, &dirents))
+  std::vector<FilePath> dirents;
+  if (!platform_->EnumerateDirectoryEntries(prefix, false, &dirents))
     return;
   std::string owner;
   if (!enterprise_owned_ && !GetOwner(&owner))
     return;
-  for (std::vector<std::string>::iterator it = dirents.begin();
+  for (std::vector<FilePath>::iterator it = dirents.begin();
        it != dirents.end(); ++it) {
-    FilePath path(*it);
-    const std::string basename = path.BaseName().value();
+    const std::string basename = it->BaseName().value();
     if (!enterprise_owned_ && !strcasecmp(basename.c_str(), owner.c_str()))
       continue;  // Skip the owner's directory.
     if (!brillo::cryptohome::home::IsSanitizedUserName(basename))
       continue;  // Skip any directory whose name is not an obfuscated user
                  // name.
-    if (platform_->IsDirectoryMounted(path.value()))
+    if (platform_->IsDirectoryMounted(*it))
       continue;  // Skip any directory that is currently mounted.
-    platform_->DeleteFile(path.value(), true);
+    platform_->DeleteFile(*it, true);
   }
 }
 
@@ -834,15 +828,14 @@ void HomeDirs::DeleteCacheCallback(const FilePath& vault) {
   DeleteDirectoryContents(cache);
 }
 
-bool HomeDirs::FindGCacheFilesDir(const FilePath& vault, std::string* dir) {
+bool HomeDirs::FindGCacheFilesDir(const FilePath& vault, FilePath* dir) {
   // Start search from GCache/v1.
   std::unique_ptr<FileEnumerator> enumerator(
       platform_->GetFileEnumerator(vault.Append(kUserHomeSuffix)
                                         .Append(kGCacheDir)
-                                        .Append(kGCacheVersionDir)
-                                        .value(),
+                                        .Append(kGCacheVersionDir),
                                    true, base::FileEnumerator::DIRECTORIES));
-  for (std::string current = enumerator->Next();
+  for (FilePath current = enumerator->Next();
        !current.empty();
        current = enumerator->Next()) {
     if (platform_->HasNoDumpFileAttribute(current) &&
@@ -862,17 +855,17 @@ void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
   LOG(WARNING) << "Deleting GCache " << gcachetmp.value();
   DeleteDirectoryContents(gcachetmp);
 
-  std::string cacheDir;
+  FilePath cacheDir;
   if (!FindGCacheFilesDir(vault, &cacheDir)) return;
 
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       cacheDir, false, base::FileEnumerator::FILES));
-  for (std::string current = enumerator->Next();
+  for (FilePath current = enumerator->Next();
        !current.empty();
        current = enumerator->Next()) {
     if (platform_->HasNoDumpFileAttribute(current)) {
       if (!platform_->DeleteFile(current, false)) {
-        PLOG(WARNING) << "DeleteFile: " << current;
+        PLOG(WARNING) << "DeleteFile: " << current.value();
       }
     }
   }
@@ -890,14 +883,14 @@ void HomeDirs::DeleteAndroidCacheCallback(const FilePath& vault) {
   // don't need to check for board that do not have an android
   // configuration.
   std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
-      platform_->GetFileEnumerator(root.value(), true,
+      platform_->GetFileEnumerator(root, true,
                                    base::FileEnumerator::DIRECTORIES));
-  std::string next_path;
+  FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     std::string value;
     if (platform_->HasExtendedFileAttribute(
             next_path, kAndroidCacheFilesAttribute)) {
-      LOG(WARNING) << "Deleting Android Cache " << next_path;
+      LOG(WARNING) << "Deleting Android Cache " << next_path.value();
       platform_->DeleteFile(next_path, true);
     }
   }
@@ -936,7 +929,7 @@ bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
                                       int index,
                                       VaultKeyset* keyset) const {
   // Load the encrypted keyset
-  std::string user_key_file = GetVaultKeysetPath(obfuscated_user, index);
+  FilePath user_key_file = GetVaultKeysetPath(obfuscated_user, index);
   // We don't have keys yet, so just load it.
   // TODO(wad) Move to passing around keysets and not serialized versions.
   if (!keyset->Load(user_key_file)) {
@@ -967,7 +960,7 @@ bool HomeDirs::GetOwner(std::string* owner) {
 }
 
 bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
-  FilePath salt_file = FilePath(shadow_root_).Append("salt");
+  FilePath salt_file = shadow_root_.Append("salt");
   if (!crypto_->GetOrCreateSalt(salt_file, CRYPTOHOME_DEFAULT_SALT_LENGTH,
                                 false, &system_salt_)) {
     LOG(ERROR) << "Failed to create system salt.";
@@ -981,12 +974,12 @@ bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
 bool HomeDirs::Remove(const std::string& username) {
   UsernamePasskey passkey(username.c_str(), SecureBlob());
   std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
-  FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
+  FilePath user_dir = shadow_root_.Append(obfuscated);
   FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
   FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
-  return platform_->DeleteFile(user_dir.value(), true) &&
-         platform_->DeleteFile(user_path.value(), true) &&
-         platform_->DeleteFile(root_path.value(), true);
+  return platform_->DeleteFile(user_dir, true) &&
+         platform_->DeleteFile(user_path, true) &&
+         platform_->DeleteFile(root_path, true);
 }
 
 bool HomeDirs::Rename(const std::string& account_id_from,
@@ -1000,7 +993,7 @@ bool HomeDirs::Rename(const std::string& account_id_from,
   const std::string obfuscated_from = from.GetObfuscatedUsername(system_salt_);
   const std::string obfuscated_to = to.GetObfuscatedUsername(system_salt_);
 
-  const FilePath user_dir_from = FilePath(shadow_root_).Append(obfuscated_from);
+  const FilePath user_dir_from = shadow_root_.Append(obfuscated_from);
   const FilePath user_path_from =
       brillo::cryptohome::home::GetUserPath(account_id_from);
   const FilePath root_path_from =
@@ -1008,7 +1001,7 @@ bool HomeDirs::Rename(const std::string& account_id_from,
   const FilePath new_user_path_from =
       FilePath(Mount::GetNewUserPath(account_id_from));
 
-  const FilePath user_dir_to = FilePath(shadow_root_).Append(obfuscated_to);
+  const FilePath user_dir_to = shadow_root_.Append(obfuscated_to);
   const FilePath user_path_to =
       brillo::cryptohome::home::GetUserPath(account_id_to);
   const FilePath root_path_to =
@@ -1060,18 +1053,18 @@ bool HomeDirs::Rename(const std::string& account_id_from,
   // empty and will be created as needed.
   const bool user_dir_renamed =
       !base::PathExists(user_dir_from) ||
-      platform_->Rename(user_dir_from.value(), user_dir_to.value());
+      platform_->Rename(user_dir_from, user_dir_to);
 
   if (user_dir_renamed) {
     const bool user_path_renamed =
         !base::PathExists(user_path_from) ||
-        platform_->Rename(user_path_from.value(), user_path_to.value());
+        platform_->Rename(user_path_from, user_path_to);
     const bool root_path_renamed =
         !base::PathExists(root_path_from) ||
-        platform_->Rename(root_path_from.value(), root_path_to.value());
+        platform_->Rename(root_path_from, root_path_to);
     const bool new_user_path_renamed =
         !base::PathExists(new_user_path_from) ||
-        platform_->Rename(new_user_path_from.value(), new_user_path_to.value());
+        platform_->Rename(new_user_path_from, new_user_path_to);
     if (!user_path_renamed) {
       LOG(WARNING) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
                    << account_id_to << "'): failed to rename user_path.";
@@ -1099,15 +1092,15 @@ int64_t HomeDirs::ComputeSize(const std::string& account_id) {
   FilePath user_path = brillo::cryptohome::home::GetUserPath(account_id);
   FilePath root_path = brillo::cryptohome::home::GetRootPath(account_id);
   int64_t total_size = 0;
-  int64_t size = platform_->ComputeDirectorySize(user_dir.value());
+  int64_t size = platform_->ComputeDirectorySize(user_dir);
   if (size > 0) {
     total_size += size;
   }
-  size = platform_->ComputeDirectorySize(user_path.value());
+  size = platform_->ComputeDirectorySize(user_path);
   if (size > 0) {
     total_size += size;
   }
-  size = platform_->ComputeDirectorySize(root_path.value());
+  size = platform_->ComputeDirectorySize(root_path);
   if (size > 0) {
     total_size += size;
   }

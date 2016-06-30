@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
@@ -14,6 +15,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 
+using base::FilePath;
 using brillo::SecureBlob;
 
 namespace {
@@ -192,7 +194,7 @@ void VaultKeyset::clear_chaps_key() {
   chaps_key_.resize(0);
 }
 
-bool VaultKeyset::Load(const std::string& filename) {
+bool VaultKeyset::Load(const FilePath& filename) {
   CHECK(platform_);
   SecureBlob contents;
   if (!platform_->ReadFile(filename, &contents))
@@ -229,7 +231,7 @@ bool VaultKeyset::Encrypt(const SecureBlob& key) {
   return encrypted_;
 }
 
-bool VaultKeyset::Save(const std::string& filename) {
+bool VaultKeyset::Save(const FilePath& filename) {
   CHECK(platform_);
   if (!encrypted_)
     return false;

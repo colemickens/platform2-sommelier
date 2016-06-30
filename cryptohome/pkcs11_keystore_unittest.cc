@@ -28,7 +28,6 @@ using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
-using ::testing::StartsWith;
 
 namespace {
 

@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/observer_list.h>
 #include <base/values.h>
@@ -133,18 +134,6 @@ class InstallAttributes {
 
   virtual void set_is_secure(bool is_secure) { is_secure_ = is_secure; }
 
-  // Returns the path where the data is persisted.
-  virtual const char* data_file() { return data_file_.c_str(); }
-  virtual void set_data_file(const char* data_file) {
-    data_file_.assign(data_file);
-  }
-
-  // Returns the path of the world-readable cache file.
-  virtual const char* cache_file() { return cache_file_.c_str(); }
-  virtual void set_cache_file(const char* cache_file) {
-    cache_file_.assign(cache_file);
-  }
-
   // Allows replacement of the underlying lockbox.
   // This does NOT take ownership of the pointer.
   virtual void set_lockbox(Lockbox* lockbox) { lockbox_ = lockbox; }
@@ -184,11 +173,11 @@ class InstallAttributes {
   // Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
   static const uint32_t kLockboxIndex;
   // Provides the default location for the attributes data file.
-  static const char* kDefaultDataFile;
+  static const char kDefaultDataFile[];
   // File permissions of attributes data file (modulo umask).
   static const mode_t kDataFilePermissions;
   // Provides the default location for the cache file.
-  static const char* kDefaultCacheFile;
+  static const char kDefaultCacheFile[];
   // File permissions of cache file (modulo umask).
   static const mode_t kCacheFilePermissions;
 
@@ -204,8 +193,8 @@ class InstallAttributes {
   bool is_secure_;  // Indicates if there is hardware protection (TPM).
   bool is_invalid_;  // Indicates tampered/corrupted data.
   bool is_initialized_;  // Indicates a successful, valid instance.
-  std::string data_file_;  // Location data is persisted to.
-  std::string cache_file_;  // World-readable data cache file.
+  base::FilePath data_file_;  // Location data is persisted to.
+  base::FilePath cache_file_;  // World-readable data cache file.
   uint64_t version_;  // Default implementation version.
   // Default implementations of dependencies
   std::unique_ptr<SerializedInstallAttributes> default_attributes_;

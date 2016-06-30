@@ -9,6 +9,7 @@
 #include <memory>
 #include <string.h>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -27,7 +28,7 @@ const char Pkcs11Init::kDefaultPin[] = "111111";
 const char Pkcs11Init::kDefaultSystemLabel[] = "System TPM Token";
 const char Pkcs11Init::kDefaultUserLabelPrefix[] = "User TPM Token ";
 
-extern const char* kTpmOwnedFile;
+extern const FilePath kTpmOwnedFile;
 
 Pkcs11Init::Pkcs11Init() : default_platform_(new Platform),
                            platform_(default_platform_.get()) {
@@ -58,7 +59,7 @@ std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
          brillo::cryptohome::home::SanitizeUserName(username).substr(0, 16);
 }
 
-bool Pkcs11Init::GetTpmTokenSlotForPath(const base::FilePath& path,
+bool Pkcs11Init::GetTpmTokenSlotForPath(const FilePath& path,
                                         CK_SLOT_ID_PTR slot) {
   CK_RV rv;
   rv = C_Initialize(NULL);

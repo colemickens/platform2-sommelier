@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
@@ -37,13 +38,13 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_CONST_METHOD0(FNEK_SIG, const brillo::SecureBlob&(void));
   MOCK_CONST_METHOD0(FNEK_SALT, const brillo::SecureBlob&(void));
 
-  MOCK_METHOD1(Load, bool(const std::string&));
+  MOCK_METHOD1(Load, bool(const base::FilePath&));
   MOCK_METHOD1(Decrypt, bool(const brillo::SecureBlob&));
-  MOCK_METHOD1(Save, bool(const std::string&));
+  MOCK_METHOD1(Save, bool(const base::FilePath&));
   MOCK_METHOD1(Encrypt, bool(const brillo::SecureBlob&));
   MOCK_CONST_METHOD0(serialized, const SerializedVaultKeyset&(void));
   MOCK_METHOD0(mutable_serialized, SerializedVaultKeyset*(void));
-  MOCK_CONST_METHOD0(source_file, const std::string&(void));
+  MOCK_CONST_METHOD0(source_file, const base::FilePath&(void));
   MOCK_METHOD1(set_legacy_index, void(int));
   MOCK_CONST_METHOD0(legacy_index, const int(void));
 

@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/gtest_prod_util.h>
 #include <base/memory/ref_counted.h>
@@ -144,7 +145,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Returns the base directory of the eCryptfs destination, containing
   // the "user" and "root" directories.
   virtual bool GetMountPointForUser(const std::string& username,
-                                    std::string* path);
+                                    base::FilePath* path);
 
   // CryptohomeEventSourceSink
   virtual void NotifyEvent(CryptohomeEventBase* event);
@@ -602,7 +603,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Returns true if there are any existing mounts and populates
   // |mounts| with the mount point.
   virtual bool GetExistingMounts(
-                   std::multimap<const std::string, const std::string>* mounts);
+      std::multimap<const base::FilePath, const base::FilePath>* mounts);
 
   // Checks if the machine is enterprise owned and report to mount_ then.
   virtual void DetectEnterpriseOwnership();
@@ -629,7 +630,7 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   // Unload any pkcs11 tokens _not_ belonging to one of the mounts in |exclude|.
   // This is used to clean up any stale loaded tokens after a cryptohome crash.
-  virtual bool UnloadPkcs11Tokens(const std::vector<std::string>& exclude);
+  virtual bool UnloadPkcs11Tokens(const std::vector<base::FilePath>& exclude);
 
   // Posts a message back from the mount_thread_ to the main thread to
   // reply to a DBus message.  Only call from mount_thread_-based

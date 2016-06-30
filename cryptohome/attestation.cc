@@ -1286,13 +1286,13 @@ bool Attestation::DecryptDatabase(const std::string& serial_encrypted_db,
 }
 
 bool Attestation::StoreDatabase(const std::string& serial_encrypted_db) {
-  if (!platform_->WriteStringToFileAtomicDurable(database_path_.value(),
+  if (!platform_->WriteStringToFileAtomicDurable(database_path_,
                                                  serial_encrypted_db,
                                                  kDatabasePermissions)) {
     LOG(ERROR) << "Failed to write db.";
     return false;
   }
-  if (!platform_->SetOwnership(database_path_.value(), attestation_user_,
+  if (!platform_->SetOwnership(database_path_, attestation_user_,
                                attestation_group_)) {
     PLOG(ERROR) << "Failed to set db ownership";
     return false;
@@ -1302,8 +1302,7 @@ bool Attestation::StoreDatabase(const std::string& serial_encrypted_db) {
 
 bool Attestation::LoadDatabase(std::string* serial_encrypted_db) {
   CheckDatabasePermissions();
-  if (!platform_->ReadFileToString(database_path_.value(),
-                                   serial_encrypted_db)) {
+  if (!platform_->ReadFileToString(database_path_, serial_encrypted_db)) {
     PLOG(ERROR) << "Failed to read db";
     return false;
   }
@@ -1323,8 +1322,8 @@ void Attestation::CheckDatabasePermissions() {
   mode_t permissions = 0;
   uid_t user = 0;
   gid_t group = 0;
-  if (!platform_->GetPermissions(database_path_.value(), &permissions) ||
-      !platform_->GetOwnership(database_path_.value(), &user, &group)) {
+  if (!platform_->GetPermissions(database_path_, &permissions) ||
+      !platform_->GetOwnership(database_path_, &user, &group)) {
     if (errno != ENOENT) {
       PLOG(WARNING) << "Failed to read database permissions";
     }
@@ -1332,14 +1331,13 @@ void Attestation::CheckDatabasePermissions() {
   }
   if ((permissions & kMask) != 0) {
     LOG(WARNING) << "Fixing database permissions.";
-    if (!platform_->SetPermissions(database_path_.value(),
-                                   permissions & ~kMask)) {
+    if (!platform_->SetPermissions(database_path_, permissions & ~kMask)) {
       PLOG(WARNING) << "Failed to fix database permissions";
     }
   }
   if (user != attestation_user_ || group != attestation_group_) {
     LOG(WARNING) << "Fixing database ownership.";
-    if (!platform_->SetOwnership(database_path_.value(), attestation_user_,
+    if (!platform_->SetOwnership(database_path_, attestation_user_,
                                  attestation_group_)) {
       PLOG(WARNING) << "Failed to fix database ownership";
     }

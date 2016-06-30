@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+
 // This class is basically a stack that logs an error if it's not empty when
 // it's destroyed.
 class MountStack {
@@ -16,12 +18,12 @@ class MountStack {
   virtual ~MountStack();
   typedef std::vector<std::string>::size_type size_type;
 
-  virtual void Push(const std::string& path);
-  virtual bool Pop(std::string* path);
-  virtual bool Contains(const std::string& path) const;
+  virtual void Push(const base::FilePath& path);
+  virtual bool Pop(base::FilePath* path);
+  virtual bool Contains(const base::FilePath& path) const;
   virtual size_type size() const { return mounts_.size(); }
  private:
-  std::vector<std::string> mounts_;
+  std::vector<base::FilePath> mounts_;
 };
 
 #endif  // CRYPTOHOME_MOUNT_STACK_H_

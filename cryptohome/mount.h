@@ -42,27 +42,29 @@
 namespace cryptohome {
 
 // Directories that we intend to track (make pass-through in cryptohome vault)
-extern const char kCacheDir[];
-extern const char kDownloadsDir[];
-extern const char kGCacheDir[];
-extern const char kGCacheVersionDir[];  // subdir of kGCacheDir
-extern const char kGCacheTmpDir[];      // subdir of kGCacheVersionDir
+extern const base::FilePath::CharType kCacheDir[];
+extern const base::FilePath::CharType kDownloadsDir[];
+extern const base::FilePath::CharType kGCacheDir[];
+// subdir of kGCacheDir
+extern const base::FilePath::CharType kGCacheVersionDir[];
+// subdir of kGCacheVersionDir
+extern const base::FilePath::CharType kGCacheTmpDir[];
 // Name of the vault directory.
-extern const char kVaultDir[];
+extern const base::FilePath::CharType kVaultDir[];
 extern const char kUserHomeSuffix[];
 extern const char kRootHomeSuffix[];
 // Name of the mount directory.
-extern const char kMountDir[];
+extern const base::FilePath::CharType kMountDir[];
 // Name of the key file.
-extern const char kKeyFile[];
+extern const base::FilePath::CharType kKeyFile[];
 // Automatic label prefix of a legacy key ("%s%d")
 extern const char kKeyLegacyPrefix[];
 // Maximum number of key files.
 extern const int kKeyFileMax;
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
-extern const char kEphemeralDir[];
-extern const char kGuestMountPath[];
+extern const base::FilePath::CharType kEphemeralDir[];
+extern const base::FilePath::CharType kGuestMountPath[];
 
 class BootLockbox;
 class ChapsClientFactory;
@@ -169,12 +171,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual int CurrentKey(void) const { return current_user_->key_index(); }
 
   // Used to override the default shadow root
-  void set_shadow_root(const std::string& value) {
+  void set_shadow_root(const base::FilePath& value) {
     shadow_root_ = value;
   }
 
   // Used to override the default skeleton directory
-  void set_skel_source(const std::string& value) {
+  void set_skel_source(const base::FilePath& value) {
     skel_source_ = value;
   }
 
@@ -202,7 +204,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     return platform_;
   }
 
-  virtual const std::string& mount_point() const {
+  virtual const base::FilePath& mount_point() const {
     return mount_point_;
   }
 
@@ -258,7 +260,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void RemovePkcs11Token();
 
   // Returns true if this Mount instances owns the mount path.
-  virtual bool OwnsMountPoint(const std::string& path) const;
+  virtual bool OwnsMountPoint(const base::FilePath& path) const;
 
   // Used to override the policy provider for testing (takes ownership)
   // TODO(wad) move this in line with other testing accessors
@@ -269,7 +271,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Returns the temporary user path while we're migrating for
   // http://crbug.com/224291
-  static std::string GetNewUserPath(const std::string& username);
+  static base::FilePath GetNewUserPath(const std::string& username);
 
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
 
@@ -295,12 +297,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // destruction.
   class ScopedMountPoint {
    public:
-    ScopedMountPoint(Mount* mount, const std::string& path);
+    ScopedMountPoint(Mount* mount, const base::FilePath& path);
     ~ScopedMountPoint();
 
    private:
     Mount* mount_;
-    std::string path_;
+    base::FilePath path_;
   };
 
   // Checks if the cryptohome vault exists for the given credentials
@@ -334,7 +336,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   dir - directory to migrate
-  virtual void MigrateToUserHome(const std::string& dir) const;
+  virtual void MigrateToUserHome(const base::FilePath& dir) const;
 
   // Changes the group ownership and permissions on those directories inside
   // the cryptohome that need to be accessible by other system daemons
@@ -404,27 +406,27 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   files - The file names to cache
-  bool CacheOldFiles(const std::vector<std::string>& files) const;
+  bool CacheOldFiles(const std::vector<base::FilePath>& files) const;
 
   // Move the cached files back to the original files
   //
   // Parameters
   //   files - The file names to un-cache
-  bool RevertCacheFiles(const std::vector<std::string>& files) const;
+  bool RevertCacheFiles(const std::vector<base::FilePath>& files) const;
 
   // Remove the cached files for the user
   //
   // Parameters
   //   files - The file names to remove
-  bool DeleteCacheFiles(const std::vector<std::string>& files) const;
+  bool DeleteCacheFiles(const std::vector<base::FilePath>& files) const;
 
   // Gets the user's salt file name
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the Credentials
   //   index - key index the salt is associated with
-  std::string GetUserSaltFileForUser(const std::string& obfuscated_username,
-                                     int index) const;
+  base::FilePath GetUserSaltFileForUser(const std::string& obfuscated_username,
+                                        int index) const;
 
 
   // Gets the user's key file name by index
@@ -432,7 +434,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   obfuscated_username - Obfuscated username field of the Credentials
   //   index - which key file to load
-  std::string GetUserLegacyKeyFileForUser(
+  base::FilePath GetUserLegacyKeyFileForUser(
       const std::string& obfuscated_username,
       int index) const;
 
@@ -441,7 +443,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   obfuscated_username - Obfuscated username field of the Credentials
   //   label - which key file to load by KeyData::label()
-  std::string GetUserKeyFileForUser(
+  base::FilePath GetUserKeyFileForUser(
       const std::string& obfuscated_username,
       const std::string& label) const;
 
@@ -450,65 +452,65 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  std::string GetUserDirectory(const Credentials& credentials) const;
+  base::FilePath GetUserDirectory(const Credentials& credentials) const;
 
   // Gets the directory in the shadow root where the user's salt, key, and vault
   // are stored.
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the Credentials
-  std::string GetUserDirectoryForUser(
+  base::FilePath GetUserDirectoryForUser(
       const std::string& obfuscated_username) const;
 
   // Gets the directory representing the user's ephemeral cryptohome.
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the credentials.
-  std::string GetUserEphemeralPath(
+  base::FilePath GetUserEphemeralPath(
       const std::string& obfuscated_username) const;
 
   // Gets the user's vault directory
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the credentials.
-  std::string GetUserVaultPath(const std::string& obfuscated_username) const;
+  base::FilePath GetUserVaultPath(const std::string& obfuscated_username) const;
 
   // Gets the directory to mount the user's cryptohome at
   //
   // Parameters
   //   credentials - The credentials representing the user
-  std::string GetUserMountDirectory(
+  base::FilePath GetUserMountDirectory(
       const std::string& obfuscated_username) const;
 
   // Returns the path of a user passthrough inside a vault
   //
   // Parameters
   //   vault - vault path
-  std::string VaultPathToUserPath(const std::string& vault) const;
+  base::FilePath VaultPathToUserPath(const base::FilePath& vault) const;
 
   // Returns the path of a root passthrough inside a vault
   //
   // Parameters
   //   vault - vault path
-  std::string VaultPathToRootPath(const std::string& vault) const;
+  base::FilePath VaultPathToRootPath(const base::FilePath& vault) const;
 
   // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  std::string GetMountedUserHomePath(
+  base::FilePath GetMountedUserHomePath(
       const std::string& obfuscated_username) const;
 
   // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  std::string GetMountedRootHomePath(
+  base::FilePath GetMountedRootHomePath(
       const std::string& obfuscated_username) const;
 
   // Returns a path suitable for building a skeleton for an ephemeral home
   // directory.
-  std::string GetEphemeralSkeletonPath() const;
+  base::FilePath GetEphemeralSkeletonPath() const;
 
   // Get the owner user's obfuscated hash. This is empty if the owner has not
   // been set yet or the device is enterprise owned.
@@ -537,8 +539,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   dir - directory to check
   //   legacy_dir - legacy directory location
-  bool CheckChapsDirectory(const std::string& dir,
-                           const std::string& legacy_dir);
+  bool CheckChapsDirectory(const base::FilePath& dir,
+                           const base::FilePath& legacy_dir);
 
   // Ensures that the device policy is loaded.
   //
@@ -575,8 +577,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   source_path - A name for the mount point which will appear in /etc/mtab.
   //   home_dir - The path at which the user's cryptohome has been mounted.
-  bool SetUpEphemeralCryptohome(const std::string& source_path,
-                                const std::string& home_dir);
+  bool SetUpEphemeralCryptohome(const base::FilePath& source_path,
+                                const base::FilePath& home_dir);
 
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to the default_user_
@@ -643,8 +645,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   dest - Directory to mount to
   //   type - Filesystem type to mount with
   //   options - Filesystem options to supply
-  bool RememberMount(const std::string& src,
-                     const std::string& dest,
+  bool RememberMount(const base::FilePath& src,
+                     const base::FilePath& dest,
                      const std::string& type,
                      const std::string& options);
 
@@ -654,8 +656,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   src - Directory to bind from
   //   dest - Directory to bind to
-  bool RememberBind(const std::string& src,
-                    const std::string& dest);
+  bool RememberBind(const base::FilePath& src,
+                    const base::FilePath& dest);
 
   // Pops a mount point from user's stack and unmounts it
   // Returns true if there was a mount to unmount, false otherwise
@@ -675,7 +677,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   mount_point - Mount point to unmount
-  void ForceUnmount(const std::string& mount_point);
+  void ForceUnmount(const base::FilePath& mount_point);
 
   // Derives PKCS #11 token authorization data from a passkey. This may take up
   // to ~100ms (dependant on CPU / memory performance). Returns true on success.
@@ -685,7 +687,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Mount the legacy home directory.
   // The legacy home directory is from before multiprofile and is mounted at
   // /home/chronos/user.
-  bool MountLegacyHome(const std::string& from, MountError* mount_error);
+  bool MountLegacyHome(const base::FilePath& from, MountError* mount_error);
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
@@ -704,14 +706,14 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   gid_t default_access_group_;
 
   // The file path to mount cryptohome at.  Defaults to /home/chronos/user
-  std::string mount_point_;
+  base::FilePath mount_point_;
 
   // Where to store the system salt and user salt/key/vault.  Defaults to
   // /home/.shadow
-  std::string shadow_root_;
+  base::FilePath shadow_root_;
 
   // Where the skeleton for the user's cryptohome is copied from
-  std::string skel_source_;
+  base::FilePath skel_source_;
 
   // Stores the global system salt
   brillo::SecureBlob system_salt_;

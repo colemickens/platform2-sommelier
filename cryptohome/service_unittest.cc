@@ -45,6 +45,7 @@
 #include "cryptohome/username_passkey.h"
 
 using base::PlatformThread;
+using base::FilePath;
 using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::DoAll;
@@ -55,15 +56,14 @@ using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
-using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::SetArgPointee;
 using ::testing::WithArgs;
 
 namespace {
 
-const char kImageDir[] = "test_image_dir";
-const char kSaltFile[] = "test_image_dir/salt";
+const FilePath kImageDir("test_image_dir");
+const FilePath kSaltFile("test_image_dir/salt");
 // Keep in sync with service.cc
 const int64_t kNotifyDiskSpaceThreshold = 1 << 30;
 
@@ -132,7 +132,10 @@ class ServiceTestNotInitialized : public ::testing::Test {
     ON_CALL(crypto_, GetOrCreateSalt(_, _, _, _))
         .WillByDefault(WithArgs<1, 3>(Invoke(AssignSalt)));
     // Skip StatefulRecovery by default.
-    ON_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
+    ON_CALL(platform_,
+        ReadFileToString(
+          Property(&FilePath::value, EndsWith("decrypt_stateful")),
+          _))
         .WillByDefault(Return(false));
   }
 
@@ -466,22 +469,22 @@ TEST_F(ServiceTestNotInitialized, CheckLowDiskCallback) {
 
 
 struct Mounts {
-  const char* src;
-  const char* dst;
+  const FilePath src;
+  const FilePath dst;
 };
 
 const struct Mounts kShadowMounts[] = {
-  { "/home/.shadow/a", "/home/user/0" },
-  { "/home/.shadow/a", "/home/root/0" },
-  { "/home/.shadow/b", "/home/user/1" },
-  { "/home/.shadow/a", "/home/chronos/user" },
-  { "/home/.shadow/b", "/home/root/1" },
+  { FilePath("/home/.shadow/a"), FilePath("/home/user/0")},
+  { FilePath("/home/.shadow/a"), FilePath("/home/root/0")},
+  { FilePath("/home/.shadow/b"), FilePath("/home/user/1")},
+  { FilePath("/home/.shadow/a"), FilePath("/home/chronos/user")},
+  { FilePath("/home/.shadow/b"), FilePath("/home/root/1")},
 };
 const int kShadowMountsCount = 5;
 
 bool StaleShadowMounts(
     const std::string& from_prefix,
-    std::multimap<const std::string, const std::string>* mounts) {
+    std::multimap<const FilePath, const FilePath>* mounts) {
   LOG(INFO) << "StaleShadowMounts(" << from_prefix << "): called";
   if (from_prefix == "/home/.shadow/") {
     if (!mounts)
@@ -489,8 +492,8 @@ bool StaleShadowMounts(
     const struct Mounts* m = &kShadowMounts[0];
     for (int i = 0; i < kShadowMountsCount; ++i, ++m) {
       mounts->insert(
-          std::pair<const std::string, const std::string>(m->src, m->dst));
-      LOG(INFO) << "Inserting " << m->src << ":" << m->dst;
+          std::pair<const FilePath, const FilePath>(m->src, m->dst));
+      LOG(INFO) << "Inserting " << m->src.value() << ":" << m->dst.value();
     }
     return true;
   }
@@ -523,11 +526,12 @@ TEST_F(ServiceTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
   processes[0].set_process_id(1);
   EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
     .Times(kShadowMountsCount - 1);
-  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(
-      "/home/chronos/user", _))
+  EXPECT_CALL(platform_,
+      GetProcessesWithOpenFiles(FilePath("/home/chronos/user"), _))
     .Times(1)
     .WillRepeatedly(SetArgPointee<1>(processes));
-  EXPECT_CALL(platform_, Unmount(EndsWith("/1"), true, _))
+  EXPECT_CALL(platform_,
+      Unmount(Property(&FilePath::value, EndsWith("/1")), true, _))
     .Times(2)
     .WillRepeatedly(Return(true));
   EXPECT_TRUE(service_.CleanUpStaleMounts(false));
@@ -572,15 +576,16 @@ TEST_F(ServiceTestNotInitialized,
 
   EXPECT_CALL(*mount, OwnsMountPoint(_))
     .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mount, OwnsMountPoint("/home/user/1"))
+  EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/user/1")))
     .WillOnce(Return(true));
-  EXPECT_CALL(*mount, OwnsMountPoint("/home/root/1"))
+  EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/root/1")))
     .WillOnce(Return(true));
 
-  EXPECT_CALL(platform_, Unmount(EndsWith("/0"), true, _))
+  EXPECT_CALL(platform_,
+      Unmount(Property(&FilePath::value, EndsWith("/0")), true, _))
     .Times(2)
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount("/home/chronos/user", true, _))
+  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), true, _))
     .WillOnce(Return(true));
 
   std::vector<std::string> fake_token_list;
@@ -592,7 +597,7 @@ TEST_F(ServiceTestNotInitialized,
                             Return(true)));
 
   EXPECT_CALL(chaps_client_,
-              UnloadToken(_, base::FilePath("/home/chronos/user/token")))
+              UnloadToken(_, FilePath("/home/chronos/user/token")))
       .Times(1);
 
   // Expect that CleanUpStaleMounts() tells us it skipped no mounts.
@@ -636,9 +641,12 @@ TEST_F(ServiceTest, StoreEnrollmentState) {
       SetArgPointee<1>(encrypted_data), Return(true)));
 
   // Should write file as this device is enterprise enrolled.
-  EXPECT_CALL(platform_, WriteStringToFileAtomicDurable(
-      "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
-      encrypted_data, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      WriteStringToFileAtomicDurable(
+        FilePath(
+          "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb"),
+        encrypted_data, _))
+    .WillOnce(Return(true));
   EXPECT_TRUE(service_.StoreEnrollmentState(test_array.get(), &success,
                                             &error));
   EXPECT_TRUE(success);
@@ -658,9 +666,12 @@ TEST_F(ServiceTest, LoadEnrollmentState) {
   SecureBlob decrypted_blob("decrypted");
 
   // Assume the data is there, we should return the value and success.
-  EXPECT_CALL(platform_, ReadFile(
-      "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
-      _)).WillOnce(DoAll(SetArgPointee<1>(data_blob), Return(true)));
+  EXPECT_CALL(platform_,
+      ReadFile(
+        FilePath(
+          "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb"),
+          _))
+    .WillOnce(DoAll(SetArgPointee<1>(data_blob), Return(true)));
 
   EXPECT_CALL(crypto_, DecryptWithTpm(_, _)).WillOnce(DoAll(
       SetArgPointee<1>(decrypted_blob), Return(TRUE)));
@@ -674,9 +685,12 @@ TEST_F(ServiceTest, LoadEnrollmentState) {
   EXPECT_EQ(decrypted_blob, output_blob);
 
   // Assume we fail to read the data, we should not return success.
-  EXPECT_CALL(platform_, ReadFile(
-      "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
-      _)).WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+      ReadFile(
+        FilePath(
+          "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb"),
+        _))
+    .WillOnce(Return(false));
 
   EXPECT_TRUE(service_.LoadEnrollmentState(
       &(brillo::Resetter(&output).lvalue()), &success, &error));

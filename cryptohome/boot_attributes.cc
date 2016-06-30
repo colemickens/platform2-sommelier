@@ -4,6 +4,7 @@
 
 #include "cryptohome/boot_attributes.h"
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
@@ -12,15 +13,17 @@
 
 #include "install_attributes.pb.h"  // NOLINT(build/include)
 
+using base::FilePath;
+
 namespace cryptohome {
 
 const int BootAttributes::kAttributeFileVersion = 1;
 
-const char* BootAttributes::kAttributeFile =
-    "/var/lib/boot-lockbox/boot_attributes.pb";
+const FilePath::CharType BootAttributes::kAttributeFile[] =
+  FILE_PATH_LITERAL("/var/lib/boot-lockbox/boot_attributes.pb");
 
-const char* BootAttributes::kSignatureFile =
-    "/var/lib/boot-lockbox/boot_attributes.sig";
+const FilePath::CharType BootAttributes::kSignatureFile[] =
+  FILE_PATH_LITERAL("/var/lib/boot-lockbox/boot_attributes.sig");
 
 BootAttributes::BootAttributes(BootLockbox* boot_lockbox, Platform* platform)
     : boot_lockbox_(boot_lockbox),
@@ -32,8 +35,8 @@ BootAttributes::~BootAttributes() {
 
 bool BootAttributes::Load() {
   brillo::SecureBlob data, signature;
-  if (!platform_->ReadFile(kAttributeFile, &data) ||
-      !platform_->ReadFile(kSignatureFile, &signature)) {
+  if (!platform_->ReadFile(FilePath(kAttributeFile), &data) ||
+      !platform_->ReadFile(FilePath(kSignatureFile), &signature)) {
     LOG(INFO) << "Cannot read boot lockbox files.";
     return false;
   }
@@ -96,19 +99,19 @@ bool BootAttributes::FlushAndSign() {
   }
 
   // Write the attributes and the signature to the files.
-  if (!platform_->WriteFile(kAttributeFile, content)) {
+  if (!platform_->WriteFile(FilePath(kAttributeFile), content)) {
     LOG(ERROR) << "Failed to write to the boot attribute file.";
     return false;
   }
-  if (!platform_->WriteFile(kSignatureFile, signature)) {
+  if (!platform_->WriteFile(FilePath(kSignatureFile), signature)) {
     LOG(ERROR) << "Failed to write to the boot attribute signature file.";
     return false;
   }
 
   // Since two files are written, atomicity cannot be achieved easily.
   // Therefore this only aims for durability.
-  platform_->DataSyncFile(kAttributeFile);
-  platform_->DataSyncFile(kSignatureFile);
+  platform_->DataSyncFile(FilePath(kAttributeFile));
+  platform_->DataSyncFile(FilePath(kSignatureFile));
 
   attributes_ = write_buffer_;
   return true;

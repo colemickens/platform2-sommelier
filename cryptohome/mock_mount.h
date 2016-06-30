@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 namespace cryptohome {
@@ -30,8 +31,8 @@ class MockMount : public Mount {
   MOCK_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
   MOCK_METHOD1(RemoveCryptohome, bool(const Credentials&));
   MOCK_METHOD1(UpdateCurrentUserActivityTimestamp, bool(int)); // NOLINT
-  MOCK_CONST_METHOD0(mount_point, const std::string&());
-  MOCK_CONST_METHOD1(OwnsMountPoint, bool(const std::string&));
+  MOCK_CONST_METHOD0(mount_point, const base::FilePath&());
+  MOCK_CONST_METHOD1(OwnsMountPoint, bool(const base::FilePath&));
 };
 }  // namespace cryptohome
 

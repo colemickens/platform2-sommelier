@@ -20,6 +20,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/pkcs11_init.h"
 
+using base::FilePath;
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -419,9 +420,9 @@ bool Pkcs11KeyStore::GetUserSlot(bool is_user_specific,
                                  CK_SLOT_ID_PTR slot) {
   const char kChapsDaemonName[] = "chaps";
   const char kChapsSystemToken[] = "/var/lib/chaps";
-  base::FilePath token_path = is_user_specific ?
+  FilePath token_path = is_user_specific ?
       brillo::cryptohome::home::GetDaemonPath(username, kChapsDaemonName) :
-      base::FilePath(kChapsSystemToken);
+      FilePath(kChapsSystemToken);
   return pkcs11_init_->GetTpmTokenSlotForPath(token_path, slot);
 }
 

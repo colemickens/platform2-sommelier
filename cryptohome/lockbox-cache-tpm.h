@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 
 #include "cryptohome/platform.h"
@@ -19,7 +20,8 @@ namespace cryptohome {
 // contents
 class LockboxCacheTpm : public StubTpm {
  public:
-  explicit LockboxCacheTpm(const uint32_t index, const std::string& nvram_path)
+  explicit LockboxCacheTpm(const uint32_t index,
+                           const base::FilePath& nvram_path)
     : index_(index), nvram_path_(nvram_path) { }
   virtual ~LockboxCacheTpm();
 
@@ -80,7 +82,7 @@ class LockboxCacheTpm : public StubTpm {
 
  private:
   uint32_t index_;
-  const std::string nvram_path_;
+  const base::FilePath nvram_path_;
   brillo::Blob nvram_data_;
 };
 

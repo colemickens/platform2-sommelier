@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 
 #include "cryptohome/platform.h"
@@ -28,10 +29,11 @@ class LockboxCache {
   virtual void Reset();
   // Loads the supplied |lockbox_path| and validates it against the TPM.
   // If the data loads and verifies, returns true;
-  virtual bool LoadAndVerify(uint32_t index, const std::string& lockbox_path);
+  virtual bool LoadAndVerify(uint32_t index,
+                             const base::FilePath& lockbox_path);
   // Iff LoadAndVerify() returned true, will write out the loaded lockbox
   // contents to |cache_path|.
-  virtual bool Write(const std::string& cache_path) const;
+  virtual bool Write(const base::FilePath& cache_path) const;
  private:
   bool loaded_;
   Tpm* tpm_;

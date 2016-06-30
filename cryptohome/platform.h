@@ -17,6 +17,7 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
@@ -46,14 +47,14 @@ class FileEnumerator {
   class FileInfo {
    public:
     explicit FileInfo(const base::FileEnumerator::FileInfo& file_info);
-    FileInfo(const std::string& name, const struct stat& stat);
+    FileInfo(const base::FilePath& name, const struct stat& stat);
     FileInfo(const FileInfo& other);
     FileInfo();
     virtual ~FileInfo();
     FileInfo& operator=(const FileInfo& other);
 
     bool IsDirectory() const;
-    std::string GetName() const;
+    base::FilePath GetName() const;
     int64_t GetSize() const;
     base::Time GetLastModifiedTime() const;
     const struct stat& stat() const;
@@ -62,14 +63,14 @@ class FileEnumerator {
     void Assign(const base::FileEnumerator::FileInfo& file_info);
 
     std::unique_ptr<base::FileEnumerator::FileInfo> info_;
-    std::string name_;
+    base::FilePath name_;
     struct stat stat_;
   };
 
-  FileEnumerator(const std::string& root_path,
+  FileEnumerator(const base::FilePath& root_path,
                  bool recursive,
                  int file_type);
-  FileEnumerator(const std::string& root_path,
+  FileEnumerator(const base::FilePath& root_path,
                  bool recursive,
                  int file_type,
                  const std::string& pattern);
@@ -77,8 +78,8 @@ class FileEnumerator {
   FileEnumerator();
   virtual ~FileEnumerator();
 
-  // Returns an empty string if there are no more results.
-  virtual std::string Next();
+  // Returns an empty file name if there are no more results.
+  virtual base::FilePath Next();
 
   // Write the file info into |info|.
   virtual FileInfo GetInfo();
@@ -97,7 +98,7 @@ class Platform {
     mode_t mode;
   };
 
-  typedef base::Callback<bool(const std::string&, const struct stat&)>
+  typedef base::Callback<bool(const base::FilePath&, const struct stat&)>
       FileEnumeratorCallback;
 
   Platform();
@@ -111,7 +112,7 @@ class Platform {
   //   to - The node to mount to
   //   type - The fs type
   //   mount_options - The mount options to pass to mount()
-  virtual bool Mount(const std::string& from, const std::string& to,
+  virtual bool Mount(const base::FilePath& from, const base::FilePath& to,
                      const std::string& type, const std::string& mount_options);
 
   // Creates a bind mount
@@ -119,7 +120,7 @@ class Platform {
   // Parameters
   //   from - Where to mount from
   //   to - Where to mount to
-  virtual bool Bind(const std::string& from, const std::string& to);
+  virtual bool Bind(const base::FilePath& from, const base::FilePath& to);
 
   // Calls the platform unmount
   //
@@ -127,7 +128,7 @@ class Platform {
   //   path - The path to unmount
   //   lazy - Whether to call a lazy unmount
   //   was_busy (OUT) - Set to true on return if the mount point was busy
-  virtual bool Unmount(const std::string& path, bool lazy, bool* was_busy);
+  virtual bool Unmount(const base::FilePath& path, bool lazy, bool* was_busy);
 
   // Lazy unmounts |path| and then calls sync().  If |sync_first| is true then
   // it also calls sync() before unmount.
@@ -135,7 +136,7 @@ class Platform {
   // Parameters
   //   path - The path to unmount
   //   sync_first - Whether to call sync() before unmount.
-  virtual void LazyUnmountAndSync(const std::string& path, bool sync_first);
+  virtual void LazyUnmountAndSync(const base::FilePath& path, bool sync_first);
 
   // Returns true if any mounts match. Populates |mounts| if
   // any mount sources have a matching prefix (|from_prefix|).
@@ -144,13 +145,13 @@ class Platform {
   //   from_prefix - Prefix for matching mount sources
   //   mounts - matching mounted paths, may be NULL
   virtual bool GetMountsBySourcePrefix(const std::string& from_prefix,
-                  std::multimap<const std::string, const std::string>* mounts);
+      std::multimap<const base::FilePath, const base::FilePath>* mounts);
 
   // Returns true if the directory is in the mtab
   //
   // Parameters
   //   directory - The directory to check
-  virtual bool IsDirectoryMounted(const std::string& directory);
+  virtual bool IsDirectoryMounted(const base::FilePath& directory);
 
   // Returns true if the directory is in the mtab mounted with the specified
   // source
@@ -158,15 +159,15 @@ class Platform {
   // Parameters
   //   directory - The directory to check
   //   from - The source node
-  virtual bool IsDirectoryMountedWith(const std::string& directory,
-                                      const std::string& from);
+  virtual bool IsDirectoryMountedWith(const base::FilePath& directory,
+                                      const base::FilePath& from);
 
   // GetProcessesWithOpenFiles
   //
   // Parameters
   //   path - The path to check if the process has open files on
   //   pids (OUT) - The PIDs found
-  virtual void GetProcessesWithOpenFiles(const std::string& path_in,
+  virtual void GetProcessesWithOpenFiles(const base::FilePath& path_in,
                                  std::vector<ProcessInformation>* processes);
 
   // Calls the platform stat() function to obtain the ownership of
@@ -176,7 +177,7 @@ class Platform {
   //   path - The path to look up
   //   user_id - The user ID of the path. NULL if the result is not needed.
   //   group_id - The group ID of the path. NULL if the result is not needed.
-  virtual bool GetOwnership(const std::string& path, uid_t* user_id,
+  virtual bool GetOwnership(const base::FilePath& path, uid_t* user_id,
                             gid_t* group_id) const;
 
   // Calls the platform chown() function on the given path.
@@ -187,7 +188,7 @@ class Platform {
   //   path - The path to set ownership on
   //   user_id - The user_id to assign ownership to
   //   group_id - The group_id to assign ownership to
-  virtual bool SetOwnership(const std::string& directory, uid_t user_id,
+  virtual bool SetOwnership(const base::FilePath& directory, uid_t user_id,
                             gid_t group_id) const;
 
   // Calls the platform stat() function to obtain the permissions of
@@ -196,7 +197,7 @@ class Platform {
   // Parameters
   //   path - The path to look up
   //   mode - The permissions of the path
-  virtual bool GetPermissions(const std::string& path, mode_t* mode) const;
+  virtual bool GetPermissions(const base::FilePath& path, mode_t* mode) const;
 
   // Calls the platform chmod() function on the given path.
   // The path may be a directory or a file.
@@ -204,7 +205,7 @@ class Platform {
   // Parameters
   //   path - The path to change the permissions on
   //   mode - the mode to change the permissions to
-  virtual bool SetPermissions(const std::string& path, mode_t mode) const;
+  virtual bool SetPermissions(const base::FilePath& path, mode_t mode) const;
 
   // Sets the path accessible by a group with specified permissions
   //
@@ -212,7 +213,7 @@ class Platform {
   //   path - The path to change the ownership and permissions on
   //   group_id - The group ID to assign to the path
   //   group_mode - The group permissions to assign to the path
-  virtual bool SetGroupAccessible(const std::string& path,
+  virtual bool SetGroupAccessible(const base::FilePath& path,
                                   gid_t group_id,
                                   mode_t group_mode) const;
 
@@ -225,10 +226,10 @@ class Platform {
   //   default_dir_info - Default ownership / perms for directories.
   //   special_cases - A map of absolute path to ownership / perms.
   virtual bool ApplyPermissionsRecursive(
-      const std::string& path,
+      const base::FilePath& path,
       const Permissions& default_file_info,
       const Permissions& default_dir_info,
-      const std::map<std::string, Permissions>& special_cases);
+      const std::map<base::FilePath, Permissions>& special_cases);
 
   // Sets the current umask, returning the old mask
   //
@@ -258,16 +259,16 @@ class Platform {
   //
   // Parameters
   //   path - the pathname of any file within the mounted file system
-  virtual int64_t AmountOfFreeDiskSpace(const std::string& path) const;
+  virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const;
 
   // Returns true if the specified file exists.
   //
   // Parameters
   //  path - Path of the file to check
-  virtual bool FileExists(const std::string& path);
+  virtual bool FileExists(const base::FilePath& path);
 
   // Check if a directory exists as the given path
-  virtual bool DirectoryExists(const std::string& path);
+  virtual bool DirectoryExists(const base::FilePath& path);
 
   // Provides the size of a file at |path| if it exists.
   //
@@ -275,21 +276,21 @@ class Platform {
   //   path - Path of the file to check
   //   size - int64_t* to populate with the size
   // Returns true if the size was acquired and false otherwise.
-  virtual bool GetFileSize(const std::string& path, int64_t* size);
+  virtual bool GetFileSize(const base::FilePath& path, int64_t* size);
 
   // Returns the size of a directory at |path| if it exists.
   //
   // Parameters
   //   path - Path of the directory to check
   // Returns the directory size if it was acquired, and -1 on failure.
-  virtual int64_t ComputeDirectorySize(const std::string& path);
+  virtual int64_t ComputeDirectorySize(const base::FilePath& path);
 
   // Opens a file, if possible, returning a FILE*. If not, returns NULL.
   //
   // Parameters
   //   path - Path of the file to open
   //   mode - mode string of the file when opened
-  virtual FILE* OpenFile(const std::string& path, const char* mode);
+  virtual FILE* OpenFile(const base::FilePath& path, const char* mode);
 
   // Closes a FILE* opened with OpenFile()
   //
@@ -301,15 +302,16 @@ class Platform {
   //
   // Parameters
   //  path - Pointer to where the file is created if successful.
-  virtual FILE* CreateAndOpenTemporaryFile(std::string* path);
+  virtual FILE* CreateAndOpenTemporaryFile(base::FilePath* path);
 
   // Reads a file completely into a blob/string.
   //
   // Parameters
   //  path              - Path of the file to read
   //  blob/string (OUT) - blob/string to populate
-  virtual bool ReadFile(const std::string& path, brillo::Blob* blob);
-  virtual bool ReadFileToString(const std::string& path, std::string* string);
+  virtual bool ReadFile(const base::FilePath& path, brillo::Blob* blob);
+  virtual bool ReadFileToString(const base::FilePath& path,
+                                std::string* string);
 
   // Writes to the open file pointer.
   //
@@ -326,10 +328,10 @@ class Platform {
   //  path      - Path of the file to write
   //  blob/data - blob/string/array to populate from
   // (size      - array size)
-  virtual bool WriteFile(const std::string& path, const brillo::Blob& blob);
-  virtual bool WriteStringToFile(const std::string& path,
+  virtual bool WriteFile(const base::FilePath& path, const brillo::Blob& blob);
+  virtual bool WriteStringToFile(const base::FilePath& path,
                                  const std::string& data);
-  virtual bool WriteArrayToFile(const std::string& path, const char* data,
+  virtual bool WriteArrayToFile(const base::FilePath& path, const char* data,
                                 size_t size);
 
   // Atomically writes the entirety of the given data to |path| with |mode|
@@ -343,10 +345,10 @@ class Platform {
   //   path - Path of the file to write
   //   data - Blob to populate from
   //   mode - File permission bit-pattern, eg. 0644 for rw-r--r--
-  bool WriteFileAtomic(const std::string& path,
+  bool WriteFileAtomic(const base::FilePath& path,
                        const brillo::Blob& blob,
                        mode_t mode);
-  bool WriteStringToFileAtomic(const std::string& path,
+  bool WriteStringToFileAtomic(const base::FilePath& path,
                                const std::string& data,
                                mode_t mode);
 
@@ -361,10 +363,10 @@ class Platform {
   //  path      - Path of the file to write
   //  blob/data - blob/string to populate from
   //  mode      - File permission bit-pattern, eg. 0644 for rw-r--r--
-  virtual bool WriteFileAtomicDurable(const std::string& path,
+  virtual bool WriteFileAtomicDurable(const base::FilePath& path,
                                       const brillo::Blob& blob,
                                       mode_t mode);
-  virtual bool WriteStringToFileAtomicDurable(const std::string& path,
+  virtual bool WriteStringToFileAtomicDurable(const base::FilePath& path,
                                               const std::string& data,
                                               mode_t mode);
 
@@ -373,26 +375,26 @@ class Platform {
   //
   // Parameters
   //   path - Path to the file to create
-  virtual bool TouchFileDurable(const std::string& path);
+  virtual bool TouchFileDurable(const base::FilePath& path);
 
   // Delete file(s) at the given path
   //
   // Parameters
   //  path - string containing file path to delete
   //  recursive - whether to perform recursive deletion of the subtree
-  virtual bool DeleteFile(const std::string& path, bool recursive);
+  virtual bool DeleteFile(const base::FilePath& path, bool recursive);
 
   // Deletes file durably, i.e. ensuring that the directory entry is immediately
   // removed from the on-disk directory structure.
   //
   // Parameters
   //   path - Path to the file to delete
-  virtual bool DeleteFileDurable(const std::string& path, bool recursive);
+  virtual bool DeleteFileDurable(const base::FilePath& path, bool recursive);
 
   // Create a directory with the given path (including parent directories, if
   // missing).  All created directories will have 0700 permissions (modulo
   // umask).
-  virtual bool CreateDirectory(const std::string& path);
+  virtual bool CreateDirectory(const base::FilePath& path);
 
   // Enumerate all directory entries in a given directory
   //
@@ -400,9 +402,9 @@ class Platform {
   //  path - root of the tree to enumerate
   //  is_recursive - true to enumerate recursively
   //  ent_list - vector of strings to add enumerate directory entry paths into
-  virtual bool EnumerateDirectoryEntries(const std::string& path,
+  virtual bool EnumerateDirectoryEntries(const base::FilePath& path,
                                          bool is_recursive,
-                                         std::vector<std::string>* ent_list);
+                                         std::vector<base::FilePath>* ent_list);
 
   // Returns a new FileEnumerator instance.
   //
@@ -410,7 +412,7 @@ class Platform {
   //
   // Parameters
   // (see FileEnumerator())
-  virtual FileEnumerator* GetFileEnumerator(const std::string& root_path,
+  virtual FileEnumerator* GetFileEnumerator(const base::FilePath& root_path,
                                             bool recursive,
                                             int file_type);
 
@@ -419,7 +421,7 @@ class Platform {
   // Parameters
   //  path - element to look up
   //  buf - buffer to store results into
-  virtual bool Stat(const std::string& path, struct stat *buf);
+  virtual bool Stat(const base::FilePath& path, struct stat *buf);
 
   // Return true if |path| has extended attribute |name|, possibly following
   // symlink.
@@ -427,7 +429,7 @@ class Platform {
   // Parameters
   //  path - absolute file or directory path to look up
   //  name - name including a namespace prefix. See getxattr(2).
-  virtual bool HasExtendedFileAttribute(const std::string& path,
+  virtual bool HasExtendedFileAttribute(const base::FilePath& path,
                                         const std::string& name);
 
   // Return if ext file attributes associated with the |name| has FS_NODUMP_FL,
@@ -435,45 +437,45 @@ class Platform {
   //
   // Parameters
   //  path - absolute file or directory path to look up
-  virtual bool HasNoDumpFileAttribute(const std::string& path);
+  virtual bool HasNoDumpFileAttribute(const base::FilePath& path);
 
   // Rename a file or directory
   //
   // Parameters
   //  from
   //  to
-  virtual bool Rename(const std::string& from, const std::string& to);
+  virtual bool Rename(const base::FilePath& from, const base::FilePath& to);
 
   // Returns the current time.
   virtual base::Time GetCurrentTime() const;
 
   // Copies from to to.
-  virtual bool Copy(const std::string& from, const std::string& to);
+  virtual bool Copy(const base::FilePath& from, const base::FilePath& to);
 
   // Copies and retains permissions and ownership.
-  virtual bool CopyWithPermissions(const std::string& from,
-                                   const std::string& to);
+  virtual bool CopyWithPermissions(const base::FilePath& from,
+                                   const base::FilePath& to);
 
   // Moves a given path on the filesystem
   //
   // Parameters
   //   from - path to move
   //   to   - destination of the move
-  virtual bool Move(const std::string& from, const std::string& to);
+  virtual bool Move(const base::FilePath& from, const base::FilePath& to);
 
   // Calls statvfs() on path.
   //
   // Parameters
   //   path - path to statvfs on
   //   vfs - buffer to store result in
-  virtual bool StatVFS(const std::string& path, struct statvfs* vfs);
+  virtual bool StatVFS(const base::FilePath& path, struct statvfs* vfs);
 
   // Find the device for a given filesystem.
   //
   // Parameters
   //   filesystem - the filesystem to examine
   //   device - output: the device name that "filesystem" in mounted on
-  virtual bool FindFilesystemDevice(const std::string &filesystem,
+  virtual bool FindFilesystemDevice(const base::FilePath &filesystem,
                                     std::string *device);
 
   // Runs "tune2fs -l" with redirected output.
@@ -481,8 +483,8 @@ class Platform {
   // Parameters
   //  filesystem - the filesystem to examine
   //  lgofile - the path written with output
-  virtual bool ReportFilesystemDetails(const std::string &filesystem,
-                                       const std::string &logfile);
+  virtual bool ReportFilesystemDetails(const base::FilePath &filesystem,
+                                       const base::FilePath &logfile);
 
 
   // Clears the kernel-managed user keyring
@@ -499,7 +501,7 @@ class Platform {
                                     const brillo::SecureBlob& salt);
 
   // Override the location of the mtab file used. Default is kMtab.
-  virtual void set_mtab_path(const std::string &mtab_path) {
+  virtual void set_mtab_path(const base::FilePath &mtab_path) {
     mtab_path_ = mtab_path;
   }
 
@@ -511,7 +513,7 @@ class Platform {
   // entry and file size are sync'ed if changed, but not atime or mtime.)  This
   // method is expensive and synchronous, use with care.  Returns true on
   // success.
-  virtual bool DataSyncFile(const std::string& path);
+  virtual bool DataSyncFile(const base::FilePath& path);
 
   // Syncs everything to disk.  This method is synchronous and very, very
   // expensive, use with even more care than SyncFile.
@@ -529,7 +531,7 @@ class Platform {
   //   pid - The process to check
   //   path_in - The file path to check for
   //   process_info (OUT) - The ProcessInformation to store the results in
-  void GetProcessOpenFileInformation(pid_t pid, const std::string& path_in,
+  void GetProcessOpenFileInformation(pid_t pid, const base::FilePath& path_in,
                                      ProcessInformation* process_info);
 
   // Returns a vector of PIDs that have files open on the given path
@@ -537,7 +539,7 @@ class Platform {
   // Parameters
   //   path - The path to check if the process has open files on
   //   pids (OUT) - The PIDs found
-  void LookForOpenFiles(const std::string& path_in, std::vector<pid_t>* pids);
+  void LookForOpenFiles(const base::FilePath& path, std::vector<pid_t>* pids);
 
   // Returns true if child is a file or folder below or equal to parent.  If
   // parent is a directory, it should end with a '/' character.
@@ -545,13 +547,13 @@ class Platform {
   // Parameters
   //   parent - The parent directory
   //   child - The child directory/file
-  bool IsPathChild(const std::string& parent, const std::string& child);
+  bool IsPathChild(const base::FilePath& parent, const base::FilePath& child);
 
   // Returns the target of the specified link
   //
   // Parameters
   //   link_path - The link to check
-  std::string ReadLink(const std::string& link_path);
+  base::FilePath ReadLink(const base::FilePath& link_path);
 
   // Creates a random string suitable to append to a filename.  Returns empty
   // string in case of error.
@@ -561,7 +563,7 @@ class Platform {
   //
   // Parameters
   //   path - File/directory to be sync'ed
-  bool SyncDirectory(const std::string& path);
+  bool SyncDirectory(const base::FilePath& path);
 
   // Calls fdatasync() on file or fsync() on directory.  Returns true on
   // success.
@@ -569,21 +571,21 @@ class Platform {
   // Parameters
   //   path - File/directory to be sync'ed
   //   is_directory - True if |path| is a directory
-  bool SyncFileOrDirectory(const std::string& path, bool is_directory);
+  bool SyncFileOrDirectory(const base::FilePath& path, bool is_directory);
 
   // Calls |callback| with |path| and, if |path| is a directory, with every
   // entry recursively.  Order is not guaranteed, see base::FileEnumerator.  If
   // |path| is an absolute path, then the file names sent to |callback| will
   // also be absolute.  Returns true if all invocations of |callback| succeed.
   // If an invocation fails, the walk terminates and false is returned.
-  bool WalkPath(const std::string& path,
+  bool WalkPath(const base::FilePath& path,
                 const FileEnumeratorCallback& callback);
 
   // Copies permissions from a file specified by |file_path| and |file_info| to
   // another file with the same name but a child of |new_base|, not |old_base|.
-  bool CopyPermissionsCallback(const std::string& old_base,
-                               const std::string& new_base,
-                               const std::string& file_path,
+  bool CopyPermissionsCallback(const base::FilePath& old_base,
+                               const base::FilePath& new_base,
+                               const base::FilePath& file_path,
                                const struct stat& file_info);
 
   // Applies ownership and permissions to a single file or directory.
@@ -596,8 +598,8 @@ class Platform {
   bool ApplyPermissionsCallback(
       const Permissions& default_file_info,
       const Permissions& default_dir_info,
-      const std::map<std::string, Permissions>& special_cases,
-      const std::string& file_path,
+      const std::map<base::FilePath, Permissions>& special_cases,
+      const base::FilePath& file_path,
       const struct stat& file_info);
 
   void PostWorkerTask(const base::Closure& task);
@@ -607,17 +609,17 @@ class Platform {
 
   // Computes a checksum of |content| and writes it atomically to the same
   // |path| but with a .sum suffix and the given |mode|.
-  void WriteChecksum(const std::string& path,
+  void WriteChecksum(const base::FilePath& path,
                      const void* content,
                      size_t content_size,
                      mode_t mode);
 
   // Looks for a .sum file for |path| and verifies the checksum if it exists.
-  void VerifyChecksum(const std::string& path,
+  void VerifyChecksum(const base::FilePath& path,
                       const void* content,
                       size_t content_size);
 
-  std::string mtab_path_;
+  base::FilePath mtab_path_;
 
   friend class PlatformTest;
   FRIEND_TEST(PlatformTest, SyncDirectoryHasSaneReturnCodes);
@@ -655,14 +657,14 @@ class ProcessInformation {
     return cmd_line_;
   }
 
-  // Set the command line array.  This method DOES swap out the contents of
+  // Set the open file array.  This method DOES swap out the contents of
   // |value|.  The caller should expect an empty set on return.
-  void set_open_files(std::set<std::string>* value) {
+  void set_open_files(std::set<base::FilePath>* value) {
     open_files_.clear();
     open_files_.swap(*value);
   }
 
-  const std::set<std::string>& get_open_files() {
+  const std::set<base::FilePath>& get_open_files() {
     return open_files_;
   }
 
@@ -687,7 +689,7 @@ class ProcessInformation {
 
  private:
   std::vector<std::string> cmd_line_;
-  std::set<std::string> open_files_;
+  std::set<base::FilePath> open_files_;
   std::string cwd_;
   int process_id_;
 };

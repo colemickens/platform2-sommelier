@@ -33,6 +33,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
@@ -67,11 +68,11 @@ namespace {
 
 class ScopedPath {
  public:
-  ScopedPath(cryptohome::Platform* platform, const std::string& dir)
+  ScopedPath(cryptohome::Platform* platform, const FilePath& dir)
       : platform_(platform), dir_(dir) {}
   ~ScopedPath() {
     if (!dir_.empty() && !platform_->DeleteFile(dir_, true)) {
-      PLOG(WARNING) << "Failed to clean up " << dir_;
+      PLOG(WARNING) << "Failed to clean up " << dir_.value();
     }
   }
   void release() {
@@ -79,7 +80,7 @@ class ScopedPath {
   }
  private:
   cryptohome::Platform* platform_;
-  std::string dir_;
+  FilePath dir_;
 };
 
 bool IsDirectory(const struct stat& file_info) {
@@ -115,9 +116,9 @@ Platform::~Platform() {
 }
 
 bool Platform::GetMountsBySourcePrefix(const std::string& from_prefix,
-                 std::multimap<const std::string, const std::string>* mounts) {
+    std::multimap<const FilePath, const FilePath>* mounts) {
   std::string contents;
-  if (!base::ReadFileToString(FilePath(mtab_path_), &contents))
+  if (!base::ReadFileToString(mtab_path_, &contents))
     return false;
 
   std::vector<std::string> lines =
@@ -136,70 +137,70 @@ bool Platform::GetMountsBySourcePrefix(const std::string& from_prefix,
     size_t dst_end = it->find(' ', dst_start);
     std::string destination = it->substr(dst_start, dst_end - dst_start);
     mounts->insert(
-      std::pair<const std::string, const std::string>(source, destination));
+      std::pair<const FilePath, const FilePath>(
+        FilePath(source), FilePath(destination)));
   }
   return mounts && mounts->size();
 }
 
-bool Platform::IsDirectoryMounted(const std::string& directory) {
+bool Platform::IsDirectoryMounted(const FilePath& directory) {
   // Trivial string match from /etc/mtab to see if the cryptohome mount point is
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
   std::string contents;
-  if (base::ReadFileToString(FilePath(mtab_path_), &contents)) {
-    if (contents.find(StringPrintf(" %s ", directory.c_str()))
-        != std::string::npos) {
+  std::string pattern = StringPrintf(" %s ", directory.value().c_str());
+  if (base::ReadFileToString(mtab_path_, &contents)) {
+    if (contents.find(pattern) != std::string::npos) {
       return true;
     }
   }
   return false;
 }
 
-bool Platform::IsDirectoryMountedWith(const std::string& directory,
-                                      const std::string& from) {
+bool Platform::IsDirectoryMountedWith(const FilePath& directory,
+                                      const FilePath& from) {
   // Trivial string match from /etc/mtab to see if the cryptohome mount point
   // and the user's vault path are present.  Assumes this user is mounted if it
   // finds both.  This will need to change if simultaneous login is implemented.
   std::string contents;
-  if (base::ReadFileToString(FilePath(mtab_path_), &contents)) {
-    if ((contents.find(StringPrintf(" %s ", directory.c_str()))
-         != std::string::npos)
-        && (contents.find(StringPrintf("%s ",
-                                       from.c_str()).c_str())
-            != std::string::npos)) {
+  std::string pattern_mount = StringPrintf(" %s ", directory.value().c_str());
+  std::string pattern_with = StringPrintf("%s ", from.value().c_str());
+  if (base::ReadFileToString(mtab_path_, &contents)) {
+    if ((contents.find(pattern_mount) != std::string::npos)
+        && (contents.find(pattern_with) != std::string::npos)) {
       return true;
     }
   }
   return false;
 }
 
-bool Platform::Mount(const std::string& from, const std::string& to,
+bool Platform::Mount(const FilePath& from, const FilePath& to,
                      const std::string& type,
                      const std::string& mount_options) {
-  if (mount(from.c_str(), to.c_str(), type.c_str(), kDefaultMountOptions,
-            mount_options.c_str())) {
+  if (mount(from.value().c_str(), to.value().c_str(), type.c_str(),
+            kDefaultMountOptions, mount_options.c_str())) {
     return false;
   }
   return true;
 }
 
-bool Platform::Bind(const std::string& from, const std::string& to) {
-  if (mount(from.c_str(), to.c_str(), NULL, kDefaultMountOptions | MS_BIND,
-            NULL))
+bool Platform::Bind(const FilePath& from, const FilePath& to) {
+  if (mount(from.value().c_str(), to.value().c_str(), NULL,
+            kDefaultMountOptions | MS_BIND, NULL))
     return false;
   return true;
 }
 
-bool Platform::Unmount(const std::string& path, bool lazy, bool* was_busy) {
+bool Platform::Unmount(const FilePath& path, bool lazy, bool* was_busy) {
   if (lazy) {
-    if (umount2(path.c_str(), MNT_DETACH)) {
+    if (umount2(path.value().c_str(), MNT_DETACH)) {
       if (was_busy) {
         *was_busy = (errno == EBUSY);
       }
       return false;
     }
   } else {
-    if (umount(path.c_str())) {
+    if (umount(path.value().c_str())) {
       if (was_busy) {
         *was_busy = (errno == EBUSY);
       }
@@ -212,11 +213,11 @@ bool Platform::Unmount(const std::string& path, bool lazy, bool* was_busy) {
   return true;
 }
 
-void Platform::LazyUnmountAndSync(const std::string& path, bool sync_first) {
+void Platform::LazyUnmountAndSync(const FilePath& path, bool sync_first) {
   if (sync_first) {
     TimedSync();
   }
-  if (umount2(path.c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
+  if (umount2(path.value().c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
     if (errno != EBUSY) {
       PLOG(ERROR) << "Lazy unmount failed!";
     }
@@ -225,7 +226,7 @@ void Platform::LazyUnmountAndSync(const std::string& path, bool sync_first) {
 }
 
 void Platform::GetProcessesWithOpenFiles(
-    const std::string& path,
+    const FilePath& path,
     std::vector<ProcessInformation>* processes) {
   std::vector<pid_t> pids;
   LookForOpenFiles(path, &pids);
@@ -237,17 +238,18 @@ void Platform::GetProcessesWithOpenFiles(
   }
 }
 
-std::string Platform::ReadLink(const std::string& link_path) {
+FilePath Platform::ReadLink(const FilePath& link_path) {
   char link_buf[PATH_MAX];
-  ssize_t link_length = readlink(link_path.c_str(), link_buf, sizeof(link_buf));
+  ssize_t link_length = readlink(link_path.value().c_str(), link_buf,
+                                 sizeof(link_buf));
   if (link_length > 0) {
-    return std::string(link_buf, link_length);
+    return FilePath(std::string(link_buf, link_length));
   }
-  return std::string();
+  return FilePath();
 }
 
 void Platform::GetProcessOpenFileInformation(pid_t pid,
-                                             const std::string& path_in,
+                                             const FilePath& file_in,
                                              ProcessInformation* process_info) {
   process_info->set_process_id(pid);
   FilePath pid_path(StringPrintf("/proc/%d", pid));
@@ -263,17 +265,16 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   process_info->set_cmd_line(&cmd_line);
 
   // Make sure that if we get a directory, it has a trailing separator
-  FilePath file_path(path_in);
-  file_path = file_path.AsEndingWithSeparator();
-  std::string path = file_path.value();
+  FilePath file_path = file_in.AsEndingWithSeparator();
 
   FilePath cwd_path = pid_path.Append("cwd");
-  std::string link_val = ReadLink(cwd_path.value());
-  if (IsPathChild(path, link_val)) {
-    process_info->set_cwd(&link_val);
+  FilePath link_val = ReadLink(cwd_path);
+  std::string value = link_val.value();
+  if (IsPathChild(file_path, link_val)) {
+    process_info->set_cwd(&value);
   } else {
     link_val.clear();
-    process_info->set_cwd(&link_val);
+    process_info->set_cwd(&value);
   }
 
   // Open /proc/<pid>/fd
@@ -282,32 +283,27 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   base::FileEnumerator fd_dir_enum(fd_dirpath, false,
                                    base::FileEnumerator::FILES);
 
-  std::set<std::string> open_files;
+  std::set<FilePath> open_files;
   // List open file descriptors
   for (FilePath fd_path = fd_dir_enum.Next();
        !fd_path.empty();
        fd_path = fd_dir_enum.Next()) {
-    link_val = ReadLink(fd_path.value());
-    if (IsPathChild(path, link_val)) {
+    link_val = ReadLink(fd_path);
+    if (IsPathChild(file_path, link_val)) {
       open_files.insert(link_val);
     }
   }
   process_info->set_open_files(&open_files);
 }
 
-void Platform::LookForOpenFiles(const std::string& path_in,
+void Platform::LookForOpenFiles(const FilePath& path_in,
                                 std::vector<pid_t>* pids) {
   // Make sure that if we get a directory, it has a trailing separator
-  FilePath file_path(path_in);
-  file_path = file_path.AsEndingWithSeparator();
-  std::string path = file_path.value();
+  FilePath file_path = path_in.AsEndingWithSeparator();
 
   // Open /proc
   base::FileEnumerator proc_dir_enum(FilePath(kProcDir), false,
       base::FileEnumerator::DIRECTORIES);
-
-  int linkbuf_length = path.length();
-  std::vector<char> linkbuf(linkbuf_length);
 
   // List PIDs in /proc
   for (FilePath pid_path = proc_dir_enum.Next();
@@ -320,15 +316,10 @@ void Platform::LookForOpenFiles(const std::string& path_in,
     }
 
     FilePath cwd_path = pid_path.Append("cwd");
-    ssize_t link_length = readlink(cwd_path.value().c_str(),
-                                   linkbuf.data(),
-                                   linkbuf.size());
-    if (link_length > 0) {
-      std::string open_file(linkbuf.data(), link_length);
-      if (IsPathChild(path, open_file)) {
-        pids->push_back(pid);
-        continue;
-      }
+    FilePath cwd_link = ReadLink(cwd_path);
+    if (IsPathChild(file_path, cwd_link)) {
+      pids->push_back(pid);
+      continue;
     }
 
     // Open /proc/<pid>/fd
@@ -341,21 +332,19 @@ void Platform::LookForOpenFiles(const std::string& path_in,
     for (FilePath fd_path = fd_dir_enum.Next();
          !fd_path.empty();
          fd_path = fd_dir_enum.Next()) {
-      link_length = readlink(fd_path.value().c_str(), linkbuf.data(),
-                                     linkbuf.size());
-      if (link_length > 0) {
-        std::string open_file(linkbuf.data(), link_length);
-        if (IsPathChild(path, open_file)) {
-          pids->push_back(pid);
-          break;
-        }
+      FilePath fd_link = ReadLink(fd_path);
+      if (IsPathChild(file_path, fd_link)) {
+        pids->push_back(pid);
+        break;
       }
     }
   }
 }
 
-bool Platform::IsPathChild(const std::string& parent,
-                           const std::string& child) {
+bool Platform::IsPathChild(const FilePath& parent_path,
+                           const FilePath& child_path) {
+  std::string parent = parent_path.value();
+  std::string child = child_path.value();
   if (parent.length() == 0 || child.length() == 0) {
     return false;
   }
@@ -372,11 +361,11 @@ bool Platform::IsPathChild(const std::string& parent,
   return false;
 }
 
-bool Platform::GetOwnership(const std::string& path,
+bool Platform::GetOwnership(const FilePath& path,
                             uid_t* user_id, gid_t* group_id) const {
   struct stat path_status;
-  if (stat(path.c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "stat() of " << path << " failed.";
+  if (stat(path.value().c_str(), &path_status) != 0) {
+    PLOG(ERROR) << "stat() of " << path.value() << " failed.";
     return false;
   }
   if (user_id)
@@ -386,36 +375,36 @@ bool Platform::GetOwnership(const std::string& path,
   return true;
 }
 
-bool Platform::SetOwnership(const std::string& path, uid_t user_id,
+bool Platform::SetOwnership(const FilePath& path, uid_t user_id,
                             gid_t group_id) const {
-  if (chown(path.c_str(), user_id, group_id)) {
-    PLOG(ERROR) << "chown() of " << path.c_str() << " to (" << user_id
+  if (chown(path.value().c_str(), user_id, group_id)) {
+    PLOG(ERROR) << "chown() of " << path.value() << " to (" << user_id
                 << "," << group_id << ") failed.";
     return false;
   }
   return true;
 }
 
-bool Platform::GetPermissions(const std::string& path, mode_t* mode) const {
+bool Platform::GetPermissions(const FilePath& path, mode_t* mode) const {
   struct stat path_status;
-  if (stat(path.c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "stat() of " << path << " failed.";
+  if (stat(path.value().c_str(), &path_status) != 0) {
+    PLOG(ERROR) << "stat() of " << path.value() << " failed.";
     return false;
   }
   *mode = path_status.st_mode;
   return true;
 }
 
-bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
-  if (chmod(path.c_str(), mode)) {
-    PLOG(ERROR) << "chmod() of " << path.c_str() << " to (" << std::oct << mode
+bool Platform::SetPermissions(const FilePath& path, mode_t mode) const {
+  if (chmod(path.value().c_str(), mode)) {
+    PLOG(ERROR) << "chmod() of " << path.value() << " to (" << std::oct << mode
                 << ") failed.";
     return false;
   }
   return true;
 }
 
-bool Platform::SetGroupAccessible(const std::string& path, gid_t group_id,
+bool Platform::SetGroupAccessible(const FilePath& path, gid_t group_id,
                                   mode_t group_mode) const {
   uid_t user_id;
   mode_t mode;
@@ -423,7 +412,7 @@ bool Platform::SetGroupAccessible(const std::string& path, gid_t group_id,
       !GetPermissions(path, &mode) ||
       !SetOwnership(path, user_id, group_id) ||
       !SetPermissions(path, (mode & ~S_IRWXG) | (group_mode & S_IRWXG))) {
-    LOG(ERROR) << "Couldn't set up group access on directory: " << path;
+    LOG(ERROR) << "Couldn't set up group access on directory: " << path.value();
     return false;
   }
   return true;
@@ -467,37 +456,32 @@ bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
   return true;
 }
 
-int64_t Platform::AmountOfFreeDiskSpace(const std::string& path) const {
-  return base::SysInfo::AmountOfFreeDiskSpace(FilePath(path));
+int64_t Platform::AmountOfFreeDiskSpace(const FilePath& path) const {
+  return base::SysInfo::AmountOfFreeDiskSpace(path);
 }
 
-bool Platform::FileExists(const std::string& path) {
-  return base::PathExists(FilePath(path));
+bool Platform::FileExists(const FilePath& path) {
+  return base::PathExists(path);
 }
 
-bool Platform::DirectoryExists(const std::string& path) {
-  return base::DirectoryExists(FilePath(path));
+bool Platform::DirectoryExists(const FilePath& path) {
+  return base::DirectoryExists(path);
 }
 
-bool Platform::GetFileSize(const std::string& path, int64_t* size) {
-  return base::GetFileSize(FilePath(path), size);
+bool Platform::GetFileSize(const FilePath& path, int64_t* size) {
+  return base::GetFileSize(path, size);
 }
 
-int64_t Platform::ComputeDirectorySize(const std::string& path) {
-  return base::ComputeDirectorySize(FilePath(path));
+int64_t Platform::ComputeDirectorySize(const FilePath& path) {
+  return base::ComputeDirectorySize(path);
 }
 
-FILE* Platform::CreateAndOpenTemporaryFile(std::string* path) {
-  FilePath created_path;
-  FILE* f = base::CreateAndOpenTemporaryFile(&created_path);
-  if (f)
-    path->assign(created_path.value());
-
-  return f;
+FILE* Platform::CreateAndOpenTemporaryFile(FilePath* path) {
+  return base::CreateAndOpenTemporaryFile(path);
 }
 
-FILE* Platform::OpenFile(const std::string& path, const char* mode) {
-  return base::OpenFile(FilePath(path), mode);
+FILE* Platform::OpenFile(const FilePath& path, const char* mode) {
+  return base::OpenFile(path, mode);
 }
 
 bool Platform::CloseFile(FILE* fp) {
@@ -509,36 +493,35 @@ bool Platform::WriteOpenFile(FILE* fp, const brillo::Blob& blob) {
             != blob.size());
 }
 
-bool Platform::WriteFile(const std::string& path,
+bool Platform::WriteFile(const FilePath& path,
                          const brillo::Blob& blob) {
   return WriteArrayToFile(path,
                           reinterpret_cast<const char*>(blob.data()),
                           blob.size());
 }
 
-bool Platform::WriteStringToFile(const std::string& path,
+bool Platform::WriteStringToFile(const FilePath& path,
                                  const std::string& data) {
   return WriteArrayToFile(path, data.data(), data.size());
 }
 
-bool Platform::WriteArrayToFile(const std::string& path, const char* data,
+bool Platform::WriteArrayToFile(const FilePath& path, const char* data,
                                 size_t size) {
-  FilePath file_path(path);
-  if (!base::DirectoryExists(file_path.DirName())) {
-    if (!base::CreateDirectory(file_path.DirName())) {
-      LOG(ERROR) << "Cannot create directory: " << file_path.DirName().value();
+  if (!base::DirectoryExists(path.DirName())) {
+    if (!base::CreateDirectory(path.DirName())) {
+      LOG(ERROR) << "Cannot create directory: " << path.DirName().value();
       return false;
     }
   }
   // brillo::Blob::size_type is std::vector::size_type and is unsigned.
   if (size > static_cast<std::string::size_type>(
           std::numeric_limits<int>::max())) {
-    LOG(ERROR) << "Cannot write to " << path
+    LOG(ERROR) << "Cannot write to " << path.value()
                << ". Data is too large: " << size << " bytes.";
     return false;
   }
 
-  int data_written = base::WriteFile(file_path, data, size);
+  int data_written = base::WriteFile(path, data, size);
   return data_written == static_cast<int>(size);
 }
 
@@ -562,7 +545,7 @@ std::string Platform::GetRandomSuffix() {
   return suffix;
 }
 
-bool Platform::WriteFileAtomic(const std::string& path,
+bool Platform::WriteFileAtomic(const FilePath& path,
                                const brillo::Blob& blob,
                                mode_t mode) {
   const std::string data(reinterpret_cast<const char*>(blob.data()),
@@ -570,13 +553,12 @@ bool Platform::WriteFileAtomic(const std::string& path,
   return WriteStringToFileAtomic(path, data, mode);
 }
 
-bool Platform::WriteStringToFileAtomic(const std::string& path,
+bool Platform::WriteStringToFileAtomic(const FilePath& path,
                                        const std::string& data,
                                        mode_t mode) {
-  FilePath file_path(path);
-  if (!base::DirectoryExists(file_path.DirName())) {
-    if (!base::CreateDirectory(file_path.DirName())) {
-      LOG(ERROR) << "Cannot create directory: " << file_path.DirName().value();
+  if (!base::DirectoryExists(path.DirName())) {
+    if (!base::CreateDirectory(path.DirName())) {
+      LOG(ERROR) << "Cannot create directory: " << path.DirName().value();
       return false;
     }
   }
@@ -585,7 +567,7 @@ bool Platform::WriteStringToFileAtomic(const std::string& path,
     PLOG(WARNING) << "Could not compute random suffix";
     return false;
   }
-  std::string temp_name_string = FilePath(path).DirName().
+  std::string temp_name_string = path.DirName().
       Append(".org.chromium.cryptohome." + random_suffix).value();
   const char * temp_name = temp_name_string.c_str();
   int fd = HANDLE_EINTR(open(temp_name, O_CREAT|O_EXCL|O_WRONLY, mode));
@@ -622,7 +604,7 @@ bool Platform::WriteStringToFileAtomic(const std::string& path,
     return false;
   }
 
-  result = rename(temp_name, path.c_str());
+  result = rename(temp_name, path.value().c_str());
   if (result < 0) {
     PLOG(WARNING) << "Could not close " << temp_name;
     unlink(temp_name);
@@ -632,7 +614,7 @@ bool Platform::WriteStringToFileAtomic(const std::string& path,
   return true;
 }
 
-bool Platform::WriteFileAtomicDurable(const std::string& path,
+bool Platform::WriteFileAtomicDurable(const FilePath& path,
                                       const brillo::Blob& blob,
                                       mode_t mode) {
   const std::string data(reinterpret_cast<const char*>(blob.data()),
@@ -640,40 +622,39 @@ bool Platform::WriteFileAtomicDurable(const std::string& path,
   return WriteStringToFileAtomicDurable(path, data, mode);
 }
 
-bool Platform::WriteStringToFileAtomicDurable(const std::string& path,
+bool Platform::WriteStringToFileAtomicDurable(const FilePath& path,
                                               const std::string& data,
                                               mode_t mode) {
   if (!WriteStringToFileAtomic(path, data, mode))
     return false;
   WriteChecksum(path, data.data(), data.size(), mode);
-  return SyncDirectory(FilePath(path).DirName().value());
+  return SyncDirectory(FilePath(path).DirName());
 }
 
-bool Platform::TouchFileDurable(const std::string& path) {
+bool Platform::TouchFileDurable(const FilePath& path) {
   brillo::Blob empty_blob(0);
   if (!WriteFile(path, empty_blob))
     return false;
-  return SyncDirectory(FilePath(path).DirName().value());
+  return SyncDirectory(FilePath(path).DirName());
 }
 
-bool Platform::ReadFile(const std::string& path, brillo::Blob* blob) {
+bool Platform::ReadFile(const FilePath& path, brillo::Blob* blob) {
   int64_t file_size;
-  FilePath file_path(path);
-  if (!base::PathExists(file_path)) {
+  if (!base::PathExists(path)) {
     return false;
   }
-  if (!base::GetFileSize(file_path, &file_size)) {
-    LOG(ERROR) << "Could not get size of " << path;
+  if (!base::GetFileSize(path, &file_size)) {
+    LOG(ERROR) << "Could not get size of " << path.value();
     return false;
   }
   // Compare to the max of a signed integer.
   if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
-    LOG(ERROR) << "File " << path << " is too large: "
+    LOG(ERROR) << "File " << path.value() << " is too large: "
                << file_size << " bytes.";
     return false;
   }
   brillo::Blob buf(file_size);
-  int data_read = base::ReadFile(file_path,
+  int data_read = base::ReadFile(path,
                                  reinterpret_cast<char*>(buf.data()),
                                  file_size);
   // Cast is okay because of comparison to INT_MAX above.
@@ -686,41 +667,44 @@ bool Platform::ReadFile(const std::string& path, brillo::Blob* blob) {
   return true;
 }
 
-bool Platform::ReadFileToString(const std::string& path, std::string* string) {
-  if (!base::ReadFileToString(FilePath(path), string)) {
+bool Platform::ReadFileToString(const FilePath& path,
+                                std::string* string) {
+  if (!base::ReadFileToString(path, string)) {
     return false;
   }
   VerifyChecksum(path, string->data(), string->size());
   return true;
 }
 
-bool Platform::CreateDirectory(const std::string& path) {
-  return base::CreateDirectory(FilePath(path));
+bool Platform::CreateDirectory(const FilePath& path) {
+  return base::CreateDirectory(path);
 }
 
-bool Platform::DeleteFile(const std::string& path, bool is_recursive) {
-  return base::DeleteFile(FilePath(path), is_recursive);
+bool Platform::DeleteFile(const FilePath& path, bool is_recursive) {
+  return base::DeleteFile(path, is_recursive);
 }
 
-bool Platform::DeleteFileDurable(const std::string& path, bool is_recursive) {
-  if (!base::DeleteFile(FilePath(path), is_recursive))
+bool Platform::DeleteFileDurable(const FilePath& path,
+                                 bool is_recursive) {
+  if (!base::DeleteFile(path, is_recursive))
     return false;
-  return SyncDirectory(FilePath(path).DirName().value());
+  return SyncDirectory(path.DirName());
 }
 
-bool Platform::Move(const std::string& from, const std::string& to) {
-  return base::Move(FilePath(from), FilePath(to));
+bool Platform::Move(const FilePath& from, const FilePath& to) {
+  return base::Move(from, to);
 }
 
-bool Platform::EnumerateDirectoryEntries(const std::string& path,
-                                         bool recursive,
-                                         std::vector<std::string>* ent_list) {
+bool Platform::EnumerateDirectoryEntries(
+    const FilePath& path,
+    bool recursive,
+    std::vector<FilePath>* ent_list) {
   auto ft = static_cast<base::FileEnumerator::FileType>(
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
       base::FileEnumerator::SHOW_SYM_LINKS);
-  base::FileEnumerator ent_enum(FilePath(path), recursive, ft);
+  base::FileEnumerator ent_enum(path, recursive, ft);
   for (FilePath path = ent_enum.Next(); !path.empty(); path = ent_enum.Next())
-    ent_list->push_back(path.value());
+    ent_list->push_back(path);
   return true;
 }
 
@@ -728,26 +712,26 @@ base::Time Platform::GetCurrentTime() const {
   return base::Time::Now();
 }
 
-bool Platform::Stat(const std::string& path, struct stat *buf) {
-  return lstat(path.c_str(), buf) == 0;
+bool Platform::Stat(const FilePath& path, struct stat *buf) {
+  return lstat(path.value().c_str(), buf) == 0;
 }
 
-bool Platform::HasExtendedFileAttribute(const std::string& path,
+bool Platform::HasExtendedFileAttribute(const FilePath& path,
                                         const std::string& name) {
-  ssize_t sz = getxattr(path.c_str(), name.c_str(), nullptr, 0);
+  ssize_t sz = getxattr(path.value().c_str(), name.c_str(), nullptr, 0);
   if (sz < 0) {
     if (errno != ENOATTR) {
-      PLOG(ERROR) << "getxattr: " << path;
+      PLOG(ERROR) << "getxattr: " << path.value();
     }
     return false;
   }
   return true;
 }
 
-bool Platform::HasNoDumpFileAttribute(const std::string& path) {
-  int fd = HANDLE_EINTR(open(path.c_str(), O_RDONLY));
+bool Platform::HasNoDumpFileAttribute(const FilePath& path) {
+  int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY));
   if (fd < 0) {
-    PLOG(ERROR) << "open: " << path;
+    PLOG(ERROR) << "open: " << path.value();
     return false;
   }
   // FS_IOC_GETFLAGS actually takes int*
@@ -755,7 +739,7 @@ bool Platform::HasNoDumpFileAttribute(const std::string& path) {
   // https://lwn.net/Articles/575846/
   int flags;
   if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
-    PLOG(ERROR) << "ioctl: " << path;
+    PLOG(ERROR) << "ioctl: " << path.value();
     IGNORE_EINTR(close(fd));
     return false;
   }
@@ -763,56 +747,49 @@ bool Platform::HasNoDumpFileAttribute(const std::string& path) {
   return (flags & FS_NODUMP_FL) == FS_NODUMP_FL;
 }
 
-bool Platform::Rename(const std::string& from, const std::string& to) {
-  return rename(from.c_str(), to.c_str()) == 0;
+bool Platform::Rename(const FilePath& from, const FilePath& to) {
+  return base::Move(from, to);
 }
 
-bool Platform::Copy(const std::string& from, const std::string& to) {
-  FilePath from_path(from);
-  FilePath to_path(to);
-  return base::CopyDirectory(from_path, to_path, true);
+bool Platform::Copy(const FilePath& from, const FilePath& to) {
+  return base::CopyDirectory(from, to, true);
 }
 
 bool Platform::CopyPermissionsCallback(
-    const std::string& old_base,
-    const std::string& new_base,
-    const std::string& file_path,
+    const FilePath& old_base,
+    const FilePath& new_base,
+    const FilePath& file_path,
     const struct stat& file_info) {
-  const FilePath old_base_path(old_base);
-  const FilePath new_base_path(new_base);
   // Find the new path that corresponds with the old path given by file_info.
-  FilePath old_path(file_path);
-  FilePath new_path(new_base_path);
-  if (old_path != old_base_path) {
+  FilePath old_path = file_path;
+  FilePath new_path = new_base;
+  if (old_path != old_base) {
     if (old_path.IsAbsolute()) {
-      if (!old_base_path.AppendRelativePath(old_path, &new_path)) {
+      if (!old_base.AppendRelativePath(old_path, &new_path)) {
         LOG(ERROR) << "AppendRelativePath failed: parent="
-                   << old_base_path.value() << ", child=" << old_path.value();
+                   << old_base.value() << ", child=" << old_path.value();
         return false;
       }
     } else {
-      new_path = new_base_path.Append(old_path);
+      new_path = new_base.Append(old_path);
     }
   }
-  if (!SetOwnership(new_path.value(),
-                    file_info.st_uid,
-                    file_info.st_gid)) {
+  if (!SetOwnership(new_path, file_info.st_uid, file_info.st_gid)) {
     PLOG(ERROR) << "Failed to set ownership for " << new_path.value();
     return false;
   }
   const mode_t permissions_mask = 07777;
-  if (!SetPermissions(new_path.value(),
-                      file_info.st_mode & permissions_mask)) {
+  if (!SetPermissions(new_path, file_info.st_mode & permissions_mask)) {
     PLOG(ERROR) << "Failed to set permissions for " << new_path.value();
     return false;
   }
   return true;
 }
 
-bool Platform::CopyWithPermissions(const std::string& from_path,
-                                   const std::string& to_path) {
+bool Platform::CopyWithPermissions(const FilePath& from_path,
+                                   const FilePath& to_path) {
   if (!Copy(from_path, to_path)) {
-    PLOG(ERROR) << "Failed to copy " << from_path;
+    PLOG(ERROR) << "Failed to copy " << from_path.value();
     return false;
   }
 
@@ -837,11 +814,11 @@ bool Platform::CopyWithPermissions(const std::string& from_path,
 bool Platform::ApplyPermissionsCallback(
     const Permissions& default_file_info,
     const Permissions& default_dir_info,
-    const std::map<std::string, Permissions>& special_cases,
-    const std::string& file_path,
+    const std::map<FilePath, Permissions>& special_cases,
+    const FilePath& file_path,
     const struct stat& file_info) {
   Permissions expected;
-  std::map<std::string, Permissions>::const_iterator it =
+  std::map<FilePath, Permissions>::const_iterator it =
       special_cases.find(file_path);
   if (it != special_cases.end()) {
     expected = it->second;
@@ -852,23 +829,23 @@ bool Platform::ApplyPermissionsCallback(
   }
   if (expected.user != file_info.st_uid ||
       expected.group != file_info.st_gid) {
-    LOG(WARNING) << "Unexpected user/group for " << file_path;
+    LOG(WARNING) << "Unexpected user/group for " << file_path.value();
     if (!SetOwnership(file_path,
                       expected.user,
                       expected.group)) {
       PLOG(ERROR) << "Failed to fix user/group for "
-                  << file_path;
+                  << file_path.value();
       return false;
     }
   }
   const mode_t permissions_mask = 07777;
   if ((expected.mode & permissions_mask) !=
       (file_info.st_mode & permissions_mask)) {
-    LOG(WARNING) << "Unexpected permissions for " << file_path;
+    LOG(WARNING) << "Unexpected permissions for " << file_path.value();
     if (!SetPermissions(file_path,
                         expected.mode & permissions_mask)) {
       PLOG(ERROR) << "Failed to set permissions for "
-                  << file_path;
+                  << file_path.value();
       return false;
     }
   }
@@ -876,10 +853,10 @@ bool Platform::ApplyPermissionsCallback(
 }
 
 bool Platform::ApplyPermissionsRecursive(
-    const std::string& path,
+    const FilePath& path,
     const Permissions& default_file_info,
     const Permissions& default_dir_info,
-    const std::map<std::string, Permissions>& special_cases) {
+    const std::map<FilePath, Permissions>& special_cases) {
   FileEnumeratorCallback callback = base::Bind(
       &Platform::ApplyPermissionsCallback,
       base::Unretained(this),
@@ -889,30 +866,27 @@ bool Platform::ApplyPermissionsRecursive(
   return WalkPath(path, callback);
 }
 
-bool Platform::StatVFS(const std::string& path, struct statvfs* vfs) {
-  return statvfs(path.c_str(), vfs) == 0;
+bool Platform::StatVFS(const FilePath& path, struct statvfs* vfs) {
+  return statvfs(path.value().c_str(), vfs) == 0;
 }
 
-bool Platform::FindFilesystemDevice(const std::string &filesystem_in,
+bool Platform::FindFilesystemDevice(const FilePath &filesystem_in,
                                     std::string *device) {
   /* Clear device to indicate failure case. */
   device->clear();
 
   /* Removing trailing slashes. */
-  std::string filesystem = filesystem_in;
-  size_t offset = filesystem.find_last_not_of('/');
-  if (offset != std::string::npos)
-    filesystem.erase(offset+1);
+  FilePath filesystem = filesystem_in.StripTrailingSeparators();
 
   /* If we fail to open mtab, abort immediately. */
-  FILE *mtab_file = setmntent(mtab_path_.c_str(), "r");
+  FILE *mtab_file = setmntent(mtab_path_.value().c_str(), "r");
   if (!mtab_file)
     return false;
 
   /* Copy device of first matching filesystem location. */
   struct mntent *entry;
   while ((entry = getmntent(mtab_file)) != NULL) {
-    if (filesystem.compare(entry->mnt_dir) == 0) {
+    if (filesystem.value().compare(entry->mnt_dir) == 0) {
       *device = entry->mnt_fsname;
       break;
     }
@@ -922,17 +896,17 @@ bool Platform::FindFilesystemDevice(const std::string &filesystem_in,
   return (device->length() > 0);
 }
 
-bool Platform::ReportFilesystemDetails(const std::string &filesystem,
-                                       const std::string &logfile) {
+bool Platform::ReportFilesystemDetails(const FilePath &filesystem,
+                                       const FilePath &logfile) {
   brillo::ProcessImpl process;
   int rc;
   std::string device;
   if (!FindFilesystemDevice(filesystem, &device)) {
-    LOG(ERROR) << "Failed to find device for " << filesystem;
+    LOG(ERROR) << "Failed to find device for " << filesystem.value();
     return false;
   }
 
-  process.RedirectOutput(logfile);
+  process.RedirectOutput(logfile.value());
   process.AddArg(kPathTune2fs);
   process.AddArg("-l");
   process.AddArg(device);
@@ -941,7 +915,7 @@ bool Platform::ReportFilesystemDetails(const std::string &filesystem,
   if (rc == 0)
     return true;
   LOG(ERROR) << "Failed to run tune2fs on " << device
-             << " (" << filesystem << ", exit " << rc << ")";
+             << " (" << filesystem.value() << ", exit " << rc << ")";
   return false;
 }
 
@@ -949,19 +923,20 @@ bool Platform::FirmwareWriteProtected() {
   return VbGetSystemPropertyInt("wpsw_boot") != 0;
 }
 
-bool Platform::DataSyncFile(const std::string& path) {
+bool Platform::DataSyncFile(const FilePath& path) {
   return SyncFileOrDirectory(path, false /* directory */);
 }
 
-bool Platform::SyncDirectory(const std::string& path) {
+bool Platform::SyncDirectory(const FilePath& path) {
   return SyncFileOrDirectory(path, true /* directory */);
 }
 
-bool Platform::SyncFileOrDirectory(const std::string& path, bool is_directory) {
+bool Platform::SyncFileOrDirectory(const FilePath& path,
+                                   bool is_directory) {
   int flags = (is_directory ? O_RDONLY|O_DIRECTORY : O_WRONLY);
-  int fd = HANDLE_EINTR(open(path.c_str(), flags));
+  int fd = HANDLE_EINTR(open(path.value().c_str(), flags));
   if (fd < 0) {
-    PLOG(WARNING) << "Could not open " << path << " for syncing";
+    PLOG(WARNING) << "Could not open " << path.value() << " for syncing";
     return false;
   }
   // POSIX specifies EINTR as a possible return value of fsync() but not for
@@ -969,14 +944,14 @@ bool Platform::SyncFileOrDirectory(const std::string& path, bool is_directory) {
   int result =
       (is_directory ? HANDLE_EINTR(fsync(fd)) : HANDLE_EINTR(fdatasync(fd)));
   if (result < 0) {
-    PLOG(WARNING) << "Failed to sync " << path;
+    PLOG(WARNING) << "Failed to sync " << path.value();
     close(fd);
     return false;
   }
   // close() may not be retried on error.
   result = IGNORE_EINTR(close(fd));
   if (result < 0) {
-    PLOG(WARNING) << "Failed to close after sync " << path;
+    PLOG(WARNING) << "Failed to close after sync " << path.value();
     return false;
   }
   return true;
@@ -1041,17 +1016,17 @@ bool Platform::AddEcryptfsAuthToken(
   return (ecryptfs::AddEcryptfsAuthToken(key, key_sig, salt) >= 0);
 }
 
-FileEnumerator* Platform::GetFileEnumerator(const std::string& root_path,
+FileEnumerator* Platform::GetFileEnumerator(const FilePath& root_path,
                                             bool recursive,
                                             int file_type) {
   return new FileEnumerator(root_path, recursive, file_type);
 }
 
-bool Platform::WalkPath(const std::string& path,
+bool Platform::WalkPath(const FilePath& path,
                         const FileEnumeratorCallback& callback) {
   struct stat base_entry_info;
   if (!Stat(path, &base_entry_info)) {
-    PLOG(ERROR) << "Failed to stat " << path;
+    PLOG(ERROR) << "Failed to stat " << path.value();
     return false;
   }
   if (!callback.Run(path, base_entry_info))
@@ -1061,7 +1036,7 @@ bool Platform::WalkPath(const std::string& path,
                      base::FileEnumerator::DIRECTORIES;
     std::unique_ptr<FileEnumerator> file_enumerator(
         GetFileEnumerator(path, true, file_types));
-    std::string entry_path;
+    FilePath entry_path;
     while (!(entry_path = file_enumerator->Next()).empty()) {
       if (!callback.Run(entry_path, file_enumerator->GetInfo().stat()))
         return false;
@@ -1075,31 +1050,33 @@ std::string Platform::GetChecksum(const void* input, size_t input_size) {
   return base::HexEncode(&sum, 4);
 }
 
-void Platform::WriteChecksum(const std::string& path,
+void Platform::WriteChecksum(const FilePath& path,
                              const void* content,
                              const size_t content_size,
                              mode_t mode) {
-  WriteStringToFileAtomic(path + ".sum", GetChecksum(content, content_size),
-                          mode);
+  FilePath name = path.AddExtension("sum");
+  WriteStringToFileAtomic(name, GetChecksum(content, content_size), mode);
 }
 
-void Platform::VerifyChecksum(const std::string& path,
+void Platform::VerifyChecksum(const FilePath& path,
                               const void* content,
                               const size_t content_size) {
   // Exclude some system paths.
-  if (base::StartsWith(path, "/etc", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(path, "/dev", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(path, "/sys", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(path, "/proc", base::CompareCase::SENSITIVE)) {
+  std::string path_value = path.value();
+  if (base::StartsWith(path_value, "/etc", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(path_value, "/dev", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(path_value, "/sys", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(path_value, "/proc", base::CompareCase::SENSITIVE)) {
     return;
   }
-  if (!FileExists(path + ".sum")) {
+  FilePath name = path.AddExtension("sum");
+  if (!FileExists(name)) {
     ReportChecksum(kChecksumDoesNotExist);
     return;
   }
   std::string saved_sum;
-  if (!base::ReadFileToString(FilePath(path + ".sum"), &saved_sum)) {
-    LOG(ERROR) << "CHECKSUM: Failed to read checksum for " << path;
+  if (!base::ReadFileToString(name, &saved_sum)) {
+    LOG(ERROR) << "CHECKSUM: Failed to read checksum for " << path.value();
     ReportChecksum(kChecksumReadError);
     return;
   }
@@ -1108,24 +1085,24 @@ void Platform::VerifyChecksum(const std::string& path,
     // weren't written together they can't be expected to match.
     base::File::Info content_file_info;
     base::File::Info checksum_file_info;
-    if (!base::GetFileInfo(FilePath(path), &content_file_info) ||
-        !base::GetFileInfo(FilePath(path + ".sum"), &checksum_file_info)) {
-      LOG(ERROR) << "CHECKSUM: Failed to read file info for " << path;
+    if (!base::GetFileInfo(path, &content_file_info) ||
+        !base::GetFileInfo(name, &checksum_file_info)) {
+      LOG(ERROR) << "CHECKSUM: Failed to read file info for " << path.value();
       ReportChecksum(kChecksumReadError);
       return;
     }
     base::TimeDelta checksum_timestamp_diff =
         checksum_file_info.last_modified - content_file_info.last_modified;
     if (checksum_timestamp_diff.magnitude().InSeconds() > 1) {
-      LOG(ERROR) << "CHECKSUM: Checksum out-of-sync for " << path;
+      LOG(ERROR) << "CHECKSUM: Checksum out-of-sync for " << path.value();
       ReportChecksum(kChecksumOutOfSync);
     } else {
-      LOG(ERROR) << "CHECKSUM: Failed to verify checksum for " << path;
+      LOG(ERROR) << "CHECKSUM: Failed to verify checksum for " << path.value();
       ReportChecksum(kChecksumMismatch);
     }
     // Attempt to update the checksum to match the current content.
     mode_t current_mode;
-    if (GetPermissions(path + ".sum", &current_mode)) {
+    if (GetPermissions(name, &current_mode)) {
       WriteChecksum(path, content, content_size, current_mode);
     }
     return;
@@ -1138,7 +1115,7 @@ FileEnumerator::FileInfo::FileInfo(
   Assign(file_info);
 }
 
-FileEnumerator::FileInfo::FileInfo(const std::string& name,
+FileEnumerator::FileInfo::FileInfo(const FilePath& name,
                                    const struct stat& stat)
     : name_(name), stat_(stat) {
 }
@@ -1177,9 +1154,9 @@ bool FileEnumerator::FileInfo::IsDirectory() const {
   return ::IsDirectory(stat_);
 }
 
-std::string FileEnumerator::FileInfo::GetName() const {
+FilePath FileEnumerator::FileInfo::GetName() const {
   if (info_.get())
-    return info_->GetName().value();
+    return info_->GetName();
   return name_;
 }
 
@@ -1207,19 +1184,19 @@ void FileEnumerator::FileInfo::Assign(
   memset(&stat_, 0, sizeof(stat_));
 }
 
-FileEnumerator::FileEnumerator(const std::string& root_path,
+FileEnumerator::FileEnumerator(const FilePath& root_path,
                                bool recursive,
                                int file_type) {
-  enumerator_.reset(new base::FileEnumerator(FilePath(root_path),
+  enumerator_.reset(new base::FileEnumerator(root_path,
                                              recursive,
                                              file_type));
 }
 
-FileEnumerator::FileEnumerator(const std::string& root_path,
+FileEnumerator::FileEnumerator(const FilePath& root_path,
                                bool recursive,
                                int file_type,
                                const std::string& pattern) {
-  enumerator_.reset(new base::FileEnumerator(FilePath(root_path),
+  enumerator_.reset(new base::FileEnumerator(root_path,
                                              recursive,
                                              file_type,
                                              pattern));
@@ -1228,10 +1205,10 @@ FileEnumerator::FileEnumerator(const std::string& root_path,
 FileEnumerator::FileEnumerator() {}
 FileEnumerator::~FileEnumerator() {}
 
-std::string FileEnumerator::Next() {
+FilePath FileEnumerator::Next() {
   if (!enumerator_.get())
-    return std::string();
-  return enumerator_->Next().value();
+    return FilePath();
+  return enumerator_->Next();
 }
 
 FileEnumerator::FileInfo FileEnumerator::GetInfo() {

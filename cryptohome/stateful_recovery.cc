@@ -12,6 +12,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -19,21 +20,20 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/service.h"
 
+using base::FilePath;
 
 namespace cryptohome {
 
-#define MNT_STATEFUL_PARTITION "/mnt/stateful_partition/"
-
-const char *StatefulRecovery::kFlagFile =
-    MNT_STATEFUL_PARTITION "decrypt_stateful";
-const char *StatefulRecovery::kRecoverSource =
-    MNT_STATEFUL_PARTITION "encrypted";
-const char *StatefulRecovery::kRecoverDestination =
-    MNT_STATEFUL_PARTITION "decrypted";
-const char *StatefulRecovery::kRecoverBlockUsage =
-    MNT_STATEFUL_PARTITION "decrypted/block-usage.txt";
-const char *StatefulRecovery::kRecoverFilesystemDetails =
-    MNT_STATEFUL_PARTITION "decrypted/filesystem-details.txt";
+const FilePath::CharType StatefulRecovery::kRecoverSource[] =
+  FILE_PATH_LITERAL("/mnt/stateful_partition/encrypted");
+const FilePath::CharType StatefulRecovery::kRecoverDestination[] =
+  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypted");
+const FilePath::CharType StatefulRecovery::kRecoverBlockUsage[] =
+  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypted/block-usage.txt");
+const FilePath::CharType StatefulRecovery::kRecoverFilesystemDetails[] =
+  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypted/filesystem-details.txt");
+const FilePath::CharType StatefulRecovery::kFlagFile[] =
+  FILE_PATH_LITERAL("/mnt/stateful_partition/decrypt_stateful");
 
 StatefulRecovery::StatefulRecovery(Platform *platform, Service *service)
     : requested_(false), platform_(platform), service_(service) { }
@@ -47,11 +47,11 @@ bool StatefulRecovery::Requested() {
 bool StatefulRecovery::CopyPartitionInfo() {
   struct statvfs vfs;
 
-  if (!platform_->StatVFS(kRecoverSource, &vfs))
+  if (!platform_->StatVFS(FilePath(kRecoverSource), &vfs))
     return false;
 
   base::DictionaryValue dv;
-  dv.SetString("filesystem", kRecoverSource);
+  dv.SetString("filesystem", FilePath(kRecoverSource).value());
   dv.SetInteger("blocks-total", vfs.f_blocks);
   dv.SetInteger("blocks-free", vfs.f_bfree);
   dv.SetInteger("blocks-avail", vfs.f_bavail);
@@ -63,11 +63,11 @@ bool StatefulRecovery::CopyPartitionInfo() {
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &output);
 
-  if (!platform_->WriteStringToFile(kRecoverBlockUsage, output))
+  if (!platform_->WriteStringToFile(FilePath(kRecoverBlockUsage), output))
     return false;
 
-  if (!platform_->ReportFilesystemDetails(kRecoverSource,
-                                          kRecoverFilesystemDetails))
+  if (!platform_->ReportFilesystemDetails(FilePath(kRecoverSource),
+                                          FilePath(kRecoverFilesystemDetails)))
     return false;
 
   return true;
@@ -78,7 +78,7 @@ bool StatefulRecovery::CopyUserContents() {
   gint error_code;
   gboolean result;
   GError *error = NULL;
-  std::string path;
+  FilePath path;
 
   if (!service_->Mount(user_.c_str(), passkey_.c_str(), false, false,
                        &error_code, &result, &error) || !result) {
@@ -94,23 +94,23 @@ bool StatefulRecovery::CopyUserContents() {
     return false;
   }
 
-  rc = platform_->Copy(path, kRecoverDestination);
+  rc = platform_->Copy(path, FilePath(kRecoverDestination));
 
   service_->UnmountForUser(user_.c_str(), &result, &error);
 
   if (rc)
     return true;
-  LOG(ERROR) << "Failed to copy " << path;
+  LOG(ERROR) << "Failed to copy " << path.value();
   return false;
 }
 
 bool StatefulRecovery::CopyPartitionContents() {
   int rc;
 
-  rc = platform_->Copy(kRecoverSource, kRecoverDestination);
+  rc = platform_->Copy(FilePath(kRecoverSource), FilePath(kRecoverDestination));
   if (rc)
     return true;
-  LOG(ERROR) << "Failed to copy " << kRecoverSource;
+  LOG(ERROR) << "Failed to copy " << FilePath(kRecoverSource).value();
   return false;
 }
 
@@ -159,8 +159,9 @@ bool StatefulRecovery::Recover() {
   if (!requested_)
     return false;
 
-  if (!platform_->CreateDirectory(kRecoverDestination)) {
-    LOG(ERROR) << "Failed to mkdir " << kRecoverDestination;
+  if (!platform_->CreateDirectory(FilePath(kRecoverDestination))) {
+    LOG(ERROR) << "Failed to mkdir "
+               << FilePath(kRecoverDestination).value();
     return false;
   }
 
@@ -186,7 +187,7 @@ void StatefulRecovery::PerformReboot() {
 bool StatefulRecovery::ParseFlagFile() {
   std::string contents;
   size_t delim, pos;
-  if (!platform_->ReadFileToString(kFlagFile, &contents))
+  if (!platform_->ReadFileToString(FilePath(kFlagFile), &contents))
     return false;
 
   // Make sure there is a trailing newline.

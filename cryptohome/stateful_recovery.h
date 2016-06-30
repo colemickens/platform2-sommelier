@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
+
 namespace cryptohome {
 
 class Platform;
@@ -34,11 +36,11 @@ class StatefulRecovery {
   // On Chrome hardware, sets the recovery request field and reboots.
   virtual void PerformReboot();
 
-  static const char *kRecoverSource;
-  static const char *kRecoverDestination;
-  static const char *kRecoverBlockUsage;
-  static const char *kRecoverFilesystemDetails;
-  static const char *kFlagFile;
+  static const base::FilePath::CharType kRecoverSource[];
+  static const base::FilePath::CharType kRecoverDestination[];
+  static const base::FilePath::CharType kRecoverBlockUsage[];
+  static const base::FilePath::CharType kRecoverFilesystemDetails[];
+  static const base::FilePath::CharType kFlagFile[];
 
  private:
   // Returns true if a flag file indicating a recovery request exists and

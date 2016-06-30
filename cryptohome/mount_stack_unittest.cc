@@ -4,16 +4,19 @@
 
 #include "cryptohome/mount_stack.h"
 
+#include <base/files/file_path.h>
 #include <gtest/gtest.h>
+
+using base::FilePath;
 
 TEST(MountStackTest, Correctness) {
   MountStack stack;
-  stack.Push("/foo");
-  stack.Push("/bar");
-  std::string result;
+  stack.Push(FilePath("/foo"));
+  stack.Push(FilePath("/bar"));
+  FilePath result;
   EXPECT_TRUE(stack.Pop(&result));
-  EXPECT_EQ(result, "/bar");
+  EXPECT_EQ(result, FilePath("/bar"));
   EXPECT_TRUE(stack.Pop(&result));
-  EXPECT_EQ(result, "/foo");
+  EXPECT_EQ(result, FilePath("/foo"));
   EXPECT_FALSE(stack.Pop(&result));
 }
