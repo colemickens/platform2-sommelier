@@ -1482,9 +1482,7 @@ class AltImageTest : public MountTest {
     return ok;
   }
 
-  void PrepareHomedirs(bool populate_cache,
-                       bool populate_gcache,
-                       bool inject_keyset,
+  void PrepareHomedirs(bool inject_keyset,
                        const std::vector<int>* delete_vaults,
                        const std::vector<int>* mounted_vaults) {
     bool populate_vaults = (vaults_.size() == 0);
@@ -1511,53 +1509,6 @@ class AltImageTest : public MountTest {
           mounted_user = true;
       }
 
-      // <vault>/user/Cache
-      {
-        InSequence two_tests;
-        if (populate_cache && !mounted_user) {
-          InSequence s;
-          // Create a contents to be deleted.
-          MockFileEnumerator* files = new MockFileEnumerator();
-          EXPECT_CALL(platform_,
-              GetFileEnumerator(StringPrintf("%s/%s",
-                                  helper_.users[user].user_vault_path.c_str(),
-                                  kCacheDir),
-                                false, _))
-            .WillOnce(Return(files));
-          EXPECT_CALL(*files, Next())
-            .WillOnce(Return("MOCK/cached_file"));
-          EXPECT_CALL(platform_, DeleteFile("MOCK/cached_file", _))
-            .WillOnce(Return(true));
-          EXPECT_CALL(*files, Next())
-            .WillOnce(Return("MOCK/cached_subdir"));
-          EXPECT_CALL(platform_, DeleteFile("MOCK/cached_subdir", true))
-            .WillOnce(Return(true));
-          EXPECT_CALL(*files, Next())
-            .WillRepeatedly(Return(""));
-        }
-        if (populate_gcache && !mounted_user) {
-          InSequence s;
-          // Create a contents to be deleted.
-          MockFileEnumerator* files = new MockFileEnumerator();
-          EXPECT_CALL(platform_,
-              GetFileEnumerator(StartsWith(
-                                  StringPrintf("%s/%s",
-                                    helper_.users[user].user_vault_path.c_str(),
-                                    kGCacheDir)),
-                                false, _))
-            .WillOnce(Return(files));
-          EXPECT_CALL(*files, Next())
-            .WillOnce(Return("MOCK/gcached_file"));
-          EXPECT_CALL(platform_, DeleteFile("MOCK/gcached_file", _))
-            .WillOnce(Return(true));
-          EXPECT_CALL(*files, Next())
-            .WillOnce(Return("MOCK/gcached_subdir"));
-          EXPECT_CALL(platform_, DeleteFile("MOCK/gcached_subdir", true))
-            .WillOnce(Return(true));
-          EXPECT_CALL(*files, Next())
-            .WillRepeatedly(Return(""));
-        }
-      }
       // After Cache & GCache are depleted. Users are deleted. To do so cleanly,
       // their keysets timestamps are read into an in-memory.
       if (inject_keyset && !mounted_user) {
@@ -2059,7 +2010,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   expect_deletion.push_back(1);
   expect_deletion.push_back(2);
   expect_deletion.push_back(3);
-  PrepareHomedirs(false, false, true, &expect_deletion, NULL);
+  PrepareHomedirs(true, &expect_deletion, NULL);
 
   // Let Mount know how many vaults there are.
   std::vector<std::string> no_vaults;
@@ -2154,7 +2105,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   expect_deletion.push_back(1);
   expect_deletion.push_back(2);
   // Expect all users but the owner to be removed.
-  PrepareHomedirs(false, false, true, &expect_deletion, NULL);
+  PrepareHomedirs(true, &expect_deletion, NULL);
 
   // Let Mount know how many vaults there are.
   std::vector<std::string> no_vaults;
@@ -2256,7 +2207,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   expect_deletion.push_back(1);
   expect_deletion.push_back(2);
   expect_deletion.push_back(3);
-  PrepareHomedirs(false, false, false, &expect_deletion, NULL);
+  PrepareHomedirs(false, &expect_deletion, NULL);
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
@@ -2287,7 +2238,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   expect_deletion.push_back(0);
   expect_deletion.push_back(1);
   expect_deletion.push_back(2);
-  PrepareHomedirs(false, false, false, &expect_deletion, NULL);
+  PrepareHomedirs(false, &expect_deletion, NULL);
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
@@ -2319,7 +2270,7 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  PrepareHomedirs(false, false, true, NULL, NULL);
+  PrepareHomedirs(true, NULL, NULL);
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
@@ -2402,7 +2353,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
 
   // Mounting user vault won't be deleted, but tmpfs mount should still be
   // used.
-  PrepareHomedirs(false, false, true, NULL, NULL);
+  PrepareHomedirs(true, NULL, NULL);
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
