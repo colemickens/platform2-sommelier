@@ -15,6 +15,8 @@ namespace cryptohome {
 Tpm* Tpm::singleton_ = NULL;
 base::Lock Tpm::singleton_lock_;
 
+const uint32_t Tpm::kLockboxIndex = kLockboxIndex;
+
 ScopedKeyHandle::ScopedKeyHandle()
     : tpm_(nullptr), handle_(kInvalidKeyHandle) {}
 

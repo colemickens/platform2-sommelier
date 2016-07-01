@@ -80,6 +80,8 @@ class Tpm {
 
   static Tpm* GetSingleton();
 
+  static const uint32_t kLockboxIndex;
+
   virtual ~Tpm() {}
 
   // Encrypts a data blob using the provided RSA key. Returns a TpmRetryAction

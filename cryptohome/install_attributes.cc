@@ -19,8 +19,6 @@
 
 namespace cryptohome {
 
-// See README.lockbox for information on how this was selected.
-const uint32_t InstallAttributes::kLockboxIndex = 0x20000004;
 // By default, we store this with other cryptohome state.
 const char* InstallAttributes::kDefaultDataFile =
   "/home/.shadow/install_attributes.pb";
@@ -37,7 +35,7 @@ InstallAttributes::InstallAttributes(Tpm* tpm)
     data_file_(kDefaultDataFile),
     cache_file_(kDefaultCacheFile),
     default_attributes_(new SerializedInstallAttributes()),
-    default_lockbox_(new Lockbox(tpm, kLockboxIndex)),
+    default_lockbox_(new Lockbox(tpm, Tpm::kLockboxIndex)),
     default_platform_(new Platform()),
     attributes_(default_attributes_.get()),
     lockbox_(default_lockbox_.get()),
