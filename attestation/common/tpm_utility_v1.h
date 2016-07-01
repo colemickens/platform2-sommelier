@@ -35,7 +35,7 @@ class TpmUtilityV1 : public TpmUtility {
 
   // Initializes a TpmUtilityV1 instance. This method must be called
   // successfully before calling any other methods.
-  bool Initialize();
+  bool Initialize() override;
 
   // TpmUtility methods.
   bool IsTpmReady() override;

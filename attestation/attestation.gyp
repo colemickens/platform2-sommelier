@@ -55,7 +55,7 @@
       'type': 'static_library',
       'sources': [
         'common/crypto_utility_impl.cc',
-        'common/tpm_utility_v1.cc',
+        'common/tpm_utility_factory.cc',
       ],
       'all_dependent_settings': {
         'variables': {
@@ -63,10 +63,32 @@
             'openssl',
           ],
         },
-        'libraries': [
-          '-ltspi',
-        ],
       },
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'defines': [
+            'USE_TPM2',
+          ],
+          'sources': [
+            'common/tpm_utility_v2.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltrunks',
+            ],
+          },
+        }],
+        ['USE_tpm2 == 0', {
+          'sources': [
+            'common/tpm_utility_v1.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltspi',
+            ],
+          },
+        }],
+      ],
       'dependencies': [
         'proto_library',
       ],

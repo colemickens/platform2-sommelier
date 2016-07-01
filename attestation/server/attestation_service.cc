@@ -52,7 +52,7 @@ bool AttestationService::Initialize() {
   worker_thread_->StartWithOptions(
       base::Thread::Options(base::MessageLoop::TYPE_IO, 0));
   if (!tpm_utility_) {
-    default_tpm_utility_.reset(new TpmUtilityV1());
+    default_tpm_utility_.reset(TpmUtilityFactory::New());
     if (!default_tpm_utility_->Initialize()) {
       return false;
     }

@@ -36,6 +36,7 @@ class MockTpmUtility : public TpmUtility {
   static std::string Transform(const std::string& method,
                                const std::string& input);
 
+  MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD0(IsTpmReady, bool());
   MOCK_METHOD6(ActivateIdentity,
                bool(const std::string&,

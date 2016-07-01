@@ -31,8 +31,7 @@
 
 #include "attestation/common/crypto_utility.h"
 #include "attestation/common/crypto_utility_impl.h"
-#include "attestation/common/tpm_utility.h"
-#include "attestation/common/tpm_utility_v1.h"
+#include "attestation/common/tpm_utility_factory.h"
 #include "attestation/server/database.h"
 #include "attestation/server/database_impl.h"
 #include "attestation/server/key_store.h"
@@ -284,7 +283,7 @@ class AttestationService : public AttestationInterface {
   std::unique_ptr<DatabaseImpl> default_database_;
   std::unique_ptr<Pkcs11KeyStore> default_key_store_;
   std::unique_ptr<chaps::TokenManagerClient> pkcs11_token_manager_;
-  std::unique_ptr<TpmUtilityV1> default_tpm_utility_;
+  std::unique_ptr<TpmUtility> default_tpm_utility_;
 
   // All work is done in the background. This serves to serialize requests and
   // allow synchronous implementation of complex methods. This is intentionally

@@ -57,6 +57,7 @@ class UntransformString {
 namespace attestation {
 
 MockTpmUtility::MockTpmUtility() {
+  ON_CALL(*this, Initialize()).WillByDefault(Return(true));
   ON_CALL(*this, IsTpmReady()).WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentity(_, _, _, _, _, _))
       .WillByDefault(Return(true));

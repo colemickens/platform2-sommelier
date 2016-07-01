@@ -28,6 +28,10 @@ class TpmUtility {
  public:
   virtual ~TpmUtility() = default;
 
+  // Initializes a TpmUtility instance. This method must be called
+  // successfully before calling any other methods.
+  virtual bool Initialize() = 0;
+
   // Returns true iff the TPM is enabled, owned, and ready for attestation.
   virtual bool IsTpmReady() = 0;
 
