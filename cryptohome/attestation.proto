@@ -83,6 +83,9 @@ message AttestationEnrollmentRequest {
   optional Quote pcr0_quote = 3;
   // PCR1 quoted by AIK.
   optional Quote pcr1_quote = 4;
+  // DEN for enterprise zero-touch enrollment (crbug/624187).
+  optional bytes enterprise_enrollment_nonce = 5;
+
 }
 
 // These two fields are suitable for passing to Tspi_TPM_ActivateIdentity()
@@ -147,6 +150,9 @@ enum CertificateProfile {
   GFSC_CERTIFICATE = 5;
 
   JETSTREAM_CERTIFICATE = 6;
+
+  // A certificate for enterprise enrollment.
+  ENTERPRISE_ENROLLMENT_CERTIFICATE = 7;
 }
 
 // The certificate request to be sent to the attestation server.
