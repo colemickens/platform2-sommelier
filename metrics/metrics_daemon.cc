@@ -834,6 +834,10 @@ bool MetricsDaemon::ReadFileToUint64(const base::FilePath& path,
 }
 
 bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
+  if (!base::DirectoryExists(zram_dir)) {
+    return false;
+  }
+
   // Data sizes are in bytes.  |zero_pages| is in number of pages.
   uint64_t compr_data_size, orig_data_size, zero_pages;
   const size_t page_size = 4096;
