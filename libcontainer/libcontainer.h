@@ -140,6 +140,12 @@ int container_config_set_cpu_rt_params(struct container_config *c,
 				       int rt_runtime,
 				       int rt_period);
 
+int container_config_get_cpu_shares(struct container_config *c);
+int container_config_get_cpu_quota(struct container_config *c);
+int container_config_get_cpu_period(struct container_config *c);
+int container_config_get_cpu_rt_runtime(struct container_config *c);
+int container_config_get_cpu_rt_period(struct container_config *c);
+
 /* Container manipulation. */
 struct container;
 

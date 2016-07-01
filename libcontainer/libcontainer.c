@@ -405,6 +405,31 @@ int container_config_set_cpu_rt_params(struct container_config *c,
 	return 0;
 }
 
+int container_config_get_cpu_shares(struct container_config *c)
+{
+	return c->cpu_cgparams.shares;
+}
+
+int container_config_get_cpu_quota(struct container_config *c)
+{
+	return c->cpu_cgparams.quota;
+}
+
+int container_config_get_cpu_period(struct container_config *c)
+{
+	return c->cpu_cgparams.period;
+}
+
+int container_config_get_cpu_rt_runtime(struct container_config *c)
+{
+	return c->cpu_cgparams.rt_runtime;
+}
+
+int container_config_get_cpu_rt_period(struct container_config *c)
+{
+	return c->cpu_cgparams.rt_period;
+}
+
 /*
  * Container manipulation
  */

@@ -18,6 +18,9 @@
 #include "libcontainer.h"
 
 static const pid_t INIT_TEST_PID = 5555;
+static const int TEST_CPU_SHARES = 200;
+static const int TEST_CPU_QUOTA = 20000;
+static const int TEST_CPU_PERIOD = 50000;
 
 struct mount_args {
 	char *source;
@@ -264,8 +267,9 @@ FIXTURE_SETUP(container_test)
 				    1,
 				    0);
 
-	container_config_set_cpu_shares(self->config, 200);
-	container_config_set_cpu_cfs_params(self->config, 20000, 50000);
+	container_config_set_cpu_shares(self->config, TEST_CPU_SHARES);
+	container_config_set_cpu_cfs_params(
+		self->config, TEST_CPU_QUOTA, TEST_CPU_PERIOD);
 	/* Invalid params, so this won't be applied. */
 	container_config_set_cpu_rt_params(self->config, 20000, 20000);
 
@@ -337,10 +341,18 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(mknod_call_args.dev, makedev(1, 3));
 
 	EXPECT_EQ(1, gmcg.set_cpu_shares_count);
+	EXPECT_EQ(TEST_CPU_SHARES,
+		  container_config_get_cpu_shares(self->config));
 	EXPECT_EQ(1, gmcg.set_cpu_quota_count);
+	EXPECT_EQ(TEST_CPU_QUOTA,
+		  container_config_get_cpu_quota(self->config));
 	EXPECT_EQ(1, gmcg.set_cpu_period_count);
+	EXPECT_EQ(TEST_CPU_PERIOD,
+		  container_config_get_cpu_period(self->config));
 	EXPECT_EQ(0, gmcg.set_cpu_rt_runtime_count);
+	EXPECT_EQ(0, container_config_get_cpu_rt_runtime(self->config));
 	EXPECT_EQ(0, gmcg.set_cpu_rt_period_count);
+	EXPECT_EQ(0, container_config_get_cpu_rt_period(self->config));
 
 	ASSERT_NE(NULL, minijail_alt_syscall_table);
 	EXPECT_EQ(0, strcmp(minijail_alt_syscall_table,
