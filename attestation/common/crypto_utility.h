@@ -70,15 +70,28 @@ class CryptoUtility {
   virtual bool GetRSAPublicKey(const std::string& public_key_info,
                                std::string* public_key) = 0;
 
+  // Convert a |tpm_public_object|, that is, a serialized TPMT_PUBLIC structure
+  // to a PKCS #1 RSAPublicKey.
+  virtual bool GetRSAPublicKeyForTpm2(const std::string& tpm_public_object,
+                                      std::string* public_key) = 0;
+
   // Encrypts a |credential| in a format compatible with TPM attestation key
   // activation. The |ek_public_key_info| must be provided in X.509
   // SubjectPublicKeyInfo format and the |aik_public_key| must be provided in
-  // TPM_PUBKEY format.
+  // TPM_PUBKEY format (TPMT_PUBLIC for TPM 2.0).
   virtual bool EncryptIdentityCredential(
+      TpmVersion tpm_version,
       const std::string& credential,
       const std::string& ek_public_key_info,
       const std::string& aik_public_key,
       EncryptedIdentityCredential* encrypted) = 0;
+
+  // Decrypts an identity certificate given a 'credential' decrypted by the TPM
+  // using TPM2_ActivateCredential.
+  virtual bool DecryptIdentityCertificateForTpm2(
+      const std::string& credential,
+      const EncryptedData& encrypted_certificate,
+      std::string* certificate) = 0;
 
   // Encrypts |data| in a format compatible with the TPM unbind operation. The
   // |public_key| must be provided in X.509 SubjectPublicKeyInfo format.
@@ -91,6 +104,10 @@ class CryptoUtility {
   virtual bool VerifySignature(const std::string& public_key,
                                const std::string& data,
                                const std::string& signature) = 0;
+
+  virtual bool EncryptEndorsementCredentialForGoogle(
+      const std::string& certificate,
+      EncryptedData* encrypted_certificate) = 0;
 };
 
 }  // namespace attestation

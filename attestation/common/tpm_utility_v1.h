@@ -33,11 +33,9 @@ class TpmUtilityV1 : public TpmUtility {
   TpmUtilityV1() = default;
   ~TpmUtilityV1() override;
 
-  // Initializes a TpmUtilityV1 instance. This method must be called
-  // successfully before calling any other methods.
-  bool Initialize() override;
-
   // TpmUtility methods.
+  bool Initialize() override;
+  TpmVersion GetVersion() override { return TPM_1_2; }
   bool IsTpmReady() override;
   bool ActivateIdentity(const std::string& delegate_blob,
                         const std::string& delegate_secret,
@@ -45,6 +43,12 @@ class TpmUtilityV1 : public TpmUtility {
                         const std::string& asym_ca_contents,
                         const std::string& sym_ca_attestation,
                         std::string* credential) override;
+  bool ActivateIdentityForTpm2(KeyType key_type,
+                               const std::string& identity_key_blob,
+                               const std::string& encrypted_seed,
+                               const std::string& credential_mac,
+                               const std::string& wrapped_credential,
+                               std::string* credential) override;
   bool CreateCertifiedKey(KeyType key_type,
                           KeyUsage key_usage,
                           const std::string& identity_key_blob,
@@ -56,13 +60,25 @@ class TpmUtilityV1 : public TpmUtility {
                           std::string* proof) override;
   bool SealToPCR0(const std::string& data, std::string* sealed_data) override;
   bool Unseal(const std::string& sealed_data, std::string* data) override;
-  bool GetEndorsementPublicKey(std::string* public_key) override;
+  bool GetEndorsementPublicKey(KeyType key_type,
+                               std::string* public_key) override;
+  bool GetEndorsementCertificate(KeyType key_type,
+                                 std::string* certificate) override;
   bool Unbind(const std::string& key_blob,
               const std::string& bound_data,
               std::string* data) override;
   bool Sign(const std::string& key_blob,
             const std::string& data_to_sign,
             std::string* signature) override;
+  bool CreateRestrictedKey(KeyType key_type,
+                           KeyUsage key_usage,
+                           std::string* public_key,
+                           std::string* private_key_blob) override;
+  bool QuotePCR(int pcr_index,
+                const std::string& key_blob,
+                std::string* quoted_pcr_value,
+                std::string* quoted_data,
+                std::string* quote) override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with

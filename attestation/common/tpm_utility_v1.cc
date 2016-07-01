@@ -160,6 +160,17 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
   return true;
 }
 
+bool TpmUtilityV1::ActivateIdentityForTpm2(
+    KeyType key_type,
+    const std::string& identity_key_blob,
+    const std::string& encrypted_seed,
+    const std::string& credential_mac,
+    const std::string& wrapped_credential,
+    std::string* credential) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
 bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
                                       KeyUsage key_usage,
                                       const std::string& identity_key_blob,
@@ -365,7 +376,11 @@ bool TpmUtilityV1::Unseal(const std::string& sealed_data, std::string* data) {
   return true;
 }
 
-bool TpmUtilityV1::GetEndorsementPublicKey(std::string* public_key) {
+bool TpmUtilityV1::GetEndorsementPublicKey(KeyType key_type,
+                                           std::string* public_key) {
+  if (key_type != KEY_TYPE_RSA) {
+    return false;
+  }
   // Get a handle to the EK public key.
   ScopedTssKey ek_public_key_object(context_handle_);
   TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(tpm_handle_, false, nullptr,
@@ -387,6 +402,12 @@ bool TpmUtilityV1::GetEndorsementPublicKey(std::string* public_key) {
     return false;
   }
   return true;
+}
+
+bool TpmUtilityV1::GetEndorsementCertificate(KeyType key_type,
+                                             std::string* certificate) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
 }
 
 bool TpmUtilityV1::Unbind(const std::string& key_blob,
@@ -468,6 +489,23 @@ bool TpmUtilityV1::Sign(const std::string& key_blob,
   }
   signature->assign(TSSBufferAsString(buffer.value(), length));
   return true;
+}
+
+bool TpmUtilityV1::CreateRestrictedKey(KeyType key_type,
+                                       KeyUsage key_usage,
+                                       std::string* public_key,
+                                       std::string* private_key_blob) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
+bool TpmUtilityV1::QuotePCR(int pcr_index,
+                            const std::string& key_blob,
+                            std::string* quoted_pcr_value,
+                            std::string* quoted_data,
+                            std::string* quote) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
 }
 
 bool TpmUtilityV1::ConnectContext(ScopedTssContext* context, TSS_HTPM* tpm) {

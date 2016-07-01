@@ -37,9 +37,17 @@ class MockTpmUtility : public TpmUtility {
                                const std::string& input);
 
   MOCK_METHOD0(Initialize, bool());
+  MOCK_METHOD0(GetVersion, TpmVersion());
   MOCK_METHOD0(IsTpmReady, bool());
   MOCK_METHOD6(ActivateIdentity,
                bool(const std::string&,
+                    const std::string&,
+                    const std::string&,
+                    const std::string&,
+                    const std::string&,
+                    std::string*));
+  MOCK_METHOD6(ActivateIdentityForTpm2,
+               bool(KeyType key_type,
                     const std::string&,
                     const std::string&,
                     const std::string&,
@@ -57,11 +65,23 @@ class MockTpmUtility : public TpmUtility {
                     std::string*));
   MOCK_METHOD2(SealToPCR0, bool(const std::string&, std::string*));
   MOCK_METHOD2(Unseal, bool(const std::string&, std::string*));
-  MOCK_METHOD1(GetEndorsementPublicKey, bool(std::string*));
+  MOCK_METHOD2(GetEndorsementPublicKey, bool(KeyType, std::string*));
+  MOCK_METHOD2(GetEndorsementCertificate,
+               bool(KeyType key_type, std::string* certificate));
   MOCK_METHOD3(Unbind,
                bool(const std::string&, const std::string&, std::string*));
   MOCK_METHOD3(Sign,
                bool(const std::string&, const std::string&, std::string*));
+  MOCK_METHOD4(CreateRestrictedKey,
+               bool(KeyType key_type,
+                    KeyUsage key_usage,
+                    std::string* public_key,
+                    std::string* private_key_blob));
+  MOCK_METHOD5(QuotePCR, bool(int pcr_index,
+                        const std::string& key_blob,
+                        std::string* quoted_pcr_value,
+                        std::string* quoted_data,
+                        std::string* quote));
 };
 
 }  // namespace attestation

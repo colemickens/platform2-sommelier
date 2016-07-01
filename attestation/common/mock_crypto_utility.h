@@ -53,17 +53,23 @@ class MockCryptoUtility : public CryptoUtility {
   MOCK_METHOD2(GetRSASubjectPublicKeyInfo,
                bool(const std::string&, std::string*));
   MOCK_METHOD2(GetRSAPublicKey, bool(const std::string&, std::string*));
-  MOCK_METHOD4(EncryptIdentityCredential,
-               bool(const std::string&,
+  MOCK_METHOD2(GetRSAPublicKeyForTpm2, bool(const std::string&, std::string*));
+  MOCK_METHOD5(EncryptIdentityCredential,
+               bool(TpmVersion,
+                    const std::string&,
                     const std::string&,
                     const std::string&,
                     EncryptedIdentityCredential*));
+  MOCK_METHOD3(DecryptIdentityCertificateForTpm2,
+               bool(const std::string&, const EncryptedData&, std::string*));
   MOCK_METHOD3(EncryptForUnbind,
                bool(const std::string&, const std::string&, std::string*));
   MOCK_METHOD3(VerifySignature,
                bool(const std::string&,
                     const std::string&,
                     const std::string&));
+  MOCK_METHOD2(EncryptEndorsementCredentialForGoogle,
+               bool(const std::string&, EncryptedData*));
 };
 
 }  // namespace attestation

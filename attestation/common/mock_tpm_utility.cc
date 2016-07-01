@@ -58,8 +58,15 @@ namespace attestation {
 
 MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, Initialize()).WillByDefault(Return(true));
+#ifndef USE_TPM2
+  ON_CALL(*this, GetVersion()).WillByDefault(Return(TPM_1_2));
+#else
+  ON_CALL(*this, GetVersion()).WillByDefault(Return(TPM_2_0));
+#endif
   ON_CALL(*this, IsTpmReady()).WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentity(_, _, _, _, _, _))
+      .WillByDefault(Return(true));
+  ON_CALL(*this, ActivateIdentityForTpm2(_, _, _, _, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillByDefault(Return(true));
@@ -71,6 +78,10 @@ MockTpmUtility::MockTpmUtility() {
       .WillByDefault(WithArgs<1, 2>(Invoke(TransformString("Unbind"))));
   ON_CALL(*this, Sign(_, _, _))
       .WillByDefault(WithArgs<1, 2>(Invoke(TransformString("Sign"))));
+  ON_CALL(*this, GetEndorsementPublicKey(_, _)).WillByDefault(Return(true));
+  ON_CALL(*this, GetEndorsementCertificate(_, _)).WillByDefault(Return(true));
+  ON_CALL(*this, CreateRestrictedKey(_, _, _, _)).WillByDefault(Return(true));
+  ON_CALL(*this, QuotePCR(_, _, _, _, _)).WillByDefault(Return(true));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

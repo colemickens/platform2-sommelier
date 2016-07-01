@@ -36,6 +36,10 @@
 #include "attestation/server/database_impl.h"
 #include "attestation/server/key_store.h"
 #include "attestation/server/pkcs11_key_store.h"
+#include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
+#include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
+#include "tpm_manager/common/tpm_nvram_interface.h"
+#include "tpm_manager/common/tpm_ownership_interface.h"
 
 namespace attestation {
 
@@ -106,8 +110,14 @@ class AttestationService : public AttestationInterface {
 
   void set_tpm_utility(TpmUtility* tpm_utility) { tpm_utility_ = tpm_utility; }
 
+  void set_hwid(const std::string& hwid) { hwid_ = hwid; }
+
   // So tests don't need to duplicate URL decisions.
   const std::string& attestation_ca_origin() { return attestation_ca_origin_; }
+
+  // To allow tests to run out the worker thread's task runner. Must not be
+  // invoked on the worker thread.
+  void WaitUntilIdleForTesting();
 
  private:
   enum ACARequestType {
@@ -123,6 +133,9 @@ class AttestationService : public AttestationInterface {
       const std::shared_ptr<ReplyProtobufType>& reply) {
     callback.Run(*reply);
   }
+
+  // Initialization to be run on the worker thread.
+  void InitializeTask();
 
   // A blocking implementation of CreateGoogleAttestedKey appropriate to run on
   // the worker thread.
@@ -264,6 +277,15 @@ class AttestationService : public AttestationInterface {
                                const std::string& public_key,
                                std::string* public_key_info) const;
 
+  // Prepares the attestation system for enrollment with an ACA.
+  void PrepareForEnrollment();
+
+  // Activates an attestation key given an |encrypted_certificate|. On success
+  // returns true and provides the decrypted |certificate| if not null. If
+  // |save_certificate| is set, also writes the |certificate| to the database.
+  bool ActivateAttestationKeyInternal(const EncryptedIdentityCredential&
+    encrypted_certificate, bool save_certificate, std::string* certificate);
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   const std::string attestation_ca_origin_;
@@ -275,6 +297,7 @@ class AttestationService : public AttestationInterface {
   std::shared_ptr<brillo::http::Transport> http_transport_;
   KeyStore* key_store_{nullptr};
   TpmUtility* tpm_utility_{nullptr};
+  std::string hwid_;
 
   // Default implementations for the above interfaces. These will be setup
   // during Initialize() if the corresponding interface has not been set with a

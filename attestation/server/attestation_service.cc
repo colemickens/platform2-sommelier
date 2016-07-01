@@ -24,9 +24,13 @@
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>
 #include <crypto/sha2.h>
+extern "C" {
+#include <vboot/crossystem.h>
+}
 
 #include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/database.pb.h"
+#include "attestation/common/tpm_utility_factory.h"
 #include "attestation/server/database_impl.h"
 
 namespace {
@@ -39,6 +43,17 @@ const char kACAWebOrigin[] = "https://asbestos-qa.corp.google.com";
 const size_t kNonceSize = 20;  // As per TPM_NONCE definition.
 const int kNumTemporalValues = 5;
 
+std::string GetHardwareID() {
+  char buffer[VB_MAX_STRING_PROPERTY];
+  const char* property =
+      VbGetSystemPropertyString("hwid", buffer, arraysize(buffer));
+  if (property != nullptr) {
+    return std::string(property);
+  }
+  LOG(WARNING) << "Could not read hwid property.";
+  return std::string();
+}
+
 }  // namespace
 
 namespace attestation {
@@ -47,15 +62,22 @@ AttestationService::AttestationService()
     : attestation_ca_origin_(kACAWebOrigin), weak_factory_(this) {}
 
 bool AttestationService::Initialize() {
-  LOG(INFO) << "Attestation service started.";
-  worker_thread_.reset(new base::Thread("Attestation Service Worker"));
-  worker_thread_->StartWithOptions(
-      base::Thread::Options(base::MessageLoop::TYPE_IO, 0));
+  if (!worker_thread_) {
+    worker_thread_.reset(new base::Thread("Attestation Service Worker"));
+    worker_thread_->StartWithOptions(
+        base::Thread::Options(base::MessageLoop::TYPE_IO, 0));
+    LOG(INFO) << "Attestation service started.";
+  }
+  worker_thread_->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&AttestationService::InitializeTask, base::Unretained(this)));
+  return true;
+}
+
+void AttestationService::InitializeTask() {
   if (!tpm_utility_) {
     default_tpm_utility_.reset(TpmUtilityFactory::New());
-    if (!default_tpm_utility_->Initialize()) {
-      return false;
-    }
+    CHECK(default_tpm_utility_->Initialize());
     tpm_utility_ = default_tpm_utility_.get();
   }
   if (!crypto_utility_) {
@@ -64,9 +86,7 @@ bool AttestationService::Initialize() {
   }
   if (!database_) {
     default_database_.reset(new DatabaseImpl(crypto_utility_));
-    worker_thread_->task_runner()->PostTask(
-        FROM_HERE, base::Bind(&DatabaseImpl::Initialize,
-                              base::Unretained(default_database_.get())));
+    default_database_->Initialize();
     database_ = default_database_.get();
   }
   if (!key_store_) {
@@ -74,7 +94,14 @@ bool AttestationService::Initialize() {
     default_key_store_.reset(new Pkcs11KeyStore(pkcs11_token_manager_.get()));
     key_store_ = default_key_store_.get();
   }
-  return true;
+  if (hwid_.empty()) {
+    hwid_ = GetHardwareID();
+  }
+  if (!IsPreparedForEnrollment()) {
+    worker_thread_->task_runner()->PostTask(
+        FROM_HERE, base::Bind(&AttestationService::PrepareForEnrollment,
+                              base::Unretained(this)));
+  }
 }
 
 void AttestationService::CreateGoogleAttestedKey(
@@ -219,7 +246,7 @@ void AttestationService::GetEndorsementInfoTask(
       !database_pb.credentials().has_endorsement_public_key()) {
     // Try to read the public key directly.
     std::string public_key;
-    if (!tpm_utility_->GetEndorsementPublicKey(&public_key)) {
+    if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &public_key)) {
       result->set_status(STATUS_NOT_AVAILABLE);
       return;
     }
@@ -312,27 +339,21 @@ void AttestationService::ActivateAttestationKeyTask(
     const std::shared_ptr<ActivateAttestationKeyReply>& result) {
   if (request.key_type() != KEY_TYPE_RSA) {
     result->set_status(STATUS_INVALID_PARAMETER);
+    LOG(ERROR) << __func__ << ": Only RSA currently supported.";
+    return;
+  }
+  if (request.encrypted_certificate().tpm_version() !=
+      tpm_utility_->GetVersion()) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    LOG(ERROR) << __func__ << ": TPM version mismatch.";
     return;
   }
   std::string certificate;
-  auto database_pb = database_->GetProtobuf();
-  if (!tpm_utility_->ActivateIdentity(
-          database_pb.delegate().blob(), database_pb.delegate().secret(),
-          database_pb.identity_key().identity_key_blob(),
-          request.encrypted_certificate().asym_ca_contents(),
-          request.encrypted_certificate().sym_ca_attestation(), &certificate)) {
-    LOG(ERROR) << __func__ << ": Failed to activate identity.";
+  if (!ActivateAttestationKeyInternal(request.encrypted_certificate(),
+                                      request.save_certificate(),
+                                      &certificate)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
-  }
-  if (request.save_certificate()) {
-    database_->GetMutableProtobuf()
-        ->mutable_identity_key()
-        ->set_identity_credential(certificate);
-    if (!database_->SaveChanges()) {
-      LOG(ERROR) << __func__ << ": Failed to persist database changes.";
-      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-    }
   }
   result->set_certificate(certificate);
 }
@@ -466,6 +487,12 @@ void AttestationService::RegisterKeyWithChapsTokenTask(
   DeleteKey(request.username(), request.key_label());
 }
 
+void AttestationService::WaitUntilIdleForTesting() {
+  while (!worker_thread_->message_loop()->IsIdleForTesting()) {
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
+  }
+}
+
 bool AttestationService::IsPreparedForEnrollment() {
   if (!tpm_utility_->IsTpmReady()) {
     return false;
@@ -493,6 +520,7 @@ bool AttestationService::CreateEnrollRequest(std::string* enroll_request) {
   }
   auto database_pb = database_->GetProtobuf();
   AttestationEnrollmentRequest request_pb;
+  request_pb.set_tpm_version(tpm_utility_->GetVersion());
   *request_pb.mutable_encrypted_endorsement_credential() =
       database_pb.credentials().default_encrypted_endorsement_credential();
   request_pb.set_identity_public_key(
@@ -522,22 +550,14 @@ bool AttestationService::FinishEnroll(const std::string& enroll_response,
                << ": Error received from CA: " << response_pb.detail();
     return false;
   }
-  std::string credential;
-  auto database_pb = database_->GetProtobuf();
-  if (!tpm_utility_->ActivateIdentity(
-          database_pb.delegate().blob(), database_pb.delegate().secret(),
-          database_pb.identity_key().identity_key_blob(),
-          response_pb.encrypted_identity_credential().asym_ca_contents(),
-          response_pb.encrypted_identity_credential().sym_ca_attestation(),
-          &credential)) {
-    LOG(ERROR) << __func__ << ": Failed to activate identity.";
+  if (response_pb.encrypted_identity_credential().tpm_version() !=
+      tpm_utility_->GetVersion()) {
+    LOG(ERROR) << __func__ << ": TPM version mismatch.";
     return false;
   }
-  database_->GetMutableProtobuf()
-      ->mutable_identity_key()
-      ->set_identity_credential(credential);
-  if (!database_->SaveChanges()) {
-    LOG(ERROR) << __func__ << ": Failed to persist database changes.";
+  if (!ActivateAttestationKeyInternal(
+          response_pb.encrypted_identity_credential(),
+          true /* save_certificate */, nullptr /* certificate */)) {
     return false;
   }
   LOG(INFO) << "Attestation: Enrollment complete.";
@@ -563,6 +583,7 @@ bool AttestationService::CreateCertificateRequest(
     LOG(ERROR) << __func__ << ": GetRandom(message_id) failed.";
     return false;
   }
+  request_pb.set_tpm_version(tpm_utility_->GetVersion());
   request_pb.set_message_id(*message_id);
   auto database_pb = database_->GetProtobuf();
   request_pb.set_identity_credential(
@@ -596,13 +617,13 @@ bool AttestationService::FinishCertificateRequest(
   }
   AttestationCertificateResponse response_pb;
   if (!response_pb.ParseFromString(certificate_response)) {
-    LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
+    LOG(ERROR) << __func__ << ": Failed to parse response from Attestation CA.";
     return false;
   }
   if (response_pb.status() != OK) {
     *server_error = response_pb.detail();
-    LOG(ERROR) << __func__
-               << ": Error received from Privacy CA: " << response_pb.detail();
+    LOG(ERROR) << __func__ << ": Error received from Attestation CA: "
+               << response_pb.detail();
     return false;
   }
   if (message_id != response_pb.message_id()) {
@@ -866,6 +887,167 @@ bool AttestationService::GetSubjectPublicKeyInfo(
   }
   return crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
                                                      public_key_info);
+}
+
+void AttestationService::PrepareForEnrollment() {
+  if (IsPreparedForEnrollment()) {
+    return;
+  }
+  if (!tpm_utility_->IsTpmReady()) {
+    // Try again later.
+    worker_thread_->task_runner()->PostDelayedTask(
+        FROM_HERE, base::Bind(&AttestationService::PrepareForEnrollment,
+                              base::Unretained(this)),
+        base::TimeDelta::FromSeconds(3));
+    return;
+  }
+  base::TimeTicks start = base::TimeTicks::Now();
+  LOG(INFO) << "Attestation: Preparing for enrollment...";
+  // Gather information about the endorsement key.
+  std::string rsa_ek_public_key;
+  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA,
+                                             &rsa_ek_public_key)) {
+    LOG(ERROR) << "Attestation: Failed to get RSA EK public key.";
+    return;
+  }
+  std::string ecc_ek_public_key;
+  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_ECC,
+                                             &ecc_ek_public_key)) {
+    LOG(WARNING) << "Attestation: Failed to get ECC EK public key.";
+  }
+  std::string rsa_ek_certificate;
+  if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA,
+                                               &rsa_ek_certificate)) {
+    LOG(ERROR) << "Attestation: Failed to get RSA EK certificate.";
+    return;
+  }
+  std::string ecc_ek_certificate;
+  if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_ECC,
+                                               &ecc_ek_certificate)) {
+    LOG(WARNING) << "Attestation: Failed to get ECC EK certificate.";
+  }
+  // Create an identity key.
+  std::string rsa_identity_public_key;
+  std::string rsa_identity_key_blob;
+  if (!tpm_utility_->CreateRestrictedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
+                                         &rsa_identity_public_key,
+                                         &rsa_identity_key_blob)) {
+    LOG(ERROR) << "Attestation: Failed to create RSA AIK.";
+    return;
+  }
+  std::string rsa_identity_public_key_der;
+  if (!crypto_utility_->GetRSAPublicKeyForTpm2(rsa_identity_public_key,
+                                               &rsa_identity_public_key_der)) {
+    LOG(ERROR) << "Attestation: Failed to parse AIK public key.";
+    return;
+  }
+  // Quote PCRs. These quotes are intended to be valid for the lifetime of the
+  // identity key so they do not need external data. This only works when
+  // firmware ensures that these PCRs will not change unless the TPM owner is
+  // cleared.
+  std::string quoted_pcr_value0;
+  std::string quoted_data0;
+  std::string quote0;
+  if (!tpm_utility_->QuotePCR(0, rsa_identity_key_blob, &quoted_pcr_value0,
+                              &quoted_data0, &quote0)) {
+    LOG(ERROR) << "Attestation: Failed to generate quote for PCR_0.";
+    return;
+  }
+  std::string quoted_pcr_value1;
+  std::string quoted_data1;
+  std::string quote1;
+  if (!tpm_utility_->QuotePCR(1, rsa_identity_key_blob, &quoted_pcr_value1,
+                              &quoted_data1, &quote1)) {
+    LOG(ERROR) << "Attestation: Failed to generate quote for PCR_1.";
+    return;
+  }
+  // Store all this in the attestation database.
+  AttestationDatabase* database_pb = database_->GetMutableProtobuf();
+  TPMCredentials* credentials_pb = database_pb->mutable_credentials();
+  credentials_pb->set_endorsement_public_key(rsa_ek_public_key);
+  credentials_pb->set_endorsement_credential(rsa_ek_certificate);
+  credentials_pb->set_ecc_endorsement_public_key(ecc_ek_public_key);
+  credentials_pb->set_ecc_endorsement_credential(ecc_ek_certificate);
+
+  if (!crypto_utility_->EncryptEndorsementCredentialForGoogle(
+          rsa_ek_certificate,
+          credentials_pb->mutable_default_encrypted_endorsement_credential())) {
+    LOG(ERROR) << "Attestation: Failed to encrypt EK certificate.";
+    return;
+  }
+  IdentityKey* key_pb = database_pb->mutable_identity_key();
+  key_pb->set_identity_public_key(rsa_identity_public_key_der);
+  key_pb->set_identity_key_blob(rsa_identity_key_blob);
+  IdentityBinding* binding_pb = database_pb->mutable_identity_binding();
+  binding_pb->set_identity_public_key_der(rsa_identity_public_key_der);
+  binding_pb->set_identity_public_key(rsa_identity_public_key);
+  Quote* quote_pb0 = database_pb->mutable_pcr0_quote();
+  quote_pb0->set_quote(quote0);
+  quote_pb0->set_quoted_data(quoted_data0);
+  quote_pb0->set_quoted_pcr_value(quoted_pcr_value0);
+  Quote* quote_pb1 = database_pb->mutable_pcr1_quote();
+  quote_pb1->set_quote(quote1);
+  quote_pb1->set_quoted_data(quoted_data1);
+  quote_pb1->set_quoted_pcr_value(quoted_pcr_value1);
+  quote_pb1->set_pcr_source_hint(hwid_);
+  if (!database_->SaveChanges()) {
+    LOG(ERROR) << "Attestation: Failed to write database.";
+    return;
+  }
+  base::TimeDelta delta = (base::TimeTicks::Now() - start);
+  LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
+            << "ms).";
+}
+
+bool AttestationService::ActivateAttestationKeyInternal(
+    const EncryptedIdentityCredential& encrypted_certificate,
+    bool save_certificate,
+    std::string* certificate) {
+  std::string certificate_local;
+  auto database_pb = database_->GetProtobuf();
+  if (encrypted_certificate.tpm_version() == TPM_1_2) {
+    // TPM 1.2 style activate.
+    if (!tpm_utility_->ActivateIdentity(
+            database_pb.delegate().blob(), database_pb.delegate().secret(),
+            database_pb.identity_key().identity_key_blob(),
+            encrypted_certificate.asym_ca_contents(),
+            encrypted_certificate.sym_ca_attestation(),
+            &certificate_local)) {
+      LOG(ERROR) << __func__ << ": Failed to activate identity.";
+      return false;
+    }
+  } else {
+    // TPM 2.0 style activate.
+    std::string credential;
+    if (!tpm_utility_->ActivateIdentityForTpm2(
+            KEY_TYPE_RSA, database_pb.identity_key().identity_key_blob(),
+            encrypted_certificate.encrypted_seed(),
+            encrypted_certificate.credential_mac(),
+            encrypted_certificate.wrapped_certificate().wrapped_key(),
+            &credential)) {
+      LOG(ERROR) << __func__ << ": Failed to activate identity.";
+      return false;
+    }
+    if (!crypto_utility_->DecryptIdentityCertificateForTpm2(
+            credential, encrypted_certificate.wrapped_certificate(),
+            &certificate_local)) {
+      LOG(ERROR) << __func__ << ": Failed to decrypt identity certificate.";
+      return false;
+    }
+  }
+  if (save_certificate) {
+    database_->GetMutableProtobuf()
+        ->mutable_identity_key()
+        ->set_identity_credential(certificate_local);
+    if (!database_->SaveChanges()) {
+      LOG(ERROR) << __func__ << ": Failed to persist database changes.";
+      return false;
+    }
+  }
+  if (certificate) {
+    *certificate = certificate_local;
+  }
+  return true;
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

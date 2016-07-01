@@ -29,12 +29,16 @@ message AttestationEnrollmentRequest {
   //   Data encryption: 256-bit key, AES-CBC with PKCS5 padding.
   //   MAC: HMAC-SHA-512 using the AES key.
   optional EncryptedData encrypted_endorsement_credential = 1;
-  // The AIK public key, in TPM_PUBKEY form.
+  // The AIK public key, in TPM_PUBKEY form (TPMT_PUBLIC for TPM 2.0).
   optional bytes identity_public_key = 2;
   // PCR0 quoted by AIK.
   optional Quote pcr0_quote = 3;
   // PCR1 quoted by AIK.
   optional Quote pcr1_quote = 4;
+  // DEN for enterprise zero-touch enrollment (crbug/624187).
+  optional bytes enterprise_enrollment_nonce = 5;
+  // The device TPM version.
+  optional TpmVersion tpm_version = 6;
 }
 
 enum ResponseStatus {
@@ -63,11 +67,12 @@ message AttestationEnrollmentResponse {
 message AttestationCertificateRequest {
   // The AIK cert in X.509 format.
   optional bytes identity_credential = 1;
-  // A certified public key in TPM_PUBKEY.
+  // A certified public key in TPM_PUBKEY (TPMT_PUBLIC for TPM 2.0).
   optional bytes certified_public_key = 3;
-  // The serialized TPM_CERTIFY_INFO for the certified key.
+  // The serialized TPM_CERTIFY_INFO (TPMS_ATTEST for TPM 2.0) for the
+  // certified key.
   optional bytes certified_key_info = 4;
-  // The signature of the TPM_CERTIFY_INFO by the AIK.
+  // The signature of the TPM_CERTIFY_INFO (TPMS_ATTEST for TPM 2.0) by the AIK.
   optional bytes certified_key_proof = 5;
   // A message identifier to be included in the response.
   optional bytes message_id = 10;
@@ -79,6 +84,8 @@ message AttestationCertificateRequest {
   // The index of a temporal value.  This may be used or ignored depending on
   // the certificate profile.
   optional int32 temporal_index = 13;
+  // The device TPM version.
+  optional TpmVersion tpm_version = 14;
 }
 
 // The response from the attestation server for the certificate request.

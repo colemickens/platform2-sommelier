@@ -356,7 +356,7 @@ class ClientLoop : public ClientLoopBase {
     CryptoUtilityImpl crypto(nullptr);
     EncryptedIdentityCredential encrypted;
     if (!crypto.EncryptIdentityCredential(
-            input, endorsement_info.ek_public_key(),
+            TPM_1_2, input, endorsement_info.ek_public_key(),
             attestation_key_info.public_key_tpm_format(), &encrypted)) {
       QuitWithExitCode(EX_SOFTWARE);
     }

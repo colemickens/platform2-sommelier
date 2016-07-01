@@ -56,8 +56,6 @@ DatabaseImpl::~DatabaseImpl() {
 }
 
 void DatabaseImpl::Initialize() {
-  // Start thread-checking now.
-  thread_checker_.DetachFromThread();
   DCHECK(thread_checker_.CalledOnValidThread());
   io_->Watch(base::Bind(base::IgnoreResult(&DatabaseImpl::Reload),
                         base::Unretained(this)));

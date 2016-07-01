@@ -181,7 +181,7 @@ TEST_F(CryptoUtilityImplTest, EncryptIdentityCredential) {
                                                           &public_key_info));
   EncryptedIdentityCredential output;
   EXPECT_TRUE(crypto_utility_->EncryptIdentityCredential(
-      "credential", public_key_info, "aik", &output));
+      TPM_1_2, "credential", public_key_info, "aik", &output));
   EXPECT_TRUE(output.has_asym_ca_contents());
   EXPECT_TRUE(output.has_sym_ca_attestation());
 }
@@ -189,7 +189,7 @@ TEST_F(CryptoUtilityImplTest, EncryptIdentityCredential) {
 TEST_F(CryptoUtilityImplTest, EncryptIdentityCredentialBadEK) {
   EncryptedIdentityCredential output;
   EXPECT_FALSE(crypto_utility_->EncryptIdentityCredential(
-      "credential", "bad_ek", "aik", &output));
+      TPM_1_2, "credential", "bad_ek", "aik", &output));
 }
 
 TEST_F(CryptoUtilityImplTest, EncryptForUnbind) {

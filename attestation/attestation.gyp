@@ -23,6 +23,11 @@
         'protobuf-lite',
       ],
     },
+    'conditions': [
+      ['USE_tpm2 == 1', {
+        'defines': [ 'USE_TPM2' ],
+      }],
+    ],
   },
   'targets': [
     # A library for just the protobufs.
@@ -63,18 +68,22 @@
             'openssl',
           ],
         },
+        'libraries': [
+          '-lvboot_host',
+        ],
       },
+      'dependencies': [
+        'proto_library',
+      ],
       'conditions': [
         ['USE_tpm2 == 1', {
-          'defines': [
-            'USE_TPM2',
-          ],
           'sources': [
             'common/tpm_utility_v2.cc',
           ],
           'all_dependent_settings': {
             'libraries': [
               '-ltrunks',
+              '-ltpm_manager',
             ],
           },
         }],
@@ -88,9 +97,6 @@
             ],
           },
         }],
-      ],
-      'dependencies': [
-        'proto_library',
       ],
     },
     # A library for client code.

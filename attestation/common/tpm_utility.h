@@ -28,27 +28,46 @@ class TpmUtility {
  public:
   virtual ~TpmUtility() = default;
 
-  // Initializes a TpmUtility instance. This method must be called
-  // successfully before calling any other methods.
+  // Override to perform initialization work. This must be called successfully
+  // before calling any other methods.
   virtual bool Initialize() = 0;
+
+  // Returns the TPM version managed by this instance.
+  virtual TpmVersion GetVersion() = 0;
 
   // Returns true iff the TPM is enabled, owned, and ready for attestation.
   virtual bool IsTpmReady() = 0;
 
-  // Activates an attestation identity key. Effectively this decrypts a
-  // certificate or some other type of credential with the endorsement key. The
-  // |delegate_blob| and |delegate_secret| must be authorized to activate with
-  // owner privilege. The |identity_key_blob| is the key to which the credential
-  // is bound. The |asym_ca_contents| and |sym_ca_attestation| parameters are
-  // encrypted TPM structures, typically created by a CA (TPM_ASYM_CA_CONTENTS
-  // and TPM_SYM_CA_ATTESTATION respectively). On success returns true and
-  // populates the decrypted |credential|.
+  // Activates an attestation identity key for TPM 1.2. Effectively this
+  // decrypts a certificate or some other type of credential with the
+  // endorsement key. The |delegate_blob| and |delegate_secret| must be
+  // authorized to activate with owner privilege. The |identity_key_blob| is the
+  // key to which the credential is bound. The |asym_ca_contents| and
+  // |sym_ca_attestation| parameters are encrypted TPM structures, typically
+  // created by a CA (TPM_ASYM_CA_CONTENTS and TPM_SYM_CA_ATTESTATION
+  // respectively). On success returns true and populates the decrypted
+  // |credential|.
   virtual bool ActivateIdentity(const std::string& delegate_blob,
                                 const std::string& delegate_secret,
                                 const std::string& identity_key_blob,
                                 const std::string& asym_ca_contents,
                                 const std::string& sym_ca_attestation,
                                 std::string* credential) = 0;
+
+  // Activates an attestation identity key for TPM 2.0. The type of both the
+  // endorsement key and the identity key is specified by |key_type|. The
+  // |identity_key_blob| is as output by CreateRestrictedKey(). The
+  // |encrypted_seed|, |credential_mac|, and |wrapped_credential| are provided
+  // by the Attestation CA via an EncryptedIdentityCredential protobuf. Take
+  // note that the |wrapped_credential| is not the wrapped certificate itself
+  // but a shorter value which is used to derive
+  virtual bool ActivateIdentityForTpm2(
+      KeyType key_type,
+      const std::string& identity_key_blob,
+      const std::string& encrypted_seed,
+      const std::string& credential_mac,
+      const std::string& wrapped_credential,
+      std::string* credential) = 0;
 
   // Generates and certifies a non-migratable key in the TPM. The new key will
   // correspond to |key_type| and |key_usage|. The parent key will be the
@@ -77,8 +96,13 @@ class TpmUtility {
   // unsealed |data|. Returns true on success.
   virtual bool Unseal(const std::string& sealed_data, std::string* data) = 0;
 
-  // Reads the endorsement public key from the TPM.
-  virtual bool GetEndorsementPublicKey(std::string* public_key) = 0;
+  // Reads an endorsement public key from the TPM.
+  virtual bool GetEndorsementPublicKey(KeyType key_type,
+                                       std::string* public_key) = 0;
+
+  // Reads an endorsement certificate from the TPM.
+  virtual bool GetEndorsementCertificate(KeyType key_type,
+                                         std::string* certificate) = 0;
 
   // Unbinds |bound_data| with the key loaded from |key_blob| by decrypting
   // using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme. The input must be in the
@@ -94,6 +118,25 @@ class TpmUtility {
   virtual bool Sign(const std::string& key_blob,
                     const std::string& data_to_sign,
                     std::string* signature) = 0;
+
+  // Creates a restricted key of |key_type| for |key_usage|. The |public_key| is
+  // a serialized TPMT_PUBLIC and |private_key_blob| is an opaque blob which
+  // only the TPM is able to unwrap.
+  virtual bool CreateRestrictedKey(KeyType key_type,
+                                   KeyUsage key_usage,
+                                   std::string* public_key,
+                                   std::string* private_key_blob) = 0;
+
+  // Quotes a PCR specified by |pcr_index|. The |key_blob| must be a restricted
+  // signing key. On success returns true and populates:
+  //   |quoted_pcr_value| - The value of the register at the time it was quoted.
+  //   |quoted_data| - The exact serialized data that was signed.
+  //   |quote| - The signature.
+  virtual bool QuotePCR(int pcr_index,
+                        const std::string& key_blob,
+                        std::string* quoted_pcr_value,
+                        std::string* quoted_data,
+                        std::string* quote) = 0;
 };
 
 }  // namespace attestation

@@ -54,7 +54,14 @@ class AttestationServiceTest : public testing::Test {
     kBadMessageID,    // Valid successful response but a message ID mismatch.
   };
 
+#ifndef USE_TPM2
+  const TpmVersion kTpmVersionUnderTest = TPM_1_2;
+#else
+  const TpmVersion kTpmVersionUnderTest = TPM_2_0;
+#endif
+
   ~AttestationServiceTest() override = default;
+
   void SetUp() override {
     service_.reset(new AttestationService);
     service_->set_database(&mock_database_);
@@ -63,6 +70,7 @@ class AttestationServiceTest : public testing::Test {
     service_->set_http_transport(fake_http_transport_);
     service_->set_key_store(&mock_key_store_);
     service_->set_tpm_utility(&mock_tpm_utility_);
+    service_->set_hwid("fake_hwid");
     // Setup a fake wrapped EK certificate by default.
     mock_database_.GetMutableProtobuf()
         ->mutable_credentials()
@@ -72,6 +80,9 @@ class AttestationServiceTest : public testing::Test {
     SetupFakeCAEnroll(kSuccess);
     SetupFakeCASign(kSuccess);
     CHECK(service_->Initialize());
+    // Run out initialize task(s) to avoid any race conditions with tests that
+    // need to change the default setup.
+    service_->WaitUntilIdleForTesting();
   }
 
  protected:
@@ -146,10 +157,18 @@ class AttestationServiceTest : public testing::Test {
     } else if (state == kSuccess) {
       response_pb.set_status(OK);
       response_pb.set_detail("");
+      response_pb.mutable_encrypted_identity_credential()->set_tpm_version(
+          kTpmVersionUnderTest);
       response_pb.mutable_encrypted_identity_credential()->set_asym_ca_contents(
           "1234");
       response_pb.mutable_encrypted_identity_credential()
           ->set_sym_ca_attestation("5678");
+      response_pb.mutable_encrypted_identity_credential()->set_encrypted_seed(
+          "seed");
+      response_pb.mutable_encrypted_identity_credential()->set_credential_mac(
+          "mac");
+      response_pb.mutable_encrypted_identity_credential()
+          ->mutable_wrapped_certificate()->set_wrapped_key("wrapped");
     } else {
       NOTREACHED();
     }
@@ -313,6 +332,7 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure) {
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure2) {
+  // This flow consumes at least two nonces.
   EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
       .WillOnce(Return(true))
       .WillRepeatedly(Return(false));
@@ -383,6 +403,8 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmNotReady) {
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmActivateFailure) {
   EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, _, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_utility_, ActivateIdentityForTpm2(_, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
@@ -552,6 +574,8 @@ TEST_F(AttestationServiceTest, GetEndorsementInfoSuccess) {
 }
 
 TEST_F(AttestationServiceTest, GetEndorsementInfoNoInfo) {
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
+      .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [this](const GetEndorsementInfoReply& reply) {
     EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
@@ -643,10 +667,18 @@ TEST_F(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
 
 TEST_F(AttestationServiceTest, ActivateAttestationKeySuccess) {
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
-  EXPECT_CALL(mock_tpm_utility_,
-              ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
-      .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
-                      Return(true)));
+  if (kTpmVersionUnderTest == TPM_1_2) {
+    EXPECT_CALL(mock_tpm_utility_,
+                ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
+        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+                        Return(true)));
+  } else {
+    EXPECT_CALL(
+        mock_tpm_utility_,
+        ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
+        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+                        Return(true)));
+  }
   // Set expectations on the outputs.
   auto callback = [this](const ActivateAttestationKeyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -655,8 +687,15 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccess) {
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_tpm_version(
+      kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
+  request.mutable_encrypted_certificate()->set_credential_mac("mac");
+  request.mutable_encrypted_certificate()
+      ->mutable_wrapped_certificate()
+      ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
   service_->ActivateAttestationKey(request, base::Bind(callback));
   Run();
@@ -665,10 +704,18 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccess) {
 TEST_F(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   EXPECT_CALL(mock_database_, GetMutableProtobuf()).Times(0);
   EXPECT_CALL(mock_database_, SaveChanges()).Times(0);
-  EXPECT_CALL(mock_tpm_utility_,
-              ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
-      .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
-                      Return(true)));
+  if (kTpmVersionUnderTest == TPM_1_2) {
+    EXPECT_CALL(mock_tpm_utility_,
+                ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
+        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+                        Return(true)));
+  } else {
+    EXPECT_CALL(
+        mock_tpm_utility_,
+        ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
+        .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+                        Return(true)));
+  }
   // Set expectations on the outputs.
   auto callback = [this](const ActivateAttestationKeyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -677,8 +724,15 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_tpm_version(
+      kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
+  request.mutable_encrypted_certificate()->set_credential_mac("mac");
+  request.mutable_encrypted_certificate()
+      ->mutable_wrapped_certificate()
+      ->set_wrapped_key("wrapped");
   request.set_save_certificate(false);
   service_->ActivateAttestationKey(request, base::Bind(callback));
   Run();
@@ -693,8 +747,15 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_tpm_version(
+      kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
+  request.mutable_encrypted_certificate()->set_credential_mac("mac");
+  request.mutable_encrypted_certificate()
+      ->mutable_wrapped_certificate()
+      ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
   service_->ActivateAttestationKey(request, base::Bind(callback));
   Run();
@@ -704,6 +765,10 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   EXPECT_CALL(mock_tpm_utility_,
               ActivateIdentity(_, _, _, "encrypted1", "encrypted2", _))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(
+      mock_tpm_utility_,
+      ActivateIdentityForTpm2(KEY_TYPE_RSA, _, "seed", "mac", "wrapped", _))
+      .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [this](const ActivateAttestationKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
@@ -711,8 +776,15 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   };
   ActivateAttestationKeyRequest request;
   request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_tpm_version(
+      kTpmVersionUnderTest);
   request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.mutable_encrypted_certificate()->set_encrypted_seed("seed");
+  request.mutable_encrypted_certificate()->set_credential_mac("mac");
+  request.mutable_encrypted_certificate()
+      ->mutable_wrapped_certificate()
+      ->set_wrapped_key("wrapped");
   request.set_save_certificate(true);
   service_->ActivateAttestationKey(request, base::Bind(callback));
   Run();
@@ -1170,6 +1242,94 @@ TEST_F(AttestationServiceTest, RegisterAdditionalFailure) {
   request.set_username("user");
   service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
   Run();
+}
+
+TEST_F(AttestationServiceTest, PrepareForEnrollment) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  service_->WaitUntilIdleForTesting();
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_pcr1_quote());
+}
+
+TEST_F(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
+      .WillRepeatedly(Return(false));
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  service_->WaitUntilIdleForTesting();
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+}
+
+TEST_F(AttestationServiceTest, PrepareForEnrollmentNoCert) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  EXPECT_CALL(mock_tpm_utility_, GetEndorsementCertificate(_, _))
+      .WillRepeatedly(Return(false));
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  service_->WaitUntilIdleForTesting();
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+}
+
+TEST_F(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  EXPECT_CALL(mock_tpm_utility_, CreateRestrictedKey(_, _, _, _))
+      .WillRepeatedly(Return(false));
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  service_->WaitUntilIdleForTesting();
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+}
+
+TEST_F(AttestationServiceTest, PrepareForEnrollmentBadAIK) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  EXPECT_CALL(mock_crypto_utility_, GetRSAPublicKeyForTpm2(_, _))
+      .WillRepeatedly(Return(false));
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  service_->WaitUntilIdleForTesting();
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+}
+
+TEST_F(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  EXPECT_CALL(mock_tpm_utility_, QuotePCR(_, _, _, _, _))
+      .WillRepeatedly(Return(false));
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  service_->WaitUntilIdleForTesting();
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
 }
 
 }  // namespace attestation

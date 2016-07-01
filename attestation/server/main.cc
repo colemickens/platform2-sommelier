@@ -69,11 +69,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 class AttestationDaemon : public brillo::DBusServiceDaemon {
  public:
   AttestationDaemon()
-      : brillo::DBusServiceDaemon(attestation::kAttestationServiceName) {
-    attestation_service_.reset(new attestation::AttestationService);
-    // Move initialize call down to OnInit
-    CHECK(attestation_service_->Initialize());
-  }
+      : brillo::DBusServiceDaemon(attestation::kAttestationServiceName) {}
 
  protected:
   int OnInit() override {
@@ -82,17 +78,18 @@ class AttestationDaemon : public brillo::DBusServiceDaemon {
       LOG(ERROR) << "Error starting attestation dbus daemon.";
       return result;
     }
+    attestation_service_.Initialize();
     return EX_OK;
   }
 
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     dbus_service_.reset(
-        new attestation::DBusService(bus_, attestation_service_.get()));
+        new attestation::DBusService(bus_, &attestation_service_));
     dbus_service_->Register(sequencer->GetHandler("Register() failed.", true));
   }
 
  private:
-  std::unique_ptr<attestation::AttestationInterface> attestation_service_;
+  attestation::AttestationService attestation_service_;
   std::unique_ptr<attestation::DBusService> dbus_service_;
 
   DISALLOW_COPY_AND_ASSIGN(AttestationDaemon);

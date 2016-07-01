@@ -207,7 +207,15 @@ bool CryptoUtilityImpl::GetRSAPublicKey(const std::string& public_key_info,
   return true;
 }
 
+bool CryptoUtilityImpl::GetRSAPublicKeyForTpm2(
+    const std::string& tpm_public_object,
+    std::string* public_key) {
+  LOG(ERROR) << __func__ << "Not implemented.";
+  return false;
+}
+
 bool CryptoUtilityImpl::EncryptIdentityCredential(
+    TpmVersion tpm_version,
     const std::string& credential,
     const std::string& ek_public_key_info,
     const std::string& aik_public_key,
@@ -266,6 +274,14 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
   return true;
 }
 
+bool CryptoUtilityImpl::DecryptIdentityCertificateForTpm2(
+    const std::string& credential,
+    const EncryptedData& encrypted_certificate,
+    std::string* certificate) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
 bool CryptoUtilityImpl::EncryptForUnbind(const std::string& public_key,
                                          const std::string& data,
                                          std::string* encrypted_data) {
@@ -309,6 +325,13 @@ bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
     return false;
   }
   return true;
+}
+
+bool CryptoUtilityImpl::EncryptEndorsementCredentialForGoogle(
+    const std::string& certificate,
+    EncryptedData* encrypted_certificate) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
 }
 
 bool CryptoUtilityImpl::AesEncrypt(const std::string& data,

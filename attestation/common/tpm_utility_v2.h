@@ -19,7 +19,13 @@
 
 #include "attestation/common/tpm_utility.h"
 
+#include <string>
+
 #include <base/macros.h>
+#include <base/threading/thread.h>
+
+#include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
+#include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
 
 namespace attestation {
 
@@ -27,13 +33,13 @@ namespace attestation {
 class TpmUtilityV2 : public TpmUtility {
  public:
   TpmUtilityV2() = default;
-  ~TpmUtilityV2() override;
-
-  // Initializes a TpmUtilityV2 instance. This method must be called
-  // successfully before calling any other methods.
-  bool Initialize() override;
+  TpmUtilityV2(tpm_manager::TpmOwnershipInterface* tpm_owner,
+               tpm_manager::TpmNvramInterface* tpm_nvram);
+  ~TpmUtilityV2() override = default;
 
   // TpmUtility methods.
+  bool Initialize() override;
+  TpmVersion GetVersion() override { return TPM_2_0; }
   bool IsTpmReady() override;
   bool ActivateIdentity(const std::string& delegate_blob,
                         const std::string& delegate_secret,
@@ -41,6 +47,12 @@ class TpmUtilityV2 : public TpmUtility {
                         const std::string& asym_ca_contents,
                         const std::string& sym_ca_attestation,
                         std::string* credential) override;
+  bool ActivateIdentityForTpm2(KeyType key_type,
+                               const std::string& identity_key_blob,
+                               const std::string& encrypted_seed,
+                               const std::string& credential_mac,
+                               const std::string& wrapped_credential,
+                               std::string* credential) override;
   bool CreateCertifiedKey(KeyType key_type,
                           KeyUsage key_usage,
                           const std::string& identity_key_blob,
@@ -52,15 +64,40 @@ class TpmUtilityV2 : public TpmUtility {
                           std::string* proof) override;
   bool SealToPCR0(const std::string& data, std::string* sealed_data) override;
   bool Unseal(const std::string& sealed_data, std::string* data) override;
-  bool GetEndorsementPublicKey(std::string* public_key) override;
+  bool GetEndorsementPublicKey(KeyType key_type,
+                               std::string* public_key) override;
+  bool GetEndorsementCertificate(KeyType key_type,
+                                 std::string* certificate) override;
   bool Unbind(const std::string& key_blob,
               const std::string& bound_data,
               std::string* data) override;
   bool Sign(const std::string& key_blob,
             const std::string& data_to_sign,
             std::string* signature) override;
+  bool CreateRestrictedKey(KeyType key_type,
+                           KeyUsage key_usage,
+                           std::string* public_key,
+                           std::string* private_key_blob) override;
+  bool QuotePCR(int pcr_index,
+                const std::string& key_blob,
+                std::string* quoted_pcr_value,
+                std::string* quoted_data,
+                std::string* quote) override;
 
  private:
+  template <typename ReplyProtoType, typename MethodType>
+  void SendTpmManagerRequestAndWait(const MethodType& method,
+                                    ReplyProtoType* reply_proto);
+
+  // A message loop thread dedicated for asynchronous communication with
+  // tpm_managerd.
+  base::Thread tpm_manager_thread_{"tpm_manager_thread"};
+  bool is_ready_{false};
+  tpm_manager::TpmOwnershipInterface* tpm_owner_{nullptr};
+  tpm_manager::TpmNvramInterface* tpm_nvram_{nullptr};
+  std::unique_ptr<tpm_manager::TpmOwnershipDBusProxy> default_tpm_owner_;
+  std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
+
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityV2);
 };
 

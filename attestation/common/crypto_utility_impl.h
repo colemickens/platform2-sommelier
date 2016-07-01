@@ -51,17 +51,27 @@ class CryptoUtilityImpl : public CryptoUtility {
                                   std::string* spki) override;
   bool GetRSAPublicKey(const std::string& public_key_info,
                        std::string* public_key) override;
+  bool GetRSAPublicKeyForTpm2(const std::string& tpm_public_object,
+                              std::string* public_key) override;
   bool EncryptIdentityCredential(
+      TpmVersion tpm_version,
       const std::string& credential,
       const std::string& ek_public_key_info,
       const std::string& aik_public_key,
       EncryptedIdentityCredential* encrypted) override;
+  bool DecryptIdentityCertificateForTpm2(
+      const std::string& credential,
+      const EncryptedData& encrypted_certificate,
+      std::string* certificate) override;
   bool EncryptForUnbind(const std::string& public_key,
                         const std::string& data,
                         std::string* encrypted_data) override;
   bool VerifySignature(const std::string& public_key,
                        const std::string& data,
                        const std::string& signature) override;
+  bool EncryptEndorsementCredentialForGoogle(
+      const std::string& certificate,
+      EncryptedData* encrypted_certificate) override;
 
  private:
   // Encrypts |data| using |key| and |iv| for AES in CBC mode with PKCS #5
