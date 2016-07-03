@@ -18,6 +18,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <netinet/ether.h>
@@ -136,18 +137,29 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
     return false;
   }
 
+  // For IPv6 the kernel will add a new default route with metric 1024
+  // every time it sees a router advertisement (which could happen every
+  // couple of seconds).  Ignore these when there is another default route
+  // with a lower metric.
+  uint32_t lowest_metric = UINT_MAX;
   for (auto& nent : table->second) {
-    if (nent.dst.IsDefault() && nent.dst.family() == family) {
+    if (nent.dst.IsDefault() &&
+        nent.dst.family() == family &&
+        nent.metric < lowest_metric) {
       *entry = &nent;
-      SLOG(this, 2) << __func__ << ": found"
-                    << " gateway " << nent.gateway.ToString()
-                    << " metric " << nent.metric;
-      return true;
+      lowest_metric = nent.metric;
     }
   }
 
-  SLOG(this, 2) << __func__ << " no route";
-  return false;
+  if (lowest_metric == UINT_MAX) {
+    SLOG(this, 2) << __func__ << " no route";
+    return false;
+  } else {
+    SLOG(this, 2) << __func__ << ": found"
+                  << " gateway " << (*entry)->gateway.ToString()
+                  << " metric " << (*entry)->metric;
+    return true;
+  }
 }
 
 bool RoutingTable::SetDefaultRoute(int interface_index,

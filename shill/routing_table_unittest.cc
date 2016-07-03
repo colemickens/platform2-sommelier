@@ -508,6 +508,49 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   routing_table_->Stop();
 }
 
+TEST_F(RoutingTableTest, LowestMetricDefault) {
+  // Expect the tables to be empty by default.
+  EXPECT_EQ(0, GetRoutingTables()->size());
+
+  IPAddress default_address(IPAddress::kFamilyIPv4);
+  default_address.SetAddressToDefault();
+
+  IPAddress gateway_address0(IPAddress::kFamilyIPv4);
+  gateway_address0.SetAddressFromString(kTestNetAddress0);
+
+  RoutingTableEntry entry(default_address,
+                          default_address,
+                          gateway_address0,
+                          2 /* metric */,
+                          RT_SCOPE_UNIVERSE,
+                          true /* from_rtnl_in */,
+                          kTestTableId,
+                          RoutingTableEntry::kDefaultTag);
+
+  // Add the same entry three times, with different metrics.
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex0,
+                 entry);
+
+  entry.metric = 1;
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex0,
+                 entry);
+
+  entry.metric = 1024;
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex0,
+                 entry);
+
+  // Find a matching entry.
+  RoutingTableEntry test_entry;
+  EXPECT_TRUE(routing_table_->GetDefaultRoute(kTestDeviceIndex0,
+                                              IPAddress::kFamilyIPv4,
+                                              &test_entry));
+  entry.metric = 1;
+  EXPECT_TRUE(entry.Equals(test_entry));
+}
+
 TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   // Expect the tables to be empty by default.
   EXPECT_EQ(0, GetRoutingTables()->size());
