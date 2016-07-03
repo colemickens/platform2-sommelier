@@ -114,6 +114,8 @@ class RoutingTableTest : public Test {
   static const char kTestGatewayAddress4[];
   static const char kTestNetAddress0[];
   static const char kTestNetAddress1[];
+  static const char kTestV6NetAddress0[];
+  static const char kTestV6NetAddress1[];
   static const char kTestRemoteAddress4[];
   static const char kTestRemoteNetmask4[];
   static const char kTestRemoteNetwork4[];
@@ -167,6 +169,8 @@ const char RoutingTableTest::kTestForeignNetGateway6[] = "fe80:::::1";
 const char RoutingTableTest::kTestGatewayAddress4[] = "192.168.2.254";
 const char RoutingTableTest::kTestNetAddress0[] = "192.168.1.1";
 const char RoutingTableTest::kTestNetAddress1[] = "192.168.1.2";
+const char RoutingTableTest::kTestV6NetAddress0[] = "2001:db8::123";
+const char RoutingTableTest::kTestV6NetAddress1[] = "2001:db8::456";
 const char RoutingTableTest::kTestRemoteAddress4[] = "192.168.2.254";
 const char RoutingTableTest::kTestRemoteNetmask4[] = "255.255.255.0";
 const char RoutingTableTest::kTestRemoteNetwork4[] = "192.168.100.0";
@@ -497,6 +501,71 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(0, GetRoutingTables()->size());
 
   routing_table_->Stop();
+}
+
+TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
+  // Expect the tables to be empty by default.
+  EXPECT_EQ(0, GetRoutingTables()->size());
+
+  IPAddress default_address(IPAddress::kFamilyIPv6);
+  default_address.SetAddressToDefault();
+
+  IPAddress gateway_address(IPAddress::kFamilyIPv6);
+  gateway_address.SetAddressFromString(kTestV6NetAddress0);
+
+  RoutingTableEntry entry0(default_address,
+                           default_address,
+                           gateway_address,
+                           1024 /* metric_in */,
+                           RT_SCOPE_UNIVERSE,
+                           true /* from_rtnl_in */,
+                           kTestTableId,
+                           RoutingTableEntry::kDefaultTag);
+
+  // Simulate an RTPROT_RA kernel message indicating that it processed a
+  // valid IPv6 router advertisement.
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry0,
+                                0 /* seq */,
+                                RTPROT_RA);
+
+  std::unordered_map<int, vector<RoutingTableEntry>>* tables =
+      GetRoutingTables();
+
+  // We should have a single table, which should in turn have a single entry.
+  EXPECT_EQ(1, tables->size());
+  EXPECT_TRUE(ContainsKey(*tables, kTestDeviceIndex0));
+  EXPECT_EQ(1, (*tables)[kTestDeviceIndex0].size());
+
+  RoutingTableEntry test_entry = (*tables)[kTestDeviceIndex0][0];
+  EXPECT_TRUE(entry0.Equals(test_entry));
+
+  // Now send an RTPROT_RA netlink message advertising some other random
+  // host.  shill should ignore these because they are frequent, and
+  // not worth tracking.
+
+  IPAddress non_default_address(IPAddress::kFamilyIPv6);
+  non_default_address.SetAddressFromString(kTestV6NetAddress1);
+
+  RoutingTableEntry entry1(non_default_address,
+                           default_address,
+                           gateway_address,
+                           1024 /* metric_in */,
+                           RT_SCOPE_UNIVERSE,
+                           true /* from_rtnl_in */,
+                           kTestTableId,
+                           RoutingTableEntry::kDefaultTag);
+
+  // Simulate an RTPROT_RA kernel message.
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry1,
+                                0 /* seq */,
+                                RTPROT_RA);
+
+  tables = GetRoutingTables();
+  EXPECT_EQ(1, tables->size());
 }
 
 TEST_F(RoutingTableTest, ConfigureRoutes) {

@@ -390,6 +390,12 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
       route_queries_.pop_front();
     }
     return;
+  } else if (message.route_status().protocol == RTPROT_RA) {
+    // The kernel sends one of these messages pretty much every time it
+    // connects to another IPv6 host.  The only interesting message is the
+    // one containing the default gateway.
+    if (!entry.dst.IsDefault() || !entry.gateway.IsValid())
+      return;
   } else if (message.route_status().protocol != RTPROT_BOOT) {
     // Responses to route queries come back with a protocol of
     // RTPROT_UNSPEC.  Otherwise, normal route updates that we are

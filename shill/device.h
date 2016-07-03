@@ -40,6 +40,7 @@
 #include "shill/portal_detector.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/routing_table.h"
 #include "shill/service.h"
 #include "shill/technology.h"
 
@@ -869,6 +870,7 @@ class Device : public base::RefCounted<Device> {
 
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider* dhcp_provider_;
+  RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 
   // Time when link monitor last failed.

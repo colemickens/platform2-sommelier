@@ -170,6 +170,7 @@ Device::Device(ControlInterface* control_interface,
       receive_byte_offset_(0),
       transmit_byte_offset_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
+      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       time_(Time::GetInstance()),
       last_link_monitor_failed_time_(0),
@@ -591,6 +592,22 @@ void Device::OnIPv6AddressChanged() {
   }
   properties.subnet_prefix = address.prefix();
 
+  RoutingTableEntry default_route;
+  if (routing_table_->GetDefaultRoute(interface_index_,
+                                      IPAddress::kFamilyIPv6,
+                                      &default_route)) {
+    if (!default_route.gateway.IntoString(&properties.gateway)) {
+      LOG(ERROR) << "Unable to convert IPv6 gateway into a string!";
+      return;
+    }
+  } else {
+    // The kernel normally populates the default route before it performs
+    // a neighbor solicitation for the new address, so it shouldn't be
+    // missing at this point.
+    LOG(WARNING) << "No default route for global IPv6 address "
+                 << properties.address;
+  }
+
   if (!ip6config_) {
     ip6config_ = new IPConfig(control_interface_, link_name_);
   } else if (properties.address == ip6config_->properties().address &&
@@ -911,6 +928,9 @@ bool Device::IPConfigCompleted(const IPConfigRefPtr& ipconfig) {
 }
 
 void Device::OnIPv6ConfigUpdated() {
+  if (connection_ && ip6config_)
+    connection_->UpdateGatewayMetric(ip6config_);
+
   // Setup connection using IPv6 configuration only if the IPv6 configuration
   // is ready for connection (contained both IP address and DNS servers), and
   // there is no existing IPv4 connection. We always prefer IPv4

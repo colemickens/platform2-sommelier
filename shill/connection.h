@@ -101,6 +101,11 @@ class Connection : public base::RefCounted<Connection> {
   // This will replace all previous state for this address family.
   virtual void UpdateFromIPConfig(const IPConfigRefPtr& config);
 
+  // Update the metric on the default route in |config|, if any.  This
+  // should be called after the kernel notifies shill that a new IPv6
+  // address+gateway have been configured.
+  virtual void UpdateGatewayMetric(const IPConfigRefPtr& config);
+
   // Return the connection used by the lower binder.
   virtual ConnectionRefPtr GetLowerConnection() const {
     return lower_binder_.connection();

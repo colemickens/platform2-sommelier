@@ -302,6 +302,22 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   has_broadcast_domain_ = !peer.IsValid();
 }
 
+void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
+  const IPConfig::Properties& properties = config->properties();
+  IPAddress gateway(properties.address_family);
+
+  if (!properties.gateway.empty() &&
+      !gateway.SetAddressFromString(properties.gateway)) {
+    return;
+  }
+  if (gateway.IsValid() && properties.default_route) {
+    routing_table_->SetDefaultRoute(interface_index_, gateway,
+                                    metric_,
+                                    table_id_);
+    routing_table_->FlushCache();
+  }
+}
+
 bool Connection::SetupIptableEntries() {
   if (!firewall_proxy_) {
     firewall_proxy_.reset(control_interface_->CreateFirewallProxy());
