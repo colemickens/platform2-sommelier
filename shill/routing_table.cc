@@ -408,13 +408,12 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     if (nent->dst.Equals(entry.dst) &&
         nent->src.Equals(entry.src) &&
         nent->gateway.Equals(entry.gateway) &&
-        nent->scope == entry.scope) {
-      if (message.mode() == RTNLMessage::kModeDelete &&
-          nent->metric == entry.metric) {
+        nent->scope == entry.scope &&
+        nent->metric == entry.metric) {
+      if (message.mode() == RTNLMessage::kModeDelete) {
         table.erase(nent);
       } else if (message.mode() == RTNLMessage::kModeAdd) {
         nent->from_rtnl = true;
-        nent->metric = entry.metric;
       }
       return;
     }

@@ -384,16 +384,18 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                  kTestDeviceIndex1,
                  entry2);
 
-  // Routing table size shouldn't change, but the new metric should match.
-  EXPECT_EQ(1, (*tables)[kTestDeviceIndex1].size());
+  // Both entries should show up.
+  EXPECT_EQ(2, (*tables)[kTestDeviceIndex1].size());
   test_entry = (*tables)[kTestDeviceIndex1][0];
+  EXPECT_TRUE(entry1.Equals(test_entry));
+  test_entry = (*tables)[kTestDeviceIndex1][1];
   EXPECT_TRUE(entry2.Equals(test_entry));
 
   // Find a matching entry.
   EXPECT_TRUE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
                                               IPAddress::kFamilyIPv4,
                                               &test_entry));
-  EXPECT_TRUE(entry2.Equals(test_entry));
+  EXPECT_TRUE(entry1.Equals(test_entry));
 
   // Test that a search for a non-matching family fails.
   EXPECT_FALSE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
@@ -401,6 +403,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                                &test_entry));
 
   // Remove last entry from an existing interface and test that we now fail.
+  SendRouteEntry(RTNLMessage::kModeDelete,
+                 kTestDeviceIndex1,
+                 entry1);
   SendRouteEntry(RTNLMessage::kModeDelete,
                  kTestDeviceIndex1,
                  entry2);
