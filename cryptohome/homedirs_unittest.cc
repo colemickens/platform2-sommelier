@@ -290,7 +290,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
     .WillOnce(Return(0))
     .WillOnce(Return(0))
     .WillOnce(Return(0))
-    .WillOnce(Return(kEnoughFreeSpace - 1));
+    .WillOnce(Return(0));
 
   // Expect cache clean ups.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -358,7 +358,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
     .WillOnce(Return(0))
     .WillOnce(Return(0))
     .WillOnce(Return(0))
-    .WillOnce(Return(kEnoughFreeSpace - 1));
+    .WillOnce(Return(0));
 
   // Expect cache clean ups.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
@@ -483,7 +483,7 @@ TEST_F(FreeDiskSpaceTest, OnlyCacheCleanup) {
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
+TEST_F(FreeDiskSpaceTest, GCacheCleanup) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -495,25 +495,12 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   // Empty enumerators per-user per-cache dirs
-  NiceMock<MockFileEnumerator>* fe[arraysize(kHomedirs)];
   EXPECT_CALL(platform_, GetFileEnumerator(EndsWith("/Cache"), false, _))
-    .WillOnce(Return(fe[0] = new NiceMock<MockFileEnumerator>))
-    .WillOnce(Return(fe[1] = new NiceMock<MockFileEnumerator>))
-    .WillOnce(Return(fe[2] = new NiceMock<MockFileEnumerator>))
-    .WillOnce(Return(fe[3] = new NiceMock<MockFileEnumerator>));
-  // Exercise the delete file path.
-  for (size_t f = 0; f < arraysize(fe); ++f) {
-    EXPECT_CALL(*fe[f], Next())
-      .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[f].c_str(),
-                                             "Cache/foo")))
-      .WillRepeatedly(Return(""));
-  }
-  EXPECT_CALL(platform_, DeleteFile(EndsWith("/Cache/foo"), true))
-    .Times(4)
-    .WillRepeatedly(Return(true));
+      .Times(4).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // DeleteGCacheTmpCallback enumerate all directories to find GCache files
   // directory.
+  NiceMock<MockFileEnumerator>* fe[arraysize(kHomedirs)];
   EXPECT_CALL(
       platform_,
       GetFileEnumerator(EndsWith(std::string(kVaultDir) + "/user/GCache/v1"),
