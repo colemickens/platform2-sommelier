@@ -507,7 +507,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   FilePath user_home = GetMountedUserHomePath(obfuscated_username);
   if (!SetupGroupAccess(FilePath(user_home))) {
-    UnmountAllForUser();
+    UnmountAll();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -519,7 +519,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!RememberBind(user_home, user_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
                 << user_multi_home.value();
-    UnmountAllForUser();
+    UnmountAll();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -529,7 +529,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!RememberBind(user_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
                 << multi_home.value();
-    UnmountAllForUser();
+    UnmountAll();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -539,7 +539,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!RememberBind(root_home, root_multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << root_home.value() << " -> "
                 << root_multi_home.value();
-    UnmountAllForUser();
+    UnmountAll();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -578,7 +578,7 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
                     kEphemeralMountPerms)) {
     LOG(ERROR) << "Mount of ephemeral root home at " << root_multi_home.value()
                << "failed: " << errno;
-    UnmountAllForUser();
+    UnmountAll();
     return false;
   }
 
@@ -589,7 +589,7 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   if (!RememberBind(user_multi_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_multi_home.value() << " -> "
                 << multi_home.value();
-    UnmountAllForUser();
+    UnmountAll();
     return false;
   }
   ephemeral_mount_ = true;
@@ -677,17 +677,11 @@ bool Mount::RememberBind(const FilePath& src,
   return false;
 }
 
-bool Mount::UnmountForUser() {
+void Mount::UnmountAll() {
   FilePath src, dest;
-  if (!mounts_.Pop(&src, &dest)) {
-    return false;
+  while (mounts_.Pop(&src, &dest)) {
+    ForceUnmount(src, dest);
   }
-  ForceUnmount(src, dest);
-  return true;
-}
-
-void Mount::UnmountAllForUser() {
-  while (UnmountForUser()) { }
 }
 
 void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
@@ -728,7 +722,7 @@ void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
 }
 
 bool Mount::UnmountCryptohome() {
-  UnmountAllForUser();
+  UnmountAll();
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
@@ -1760,7 +1754,7 @@ bool Mount::MountLegacyHome(const FilePath& from, MountError* mount_error) {
   } else if (!RememberBind(from, FilePath(kDefaultHomeDir))) {
     PLOG(ERROR) << "Bind mount failed: " << from.value()
                 << " -> " << kDefaultHomeDir;
-    UnmountAllForUser();
+    UnmountAll();
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
     }

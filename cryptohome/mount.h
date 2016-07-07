@@ -662,16 +662,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool RememberBind(const base::FilePath& src,
                     const base::FilePath& dest);
 
-  // Pops a mount point from user's stack and unmounts it
-  // Returns true if there was a mount to unmount, false otherwise
-  // Relies on ForceUnmount internally; see the caveat listed for it
-  //
-  bool UnmountForUser();
-
   // Unmounts all mount points
   // Relies on ForceUnmount() internally; see the caveat listed for it
   //
-  void UnmountAllForUser();
+  void UnmountAll();
 
   // Forcibly unmounts a mountpoint, killing processes with open handles to it
   // if necessary. Note that this approach is not bulletproof - if a process can

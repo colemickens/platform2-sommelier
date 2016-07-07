@@ -1259,8 +1259,7 @@ TEST_F(MountTest, RememberMountOrderingTest) {
     EXPECT_TRUE(mount_->RememberMount(src, dest0, "", ""));
     EXPECT_TRUE(mount_->RememberBind(src, dest1));
     EXPECT_TRUE(mount_->RememberMount(src, dest2, "", ""));
-    mount_->UnmountAllForUser();
-    EXPECT_FALSE(mount_->UnmountForUser());
+    mount_->UnmountAll();
   }
 }
 
