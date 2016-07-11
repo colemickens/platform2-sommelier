@@ -1021,6 +1021,7 @@ int container_start(struct container *c, const struct container_config *config)
 		minijail_namespace_net(c->jail);
 	minijail_namespace_pids(c->jail);
 	minijail_namespace_user(c->jail);
+	minijail_namespace_cgroups(c->jail);
 	rc = minijail_uidmap(c->jail, config->uid_map);
 	if (rc)
 		goto error_rmdir;
