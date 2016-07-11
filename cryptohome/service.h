@@ -274,6 +274,7 @@ class Service : public brillo::dbus::AbstractDbusService,
                                     DBusGMethodInvocation* response);
   virtual gboolean GetAccountDiskUsage(const GArray* account_id,
                                        DBusGMethodInvocation* response);
+  virtual gboolean GetFreeDiskSpace(guint64 *OUT_result, GError **error);
   virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
   virtual gboolean GetSanitizedUsername(gchar *username,
                                         gchar **OUT_sanitized,

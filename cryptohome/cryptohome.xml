@@ -180,6 +180,9 @@
       <arg type="ay" name="account_id" direction="in" />
       <arg type="ay" name="get_account_disk_usage_reply" direction="out" />
     </method>
+    <method name="GetFreeDiskSpace">
+      <arg type="t" name="disk_free_bytes" direction="out" />
+    </method>
     <method name="Unmount">
       <arg type="b" name="done" direction="out" />
     </method>

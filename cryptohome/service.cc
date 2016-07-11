@@ -1504,6 +1504,16 @@ void Service::DoGetAccountDiskUsage(AccountIdentifier* identifier,
   SendReply(context, reply);
 }
 
+gboolean Service::GetFreeDiskSpace(guint64 *OUT_result, GError **error) {
+  int64_t free_disk_space = homedirs_->AmountOfFreeDiskSpace();
+  if (free_disk_space < 0) {
+    LOG(ERROR) << "Error getting free disk space, got: " << free_disk_space;
+    return FALSE;
+  }
+  *OUT_result = static_cast<guint64>(free_disk_space);
+  return TRUE;
+}
+
 gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
   if (!CreateSystemSaltIfNeeded())
     return FALSE;
