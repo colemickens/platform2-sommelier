@@ -30,6 +30,7 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
 
 bool DebugDaemon::Init() {
   battery_tool_ = base::MakeUnique<BatteryTool>();
+  container_tool_ = base::MakeUnique<ContainerTool>();
   crash_sender_tool_ = base::MakeUnique<CrashSenderTool>();
   cups_tool_ = base::MakeUnique<CupsTool>();
   debug_logs_tool_ = base::MakeUnique<DebugLogsTool>();
@@ -414,6 +415,14 @@ std::string DebugDaemon::SwapSetMargin(const uint32_t& margin,
 bool DebugDaemon::SetWifiDriverDebug(const int32_t& flags,
                                      DBus::Error& error) {  // NOLINT
   return wifi_debug_tool_->SetEnabled(debugd::WifiDebugFlag(flags), &error);
+}
+
+void DebugDaemon::ContainerStarted(DBus::Error& error) {  // NOLINT
+  container_tool_->ContainerStarted();
+}
+
+void DebugDaemon::ContainerStopped(DBus::Error& error) {  // NOLINT
+  container_tool_->ContainerStopped();
 }
 
 }  // namespace debugd

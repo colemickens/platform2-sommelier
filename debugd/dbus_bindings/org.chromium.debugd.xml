@@ -769,5 +769,15 @@
       </arg>
       <arg name="result" type="b" direction="out" />
     </method>
+    <method name="ContainerStarted">
+      <tp:docstring>
+        Notify debugd that a container is starting up.
+      </tp:docstring>
+    </method>
+    <method name="ContainerStopped">
+      <tp:docstring>
+        Notify debugd that a container has stopped.
+      </tp:docstring>
+    </method>
   </interface>
 </node>

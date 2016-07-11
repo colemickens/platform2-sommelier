@@ -17,6 +17,7 @@
 
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "debugd/src/battery_tool.h"
+#include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/cups_tool.h"
 #include "debugd/src/debug_logs_tool.h"
@@ -176,12 +177,15 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                             DBus::Error& error) override;  // NOLINT
   bool SetWifiDriverDebug(const int32_t& flags,
                           DBus::Error& error) override;  // NOLINT
+  void ContainerStarted(DBus::Error& error) override;  // NOLINT
+  void ContainerStopped(DBus::Error& error) override;  // NOLINT
 
  private:
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
+  std::unique_ptr<ContainerTool> container_tool_;
   std::unique_ptr<CrashSenderTool> crash_sender_tool_;
   std::unique_ptr<CupsTool> cups_tool_;
   std::unique_ptr<DebugLogsTool> debug_logs_tool_;
