@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <stdint.h>
+#include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -591,6 +592,15 @@ TEST(PerfParserTest, DsoInfoHasBuildId) {
   EXPECT_EQ("", events[3].dso_and_offset.build_id());
 }
 
+// Check the process has a Linux capability. See libcap(3) and capabilities(7).
+bool HaveCapability(cap_value_t capability) {
+  cap_t capabilities = cap_get_proc();
+  cap_flag_value_t value;
+  CHECK_EQ(cap_get_flag(capabilities, capability, CAP_EFFECTIVE, &value), 0);
+  cap_free(capabilities);
+  return value == CAP_SET;
+}
+
 class RunInMountNamespaceThread : public quipper::Thread {
  public:
   explicit RunInMountNamespaceThread(string tmpdir, string mntdir)
@@ -639,6 +649,8 @@ class RunInMountNamespaceThread : public quipper::Thread {
 // (Not tried): /<path>
 // Expected buildid for <path>: "deadbeef"
 TEST(PerfParserTest, ReadsBuildidsInMountNamespace) {
+  if (!HaveCapability(CAP_SYS_ADMIN))
+    return;  // Skip test.
   ScopedTempDir tmpdir("/tmp/quipper_tmp.");
   ScopedTempDir mntdir("/tmp/quipper_mnt.");
   RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
@@ -775,6 +787,8 @@ class RunInMountNamespaceProcess {
 // (Not tried): /<path>
 // Expected buildid for <path>: "deadbeef"
 TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesOwningProcess) {
+  if (!HaveCapability(CAP_SYS_ADMIN))
+    return;  // Skip test.
   ScopedTempDir tmpdir("/tmp/quipper_tmp.");
   ScopedTempDir mntdir("/tmp/quipper_mnt.");
   RunInMountNamespaceProcess process(tmpdir.path(), mntdir.path());
@@ -861,6 +875,8 @@ TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesOwningProcess) {
 // Accept (same inode): /<path>
 // Expected buildid for <path>: "deadbeef"
 TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFs) {
+  if (!HaveCapability(CAP_SYS_ADMIN))
+    return;  // Skip test.
   ScopedTempDir tmpdir("/tmp/quipper_tmp.");
   ScopedTempDir mntdir("/tmp/quipper_mnt.");
   RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
@@ -946,6 +962,8 @@ TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFs) {
 // Reject (wrong inode): /<path>
 // Expected buildid for <path>: ""
 TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFsRejectsInode) {
+  if (!HaveCapability(CAP_SYS_ADMIN))
+    return;  // Skip test.
   ScopedTempDir tmpdir("/tmp/quipper_tmp.");
   ScopedTempDir mntdir("/tmp/quipper_mnt.");
   RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
@@ -1035,6 +1053,8 @@ TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFsRejectsInode) {
 // Accept (falsely): /<path>
 // Expected buildid for <path>: "baadf00d" (even though incorrect)
 TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFsNoInodeToReject) {
+  if (!HaveCapability(CAP_SYS_ADMIN))
+    return;  // Skip test.
   ScopedTempDir tmpdir("/tmp/quipper_tmp.");
   ScopedTempDir mntdir("/tmp/quipper_mnt.");
   RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
@@ -1133,6 +1153,8 @@ TEST(PerfParserTest, ReadsBuildidsInMountNamespace_TriesRootFsNoInodeToReject) {
 // map<tuple<maj,min,ino,path>, DSOInfo>, but even so, it will be impossible
 // to store unambiguously in perf.data.
 TEST(PerfParserTest, ReadsBuildidsInMountNamespace_DifferentDevOrIno) {
+  if (!HaveCapability(CAP_SYS_ADMIN))
+    return;  // Skip test.
   ScopedTempDir tmpdir("/tmp/quipper_tmp.");
   ScopedTempDir mntdir("/tmp/quipper_mnt.");
   RunInMountNamespaceThread thread(tmpdir.path(), mntdir.path());
