@@ -72,7 +72,7 @@ void match_rule(char *board, char *rule_line) {
 }
 
 void detect_label_by_board_name() {
-  const char *conf_filename = "/etc/avtest_label_detect.conf";
+  const char *conf_filename = "/usr/local/etc/avtest_label_detect.conf";
   const int kMaxBoardLen = 64;
   char board[kMaxBoardLen];
   char rule_line[1024];
