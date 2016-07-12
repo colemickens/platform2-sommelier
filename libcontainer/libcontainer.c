@@ -449,12 +449,19 @@ struct container {
 struct container *container_new(const char *name,
 				const char *rundir)
 {
+	return container_new_with_cgroup_parent(name, rundir, NULL);
+}
+
+struct container *container_new_with_cgroup_parent(const char *name,
+						   const char *rundir,
+						   const char *cgroup_parent)
+{
 	struct container *c;
 
 	c = calloc(1, sizeof(*c));
 	if (!c)
 		return NULL;
-	c->cgroup = container_cgroup_new(name, "/sys/fs/cgroup");
+	c->cgroup = container_cgroup_new(name, "/sys/fs/cgroup", cgroup_parent);
 	c->rundir = strdup(rundir);
 	c->name = strdup(name);
 	if (!c->cgroup || !c->rundir || !c->name) {

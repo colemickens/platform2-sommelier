@@ -14,6 +14,7 @@
 #include "container_cgroup.h"
 
 static const char CGNAME[] = "testcg";
+static const char CGPARENTNAME[] = "testparentcg";
 
 static int check_is_dir(const char *path)
 {
@@ -77,6 +78,73 @@ done_ret:
 	return found;
 }
 
+TEST(cgroup_new_with_parent) {
+	struct container_cgroup *ccg = NULL;
+
+	char *cgroup_root = NULL;
+	const char *cgroup_parent_name;
+	const char *cgroup_name;
+	char cpu_cg[256];
+	char cpuacct_cg[256];
+	char devices_cg[256];
+	char freezer_cg[256];
+
+	char temp_template[] = "/tmp/cgtestXXXXXX";
+	char path[256];
+
+	cgroup_root = strdup(mkdtemp(temp_template));
+	snprintf(path, sizeof(path), "rm -rf %s/*", cgroup_root);
+	EXPECT_EQ(0, system(path));
+
+	snprintf(path, sizeof(path), "%s/cpu", cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/cpuacct", cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/devices", cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/freezer", cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
+
+	cgroup_parent_name = CGPARENTNAME;
+
+	snprintf(path, sizeof(path), "%s/cpu/%s", cgroup_root, cgroup_parent_name);
+	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/cpuacct/%s", cgroup_root, cgroup_parent_name);
+	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/devices/%s", cgroup_root, cgroup_parent_name);
+	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/freezer/%s", cgroup_root, cgroup_parent_name);
+	mkdir(path, S_IRWXU | S_IRWXG);
+
+	ccg = container_cgroup_new(CGNAME, cgroup_root, cgroup_parent_name);
+	ASSERT_NE(NULL, ccg);
+
+	cgroup_name = CGNAME;
+
+	snprintf(cpu_cg, sizeof(cpu_cg), "%s/cpu/%s/%s",
+		 cgroup_root, cgroup_parent_name, cgroup_name);
+	snprintf(cpuacct_cg, sizeof(cpuacct_cg), "%s/cpuacct/%s/%s",
+		 cgroup_root, cgroup_parent_name, cgroup_name);
+	snprintf(devices_cg, sizeof(devices_cg), "%s/devices/%s/%s",
+		 cgroup_root, cgroup_parent_name, cgroup_name);
+	snprintf(freezer_cg, sizeof(freezer_cg), "%s/freezer/%s/%s",
+		 cgroup_root, cgroup_parent_name, cgroup_name);
+
+	EXPECT_TRUE(check_is_dir(cpu_cg));
+	EXPECT_TRUE(check_is_dir(cpuacct_cg));
+	EXPECT_TRUE(check_is_dir(devices_cg));
+	EXPECT_TRUE(check_is_dir(freezer_cg));
+
+	char cmd[256];
+
+	snprintf(cmd, sizeof(cmd), "rm -rf %s/*", cgroup_root);
+
+	free(cgroup_root);
+	container_cgroup_destroy(ccg);
+
+	EXPECT_EQ(0, system(cmd));
+}
+
 FIXTURE(basic_manipulation) {
 	struct container_cgroup *ccg;
 
@@ -106,7 +174,7 @@ FIXTURE_SETUP(basic_manipulation)
 	snprintf(path, sizeof(path), "%s/freezer", self->cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
 
-	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root);
+	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root, NULL);
 	ASSERT_NE(NULL, self->ccg);
 
 	self->cgroup_name = CGNAME;
@@ -294,3 +362,4 @@ TEST_F(basic_manipulation, set_cpu_rt_period)
 }
 
 TEST_HARNESS_MAIN
+
