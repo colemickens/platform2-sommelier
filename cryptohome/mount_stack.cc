@@ -10,28 +10,43 @@
 
 using base::FilePath;
 
-MountStack::MountStack() { }
+namespace cryptohome {
+
+MountStack::MountInfo::MountInfo(const FilePath& src, const FilePath& dest)
+    : src(src),
+      dest(dest) {}
+
+MountStack::MountStack() {}
+
 MountStack::~MountStack() {
   if (!mounts_.empty()) {
     LOG(ERROR) << "MountStack destroyed with " << mounts_.size() << "mounts.";
-    std::vector<FilePath>::iterator it;
-    for (it = mounts_.begin(); it != mounts_.end(); ++it)
-      LOG(ERROR) << "  " << it->value();
+    for (const auto& it : mounts_)
+      LOG(ERROR) << "  " << it.src.value() << " -> " << it.dest.value();
   }
 }
 
-void MountStack::Push(const FilePath& path) {
-  mounts_.push_back(path);
+void MountStack::Push(const FilePath& src, const FilePath& dest) {
+  mounts_.push_back(MountInfo(src, dest));
 }
 
-bool MountStack::Pop(FilePath* path) {
+bool MountStack::Pop(FilePath* src_out, FilePath* dest_out) {
   if (mounts_.empty())
     return false;
-  *path = mounts_.back();
+
+  const MountInfo& info = mounts_.back();
+  *src_out = info.src;
+  *dest_out = info.dest;
   mounts_.pop_back();
   return true;
 }
 
-bool MountStack::Contains(const FilePath& path) const {
-  return std::find(mounts_.begin(), mounts_.end(), path) != mounts_.end();
+bool MountStack::ContainsDest(const FilePath& dest) const {
+  for (const auto& info : mounts_) {
+    if (info.dest == dest)
+      return true;
+  }
+  return false;
 }
+
+}  // namespace cryptohome

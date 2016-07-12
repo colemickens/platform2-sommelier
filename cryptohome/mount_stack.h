@@ -9,6 +9,9 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/macros.h>
+
+namespace cryptohome {
 
 // This class is basically a stack that logs an error if it's not empty when
 // it's destroyed.
@@ -16,14 +19,26 @@ class MountStack {
  public:
   MountStack();
   virtual ~MountStack();
-  typedef std::vector<std::string>::size_type size_type;
 
-  virtual void Push(const base::FilePath& path);
-  virtual bool Pop(base::FilePath* path);
-  virtual bool Contains(const base::FilePath& path) const;
-  virtual size_type size() const { return mounts_.size(); }
+  virtual void Push(const base::FilePath& src, const base::FilePath& dest);
+  virtual bool Pop(base::FilePath* src_out, base::FilePath* dest_out);
+  virtual bool ContainsDest(const base::FilePath& dest) const;
+  virtual size_t size() const { return mounts_.size(); }
+
  private:
-  std::vector<base::FilePath> mounts_;
+  struct MountInfo {
+    MountInfo(const base::FilePath& src, const base::FilePath& dest);
+
+    // Source and destination mount points.
+    const base::FilePath src;
+    const base::FilePath dest;
+  };
+
+  std::vector<MountInfo> mounts_;
+
+  DISALLOW_COPY_AND_ASSIGN(MountStack);
 };
+
+}  // namespace cryptohome
 
 #endif  // CRYPTOHOME_MOUNT_STACK_H_

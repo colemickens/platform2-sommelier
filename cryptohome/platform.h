@@ -130,13 +130,11 @@ class Platform {
   //   was_busy (OUT) - Set to true on return if the mount point was busy
   virtual bool Unmount(const base::FilePath& path, bool lazy, bool* was_busy);
 
-  // Lazy unmounts |path| and then calls sync().  If |sync_first| is true then
-  // it also calls sync() before unmount.
+  // Lazily unmounts |path|.
   //
   // Parameters
-  //   path - The path to unmount
-  //   sync_first - Whether to call sync() before unmount.
-  virtual void LazyUnmountAndSync(const base::FilePath& path, bool sync_first);
+  //   path - The destination path to unmount
+  virtual void LazyUnmount(const base::FilePath& path);
 
   // Returns true if any mounts match. Populates |mounts| if
   // any mount sources have a matching prefix (|from_prefix|).
@@ -515,8 +513,14 @@ class Platform {
   // success.
   virtual bool DataSyncFile(const base::FilePath& path);
 
+  // Calls fsync() on directory.  Returns true on success.
+  //
+  // Parameters
+  //   path - Directory to be sync'ed
+  virtual bool SyncDirectory(const base::FilePath& path);
+
   // Syncs everything to disk.  This method is synchronous and very, very
-  // expensive, use with even more care than SyncFile.
+  // expensive; use with even more care than SyncFile.
   virtual void Sync();
 
   // Gets the system HWID. This is the same ID that is used on some systems to
@@ -558,12 +562,6 @@ class Platform {
   // Creates a random string suitable to append to a filename.  Returns empty
   // string in case of error.
   virtual std::string GetRandomSuffix();
-
-  // Calls fsync() on directory.  Returns true on success.
-  //
-  // Parameters
-  //   path - File/directory to be sync'ed
-  bool SyncDirectory(const base::FilePath& path);
 
   // Calls fdatasync() on file or fsync() on directory.  Returns true on
   // success.

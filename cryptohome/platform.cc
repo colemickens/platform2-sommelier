@@ -66,6 +66,9 @@ using base::StringPrintf;
 
 namespace {
 
+// Log sync(), fsync(), etc. calls that take this many seconds or longer.
+const int kLongSyncSec = 10;
+
 class ScopedPath {
  public:
   ScopedPath(cryptohome::Platform* platform, const FilePath& dir)
@@ -85,15 +88,6 @@ class ScopedPath {
 
 bool IsDirectory(const struct stat& file_info) {
   return !!S_ISDIR(file_info.st_mode);
-}
-
-void TimedSync() {
-  base::Time start = base::Time::Now();
-  sync();
-  base::TimeDelta delta = base::Time::Now() - start;
-  if (delta > base::TimeDelta::FromSeconds(10)) {
-    LOG(WARNING) << "Long sync(): " << delta.InSeconds() << " seconds";
-  }
 }
 
 }  // namespace
@@ -213,16 +207,12 @@ bool Platform::Unmount(const FilePath& path, bool lazy, bool* was_busy) {
   return true;
 }
 
-void Platform::LazyUnmountAndSync(const FilePath& path, bool sync_first) {
-  if (sync_first) {
-    TimedSync();
-  }
+void Platform::LazyUnmount(const FilePath& path) {
   if (umount2(path.value().c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
     if (errno != EBUSY) {
       PLOG(ERROR) << "Lazy unmount failed!";
     }
   }
-  TimedSync();
 }
 
 void Platform::GetProcessesWithOpenFiles(
@@ -923,16 +913,9 @@ bool Platform::FirmwareWriteProtected() {
   return VbGetSystemPropertyInt("wpsw_boot") != 0;
 }
 
-bool Platform::DataSyncFile(const FilePath& path) {
-  return SyncFileOrDirectory(path, false /* directory */);
-}
+bool Platform::SyncFileOrDirectory(const FilePath& path, bool is_directory) {
+  const base::TimeTicks start = base::TimeTicks::Now();
 
-bool Platform::SyncDirectory(const FilePath& path) {
-  return SyncFileOrDirectory(path, true /* directory */);
-}
-
-bool Platform::SyncFileOrDirectory(const FilePath& path,
-                                   bool is_directory) {
   int flags = (is_directory ? O_RDONLY|O_DIRECTORY : O_WRONLY);
   int fd = HANDLE_EINTR(open(path.value().c_str(), flags));
   if (fd < 0) {
@@ -954,11 +937,32 @@ bool Platform::SyncFileOrDirectory(const FilePath& path,
     PLOG(WARNING) << "Failed to close after sync " << path.value();
     return false;
   }
+
+  const base::TimeDelta delta = base::TimeTicks::Now() - start;
+  if (delta > base::TimeDelta::FromSeconds(kLongSyncSec)) {
+    LOG(WARNING) << "Long " << (is_directory ? "fsync" : "fdatasync")
+                 << "() of " << path.value() << ": " << delta.InSeconds()
+                 << " seconds";
+  }
+
   return true;
 }
 
+bool Platform::DataSyncFile(const FilePath& path) {
+  return SyncFileOrDirectory(path, false /* directory */);
+}
+
+bool Platform::SyncDirectory(const FilePath& path) {
+  return SyncFileOrDirectory(path, true /* directory */);
+}
+
 void Platform::Sync() {
-  TimedSync();
+  const base::TimeTicks start = base::TimeTicks::Now();
+  sync();
+  const base::TimeDelta delta = base::TimeTicks::Now() - start;
+  if (delta > base::TimeDelta::FromSeconds(kLongSyncSec)) {
+    LOG(WARNING) << "Long sync(): " << delta.InSeconds() << " seconds";
+  }
 }
 
 std::string Platform::GetHardwareID() {
@@ -1004,10 +1008,7 @@ long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
 }  // namespace ecryptfs
 
 bool Platform::ClearUserKeyring() {
-  /* Flush cache to prevent corruption */
-  Sync();
-  int ret = ecryptfs::ClearUserKeyring();
-  return (ret == 0);
+  return ecryptfs::ClearUserKeyring() == 0;
 }
 
 bool Platform::AddEcryptfsAuthToken(

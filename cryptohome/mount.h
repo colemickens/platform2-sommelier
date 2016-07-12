@@ -297,12 +297,15 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // destruction.
   class ScopedMountPoint {
    public:
-    ScopedMountPoint(Mount* mount, const base::FilePath& path);
+    ScopedMountPoint(Mount* mount,
+                     const base::FilePath& src,
+                     const base::FilePath& dest);
     ~ScopedMountPoint();
 
    private:
     Mount* mount_;
-    base::FilePath path_;
+    const base::FilePath src_;
+    const base::FilePath dest_;
   };
 
   // Checks if the cryptohome vault exists for the given credentials
@@ -676,8 +679,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // mountpoint, it can prevent the lazy unmount from ever completing.
   //
   // Parameters
-  //   mount_point - Mount point to unmount
-  void ForceUnmount(const base::FilePath& mount_point);
+  //   src - Path mounted at |dest|
+  //   dest - Mount point to unmount
+  void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
   // Derives PKCS #11 token authorization data from a passkey. This may take up
   // to ~100ms (dependant on CPU / memory performance). Returns true on success.

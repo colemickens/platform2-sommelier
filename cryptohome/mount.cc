@@ -101,13 +101,15 @@ class ScopedUmask {
   int old_mask_;
 };
 
-Mount::ScopedMountPoint::ScopedMountPoint(Mount* mount, const FilePath& path)
-  : mount_(mount), path_(path) {
+Mount::ScopedMountPoint::ScopedMountPoint(Mount* mount,
+                                          const FilePath& src,
+                                          const FilePath& dest)
+  : mount_(mount), src_(src), dest_(dest) {
 }
 
 Mount::ScopedMountPoint::~ScopedMountPoint() {
-  if (mount_->platform_->IsDirectoryMounted(path_)) {
-    mount_->ForceUnmount(path_);
+  if (mount_->platform_->IsDirectoryMounted(dest_)) {
+    mount_->ForceUnmount(src_, dest_);
   }
 }
 
@@ -617,7 +619,8 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
   }
   // Whatever happens, we want to unmount the tmpfs used to build the skeleton
   // home directory.
-  ScopedMountPoint scoped_skeleton_mount(this, ephemeral_skeleton_path);
+  ScopedMountPoint scoped_skeleton_mount(this, source_path,
+                                         ephemeral_skeleton_path);
   CopySkeleton();
 
   // Create the Downloads directory if it does not exist so that it can later be
@@ -659,7 +662,7 @@ bool Mount::RememberMount(const FilePath& src,
                           const FilePath& dest, const std::string& type,
                           const std::string& options) {
   if (platform_->Mount(src, dest, type, options)) {
-    mounts_.Push(dest);
+    mounts_.Push(src, dest);
     return true;
   }
   return false;
@@ -668,18 +671,18 @@ bool Mount::RememberMount(const FilePath& src,
 bool Mount::RememberBind(const FilePath& src,
                          const FilePath& dest) {
   if (platform_->Bind(src, dest)) {
-    mounts_.Push(dest);
+    mounts_.Push(src, dest);
     return true;
   }
   return false;
 }
 
 bool Mount::UnmountForUser() {
-  FilePath mount_point;
-  if (!mounts_.Pop(&mount_point)) {
+  FilePath src, dest;
+  if (!mounts_.Pop(&src, &dest)) {
     return false;
   }
-  ForceUnmount(mount_point);
+  ForceUnmount(src, dest);
   return true;
 }
 
@@ -687,14 +690,14 @@ void Mount::UnmountAllForUser() {
   while (UnmountForUser()) { }
 }
 
-void Mount::ForceUnmount(const FilePath& mount_point) {
+void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
   // Try an immediate unmount
   bool was_busy;
-  if (!platform_->Unmount(mount_point, false, &was_busy)) {
+  if (!platform_->Unmount(dest, false, &was_busy)) {
     LOG(ERROR) << "Couldn't unmount vault immediately, was_busy = " << was_busy;
     if (was_busy) {
       std::vector<ProcessInformation> processes;
-      platform_->GetProcessesWithOpenFiles(mount_point, &processes);
+      platform_->GetProcessesWithOpenFiles(dest, &processes);
       for (std::vector<ProcessInformation>::iterator proc_itr =
              processes.begin();
            proc_itr != processes.end();
@@ -717,7 +720,10 @@ void Mount::ForceUnmount(const FilePath& mount_point) {
     }
     // Failed to unmount immediately, do a lazy unmount.  If |was_busy| we also
     // want to sync before the unmount to help prevent data loss.
-    platform_->LazyUnmountAndSync(mount_point, was_busy);
+    if (was_busy)
+      platform_->SyncDirectory(dest);
+    platform_->LazyUnmount(dest);
+    platform_->SyncDirectory(src);
   }
 }
 
@@ -732,6 +738,7 @@ bool Mount::UnmountCryptohome() {
   RemovePkcs11Token();
   current_user_->Reset();
   ephemeral_mount_ = false;
+
   platform_->ClearUserKeyring();
 
   return true;
@@ -745,11 +752,11 @@ bool Mount::IsVaultMounted() const {
   std::string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
   const FilePath vault_path = GetUserMountDirectory(obfuscated_username);
-  return mounts_.Contains(vault_path);
+  return mounts_.ContainsDest(vault_path);
 }
 
 bool Mount::OwnsMountPoint(const FilePath& path) const {
-  return mounts_.Contains(path);
+  return mounts_.ContainsDest(path);
 }
 
 bool Mount::CreateCryptohome(const Credentials& credentials) const {

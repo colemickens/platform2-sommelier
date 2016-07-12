@@ -93,7 +93,7 @@ class MockPlatform : public Platform {
                            const std::string&, const std::string&));
   MOCK_METHOD2(Bind, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD3(Unmount, bool(const base::FilePath&, bool, bool*));
-  MOCK_METHOD2(LazyUnmountAndSync, void(const base::FilePath&, bool));
+  MOCK_METHOD1(LazyUnmount, void(const base::FilePath&));
   MOCK_METHOD2(GetMountsBySourcePrefix, bool(const std::string&,
                   std::multimap<const base::FilePath, const base::FilePath>*));
   MOCK_METHOD1(IsDirectoryMounted, bool(const base::FilePath&));
@@ -164,6 +164,7 @@ class MockPlatform : public Platform {
                                                   int));
   MOCK_METHOD0(FirmwareWriteProtected, bool(void));
   MOCK_METHOD1(DataSyncFile, bool(const base::FilePath&));
+  MOCK_METHOD1(SyncDirectory, bool(const base::FilePath&));
   MOCK_METHOD0(Sync, void());
   MOCK_METHOD0(GetHardwareID, std::string(void));
 
