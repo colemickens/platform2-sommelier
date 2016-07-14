@@ -169,6 +169,32 @@ void container_cgroup_destroy(struct container_cgroup *c)
 	free(c->name);
 }
 
+TEST(premounted_runfs)
+{
+	char premounted_runfs[] = "/tmp/cgtest_run/root";
+	struct container_config *config = container_config_create();
+	ASSERT_NE(NULL, config);
+
+	container_config_premounted_runfs(config, premounted_runfs);
+	const char *result = container_config_get_premounted_runfs(config);
+	ASSERT_EQ(0, strcmp(result, premounted_runfs));
+
+	container_config_destroy(config);
+}
+
+TEST(pid_file_path)
+{
+	char pid_file_path[] = "/tmp/cgtest_run/root/container.pid";
+	struct container_config *config = container_config_create();
+	ASSERT_NE(NULL, config);
+
+	container_config_pid_file(config, pid_file_path);
+	const char *result = container_config_get_pid_file(config);
+	ASSERT_EQ(0, strcmp(result, pid_file_path));
+
+	container_config_destroy(config);
+}
+
 /* Start of tests. */
 FIXTURE(container_test) {
 	struct container_config *config;

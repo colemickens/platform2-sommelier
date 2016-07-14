@@ -26,6 +26,18 @@ int container_config_rootfs(struct container_config *c, const char *rootfs);
 /* Get the configured rootfs path. */
 const char *container_config_get_rootfs(const struct container_config *c);
 
+/* runfs - Path to where the container filesystem has been mounted. */
+int container_config_premounted_runfs(struct container_config *c, const char *runfs);
+
+/* Get the pre-mounted runfs path. */
+const char *container_config_get_premounted_runfs(const struct container_config *c);
+
+/* The pid of the program will be written here. */
+int container_config_pid_file(struct container_config *c, const char *path);
+
+/* Get the pid file path. */
+const char *container_config_get_pid_file(const struct container_config *c);
+
 /* The program to run and args, e.g. "/sbin/init", "--second-stage". */
 int container_config_program_argv(struct container_config *c,
 				  char **argv, size_t num_args);
@@ -36,9 +48,6 @@ size_t container_config_get_num_program_args(const struct container_config *c);
 /* Get the program argument at the given index. */
 const char *container_config_get_program_arg(const struct container_config *c,
 					     size_t index);
-
-/* The pid of the program will be written here. */
-int container_config_pid_file(struct container_config *c, const char *path);
 
 /* Sets/Gets the uid the container will run as. */
 void container_config_uid(struct container_config *c, uid_t uid);

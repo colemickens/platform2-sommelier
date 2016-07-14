@@ -81,6 +81,8 @@ struct container_cpu_cgroup {
  * Structure that configures how the container is run.
  *
  * rootfs - Path to the root of the container's filesystem.
+ * premounted_runfs - Path to where the container will be run.
+ * pid_file_path - Path to the file where the pid should be written.
  * program_argv - The program to run and args, e.g. "/sbin/init".
  * num_args - Number of args in program_argv.
  * uid - The uid the container will run as.
@@ -99,6 +101,8 @@ struct container_cpu_cgroup {
  */
 struct container_config {
 	char *rootfs;
+	char *premounted_runfs;
+	char *pid_file_path;
 	char **program_argv;
 	size_t num_args;
 	uid_t uid;
@@ -155,6 +159,8 @@ void container_config_destroy(struct container_config *c)
 		return;
 	FREE_AND_NULL(c->rootfs);
 	container_free_program_args(c);
+	FREE_AND_NULL(c->premounted_runfs);
+	FREE_AND_NULL(c->pid_file_path);
 	FREE_AND_NULL(c->uid_map);
 	FREE_AND_NULL(c->gid_map);
 	FREE_AND_NULL(c->alt_syscall_table);
@@ -179,6 +185,26 @@ int container_config_rootfs(struct container_config *c, const char *rootfs)
 const char *container_config_get_rootfs(const struct container_config *c)
 {
 	return c->rootfs;
+}
+
+int container_config_premounted_runfs(struct container_config *c, const char *runfs)
+{
+	return strdup_and_free(&c->premounted_runfs, runfs);
+}
+
+const char *container_config_get_premounted_runfs(const struct container_config *c)
+{
+	return c->premounted_runfs;
+}
+
+int container_config_pid_file(struct container_config *c, const char *path)
+{
+	return strdup_and_free(&c->pid_file_path, path);
+}
+
+const char *container_config_get_pid_file(const struct container_config *c)
+{
+	return c->pid_file_path;
 }
 
 int container_config_program_argv(struct container_config *c,
@@ -746,13 +772,45 @@ exit:
 	return rc;
 }
 
-int container_start(struct container *c, const struct container_config *config)
+static int mount_runfs(struct container *c, const struct container_config *config)
 {
 	static const mode_t root_dir_mode = 0660;
-	int rc = 0;
-	unsigned int i;
 	const char *rootfs = config->rootfs;
 	char *runfs_template = NULL;
+
+	if (asprintf(&runfs_template, "%s/%s_XXXXXX", c->rundir, c->name) < 0)
+		return -ENOMEM;
+
+	c->runfs = mkdtemp(runfs_template);
+	if (!c->runfs) {
+		free(runfs_template);
+		return -errno;
+	}
+
+	/* Make sure the container uid can access the rootfs. */
+	if (chmod(c->runfs, 0700))
+		return -errno;
+	if (chown(c->runfs, config->uid, config->gid))
+		return -errno;
+
+	if (asprintf(&c->runfsroot, "%s/root", c->runfs) < 0)
+		return -errno;
+
+	if (mkdir(c->runfsroot, root_dir_mode))
+		return -errno;
+	if (chmod(c->runfsroot, root_dir_mode))
+		return -errno;
+
+	if (mount(rootfs, c->runfsroot, "", MS_BIND | MS_RDONLY, NULL))
+		return -errno;
+
+	return 0;
+}
+
+int container_start(struct container *c, const struct container_config *config)
+{
+	int rc = 0;
+	unsigned int i;
 
 	if (!c)
 		return -EINVAL;
@@ -761,30 +819,18 @@ int container_start(struct container *c, const struct container_config *config)
 	if (!config->program_argv || !config->program_argv[0])
 		return -EINVAL;
 
-	if (asprintf(&runfs_template, "%s/%s_XXXXXX", c->rundir, c->name) < 0)
-		return -errno;
-
-	c->runfs = mkdtemp(runfs_template);
-	if (!c->runfs) {
-		free(runfs_template);
-		return -errno;
+	if (config->premounted_runfs) {
+		c->runfs = NULL;
+		c->runfsroot = strdup(config->premounted_runfs);
+		if (!c->runfsroot) {
+			rc = -ENOMEM;
+			goto error_rmdir;
+		}
+	} else {
+		rc = mount_runfs(c, config);
+		if (rc)
+			goto error_rmdir;
 	}
-	/* Make sure the container uid can access the rootfs. */
-	if (chmod(c->runfs, 0700))
-		goto error_rmdir;
-	if (chown(c->runfs, config->uid, config->gid))
-		goto error_rmdir;
-
-	if (asprintf(&c->runfsroot, "%s/root", c->runfs) < 0)
-		goto error_rmdir;
-
-	if (mkdir(c->runfsroot, root_dir_mode))
-		goto error_rmdir;
-	if (chmod(c->runfsroot, root_dir_mode))
-		goto error_rmdir;
-
-	if (mount(rootfs, c->runfsroot, "", MS_BIND | MS_RDONLY, NULL))
-		goto error_rmdir;
 
 	c->jail = minijail_new();
 	if (!c->jail)
@@ -868,9 +914,21 @@ int container_start(struct container *c, const struct container_config *config)
 	}
 
 	/* Setup and start the container with libminijail. */
-	if (asprintf(&c->pid_file_path, "%s/container.pid", c->runfs) < 0)
-		goto error_rmdir;
-	minijail_write_pid_file(c->jail, c->pid_file_path);
+	if (config->pid_file_path) {
+		c->pid_file_path = strdup(config->pid_file_path);
+		if (!c->pid_file_path) {
+			rc = -ENOMEM;
+			goto error_rmdir;
+		}
+	} else if (c->runfs) {
+		if (asprintf(&c->pid_file_path, "%s/container.pid", c->runfs) < 0) {
+			rc = -ENOMEM;
+			goto error_rmdir;
+		}
+	}
+
+	if (c->pid_file_path)
+		minijail_write_pid_file(c->jail, c->pid_file_path);
 	minijail_reset_signal_mask(c->jail);
 
 	/* Setup container namespaces. */
@@ -946,7 +1004,7 @@ static int container_teardown(struct container *c)
 	int ret = 0;
 
 	unmount_external_mounts(c);
-	if (c->runfsroot) {
+	if (c->runfsroot && c->runfs) {
 		if (umount(c->runfsroot))
 			ret = -errno;
 		if (rmdir(c->runfsroot))
