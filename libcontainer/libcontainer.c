@@ -794,31 +794,34 @@ int container_start(struct container *c, const struct container_config *config)
 	if (rc)
 		goto error_rmdir;
 
-	c->cgroup->ops->deny_all_devices(c->cgroup);
+	/* Must be root to modify device cgroup or mknod */
+	if (getuid() == 0) {
+		c->cgroup->ops->deny_all_devices(c->cgroup);
 
-	for (i = 0; i < config->num_devices; i++) {
-		const struct container_device *dev = &config->devices[i];
-		int minor = dev->minor;
+		for (i = 0; i < config->num_devices; i++) {
+			const struct container_device *dev = &config->devices[i];
+			int minor = dev->minor;
 
-		if (dev->copy_minor) {
-			struct stat st_buff;
-			if (stat(dev->path, &st_buff) < 0)
-				continue;
-			/* Use the minor macro to extract the device number. */
-			minor = minor(st_buff.st_rdev);
-		}
-		if (minor >= 0) {
-			rc = container_create_device(c, dev, minor);
+			if (dev->copy_minor) {
+				struct stat st_buff;
+				if (stat(dev->path, &st_buff) < 0)
+					continue;
+				/* Use the minor macro to extract the device number. */
+				minor = minor(st_buff.st_rdev);
+			}
+			if (minor >= 0) {
+				rc = container_create_device(c, dev, minor);
+				if (rc)
+					goto error_rmdir;
+			}
+
+			rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
+							minor, dev->read_allowed,
+							dev->write_allowed,
+							dev->modify_allowed, dev->type);
 			if (rc)
 				goto error_rmdir;
 		}
-
-		rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
-						minor, dev->read_allowed,
-						dev->write_allowed,
-						dev->modify_allowed, dev->type);
-		if (rc)
-			goto error_rmdir;
 	}
 
 	/* Potentailly run setfiles on mounts configured outside of the jail */
