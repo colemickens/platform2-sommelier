@@ -18,6 +18,8 @@ class ObjectProxy;
 namespace power_manager {
 namespace system {
 
+class DBusWrapperInterface;
+
 // Interface for turning displays on and off.
 class DisplayPowerSetterInterface {
  public:
@@ -41,13 +43,15 @@ class DisplayPowerSetterInterface {
 
 // Real DisplayPowerSetterInterface implementation that makes D-Bus method
 // calls to Chrome.
+// TODO(derat): Write unit tests for this class now that it's using
+// DBusWrapperInterface.
 class DisplayPowerSetter : public DisplayPowerSetterInterface {
  public:
   DisplayPowerSetter();
   virtual ~DisplayPowerSetter();
 
-  // Ownership of |chrome_proxy| remains with the caller.
-  void Init(dbus::ObjectProxy* chrome_proxy);
+  // Ownership of |dbus_wrapper| remains with the caller.
+  void Init(DBusWrapperInterface* dbus_wrapper);
 
   // DisplayPowerSetterInterface implementation:
   void SetDisplayPower(chromeos::DisplayPowerState state,
@@ -61,6 +65,7 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   // Runs SendStateToChrome().
   base::OneShotTimer timer_;
 
+  DBusWrapperInterface* dbus_wrapper_;  // weak
   dbus::ObjectProxy* chrome_proxy_;  // non-owned
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetter);

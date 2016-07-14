@@ -7,43 +7,43 @@
 
 #include <base/macros.h>
 #include <base/observer_list.h>
-#include <dbus/object_proxy.h>
+
+#include "power_manager/powerd/system/audio_client_interface.h"
+
+namespace dbus {
+class ObjectProxy;
+}  // namespace dbus
 
 namespace power_manager {
 namespace system {
 
-class AudioObserver;
+class DBusWrapperInterface;
 
-// AudioClient monitors audio activity as reported by CRAS, the Chrome OS
-// audio server.
-class AudioClient {
+// Real implementation of AudioClientInterface that monitors audio activity as
+// reported by CRAS, the Chrome OS audio server.
+// TODO(derat): Write unit tests for this class now that it's using
+// DBusWrapperInterface.
+class AudioClient : public AudioClientInterface {
  public:
   AudioClient();
-  ~AudioClient();
+  ~AudioClient() override;
 
-  bool headphone_jack_plugged() const { return headphone_jack_plugged_; }
-  bool hdmi_active() const { return hdmi_active_; }
+  // Initializes the object. Ownership of |dbus_wrapper| remains with the
+  // caller.
+  void Init(DBusWrapperInterface* dbus_wrapper);
 
-  // Initializes the object. |cras_proxy| is used to communicate with CRAS.
-  void Init(dbus::ObjectProxy* cras_proxy);
-
-  // Adds or removes an observer.
-  void AddObserver(AudioObserver* observer);
-  void RemoveObserver(AudioObserver* observer);
-
-  // Suspends or resumes the audio according to the value of |suspended|.
-  void SetSuspended(bool suspended);
-
-  // Calls Update*() to load the initial state from CRAS.
-  void LoadInitialState();
-
-  // Updates the client's view of connected audio devices.
-  void UpdateDevices();
-
-  // Updates |num_active_streams_| and notifies observers if the state changed.
-  void UpdateNumActiveStreams();
+  // AudioClientInterface:
+  bool GetHeadphoneJackPlugged() const override;
+  bool GetHdmiActive() const override;
+  void AddObserver(AudioObserver* observer) override;
+  void RemoveObserver(AudioObserver* observer) override;
+  void SetSuspended(bool suspended) override;
+  void LoadInitialState() override;
+  void UpdateDevices() override;
+  void UpdateNumActiveStreams() override;
 
  private:
+  DBusWrapperInterface* dbus_wrapper_;  // weak
   dbus::ObjectProxy* cras_proxy_;  // weak
 
   // Number of audio streams (either input or output) currently active.

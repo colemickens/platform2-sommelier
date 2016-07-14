@@ -32,8 +32,9 @@ class ObjectProxy;
 
 namespace power_manager {
 
+class DaemonDelegate;
 class MetricsCollector;
-class MetricsSender;
+class MetricsSenderInterface;
 class Prefs;
 
 namespace policy {
@@ -45,19 +46,19 @@ class WakeupController;
 }  // namespace policy
 
 namespace system {
-class AcpiWakeupHelper;
-class AmbientLightSensor;
-class AudioClient;
-class DarkResume;
-class DBusWrapper;
-class DisplayPowerSetter;
-class DisplayWatcher;
-class EcWakeupHelper;
-class InputWatcher;
-class InternalBacklight;
+class AcpiWakeupHelperInterface;
+class AmbientLightSensorInterface;
+class AudioClientInterface;
+class BacklightInterface;
+class DarkResumeInterface;
+class DBusWrapperInterface;
+class DisplayPowerSetterInterface;
+class DisplayWatcherInterface;
+class EcWakeupHelperInterface;
+class InputWatcherInterface;
 class PeripheralBatteryWatcher;
-class PowerSupply;
-class Udev;
+class PowerSupplyInterface;
+class UdevInterface;
 }  // namespace system
 
 class Daemon;
@@ -69,7 +70,8 @@ class Daemon : public policy::BacklightControllerObserver,
                public system::AudioObserver,
                public system::PowerSupplyObserver {
  public:
-  Daemon(const base::FilePath& read_write_prefs_dir,
+  Daemon(DaemonDelegate* delegate,
+         const base::FilePath& read_write_prefs_dir,
          const base::FilePath& read_only_prefs_dir,
          const base::FilePath& run_dir);
   virtual ~Daemon();
@@ -231,43 +233,44 @@ class Daemon : public policy::BacklightControllerObserver,
   // |iwl_wifi_power_table_|.
   void PopulateIwlWifiTransmitPowerTable();
 
+  DaemonDelegate* delegate_;  // weak
+
   std::unique_ptr<Prefs> prefs_;
 
-  std::unique_ptr<system::DBusWrapper> dbus_wrapper_;
+  std::unique_ptr<system::DBusWrapperInterface> dbus_wrapper_;
 
-  dbus::ObjectProxy* chrome_dbus_proxy_;  // owned by |dbus_wrapper_|
   dbus::ObjectProxy* session_manager_dbus_proxy_;  // owned by |dbus_wrapper_|
   // May be null if |kUseCrasPref| is false.
-  dbus::ObjectProxy* cras_dbus_proxy_;  // owned by |dbus_wrapper_|
   dbus::ObjectProxy* update_engine_dbus_proxy_;  // owned by |dbus_wrapper_|
   // May be null if the TPM status is not needed.
   dbus::ObjectProxy* cryptohomed_dbus_proxy_;  // owned by |dbus_wrapper_|
 
   std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
-  std::unique_ptr<MetricsSender> metrics_sender_;
+  std::unique_ptr<MetricsSenderInterface> metrics_sender_;
 
   // Many of these members may be null depending on the device's hardware
   // configuration.
-  std::unique_ptr<system::AmbientLightSensor> light_sensor_;
-  std::unique_ptr<system::DisplayWatcher> display_watcher_;
-  std::unique_ptr<system::DisplayPowerSetter> display_power_setter_;
-  std::unique_ptr<system::InternalBacklight> display_backlight_;
+  std::unique_ptr<system::AmbientLightSensorInterface> light_sensor_;
+  std::unique_ptr<system::DisplayWatcherInterface> display_watcher_;
+  std::unique_ptr<system::DisplayPowerSetterInterface> display_power_setter_;
+  std::unique_ptr<system::BacklightInterface> display_backlight_;
   std::unique_ptr<policy::BacklightController> display_backlight_controller_;
-  std::unique_ptr<system::InternalBacklight> keyboard_backlight_;
+  std::unique_ptr<system::BacklightInterface> keyboard_backlight_;
   std::unique_ptr<policy::KeyboardBacklightController>
       keyboard_backlight_controller_;
 
-  std::unique_ptr<system::Udev> udev_;
-  std::unique_ptr<system::InputWatcher> input_watcher_;
+  std::unique_ptr<system::UdevInterface> udev_;
+  std::unique_ptr<system::InputWatcherInterface> input_watcher_;
   std::unique_ptr<policy::StateController> state_controller_;
   std::unique_ptr<policy::InputController> input_controller_;
-  std::unique_ptr<system::AcpiWakeupHelper> acpi_wakeup_helper_;
-  std::unique_ptr<system::EcWakeupHelper> ec_wakeup_helper_;
+  std::unique_ptr<system::AcpiWakeupHelperInterface> acpi_wakeup_helper_;
+  std::unique_ptr<system::EcWakeupHelperInterface> ec_wakeup_helper_;
   std::unique_ptr<policy::WakeupController> wakeup_controller_;
-  std::unique_ptr<system::AudioClient> audio_client_;  // May be NULL.
-  std::unique_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
-  std::unique_ptr<system::PowerSupply> power_supply_;
-  std::unique_ptr<system::DarkResume> dark_resume_;
+  std::unique_ptr<system::AudioClientInterface> audio_client_;  // May be null.
+  std::unique_ptr<system::PeripheralBatteryWatcher>
+      peripheral_battery_watcher_;  // May be null.
+  std::unique_ptr<system::PowerSupplyInterface> power_supply_;
+  std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::Suspender> suspender_;
 
   std::unique_ptr<MetricsCollector> metrics_collector_;

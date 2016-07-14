@@ -8,11 +8,13 @@
 #include <memory>
 #include <string>
 
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/audio_observer.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 
 namespace power_manager {
 namespace system {
@@ -33,7 +35,8 @@ const char kHdmiNodeType[] = "HDMI";
 }  // namespace
 
 AudioClient::AudioClient()
-    : cras_proxy_(NULL),
+    : dbus_wrapper_(nullptr),
+      cras_proxy_(nullptr),
       num_active_streams_(0),
       headphone_jack_plugged_(false),
       hdmi_active_(false) {
@@ -42,9 +45,19 @@ AudioClient::AudioClient()
 AudioClient::~AudioClient() {
 }
 
-void AudioClient::Init(dbus::ObjectProxy* cras_proxy) {
-  DCHECK(cras_proxy);
-  cras_proxy_ = cras_proxy;
+void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
+  DCHECK(dbus_wrapper);
+  dbus_wrapper_ = dbus_wrapper;
+  cras_proxy_ = dbus_wrapper_->GetObjectProxy(cras::kCrasServiceName,
+                                              cras::kCrasServicePath);
+}
+
+bool AudioClient::GetHeadphoneJackPlugged() const {
+  return headphone_jack_plugged_;
+}
+
+bool AudioClient::GetHdmiActive() const {
+  return hdmi_active_;
 }
 
 void AudioClient::AddObserver(AudioObserver* observer) {
@@ -70,8 +83,9 @@ void AudioClient::UpdateDevices() {
   hdmi_active_ = false;
 
   dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
-  std::unique_ptr<dbus::Response> response(
-      cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
+  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
+      cras_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
   if (!response)
     return;
 
@@ -119,8 +133,9 @@ void AudioClient::UpdateDevices() {
 void AudioClient::UpdateNumActiveStreams() {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
                                cras::kGetNumberOfActiveStreams);
-  std::unique_ptr<dbus::Response> response(
-      cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
+  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
+      cras_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
   int num_streams = 0;
   if (response) {
     dbus::MessageReader reader(response.get());
@@ -148,8 +163,9 @@ void AudioClient::SetSuspended(bool suspended) {
                                cras::kSetSuspendAudio);
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(suspended);
-  std::unique_ptr<dbus::Response> response(
-      cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
+  dbus_wrapper_->CallMethodSync(
+      cras_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
 }
 
 }  // namespace system

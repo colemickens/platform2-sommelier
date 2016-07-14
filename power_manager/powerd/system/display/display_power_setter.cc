@@ -10,14 +10,17 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <dbus/message.h>
-#include <dbus/object_proxy.h>
 
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 
 namespace power_manager {
 namespace system {
 
 namespace {
+
+// Timeout for D-Bus method calls to Chrome.
+const int kChromeDBusTimeoutMs = 5000;
 
 std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
   switch (state) {
@@ -36,13 +39,17 @@ std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
 
 }  // namespace
 
-DisplayPowerSetter::DisplayPowerSetter() : chrome_proxy_(NULL) {}
+DisplayPowerSetter::DisplayPowerSetter()
+    : dbus_wrapper_(nullptr),
+      chrome_proxy_(nullptr) {}
 
 DisplayPowerSetter::~DisplayPowerSetter() {}
 
-void DisplayPowerSetter::Init(dbus::ObjectProxy* chrome_proxy) {
-  DCHECK(chrome_proxy);
-  chrome_proxy_ = chrome_proxy;
+void DisplayPowerSetter::Init(DBusWrapperInterface* dbus_wrapper) {
+  DCHECK(dbus_wrapper);
+  dbus_wrapper_ = dbus_wrapper;
+  chrome_proxy_ = dbus_wrapper_->GetObjectProxy(
+      chromeos::kLibCrosServiceName, chromeos::kLibCrosServicePath);
 }
 
 void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
@@ -64,8 +71,9 @@ void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
                                chromeos::kSetDisplaySoftwareDimming);
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(dimmed);
-  std::unique_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  dbus_wrapper_->CallMethodSync(
+      chrome_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kChromeDBusTimeoutMs));
 }
 
 void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
@@ -74,8 +82,9 @@ void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
                                chromeos::kSetDisplayPower);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(state);
-  std::unique_ptr<dbus::Response> response(chrome_proxy_->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  dbus_wrapper_->CallMethodSync(
+      chrome_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kChromeDBusTimeoutMs));
 }
 
 }  // namespace system

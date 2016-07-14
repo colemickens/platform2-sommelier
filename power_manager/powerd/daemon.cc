@@ -19,7 +19,6 @@
 #include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
-#include <metrics/metrics_library.h>
 
 #include "cryptohome/proto_bindings/rpc.pb.h"
 #include "power_manager/common/metrics_sender.h"
@@ -29,23 +28,23 @@
 #if USE_BUFFET
 #include "power_manager/powerd/buffet/command_handlers.h"
 #endif
+#include "power_manager/powerd/daemon_delegate.h"
 #include "power_manager/powerd/metrics_collector.h"
-#include "power_manager/powerd/policy/external_backlight_controller.h"
-#include "power_manager/powerd/policy/internal_backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/policy/wakeup_controller.h"
-#include "power_manager/powerd/system/acpi_wakeup_helper.h"
+#include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
-#include "power_manager/powerd/system/audio_client.h"
+#include "power_manager/powerd/system/audio_client_interface.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/ec_wakeup_helper.h"
-#include "power_manager/powerd/system/event_device.h"
-#include "power_manager/powerd/system/input_watcher.h"
-#include "power_manager/powerd/system/internal_backlight.h"
+#include "power_manager/powerd/system/ec_wakeup_helper_interface.h"
+#include "power_manager/powerd/system/event_device_interface.h"
+#include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev.h"
@@ -198,12 +197,12 @@ class Daemon::StateControllerDelegate
 
   bool IsHdmiAudioActive() override {
     return daemon_->audio_client_ ?
-        daemon_->audio_client_->hdmi_active() : false;
+        daemon_->audio_client_->GetHdmiActive() : false;
   }
 
   bool IsHeadphoneJackPlugged() override {
     return daemon_->audio_client_ ?
-        daemon_->audio_client_->headphone_jack_plugged() : false;
+        daemon_->audio_client_->GetHeadphoneJackPlugged() : false;
   }
 
   LidState QueryLidState() override {
@@ -283,28 +282,19 @@ class Daemon::StateControllerDelegate
   DISALLOW_COPY_AND_ASSIGN(StateControllerDelegate);
 };
 
-Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
+Daemon::Daemon(DaemonDelegate* delegate,
+               const base::FilePath& read_write_prefs_dir,
                const base::FilePath& read_only_prefs_dir,
                const base::FilePath& run_dir)
-    : prefs_(new Prefs),
-      chrome_dbus_proxy_(nullptr),
+    : delegate_(delegate),
+      prefs_(new Prefs),
       session_manager_dbus_proxy_(nullptr),
-      cras_dbus_proxy_(nullptr),
       update_engine_dbus_proxy_(nullptr),
       cryptohomed_dbus_proxy_(nullptr),
       state_controller_delegate_(new StateControllerDelegate(this)),
-      display_watcher_(new system::DisplayWatcher),
-      display_power_setter_(new system::DisplayPowerSetter),
-      udev_(new system::Udev),
-      input_watcher_(new system::InputWatcher),
       state_controller_(new policy::StateController),
       input_controller_(new policy::InputController),
-      acpi_wakeup_helper_(new system::AcpiWakeupHelper),
-      ec_wakeup_helper_(new system::EcWakeupHelper),
       wakeup_controller_(new policy::WakeupController),
-      peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
-      power_supply_(new system::PowerSupply),
-      dark_resume_(new system::DarkResume),
       suspender_(new policy::Suspender),
       metrics_collector_(new MetricsCollector),
       shutting_down_(false),
@@ -319,18 +309,9 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       suspend_to_idle_(false),
       set_wifi_transmit_power_for_tablet_mode_(false),
       weak_ptr_factory_(this) {
-  std::unique_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary);
-  metrics_lib->Init();
-  metrics_sender_.reset(new MetricsSender(std::move(metrics_lib)));
-
   CHECK(prefs_->Init(util::GetPrefPaths(
       base::FilePath(read_write_prefs_dir),
       base::FilePath(read_only_prefs_dir))));
-  power_supply_->AddObserver(this);
-  if (BoolPrefIsTrue(kUseCrasPref)) {
-    audio_client_.reset(new system::AudioClient);
-    audio_client_->AddObserver(this);
-  }
 }
 
 Daemon::~Daemon() {
@@ -338,51 +319,45 @@ Daemon::~Daemon() {
     audio_client_->RemoveObserver(this);
   if (display_backlight_controller_)
     display_backlight_controller_->RemoveObserver(this);
-  power_supply_->RemoveObserver(this);
+  if (power_supply_)
+    power_supply_->RemoveObserver(this);
 }
 
 void Daemon::Init() {
   InitDBus();
-  CHECK(udev_->Init());
 
-  if (BoolPrefIsTrue(kHasAmbientLightSensorPref)) {
-    light_sensor_.reset(new system::AmbientLightSensor);
-    light_sensor_->Init();
-  }
+  metrics_sender_ = delegate_->CreateMetricsSender();
+  udev_ = delegate_->CreateUdev();
+  input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
 
-  display_watcher_->Init(udev_.get());
-  display_power_setter_->Init(chrome_dbus_proxy_);
+  if (BoolPrefIsTrue(kHasAmbientLightSensorPref))
+    light_sensor_ = delegate_->CreateAmbientLightSensor();
+
+  display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
+  display_power_setter_ =
+      delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());
   if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
-    display_backlight_controller_.reset(
-        new policy::ExternalBacklightController);
-    static_cast<policy::ExternalBacklightController*>(
-        display_backlight_controller_.get())->Init(display_watcher_.get(),
-                                                   display_power_setter_.get());
+    display_backlight_controller_ =
+        delegate_->CreateExternalBacklightController(
+            display_watcher_.get(), display_power_setter_.get());
   } else {
-    display_backlight_.reset(new system::InternalBacklight);
-    if (!display_backlight_->Init(base::FilePath(kInternalBacklightPath),
-                                  kInternalBacklightPattern)) {
-      LOG(ERROR) << "Cannot initialize display backlight";
-      display_backlight_.reset();
-    } else {
-      display_backlight_controller_.reset(
-          new policy::InternalBacklightController);
-      static_cast<policy::InternalBacklightController*>(
-         display_backlight_controller_.get())->Init(
-             display_backlight_.get(), prefs_.get(), light_sensor_.get(),
-             display_power_setter_.get());
+    display_backlight_ = delegate_->CreateInternalBacklight(
+        base::FilePath(kInternalBacklightPath), kInternalBacklightPattern);
+    if (display_backlight_) {
+      display_backlight_controller_ =
+          delegate_->CreateInternalBacklightController(
+              display_backlight_.get(), prefs_.get(), light_sensor_.get(),
+              display_power_setter_.get());
     }
   }
   if (display_backlight_controller_)
     display_backlight_controller_->AddObserver(this);
 
   if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
-    keyboard_backlight_.reset(new system::InternalBacklight);
-    if (!keyboard_backlight_->Init(base::FilePath(kKeyboardBacklightPath),
-                                   kKeyboardBacklightPattern)) {
-      LOG(ERROR) << "Cannot initialize keyboard backlight";
-      keyboard_backlight_.reset();
-    } else {
+    keyboard_backlight_ = delegate_->CreateInternalBacklight(
+        base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
+    if (keyboard_backlight_) {
+      // TODO(derat): Find a way to use a stub implementation of the controller.
       const TabletMode tablet_mode = input_watcher_->GetTabletMode();
       keyboard_backlight_controller_.reset(
           new policy::KeyboardBacklightController);
@@ -396,9 +371,9 @@ void Daemon::Init() {
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
-  power_supply_->Init(base::FilePath(kPowerStatusPath),
-                      prefs_.get(), udev_.get(),
-                      true /* log_shutdown_thresholds */);
+  power_supply_ = delegate_->CreatePowerSupply(base::FilePath(kPowerStatusPath),
+                                               prefs_.get(), udev_.get());
+  power_supply_->AddObserver(this);
   if (!power_supply_->RefreshImmediately())
     LOG(ERROR) << "Initial power supply refresh failed; brace for weirdness";
   const system::PowerStatus power_status = power_supply_->GetPowerStatus();
@@ -406,15 +381,14 @@ void Daemon::Init() {
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
                            keyboard_backlight_controller_.get(), power_status);
 
-  dark_resume_->Init(power_supply_.get(), prefs_.get());
+  dark_resume_ = delegate_->CreateDarkResume(power_supply_.get(), prefs_.get());
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(), prefs_.get());
 
-  CHECK(input_watcher_->Init(
-      std::unique_ptr<system::EventDeviceFactoryInterface>(
-          new system::EventDeviceFactory),
-      prefs_.get(), udev_.get()));
   input_controller_->Init(input_watcher_.get(), this, display_watcher_.get(),
                           dbus_wrapper_.get(), prefs_.get());
+
+  acpi_wakeup_helper_ = delegate_->CreateAcpiWakeupHelper();
+  ec_wakeup_helper_ = delegate_->CreateEcWakeupHelper();
 
   const LidState lid_state = input_watcher_->QueryLidState();
   wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
@@ -426,12 +400,13 @@ void Daemon::Init() {
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
                           power_source, lid_state);
 
-  if (audio_client_) {
-    DCHECK(cras_dbus_proxy_);
-    audio_client_->Init(cras_dbus_proxy_);
+  if (BoolPrefIsTrue(kUseCrasPref)) {
+    audio_client_ = delegate_->CreateAudioClient(dbus_wrapper_.get());
+    audio_client_->AddObserver(this);
   }
 
-  peripheral_battery_watcher_->Init(dbus_wrapper_.get());
+  peripheral_battery_watcher_ =
+      delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
 
   prefs_->GetBool(kSetWifiTransmitPowerForTabletModePref,
                   &set_wifi_transmit_power_for_tablet_mode_);
@@ -808,14 +783,13 @@ void Daemon::OnPowerStatusUpdate() {
 }
 
 void Daemon::InitDBus() {
-  dbus_wrapper_.reset(new system::DBusWrapper());
-  CHECK(dbus_wrapper_->Init());
+  dbus_wrapper_ = delegate_->CreateDBusWrapper();
 
-  chrome_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
+  dbus::ObjectProxy* chrome_proxy = dbus_wrapper_->GetObjectProxy(
       chromeos::kLibCrosServiceName, chromeos::kLibCrosServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
-      chrome_dbus_proxy_, base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
-                                     weak_ptr_factory_.GetWeakPtr()));
+      chrome_proxy, base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
+                               weak_ptr_factory_.GetWeakPtr()));
 
   session_manager_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
       login_manager::kSessionManagerServiceName,
@@ -830,23 +804,22 @@ void Daemon::InitDBus() {
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  if (audio_client_) {
-    cras_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
+  if (BoolPrefIsTrue(kUseCrasPref)) {
+    dbus::ObjectProxy* cras_proxy = dbus_wrapper_->GetObjectProxy(
         cras::kCrasServiceName, cras::kCrasServicePath);
     dbus_wrapper_->RegisterForServiceAvailability(
-        cras_dbus_proxy_, base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
-                                     weak_ptr_factory_.GetWeakPtr()));
+        cras_proxy, base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
+                               weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_dbus_proxy_, cras::kCrasControlInterface, cras::kNodesChanged,
+        cras_proxy, cras::kCrasControlInterface, cras::kNodesChanged,
         base::Bind(&Daemon::HandleCrasNodesChangedSignal,
                    weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_dbus_proxy_, cras::kCrasControlInterface,
-        cras::kActiveOutputNodeChanged,
+        cras_proxy, cras::kCrasControlInterface, cras::kActiveOutputNodeChanged,
         base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
                    weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_dbus_proxy_, cras::kCrasControlInterface,
+        cras_proxy, cras::kCrasControlInterface,
         cras::kNumberOfActiveStreamsChanged,
         base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
                    weak_ptr_factory_.GetWeakPtr()));
