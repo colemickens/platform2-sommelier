@@ -49,7 +49,7 @@ class ImageLoader : org::chromium::ImageLoaderInterface_adaptor,
     std::string version;
   };
 
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, RsaVerify);
+  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ECVerify);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ManifestFingerPrint);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyValidComponent);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyComponentWithBadManifest);
@@ -58,8 +58,8 @@ class ImageLoader : org::chromium::ImageLoaderInterface_adaptor,
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyInvalidHash);
 
   // Verify the data with the RSA (PKCS #1 v1.5) signature.
-  static bool RsaVerify(const base::StringPiece data,
-                        const base::StringPiece sig);
+  static bool ECVerify(const base::StringPiece data,
+                       const base::StringPiece sig);
 
   // Copy the component directory from a user controlled location to an
   // imageloader controlled location. Do not copy unless it verifies.
