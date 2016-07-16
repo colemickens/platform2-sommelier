@@ -862,6 +862,8 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   }
   *started_container_out = true;
 
+  login_metrics_->StartTrackingArcUseTime();
+
   base::FilePath root_path;
   pid_t pid = 0;
   if (!android_container_->GetRootFsPath(&root_path) ||
@@ -892,6 +894,8 @@ void SessionManagerImpl::OnAndroidContainerStopped(pid_t pid, bool clean) {
   } else {
     LOG(ERROR) << "Android Container with pid " << pid << " crashed";
   }
+
+  login_metrics_->StopTrackingArcUseTime();
 
   std::vector<std::string> env;
   env.emplace_back("ANDROID_PID=" + std::to_string(pid));
