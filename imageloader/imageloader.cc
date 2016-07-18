@@ -21,6 +21,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/important_file_writer.h>
 #include <base/files/scoped_file.h>
 #include <base/guid.h>
 #include <base/json/json_string_value_serializer.h>
@@ -28,6 +29,7 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/version.h>
 #include <brillo/flag_helper.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
@@ -445,37 +447,75 @@ bool ImageLoader::UnloadComponentUtil(const std::string& name) {
 ImageLoader::ImageLoader(DBus::Connection* conn)
     : DBus::ObjectAdaptor(*conn, kImageLoaderPath) {}
 
-// TODO(kerrnel): Add version rollback protection.
-// TODO(kerrnel): Do not write into the temporary storage, write the versioned
-// directory directly.
-// TODO(kerrnel): base::Move needs to be an atomic operation using a symlink.
 bool ImageLoader::RegisterComponent(
     const std::string& name, const std::string& version,
     const std::string& component_folder_abs_path, ::DBus::Error& err) {
   base::FilePath components_dir(kComponentsPath);
   if (!base::PathExists(components_dir)) {
     if (mkdir(components_dir.value().c_str(), kComponentDirPerms) != 0) {
+      PLOG(ERROR) << "Could not create the ImageLoader components directory.";
       return false;
     }
   }
 
   if (!AssertComponentDirPerms()) return false;
 
+  base::FilePath component_root = components_dir.Append(name);
+
+  std::string current_version_hint;
+  base::FilePath version_hint_path = component_root.Append(name);
+  bool was_previous_version = base::PathExists(version_hint_path);
+  if (was_previous_version) {
+    if (!base::ReadFileToStringWithMaxSize(
+            version_hint_path, &current_version_hint, kMaximumFilesize)) {
+      return false;
+    }
+
+    // Check for version rollback. We trust the version from the directory name
+    // because it had to be validated to ever be registered.
+    base::Version current_version(current_version_hint);
+    base::Version new_version(version);
+    if (!current_version.IsValid() || !new_version.IsValid()) {
+      return false;
+    }
+
+    if (new_version <= current_version) {
+      LOG(ERROR) << "Version [" << new_version << "] is not newer than ["
+                 << current_version << "] for component [" << name
+                 << "] and cannot be registered.";
+      return false;
+    }
+  }
+
+  // Check if this specific component already exists in the filesystem.
+  if (!base::PathExists(component_root)) {
+    if (mkdir(component_root.value().c_str(), kComponentDirPerms) != 0) {
+      PLOG(ERROR) << "Could not create component specific directory.";
+      return false;
+    }
+  }
+
   // Take ownership of the component and verify it.
+  base::FilePath version_path = component_root.Append(version);
   base::FilePath folder_path(component_folder_abs_path);
-  base::FilePath temp_path;
-  if (!base::CreateNewTempDirectory("", &temp_path)) return false;
-  if (!base::SetPosixFilePermissions(temp_path, kComponentDirPerms))
-    return false;
-  base::FilePath component_temp_path = temp_path.Append(folder_path.BaseName());
-  if (!CopyComponentDirectory(folder_path, component_temp_path, version)) {
-    // TODO(kerrnel): cleanup if this fails.
+  if (!CopyComponentDirectory(folder_path, version_path, version)) {
+    base::DeleteFile(version_path, /*recursive=*/true);
     return false;
   }
 
-  base::FilePath component_folder = components_dir.Append(name);
-  // TODO(kerrnel): is this the best thing to use for atomic replacement?
-  return base::Move(component_temp_path, component_folder);
+  if (!base::ImportantFileWriter::WriteFileAtomically(version_hint_path,
+                                                      version)) {
+    base::DeleteFile(version_path, /*recursive=*/true);
+    LOG(ERROR) << "Failed to update current version hint file.";
+    return false;
+  }
+
+  // Now delete the old component version, if there was one.
+  if (was_previous_version) {
+    base::DeleteFile(component_root.Append(current_version_hint), true);
+  }
+
+  return true;
 }
 
 std::string ImageLoader::GetComponentVersion(const std::string& name,
