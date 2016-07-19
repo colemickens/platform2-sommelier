@@ -19,6 +19,7 @@
 
 #include "attestation/common/tpm_utility.h"
 
+#include <map>
 #include <string>
 
 #include <base/macros.h>
@@ -26,6 +27,7 @@
 
 #include "tpm_manager/client/tpm_nvram_dbus_proxy.h"
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
+#include "trunks/trunks_factory_impl.h"
 
 namespace attestation {
 
@@ -34,7 +36,8 @@ class TpmUtilityV2 : public TpmUtility {
  public:
   TpmUtilityV2() = default;
   TpmUtilityV2(tpm_manager::TpmOwnershipInterface* tpm_owner,
-               tpm_manager::TpmNvramInterface* tpm_nvram);
+               tpm_manager::TpmNvramInterface* tpm_nvram,
+               trunks::TrunksFactory* trunks_factory);
   ~TpmUtilityV2() override = default;
 
   // TpmUtility methods.
@@ -87,18 +90,41 @@ class TpmUtilityV2 : public TpmUtility {
                                        std::string* public_key_der) override;
 
  private:
+  // Sends a request to tpm_managerd and waits for a response. The given
+  // interface |method| will be called and a |reply_proto| will be populated.
+  //
+  // Example usage:
+  //
+  // tpm_manager::GetTpmStatusReply tpm_status;
+  // SendTpmManagerRequestAndWait(
+  //     base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
+  //                base::Unretained(tpm_owner_),
+  //                tpm_manager::GetTpmStatusRequest()),
+  //     &tpm_status);
   template <typename ReplyProtoType, typename MethodType>
   void SendTpmManagerRequestAndWait(const MethodType& method,
                                     ReplyProtoType* reply_proto);
+
+  // Gets the endorsement password from tpm_managerd. Returns false if the
+  // password is not available.
+  bool GetEndorsementPassword(std::string* password);
+
+  // Loads the specified endorsement key. Returns true on success. Once loaded
+  // the key handle will be in endorsement_keys_.
+  bool LoadEndorsementKey(KeyType key_type);
 
   // A message loop thread dedicated for asynchronous communication with
   // tpm_managerd.
   base::Thread tpm_manager_thread_{"tpm_manager_thread"};
   bool is_ready_{false};
+  std::string endorsement_password_;
+  std::map<KeyType, trunks::TPM_HANDLE> endorsement_keys_;
   tpm_manager::TpmOwnershipInterface* tpm_owner_{nullptr};
   tpm_manager::TpmNvramInterface* tpm_nvram_{nullptr};
+  trunks::TrunksFactory* trunks_factory_{nullptr};
   std::unique_ptr<tpm_manager::TpmOwnershipDBusProxy> default_tpm_owner_;
   std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
+  std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityV2);
 };

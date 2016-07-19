@@ -205,6 +205,17 @@
             'server/mock_key_store.cc',
             'server/pkcs11_key_store_test.cc',
           ],
+          'conditions': [
+            ['USE_tpm2 == 1', {
+              'sources': [
+                'common/tpm_utility_v2_test.cc',
+              ],
+              'libraries': [
+                '-ltpm_manager_test',
+                '-ltrunks_test',
+              ],
+            }],
+          ],
           'dependencies': [
             'common_library',
             'client_library',

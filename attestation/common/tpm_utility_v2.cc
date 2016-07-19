@@ -22,10 +22,17 @@
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 
+#include "trunks/authorization_delegate.h"
 #include "trunks/error_codes.h"
 #include "trunks/tpm_generated.h"
 
 namespace {
+
+using trunks::AuthorizationDelegate;
+using trunks::HmacSession;
+using trunks::TPM_HANDLE;
+using trunks::TPM_RC;
+using trunks::TPM_RC_SUCCESS;
 
 const unsigned int kWellKnownExponent = 65537;
 
@@ -44,13 +51,90 @@ crypto::ScopedRSA CreateRSAFromRawModulus(uint8_t* modulus_buffer,
   return rsa;
 }
 
+// An authorization delegate to manage multiple authorization sessions for a
+// single command.
+class MultipleAuthorizations : public AuthorizationDelegate {
+ public:
+  MultipleAuthorizations() = default;
+  ~MultipleAuthorizations() override = default;
+
+  void AddAuthorizationDelegate(AuthorizationDelegate* delegate) {
+    delegates_.push_back(delegate);
+  }
+
+  bool GetCommandAuthorization(
+      const std::string& command_hash,
+      bool is_command_parameter_encryption_possible,
+      bool is_response_parameter_encryption_possible,
+      std::string* authorization) override {
+    std::string combined_authorization;
+    for (auto delegate : delegates_) {
+      std::string authorization;
+      if (!delegate->GetCommandAuthorization(
+              command_hash, is_command_parameter_encryption_possible,
+              is_response_parameter_encryption_possible, &authorization)) {
+        return false;
+      }
+      combined_authorization += authorization;
+    }
+    return true;
+  }
+
+  bool CheckResponseAuthorization(const std::string& response_hash,
+                                  const std::string& authorization) override {
+    std::string mutable_authorization = authorization;
+    for (auto delegate : delegates_) {
+      if (!delegate->CheckResponseAuthorization(
+              response_hash,
+              ExtractSingleAuthorizationResponse(&mutable_authorization))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool EncryptCommandParameter(std::string* parameter) override {
+    for (auto delegate : delegates_) {
+      if (!delegate->EncryptCommandParameter(parameter)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool DecryptResponseParameter(std::string* parameter) override {
+    for (auto delegate : delegates_) {
+      if (!delegate->DecryptResponseParameter(parameter)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+ private:
+  std::string ExtractSingleAuthorizationResponse(std::string* all_responses) {
+    std::string response;
+    trunks::TPMS_AUTH_RESPONSE not_used;
+    if (TPM_RC_SUCCESS !=
+        Parse_TPMS_AUTH_RESPONSE(all_responses, &not_used, &response)) {
+      return std::string();
+    }
+    return response;
+  }
+
+  std::vector<AuthorizationDelegate*> delegates_;
+};
+
 }  // namespace
 
 namespace attestation {
 
 TpmUtilityV2::TpmUtilityV2(tpm_manager::TpmOwnershipInterface* tpm_owner,
-                           tpm_manager::TpmNvramInterface* tpm_nvram)
-    : tpm_owner_(tpm_owner), tpm_nvram_(tpm_nvram) {}
+                           tpm_manager::TpmNvramInterface* tpm_nvram,
+                           trunks::TrunksFactory* trunks_factory)
+    : tpm_owner_(tpm_owner),
+      tpm_nvram_(tpm_nvram),
+      trunks_factory_(trunks_factory) {}
 
 bool TpmUtilityV2::Initialize() {
   if (!tpm_manager_thread_.StartWithOptions(base::Thread::Options(
@@ -80,6 +164,14 @@ bool TpmUtilityV2::Initialize() {
   if (!tpm_owner_ || !tpm_nvram_) {
     LOG(ERROR) << "Failed to initialize tpm_managerd clients.";
     return false;
+  }
+  if (!trunks_factory_) {
+    default_trunks_factory_ = base::MakeUnique<trunks::TrunksFactoryImpl>();
+    if (!default_trunks_factory_->Initialize()) {
+      LOG(ERROR) << "Failed to initialize trunks.";
+      return false;
+    }
+    trunks_factory_ = default_trunks_factory_.get();
   }
   return true;
 }
@@ -115,8 +207,76 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
     const std::string& credential_mac,
     const std::string& wrapped_credential,
     std::string* credential) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  TPM_HANDLE identity_key_handle;
+  std::unique_ptr<trunks::TpmUtility> trunks_utility =
+      trunks_factory_->GetTpmUtility();
+  TPM_RC result = trunks_utility->LoadKey(identity_key_blob,
+                                          empty_password_authorization.get(),
+                                          &identity_key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to load identity key: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  std::string identity_key_name;
+  result = trunks_utility->GetKeyName(identity_key_handle, &identity_key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get identity key name: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
+  std::unique_ptr<HmacSession> endorsement_session =
+      trunks_factory_->GetHmacSession();
+  std::string endorsement_password;
+  if (!GetEndorsementPassword(&endorsement_password)) {
+    return false;
+  }
+  result =
+      endorsement_session->StartUnboundSession(true /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  endorsement_session->SetEntityAuthorizationValue(endorsement_password);
+  if (!LoadEndorsementKey(key_type)) {
+    LOG(ERROR) << __func__ << ": Endorsement key is not available.";
+    return false;
+  }
+  TPM_HANDLE endorsement_key_handle = endorsement_keys_[key_type];
+  std::string endorsement_key_name;
+  result =
+      trunks_utility->GetKeyName(endorsement_key_handle, &endorsement_key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get endorsement key name: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
+  MultipleAuthorizations authorization;
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  authorization.AddAuthorizationDelegate(endorsement_session->GetDelegate());
+  trunks::_ID_OBJECT identity_object;
+  identity_object.integrity_hmac = trunks::Make_TPM2B_DIGEST(credential_mac);
+  identity_object.enc_identity = trunks::Make_TPM2B_DIGEST(wrapped_credential);
+  std::string identity_object_data;
+  trunks::Serialize__ID_OBJECT(identity_object, &identity_object_data);
+  trunks::TPM2B_DIGEST encoded_credential;
+  result = trunks_factory_->GetTpm()->ActivateCredentialSync(
+      identity_key_handle, identity_key_name, endorsement_key_handle,
+      endorsement_key_name, trunks::Make_TPM2B_ID_OBJECT(identity_object_data),
+      trunks::Make_TPM2B_ENCRYPTED_SECRET(encrypted_seed), &encoded_credential,
+      &authorization);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to activate: " << trunks::GetErrorString(result);
+    return false;
+  }
+  *credential = trunks::StringFrom_TPM2B_DIGEST(encoded_credential);
+  return true;
 }
 
 bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
@@ -191,9 +351,9 @@ bool TpmUtilityV2::GetRSAPublicKeyFromTpmPublicKey(
     std::string* public_key_der) {
   std::string buffer = tpm_public_key_object;
   trunks::TPMT_PUBLIC parsed_public_object;
-  trunks::TPM_RC result =
+  TPM_RC result =
       trunks::Parse_TPMT_PUBLIC(&buffer, &parsed_public_object, nullptr);
-  if (result != trunks::TPM_RC_SUCCESS) {
+  if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to parse public key: "
                << trunks::GetErrorString(result);
     return false;
@@ -230,6 +390,29 @@ void TpmUtilityV2::SendTpmManagerRequestAndWait(const MethodType& method,
       FROM_HERE,
       base::Bind([this, &method, &callback]() { method.Run(callback); }));
   event.Wait();
+}
+
+bool TpmUtilityV2::GetEndorsementPassword(std::string* password) {
+  if (endorsement_password_.empty()) {
+    tpm_manager::GetTpmStatusReply tpm_status;
+    SendTpmManagerRequestAndWait(
+        base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
+                   base::Unretained(tpm_owner_),
+                   tpm_manager::GetTpmStatusRequest()),
+        &tpm_status);
+    if (tpm_status.status() != tpm_manager::STATUS_SUCCESS ||
+        tpm_status.local_data().endorsement_password().empty()) {
+      return false;
+    }
+    endorsement_password_ = tpm_status.local_data().endorsement_password();
+  }
+  *password = endorsement_password_;
+  return true;
+}
+
+bool TpmUtilityV2::LoadEndorsementKey(KeyType key_type) {
+  // TODO: implement
+  return true;
 }
 
 }  // namespace attestation
