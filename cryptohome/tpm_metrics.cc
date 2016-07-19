@@ -11,7 +11,7 @@ namespace cryptohome {
 #define TSS_ERROR_LAYER(x)  (x & 0x3000)
 #define TSS_ERROR_CODE(x) (x & TSS_MAX_ERROR)
 
-TpmResult GetTpmResultSample(TSS_RESULT result) {
+TpmResult GetTpmResultSample(TpmReturnCode result) {
   // Error Codes common to all layers.
   switch (TSS_ERROR_CODE(result)) {
     case TSS_SUCCESS:

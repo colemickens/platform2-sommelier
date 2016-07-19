@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_TPM_METRICS_H_
 #define CRYPTOHOME_TPM_METRICS_H_
 
-#include <trousers/tss.h>
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -221,7 +221,7 @@ enum TpmResult {
 
 // Returns the corresponding TpmResult enum value to be used to report a
 // "Cryptohome.TpmResults" histogram sample.
-TpmResult GetTpmResultSample(TSS_RESULT result);
+TpmResult GetTpmResultSample(TpmReturnCode result);
 
 }  // namespace cryptohome
 

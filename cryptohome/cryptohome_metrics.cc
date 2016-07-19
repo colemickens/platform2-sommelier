@@ -94,7 +94,7 @@ void ReportCryptohomeError(CryptohomeError error) {
                            kCryptohomeErrorNumBuckets);
 }
 
-void ReportTpmResult(TSS_RESULT result) {
+void ReportTpmResult(TpmReturnCode result) {
   if (!g_metrics) {
     return;
   }

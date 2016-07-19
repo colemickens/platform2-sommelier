@@ -120,12 +120,12 @@
         'platform.cc',
         'tpm.cc',
         'tpm_init.cc',
-        'tpm_metrics.cc',
       ],
       'conditions': [
         ['USE_tpm2 == 1', {
           'sources': [
             'tpm2_impl.cc',
+            'tpm2_metrics.cc',
           ],
           'all_dependent_settings': {
             'libraries': [
@@ -137,6 +137,7 @@
         ['USE_tpm2 == 0', {
           'sources': [
             'tpm_impl.cc',
+            'tpm_metrics.cc',
           ],
           'all_dependent_settings': {
             'libraries': [

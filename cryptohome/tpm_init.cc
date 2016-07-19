@@ -13,7 +13,6 @@
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <trousers/scoped_tss_type.h>
 
 #include "cryptohome/attestation.h"
 #include "cryptohome/cryptolib.h"
@@ -40,7 +39,6 @@ const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
 
 const int kOwnerPasswordLength = 12;
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
-const char kTpmWellKnownPassword[] = TSS_WELL_KNOWN_SECRET;
 
 // TpmInitTask is a private class used to handle asynchronous initialization of
 // the TPM.

@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_CRYPTOHOME_METRICS_H_
 #define CRYPTOHOME_CRYPTOHOME_METRICS_H_
 
-#include <trousers/tss.h>
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 
@@ -76,7 +76,7 @@ void TearDownMetrics();
 void ReportCryptohomeError(CryptohomeError error);
 
 // The |result| value is reported to the "Cryptohome.TpmResults" enum histogram.
-void ReportTpmResult(TSS_RESULT result);
+void ReportTpmResult(TpmReturnCode result);
 
 // Cros events are translated to an enum and reported to the generic
 // "Platform.CrOSEvent" enum histogram. The |event| string must be registered in

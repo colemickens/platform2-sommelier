@@ -15,6 +15,12 @@
 
 #include "tpm_status.pb.h"  // NOLINT(build/include)
 
+#if USE_TPM2
+#include "cryptohome/tpm2.h"
+#else
+#include "cryptohome/tpm1.h"
+#endif
+
 #ifndef CRYPTOHOME_TPM_H_
 #define CRYPTOHOME_TPM_H_
 
