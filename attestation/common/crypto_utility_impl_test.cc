@@ -45,6 +45,16 @@ const char kValidPublicKeyHex[] =
     "0203"
     "010001";
 
+const char kValidModulusHex[] =
+    "961037BC12D2A298BEBF06B2D5F8C9B64B832A2237F8CF27D5F96407A6041A4D"
+    "AD383CB5F88E625F412E8ACD5E9D69DF0F4FA81FCE7955829A38366CBBA5A2B1"
+    "CE3B48C14B59E9F094B51F0A39155874C8DE18A0C299EBF7A88114F806BE4F25"
+    "3C29A509B10E4B19E31675AFE3B2DA77077D94F43D8CE61C205781ED04D183B4"
+    "C349F61B1956C64B5398A3A98FAFF17D1B3D9120C832763EDFC8F4137F6EFBEF"
+    "46D8F6DE03BD00E49DEF987C10BDD5B6F8758B6A855C23C982DDA14D8F0F2B74"
+    "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
+    "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F";
+
 std::string HexDecode(const std::string hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
@@ -60,6 +70,14 @@ class CryptoUtilityImplTest : public testing::Test {
   ~CryptoUtilityImplTest() override = default;
   void SetUp() override {
     crypto_utility_.reset(new CryptoUtilityImpl(&mock_tpm_utility_));
+  }
+
+  bool EncryptIdentityCertificate(const std::string& credential,
+                                  const std::string& certificate,
+                                  EncryptedData* encrypted) {
+    return crypto_utility_->EncryptWithSeed(
+        CryptoUtilityImpl::KeyDerivationScheme::kHashWithHeaders, certificate,
+        credential, encrypted);
   }
 
  protected:
@@ -192,6 +210,26 @@ TEST_F(CryptoUtilityImplTest, EncryptIdentityCredentialBadEK) {
       TPM_1_2, "credential", "bad_ek", "aik", &output));
 }
 
+TEST_F(CryptoUtilityImplTest, DecryptIdentityCertificateForTpm2) {
+  std::string credential(32, 'A');
+  std::string certificate(10000, 'B');
+  EncryptedData encrypted;
+  ASSERT_TRUE(EncryptIdentityCertificate(credential, certificate, &encrypted));
+  std::string decrypted_certificate;
+  EXPECT_TRUE(crypto_utility_->DecryptIdentityCertificateForTpm2(
+      credential, encrypted, &decrypted_certificate));
+  EXPECT_EQ(certificate, decrypted_certificate);
+}
+
+TEST_F(CryptoUtilityImplTest, DecryptIdentityCertificateForTpm2BadInput) {
+  std::string credential(32, 'A');
+  std::string certificate(10000, 'B');
+  EncryptedData encrypted;
+  std::string decrypted_certificate;
+  EXPECT_FALSE(crypto_utility_->DecryptIdentityCertificateForTpm2(
+      credential, encrypted, &decrypted_certificate));
+}
+
 TEST_F(CryptoUtilityImplTest, EncryptForUnbind) {
   std::string public_key = HexDecode(kValidPublicKeyHex);
   std::string public_key_info;
@@ -231,6 +269,30 @@ TEST_F(CryptoUtilityImplTest, VerifySignatureBadSignature) {
 
 TEST_F(CryptoUtilityImplTest, VerifySignatureBadKey) {
   EXPECT_FALSE(crypto_utility_->VerifySignature("bad_key", "input", ""));
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptCertificateForGoogle) {
+  std::string certificate(10000, 'C');
+  EncryptedData encrypted;
+  ASSERT_TRUE(crypto_utility_->EncryptCertificateForGoogle(
+      certificate, kValidModulusHex, "ID", &encrypted));
+  EXPECT_EQ("ID", encrypted.wrapping_key_id());
+  EXPECT_TRUE(encrypted.has_iv());
+  EXPECT_TRUE(encrypted.has_mac());
+  EXPECT_TRUE(encrypted.has_encrypted_data());
+  EXPECT_TRUE(encrypted.has_wrapped_key());
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptCertificateForGoogleBadInput) {
+  std::string certificate(10000, 'C');
+  EncryptedData encrypted;
+  EXPECT_FALSE(crypto_utility_->EncryptCertificateForGoogle(
+      certificate, "bad_public_key", "ID", &encrypted));
+  EXPECT_FALSE(encrypted.has_wrapping_key_id());
+  EXPECT_FALSE(encrypted.has_iv());
+  EXPECT_FALSE(encrypted.has_mac());
+  EXPECT_FALSE(encrypted.has_encrypted_data());
+  EXPECT_FALSE(encrypted.has_wrapped_key());
 }
 
 }  // namespace attestation

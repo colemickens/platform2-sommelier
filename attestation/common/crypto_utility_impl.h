@@ -51,8 +51,6 @@ class CryptoUtilityImpl : public CryptoUtility {
                                   std::string* spki) override;
   bool GetRSAPublicKey(const std::string& public_key_info,
                        std::string* public_key) override;
-  bool GetRSAPublicKeyForTpm2(const std::string& tpm_public_object,
-                              std::string* public_key) override;
   bool EncryptIdentityCredential(
       TpmVersion tpm_version,
       const std::string& credential,
@@ -69,11 +67,23 @@ class CryptoUtilityImpl : public CryptoUtility {
   bool VerifySignature(const std::string& public_key,
                        const std::string& data,
                        const std::string& signature) override;
-  bool EncryptEndorsementCredentialForGoogle(
+  bool EncryptCertificateForGoogle(
       const std::string& certificate,
+      const std::string& public_key_hex,
+      const std::string& key_id,
       EncryptedData* encrypted_certificate) override;
 
  private:
+  friend class CryptoUtilityImplTest;
+
+  enum class KeyDerivationScheme {
+    // No derivation. The seed is used directly has both AES and HMAC keys. Not
+    // recommended for new applications.
+    kNone,
+    // Derive using SHA-256 and the headers 'ENCRYPT' and 'MAC'.
+    kHashWithHeaders,
+  };
+
   // Encrypts |data| using |key| and |iv| for AES in CBC mode with PKCS #5
   // padding and produces the |encrypted_data|. Returns true on success.
   bool AesEncrypt(const std::string& data,
@@ -101,6 +111,32 @@ class CryptoUtilityImpl : public CryptoUtility {
   bool TpmCompatibleOAEPEncrypt(const std::string& input,
                                 RSA* key,
                                 std::string* output);
+
+  // Encrypts |input| using AES-256-CBC-PKCS5, a random IV, and HMAC-SHA512 over
+  // the cipher-text. The encryption and mac keys are derived from a |seed|
+  // according to |derivation_scheme|. On success populates |seed| and |output|
+  // and returns true. The output.wrapped_key and output.wrapping_key_id fields
+  // are ignored.
+  bool EncryptWithSeed(KeyDerivationScheme derivation_scheme,
+                       const std::string& input,
+                       const std::string& seed,
+                       EncryptedData* encrypted);
+
+  // Decrypts |input| using |seed| and |derivation_scheme|. On success populates
+  // |decrypted| and returns true. This method is generally the inverse of
+  // EncryptWithRandomKey() but the seed needs to be provided by the caller.
+  bool DecryptWithSeed(KeyDerivationScheme derivation_scheme,
+                       const EncryptedData& input,
+                       const std::string& seed,
+                       std::string* decrypted);
+
+  // Wraps |key| with |wrapping_key| using RSA-PKCS1-OAEP. On success populates
+  // output.wrapped_key and output.wrapping_key_id fields (other fields are
+  // ignored).
+  bool WrapKeyOAEP(const std::string& key,
+                   RSA* wrapping_key,
+                   const std::string& wrapping_key_id,
+                   EncryptedData* output);
 
   TpmUtility* tpm_utility_;
 };

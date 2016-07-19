@@ -54,7 +54,7 @@ MockCryptoUtility::MockCryptoUtility() {
       .WillByDefault(Return(true));
   ON_CALL(*this, DecryptIdentityCertificateForTpm2(_, _, _))
       .WillByDefault(WithArgs<0, 2>(Invoke(CopyString)));
-  ON_CALL(*this, EncryptEndorsementCredentialForGoogle(_, _))
+  ON_CALL(*this, EncryptCertificateForGoogle(_, _, _, _))
       .WillByDefault(Return(true));
 }
 

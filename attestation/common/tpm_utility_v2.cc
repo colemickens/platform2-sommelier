@@ -19,6 +19,32 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/bind_lambda.h>
+#include <crypto/scoped_openssl_types.h>
+#include <openssl/rsa.h>
+
+#include "trunks/error_codes.h"
+#include "trunks/tpm_generated.h"
+
+namespace {
+
+const unsigned int kWellKnownExponent = 65537;
+
+crypto::ScopedRSA CreateRSAFromRawModulus(uint8_t* modulus_buffer,
+                                          size_t modulus_size) {
+  crypto::ScopedRSA rsa(RSA_new());
+  if (!rsa.get())
+    return crypto::ScopedRSA();
+  rsa->e = BN_new();
+  if (!rsa->e)
+    return crypto::ScopedRSA();
+  BN_set_word(rsa->e, kWellKnownExponent);
+  rsa->n = BN_bin2bn(modulus_buffer, modulus_size, NULL);
+  if (!rsa->n)
+    return crypto::ScopedRSA();
+  return rsa;
+}
+
+}  // namespace
 
 namespace attestation {
 
@@ -158,6 +184,36 @@ bool TpmUtilityV2::QuotePCR(int pcr_index,
                             std::string* quote) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
+}
+
+bool TpmUtilityV2::GetRSAPublicKeyFromTpmPublicKey(
+    const std::string& tpm_public_key_object,
+    std::string* public_key_der) {
+  std::string buffer = tpm_public_key_object;
+  trunks::TPMT_PUBLIC parsed_public_object;
+  trunks::TPM_RC result =
+      trunks::Parse_TPMT_PUBLIC(&buffer, &parsed_public_object, nullptr);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to parse public key: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  crypto::ScopedRSA rsa =
+      CreateRSAFromRawModulus(parsed_public_object.unique.rsa.buffer,
+                              parsed_public_object.unique.rsa.size);
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode public key.";
+    return false;
+  }
+  unsigned char* openssl_buffer = NULL;
+  int length = i2d_RSAPublicKey(rsa.get(), &openssl_buffer);
+  if (length <= 0) {
+    LOG(ERROR) << __func__ << ": Failed to encode public key.";
+    return false;
+  }
+  crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
+  public_key_der->assign(reinterpret_cast<char*>(openssl_buffer), length);
+  return true;
 }
 
 template <typename ReplyProtoType, typename MethodType>

@@ -38,6 +38,9 @@ namespace {
 
 const size_t kAesKeySize = 32;
 const size_t kAesBlockSize = 16;
+const char kHashHeaderForEncrypt[] = "ENCRYPT";
+const char kHashHeaderForMac[] = "MAC";
+const unsigned int kWellKnownExponent = 65537;
 
 std::string GetOpenSSLError() {
   BIO* bio = BIO_new(BIO_s_mem());
@@ -51,6 +54,26 @@ std::string GetOpenSSLError() {
 
 unsigned char* StringAsOpenSSLBuffer(std::string* s) {
   return reinterpret_cast<unsigned char*>(string_as_array(s));
+}
+
+const unsigned char* StringAsConstOpenSSLBuffer(const std::string& s) {
+  return reinterpret_cast<const unsigned char*>(s.data());
+}
+
+crypto::ScopedRSA CreateRSAFromHexModulus(const std::string& hex_modulus) {
+  crypto::ScopedRSA rsa(RSA_new());
+  if (!rsa.get())
+    return crypto::ScopedRSA();
+  rsa->e = BN_new();
+  if (!rsa->e)
+    return crypto::ScopedRSA();
+  BN_set_word(rsa->e, kWellKnownExponent);
+  rsa->n = BN_new();
+  if (!rsa->n)
+    return crypto::ScopedRSA();
+  if (0 == BN_hex2bn(&rsa->n, hex_modulus.c_str()))
+    return crypto::ScopedRSA();
+  return rsa;
 }
 
 }  // namespace
@@ -96,21 +119,12 @@ bool CryptoUtilityImpl::EncryptData(const std::string& data,
                                     const std::string& aes_key,
                                     const std::string& sealed_key,
                                     std::string* encrypted_data) {
-  std::string iv;
-  if (!GetRandom(kAesBlockSize, &iv)) {
-    LOG(ERROR) << __func__ << ": GetRandom failed.";
-    return false;
-  }
-  std::string raw_encrypted_data;
-  if (!AesEncrypt(data, aes_key, iv, &raw_encrypted_data)) {
-    LOG(ERROR) << __func__ << ": AES encryption failed.";
-    return false;
-  }
   EncryptedData encrypted_pb;
   encrypted_pb.set_wrapped_key(sealed_key);
-  encrypted_pb.set_iv(iv);
-  encrypted_pb.set_encrypted_data(raw_encrypted_data);
-  encrypted_pb.set_mac(HmacSha512(iv + raw_encrypted_data, aes_key));
+  if (!EncryptWithSeed(KeyDerivationScheme::kNone, data, aes_key,
+                       &encrypted_pb)) {
+    return false;
+  }
   if (!encrypted_pb.SerializeToString(encrypted_data)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
@@ -142,23 +156,8 @@ bool CryptoUtilityImpl::DecryptData(const std::string& encrypted_data,
     LOG(ERROR) << __func__ << ": Failed to parse protobuf.";
     return false;
   }
-  std::string mac =
-      HmacSha512(encrypted_pb.iv() + encrypted_pb.encrypted_data(), aes_key);
-  if (mac.length() != encrypted_pb.mac().length()) {
-    LOG(ERROR) << __func__ << ": Corrupted data in encrypted pb.";
-    return false;
-  }
-  if (!crypto::SecureMemEqual(mac.data(), encrypted_pb.mac().data(),
-                              mac.length())) {
-    LOG(ERROR) << __func__ << ": Corrupted data in encrypted pb.";
-    return false;
-  }
-  if (!AesDecrypt(encrypted_pb.encrypted_data(), aes_key, encrypted_pb.iv(),
-                  data)) {
-    LOG(ERROR) << __func__ << ": AES decryption failed.";
-    return false;
-  }
-  return true;
+  return DecryptWithSeed(KeyDerivationScheme::kNone, encrypted_pb, aes_key,
+                         data);
 }
 
 bool CryptoUtilityImpl::GetRSASubjectPublicKeyInfo(
@@ -205,13 +204,6 @@ bool CryptoUtilityImpl::GetRSAPublicKey(const std::string& public_key_info,
   crypto::ScopedOpenSSLBytes scoped_buffer(buffer);
   public_key->assign(reinterpret_cast<char*>(buffer), length);
   return true;
-}
-
-bool CryptoUtilityImpl::GetRSAPublicKeyForTpm2(
-    const std::string& tpm_public_object,
-    std::string* public_key) {
-  LOG(ERROR) << __func__ << "Not implemented.";
-  return false;
 }
 
 bool CryptoUtilityImpl::EncryptIdentityCredential(
@@ -278,8 +270,8 @@ bool CryptoUtilityImpl::DecryptIdentityCertificateForTpm2(
     const std::string& credential,
     const EncryptedData& encrypted_certificate,
     std::string* certificate) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  return DecryptWithSeed(KeyDerivationScheme::kHashWithHeaders,
+                         encrypted_certificate, credential, certificate);
 }
 
 bool CryptoUtilityImpl::EncryptForUnbind(const std::string& public_key,
@@ -327,11 +319,29 @@ bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
   return true;
 }
 
-bool CryptoUtilityImpl::EncryptEndorsementCredentialForGoogle(
+bool CryptoUtilityImpl::EncryptCertificateForGoogle(
     const std::string& certificate,
+    const std::string& public_key_hex,
+    const std::string& key_id,
     EncryptedData* encrypted_certificate) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  crypto::ScopedRSA rsa = CreateRSAFromHexModulus(public_key_hex);
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode public key.";
+    return false;
+  }
+  std::string key;
+  if (!GetRandom(kAesKeySize, &key)) {
+    return false;
+  }
+  if (!EncryptWithSeed(KeyDerivationScheme::kNone, certificate, key,
+                       encrypted_certificate)) {
+    return false;
+  }
+  if (!WrapKeyOAEP(key, rsa.get(), key_id, encrypted_certificate)) {
+    encrypted_certificate->Clear();
+    return false;
+  }
+  return true;
 }
 
 bool CryptoUtilityImpl::AesEncrypt(const std::string& data,
@@ -492,6 +502,81 @@ bool CryptoUtilityImpl::TpmCompatibleOAEPEncrypt(const std::string& input,
                << GetOpenSSLError();
     return false;
   }
+  return true;
+}
+
+bool CryptoUtilityImpl::EncryptWithSeed(KeyDerivationScheme derivation_scheme,
+                                        const std::string& input,
+                                        const std::string& seed,
+                                        EncryptedData* encrypted) {
+  std::string iv;
+  if (!GetRandom(kAesBlockSize, &iv)) {
+    return false;
+  }
+  std::string aes_key;
+  std::string hmac_key;
+  if (derivation_scheme == KeyDerivationScheme::kNone) {
+    aes_key = hmac_key = seed;
+  } else if (derivation_scheme == KeyDerivationScheme::kHashWithHeaders) {
+    aes_key = crypto::SHA256HashString(kHashHeaderForEncrypt + seed);
+    hmac_key = crypto::SHA256HashString(kHashHeaderForMac + seed);
+  }
+  std::string encrypted_data;
+  if (!AesEncrypt(input, aes_key, iv, &encrypted_data)) {
+    return false;
+  }
+  encrypted->set_encrypted_data(encrypted_data);
+  encrypted->set_iv(iv);
+  encrypted->set_mac(HmacSha512(iv + encrypted_data, hmac_key));
+  return true;
+}
+
+bool CryptoUtilityImpl::DecryptWithSeed(KeyDerivationScheme derivation_scheme,
+                                        const EncryptedData& input,
+                                        const std::string& seed,
+                                        std::string* decrypted) {
+  std::string aes_key;
+  std::string hmac_key;
+  if (derivation_scheme == KeyDerivationScheme::kNone) {
+    aes_key = hmac_key = seed;
+  } else if (derivation_scheme == KeyDerivationScheme::kHashWithHeaders) {
+    aes_key = crypto::SHA256HashString(kHashHeaderForEncrypt + seed);
+    hmac_key = crypto::SHA256HashString(kHashHeaderForMac + seed);
+  }
+  std::string expected_mac =
+      HmacSha512(input.iv() + input.encrypted_data(), hmac_key);
+  if (expected_mac.length() != input.mac().length()) {
+    LOG(ERROR) << __func__ << ": MAC length mismatch.";
+    return false;
+  }
+  if (!crypto::SecureMemEqual(expected_mac.data(), input.mac().data(),
+                              expected_mac.length())) {
+    LOG(ERROR) << __func__ << ": MAC mismatch.";
+    return false;
+  }
+  if (!AesDecrypt(input.encrypted_data(), aes_key, input.iv(), decrypted)) {
+    return false;
+  }
+  return true;
+}
+
+bool CryptoUtilityImpl::WrapKeyOAEP(const std::string& key,
+                                    RSA* wrapping_key,
+                                    const std::string& wrapping_key_id,
+                                    EncryptedData* output) {
+  const unsigned char* key_buffer = StringAsConstOpenSSLBuffer(key);
+  std::string encrypted_key;
+  encrypted_key.resize(RSA_size(wrapping_key));
+  unsigned char* encrypted_key_buffer = StringAsOpenSSLBuffer(&encrypted_key);
+  int length = RSA_public_encrypt(key.size(), key_buffer, encrypted_key_buffer,
+                                  wrapping_key, RSA_PKCS1_OAEP_PADDING);
+  if (length == -1) {
+    LOG(ERROR) << "RSA_public_encrypt failed.";
+    return false;
+  }
+  encrypted_key.resize(length);
+  output->set_wrapped_key(encrypted_key);
+  output->set_wrapping_key_id(wrapping_key_id);
   return true;
 }
 

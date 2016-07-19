@@ -79,6 +79,8 @@ class TpmUtilityV1 : public TpmUtility {
                 std::string* quoted_pcr_value,
                 std::string* quoted_data,
                 std::string* quote) override;
+  bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
+                                       std::string* public_key_der) override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
@@ -118,10 +120,6 @@ class TpmUtilityV1 : public TpmUtility {
                         TSS_FLAG flag,
                         TSS_FLAG sub_flag,
                         std::string* data);
-
-  // Converts a public in TPM_PUBKEY format to a DER-encoded RSAPublicKey.
-  bool ConvertPublicKeyToDER(const std::string& public_key,
-                             std::string* public_key_der);
 
   bool is_ready_{false};
   trousers::ScopedTssContext context_handle_;

@@ -70,11 +70,6 @@ class CryptoUtility {
   virtual bool GetRSAPublicKey(const std::string& public_key_info,
                                std::string* public_key) = 0;
 
-  // Convert a |tpm_public_object|, that is, a serialized TPMT_PUBLIC structure
-  // to a PKCS #1 RSAPublicKey.
-  virtual bool GetRSAPublicKeyForTpm2(const std::string& tpm_public_object,
-                                      std::string* public_key) = 0;
-
   // Encrypts a |credential| in a format compatible with TPM attestation key
   // activation. The |ek_public_key_info| must be provided in X.509
   // SubjectPublicKeyInfo format and the |aik_public_key| must be provided in
@@ -105,8 +100,15 @@ class CryptoUtility {
                                const std::string& data,
                                const std::string& signature) = 0;
 
-  virtual bool EncryptEndorsementCredentialForGoogle(
+  // Encrypts a |certificate| as expected by the Google ACA. |public_key_hex| is
+  // a hex modulus and the |key_id| is opaque; these can change depending on
+  // which instance of the ACA is used (e.g. production vs test). On success
+  // returns true and populates |encrypted_certificate| which can be transmitted
+  // to the ACA.
+  virtual bool EncryptCertificateForGoogle(
       const std::string& certificate,
+      const std::string& public_key_hex,
+      const std::string& key_id,
       EncryptedData* encrypted_certificate) = 0;
 };
 

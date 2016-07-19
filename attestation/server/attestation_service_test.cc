@@ -1305,7 +1305,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
 TEST_F(AttestationServiceTest, PrepareForEnrollmentBadAIK) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_crypto_utility_, GetRSAPublicKeyForTpm2(_, _))
+  EXPECT_CALL(mock_tpm_utility_, GetRSAPublicKeyFromTpmPublicKey(_, _))
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());

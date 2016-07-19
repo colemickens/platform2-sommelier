@@ -83,6 +83,8 @@ class TpmUtilityV2 : public TpmUtility {
                 std::string* quoted_pcr_value,
                 std::string* quoted_data,
                 std::string* quote) override;
+  bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
+                                       std::string* public_key_der) override;
 
  private:
   template <typename ReplyProtoType, typename MethodType>

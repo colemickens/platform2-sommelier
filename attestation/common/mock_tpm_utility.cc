@@ -82,6 +82,8 @@ MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, GetEndorsementCertificate(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, CreateRestrictedKey(_, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, QuotePCR(_, _, _, _, _)).WillByDefault(Return(true));
+  ON_CALL(*this, GetRSAPublicKeyFromTpmPublicKey(_, _))
+      .WillByDefault(Return(true));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

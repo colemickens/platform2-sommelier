@@ -36,9 +36,31 @@ extern "C" {
 namespace {
 
 #ifndef USE_TEST_ACA
+// Google Attestation Certificate Authority (ACA) production instance.
 const char kACAWebOrigin[] = "https://chromeos-ca.gstatic.com";
+const char kACAPublicKey[] =
+    "A2976637E113CC457013F4334312A416395B08D4B2A9724FC9BAD65D0290F39C"
+    "866D1163C2CD6474A24A55403C968CF78FA153C338179407FE568C6E550949B1"
+    "B3A80731BA9311EC16F8F66060A2C550914D252DB90B44D19BC6C15E923FFCFB"
+    "E8A366038772803EE57C7D7E5B3D5E8090BF0960D4F6A6644CB9A456708508F0"
+    "6C19245486C3A49F807AB07C65D5E9954F4F8832BC9F882E9EE1AAA2621B1F43"
+    "4083FD98758745CBFFD6F55DA699B2EE983307C14C9990DDFB48897F26DF8FB2"
+    "CFFF03E631E62FAE59CBF89525EDACD1F7BBE0BA478B5418E756FF3E14AC9970"
+    "D334DB04A1DF267D2343C75E5D282A287060D345981ABDA0B2506AD882579FEF";
+const char kACAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
 #else
+// Google Attestation Certificate Authority (ACA) test instance.
 const char kACAWebOrigin[] = "https://asbestos-qa.corp.google.com";
+const char kACAPublicKey[] =
+    "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
+    "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
+    "FC3078D465F4DF97E03A52A587BD0165AE3B180FE7B255B7BEDC1BE81CB1383F"
+    "E9E46F9312B1EF28F4025E7D332E33F4416525FEB8F0FC7B815E8FBB79CDABE6"
+    "327B5A155FEF13F559A7086CB8A543D72AD6ECAEE2E704FF28824149D7F4E393"
+    "D3C74E721ACA97F7ADBE2CCF7B4BCC165F7380F48065F2C8370F25F066091259"
+    "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
+    "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
+const char kACAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
 #endif
 const size_t kNonceSize = 20;  // As per TPM_NONCE definition.
 const int kNumTemporalValues = 5;
@@ -936,8 +958,8 @@ void AttestationService::PrepareForEnrollment() {
     return;
   }
   std::string rsa_identity_public_key_der;
-  if (!crypto_utility_->GetRSAPublicKeyForTpm2(rsa_identity_public_key,
-                                               &rsa_identity_public_key_der)) {
+  if (!tpm_utility_->GetRSAPublicKeyFromTpmPublicKey(
+          rsa_identity_public_key, &rsa_identity_public_key_der)) {
     LOG(ERROR) << "Attestation: Failed to parse AIK public key.";
     return;
   }
@@ -969,8 +991,9 @@ void AttestationService::PrepareForEnrollment() {
   credentials_pb->set_ecc_endorsement_public_key(ecc_ek_public_key);
   credentials_pb->set_ecc_endorsement_credential(ecc_ek_certificate);
 
-  if (!crypto_utility_->EncryptEndorsementCredentialForGoogle(
-          rsa_ek_certificate,
+  if (!crypto_utility_->EncryptCertificateForGoogle(
+          rsa_ek_certificate, kACAPublicKey,
+          std::string(kACAPublicKeyID, arraysize(kACAPublicKeyID) - 1),
           credentials_pb->mutable_default_encrypted_endorsement_credential())) {
     LOG(ERROR) << "Attestation: Failed to encrypt EK certificate.";
     return;

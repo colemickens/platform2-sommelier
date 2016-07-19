@@ -255,7 +255,7 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
     LOG(ERROR) << __func__ << ": Failed to read public key.";
     return false;
   }
-  if (!ConvertPublicKeyToDER(*public_key_tpm_format, public_key)) {
+  if (!GetRSAPublicKeyFromTpmPublicKey(*public_key_tpm_format, public_key)) {
     return false;
   }
 
@@ -398,7 +398,7 @@ bool TpmUtilityV1::GetEndorsementPublicKey(KeyType key_type,
     return false;
   }
   // Get the public key in DER encoded form.
-  if (!ConvertPublicKeyToDER(ek_public_key_blob, public_key)) {
+  if (!GetRSAPublicKeyFromTpmPublicKey(ek_public_key_blob, public_key)) {
     return false;
   }
   return true;
@@ -666,11 +666,12 @@ bool TpmUtilityV1::GetDataAttribute(TSS_HCONTEXT context,
   return true;
 }
 
-bool TpmUtilityV1::ConvertPublicKeyToDER(const std::string& public_key,
-                                         std::string* public_key_der) {
+bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
+    const std::string& tpm_public_key_object,
+    std::string* public_key_der) {
   // Parse the serialized TPM_PUBKEY.
   UINT64 offset = 0;
-  std::string mutable_public_key(public_key);
+  std::string mutable_public_key(tpm_public_key_object);
   BYTE* buffer = StringAsTSSBuffer(&mutable_public_key);
   TPM_PUBKEY parsed;
   TSS_RESULT result = Trspi_UnloadBlob_PUBKEY(&offset, buffer, &parsed);
