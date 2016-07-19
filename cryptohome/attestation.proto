@@ -85,7 +85,6 @@ message AttestationEnrollmentRequest {
   optional Quote pcr1_quote = 4;
   // DEN for enterprise zero-touch enrollment (crbug/624187).
   optional bytes enterprise_enrollment_nonce = 5;
-
 }
 
 // These two fields are suitable for passing to Tspi_TPM_ActivateIdentity()
