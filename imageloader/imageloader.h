@@ -56,6 +56,7 @@ class ImageLoader : org::chromium::ImageLoaderInterface_adaptor,
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyValidImage);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyInvalidImage);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyInvalidHash);
+  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ParseManifest);
 
   // Verify the data with the RSA (PKCS #1 v1.5) signature.
   static bool ECVerify(const base::StringPiece data,

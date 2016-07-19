@@ -197,4 +197,26 @@ TEST_F(ImageLoaderTest, CopyInvalidImage) {
   EXPECT_FALSE(ImageLoader::CopyAndHashFile(image_src, image_dest, hash));
 }
 
+TEST_F(ImageLoaderTest, ParseManifest) {
+  ImageLoader::Manifest manifest;
+  ASSERT_TRUE(ImageLoader::VerifyAndParseManifest(kImageLoaderJSON,
+                                                  kImageLoaderSig,
+                                                  &manifest));
+  EXPECT_EQ(1, manifest.manifest_version);
+  EXPECT_EQ("22.0.0.158", manifest.version);
+  EXPECT_EQ(32, manifest.image_sha256.size());
+  EXPECT_EQ(32, manifest.params_sha256.size());
+
+  std::string bad_manifest = "{\"foo\":\"128.0.0.9\"}";
+  ImageLoader::Manifest manifest2;
+  EXPECT_FALSE(ImageLoader::VerifyAndParseManifest(bad_manifest,
+                                                   kImageLoaderSig,
+                                                   &manifest2));
+
+  ImageLoader::Manifest manifest3;
+  EXPECT_FALSE(ImageLoader::VerifyAndParseManifest(kImageLoaderJSON,
+                                                   kImageLoaderBadSig,
+                                                   &manifest3));
+}
+
 }
