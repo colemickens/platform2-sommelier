@@ -151,6 +151,9 @@ class DarkResumeTest : public ::testing::Test {
   DarkResumeTest() : dark_resume_(new DarkResume) {
     CHECK(temp_dir_.CreateUniqueTempDir());
     CHECK(temp_dir_.IsValid());
+    pm_test_path_ = temp_dir_.path().Append("pm_test");
+    pm_test_delay_path_ = temp_dir_.path().Append("pm_test_delay");
+    power_state_path_ = temp_dir_.path().Append("power_state");
   }
 
  protected:
@@ -165,6 +168,9 @@ class DarkResumeTest : public ::testing::Test {
         temp_dir_.path().Append(LegacySystem::kStateFile));
     dark_resume_->set_wakeup_state_path_for_testing(
         temp_dir_.path().Append(WakeupTypeSystem::kStateFile));
+    dark_resume_->set_pm_test_path_for_testing(pm_test_path_);
+    dark_resume_->set_pm_test_delay_path_for_testing(pm_test_delay_path_);
+    dark_resume_->set_power_state_path_for_testing(power_state_path_);
 
     dark_resume_->Init(&power_supply_, &prefs_);
     dark_resume_->set_timer_for_testing(system_.CreateTimer());
@@ -209,6 +215,13 @@ class DarkResumeTest : public ::testing::Test {
   std::unique_ptr<DarkResume> dark_resume_;
 
   SystemType system_;
+
+  base::FilePath pm_test_path_;
+  base::FilePath pm_test_delay_path_;
+  base::FilePath power_state_path_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DarkResumeTest);
 };
 
 // We want to test both pathways.
@@ -522,6 +535,19 @@ TYPED_TEST(DarkResumeTest, ExitDarkResume) {
   this->Suspend(&action, &suspend_duration, false);
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(10, suspend_duration.InSeconds());
+}
+
+TYPED_TEST(DarkResumeTest, CannotSafelyExit) {
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
+  this->Init();
+  EXPECT_FALSE(this->dark_resume_->CanSafelyExitDarkResume());
+}
+
+TYPED_TEST(DarkResumeTest, CanSafelyExit) {
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
+  ASSERT_EQ(0, base::WriteFile(this->pm_test_delay_path_, "", 0));
+  this->Init();
+  EXPECT_TRUE(this->dark_resume_->CanSafelyExitDarkResume());
 }
 
 }  // namespace system

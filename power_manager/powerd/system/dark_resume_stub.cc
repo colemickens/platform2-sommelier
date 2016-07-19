@@ -10,7 +10,8 @@ namespace system {
 DarkResumeStub::DarkResumeStub()
     : action_(SUSPEND),
       in_dark_resume_(false),
-      enabled_(false) {
+      enabled_(false),
+      can_safely_exit_dark_resume_(true) {
 }
 
 DarkResumeStub::~DarkResumeStub() {
@@ -37,6 +38,14 @@ bool DarkResumeStub::InDarkResume() {
 
 bool DarkResumeStub::IsEnabled() {
   return enabled_;
+}
+
+bool DarkResumeStub::CanSafelyExitDarkResume() {
+  return can_safely_exit_dark_resume_;
+}
+
+bool DarkResumeStub::ExitDarkResume() {
+  return true;
 }
 
 }  // namespace system

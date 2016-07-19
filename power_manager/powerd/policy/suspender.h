@@ -160,10 +160,6 @@ class Suspender : public SuspendDelayObserver {
     // Shuts the system down in response to the DarkResumePolicy determining the
     // system should shut down.
     virtual void ShutDownForDarkResume() = 0;
-
-    // Returns true if the system can properly transition from dark resume to
-    // fully resumed.
-    virtual bool CanSafelyExitDarkResume() = 0;
   };
 
   // Helper class providing functionality needed by tests.

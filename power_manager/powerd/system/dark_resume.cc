@@ -32,6 +32,23 @@ const char kDarkResumeStatePath[] = "/sys/power/dark_resume_state";
 // dark_resume_state.
 const char kWakeupTypePath[] = "/sys/power/wakeup_type";
 
+// If we go from a dark resume directly to a full resume several devices will be
+// left in an awkward state.  This won't be a problem once selective resume is
+// ready but until then we need to fake it by using the pm_test mechanism to
+// make sure all the drivers go through the proper resume path.
+// TODO(chirantan): Remove these once selective resume is ready.
+const char kPMTestPath[] = "/sys/power/pm_test";
+const char kPMTestDevices[] = "devices";
+const char kPMTestNone[] = "none";
+const char kPowerStatePath[] = "/sys/power/state";
+const char kPowerStateMem[] = "mem";
+
+// TODO(chirantan): We use the existence of this file to determine if the system
+// can safely exit dark resume.  However, this file will go away once selective
+// resume lands, at which point we are probably going to have to use a pref file
+// instead.
+const char kPMTestDelayPath[] = "/sys/power/pm_test_delay";
+
 }  // namespace
 
 const char DarkResume::kPowerDir[] = "power";
@@ -48,10 +65,14 @@ DarkResume::DarkResume()
     : in_dark_resume_(false),
       enabled_(false),
       using_wakeup_type_(false),
+      can_safely_exit_dark_resume_(false),
       power_supply_(NULL),
       prefs_(NULL),
       legacy_state_path_(kDarkResumeStatePath),
       wakeup_state_path_(kWakeupTypePath),
+      pm_test_path_(kPMTestPath),
+      pm_test_delay_path_(kPMTestDelayPath),
+      power_state_path_(kPowerStatePath),
       battery_shutdown_threshold_(0.0),
       next_action_(SUSPEND) {
 }
@@ -98,6 +119,7 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
     GetFiles(&dark_resume_devices_, kDarkResumeDevicesPref, kActiveFile);
     SetStates(dark_resume_sources_, source_state);
     SetStates(dark_resume_devices_, (enabled_ ? kEnabled : kDisabled));
+    can_safely_exit_dark_resume_ = base::PathExists(pm_test_delay_path_);
   }
 }
 
@@ -203,6 +225,39 @@ bool DarkResume::InDarkResume() {
 
 bool DarkResume::IsEnabled() {
   return enabled_;
+}
+
+bool DarkResume::CanSafelyExitDarkResume() {
+  return can_safely_exit_dark_resume_;
+}
+
+bool DarkResume::ExitDarkResume() {
+  LOG(INFO) << "Transitioning from dark resume to fully resumed.";
+
+  // Set up the pm_test down to devices level.
+  if (!util::WriteFileFully(pm_test_path_, kPMTestDevices,
+                            strlen(kPMTestDevices))) {
+    PLOG(ERROR) << "Unable to set up the pm_test level to properly exit dark "
+                << "resume";
+    return false;
+  }
+
+  // Do the pm_test suspend.
+  if (!util::WriteFileFully(power_state_path_, kPowerStateMem,
+                            strlen(kPowerStateMem))) {
+    PLOG(ERROR) << "Error while performing a pm_test suspend to exit dark "
+                << "resume";
+    return false;
+  }
+
+  // Turn off pm_test so that we do a regular suspend next time.
+  if (!util::WriteFileFully(pm_test_path_, kPMTestNone, strlen(kPMTestNone))) {
+    PLOG(ERROR) << "Unable to restore pm_test level after attempting to exit "
+                << "dark resume.";
+    return false;
+  }
+
+  return true;
 }
 
 bool DarkResume::ReadSuspendDurationsPref() {

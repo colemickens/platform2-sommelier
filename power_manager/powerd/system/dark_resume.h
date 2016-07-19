@@ -63,6 +63,14 @@ class DarkResumeInterface {
 
   // Returns true if dark resume is enabled on the system.
   virtual bool IsEnabled() = 0;
+
+  // Returns true if the system can properly transition from dark resume to
+  // fully resumed.
+  virtual bool CanSafelyExitDarkResume() = 0;
+
+  // Exits dark resume so that the system can transition to fully resumed.
+  // Returns true if the transititon was successful.
+  virtual bool ExitDarkResume() = 0;
 };
 
 // Real implementation of DarkResumeInterface that interacts with sysfs.
@@ -91,11 +99,18 @@ class DarkResume : public DarkResumeInterface {
   void set_legacy_state_path_for_testing(const base::FilePath& path) {
     legacy_state_path_ = path;
   }
-
   void set_wakeup_state_path_for_testing(const base::FilePath& path) {
     wakeup_state_path_ = path;
   }
-
+  void set_pm_test_path_for_testing(const base::FilePath& path) {
+    pm_test_path_ = path;
+  }
+  void set_pm_test_delay_path_for_testing(const base::FilePath& path) {
+    pm_test_delay_path_ = path;
+  }
+  void set_power_state_path_for_testing(const base::FilePath& path) {
+    power_state_path_ = path;
+  }
   void set_timer_for_testing(std::unique_ptr<base::Timer> timer) {
     timer_ = std::move(timer);
   }
@@ -117,6 +132,8 @@ class DarkResume : public DarkResumeInterface {
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
+  bool CanSafelyExitDarkResume() override;
+  bool ExitDarkResume() override;
 
  private:
   // Fills |suspend_durations_|, returning false if the pref was unset or empty.
@@ -156,6 +173,10 @@ class DarkResume : public DarkResumeInterface {
   // Are we using the new wakeup_type sysfs interface for dark resume?
   bool using_wakeup_type_;
 
+  // True if the system can properly transition from dark resume to fully
+  // resumed.
+  bool can_safely_exit_dark_resume_;
+
   PowerSupplyInterface* power_supply_;
   PrefsInterface* prefs_;
 
@@ -168,6 +189,15 @@ class DarkResume : public DarkResumeInterface {
 
   // File read to get the dark resume state.
   base::FilePath state_path_;
+
+  // File written to request test-only suspends.
+  base::FilePath pm_test_path_;
+
+  // File used to check if the system can safely exit dark resume.
+  base::FilePath pm_test_delay_path_;
+
+  // File written to request a suspend attempt.
+  base::FilePath power_state_path_;
 
   // Battery percentage threshold at which the system should shut down after a
   // dark resume.

@@ -120,7 +120,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   void ShutDownForFailedSuspend() override;
   void ShutDownForDarkResume() override;
-  bool CanSafelyExitDarkResume() override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;
@@ -330,10 +329,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // True if the system should suspend to idle.
   bool suspend_to_idle_;
-
-  // True if the system can properly transition from dark resume to fully
-  // resumed.
-  bool can_safely_exit_dark_resume_;
 
   // Set wifi transmit power for tablet mode.
   bool set_wifi_transmit_power_for_tablet_mode_;

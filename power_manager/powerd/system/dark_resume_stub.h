@@ -24,6 +24,9 @@ class DarkResumeStub : public DarkResumeInterface {
     in_dark_resume_ = in_dark_resume;
   }
   void set_enabled(bool enabled) { enabled_ = enabled; }
+  void set_can_safely_exit_dark_resume(bool can_exit) {
+    can_safely_exit_dark_resume_ = can_exit;
+  }
 
   // DarkResumeInterface implementation:
   void PrepareForSuspendRequest() override;
@@ -33,6 +36,8 @@ class DarkResumeStub : public DarkResumeInterface {
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
+  bool CanSafelyExitDarkResume() override;
+  bool ExitDarkResume() override;
 
  private:
   // Values to return.
@@ -40,6 +45,7 @@ class DarkResumeStub : public DarkResumeInterface {
   base::TimeDelta suspend_duration_;
   bool in_dark_resume_;
   bool enabled_;
+  bool can_safely_exit_dark_resume_;
 
   DISALLOW_COPY_AND_ASSIGN(DarkResumeStub);
 };

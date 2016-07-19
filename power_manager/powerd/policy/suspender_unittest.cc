@@ -45,8 +45,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
         suspend_wakeup_count_valid_(false),
         suspend_was_successful_(false),
         num_suspend_attempts_(0),
-        suspend_canceled_while_in_dark_resume_(false),
-        can_safely_exit_dark_resume_(true) {
+        suspend_canceled_while_in_dark_resume_(false) {
   }
 
   void set_lid_closed(bool closed) { lid_closed_ = closed; }
@@ -66,10 +65,6 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
   void set_shutdown_callback(base::Closure callback) {
     shutdown_callback_ = callback;
-  }
-
-  void set_can_safely_exit_dark_resume(bool can_exit) {
-    can_safely_exit_dark_resume_ = can_exit;
   }
 
   bool suspend_announced() const { return suspend_announced_; }
@@ -154,10 +149,6 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     RunAndResetCallback(&shutdown_callback_);
   }
 
-  bool CanSafelyExitDarkResume() override {
-    return can_safely_exit_dark_resume_;
-  }
-
  private:
   // If |callback| is non-null, runs and resets it.
   static void RunAndResetCallback(base::Closure* callback) {
@@ -201,9 +192,6 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   bool suspend_was_successful_;
   int num_suspend_attempts_;
   bool suspend_canceled_while_in_dark_resume_;
-
-  // Value returned by CanSafelyExitDarkResume().
-  bool can_safely_exit_dark_resume_;
 
   // Dark resume wake data provided to GenerateDarkResumeMetrics().
   std::vector<Suspender::DarkResumeInfo> dark_resume_wake_durations_;
@@ -468,7 +456,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   // This test doesn't exercise the dark resume code. Make sure that resuspend
   // attempts are still handled correctly on kernels that can't exit dark
   // resume: http://crbug.com/406512
-  delegate_.set_can_safely_exit_dark_resume(false);
+  dark_resume_.set_can_safely_exit_dark_resume(false);
   Init();
 
   // User activity should cancel suspending.
@@ -553,7 +541,7 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
 // a closed lid doesn't abort the suspend attempt (http://crosbug.com/38819).
 TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   delegate_.set_lid_closed(true);
-  delegate_.set_can_safely_exit_dark_resume(false);
+  dark_resume_.set_can_safely_exit_dark_resume(false);
   Init();
 
   // Report user activity before powerd_suspend is executed and check that
@@ -580,7 +568,7 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   // Report user activity after powerd_suspend fails when the system can safely
   // wake from dark resume and check that the suspend attempt is not aborted.
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
-  delegate_.set_can_safely_exit_dark_resume(true);
+  dark_resume_.set_can_safely_exit_dark_resume(true);
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -881,7 +869,7 @@ TEST_F(SuspenderTest, DarkResumeOnLegacySystems) {
 
   // Systems with older kernels cannot safely transition from dark resume to
   // fully resumed.
-  delegate_.set_can_safely_exit_dark_resume(false);
+  dark_resume_.set_can_safely_exit_dark_resume(false);
 
   // Suspend for 10 seconds.
   const int64_t kSuspendSec = 10;

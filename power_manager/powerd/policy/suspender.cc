@@ -355,7 +355,7 @@ void Suspender::HandleEvent(Event event) {
           // resumed.
           if (state_ == STATE_WAITING_FOR_SUSPEND_DELAYS ||
               !dark_resume_->InDarkResume() ||
-              delegate_->CanSafelyExitDarkResume()) {
+              dark_resume_->CanSafelyExitDarkResume()) {
             LOG(INFO) << "Aborting request in response to user activity";
             FinishRequest(false);
             state_ = STATE_IDLE;
@@ -364,7 +364,7 @@ void Suspender::HandleEvent(Event event) {
         case EVENT_SHUTDOWN_STARTED:
           if (state_ == STATE_WAITING_FOR_SUSPEND_DELAYS ||
               !dark_resume_->InDarkResume() ||
-              delegate_->CanSafelyExitDarkResume())
+              dark_resume_->CanSafelyExitDarkResume())
             FinishRequest(false);
           state_ = STATE_SHUTTING_DOWN;
           break;
@@ -558,7 +558,7 @@ Suspender::State Suspender::Suspend() {
     // We don't want to emit a DarkSuspendImminent on devices with older kernels
     // because they probably don't have the hardware support to do any useful
     // work in dark resume anyway.
-    if (delegate_->CanSafelyExitDarkResume()) {
+    if (dark_resume_->CanSafelyExitDarkResume()) {
       LOG(INFO) << "Notifying registered dark suspend delays about "
                 << dark_suspend_id_;
       dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_);
