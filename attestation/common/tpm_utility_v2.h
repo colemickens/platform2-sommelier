@@ -109,15 +109,25 @@ class TpmUtilityV2 : public TpmUtility {
   // password is not available.
   bool GetEndorsementPassword(std::string* password);
 
-  // Loads the specified endorsement key. Returns true on success. Once loaded
-  // the key handle will be in endorsement_keys_.
-  bool LoadEndorsementKey(KeyType key_type);
+  // Gets the owner password from tpm_managerd. Returns false if the password is
+  // not available.
+  bool GetOwnerPassword(std::string* password);
+
+  // Caches various TPM state including owner / endorsement passwords. On
+  // success, fields like is_ready_ and owner_password_ will be populated.
+  // Returns true on success.
+  bool CacheTpmState();
+
+  // Gets the specified endorsement key. Returns true on success and provides
+  // the |key_handle|.
+  bool GetEndorsementKey(KeyType key_type, trunks::TPM_HANDLE* key_handle);
 
   // A message loop thread dedicated for asynchronous communication with
   // tpm_managerd.
   base::Thread tpm_manager_thread_{"tpm_manager_thread"};
   bool is_ready_{false};
   std::string endorsement_password_;
+  std::string owner_password_;
   std::map<KeyType, trunks::TPM_HANDLE> endorsement_keys_;
   tpm_manager::TpmOwnershipInterface* tpm_owner_{nullptr};
   tpm_manager::TpmNvramInterface* tpm_nvram_{nullptr};
@@ -125,6 +135,7 @@ class TpmUtilityV2 : public TpmUtility {
   std::unique_ptr<tpm_manager::TpmOwnershipDBusProxy> default_tpm_owner_;
   std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
   std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
+  std::unique_ptr<trunks::TpmUtility> trunks_utility_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityV2);
 };

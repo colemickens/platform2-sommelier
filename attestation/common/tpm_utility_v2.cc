@@ -35,6 +35,8 @@ using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 
 const unsigned int kWellKnownExponent = 65537;
+const uint32_t kRSAEndorsementCertificateIndex = 0xC00000;
+const uint32_t kECCEndorsementCertificateIndex = 0xC00001;
 
 crypto::ScopedRSA CreateRSAFromRawModulus(uint8_t* modulus_buffer,
                                           size_t modulus_size) {
@@ -173,19 +175,13 @@ bool TpmUtilityV2::Initialize() {
     }
     trunks_factory_ = default_trunks_factory_.get();
   }
+  trunks_utility_ = trunks_factory_->GetTpmUtility();
   return true;
 }
 
 bool TpmUtilityV2::IsTpmReady() {
   if (!is_ready_) {
-    tpm_manager::GetTpmStatusReply tpm_status;
-    SendTpmManagerRequestAndWait(
-        base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
-                   base::Unretained(tpm_owner_),
-                   tpm_manager::GetTpmStatusRequest()),
-        &tpm_status);
-    is_ready_ = (tpm_status.enabled() && tpm_status.owned() &&
-                 !tpm_status.dictionary_attack_lockout_in_effect());
+    CacheTpmState();
   }
   return is_ready_;
 }
@@ -210,18 +206,16 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
   std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
       trunks_factory_->GetPasswordAuthorization(std::string());
   TPM_HANDLE identity_key_handle;
-  std::unique_ptr<trunks::TpmUtility> trunks_utility =
-      trunks_factory_->GetTpmUtility();
-  TPM_RC result = trunks_utility->LoadKey(identity_key_blob,
-                                          empty_password_authorization.get(),
-                                          &identity_key_handle);
+  TPM_RC result = trunks_utility_->LoadKey(identity_key_blob,
+                                           empty_password_authorization.get(),
+                                           &identity_key_handle);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to load identity key: "
                << trunks::GetErrorString(result);
     return false;
   }
   std::string identity_key_name;
-  result = trunks_utility->GetKeyName(identity_key_handle, &identity_key_name);
+  result = trunks_utility_->GetKeyName(identity_key_handle, &identity_key_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to get identity key name: "
                << trunks::GetErrorString(result);
@@ -242,14 +236,14 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
     return false;
   }
   endorsement_session->SetEntityAuthorizationValue(endorsement_password);
-  if (!LoadEndorsementKey(key_type)) {
+  TPM_HANDLE endorsement_key_handle;
+  if (!GetEndorsementKey(key_type, &endorsement_key_handle)) {
     LOG(ERROR) << __func__ << ": Endorsement key is not available.";
     return false;
   }
-  TPM_HANDLE endorsement_key_handle = endorsement_keys_[key_type];
   std::string endorsement_key_name;
-  result =
-      trunks_utility->GetKeyName(endorsement_key_handle, &endorsement_key_name);
+  result = trunks_utility_->GetKeyName(endorsement_key_handle,
+                                       &endorsement_key_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to get endorsement key name: "
                << trunks::GetErrorString(result);
@@ -305,14 +299,45 @@ bool TpmUtilityV2::Unseal(const std::string& sealed_data, std::string* data) {
 
 bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
                                            std::string* public_key) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  TPM_HANDLE key_handle;
+  if (!GetEndorsementKey(key_type, &key_handle)) {
+    LOG(ERROR) << __func__ << ": EK not available.";
+    return false;
+  }
+  trunks::TPMT_PUBLIC public_area;
+  TPM_RC result =
+      trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get EK public key: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  Serialize_TPMT_PUBLIC(public_area, public_key);
+  return true;
 }
 
 bool TpmUtilityV2::GetEndorsementCertificate(KeyType key_type,
                                              std::string* certificate) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  uint32_t index = (key_type == KEY_TYPE_RSA) ? kRSAEndorsementCertificateIndex
+                                              : kECCEndorsementCertificateIndex;
+  tpm_manager::ReadSpaceRequest request;
+  request.set_index(index);
+  tpm_manager::ReadSpaceReply response;
+  SendTpmManagerRequestAndWait(
+      base::Bind(&tpm_manager::TpmNvramInterface::ReadSpace,
+                 base::Unretained(tpm_nvram_), request),
+      &response);
+  if (response.result() == tpm_manager::NVRAM_RESULT_SPACE_DOES_NOT_EXIST) {
+    LOG(ERROR) << __func__ << ": Endorsement certificate does not exist.";
+    return false;
+  }
+  if (response.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to read endorsement certificate: "
+               << response.result();
+    return false;
+  }
+  *certificate = response.data();
+  return true;
 }
 
 bool TpmUtilityV2::Unbind(const std::string& key_blob,
@@ -394,24 +419,93 @@ void TpmUtilityV2::SendTpmManagerRequestAndWait(const MethodType& method,
 
 bool TpmUtilityV2::GetEndorsementPassword(std::string* password) {
   if (endorsement_password_.empty()) {
-    tpm_manager::GetTpmStatusReply tpm_status;
-    SendTpmManagerRequestAndWait(
-        base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
-                   base::Unretained(tpm_owner_),
-                   tpm_manager::GetTpmStatusRequest()),
-        &tpm_status);
-    if (tpm_status.status() != tpm_manager::STATUS_SUCCESS ||
-        tpm_status.local_data().endorsement_password().empty()) {
+    if (!CacheTpmState()) {
       return false;
     }
-    endorsement_password_ = tpm_status.local_data().endorsement_password();
+    if (endorsement_password_.empty()) {
+      LOG(WARNING) << "TPM endorsement password is not available.";
+      return false;
+    }
   }
   *password = endorsement_password_;
   return true;
 }
 
-bool TpmUtilityV2::LoadEndorsementKey(KeyType key_type) {
-  // TODO: implement
+bool TpmUtilityV2::GetOwnerPassword(std::string* password) {
+  if (owner_password_.empty()) {
+    if (!CacheTpmState()) {
+      return false;
+    }
+    if (owner_password_.empty()) {
+      LOG(WARNING) << "TPM owner password is not available.";
+      return false;
+    }
+  }
+  *password = owner_password_;
+  return true;
+}
+
+bool TpmUtilityV2::CacheTpmState() {
+  tpm_manager::GetTpmStatusReply tpm_status;
+  SendTpmManagerRequestAndWait(
+      base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
+                 base::Unretained(tpm_owner_),
+                 tpm_manager::GetTpmStatusRequest()),
+      &tpm_status);
+  if (tpm_status.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to read TPM state from tpm_managerd.";
+    return false;
+  }
+  is_ready_ = (tpm_status.enabled() && tpm_status.owned() &&
+               !tpm_status.dictionary_attack_lockout_in_effect());
+  endorsement_password_ = tpm_status.local_data().endorsement_password();
+  owner_password_ = tpm_status.local_data().owner_password();
+  return true;
+}
+
+bool TpmUtilityV2::GetEndorsementKey(KeyType key_type, TPM_HANDLE* key_handle) {
+  if (endorsement_keys_.count(key_type) > 0) {
+    *key_handle = endorsement_keys_[key_type];
+    return true;
+  }
+  std::string endorsement_password;
+  if (!GetEndorsementPassword(&endorsement_password)) {
+    return false;
+  }
+  std::unique_ptr<HmacSession> endorsement_session =
+      trunks_factory_->GetHmacSession();
+  TPM_RC result =
+      endorsement_session->StartUnboundSession(false /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  endorsement_session->SetEntityAuthorizationValue(endorsement_password);
+  // Don't fail if the owner password is not available, it may not be needed.
+  std::string owner_password;
+  GetOwnerPassword(&owner_password);
+  std::unique_ptr<HmacSession> owner_session =
+      trunks_factory_->GetHmacSession();
+  result =
+      owner_session->StartUnboundSession(false /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to setup owner session: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  owner_session->SetEntityAuthorizationValue(owner_password);
+  trunks::TPM_ALG_ID algorithm =
+      (key_type == KEY_TYPE_RSA) ? trunks::TPM_ALG_RSA : trunks::TPM_ALG_ECC;
+  result = trunks_utility_->GetEndorsementKey(
+      algorithm, endorsement_session->GetDelegate(),
+      owner_session->GetDelegate(), key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get endorsement key: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  endorsement_keys_[key_type] = *key_handle;
   return true;
 }
 
