@@ -973,7 +973,7 @@ TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error computing key name: " << GetErrorString(result);
-    return TPM_RC_SUCCESS;
+    return result;
   }
   return TPM_RC_SUCCESS;
 }
@@ -1472,6 +1472,141 @@ TPM_RC TpmUtilityImpl::ResetDictionaryAttackLock(
       TPM_RH_LOCKOUT, NameFromHandle(TPM_RH_LOCKOUT), delegate);
 }
 
+TPM_RC TpmUtilityImpl::GetEndorsementKey(
+    TPM_ALG_ID key_type,
+    AuthorizationDelegate* endorsement_delegate,
+    AuthorizationDelegate* owner_delegate,
+    TPM_HANDLE* key_handle) {
+  if (key_type != TPM_ALG_RSA && key_type != TPM_ALG_ECC) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  // The RSA EK may have already been generated and made persistent. The ECC EK
+  // is always generated on demand.
+  if (key_type == TPM_ALG_RSA) {
+    bool exists = false;
+    TPM_RC result = DoesPersistentKeyExist(kRSAEndorsementKey, &exists);
+    if (result != TPM_RC_SUCCESS) {
+      return result;
+    }
+    if (exists) {
+      *key_handle = kRSAEndorsementKey;
+      return TPM_RC_SUCCESS;
+    }
+  }
+  Tpm* tpm = factory_.GetTpm();
+  TPML_PCR_SELECTION creation_pcrs;
+  creation_pcrs.count = 0;
+  TPMS_SENSITIVE_CREATE sensitive;
+  sensitive.user_auth = Make_TPM2B_DIGEST("");
+  sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPM_HANDLE object_handle;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_digest;
+  TPMT_TK_CREATION creation_ticket;
+  TPM2B_NAME object_name;
+  object_name.size = 0;
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(key_type);
+  public_area.object_attributes |= (kSensitiveDataOrigin | kUserWithAuth |
+                                    kNoDA | kRestricted | kDecrypt);
+  if (key_type == TPM_ALG_RSA) {
+    public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
+    public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;
+    public_area.parameters.rsa_detail.symmetric.mode.aes = TPM_ALG_CFB;
+  } else {
+    public_area.parameters.ecc_detail.symmetric.algorithm = TPM_ALG_AES;
+    public_area.parameters.ecc_detail.symmetric.key_bits.aes = 128;
+    public_area.parameters.ecc_detail.symmetric.mode.aes = TPM_ALG_CFB;
+  }
+  TPM2B_PUBLIC rsa_public_area = Make_TPM2B_PUBLIC(public_area);
+  TPM_RC result = tpm->CreatePrimarySync(
+      TPM_RH_ENDORSEMENT, NameFromHandle(TPM_RH_ENDORSEMENT),
+      Make_TPM2B_SENSITIVE_CREATE(sensitive), rsa_public_area,
+      Make_TPM2B_DATA(""), creation_pcrs, &object_handle, &rsa_public_area,
+      &creation_data, &creation_digest, &creation_ticket, &object_name,
+      endorsement_delegate);
+  if (result) {
+    LOG(ERROR) << __func__
+               << ": CreatePrimarySync failed: " << GetErrorString(result);
+    return result;
+  }
+  if (key_type != TPM_ALG_RSA) {
+    *key_handle = object_handle;
+    return TPM_RC_SUCCESS;
+  }
+  // This will make the key persistent.
+  ScopedKeyHandle rsa_key(factory_, object_handle);
+  result = tpm->EvictControlSync(
+      TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), object_handle,
+      StringFrom_TPM2B_NAME(object_name), kRSAEndorsementKey,
+      owner_delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": EvictControlSync failed: " << GetErrorString(result);
+    return result;
+  }
+  *key_handle = kRSAEndorsementKey;
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::CreateIdentityKey(TPM_ALG_ID key_type,
+                                         AuthorizationDelegate* delegate,
+                                         std::string* key_blob) {
+  CHECK(key_blob);
+  if (key_type != TPM_ALG_RSA && key_type != TPM_ALG_ECC) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  TPM_HANDLE parent_handle =
+      (key_type == TPM_ALG_RSA) ? kRSAStorageRootKey : kECCStorageRootKey;
+  std::string parent_name;
+  TPM_RC result = GetKeyName(parent_handle, &parent_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error getting key name for SRK: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(key_type);
+  public_area.object_attributes |=
+      (kSensitiveDataOrigin | kUserWithAuth | kNoDA | kRestricted | kSign);
+  if (key_type == TPM_ALG_RSA) {
+    public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_RSASSA;
+    public_area.parameters.rsa_detail.scheme.details.rsassa.hash_alg =
+        TPM_ALG_SHA256;
+  } else {
+    public_area.parameters.ecc_detail.scheme.scheme = TPM_ALG_ECDSA;
+    public_area.parameters.ecc_detail.scheme.details.ecdsa.hash_alg =
+        TPM_ALG_SHA256;
+  }
+  TPML_PCR_SELECTION creation_pcrs = {};
+  creation_pcrs.count = 0;
+  TPMS_SENSITIVE_CREATE sensitive;
+  sensitive.user_auth = Make_TPM2B_DIGEST("");
+  sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPM2B_SENSITIVE_CREATE sensitive_create =
+      Make_TPM2B_SENSITIVE_CREATE(sensitive);
+  TPM2B_DATA outside_info = Make_TPM2B_DATA("");
+  TPM2B_PUBLIC out_public;
+  out_public.size = 0;
+  TPM2B_PRIVATE out_private;
+  out_private.size = 0;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_hash;
+  TPMT_TK_CREATION creation_ticket;
+  result = factory_.GetTpm()->CreateSync(
+      parent_handle, parent_name, sensitive_create,
+      Make_TPM2B_PUBLIC(public_area), outside_info, creation_pcrs, &out_private,
+      &out_public, &creation_data, &creation_hash, &creation_ticket, delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Error creating identity key: " << GetErrorString(result);
+    return result;
+  }
+  if (!factory_.GetBlobParser()->SerializeKeyBlob(out_public, out_private,
+                                                  key_blob)) {
+    return SAPI_RC_BAD_TCTI_STRUCTURE;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(
     const std::string& known_owner_password) {
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
@@ -1563,7 +1698,7 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
   }
 
   // Do it again for ECC.
-  if (tpm_state->IsRSASupported()) {
+  if (tpm_state->IsECCSupported()) {
     bool exists = false;
     result = DoesPersistentKeyExist(kECCStorageRootKey, &exists);
     if (result) {

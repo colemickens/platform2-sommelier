@@ -28,6 +28,10 @@ namespace trunks {
 MockTpm::MockTpm() : Tpm(nullptr) {
   ON_CALL(*this, PCR_AllocateSync(_, _, _, _, _, _, _, _))
       .WillByDefault(DoAll(SetArgPointee<3>(YES), Return(TPM_RC_SUCCESS)));
+  TPMT_PUBLIC fake_public = {};
+  ON_CALL(*this, ReadPublicSync(_, _, _, _, _, _))
+      .WillByDefault(DoAll(SetArgPointee<2>(Make_TPM2B_PUBLIC(fake_public)),
+                           Return(TPM_RC_SUCCESS)));
 }
 
 MockTpm::~MockTpm() {}

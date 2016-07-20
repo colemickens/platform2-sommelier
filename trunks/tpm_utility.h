@@ -32,6 +32,7 @@ namespace trunks {
 const TPMI_DH_PERSISTENT kRSAStorageRootKey = PERSISTENT_FIRST;
 const TPMI_DH_PERSISTENT kECCStorageRootKey = PERSISTENT_FIRST + 1;
 const TPMI_DH_PERSISTENT kSaltingKey = PERSISTENT_FIRST + 2;
+const TPMI_DH_PERSISTENT kRSAEndorsementKey = PERSISTENT_FIRST + 3;
 
 // This value to used to specify that no pcr are needed in the creation data
 // for a key.
@@ -318,6 +319,24 @@ class TRUNKS_EXPORT TpmUtility {
 
   // Reset dictionary attack lockout. Requires lockout authorization.
   virtual TPM_RC ResetDictionaryAttackLock(AuthorizationDelegate* delegate) = 0;
+
+  // Gets the endorsement key of a given |key_type|, creating the key as needed
+  // If the |key_type| is RSA, the key will be made persistent. On success
+  // returns TPM_RC_SUCCESS and populates |key_handle|. Requires endorsement
+  // authorization to create the key and owner authorization to make the key
+  // persistent (RSA only). The |owner_delegate| is ignored if |key_type| is not
+  // RSA or if the key is already persistent.
+  virtual TPM_RC GetEndorsementKey(TPM_ALG_ID key_type,
+                                   AuthorizationDelegate* endorsement_delegate,
+                                   AuthorizationDelegate* owner_delegate,
+                                   TPM_HANDLE* key_handle) = 0;
+
+  // Creates an asymmetric restricted signing key of the given |key_type|.
+  // Requires owner authorization. On success returns TPM_RC_SUCCESS and
+  // populates |key_blob|.
+  virtual TPM_RC CreateIdentityKey(TPM_ALG_ID key_type,
+                                   AuthorizationDelegate* delegate,
+                                   std::string* key_blob) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);

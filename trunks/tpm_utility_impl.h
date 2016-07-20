@@ -155,6 +155,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
       uint32_t lockout_recovery,
       AuthorizationDelegate* delegate) override;
   TPM_RC ResetDictionaryAttackLock(AuthorizationDelegate* delegate) override;
+  TPM_RC GetEndorsementKey(TPM_ALG_ID key_type,
+                           AuthorizationDelegate* endorsement_delegate,
+                           AuthorizationDelegate* owner_delegate,
+                           TPM_HANDLE* key_handle) override;
+  TPM_RC CreateIdentityKey(TPM_ALG_ID key_type,
+                           AuthorizationDelegate* delegate,
+                           std::string* key_blob) override;
 
  private:
   friend class TpmUtilityTest;

@@ -50,9 +50,10 @@ void PrintUsage() {
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --own - Takes ownership of the TPM with the provided password.");
   puts("  --owner_password - used to provide an owner password");
+  puts("  --endorsement_password - used to provide an endorsement password");
   puts("  --regression_test - Runs some basic regression tests. If");
-  puts("                      owner_password is supplied, it runs tests that");
-  puts("                      need owner permissions.");
+  puts("                      *_password is supplied, it runs tests that");
+  puts("                      require the permissions.");
   puts("  --startup - Performs startup and self-tests.");
   puts("  --status - Prints TPM status information.");
   puts("  --stress_test - Runs some basic stress tests.");
@@ -243,12 +244,26 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Error running PolicyOrTest.";
       return -1;
     }
+    LOG(INFO) << "Running identity key test.";
+    if (!test.IdentityKeyTest()) {
+      LOG(ERROR) << "Error running IdentityKeyTest.";
+      return -1;
+    }
     if (cl->HasSwitch("owner_password")) {
       std::string owner_password = cl->GetSwitchValueASCII("owner_password");
       LOG(INFO) << "Running NVRAM test.";
       if (!test.NvramTest(owner_password)) {
         LOG(ERROR) << "Error running NvramTest.";
         return -1;
+      }
+      if (cl->HasSwitch("endorsement_password")) {
+        std::string endorsement_password =
+            cl->GetSwitchValueASCII("endorsement_password");
+        LOG(INFO) << "Running endorsement test.";
+        if (!test.EndorsementTest(endorsement_password, owner_password)) {
+          LOG(ERROR) << "Error running EndorsementTest.";
+          return -1;
+        }
       }
     }
     LOG(INFO) << "All tests were run successfully.";

@@ -349,6 +349,20 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->ResetDictionaryAttackLock(delegate);
   }
 
+  TPM_RC GetEndorsementKey(TPM_ALG_ID key_type,
+                           AuthorizationDelegate* endorsement_delegate,
+                           AuthorizationDelegate* owner_delegate,
+                           TPM_HANDLE* key_handle) override {
+    return target_->GetEndorsementKey(key_type, endorsement_delegate,
+                                      owner_delegate, key_handle);
+  }
+
+  TPM_RC CreateIdentityKey(TPM_ALG_ID key_type,
+                           AuthorizationDelegate* delegate,
+                           std::string* key_blob) override {
+    return target_->CreateIdentityKey(key_type, delegate, key_blob);
+  }
+
  private:
   TpmUtility* target_;
 };

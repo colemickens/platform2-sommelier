@@ -100,12 +100,20 @@ class TrunksClientTest {
   // This test uses many sessions simultaneously.
   bool ManySessionsTest();
 
+  // Tests the availability of endorsement keys.
+  // NOTE: This test needs the |endorsement_password| to work.
+  bool EndorsementTest(const std::string& endorsement_password,
+                       const std::string& owner_password);
+
+  // Tests the creation of an identity key.
+  bool IdentityKeyTest();
+
  private:
   // This method verifies that plaintext == decrypt(encrypt(plaintext)) using
   // a given key.
   // TODO(usanghi): Remove |session| argument once we can support multiple
   // sessions.
-  bool PerformRSAEncrpytAndDecrpyt(TPM_HANDLE key_handle,
+  bool PerformRSAEncryptAndDecrypt(TPM_HANDLE key_handle,
                                    const std::string& key_authorization,
                                    HmacSession* session);
 

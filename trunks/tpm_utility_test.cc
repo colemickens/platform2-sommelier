@@ -2033,4 +2033,38 @@ TEST_F(TpmUtilityTest, ResetDictionaryAttackLockFailure) {
   EXPECT_EQ(TPM_RC_FAILURE, utility_.ResetDictionaryAttackLock(nullptr));
 }
 
+TEST_F(TpmUtilityTest, GetEndorsementKey) {
+  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(TPM_RH_ENDORSEMENT, _, _, _, _,
+                                                _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  TPM_HANDLE key_handle;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetEndorsementKey(TPM_ALG_RSA, nullptr,
+                                                       nullptr, &key_handle));
+}
+
+TEST_F(TpmUtilityTest, GetEndorsementKeyFail) {
+  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(TPM_RH_ENDORSEMENT, _, _, _, _,
+                                                _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  TPM_HANDLE key_handle;
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.GetEndorsementKey(TPM_ALG_RSA, nullptr,
+                                                       nullptr, &key_handle));
+}
+
+TEST_F(TpmUtilityTest, CreateIdentityKey) {
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.CreateIdentityKey(TPM_ALG_RSA, nullptr, &key_blob));
+}
+
+TEST_F(TpmUtilityTest, CreateIdentityKeyFail) {
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.CreateIdentityKey(TPM_ALG_RSA, nullptr, &key_blob));
+}
+
 }  // namespace trunks

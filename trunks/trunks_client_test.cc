@@ -160,7 +160,7 @@ bool TrunksClientTest::DecryptTest() {
     LOG(ERROR) << "Error loading decrypt key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(factory_, decrypt_key);
-  return PerformRSAEncrpytAndDecrpyt(scoped_key.get(), key_authorization,
+  return PerformRSAEncryptAndDecrypt(scoped_key.get(), key_authorization,
                                      session.get());
 }
 
@@ -190,7 +190,7 @@ bool TrunksClientTest::ImportTest() {
     return false;
   }
   ScopedKeyHandle scoped_key(factory_, key_handle);
-  return PerformRSAEncrpytAndDecrpyt(scoped_key.get(), key_authorization,
+  return PerformRSAEncryptAndDecrypt(scoped_key.get(), key_authorization,
                                      session.get());
 }
 
@@ -231,7 +231,7 @@ bool TrunksClientTest::AuthChangeTest() {
     return false;
   }
   scoped_key.reset(key_handle);
-  return PerformRSAEncrpytAndDecrpyt(scoped_key.get(), key_authorization,
+  return PerformRSAEncryptAndDecrypt(scoped_key.get(), key_authorization,
                                      session.get());
 }
 
@@ -981,7 +981,64 @@ bool TrunksClientTest::ManySessionsTest() {
   return true;
 }
 
-bool TrunksClientTest::PerformRSAEncrpytAndDecrpyt(
+bool TrunksClientTest::EndorsementTest(const std::string& endorsement_password,
+                                       const std::string& owner_password) {
+  std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
+  std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(false /* enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+  session->SetEntityAuthorizationValue(endorsement_password);
+  std::unique_ptr<HmacSession> session2 = factory_.GetHmacSession();
+  result = session2->StartUnboundSession(false /* enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+  session2->SetEntityAuthorizationValue(owner_password);
+  TPM_HANDLE key_handle;
+  result = utility->GetEndorsementKey(TPM_ALG_RSA, session->GetDelegate(),
+                                      session2->GetDelegate(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "GetEndorsementKey(RSA) failed: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->GetEndorsementKey(TPM_ALG_ECC, session->GetDelegate(),
+                                      nullptr, &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "GetEndorsementKey(ECC) failed: " << GetErrorString(result);
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::IdentityKeyTest() {
+  std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
+  std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(false /* enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+  std::string key_blob;
+  result = utility->CreateIdentityKey(TPM_ALG_RSA, session->GetDelegate(),
+                                      &key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "CreateIdentityKey(RSA) failed: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->CreateIdentityKey(TPM_ALG_ECC, session->GetDelegate(),
+                                      &key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "CreateIdentityKey(ECC) failed: " << GetErrorString(result);
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::PerformRSAEncryptAndDecrypt(
     TPM_HANDLE key_handle,
     const std::string& key_authorization,
     HmacSession* session) {
