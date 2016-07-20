@@ -19,8 +19,8 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
 namespace power_manager {
@@ -38,15 +38,15 @@ const int kDefaultPollIntervalMs = 600000;
 }  // namespace
 
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
-    : dbus_sender_(NULL),
+    : dbus_wrapper_(NULL),
       peripheral_battery_path_(kDefaultPeripheralBatteryPath),
       poll_interval_ms_(kDefaultPollIntervalMs) {
 }
 
 PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {}
 
-void PeripheralBatteryWatcher::Init(DBusSenderInterface* dbus_sender) {
-  dbus_sender_ = dbus_sender;
+void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper) {
+  dbus_wrapper_ = dbus_wrapper;
   ReadBatteryStatuses();
 }
 
@@ -124,8 +124,8 @@ void PeripheralBatteryWatcher::SendBatteryStatus(const std::string& path,
   proto.set_name(model_name);
   if (level >= 0)
     proto.set_level(level);
-  dbus_sender_->EmitSignalWithProtocolBuffer(kPeripheralBatteryStatusSignal,
-                                             proto);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kPeripheralBatteryStatusSignal,
+                                              proto);
 }
 
 void PeripheralBatteryWatcher::ReadCallback(const std::string& path,

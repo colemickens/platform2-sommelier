@@ -1,9 +1,9 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_COMMON_DBUS_SENDER_H_
-#define POWER_MANAGER_COMMON_DBUS_SENDER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_H_
+#define POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_H_
 
 #include <string>
 
@@ -21,14 +21,15 @@ class MessageLite;
 }  // namespace google
 
 namespace power_manager {
+namespace system {
 
 // Interface for sending D-Bus messages.  A stub implementation can be
 // instantiated by tests to verify behavior without actually communicating with
 // D-Bus.
 // TODO(derat): Just have an EmitSignal() method that takes a dbus::Signal.
-class DBusSenderInterface {
+class DBusWrapperInterface {
  public:
-  virtual ~DBusSenderInterface() {}
+  virtual ~DBusWrapperInterface() {}
 
   // Emits a signal named |signal_name| without any arguments.
   virtual void EmitBareSignal(const std::string& signal_name) = 0;
@@ -40,16 +41,16 @@ class DBusSenderInterface {
       const google::protobuf::MessageLite& protobuf) = 0;
 };
 
-// DBusSenderInterface implementation that actually sends messages to D-Bus.
-class DBusSender : public DBusSenderInterface {
+// DBusWrapper implementation that actually sends messages to D-Bus.
+class DBusWrapper : public DBusWrapperInterface {
  public:
-  DBusSender();
-  virtual ~DBusSender();
+  DBusWrapper();
+  virtual ~DBusWrapper();
 
   // |object| and |interface| are used when sending signals.
   void Init(dbus::ExportedObject* object, const std::string& interface);
 
-  // DBusSenderInterface override:
+  // DBusWrapperInterface overrides:
   void EmitBareSignal(const std::string& signal_name) override;
   void EmitSignalWithProtocolBuffer(
       const std::string& signal_name,
@@ -59,9 +60,10 @@ class DBusSender : public DBusSenderInterface {
   dbus::ExportedObject* object_;
   std::string interface_;
 
-  DISALLOW_COPY_AND_ASSIGN(DBusSender);
+  DISALLOW_COPY_AND_ASSIGN(DBusWrapper);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_COMMON_DBUS_SENDER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_H_

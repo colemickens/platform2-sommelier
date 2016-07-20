@@ -20,7 +20,6 @@
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/proto_bindings/rpc.pb.h"
-#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -38,6 +37,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/dark_resume.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/ec_wakeup_helper.h"
@@ -258,12 +258,12 @@ class Daemon::StateControllerDelegate
       base::TimeDelta time_until_idle_action) override {
     IdleActionImminent proto;
     proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
-    daemon_->dbus_sender_->EmitSignalWithProtocolBuffer(
+    daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
         kIdleActionImminentSignal, proto);
   }
 
   void EmitIdleActionDeferred() override {
-    daemon_->dbus_sender_->EmitBareSignal(kIdleActionDeferredSignal);
+    daemon_->dbus_wrapper_->EmitBareSignal(kIdleActionDeferredSignal);
   }
 
   void ReportUserActivityMetrics() override {
@@ -287,7 +287,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       update_engine_dbus_proxy_(NULL),
       cryptohomed_dbus_proxy_(NULL),
       state_controller_delegate_(new StateControllerDelegate(this)),
-      dbus_sender_(new DBusSender),
+      dbus_wrapper_(new system::DBusWrapper),
       display_watcher_(new system::DisplayWatcher),
       display_power_setter_(new system::DisplayPowerSetter),
       udev_(new system::Udev),
@@ -402,14 +402,14 @@ void Daemon::Init() {
                            keyboard_backlight_controller_.get(), power_status);
 
   dark_resume_->Init(power_supply_.get(), prefs_.get());
-  suspender_->Init(this, dbus_sender_.get(), dark_resume_.get(), prefs_.get());
+  suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(), prefs_.get());
 
   CHECK(input_watcher_->Init(
       std::unique_ptr<system::EventDeviceFactoryInterface>(
           new system::EventDeviceFactory),
       prefs_.get(), udev_.get()));
   input_controller_->Init(input_watcher_.get(), this, display_watcher_.get(),
-                          dbus_sender_.get(), prefs_.get());
+                          dbus_wrapper_.get(), prefs_.get());
 
   const LidState lid_state = input_watcher_->QueryLidState();
   wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
@@ -426,7 +426,7 @@ void Daemon::Init() {
     audio_client_->Init(cras_dbus_proxy_);
   }
 
-  peripheral_battery_watcher_->Init(dbus_sender_.get());
+  peripheral_battery_watcher_->Init(dbus_wrapper_.get());
 
   prefs_->GetBool(kSetWifiTransmitPowerForTabletModePref,
                   &set_wifi_transmit_power_for_tablet_mode_);
@@ -799,7 +799,7 @@ void Daemon::OnPowerStatusUpdate() {
 
   PowerSupplyProperties protobuf;
   system::CopyPowerStatusToProtocolBuffer(status, &protobuf);
-  dbus_sender_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
 }
 
 void Daemon::InitDBus() {
@@ -974,7 +974,7 @@ void Daemon::InitDBus() {
       base::Bind(&Daemon::HandleDBusSignalConnected,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  dbus_sender_->Init(powerd_dbus_object_, kPowerManagerInterface);
+  dbus_wrapper_->Init(powerd_dbus_object_, kPowerManagerInterface);
 
 #if USE_BUFFET
   buffet::InitCommandHandlers(bus_,

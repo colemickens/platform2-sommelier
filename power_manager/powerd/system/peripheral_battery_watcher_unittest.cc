@@ -14,8 +14,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
 namespace power_manager {
@@ -34,10 +34,10 @@ const int kShortUpdateTimeoutMs = 1000;
 
 const char kDeviceModelName[] = "Test HID Mouse";
 
-class TestSender : public DBusSenderStub {
+class TestWrapper : public DBusWrapperStub {
  public:
-  TestSender() {}
-  virtual ~TestSender() {}
+  TestWrapper() {}
+  virtual ~TestWrapper() {}
 
   // Runs |loop_| until battery status is sent through D-Bus.
   bool RunUntilSignalSent(int timeout_ms) {
@@ -46,20 +46,20 @@ class TestSender : public DBusSenderStub {
   }
 
   virtual void EmitBareSignal(const std::string& signal_name) {
-    DBusSenderStub::EmitBareSignal(signal_name);
+    DBusWrapperStub::EmitBareSignal(signal_name);
     loop_runner_.StopLoop();
   }
 
   virtual void EmitSignalWithProtocolBuffer(const std::string& signal_name,
     const google::protobuf::MessageLite& protobuf) {
-    DBusSenderStub::EmitSignalWithProtocolBuffer(signal_name, protobuf);
+    DBusWrapperStub::EmitSignalWithProtocolBuffer(signal_name, protobuf);
     loop_runner_.StopLoop();
   }
 
  private:
   TestMainLoopRunner loop_runner_;
 
-  DISALLOW_COPY_AND_ASSIGN(TestSender);
+  DISALLOW_COPY_AND_ASSIGN(TestWrapper);
 };
 
 }  // namespace
@@ -94,7 +94,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
   base::FilePath capacity_file_;
   base::FilePath model_name_file_;
 
-  TestSender test_sender_;
+  TestWrapper test_wrapper_;
 
   PeripheralBatteryWatcher battery_;
 
@@ -105,22 +105,21 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 TEST_F(PeripheralBatteryWatcherTest, Basic) {
   std::string level = base::IntToString(80);
   WriteFile(capacity_file_, level);
-  battery_.Init(&test_sender_);
-  ASSERT_TRUE(test_sender_.RunUntilSignalSent(kUpdateTimeoutMs));
-  EXPECT_EQ(1, test_sender_.num_sent_signals());
+  battery_.Init(&test_wrapper_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeoutMs));
+  EXPECT_EQ(1, test_wrapper_.num_sent_signals());
   PeripheralBatteryStatus proto;
-  EXPECT_TRUE(test_sender_.GetSentSignal(0,
-                                         kPeripheralBatteryStatusSignal,
-                                         &proto));
+  EXPECT_TRUE(
+      test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal, &proto));
   EXPECT_EQ(80, proto.level());
   EXPECT_EQ(kDeviceModelName, proto.name());
 }
 
 TEST_F(PeripheralBatteryWatcherTest, NoLevelReading) {
-  battery_.Init(&test_sender_);
+  battery_.Init(&test_wrapper_);
   // Without writing battery level to the capacity_file_, the loop
   // will timeout.
-  ASSERT_FALSE(test_sender_.RunUntilSignalSent(kShortUpdateTimeoutMs));
+  ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeoutMs));
 }
 
 }  // namespace system

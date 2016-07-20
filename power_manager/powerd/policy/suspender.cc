@@ -12,12 +12,12 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "power_manager/common/clock.h"
-#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/system/dark_resume.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
@@ -51,7 +51,7 @@ std::string Suspender::TestApi::GetDefaultWakeReason() const {
 
 Suspender::Suspender()
     : delegate_(NULL),
-      dbus_sender_(NULL),
+      dbus_wrapper_(NULL),
       dark_resume_(NULL),
       clock_(new Clock),
       state_(STATE_IDLE),
@@ -72,11 +72,11 @@ Suspender::~Suspender() {
 }
 
 void Suspender::Init(Delegate* delegate,
-                     DBusSenderInterface* dbus_sender,
+                     system::DBusWrapperInterface* dbus_wrapper,
                      system::DarkResumeInterface *dark_resume,
                      PrefsInterface* prefs) {
   delegate_ = delegate;
-  dbus_sender_ = dbus_sender;
+  dbus_wrapper_ = dbus_wrapper;
   dark_resume_ = dark_resume;
 
   const int initial_id = delegate_->GetInitialSuspendId();
@@ -603,7 +603,7 @@ void Suspender::ScheduleResuspend(const base::TimeDelta& delay) {
 void Suspender::EmitSuspendImminentSignal(int suspend_request_id) {
   SuspendImminent proto;
   proto.set_suspend_id(suspend_request_id);
-  dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
 }
 
 void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
@@ -611,13 +611,14 @@ void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
   SuspendDone proto;
   proto.set_suspend_id(suspend_request_id);
   proto.set_suspend_duration(suspend_duration.ToInternalValue());
-  dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
 }
 
 void Suspender::EmitDarkSuspendImminentSignal(int dark_suspend_id) {
   SuspendImminent proto;
   proto.set_suspend_id(dark_suspend_id);
-  dbus_sender_->EmitSignalWithProtocolBuffer(kDarkSuspendImminentSignal, proto);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kDarkSuspendImminentSignal,
+                                              proto);
 }
 
 }  // namespace policy

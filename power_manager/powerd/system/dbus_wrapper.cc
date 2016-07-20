@@ -1,8 +1,8 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/common/dbus_sender.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 
 #include <unistd.h>
 
@@ -14,23 +14,24 @@
 #include <google/protobuf/message_lite.h>
 
 namespace power_manager {
+namespace system {
 
-DBusSender::DBusSender() : object_(NULL) {}
+DBusWrapper::DBusWrapper() : object_(nullptr) {}
 
-DBusSender::~DBusSender() {}
+DBusWrapper::~DBusWrapper() {}
 
-void DBusSender::Init(dbus::ExportedObject* object,
-                      const std::string& interface) {
+void DBusWrapper::Init(dbus::ExportedObject* object,
+                       const std::string& interface) {
   object_ = object;
   interface_ = interface;
 }
 
-void DBusSender::EmitBareSignal(const std::string& signal_name) {
+void DBusWrapper::EmitBareSignal(const std::string& signal_name) {
   dbus::Signal signal(interface_, signal_name);
   object_->SendSignal(&signal);
 }
 
-void DBusSender::EmitSignalWithProtocolBuffer(
+void DBusWrapper::EmitSignalWithProtocolBuffer(
     const std::string& signal_name,
     const google::protobuf::MessageLite& protobuf) {
   dbus::Signal signal(interface_, signal_name);
@@ -39,4 +40,5 @@ void DBusSender::EmitSignalWithProtocolBuffer(
   object_->SendSignal(&signal);
 }
 
+}  // namespace system
 }  // namespace power_manager

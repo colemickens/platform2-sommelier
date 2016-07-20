@@ -17,10 +17,9 @@
 #include "power_manager/powerd/system/async_file_reader.h"
 
 namespace power_manager {
-
-class DBusSenderInterface;
-
 namespace system {
+
+class DBusWrapperInterface;
 
 class PeripheralBatteryWatcher {
  public:
@@ -32,7 +31,7 @@ class PeripheralBatteryWatcher {
   }
 
   // Starts polling.
-  void Init(DBusSenderInterface* dbus_sender);
+  void Init(DBusWrapperInterface* dbus_wrapper);
 
  private:
   // Handler for a periodic event that reads the peripheral batteries'
@@ -55,7 +54,7 @@ class PeripheralBatteryWatcher {
   void ErrorCallback(const std::string& path,
                      const std::string& model_name);
 
-  DBusSenderInterface* dbus_sender_;  // weak
+  DBusWrapperInterface* dbus_wrapper_;  // weak
 
   // Path containing battery info for peripheral devices.
   base::FilePath peripheral_battery_path_;
@@ -74,6 +73,5 @@ class PeripheralBatteryWatcher {
 
 }  // namespace system
 }  // namespace power_manager
-
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_PERIPHERAL_BATTERY_WATCHER_H_

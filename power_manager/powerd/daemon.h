@@ -33,7 +33,6 @@ class MetricsSender;
 
 namespace power_manager {
 
-class DBusSender;
 class MetricsCollector;
 class MetricsSender;
 class Prefs;
@@ -51,6 +50,7 @@ class AcpiWakeupHelper;
 class AmbientLightSensor;
 class AudioClient;
 class DarkResume;
+class DBusWrapper;
 class DisplayPowerSetter;
 class DisplayWatcher;
 class EcWakeupHelper;
@@ -260,7 +260,7 @@ class Daemon : public policy::BacklightControllerObserver,
 
   std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
   std::unique_ptr<MetricsSender> metrics_sender_;
-  std::unique_ptr<DBusSender> dbus_sender_;
+  std::unique_ptr<system::DBusWrapper> dbus_wrapper_;
 
   // Many of these members may be null depending on the device's hardware
   // configuration.

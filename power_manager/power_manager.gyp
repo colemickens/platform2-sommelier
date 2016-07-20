@@ -37,7 +37,6 @@
       },
       'sources': [
         'common/clock.cc',
-        'common/dbus_sender.cc',
         'common/metrics_constants.cc',
         'common/metrics_sender.cc',
         'common/power_constants.cc',
@@ -59,6 +58,7 @@
         'powerd/system/async_file_reader.cc',
         'powerd/system/audio_client.cc',
         'powerd/system/dark_resume.cc',
+        'powerd/system/dbus_wrapper.cc',
         'powerd/system/display/display_info.cc',
         'powerd/system/display/display_power_setter.cc',
         'powerd/system/display/display_watcher.cc',
@@ -82,6 +82,7 @@
         'powerd/system/ambient_light_sensor_stub.cc',
         'powerd/system/backlight_stub.cc',
         'powerd/system/dark_resume_stub.cc',
+        'powerd/system/dbus_wrapper_stub.cc',
         'powerd/system/display/display_power_setter_stub.cc',
         'powerd/system/display/display_watcher_stub.cc',
         'powerd/system/ec_wakeup_helper_stub.cc',
@@ -284,7 +285,6 @@
           'type': 'static_library',
           'sources': [
             'common/action_recorder.cc',
-            'common/dbus_sender_stub.cc',
             'common/fake_prefs.cc',
             'common/metrics_sender_stub.cc',
             'common/test_main_loop_runner.cc',

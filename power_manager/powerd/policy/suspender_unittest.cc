@@ -13,10 +13,10 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/action_recorder.h"
-#include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
 namespace power_manager {
 namespace policy {
@@ -214,14 +214,14 @@ class SuspenderTest : public testing::Test {
   void Init() {
     prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
     prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
-    suspender_.Init(&delegate_, &dbus_sender_, &dark_resume_, &prefs_);
+    suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_, &prefs_);
   }
 
   // Returns the ID from a SuspendImminent signal at |position|, or -1 if the
   // signal wasn't sent.
   int GetSuspendImminentId(int position) {
     SuspendImminent proto;
-    if (!dbus_sender_.GetSentSignal(position, kSuspendImminentSignal, &proto))
+    if (!dbus_wrapper_.GetSentSignal(position, kSuspendImminentSignal, &proto))
       return -1;
     return proto.suspend_id();
   }
@@ -230,7 +230,7 @@ class SuspenderTest : public testing::Test {
   // the signal wasn't sent.
   int GetDarkSuspendImminentId(int position) {
     SuspendImminent proto;
-    if (!dbus_sender_.GetSentSignal(
+    if (!dbus_wrapper_.GetSentSignal(
             position, kDarkSuspendImminentSignal, &proto))
       return -1;
     return proto.suspend_id();
@@ -240,7 +240,7 @@ class SuspenderTest : public testing::Test {
   // wasn't sent.
   int GetSuspendDoneId(int position) {
     SuspendDone proto;
-    if (!dbus_sender_.GetSentSignal(position, kSuspendDoneSignal, &proto))
+    if (!dbus_wrapper_.GetSentSignal(position, kSuspendDoneSignal, &proto))
       return -1;
     return proto.suspend_id();
   }
@@ -267,7 +267,7 @@ class SuspenderTest : public testing::Test {
 
   FakePrefs prefs_;
   TestDelegate delegate_;
-  DBusSenderStub dbus_sender_;
+  system::DBusWrapperStub dbus_wrapper_;
   system::DarkResumeStub dark_resume_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
@@ -303,7 +303,7 @@ TEST_F(SuspenderTest, SuspendResume) {
 
   // When Suspender receives notice that the system is ready to be
   // suspended, it should immediately suspend the system.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(suspend_id);
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
@@ -315,7 +315,7 @@ TEST_F(SuspenderTest, SuspendResume) {
   // A SuspendDone signal should be emitted to announce that the attempt is
   // complete.
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
   EXPECT_EQ((kResumeTime - kRequestTime).ToInternalValue(),
             done_proto.suspend_duration());
@@ -369,19 +369,19 @@ TEST_F(SuspenderTest, RetryOnFailure) {
 
   const uint64_t kRetryWakeupCount = 67;
   delegate_.set_wakeup_count(kRetryWakeupCount);
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(suspend_id);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(kOrigWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   // The timeout should trigger another suspend attempt.
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(kRetryWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   // A second suspend request should be ignored so we'll avoid trying to
   // re-suspend immediately if an attempt fails while the lid is closed
@@ -390,7 +390,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   const uint64_t kExternalWakeupCount = 32542;
   suspender_.RequestSuspendWithExternalWakeupCount(kExternalWakeupCount);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   // Report success this time and check that the timer isn't running.
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
@@ -405,13 +405,13 @@ TEST_F(SuspenderTest, RetryOnFailure) {
 
   // Suspend successfully again and check that the number of attempts are
   // reported as 1 now.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   const int new_suspend_id = test_api_.suspend_id();
   EXPECT_EQ(new_suspend_id, GetSuspendImminentId(0));
 
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(new_suspend_id);
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_was_successful());
@@ -478,7 +478,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // The lid being opened should also cancel.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
@@ -493,7 +493,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // The request should also be canceled if the system starts shutting down.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
@@ -633,10 +633,10 @@ TEST_F(SuspenderTest, SystemClockGoesBackward) {
       base::Bind(&Suspender::TestApi::SetCurrentWallTime,
                  base::Unretained(&test_api_),
                  base::Time::FromInternalValue(1000)));
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(test_api_.suspend_id());
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), done_proto.suspend_duration());
 }
 
@@ -656,7 +656,7 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
 
   // Check that the SuspendDone signal from the first request contains the first
   // request's ID, and that a second request was started immediately.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   const int kOldSuspendId = test_api_.suspend_id();
   AnnounceReadyForSuspend(kOldSuspendId);
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, kPrepare, NULL),
@@ -667,11 +667,11 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
   EXPECT_EQ(kNewSuspendId, GetSuspendImminentId(1));
 
   // Finish the second request.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(kNewSuspendId);
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
   EXPECT_EQ(kNewSuspendId, GetSuspendDoneId(0));
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
 
   // Now make the delegate's shutdown method report that the system is shutting
   // down.
@@ -691,7 +691,7 @@ TEST_F(SuspenderTest, SendSuspendDoneAtStartupForAbandonedAttempt) {
   delegate_.set_suspend_announced(true);
   Init();
   SuspendDone proto;
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kSuspendDoneSignal, &proto));
+  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &proto));
   EXPECT_EQ(0, proto.suspend_id());
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), proto.suspend_duration());
   EXPECT_FALSE(delegate_.suspend_announced());
@@ -712,7 +712,7 @@ TEST_F(SuspenderTest, DarkResume) {
   dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
   dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(kSuspendId);
 
   const int64_t kDarkSuspendId = test_api_.dark_suspend_id();
@@ -829,7 +829,7 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Opening the lid should also trigger the transition.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -846,7 +846,7 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
 
   // Shutting down the system will also trigger the transition so that clients
   // can perform cleanup.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -880,13 +880,13 @@ TEST_F(SuspenderTest, DarkResumeOnLegacySystems) {
   dark_resume_.set_in_dark_resume(true);
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   suspender_.HandleUserActivity();
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
   EXPECT_TRUE(delegate_.suspend_announced());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   dark_resume_.set_in_dark_resume(false);
@@ -894,17 +894,17 @@ TEST_F(SuspenderTest, DarkResumeOnLegacySystems) {
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
 
   // Opening the lid should also be ignored.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   dark_resume_.set_in_dark_resume(true);
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   suspender_.HandleLidOpened();
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
   EXPECT_TRUE(delegate_.suspend_announced());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   dark_resume_.set_in_dark_resume(false);
@@ -912,17 +912,17 @@ TEST_F(SuspenderTest, DarkResumeOnLegacySystems) {
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
 
   // Shutting down the system will not trigger a transition.
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   dark_resume_.set_in_dark_resume(true);
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   suspender_.HandleShutdown();
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
   EXPECT_TRUE(delegate_.suspend_announced());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   dark_resume_.set_in_dark_resume(false);
@@ -947,20 +947,20 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  dbus_sender_.ClearSentSignals();
+  dbus_wrapper_.ClearSentSignals();
 
   // The resuspend attempt is canceled due to a wake event.
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
   AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kDarkSuspendImminentSignal, NULL));
-  dbus_sender_.ClearSentSignals();
+  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kDarkSuspendImminentSignal, NULL));
+  dbus_wrapper_.ClearSentSignals();
 
   // The resuspend attempt fails due to a transient kernel error.
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   // The resuspend attempt is finally sucessful.
   dark_resume_.set_in_dark_resume(false);

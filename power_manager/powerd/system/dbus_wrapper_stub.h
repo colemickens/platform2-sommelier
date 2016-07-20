@@ -1,22 +1,23 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
-#define POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_STUB_H_
+#define POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_STUB_H_
 
 #include <string>
 
 #include <base/memory/scoped_vector.h>
 #include <google/protobuf/message_lite.h>
 
-#include "power_manager/common/dbus_sender.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 
 namespace power_manager {
+namespace system {
 
-// Stub implementation of DBusSenderInterface for testing that just keeps a
+// Stub implementation of DBusWrapperInterface for testing that just keeps a
 // record of signals that it was asked to emit.
-class DBusSenderStub : public DBusSenderInterface {
+class DBusWrapperStub : public DBusWrapperInterface {
  public:
   // Information about a signal that was sent.
   struct SignalInfo {
@@ -25,8 +26,8 @@ class DBusSenderStub : public DBusSenderInterface {
     std::string serialized_data;
   };
 
-  DBusSenderStub();
-  virtual ~DBusSenderStub();
+  DBusWrapperStub();
+  virtual ~DBusWrapperStub();
 
   size_t num_sent_signals() { return sent_signals_.size(); }
 
@@ -43,7 +44,7 @@ class DBusSenderStub : public DBusSenderInterface {
   // Clears |sent_signals_|.
   void ClearSentSignals();
 
-  // DBusSenderInterface override:
+  // DBusWrapperInterface overrides:
   void EmitBareSignal(const std::string& signal_name) override;
   void EmitSignalWithProtocolBuffer(
       const std::string& signal_name,
@@ -52,9 +53,10 @@ class DBusSenderStub : public DBusSenderInterface {
  private:
   ScopedVector<SignalInfo> sent_signals_;
 
-  DISALLOW_COPY_AND_ASSIGN(DBusSenderStub);
+  DISALLOW_COPY_AND_ASSIGN(DBusWrapperStub);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_COMMON_DBUS_SENDER_STUB_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_STUB_H_

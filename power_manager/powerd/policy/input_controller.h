@@ -19,10 +19,10 @@
 namespace power_manager {
 
 class Clock;
-class DBusSenderInterface;
 class PrefsInterface;
 
 namespace system {
+class DBusWrapperInterface;
 class DisplayWatcherInterface;
 class InputWatcherInterface;
 }  // namespace system
@@ -85,7 +85,7 @@ class InputController : public system::InputObserver {
   void Init(system::InputWatcherInterface* input_watcher,
             Delegate* delegate,
             system::DisplayWatcherInterface* display_watcher,
-            DBusSenderInterface* dbus_sender,
+            system::DBusWrapperInterface* dbus_wrapper,
             PrefsInterface* prefs);
 
   // Calls HandlePowerButtonAcknowledgmentTimeout(). Returns false if
@@ -120,7 +120,7 @@ class InputController : public system::InputObserver {
   system::InputWatcherInterface* input_watcher_;  // weak
   Delegate* delegate_;  // weak
   system::DisplayWatcherInterface* display_watcher_;  // weak
-  DBusSenderInterface* dbus_sender_;  // weak
+  system::DBusWrapperInterface* dbus_wrapper_;  // weak
 
   std::unique_ptr<Clock> clock_;
 

@@ -2,21 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/common/dbus_sender_stub.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
 #include <memory>
 
 #include <base/logging.h>
 
 namespace power_manager {
+namespace system {
 
-DBusSenderStub::DBusSenderStub() {}
+DBusWrapperStub::DBusWrapperStub() {}
 
-DBusSenderStub::~DBusSenderStub() {}
+DBusWrapperStub::~DBusWrapperStub() {}
 
-bool DBusSenderStub::GetSentSignal(size_t index,
-                                   const std::string& expected_signal_name,
-                                   google::protobuf::MessageLite* protobuf) {
+bool DBusWrapperStub::GetSentSignal(size_t index,
+                                    const std::string& expected_signal_name,
+                                    google::protobuf::MessageLite* protobuf) {
   if (index >= sent_signals_.size()) {
     LOG(ERROR) << "Got request to return " << expected_signal_name << " signal "
                << "at position " << index << ", but only "
@@ -50,17 +51,17 @@ bool DBusSenderStub::GetSentSignal(size_t index,
   return true;
 }
 
-void DBusSenderStub::ClearSentSignals() {
+void DBusWrapperStub::ClearSentSignals() {
   sent_signals_.clear();
 }
 
-void DBusSenderStub::EmitBareSignal(const std::string& signal_name) {
+void DBusWrapperStub::EmitBareSignal(const std::string& signal_name) {
   std::unique_ptr<SignalInfo> info(new SignalInfo);
   info->signal_name = signal_name;
   sent_signals_.push_back(info.release());
 }
 
-void DBusSenderStub::EmitSignalWithProtocolBuffer(
+void DBusWrapperStub::EmitSignalWithProtocolBuffer(
     const std::string& signal_name,
     const google::protobuf::MessageLite& protobuf) {
   std::unique_ptr<SignalInfo> info(new SignalInfo);
@@ -70,4 +71,5 @@ void DBusSenderStub::EmitSignalWithProtocolBuffer(
   sent_signals_.push_back(info.release());
 }
 
+}  // namespace system
 }  // namespace power_manager

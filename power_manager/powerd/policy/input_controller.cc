@@ -8,10 +8,10 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "power_manager/common/clock.h"
-#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
@@ -31,7 +31,7 @@ InputController::InputController()
     : input_watcher_(NULL),
       delegate_(NULL),
       display_watcher_(NULL),
-      dbus_sender_(NULL),
+      dbus_wrapper_(NULL),
       clock_(new Clock),
       only_has_external_display_(false),
       lid_state_(LID_NOT_PRESENT),
@@ -46,13 +46,13 @@ InputController::~InputController() {
 void InputController::Init(system::InputWatcherInterface* input_watcher,
                            Delegate* delegate,
                            system::DisplayWatcherInterface* display_watcher,
-                           DBusSenderInterface* dbus_sender,
+                           system::DBusWrapperInterface* dbus_wrapper,
                            PrefsInterface* prefs) {
   input_watcher_ = input_watcher;
   input_watcher_->AddObserver(this);
   delegate_ = delegate;
   display_watcher_ = display_watcher;
-  dbus_sender_ = dbus_sender;
+  dbus_wrapper_ = dbus_wrapper;
 
   prefs->GetBool(kExternalDisplayOnlyPref, &only_has_external_display_);
 
@@ -116,7 +116,7 @@ void InputController::OnLidEvent(LidState state) {
       return;
   }
   proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
-  dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 }
 
 void InputController::OnTabletModeEvent(TabletMode mode) {
@@ -129,7 +129,7 @@ void InputController::OnTabletModeEvent(TabletMode mode) {
                  InputEvent_Type_TABLET_MODE_ON :
                  InputEvent_Type_TABLET_MODE_OFF);
   proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
-  dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 }
 
 void InputController::OnPowerButtonEvent(ButtonState state) {
@@ -147,7 +147,7 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
                    InputEvent_Type_POWER_BUTTON_DOWN :
                    InputEvent_Type_POWER_BUTTON_UP);
     proto.set_timestamp(now.ToInternalValue());
-    dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+    dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 
     if (state == BUTTON_DOWN) {
       expected_power_button_acknowledgment_timestamp_ = now;

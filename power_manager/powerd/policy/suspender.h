@@ -26,11 +26,11 @@
 namespace power_manager {
 
 class Clock;
-class DBusSenderInterface;
 class PrefsInterface;
 
 namespace system {
 class DarkResumeInterface;
+class DBusWrapperInterface;
 class InputWatcher;
 }  // namespace system
 
@@ -200,7 +200,7 @@ class Suspender : public SuspendDelayObserver {
   virtual ~Suspender();
 
   void Init(Delegate* delegate,
-            DBusSenderInterface* dbus_sender,
+            system::DBusWrapperInterface* dbus_wrapper,
             system::DarkResumeInterface* dark_resume,
             PrefsInterface* prefs);
 
@@ -327,7 +327,7 @@ class Suspender : public SuspendDelayObserver {
   void EmitDarkSuspendImminentSignal(int dark_suspend_id);
 
   Delegate* delegate_;  // weak
-  DBusSenderInterface* dbus_sender_;  // weak
+  system::DBusWrapperInterface* dbus_wrapper_;  // weak
   system::DarkResumeInterface* dark_resume_;  // weak
 
   std::unique_ptr<Clock> clock_;

@@ -16,7 +16,6 @@
 
 namespace power_manager {
 
-class DBusSenderInterface;
 class RegisterSuspendDelayReply;
 class RegisterSuspendDelayRequest;
 class SuspendReadinessInfo;
