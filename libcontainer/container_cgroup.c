@@ -171,12 +171,13 @@ struct container_cgroup *container_cgroup_new(const char *name,
 
 	for (i = 0; i < NUM_CGROUP_TYPES; ++i) {
 		if (cgroup_parent) {
-			if (asprintf(&cg->cgroup_paths[i], "%s/%s/%s/%s", cgroup_root,
-				     cgroup_names[i], cgroup_parent, name) < 0)
+			if (asprintf(&cg->cgroup_paths[i], "%s/%s/%s/%s",
+				     cgroup_root, cgroup_names[i],
+				     cgroup_parent, name) < 0)
 				goto error_free_cg;
 		} else {
-			if (asprintf(&cg->cgroup_paths[i], "%s/%s/%s", cgroup_root,
-				     cgroup_names[i], name) < 0)
+			if (asprintf(&cg->cgroup_paths[i], "%s/%s/%s",
+				     cgroup_root, cgroup_names[i], name) < 0)
 				goto error_free_cg;
 		}
 

@@ -107,13 +107,17 @@ TEST(cgroup_new_with_parent) {
 
 	cgroup_parent_name = CGPARENTNAME;
 
-	snprintf(path, sizeof(path), "%s/cpu/%s", cgroup_root, cgroup_parent_name);
+	snprintf(path, sizeof(path), "%s/cpu/%s", cgroup_root,
+		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
-	snprintf(path, sizeof(path), "%s/cpuacct/%s", cgroup_root, cgroup_parent_name);
+	snprintf(path, sizeof(path), "%s/cpuacct/%s", cgroup_root,
+		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
-	snprintf(path, sizeof(path), "%s/devices/%s", cgroup_root, cgroup_parent_name);
+	snprintf(path, sizeof(path), "%s/devices/%s", cgroup_root,
+		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
-	snprintf(path, sizeof(path), "%s/freezer/%s", cgroup_root, cgroup_parent_name);
+	snprintf(path, sizeof(path), "%s/freezer/%s", cgroup_root,
+		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
 
 	ccg = container_cgroup_new(CGNAME, cgroup_root, cgroup_parent_name);
