@@ -187,17 +187,6 @@ struct container;
 struct container *container_new(const char *name,
 				const char *rundir);
 
-/*
- * Create a container using the given rundir and top-level cgroup.
- *
- * name - Name of the directory holding the container config files.
- * rundir - Where to build the temporary rootfs.
- * cgroup_parent - Parent directory under which to create the cgroup.
- */
-struct container *container_new_with_cgroup_parent(const char *name,
-						   const char *rundir,
-						   const char *cgroup_parent);
-
 /* Destroy a container created with container_new. */
 void container_destroy(struct container *c);
 

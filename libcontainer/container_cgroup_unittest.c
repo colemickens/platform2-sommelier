@@ -120,7 +120,8 @@ TEST(cgroup_new_with_parent) {
 		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
 
-	ccg = container_cgroup_new(CGNAME, cgroup_root, cgroup_parent_name);
+	ccg = container_cgroup_new(CGNAME, cgroup_root, cgroup_parent_name,
+				   1000);
 	ASSERT_NE(NULL, ccg);
 
 	cgroup_name = CGNAME;
@@ -178,7 +179,7 @@ FIXTURE_SETUP(basic_manipulation)
 	snprintf(path, sizeof(path), "%s/freezer", self->cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
 
-	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root, NULL);
+	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root, NULL, 0);
 	ASSERT_NE(NULL, self->ccg);
 
 	self->cgroup_name = CGNAME;

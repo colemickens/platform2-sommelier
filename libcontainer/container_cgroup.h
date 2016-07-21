@@ -47,7 +47,8 @@ struct container_cgroup {
 
 struct container_cgroup *container_cgroup_new(const char *name,
 					      const char *cgroup_root,
-					      const char *cgroup_parent);
+					      const char *cgroup_parent,
+					      uid_t cgroup_owner);
 void container_cgroup_destroy(struct container_cgroup *);
 
 static inline const char *cgroup_cpu_tasks_path(
