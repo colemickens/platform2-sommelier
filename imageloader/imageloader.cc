@@ -520,13 +520,45 @@ bool ImageLoader::RegisterComponent(
 
 std::string ImageLoader::GetComponentVersion(const std::string& name,
                                              ::DBus::Error& err) {
-  if (reg.find(name) != reg.end()) {
-    LOG(INFO) << "Found entry (" << name << ", " << reg[name].first << ", "
-              << reg[name].second.value() << ")";
-    return reg[name].first;
+  base::FilePath component_path = base::FilePath(kComponentsPath).Append(name);
+  if (!base::PathExists(component_path)) {
+    LOG(ERROR) << "Component does not exist.";
+    return kBadResult;
   }
-  LOG(ERROR) << "Entry not found : " << name;
-  return kBadResult;
+
+  std::string current_version_hint;
+  base::FilePath version_hint_path = component_path.Append(name);
+  if (!base::ReadFileToStringWithMaxSize(
+          version_hint_path, &current_version_hint, kMaximumFilesize)) {
+    return kBadResult;
+  }
+
+  // The version can be security sensitive (i.e. which flash player does Chrome
+  // load), so check the signed manfiest as the final answer.
+  std::string manifest_contents;
+  if (!base::ReadFileToStringWithMaxSize(component_path.Append(kManifestName),
+                                         &manifest_contents,
+                                         kMaximumFilesize)) {
+    return kBadResult;
+  }
+
+  // Read in the manifest signature.
+  std::string manifest_sig;
+  base::FilePath manifest_sig_path =
+      component_path.Append(kManifestSignatureName);
+  if (!base::ReadFileToStringWithMaxSize(manifest_sig_path, &manifest_sig,
+                                         kMaximumFilesize)) {
+    return kBadResult;
+  }
+
+  Manifest manifest;
+  if (!VerifyAndParseManifest(manifest_contents, manifest_sig, &manifest)) {
+    LOG(ERROR) << "Could not verify and parse the manifest.";
+    return kBadResult;
+  }
+
+  return manifest.version == current_version_hint ? manifest.version
+                                                  : kBadResult;
 }
 
 std::string ImageLoader::LoadComponent(const std::string& name,
