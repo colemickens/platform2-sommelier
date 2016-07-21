@@ -172,11 +172,6 @@ gboolean cryptohome_get_account_disk_usage(Cryptohome* self,
                                            DBusGMethodInvocation* error) {
   CRYPTOHOME_WRAP_METHOD(GetAccountDiskUsage, account_id);
 }
-gboolean cryptohome_get_free_disk_space(Cryptohome* self,
-                                        guint64* OUT_result,
-                                        GError** error) {
-  CRYPTOHOME_WRAP_METHOD(GetFreeDiskSpace, OUT_result);
-}
 gboolean cryptohome_get_system_salt(Cryptohome* self,
                                     GArray** OUT_salt,
                                     GError** error) {
