@@ -650,6 +650,37 @@ static int unmount_external_mounts(struct container *c)
 	return ret;
 }
 
+/*
+ * Match mount_one in minijail, mount one mountpoint with
+ * consideration for combination of MS_BIND/MS_RDONLY flag.
+ */
+static int mount_external(const char *src, const char *dest, const char *type,
+			  unsigned long flags, const void *data)
+{
+	int remount_ro = 0;
+
+	/*
+	 * R/O bind mounts have to be remounted since 'bind' and 'ro'
+	 * can't both be specified in the original bind mount.
+	 * Remount R/O after the initial mount.
+	 */
+	if ((flags & MS_BIND) && (flags & MS_RDONLY)) {
+		remount_ro = 1;
+		flags &= ~MS_RDONLY;
+	}
+
+	if (mount(src, dest, type, flags, data) == -1)
+		return -1;
+
+	if (remount_ro) {
+		flags |= MS_RDONLY;
+		if (mount(src, dest, NULL, flags | MS_REMOUNT, data) == -1)
+			return -1;
+	}
+
+	return 0;
+}
+
 static int do_container_mount(struct container *c,
 			      const struct container_mount *mnt)
 {
@@ -685,8 +716,8 @@ static int do_container_mount(struct container *c,
 			goto error_free_return;
 	} else {
 		/* Mount this externally and unmount it on exit. */
-		if (mount(source, dest, mnt->type, mnt->flags,
-			  mnt->data))
+		if (mount_external(source, dest, mnt->type, mnt->flags,
+				   mnt->data))
 			goto error_free_return;
 		/* Save this to unmount when shutting down. */
 		rc = strdup_and_free(&c->ext_mounts[c->num_ext_mounts], dest);
@@ -876,6 +907,8 @@ int container_start(struct container *c, const struct container_config *config)
 		char *dest;
 
 		if (mnt->mount_in_ns)
+			continue;
+		if (mnt->flags & MS_RDONLY)
 			continue;
 		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
 			goto error_rmdir;
