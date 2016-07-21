@@ -94,6 +94,8 @@ struct container_cpu_cgroup {
  * num_devices - Number of above.
  * run_setfiles - Should run setfiles on mounts to enable selinux.
  * cpu_cgparams - CPU cgroup params.
+ * cgroup_parent - Parent dir for cgroup creation
+ * cgroup_owner - uid to own the created cgroups
  */
 struct container_config {
 	char *rootfs;
@@ -110,6 +112,8 @@ struct container_config {
 	size_t num_devices;
 	char *run_setfiles;
 	struct container_cpu_cgroup cpu_cgparams;
+	char *cgroup_parent;
+	uid_t cgroup_owner;
 };
 
 struct container_config *container_config_create()
@@ -163,6 +167,7 @@ void container_config_destroy(struct container_config *c)
 	}
 	FREE_AND_NULL(c->devices);
 	FREE_AND_NULL(c->run_setfiles);
+	FREE_AND_NULL(c->cgroup_parent);
 	FREE_AND_NULL(c);
 }
 
@@ -428,6 +433,19 @@ int container_config_get_cpu_rt_runtime(struct container_config *c)
 int container_config_get_cpu_rt_period(struct container_config *c)
 {
 	return c->cpu_cgparams.rt_period;
+}
+
+int container_config_set_cgroup_parent(struct container_config *c,
+				       const char *parent,
+				       uid_t cgroup_owner)
+{
+	c->cgroup_owner = cgroup_owner;
+	return strdup_and_free(&c->cgroup_parent, parent);
+}
+
+const char *container_config_get_cgroup_parent(struct container_config *c)
+{
+	return c->cgroup_parent;
 }
 
 /*

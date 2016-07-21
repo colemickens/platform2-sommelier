@@ -146,6 +146,22 @@ int container_config_get_cpu_period(struct container_config *c);
 int container_config_get_cpu_rt_runtime(struct container_config *c);
 int container_config_get_cpu_rt_period(struct container_config *c);
 
+/*
+ * Configure the owner of cgroups created for the container.
+ *
+ * This is needed so the container's cgroup namespace rootdir is accessible
+ * inside the container.
+ *
+ * cgroup_parent - Parent directory under which to create the cgroup.
+ * cgroup_owner - The uid that should own the cgroups that are created.
+ */
+int container_config_set_cgroup_parent(struct container_config *c,
+				       const char *parent,
+				       uid_t cgroup_owner);
+
+/* Get the parent cgroup directory from the config.  Here for UT only. */
+const char *container_config_get_cgroup_parent(struct container_config *c);
+
 /* Container manipulation. */
 struct container;
 
