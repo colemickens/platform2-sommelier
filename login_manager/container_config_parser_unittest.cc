@@ -75,7 +75,7 @@ const char kBasicJsonRuntimeData[] = R"json(
   }
 )json";
 
-const std::string kExtraMountJsonConfigData = R"json(
+const char kExtraMountJsonConfigData[] = R"json(
     {
       "process": {
         "user": {
@@ -146,6 +146,8 @@ const char kCpuCgroupJsonRuntimeData[] = R"json(
     }
 )json";
 
+const char kCgroupParent[] = "test_cgroup";
+
 }  // anonymous namespace
 
 namespace login_manager {
@@ -157,12 +159,15 @@ TEST(ContainerConfigParserTest, TestBasicConfig) {
                             &container_config_destroy);
   EXPECT_TRUE(ParseContainerConfig(kBasicJsonConfigData,
                                    kBasicJsonRuntimeData, "testc",
+                                   kCgroupParent,
                                    kNamedContainerPath, &config));
   EXPECT_EQ(kNamedContainerPath.Append("rootfs_path").value(),
             container_config_get_rootfs(config.get()));
   EXPECT_EQ(1, container_config_get_num_program_args(config.get()));
   EXPECT_EQ(std::string("/sbin/init"),
             container_config_get_program_arg(config.get(), 0));
+  EXPECT_EQ(std::string(kCgroupParent),
+            container_config_get_cgroup_parent(config.get()));
   EXPECT_EQ(100, container_config_get_uid(config.get()));
   EXPECT_EQ(200, container_config_get_gid(config.get()));
   // No CPU cgroup params in runtime config, so should be 0.
@@ -181,6 +186,7 @@ TEST(ContainerConfigParserTest, TestBasicConfigAndroid) {
                             &container_config_destroy);
   EXPECT_TRUE(ParseContainerConfig(kBasicJsonConfigData,
                                    kBasicJsonRuntimeData, "android",
+                                   kCgroupParent,
                                    kNamedContainerPath, &config));
   EXPECT_EQ(kNamedContainerPath.Append("rootfs_path").value(),
             container_config_get_rootfs(config.get()));
@@ -189,6 +195,8 @@ TEST(ContainerConfigParserTest, TestBasicConfigAndroid) {
             container_config_get_program_arg(config.get(), 0));
   EXPECT_EQ(std::string(kSetfilesPath.value()),
             container_config_get_run_setfiles(config.get()));
+  EXPECT_EQ(std::string(kCgroupParent),
+            container_config_get_cgroup_parent(config.get()));
 }
 
 TEST(ContainerConfigParserTest, TestFailedConfigRootDictEmpty) {
@@ -199,6 +207,7 @@ TEST(ContainerConfigParserTest, TestFailedConfigRootDictEmpty) {
                             &container_config_destroy);
   EXPECT_FALSE(ParseContainerConfig(kEmptyJsonConfigData,
                                     kBasicJsonRuntimeData, "testc",
+                                    kCgroupParent,
                                     kNamedContainerPath, &config));
 }
 
@@ -210,6 +219,7 @@ TEST(ContainerConfigParserTest, TestFailedConfigUnknownMount) {
                             &container_config_destroy);
   EXPECT_FALSE(ParseContainerConfig(kExtraMountJsonConfigData,
                                     kBasicJsonRuntimeData, "testc",
+                                    kCgroupParent,
                                     kNamedContainerPath, &config));
 }
 
@@ -220,6 +230,7 @@ TEST(ContainerConfigParserTest, TestCpuCgroupConfig) {
                             &container_config_destroy);
   EXPECT_TRUE(ParseContainerConfig(kBasicJsonConfigData,
                                    kCpuCgroupJsonRuntimeData, "testc",
+                                   kCgroupParent,
                                    kNamedContainerPath, &config));
   EXPECT_EQ(1024, container_config_get_cpu_shares(config.get()));
   EXPECT_EQ(50000, container_config_get_cpu_quota(config.get()));

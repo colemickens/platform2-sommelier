@@ -29,6 +29,7 @@ namespace login_manager {
 namespace {
 
 const char kContainerRunPath[] = "/run/containers";
+const char kSessionManagerCgroup[] = "session_manager_containers";
 
 std::string libcontainer_strerror(int err) {
   if (err < 0) {
@@ -140,7 +141,8 @@ bool ContainerManagerImpl::StartContainer(const ExitCallback& exit_callback) {
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);
   if (!ParseContainerConfig(config_json_data, runtime_json_data, name_,
-                            container_directory_, &config)) {
+                            kSessionManagerCgroup, container_directory_,
+                            &config)) {
     LOG(ERROR) << "Failed to parse container configuration for " << name_;
     return false;
   }

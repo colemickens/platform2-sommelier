@@ -480,6 +480,7 @@ bool ParseConfigDicts(const base::DictionaryValue& config_root_dict,
 bool ParseContainerConfig(const std::string& config_json_data,
                           const std::string& runtime_json_data,
                           const std::string& container_name,
+                          const std::string& parent_cgroup_name,
                           const base::FilePath& named_container_path,
                           ContainerConfigPtr* config_out) {
   // Basic config info comes from config.json
@@ -512,6 +513,14 @@ bool ParseContainerConfig(const std::string& config_json_data,
   if (!ParseConfigDicts(*config_dict, *runtime_dict, named_container_path,
                         config_out))
     return false;
+
+  // Set the cgroup configuration
+  if (container_config_set_cgroup_parent(
+          config_out->get(), parent_cgroup_name.c_str(),
+          container_config_get_uid(config_out->get()))) {
+    LOG(ERROR) << "Failed to configure cgroup structure of " << container_name;
+    return false;
+  }
 
   // Hack for android containers that need selinux commands run.
   if (container_name.find("android") != std::string::npos) {
