@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -17,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/proto_bindings/rpc.pb.h"
@@ -50,8 +52,13 @@
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
-namespace power_manager {
+#if USE_BUFFET
+namespace dbus {
+class Bus;
+}  // namsepace dbus
+#endif  // USE_BUFFET
 
+namespace power_manager {
 namespace {
 
 // Path to file that's touched before the system suspends and unlinked
@@ -223,9 +230,9 @@ class Daemon::StateControllerDelegate
     dbus::MethodCall method_call(
         login_manager::kSessionManagerInterface,
         login_manager::kSessionManagerLockScreen);
-    std::unique_ptr<dbus::Response> response(
-        daemon_->session_manager_dbus_proxy_->CallMethodAndBlock(
-            &method_call, kSessionManagerDBusTimeoutMs));
+    daemon_->dbus_wrapper_->CallMethodSync(
+        daemon_->session_manager_dbus_proxy_, &method_call,
+        base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   }
 
   void Suspend() override {
@@ -240,9 +247,9 @@ class Daemon::StateControllerDelegate
         login_manager::kSessionManagerStopSession);
     dbus::MessageWriter writer(&method_call);
     writer.AppendString("");
-    std::unique_ptr<dbus::Response> response(
-        daemon_->session_manager_dbus_proxy_->CallMethodAndBlock(
-            &method_call, kSessionManagerDBusTimeoutMs));
+    daemon_->dbus_wrapper_->CallMethodSync(
+        daemon_->session_manager_dbus_proxy_, &method_call,
+        base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   }
 
   void ShutDown() override {
@@ -280,14 +287,12 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
                const base::FilePath& read_only_prefs_dir,
                const base::FilePath& run_dir)
     : prefs_(new Prefs),
-      powerd_dbus_object_(NULL),
-      chrome_dbus_proxy_(NULL),
-      session_manager_dbus_proxy_(NULL),
-      cras_dbus_proxy_(NULL),
-      update_engine_dbus_proxy_(NULL),
-      cryptohomed_dbus_proxy_(NULL),
+      chrome_dbus_proxy_(nullptr),
+      session_manager_dbus_proxy_(nullptr),
+      cras_dbus_proxy_(nullptr),
+      update_engine_dbus_proxy_(nullptr),
+      cryptohomed_dbus_proxy_(nullptr),
       state_controller_delegate_(new StateControllerDelegate(this)),
-      dbus_wrapper_(new system::DBusWrapper),
       display_watcher_(new system::DisplayWatcher),
       display_power_setter_(new system::DisplayPowerSetter),
       udev_(new system::Udev),
@@ -462,7 +467,7 @@ void Daemon::SendBrightnessChangedSignal(
   writer.AppendInt32(round(brightness_percent));
   writer.AppendBool(cause ==
       policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
-  powerd_dbus_object_->SendSignal(&signal);
+  dbus_wrapper_->EmitSignal(&signal);
 }
 
 void Daemon::OnBrightnessChanged(
@@ -803,159 +808,136 @@ void Daemon::OnPowerStatusUpdate() {
 }
 
 void Daemon::InitDBus() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  CHECK(bus_->Connect());
+  dbus_wrapper_.reset(new system::DBusWrapper());
+  CHECK(dbus_wrapper_->Init());
 
-  chrome_dbus_proxy_ = bus_->GetObjectProxy(
-      chromeos::kLibCrosServiceName,
-      dbus::ObjectPath(chromeos::kLibCrosServicePath));
-  chrome_dbus_proxy_->WaitForServiceToBeAvailable(
-      base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
-                 weak_ptr_factory_.GetWeakPtr()));
+  chrome_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
+      chromeos::kLibCrosServiceName, chromeos::kLibCrosServicePath);
+  dbus_wrapper_->RegisterForServiceAvailability(
+      chrome_dbus_proxy_, base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
+                                     weak_ptr_factory_.GetWeakPtr()));
 
-  session_manager_dbus_proxy_ = bus_->GetObjectProxy(
+  session_manager_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
       login_manager::kSessionManagerServiceName,
-      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
-  session_manager_dbus_proxy_->WaitForServiceToBeAvailable(
+      login_manager::kSessionManagerServicePath);
+  dbus_wrapper_->RegisterForServiceAvailability(
+      session_manager_dbus_proxy_,
       base::Bind(&Daemon::HandleSessionManagerAvailableOrRestarted,
                  weak_ptr_factory_.GetWeakPtr()));
-  session_manager_dbus_proxy_->ConnectToSignal(
-      login_manager::kSessionManagerInterface,
+  dbus_wrapper_->RegisterForSignal(
+      session_manager_dbus_proxy_, login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Daemon::HandleDBusSignalConnected,
                  weak_ptr_factory_.GetWeakPtr()));
 
   if (audio_client_) {
-    cras_dbus_proxy_ = bus_->GetObjectProxy(
-        cras::kCrasServiceName,
-        dbus::ObjectPath(cras::kCrasServicePath));
-    cras_dbus_proxy_->WaitForServiceToBeAvailable(
-        base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
-                   weak_ptr_factory_.GetWeakPtr()));
-    cras_dbus_proxy_->ConnectToSignal(
-        cras::kCrasControlInterface,
-        cras::kNodesChanged,
+    cras_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
+        cras::kCrasServiceName, cras::kCrasServicePath);
+    dbus_wrapper_->RegisterForServiceAvailability(
+        cras_dbus_proxy_, base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
+                                     weak_ptr_factory_.GetWeakPtr()));
+    dbus_wrapper_->RegisterForSignal(
+        cras_dbus_proxy_, cras::kCrasControlInterface, cras::kNodesChanged,
         base::Bind(&Daemon::HandleCrasNodesChangedSignal,
-                   weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Daemon::HandleDBusSignalConnected,
                    weak_ptr_factory_.GetWeakPtr()));
-    cras_dbus_proxy_->ConnectToSignal(
-        cras::kCrasControlInterface,
+    dbus_wrapper_->RegisterForSignal(
+        cras_dbus_proxy_, cras::kCrasControlInterface,
         cras::kActiveOutputNodeChanged,
         base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
-                   weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Daemon::HandleDBusSignalConnected,
                    weak_ptr_factory_.GetWeakPtr()));
-    cras_dbus_proxy_->ConnectToSignal(
-        cras::kCrasControlInterface,
+    dbus_wrapper_->RegisterForSignal(
+        cras_dbus_proxy_, cras::kCrasControlInterface,
         cras::kNumberOfActiveStreamsChanged,
         base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
-                   weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Daemon::HandleDBusSignalConnected,
                    weak_ptr_factory_.GetWeakPtr()));
   }
 
-  update_engine_dbus_proxy_ = bus_->GetObjectProxy(
+  update_engine_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
       update_engine::kUpdateEngineServiceName,
-      dbus::ObjectPath(update_engine::kUpdateEngineServicePath));
-  update_engine_dbus_proxy_->WaitForServiceToBeAvailable(
+      update_engine::kUpdateEngineServicePath);
+  dbus_wrapper_->RegisterForServiceAvailability(
+      update_engine_dbus_proxy_,
       base::Bind(&Daemon::HandleUpdateEngineAvailable,
                  weak_ptr_factory_.GetWeakPtr()));
-  update_engine_dbus_proxy_->ConnectToSignal(
-      update_engine::kUpdateEngineInterface,
+  dbus_wrapper_->RegisterForSignal(
+      update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
       update_engine::kStatusUpdate,
       base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Daemon::HandleDBusSignalConnected,
                  weak_ptr_factory_.GetWeakPtr()));
 
   int64_t tpm_threshold = 0;
   prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
   if (tpm_threshold > 0) {
-    cryptohomed_dbus_proxy_ = bus_->GetObjectProxy(
-        cryptohome::kCryptohomeServiceName,
-        dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
-    cryptohomed_dbus_proxy_->WaitForServiceToBeAvailable(
-        base::Bind(&Daemon::HandleCryptohomedAvailable,
-                   weak_ptr_factory_.GetWeakPtr()));
+    cryptohomed_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
+        cryptohome::kCryptohomeServiceName, cryptohome::kCryptohomeServicePath);
+    dbus_wrapper_->RegisterForServiceAvailability(
+        cryptohomed_dbus_proxy_, base::Bind(&Daemon::HandleCryptohomedAvailable,
+                                            weak_ptr_factory_.GetWeakPtr()));
 
     int64_t tpm_status_sec = 0;
     prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
     tpm_status_interval_ = base::TimeDelta::FromSeconds(tpm_status_sec);
   }
 
-  powerd_dbus_object_ = bus_->GetExportedObject(
-      dbus::ObjectPath(kPowerManagerServicePath));
-  ExportDBusMethod(kRequestShutdownMethod,
-                   &Daemon::HandleRequestShutdownMethod);
-  ExportDBusMethod(kRequestRestartMethod,
-                   &Daemon::HandleRequestRestartMethod);
-  ExportDBusMethod(kRequestSuspendMethod,
-                   &Daemon::HandleRequestSuspendMethod);
-  ExportDBusMethod(kDecreaseScreenBrightnessMethod,
-                   &Daemon::HandleDecreaseScreenBrightnessMethod);
-  ExportDBusMethod(kIncreaseScreenBrightnessMethod,
-                   &Daemon::HandleIncreaseScreenBrightnessMethod);
-  ExportDBusMethod(kGetScreenBrightnessPercentMethod,
-                   &Daemon::HandleGetScreenBrightnessMethod);
-  ExportDBusMethod(kSetScreenBrightnessPercentMethod,
-                   &Daemon::HandleSetScreenBrightnessMethod);
-  ExportDBusMethod(kDecreaseKeyboardBrightnessMethod,
-                   &Daemon::HandleDecreaseKeyboardBrightnessMethod);
-  ExportDBusMethod(kIncreaseKeyboardBrightnessMethod,
-                   &Daemon::HandleIncreaseKeyboardBrightnessMethod);
-  ExportDBusMethod(kGetPowerSupplyPropertiesMethod,
-                   &Daemon::HandleGetPowerSupplyPropertiesMethod);
-  ExportDBusMethod(kHandleVideoActivityMethod,
-                   &Daemon::HandleVideoActivityMethod);
-  ExportDBusMethod(kHandleUserActivityMethod,
-                   &Daemon::HandleUserActivityMethod);
-  ExportDBusMethod(kSetIsProjectingMethod,
-                   &Daemon::HandleSetIsProjectingMethod);
-  ExportDBusMethod(kSetPolicyMethod,
-                   &Daemon::HandleSetPolicyMethod);
-  ExportDBusMethod(kSetPowerSourceMethod,
-                   &Daemon::HandleSetPowerSourceMethod);
-  ExportDBusMethod(kHandlePowerButtonAcknowledgmentMethod,
-                   &Daemon::HandlePowerButtonAcknowledgment);
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, kRegisterSuspendDelayMethod,
-      base::Bind(&policy::Suspender::RegisterSuspendDelay,
-                 base::Unretained(suspender_.get()))));
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, kUnregisterSuspendDelayMethod,
-      base::Bind(&policy::Suspender::UnregisterSuspendDelay,
-                 base::Unretained(suspender_.get()))));
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, kHandleSuspendReadinessMethod,
-      base::Bind(&policy::Suspender::HandleSuspendReadiness,
-                 base::Unretained(suspender_.get()))));
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, kRegisterDarkSuspendDelayMethod,
-      base::Bind(&policy::Suspender::RegisterDarkSuspendDelay,
-                 base::Unretained(suspender_.get()))));
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, kUnregisterDarkSuspendDelayMethod,
-      base::Bind(&policy::Suspender::UnregisterDarkSuspendDelay,
-                 base::Unretained(suspender_.get()))));
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, kHandleDarkSuspendReadinessMethod,
-      base::Bind(&policy::Suspender::HandleDarkSuspendReadiness,
-                 base::Unretained(suspender_.get()))));
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, kRecordDarkResumeWakeReasonMethod,
-      base::Bind(&policy::Suspender::RecordDarkResumeWakeReason,
-                 base::Unretained(suspender_.get()))));
+  // Export Daemon's D-Bus method calls.
+  typedef std::unique_ptr<dbus::Response> (
+      Daemon::*DaemonMethod)(dbus::MethodCall*);
+  const std::map<const char*, DaemonMethod> kDaemonMethods = {
+      {kRequestShutdownMethod, &Daemon::HandleRequestShutdownMethod},
+      {kRequestRestartMethod, &Daemon::HandleRequestRestartMethod},
+      {kRequestSuspendMethod, &Daemon::HandleRequestSuspendMethod},
+      {kDecreaseScreenBrightnessMethod,
+       &Daemon::HandleDecreaseScreenBrightnessMethod},
+      {kIncreaseScreenBrightnessMethod,
+       &Daemon::HandleIncreaseScreenBrightnessMethod},
+      {kGetScreenBrightnessPercentMethod,
+       &Daemon::HandleGetScreenBrightnessMethod},
+      {kSetScreenBrightnessPercentMethod,
+       &Daemon::HandleSetScreenBrightnessMethod},
+      {kDecreaseKeyboardBrightnessMethod,
+       &Daemon::HandleDecreaseKeyboardBrightnessMethod},
+      {kIncreaseKeyboardBrightnessMethod,
+       &Daemon::HandleIncreaseKeyboardBrightnessMethod},
+      {kGetPowerSupplyPropertiesMethod,
+       &Daemon::HandleGetPowerSupplyPropertiesMethod},
+      {kHandleVideoActivityMethod, &Daemon::HandleVideoActivityMethod},
+      {kHandleUserActivityMethod, &Daemon::HandleUserActivityMethod},
+      {kSetIsProjectingMethod, &Daemon::HandleSetIsProjectingMethod},
+      {kSetPolicyMethod, &Daemon::HandleSetPolicyMethod},
+      {kSetPowerSourceMethod, &Daemon::HandleSetPowerSourceMethod},
+      {kHandlePowerButtonAcknowledgmentMethod,
+       &Daemon::HandlePowerButtonAcknowledgment},
+  };
+  for (const auto& it : kDaemonMethods) {
+    dbus_wrapper_->ExportMethod(
+        it.first, base::Bind(&HandleSynchronousDBusMethodCall,
+                             base::Bind(it.second, base::Unretained(this))));
+  }
+
+  // Export |suspender_|'s D-Bus method calls.
+  using policy::Suspender;
+  typedef void (Suspender::*SuspenderMethod)(
+      dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
+  const std::map<const char*, SuspenderMethod> kSuspenderMethods = {
+      {kRegisterSuspendDelayMethod, &Suspender::RegisterSuspendDelay},
+      {kUnregisterSuspendDelayMethod, &Suspender::UnregisterSuspendDelay},
+      {kHandleSuspendReadinessMethod, &Suspender::HandleSuspendReadiness},
+      {kRegisterDarkSuspendDelayMethod, &Suspender::RegisterDarkSuspendDelay},
+      {kUnregisterDarkSuspendDelayMethod,
+       &Suspender::UnregisterDarkSuspendDelay},
+      {kHandleDarkSuspendReadinessMethod,
+       &Suspender::HandleDarkSuspendReadiness},
+      {kRecordDarkResumeWakeReasonMethod,
+       &Suspender::RecordDarkResumeWakeReason},
+  };
+  for (const auto& it : kSuspenderMethods) {
+    dbus_wrapper_->ExportMethod(
+        it.first, base::Bind(it.second, base::Unretained(suspender_.get())));
+  }
 
   // Note that this needs to happen *after* the above methods are exported
   // (http://crbug.com/331431).
-  CHECK(bus_->RequestOwnershipAndBlock(kPowerManagerServiceName,
-                                       dbus::Bus::REQUIRE_PRIMARY))
-      << "Unable to take ownership of " << kPowerManagerServiceName;
+  CHECK(dbus_wrapper_->PublishService()) << "Failed to publish D-Bus service";
 
   // Listen for NameOwnerChanged signals from the bus itself. Register for all
   // of these signals instead of calling individual proxies'
@@ -966,22 +948,23 @@ void Daemon::InitDBus() {
   const char kBusServicePath[] = "/org/freedesktop/DBus";
   const char kBusInterface[] = "org.freedesktop.DBus";
   const char kNameOwnerChangedSignal[] = "NameOwnerChanged";
-  dbus::ObjectProxy* proxy = bus_->GetObjectProxy(
-      kBusServiceName, dbus::ObjectPath(kBusServicePath));
-  proxy->ConnectToSignal(kBusInterface, kNameOwnerChangedSignal,
+  dbus::ObjectProxy* proxy =
+      dbus_wrapper_->GetObjectProxy(kBusServiceName, kBusServicePath);
+  dbus_wrapper_->RegisterForSignal(
+      proxy, kBusInterface, kNameOwnerChangedSignal,
       base::Bind(&Daemon::HandleDBusNameOwnerChanged,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Daemon::HandleDBusSignalConnected,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  dbus_wrapper_->Init(powerd_dbus_object_, kPowerManagerInterface);
-
 #if USE_BUFFET
-  buffet::InitCommandHandlers(bus_,
-                              base::Bind(&Daemon::ShutDown,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         SHUTDOWN_MODE_REBOOT,
-                                         SHUTDOWN_REASON_USER_REQUEST));
+  // There's no underlying dbus::Bus object when we're being tested.
+  dbus::Bus* bus = dbus_wrapper_->GetBus();
+  if (bus) {
+    buffet::InitCommandHandlers(bus,
+                                base::Bind(&Daemon::ShutDown,
+                                           weak_ptr_factory_.GetWeakPtr(),
+                                           SHUTDOWN_MODE_REBOOT,
+                                           SHUTDOWN_REASON_USER_REQUEST));
+  }
 #endif  // USE_BUFFET
 }
 
@@ -1003,9 +986,9 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
   dbus::MethodCall method_call(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrieveSessionState);
-  std::unique_ptr<dbus::Response> response(
-      session_manager_dbus_proxy_->CallMethodAndBlock(
-          &method_call, kSessionManagerDBusTimeoutMs));
+  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
+      session_manager_dbus_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   if (!response)
     return;
 
@@ -1036,9 +1019,9 @@ void Daemon::HandleUpdateEngineAvailable(bool available) {
 
   dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
                                update_engine::kGetStatus);
-  std::unique_ptr<dbus::Response> response(
-      update_engine_dbus_proxy_->CallMethodAndBlock(
-          &method_call, kUpdateEngineDBusTimeoutMs));
+  std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
+      update_engine_dbus_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kUpdateEngineDBusTimeoutMs));
   if (!response)
     return;
 
@@ -1091,22 +1074,6 @@ void Daemon::HandleDBusNameOwnerChanged(dbus::Signal* signal) {
     HandleChromeAvailableOrRestarted(true);
   }
   suspender_->HandleDBusNameOwnerChanged(name, old_owner, new_owner);
-}
-
-void Daemon::HandleDBusSignalConnected(const std::string& interface,
-                                       const std::string& signal,
-                                       bool success) {
-  if (!success)
-    LOG(ERROR) << "Failed to connect to " << interface << "." << signal;
-}
-
-void Daemon::ExportDBusMethod(const std::string& method_name,
-                              DBusMethodCallMemberFunction member) {
-  DCHECK(powerd_dbus_object_);
-  CHECK(powerd_dbus_object_->ExportMethodAndBlock(
-      kPowerManagerInterface, method_name,
-      base::Bind(&HandleSynchronousDBusMethodCall,
-                 base::Bind(member, base::Unretained(this)))));
 }
 
 void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {
@@ -1472,8 +1439,9 @@ void Daemon::RequestTpmStatus() {
                                cryptohome::kCryptohomeGetTpmStatus);
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(cryptohome::GetTpmStatusRequest());
-  cryptohomed_dbus_proxy_->CallMethod(
-      &method_call, kCryptohomedDBusTimeoutMs,
+  dbus_wrapper_->CallMethodAsync(
+      cryptohomed_dbus_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kCryptohomedDBusTimeoutMs),
       base::Bind(&Daemon::HandleGetTpmStatusResponse,
                  weak_ptr_factory_.GetWeakPtr()));
 }

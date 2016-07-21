@@ -7,11 +7,12 @@
 #include <memory>
 
 #include <base/logging.h>
+#include <dbus/message.h>
 
 namespace power_manager {
 namespace system {
 
-DBusWrapperStub::DBusWrapperStub() {}
+DBusWrapperStub::DBusWrapperStub() : service_published_(false) {}
 
 DBusWrapperStub::~DBusWrapperStub() {}
 
@@ -55,6 +56,52 @@ void DBusWrapperStub::ClearSentSignals() {
   sent_signals_.clear();
 }
 
+dbus::Bus* DBusWrapperStub::GetBus() {
+  return nullptr;
+}
+
+dbus::ObjectProxy* DBusWrapperStub::GetObjectProxy(
+    const std::string& service_name,
+    const std::string& object_path) {
+  // TODO(derat): Return canned proxies.
+  return nullptr;
+}
+
+void DBusWrapperStub::RegisterForServiceAvailability(
+    dbus::ObjectProxy* proxy,
+    dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) {
+  DCHECK(proxy);
+  // TODO(derat): Record registered services.
+}
+
+void DBusWrapperStub::RegisterForSignal(
+    dbus::ObjectProxy* proxy,
+    const std::string& interface_name,
+    const std::string& signal_name,
+    dbus::ObjectProxy::SignalCallback callback) {
+  DCHECK(proxy);
+  // TODO(derat): Record registered signals.
+}
+
+void DBusWrapperStub::ExportMethod(
+    const std::string& method_name,
+    dbus::ExportedObject::MethodCallCallback callback) {
+  CHECK(!service_published_) << "Method " << method_name
+                             << " exported after service already published";
+  // TODO(derat): Record exported methods.
+}
+
+bool DBusWrapperStub::PublishService() {
+  CHECK(!service_published_) << "Service already published";
+  service_published_ = true;
+  return true;
+}
+
+void DBusWrapperStub::EmitSignal(dbus::Signal* signal) {
+  DCHECK(signal);
+  // TODO(derat): Record emitted signals.
+}
+
 void DBusWrapperStub::EmitBareSignal(const std::string& signal_name) {
   std::unique_ptr<SignalInfo> info(new SignalInfo);
   info->signal_name = signal_name;
@@ -69,6 +116,26 @@ void DBusWrapperStub::EmitSignalWithProtocolBuffer(
   info->protobuf_type = protobuf.GetTypeName();
   protobuf.SerializeToString(&(info->serialized_data));
   sent_signals_.push_back(info.release());
+}
+
+std::unique_ptr<dbus::Response> DBusWrapperStub::CallMethodSync(
+    dbus::ObjectProxy* proxy,
+    dbus::MethodCall* method_call,
+    base::TimeDelta timeout) {
+  DCHECK(proxy);
+  DCHECK(method_call);
+  // TODO(derat): Return canned response.
+  return std::unique_ptr<dbus::Response>();
+}
+
+void DBusWrapperStub::CallMethodAsync(
+    dbus::ObjectProxy* proxy,
+    dbus::MethodCall* method_call,
+    base::TimeDelta timeout,
+    dbus::ObjectProxy::ResponseCallback callback) {
+  DCHECK(proxy);
+  DCHECK(method_call);
+  // TODO(derat): Invoke callback with canned response.
 }
 
 }  // namespace system

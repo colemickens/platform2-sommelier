@@ -17,10 +17,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
-#include <dbus/bus.h>
 #include <dbus/exported_object.h>
-#include <dbus/message.h>
-#include <dbus/object_proxy.h>
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
@@ -28,6 +25,10 @@
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
+
+namespace dbus {
+class ObjectProxy;
+}
 
 namespace power_manager {
 
@@ -60,11 +61,6 @@ class Udev;
 }  // namespace system
 
 class Daemon;
-
-// Pointer to a member function for handling D-Bus method calls. If an empty
-// std::unique_ptr is returned, an empty (but successful) response will be sent.
-typedef std::unique_ptr<dbus::Response> (Daemon::*DBusMethodCallMemberFunction)(
-    dbus::MethodCall*);
 
 // Main class within the powerd daemon that ties all other classes together.
 class Daemon : public policy::BacklightControllerObserver,
@@ -166,16 +162,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Handles changes to D-Bus name ownership.
   void HandleDBusNameOwnerChanged(dbus::Signal* signal);
 
-  // Handles the result of an attempt to connect to a D-Bus signal. Logs an
-  // error on failure.
-  void HandleDBusSignalConnected(const std::string& interface,
-                                 const std::string& signal,
-                                 bool success);
-
-  // Exports |method_name| and uses |member| to handle calls.
-  void ExportDBusMethod(const std::string& method_name,
-                        DBusMethodCallMemberFunction member);
-
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
   void HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal);
@@ -247,18 +233,18 @@ class Daemon : public policy::BacklightControllerObserver,
 
   std::unique_ptr<Prefs> prefs_;
 
-  scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* powerd_dbus_object_;  // weak; owned by |bus_|
-  dbus::ObjectProxy* chrome_dbus_proxy_;  // weak; owned by |bus_|
-  dbus::ObjectProxy* session_manager_dbus_proxy_;  // weak; owned by |bus_|
-  dbus::ObjectProxy* cras_dbus_proxy_;  // weak; owned by |bus_| and may be NULL
-  dbus::ObjectProxy* update_engine_dbus_proxy_;  // weak; owned by |bus_|
+  std::unique_ptr<system::DBusWrapper> dbus_wrapper_;
+
+  dbus::ObjectProxy* chrome_dbus_proxy_;  // owned by |dbus_wrapper_|
+  dbus::ObjectProxy* session_manager_dbus_proxy_;  // owned by |dbus_wrapper_|
+  // May be null if |kUseCrasPref| is false.
+  dbus::ObjectProxy* cras_dbus_proxy_;  // owned by |dbus_wrapper_|
+  dbus::ObjectProxy* update_engine_dbus_proxy_;  // owned by |dbus_wrapper_|
   // May be null if the TPM status is not needed.
-  dbus::ObjectProxy* cryptohomed_dbus_proxy_;  // weak; owned by |bus_|
+  dbus::ObjectProxy* cryptohomed_dbus_proxy_;  // owned by |dbus_wrapper_|
 
   std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
   std::unique_ptr<MetricsSender> metrics_sender_;
-  std::unique_ptr<system::DBusWrapper> dbus_wrapper_;
 
   // Many of these members may be null depending on the device's hardware
   // configuration.
