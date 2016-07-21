@@ -29,8 +29,6 @@
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 
-class MetricsSender;
-
 namespace power_manager {
 
 class MetricsCollector;
