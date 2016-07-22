@@ -716,6 +716,7 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     // When TPM initialization finishes, we need to tell every Mount to
     // reinitialize its TPM context, since the TPM is now useable, and we might
     // need to kick off their PKCS11 initialization if they were blocked before.
+    mounts_lock_.Acquire();
     for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
       cryptohome::Mount* mount = it->second.get();
       MountTaskResult ignored_result;
@@ -732,6 +733,8 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
       if (mount->pkcs11_state() == cryptohome::Mount::kIsWaitingOnTPM)
         InitializePkcs11(mount);
     }
+    mounts_lock_.Release();
+
     // Initialize the install-time locked attributes since we
     // can't do it prior to ownership.
     InitializeInstallAttributes(true);
