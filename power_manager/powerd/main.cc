@@ -2,8 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdlib>
 #include <memory>
 #include <string>
+
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -226,6 +230,41 @@ class DaemonDelegateImpl : public DaemonDelegate {
     std::unique_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary());
     metrics_lib->Init();
     return base::WrapUnique(new MetricsSender(std::move(metrics_lib)));
+  }
+
+  pid_t GetPid() override {
+    return getpid();
+  }
+
+  void Launch(const std::string& command) override {
+    LOG(INFO) << "Launching \"" << command << "\"";
+    pid_t pid = fork();
+    if (pid == 0) {
+      // TODO(derat): Is this setsid() call necessary?
+      setsid();
+      // fork() again and exit so that init becomes the command's parent and
+      // cleans up when it finally finishes.
+      exit(fork() == 0 ? ::system(command.c_str()) : 0);
+    } else if (pid > 0) {
+      // powerd cleans up after the originally-forked process, which exits
+      // immediately after forking again.
+      if (waitpid(pid, NULL, 0) == -1)
+        PLOG(ERROR) << "waitpid() on PID " << pid << " failed";
+    } else if (pid == -1) {
+      PLOG(ERROR) << "fork() failed";
+    }
+  }
+
+  int Run(const std::string& command) override {
+    LOG(INFO) << "Running \"" << command << "\"";
+    int return_value = ::system(command.c_str());
+    if (return_value == -1) {
+      PLOG(ERROR) << "fork() failed";
+    } else if (return_value) {
+      return_value = WEXITSTATUS(return_value);
+      LOG(ERROR) << "Command failed with exit status " << return_value;
+    }
+    return return_value;
   }
 
  private:

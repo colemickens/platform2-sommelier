@@ -92,6 +92,7 @@ const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
 const char kPowerStatusPath[] = "/sys/class/power_supply";
+const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
 const double kEpsilon = 0.001;
 const int64_t kFastBacklightTransitionMs = 200;
 const int64_t kSlowBacklightTransitionMs = 2000;

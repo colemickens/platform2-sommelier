@@ -74,6 +74,25 @@ class Daemon : public policy::BacklightControllerObserver,
 
   void Init();
 
+  void set_wakeup_count_path_for_testing(const base::FilePath& path) {
+    wakeup_count_path_ = path;
+  }
+  void set_oobe_completed_path_for_testing(const base::FilePath& path) {
+    oobe_completed_path_ = path;
+  }
+  void set_suspended_state_path_for_testing(const base::FilePath& path) {
+    suspended_state_path_ = path;
+  }
+  void set_flashrom_lock_path_for_testing(const base::FilePath& path) {
+    flashrom_lock_path_ = path;
+  }
+  void set_battery_tool_lock_path_for_testing(const base::FilePath& path) {
+    battery_tool_lock_path_ = path;
+  }
+  void set_proc_path_for_testing(const base::FilePath& path) {
+    proc_path_ = path;
+  }
+
   // Overridden from policy::BacklightControllerObserver:
   void OnBrightnessChange(
       double brightness_percent,
@@ -132,6 +151,22 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Convenience method that returns true if |name| exists and is true.
   bool BoolPrefIsTrue(const std::string& name) const;
+
+  // Returns true if |path| exists and contains the PID of an active process.
+  bool PidLockFileExists(const base::FilePath& path);
+
+  // Returns true if a process that updates firmware is running. |details_out|
+  // is updated to contain information about the process(es).
+  bool FirmwareIsBeingUpdated(std::string* details_out);
+
+  // Runs powerd_setuid_helper. |action| is passed via --action.  If
+  // |additional_args| is non-empty, it will be appended to the command. If
+  // |wait_for_completion| is true, this function will block until the helper
+  // finishes and return the helper's exit code; otherwise it will return 0
+  // immediately.
+  int RunSetuidHelper(const std::string& action,
+                      const std::string& additional_args,
+                      bool wait_for_completion);
 
   // Decreases/increases the keyboard brightness; direction should be +1 for
   // increase and -1 for decrease.
@@ -291,6 +326,28 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Delay with which |tpm_status_timer_| should fire.
   base::TimeDelta tpm_status_interval_;
+
+  // File containing the number of wakeup events.
+  base::FilePath wakeup_count_path_;
+
+  // File that's created once the out-of-box experience has been completed.
+  base::FilePath oobe_completed_path_;
+
+  // Files where flashrom or battery_tool store their PIDs while performing a
+  // potentially-destructive action that powerd shouldn't interrupt by
+  // suspending or shutting down the system.
+  base::FilePath flashrom_lock_path_;
+  base::FilePath battery_tool_lock_path_;
+
+  // Directory containing subdirectories corresponding to running processes
+  // (i.e. /proc in non-test environments).
+  base::FilePath proc_path_;
+
+  // Path to file that's touched before the system suspends and unlinked after
+  // it resumes. Used by crash-reporter to avoid reporting unclean shutdowns
+  // that occur while the system is suspended (i.e. probably due to the battery
+  // charge reaching zero).
+  base::FilePath suspended_state_path_;
 
   // Path to a file that's touched when a suspend attempt's commencement is
   // announced to other processes and unlinked when the attempt's completion is

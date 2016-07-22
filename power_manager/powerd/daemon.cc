@@ -60,11 +60,14 @@ class Bus;
 namespace power_manager {
 namespace {
 
-// Path to file that's touched before the system suspends and unlinked
-// after it resumes. Used by crash-reporter to avoid reporting unclean
-// shutdowns that occur while the system is suspended (i.e. probably due to
-// the battery charge reaching zero).
-const char kSuspendedStatePath[] = "/var/lib/power_manager/powerd_suspended";
+// Default values for |*_path_| members (which can be overridden for tests).
+const char kDefaultSuspendedStatePath[] =
+    "/var/lib/power_manager/powerd_suspended";
+const char kDefaultWakeupCountPath[] = "/sys/power/wakeup_count";
+const char kDefaultOobeCompletedPath[] = "/home/chronos/.oobe_completed";
+const char kDefaultFlashromLockPath[] = "/run/lock/flashrom_powerd.lock";
+const char kDefaultBatteryToolLockPath[] = "/run/lock/battery_tool_powerd.lock";
+const char kDefaultProcPath[] = "/proc";
 
 // Basename appended to |run_dir| (see Daemon's c'tor) to produce
 // |suspend_announced_path_|.
@@ -73,18 +76,6 @@ const char kSuspendAnnouncedFile[] = "suspend_announced";
 // Strings for states that powerd cares about from the session manager's
 // SessionStateChanged signal.
 const char kSessionStarted[] = "started";
-
-// Path containing the number of wakeup events.
-const char kWakeupCountPath[] = "/sys/power/wakeup_count";
-
-// File that's created once the out-of-box experience has been completed.
-const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
-
-// Files where flashrom or battery_tool store their PIDs while performing a
-// potentially-destructive action that powerd shouldn't interrupt by suspending
-// or shutting down the system.
-const char kFlashromLockPath[] = "/run/lock/flashrom_powerd.lock";
-const char kBatteryToolLockPath[] = "/run/lock/battery_tool_powerd.lock";
 
 // When noticing that the firmware is being updated while suspending, wait up to
 // this long for the update to finish before reporting a suspend failure. The
@@ -95,7 +86,7 @@ const int kFirmwareUpdateTimeoutMs = 500;
 const int kFirmwareUpdatePollMs = 100;
 
 // Interval between attempts to retry shutting the system down while
-// kFlashromLockPath or kBatteryToolLockPath exist, in seconds.
+// |flashrom_lock_path_| or |battery_lock_path_| exist, in seconds.
 const int kRetryShutdownForFirmwareUpdateSec = 5;
 
 // Interval between log messages while audio is active, in seconds.
@@ -138,35 +129,6 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(
           method_call, DBUS_ERROR_INVALID_ARGS, message));
 }
 
-// Returns true if |path| exists and contains the PID of an active process.
-bool PidLockFileExists(const base::FilePath& path) {
-  std::string pid;
-  if (!base::ReadFileToString(path, &pid))
-    return false;
-
-  base::TrimWhitespaceASCII(pid, base::TRIM_TRAILING, &pid);
-  if (!base::DirectoryExists(base::FilePath("/proc").Append(pid))) {
-    LOG(WARNING) << path.value() << " contains stale/invalid PID \""
-                 << pid << "\"";
-    return false;
-  }
-
-  return true;
-}
-
-// Returns true if a process that updates firmware is running. |details_out|
-// is updated to contain information about the process(es).
-bool FirmwareIsBeingUpdated(std::string* details_out) {
-  std::vector<std::string> paths;
-  if (PidLockFileExists(base::FilePath(kFlashromLockPath)))
-    paths.push_back(kFlashromLockPath);
-  if (PidLockFileExists(base::FilePath(kBatteryToolLockPath)))
-    paths.push_back(kBatteryToolLockPath);
-
-  *details_out = base::JoinString(paths, ", ");
-  return !paths.empty();
-}
-
 // Intended to aid in debugging: if powerd only logs when audio starts, people
 // often get confused about why their system is blocked from suspending.
 void LogAudioActivity() {
@@ -192,7 +154,7 @@ class Daemon::StateControllerDelegate
   }
 
   bool IsOobeCompleted() override {
-    return base::PathExists(base::FilePath(kOobeCompletedPath));
+    return base::PathExists(base::FilePath(daemon_->oobe_completed_path_));
   }
 
   bool IsHdmiAudioActive() override {
@@ -297,6 +259,12 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
                                                 true /* is_repeating */),
       log_audio_timer_(false /* retain_user_task */, true /* is_repeating */),
+      wakeup_count_path_(kDefaultWakeupCountPath),
+      oobe_completed_path_(kDefaultOobeCompletedPath),
+      flashrom_lock_path_(kDefaultFlashromLockPath),
+      battery_tool_lock_path_(kDefaultBatteryToolLockPath),
+      proc_path_(kDefaultProcPath),
+      suspended_state_path_(kDefaultSuspendedStatePath),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SESSION_STOPPED),
       created_suspended_state_file_(false),
@@ -418,6 +386,47 @@ bool Daemon::BoolPrefIsTrue(const std::string& name) const {
   return prefs_->GetBool(name, &value) && value;
 }
 
+bool Daemon::PidLockFileExists(const base::FilePath& path) {
+  std::string pid;
+  if (!base::ReadFileToString(path, &pid))
+    return false;
+
+  base::TrimWhitespaceASCII(pid, base::TRIM_TRAILING, &pid);
+  if (!base::DirectoryExists(proc_path_.Append(pid))) {
+    LOG(WARNING) << path.value() << " contains stale/invalid PID \""
+                 << pid << "\"";
+    return false;
+  }
+
+  return true;
+}
+
+bool Daemon::FirmwareIsBeingUpdated(std::string* details_out) {
+  std::vector<std::string> paths;
+  if (PidLockFileExists(flashrom_lock_path_))
+    paths.push_back(flashrom_lock_path_.value());
+  if (PidLockFileExists(battery_tool_lock_path_))
+    paths.push_back(battery_tool_lock_path_.value());
+
+  *details_out = base::JoinString(paths, ", ");
+  return !paths.empty();
+}
+
+int Daemon::RunSetuidHelper(const std::string& action,
+                            const std::string& additional_args,
+                            bool wait_for_completion) {
+  std::string command =
+      kSetuidHelperPath + std::string(" --action=" + action);
+  if (!additional_args.empty())
+    command += " " + additional_args;
+  if (wait_for_completion) {
+    return delegate_->Run(command.c_str());
+  } else {
+    delegate_->Launch(command.c_str());
+    return 0;
+  }
+}
+
 void Daemon::AdjustKeyboardBrightness(int direction) {
   if (!keyboard_backlight_controller_)
     return;
@@ -481,7 +490,7 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
     LOG(INFO) << "Power button " << ButtonStateToString(state);
   metrics_collector_->HandlePowerButtonEvent(state);
   if (state == BUTTON_DOWN)
-    util::Launch("sync");
+    delegate_->Launch("sync");
   if (state == BUTTON_DOWN) {
     for (auto controller : all_backlight_controllers_)
       controller->HandlePowerButtonPress();
@@ -511,7 +520,7 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
 
     LOG(INFO) << ((mode == TABLET_MODE_ON) ? "Enabling": "Disabling")
               << " tablet mode wifi transmit power";
-    util::RunSetuidHelper("set_wifi_transmit_power", args, false);
+    RunSetuidHelper("set_wifi_transmit_power", args, false);
   }
 }
 
@@ -544,7 +553,7 @@ int Daemon::GetInitialSuspendId() {
   // doing this reduces the chances of a confused client that's using stale
   // IDs from a previous powerd run being able to conflict with the new run's
   // IDs).
-  return (getpid() % 32768) * 65536 + 1;
+  return (delegate_->GetPid() % 32768) * 65536 + 1;
 }
 
 int Daemon::GetInitialDarkSuspendId() {
@@ -561,10 +570,9 @@ bool Daemon::IsLidClosedForSuspend() {
 
 bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
   DCHECK(wakeup_count);
-  base::FilePath path(kWakeupCountPath);
   std::string buf;
-  LOG(INFO) << "Reading wakeup count from " << kWakeupCountPath;
-  if (base::ReadFileToString(path, &buf)) {
+  LOG(INFO) << "Reading wakeup count from " << wakeup_count_path_.value();
+  if (base::ReadFileToString(wakeup_count_path_, &buf)) {
     base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
     if (base::StringToUint64(buf, wakeup_count)) {
       LOG(INFO) << "Read wakeup count " << *wakeup_count;
@@ -572,7 +580,7 @@ bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
     }
     LOG(ERROR) << "Could not parse wakeup count from \"" << buf << "\"";
   } else {
-    PLOG(ERROR) << "Could not read " << kWakeupCountPath;
+    PLOG(ERROR) << "Could not read " << wakeup_count_path_.value();
   }
   return false;
 }
@@ -601,7 +609,7 @@ void Daemon::PrepareToSuspend() {
 
   // Do not let suspend change the console terminal.
   if (lock_vt_before_suspend_)
-    util::RunSetuidHelper("lock_vt", "", true);
+    RunSetuidHelper("lock_vt", "", true);
 
   power_supply_->SetSuspended(true);
   if (audio_client_)
@@ -635,18 +643,18 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   // If the file already exists, assume that crash-reporter hasn't seen it
   // yet and avoid unlinking it after resume.
   created_suspended_state_file_ = false;
-  const base::FilePath kStatePath(kSuspendedStatePath);
-  if (!base::PathExists(kStatePath)) {
-    if (base::WriteFile(kStatePath, NULL, 0) == 0)
+  if (!base::PathExists(suspended_state_path_)) {
+    if (base::WriteFile(suspended_state_path_, nullptr, 0) == 0)
       created_suspended_state_file_ = true;
     else
-      PLOG(ERROR) << "Unable to create " << kSuspendedStatePath;
+      PLOG(ERROR) << "Unable to create " << suspended_state_path_.value();
   }
 
   // This command is run synchronously to ensure that it finishes before the
   // system is suspended.
-  if (log_suspend_with_mosys_eventlog_)
-    util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
+  if (log_suspend_with_mosys_eventlog_) {
+    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
+  }
 
   std::string args;
   if (wakeup_count_valid) {
@@ -663,16 +671,15 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   if (suspend_to_idle_)
     args += " --suspend_to_idle";
 
-  const int exit_code = util::RunSetuidHelper("suspend", args, true);
+  const int exit_code = RunSetuidHelper("suspend", args, true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
 
   if (log_suspend_with_mosys_eventlog_)
-    util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8",
-                          false);
+    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
 
   if (created_suspended_state_file_) {
-    if (!base::DeleteFile(base::FilePath(kSuspendedStatePath), false))
-      PLOG(ERROR) << "Failed to delete " << kSuspendedStatePath;
+    if (!base::DeleteFile(base::FilePath(suspended_state_path_), false))
+      PLOG(ERROR) << "Failed to delete " << suspended_state_path_.value();
   }
 
   // These exit codes are defined in powerd/powerd_suspend.
@@ -709,7 +716,7 @@ void Daemon::UndoPrepareToSuspend(bool success,
 
   // Allow virtual terminal switching again.
   if (lock_vt_before_suspend_)
-    util::RunSetuidHelper("unlock_vt", "", true);
+    RunSetuidHelper("unlock_vt", "", true);
 
   if (audio_client_)
     audio_client_->SetSuspended(false);
@@ -1446,12 +1453,11 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   switch (mode) {
     case SHUTDOWN_MODE_POWER_OFF:
       LOG(INFO) << "Shutting down, reason: " << reason_str;
-      util::RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str,
-                            false);
+      RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str, false);
       break;
     case SHUTDOWN_MODE_REBOOT:
       LOG(INFO) << "Restarting, reason: " << reason_str;
-      util::RunSetuidHelper("reboot", "", false);
+      RunSetuidHelper("reboot", "", false);
       break;
   }
 }

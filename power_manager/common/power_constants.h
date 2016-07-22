@@ -238,6 +238,9 @@ extern const char kKeyboardBacklightPattern[];
 // sysfs directory containing information about connected power sources.
 extern const char kPowerStatusPath[];
 
+// Program used to run code as root.
+extern const char kSetuidHelperPath[];
+
 // Small value used when comparing floating-point percentages.
 extern const double kEpsilon;
 

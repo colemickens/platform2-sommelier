@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_DAEMON_DELEGATE_H_
 #define POWER_MANAGER_POWERD_DAEMON_DELEGATE_H_
 
+#include <sys/types.h>
+
 #include <memory>
 #include <string>
 
@@ -115,6 +117,15 @@ class DaemonDelegate {
       system::DBusWrapperInterface* dbus_wrapper) = 0;
 
   virtual std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() = 0;
+
+  // Returns the process's PID.
+  virtual pid_t GetPid() = 0;
+
+  // Runs |command| asynchronously.
+  virtual void Launch(const std::string& command) = 0;
+
+  // Runs |command| synchronously.  The process's exit code is returned.
+  virtual int Run(const std::string& command) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DaemonDelegate);

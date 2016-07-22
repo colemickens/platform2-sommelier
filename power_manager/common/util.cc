@@ -5,8 +5,6 @@
 #include "power_manager/common/util.h"
 
 #include <stdint.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include <algorithm>
 #include <cstdlib>
@@ -24,51 +22,6 @@
 
 namespace power_manager {
 namespace util {
-
-namespace {
-
-// Program used to run code as root.
-const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
-
-}  // namespace
-
-void Launch(const std::string& command) {
-  LOG(INFO) << "Launching \"" << command << "\"";
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Detach from parent so that powerd doesn't need to wait around for us
-    setsid();
-    exit(fork() == 0 ? system(command.c_str()) : 0);
-  } else if (pid > 0) {
-    waitpid(pid, NULL, 0);
-  }
-}
-
-int Run(const std::string& command) {
-  LOG(INFO) << "Running \"" << command << "\"";
-  int return_value = system(command.c_str());
-  if (return_value == -1) {
-    LOG(ERROR) << "fork() failed";
-  } else if (return_value) {
-    return_value = WEXITSTATUS(return_value);
-    LOG(ERROR) << "Command failed with " << return_value;
-  }
-  return return_value;
-}
-
-int RunSetuidHelper(const std::string& action,
-                    const std::string& additional_args,
-                    bool wait_for_completion) {
-  std::string command = kSetuidHelperPath + std::string(" --action=" + action);
-  if (!additional_args.empty())
-    command += " " + additional_args;
-  if (wait_for_completion) {
-    return Run(command.c_str());
-  } else {
-    Launch(command.c_str());
-    return 0;
-  }
-}
 
 double ClampPercent(double percent) {
   return std::max(0.0, std::min(100.0, percent));
