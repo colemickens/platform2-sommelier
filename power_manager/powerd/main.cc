@@ -24,6 +24,7 @@
 #include "power_manager/powerd/daemon_delegate.h"
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
+#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
@@ -140,6 +141,20 @@ class DaemonDelegateImpl : public DaemonDelegate {
     auto controller =
         base::WrapUnique(new policy::InternalBacklightController());
     controller->Init(backlight, prefs, sensor, power_setter);
+    return std::move(controller);
+  }
+
+  std::unique_ptr<policy::BacklightController>
+  CreateKeyboardBacklightController(
+      system::BacklightInterface* backlight,
+      PrefsInterface* prefs,
+      system::AmbientLightSensorInterface* sensor,
+      policy::BacklightController* display_backlight_controller,
+      TabletMode initial_tablet_mode) override {
+    auto controller =
+        base::WrapUnique(new policy::KeyboardBacklightController());
+    controller->Init(backlight, prefs, sensor, display_backlight_controller,
+                     initial_tablet_mode);
     return std::move(controller);
   }
 

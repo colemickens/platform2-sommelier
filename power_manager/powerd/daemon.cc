@@ -54,7 +54,7 @@
 #if USE_BUFFET
 namespace dbus {
 class Bus;
-}  // namsepace dbus
+}  // namespace dbus
 #endif  // USE_BUFFET
 
 namespace power_manager {
@@ -350,20 +350,22 @@ void Daemon::Init() {
               display_power_setter_.get());
     }
   }
-  if (display_backlight_controller_)
+  if (display_backlight_controller_) {
     display_backlight_controller_->AddObserver(this);
+    all_backlight_controllers_.push_back(display_backlight_controller_.get());
+  }
 
   if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
     keyboard_backlight_ = delegate_->CreateInternalBacklight(
         base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
     if (keyboard_backlight_) {
-      // TODO(derat): Find a way to use a stub implementation of the controller.
-      const TabletMode tablet_mode = input_watcher_->GetTabletMode();
-      keyboard_backlight_controller_.reset(
-          new policy::KeyboardBacklightController);
-      keyboard_backlight_controller_->Init(
-          keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
-          display_backlight_controller_.get(), tablet_mode);
+      keyboard_backlight_controller_ =
+          delegate_->CreateKeyboardBacklightController(
+              keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
+              display_backlight_controller_.get(),
+              input_watcher_->GetTabletMode());
+      all_backlight_controllers_.push_back(
+          keyboard_backlight_controller_.get());
     }
   }
 
@@ -445,7 +447,7 @@ void Daemon::SendBrightnessChangedSignal(
   dbus_wrapper_->EmitSignal(&signal);
 }
 
-void Daemon::OnBrightnessChanged(
+void Daemon::OnBrightnessChange(
     double brightness_percent,
     policy::BacklightController::BrightnessChangeCause cause,
     policy::BacklightController* source) {
@@ -486,21 +488,23 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
   metrics_collector_->HandlePowerButtonEvent(state);
   if (state == BUTTON_DOWN)
     util::Launch("sync");
-  if (state == BUTTON_DOWN && display_backlight_controller_)
-    display_backlight_controller_->HandlePowerButtonPress();
+  if (state == BUTTON_DOWN) {
+    for (auto controller : all_backlight_controllers_)
+      controller->HandlePowerButtonPress();
+  }
 }
 
-void Daemon::HandleHoverStateChanged(bool hovering) {
+void Daemon::HandleHoverStateChange(bool hovering) {
   VLOG(1) << "Hovering " << (hovering ? "on" : "off");
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->HandleHoverStateChanged(hovering);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleHoverStateChange(hovering);
 }
 
-void Daemon::HandleTabletModeChanged(TabletMode mode) {
+void Daemon::HandleTabletModeChange(TabletMode mode) {
   LOG(INFO) << (mode == TABLET_MODE_ON ? "Entered" : "Exited")
             << " tablet mode";
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->HandleTabletModeChange(mode);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleTabletModeChange(mode);
 
   if (set_wifi_transmit_power_for_tablet_mode_) {
     std::string args = (mode == TABLET_MODE_ON) ?
@@ -760,10 +764,8 @@ void Daemon::OnPowerStatusUpdate() {
 
   const PowerSource power_source =
       status.line_power_on ? POWER_AC : POWER_BATTERY;
-  if (display_backlight_controller_)
-    display_backlight_controller_->HandlePowerSourceChange(power_source);
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->HandlePowerSourceChange(power_source);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandlePowerSourceChange(power_source);
   state_controller_->HandlePowerSourceChange(power_source);
 
   if (status.battery_is_present && status.battery_below_shutdown_threshold) {
@@ -946,8 +948,8 @@ void Daemon::HandleChromeAvailableOrRestarted(bool available) {
     LOG(ERROR) << "Failed waiting for Chrome to become available";
     return;
   }
-  if (display_backlight_controller_)
-    display_backlight_controller_->HandleChromeStart();
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleChromeStart();
 }
 
 void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
@@ -1286,8 +1288,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
 
   LOG(INFO) << "Saw " << (fullscreen ? "fullscreen" : "normal")
             << " video activity";
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->HandleVideoActivity(fullscreen);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleVideoActivity(fullscreen);
   state_controller_->HandleVideoActivity();
   return std::unique_ptr<dbus::Response>();
 }
@@ -1303,10 +1305,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
   LOG(INFO) << "Saw user activity";
   suspender_->HandleUserActivity();
   state_controller_->HandleUserActivity();
-  if (display_backlight_controller_)
-    display_backlight_controller_->HandleUserActivity(type);
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->HandleUserActivity(type);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleUserActivity(type);
   return std::unique_ptr<dbus::Response>();
 }
 
@@ -1324,8 +1324,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
             << " display mode";
   state_controller_->HandleDisplayModeChange(mode);
   wakeup_controller_->SetDisplayMode(mode);
-  if (display_backlight_controller_)
-    display_backlight_controller_->HandleDisplayModeChange(mode);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleDisplayModeChange(mode);
   return std::unique_ptr<dbus::Response>();
 }
 
@@ -1341,8 +1341,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
   LOG(INFO) << "Received updated external policy: "
             << policy::StateController::GetPolicyDebugString(policy);
   state_controller_->HandlePolicyChange(policy);
-  if (display_backlight_controller_)
-    display_backlight_controller_->HandlePolicyChange(policy);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandlePolicyChange(policy);
   return std::unique_ptr<dbus::Response>();
 }
 
@@ -1387,10 +1387,8 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
   session_state_ = state;
   metrics_collector_->HandleSessionStateChange(state);
   state_controller_->HandleSessionStateChange(state);
-  if (display_backlight_controller_)
-    display_backlight_controller_->HandleSessionStateChange(state);
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->HandleSessionStateChange(state);
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleSessionStateChange(state);
 }
 
 void Daemon::OnUpdateOperation(const std::string& operation) {
@@ -1446,10 +1444,8 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   // If we want to display a low-battery alert while shutting down, don't turn
   // the screen off immediately.
   if (reason != SHUTDOWN_REASON_LOW_BATTERY) {
-    if (display_backlight_controller_)
-      display_backlight_controller_->SetShuttingDown(true);
-    if (keyboard_backlight_controller_)
-      keyboard_backlight_controller_->SetShuttingDown(true);
+    for (auto controller : all_backlight_controllers_)
+      controller->SetShuttingDown(true);
   }
 
   const std::string reason_str = ShutdownReasonToString(reason);
@@ -1480,35 +1476,27 @@ void Daemon::Suspend(bool use_external_wakeup_count,
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
-  if (display_backlight_controller_)
-    display_backlight_controller_->SetDimmedForInactivity(dimmed);
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->SetDimmedForInactivity(dimmed);
+  for (auto controller : all_backlight_controllers_)
+    controller->SetDimmedForInactivity(dimmed);
   metrics_collector_->HandleScreenDimmedChange(
       dimmed, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsOffForInactivity(bool off) {
-  if (display_backlight_controller_)
-    display_backlight_controller_->SetOffForInactivity(off);
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->SetOffForInactivity(off);
+  for (auto controller : all_backlight_controllers_)
+    controller->SetOffForInactivity(off);
   metrics_collector_->HandleScreenOffChange(
       off, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsSuspended(bool suspended) {
-  if (display_backlight_controller_)
-    display_backlight_controller_->SetSuspended(suspended);
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->SetSuspended(suspended);
+  for (auto controller : all_backlight_controllers_)
+    controller->SetSuspended(suspended);
 }
 
 void Daemon::SetBacklightsDocked(bool docked) {
-  if (display_backlight_controller_)
-    display_backlight_controller_->SetDocked(docked);
-  if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->SetDocked(docked);
+  for (auto controller : all_backlight_controllers_)
+    controller->SetDocked(docked);
 }
 
 void Daemon::PopulateIwlWifiTransmitPowerTable() {

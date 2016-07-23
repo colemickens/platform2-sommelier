@@ -26,7 +26,7 @@ class InputObserver {
   virtual void OnPowerButtonEvent(ButtonState state) = 0;
 
   // Called when the user's hands start or stop hovering over the touchpad.
-  virtual void OnHoverStateChanged(bool hovering) = 0;
+  virtual void OnHoverStateChange(bool hovering) = 0;
 };
 
 }  // namespace system

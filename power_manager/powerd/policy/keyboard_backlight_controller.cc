@@ -191,6 +191,26 @@ void KeyboardBacklightController::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
+void KeyboardBacklightController::HandlePowerSourceChange(PowerSource source) {}
+
+void KeyboardBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
+
+void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
+  session_state_ = state;
+  if (state == SESSION_STARTED) {
+    num_als_adjustments_ = 0;
+    num_user_adjustments_ = 0;
+  }
+}
+
+void KeyboardBacklightController::HandlePowerButtonPress() {}
+
+void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {
+  last_user_activity_time_ = clock_->GetCurrentTime();
+  UpdateTurnOffTimer();
+  UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
+}
+
 void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
   // Ignore fullscreen video that's reported when the user isn't logged in;
   // it may be triggered by animations on the login screen.
@@ -212,7 +232,7 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
   }
 }
 
-void KeyboardBacklightController::HandleHoverStateChanged(bool hovering) {
+void KeyboardBacklightController::HandleHoverStateChange(bool hovering) {
   if (!supports_hover_ || hovering == hovering_)
     return;
 
@@ -252,26 +272,6 @@ void KeyboardBacklightController::HandleTabletModeChange(TabletMode mode) {
     return;
 
   tablet_mode_ = mode;
-  UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
-}
-
-void KeyboardBacklightController::HandlePowerSourceChange(PowerSource source) {}
-
-void KeyboardBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
-
-void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
-  session_state_ = state;
-  if (state == SESSION_STARTED) {
-    num_als_adjustments_ = 0;
-    num_user_adjustments_ = 0;
-  }
-}
-
-void KeyboardBacklightController::HandlePowerButtonPress() {}
-
-void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {
-  last_user_activity_time_ = clock_->GetCurrentTime();
-  UpdateTurnOffTimer();
   UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
@@ -373,7 +373,7 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     num_als_adjustments_++;
 }
 
-void KeyboardBacklightController::OnBrightnessChanged(
+void KeyboardBacklightController::OnBrightnessChange(
     double brightness_percent,
     BacklightController::BrightnessChangeCause cause,
     BacklightController* source) {
@@ -528,7 +528,7 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
 
   current_level_ = level;
   FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
-                    OnBrightnessChanged(percent, cause, this));
+                    OnBrightnessChange(percent, cause, this));
   return true;
 }
 

@@ -49,10 +49,10 @@ class InputController : public system::InputObserver {
     virtual void HandlePowerButtonEvent(ButtonState state) = 0;
 
     // Handles hovering/proximity changes.
-    virtual void HandleHoverStateChanged(bool hovering) = 0;
+    virtual void HandleHoverStateChange(bool hovering) = 0;
 
     // Handles the device entering or leaving tablet mode.
-    virtual void HandleTabletModeChanged(TabletMode mode) = 0;
+    virtual void HandleTabletModeChange(TabletMode mode) = 0;
 
     // Defers the inactivity timeout in response to VT2 being active (since
     // Chrome can't detect user activity).
@@ -104,7 +104,7 @@ class InputController : public system::InputObserver {
   void OnLidEvent(LidState state) override;
   void OnTabletModeEvent(TabletMode mode) override;
   void OnPowerButtonEvent(ButtonState state) override;
-  void OnHoverStateChanged(bool hovering) override;
+  void OnHoverStateChange(bool hovering) override;
 
  private:
   // Asks |delegate_| to defer the inactivity timeout if the second virtual

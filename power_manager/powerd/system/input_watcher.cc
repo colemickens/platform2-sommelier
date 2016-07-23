@@ -400,7 +400,7 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
               << (hovering ? "on" : "off");
       hovering_ = hovering;
       FOR_EACH_OBSERVER(InputObserver, observers_,
-                        OnHoverStateChanged(hovering_));
+                        OnHoverStateChange(hovering_));
     }
   }
 }

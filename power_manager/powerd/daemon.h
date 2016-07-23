@@ -39,7 +39,6 @@ class Prefs;
 
 namespace policy {
 class BacklightController;
-class KeyboardBacklightController;
 class StateController;
 class Suspender;
 class WakeupController;
@@ -79,7 +78,7 @@ class Daemon : public policy::BacklightControllerObserver,
   void Init();
 
   // Overridden from policy::BacklightControllerObserver:
-  void OnBrightnessChanged(
+  void OnBrightnessChange(
       double brightness_percent,
       policy::BacklightController::BrightnessChangeCause cause,
       policy::BacklightController* source) override;
@@ -88,8 +87,8 @@ class Daemon : public policy::BacklightControllerObserver,
   void HandleLidClosed() override;
   void HandleLidOpened() override;
   void HandlePowerButtonEvent(ButtonState state) override;
-  void HandleHoverStateChanged(bool hovering) override;
-  void HandleTabletModeChanged(TabletMode mode) override;
+  void HandleHoverStateChange(bool hovering) override;
+  void HandleTabletModeChange(TabletMode mode) override;
   void DeferInactivityTimeoutForVT2() override;
   void ShutDownForPowerButtonWithNoDisplay() override;
   void HandleMissingPowerButtonAcknowledgment() override;
@@ -222,8 +221,7 @@ class Daemon : public policy::BacklightControllerObserver,
   // policy::Suspender::RequestSuspendWithExternalWakeupCount();
   void Suspend(bool use_external_wakeup_count, uint64_t external_wakeup_count);
 
-  // Updates state in |backlight_controller_| and |keyboard_controller_|
-  // (if non-NULL).
+  // Updates state in |all_backlight_controllers_|.
   void SetBacklightsDimmedForInactivity(bool dimmed);
   void SetBacklightsOffForInactivity(bool off);
   void SetBacklightsSuspended(bool suspended);
@@ -256,8 +254,7 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<system::BacklightInterface> display_backlight_;
   std::unique_ptr<policy::BacklightController> display_backlight_controller_;
   std::unique_ptr<system::BacklightInterface> keyboard_backlight_;
-  std::unique_ptr<policy::KeyboardBacklightController>
-      keyboard_backlight_controller_;
+  std::unique_ptr<policy::BacklightController> keyboard_backlight_controller_;
 
   std::unique_ptr<system::UdevInterface> udev_;
   std::unique_ptr<system::InputWatcherInterface> input_watcher_;
@@ -274,6 +271,10 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<policy::Suspender> suspender_;
 
   std::unique_ptr<MetricsCollector> metrics_collector_;
+
+  // Weak pointers to |display_backlight_controller_| and
+  // |keyboard_backlight_controller_|, if non-null.
+  std::vector<policy::BacklightController*> all_backlight_controllers_;
 
   // True once the shutdown process has started. Remains true until the
   // system has powered off.

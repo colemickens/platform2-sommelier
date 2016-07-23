@@ -80,10 +80,9 @@ class WakeupController : public policy::BacklightControllerObserver,
   void OnTaggedDeviceRemoved(const system::TaggedDevice& device) override;
 
   // Overridden from policy::BacklightControllerObserver:
-  void OnBrightnessChanged(
-      double brightness_percent,
-      policy::BacklightController::BrightnessChangeCause cause,
-      policy::BacklightController* source) override;
+  void OnBrightnessChange(double brightness_percent,
+                          BacklightController::BrightnessChangeCause cause,
+                          BacklightController* source) override;
 
  private:
   // Derive the currently applicable WakeupMode according to lid state.

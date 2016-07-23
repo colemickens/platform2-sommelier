@@ -72,15 +72,6 @@ class KeyboardBacklightController
             BacklightController* display_backlight_controller,
             TabletMode initial_tablet_mode);
 
-  // Called when a notification about video activity has been received.
-  void HandleVideoActivity(bool is_fullscreen);
-
-  // Called when the user's hands start or stop hovering over the touchpad.
-  void HandleHoverStateChanged(bool hovering);
-
-  // Called when a convertible system enters or exits tablet mode.
-  void HandleTabletModeChange(TabletMode mode);
-
   // BacklightController implementation:
   void AddObserver(BacklightControllerObserver* observer) override;
   void RemoveObserver(BacklightControllerObserver* observer) override;
@@ -89,6 +80,9 @@ class KeyboardBacklightController
   void HandleSessionStateChange(SessionState state) override;
   void HandlePowerButtonPress() override;
   void HandleUserActivity(UserActivityType type) override;
+  void HandleVideoActivity(bool is_fullscreen) override;
+  void HandleHoverStateChange(bool hovering) override;
+  void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
   void HandleChromeStart() override;
   void SetDimmedForInactivity(bool dimmed) override;
@@ -109,10 +103,9 @@ class KeyboardBacklightController
       AmbientLightHandler::BrightnessChangeCause cause) override;
 
   // BacklightControllerObserver implementation:
-  void OnBrightnessChanged(
-      double brightness_percent,
-      BacklightController::BrightnessChangeCause cause,
-      BacklightController* source) override;
+  void OnBrightnessChange(double brightness_percent,
+                          BacklightController::BrightnessChangeCause cause,
+                          BacklightController* source) override;
 
  private:
   // Handles |video_timer_| firing, indicating that video activity has stopped.

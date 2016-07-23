@@ -74,6 +74,12 @@ void ExternalBacklightController::HandleSessionStateChange(
 
 void ExternalBacklightController::HandlePowerButtonPress() {}
 
+void ExternalBacklightController::HandleVideoActivity(bool is_fullscreen) {}
+
+void ExternalBacklightController::HandleHoverStateChange(bool hovering) {}
+
+void ExternalBacklightController::HandleTabletModeChange(TabletMode mode) {}
+
 void ExternalBacklightController::HandleUserActivity(UserActivityType type) {}
 
 void ExternalBacklightController::HandlePolicyChange(
@@ -167,8 +173,8 @@ void ExternalBacklightController::UpdateScreenPowerState() {
 
 void ExternalBacklightController::NotifyObservers() {
   FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
-                    OnBrightnessChanged(currently_off_ ? 0.0 : 100.0,
-                                        BRIGHTNESS_CHANGE_AUTOMATED, this));
+                    OnBrightnessChange(currently_off_ ? 0.0 : 100.0,
+                                       BRIGHTNESS_CHANGE_AUTOMATED, this));
 }
 
 void ExternalBacklightController::UpdateDisplays(

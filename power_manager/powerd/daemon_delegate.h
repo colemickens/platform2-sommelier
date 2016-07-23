@@ -13,6 +13,10 @@
 
 namespace power_manager {
 
+namespace policy {
+class BacklightController;
+}  // namespace policy
+
 namespace system {
 class AcpiWakeupHelperInterface;
 class AudioClientinterface;
@@ -25,6 +29,7 @@ class PowerSupplyInterface;
 class UdevInterface;
 }  // namespace system
 
+class MetricsSenderInterface;
 class PrefsInterface;
 
 // Delegate class implementing functionality on behalf of the Daemon class.
@@ -66,6 +71,14 @@ class DaemonDelegate {
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
       system::DisplayPowerSetterInterface* power_setter) = 0;
+
+  virtual std::unique_ptr<policy::BacklightController>
+  CreateKeyboardBacklightController(
+      system::BacklightInterface* backlight,
+      PrefsInterface* prefs,
+      system::AmbientLightSensorInterface* sensor,
+      policy::BacklightController* display_backlight_controller,
+      TabletMode initial_tablet_mode) = 0;
 
   virtual std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
       PrefsInterface* prefs,

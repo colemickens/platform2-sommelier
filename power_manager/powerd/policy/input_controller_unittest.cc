@@ -62,10 +62,10 @@ class TestInputControllerDelegate : public InputController::Delegate,
   void HandlePowerButtonEvent(ButtonState state) override {
     AppendAction(state == BUTTON_DOWN ? kPowerButtonDown : kPowerButtonUp);
   }
-  void HandleHoverStateChanged(bool hovering) override {
+  void HandleHoverStateChange(bool hovering) override {
     AppendAction(hovering ? kHoverOn : kHoverOff);
   }
-  void HandleTabletModeChanged(TabletMode mode) override {
+  void HandleTabletModeChange(TabletMode mode) override {
     AppendAction(mode == TABLET_MODE_ON ? kTabletOn : kTabletOff);
   }
   void DeferInactivityTimeoutForVT2() override {
@@ -299,7 +299,7 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 }
 
-TEST_F(InputControllerTest, OnHoverStateChangedTest) {
+TEST_F(InputControllerTest, OnHoverStateChangeTest) {
   Init();
   input_watcher_.NotifyObserversAboutHoverState(true);
   EXPECT_EQ(kHoverOn, delegate_.GetActions());

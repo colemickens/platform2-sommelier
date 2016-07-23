@@ -35,7 +35,7 @@ class BacklightControllerObserverStub : public BacklightControllerObserver {
   void Clear();
 
   // BacklightControllerObserver implementation:
-  void OnBrightnessChanged(
+  void OnBrightnessChange(
       double brightness_percent,
       BacklightController::BrightnessChangeCause cause,
       BacklightController* source) override;

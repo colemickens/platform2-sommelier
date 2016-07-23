@@ -347,6 +347,12 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
     EnsureUserBrightnessIsNonzero();
 }
 
+void InternalBacklightController::HandleVideoActivity(bool is_fullscreen) {}
+
+void InternalBacklightController::HandleHoverStateChange(bool hovering) {}
+
+void InternalBacklightController::HandleTabletModeChange(TabletMode mode) {}
+
 void InternalBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {
   bool got_policy_brightness = false;
@@ -682,7 +688,7 @@ bool InternalBacklightController::ApplyBrightnessPercent(
 
   current_level_ = level;
   FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
-                    OnBrightnessChanged(percent, cause, this));
+                    OnBrightnessChange(percent, cause, this));
   return true;
 }
 

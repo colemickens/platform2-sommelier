@@ -64,7 +64,7 @@ class TestObserver : public InputObserver,
     AppendAction(state == BUTTON_DOWN ? kPowerButtonDownAction :
                  kPowerButtonUpAction);
   }
-  void OnHoverStateChanged(bool hovering) override {
+  void OnHoverStateChange(bool hovering) override {
     AppendAction(hovering ? kHoverOnAction : kHoverOffAction);
   }
 

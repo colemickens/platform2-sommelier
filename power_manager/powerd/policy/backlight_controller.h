@@ -65,6 +65,16 @@ class BacklightController {
   // ensuring that the user-set brightness is nonzero.
   virtual void HandleUserActivity(UserActivityType type) = 0;
 
+  // Handles a notification of video activity. This is called periodically while
+  // video is ongoing.
+  virtual void HandleVideoActivity(bool is_fullscreen) = 0;
+
+  // Handles the user's hands moving to or away from the touchpad or keyboard.
+  virtual void HandleHoverStateChange(bool hovering) = 0;
+
+  // Handles the system (if convertible) entering or exiting tablet mode.
+  virtual void HandleTabletModeChange(TabletMode mode) = 0;
+
   // Handles an updated policy.
   virtual void HandlePolicyChange(const PowerManagementPolicy& policy) = 0;
 

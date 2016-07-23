@@ -122,7 +122,7 @@ void InputController::OnLidEvent(LidState state) {
 void InputController::OnTabletModeEvent(TabletMode mode) {
   tablet_mode_ = mode;
 
-  delegate_->HandleTabletModeChanged(mode);
+  delegate_->HandleTabletModeChange(mode);
 
   InputEvent proto;
   proto.set_type(tablet_mode_ == TABLET_MODE_ON ?
@@ -164,8 +164,8 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
   delegate_->HandlePowerButtonEvent(state);
 }
 
-void InputController::OnHoverStateChanged(bool hovering) {
-  delegate_->HandleHoverStateChanged(hovering);
+void InputController::OnHoverStateChange(bool hovering) {
+  delegate_->HandleHoverStateChange(hovering);
 }
 
 void InputController::CheckActiveVT() {

@@ -510,7 +510,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   EXPECT_EQ(0, backlight_.current_level());
 
   // If hovering is detected, the backlight should be turned on quickly.
-  controller_.HandleHoverStateChanged(true);
+  controller_.HandleHoverStateChange(true);
   EXPECT_EQ(50, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -521,7 +521,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
 
   // It should remain on for a short period of time if hovering stops while the
   // video is still playing.
-  controller_.HandleHoverStateChanged(false);
+  controller_.HandleHoverStateChange(false);
   EXPECT_EQ(50, backlight_.current_level());
 
   // After enough time, the backlight should turn off.
@@ -564,7 +564,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   EXPECT_EQ(100, backlight_.current_level());
   controller_.SetDimmedForInactivity(true);
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  controller_.HandleHoverStateChanged(true);
+  controller_.HandleHoverStateChange(true);
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -575,11 +575,11 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   EXPECT_EQ(100, backlight_.current_level());
 
   // Stop hovering and check that starting again turns the backlight on again.
-  controller_.HandleHoverStateChanged(false);
+  controller_.HandleHoverStateChange(false);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
-  controller_.HandleHoverStateChanged(true);
+  controller_.HandleHoverStateChange(true);
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());

@@ -38,7 +38,7 @@ void BacklightControllerStub::NotifyObservers(double percent,
                                               BrightnessChangeCause cause) {
   percent_ = percent;
   FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
-                    OnBrightnessChanged(percent_, cause, this));
+                    OnBrightnessChange(percent_, cause, this));
 }
 
 }  // namespace policy

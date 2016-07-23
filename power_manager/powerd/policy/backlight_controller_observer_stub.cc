@@ -15,7 +15,7 @@ void BacklightControllerObserverStub::Clear() {
   changes_.clear();
 }
 
-void BacklightControllerObserverStub::OnBrightnessChanged(
+void BacklightControllerObserverStub::OnBrightnessChange(
     double brightness_percent,
     BacklightController::BrightnessChangeCause cause,
     BacklightController* source) {

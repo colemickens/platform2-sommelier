@@ -111,7 +111,7 @@ void WakeupController::SetDisplayMode(DisplayMode display_mode) {
   UpdatePolicy();
 }
 
-void WakeupController::OnBrightnessChanged(
+void WakeupController::OnBrightnessChange(
     double brightness_percent,
     policy::BacklightController::BrightnessChangeCause cause,
     policy::BacklightController* source) {

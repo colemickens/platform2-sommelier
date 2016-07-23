@@ -31,7 +31,7 @@ void InputWatcherStub::NotifyObserversAboutPowerButtonEvent(ButtonState state) {
 }
 
 void InputWatcherStub::NotifyObserversAboutHoverState(bool hovering) {
-  FOR_EACH_OBSERVER(InputObserver, observers_, OnHoverStateChanged(hovering));
+  FOR_EACH_OBSERVER(InputObserver, observers_, OnHoverStateChange(hovering));
 }
 
 void InputWatcherStub::AddObserver(InputObserver* observer) {
