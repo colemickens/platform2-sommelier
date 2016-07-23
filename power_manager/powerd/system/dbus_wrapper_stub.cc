@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
 #include <memory>
+#include <tuple>
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -22,6 +23,12 @@ std::unique_ptr<dbus::Signal> DuplicateSignal(dbus::Signal* signal) {
 }
 
 }  // namespace
+
+bool DBusWrapperStub::RegisteredSignalInfo::operator<(
+    const RegisteredSignalInfo& o) const {
+  return std::tie(proxy, interface_name, signal_name) <
+         std::tie(o.proxy, o.interface_name, o.signal_name);
+}
 
 DBusWrapperStub::DBusWrapperStub() : service_published_(false) {}
 
@@ -86,8 +93,19 @@ void DBusWrapperStub::CallExportedMethod(
   method_call->SetSerial(1);
 
   const std::string name = method_call->GetMember();
-  CHECK(exported_methods_.count(name)) << " Method " << name << " not exported";
+  CHECK(exported_methods_.count(name)) << "Method " << name << " not exported";
   exported_methods_[name].Run(method_call, response_cb);
+}
+
+void DBusWrapperStub::EmitRegisteredSignal(dbus::ObjectProxy* proxy,
+                                           dbus::Signal* signal) {
+  CHECK(proxy);
+  CHECK(signal);
+  RegisteredSignalInfo info{proxy, signal->GetInterface(), signal->GetMember()};
+  CHECK(signal_handlers_.count(info))
+      << "No signal handler registered on " << proxy << " for "
+      << info.interface_name << "." << info.signal_name;
+  signal_handlers_[info].Run(signal);
 }
 
 dbus::Bus* DBusWrapperStub::GetBus() {
@@ -126,7 +144,11 @@ void DBusWrapperStub::RegisterForSignal(
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback callback) {
   DCHECK(proxy);
-  // TODO(derat): Record registered signals.
+  RegisteredSignalInfo info{proxy, interface_name, signal_name};
+  CHECK(!signal_handlers_.count(info))
+      << "Signal handler already registered on " << proxy << " for "
+      << interface_name << "." << signal_name;
+  signal_handlers_[info] = callback;
 }
 
 void DBusWrapperStub::ExportMethod(

@@ -10,9 +10,18 @@ namespace system {
 AudioClientStub::AudioClientStub()
     : headphone_jack_plugged_(false),
       hdmi_active_(false),
-      suspended_(false) {}
+      suspended_(false),
+      initial_loads_(0),
+      device_updates_(0),
+      stream_updates_(0) {}
 
 AudioClientStub::~AudioClientStub() {}
+
+void AudioClientStub::ResetStats() {
+  initial_loads_ = 0;
+  device_updates_ = 0;
+  stream_updates_ = 0;
+}
 
 bool AudioClientStub::GetHeadphoneJackPlugged() const {
   return headphone_jack_plugged_;
@@ -32,11 +41,11 @@ void AudioClientStub::RemoveObserver(AudioObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-void AudioClientStub::LoadInitialState() {}
+void AudioClientStub::LoadInitialState() { initial_loads_++; }
 
-void AudioClientStub::UpdateDevices() {}
+void AudioClientStub::UpdateDevices() { device_updates_++; }
 
-void AudioClientStub::UpdateNumActiveStreams() {}
+void AudioClientStub::UpdateNumActiveStreams() { stream_updates_++; }
 
 void AudioClientStub::SetSuspended(bool suspended) {
   suspended_ = suspended;

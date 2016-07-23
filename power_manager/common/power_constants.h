@@ -243,6 +243,12 @@ extern const char kPowerStatusPath[];
 // Program used to run code as root.
 extern const char kSetuidHelperPath[];
 
+// Information about "NameOwnerChanged" D-Bus signals emitted by dbus-daemon.
+extern const char kBusServiceName[];
+extern const char kBusServicePath[];
+extern const char kBusInterface[];
+extern const char kBusNameOwnerChangedSignal[];
+
 // Small value used when comparing floating-point percentages.
 extern const double kEpsilon;
 

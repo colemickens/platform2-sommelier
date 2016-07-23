@@ -59,6 +59,10 @@ class DBusWrapperStub : public DBusWrapperInterface {
   void CallExportedMethod(dbus::MethodCall* method_call,
                           dbus::ExportedObject::ResponseSender response_cb);
 
+  // Acts as if |proxy| emitted |signal|. A handler must have previously been
+  // registered via RegisterForSignal().
+  void EmitRegisteredSignal(dbus::ObjectProxy* proxy, dbus::Signal* signal);
+
   // DBusWrapperInterface overrides:
   dbus::Bus* GetBus() override;
   dbus::ObjectProxy* GetObjectProxy(
@@ -97,17 +101,31 @@ class DBusWrapperStub : public DBusWrapperInterface {
     scoped_refptr<dbus::ObjectProxy> object_proxy;
   };
 
+  // Information about a signal description passed to RegisterForSignal().
+  struct RegisteredSignalInfo {
+    dbus::ObjectProxy* proxy;  // Not owned.
+    std::string interface_name;
+    std::string signal_name;
+
+    bool operator<(const RegisteredSignalInfo& o) const;
+  };
+
   // Has PublishService() been called?
   bool service_published_;
 
   // All proxies that have been created.
   std::vector<ObjectProxyInfo> object_proxy_infos_;
 
-  // Methods that have been exported via ExportMethod(), keyed by method name.
+  // powerd methods that have been exported via ExportMethod(), keyed by method
+  // name.
   std::map<std::string, dbus::ExportedObject::MethodCallCallback>
       exported_methods_;
 
-  // Information about signals that have been sent using Emit*Signal*().
+  // powerd signal handlers that have been passed to RegisterForSignal().
+  std::map<RegisteredSignalInfo, dbus::ObjectProxy::SignalCallback>
+      signal_handlers_;
+
+  // Information about signals that powerd has sent using Emit*Signal*().
   std::vector<SignalInfo> sent_signals_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusWrapperStub);

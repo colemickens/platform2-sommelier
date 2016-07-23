@@ -72,8 +72,6 @@ class Daemon : public policy::BacklightControllerObserver,
   Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir);
   virtual ~Daemon();
 
-  void Init();
-
   void set_wakeup_count_path_for_testing(const base::FilePath& path) {
     wakeup_count_path_ = path;
   }
@@ -92,6 +90,12 @@ class Daemon : public policy::BacklightControllerObserver,
   void set_proc_path_for_testing(const base::FilePath& path) {
     proc_path_ = path;
   }
+
+  void Init();
+
+  // If |retry_shutdown_for_firmware_update_timer_| is running, triggers it
+  // and returns true. Otherwise, returns false.
+  bool TriggerRetryShutdownTimerForTesting();
 
   // Overridden from policy::BacklightControllerObserver:
   void OnBrightnessChange(
@@ -128,7 +132,6 @@ class Daemon : public policy::BacklightControllerObserver,
       const std::vector<policy::Suspender::DarkResumeInfo>&
           dark_resume_wake_durations,
       base::TimeDelta suspend_duration) override;
-
   void ShutDownForFailedSuspend() override;
   void ShutDownForDarkResume() override;
 

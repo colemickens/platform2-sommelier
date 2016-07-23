@@ -75,6 +75,7 @@ const char kSuspendAnnouncedFile[] = "suspend_announced";
 
 // Strings for states that powerd cares about from the session manager's
 // SessionStateChanged signal.
+// TODO(derat): Add session state constants to login_manager's dbus-constants.h.
 const char kSessionStarted[] = "started";
 
 // When noticing that the firmware is being updated while suspending, wait up to
@@ -381,6 +382,14 @@ void Daemon::Init() {
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
+}
+
+bool Daemon::TriggerRetryShutdownTimerForTesting() {
+  if (!retry_shutdown_for_firmware_update_timer_.IsRunning())
+    return false;
+
+  retry_shutdown_for_firmware_update_timer_.user_task().Run();
+  return true;
 }
 
 bool Daemon::BoolPrefIsTrue(const std::string& name) const {
@@ -921,15 +930,12 @@ void Daemon::InitDBus() {
   // of these signals instead of calling individual proxies'
   // SetNameOwnerChangedCallback() methods so that Suspender can get notified
   // when clients with suspend delays for which Daemon doesn't have proxies
-  // disconnect.
-  const char kBusServiceName[] = "org.freedesktop.DBus";
-  const char kBusServicePath[] = "/org/freedesktop/DBus";
-  const char kBusInterface[] = "org.freedesktop.DBus";
-  const char kNameOwnerChangedSignal[] = "NameOwnerChanged";
+  // disconnect. Note that RegisterForServiceAvailability() only notifies us
+  // when the service becomes initially available.
   dbus::ObjectProxy* proxy =
       dbus_wrapper_->GetObjectProxy(kBusServiceName, kBusServicePath);
   dbus_wrapper_->RegisterForSignal(
-      proxy, kBusInterface, kNameOwnerChangedSignal,
+      proxy, kBusInterface, kBusNameOwnerChangedSignal,
       base::Bind(&Daemon::HandleDBusNameOwnerChanged,
                  weak_ptr_factory_.GetWeakPtr()));
 

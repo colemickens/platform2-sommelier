@@ -392,6 +392,7 @@
           ],
           'sources': [
             'common/testrunner.cc',
+            'powerd/daemon_unittest.cc',
             'powerd/metrics_collector_unittest.cc',
           ],
         },
