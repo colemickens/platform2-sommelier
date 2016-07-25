@@ -19,12 +19,16 @@ class BacklightController;
 
 namespace system {
 class AcpiWakeupHelperInterface;
-class AudioClientinterface;
-class EcWakeupHelperInterface;
+class AmbientLightSensorInterface;
+class AudioClientInterface;
+class BacklightInterface;
+class DarkResumeInterface;
 class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
+class EcWakeupHelperInterface;
 class InputWatcherInterface;
+class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
 class UdevInterface;
 }  // namespace system
