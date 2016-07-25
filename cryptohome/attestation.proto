@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// DEPRECATED! Attestation is moving to aosp/system/tpm/attestation. In
+// particular, all work for supporting TPM 2.0 is there. This file should be
+// kept in sync with aosp/system/tpm/attestation/common/*.proto but should not
+// contain any changes not already present there.
+
 package cryptohome;
 
 // Holds TPM credentials that the attestation server will need to see. These
@@ -16,6 +21,8 @@ message TPMCredentials {
   // the default Chrome OS Privacy CA.
   optional EncryptedData default_encrypted_endorsement_credential = 5;
   optional EncryptedData alternate_encrypted_endorsement_credential = 6;
+  optional bytes ecc_endorsement_public_key = 7;
+  optional bytes ecc_endorsement_credential = 8;
 }
 
 // Holds information relevant to a particular AIK.
@@ -68,6 +75,11 @@ message Delegation {
   optional bool has_reset_lock_permissions = 3;
 }
 
+enum TpmVersion {
+  TPM_1_2 = 1;  // NOTE: This is the default. It must remain listed first.
+  TPM_2_0 = 2;
+}
+
 // This message holds all information to be sent to the attestation server in
 // order to complete enrollment.
 message AttestationEnrollmentRequest {
@@ -85,6 +97,8 @@ message AttestationEnrollmentRequest {
   optional Quote pcr1_quote = 4;
   // DEN for enterprise zero-touch enrollment (crbug/624187).
   optional bytes enterprise_enrollment_nonce = 5;
+  // The device TPM version.
+  optional TpmVersion tpm_version = 6;
 }
 
 // These two fields are suitable for passing to Tspi_TPM_ActivateIdentity()
@@ -94,6 +108,36 @@ message EncryptedIdentityCredential {
   optional bytes asym_ca_contents = 1;
   // TPM_SYM_CA_ATTESTATION, encrypted with the key in aysm_ca_contents.
   optional bytes sym_ca_attestation = 2;
+
+  optional TpmVersion tpm_version = 3;
+
+  // The following fields are used only for TPM 2.0. For details see the TPM 2.0
+  // specification Part 1 Rev 1.16:
+  // - Section 9.5.3.3: General description of the scheme.
+  // - Section 24: More details including how to use the seed to compute the
+  //               values for 'credential_mac' and 'wrapped_certificate->
+  //               wrapped_key'
+  // - Section B.10.4: Encrypting the seed with a RSA EK.
+  // - Section C.7.4: Encrypting the seed with an EC EK.
+
+  // A seed encrypted with the EK public key. The TPM will use this seed to
+  // derive both an HMAC key to verify the 'credential_mac' field and an AES key
+  // to unwrap the 'wrapped_certificate->wrapped_key' field.
+  optional bytes encrypted_seed = 4;
+
+  // An integrity value computed using HMAC-SHA256 over the
+  // 'wrapped_certificate.wrapped_key' field and the 'Name' of the identity key.
+  optional bytes credential_mac = 5;
+
+  // A certificate encrypted with a 'credential' that is decrypted by the TPM.
+  // The 'wrapped_key' field contains the encrypted credential which is
+  // encrypted using AES-256-CFB with a zero IV. The encryption of the
+  // certificate itself uses AES-256-CBC with PKCS #5 padding and a random IV.
+  // The encryption key is derived from the 'credential' using:
+  //   SHA256('ENCRYPT' + credential)
+  // The mac uses HMAC-SHA256 with a key derived using:
+  //   SHA256('MAC' + credential)
+  optional EncryptedData wrapped_certificate = 6;
 }
 
 enum ResponseStatus {
@@ -174,6 +218,8 @@ message AttestationCertificateRequest {
   // The index of a temporal value.  This may be used or ignored depending on
   // the certificate profile.
   optional int32 temporal_index = 13;
+  // The device TPM version.
+  optional TpmVersion tpm_version = 14;
 }
 
 // The response from the attestation server for the certificate request.
