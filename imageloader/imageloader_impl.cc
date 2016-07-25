@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "imageloader.h"
+#include "imageloader_impl.h"
 
 #include <fcntl.h>
 #include <linux/loop.h>
@@ -44,13 +44,6 @@ namespace {
 
 using imageloader::kBadResult;
 
-// Generate a good enough (unique) mount point.
-base::FilePath GenerateMountPoint(const char prefix[]) {
-  return base::FilePath(prefix + base::GenerateGUID());
-}
-
-// The path where the components are stored on the device.
-const char kComponentsPath[] = "/mnt/stateful_partition/encrypted/imageloader";
 // The name of the fingerprint file.
 const char kFingerprintName[] = "manifest.fingerprint";
 // The name of the imageloader manifest file.
@@ -78,22 +71,9 @@ const int kComponentFilePerms = 0644;
 // The maximum size of any file to read into memory.
 const size_t kMaximumFilesize = 4096 * 10;
 
-// TODO(kerrnel): Switch to the prod keys before shipping this feature.
-const uint8_t kDevPublicKey[] =  {
-  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
-  0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
-  0x42, 0x00, 0x04, 0x7a, 0xaa, 0x2b, 0xf9, 0x3d, 0x7a, 0xbe, 0x35, 0x9a,
-  0xfc, 0x9f, 0x39, 0x2d, 0x2d, 0x37, 0x07, 0xd4, 0x19, 0x67, 0x67, 0x30,
-  0xbb, 0x5c, 0x74, 0x22, 0xd5, 0x02, 0x07, 0xaf, 0x6b, 0x12, 0x9d, 0x12,
-  0xf0, 0x34, 0xfd, 0x1a, 0x7f, 0x02, 0xd8, 0x46, 0x2b, 0x25, 0xca, 0xa0,
-  0x6e, 0x2b, 0x54, 0x41, 0xee, 0x92, 0xa2, 0x0f, 0xa2, 0x2a, 0xc0, 0x30,
-  0xa6, 0x8c, 0xd1, 0x16, 0x0a, 0x48, 0xca
-};
-
-bool AssertComponentDirPerms() {
+bool AssertComponentDirPerms(const base::FilePath& path) {
   int mode;
-  base::FilePath components_dir(kComponentsPath);
-  if (!GetPosixFilePermissions(components_dir, &mode)) return false;
+  if (!GetPosixFilePermissions(path, &mode)) return false;
   return mode == kComponentDirPerms;
 }
 
@@ -123,16 +103,14 @@ bool WriteFileToDisk(const base::FilePath& path, const std::string& contents) {
 // CRX. The file is used for delta updates. Since Chrome OS doesn't rely on it
 // for security of the disk image, we are fine with sanity checking the contents
 // and then preserving the unsigned file.
-// static
-bool ImageLoader::IsValidFingerprintFile(const std::string& contents) {
+bool ImageLoaderImpl::IsValidFingerprintFile(const std::string& contents) {
   return contents.size() <= 256 &&
          std::find_if_not(contents.begin(), contents.end(), [](char ch) {
            return base::IsAsciiAlpha(ch) || base::IsAsciiDigit(ch) || ch == '.';
          }) == contents.end();
 }
 
-// static
-bool ImageLoader::CopyFingerprintFile(const base::FilePath& src,
+bool ImageLoaderImpl::CopyFingerprintFile(const base::FilePath& src,
                                       const base::FilePath& dest) {
   base::FilePath fingerprint_path = src.Append(kFingerprintName);
   if (base::PathExists(fingerprint_path)) {
@@ -151,15 +129,15 @@ bool ImageLoader::CopyFingerprintFile(const base::FilePath& src,
   return true;
 }
 
-bool ImageLoader::CopyAndHashFile(const base::FilePath& src_path,
-                                  const base::FilePath& dest_path,
-                                  const std::vector<uint8_t>& expected_hash) {
+bool ImageLoaderImpl::CopyAndHashFile(
+    const base::FilePath& src_path, const base::FilePath& dest_path,
+    const std::vector<uint8_t>& expected_hash) {
   base::File file(src_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid()) return false;
 
-  base::ScopedFD dest(HANDLE_EINTR(open(dest_path.value().c_str(),
-                                        O_CREAT | O_WRONLY | O_EXCL,
-                                        kComponentFilePerms)));
+  base::ScopedFD dest(
+      HANDLE_EINTR(open(dest_path.value().c_str(), O_CREAT | O_WRONLY | O_EXCL,
+                        kComponentFilePerms)));
   if (!dest.is_valid()) return false;
 
   base::File out_file(dest.release());
@@ -171,7 +149,7 @@ bool ImageLoader::CopyAndHashFile(const base::FilePath& src_path,
 
   size_t bytes_read = 0;
   int rv = 0;
-  char  buf[4096];
+  char buf[4096];
   do {
     int remaining = size - bytes_read;
     int bytes_to_read =
@@ -184,8 +162,7 @@ bool ImageLoader::CopyAndHashFile(const base::FilePath& src_path,
     bytes_read += rv;
     sha256->Update(buf, rv);
 
-    if (out_file.WriteAtCurrentPos(buf, rv) != rv)
-      return false;
+    if (out_file.WriteAtCurrentPos(buf, rv) != rv) return false;
   } while (bytes_read <= size);
 
   if (bytes_read != size) return false;
@@ -200,8 +177,7 @@ bool ImageLoader::CopyAndHashFile(const base::FilePath& src_path,
   return true;
 }
 
-// static
-bool ImageLoader::VerifyAndParseManifest(const std::string& manifest_contents,
+bool ImageLoaderImpl::VerifyAndParseManifest(const std::string& manifest_contents,
                                          const std::string& signature,
                                          Manifest* manifest) {
   // Verify the manifest before trusting any of its contents.
@@ -271,8 +247,7 @@ bool ImageLoader::VerifyAndParseManifest(const std::string& manifest_contents,
   return true;
 }
 
-// static
-bool ImageLoader::CopyComponentDirectory(
+bool ImageLoaderImpl::CopyComponentDirectory(
     const base::FilePath& component_path,
     const base::FilePath& destination_folder, const std::string& version) {
   if (mkdir(destination_folder.value().c_str(), kComponentDirPerms) != 0) {
@@ -339,16 +314,16 @@ bool ImageLoader::CopyComponentDirectory(
   return true;
 }
 
-// static
-bool ImageLoader::ECVerify(const base::StringPiece data,
-                           const base::StringPiece sig) {
+bool ImageLoaderImpl::ECVerify(const base::StringPiece data,
+                                  const base::StringPiece sig) {
   crypto::SignatureVerifier verifier;
 
-  if (!verifier.VerifyInit(crypto::SignatureVerifier::ECDSA_SHA256,
-                           reinterpret_cast<const uint8_t*>(sig.data()),
-                           base::checked_cast<int>(sig.size()),
-                           reinterpret_cast<const uint8_t*>(kDevPublicKey),
-                           base::checked_cast<int>(sizeof(kDevPublicKey)))) {
+  if (!verifier.VerifyInit(
+          crypto::SignatureVerifier::ECDSA_SHA256,
+          reinterpret_cast<const uint8_t*>(sig.data()),
+          base::checked_cast<int>(sig.size()),
+          config_.key.data(),
+          base::checked_cast<int>(config_.key.size()))) {
     return false;
   }
 
@@ -359,98 +334,15 @@ bool ImageLoader::ECVerify(const base::StringPiece data,
 }
 
 // Mount component at location generated.
-std::string ImageLoader::LoadComponentUtil(const std::string& name) {
-  base::FilePath mount_point = GenerateMountPoint("/mnt/");
-  // Is this somehow taken up by any other name or mount?
-  for (auto it = mounts.begin(); it != mounts.end(); ++it) {
-    if ((it->second).first == mount_point) {
-      return kBadResult;
-    }
-  }
-  if (PathExists(mount_point)) {
-    LOG(INFO) << "Generated mount_point is already stat-able : "
-              << mount_point.value();
-    return kBadResult;
-  }
-  // The mount point is not yet taken, so go ahead.
-  base::ScopedFD loopctl_fd(open("/dev/loop-control", O_RDONLY | O_CLOEXEC));
-  if (!loopctl_fd.is_valid()) {
-    PLOG(ERROR) << "loopctl_fd";
-    return kBadResult;
-  }
-  int device_free_number = ioctl(loopctl_fd.get(), LOOP_CTL_GET_FREE);
-  if (device_free_number < 0) {
-    PLOG(ERROR) << "ioctl : LOOP_CTL_GET_FREE";
-    return kBadResult;
-  }
-  std::ostringstream device_path;
-  device_path << "/dev/loop" << device_free_number;
-  base::ScopedFD device_path_fd(
-      open(device_path.str().c_str(), O_RDONLY | O_CLOEXEC));
-  if (!device_path_fd.is_valid()) {
-    PLOG(ERROR) << "device_path_fd";
-    return kBadResult;
-  }
-  base::ScopedFD fs_image_fd(
-      open(reg[name].second.value().c_str(), O_RDONLY | O_CLOEXEC));
-  if (!fs_image_fd.is_valid()) {
-    PLOG(ERROR) << "fs_image_fd";
-    return kBadResult;
-  }
-  if (ioctl(device_path_fd.get(), LOOP_SET_FD, fs_image_fd.get()) < 0) {
-    PLOG(ERROR) << "ioctl: LOOP_SET_FD";
-    return kBadResult;
-  }
-  if (!base::CreateDirectory(mount_point)) {
-    PLOG(ERROR) << "CreateDirectory : " << mount_point.value();
-    ioctl(device_path_fd.get(), LOOP_CLR_FD, 0);
-    return kBadResult;
-  }
-  if (mount(device_path.str().c_str(), mount_point.value().c_str(), "squashfs",
-            MS_RDONLY | MS_NOSUID | MS_NODEV, "") < 0) {
-    PLOG(ERROR) << "mount";
-    ioctl(device_path_fd.get(), LOOP_CLR_FD, 0);
-    return kBadResult;
-  }
-  mounts[name] = std::make_pair(mount_point, base::FilePath(device_path.str()));
-  return mount_point.value();
+std::string ImageLoaderImpl::LoadComponentUtil(const std::string& name) {
+  // Not implemented yet.
+  return kBadResult;
 }
 
-// Unmount the given component.
-bool ImageLoader::UnloadComponentUtil(const std::string& name) {
-  std::string device_path = mounts[name].second.value();
-  if (umount(mounts[name].first.value().c_str()) < 0) {
-    PLOG(ERROR) << "umount";
-    return false;
-  }
-  const base::FilePath fp_mount_point(mounts[name].first);
-  if (!DeleteFile(fp_mount_point, false)) {
-    PLOG(ERROR) << "DeleteFile : " << fp_mount_point.value();
-    return false;
-  }
-  base::ScopedFD device_path_fd(
-      open(device_path.c_str(), O_RDONLY | O_CLOEXEC));
-  if (!device_path_fd.is_valid()) {
-    PLOG(ERROR) << "device_path_fd";
-    return false;
-  }
-  if (ioctl(device_path_fd.get(), LOOP_CLR_FD, 0) < 0) {
-    PLOG(ERROR) << "ioctl: LOOP_CLR_FD";
-    return false;
-  }
-  mounts.erase(mounts.find(name));
-  return true;
-}
-
-// Following functions are required directly for the DBus functionality.
-
-ImageLoader::ImageLoader(DBus::Connection* conn)
-    : DBus::ObjectAdaptor(*conn, kImageLoaderPath) {}
-
-bool ImageLoader::RegisterComponent(
+bool ImageLoaderImpl::RegisterComponent(
     const std::string& name, const std::string& version,
-    const std::string& component_folder_abs_path, ::DBus::Error& err) {
-  base::FilePath components_dir(kComponentsPath);
+    const std::string& component_folder_abs_path) {
+  base::FilePath components_dir(config_.storage_dir);
   if (!base::PathExists(components_dir)) {
     if (mkdir(components_dir.value().c_str(), kComponentDirPerms) != 0) {
       PLOG(ERROR) << "Could not create the ImageLoader components directory.";
@@ -458,7 +350,7 @@ bool ImageLoader::RegisterComponent(
     }
   }
 
-  if (!AssertComponentDirPerms()) return false;
+  if (!AssertComponentDirPerms(config_.storage_dir)) return false;
 
   base::FilePath component_root = components_dir.Append(name);
 
@@ -518,9 +410,9 @@ bool ImageLoader::RegisterComponent(
   return true;
 }
 
-std::string ImageLoader::GetComponentVersion(const std::string& name,
-                                             ::DBus::Error& err) {
-  base::FilePath component_path = base::FilePath(kComponentsPath).Append(name);
+std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
+  base::FilePath component_path =
+      base::FilePath(config_.storage_dir).Append(name);
   if (!base::PathExists(component_path)) {
     LOG(ERROR) << "Component does not exist.";
     return kBadResult;
@@ -533,10 +425,11 @@ std::string ImageLoader::GetComponentVersion(const std::string& name,
     return kBadResult;
   }
 
+  base::FilePath versioned_path = component_path.Append(current_version_hint);
   // The version can be security sensitive (i.e. which flash player does Chrome
   // load), so check the signed manfiest as the final answer.
   std::string manifest_contents;
-  if (!base::ReadFileToStringWithMaxSize(component_path.Append(kManifestName),
+  if (!base::ReadFileToStringWithMaxSize(versioned_path.Append(kManifestName),
                                          &manifest_contents,
                                          kMaximumFilesize)) {
     return kBadResult;
@@ -545,7 +438,7 @@ std::string ImageLoader::GetComponentVersion(const std::string& name,
   // Read in the manifest signature.
   std::string manifest_sig;
   base::FilePath manifest_sig_path =
-      component_path.Append(kManifestSignatureName);
+      versioned_path.Append(kManifestSignatureName);
   if (!base::ReadFileToStringWithMaxSize(manifest_sig_path, &manifest_sig,
                                          kMaximumFilesize)) {
     return kBadResult;
@@ -561,32 +454,14 @@ std::string ImageLoader::GetComponentVersion(const std::string& name,
                                                   : kBadResult;
 }
 
-std::string ImageLoader::LoadComponent(const std::string& name,
-                                       ::DBus::Error& err) {
-  if (reg.find(name) != reg.end()) {
-    if (mounts.find(name) != mounts.end()) {
-      LOG(ERROR) << "Already mounted at " << mounts[name].first.value() << ".";
-      return kBadResult;
-    }
-    std::string mount_point = LoadComponentUtil(name);
-    if (mount_point == kBadResult) {
-      LOG(ERROR) << "Unable to mount : " << mount_point;
-      return kBadResult;
-    }
-    LOG(INFO) << "Mounted successfully at " << mount_point << ".";
-    return mount_point;
+std::string ImageLoaderImpl::LoadComponent(const std::string& name) {
+  std::string mount_point = LoadComponentUtil(name);
+  if (mount_point == kBadResult) {
+    LOG(ERROR) << "Unable to mount : " << mount_point;
+    return kBadResult;
   }
-  LOG(ERROR) << "Entry not found : " << name;
-  return kBadResult;
-}
-
-bool ImageLoader::UnloadComponent(const std::string& name, ::DBus::Error& err) {
-  if (UnloadComponentUtil(name)) {
-    LOG(INFO) << "Unmount " << name << " successful.";
-    return true;
-  }
-  LOG(ERROR) << "Unmount " << name << " unsucessful.";
-  return false;
+  LOG(INFO) << "Mounted successfully at " << mount_point << ".";
+  return mount_point;
 }
 
 }  // namespace imageloader

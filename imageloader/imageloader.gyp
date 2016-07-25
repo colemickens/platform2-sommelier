@@ -54,7 +54,7 @@
         'libimageloader_common',
       ],
       'sources': [
-        'imageloader.cc',
+        'imageloader_impl.cc',
         'imageloader.h',
       ],
     },

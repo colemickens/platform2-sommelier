@@ -51,16 +51,6 @@ void ImageLoadClient::LoadComponentCallback(const std::string& mount_point,
   }
 }
 
-void ImageLoadClient::UnloadComponentCallback(const bool& success,
-                                              const ::DBus::Error& err,
-                                              void*) {
-  if (success) {
-    LOG(INFO) << "Success.";
-  } else {
-    LOG(INFO) << "Failure.";
-  }
-}
-
 namespace {
 
 void *TestCalls(void *arg) {
@@ -86,9 +76,6 @@ void *TestCalls(void *arg) {
     } else if (inp == "lc") {  // LoadComponent
       std::cin >> name;
       client->LoadComponentAsync(name, NULL);
-    } else if (inp == "uc") {  // UnloadComponent
-      std::cin >> name;
-      client->UnloadComponentAsync(name, NULL);
     }
   }
   return NULL;

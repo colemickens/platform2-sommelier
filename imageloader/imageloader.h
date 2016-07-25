@@ -4,15 +4,14 @@
 #ifndef IMAGELOADER_IMAGELOADER_H_
 #define IMAGELOADER_IMAGELOADER_H_
 
-#include <map>
 #include <string>
-#include <utility>
 
-#include <base/files/file_path.h>
-#include <base/gtest_prod_util.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
+#include "imageloader_common.h"
 #include "imageloader-glue.h"
+#include "imageloader_impl.h"
 
 namespace imageloader {
 
@@ -23,73 +22,30 @@ class ImageLoader : org::chromium::ImageLoaderInterface_adaptor,
                     public DBus::ObjectAdaptor {
  public:
   // Instantiate a D-Bus Helper Instance
-  explicit ImageLoader(DBus::Connection* conn);
+  ImageLoader(DBus::Connection* conn, const ImageLoaderConfig& config)
+      : DBus::ObjectAdaptor(*conn, kImageLoaderPath), impl_(config) {}
 
   // Register a component.
   bool RegisterComponent(const std::string& name, const std::string& version,
                          const std::string& component_folder_abs_path,
-                         ::DBus::Error& err);
+                         ::DBus::Error& err) {
+    return impl_.RegisterComponent(name, version, component_folder_abs_path);
+  }
 
   // Get component version given component name.
-  std::string GetComponentVersion(const std::string& name, ::DBus::Error& err);
+  std::string GetComponentVersion(const std::string& name, ::DBus::Error& err) {
+    return impl_.GetComponentVersion(name);
+  }
 
   // Load the specified component.
-  std::string LoadComponent(const std::string& name, ::DBus::Error& err);
-  std::string LoadComponentUtil(const std::string& name);
-
-  // Unload the specified component.
-  bool UnloadComponent(const std::string& name, ::DBus::Error& err);
-  bool UnloadComponentUtil(const std::string& name);
+  std::string LoadComponent(const std::string& name, ::DBus::Error& err) {
+    return impl_.LoadComponent(name);
+  }
 
  private:
-  struct Manifest {
-    int manifest_version;
-    std::vector<uint8_t> image_sha256;
-    std::vector<uint8_t> params_sha256;
-    std::string version;
-  };
+  ImageLoaderImpl impl_;
 
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ECVerify);
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ManifestFingerPrint);
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyValidComponent);
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyComponentWithBadManifest);
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyValidImage);
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyInvalidImage);
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyInvalidHash);
-  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ParseManifest);
-
-  // Verify the data with the RSA (PKCS #1 v1.5) signature.
-  static bool ECVerify(const base::StringPiece data,
-                       const base::StringPiece sig);
-
-  // Copy the component directory from a user controlled location to an
-  // imageloader controlled location. Do not copy unless it verifies.
-  static bool CopyComponentDirectory(const base::FilePath& component_path,
-                                     const base::FilePath& destination_folder,
-                                     const std::string& version);
-  // Check the string contents to see if it matches the format of a
-  // manifest.fingerprint file.
-  static bool IsValidFingerprintFile(const std::string& contents);
-  // Verify the imageloader.json manifest file and parse the file information
-  // out of it.
-  static bool VerifyAndParseManifest(const std::string& manifest_str,
-                                     const std::string& signature,
-                                     Manifest* manifest);
-  // Copies files over and checks their hash in the process. The copy fails if
-  // the hashes do not match.
-  static bool CopyAndHashFile(const base::FilePath& src_path,
-                              const base::FilePath& dest_path,
-                              const std::vector<uint8_t>& known_hash);
-  // Check if the client created a manifest.fingerprint, and preserve it.
-  static bool CopyFingerprintFile(const base::FilePath& src,
-                                  const base::FilePath& dest);
-
-  // "mounts" keeps track of what has been mounted.
-  // mounts = (name, (mount_point, device_path))
-  std::map<std::string, std::pair<base::FilePath, base::FilePath>> mounts;
-  // "reg" keeps track of registered components.
-  // reg = (name, (version, fs_image_abs_path))
-  std::map<std::string, std::pair<std::string, base::FilePath>> reg;
+  DISALLOW_COPY_AND_ASSIGN(ImageLoader);
 };
 
 }  // namespace imageloader

@@ -20,9 +20,5 @@
       <arg type="s" name="name" direction="in" />
       <arg type="s" name="mount_point" direction="out" />
     </method>
-    <method name="UnloadComponent">
-      <arg type="s" name="name" direction="in" />
-      <arg type="b" name="success" direction="out" />
-    </method>
   </interface>
 </node>

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "imageloader_impl.h"
+
 #include <dirent.h>
 #include <stdlib.h>
 
@@ -11,7 +13,6 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "imageloader.h"
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -27,6 +28,17 @@
 namespace imageloader {
 
 namespace {
+
+// Test data always uses the dev key.
+const uint8_t kDevPublicKey[] = {
+    0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
+    0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
+    0x42, 0x00, 0x04, 0x7a, 0xaa, 0x2b, 0xf9, 0x3d, 0x7a, 0xbe, 0x35, 0x9a,
+    0xfc, 0x9f, 0x39, 0x2d, 0x2d, 0x37, 0x07, 0xd4, 0x19, 0x67, 0x67, 0x30,
+    0xbb, 0x5c, 0x74, 0x22, 0xd5, 0x02, 0x07, 0xaf, 0x6b, 0x12, 0x9d, 0x12,
+    0xf0, 0x34, 0xfd, 0x1a, 0x7f, 0x02, 0xd8, 0x46, 0x2b, 0x25, 0xca, 0xa0,
+    0x6e, 0x2b, 0x54, 0x41, 0xee, 0x92, 0xa2, 0x0f, 0xa2, 0x2a, 0xc0, 0x30,
+    0xa6, 0x8c, 0xd1, 0x16, 0x0a, 0x48, 0xca};
 
 const char kImageLoaderJSON[] =
     "{\"image-sha256-hash\":"
@@ -44,19 +56,36 @@ const char kImageLoaderSig[] = {
     0xe8, 0xed, 0x6a, 0x45, 0x38, 0x53, 0x54, 0xd2, 0xb1, 0x97};
 
 const char kImageLoaderBadSig[] = {
-  0x30, 0x44, 0x02, 0x20, 0x0a, 0x75, 0x49, 0xaf, 0x01, 0x3b, 0x48, 0x51,
-  0x45, 0x74, 0x8b, 0x41, 0x64, 0x21, 0x83, 0xce, 0xf1, 0x78, 0x1d, 0xd0,
-  0xa8, 0xd6, 0xae, 0x84, 0xf3, 0xc1, 0x3c, 0x3a, 0xee, 0xb4, 0x35, 0xb7,
-  0x02, 0x20, 0x34, 0xeb, 0xdc, 0x68, 0x2d, 0x8b, 0x4f, 0x64, 0x94, 0x64,
-  0xa3, 0xd5, 0xde, 0xab, 0xf9, 0xa0, 0xbd, 0xcc, 0xc1, 0x2f, 0x78, 0xd4,
-  0xe8, 0xed, 0x6a, 0x45, 0x38, 0x53, 0x54, 0xd2, 0xb1, 0x97
-};
+    0x30, 0x44, 0x02, 0x20, 0x0a, 0x75, 0x49, 0xaf, 0x01, 0x3b, 0x48, 0x51,
+    0x45, 0x74, 0x8b, 0x41, 0x64, 0x21, 0x83, 0xce, 0xf1, 0x78, 0x1d, 0xd0,
+    0xa8, 0xd6, 0xae, 0x84, 0xf3, 0xc1, 0x3c, 0x3a, 0xee, 0xb4, 0x35, 0xb7,
+    0x02, 0x20, 0x34, 0xeb, 0xdc, 0x68, 0x2d, 0x8b, 0x4f, 0x64, 0x94, 0x64,
+    0xa3, 0xd5, 0xde, 0xab, 0xf9, 0xa0, 0xbd, 0xcc, 0xc1, 0x2f, 0x78, 0xd4,
+    0xe8, 0xed, 0x6a, 0x45, 0x38, 0x53, 0x54, 0xd2, 0xb1, 0x97};
+
+// This is the name of the component used in the test data.
+const char kTestComponentName[] = "PepperFlashPlayer";
+// This is the version of flash player used in the test data.
+const char kTestDataVersion[] = "22.0.0.158";
+// This is the version of the updated flash player in the test data.
+const char kTestUpdatedVersion[] = "22.0.0.256";
 
 }  // namespace {}
 
 class ImageLoaderTest : public testing::Test {
  public:
+  ImageLoaderConfig GetConfig(const char* path) {
+    std::vector<uint8_t> key(std::begin(kDevPublicKey),
+                             std::end(kDevPublicKey));
+    ImageLoaderConfig config(key, path);
+    return config;
+  }
+
   base::FilePath GetComponentPath() {
+    return GetComponentPath(kTestDataVersion);
+  }
+
+  base::FilePath GetComponentPath(const std::string& version) {
     const char* src_dir = getenv("CROS_WORKON_SRCROOT");
     CHECK(src_dir != nullptr);
     base::FilePath component_path(src_dir);
@@ -65,7 +94,7 @@ class ImageLoaderTest : public testing::Test {
             .Append("platform")
             .Append("imageloader")
             .Append("test")
-            .Append("22.0.0.158_chromeos_intel64_PepperFlashPlayer");
+            .Append(version + "_chromeos_intel64_PepperFlashPlayer");
     return component_path;
   }
 
@@ -78,28 +107,97 @@ class ImageLoaderTest : public testing::Test {
   }
 };
 
+// Test the RegisterComponent public interface.
+TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  const base::FilePath& temp_dir = scoped_temp_dir.path();
+  // Delete the directory so that the ImageLoader can recreate it with the
+  // correct permissions.
+  base::DeleteFile(temp_dir, /*recursive=*/true);
+
+  ImageLoaderImpl loader(GetConfig(temp_dir.value().c_str()));
+  ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
+                                       GetComponentPath().value()));
+
+  base::FilePath comp_dir = temp_dir.Append(kTestComponentName);
+  ASSERT_TRUE(base::DirectoryExists(comp_dir));
+
+  base::FilePath hint_file = comp_dir.Append(kTestComponentName);
+  ASSERT_TRUE(base::PathExists(hint_file));
+
+  std::string hint_file_contents;
+  ASSERT_TRUE(
+      base::ReadFileToStringWithMaxSize(hint_file, &hint_file_contents, 4096));
+  EXPECT_EQ(kTestDataVersion, hint_file_contents);
+
+  base::FilePath version_dir = comp_dir.Append(kTestDataVersion);
+  ASSERT_TRUE(base::DirectoryExists(version_dir));
+
+  std::list<std::string> files;
+  GetFilesInDir(version_dir, &files);
+  EXPECT_THAT(files, testing::UnorderedElementsAre(
+                         "imageloader.json", "imageloader.sig.1", "params",
+                         "image.squash", "manifest.fingerprint"));
+
+  // Reject a component if the version already exists.
+  EXPECT_FALSE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
+                                       GetComponentPath().value()));
+
+  EXPECT_EQ(kTestDataVersion, loader.GetComponentVersion(kTestComponentName));
+
+  // Now copy a new version into place.
+  EXPECT_TRUE(loader.RegisterComponent(kTestComponentName, kTestUpdatedVersion,
+                                       GetComponentPath(kTestUpdatedVersion).value()));
+
+  std::string hint_file_contents2;
+  ASSERT_TRUE(
+      base::ReadFileToStringWithMaxSize(hint_file, &hint_file_contents2, 4096));
+  EXPECT_EQ(kTestUpdatedVersion, hint_file_contents2);
+
+  base::FilePath version_dir2 = comp_dir.Append(kTestUpdatedVersion);
+  ASSERT_TRUE(base::DirectoryExists(version_dir2));
+
+  std::list<std::string> files2;
+  GetFilesInDir(version_dir2, &files2);
+  EXPECT_THAT(files2, testing::UnorderedElementsAre("imageloader.json",
+                                                    "imageloader.sig.1",
+                                                    "params", "image.squash"));
+
+  EXPECT_EQ(kTestUpdatedVersion, loader.GetComponentVersion(kTestComponentName));
+
+  // Reject rollback to an older version.
+  EXPECT_FALSE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
+                                       GetComponentPath().value()));
+
+  EXPECT_EQ(kTestUpdatedVersion, loader.GetComponentVersion(kTestComponentName));
+}
+
 TEST_F(ImageLoaderTest, ECVerify) {
-  EXPECT_TRUE(ImageLoader::ECVerify(
+  ImageLoaderImpl loader(GetConfig("/nonexistant"));
+  EXPECT_TRUE(loader.ECVerify(
       base::StringPiece(kImageLoaderJSON),
       base::StringPiece(kImageLoaderSig, sizeof(kImageLoaderSig))));
 
-  EXPECT_FALSE(ImageLoader::ECVerify(
+  EXPECT_FALSE(loader.ECVerify(
       base::StringPiece(kImageLoaderJSON),
       base::StringPiece(kImageLoaderBadSig, sizeof(kImageLoaderBadSig))));
 }
 
 TEST_F(ImageLoaderTest, ManifestFingerPrint) {
+  ImageLoaderImpl loader(GetConfig("/nonexistant"));
   const std::string valid_manifest =
       "1.3464353b1ed78574e05f3ffe84b52582572b2fe7202f3824a3761e54ace8bb1";
-  EXPECT_TRUE(ImageLoader::IsValidFingerprintFile(valid_manifest));
+  EXPECT_TRUE(loader.IsValidFingerprintFile(valid_manifest));
 
   const std::string invalid_unicode_manifest = "Ё Ђ Ѓ Є Ѕ І Ї Ј Љ ";
-  EXPECT_FALSE(ImageLoader::IsValidFingerprintFile(invalid_unicode_manifest));
+  EXPECT_FALSE(loader.IsValidFingerprintFile(invalid_unicode_manifest));
 
-  EXPECT_FALSE(ImageLoader::IsValidFingerprintFile("\x49\x34\x19-43.*+abc"));
+  EXPECT_FALSE(loader.IsValidFingerprintFile("\x49\x34\x19-43.*+abc"));
 }
 
 TEST_F(ImageLoaderTest, CopyValidComponent) {
+  ImageLoaderImpl loader(GetConfig("/nonexistant"));
   const int image_size = 4096 * 4;
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
@@ -107,8 +205,8 @@ TEST_F(ImageLoaderTest, CopyValidComponent) {
 
   std::vector<char> image(image_size, 0xBB);
   base::FilePath component_dest = temp_dir.Append("copied-component");
-  ASSERT_TRUE(ImageLoader::CopyComponentDirectory(
-      GetComponentPath(), component_dest, "22.0.0.158"));
+  ASSERT_TRUE(loader.CopyComponentDirectory(GetComponentPath(), component_dest,
+                                            kTestDataVersion));
 
   // Check that all the files are present, except for the manifest.json which
   // should be discarded.
@@ -141,8 +239,9 @@ TEST_F(ImageLoaderTest, CopyComponentWithBadManifest) {
   const char data[] = "c";
   ASSERT_TRUE(base::AppendToFile(manifest, data, sizeof(data)));
 
-  EXPECT_FALSE(ImageLoader::CopyComponentDirectory(
-      bad_component_dir, temp_dir.Append("copied-component"), "22.0.0.158"));
+  ImageLoaderImpl loader(GetConfig("/nonexistant"));
+  EXPECT_FALSE(loader.CopyComponentDirectory(
+      bad_component_dir, temp_dir.Append("copied-component"), kTestDataVersion));
 }
 
 TEST_F(ImageLoaderTest, CopyValidImage) {
@@ -165,8 +264,9 @@ TEST_F(ImageLoaderTest, CopyValidImage) {
   sha256->Update(image.data(), image.size());
   sha256->Finish(hash.data(), hash.size());
 
+  ImageLoaderImpl loader(GetConfig("/nonexistant"));
   base::FilePath image_dest = temp_dir.Append("image.copied");
-  ASSERT_TRUE(ImageLoader::CopyAndHashFile(image_path, image_dest, hash));
+  ASSERT_TRUE(loader.CopyAndHashFile(image_path, image_dest, hash));
 
   // Check if the image file actually exists and has the correct contents.
   std::string resulting_image;
@@ -194,29 +294,28 @@ TEST_F(ImageLoaderTest, CopyInvalidImage) {
   std::vector<char> file(image_size, 0xAA);
   ASSERT_EQ(image_size, base::WriteFile(image_src, file.data(), image_size));
 
-  EXPECT_FALSE(ImageLoader::CopyAndHashFile(image_src, image_dest, hash));
+  ImageLoaderImpl loader(GetConfig("/nonexistant"));
+  EXPECT_FALSE(loader.CopyAndHashFile(image_src, image_dest, hash));
 }
 
 TEST_F(ImageLoaderTest, ParseManifest) {
-  ImageLoader::Manifest manifest;
-  ASSERT_TRUE(ImageLoader::VerifyAndParseManifest(kImageLoaderJSON,
-                                                  kImageLoaderSig,
-                                                  &manifest));
+  ImageLoaderImpl loader(GetConfig("/nonexistant"));
+  ImageLoaderImpl::Manifest manifest;
+  ASSERT_TRUE(loader.VerifyAndParseManifest(kImageLoaderJSON, kImageLoaderSig,
+                                            &manifest));
   EXPECT_EQ(1, manifest.manifest_version);
-  EXPECT_EQ("22.0.0.158", manifest.version);
+  EXPECT_EQ(kTestDataVersion, manifest.version);
   EXPECT_EQ(32, manifest.image_sha256.size());
   EXPECT_EQ(32, manifest.params_sha256.size());
 
   std::string bad_manifest = "{\"foo\":\"128.0.0.9\"}";
-  ImageLoader::Manifest manifest2;
-  EXPECT_FALSE(ImageLoader::VerifyAndParseManifest(bad_manifest,
-                                                   kImageLoaderSig,
-                                                   &manifest2));
+  ImageLoaderImpl::Manifest manifest2;
+  EXPECT_FALSE(
+      loader.VerifyAndParseManifest(bad_manifest, kImageLoaderSig, &manifest2));
 
-  ImageLoader::Manifest manifest3;
-  EXPECT_FALSE(ImageLoader::VerifyAndParseManifest(kImageLoaderJSON,
-                                                   kImageLoaderBadSig,
-                                                   &manifest3));
+  ImageLoaderImpl::Manifest manifest3;
+  EXPECT_FALSE(loader.VerifyAndParseManifest(kImageLoaderJSON,
+                                             kImageLoaderBadSig, &manifest3));
 }
 
-}
+}   // namespace imageloader
