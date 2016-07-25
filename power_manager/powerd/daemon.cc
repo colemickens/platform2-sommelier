@@ -315,10 +315,10 @@ Daemon::Daemon(DaemonDelegate* delegate,
 }
 
 Daemon::~Daemon() {
+  for (auto controller : all_backlight_controllers_)
+    controller->RemoveObserver(this);
   if (audio_client_)
     audio_client_->RemoveObserver(this);
-  if (display_backlight_controller_)
-    display_backlight_controller_->RemoveObserver(this);
   if (power_supply_)
     power_supply_->RemoveObserver(this);
 }
@@ -350,10 +350,8 @@ void Daemon::Init() {
               display_power_setter_.get());
     }
   }
-  if (display_backlight_controller_) {
-    display_backlight_controller_->AddObserver(this);
+  if (display_backlight_controller_)
     all_backlight_controllers_.push_back(display_backlight_controller_.get());
-  }
 
   if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
     keyboard_backlight_ = delegate_->CreateInternalBacklight(
@@ -368,6 +366,9 @@ void Daemon::Init() {
           keyboard_backlight_controller_.get());
     }
   }
+
+  for (auto controller : all_backlight_controllers_)
+    controller->AddObserver(this);
 
   prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
