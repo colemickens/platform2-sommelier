@@ -804,7 +804,7 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
 TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   ExpectAndRunStartSession(kSaneEmail);
   SessionManagerImpl::Error start_time_error;
-#if USE_ARC
+#if USE_CHEETS
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
   // TODO(lhchavez): Once session_manager controls the ARC instance process and
@@ -852,14 +852,14 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
-#if USE_ARC
+#if USE_CHEETS
   impl_.StartArcInstance(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
 #endif
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
-#if USE_ARC
+#if USE_CHEETS
   ExpectAndRunStartSession(kSaneEmail);
 
   EXPECT_CALL(
@@ -909,14 +909,14 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
   EXPECT_TRUE(utils_.AtomicFileWrite(android_data_dir.Append("foo"), "test"));
   EXPECT_TRUE(utils_.Exists(android_data_dir));
   impl_.RemoveArcData(kSaneEmail, &error_);
-#if USE_ARC
+#if USE_CHEETS
   EXPECT_FALSE(utils_.Exists(android_data_dir));
 #else
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
 #endif
 }
 
-#if USE_ARC
+#if USE_CHEETS
 TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ExpectAndRunStartSession(kSaneEmail);
   base::FilePath android_data_dir(

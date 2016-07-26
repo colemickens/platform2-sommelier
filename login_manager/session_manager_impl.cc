@@ -103,13 +103,13 @@ bool IsIncognitoAccountId(const std::string& account_id) {
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
 
-#if USE_ARC
+#if USE_CHEETS
 base::FilePath GetAndroidDataDirForUser(
     const std::string& normalized_account_id) {
   return GetRootPath(normalized_account_id).Append(
       SessionManagerImpl::kAndroidDataDirName);
 }
-#endif  // USE_ARC
+#endif  // USE_CHEETS
 
 }  // namespace
 
@@ -587,7 +587,7 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
 
 void SessionManagerImpl::StartArcInstance(const std::string& account_id,
                                           Error* error) {
-#if USE_ARC
+#if USE_CHEETS
   arc_start_time_ = base::TimeTicks::Now();
 
   std::string actual_account_id;
@@ -635,11 +635,11 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
   start_arc_instance_closure_.Run();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
-#endif  // !USE_ARC
+#endif  // !USE_CHEETS
 }
 
 void SessionManagerImpl::StopArcInstance(Error* error) {
-#if USE_ARC
+#if USE_CHEETS
   pid_t pid;
   if (!android_container_->GetContainerPID(&pid)) {
     static const char msg[] = "Error getting Android container pid.";
@@ -653,16 +653,16 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
       base::TimeDelta::FromSeconds(kContainerTimeoutSec));
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
-#endif  // USE_ARC
+#endif  // USE_CHEETS
 }
 
 base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
-#if USE_ARC
+#if USE_CHEETS
   if (arc_start_time_.is_null())
     error->Set(dbus_error::kNotStarted, "ARC is not started yet.");
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
-#endif  // !USE_ARC
+#endif  // !USE_CHEETS
   return arc_start_time_;
 }
 
@@ -682,7 +682,7 @@ void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
 
 void SessionManagerImpl::RemoveArcData(const std::string& account_id,
                                        Error* error) {
-#if USE_ARC
+#if USE_CHEETS
   pid_t pid = 0;
   if (android_container_->GetContainerPID(&pid)) {
     error->Set(dbus_error::kArcInstanceRunning, "ARC is currently running.");
@@ -698,7 +698,7 @@ void SessionManagerImpl::RemoveArcData(const std::string& account_id,
   system_->RemoveDirTree(android_data_dir);
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
-#endif  // USE_ARC
+#endif  // USE_CHEETS
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {

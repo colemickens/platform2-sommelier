@@ -316,7 +316,7 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // TODO(xiyuan): Remove after http://crbug.com/547857 is resolved.
   builder->AddVmodulePattern("*chromeos/login/*=1");
 
-  if (builder->UseFlagIsSet("arc"))
+  if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
 

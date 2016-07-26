@@ -2,7 +2,7 @@
   'target_defaults': {
     'defines': [
       'OS_CHROMEOS',
-      'USE_ARC=<(USE_arc)',
+      'USE_CHEETS=<(USE_cheets)',
       'USE_NSS_CERTS',
       'USE_SYSTEMD=<(USE_systemd)',
     ],
