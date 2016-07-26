@@ -18,6 +18,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <base/values.h>
@@ -97,6 +98,10 @@ const mode_t kPreservedEnrollmentStatePermissions = 0600;
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
 const char kRetainEndorsementDataSwitch[] = "retain_endorsement_data";
+
+// Data to derive an enterprise nonce from for attestation-based
+// enterprise enrollment.
+const char kAttestationBasedEnrollmentSwitch[] = "abe_data";
 
 // A helper function which maps an integer to a valid CertificateProfile.
 CertificateProfile GetProfile(int profile_value) {
@@ -414,9 +419,17 @@ bool Service::Initialize() {
   // Pass in all the shared dependencies here rather than
   // needing to always get the Attestation object to set them
   // during testing.
+  SecureBlob stable_device_secret;
+  base::CommandLine*cl = base::CommandLine::ForCurrentProcess();
+  if (cl->HasSwitch(kAttestationBasedEnrollmentSwitch)) {
+    if (!base::HexStringToBytes(
+        cl->GetSwitchValueASCII(kAttestationBasedEnrollmentSwitch),
+        &stable_device_secret)) {
+      LOG(FATAL) << "Invalid attestation based enrollment data.";
+    }
+  }
   attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_,
-                           base::CommandLine::ForCurrentProcess()->HasSwitch(
-                               kRetainEndorsementDataSwitch));
+      stable_device_secret, cl->HasSwitch(kRetainEndorsementDataSwitch));
 
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.

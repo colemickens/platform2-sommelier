@@ -263,6 +263,7 @@ message AttestationDatabase {
   optional IdentityKey alternate_identity_key = 10;
   optional Quote alternate_pcr0_quote = 11;
   optional Quote alternate_pcr1_quote = 13;
+  optional bytes enterprise_enrollment_nonce = 14;
 }
 
 // Holds encrypted data and information required to decrypt it.

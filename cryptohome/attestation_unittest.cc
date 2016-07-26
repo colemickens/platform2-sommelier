@@ -80,6 +80,7 @@ class AttestationTest : public testing::Test {
   virtual void Initialize() {
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
                             &install_attributes_,
+                            SecureBlob() /* stable_device_secret */,
                             false /* retain_endorsement_data */);
   }
 
@@ -312,11 +313,59 @@ class AttestationTest : public testing::Test {
   }
 };
 
+struct StableDeviceSecretParam {
+  const char *stable_device_secret;
+  const char *enterprise_enrollment_nonce;
+
+  StableDeviceSecretParam(const char *secret, const char *nonce) {
+    stable_device_secret = secret;
+    enterprise_enrollment_nonce = nonce;
+  }
+};
+
+class AttestationWithStableDeviceSecretTest : public AttestationTest,
+    public testing::WithParamInterface<StableDeviceSecretParam> {
+  virtual void Initialize() {
+    const char *secret = GetParam().stable_device_secret;
+    SecureBlob stable_device_secret;
+    if (secret != NULL) {
+      if (!base::HexStringToBytes(secret, &stable_device_secret)) {
+        stable_device_secret.clear();
+      }
+    }
+    attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+                            &install_attributes_,
+                            stable_device_secret,
+                            false /* retain_endorsement_data */);
+  }
+
+ protected:
+  bool VerifyAttestationEnrollmentRequest(const SecureBlob& request) {
+    AttestationEnrollmentRequest request_pb;
+    if (!request_pb.ParseFromArray(request.data(), request.size())) {
+      return false;
+    }
+    const StableDeviceSecretParam& param = GetParam();
+    if (param.stable_device_secret == NULL) {
+      return !request_pb.has_enterprise_enrollment_nonce();
+    }
+    SecureBlob expected;
+    if (!base::HexStringToBytes(param.enterprise_enrollment_nonce,
+                                &expected)) {
+      // TODO(drcrash): Find a way to indicate  parameter error?
+      return false;
+    }
+    std::string nonce = request_pb.enterprise_enrollment_nonce();
+    return expected == SecureBlob(nonce.begin(), nonce.end());
+  }
+};
+
 TEST(AttestationTest_, NullTpm) {
   Crypto crypto(NULL);
   InstallAttributes install_attributes(NULL);
   Attestation without_tpm;
   without_tpm.Initialize(NULL, NULL, NULL, &crypto, &install_attributes,
+                         SecureBlob() /* stable_device_secret */,
                          false /* retain_endorsement_data */);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
@@ -349,7 +398,7 @@ TEST_F(AttestationTest, PrepareForEnrollment) {
   EXPECT_TRUE(db.has_delegate());
 }
 
-TEST_F(AttestationTest, Enroll) {
+TEST_P(AttestationWithStableDeviceSecretTest, Enroll) {
   SecureBlob blob;
   EXPECT_FALSE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
                                                 &blob));
@@ -357,6 +406,7 @@ TEST_F(AttestationTest, Enroll) {
   EXPECT_FALSE(attestation_.IsEnrolled());
   EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
                                                &blob));
+  EXPECT_TRUE(VerifyAttestationEnrollmentRequest(blob));
   EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
   EXPECT_TRUE(attestation_.IsEnrolled());
 }
@@ -640,7 +690,8 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
 
   // Simulate second login.
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, false /* retain_endorsement_data */);
+      &install_attributes_, SecureBlob() /* stable_device_secret */,
+      false /* retain_endorsement_data */);
   // Expect endorsement data to be no longer available.
   db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&
@@ -659,7 +710,8 @@ TEST_F(AttestationTest, RetainEndorsementData) {
 
   // Simulate second login.
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, true /* retain_endorsement_data */);
+      &install_attributes_, SecureBlob() /* stable_device_secret */,
+      true /* retain_endorsement_data */);
   // Expect endorsement data to be still available.
   db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&
@@ -878,5 +930,15 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1NoHwID) {
   // Now initialize and the mocks will complain if PCR1 is extended.
   AttestationTest::Initialize();
 }
+
+INSTANTIATE_TEST_CASE_P(
+    StableDeviceSecret,
+    AttestationWithStableDeviceSecretTest,
+    ::testing::Values(
+        StableDeviceSecretParam(NULL, NULL),
+        StableDeviceSecretParam(
+            "2eac34fa74994262b907c15a3a1462e349e5108ca0d0e807f4b1a3ee741a5594",
+            "865cc962ffe14b3638b2d1f860e77b53" /* continued for formatting */
+                "1644a3aba67e52e49e1f6c0a31d81daf")));
 
 }  // namespace cryptohome
