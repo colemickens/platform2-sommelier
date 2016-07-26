@@ -189,7 +189,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartContainer(const std::string& name, Error* error);
   void StopContainer(const std::string& name, Error* error);
 
-  bool CheckArcAvailability();
   void StartArcInstance(const std::string& account_id, Error* error);
   void StopArcInstance(Error* error);
   base::TimeTicks GetArcStartTime(Error* error);

@@ -274,9 +274,6 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        &SessionManagerDBusAdaptor::InitMachineInfo);
 
   ExportSyncDBusMethod(object,
-                       kSessionManagerCheckArcAvailability,
-                       &SessionManagerDBusAdaptor::CheckArcAvailability);
-  ExportSyncDBusMethod(object,
                        kSessionManagerStartContainer,
                        &SessionManagerDBusAdaptor::StartContainer);
   ExportSyncDBusMethod(object,
@@ -564,13 +561,6 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
-}
-
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::CheckArcAvailability(
-    dbus::MethodCall* call) {
-  SessionManagerImpl::Error error;
-  bool available = impl_->CheckArcAvailability();
-  return CraftAppropriateResponseWithBool(call, error, available);
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartContainer(

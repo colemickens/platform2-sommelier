@@ -585,14 +585,6 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
     error->Set(dbus_error::kInitMachineInfoFail, "Missing parameters.");
 }
 
-bool SessionManagerImpl::CheckArcAvailability() {
-#if USE_ARC
-  return true;
-#else
-  return false;
-#endif  // USE_ARC
-}
-
 void SessionManagerImpl::StartArcInstance(const std::string& account_id,
                                           Error* error) {
 #if USE_ARC

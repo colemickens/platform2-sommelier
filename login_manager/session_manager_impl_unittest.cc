@@ -803,10 +803,8 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   ExpectAndRunStartSession(kSaneEmail);
-  bool available = impl_.CheckArcAvailability();
   SessionManagerImpl::Error start_time_error;
 #if USE_ARC
-  EXPECT_TRUE(available);
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
   // TODO(lhchavez): Once session_manager controls the ARC instance process and
@@ -845,7 +843,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(android_container_.running());
 #else
-  EXPECT_FALSE(available);
   impl_.StartArcInstance(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
   impl_.GetArcStartTime(&start_time_error);

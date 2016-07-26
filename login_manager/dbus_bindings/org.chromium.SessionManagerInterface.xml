@@ -375,17 +375,6 @@
     </method>
 
     <!--
-        CheckArcAvailability:
-        @available: True if ARC is available, false otherwise.
-
-        Queries the status of ARC in this platform. This method gets invoked
-        by Chrome.
-    -->
-    <method name="CheckArcAvailability">
-      <arg type="b" name="available" direction="out" />
-    </method>
-
-    <!--
         StartContainer:
         @name: A string containing the name of the container to start.
 
@@ -412,9 +401,8 @@
                   must be the same as the one given in StartSession.
 
         Starts an ARC instance. Only one instance of ARC can be executing at a
-        given point in time. This method is only available if
-        CheckArcAvailability returns successfully. This method gets invoked by
-        Chrome.
+        given point in time. This method is only available if the board
+        supports ARC. This method gets invoked by Chrome.
     -->
     <method name="StartArcInstance">
       <arg type="s" name="account_id" direction="in" />
@@ -427,8 +415,7 @@
         instance. If the instance is not running, this will result in a no-op.
         If this method is not called, session_manager will still stop the
         instance when the user's session ends. This method is only available if
-        CheckArcAvailability returns successfully. This method gets invoked by
-        Chrome.
+        the board supports ARC. This method gets invoked by Chrome.
     -->
     <method name="StopArcInstance">
     </method>
