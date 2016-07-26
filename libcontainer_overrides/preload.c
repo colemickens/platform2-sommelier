@@ -29,9 +29,10 @@ int StartsWith(const char* prefix, const char* str) {
   return lens < lenp ? 0 : strncmp(prefix, str, lenp) == 0;
 }
 
-BRILLO_EXPORT int __open_2(const char* pathname, int flags, ...) {
-  // get the next __open_2
-  _open = (int (*)(const char*, int, ...)) dlsym(RTLD_NEXT, "__open_2");
+static int open_override(const char *func, const char* pathname, int flags, ...)
+{
+  // get the next function call
+  _open = (int (*)(const char*, int, ...)) dlsym(RTLD_NEXT, func);
 
   // Asking permission_broker to OpenPath(...) is equivalent to opening the
   // same thing as root, and with O_RDWR.
@@ -55,9 +56,10 @@ BRILLO_EXPORT int __open_2(const char* pathname, int flags, ...) {
   return _open(pathname, flags);
 }
 
-BRILLO_EXPORT int __open64_2(const char* pathname, int flags, ...) {
-  // get the next __open64_2
-  _open64 = (int (*)(const char*, int, ...)) dlsym(RTLD_NEXT, "__open64_2");
+static int open64_override(const char *func, const char* pathname, int flags, ...)
+{
+  // get the next function call
+  _open64 = (int (*)(const char*, int, ...)) dlsym(RTLD_NEXT, func);
 
   // Asking permission_broker to OpenPath(...) is equivalent to opening the
   // same thing as root, and with O_RDWR.
@@ -79,4 +81,20 @@ BRILLO_EXPORT int __open64_2(const char* pathname, int flags, ...) {
     return _open64(pathname, flags, mode);
   }
   return _open64(pathname, flags);
+}
+
+BRILLO_EXPORT int open(const char* pathname, int flags, ...) {
+  return open_override("open", pathname, flags);
+}
+
+BRILLO_EXPORT int __open_2(const char* pathname, int flags, ...) {
+  return open_override("__open_2", pathname, flags);
+}
+
+BRILLO_EXPORT int open64(const char* pathname, int flags, ...) {
+  return open64_override("open64", pathname, flags);
+}
+
+BRILLO_EXPORT int __open64_2(const char* pathname, int flags, ...) {
+  return open64_override("__open64_2", pathname, flags);
 }
