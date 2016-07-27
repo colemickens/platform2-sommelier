@@ -22,8 +22,9 @@ class ImageLoader : org::chromium::ImageLoaderInterface_adaptor,
                     public DBus::ObjectAdaptor {
  public:
   // Instantiate a D-Bus Helper Instance
-  ImageLoader(DBus::Connection* conn, const ImageLoaderConfig& config)
-      : DBus::ObjectAdaptor(*conn, kImageLoaderPath), impl_(config) {}
+  ImageLoader(DBus::Connection* conn, ImageLoaderConfig config)
+      : DBus::ObjectAdaptor(*conn, kImageLoaderPath),
+        impl_(std::move(config)) {}
 
   // Register a component.
   bool RegisterComponent(const std::string& name, const std::string& version,
@@ -32,11 +33,13 @@ class ImageLoader : org::chromium::ImageLoaderInterface_adaptor,
     return impl_.RegisterComponent(name, version, component_folder_abs_path);
   }
 
+  // TODO(kerrnel): errors should probably be returned using the err object.
   // Get component version given component name.
   std::string GetComponentVersion(const std::string& name, ::DBus::Error& err) {
     return impl_.GetComponentVersion(name);
   }
 
+  // TODO(kerrnel): errors should probably be returned using the err object.
   // Load the specified component.
   std::string LoadComponent(const std::string& name, ::DBus::Error& err) {
     return impl_.LoadComponent(name);

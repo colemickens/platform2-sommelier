@@ -4,10 +4,12 @@
 
 #include <signal.h>
 
+#include <base/memory/ptr_util.h>
 #include <brillo/flag_helper.h>
 
 #include "imageloader.h"
 #include "imageloader_common.h"
+#include "loop_mounter.h"
 
 // TODO(kerrnel): Switch to the prod keys before shipping this feature.
 const uint8_t kDevPublicKey[] = {
@@ -22,6 +24,8 @@ const uint8_t kDevPublicKey[] = {
 
 // The path where the components are stored on the device.
 const char kComponentsPath[] = "/mnt/stateful_partition/encrypted/imageloader";
+// The base path where the components are mounted.
+const char kMountPath[] = "/mnt/imageloader";
 
 int main(int argc, char** argv) {
   signal(SIGTERM, imageloader::OnQuit);
@@ -40,8 +44,10 @@ int main(int argc, char** argv) {
 
   std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
 
-  imageloader::ImageLoaderConfig config(key, kComponentsPath);
-  imageloader::ImageLoader helper(&conn, config);
+  auto loop_mounter = base::MakeUnique<imageloader::LoopMounter>();
+  imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath,
+                                        std::move(loop_mounter));
+  imageloader::ImageLoader helper(&conn, std::move(config));
 
   if (FLAGS_o) {
     dispatcher.dispatch_pending();

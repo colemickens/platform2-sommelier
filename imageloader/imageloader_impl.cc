@@ -5,20 +5,21 @@
 #include "imageloader_impl.h"
 
 #include <fcntl.h>
-#include <linux/loop.h>
 #include <signal.h>
 #include <string.h>
-#include <sys/ioctl.h>
-#include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 #include <unistd.h>
+#include </usr/include/linux/magic.h>
 
 #include <sstream>
 #include <string>
 #include <utility>
 
 #include <base/command_line.h>
+#include <base/containers/adapters.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
@@ -50,7 +51,7 @@ const char kFingerprintName[] = "manifest.fingerprint";
 const char kManifestName[] = "imageloader.json";
 // The manifest signature.
 const char kManifestSignatureName[] = "imageloader.sig.1";
-// The current version of the hints file.
+// The current version of the manifest file.
 const int kCurrentManifestVersion = 1;
 // The name of the version field in the manifest.
 const char kManifestVersionField[] = "manifest-version";
@@ -62,6 +63,8 @@ const char kImageHashField[] = "image-sha256-hash";
 const char kImageFileName[] = "image.squash";
 // The name of the field containing the parameters hash.
 const char kParamsHashField[] = "params-sha256-hash";
+// The name of the file containing the latest component version.
+const char kLatestVersionFile[] = "latest-version";
 // The name of the params file.
 const char kParamsFileName[] = "params";
 // The permissions that the component update directory must use.
@@ -70,6 +73,71 @@ const int kComponentDirPerms = 0755;
 const int kComponentFilePerms = 0644;
 // The maximum size of any file to read into memory.
 const size_t kMaximumFilesize = 4096 * 10;
+
+// TODO(kerrnel): A component should be abstracted into a class that hides the
+// disk structure.
+// A component is a directory on disk with a hierarchy of files inside of it. It
+// looks like this for an example component, "PepperFlashPlayer":
+// PepperFlashPlayer/
+//  - latest_version # a file containing the latest version, in this case
+//                   # (22.0.0.158)
+//  - 22.0.0.158/    # the folder containing the actual component.
+//    - imageloader.json  # a manifest file containing the hashes of all the
+//                        # files, and some other metadata.
+//    - imageloader.sig.1 # a signature blob of the imageloader.json manifest.
+//    - params            # contains the parameters (including merkle tree root
+//                        # hash), of the dm-verity image.
+//    - image.squash      # The squashfs disk image containing the actual
+//                        # component files. The dm-verity hash tree is appended
+//                        # to the end of the disk image, and the |params| tell
+//                        # the kernel the offset of the tree.
+
+// Functions to generate paths to various files in the components.
+base::FilePath GetComponentPath(const base::FilePath& storage_root,
+                                const std::string& component_name) {
+  return storage_root.Append(component_name);
+}
+
+// |component_root_path| is the "PepperFlashPlayer" folder in the above example.
+base::FilePath GetVersionFilePath(const base::FilePath& component_root_path) {
+  return component_root_path.Append(kLatestVersionFile);
+}
+
+base::FilePath GetVersionedPath(const base::FilePath& component_root_path,
+                                const std::string& current_version) {
+  return component_root_path.Append(current_version);
+}
+
+// |component_version_path| must refer to an actual version of the component,
+// such as "22.0.0.158" in the above example.
+base::FilePath GetManifestPath(const base::FilePath& component_version_path) {
+  return component_version_path.Append(kManifestName);
+}
+
+base::FilePath GetSignaturePath(const base::FilePath& component_version_path) {
+  return component_version_path.Append(kManifestSignatureName);
+}
+
+base::FilePath GetFingerprintPath(
+    const base::FilePath& component_version_path) {
+  return component_version_path.Append(kFingerprintName);
+}
+
+base::FilePath GetParamsPath(const base::FilePath& component_version_path) {
+  return component_version_path.Append(kParamsFileName);
+}
+
+base::FilePath GetImagePath(const base::FilePath& component_version_path) {
+  return component_version_path.Append(kImageFileName);
+}
+
+// |mount_base_path| is the subfolder where all components are mounted.
+// For example "/mnt/imageloader."
+base::FilePath GetMountPoint(const base::FilePath& mount_base_path,
+                             const std::string& component_name,
+                             const std::string& component_version) {
+  return mount_base_path.Append(component_name).Append(component_version);
+}
 
 bool AssertComponentDirPerms(const base::FilePath& path) {
   int mode;
@@ -97,7 +165,201 @@ bool WriteFileToDisk(const base::FilePath& path, const std::string& contents) {
   return file.Write(0, contents.data(), contents.size()) == size;
 }
 
+bool CreateDirectoryWithMode(const base::FilePath& full_path, int mode) {
+  std::vector<base::FilePath> subpaths;
+
+  // Collect a list of all parent directories.
+  base::FilePath last_path = full_path;
+  subpaths.push_back(full_path);
+  for (base::FilePath path = full_path.DirName();
+       path.value() != last_path.value(); path = path.DirName()) {
+    subpaths.push_back(path);
+    last_path = path;
+  }
+
+  // Iterate through the parents and create the missing ones.
+  for (const auto& subpath : base::Reversed(subpaths)) {
+    if (base::DirectoryExists(subpath)) continue;
+    if (mkdir(subpath.value().c_str(), mode) == 0) continue;
+    // Mkdir failed, but it might have failed with EEXIST, or some other error
+    // due to the the directory appearing out of thin air. This can occur if
+    // two processes are trying to create the same file system tree at the same
+    // time. Check to see if it exists and make sure it is a directory.
+    if (!base::DirectoryExists(subpath)) {
+      PLOG(ERROR) << "Failed to create directory";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool GetAndVerifyParams(const base::FilePath& path,
+                        const std::vector<uint8_t>& hash,
+                        std::string* out_params) {
+  std::string params;
+  if (!base::ReadFileToStringWithMaxSize(path, &params, kMaximumFilesize)) {
+    return false;
+  }
+
+  std::vector<uint8_t> params_hash(crypto::kSHA256Length);
+  crypto::SHA256HashString(params, params_hash.data(), params_hash.size());
+  if (params_hash != hash) {
+    LOG(ERROR) << "dm-verity parameters file has the wrong hash.";
+    return false;
+  }
+
+  out_params->assign(params);
+  return true;
+}
+
+// |callback| is repeatedly called on data read from the file, can return false on
+// error to terminate the read early.
+bool ReadFileWithCallback(base::File* file,
+                          std::function<bool(const char*, int)> callback) {
+  int size = file->GetLength();
+  if (size <= 0) return false;
+
+  int rv = 0, bytes_read = 0;
+  char buf[4096];
+  do {
+    int remaining = size - bytes_read;
+    int bytes_to_read =
+        std::min(remaining, base::checked_cast<int>(sizeof(buf)));
+
+    rv = file->ReadAtCurrentPos(buf, bytes_to_read);
+    if (rv <= 0) break;
+
+    bytes_read += rv;
+    if (!callback(buf, rv)) return false;
+  } while (bytes_read <= size);
+
+  return bytes_read == size;
+}
+
+bool GetAndVerifyImage(const base::FilePath& path,
+                       const std::vector<uint8_t>& hash,
+                       base::ScopedFD* fd) {
+  base::File image(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!image.IsValid()) {
+    LOG(ERROR) << "Could not open image file.";
+    return false;
+  }
+
+  std::unique_ptr<crypto::SecureHash> sha256(
+      crypto::SecureHash::Create(crypto::SecureHash::SHA256));
+
+  if (!ReadFileWithCallback(&image, [&sha256](const char* buf, int length) {
+        sha256->Update(buf, length);
+        return true;
+      })) {
+    LOG(ERROR) << "Failed to read image file.";
+    return false;
+  }
+
+  std::vector<uint8_t> file_hash(crypto::kSHA256Length);
+  sha256->Finish(file_hash.data(), file_hash.size());
+
+  if (hash != file_hash) {
+    LOG(ERROR) << "Image is corrupt or modified.";
+    return false;
+  }
+
+  fd->reset(image.TakePlatformFile());
+  return true;
+}
+
+bool CreateMountPointIfNeeded(const base::FilePath& mount_point,
+                              bool* already_mounted) {
+  *already_mounted = false;
+  // Is this mount point somehow already taken?
+  struct stat st;
+  if (lstat(mount_point.value().c_str(), &st) == 0) {
+    if (!S_ISDIR(st.st_mode)) {
+      LOG(ERROR) << "Mount point exists but is not a directory.";
+      return false;
+    }
+
+    base::FilePath mount_parent = mount_point.DirName();
+    struct stat st2;
+    if (stat(mount_parent.value().c_str(), &st2) != 0) {
+      PLOG(ERROR) << "Could not stat the mount point parent";
+      return false;
+    }
+    if (st.st_dev != st2.st_dev) {
+      struct statfs st_fs;
+      if (statfs(mount_point.value().c_str(), &st_fs) != 0) {
+        PLOG(ERROR) << "statfs";
+        return false;
+      }
+      if (st_fs.f_type != SQUASHFS_MAGIC || !(st_fs.f_flags & ST_NODEV) ||
+          !(st_fs.f_flags & ST_NOSUID) || !(st_fs.f_flags & ST_RDONLY)) {
+        LOG(ERROR) << "File system is not the expected type.";
+        return false;
+      }
+      LOG(INFO) << "The mount point already exists: " << mount_point.value();
+      *already_mounted = true;
+      return true;
+    }
+  } else if (!CreateDirectoryWithMode(mount_point, kComponentDirPerms)) {
+    LOG(ERROR) << "Failed to create mount point: " << mount_point.value();
+    return false;
+  }
+  return true;
+}
+
 }  // namespace {}
+
+bool ImageLoaderImpl::GetAndVerifyManifest(const std::string& component_name,
+                                           const base::FilePath& component_path,
+                                           Manifest* manifest,
+                                           std::string* manifest_out,
+                                           std::string* sig) {
+  std::string version;
+  base::FilePath versioned_path;
+  if (component_name != "") {
+    base::FilePath version_hint_path(GetVersionFilePath(component_path));
+    if (!base::ReadFileToStringWithMaxSize(version_hint_path, &version,
+                                           kMaximumFilesize)) {
+      LOG(ERROR) << "Could not read current version of component ["
+                 << component_name << "]";
+      return false;
+    }
+    versioned_path = GetVersionedPath(component_path, version);
+  } else {
+    // If the component has not been moved into its versioned path yet, there is
+    // no versioned path, and so the caller passes an empty |component_name|,
+    // telling this function to work with the |component_path| directly.
+    versioned_path = component_path;
+  }
+
+  std::string manifest_str;
+  std::string manifest_sig;
+  if (!base::ReadFileToStringWithMaxSize(GetManifestPath(versioned_path),
+                                         &manifest_str, kMaximumFilesize)) {
+    LOG(ERROR) << "Could not read manifest file.";
+    return false;
+  }
+  if (!base::ReadFileToStringWithMaxSize(GetSignaturePath(versioned_path),
+                                         &manifest_sig, kMaximumFilesize)) {
+    LOG(ERROR) << "Could not read signature file.";
+    return false;
+  }
+
+  if (!VerifyAndParseManifest(manifest_str, manifest_sig, manifest)) {
+    LOG(ERROR) << "Could not verify and parse manifest file.";
+    return false;
+  }
+
+  if (component_name != "" && manifest->version != version) {
+    LOG(ERROR) << "Manifest version does not match hint file version.";
+    return false;
+  }
+
+  if (manifest_out) manifest_out->assign(manifest_str);
+  if (sig) sig->assign(manifest_sig);
+
+  return true;
+}
 
 // The client inserts manifest.fingerprint into components after unpacking the
 // CRX. The file is used for delta updates. Since Chrome OS doesn't rely on it
@@ -111,8 +373,8 @@ bool ImageLoaderImpl::IsValidFingerprintFile(const std::string& contents) {
 }
 
 bool ImageLoaderImpl::CopyFingerprintFile(const base::FilePath& src,
-                                      const base::FilePath& dest) {
-  base::FilePath fingerprint_path = src.Append(kFingerprintName);
+                                          const base::FilePath& dest) {
+  base::FilePath fingerprint_path(GetFingerprintPath(src));
   if (base::PathExists(fingerprint_path)) {
     std::string fingerprint_contents;
     if (!base::ReadFileToStringWithMaxSize(
@@ -122,7 +384,7 @@ bool ImageLoaderImpl::CopyFingerprintFile(const base::FilePath& src,
 
     if (!IsValidFingerprintFile(fingerprint_contents)) return false;
 
-    if (!WriteFileToDisk(dest.Append(kFingerprintName), fingerprint_contents)) {
+    if (!WriteFileToDisk(GetFingerprintPath(dest), fingerprint_contents)) {
       return false;
     }
   }
@@ -144,28 +406,14 @@ bool ImageLoaderImpl::CopyAndHashFile(
   std::unique_ptr<crypto::SecureHash> sha256(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
 
-  int64_t size = file.GetLength();
-  if (size < 0) return false;
-
-  size_t bytes_read = 0;
-  int rv = 0;
-  char buf[4096];
-  do {
-    int remaining = size - bytes_read;
-    int bytes_to_read =
-        std::min(remaining, base::checked_cast<int>(sizeof(buf)));
-
-    rv = file.ReadNoBestEffort(bytes_read, buf, bytes_to_read);
-
-    if (rv <= 0) break;
-
-    bytes_read += rv;
-    sha256->Update(buf, rv);
-
-    if (out_file.WriteAtCurrentPos(buf, rv) != rv) return false;
-  } while (bytes_read <= size);
-
-  if (bytes_read != size) return false;
+  if (!ReadFileWithCallback(
+          &file, [&sha256, &out_file](const char* buf, int length) {
+            sha256->Update(buf, length);
+            return out_file.WriteAtCurrentPos(buf, length) == length;
+          })) {
+    LOG(ERROR) << "Failed to read image file.";
+    return false;
+  }
 
   std::vector<uint8_t> file_hash(crypto::kSHA256Length);
   sha256->Finish(file_hash.data(), file_hash.size());
@@ -177,9 +425,9 @@ bool ImageLoaderImpl::CopyAndHashFile(
   return true;
 }
 
-bool ImageLoaderImpl::VerifyAndParseManifest(const std::string& manifest_contents,
-                                         const std::string& signature,
-                                         Manifest* manifest) {
+bool ImageLoaderImpl::VerifyAndParseManifest(
+    const std::string& manifest_contents, const std::string& signature,
+    Manifest* manifest) {
   // Verify the manifest before trusting any of its contents.
   if (!ECVerify(manifest_contents, signature)) {
     LOG(INFO) << "Manifest did not pass signature verification.";
@@ -255,26 +503,17 @@ bool ImageLoaderImpl::CopyComponentDirectory(
     return false;
   }
 
-  // Load in the manifest.
-  std::string manifest_contents;
-  if (!base::ReadFileToStringWithMaxSize(component_path.Append(kManifestName),
-                                         &manifest_contents,
-                                         kMaximumFilesize)) {
-    return false;
-  }
-
-  // Read in the manifest signature.
+  std::string manifest_str;
   std::string manifest_sig;
-  base::FilePath manifest_sig_path =
-      component_path.Append(kManifestSignatureName);
-  if (!base::ReadFileToStringWithMaxSize(manifest_sig_path, &manifest_sig,
-                                         kMaximumFilesize)) {
+  Manifest manifest;
+  if (!GetAndVerifyManifest("", component_path, &manifest, &manifest_str,
+                            &manifest_sig)) {
     return false;
   }
 
-  Manifest manifest;
-  if (!VerifyAndParseManifest(manifest_contents, manifest_sig, &manifest)) {
-    LOG(ERROR) << "Could not verify and parse the manifest.";
+  if (!WriteFileToDisk(GetManifestPath(destination_folder), manifest_str) ||
+      !WriteFileToDisk(GetSignaturePath(destination_folder), manifest_sig)) {
+    LOG(ERROR) << "Could not write manifest and signature to disk.";
     return false;
   }
 
@@ -284,23 +523,15 @@ bool ImageLoaderImpl::CopyComponentDirectory(
     return false;
   }
 
-  // Now write them both out to disk.
-  if (!WriteFileToDisk(destination_folder.Append(kManifestName),
-                       manifest_contents) ||
-      !WriteFileToDisk(destination_folder.Append(kManifestSignatureName),
-                       manifest_sig)) {
-    return false;
-  }
-
-  base::FilePath params_src = component_path.Append(kParamsFileName);
-  base::FilePath params_dest = destination_folder.Append(kParamsFileName);
+  base::FilePath params_src(GetParamsPath(component_path));
+  base::FilePath params_dest(GetParamsPath(destination_folder));
   if (!CopyAndHashFile(params_src, params_dest, manifest.params_sha256)) {
     LOG(ERROR) << "Could not copy params file.";
     return false;
   }
 
-  base::FilePath image_src = component_path.Append(kImageFileName);
-  base::FilePath image_dest = destination_folder.Append(kImageFileName);
+  base::FilePath image_src(GetImagePath(component_path));
+  base::FilePath image_dest(GetImagePath(destination_folder));
   if (!CopyAndHashFile(image_src, image_dest, manifest.image_sha256)) {
     LOG(ERROR) << "Could not copy image file.";
     return false;
@@ -315,15 +546,14 @@ bool ImageLoaderImpl::CopyComponentDirectory(
 }
 
 bool ImageLoaderImpl::ECVerify(const base::StringPiece data,
-                                  const base::StringPiece sig) {
+                               const base::StringPiece sig) {
   crypto::SignatureVerifier verifier;
 
-  if (!verifier.VerifyInit(
-          crypto::SignatureVerifier::ECDSA_SHA256,
-          reinterpret_cast<const uint8_t*>(sig.data()),
-          base::checked_cast<int>(sig.size()),
-          config_.key.data(),
-          base::checked_cast<int>(config_.key.size()))) {
+  if (!verifier.VerifyInit(crypto::SignatureVerifier::ECDSA_SHA256,
+                           reinterpret_cast<const uint8_t*>(sig.data()),
+                           base::checked_cast<int>(sig.size()),
+                           config_.key.data(),
+                           base::checked_cast<int>(config_.key.size()))) {
     return false;
   }
 
@@ -334,9 +564,49 @@ bool ImageLoaderImpl::ECVerify(const base::StringPiece data,
 }
 
 // Mount component at location generated.
-std::string ImageLoaderImpl::LoadComponentUtil(const std::string& name) {
-  // Not implemented yet.
-  return kBadResult;
+std::string ImageLoaderImpl::LoadComponent(const std::string& name) {
+  base::FilePath component_path(GetComponentPath(config_.storage_dir, name));
+  if (!base::PathExists(component_path)) {
+    LOG(ERROR) << "No valid component [" << name << "] on disk.";
+    return kBadResult;
+  }
+
+  Manifest manifest;
+  if (!GetAndVerifyManifest(name, component_path, &manifest, nullptr, nullptr))
+    return kBadResult;
+  base::FilePath versioned_path(
+      GetVersionedPath(component_path, manifest.version));
+
+  // Now read the parameters in and verify the hash.
+  std::string params;
+  if (!GetAndVerifyParams(GetParamsPath(versioned_path), manifest.params_sha256,
+                          &params)) {
+    LOG(ERROR) << "Could not read and verify dm-verity parameters.";
+    return kBadResult;
+  }
+
+  // Before we mount the image, check the hash as a sanity check.
+  base::ScopedFD image_fd;
+  base::FilePath image_path(GetImagePath(versioned_path));
+  if (!GetAndVerifyImage(image_path, manifest.image_sha256, &image_fd)) {
+    LOG(ERROR) << "Failed to load and verify the disk image.";
+    return kBadResult;
+  }
+
+  base::FilePath mount_point(
+      GetMountPoint(config_.mount_path, name, manifest.version));
+
+  bool already_mounted = false;
+  if (!CreateMountPointIfNeeded(mount_point, &already_mounted))
+    return kBadResult;
+  if (already_mounted) return mount_point.value();
+
+  // The mount point is not yet taken, so go ahead.
+  if (!config_.loop_mounter->Mount(image_fd, mount_point)) {
+    LOG(ERROR) << "Failed to mount image.";
+    return kBadResult;
+  }
+  return mount_point.value();
 }
 
 bool ImageLoaderImpl::RegisterComponent(
@@ -352,10 +622,10 @@ bool ImageLoaderImpl::RegisterComponent(
 
   if (!AssertComponentDirPerms(config_.storage_dir)) return false;
 
-  base::FilePath component_root = components_dir.Append(name);
+  base::FilePath component_root(GetComponentPath(components_dir, name));
 
   std::string current_version_hint;
-  base::FilePath version_hint_path = component_root.Append(name);
+  base::FilePath version_hint_path(GetVersionFilePath(component_root));
   bool was_previous_version = base::PathExists(version_hint_path);
   if (was_previous_version) {
     if (!base::ReadFileToStringWithMaxSize(
@@ -388,7 +658,7 @@ bool ImageLoaderImpl::RegisterComponent(
   }
 
   // Take ownership of the component and verify it.
-  base::FilePath version_path = component_root.Append(version);
+  base::FilePath version_path(GetVersionedPath(component_root, version));
   base::FilePath folder_path(component_folder_abs_path);
   if (!CopyComponentDirectory(folder_path, version_path, version)) {
     base::DeleteFile(version_path, /*recursive=*/true);
@@ -404,64 +674,25 @@ bool ImageLoaderImpl::RegisterComponent(
 
   // Now delete the old component version, if there was one.
   if (was_previous_version) {
-    base::DeleteFile(component_root.Append(current_version_hint), true);
+    base::DeleteFile(GetVersionedPath(component_root, current_version_hint),
+                     true);
   }
 
   return true;
 }
 
 std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
-  base::FilePath component_path =
-      base::FilePath(config_.storage_dir).Append(name);
+  base::FilePath component_path(GetComponentPath(config_.storage_dir, name));
   if (!base::PathExists(component_path)) {
-    LOG(ERROR) << "Component does not exist.";
-    return kBadResult;
-  }
-
-  std::string current_version_hint;
-  base::FilePath version_hint_path = component_path.Append(name);
-  if (!base::ReadFileToStringWithMaxSize(
-          version_hint_path, &current_version_hint, kMaximumFilesize)) {
-    return kBadResult;
-  }
-
-  base::FilePath versioned_path = component_path.Append(current_version_hint);
-  // The version can be security sensitive (i.e. which flash player does Chrome
-  // load), so check the signed manfiest as the final answer.
-  std::string manifest_contents;
-  if (!base::ReadFileToStringWithMaxSize(versioned_path.Append(kManifestName),
-                                         &manifest_contents,
-                                         kMaximumFilesize)) {
-    return kBadResult;
-  }
-
-  // Read in the manifest signature.
-  std::string manifest_sig;
-  base::FilePath manifest_sig_path =
-      versioned_path.Append(kManifestSignatureName);
-  if (!base::ReadFileToStringWithMaxSize(manifest_sig_path, &manifest_sig,
-                                         kMaximumFilesize)) {
+    LOG(ERROR) << "No valid component [" << name << "] on disk.";
     return kBadResult;
   }
 
   Manifest manifest;
-  if (!VerifyAndParseManifest(manifest_contents, manifest_sig, &manifest)) {
-    LOG(ERROR) << "Could not verify and parse the manifest.";
+  if (!GetAndVerifyManifest(name, component_path, &manifest, nullptr, nullptr))
     return kBadResult;
-  }
 
-  return manifest.version == current_version_hint ? manifest.version
-                                                  : kBadResult;
-}
-
-std::string ImageLoaderImpl::LoadComponent(const std::string& name) {
-  std::string mount_point = LoadComponentUtil(name);
-  if (mount_point == kBadResult) {
-    LOG(ERROR) << "Unable to mount : " << mount_point;
-    return kBadResult;
-  }
-  LOG(INFO) << "Mounted successfully at " << mount_point << ".";
-  return mount_point;
+  return manifest.version;
 }
 
 }  // namespace imageloader

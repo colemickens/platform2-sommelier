@@ -11,19 +11,31 @@
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
+#include "loop_mounter.h"
+
 namespace imageloader {
 
 struct ImageLoaderConfig {
-  ImageLoaderConfig(const std::vector<uint8_t> key, const char* path)
-      : key(key), storage_dir(path) {}
+  ImageLoaderConfig(const std::vector<uint8_t> key, const char* storage_path,
+                    const char* mount_path, std::unique_ptr<LoopMounter> ops)
+      : key(key),
+        storage_dir(storage_path),
+        mount_path(mount_path),
+        loop_mounter(std::move(ops)) {}
+
   std::vector<uint8_t> key;
   base::FilePath storage_dir;
+  base::FilePath mount_path;
+  std::unique_ptr<LoopMounter> loop_mounter;
 };
+
+
 
 class ImageLoaderImpl {
  public:
   // Instantiate an object with a configuration object.
-  explicit ImageLoaderImpl(const ImageLoaderConfig& config) : config_(config) {}
+  explicit ImageLoaderImpl(ImageLoaderConfig config)
+      : config_(std::move(config)) {}
 
   // Register a component.
   bool RegisterComponent(const std::string& name, const std::string& version,
@@ -52,9 +64,7 @@ class ImageLoaderImpl {
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyInvalidImage);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, CopyInvalidHash);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ParseManifest);
-
-  // Do the work to verify and mount components.
-  std::string LoadComponentUtil(const std::string& name);
+  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, MountValidImage);
 
   // Verify the data with the RSA (PKCS #1 v1.5) signature.
   bool ECVerify(const base::StringPiece data, const base::StringPiece sig);
@@ -83,6 +93,13 @@ class ImageLoaderImpl {
   // Check if the client created a manifest.fingerprint, and preserve it.
   bool CopyFingerprintFile(const base::FilePath& src,
                            const base::FilePath& dest);
+
+  // if |manifest| or |sig| are not null, they are set to the manifest contents
+  // and the signature contents.
+  bool GetAndVerifyManifest(const std::string& component_name,
+                            const base::FilePath& component_path,
+                            Manifest* manifest, std::string* manifest_str,
+                            std::string* manifest_sig);
 
   // The configuration traits.
   ImageLoaderConfig config_;

@@ -56,6 +56,8 @@
       'sources': [
         'imageloader_impl.cc',
         'imageloader.h',
+        'loop_mounter.h',
+        'loop_mounter.cc',
       ],
     },
     {
@@ -107,6 +109,7 @@
             'run_tests.cc',
             'imageloader_unittest.cc',
             'imageloader.h',
+            'mock_loop_mounter.h',
           ],
         },
         ],

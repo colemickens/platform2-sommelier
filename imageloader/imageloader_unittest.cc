@@ -11,21 +11,25 @@
 #include <list>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include "mock_loop_mounter.h"
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace imageloader {
+
+using testing::_;
 
 namespace {
 
@@ -77,7 +81,8 @@ class ImageLoaderTest : public testing::Test {
   ImageLoaderConfig GetConfig(const char* path) {
     std::vector<uint8_t> key(std::begin(kDevPublicKey),
                              std::end(kDevPublicKey));
-    ImageLoaderConfig config(key, path);
+    auto ops = base::MakeUnique<MockLoopMounter>();
+    ImageLoaderConfig config(key, path, "/foo", std::move(ops));
     return config;
   }
 
@@ -123,7 +128,7 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
   base::FilePath comp_dir = temp_dir.Append(kTestComponentName);
   ASSERT_TRUE(base::DirectoryExists(comp_dir));
 
-  base::FilePath hint_file = comp_dir.Append(kTestComponentName);
+  base::FilePath hint_file = comp_dir.Append("latest-version");
   ASSERT_TRUE(base::PathExists(hint_file));
 
   std::string hint_file_contents;
@@ -142,13 +147,14 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
 
   // Reject a component if the version already exists.
   EXPECT_FALSE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                       GetComponentPath().value()));
+                                        GetComponentPath().value()));
 
   EXPECT_EQ(kTestDataVersion, loader.GetComponentVersion(kTestComponentName));
 
   // Now copy a new version into place.
-  EXPECT_TRUE(loader.RegisterComponent(kTestComponentName, kTestUpdatedVersion,
-                                       GetComponentPath(kTestUpdatedVersion).value()));
+  EXPECT_TRUE(
+      loader.RegisterComponent(kTestComponentName, kTestUpdatedVersion,
+                               GetComponentPath(kTestUpdatedVersion).value()));
 
   std::string hint_file_contents2;
   ASSERT_TRUE(
@@ -164,13 +170,15 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
                                                     "imageloader.sig.1",
                                                     "params", "image.squash"));
 
-  EXPECT_EQ(kTestUpdatedVersion, loader.GetComponentVersion(kTestComponentName));
+  EXPECT_EQ(kTestUpdatedVersion,
+            loader.GetComponentVersion(kTestComponentName));
 
   // Reject rollback to an older version.
   EXPECT_FALSE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                       GetComponentPath().value()));
+                                        GetComponentPath().value()));
 
-  EXPECT_EQ(kTestUpdatedVersion, loader.GetComponentVersion(kTestComponentName));
+  EXPECT_EQ(kTestUpdatedVersion,
+            loader.GetComponentVersion(kTestComponentName));
 }
 
 TEST_F(ImageLoaderTest, ECVerify) {
@@ -241,7 +249,8 @@ TEST_F(ImageLoaderTest, CopyComponentWithBadManifest) {
 
   ImageLoaderImpl loader(GetConfig("/nonexistant"));
   EXPECT_FALSE(loader.CopyComponentDirectory(
-      bad_component_dir, temp_dir.Append("copied-component"), kTestDataVersion));
+      bad_component_dir, temp_dir.Append("copied-component"),
+      kTestDataVersion));
 }
 
 TEST_F(ImageLoaderTest, CopyValidImage) {
@@ -316,6 +325,73 @@ TEST_F(ImageLoaderTest, ParseManifest) {
   ImageLoaderImpl::Manifest manifest3;
   EXPECT_FALSE(loader.VerifyAndParseManifest(kImageLoaderJSON,
                                              kImageLoaderBadSig, &manifest3));
+}
+
+TEST_F(ImageLoaderTest, MountValidImage) {
+  std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
+  auto mount_mock = base::MakeUnique<MockLoopMounter>();
+  ON_CALL(*mount_mock, Mount(_,_))
+      .WillByDefault(testing::Return(true));
+  EXPECT_CALL(*mount_mock, Mount(_, _)).Times(1);
+
+  base::ScopedTempDir scoped_temp_dir;
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+
+  const base::FilePath& temp_dir = scoped_temp_dir.path();
+  // Delete the directory so that the ImageLoader can recreate it with the
+  // correct permissions.
+  base::DeleteFile(temp_dir, /*recursive=*/true);
+  ImageLoaderConfig config(
+      key, temp_dir.value().c_str(), scoped_mount_dir.path().value().c_str(),
+      std::move(mount_mock));
+  ImageLoaderImpl loader(std::move(config));
+
+  // We previously tested RegisterComponent, so assume this works if it reports
+  // true.
+  ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
+                                       GetComponentPath().value()));
+
+  const std::string expected_path =
+      scoped_mount_dir.path().value() + "/PepperFlashPlayer/22.0.0.158";
+  ASSERT_EQ(expected_path, loader.LoadComponent(kTestComponentName));
+}
+
+TEST_F(ImageLoaderTest, MountInvalidImage) {
+  std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
+  auto mount_mock = base::MakeUnique<MockLoopMounter>();
+  ON_CALL(*mount_mock, Mount(_, _))
+      .WillByDefault(testing::Return(true));
+  EXPECT_CALL(*mount_mock, Mount(_, _)).Times(0);
+
+  base::ScopedTempDir scoped_temp_dir;
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+
+  const base::FilePath& temp_dir = scoped_temp_dir.path();
+  // Delete the directory so that the ImageLoader can recreate it with the
+  // correct permissions.
+  base::DeleteFile(temp_dir, /*recursive=*/true);
+
+  ImageLoaderConfig config(
+      key, temp_dir.value().c_str(), scoped_mount_dir.path().value().c_str(),
+      std::move(mount_mock));
+  ImageLoaderImpl loader(std::move(config));
+
+  // We previously tested RegisterComponent, so assume this works if it reports
+  // true.
+  ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
+                                       GetComponentPath().value()));
+
+  base::FilePath params = temp_dir.Append(kTestComponentName)
+                              .Append(kTestDataVersion)
+                              .Append("params");
+  std::string contents = "corrupt";
+  ASSERT_EQ(static_cast<int>(contents.size()),
+            base::WriteFile(params, contents.data(), contents.size()));
+  ASSERT_EQ("", loader.LoadComponent(kTestComponentName));
 }
 
 }   // namespace imageloader
