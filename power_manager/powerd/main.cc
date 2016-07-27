@@ -75,8 +75,19 @@ namespace power_manager {
 
 class DaemonDelegateImpl : public DaemonDelegate {
  public:
-  DaemonDelegateImpl() {}
+  DaemonDelegateImpl(const base::FilePath& read_write_prefs_dir,
+                     const base::FilePath& read_only_prefs_dir)
+      : read_write_prefs_dir_(read_write_prefs_dir),
+        read_only_prefs_dir_(read_only_prefs_dir) {}
   ~DaemonDelegateImpl() override {}
+
+  // DaemonDelegate:
+  std::unique_ptr<PrefsInterface> CreatePrefs() override {
+    auto prefs = base::WrapUnique(new Prefs());
+    CHECK(prefs->Init(
+        util::GetPrefPaths(read_write_prefs_dir_, read_only_prefs_dir_)));
+    return std::move(prefs);
+  }
 
   std::unique_ptr<system::DBusWrapperInterface> CreateDBusWrapper() override {
     auto wrapper = base::WrapUnique(new system::DBusWrapper());
@@ -218,6 +229,9 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
  private:
+  base::FilePath read_write_prefs_dir_;
+  base::FilePath read_only_prefs_dir_;
+
   DISALLOW_COPY_AND_ASSIGN(DaemonDelegateImpl);
 };
 
@@ -259,12 +273,11 @@ int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
-  power_manager::DaemonDelegateImpl delegate;
-
   // Extra parens to avoid http://en.wikipedia.org/wiki/Most_vexing_parse.
-  power_manager::Daemon daemon(&delegate, (base::FilePath(FLAGS_prefs_dir)),
-                               (base::FilePath(FLAGS_default_prefs_dir)),
-                               (base::FilePath(FLAGS_run_dir)));
+  power_manager::DaemonDelegateImpl delegate(
+      (base::FilePath(FLAGS_prefs_dir)),
+      (base::FilePath(FLAGS_default_prefs_dir)));
+  power_manager::Daemon daemon(&delegate, (base::FilePath(FLAGS_run_dir)));
   daemon.Init();
 
   message_loop.Run();

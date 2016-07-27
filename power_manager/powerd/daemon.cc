@@ -282,12 +282,8 @@ class Daemon::StateControllerDelegate
   DISALLOW_COPY_AND_ASSIGN(StateControllerDelegate);
 };
 
-Daemon::Daemon(DaemonDelegate* delegate,
-               const base::FilePath& read_write_prefs_dir,
-               const base::FilePath& read_only_prefs_dir,
-               const base::FilePath& run_dir)
+Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
     : delegate_(delegate),
-      prefs_(new Prefs),
       session_manager_dbus_proxy_(nullptr),
       update_engine_dbus_proxy_(nullptr),
       cryptohomed_dbus_proxy_(nullptr),
@@ -308,11 +304,7 @@ Daemon::Daemon(DaemonDelegate* delegate,
       log_suspend_with_mosys_eventlog_(false),
       suspend_to_idle_(false),
       set_wifi_transmit_power_for_tablet_mode_(false),
-      weak_ptr_factory_(this) {
-  CHECK(prefs_->Init(util::GetPrefPaths(
-      base::FilePath(read_write_prefs_dir),
-      base::FilePath(read_only_prefs_dir))));
-}
+      weak_ptr_factory_(this) {}
 
 Daemon::~Daemon() {
   for (auto controller : all_backlight_controllers_)
@@ -324,6 +316,7 @@ Daemon::~Daemon() {
 }
 
 void Daemon::Init() {
+  prefs_ = delegate_->CreatePrefs();
   InitDBus();
 
   metrics_sender_ = delegate_->CreateMetricsSender();

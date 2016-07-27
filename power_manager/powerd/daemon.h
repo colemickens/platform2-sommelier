@@ -35,7 +35,7 @@ namespace power_manager {
 class DaemonDelegate;
 class MetricsCollector;
 class MetricsSenderInterface;
-class Prefs;
+class PrefsInterface;
 
 namespace policy {
 class BacklightController;
@@ -69,10 +69,7 @@ class Daemon : public policy::BacklightControllerObserver,
                public system::AudioObserver,
                public system::PowerSupplyObserver {
  public:
-  Daemon(DaemonDelegate* delegate,
-         const base::FilePath& read_write_prefs_dir,
-         const base::FilePath& read_only_prefs_dir,
-         const base::FilePath& run_dir);
+  Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir);
   virtual ~Daemon();
 
   void Init();
@@ -233,7 +230,7 @@ class Daemon : public policy::BacklightControllerObserver,
 
   DaemonDelegate* delegate_;  // weak
 
-  std::unique_ptr<Prefs> prefs_;
+  std::unique_ptr<PrefsInterface> prefs_;
 
   std::unique_ptr<system::DBusWrapperInterface> dbus_wrapper_;
 

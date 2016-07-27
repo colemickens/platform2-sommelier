@@ -44,6 +44,9 @@ class DaemonDelegate {
   DaemonDelegate() {}
   virtual ~DaemonDelegate() {}
 
+  // Crashes if prefs can't be loaded (e.g. due to a missing directory).
+  virtual std::unique_ptr<PrefsInterface> CreatePrefs() = 0;
+
   // Crashes if the connection to the system bus fails.
   virtual std::unique_ptr<system::DBusWrapperInterface> CreateDBusWrapper() = 0;
 
