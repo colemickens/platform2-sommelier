@@ -64,11 +64,10 @@ class MultipleAuthorizations : public AuthorizationDelegate {
     delegates_.push_back(delegate);
   }
 
-  bool GetCommandAuthorization(
-      const std::string& command_hash,
-      bool is_command_parameter_encryption_possible,
-      bool is_response_parameter_encryption_possible,
-      std::string* authorization) override {
+  bool GetCommandAuthorization(const std::string& command_hash,
+                               bool is_command_parameter_encryption_possible,
+                               bool is_response_parameter_encryption_possible,
+                               std::string* authorization) override {
     std::string combined_authorization;
     for (auto delegate : delegates_) {
       std::string authorization;
@@ -79,6 +78,7 @@ class MultipleAuthorizations : public AuthorizationDelegate {
       }
       combined_authorization += authorization;
     }
+    *authorization = combined_authorization;
     return true;
   }
 
@@ -127,6 +127,25 @@ class MultipleAuthorizations : public AuthorizationDelegate {
   std::vector<AuthorizationDelegate*> delegates_;
 };
 
+void FlushObject(trunks::TrunksFactory* factory, TPM_HANDLE object_handle) {
+  if (object_handle >= trunks::TRANSIENT_FIRST &&
+      object_handle <= trunks::TRANSIENT_LAST) {
+    factory->GetTpm()->FlushContextSync(object_handle,
+                                        nullptr /* authorization */);
+  }
+}
+
+class TpmObjectScoper {
+ public:
+  TpmObjectScoper(trunks::TrunksFactory* factory, TPM_HANDLE object_handle)
+      : factory_(factory), object_handle_(object_handle) {}
+  ~TpmObjectScoper() { FlushObject(factory_, object_handle_); }
+
+ private:
+  trunks::TrunksFactory* factory_;
+  TPM_HANDLE object_handle_;
+};
+
 }  // namespace
 
 namespace attestation {
@@ -137,6 +156,12 @@ TpmUtilityV2::TpmUtilityV2(tpm_manager::TpmOwnershipInterface* tpm_owner,
     : tpm_owner_(tpm_owner),
       tpm_nvram_(tpm_nvram),
       trunks_factory_(trunks_factory) {}
+
+TpmUtilityV2::~TpmUtilityV2() {
+  for (auto& i : endorsement_keys_) {
+    FlushObject(trunks_factory_, i.second);
+  }
+}
 
 bool TpmUtilityV2::Initialize() {
   if (!tpm_manager_thread_.StartWithOptions(base::Thread::Options(
@@ -192,7 +217,7 @@ bool TpmUtilityV2::ActivateIdentity(const std::string& delegate_blob,
                                     const std::string& asym_ca_contents,
                                     const std::string& sym_ca_attestation,
                                     std::string* credential) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
@@ -214,6 +239,7 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
                << trunks::GetErrorString(result);
     return false;
   }
+  TpmObjectScoper scoper(trunks_factory_, identity_key_handle);
   std::string identity_key_name;
   result = trunks_utility_->GetKeyName(identity_key_handle, &identity_key_name);
   if (result != TPM_RC_SUCCESS) {
@@ -282,19 +308,144 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                                       std::string* public_key_tpm_format,
                                       std::string* key_info,
                                       std::string* proof) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  if (key_type != KEY_TYPE_RSA) {
+    LOG(ERROR) << __func__ << ": Not implemented.";
+    return false;
+  }
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  trunks::TpmUtility::AsymmetricKeyUsage trunks_key_usage =
+      (key_usage == KEY_USAGE_SIGN) ? trunks::TpmUtility::kSignKey
+                                    : trunks::TpmUtility::kDecryptKey;
+  TPM_RC result = trunks_utility_->CreateRSAKeyPair(
+      trunks_key_usage, 2048 /* modulus_bits */,
+      0 /* Use default public exponent */, std::string() /* password */,
+      std::string() /* policy_digest */,
+      false /* use_only_policy_authorization */, trunks::kNoCreationPCR,
+      empty_password_authorization.get(), key_blob,
+      nullptr /* creation_blob */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to create key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  TPM_HANDLE key_handle;
+  result = trunks_utility_->LoadKey(
+      *key_blob, empty_password_authorization.get(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to load key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  TpmObjectScoper scoper(trunks_factory_, key_handle);
+  std::string key_name;
+  result = trunks_utility_->GetKeyName(key_handle, &key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key name: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  trunks::TPMT_PUBLIC public_area;
+  result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key public area: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  result = trunks::Serialize_TPMT_PUBLIC(public_area, public_key_tpm_format);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to serialize key public area: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  if (!GetRSAPublicKeyFromTpmPublicKey(*public_key_tpm_format, public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to convert public key.";
+    return false;
+  }
+  TPM_HANDLE identity_key_handle;
+  result = trunks_utility_->LoadKey(identity_key_blob,
+                                    empty_password_authorization.get(),
+                                    &identity_key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to load key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  TpmObjectScoper scoper2(trunks_factory_, identity_key_handle);
+  std::string identity_key_name;
+  result = trunks_utility_->GetKeyName(identity_key_handle, &identity_key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key name: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  trunks::TPMT_SIG_SCHEME scheme;
+  scheme.scheme = trunks::TPM_ALG_RSASSA;
+  scheme.details.rsassa.hash_alg = trunks::TPM_ALG_SHA256;
+  trunks::TPM2B_ATTEST certify_info;
+  trunks::TPMT_SIGNATURE signature;
+  MultipleAuthorizations authorization;
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  result = trunks_factory_->GetTpm()->CertifySync(
+      key_handle, key_name, identity_key_handle, identity_key_name,
+      trunks::Make_TPM2B_DATA(external_data), scheme, &certify_info, &signature,
+      &authorization);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to certify key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  *key_info = StringFrom_TPM2B_ATTEST(certify_info);
+  *proof = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+  return true;
 }
 
 bool TpmUtilityV2::SealToPCR0(const std::string& data,
                               std::string* sealed_data) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  std::string policy_digest;
+  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValue(
+      0, std::string() /* Use current PCR value */, &policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to compute policy digest: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  result = trunks_utility_->SealData(
+      data, policy_digest, empty_password_authorization.get(), sealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to seal data: " << trunks::GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool TpmUtilityV2::Unseal(const std::string& sealed_data, std::string* data) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  std::unique_ptr<trunks::PolicySession> session =
+      trunks_factory_->GetPolicySession();
+  TPM_RC result = session->StartUnboundSession(true /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to start encrypted session: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  result = session->PolicyPCR(0, std::string() /* Use current PCR value */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to setup policy session: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  result =
+      trunks_utility_->UnsealData(sealed_data, session->GetDelegate(), data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to unseal data: " << trunks::GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
@@ -305,14 +456,23 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
     return false;
   }
   trunks::TPMT_PUBLIC public_area;
-  TPM_RC result =
-      trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
+  TPM_RC result = trunks_utility_->GetKeyPublicArea(key_handle, &public_area);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key: "
                << trunks::GetErrorString(result);
     return false;
   }
-  Serialize_TPMT_PUBLIC(public_area, public_key);
+  std::string public_key_tpm_format;
+  result = trunks::Serialize_TPMT_PUBLIC(public_area, &public_key_tpm_format);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to serialize EK public key: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  if (!GetRSAPublicKeyFromTpmPublicKey(public_key_tpm_format, public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to convert EK public key.";
+    return false;
+  }
   return true;
 }
 
@@ -343,23 +503,86 @@ bool TpmUtilityV2::GetEndorsementCertificate(KeyType key_type,
 bool TpmUtilityV2::Unbind(const std::string& key_blob,
                           const std::string& bound_data,
                           std::string* data) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  TPM_HANDLE key_handle;
+  TPM_RC result = trunks_utility_->LoadKey(
+      key_blob, empty_password_authorization.get(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to load key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  TpmObjectScoper scoper(trunks_factory_, key_handle);
+  result = trunks_utility_->AsymmetricDecrypt(
+      key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256, bound_data,
+      empty_password_authorization.get(), data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to decrypt: " << trunks::GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool TpmUtilityV2::Sign(const std::string& key_blob,
                         const std::string& data_to_sign,
                         std::string* signature) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  TPM_HANDLE key_handle;
+  TPM_RC result = trunks_utility_->LoadKey(
+      key_blob, empty_password_authorization.get(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to load key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  TpmObjectScoper scoper(trunks_factory_, key_handle);
+  result = trunks_utility_->Sign(key_handle, trunks::TPM_ALG_RSASSA,
+                                 trunks::TPM_ALG_SHA256, data_to_sign,
+                                 empty_password_authorization.get(), signature);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to sign data: " << trunks::GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
                                        KeyUsage key_usage,
                                        std::string* public_key,
                                        std::string* private_key_blob) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+  if (key_usage != KEY_USAGE_SIGN) {
+    LOG(ERROR) << __func__ << ": Not implemented.";
+    return false;
+  }
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  trunks::TPM_ALG_ID algorithm =
+      (key_type == KEY_TYPE_RSA) ? trunks::TPM_ALG_RSA : trunks::TPM_ALG_ECC;
+  TPM_RC result = trunks_utility_->CreateIdentityKey(
+      algorithm, empty_password_authorization.get(), private_key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to create restricted key: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  std::unique_ptr<trunks::BlobParser> parser = trunks_factory_->GetBlobParser();
+  trunks::TPM2B_PUBLIC public_info;
+  trunks::TPM2B_PRIVATE not_used;
+  if (!parser->ParseKeyBlob(*private_key_blob, &public_info, &not_used)) {
+    LOG(ERROR) << __func__ << ": Failed to parse key blob.";
+    return false;
+  }
+  result = trunks::Serialize_TPMT_PUBLIC(public_info.public_area, public_key);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to serialize EK public key: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool TpmUtilityV2::QuotePCR(int pcr_index,
@@ -367,8 +590,58 @@ bool TpmUtilityV2::QuotePCR(int pcr_index,
                             std::string* quoted_pcr_value,
                             std::string* quoted_data,
                             std::string* quote) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  TPM_RC result = trunks_utility_->ReadPCR(pcr_index, quoted_pcr_value);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to read PCR " << pcr_index << ": "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  TPM_HANDLE key_handle;
+  result = trunks_utility_->LoadKey(
+      key_blob, empty_password_authorization.get(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to load key: " << trunks::GetErrorString(result);
+    return false;
+  }
+  TpmObjectScoper scoper(trunks_factory_, key_handle);
+  std::string key_name;
+  result = trunks_utility_->GetKeyName(key_handle, &key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to get key name: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  trunks::TPMT_SIG_SCHEME scheme;
+  scheme.scheme = trunks::TPM_ALG_RSASSA;
+  scheme.details.rsassa.hash_alg = trunks::TPM_ALG_SHA256;
+  // This process of selecting pcrs is highlighted in TPM 2.0 Library Spec
+  // Part 2 (Section 10.5 - PCR structures).
+  trunks::TPML_PCR_SELECTION pcr_selection;
+  uint8_t pcr_select_index = pcr_index / 8;
+  uint8_t pcr_select_byte = 1 << (pcr_index % 8);
+  pcr_selection.count = 1;
+  pcr_selection.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  pcr_selection.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
+  pcr_selection.pcr_selections[0].pcr_select[pcr_select_index] =
+      pcr_select_byte;
+  trunks::TPM2B_ATTEST quoted_struct;
+  trunks::TPMT_SIGNATURE signature;
+  result = trunks_factory_->GetTpm()->QuoteSync(
+      key_handle, key_name,
+      trunks::Make_TPM2B_DATA("") /* No qualifying data */, scheme,
+      pcr_selection, &quoted_struct, &signature,
+      empty_password_authorization.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to quote PCR " << pcr_index << ": "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  *quoted_data = StringFrom_TPM2B_ATTEST(quoted_struct);
+  *quote = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+  return true;
 }
 
 bool TpmUtilityV2::GetRSAPublicKeyFromTpmPublicKey(
@@ -487,8 +760,7 @@ bool TpmUtilityV2::GetEndorsementKey(KeyType key_type, TPM_HANDLE* key_handle) {
   GetOwnerPassword(&owner_password);
   std::unique_ptr<HmacSession> owner_session =
       trunks_factory_->GetHmacSession();
-  result =
-      owner_session->StartUnboundSession(false /* enable_encryption */);
+  result = owner_session->StartUnboundSession(false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to setup owner session: "
                << trunks::GetErrorString(result);

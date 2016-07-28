@@ -38,7 +38,7 @@ class TpmUtilityV2 : public TpmUtility {
   TpmUtilityV2(tpm_manager::TpmOwnershipInterface* tpm_owner,
                tpm_manager::TpmNvramInterface* tpm_nvram,
                trunks::TrunksFactory* trunks_factory);
-  ~TpmUtilityV2() override = default;
+  ~TpmUtilityV2() override;
 
   // TpmUtility methods.
   bool Initialize() override;
