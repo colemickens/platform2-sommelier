@@ -121,10 +121,23 @@ class ChromiumCommandBuilder {
   // Adds |pattern| to the --vmodule flag in |arguments_|.
   void AddVmodulePattern(const std::string& pattern);
 
+  // Adds |feature_name| to the --enable-features flag in |arguments_|.
+  void AddFeatureEnableOverride(const std::string& feature_name);
+
  private:
   // Converts absolute path |path| into a base::FilePath, rooting it under
   // |base_path_for_testing_| if it's non-empty.
   base::FilePath GetPath(const std::string& path) const;
+
+  // Adds an entry to a flag containing a list of values. For example, for a
+  // flag like "--my-list=foo,bar", |flag_prefix| would be "--my-list=",
+  // |entry_separator| would be ",", and |new_entry| would be "foo" or "bar".
+  // |flag_argument_index|'s memory holds the flag's position within
+  // |arguments_| or -1 if the flag is not yet set.
+  void AddListFlagEntry(int* flag_argument_index,
+                        const std::string& flag_prefix,
+                        const std::string& entry_separator,
+                        const std::string& new_entry);
 
   // Performs X11-specific setup and returns true on success. Called by
   // InitChromium().
@@ -164,9 +177,10 @@ class ChromiumCommandBuilder {
   // Command-line arguments that the caller should pass to the executable.
   StringVector arguments_;
 
-  // Index in |arguments_| of the --vmodule flag. -1 if the flag hasn't been
-  // set.
+  // Index in |arguments_| of the --vmodule and --enable-features flags. -1 if
+  // the flags haven't been set.
   int vmodule_argument_index_;
+  int enable_features_argument_index_;
 
   DISALLOW_COPY_AND_ASSIGN(ChromiumCommandBuilder);
 };

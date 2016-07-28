@@ -68,6 +68,19 @@ bool IsEnvironmentVariableName(const std::string& name) {
   return true;
 }
 
+// Updates |argument_index_to_update|, a arguments's position in |arguments_|,
+// in response to the argument at position |deleted_argument_index| being
+// removed. If the index-to-update is beyond the deleted index, it'll be
+// decremented; if it is itself being deleted, it'll be set to -1.
+void UpdateArgumentIndexForDeletion(int* argument_index_to_update,
+                                    int deleted_argument_index) {
+  DCHECK(argument_index_to_update);
+  if (*argument_index_to_update > deleted_argument_index)
+    (*argument_index_to_update)--;
+  else if (*argument_index_to_update == deleted_argument_index)
+    *argument_index_to_update = -1;
+}
+
 }  // namespace
 
 const char ChromiumCommandBuilder::kUser[] = "chronos";
@@ -85,7 +98,8 @@ ChromiumCommandBuilder::ChromiumCommandBuilder()
       gid_(0),
       is_chrome_os_hardware_(false),
       is_developer_end_user_(false),
-      vmodule_argument_index_(-1) {
+      vmodule_argument_index_(-1),
+      enable_features_argument_index_(-1) {
 }
 
 ChromiumCommandBuilder::~ChromiumCommandBuilder() {}
@@ -194,7 +208,7 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
     AddArg("--enable-arc");
 
   if (UseFlagIsSet("pointer_events"))
-    AddArg("--enable-features=PointerEvent");
+    AddFeatureEnableOverride("PointerEvent");
 
   AddArg("--enable-logging");
   AddArg("--log-level=1");
@@ -239,13 +253,12 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path) {
       size_t num_copied = 0;
       for (size_t src_index = 0; src_index < arguments_.size(); ++src_index) {
         if (arguments_[src_index].find(pattern) == 0) {
-          // Drop the argument and shift |vmodule_argument_index_| forward if
-          // the argument precedes it (or reset the index if the --vmodule flag
-          // itself is being deleted).
-          if (vmodule_argument_index_ > static_cast<int>(src_index))
-            vmodule_argument_index_--;
-          else if (vmodule_argument_index_ == static_cast<int>(src_index))
-            vmodule_argument_index_ = -1;
+          // Drop the argument by not copying it and shift saved indexes if
+          // needed.
+          UpdateArgumentIndexForDeletion(&vmodule_argument_index_,
+                                         static_cast<int>(src_index));
+          UpdateArgumentIndexForDeletion(&enable_features_argument_index_,
+                                         static_cast<int>(src_index));
         } else {
           arguments_[num_copied] = arguments_[src_index];
           num_copied++;
@@ -257,6 +270,8 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path) {
       base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs);
       if (pairs.size() == 1U && pairs[0].first == "vmodule")
         AddVmodulePattern(pairs[0].second);
+      if (pairs.size() == 1U && pairs[0].first == "enable-features")
+        AddFeatureEnableOverride(pairs[0].second);
       else if (pairs.size() == 1U && IsEnvironmentVariableName(pairs[0].first))
         AddEnvVar(pairs[0].first, pairs[0].second);
       else
@@ -291,19 +306,34 @@ void ChromiumCommandBuilder::AddArg(const std::string& arg) {
 }
 
 void ChromiumCommandBuilder::AddVmodulePattern(const std::string& pattern) {
-  if (pattern.empty())
-    return;
+  AddListFlagEntry(&vmodule_argument_index_, "--vmodule=", ",", pattern);
+}
 
-  if (vmodule_argument_index_ < 0) {
-    AddArg("--vmodule=" + pattern);
-    vmodule_argument_index_ = arguments_.size() - 1;
-  } else {
-    arguments_[vmodule_argument_index_] += "," + pattern;
-  }
+void ChromiumCommandBuilder::AddFeatureEnableOverride(
+    const std::string& feature_name) {
+  AddListFlagEntry(&enable_features_argument_index_, "--enable-features=", ",",
+                   feature_name);
 }
 
 base::FilePath ChromiumCommandBuilder::GetPath(const std::string& path) const {
   return util::GetReparentedPath(path, base_path_for_testing_);
+}
+
+void ChromiumCommandBuilder::AddListFlagEntry(
+    int* flag_argument_index,
+    const std::string& flag_prefix,
+    const std::string& entry_separator,
+    const std::string& new_entry) {
+  DCHECK(flag_argument_index);
+  if (new_entry.empty())
+    return;
+
+  if (*flag_argument_index < 0) {
+    AddArg(flag_prefix + new_entry);
+    *flag_argument_index = arguments_.size() - 1;
+  } else {
+    arguments_[*flag_argument_index] += entry_separator + new_entry;
+  }
 }
 
 bool ChromiumCommandBuilder::SetUpX11(const base::FilePath& xauth_file) {

@@ -187,6 +187,26 @@ TEST_F(ChromiumCommandBuilderTest, VmoduleFlag) {
             GetFirstArgWithPrefix(kVmodulePrefix));
 }
 
+TEST_F(ChromiumCommandBuilderTest, EnableFeatures) {
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
+
+  const char kEnableFeaturesPrefix[] = "--enable-features=";
+  ASSERT_EQ("", GetFirstArgWithPrefix(kEnableFeaturesPrefix));
+  builder_.AddFeatureEnableOverride("foo");
+  ASSERT_EQ("--enable-features=foo",
+            GetFirstArgWithPrefix(kEnableFeaturesPrefix));
+  builder_.AddFeatureEnableOverride("bar");
+  ASSERT_EQ("--enable-features=foo,bar",
+            GetFirstArgWithPrefix(kEnableFeaturesPrefix));
+
+  // Add another argument and check that --enable-features still gets updated.
+  builder_.AddArg("--blah");
+  builder_.AddFeatureEnableOverride("baz");
+  ASSERT_EQ("--enable-features=foo,bar,baz",
+            GetFirstArgWithPrefix(kEnableFeaturesPrefix));
+}
+
 TEST_F(ChromiumCommandBuilderTest, UserConfig) {
   ASSERT_TRUE(Init());
   builder_.AddArg("--baz=4");
@@ -248,6 +268,42 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
             base::WriteFile(path, kConfig3, strlen(kConfig3)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   ASSERT_EQ("--vmodule=c=1,a=1,b=2", GetFirstArgWithPrefix("--vmodule="));
+}
+
+TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
+  ASSERT_TRUE(Init());
+  builder_.AddArg("--foo");
+  builder_.AddFeatureEnableOverride("a");
+  builder_.AddArg("--bar");
+
+  // Check that we don't get confused when deleting flags surrounding the
+  // feature flag.
+  const char kConfig[] = "!--foo\n!--bar";
+  base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
+  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  builder_.AddFeatureEnableOverride("b");
+  ASSERT_EQ("--enable-features=a,b",
+            GetFirstArgWithPrefix("--enable-features="));
+
+  // Delete the --enable-features flag.
+  const char kConfig2[] = "!--enable-features=";
+  ASSERT_EQ(strlen(kConfig2),
+            base::WriteFile(path, kConfig2, strlen(kConfig2)));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  EXPECT_TRUE(builder_.arguments().empty());
+
+  // Now add another feature and check that the flag is re-added.
+  builder_.AddFeatureEnableOverride("c");
+  ASSERT_EQ("--enable-features=c", GetFirstArgWithPrefix("--enable-features="));
+
+  // Check that enable-features directives in config files are handled.
+  const char kConfig3[] = "enable-features=d\nenable-features=e";
+  ASSERT_EQ(strlen(kConfig3),
+            base::WriteFile(path, kConfig3, strlen(kConfig3)));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  ASSERT_EQ("--enable-features=c,d,e",
+            GetFirstArgWithPrefix("--enable-features="));
 }
 
 TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
