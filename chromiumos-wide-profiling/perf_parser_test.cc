@@ -1561,4 +1561,148 @@ TEST(PerfParserTest, MmapCoversEntireAddressSpace) {
   EXPECT_EQ(0xffffffff8100cafe, events[5].dso_and_offset.offset());
 }
 
+TEST(PerfParserTest, HugePagesMappings) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP, a normal mapping.
+  testing::ExampleMmapEvent(
+      1234, 0x40000000, 0x18000, 0, "/usr/lib/libfoo.so",
+      testing::SampleInfo().Tid(1234, 1234)).WriteTo(&input);
+
+  // PERF_RECORD_SAMPLE, within library.
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x40000100).Tid(1234, 1235))
+      .WriteTo(&input);
+
+  // Split Chrome mapping #1, with a huge pages section in the middle.
+  testing::ExampleMmapEvent(
+      1234, 0x40018000, 0x8000, 0, "/opt/google/chrome/chrome",
+      testing::SampleInfo().Tid(1234, 1234)).WriteTo(&input);
+  testing::ExampleMmapEvent(
+      1234, 0x40020000, 0x1e00000, 0, "//anon",
+      testing::SampleInfo().Tid(1234, 1234)).WriteTo(&input);
+  testing::ExampleMmapEvent(
+      1234, 0x41e20000, 0x3fe0000, 0x1e08000, "/opt/google/chrome/chrome",
+      testing::SampleInfo().Tid(1234, 1234)).WriteTo(&input);
+
+  // Split Chrome mapping #2, starting with a huge pages section (no preceding
+  // normal mapping).
+  testing::ExampleMmapEvent(
+      2345, 0x45e00000, 0x1e00000, 0, "//anon",
+      testing::SampleInfo().Tid(2345, 2346)).WriteTo(&input);
+  testing::ExampleMmapEvent(
+      2345, 0x47c00000, 0x4000000, 0x1e00000, "/opt/google/chrome/chrome",
+      testing::SampleInfo().Tid(2345, 2346)).WriteTo(&input);
+
+  // PERF_RECORD_SAMPLE, within Chrome #1 (before huge pages mapping).
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x40018300).Tid(1234, 1235))
+      .WriteTo(&input);
+  // PERF_RECORD_SAMPLE, within Chrome #1 (within huge pages mapping).
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x40020400).Tid(1234, 1235))
+      .WriteTo(&input);
+  // PERF_RECORD_SAMPLE, within Chrome #1 (after huge pages mapping).
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x41e20500).Tid(1234, 1235))
+      .WriteTo(&input);
+
+  // PERF_RECORD_SAMPLE, within library.
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x40000700).Tid(1234, 1235))
+      .WriteTo(&input);
+
+  // PERF_RECORD_SAMPLE, within Chrome #2 (within huge pages mapping).
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x45e01300).Tid(2345, 2346))
+      .WriteTo(&input);
+  // PERF_RECORD_SAMPLE, within Chrome #2 (after huge pages mapping).
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x45e02f00).Tid(2345, 2346))
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader reader;
+  EXPECT_TRUE(reader.ReadFromString(input.str()));
+
+  PerfParserOptions options;
+  options.combine_huge_pages_mappings = true;
+  PerfParser parser(&reader, options);
+  EXPECT_TRUE(parser.ParseRawEvents());
+
+  EXPECT_EQ(3, parser.stats().num_mmap_events);
+  EXPECT_EQ(7, parser.stats().num_sample_events);
+  EXPECT_EQ(7, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(10, events.size());
+
+  EXPECT_EQ(PERF_RECORD_MMAP, events[0].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/libfoo.so", events[0].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x40000000, events[0].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x18000, events[0].event_ptr->mmap_event().len());
+  EXPECT_EQ(0x0, events[0].event_ptr->mmap_event().pgoff());
+
+  // Sample from library.
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[1].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/libfoo.so", events[1].dso_and_offset.dso_name());
+  EXPECT_EQ(0x100, events[1].dso_and_offset.offset());
+
+  // The split Chrome mappings should have been combined.
+  EXPECT_EQ(PERF_RECORD_MMAP, events[2].event_ptr->header().type());
+  EXPECT_EQ("/opt/google/chrome/chrome",
+            events[2].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x40018000, events[2].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x5de8000, events[2].event_ptr->mmap_event().len());
+  EXPECT_EQ(0x0, events[2].event_ptr->mmap_event().pgoff());
+
+  EXPECT_EQ(PERF_RECORD_MMAP, events[3].event_ptr->header().type());
+  EXPECT_EQ("/opt/google/chrome/chrome",
+            events[3].event_ptr->mmap_event().filename());
+  EXPECT_EQ(0x45e00000, events[3].event_ptr->mmap_event().start());
+  EXPECT_EQ(0x5e00000, events[3].event_ptr->mmap_event().len());
+  EXPECT_EQ(0x0, events[3].event_ptr->mmap_event().pgoff());
+
+  // Sample from Chrome (before huge pages mapping).
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].event_ptr->header().type());
+  EXPECT_EQ("/opt/google/chrome/chrome", events[4].dso_and_offset.dso_name());
+  EXPECT_EQ(0x300, events[4].dso_and_offset.offset());
+
+  // Sample from Chrome (within huge pages mapping).
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].event_ptr->header().type());
+  EXPECT_EQ("/opt/google/chrome/chrome", events[5].dso_and_offset.dso_name());
+  EXPECT_EQ(0x8400, events[5].dso_and_offset.offset());
+
+  // Sample from Chrome (after huge pages mapping).
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[6].event_ptr->header().type());
+  EXPECT_EQ("/opt/google/chrome/chrome", events[6].dso_and_offset.dso_name());
+  EXPECT_EQ(0x1e08500, events[6].dso_and_offset.offset());
+
+  // Sample from library.
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[7].event_ptr->header().type());
+  EXPECT_EQ("/usr/lib/libfoo.so", events[7].dso_and_offset.dso_name());
+  EXPECT_EQ(0x700, events[7].dso_and_offset.offset());
+
+  // Sample from Chrome #2 (within huge pages mapping).
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[8].event_ptr->header().type());
+  EXPECT_EQ("/opt/google/chrome/chrome", events[8].dso_and_offset.dso_name());
+  EXPECT_EQ(0x1300, events[8].dso_and_offset.offset());
+
+  // Sample from Chrome #2 (after huge pages mapping).
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[9].event_ptr->header().type());
+  EXPECT_EQ("/opt/google/chrome/chrome", events[9].dso_and_offset.dso_name());
+  EXPECT_EQ(0x2f00, events[9].dso_and_offset.offset());
+}
+
 }  // namespace quipper

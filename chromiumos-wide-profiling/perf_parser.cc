@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <memory>
 #include <set>
 
 #include "base/logging.h"
@@ -20,6 +21,7 @@
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/dso.h"
+#include "chromiumos-wide-profiling/huge_pages_mapping_deducer.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
@@ -36,6 +38,13 @@ namespace {
 // MMAPs are aligned to pages of this many bytes.
 const uint64_t kMmapPageAlignment = sysconf(_SC_PAGESIZE);
 
+// Name and ID of the kernel swapper process.
+const char kSwapperCommandName[] = "swapper";
+const uint32_t kSwapperPid = 0;
+
+// Name of Chrome binary.
+const char kChromeFilename[] = "/opt/google/chrome/chrome";
+
 // Returns the offset within a page of size |kMmapPageAlignment|, given an
 // address. Requires that |kMmapPageAlignment| be a power of 2.
 uint64_t GetPageAlignedOffset(uint64_t addr) {
@@ -49,12 +58,65 @@ bool CompareParsedEventTimes(const ParsedEvent& e1, const ParsedEvent& e2) {
           GetTimeFromPerfEvent(*e2.event_ptr));
 }
 
-// Name and ID of the kernel swapper process.
-const char kSwapperCommandName[] = "swapper";
-const uint32_t kSwapperPid = 0;
-
 bool IsNullBranchStackEntry(const BranchStackEntry& entry) {
   return (!entry.from_ip() && !entry.to_ip());
+}
+
+// Walks through all the perf events in |*reader| and searches for split
+// mappings due to huge pages. Combines these split mappings into one and
+// replaces the split mapping events. Modifies the events vector stored in
+// |*reader|.
+//
+// This may not correctly handle perf data that has been processed to remove
+// MMAPs that contain no sample events, since one or more of the mappings
+// necessary to resolve the huge pages mapping could have been discarded. The
+// result would be that the huge pages mapping would remain as "//anon" and the
+// other mappings would remain unchanged.
+void CombineHugePagesMappings(PerfReader* reader) {
+    std::map<uint32_t, std::unique_ptr<HugePagesMappingDeducer>>
+        pids_to_deducers;
+    RepeatedPtrField<PerfEvent> new_events;
+    new_events.Reserve(reader->events().size());
+
+    for (int i = 0; i < reader->events().size(); ++i) {
+      PerfEvent* event = reader->mutable_events()->Mutable(i);
+      if (!event->has_mmap_event()) {
+        new_events.Add()->Swap(event);
+        continue;
+      }
+
+      const MMapEvent& mmap = event->mmap_event();
+      // Create a new huge pages mapping deducer for the process if necessary.
+      auto& deducer = pids_to_deducers[mmap.pid()];
+      if (!deducer) {
+        deducer.reset(new HugePagesMappingDeducer(kChromeFilename));
+      }
+      deducer->ProcessMmap(mmap);
+      if (!deducer->CombinedMappingAvailable()) {
+        new_events.Add()->Swap(event);
+        continue;
+      }
+
+      // When there is a newly combined mapping, walk backwards to find the
+      // existing mappings and replace them with the combined mapping. Assumes
+      // that within the events vector, the split Chrome mappings appear
+      // consecutively, with no other mappings in between.
+      const MMapEvent& combined_mmap = deducer->combined_mapping();
+      for (int j = new_events.size() - 1;
+           j >= 0 && new_events.Get(j).has_mmap_event();
+           --j) {
+        MMapEvent* old_mmap = new_events.Mutable(j)->mutable_mmap_event();
+        if (old_mmap->start() == combined_mmap.start()) {
+          // Delete all split mappings except the first one...
+          new_events.DeleteSubrange(j + 1, new_events.size() - j - 1);
+          // ... and update it with the new combined mapping info.
+          *old_mmap = combined_mmap;
+          break;
+        }
+      }
+    }
+
+    reader->mutable_events()->Swap(&new_events);
 }
 
 }  // namespace
@@ -70,6 +132,11 @@ PerfParser::PerfParser(PerfReader* reader, const PerfParserOptions& options)
 bool PerfParser::ParseRawEvents() {
   // Just in case there was data from a previous call.
   process_mappers_.clear();
+
+  // Find and combine split huge pages mappings.
+  if (options_.combine_huge_pages_mappings) {
+    CombineHugePagesMappings(reader_);
+  }
 
   // Clear the parsed events to reset their fields. Otherwise, non-sample events
   // may have residual DSO+offset info.

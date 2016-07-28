@@ -152,6 +152,14 @@ struct PerfParserOptions {
   // If buildids are missing from the input data, they can be retrieved from
   // the filesystem.
   bool read_missing_buildids = false;
+  // Checks for a split binary mapping where part of it is mapped as huge pages.
+  // Combines the split mappings into a single mapping so future consumers of
+  // the perf data can see that it is actually a single mapping and not two or
+  // three distinct mappings.
+  //
+  // Right now, this is only enabled for Chrome. In the future, it could be
+  // expanded to other binaries if they end up being huge pages-mapped.
+  bool combine_huge_pages_mappings = false;
 };
 
 class PerfParser {
