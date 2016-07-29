@@ -155,11 +155,13 @@ void UploadService::AddSample(const metrics::MetricSample& sample) {
       counter = base::Histogram::FactoryGet(
           sample.name(), sample.min(), sample.max(), sample.bucket_count(),
           base::Histogram::kUmaTargetedHistogramFlag);
+      CHECK(counter) << "FactoryGet failed for " << sample.name();
       counter->Add(sample.sample());
       break;
     case metrics::MetricSample::SPARSE_HISTOGRAM:
       counter = base::SparseHistogram::FactoryGet(
           sample.name(), base::HistogramBase::kUmaTargetedHistogramFlag);
+      CHECK(counter) << "FactoryGet failed for " << sample.name();
       counter->Add(sample.sample());
       break;
     case metrics::MetricSample::LINEAR_HISTOGRAM:
@@ -169,6 +171,7 @@ void UploadService::AddSample(const metrics::MetricSample& sample) {
           sample.max(),
           sample.max() + 1,
           base::Histogram::kUmaTargetedHistogramFlag);
+      CHECK(counter) << "FactoryGet failed for " << sample.name();
       counter->Add(sample.sample());
       break;
     case metrics::MetricSample::USER_ACTION:
