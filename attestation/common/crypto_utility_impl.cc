@@ -212,31 +212,6 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
     const std::string& ek_public_key_info,
     const std::string& aik_public_key,
     EncryptedIdentityCredential* encrypted) {
-  const char kAlgAES256 = 9;   // This comes from TPM_ALG_AES256.
-  const char kEncModeCBC = 2;  // This comes from TPM_SYM_MODE_CBC.
-  const char kAsymContentHeader[] = {0, 0,           0, kAlgAES256,
-                                     0, kEncModeCBC, 0, kAesKeySize};
-  const char kSymContentHeader[12] = {};
-
-  // Generate an AES key and encrypt the credential.
-  std::string aes_key;
-  if (!GetRandom(kAesKeySize, &aes_key)) {
-    LOG(ERROR) << __func__ << ": GetRandom failed.";
-    return false;
-  }
-  std::string encrypted_credential;
-  if (!TssCompatibleEncrypt(credential, aes_key, &encrypted_credential)) {
-    LOG(ERROR) << __func__ << ": Failed to encrypt credential.";
-    return false;
-  }
-
-  // Construct a TPM_ASYM_CA_CONTENTS structure.
-  std::string asym_header(std::begin(kAsymContentHeader),
-                          std::end(kAsymContentHeader));
-  std::string asym_content =
-      asym_header + aes_key + base::SHA1HashString(aik_public_key);
-
-  // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
   auto asn1_ptr =
       reinterpret_cast<const unsigned char*>(ek_public_key_info.data());
   crypto::ScopedRSA rsa(
@@ -246,23 +221,101 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
                << ": Failed to decode EK public key: " << GetOpenSSLError();
     return false;
   }
-  std::string encrypted_asym_content;
-  if (!TpmCompatibleOAEPEncrypt(asym_content, rsa.get(),
-                                &encrypted_asym_content)) {
-    LOG(ERROR) << __func__ << ": Failed to encrypt with EK public key.";
+  encrypted->set_tpm_version(tpm_version);
+  if (tpm_version == TPM_1_2) {
+    const char kAlgAES256 = 9;   // This comes from TPM_ALG_AES256.
+    const char kEncModeCBC = 2;  // This comes from TPM_SYM_MODE_CBC.
+    const char kAsymContentHeader[] = {0, 0,           0, kAlgAES256,
+                                       0, kEncModeCBC, 0, kAesKeySize};
+    const char kSymContentHeader[12] = {};
+
+    // Generate an AES key and encrypt the credential.
+    std::string aes_key;
+    if (!GetRandom(kAesKeySize, &aes_key)) {
+      LOG(ERROR) << __func__ << ": GetRandom failed.";
+      return false;
+    }
+    std::string encrypted_credential;
+    if (!TssCompatibleEncrypt(credential, aes_key, &encrypted_credential)) {
+      LOG(ERROR) << __func__ << ": Failed to encrypt credential.";
+      return false;
+    }
+
+    // Construct a TPM_ASYM_CA_CONTENTS structure.
+    std::string asym_header(std::begin(kAsymContentHeader),
+                            std::end(kAsymContentHeader));
+    std::string asym_content =
+        asym_header + aes_key + base::SHA1HashString(aik_public_key);
+
+    // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
+    std::string encrypted_asym_content;
+    if (!TpmCompatibleOAEPEncrypt(asym_content, rsa.get(),
+                                  &encrypted_asym_content)) {
+      LOG(ERROR) << __func__ << ": Failed to encrypt with EK public key.";
+      return false;
+    }
+
+    // Construct a TPM_SYM_CA_ATTESTATION structure.
+    uint32_t length = htonl(encrypted_credential.size());
+    auto length_bytes = reinterpret_cast<const char*>(&length);
+    std::string length_blob(length_bytes, sizeof(uint32_t));
+    std::string sym_header(std::begin(kSymContentHeader),
+                           std::end(kSymContentHeader));
+    std::string sym_content = length_blob + sym_header + encrypted_credential;
+
+    encrypted->set_asym_ca_contents(encrypted_asym_content);
+    encrypted->set_sym_ca_attestation(sym_content);
+  } else if (tpm_version == TPM_2_0) {
+    // The 'credential' parameter is actually the certificate. The 'credential'
+    // used in the wrapping process is referred to as 'inner_credential' below.
+    std::string certificate = credential;
+    // Generate a random seed and derive from it an AES and HMAC key as
+    // documented in TPM 2.0 specification Part 1 Rev 1.16 Section 24.
+    std::string seed;
+    if (!GetRandom(kAesKeySize, &seed)) {
+      return false;
+    }
+    std::string identity_key_name = GetTpm2KeyNameFromPublicKey(aik_public_key);
+    std::string aes_key =
+        Tpm2CompatibleKDFa(seed, "STORAGE", identity_key_name);
+    std::string hmac_key = Tpm2CompatibleKDFa(seed, "INTEGRITY", "");
+    // This will be the 'credential' that the TPM decrypts during activation.
+    std::string inner_credential;
+    if (!GetRandom(kAesKeySize, &inner_credential)) {
+      return false;
+    }
+    // Wrap the credential with the seed using an Encrypt-then-MAC scheme
+    // documented in TPM 2.0 specification Part 1 Rev 1.16 Section 24.
+    std::string encrypted_credential;
+    std::string iv(kAesBlockSize, 0);
+    std::string inner_credential_size_bytes("\x00\x20", 2);  // Big-endian 32.
+    if (!AesEncrypt(EVP_aes_256_cfb(),
+                    inner_credential_size_bytes + inner_credential, aes_key, iv,
+                    &encrypted_credential)) {
+      return false;
+    }
+    encrypted->set_credential_mac(
+        HmacSha256(hmac_key, encrypted_credential + identity_key_name));
+    // Wrap the certificate with the credential using the scheme required by the
+    // EncryptedIdentityCredential protobuf.
+    EncryptedData* encrypted_certificate =
+        encrypted->mutable_wrapped_certificate();
+    if (!EncryptWithSeed(KeyDerivationScheme::kHashWithHeaders, certificate,
+                         inner_credential, encrypted_certificate)) {
+      return false;
+    }
+    encrypted_certificate->set_wrapped_key(encrypted_credential);
+    // At this point, the credential can be recovered given the seed, and the
+    // certificate can be recovered given the credential. All that remains is to
+    // encrypt the seed with the EK public key.
+    if (!Tpm2CompatibleOAEPEncrypt("IDENTITY", seed, rsa.get(),
+                                   encrypted->mutable_encrypted_seed())) {
+      return false;
+    }
+  } else {
+    LOG(ERROR) << "Unsupported TPM version.";
     return false;
   }
-
-  // Construct a TPM_SYM_CA_ATTESTATION structure.
-  uint32_t length = htonl(encrypted_credential.size());
-  auto length_bytes = reinterpret_cast<const char*>(&length);
-  std::string length_blob(length_bytes, sizeof(uint32_t));
-  std::string sym_header(std::begin(kSymContentHeader),
-                         std::end(kSymContentHeader));
-  std::string sym_content = length_blob + sym_header + encrypted_credential;
-
-  encrypted->set_asym_ca_contents(encrypted_asym_content);
-  encrypted->set_sym_ca_attestation(sym_content);
   return true;
 }
 
@@ -344,7 +397,8 @@ bool CryptoUtilityImpl::EncryptCertificateForGoogle(
   return true;
 }
 
-bool CryptoUtilityImpl::AesEncrypt(const std::string& data,
+bool CryptoUtilityImpl::AesEncrypt(const EVP_CIPHER* cipher,
+                                   const std::string& data,
                                    const std::string& key,
                                    const std::string& iv,
                                    std::string* encrypted_data) {
@@ -366,7 +420,6 @@ bool CryptoUtilityImpl::AesEncrypt(const std::string& data,
   auto output_buffer =
       reinterpret_cast<unsigned char*>(string_as_array(encrypted_data));
   int output_size = 0;
-  const EVP_CIPHER* cipher = EVP_aes_256_cbc();
   EVP_CIPHER_CTX encryption_context;
   EVP_CIPHER_CTX_init(&encryption_context);
   if (!EVP_EncryptInit_ex(&encryption_context, cipher, nullptr, key_buffer,
@@ -394,7 +447,8 @@ bool CryptoUtilityImpl::AesEncrypt(const std::string& data,
   return true;
 }
 
-bool CryptoUtilityImpl::AesDecrypt(const std::string& encrypted_data,
+bool CryptoUtilityImpl::AesDecrypt(const EVP_CIPHER* cipher,
+                                   const std::string& encrypted_data,
                                    const std::string& key,
                                    const std::string& iv,
                                    std::string* data) {
@@ -416,7 +470,6 @@ bool CryptoUtilityImpl::AesDecrypt(const std::string& encrypted_data,
   data->resize(encrypted_data.size());
   unsigned char* output_buffer = StringAsOpenSSLBuffer(data);
   int output_size = 0;
-  const EVP_CIPHER* cipher = EVP_aes_256_cbc();
   EVP_CIPHER_CTX decryption_context;
   EVP_CIPHER_CTX_init(&decryption_context);
   if (!EVP_DecryptInit_ex(&decryption_context, cipher, nullptr, key_buffer,
@@ -444,8 +497,18 @@ bool CryptoUtilityImpl::AesDecrypt(const std::string& encrypted_data,
   return true;
 }
 
-std::string CryptoUtilityImpl::HmacSha512(const std::string& data,
-                                          const std::string& key) {
+std::string CryptoUtilityImpl::HmacSha256(const std::string& key,
+                                          const std::string& data) {
+  unsigned char mac[SHA256_DIGEST_LENGTH];
+  std::string mutable_data(data);
+  unsigned char* data_buffer = StringAsOpenSSLBuffer(&mutable_data);
+  HMAC(EVP_sha256(), key.data(), key.size(), data_buffer, data.size(), mac,
+       nullptr);
+  return std::string(std::begin(mac), std::end(mac));
+}
+
+std::string CryptoUtilityImpl::HmacSha512(const std::string& key,
+                                          const std::string& data) {
   unsigned char mac[SHA512_DIGEST_LENGTH];
   std::string mutable_data(data);
   unsigned char* data_buffer = StringAsOpenSSLBuffer(&mutable_data);
@@ -465,7 +528,7 @@ bool CryptoUtilityImpl::TssCompatibleEncrypt(const std::string& input,
     return false;
   }
   std::string encrypted;
-  if (!AesEncrypt(input, key, iv, &encrypted)) {
+  if (!AesEncrypt(EVP_aes_256_cbc(), input, key, iv, &encrypted)) {
     LOG(ERROR) << __func__ << ": Encryption failed.";
     return false;
   }
@@ -478,31 +541,8 @@ bool CryptoUtilityImpl::TpmCompatibleOAEPEncrypt(const std::string& input,
                                                  std::string* output) {
   CHECK(output);
   // The custom OAEP parameter as specified in TPM Main Part 1, Section 31.1.1.
-  const unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
-  std::string padded_input;
-  padded_input.resize(RSA_size(key));
-  auto padded_buffer =
-      reinterpret_cast<unsigned char*>(string_as_array(&padded_input));
-  auto input_buffer = reinterpret_cast<const unsigned char*>(input.data());
-  int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
-                                          input_buffer, input.size(),
-                                          oaep_param, arraysize(oaep_param));
-  if (!result) {
-    LOG(ERROR) << __func__
-               << ": Failed to add OAEP padding: " << GetOpenSSLError();
-    return false;
-  }
-  output->resize(padded_input.size());
-  auto output_buffer =
-      reinterpret_cast<unsigned char*>(string_as_array(output));
-  result = RSA_public_encrypt(padded_input.size(), padded_buffer, output_buffer,
-                              key, RSA_NO_PADDING);
-  if (result == -1) {
-    LOG(ERROR) << __func__ << ": Failed to encrypt OAEP padded input: "
-               << GetOpenSSLError();
-    return false;
-  }
-  return true;
+  return OAEPEncryptWithLabel("TCPA", input, key, EVP_sha1(), EVP_sha1(),
+                              output);
 }
 
 bool CryptoUtilityImpl::EncryptWithSeed(KeyDerivationScheme derivation_scheme,
@@ -522,12 +562,12 @@ bool CryptoUtilityImpl::EncryptWithSeed(KeyDerivationScheme derivation_scheme,
     hmac_key = crypto::SHA256HashString(kHashHeaderForMac + seed);
   }
   std::string encrypted_data;
-  if (!AesEncrypt(input, aes_key, iv, &encrypted_data)) {
+  if (!AesEncrypt(EVP_aes_256_cbc(), input, aes_key, iv, &encrypted_data)) {
     return false;
   }
   encrypted->set_encrypted_data(encrypted_data);
   encrypted->set_iv(iv);
-  encrypted->set_mac(HmacSha512(iv + encrypted_data, hmac_key));
+  encrypted->set_mac(HmacSha512(hmac_key, iv + encrypted_data));
   return true;
 }
 
@@ -544,7 +584,7 @@ bool CryptoUtilityImpl::DecryptWithSeed(KeyDerivationScheme derivation_scheme,
     hmac_key = crypto::SHA256HashString(kHashHeaderForMac + seed);
   }
   std::string expected_mac =
-      HmacSha512(input.iv() + input.encrypted_data(), hmac_key);
+      HmacSha512(hmac_key, input.iv() + input.encrypted_data());
   if (expected_mac.length() != input.mac().length()) {
     LOG(ERROR) << __func__ << ": MAC length mismatch.";
     return false;
@@ -554,7 +594,8 @@ bool CryptoUtilityImpl::DecryptWithSeed(KeyDerivationScheme derivation_scheme,
     LOG(ERROR) << __func__ << ": MAC mismatch.";
     return false;
   }
-  if (!AesDecrypt(input.encrypted_data(), aes_key, input.iv(), decrypted)) {
+  if (!AesDecrypt(EVP_aes_256_cbc(), input.encrypted_data(), aes_key,
+                  input.iv(), decrypted)) {
     return false;
   }
   return true;
@@ -577,6 +618,66 @@ bool CryptoUtilityImpl::WrapKeyOAEP(const std::string& key,
   encrypted_key.resize(length);
   output->set_wrapped_key(encrypted_key);
   output->set_wrapping_key_id(wrapping_key_id);
+  return true;
+}
+
+std::string CryptoUtilityImpl::GetTpm2KeyNameFromPublicKey(
+    const std::string& public_key_tpm_format) {
+  // TPM_ALG_SHA256 = 0x000B, here in big-endian order.
+  std::string prefix("\x00\x0B", 2);
+  return prefix + crypto::SHA256HashString(public_key_tpm_format);
+}
+
+std::string CryptoUtilityImpl::Tpm2CompatibleKDFa(const std::string& key,
+                                                  const std::string& label,
+                                                  const std::string& context) {
+  // Due to the assumptions of SHA256 and a 256-bit output, we can simplify to
+  // just one iteration.
+  std::string iteration("\x00\x00\x00\x01", 4);  // Big-endian 32-bit 1.
+  std::string null_separator("\x00", 1);
+  std::string bits("\x00\x00\x01\x00", 4);  // Big-endian 32-bit 256.
+  return HmacSha256(key, iteration + label + null_separator + context + bits);
+}
+
+bool CryptoUtilityImpl::Tpm2CompatibleOAEPEncrypt(const std::string& label,
+                                                  const std::string& input,
+                                                  RSA* key,
+                                                  std::string* output) {
+  std::string zero_terminated_label = label + std::string(1, '\x00');
+  return OAEPEncryptWithLabel(zero_terminated_label, input, key, EVP_sha256(),
+                              EVP_sha256(), output);
+}
+
+bool CryptoUtilityImpl::OAEPEncryptWithLabel(const std::string& label,
+                                             const std::string& input,
+                                             RSA* key,
+                                             const EVP_MD* md,
+                                             const EVP_MD* mgf1md,
+                                             std::string* output) {
+  std::string padded_input;
+  padded_input.resize(RSA_size(key));
+  auto padded_buffer =
+      reinterpret_cast<unsigned char*>(string_as_array(&padded_input));
+  auto input_buffer = reinterpret_cast<const unsigned char*>(input.data());
+  auto label_buffer = reinterpret_cast<const unsigned char*>(label.data());
+  int result = RSA_padding_add_PKCS1_OAEP_mgf1(
+      padded_buffer, padded_input.size(), input_buffer, input.size(),
+      label_buffer, label.size(), md, mgf1md);
+  if (!result) {
+    LOG(ERROR) << __func__
+               << ": Failed to add OAEP padding: " << GetOpenSSLError();
+    return false;
+  }
+  output->resize(padded_input.size());
+  auto output_buffer =
+      reinterpret_cast<unsigned char*>(string_as_array(output));
+  result = RSA_public_encrypt(padded_input.size(), padded_buffer, output_buffer,
+                              key, RSA_NO_PADDING);
+  if (result == -1) {
+    LOG(ERROR) << __func__ << ": Failed to encrypt OAEP padded input: "
+               << GetOpenSSLError();
+    return false;
+  }
   return true;
 }
 

@@ -248,20 +248,6 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
     return false;
   }
 
-  std::unique_ptr<HmacSession> endorsement_session =
-      trunks_factory_->GetHmacSession();
-  std::string endorsement_password;
-  if (!GetEndorsementPassword(&endorsement_password)) {
-    return false;
-  }
-  result =
-      endorsement_session->StartUnboundSession(true /* enable_encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  endorsement_session->SetEntityAuthorizationValue(endorsement_password);
   TPM_HANDLE endorsement_key_handle;
   if (!GetEndorsementKey(key_type, &endorsement_key_handle)) {
     LOG(ERROR) << __func__ << ": Endorsement key is not available.";
@@ -278,12 +264,11 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
 
   MultipleAuthorizations authorization;
   authorization.AddAuthorizationDelegate(empty_password_authorization.get());
-  authorization.AddAuthorizationDelegate(endorsement_session->GetDelegate());
-  trunks::_ID_OBJECT identity_object;
-  identity_object.integrity_hmac = trunks::Make_TPM2B_DIGEST(credential_mac);
-  identity_object.enc_identity = trunks::Make_TPM2B_DIGEST(wrapped_credential);
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
   std::string identity_object_data;
-  trunks::Serialize__ID_OBJECT(identity_object, &identity_object_data);
+  trunks::Serialize_TPM2B_DIGEST(trunks::Make_TPM2B_DIGEST(credential_mac),
+                                 &identity_object_data);
+  identity_object_data += wrapped_credential;
   trunks::TPM2B_DIGEST encoded_credential;
   result = trunks_factory_->GetTpm()->ActivateCredentialSync(
       identity_key_handle, identity_key_name, endorsement_key_handle,

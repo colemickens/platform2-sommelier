@@ -80,6 +80,12 @@ class CryptoUtilityImplTest : public testing::Test {
         credential, encrypted);
   }
 
+  std::string KDFa(const std::string& key,
+                   const std::string& label,
+                   const std::string& context) {
+    return crypto_utility_->Tpm2CompatibleKDFa(key, label, context);
+  }
+
  protected:
   NiceMock<MockTpmUtility> mock_tpm_utility_;
   std::unique_ptr<CryptoUtilityImpl> crypto_utility_;
@@ -202,12 +208,35 @@ TEST_F(CryptoUtilityImplTest, EncryptIdentityCredential) {
       TPM_1_2, "credential", public_key_info, "aik", &output));
   EXPECT_TRUE(output.has_asym_ca_contents());
   EXPECT_TRUE(output.has_sym_ca_attestation());
+  EXPECT_EQ(TPM_1_2, output.tpm_version());
 }
 
 TEST_F(CryptoUtilityImplTest, EncryptIdentityCredentialBadEK) {
   EncryptedIdentityCredential output;
   EXPECT_FALSE(crypto_utility_->EncryptIdentityCredential(
       TPM_1_2, "credential", "bad_ek", "aik", &output));
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptIdentityCredentialTpm2) {
+  std::string public_key = HexDecode(kValidPublicKeyHex);
+  std::string public_key_info;
+  EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
+                                                          &public_key_info));
+  EncryptedIdentityCredential output;
+  EXPECT_TRUE(crypto_utility_->EncryptIdentityCredential(
+      TPM_2_0, "credential", public_key_info, "aik", &output));
+  EXPECT_FALSE(output.has_asym_ca_contents());
+  EXPECT_FALSE(output.has_sym_ca_attestation());
+  EXPECT_TRUE(output.has_encrypted_seed());
+  EXPECT_TRUE(output.has_credential_mac());
+  EXPECT_TRUE(output.has_wrapped_certificate());
+  EXPECT_EQ(TPM_2_0, output.tpm_version());
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptIdentityCredentialTpm2BadEK) {
+  EncryptedIdentityCredential output;
+  EXPECT_FALSE(crypto_utility_->EncryptIdentityCredential(
+      TPM_2_0, "credential", "bad_ek", "aik", &output));
 }
 
 TEST_F(CryptoUtilityImplTest, DecryptIdentityCertificateForTpm2) {
@@ -293,6 +322,16 @@ TEST_F(CryptoUtilityImplTest, EncryptCertificateForGoogleBadInput) {
   EXPECT_FALSE(encrypted.has_mac());
   EXPECT_FALSE(encrypted.has_encrypted_data());
   EXPECT_FALSE(encrypted.has_wrapped_key());
+}
+
+TEST_F(CryptoUtilityImplTest, KDFaKnownAnswerTest) {
+  std::string key = HexDecode(
+      "BF88BFC2D0FFA48025830745960EE0A53A66B31E7206321F8FC95B89FD63E8C3");
+  std::string context = HexDecode(
+      "000BEDB60C6A4E2470EF4804FDE7FA35B94A5338DB7D5B5A3A1DE0E7EB12152A1A95");
+  std::string expected_output = HexDecode(
+      "C8307D1197CBD3A26E78D5519C26E08661C79D36B528A1089E6156627441ECCD");
+  EXPECT_EQ(expected_output, KDFa(key, "STORAGE", context));
 }
 
 }  // namespace attestation

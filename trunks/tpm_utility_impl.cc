@@ -1510,11 +1510,11 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
                                     kNoDA | kRestricted | kDecrypt);
   if (key_type == TPM_ALG_RSA) {
     public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
-    public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;
+    public_area.parameters.rsa_detail.symmetric.key_bits.aes = 256;
     public_area.parameters.rsa_detail.symmetric.mode.aes = TPM_ALG_CFB;
   } else {
     public_area.parameters.ecc_detail.symmetric.algorithm = TPM_ALG_AES;
-    public_area.parameters.ecc_detail.symmetric.key_bits.aes = 128;
+    public_area.parameters.ecc_detail.symmetric.key_bits.aes = 256;
     public_area.parameters.ecc_detail.symmetric.mode.aes = TPM_ALG_CFB;
   }
   TPM2B_PUBLIC rsa_public_area = Make_TPM2B_PUBLIC(public_area);

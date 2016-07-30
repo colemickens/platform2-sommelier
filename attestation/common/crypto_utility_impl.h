@@ -84,22 +84,27 @@ class CryptoUtilityImpl : public CryptoUtility {
     kHashWithHeaders,
   };
 
-  // Encrypts |data| using |key| and |iv| for AES in CBC mode with PKCS #5
-  // padding and produces the |encrypted_data|. Returns true on success.
-  bool AesEncrypt(const std::string& data,
+  // Encrypts |data| using |key|, |iv|, and the given |cipher|. Returns true on
+  // success.
+  bool AesEncrypt(const EVP_CIPHER* cipher,
+                  const std::string& data,
                   const std::string& key,
                   const std::string& iv,
                   std::string* encrypted_data);
 
-  // Decrypts |encrypted_data| using |key| and |iv| for AES in CBC mode with
-  // PKCS #5 padding and produces the decrypted |data|. Returns true on success.
-  bool AesDecrypt(const std::string& encrypted_data,
+  // Decrypts |encrypted_data| using |key|, |iv|, and the given |cipher|.
+  // Returns true on success.
+  bool AesDecrypt(const EVP_CIPHER* cipher,
+                  const std::string& encrypted_data,
                   const std::string& key,
                   const std::string& iv,
                   std::string* data);
 
+  // Computes and returns an HMAC of |data| using |key| and SHA-256.
+  std::string HmacSha256(const std::string& key, const std::string& data);
+
   // Computes and returns an HMAC of |data| using |key| and SHA-512.
-  std::string HmacSha512(const std::string& data, const std::string& key);
+  std::string HmacSha512(const std::string& key, const std::string& data);
 
   // Encrypt like trousers does. This is like AesEncrypt but a random IV is
   // included in the output.
@@ -137,6 +142,34 @@ class CryptoUtilityImpl : public CryptoUtility {
                    RSA* wrapping_key,
                    const std::string& wrapping_key_id,
                    EncryptedData* output);
+
+  // Computes a key 'Name' given a public key as a serialized TPMT_PUBLIC. The
+  // name algorithm is assumed to be SHA256.
+  std::string GetTpm2KeyNameFromPublicKey(
+      const std::string& public_key_tpm_format);
+
+  // Computes KDFa as defined in TPM 2.0 specification Part 1 Rev 1.16 Section
+  // 11.4.9.1. It always uses SHA256 as the hash algorithm and always outputs
+  // a 256-bit value.
+  std::string Tpm2CompatibleKDFa(const std::string& key,
+                                 const std::string& label,
+                                 const std::string& context);
+
+  // Encrypts |input| using RSA-OAEP with a custom |label|. A zero byte will be
+  // appended to the label as described in TPM 2.0 specification Part 1 Rev 1.16
+  // Annex B.4.
+  bool Tpm2CompatibleOAEPEncrypt(const std::string& label,
+                                 const std::string& input,
+                                 RSA* key,
+                                 std::string* output);
+
+  // Encrypts |input| using RSA-OAEP with a custom |label|.
+  bool OAEPEncryptWithLabel(const std::string& label,
+                            const std::string& input,
+                            RSA* key,
+                            const EVP_MD* md,
+                            const EVP_MD* mgf1md,
+                            std::string* output);
 
   TpmUtility* tpm_utility_;
 };

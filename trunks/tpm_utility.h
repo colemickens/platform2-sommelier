@@ -224,7 +224,7 @@ class TRUNKS_EXPORT TpmUtility {
                                   TPMT_PUBLIC* public_data) = 0;
 
   // This method seals |data_to_seal| to the TPM. The |sealed_data| can be
-  // retreived by fulfilling the policy represented by |policy_digest|.
+  // retrieved by fulfilling the policy represented by |policy_digest|.
   virtual TPM_RC SealData(const std::string& data_to_seal,
                           const std::string& policy_digest,
                           AuthorizationDelegate* delegate,
@@ -332,8 +332,7 @@ class TRUNKS_EXPORT TpmUtility {
                                    TPM_HANDLE* key_handle) = 0;
 
   // Creates an asymmetric restricted signing key of the given |key_type|.
-  // Requires owner authorization. On success returns TPM_RC_SUCCESS and
-  // populates |key_blob|.
+  // On success returns TPM_RC_SUCCESS and populates |key_blob|.
   virtual TPM_RC CreateIdentityKey(TPM_ALG_ID key_type,
                                    AuthorizationDelegate* delegate,
                                    std::string* key_blob) = 0;
