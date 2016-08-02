@@ -75,9 +75,9 @@ void TpmManagerService::InitializeTask() {
         base::MakeUnique<TpmStatusImpl>();
     tpm_status_ = default_tpm_status_.get();
     default_tpm_initializer_ =
-        base::MakeUnique<Tpm2InitializerImpl>(local_data_store_, tpm_status_);
+        base::MakeUnique<TpmInitializerImpl>(local_data_store_, tpm_status_);
     tpm_initializer_ = default_tpm_initializer_.get();
-    default_tpm_nvram_ = base::MakeUnique<Tpm2NvramImpl>(local_data_store_);
+    default_tpm_nvram_ = base::MakeUnique<TpmNvramImpl>(local_data_store_);
     tpm_nvram_ = default_tpm_nvram_.get();
 #endif
   }

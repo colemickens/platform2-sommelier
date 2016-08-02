@@ -37,13 +37,13 @@
 #include "tpm_manager/server/tpm2_initializer_impl.h"
 #include "tpm_manager/server/tpm2_nvram_impl.h"
 #include "tpm_manager/server/tpm2_status_impl.h"
+#include "trunks/trunks_factory.h"
+#include "trunks/trunks_factory_impl.h"
 #else
 #include "tpm_manager/server/tpm_initializer_impl.h"
 #include "tpm_manager/server/tpm_nvram_impl.h"
 #include "tpm_manager/server/tpm_status_impl.h"
 #endif
-#include "trunks/trunks_factory.h"
-#include "trunks/trunks_factory_impl.h"
 
 namespace tpm_manager {
 
