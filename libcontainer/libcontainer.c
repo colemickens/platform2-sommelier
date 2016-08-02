@@ -838,10 +838,49 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 	return 0;
 }
 
+static int get_userns_id(const char *map, int id)
+{
+	char *map_copy, *mapping, *saveptr1, *saveptr2;
+	int inside, outside, length;
+	int result = 0;
+	errno = 0;
+
+	if (asprintf(&map_copy, "%s", map) < 0)
+		return -ENOMEM;
+
+	mapping = strtok_r(map_copy, ",", &saveptr1);
+	while (mapping) {
+		inside = strtol(strtok_r(mapping, " ", &saveptr2), NULL, 10);
+		outside = strtol(strtok_r(NULL, " ", &saveptr2), NULL, 10);
+		length = strtol(strtok_r(NULL, "\0", &saveptr2), NULL, 10);
+		if (errno) {
+			goto error_free_return;
+		} else if (inside < 0 || outside < 0 || length < 0) {
+			errno = EINVAL;
+			goto error_free_return;
+		}
+
+		if (id >= outside && id <= (outside + length)) {
+			result = id - (outside - inside);
+			goto exit;
+		}
+
+		mapping = strtok_r(NULL, ",", &saveptr1);
+	}
+	errno = EINVAL;
+
+error_free_return:
+	result = -errno;
+exit:
+	free(map_copy);
+	return result;
+}
+
 int container_start(struct container *c, const struct container_config *config)
 {
 	int rc = 0;
 	unsigned int i;
+	int uid_userns, gid_userns;
 
 	if (!c)
 		return -EINVAL;
@@ -976,6 +1015,18 @@ int container_start(struct container *c, const struct container_config *config)
 	rc = minijail_gidmap(c->jail, config->gid_map);
 	if (rc)
 		goto error_rmdir;
+
+	/* Set the UID/GID inside the container if not 0. */
+	uid_userns = get_userns_id(config->uid_map, config->uid);
+	if (uid_userns < 0)
+		goto error_rmdir;
+	else if (uid_userns > 0)
+		minijail_change_uid(c->jail, (uid_t) uid_userns);
+	gid_userns = get_userns_id(config->gid_map, config->gid);
+	if (gid_userns < 0)
+		goto error_rmdir;
+	else if (gid_userns > 0)
+		minijail_change_gid(c->jail, (gid_t) gid_userns);
 
 	rc = minijail_enter_pivot_root(c->jail, c->runfsroot);
 	if (rc)
