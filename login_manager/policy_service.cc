@@ -79,8 +79,7 @@ bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
   policy_blob->resize(policy.ByteSize());
   uint8_t* start = policy_blob->data();
   uint8_t* end = policy.SerializeWithCachedSizesToArray(start);
-  return (end - start >= 0 &&
-          static_cast<size_t>(end - start) == policy_blob->size());
+  return (static_cast<size_t>(end - start) == policy_blob->size());
 }
 
 bool PolicyService::PersistPolicySync() {
