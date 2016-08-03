@@ -40,6 +40,7 @@ bool DebugDaemon::Init() {
   modem_status_tool_ = new ModemStatusTool();
   netif_tool_ = new NetifTool();
   network_status_tool_ = new NetworkStatusTool();
+  oom_adj_tool_ = new OomAdjTool();
   packet_capture_tool_ = new PacketCaptureTool();
   ping_tool_ = new PingTool();
   route_tool_ = new RouteTool();
@@ -71,6 +72,11 @@ void DebugDaemon::Run() {
   }
   // Unreachable.
   dispatcher_->leave();
+}
+
+std::string DebugDaemon::SetOomScoreAdj(const std::map<pid_t, int32_t>& scores,
+                                        DBus::Error& error) {
+  return oom_adj_tool_->Set(scores, &error);
 }
 
 std::string DebugDaemon::PingStart(

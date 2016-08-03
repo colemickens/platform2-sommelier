@@ -101,6 +101,7 @@
         'src/modem_status_tool.cc',
         'src/netif_tool.cc',
         'src/network_status_tool.cc',
+        'src/oom_adj_tool.cc',
         'src/packet_capture_tool.cc',
         'src/ping_tool.cc',
         'src/perf_tool.cc',

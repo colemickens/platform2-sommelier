@@ -647,5 +647,25 @@
         Disallow uploading of device coredump files.
       </tp:docstring>
     </method>
+    <method name="SetOomScoreAdj">
+      <tp:docstring>
+        Set OOM score by writing scores to procfs /proc/pid/oom_score_adj.
+        It is an operation which needs root privilege so needs to be handled
+        carefully:
+        1. Only user chronos can request the operation.
+        2. It can only modify processes owned by chronos or run in Android
+        container.
+      </tp:docstring>
+      <arg name="scores" type="a{ii}" direction="in">
+        <tp:docstring>
+          Arrays of (pid, score) pairs.
+        </tp:docstring>
+      </arg>
+      <arg name="out" type="s" direction="out">
+        <tp:docstring>
+          Output from the helper of the operation. Empty on success.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>

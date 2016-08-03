@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_DEBUG_DAEMON_H_
 
 #include <stdint.h>
+#include <sys/types.h>
 
 #include <map>
 #include <memory>
@@ -28,6 +29,7 @@
 #include "debugd/src/modem_status_tool.h"
 #include "debugd/src/netif_tool.h"
 #include "debugd/src/network_status_tool.h"
+#include "debugd/src/oom_adj_tool.h"
 #include "debugd/src/packet_capture_tool.h"
 #include "debugd/src/perf_tool.h"
 #include "debugd/src/ping_tool.h"
@@ -180,6 +182,8 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   int32_t QueryDevFeatures(DBus::Error& error) override;  // NOLINT
   void EnableDevCoredumpUpload(DBus::Error& error) override;  // NOLINT
   void DisableDevCoredumpUpload(DBus::Error& error) override;  // NOLINT
+  std::string SetOomScoreAdj(const std::map<pid_t, int32_t>& scores,
+                             DBus::Error& error) override;  // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -200,6 +204,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   ModemStatusTool* modem_status_tool_ = nullptr;
   NetifTool* netif_tool_ = nullptr;
   NetworkStatusTool* network_status_tool_ = nullptr;
+  OomAdjTool* oom_adj_tool_ = nullptr;
   PacketCaptureTool* packet_capture_tool_ = nullptr;
   PerfTool* perf_tool_ = nullptr;
   PingTool* ping_tool_ = nullptr;
