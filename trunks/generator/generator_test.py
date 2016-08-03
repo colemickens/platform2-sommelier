@@ -72,7 +72,7 @@ class TestGenerators(unittest.TestCase):
     defined_types = set([])
     out_file = StringIO.StringIO()
     constant.Output(out_file, defined_types, typemap)
-    output_re = r'struct INT;\s+const INT test = 1;\s+'
+    output_re = r'struct INT;\s+constexpr INT test = 1;\s+'
     self.assertRegexpMatches(out_file.getvalue(), output_re)
     out_file.close()
 
