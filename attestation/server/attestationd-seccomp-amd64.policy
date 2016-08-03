@@ -75,6 +75,16 @@ mprotect: 1
 munmap: 1
 
 clone: 1
-# These calls are attempted but apparently not necessary; return EPERM
+setpriority: 1
+pwrite64: 1
+fdatasync: 1
+fsync: 1
+rename: 1
+chmod: 1
+tgkill: 1
+
+# This call is attempted but apparently not necessary; return EPERM.
 prctl: return 1
-ioctl: return 1
+
+# Allow FIONREAD for FilePathWatcher.
+ioctl: arg1 == 0x541B
