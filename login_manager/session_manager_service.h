@@ -166,9 +166,9 @@ class SessionManagerService
   void AbortBrowser(int signal, const std::string& message) override;
   void RestartBrowserWithArgs(const std::vector<std::string>& args,
                               bool args_are_extra) override;
-  void SetBrowserSessionForUser(const std::string& account_id,
+  void SetBrowserSessionForUser(const std::string& username,
                                 const std::string& userhash) override;
-  void SetFlagsForUser(const std::string& account_id,
+  void SetFlagsForUser(const std::string& username,
                        const std::vector<std::string>& flags) override;
   bool IsBrowser(pid_t pid) override;
 

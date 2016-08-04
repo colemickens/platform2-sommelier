@@ -326,12 +326,12 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EnableChromeTesting(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartSession(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  std::string account_id, unique_id;
-  if (!reader.PopString(&account_id) || !reader.PopString(&unique_id))
+  std::string cryptohome_id, unique_id;
+  if (!reader.PopString(&cryptohome_id) || !reader.PopString(&unique_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
   SessionManagerImpl::Error error;
-  bool success = impl_->StartSession(account_id, unique_id, &error);
+  bool success = impl_->StartSession(cryptohome_id, unique_id, &error);
   return CraftAppropriateResponseWithBool(call, error, success);
 }
 
@@ -372,17 +372,17 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
 void SessionManagerDBusAdaptor::StorePolicyForUser(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  std::string account_id;
+  std::string user_id;
   const uint8_t* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
   // policy_blob points into reader after pop.
-  if (!reader.PopString(&account_id) ||
+  if (!reader.PopString(&user_id) ||
       !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
   } else {
     impl_->StorePolicyForUser(
-        account_id, policy_blob, policy_blob_len,
+        user_id, policy_blob, policy_blob_len,
         DBusMethodCompletion::CreateCallback(call, sender));
     // Response will normally be sent asynchronously.
   }
@@ -390,15 +390,15 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicyForUser(
     dbus::MethodCall* call) {
-  std::string account_id;
+  std::string user_id;
   dbus::MessageReader reader(call);
 
-  if (!reader.PopString(&account_id))
+  if (!reader.PopString(&user_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
   std::vector<uint8_t> policy_data;
   SessionManagerImpl::Error error;
-  impl_->RetrievePolicyForUser(account_id, &policy_data, &error);
+  impl_->RetrievePolicyForUser(user_id, &policy_data, &error);
   return CraftAppropriateResponseWithBytes(call, error, policy_data);
 }
 
@@ -531,13 +531,13 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  std::string account_id;
+  std::string user_id;
   std::vector<std::string> session_user_flags;
-  if (!reader.PopString(&account_id) ||
+  if (!reader.PopString(&user_id) ||
       !reader.PopArrayOfStrings(&session_user_flags)) {
     return CreateInvalidArgsError(call, call->GetSignature());
   }
-  impl_->SetFlagsForUser(account_id, session_user_flags);
+  impl_->SetFlagsForUser(user_id, session_user_flags);
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
 
@@ -595,12 +595,12 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  std::string account_id;
-  if (!reader.PopString(&account_id))
+  std::string user_id;
+  if (!reader.PopString(&user_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
   SessionManagerImpl::Error error;
-  impl_->StartArcInstance(account_id, &error);
+  impl_->StartArcInstance(user_id, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
@@ -632,12 +632,12 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::GetArcStartTimeTicks(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RemoveArcData(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  std::string account_id;
-  if (!reader.PopString(&account_id))
+  std::string user_id;
+  if (!reader.PopString(&user_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
   SessionManagerImpl::Error error;
-  impl_->RemoveArcData(account_id, &error);
+  impl_->RemoveArcData(user_id, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
 

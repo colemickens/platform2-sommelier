@@ -138,12 +138,12 @@ void BrowserJob::WaitAndAbort(base::TimeDelta timeout) {
 
 // When user logs in we want to restart chrome in browsing mode with
 // user signed in. Hence we remove --login-manager flag and add
-// --login-user=|account_id| and --login-profile=|userhash| flags.
-void BrowserJob::StartSession(const std::string& account_id,
+// --login-user=|user_id| and --login-profile=|userhash| flags.
+void BrowserJob::StartSession(const std::string& user_id,
                               const std::string& userhash) {
   if (!session_already_started_) {
     login_arguments_.clear();
-    login_arguments_.push_back(kLoginUserFlag + account_id);
+    login_arguments_.push_back(kLoginUserFlag + user_id);
     login_arguments_.push_back(kLoginProfileFlag + userhash);
   }
   session_already_started_ = true;
