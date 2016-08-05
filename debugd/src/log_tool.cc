@@ -131,6 +131,7 @@ const Log common_logs[] = {
               " /var/log/messages" },
   { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
   { "input_devices", "/bin/cat /proc/bus/input/devices" },
+  { "top", "/usr/bin/top -Hb -n 1 | head -n 40"},
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
   { "touchpad_activity", "/opt/google/input/cmt_feedback alt" },
   { "touch_fw_version", "grep -E"
