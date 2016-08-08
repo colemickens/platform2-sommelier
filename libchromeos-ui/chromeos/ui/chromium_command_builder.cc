@@ -33,6 +33,12 @@ const char kBoardUseFlagPrefix[] = "board_use_";
 // Location where GPU debug information is bind-mounted.
 const char kDebugfsGpuPath[] = "/var/run/debugfs_gpu";
 
+// Name of the release track field.
+constexpr char kChromeosReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
+
+// Prefix for test builds.
+constexpr char kTestPrefix[] = "test";
+
 // Returns the value associated with |key| in |pairs| or an empty string if the
 // key isn't present. If the value is encapsulated in single or double quotes,
 // they are removed.
@@ -79,6 +85,19 @@ void UpdateArgumentIndexForDeletion(int* argument_index_to_update,
     (*argument_index_to_update)--;
   else if (*argument_index_to_update == deleted_argument_index)
     *argument_index_to_update = -1;
+}
+
+// Returns true if |lsb_data| has a field called "CHROMEOS_RELEASE_TRACK",
+// and its value starts with "test".
+bool IsTestBuild(const std::string& lsb_data) {
+  for (const auto& field : base::SplitStringPiece(
+           lsb_data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+    std::vector<base::StringPiece> tokens = base::SplitStringPiece(
+        field, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    if (tokens.size() == 2 && tokens[0] == kChromeosReleaseTrack)
+      return tokens[1].starts_with(kTestPrefix);
+  }
+  return false;
 }
 
 }  // namespace
@@ -204,7 +223,7 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   SetUpPepperPlugins();
   AddUiFlags();
 
-  if (UseFlagIsSet("arc"))
+  if (UseFlagIsSet("arc") || (UseFlagIsSet("cheets") && IsTestBuild(lsb_data)))
     AddArg("--enable-arc");
 
   if (UseFlagIsSet("pointer_events"))
