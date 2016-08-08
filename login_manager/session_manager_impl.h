@@ -140,7 +140,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   std::string EnableChromeTesting(bool force_relaunch,
                                   std::vector<std::string> extra_args,
                                   Error* error);
-  bool StartSession(const std::string& user_id,
+  bool StartSession(const std::string& account_id,
                     const std::string& unique_id,
                     Error* error);
   bool StopSession();
@@ -150,11 +150,11 @@ class SessionManagerImpl : public SessionManagerInterface,
                    const PolicyService::Completion& completion);
   void RetrievePolicy(std::vector<uint8_t>* policy_data, Error* error);
 
-  void StorePolicyForUser(const std::string& user_id,
+  void StorePolicyForUser(const std::string& account_id,
                           const uint8_t* policy_blob,
                           size_t policy_blob_len,
                           const PolicyService::Completion& completion);
-  void RetrievePolicyForUser(const std::string& user_id,
+  void RetrievePolicyForUser(const std::string& account_id,
                              std::vector<uint8_t>* policy_data,
                              Error* error);
 
@@ -179,7 +179,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   bool RestartJob(int fd, const std::vector<std::string>& argv, Error* error);
   void StartDeviceWipe(const std::string& reason, Error* error);
-  void SetFlagsForUser(const std::string& user_id,
+  void SetFlagsForUser(const std::string& account_id,
                        const std::vector<std::string>& session_user_flags);
 
   void RequestServerBackedStateKeys(
@@ -189,10 +189,10 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartContainer(const std::string& name, Error* error);
   void StopContainer(const std::string& name, Error* error);
 
-  void StartArcInstance(const std::string& user_id, Error* error);
+  void StartArcInstance(const std::string& account_id, Error* error);
   void StopArcInstance(Error* error);
   base::TimeTicks GetArcStartTime(Error* error);
-  void RemoveArcData(const std::string& user_id, Error* error);
+  void RemoveArcData(const std::string& account_id, Error* error);
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -220,15 +220,16 @@ class SessionManagerImpl : public SessionManagerInterface,
   void ImportValidateAndStoreGeneratedKey(const std::string& username,
                                           const base::FilePath& temp_key_file);
 
-  // Normalizes a user ID in the case of a legacy email address.
+  // Normalizes an account ID in the case of a legacy email address.
   // Returns true on success, false otherwise. In case of an error, some
   // appropriate message is set to |error|.
-  static bool NormalizeUserId(const std::string& user_id,
-                              std::string* actual_user_id_out,
-                              Error* error_out);
+  static bool NormalizeAccountId(const std::string& account_id,
+                                 std::string* actual_account_id_out,
+                                 Error* error_out);
 
-  // Checks if string looks like valid cryptohome user id.
-  static bool ValidateUserId(const std::string& user_id);
+  // Checks if string looks like a valid GAIA ID key (as returned by
+  // AccountId::GetGaiaIdKey()).
+  static bool ValidateGaiaIdKey(const std::string& account_id);
 
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
@@ -239,7 +240,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                                  bool is_incognito,
                                  std::string* error);
 
-  PolicyService* GetPolicyService(const std::string& user_id);
+  PolicyService* GetPolicyService(const std::string& account_id);
 
   // Starts the Android container for ARC.  If the container has started
   // |started_container_out| is set to true and it should be stopped.  When a

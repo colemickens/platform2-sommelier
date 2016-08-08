@@ -60,16 +60,16 @@
 
     <!--
         StartSession:
-        @email_address: Human-readable ID of the user to start a session for.
+        @account_id: Account ID of the user to start a session for.
         @unique_identifier: Unused.
         @done: True on success. Error returned on failure, so likely redundant.
 
         Updates bookkeeping to know about a session for
-        @email_address. Also emits "start-user-session" upstart signal
+        @account_id. Also emits "start-user-session" upstart signal
         and "SessionStateChanged:started" D-Bus signal.
     -->
     <method name="StartSession">
-      <arg type="s" name="email_address" direction="in" />
+      <arg type="s" name="account_id" direction="in" />
       <arg type="s" name="unique_identifier" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
@@ -128,7 +128,7 @@
 
     <!--
         StorePolicyForUser:
-        @user_email: User whose policy is to be stored.
+        @account_id: Account ID of theser whose policy is to be stored.
         @policy_blob: A serialized PolicyFetchResponse protobuf.
         @done: True on success. Error returned on failure, so likely redundant.
 
@@ -146,21 +146,21 @@
         updates pushed by Chrome.
     -->
     <method name="StorePolicyForUser">
-      <arg type="s" name="user_email" direction="in" />
+      <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
 
     <!--
         RetrievePolicyForUser:
-        @user_email: User whose policy the caller wants.
+        @account_id: Account ID of the user whose policy the caller wants.
         @policy_blob: Serialized protobuffer containing a PolicyFetchResponse
                       a signature over that policy.
 
         Retrieves user policy for a given user.
     -->
     <method name="RetrievePolicyForUser">
-      <arg type="s" name="user_email" direction="in" />
+      <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
 
@@ -191,7 +191,7 @@
 
     <!--
         RetrieveDeviceLocalAccountPolicy:
-        @account_id: Account whose policy is to be stored.
+        @account_id: Account ID of the user whose policy is to be stored.
         @policy_blob: Serialized protobuffer containing a PolicyFetchResponse
                       a signature over that policy.
 
@@ -333,13 +333,13 @@
 
     <!--
         SetFlagsForUser:
-        @user_email: User to set flags for.
+        @account_id: Account ID of the user to set flags for.
         @flags: array of flags to be set for the user.
 
         Sets browser @flags to be applied on next in-session restart.
     -->
     <method name="SetFlagsForUser">
-      <arg type="s" name="user_email" direction="in" />
+      <arg type="s" name="account_id" direction="in" />
       <arg type="as" name="flags" direction="in" />
     </method>
 
@@ -397,15 +397,15 @@
 
     <!--
         StartArcInstance:
-        @email_address: Human-readable ID of the user to start ARC for. This
-                        must be the same as the one given in StartSession.
+        @account_id: Account ID of the user to start ARC for. This
+                  must be the same as the one given in StartSession.
 
         Starts an ARC instance. Only one instance of ARC can be executing at a
         given point in time. This method is only available if the board
         supports ARC. This method gets invoked by Chrome.
     -->
     <method name="StartArcInstance">
-      <arg type="s" name="email_address" direction="in" />
+      <arg type="s" name="account_id" direction="in" />
     </method>
 
     <!--
@@ -433,14 +433,13 @@
     </method>
     <!--
          RemoveArcData:
-         @email_address: Human-readable ID of the user whose ARC data is
-                         removed.
+         @account_id: Account ID of the user whose ARC data is removed.
 
          Removes ARC data from the user's profile.  This does not remove ARC
          system data such as root images.
     -->
     <method name="RemoveArcData">
-      <arg type="s" name="email_address" direction="in" />
+      <arg type="s" name="account_id" direction="in" />
     </method>
   </interface>
   <!-- ********************************************************************* -->

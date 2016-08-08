@@ -79,9 +79,9 @@ const char kEmailLegalCharacters[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890!#$%&'*+-/=?^_`{|}~";
 
-// Should match chromium AccountId::kUserIdPrefix .
-const char kUserIdPrefix[] = "g-";
-const char kUserIdLegalCharacters[] =
+// Should match chromium AccountId::kKeyGaiaIdPrefix .
+const char kGaiaIdKeyPrefix[] = "g-";
+const char kGaiaIdKeyLegalCharacters[] =
     "-0123456789"
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -97,15 +97,16 @@ const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
 // minimum amount of time we must wait before killing the containers.
 constexpr int kContainerTimeoutSec = 1;
 
-bool IsIncognitoUserId(const std::string& user_id) {
-  const std::string lower_case_id(base::ToLowerASCII(user_id));
+bool IsIncognitoAccountId(const std::string& account_id) {
+  const std::string lower_case_id(base::ToLowerASCII(account_id));
   return (lower_case_id == kGuestUserName) ||
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
 
 #if USE_ARC
-base::FilePath GetAndroidDataDirForUser(const std::string& normalized_user_id) {
-  return GetRootPath(normalized_user_id).Append(
+base::FilePath GetAndroidDataDirForUser(
+    const std::string& normalized_account_id) {
+  return GetRootPath(normalized_account_id).Append(
       SessionManagerImpl::kAndroidDataDirName);
 }
 #endif  // USE_ARC
@@ -301,16 +302,16 @@ std::string SessionManagerImpl::EnableChromeTesting(
   return chrome_testing_path_.value();
 }
 
-bool SessionManagerImpl::StartSession(const std::string& user_id,
+bool SessionManagerImpl::StartSession(const std::string& account_id,
                                       const std::string& unique_id,
                                       Error* error) {
-  std::string actual_user_id;
-  if (!NormalizeUserId(user_id, &actual_user_id, error)) {
+  std::string actual_account_id;
+  if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
     return false;
   }
 
   // Check if this user already started a session.
-  if (user_sessions_.count(actual_user_id) > 0) {
+  if (user_sessions_.count(actual_account_id) > 0) {
     static const char msg[] = "Provided user id already started a session.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSessionExists, msg);
@@ -318,10 +319,10 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
   }
 
   // Create a UserSession object for this user.
-  const bool is_incognito = IsIncognitoUserId(actual_user_id);
+  const bool is_incognito = IsIncognitoAccountId(actual_account_id);
   std::string error_name;
   std::unique_ptr<UserSession> user_session(
-      CreateUserSession(actual_user_id, is_incognito, &error_name));
+      CreateUserSession(actual_account_id, is_incognito, &error_name));
   if (!user_session.get()) {
     error->Set(error_name, "Can't create session.");
     return false;
@@ -348,7 +349,7 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
 
   scoped_ptr<dbus::Response> response = init_controller_->TriggerImpulse(
       "start-user-session",
-      std::vector<std::string>(1, "CHROMEOS_USER=" + actual_user_id));
+      std::vector<std::string>(1, "CHROMEOS_USER=" + actual_account_id));
 
   if (!response) {
     static const char msg[] =
@@ -358,16 +359,16 @@ bool SessionManagerImpl::StartSession(const std::string& user_id,
     return false;
   }
   LOG(INFO) << "Starting user session";
-  manager_->SetBrowserSessionForUser(actual_user_id, user_session->userhash);
+  manager_->SetBrowserSessionForUser(actual_account_id, user_session->userhash);
   session_started_ = true;
-  user_sessions_[actual_user_id] = user_session.release();
+  user_sessions_[actual_account_id] = user_session.release();
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
   dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStarted);
 
   if (device_policy_->KeyMissing() && !device_policy_->Mitigating() &&
       is_first_real_user) {
     // This is the first sign-in on this unmanaged device.  Take ownership.
-    key_gen_->Start(actual_user_id);
+    key_gen_->Start(actual_account_id);
   }
 
   // Record that a login has successfully completed on this boot.
@@ -410,11 +411,11 @@ void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
 }
 
 void SessionManagerImpl::StorePolicyForUser(
-    const std::string& user_id,
+    const std::string& account_id,
     const uint8_t* policy_blob,
     size_t policy_blob_len,
     const PolicyService::Completion& completion) {
-  PolicyService* policy_service = GetPolicyService(user_id);
+  PolicyService* policy_service = GetPolicyService(account_id);
   if (!policy_service) {
     PolicyService::Error error(
         dbus_error::kSessionDoesNotExist,
@@ -430,10 +431,10 @@ void SessionManagerImpl::StorePolicyForUser(
 }
 
 void SessionManagerImpl::RetrievePolicyForUser(
-    const std::string& user_id,
+    const std::string& account_id,
     std::vector<uint8_t>* policy_data,
     Error* error) {
-  PolicyService* policy_service = GetPolicyService(user_id);
+  PolicyService* policy_service = GetPolicyService(account_id);
   if (!policy_service) {
     static const char msg[] =
         "Cannot retrieve user policy before session is started.";
@@ -564,9 +565,9 @@ void SessionManagerImpl::StartDeviceWipe(const std::string& reason,
 }
 
 void SessionManagerImpl::SetFlagsForUser(
-    const std::string& user_id,
+    const std::string& account_id,
     const std::vector<std::string>& session_user_flags) {
-  manager_->SetFlagsForUser(user_id, session_user_flags);
+  manager_->SetFlagsForUser(account_id, session_user_flags);
 }
 
 void SessionManagerImpl::RequestServerBackedStateKeys(
@@ -584,16 +585,16 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
     error->Set(dbus_error::kInitMachineInfoFail, "Missing parameters.");
 }
 
-void SessionManagerImpl::StartArcInstance(const std::string& user_id,
+void SessionManagerImpl::StartArcInstance(const std::string& account_id,
                                           Error* error) {
 #if USE_ARC
   arc_start_time_ = base::TimeTicks::Now();
 
-  std::string actual_user_id;
-  if (!NormalizeUserId(user_id, &actual_user_id, error)) {
+  std::string actual_account_id;
+  if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
     return;
   }
-  if (user_sessions_.count(actual_user_id) == 0) {
+  if (user_sessions_.count(actual_account_id) == 0) {
     static const char msg[] = "Provided user ID does not have a session.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSessionDoesNotExist, msg);
@@ -601,7 +602,7 @@ void SessionManagerImpl::StartArcInstance(const std::string& user_id,
   }
 
   const base::FilePath android_data_dir =
-      GetAndroidDataDirForUser(actual_user_id);
+      GetAndroidDataDirForUser(actual_account_id);
   const std::vector<std::string>& keyvals = {
       base::StringPrintf("ANDROID_DATA_DIR=%s",
                          android_data_dir.value().c_str()),
@@ -678,7 +679,7 @@ void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
   error->Set(dbus_error::kContainerShutdownFail, msg);
 }
 
-void SessionManagerImpl::RemoveArcData(const std::string& user_id,
+void SessionManagerImpl::RemoveArcData(const std::string& account_id,
                                        Error* error) {
 #if USE_ARC
   pid_t pid = 0;
@@ -687,12 +688,12 @@ void SessionManagerImpl::RemoveArcData(const std::string& user_id,
     return;
   }
 
-  std::string actual_user_id;
-  if (!NormalizeUserId(user_id, &actual_user_id, error)) {
+  std::string actual_account_id;
+  if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
     return;
   }
   const base::FilePath android_data_dir =
-      GetAndroidDataDirForUser(actual_user_id);
+      GetAndroidDataDirForUser(actual_account_id);
   system_->RemoveDirTree(android_data_dir);
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
@@ -745,36 +746,38 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
 }
 
 // static
-bool SessionManagerImpl::NormalizeUserId(const std::string& user_id,
-                                         std::string* actual_user_id_out,
-                                         Error* error_out) {
-  // Validate the |user_id|.
-  if (IsIncognitoUserId(user_id) || ValidateUserId(user_id)) {
-    *actual_user_id_out = user_id;
+bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
+                                            std::string* actual_account_id_out,
+                                            Error* error_out) {
+  // Validate the |account_id|.
+  if (IsIncognitoAccountId(account_id) || ValidateGaiaIdKey(account_id)) {
+    *actual_account_id_out = account_id;
     return true;
   }
 
   // Support legacy email addresses.
   // TODO(alemate): remove this after ChromeOS will stop using email as
   // cryptohome identifier.
-  const std::string& lower_user_id = base::ToLowerASCII(user_id);
-  if (!ValidateEmail(lower_user_id)) {
+  const std::string& lower_email = base::ToLowerASCII(account_id);
+  if (!ValidateEmail(lower_email)) {
     static const char msg[] =
         "Provided email address is not valid.  ASCII only.";
     LOG(ERROR) << msg;
     error_out->Set(dbus_error::kInvalidAccount, msg);
     return false;
   }
-  *actual_user_id_out = lower_user_id;
+  *actual_account_id_out = lower_email;
   return true;
 }
 
 // static
-bool SessionManagerImpl::ValidateUserId(const std::string& user_id) {
-  if (user_id.find_first_not_of(kUserIdLegalCharacters) != std::string::npos)
+bool SessionManagerImpl::ValidateGaiaIdKey(const std::string& account_id) {
+  if (account_id.find_first_not_of(kGaiaIdKeyLegalCharacters)
+      != std::string::npos)
     return false;
 
-  return base::StartsWith(user_id, kUserIdPrefix, base::CompareCase::SENSITIVE);
+  return base::StartsWith(
+      account_id, kGaiaIdKeyPrefix, base::CompareCase::SENSITIVE);
 }
 
 // static

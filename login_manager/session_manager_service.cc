@@ -269,13 +269,13 @@ void SessionManagerService::RestartBrowserWithArgs(
 }
 
 void SessionManagerService::SetBrowserSessionForUser(
-    const std::string& username,
+    const std::string& account_id,
     const std::string& userhash) {
-  browser_->StartSession(username, userhash);
+  browser_->StartSession(account_id, userhash);
 }
 
 void SessionManagerService::SetFlagsForUser(
-    const std::string& username,
+    const std::string& account_id,
     const std::vector<std::string>& flags) {
   browser_->SetExtraArguments(flags);
 }

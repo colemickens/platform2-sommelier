@@ -142,28 +142,28 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
  protected:
-  void ExpectStartSession(const string& user_id_string) {
-    ExpectSessionBoilerplate(user_id_string, false, false);
+  void ExpectStartSession(const string& account_id_string) {
+    ExpectSessionBoilerplate(account_id_string, false, false);
   }
 
   void ExpectGuestSession() {
     ExpectSessionBoilerplate(kGuestUserName, true, false);
   }
 
-  void ExpectStartOwnerSession(const string& user_id_string) {
-    ExpectSessionBoilerplate(user_id_string, false, true);
+  void ExpectStartOwnerSession(const string& account_id_string) {
+    ExpectSessionBoilerplate(account_id_string, false, true);
   }
 
-  void ExpectStartSessionUnowned(const string& user_id_string) {
-    ExpectStartSessionUnownedBoilerplate(user_id_string, false, false);
+  void ExpectStartSessionUnowned(const string& account_id_string) {
+    ExpectStartSessionUnownedBoilerplate(account_id_string, false, false);
   }
 
-  void ExpectStartSessionOwningInProcess(const string& user_id_string) {
-    ExpectStartSessionUnownedBoilerplate(user_id_string, false, true);
+  void ExpectStartSessionOwningInProcess(const string& account_id_string) {
+    ExpectStartSessionUnownedBoilerplate(account_id_string, false, true);
   }
 
-  void ExpectStartSessionOwnerLost(const string& user_id_string) {
-    ExpectStartSessionUnownedBoilerplate(user_id_string, true, false);
+  void ExpectStartSessionOwnerLost(const string& account_id_string) {
+    ExpectStartSessionUnownedBoilerplate(account_id_string, true, false);
   }
 
   void ExpectLockScreen() { expected_locks_ = 1; }
@@ -233,16 +233,16 @@ class SessionManagerImplTest : public ::testing::Test {
   static const char kSaneEmail[];
 
  private:
-  void ExpectSessionBoilerplate(const string& user_id_string,
+  void ExpectSessionBoilerplate(const string& account_id_string,
                                 bool guest,
                                 bool for_owner) {
     EXPECT_CALL(manager_, SetBrowserSessionForUser(
-                              StrEq(user_id_string),
-                              StrEq(SanitizeUserName(user_id_string))))
+                              StrEq(account_id_string),
+                              StrEq(SanitizeUserName(account_id_string))))
         .Times(1);
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(user_id_string), _, _, _))
+                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _, _))
         .WillOnce(DoAll(SetArgumentPointee<2>(for_owner), Return(true)));
     // Confirm that the key is present.
     EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(false));
@@ -256,17 +256,17 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(utils_, IsDevMode()).WillOnce(Return(false));
   }
 
-  void ExpectStartSessionUnownedBoilerplate(const string& user_id_string,
+  void ExpectStartSessionUnownedBoilerplate(const string& account_id_string,
                                             bool mitigating,
                                             bool owning_in_progress) {
     EXPECT_CALL(manager_, SetBrowserSessionForUser(
-                              StrEq(user_id_string),
-                              StrEq(SanitizeUserName(user_id_string))))
+                              StrEq(account_id_string),
+                              StrEq(SanitizeUserName(account_id_string))))
         .Times(1);
 
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(user_id_string), _, _, _))
+                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _, _))
         .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)));
 
     // Indicate that there is no owner key in order to trigger a new one to be
@@ -275,7 +275,7 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(*device_policy_service_, Mitigating())
         .WillRepeatedly(Return(mitigating));
     if (!mitigating && !owning_in_progress)
-      EXPECT_CALL(key_gen_, Start(StrEq(user_id_string))).Times(1);
+      EXPECT_CALL(key_gen_, Start(StrEq(account_id_string))).Times(1);
     else
       EXPECT_CALL(key_gen_, Start(_)).Times(0);
 
@@ -949,8 +949,8 @@ class SessionManagerImplStaticTest : public ::testing::Test {
     return SessionManagerImpl::ValidateEmail(email_address);
   }
 
-  bool ValidateUserId(const string& cryptohome_user_id) {
-    return SessionManagerImpl::ValidateUserId(cryptohome_user_id);
+  bool ValidateGaiaIdKey(const string& account_id) {
+    return SessionManagerImpl::ValidateGaiaIdKey(account_id);
   }
 };
 
@@ -975,16 +975,16 @@ TEST_F(SessionManagerImplStaticTest, EmailAddressTooMuchAtTest) {
   EXPECT_FALSE(ValidateEmail(extra_at));
 }
 
-TEST_F(SessionManagerImplStaticTest, CryptohomeUserIdTest) {
-  EXPECT_TRUE(ValidateUserId("g-1234567890123456"));
-  // email string is invalid UserId
-  EXPECT_FALSE(ValidateUserId("john@some.where.com"));
+TEST_F(SessionManagerImplStaticTest, GaiaIdKeyTest) {
+  EXPECT_TRUE(ValidateGaiaIdKey("g-1234567890123456"));
+  // email string is invalid GaiaIdKey
+  EXPECT_FALSE(ValidateGaiaIdKey("john@some.where.com"));
   // Only alphanumeric characters plus a colon are allowed.
-  EXPECT_TRUE(ValidateUserId("g-1234567890"));
-  EXPECT_TRUE(ValidateUserId("g-abcdef0123456789"));
-  EXPECT_TRUE(ValidateUserId("g-ABCDEF0123456789"));
-  EXPECT_FALSE(ValidateUserId("g-123@some.where.com"));
-  EXPECT_FALSE(ValidateUserId("g-123@localhost"));
+  EXPECT_TRUE(ValidateGaiaIdKey("g-1234567890"));
+  EXPECT_TRUE(ValidateGaiaIdKey("g-abcdef0123456789"));
+  EXPECT_TRUE(ValidateGaiaIdKey("g-ABCDEF0123456789"));
+  EXPECT_FALSE(ValidateGaiaIdKey("g-123@some.where.com"));
+  EXPECT_FALSE(ValidateGaiaIdKey("g-123@localhost"));
 }
 
 }  // namespace login_manager
