@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2015 The Android Open Source Project
+// Copyright (C) 2016 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,6 +76,26 @@ std::string GetProtoDebugStringWithIndent(CertificateProfile value,
   }
   if (value == GFSC_CERTIFICATE) {
     return "GFSC_CERTIFICATE";
+  }
+  if (value == JETSTREAM_CERTIFICATE) {
+    return "JETSTREAM_CERTIFICATE";
+  }
+  if (value == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
+    return "ENTERPRISE_ENROLLMENT_CERTIFICATE";
+  }
+  return "<unknown>";
+}
+
+std::string GetProtoDebugString(TpmVersion value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(TpmVersion value, int indent_size) {
+  if (value == TPM_1_2) {
+    return "TPM_1_2";
+  }
+  if (value == TPM_2_0) {
+    return "TPM_2_0";
   }
   return "<unknown>";
 }
@@ -228,6 +248,37 @@ std::string GetProtoDebugStringWithIndent(
     base::StringAppendF(&output, "%s",
                         base::HexEncode(value.sym_ca_attestation().data(),
                                         value.sym_ca_attestation().size())
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_tpm_version()) {
+    output += indent + "  tpm_version: ";
+    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
+                                           value.tpm_version(), indent_size + 2)
+                                           .c_str());
+    output += "\n";
+  }
+  if (value.has_encrypted_seed()) {
+    output += indent + "  encrypted_seed: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.encrypted_seed().data(),
+                                        value.encrypted_seed().size())
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_credential_mac()) {
+    output += indent + "  credential_mac: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.credential_mac().data(),
+                                        value.credential_mac().size())
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_wrapped_certificate()) {
+    output += indent + "  wrapped_certificate: ";
+    base::StringAppendF(&output, "%s",
+                        GetProtoDebugStringWithIndent(
+                            value.wrapped_certificate(), indent_size + 2)
                             .c_str());
     output += "\n";
   }

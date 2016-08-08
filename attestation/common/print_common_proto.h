@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2015 The Android Open Source Project
+// Copyright (C) 2016 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,8 @@ std::string GetProtoDebugString(KeyUsage value);
 std::string GetProtoDebugStringWithIndent(CertificateProfile value,
                                           int indent_size);
 std::string GetProtoDebugString(CertificateProfile value);
+std::string GetProtoDebugStringWithIndent(TpmVersion value, int indent_size);
+std::string GetProtoDebugString(TpmVersion value);
 std::string GetProtoDebugStringWithIndent(const Quote& value, int indent_size);
 std::string GetProtoDebugString(const Quote& value);
 std::string GetProtoDebugStringWithIndent(const EncryptedData& value,
