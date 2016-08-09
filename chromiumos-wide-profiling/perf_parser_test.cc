@@ -1254,12 +1254,14 @@ TEST(PerfParserTest, ReadsBuildidsInMountNamespace_DifferentDevOrIno) {
   thread.Join();
 }
 
-TEST(PerfParserTest, NoReadBuildidIfAlreadyKnown) {
+TEST(PerfParserTest, OverwriteBuildidIfAlreadyKnown) {
   ScopedTempDir tmpdir("/tmp/quipper_tmp.");
   const string known_file = tmpdir.path() + "buildid_already_known";
+  const string known_file_to_overwrite =
+      tmpdir.path() + "buildid_already_known_overwrite";
   const string unknown_file = tmpdir.path() + "buildid_not_known";
   InitializeLibelf();
-  testing::WriteElfWithBuildid(known_file, ".note.gnu.build-id",
+  testing::WriteElfWithBuildid(known_file_to_overwrite, ".note.gnu.build-id",
                                "\xf0\x01\x57\xea");
   testing::WriteElfWithBuildid(unknown_file, ".note.gnu.build-id",
                                "\xc0\x01\xd0\x0d");
@@ -1282,34 +1284,64 @@ TEST(PerfParserTest, NoReadBuildidIfAlreadyKnown) {
       testing::SampleInfo().Tid(1001)).WriteTo(&input);        // 0
   // becomes: 0x0000, 0x1000, 0
   testing::ExampleMmapEvent(
-      1001, 0x1c3000, 0x2000, 0x2000, unknown_file,
+      1001, 0x1c2000, 0x2000, 0, known_file_to_overwrite,
       testing::SampleInfo().Tid(1001)).WriteTo(&input);        // 1
   // becomes: 0x1000, 0x2000, 0
+  testing::ExampleMmapEvent(
+      1001, 0x1c4000, 0x2000, 0x2000, unknown_file,
+      testing::SampleInfo().Tid(1001)).WriteTo(&input);        // 2
+  // becomes: 0x3000, 0x2000, 0x2000
 
   // PERF_RECORD_HEADER_BUILDID                                // N/A
-  string build_id_filename(known_file);
-  build_id_filename.resize(Align<u64>(known_file.size()));  // null-pad
-  const size_t event_size =
-      sizeof(struct build_id_event) +
-      build_id_filename.size();
-  const struct build_id_event event = {
-    .header = {
-      .type = PERF_RECORD_HEADER_BUILD_ID,
-      .misc = 0,
-      .size = static_cast<u16>(event_size),
-    },
-    .pid = -1,
-    .build_id = {0xde, 0xad, 0xbe, 0xef},
-  };
-  input.write(reinterpret_cast<const char*>(&event), sizeof(event));
-  input.write(build_id_filename.data(), build_id_filename.size());
+  {
+    string build_id_filename(known_file);
+    build_id_filename.resize(Align<u64>(known_file.size()));  // null-pad
+    const size_t event_size =
+        sizeof(struct build_id_event) +
+        build_id_filename.size();
+    const struct build_id_event event = {
+      .header = {
+        .type = PERF_RECORD_HEADER_BUILD_ID,
+        .misc = 0,
+        .size = static_cast<u16>(event_size),
+      },
+      .pid = -1,
+      .build_id = {0xde, 0xad, 0xbe, 0xef},
+    };
+    input.write(reinterpret_cast<const char*>(&event), sizeof(event));
+    input.write(build_id_filename.data(), build_id_filename.size());
+  }
+
+  // PERF_RECORD_HEADER_BUILDID                                // N/A
+  {
+    string build_id_filename(known_file_to_overwrite);
+                                                                 // null-pad
+    build_id_filename.resize(Align<u64>(known_file_to_overwrite.size()));
+    const size_t event_size =
+        sizeof(struct build_id_event) +
+        build_id_filename.size();
+    const struct build_id_event event = {
+      .header = {
+        .type = PERF_RECORD_HEADER_BUILD_ID,
+        .misc = 0,
+        .size = static_cast<u16>(event_size),
+      },
+      .pid = -1,
+      .build_id = {0xca, 0xfe, 0xba, 0xbe},
+    };
+    input.write(reinterpret_cast<const char*>(&event), sizeof(event));
+    input.write(build_id_filename.data(), build_id_filename.size());
+  }
 
   // PERF_RECORD_SAMPLE
   testing::ExamplePerfSampleEvent(
-      testing::SampleInfo().Ip(0x00000000001c1000).Tid(1001))  // 2
+      testing::SampleInfo().Ip(0x00000000001c100a).Tid(1001))  // 3
       .WriteTo(&input);
   testing::ExamplePerfSampleEvent(
-      testing::SampleInfo().Ip(0x00000000001c300a).Tid(1001))  // 3
+      testing::SampleInfo().Ip(0x00000000001c300b).Tid(1001))  // 4
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c400c).Tid(1001))  // 5
       .WriteTo(&input);
 
   //
@@ -1325,18 +1357,21 @@ TEST(PerfParserTest, NoReadBuildidIfAlreadyKnown) {
   PerfParser parser(&reader, options);
   EXPECT_TRUE(parser.ParseRawEvents());
 
-  EXPECT_EQ(2, parser.stats().num_mmap_events);
-  EXPECT_EQ(2, parser.stats().num_sample_events);
-  EXPECT_EQ(2, parser.stats().num_sample_events_mapped);
+  EXPECT_EQ(3, parser.stats().num_mmap_events);
+  EXPECT_EQ(3, parser.stats().num_sample_events);
+  EXPECT_EQ(3, parser.stats().num_sample_events_mapped);
 
   const std::vector<ParsedEvent>& events = parser.parsed_events();
-  ASSERT_EQ(4, events.size());
+  ASSERT_EQ(6, events.size());
 
-  EXPECT_EQ(known_file, events[2].dso_and_offset.dso_name());
+  EXPECT_EQ(known_file, events[3].dso_and_offset.dso_name());
   EXPECT_EQ("deadbeef00000000000000000000000000000000",
-            events[2].dso_and_offset.build_id());
-  EXPECT_EQ(unknown_file, events[3].dso_and_offset.dso_name());
-  EXPECT_EQ("c001d00d", events[3].dso_and_offset.build_id());
+            events[3].dso_and_offset.build_id());
+  EXPECT_EQ(known_file_to_overwrite, events[4].dso_and_offset.dso_name());
+  EXPECT_EQ("f00157ea",
+            events[4].dso_and_offset.build_id());
+  EXPECT_EQ(unknown_file, events[5].dso_and_offset.dso_name());
+  EXPECT_EQ("c001d00d", events[5].dso_and_offset.build_id());
 }
 
 TEST(PerfParserTest, OnlyReadsBuildidIfSampled) {

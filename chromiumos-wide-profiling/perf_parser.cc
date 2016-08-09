@@ -301,6 +301,8 @@ bool PerfParser::ProcessEvents() {
   return true;
 }
 
+namespace {
+
 class FdCloser {
  public:
   explicit FdCloser(int fd) : fd_(fd) {}
@@ -331,6 +333,9 @@ bool ReadElfBuildIdIfSameInode(const string& dso_path, const DSOInfo& dso,
   return ReadElfBuildId(fd, buildid);
 }
 
+// Looks up build ID of a given DSO by reading directly from the file system.
+// - Does not support reading build ID of the main kernel binary.
+// - Reads build IDs of kernel modules and other DSOs using functions in dso.h.
 string FindDsoBuildId(const DSOInfo& dso_info) {
   string buildid_bin;
   const string& dso_name = dso_info.name;
@@ -371,6 +376,8 @@ string FindDsoBuildId(const DSOInfo& dso_info) {
   return buildid_bin;  // still empty.
 }
 
+}  // namespace
+
 bool PerfParser::FillInDsoBuildIds() {
   std::map<string, string> filenames_to_build_ids;
   reader_->GetFilenamesToBuildIDs(&filenames_to_build_ids);
@@ -382,7 +389,10 @@ bool PerfParser::FillInDsoBuildIds() {
     const auto it = filenames_to_build_ids.find(dso_info.name);
     if (it != filenames_to_build_ids.end()) {
       dso_info.build_id = it->second;
-    } else if (options_.read_missing_buildids && dso_info.hit) {
+    }
+    // If there is both an existing build ID and a new build ID returned by
+    // FindDsoBuildId(), overwrite the existing build ID.
+    if (options_.read_missing_buildids && dso_info.hit) {
       string buildid_bin = FindDsoBuildId(dso_info);
       if (!buildid_bin.empty()) {
         dso_info.build_id = RawDataToHexString(buildid_bin);

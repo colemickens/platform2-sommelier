@@ -116,10 +116,6 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
                         perf_args.end());
   full_perf_args.insert(full_perf_args.end(), {"-o", output_file.path()});
 
-  // For 'record', skip buildid collection. We'll do it ourselves.
-  if (perf_type == kPerfRecordCommand || perf_type == kPerfMemCommand)
-    full_perf_args.emplace_back("-B");
-
   // The perf stat output parser requires raw data from verbose output.
   if (perf_type == kPerfStatCommand)
     full_perf_args.emplace_back("-v");

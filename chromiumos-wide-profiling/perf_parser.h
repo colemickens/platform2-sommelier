@@ -198,6 +198,9 @@ class PerfParser {
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
 
+  // Looks up build IDs for all DSOs present in |reader_| by direct lookup using
+  // functions in dso.h. If there is a DSO with both an existing build ID and a
+  // new build ID read using dso.h, this will overwrite the existing build ID.
   bool FillInDsoBuildIds();
 
   // Sort |parsed_events_| by time, and updates the events in |reader_| in

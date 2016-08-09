@@ -55,11 +55,16 @@ TEST_F(PerfRecorderTest, RecordToProtobuf) {
   EXPECT_EQ(GetPerfPath(), command.Get(0).value());
   EXPECT_EQ("record", command.Get(1).value());
   EXPECT_EQ("-o", command.Get(2).value());
+
   // Unpredictable: EXPECT_EQ("/tmp/quipper.XXXXXX", command.Get(3).value());
-  EXPECT_EQ("-B", command.Get(4).value());
-  EXPECT_EQ("--", command.Get(5).value());
-  EXPECT_EQ("sleep", command.Get(6).value());
-  EXPECT_EQ("0.2", command.Get(7).value());
+  // Instead, check the file path length and prefix.
+  EXPECT_EQ(strlen("/tmp/quipper.XXXXXX"), command.Get(3).value().size());
+  EXPECT_EQ("/tmp/quipper",
+            command.Get(3).value().substr(0, strlen("/tmp/quipper")));
+
+  EXPECT_EQ("--", command.Get(4).value());
+  EXPECT_EQ("sleep", command.Get(5).value());
+  EXPECT_EQ("0.2", command.Get(6).value());
 }
 
 TEST_F(PerfRecorderTest, StatToProtobuf) {
