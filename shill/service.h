@@ -672,6 +672,9 @@ class Service : public base::RefCounted<Service> {
   // Emit property change notifications for all observed properties.
   void NotifyPropertyChanges();
 
+  // Maximum auto connect cooldown time for ThrottleFutureAutoConnects
+  uint64_t max_auto_connect_cooldown_time_milliseconds_;
+
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
   friend class EthernetEapServiceTest;

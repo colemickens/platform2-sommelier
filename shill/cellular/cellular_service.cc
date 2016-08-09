@@ -50,6 +50,9 @@ const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
 const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
 const char CellularService::kStoragePPPPassword[] = "Cellular.PPP.Password";
 
+const uint64_t CellularService::kMaxAutoConnectCooldownTimeMilliseconds =
+    30 * 60 * 1000;
+
 // TODO(petkov): Add these to system_api/dbus/service_constants.h
 namespace {
 const char kCellularPPPUsernameProperty[] = "Cellular.PPP.Username";
@@ -109,6 +112,8 @@ CellularService::CellularService(ModemInfo* modem_info,
   // Assume we are not performing any out-of-credits detection.
   // The capability can reinitialize with the appropriate type later.
   InitOutOfCreditsDetection(OutOfCreditsDetector::OOCTypeNone);
+  max_auto_connect_cooldown_time_milliseconds_ =
+    CellularService::kMaxAutoConnectCooldownTimeMilliseconds;
 }
 
 CellularService::~CellularService() { }

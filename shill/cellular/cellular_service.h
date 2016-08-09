@@ -166,6 +166,8 @@ class CellularService : public Service {
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
 
+  static const uint64_t kMaxAutoConnectCooldownTimeMilliseconds;
+
   void HelpRegisterDerivedString(
       const std::string& name,
       std::string(CellularService::*get)(Error* error),
