@@ -41,6 +41,8 @@ bool ParsePerfDataFileToString(const string& filename, string* output_string) {
   options.discard_unused_events = true;
   // Read buildids from the filesystem ourself.
   options.read_missing_buildids = true;
+  // Resolve split huge pages mappings.
+  options.combine_huge_pages_mappings = true;
 
   PerfDataProto perf_data;
   return SerializeFromFileWithOptions(filename, options, &perf_data) &&
