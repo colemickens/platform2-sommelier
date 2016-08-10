@@ -697,6 +697,8 @@ bool AttestationService::CreateKey(const std::string& username,
   key->set_public_key_tpm_format(public_key_tpm_format);
   key->set_certified_key_info(key_info);
   key->set_certified_key_proof(proof);
+  key->set_key_type(key_type);
+  key->set_key_usage(key_usage);
   return SaveKey(username, key_label, *key);
 }
 

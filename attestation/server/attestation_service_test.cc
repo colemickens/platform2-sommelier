@@ -107,7 +107,7 @@ class AttestationServiceTest : public testing::Test {
   CreateGoogleAttestedKeyRequest GetCreateRequest() {
     CreateGoogleAttestedKeyRequest request;
     request.set_key_label("label");
-    request.set_key_type(KEY_TYPE_ECC);
+    request.set_key_type(KEY_TYPE_RSA);
     request.set_key_usage(KEY_USAGE_SIGN);
     request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
     request.set_username("user");
@@ -722,7 +722,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccess) {
   // Configure a fake TPM response.
   EXPECT_CALL(
       mock_tpm_utility_,
-      CreateCertifiedKey(KEY_TYPE_ECC, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
+      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
       .WillOnce(
           DoAll(SetArgumentPointee<5>(std::string("public_key")),
                 SetArgumentPointee<7>(std::string("certify_info")),
@@ -740,7 +740,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccess) {
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
-  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   request.set_username("user");
   service_->CreateCertifiableKey(request, base::Bind(callback));
@@ -751,7 +751,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
   // Configure a fake TPM response.
   EXPECT_CALL(
       mock_tpm_utility_,
-      CreateCertifiedKey(KEY_TYPE_ECC, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
+      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
       .WillOnce(
           DoAll(SetArgumentPointee<5>(std::string("public_key")),
                 SetArgumentPointee<7>(std::string("certify_info")),
@@ -769,7 +769,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
-  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   service_->CreateCertifiableKey(request, base::Bind(callback));
   Run();
@@ -788,7 +788,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeyRNGFailure) {
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
-  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   service_->CreateCertifiableKey(request, base::Bind(callback));
   Run();
@@ -807,7 +807,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
-  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   service_->CreateCertifiableKey(request, base::Bind(callback));
   Run();
@@ -825,7 +825,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeyDBFailure) {
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
-  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   request.set_username("username");
   service_->CreateCertifiableKey(request, base::Bind(callback));
@@ -844,7 +844,7 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeyDBFailureNoUser) {
   };
   CreateCertifiableKeyRequest request;
   request.set_key_label("label");
-  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_type(KEY_TYPE_RSA);
   request.set_key_usage(KEY_USAGE_SIGN);
   service_->CreateCertifiableKey(request, base::Bind(callback));
   Run();
