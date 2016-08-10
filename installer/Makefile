@@ -41,6 +41,11 @@ nand_partition: CXX_BINARY(nand_partition)
 
 UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 CXX_STATIC_BINARY(cros_installer_unittest): LDLIBS += $(UNITTEST_LIBS)
+# This workarounds the upstream bug https://gcc.gnu.org/ml/gcc/2014-11/msg00246.html.
+# When linking statically with pthread, the linker knows 'pthread_once' is
+# undefined weak symbol and refuses to use it.
+# crosbug entry is crbug.com/635573
+CXX_STATIC_BINARY(cros_installer_unittest): LDFLAGS += -Wl,--undefined=pthread_once
 CXX_STATIC_BINARY(cros_installer_unittest): \
 		$(C_OBJECTS) \
 		$(filter-out %_main.o nand_%.o, $(CXX_OBJECTS))
