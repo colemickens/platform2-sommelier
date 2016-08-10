@@ -300,7 +300,7 @@ class ClientLoop : public ClientLoopBase {
   // Template to print reply protobuf.
   template <typename ProtobufType>
   void PrintReplyAndQuit(const ProtobufType& reply) {
-    LOG(INFO) << "Message Reply: " << GetProtoDebugString(reply);
+    printf("Message Reply: %s\n", GetProtoDebugString(reply).c_str());
     Quit();
   }
 
