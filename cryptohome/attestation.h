@@ -61,7 +61,6 @@ class Attestation : public base::PlatformThread::Delegate,
                           Platform* platform,
                           Crypto* crypto,
                           InstallAttributes* install_attributes,
-                          brillo::SecureBlob stable_device_secret,
                           bool retain_endorsement_data);
 
   // Returns true if the attestation enrollment blobs already exist.
@@ -440,14 +439,11 @@ class Attestation : public base::PlatformThread::Delegate,
   static const char kAlternatePCAKeyAttributeName[];
   static const char kAlternatePCAKeyIDAttributeName[];
   static const char kAlternatePCAUrlAttributeName[];
-  // Context name to derive the device stable secret for attestation-based
-  // enterprise enrollment.
-  static const char kAttestationBasedEnterpriseEnrollmentContextName[];
+
   Tpm* tpm_;
   TpmInit* tpm_init_;
   Platform* platform_;
   Crypto* crypto_;
-  brillo::SecureBlob stable_device_secret_;
   // A lock to protect |database_pb_| because PrepareForEnrollment may happen on
   // a worker thread.
   base::Lock lock_;
@@ -666,11 +662,6 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Creates a PCA URL for the given |pca_type| and |request_type|.
   std::string GetPCAURL(PCAType pca_type, PCARequestType request_type) const;
-
-  // Compute the enterprise DEN for attestation-based enrollment and
-  // stores it in |enterprise_enrollment_nonce|.
-  bool ComputeEnterpriseEnrollmentNonce(
-      brillo::SecureBlob* enterprise_enrollment_nonce);
 
   // Injects a TpmInit object to be used for RemoveTpmOwnerDependency
   void set_tpm_init(TpmInit* value) { tpm_init_ = value; }
