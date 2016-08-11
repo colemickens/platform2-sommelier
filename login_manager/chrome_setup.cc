@@ -210,8 +210,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
   }
 
   // TODO(jdufault): Remove this once quick unlock launches on all boards.
-  if (builder->IsBoard("kevin"))
+  if (builder->IsBoard("kevin")) {
     builder->AddFeatureEnableOverride("QuickUnlockPin");
+    builder->AddArg("--ash-enable-palette");
+  }
 
   // TODO(crbug.com/574923): Remove this when rialto is enrolled and using
   // standard kiosk mode.
@@ -230,8 +232,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
   }
   builder->AddArg("--login-profile=user");
 
-  if (builder->UseFlagIsSet("ash_palette"))
-    builder->AddArg("--ash-enable-palette");
   if (builder->UseFlagIsSet("natural_scroll_default"))
     builder->AddArg("--enable-natural-scroll-default");
   if (!builder->UseFlagIsSet("legacy_keyboard"))
