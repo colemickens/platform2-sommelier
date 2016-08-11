@@ -98,6 +98,7 @@ struct container_cpu_cgroup {
  * cpu_cgparams - CPU cgroup params.
  * cgroup_parent - Parent dir for cgroup creation
  * cgroup_owner - uid to own the created cgroups
+ * share_host_netns - Enable sharing of the host network namespace.
  */
 struct container_config {
 	char *rootfs;
@@ -118,6 +119,7 @@ struct container_config {
 	struct container_cpu_cgroup cpu_cgparams;
 	char *cgroup_parent;
 	uid_t cgroup_owner;
+	int share_host_netns;
 };
 
 struct container_config *container_config_create()
@@ -472,6 +474,16 @@ int container_config_set_cgroup_parent(struct container_config *c,
 const char *container_config_get_cgroup_parent(struct container_config *c)
 {
 	return c->cgroup_parent;
+}
+
+void container_config_share_host_netns(struct container_config *c)
+{
+	c->share_host_netns = 1;
+}
+
+int get_container_config_share_host_netns(struct container_config *c)
+{
+	return c->share_host_netns;
 }
 
 /*
@@ -1006,7 +1018,8 @@ int container_start(struct container *c, const struct container_config *config)
 	/* Setup container namespaces. */
 	minijail_namespace_ipc(c->jail);
 	minijail_namespace_vfs(c->jail);
-	minijail_namespace_net(c->jail);
+	if (!config->share_host_netns)
+		minijail_namespace_net(c->jail);
 	minijail_namespace_pids(c->jail);
 	minijail_namespace_user(c->jail);
 	rc = minijail_uidmap(c->jail, config->uid_map);

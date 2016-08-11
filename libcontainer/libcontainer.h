@@ -171,6 +171,10 @@ int container_config_set_cgroup_parent(struct container_config *c,
 /* Get the parent cgroup directory from the config.  Here for UT only. */
 const char *container_config_get_cgroup_parent(struct container_config *c);
 
+/* Enable sharing of the host's network namespace with the container */
+void container_config_share_host_netns(struct container_config *c);
+int get_container_config_share_host_netns(struct container_config *c);
+
 /* Container manipulation. */
 struct container;
 
