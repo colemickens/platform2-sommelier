@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "cryptohome/service.h"
+#include "cryptohome/service_distributed.h"
 #include "cryptohome/service_monolithic.h"
 
 #include <inttypes.h>
@@ -95,6 +96,13 @@ const FilePath kPreservedEnrollmentStatePath(
     "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb");
 const mode_t kPreservedEnrollmentStatePermissions = 0600;
 
+#if USE_TPM2
+const bool kUseInternalAttestationModeByDefault = false;
+#else
+const bool kUseInternalAttestationModeByDefault = true;
+#endif
+
+const char kAttestationMode[] = "attestation_mode";
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
 
 class TpmInitStatus : public CryptohomeEventBase {
@@ -186,7 +194,20 @@ Service::~Service() {
 }
 
 Service* Service::CreateDefault() {
-  return new ServiceMonolithic();
+  bool use_monolithic = kUseInternalAttestationModeByDefault;
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
+
+  if (cmd_line->HasSwitch(kAttestationMode)) {
+    std::string name = cmd_line->GetSwitchValueASCII(kAttestationMode);
+    if (name == "internal")
+      use_monolithic = true;
+    else if (name == "dbus")
+      use_monolithic = false;
+  }
+  if (use_monolithic)
+    return new ServiceMonolithic();
+  else
+    return new ServiceDistributed();
 }
 
 bool Service::GetExistingMounts(
