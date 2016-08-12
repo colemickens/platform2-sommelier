@@ -214,6 +214,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddFeatureEnableOverride("QuickUnlockPin");
     builder->AddArg("--ash-enable-palette");
   }
+  if (builder->IsBoard("veyron_minnie"))
+    builder->AddArg("--enable-hardware-overlays=single-fullscreen");
 
   // TODO(crbug.com/574923): Remove this when rialto is enrolled and using
   // standard kiosk mode.
