@@ -11,6 +11,7 @@
 #include <brillo/syslog_logging.h>
 #include <dbus/dbus.h>
 #include <glib.h>
+#include <openssl/evp.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
@@ -53,21 +54,21 @@ int main(int argc, char **argv) {
   cryptohome::ScopedMetricsInitializer metrics_initializer;
 
   cryptohome::Platform platform;
-  cryptohome::Service service;
+  cryptohome::Service* service = cryptohome::Service::CreateDefault();
 
-  service.set_legacy_mount(!nolegacymount);
+  service->set_legacy_mount(!nolegacymount);
 
-  if (!service.Initialize()) {
+  if (!service->Initialize()) {
     LOG(FATAL) << "Service initialization failed";
     return 1;
   }
 
-  if (!service.Register(brillo::dbus::GetSystemBusConnection())) {
+  if (!service->Register(brillo::dbus::GetSystemBusConnection())) {
     LOG(FATAL) << "DBUS service registration failed";
     return 1;
   }
 
-  if (!service.Run()) {
+  if (!service->Run()) {
     LOG(FATAL) << "Service run failed.";
     return 1;
   }

@@ -6,6 +6,7 @@
 #define CRYPTOHOME_MOCK_SERVICE_H_
 
 #include "cryptohome/service.h"
+#include "cryptohome/service_monolithic.h"
 
 #include <string>
 
@@ -18,7 +19,7 @@ using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
 
-class MockService : public Service {
+class MockService : public ServiceMonolithic {
  public:
   MockService();
   virtual ~MockService();

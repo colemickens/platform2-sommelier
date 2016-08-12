@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// Unit tests for Service
+// Unit tests for Service and ServiceMonolithic
 
-#include "cryptohome/service.h"
+#include "cryptohome/service_monolithic.h"
 
 #include <map>
 #include <memory>
@@ -165,7 +165,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
   // Declare service_ last so it gets destroyed before all the mocks. This is
   // important because otherwise the background thread may call into mocks that
   // have already been destroyed.
-  Service service_;
+  ServiceMonolithic service_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceTestNotInitialized);

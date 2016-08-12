@@ -6,7 +6,7 @@
 
 namespace cryptohome {
 
-MockService::MockService() : Service() {}
+MockService::MockService() : ServiceMonolithic() {}
 MockService::~MockService() {}
 
 }  // namespace cryptohome

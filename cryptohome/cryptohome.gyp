@@ -174,6 +174,7 @@
         'mount_stack.cc',
         'mount_task.cc',
         'service.cc',
+        'service_monolithic.cc',
         'stateful_recovery.cc',
         'username_passkey.cc',
         'user_oldest_activity_timestamp_cache.cc',

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "cryptohome/service.h"
+#include "cryptohome/service_monolithic.h"
 
 #include <inttypes.h>
 #include <memory>
@@ -30,7 +31,6 @@
 #include <string>
 #include <vector>
 
-#include "cryptohome/attestation_task.h"
 #include "cryptohome/boot_attributes.h"
 #include "cryptohome/boot_lockbox.h"
 #include "cryptohome/crypto.h"
@@ -96,22 +96,6 @@ const FilePath kPreservedEnrollmentStatePath(
 const mode_t kPreservedEnrollmentStatePermissions = 0600;
 
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
-const char kRetainEndorsementDataSwitch[] = "retain_endorsement_data";
-
-// A helper function which maps an integer to a valid CertificateProfile.
-CertificateProfile GetProfile(int profile_value) {
-  // The protobuf compiler generates the _IsValid function.
-  if (!CertificateProfile_IsValid(profile_value))
-    return ENTERPRISE_USER_CERTIFICATE;
-  return static_cast<CertificateProfile>(profile_value);
-}
-
-// A helper function which maps an integer to a valid Attestation::PCAType.
-Attestation::PCAType GetPCAType(int value) {
-  if (value < 0 || value > Attestation::kMaxPCAType)
-    return Attestation::kDefaultPCA;
-  return static_cast<Attestation::PCAType>(value);
-}
 
 class TpmInitStatus : public CryptohomeEventBase {
  public:
@@ -143,28 +127,6 @@ class TpmInitStatus : public CryptohomeEventBase {
  private:
   bool took_ownership_;
   bool status_;
-};
-
-// Bridges between the MountTaskObserver callback model and the
-// CryptohomeEventSource callback model. This class forwards MountTaskObserver
-// events to a CryptohomeEventSource. An instance of this class is single-use
-// (i.e., will be freed after it has observed one event).
-class MountTaskObserverBridge : public MountTaskObserver {
- public:
-  explicit MountTaskObserverBridge(cryptohome::Mount* mount,
-                                   CryptohomeEventSource* source)
-    : mount_(mount), source_(source) { }
-  virtual ~MountTaskObserverBridge() { }
-  virtual bool MountTaskObserve(const MountTaskResult& result) {
-    MountTaskResult *r = new MountTaskResult(result);
-    r->set_mount(mount_);
-    source_->AddEvent(r);
-    return true;
-  }
-
- protected:
-  scoped_refptr<cryptohome::Mount> mount_;
-  CryptohomeEventSource* source_;
 };
 
 Service::Service()
@@ -207,8 +169,6 @@ Service::Service()
       public_mount_salt_(),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
-      default_attestation_(new Attestation()),
-      attestation_(default_attestation_.get()),
       boot_lockbox_(nullptr),
       boot_attributes_(nullptr),
       firmware_management_parameters_(nullptr),
@@ -223,6 +183,10 @@ Service::~Service() {
   if (cryptohome_) {
     g_object_unref(cryptohome_);
   }
+}
+
+Service* Service::CreateDefault() {
+  return new ServiceMonolithic();
 }
 
 bool Service::GetExistingMounts(
@@ -411,12 +375,7 @@ bool Service::Initialize() {
   // Clean up any unreferenced mountpoints at startup.
   CleanUpStaleMounts(false);
 
-  // Pass in all the shared dependencies here rather than
-  // needing to always get the Attestation object to set them
-  // during testing.
-  attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_,
-                           base::CommandLine::ForCurrentProcess()->HasSwitch(
-                               kRetainEndorsementDataSwitch));
+  AttestationInitialize();
 
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
@@ -425,11 +384,7 @@ bool Service::Initialize() {
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
-    attestation_->CacheEndorsementData();
-    brillo::SecureBlob password;
-    if (tpm_init_->IsTpmReady() && tpm_init_->GetTpmPassword(&password)) {
-      attestation_->PrepareForEnrollmentAsync();
-    }
+    AttestationInitializeTpm();
     if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           kAutoInitializeTpmSwitch)) {
       tpm_init_->AsyncInitializeTpm();
@@ -748,7 +703,7 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
   event_source_.AddEvent(tpm_init_status);
 
   // Do attestation work after AddEvent because it may take long.
-  attestation_->PrepareForEnrollment();
+  AttestationInitializeTpmComplete();
 
   // If we mounted before the TPM finished initialization, we must
   // finalize the install attributes now too, otherwise it takes a
@@ -2271,371 +2226,6 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
   return TRUE;
 }
 
-gboolean Service::TpmIsAttestationPrepared(gboolean* OUT_prepared,
-                                           GError** error) {
-  *OUT_prepared = attestation_->IsPreparedForEnrollment();
-  return TRUE;
-}
-
-gboolean Service::TpmVerifyAttestationData(gboolean is_cros_core,
-                                           gboolean* OUT_verified,
-                                           GError** error) {
-  *OUT_verified = attestation_->Verify(is_cros_core);
-  return TRUE;
-}
-
-gboolean Service::TpmVerifyEK(gboolean is_cros_core,
-                              gboolean* OUT_verified,
-                              GError** error) {
-  *OUT_verified = attestation_->VerifyEK(is_cros_core);
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationCreateEnrollRequest(gint pca_type,
-                                                    GArray** OUT_pca_request,
-                                                    GError** error) {
-  // We must set the GArray now because if we return without setting it,
-  // dbus-glib loops forever.
-  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  brillo::SecureBlob blob;
-  if (attestation_->CreateEnrollRequest(GetPCAType(pca_type), &blob))
-    g_array_append_vals(*OUT_pca_request, blob.data(), blob.size());
-  return TRUE;
-}
-
-gboolean Service::AsyncTpmAttestationCreateEnrollRequest(gint pca_type,
-                                                         gint* OUT_async_id,
-                                                         GError** error) {
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<CreateEnrollRequestTask> task =
-      new CreateEnrollRequestTask(observer, attestation_,
-                                  GetPCAType(pca_type));
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&CreateEnrollRequestTask::Run, task.get()));
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationEnroll(gint pca_type,
-                                       GArray* pca_response,
-                                       gboolean* OUT_success,
-                                       GError** error) {
-  brillo::SecureBlob blob(pca_response->data,
-                            pca_response->data + pca_response->len);
-  *OUT_success = attestation_->Enroll(GetPCAType(pca_type), blob);
-  return TRUE;
-}
-
-gboolean Service::AsyncTpmAttestationEnroll(gint pca_type,
-                                            GArray* pca_response,
-                                            gint* OUT_async_id,
-                                            GError** error) {
-  brillo::SecureBlob blob(pca_response->data,
-                            pca_response->data + pca_response->len);
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<EnrollTask> task =
-      new EnrollTask(observer, attestation_, GetPCAType(pca_type), blob);
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&EnrollTask::Run, task.get()));
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationCreateCertRequest(gint pca_type,
-                                                  gint certificate_profile,
-                                                  gchar* username,
-                                                  gchar* request_origin,
-                                                  GArray** OUT_pca_request,
-                                                  GError** error) {
-  // We must set the GArray now because if we return without setting it,
-  // dbus-glib loops forever.
-  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  brillo::SecureBlob blob;
-  if (attestation_->CreateCertRequest(GetPCAType(pca_type),
-                                      GetProfile(certificate_profile),
-                                      username,
-                                      request_origin,
-                                      &blob))
-    g_array_append_vals(*OUT_pca_request, blob.data(), blob.size());
-  return TRUE;
-}
-
-gboolean Service::AsyncTpmAttestationCreateCertRequest(
-    gint pca_type,
-    gint certificate_profile,
-    gchar* username,
-    gchar* request_origin,
-    gint* OUT_async_id,
-    GError** error) {
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<CreateCertRequestTask> task =
-      new CreateCertRequestTask(observer,
-                                attestation_,
-                                GetPCAType(pca_type),
-                                GetProfile(certificate_profile),
-                                username,
-                                request_origin);
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&CreateCertRequestTask::Run, task.get()));
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
-                                                  gboolean is_user_specific,
-                                                  gchar* username,
-                                                  gchar* key_name,
-                                                  GArray** OUT_cert,
-                                                  gboolean* OUT_success,
-                                                  GError** error) {
-  // We must set the GArray now because if we return without setting it,
-  // dbus-glib loops forever.
-  *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  brillo::SecureBlob response_blob(pca_response->data,
-                                     pca_response->data + pca_response->len);
-  brillo::SecureBlob cert_blob;
-  *OUT_success = attestation_->FinishCertRequest(response_blob,
-                                                 is_user_specific,
-                                                 username,
-                                                 key_name,
-                                                 &cert_blob);
-  if (*OUT_success)
-    g_array_append_vals(*OUT_cert, cert_blob.data(), cert_blob.size());
-  return TRUE;
-}
-
-gboolean Service::AsyncTpmAttestationFinishCertRequest(
-    GArray* pca_response,
-    gboolean is_user_specific,
-    gchar* username,
-    gchar* key_name,
-    gint* OUT_async_id,
-    GError** error) {
-  brillo::SecureBlob blob(pca_response->data,
-                            pca_response->data + pca_response->len);
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<FinishCertRequestTask> task =
-      new FinishCertRequestTask(observer,
-                                attestation_,
-                                blob,
-                                is_user_specific,
-                                username,
-                                key_name);
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&FinishCertRequestTask::Run, task.get()));
-  return TRUE;
-}
-
-gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
-                                           GError** error) {
-  *OUT_is_enrolled = attestation_->IsEnrolled();
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationDoesKeyExist(gboolean is_user_specific,
-                                             gchar* username,
-                                             gchar* key_name,
-                                             gboolean *OUT_exists,
-                                             GError** error) {
-  *OUT_exists = attestation_->DoesKeyExist(is_user_specific,
-                                           username,
-                                           key_name);
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
-                                               gchar* username,
-                                               gchar* key_name,
-                                               GArray **OUT_certificate,
-                                               gboolean* OUT_success,
-                                               GError** error) {
-  *OUT_certificate = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  brillo::SecureBlob blob;
-  *OUT_success = attestation_->GetCertificateChain(is_user_specific,
-                                                   username,
-                                                   key_name,
-                                                   &blob);
-  if (*OUT_success)
-    g_array_append_vals(*OUT_certificate, blob.data(), blob.size());
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
-                                             gchar* username,
-                                             gchar* key_name,
-                                             GArray **OUT_public_key,
-                                             gboolean* OUT_success,
-                                             GError** error) {
-  *OUT_public_key = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  brillo::SecureBlob blob;
-  *OUT_success = attestation_->GetPublicKey(is_user_specific,
-                                            username,
-                                            key_name,
-                                            &blob);
-  if (*OUT_success)
-    g_array_append_vals(*OUT_public_key, blob.data(), blob.size());
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationRegisterKey(gboolean is_user_specific,
-                                            gchar* username,
-                                            gchar* key_name,
-                                            gint *OUT_async_id,
-                                            GError** error) {
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<RegisterKeyTask> task =
-      new RegisterKeyTask(observer,
-                          attestation_,
-                          is_user_specific,
-                          username,
-                          key_name);
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&RegisterKeyTask::Run, task.get()));
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationSignEnterpriseChallenge(
-      gboolean is_user_specific,
-      gchar* username,
-      gchar* key_name,
-      gchar* domain,
-      GArray* device_id,
-      gboolean include_signed_public_key,
-      GArray* challenge,
-      gint *OUT_async_id,
-      GError** error) {
-  brillo::SecureBlob device_id_blob(device_id->data,
-                                      device_id->data + device_id->len);
-  brillo::SecureBlob challenge_blob(challenge->data,
-                                      challenge->data + challenge->len);
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<SignChallengeTask> task =
-      new SignChallengeTask(observer,
-                            attestation_,
-                            is_user_specific,
-                            username,
-                            key_name,
-                            domain,
-                            device_id_blob,
-                            include_signed_public_key,
-                            challenge_blob);
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&SignChallengeTask::Run, task.get()));
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationSignSimpleChallenge(
-      gboolean is_user_specific,
-      gchar* username,
-      gchar* key_name,
-      GArray* challenge,
-      gint *OUT_async_id,
-      GError** error) {
-  brillo::SecureBlob challenge_blob(challenge->data,
-                                      challenge->data + challenge->len);
-  AttestationTaskObserver* observer =
-      new MountTaskObserverBridge(NULL, &event_source_);
-  scoped_refptr<SignChallengeTask> task =
-      new SignChallengeTask(observer,
-                            attestation_,
-                            is_user_specific,
-                            username,
-                            key_name,
-                            challenge_blob);
-  *OUT_async_id = task->sequence_id();
-  mount_thread_.message_loop()->PostTask(
-      FROM_HERE,
-      base::Bind(&SignChallengeTask::Run, task.get()));
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
-                                              gchar* username,
-                                              gchar* key_name,
-                                              GArray** OUT_payload,
-                                              gboolean* OUT_success,
-                                              GError** error) {
-  // We must set the GArray now because if we return without setting it,
-  // dbus-glib loops forever.
-  *OUT_payload = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  brillo::SecureBlob blob;
-  *OUT_success = attestation_->GetKeyPayload(is_user_specific,
-                                             username,
-                                             key_name,
-                                             &blob);
-  if (*OUT_success)
-    g_array_append_vals(*OUT_payload, blob.data(), blob.size());
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
-                                              gchar* username,
-                                              gchar* key_name,
-                                              GArray* payload,
-                                              gboolean* OUT_success,
-                                              GError** error) {
-  brillo::SecureBlob blob(payload->data, payload->data + payload->len);
-  *OUT_success = attestation_->SetKeyPayload(is_user_specific,
-                                             username,
-                                             key_name,
-                                             blob);
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationDeleteKeys(gboolean is_user_specific,
-                                           gchar* username,
-                                           gchar* key_prefix,
-                                           gboolean* OUT_success,
-                                           GError** error) {
-  *OUT_success = attestation_->DeleteKeysByPrefix(is_user_specific,
-                                                  username,
-                                                  key_prefix);
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationGetEK(gchar** OUT_ek_info,
-                                      gboolean* OUT_success,
-                                      GError** error) {
-  std::string ek_info;
-  *OUT_success = attestation_->GetEKInfo(&ek_info);
-  *OUT_ek_info = g_strndup(ek_info.data(), ek_info.size());
-  return TRUE;
-}
-
-gboolean Service::TpmAttestationResetIdentity(gchar* reset_token,
-                                              GArray** OUT_reset_request,
-                                              gboolean* OUT_success,
-                                              GError** error) {
-  // We must set the GArray now because if we return without setting it,
-  // dbus-glib loops forever.
-  *OUT_reset_request = g_array_new(false, false,
-                                   sizeof(SecureBlob::value_type));
-  brillo::SecureBlob reset_request;
-  *OUT_success = attestation_->GetIdentityResetRequest(
-      std::string(reinterpret_cast<char*>(reset_token)),
-      &reset_request);
-  if (*OUT_success)
-    g_array_append_vals(*OUT_reset_request,
-                        reset_request.data(),
-                        reset_request.size());
-  return TRUE;
-}
-
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   *OUT_ready = TRUE;
@@ -3008,8 +2598,6 @@ void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
     // already been destroyed.
     extension->set_initialized(extension->owned());
   }
-  extension->set_attestation_prepared(attestation_->IsPreparedForEnrollment());
-  extension->set_attestation_enrolled(attestation_->IsEnrolled());
   int counter;
   int threshold;
   bool lockout;
@@ -3028,7 +2616,7 @@ void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
       !install_attrs_->is_invalid() &&
       install_attrs_->is_initialized());
   extension->set_boot_lockbox_finalized(boot_lockbox_->IsFinalized());
-  extension->set_verified_boot_measured(attestation_->IsPCR0VerifiedMode());
+  AttestationGetTpmStatus(extension);
   SendReply(context, reply);
 }
 
@@ -3036,134 +2624,6 @@ gboolean Service::GetTpmStatus(const GArray* request,
                                DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetTpmStatus, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
-  return TRUE;
-}
-
-void Service::DoGetEndorsementInfo(const brillo::SecureBlob& request,
-                                   DBusGMethodInvocation* context) {
-  GetEndorsementInfoRequest request_pb;
-  if (!request_pb.ParseFromArray(request.data(), request.size())) {
-    SendInvalidArgsReply(context, "Bad GetEndorsementInfoRequest");
-    return;
-  }
-  BaseReply reply;
-  SecureBlob public_key;
-  SecureBlob certificate;
-  if (attestation_->GetCachedEndorsementData(&public_key, &certificate) ||
-      (tpm_->GetEndorsementPublicKey(&public_key) &&
-       tpm_->GetEndorsementCredential(&certificate))) {
-    GetEndorsementInfoReply* extension = reply.MutableExtension(
-        GetEndorsementInfoReply::reply);
-    extension->set_ek_public_key(public_key.to_string());
-    if (!certificate.empty()) {
-      extension->set_ek_certificate(certificate.to_string());
-    }
-  } else {
-    reply.set_error(CRYPTOHOME_ERROR_TPM_EK_NOT_AVAILABLE);
-  }
-  SendReply(context, reply);
-}
-
-gboolean Service::GetEndorsementInfo(const GArray* request,
-                                     DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoGetEndorsementInfo, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
-  return TRUE;
-}
-
-void Service::DoInitializeCastKey(const brillo::SecureBlob& request,
-                                  DBusGMethodInvocation* context) {
-  const char kCastCertificateOrigin[] = "CAST";
-  const char kCastKeyLabel[] = "CERTIFIED_CAST_KEY";
-
-  LOG(INFO) << "Initializing Cast Key";
-  InitializeCastKeyRequest request_pb;
-  if (!request_pb.ParseFromArray(request.data(), request.size())) {
-    SendInvalidArgsReply(context, "Bad InitializeCastKeyRequest");
-    return;
-  }
-  BaseReply reply;
-  if (!attestation_->IsPreparedForEnrollment() ||
-      !pkcs11_init_->IsSystemTokenOK()) {
-    reply.set_error(CRYPTOHOME_ERROR_ATTESTATION_NOT_READY);
-    SendReply(context, reply);
-    return;
-  }
-  if (!attestation_->IsEnrolled()) {
-    brillo::SecureBlob enroll_request;
-    if (!attestation_->CreateEnrollRequest(Attestation::kDefaultPCA,
-                                           &enroll_request)) {
-      reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
-      SendReply(context, reply);
-      return;
-    }
-    brillo::SecureBlob enroll_reply;
-    if (!attestation_->SendPCARequestAndBlock(Attestation::kDefaultPCA,
-                                              Attestation::kEnroll,
-                                              enroll_request,
-                                              &enroll_reply)) {
-      reply.set_error(CRYPTOHOME_ERROR_CANNOT_CONNECT_TO_CA);
-      SendReply(context, reply);
-      return;
-    }
-    if (!attestation_->Enroll(Attestation::kDefaultPCA, enroll_reply)) {
-      reply.set_error(CRYPTOHOME_ERROR_CA_REFUSED_ENROLLMENT);
-      SendReply(context, reply);
-      return;
-    }
-  }
-  if (!attestation_->DoesKeyExist(false,  // is_user_specific
-                                  "",     // username
-                                  kCastKeyLabel)) {
-    brillo::SecureBlob certificate_request;
-    if (!attestation_->CreateCertRequest(Attestation::kDefaultPCA,
-                                         CAST_CERTIFICATE,
-                                         "",  // username
-                                         kCastCertificateOrigin,
-                                         &certificate_request)) {
-      reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
-      SendReply(context, reply);
-      return;
-    }
-    brillo::SecureBlob certificate_reply;
-    if (!attestation_->SendPCARequestAndBlock(Attestation::kDefaultPCA,
-                                              Attestation::kGetCertificate,
-                                              certificate_request,
-                                              &certificate_reply)) {
-      reply.set_error(CRYPTOHOME_ERROR_CANNOT_CONNECT_TO_CA);
-      SendReply(context, reply);
-      return;
-    }
-    brillo::SecureBlob certificate_chain;
-    if (!attestation_->FinishCertRequest(certificate_reply,
-                                         false,  // is_user_specific
-                                         "",     // username
-                                         kCastKeyLabel,
-                                         &certificate_chain)) {
-      reply.set_error(CRYPTOHOME_ERROR_CA_REFUSED_CERTIFICATE);
-      SendReply(context, reply);
-      return;
-    }
-  }
-  if (!attestation_->RegisterKey(false,    // is_user_specific
-                                 "",       // username
-                                 kCastKeyLabel,
-                                 true)) {  // include_certificates
-    reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
-    SendReply(context, reply);
-    return;
-  }
-  SendReply(context, reply);
-}
-
-gboolean Service::InitializeCastKey(const GArray* request,
-                                    DBusGMethodInvocation* context) {
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoInitializeCastKey, base::Unretained(this),
                  SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
@@ -3385,9 +2845,9 @@ void Service::ResetDictionaryAttackMitigation() {
   }
   brillo::SecureBlob delegate_blob, delegate_secret;
   bool has_reset_lock_permissions = false;
-  if (!attestation_->GetDelegateCredentials(&delegate_blob,
-                                            &delegate_secret,
-                                            &has_reset_lock_permissions)) {
+  if (!AttestationGetDelegateCredentials(&delegate_blob,
+                                         &delegate_secret,
+                                         &has_reset_lock_permissions)) {
     ReportDictionaryAttackResetStatus(kDelegateNotAvailable);
     return;
   }

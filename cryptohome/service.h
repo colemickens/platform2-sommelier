@@ -23,7 +23,6 @@
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 
-#include "cryptohome/attestation.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/firmware_management_parameters.h"
@@ -51,6 +50,28 @@ class BootLockbox;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
 
+// Bridges between the MountTaskObserver callback model and the
+// CryptohomeEventSource callback model. This class forwards MountTaskObserver
+// events to a CryptohomeEventSource. An instance of this class is single-use
+// (i.e., will be freed after it has observed one event).
+class MountTaskObserverBridge : public MountTaskObserver {
+ public:
+  explicit MountTaskObserverBridge(cryptohome::Mount* mount,
+                                   CryptohomeEventSource* source)
+    : mount_(mount), source_(source) { }
+  virtual ~MountTaskObserverBridge() { }
+  virtual bool MountTaskObserve(const MountTaskResult& result) {
+    MountTaskResult *r = new MountTaskResult(result);
+    r->set_mount(mount_);
+    source_->AddEvent(r);
+    return true;
+  }
+
+ protected:
+  scoped_refptr<cryptohome::Mount> mount_;
+  CryptohomeEventSource* source_;
+};
+
 // Service
 // Provides a wrapper for exporting CryptohomeInterface to
 // D-Bus and entering the glib run loop.
@@ -62,6 +83,9 @@ class Service : public brillo::dbus::AbstractDbusService,
  public:
   Service();
   virtual ~Service();
+
+  // Create the right Service based on command-line flags and TPM version.
+  static Service* CreateDefault();
 
   // From brillo::dbus::AbstractDbusService
   // Setup the wrapped GObject and the GMainLoop
@@ -163,10 +187,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual bool CleanUpStaleMounts(bool force);
 
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
-
-  virtual void set_attestation(Attestation* attestation) {
-    attestation_ = attestation;
-  }
 
   virtual void set_boot_lockbox(BootLockbox* boot_lockbox) {
     boot_lockbox_ = boot_lockbox;
@@ -352,80 +372,101 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean TpmIsBeingOwned(gboolean* OUT_owning, GError** error);
   virtual gboolean TpmCanAttemptOwnership(GError** error);
   virtual gboolean TpmClearStoredPassword(GError** error);
+
+  // Attestation functionality is implemented in descendant classes
+
+  // Attestation-related hooks.
+  // Called from Service::Initialize() before any other attestation calls
+  virtual void AttestationInitialize() = 0;
+  // Called from Service::Initialize() if initialize_tpm_ is true
+  virtual void AttestationInitializeTpm() = 0;
+  // Called from Service::InitializeTpmComplete()
+  virtual void AttestationInitializeTpmComplete() = 0;
+  // Called from Service::DoGetTpmStatus to fill attestation-related fields
+  virtual void AttestationGetTpmStatus(GetTpmStatusReply* reply) = 0;
+  // Called from Service::ResetDictionaryAttackMitigation()
+  // Provides the owner delegate credentials normally used for AIK activation.
+  // Returns true on success.
+  virtual bool AttestationGetDelegateCredentials(
+      brillo::SecureBlob* blob,
+      brillo::SecureBlob* secret,
+      bool* has_reset_lock_permissions) = 0;
+
+  // Attestation-related DBus calls.
   virtual gboolean TpmIsAttestationPrepared(gboolean* OUT_prepared,
-                                            GError** error);
+                                            GError** error) = 0;
   virtual gboolean TpmVerifyAttestationData(gboolean is_cros_core,
                                             gboolean* OUT_verified,
-                                            GError** error);
+                                            GError** error) = 0;
   virtual gboolean TpmVerifyEK(gboolean is_cros_core,
                                gboolean* OUT_verified,
-                               GError** error);
+                               GError** error) = 0;
   virtual gboolean TpmAttestationCreateEnrollRequest(gint pca_type,
                                                      GArray** OUT_pca_request,
-                                                     GError** error);
+                                                     GError** error) = 0;
   virtual gboolean AsyncTpmAttestationCreateEnrollRequest(gint pca_type,
                                                           gint* OUT_async_id,
-                                                          GError** error);
+                                                          GError** error) = 0;
   virtual gboolean TpmAttestationEnroll(gint pca_type,
                                         GArray* pca_response,
                                         gboolean* OUT_success,
-                                        GError** error);
+                                        GError** error) = 0;
   virtual gboolean AsyncTpmAttestationEnroll(gint pca_type,
                                              GArray* pca_response,
                                              gint* OUT_async_id,
-                                             GError** error);
+                                             GError** error) = 0;
   virtual gboolean TpmAttestationCreateCertRequest(
       gint pca_type,
       gint certificate_profile,
       gchar* username,
       gchar* request_origin,
       GArray** OUT_pca_request,
-      GError** error);
+      GError** error) = 0;
   virtual gboolean AsyncTpmAttestationCreateCertRequest(
       gint pca_type,
       gint certificate_profile,
       gchar* username,
       gchar* request_origin,
       gint* OUT_async_id,
-      GError** error);
+      GError** error) = 0;
   virtual gboolean TpmAttestationFinishCertRequest(GArray* pca_response,
                                                    gboolean is_user_specific,
                                                    gchar* username,
                                                    gchar* key_name,
                                                    GArray** OUT_cert,
                                                    gboolean* OUT_success,
-                                                   GError** error);
+                                                   GError** error) = 0;
   virtual gboolean AsyncTpmAttestationFinishCertRequest(
       GArray* pca_response,
       gboolean is_user_specific,
       gchar* username,
       gchar* key_name,
       gint* OUT_async_id,
-      GError** error);
+      GError** error) = 0;
   virtual gboolean TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
-                                            GError** error);
+                                            GError** error) = 0;
   virtual gboolean TpmAttestationDoesKeyExist(gboolean is_user_specific,
                                               gchar* username,
                                               gchar* key_name,
                                               gboolean *OUT_exists,
-                                              GError** error);
+                                              GError** error) = 0;
   virtual gboolean TpmAttestationGetCertificate(gboolean is_user_specific,
                                                 gchar* username,
                                                 gchar* key_name,
                                                 GArray **OUT_certificate,
                                                 gboolean* OUT_success,
-                                                GError** error);
+                                                GError** error) = 0;
   virtual gboolean TpmAttestationGetPublicKey(gboolean is_user_specific,
                                               gchar* username,
                                               gchar* key_name,
                                               GArray **OUT_public_key,
                                               gboolean* OUT_success,
-                                              GError** error);
+                                              GError** error) = 0;
   virtual gboolean TpmAttestationRegisterKey(gboolean is_user_specific,
                                              gchar* username,
                                              gchar* key_name,
                                              gint *OUT_async_id,
-                                             GError** error);
+                                             GError** error) = 0;
   virtual gboolean TpmAttestationSignEnterpriseChallenge(
       gboolean is_user_specific,
       gchar* username,
@@ -435,38 +476,43 @@ class Service : public brillo::dbus::AbstractDbusService,
       gboolean include_signed_public_key,
       GArray* challenge,
       gint *OUT_async_id,
-      GError** error);
+      GError** error) = 0;
   virtual gboolean TpmAttestationSignSimpleChallenge(
       gboolean is_user_specific,
       gchar* username,
       gchar* key_name,
       GArray* challenge,
       gint *OUT_async_id,
-      GError** error);
+      GError** error) = 0;
   virtual gboolean TpmAttestationGetKeyPayload(gboolean is_user_specific,
                                                gchar* username,
                                                gchar* key_name,
                                                GArray** OUT_payload,
                                                gboolean* OUT_success,
-                                               GError** error);
+                                               GError** error) = 0;
   virtual gboolean TpmAttestationSetKeyPayload(gboolean is_user_specific,
                                                gchar* username,
                                                gchar* key_name,
                                                GArray* payload,
                                                gboolean* OUT_success,
-                                               GError** error);
+                                               GError** error) = 0;
   virtual gboolean TpmAttestationDeleteKeys(gboolean is_user_specific,
                                             gchar* username,
                                             gchar* key_prefix,
                                             gboolean* OUT_success,
-                                            GError** error);
+                                            GError** error) = 0;
   virtual gboolean TpmAttestationGetEK(gchar** ek_info,
                                        gboolean* OUT_success,
-                                       GError** error);
+                                       GError** error) = 0;
   virtual gboolean TpmAttestationResetIdentity(gchar* reset_token,
                                                GArray** OUT_reset_request,
                                                gboolean* OUT_success,
-                                               GError** error);
+                                               GError** error) = 0;
+  virtual gboolean GetEndorsementInfo(const GArray* request,
+                                      DBusGMethodInvocation* context) = 0;
+  virtual gboolean InitializeCastKey(const GArray* request,
+                                     DBusGMethodInvocation* context) = 0;
+
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                          gchar** OUT_user_pin,
@@ -557,17 +603,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean GetTpmStatus(const GArray* request,
                                 DBusGMethodInvocation* context);
   // Runs on the mount thread.
-  virtual void DoGetEndorsementInfo(const brillo::SecureBlob& request,
-                                    DBusGMethodInvocation* context);
-  virtual gboolean GetEndorsementInfo(const GArray* request,
-                                      DBusGMethodInvocation* context);
-  // Runs on the mount thread.
-  virtual void DoInitializeCastKey(const brillo::SecureBlob& request,
-                                   DBusGMethodInvocation* context);
-  virtual gboolean InitializeCastKey(const GArray* request,
-                                     DBusGMethodInvocation* context);
-
-  // Runs on the mount thread.
   virtual void DoGetFirmwareManagementParameters(
       const brillo::SecureBlob& request,
       DBusGMethodInvocation* context);
@@ -592,6 +627,44 @@ class Service : public brillo::dbus::AbstractDbusService,
   FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
   FRIEND_TEST(ServiceTest, StoreEnrollmentState);
   FRIEND_TEST(ServiceTest, LoadEnrollmentState);
+
+  bool use_tpm_;
+
+  GMainLoop* loop_;
+  // Can't use unique_ptr for cryptohome_ because memory is allocated by glib.
+  gobject::Cryptohome* cryptohome_;
+  brillo::SecureBlob system_salt_;
+  std::unique_ptr<cryptohome::Platform> default_platform_;
+  cryptohome::Platform* platform_;
+  std::unique_ptr<cryptohome::Crypto> default_crypto_;
+  cryptohome::Crypto* crypto_;
+  // TPM doesn't use the unique_ptr for default pattern, since the tpm is a
+  // singleton - we don't want it getting destroyed when we are.
+  Tpm* tpm_;
+  std::unique_ptr<TpmInit> default_tpm_init_;
+  TpmInit* tpm_init_;
+  std::unique_ptr<Pkcs11Init> default_pkcs11_init_;
+  Pkcs11Init* pkcs11_init_;
+  bool initialize_tpm_;
+  base::Thread mount_thread_;
+  guint async_complete_signal_;
+  // A completion signal for async calls that return data.
+  guint async_data_complete_signal_;
+  guint tpm_init_signal_;
+  guint low_disk_space_signal_;
+  CryptohomeEventSource event_source_;
+  CryptohomeEventSourceSink* event_source_sink_;
+  int auto_cleanup_period_;
+  std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
+  cryptohome::InstallAttributes* install_attrs_;
+  int update_user_activity_period_;
+  // Keeps track of whether a failure on PKCS#11 initialization was reported
+  // during this user login. We use this not to report a same failure multiple
+  // times.
+  bool reported_pkcs11_init_fail_;
+  // Keeps track of whether the device is enterprise-owned.
+  bool enterprise_owned_;
+
   virtual GMainLoop *main_loop() { return loop_; }
 
   // Called periodically on Mount thread to initiate automatic disk
@@ -685,43 +758,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   // exactly once (i.e. records one sample) with the status of the operation.
   void ResetDictionaryAttackMitigation();
 
-  bool use_tpm_;
-
-  GMainLoop* loop_;
-  // Can't use unique_ptr for cryptohome_ because memory is allocated by glib.
-  gobject::Cryptohome* cryptohome_;
-  brillo::SecureBlob system_salt_;
-  std::unique_ptr<cryptohome::Platform> default_platform_;
-  cryptohome::Platform* platform_;
-  std::unique_ptr<cryptohome::Crypto> default_crypto_;
-  cryptohome::Crypto* crypto_;
-  // TPM doesn't use the unique_ptr for default pattern, since the tpm is a
-  // singleton - we don't want it getting destroyed when we are.
-  Tpm* tpm_;
-  std::unique_ptr<TpmInit> default_tpm_init_;
-  TpmInit* tpm_init_;
-  std::unique_ptr<Pkcs11Init> default_pkcs11_init_;
-  Pkcs11Init* pkcs11_init_;
-  bool initialize_tpm_;
-  base::Thread mount_thread_;
-  guint async_complete_signal_;
-  // A completion signal for async calls that return data.
-  guint async_data_complete_signal_;
-  guint tpm_init_signal_;
-  guint low_disk_space_signal_;
-  CryptohomeEventSource event_source_;
-  CryptohomeEventSourceSink* event_source_sink_;
-  int auto_cleanup_period_;
-  std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
-  cryptohome::InstallAttributes* install_attrs_;
-  int update_user_activity_period_;
-  // Keeps track of whether a failure on PKCS#11 initialization was reported
-  // during this user login. We use this not to report a same failure multiple
-  // times.
-  bool reported_pkcs11_init_fail_;
-  // Keeps track of whether the device is enterprise-owned.
-  bool enterprise_owned_;
-
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string, scoped_refptr<cryptohome::Mount>>
       MountMap;
@@ -742,8 +778,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   brillo::SecureBlob public_mount_salt_;
   std::unique_ptr<chaps::TokenManagerClient> default_chaps_client_;
   chaps::TokenManagerClient* chaps_client_;
-  std::unique_ptr<Attestation> default_attestation_;
-  Attestation* attestation_;
   std::unique_ptr<BootLockbox> default_boot_lockbox_;
   // After construction, this should only be used on the mount thread.
   BootLockbox* boot_lockbox_;
