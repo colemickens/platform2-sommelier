@@ -83,6 +83,9 @@ std::string GetProtoDebugStringWithIndent(CertificateProfile value,
   if (value == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
     return "ENTERPRISE_ENROLLMENT_CERTIFICATE";
   }
+  if (value == XTS_CERTIFICATE) {
+    return "XTS_CERTIFICATE";
+  }
   return "<unknown>";
 }
 

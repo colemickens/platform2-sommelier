@@ -34,6 +34,17 @@ constexpr char kCreateCertifiableKey[] = "CreateCertifiableKey";
 constexpr char kDecrypt[] = "Decrypt";
 constexpr char kSign[] = "Sign";
 constexpr char kRegisterKeyWithChapsToken[] = "RegisterKeyWithChapsToken";
+constexpr char kGetStatus[] = "GetStatus";
+constexpr char kVerify[] = "Verify";
+constexpr char kCreateEnrollRequest[] = "CreateEnrollRequest";
+constexpr char kFinishEnroll[] = "FinishEnroll";
+constexpr char kCreateCertificateRequest[] = "CreateCertificateRequest";
+constexpr char kFinishCertificateRequest[] = "FinishCertificateRequest";
+constexpr char kSignEnterpriseChallenge[] = "SignEnterpriseChallenge";
+constexpr char kSignSimpleChallenge[] = "SignSimpleChallenge";
+constexpr char kSetKeyPayload[] = "SetKeyPayload";
+constexpr char kDeleteKeys[] = "DeleteKeys";
+constexpr char kResetIdentity[] = "ResetIdentity";
 
 }  // namespace attestation
 

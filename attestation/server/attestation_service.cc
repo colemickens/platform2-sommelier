@@ -150,7 +150,7 @@ void AttestationService::CreateGoogleAttestedKeyTask(
   }
   if (!IsEnrolled()) {
     std::string enroll_request;
-    if (!CreateEnrollRequest(&enroll_request)) {
+    if (!CreateEnrollRequestInternal(&enroll_request)) {
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
       return;
     }
@@ -160,7 +160,7 @@ void AttestationService::CreateGoogleAttestedKeyTask(
       return;
     }
     std::string server_error;
-    if (!FinishEnroll(enroll_reply, &server_error)) {
+    if (!FinishEnrollInternal(enroll_reply, &server_error)) {
       if (server_error.empty()) {
         result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
         return;
@@ -178,9 +178,9 @@ void AttestationService::CreateGoogleAttestedKeyTask(
   }
   std::string certificate_request;
   std::string message_id;
-  if (!CreateCertificateRequest(request.username(), key,
-                                request.certificate_profile(), request.origin(),
-                                &certificate_request, &message_id)) {
+  if (!CreateCertificateRequestInternal(request.username(), key,
+                                        request.certificate_profile(), request.origin(),
+                                        &certificate_request, &message_id)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
@@ -192,9 +192,9 @@ void AttestationService::CreateGoogleAttestedKeyTask(
   }
   std::string certificate_chain;
   std::string server_error;
-  if (!FinishCertificateRequest(certificate_reply, request.username(),
-                                request.key_label(), message_id, &key,
-                                &certificate_chain, &server_error)) {
+  if (!FinishCertificateRequestInternal(certificate_reply, request.username(),
+                                        request.key_label(), message_id, &key,
+                                        &certificate_chain, &server_error)) {
     if (server_error.empty()) {
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
       return;
@@ -534,7 +534,7 @@ bool AttestationService::IsEnrolled() {
          database_pb.identity_key().has_identity_credential();
 }
 
-bool AttestationService::CreateEnrollRequest(std::string* enroll_request) {
+bool AttestationService::CreateEnrollRequestInternal(std::string* enroll_request) {
   if (!IsPreparedForEnrollment()) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data "
                << "does not exist.";
@@ -556,8 +556,8 @@ bool AttestationService::CreateEnrollRequest(std::string* enroll_request) {
   return true;
 }
 
-bool AttestationService::FinishEnroll(const std::string& enroll_response,
-                                      std::string* server_error) {
+bool AttestationService::FinishEnrollInternal(const std::string& enroll_response,
+                                              std::string* server_error) {
   if (!tpm_utility_->IsTpmReady()) {
     return false;
   }
@@ -586,7 +586,7 @@ bool AttestationService::FinishEnroll(const std::string& enroll_response,
   return true;
 }
 
-bool AttestationService::CreateCertificateRequest(
+bool AttestationService::CreateCertificateRequestInternal(
     const std::string& username,
     const CertifiedKey& key,
     CertificateProfile profile,
@@ -626,7 +626,7 @@ bool AttestationService::CreateCertificateRequest(
   return true;
 }
 
-bool AttestationService::FinishCertificateRequest(
+bool AttestationService::FinishCertificateRequestInternal(
     const std::string& certificate_response,
     const std::string& username,
     const std::string& key_label,
@@ -1071,6 +1071,226 @@ bool AttestationService::ActivateAttestationKeyInternal(
     *certificate = certificate_local;
   }
   return true;
+}
+
+void AttestationService::GetStatus(
+    const GetStatusRequest& request,
+    const GetStatusCallback& callback) {
+  auto result = std::make_shared<GetStatusReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::GetStatusTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<GetStatusReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::GetStatusTask(
+    const GetStatusRequest& request,
+    const std::shared_ptr<GetStatusReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::Verify(
+    const VerifyRequest& request,
+    const VerifyCallback& callback) {
+  auto result = std::make_shared<VerifyReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::VerifyTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<VerifyReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::VerifyTask(
+    const VerifyRequest& request,
+    const std::shared_ptr<VerifyReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::CreateEnrollRequest(
+    const CreateEnrollRequestRequest& request,
+    const CreateEnrollRequestCallback& callback) {
+  auto result = std::make_shared<CreateEnrollRequestReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::CreateEnrollRequestTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<CreateEnrollRequestReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::CreateEnrollRequestTask(
+    const CreateEnrollRequestRequest& request,
+    const std::shared_ptr<CreateEnrollRequestReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::FinishEnroll(
+    const FinishEnrollRequest& request,
+    const FinishEnrollCallback& callback) {
+  auto result = std::make_shared<FinishEnrollReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::FinishEnrollTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<FinishEnrollReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::FinishEnrollTask(
+    const FinishEnrollRequest& request,
+    const std::shared_ptr<FinishEnrollReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::CreateCertificateRequest(
+    const CreateCertificateRequestRequest& request,
+    const CreateCertificateRequestCallback& callback) {
+  auto result = std::make_shared<CreateCertificateRequestReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::CreateCertificateRequestTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<CreateCertificateRequestReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::CreateCertificateRequestTask(
+    const CreateCertificateRequestRequest& request,
+    const std::shared_ptr<CreateCertificateRequestReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::FinishCertificateRequest(
+    const FinishCertificateRequestRequest& request,
+    const FinishCertificateRequestCallback& callback) {
+  auto result = std::make_shared<FinishCertificateRequestReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::FinishCertificateRequestTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<FinishCertificateRequestReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::FinishCertificateRequestTask(
+    const FinishCertificateRequestRequest& request,
+    const std::shared_ptr<FinishCertificateRequestReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::SignEnterpriseChallenge(
+    const SignEnterpriseChallengeRequest& request,
+    const SignEnterpriseChallengeCallback& callback) {
+  auto result = std::make_shared<SignEnterpriseChallengeReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::SignEnterpriseChallengeTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<SignEnterpriseChallengeReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::SignEnterpriseChallengeTask(
+    const SignEnterpriseChallengeRequest& request,
+    const std::shared_ptr<SignEnterpriseChallengeReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::SignSimpleChallenge(
+    const SignSimpleChallengeRequest& request,
+    const SignSimpleChallengeCallback& callback) {
+  auto result = std::make_shared<SignSimpleChallengeReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::SignSimpleChallengeTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<SignSimpleChallengeReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::SignSimpleChallengeTask(
+    const SignSimpleChallengeRequest& request,
+    const std::shared_ptr<SignSimpleChallengeReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::SetKeyPayload(
+    const SetKeyPayloadRequest& request,
+    const SetKeyPayloadCallback& callback) {
+  auto result = std::make_shared<SetKeyPayloadReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::SetKeyPayloadTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<SetKeyPayloadReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::SetKeyPayloadTask(
+    const SetKeyPayloadRequest& request,
+    const std::shared_ptr<SetKeyPayloadReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::DeleteKeys(
+    const DeleteKeysRequest& request,
+    const DeleteKeysCallback& callback) {
+  auto result = std::make_shared<DeleteKeysReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::DeleteKeysTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<DeleteKeysReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::DeleteKeysTask(
+    const DeleteKeysRequest& request,
+    const std::shared_ptr<DeleteKeysReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::ResetIdentity(
+    const ResetIdentityRequest& request,
+    const ResetIdentityCallback& callback) {
+  auto result = std::make_shared<ResetIdentityReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::ResetIdentityTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<ResetIdentityReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::ResetIdentityTask(
+    const ResetIdentityRequest& request,
+    const std::shared_ptr<ResetIdentityReply>& result) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  result->set_status(STATUS_NOT_SUPPORTED);
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

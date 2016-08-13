@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2015 The Android Open Source Project
+// Copyright (C) 2016 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,6 +56,9 @@ std::string GetProtoDebugStringWithIndent(AttestationStatus value,
   }
   if (value == STATUS_CA_NOT_AVAILABLE) {
     return "STATUS_CA_NOT_AVAILABLE";
+  }
+  if (value == STATUS_NOT_SUPPORTED) {
+    return "STATUS_NOT_SUPPORTED";
   }
   return "<unknown>";
 }
@@ -231,6 +234,13 @@ std::string GetProtoDebugStringWithIndent(const GetKeyInfoReply& value,
             .c_str());
     output += "\n";
   }
+  if (value.has_payload()) {
+    output += indent + "  payload: ";
+    base::StringAppendF(&output, "%s", base::HexEncode(value.payload().data(),
+                                                       value.payload().size())
+                                           .c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -288,6 +298,11 @@ std::string GetProtoDebugStringWithIndent(const GetEndorsementInfoReply& value,
                         base::HexEncode(value.ek_certificate().data(),
                                         value.ek_certificate().size())
                             .c_str());
+    output += "\n";
+  }
+  if (value.has_ek_info()) {
+    output += indent + "  ek_info: ";
+    base::StringAppendF(&output, "%s", value.ek_info().c_str());
     output += "\n";
   }
   output += indent + "}\n";
@@ -689,6 +704,613 @@ std::string GetProtoDebugStringWithIndent(
     base::StringAppendF(
         &output, "%s",
         GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetStatusRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetStatusRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_extended_status()) {
+    output += indent + "  extended_status: ";
+    base::StringAppendF(&output, "%s",
+                        value.extended_status() ? "true" : "false");
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetStatusReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetStatusReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_prepared_for_enrollment()) {
+    output += indent + "  prepared_for_enrollment: ";
+    base::StringAppendF(&output, "%s",
+                        value.prepared_for_enrollment() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_enrolled()) {
+    output += indent + "  enrolled: ";
+    base::StringAppendF(&output, "%s", value.enrolled() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_verified_boot()) {
+    output += indent + "  verified_boot: ";
+    base::StringAppendF(&output, "%s",
+                        value.verified_boot() ? "true" : "false");
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const VerifyRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const VerifyRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_cros_core()) {
+    output += indent + "  cros_core: ";
+    base::StringAppendF(&output, "%s", value.cros_core() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_ek_only()) {
+    output += indent + "  ek_only: ";
+    base::StringAppendF(&output, "%s", value.ek_only() ? "true" : "false");
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const VerifyReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const VerifyReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_verified()) {
+    output += indent + "  verified: ";
+    base::StringAppendF(&output, "%s", value.verified() ? "true" : "false");
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const CreateEnrollRequestRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const CreateEnrollRequestRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const CreateEnrollRequestReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const CreateEnrollRequestReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_pca_request()) {
+    output += indent + "  pca_request: ";
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.pca_request().data(), value.pca_request().size())
+            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const FinishEnrollRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const FinishEnrollRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_pca_response()) {
+    output += indent + "  pca_response: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.pca_response().data(),
+                                        value.pca_response().size())
+                            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const FinishEnrollReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const FinishEnrollReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const CreateCertificateRequestRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const CreateCertificateRequestRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_certificate_profile()) {
+    output += indent + "  certificate_profile: ";
+    base::StringAppendF(&output, "%s",
+                        GetProtoDebugStringWithIndent(
+                            value.certificate_profile(), indent_size + 2)
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_username()) {
+    output += indent + "  username: ";
+    base::StringAppendF(&output, "%s", value.username().c_str());
+    output += "\n";
+  }
+  if (value.has_request_origin()) {
+    output += indent + "  request_origin: ";
+    base::StringAppendF(&output, "%s", value.request_origin().c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const CreateCertificateRequestReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const CreateCertificateRequestReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_pca_request()) {
+    output += indent + "  pca_request: ";
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.pca_request().data(), value.pca_request().size())
+            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const FinishCertificateRequestRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const FinishCertificateRequestRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_pca_response()) {
+    output += indent + "  pca_response: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.pca_response().data(),
+                                        value.pca_response().size())
+                            .c_str());
+    output += "\n";
+  }
+  if (value.has_key_label()) {
+    output += indent + "  key_label: ";
+    base::StringAppendF(&output, "%s", value.key_label().c_str());
+    output += "\n";
+  }
+  if (value.has_username()) {
+    output += indent + "  username: ";
+    base::StringAppendF(&output, "%s", value.username().c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const FinishCertificateRequestReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const FinishCertificateRequestReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_certificate()) {
+    output += indent + "  certificate: ";
+    base::StringAppendF(
+        &output, "%s",
+        base::HexEncode(value.certificate().data(), value.certificate().size())
+            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const SignEnterpriseChallengeRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const SignEnterpriseChallengeRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_key_label()) {
+    output += indent + "  key_label: ";
+    base::StringAppendF(&output, "%s", value.key_label().c_str());
+    output += "\n";
+  }
+  if (value.has_username()) {
+    output += indent + "  username: ";
+    base::StringAppendF(&output, "%s", value.username().c_str());
+    output += "\n";
+  }
+  if (value.has_domain()) {
+    output += indent + "  domain: ";
+    base::StringAppendF(&output, "%s", value.domain().c_str());
+    output += "\n";
+  }
+  if (value.has_device_id()) {
+    output += indent + "  device_id: ";
+    base::StringAppendF(&output, "%s", base::HexEncode(value.device_id().data(),
+                                                       value.device_id().size())
+                                           .c_str());
+    output += "\n";
+  }
+  if (value.has_include_signed_public_key()) {
+    output += indent + "  include_signed_public_key: ";
+    base::StringAppendF(&output, "%s",
+                        value.include_signed_public_key() ? "true" : "false");
+    output += "\n";
+  }
+  if (value.has_challenge()) {
+    output += indent + "  challenge: ";
+    base::StringAppendF(&output, "%s", base::HexEncode(value.challenge().data(),
+                                                       value.challenge().size())
+                                           .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const SignEnterpriseChallengeReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const SignEnterpriseChallengeReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_challenge_response()) {
+    output += indent + "  challenge_response: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.challenge_response().data(),
+                                        value.challenge_response().size())
+                            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const SignSimpleChallengeRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const SignSimpleChallengeRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_key_label()) {
+    output += indent + "  key_label: ";
+    base::StringAppendF(&output, "%s", value.key_label().c_str());
+    output += "\n";
+  }
+  if (value.has_username()) {
+    output += indent + "  username: ";
+    base::StringAppendF(&output, "%s", value.username().c_str());
+    output += "\n";
+  }
+  if (value.has_challenge()) {
+    output += indent + "  challenge: ";
+    base::StringAppendF(&output, "%s", base::HexEncode(value.challenge().data(),
+                                                       value.challenge().size())
+                                           .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const SignSimpleChallengeReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const SignSimpleChallengeReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_challenge_response()) {
+    output += indent + "  challenge_response: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.challenge_response().data(),
+                                        value.challenge_response().size())
+                            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const SetKeyPayloadRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const SetKeyPayloadRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_key_label()) {
+    output += indent + "  key_label: ";
+    base::StringAppendF(&output, "%s", value.key_label().c_str());
+    output += "\n";
+  }
+  if (value.has_username()) {
+    output += indent + "  username: ";
+    base::StringAppendF(&output, "%s", value.username().c_str());
+    output += "\n";
+  }
+  if (value.has_payload()) {
+    output += indent + "  payload: ";
+    base::StringAppendF(&output, "%s", base::HexEncode(value.payload().data(),
+                                                       value.payload().size())
+                                           .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const SetKeyPayloadReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const SetKeyPayloadReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const DeleteKeysRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const DeleteKeysRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_key_prefix()) {
+    output += indent + "  key_prefix: ";
+    base::StringAppendF(&output, "%s", value.key_prefix().c_str());
+    output += "\n";
+  }
+  if (value.has_username()) {
+    output += indent + "  username: ";
+    base::StringAppendF(&output, "%s", value.username().c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const DeleteKeysReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const DeleteKeysReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const ResetIdentityRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const ResetIdentityRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_reset_token()) {
+    output += indent + "  reset_token: ";
+    base::StringAppendF(&output, "%s", value.reset_token().c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const ResetIdentityReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const ResetIdentityReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_reset_request()) {
+    output += indent + "  reset_request: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.reset_request().data(),
+                                        value.reset_request().size())
+                            .c_str());
     output += "\n";
   }
   output += indent + "}\n";

@@ -101,6 +101,72 @@ class DBusService {
           const RegisterKeyWithChapsTokenReply&>> response,
       const RegisterKeyWithChapsTokenRequest& request);
 
+  // Handles a GetStatus D-Bus call.
+  void HandleGetStatus(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const GetStatusReply&>> response,
+      const GetStatusRequest& request);
+
+  // Handles a Verify D-Bus call.
+  void HandleVerify(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const VerifyReply&>> response,
+      const VerifyRequest& request);
+
+  // Handles a CreateEnrollRequest D-Bus call.
+  void HandleCreateEnrollRequest(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const CreateEnrollRequestReply&>> response,
+      const CreateEnrollRequestRequest& request);
+
+  // Handles a FinishEnroll D-Bus call.
+  void HandleFinishEnroll(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const FinishEnrollReply&>> response,
+      const FinishEnrollRequest& request);
+
+  // Handles a CreateCertificateRequest D-Bus call.
+  void HandleCreateCertificateRequest(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const CreateCertificateRequestReply&>> response,
+      const CreateCertificateRequestRequest& request);
+
+  // Handles a FinishCertificateRequest D-Bus call.
+  void HandleFinishCertificateRequest(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const FinishCertificateRequestReply&>> response,
+      const FinishCertificateRequestRequest& request);
+
+  // Handles a SignEnterpriseChallenge D-Bus call.
+  void HandleSignEnterpriseChallenge(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const SignEnterpriseChallengeReply&>> response,
+      const SignEnterpriseChallengeRequest& request);
+
+  // Handles a SignSimpleChallenge D-Bus call.
+  void HandleSignSimpleChallenge(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const SignSimpleChallengeReply&>> response,
+      const SignSimpleChallengeRequest& request);
+
+  // Handles a SetKeyPayload D-Bus call.
+  void HandleSetKeyPayload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const SetKeyPayloadReply&>> response,
+      const SetKeyPayloadRequest& request);
+
+  // Handles a DeleteKeys D-Bus call.
+  void HandleDeleteKeys(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const DeleteKeysReply&>> response,
+      const DeleteKeysRequest& request);
+
+  // Handles a ResetIdentity D-Bus call.
+  void HandleResetIdentity(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const ResetIdentityReply&>> response,
+      const ResetIdentityRequest& request);
+
   brillo::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

@@ -53,6 +53,39 @@ class MockAttestationInterface : public AttestationInterface {
   MOCK_METHOD2(RegisterKeyWithChapsToken,
                void(const RegisterKeyWithChapsTokenRequest&,
                     const RegisterKeyWithChapsTokenCallback&));
+  MOCK_METHOD2(GetStatus,
+               void(const GetStatusRequest&,
+                    const GetStatusCallback&));
+  MOCK_METHOD2(Verify,
+               void(const VerifyRequest&,
+                    const VerifyCallback&));
+  MOCK_METHOD2(CreateEnrollRequest,
+               void(const CreateEnrollRequestRequest&,
+                    const CreateEnrollRequestCallback&));
+  MOCK_METHOD2(FinishEnroll,
+               void(const FinishEnrollRequest&,
+                    const FinishEnrollCallback&));
+  MOCK_METHOD2(CreateCertificateRequest,
+               void(const CreateCertificateRequestRequest&,
+                    const CreateCertificateRequestCallback&));
+  MOCK_METHOD2(FinishCertificateRequest,
+               void(const FinishCertificateRequestRequest&,
+                    const FinishCertificateRequestCallback&));
+  MOCK_METHOD2(SignEnterpriseChallenge,
+               void(const SignEnterpriseChallengeRequest&,
+                    const SignEnterpriseChallengeCallback&));
+  MOCK_METHOD2(SignSimpleChallenge,
+               void(const SignSimpleChallengeRequest&,
+                    const SignSimpleChallengeCallback&));
+  MOCK_METHOD2(SetKeyPayload,
+               void(const SetKeyPayloadRequest&,
+                    const SetKeyPayloadCallback&));
+  MOCK_METHOD2(DeleteKeys,
+               void(const DeleteKeysRequest&,
+                    const DeleteKeysCallback&));
+  MOCK_METHOD2(ResetIdentity,
+               void(const ResetIdentityRequest&,
+                    const ResetIdentityCallback&));
 };
 
 }  // namespace attestation

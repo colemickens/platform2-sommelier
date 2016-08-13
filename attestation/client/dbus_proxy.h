@@ -61,6 +61,39 @@ class DBusProxy : public AttestationInterface {
   void RegisterKeyWithChapsToken(
       const RegisterKeyWithChapsTokenRequest& request,
       const RegisterKeyWithChapsTokenCallback& callback) override;
+  void GetStatus(
+      const GetStatusRequest& request,
+      const GetStatusCallback& callback) override;
+  void Verify(
+      const VerifyRequest& request,
+      const VerifyCallback& callback) override;
+  void CreateEnrollRequest(
+      const CreateEnrollRequestRequest& request,
+      const CreateEnrollRequestCallback& callback) override;
+  void FinishEnroll(
+      const FinishEnrollRequest& request,
+      const FinishEnrollCallback& callback) override;
+  void CreateCertificateRequest(
+      const CreateCertificateRequestRequest& request,
+      const CreateCertificateRequestCallback& callback) override;
+  void FinishCertificateRequest(
+      const FinishCertificateRequestRequest& request,
+      const FinishCertificateRequestCallback& callback) override;
+  void SignEnterpriseChallenge(
+      const SignEnterpriseChallengeRequest& request,
+      const SignEnterpriseChallengeCallback& callback) override;
+  void SignSimpleChallenge(
+      const SignSimpleChallengeRequest& request,
+      const SignSimpleChallengeCallback& callback) override;
+  void SetKeyPayload(
+      const SetKeyPayloadRequest& request,
+      const SetKeyPayloadCallback& callback) override;
+  void DeleteKeys(
+      const DeleteKeysRequest& request,
+      const DeleteKeysCallback& callback) override;
+  void ResetIdentity(
+      const ResetIdentityRequest& request,
+      const ResetIdentityCallback& callback) override;
 
   // Useful for testing.
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {

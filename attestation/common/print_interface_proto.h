@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2015 The Android Open Source Project
+// Copyright (C) 2016 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -93,6 +93,80 @@ std::string GetProtoDebugStringWithIndent(
     const RegisterKeyWithChapsTokenReply& value,
     int indent_size);
 std::string GetProtoDebugString(const RegisterKeyWithChapsTokenReply& value);
+std::string GetProtoDebugStringWithIndent(const GetStatusRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const GetStatusRequest& value);
+std::string GetProtoDebugStringWithIndent(const GetStatusReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const GetStatusReply& value);
+std::string GetProtoDebugStringWithIndent(const VerifyRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const VerifyRequest& value);
+std::string GetProtoDebugStringWithIndent(const VerifyReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const VerifyReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const CreateEnrollRequestRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const CreateEnrollRequestRequest& value);
+std::string GetProtoDebugStringWithIndent(const CreateEnrollRequestReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const CreateEnrollRequestReply& value);
+std::string GetProtoDebugStringWithIndent(const FinishEnrollRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const FinishEnrollRequest& value);
+std::string GetProtoDebugStringWithIndent(const FinishEnrollReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const FinishEnrollReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const CreateCertificateRequestRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const CreateCertificateRequestRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const CreateCertificateRequestReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const CreateCertificateRequestReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const FinishCertificateRequestRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const FinishCertificateRequestRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const FinishCertificateRequestReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const FinishCertificateRequestReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const SignEnterpriseChallengeRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const SignEnterpriseChallengeRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const SignEnterpriseChallengeReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const SignEnterpriseChallengeReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const SignSimpleChallengeRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const SignSimpleChallengeRequest& value);
+std::string GetProtoDebugStringWithIndent(const SignSimpleChallengeReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const SignSimpleChallengeReply& value);
+std::string GetProtoDebugStringWithIndent(const SetKeyPayloadRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const SetKeyPayloadRequest& value);
+std::string GetProtoDebugStringWithIndent(const SetKeyPayloadReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const SetKeyPayloadReply& value);
+std::string GetProtoDebugStringWithIndent(const DeleteKeysRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const DeleteKeysRequest& value);
+std::string GetProtoDebugStringWithIndent(const DeleteKeysReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const DeleteKeysReply& value);
+std::string GetProtoDebugStringWithIndent(const ResetIdentityRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const ResetIdentityRequest& value);
+std::string GetProtoDebugStringWithIndent(const ResetIdentityReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const ResetIdentityReply& value);
 
 }  // namespace attestation
 

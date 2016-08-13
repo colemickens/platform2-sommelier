@@ -29,6 +29,7 @@ enum AttestationStatus {
   STATUS_INVALID_PARAMETER = 5;
   STATUS_REQUEST_DENIED_BY_CA = 6;
   STATUS_CA_NOT_AVAILABLE = 7;
+  STATUS_NOT_SUPPORTED = 8;
 }
 
 message CreateGoogleAttestedKeyRequest {
@@ -76,6 +77,8 @@ message GetKeyInfoReply {
   optional bytes certify_info_signature = 6;
   // The certificate data associated with the key (if any).
   optional bytes certificate = 7;
+  // The payload associated with the key.
+  optional bytes payload = 8;
 }
 
 message GetEndorsementInfoRequest {
@@ -88,6 +91,9 @@ message GetEndorsementInfoReply {
   optional bytes ek_public_key = 2;
   // The endorsement certificate (X.509/DER).
   optional bytes ek_certificate = 3;
+  // Human-readable string with EK information. Contains EK certificate in PEM
+  // format and SHA256 hash of the raw DER encoded certificate.
+  optional string ek_info = 4;
 }
 
 message GetAttestationKeyInfoRequest {
@@ -174,4 +180,194 @@ message RegisterKeyWithChapsTokenRequest {
 
 message RegisterKeyWithChapsTokenReply {
   optional AttestationStatus status = 1;
+}
+
+message GetStatusRequest {
+  // Get extended status (see GetStatusReply below).
+  optional bool extended_status = 1;
+}
+
+message GetStatusReply {
+  optional AttestationStatus status = 1;
+  // Is prepared for enrollment?
+  optional bool prepared_for_enrollment = 2;
+  // Is enrolled (AIK certificate created)?
+  optional bool enrolled = 3;
+  // Is in verified boot mode (according to PCR0 quote)?
+  // [Only included in reply if extended_status is set]
+  optional bool verified_boot = 4;
+}
+
+// Verify attestation data.
+message VerifyRequest {
+  // Use CrosCore CA to verify that the EK is endorsed.
+  optional bool cros_core = 1;
+  // Verify EK only.
+  // Otherwise, in addition to EK, verify all attestation data as a CA would.
+  optional bool ek_only = 2;
+}
+
+message VerifyReply {
+  optional AttestationStatus status = 1;
+  optional bool verified = 2;
+}
+
+// Create an enrollment request to be sent to the Privacy CA. This request
+// is a serialized AttestationEnrollmentRequest protobuf. Attestation
+// enrollment is a process by which the Privacy CA verifies the EK certificate
+// of a device and issues a certificate for an AIK. The enrollment process can
+// be finished by sending FinishEnrollRequest with the response from the CA.
+message CreateEnrollRequestRequest {
+}
+
+message CreateEnrollRequestReply {
+  optional AttestationStatus status = 1;
+  // AttestationEnrollmentRequest to be sent to CA server.
+  optional bytes pca_request = 2;
+}
+
+// Finish the enrollment process.
+message FinishEnrollRequest {
+  // AttestationEnrollmentResponse received from CA server.
+  optional bytes pca_response = 1;
+}
+
+message FinishEnrollReply {
+  optional AttestationStatus status = 1;
+}
+
+// Create an attestation certificate request to be sent to the Privacy CA.
+// The request is a serialized AttestationCertificateRequest protobuf. The
+// certificate request process generates and certifies a key in the TPM and
+// sends the AIK certificate along with information about the certified key to
+// the Privacy CA. The PCA verifies the information and issues a certificate
+// for the certified key. The certificate request process can be finished by
+// sending FinishCertificateRequestRequest with the response from the CA.
+message CreateCertificateRequestRequest {
+  // Type of certificate to be requested.
+  optional CertificateProfile certificate_profile = 1;
+  // The canonical username of the active user profile. Leave blank
+  // if not associated with the current user.
+  optional string username = 2;
+  // Some certificate requests require information about the origin
+  // of the request.  If no origin is needed, this can be empty.
+  optional string request_origin = 3;
+}
+
+message CreateCertificateRequestReply {
+  optional AttestationStatus status = 1;
+  // The request to be sent to the Privacy CA.
+  optional bytes pca_request = 2;
+}
+
+// Finish the certificate request process.  The |pca_response| from the PCA
+// is a serialized AttestationCertificateResponse protobuf. This final step
+// verifies the PCA operation succeeded and extracts the certificate for the
+// certified key.  The certificate is stored with the key.
+message FinishCertificateRequestRequest {
+  // The Privacy CA's response to a certificate request.
+  optional bytes pca_response = 1;
+  // A name for the key.  If a key already exists with this name it
+  // will be destroyed and replaced with this one.
+  optional string key_label = 2;
+  // This should match |username| in CreateCertificateRequestRequest.
+  optional string username = 3;
+}
+
+message FinishCertificateRequestReply {
+  optional AttestationStatus status = 1;
+  // The PCA issued certificate chain in PEM format.  By
+  // convention the certified key certificate is listed
+  // first followed by intermediate CA certificate(s).
+  // The PCA root certificate is not included.
+  optional bytes certificate = 2;
+}
+
+// Sign a challenge for an enterprise device / user.  This challenge is
+// typically generated by and the response verified by the Enterprise Device
+// Verification Server (DVServer).
+message SignEnterpriseChallengeRequest {
+  // The key name. This is the same name previously passed to
+  // FinishCertficateRequestRequest.
+  optional string key_label = 1;
+  // The canonical username of the active user profile. Leave blank
+  // if not associated with the current user.
+  optional string username = 2;
+  // A domain value to be included in the challenge response.
+  optional string domain = 3;
+  // A device identifier to be included in the challenge response.
+  optional bytes device_id = 4;
+  // Whether the challenge response should include
+  // a SignedPublicKeyAndChallenge.
+  optional bool include_signed_public_key = 5;
+  // The challenge to be signed.
+  optional bytes challenge = 6;
+}
+
+message SignEnterpriseChallengeReply {
+  optional AttestationStatus status = 1;
+  // The challenge response.
+  optional bytes challenge_response = 2;
+}
+
+// Sign a challenge outside of an enterprise context: generate a random nonce
+// and append it to challenge, then sign and return the signature in the
+// |challenge_response|.
+// This challenge is typically generated by some module running within Chrome.
+message SignSimpleChallengeRequest {
+  // The key name. This is the same name previously passed to
+  // FinishCertficateRequestRequest.
+  optional string key_label = 1;
+  // The canonical username of the active user profile. Leave blank
+  // if not associated with the current user.
+  optional string username = 2;
+  // The challenge to be signed.
+  optional bytes challenge = 3;
+}
+
+message SignSimpleChallengeReply {
+  optional AttestationStatus status = 1;
+  // The challenge response.
+  optional bytes challenge_response = 2;
+}
+
+// Set a payload for a key; any previous payload will be overwritten.
+message SetKeyPayloadRequest {
+  // The key name. This is the same name previously passed to
+  // FinishCertficateRequestRequest.
+  optional string key_label = 1;
+  // The canonical username of the active user profile. Leave blank
+  // if not associated with the current user.
+  optional string username = 2;
+  optional bytes payload = 3;
+}
+
+message SetKeyPayloadReply {
+  optional AttestationStatus status = 1;
+}
+
+// Delete all keys where the key name has the given |key_prefix|.
+message DeleteKeysRequest {
+  // The key name prefix.
+  optional string key_prefix = 1;
+  // The canonical username of the active user profile. Leave blank
+  // if not associated with the current user.
+  optional string username = 2;
+}
+
+message DeleteKeysReply {
+  optional AttestationStatus status = 1;
+}
+
+// Create a request to be sent to the PCA which will reset the identity for
+// this device on future AIK enrollments.  The |reset_token| is put in the
+// request protobuf verbatim.
+message ResetIdentityRequest {
+  optional string reset_token = 1;
+}
+
+message ResetIdentityReply {
+  optional AttestationStatus status = 1;
+  // Request to be sent to the CA.
+  optional bytes reset_request = 2;
 }

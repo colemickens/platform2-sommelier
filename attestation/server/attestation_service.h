@@ -93,6 +93,39 @@ class AttestationService : public AttestationInterface {
   void RegisterKeyWithChapsToken(
       const RegisterKeyWithChapsTokenRequest& request,
       const RegisterKeyWithChapsTokenCallback& callback) override;
+  void GetStatus(
+      const GetStatusRequest& request,
+      const GetStatusCallback& callback) override;
+  void Verify(
+      const VerifyRequest& request,
+      const VerifyCallback& callback) override;
+  void CreateEnrollRequest(
+      const CreateEnrollRequestRequest& request,
+      const CreateEnrollRequestCallback& callback) override;
+  void FinishEnroll(
+      const FinishEnrollRequest& request,
+      const FinishEnrollCallback& callback) override;
+  void CreateCertificateRequest(
+      const CreateCertificateRequestRequest& request,
+      const CreateCertificateRequestCallback& callback) override;
+  void FinishCertificateRequest(
+      const FinishCertificateRequestRequest& request,
+      const FinishCertificateRequestCallback& callback) override;
+  void SignEnterpriseChallenge(
+      const SignEnterpriseChallengeRequest& request,
+      const SignEnterpriseChallengeCallback& callback) override;
+  void SignSimpleChallenge(
+      const SignSimpleChallengeRequest& request,
+      const SignSimpleChallengeCallback& callback) override;
+  void SetKeyPayload(
+      const SetKeyPayloadRequest& request,
+      const SetKeyPayloadCallback& callback) override;
+  void DeleteKeys(
+      const DeleteKeysRequest& request,
+      const DeleteKeysCallback& callback) override;
+  void ResetIdentity(
+      const ResetIdentityRequest& request,
+      const ResetIdentityCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -180,6 +213,61 @@ class AttestationService : public AttestationInterface {
       const RegisterKeyWithChapsTokenRequest& request,
       const std::shared_ptr<RegisterKeyWithChapsTokenReply>& result);
 
+  // A synchronous implementation of GetStatus.
+  void GetStatusTask(
+      const GetStatusRequest& request,
+      const std::shared_ptr<GetStatusReply>& result);
+
+  // A synchronous implementation of Verify.
+  void VerifyTask(
+      const VerifyRequest& request,
+      const std::shared_ptr<VerifyReply>& result);
+
+  // A synchronous implementation of CreateEnrollRequest.
+  void CreateEnrollRequestTask(
+      const CreateEnrollRequestRequest& request,
+      const std::shared_ptr<CreateEnrollRequestReply>& result);
+
+  // A synchronous implementation of FinishEnroll.
+  void FinishEnrollTask(
+      const FinishEnrollRequest& request,
+      const std::shared_ptr<FinishEnrollReply>& result);
+
+  // A synchronous implementation of CreateCertificateRequest.
+  void CreateCertificateRequestTask(
+      const CreateCertificateRequestRequest& request,
+      const std::shared_ptr<CreateCertificateRequestReply>& result);
+
+  // A synchronous implementation of FinishCertificateRequest.
+  void FinishCertificateRequestTask(
+      const FinishCertificateRequestRequest& request,
+      const std::shared_ptr<FinishCertificateRequestReply>& result);
+
+  // A synchronous implementation of SignEnterpriseChallenge.
+  void SignEnterpriseChallengeTask(
+      const SignEnterpriseChallengeRequest& request,
+      const std::shared_ptr<SignEnterpriseChallengeReply>& result);
+
+  // A synchronous implementation of SignSimpleChallenge.
+  void SignSimpleChallengeTask(
+      const SignSimpleChallengeRequest& request,
+      const std::shared_ptr<SignSimpleChallengeReply>& result);
+
+  // A synchronous implementation of SetKeyPayload.
+  void SetKeyPayloadTask(
+      const SetKeyPayloadRequest& request,
+      const std::shared_ptr<SetKeyPayloadReply>& result);
+
+  // A synchronous implementation of DeleteKeys.
+  void DeleteKeysTask(
+      const DeleteKeysRequest& request,
+      const std::shared_ptr<DeleteKeysReply>& result);
+
+  // A synchronous implementation of ResetIdentity.
+  void ResetIdentityTask(
+      const ResetIdentityRequest& request,
+      const std::shared_ptr<ResetIdentityReply>& result);
+
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.
   bool IsPreparedForEnrollment();
@@ -190,36 +278,36 @@ class AttestationService : public AttestationInterface {
 
   // Creates an enrollment request compatible with the Google Attestation CA.
   // Returns true on success.
-  bool CreateEnrollRequest(std::string* enroll_request);
+  bool CreateEnrollRequestInternal(std::string* enroll_request);
 
   // Finishes enrollment given an |enroll_response| from the Google Attestation
   // CA. Returns true on success. On failure, returns false and sets
   // |server_error| to the error string from the CA.
-  bool FinishEnroll(const std::string& enroll_response,
-                    std::string* server_error);
+  bool FinishEnrollInternal(const std::string& enroll_response,
+                            std::string* server_error);
 
   // Creates a |certificate_request| compatible with the Google Attestation CA
   // for the given |key|, according to the given |profile|, |username| and
   // |origin|.
-  bool CreateCertificateRequest(const std::string& username,
-                                const CertifiedKey& key,
-                                CertificateProfile profile,
-                                const std::string& origin,
-                                std::string* certificate_request,
-                                std::string* message_id);
+  bool CreateCertificateRequestInternal(const std::string& username,
+                                        const CertifiedKey& key,
+                                        CertificateProfile profile,
+                                        const std::string& origin,
+                                        std::string* certificate_request,
+                                        std::string* message_id);
 
   // Finishes a certificate request by decoding the |certificate_response| to
   // recover the |certificate_chain| and storing it in association with the
   // |key| identified by |username| and |key_label|. Returns true on success. On
   // failure, returns false and sets |server_error| to the error string from the
   // CA.
-  bool FinishCertificateRequest(const std::string& certificate_response,
-                                const std::string& username,
-                                const std::string& key_label,
-                                const std::string& message_id,
-                                CertifiedKey* key,
-                                std::string* certificate_chain,
-                                std::string* server_error);
+  bool FinishCertificateRequestInternal(const std::string& certificate_response,
+                                        const std::string& username,
+                                        const std::string& key_label,
+                                        const std::string& message_id,
+                                        CertifiedKey* key,
+                                        std::string* certificate_chain,
+                                        std::string* server_error);
 
   // Sends a |request_type| |request| to the Google Attestation CA and waits for
   // the |reply|. Returns true on success.
