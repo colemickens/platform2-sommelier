@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <string>
+
 #include <base/command_line.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "cryptohome/service_monolithic.h"
 
@@ -28,9 +30,12 @@ Attestation::PCAType GetPCAType(int value) {
   return static_cast<Attestation::PCAType>(value);
 }
 
-ServiceMonolithic::ServiceMonolithic()
+ServiceMonolithic::ServiceMonolithic(const std::string& abe_data)
     : default_attestation_(new Attestation()),
       attestation_(default_attestation_.get()) {
+  if (!GetAttestationBasedEnterpriseEnrollmentData(abe_data, &abe_data_)) {
+    LOG(FATAL) << "Invalid attestation-based enterprise enrollment data.";
+  }
 }
 
 ServiceMonolithic::~ServiceMonolithic() {
@@ -42,13 +47,26 @@ ServiceMonolithic::~ServiceMonolithic() {
   StopTasks();
 }
 
+bool ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
+    const std::string& data, brillo::SecureBlob* abe_data) {
+  abe_data->clear();
+  if (data.empty()) return true;     // No data is okay.
+  // The data must be a valid 32 bytes (256 bites) hexadecimal string.
+  return base::HexStringToBytes(data, abe_data) && abe_data->size() == 32;
+}
+
 void ServiceMonolithic::AttestationInitialize() {
+  // Get data for attestation-based enterprise enrollment.
+  if (abe_data_.empty())
+    LOG(WARNING) << "Attestation-based enterprise enrollment"
+                 << " will not be available.";
+
   // Pass in all the shared dependencies here rather than
   // needing to always get the Attestation object to set them
   // during testing.
   attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_,
-                           base::CommandLine::ForCurrentProcess()->HasSwitch(
-                               kRetainEndorsementDataSwitch));
+     &abe_data_, base::CommandLine::ForCurrentProcess()->HasSwitch(
+         kRetainEndorsementDataSwitch));
 }
 
 void ServiceMonolithic::AttestationInitializeTpm() {

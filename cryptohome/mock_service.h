@@ -21,7 +21,8 @@ using ::testing::Return;
 
 class MockService : public ServiceMonolithic {
  public:
-  MockService();
+  explicit MockService(const std::string& abe_data);
+  MockService();  // For convenience in unit tests.
   virtual ~MockService();
 
   MOCK_METHOD7(Mount, gboolean(const gchar *,

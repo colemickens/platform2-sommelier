@@ -4,8 +4,13 @@
 
 #include "cryptohome/service.h"
 
+#include <cstdlib>
+#include <string>
+
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/syslog_logging.h>
@@ -25,11 +30,30 @@
 //           We will need a "CheckKey" interface as well to simplify
 //           offline authentication checks.
 
+namespace env {
+static const char* kAttestationBasedEnrollmentDataFile = "ABE_DATA_FILE";
+}
+
 namespace switches {
-// Keeps std* open for debugging
+// Keeps std* open for debugging.
 static const char *kNoCloseOnDaemonize = "noclose";
 static const char *kNoLegacyMount = "nolegacymount";
 }  // namespace switches
+
+static std::string ReadAbeDataFileContents(cryptohome::Platform* platform) {
+  std::string data;
+
+  const char* abe_data_file =
+      std::getenv(env::kAttestationBasedEnrollmentDataFile);
+  if (!abe_data_file)
+    return data;
+
+  base::FilePath file_path(abe_data_file);
+  if (!platform->ReadFileToString(file_path, &data))
+    LOG(FATAL) << "Could not read attestation-based enterprise enrollment data"
+                  " in: " << file_path.value();
+  return data;
+}
 
 int main(int argc, char **argv) {
   ::g_type_init();
@@ -37,6 +61,10 @@ int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+
+  // Read the file before we daemonize so it can be deleted as soon as we exit.
+  cryptohome::Platform platform;
+  std::string abe_data = ReadAbeDataFileContents(&platform);
 
   // Allow the commands to be configurable.
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
@@ -53,8 +81,7 @@ int main(int argc, char **argv) {
 
   cryptohome::ScopedMetricsInitializer metrics_initializer;
 
-  cryptohome::Platform platform;
-  cryptohome::Service* service = cryptohome::Service::CreateDefault();
+  cryptohome::Service* service = cryptohome::Service::CreateDefault(abe_data);
 
   service->set_legacy_mount(!nolegacymount);
 

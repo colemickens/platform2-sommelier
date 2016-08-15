@@ -267,6 +267,9 @@ const char Attestation::kAlternatePCAKeyIDAttributeName[] =
 const char Attestation::kAlternatePCAUrlAttributeName[] =
     "enterprise.alternate_pca_url";
 
+const char Attestation::kAttestationBasedEnterpriseEnrollmentContextName[] =
+    "attestation_based_enrollment";
+
 Attestation::Attestation()
     : database_path_(kDefaultDatabasePath),
       pkcs11_key_store_(new Pkcs11KeyStore()),
@@ -291,6 +294,7 @@ void Attestation::Initialize(Tpm* tpm,
                              Platform* platform,
                              Crypto* crypto,
                              InstallAttributes* install_attributes,
+                             const SecureBlob* abe_data,
                              bool retain_endorsement_data) {
   base::AutoLock lock(lock_);
   // Inject dependencies.
@@ -302,6 +306,7 @@ void Attestation::Initialize(Tpm* tpm,
     install_attributes_ = install_attributes;
     install_attributes_observer_.Add(install_attributes_);
   }
+  abe_data_ = abe_data;
   retain_endorsement_data_ = retain_endorsement_data;
 
   if (tpm_) {
@@ -741,6 +746,17 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
   *request_pb.mutable_pcr1_quote() = use_alternate_pca ?
       database_pb_.alternate_pcr1_quote() :
       database_pb_.pcr1_quote();
+  SecureBlob enterprise_enrollment_nonce;
+  if (!ComputeEnterpriseEnrollmentNonce(&enterprise_enrollment_nonce)) {
+    LOG(ERROR) << "Attestation: Failed to compute enterprise enrollment nonce.";
+    return false;
+  }
+  if (!enterprise_enrollment_nonce.empty()) {
+    request_pb.set_enterprise_enrollment_nonce(
+        enterprise_enrollment_nonce.data(),
+        enterprise_enrollment_nonce.size());
+  }
+
   std::string tmp;
   if (!request_pb.SerializeToString(&tmp)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
@@ -2380,6 +2396,23 @@ std::string Attestation::GetPCAURL(PCAType pca_type,
       NOTREACHED();
   }
   return url;
+}
+
+bool Attestation::ComputeEnterpriseEnrollmentNonce(
+    brillo::SecureBlob* enterprise_enrollment_nonce) {
+  if (!abe_data_ || abe_data_->empty()) {
+    // If there is no device secret we cannot compute the DEN. We do not
+    // want to fail attestation for those devices.
+    enterprise_enrollment_nonce->clear();
+    return true;
+  }
+  const uint8_t* context_name = reinterpret_cast<const uint8_t*>(
+      kAttestationBasedEnterpriseEnrollmentContextName);
+  SecureBlob context_key(context_name, context_name
+      + sizeof(kAttestationBasedEnterpriseEnrollmentContextName) - 1);
+  SecureBlob nonce = CryptoLib::HmacSha256(context_key, *abe_data_);
+  enterprise_enrollment_nonce->swap(nonce);
+  return true;
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {

@@ -55,12 +55,15 @@ class Attestation : public base::PlatformThread::Delegate,
   // Must be called before any other method. If |retain_endorsement_data| is set
   // then this instance will not perform any finalization of endorsement data.
   // That is, it will continue to be available in an unencrypted state.
-  // The caller retains ownership of all pointers.
+  // The caller retains ownership of all pointers. If |abe_data| is not an
+  // empty blob, its contents will be used to enable attestation-based
+  // enterprise enrollment.
   virtual void Initialize(Tpm* tpm,
                           TpmInit* tpm_init,
                           Platform* platform,
                           Crypto* crypto,
                           InstallAttributes* install_attributes,
+                          const brillo::SecureBlob* abe_data,
                           bool retain_endorsement_data);
 
   // Returns true if the attestation enrollment blobs already exist.
@@ -440,11 +443,15 @@ class Attestation : public base::PlatformThread::Delegate,
   static const char kAlternatePCAKeyAttributeName[];
   static const char kAlternatePCAKeyIDAttributeName[];
   static const char kAlternatePCAUrlAttributeName[];
+  // Context name to derive the device stable secret for attestation-based
+  // enterprise enrollment.
+  static const char kAttestationBasedEnterpriseEnrollmentContextName[];
 
   Tpm* tpm_;
   TpmInit* tpm_init_;
   Platform* platform_;
   Crypto* crypto_;
+  const brillo::SecureBlob* abe_data_;
   // A lock to protect |database_pb_| because PrepareForEnrollment may happen on
   // a worker thread.
   base::Lock lock_;
@@ -663,6 +670,11 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Creates a PCA URL for the given |pca_type| and |request_type|.
   std::string GetPCAURL(PCAType pca_type, PCARequestType request_type) const;
+
+  // Compute the enterprise DEN for attestation-based enrollment and
+  // stores it in |enterprise_enrollment_nonce|.
+  bool ComputeEnterpriseEnrollmentNonce(
+      brillo::SecureBlob* enterprise_enrollment_nonce);
 
   // Injects a TpmInit object to be used for RemoveTpmOwnerDependency
   void set_tpm_init(TpmInit* value) { tpm_init_ = value; }

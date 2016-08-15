@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_SERVICE_MONOLITHIC_H_
 #define CRYPTOHOME_SERVICE_MONOLITHIC_H_
 
+#include <string>
+
 #include "cryptohome/attestation.h"
 #include "cryptohome/service.h"
 
@@ -15,7 +17,7 @@ namespace cryptohome {
 // inside cryptohome.
 class ServiceMonolithic : public Service {
  public:
-  ServiceMonolithic();
+  explicit ServiceMonolithic(const std::string& abe_data);
   virtual ~ServiceMonolithic();
 
   virtual void set_attestation(Attestation* attestation) {
@@ -158,8 +160,16 @@ class ServiceMonolithic : public Service {
                              DBusGMethodInvocation* context) override;
 
  private:
+  static bool GetAttestationBasedEnterpriseEnrollmentData(
+      const std::string& data, brillo::SecureBlob* abe_data);
+
+  FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTest);
+  FRIEND_TEST_ALL_PREFIXES(ServiceTest, InvalidAbeDataTest);
+
   std::unique_ptr<Attestation> default_attestation_;
   Attestation* attestation_;
+
+  brillo::SecureBlob abe_data_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceMonolithic);
 };

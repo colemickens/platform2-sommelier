@@ -17,8 +17,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
@@ -202,7 +200,7 @@ void Service::StopTasks() {
   mount_thread_.Stop();
 }
 
-Service* Service::CreateDefault() {
+Service* Service::CreateDefault(const std::string& abe_data) {
 #if USE_TPM2
   bool use_monolithic = kUseInternalAttestationModeByDefault;
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
@@ -215,11 +213,11 @@ Service* Service::CreateDefault() {
       use_monolithic = false;
   }
   if (use_monolithic)
-    return new ServiceMonolithic();
+    return new ServiceMonolithic(abe_data);
   else
     return new ServiceDistributed();
 #else
-  return new ServiceMonolithic();
+  return new ServiceMonolithic(abe_data);
 #endif
 }
 

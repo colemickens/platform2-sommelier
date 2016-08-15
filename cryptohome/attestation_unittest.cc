@@ -49,7 +49,7 @@ class AttestationTest : public testing::Test {
  public:
   AttestationTest() : crypto_(&platform_),
                       attestation_(),
-                      rsa_(NULL) {
+                      rsa_(nullptr) {
     crypto_.set_tpm(&tpm_);
     crypto_.set_use_tpm(true);
   }
@@ -80,6 +80,7 @@ class AttestationTest : public testing::Test {
   virtual void Initialize() {
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
                             &install_attributes_,
+                            nullptr, /* abe_data */
                             false /* retain_endorsement_data */);
   }
 
@@ -109,7 +110,7 @@ class AttestationTest : public testing::Test {
 
   RSA* rsa() {
     if (!rsa_) {
-      rsa_ = RSA_generate_key(2048, 65537, NULL, NULL);
+      rsa_ = RSA_generate_key(2048, 65537, nullptr, nullptr);
       CHECK(rsa_);
       attestation_.set_enterprise_test_key(rsa_);
     }
@@ -172,7 +173,7 @@ class AttestationTest : public testing::Test {
   }
 
   SecureBlob GetPKCS1PublicKey() {
-    unsigned char* buffer = NULL;
+    unsigned char* buffer = nullptr;
     int length = i2d_RSAPublicKey(rsa(), &buffer);
     if (length <= 0)
       return SecureBlob();
@@ -182,7 +183,7 @@ class AttestationTest : public testing::Test {
   }
 
   SecureBlob GetX509PublicKey() {
-    unsigned char* buffer = NULL;
+    unsigned char* buffer = nullptr;
     int length = i2d_RSA_PUBKEY(rsa(), &buffer);
     if (length <= 0)
       return SecureBlob();
@@ -312,29 +313,81 @@ class AttestationTest : public testing::Test {
   }
 };
 
+struct AbeDataParam {
+  const char *data;
+  const char *enterprise_enrollment_nonce;
+
+  AbeDataParam(const char* data, const char *enterprise_enrollment_nonce) :
+    data(data),
+    enterprise_enrollment_nonce(enterprise_enrollment_nonce) {}
+};
+
+class AttestationWithAbeDataTest : public AttestationTest,
+    public testing::WithParamInterface<AbeDataParam> {
+  virtual void Initialize() {
+    abe_data_.clear();
+    const char *data = GetParam().data;
+    if (data != nullptr) {
+      if (!base::HexStringToBytes(data, &abe_data_)) {
+        abe_data_.clear();
+      }
+    }
+    attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+                            &install_attributes_,
+                            &abe_data_,
+                            false /* retain_endorsement_data */);
+  }
+
+ protected:
+  bool VerifyAttestationEnrollmentRequest(const SecureBlob& request) {
+    AttestationEnrollmentRequest request_pb;
+    if (!request_pb.ParseFromArray(request.data(), request.size())) {
+      return false;
+    }
+    const AbeDataParam& param = GetParam();
+    if (param.data == nullptr) {
+      if (request_pb.has_enterprise_enrollment_nonce()) {
+        std::string nonce = request_pb.enterprise_enrollment_nonce();
+      }
+      return !request_pb.has_enterprise_enrollment_nonce();
+    }
+    SecureBlob expected;
+    EXPECT_TRUE(base::HexStringToBytes(param.enterprise_enrollment_nonce,
+        &expected));
+    std::string nonce = request_pb.enterprise_enrollment_nonce();
+    return expected == SecureBlob(nonce.begin(), nonce.end());
+  }
+
+ private:
+    SecureBlob abe_data_;
+};
+
 TEST(AttestationTest_, NullTpm) {
-  Crypto crypto(NULL);
-  InstallAttributes install_attributes(NULL);
+  Crypto crypto(nullptr);
+  InstallAttributes install_attributes(nullptr);
   Attestation without_tpm;
-  without_tpm.Initialize(NULL, NULL, NULL, &crypto, &install_attributes,
+  without_tpm.Initialize(nullptr, nullptr, nullptr,
+                         &crypto, &install_attributes,
+                         nullptr /* abe_data */,
                          false /* retain_endorsement_data */);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
   EXPECT_FALSE(without_tpm.Verify(false));
   EXPECT_FALSE(without_tpm.VerifyEK(false));
-  EXPECT_FALSE(without_tpm.CreateEnrollRequest(Attestation::kDefaultPCA, NULL));
+  EXPECT_FALSE(without_tpm.CreateEnrollRequest(Attestation::kDefaultPCA,
+                                               nullptr));
   EXPECT_FALSE(without_tpm.Enroll(Attestation::kDefaultPCA, SecureBlob()));
   EXPECT_FALSE(without_tpm.CreateCertRequest(Attestation::kDefaultPCA,
                                              ENTERPRISE_USER_CERTIFICATE, "",
-                                             "", NULL));
+                                             "", nullptr));
   EXPECT_FALSE(without_tpm.FinishCertRequest(SecureBlob(),
-                                             false, "", "", NULL));
+                                             false, "", "", nullptr));
   EXPECT_FALSE(without_tpm.SignEnterpriseChallenge(false, "", "", "",
                                                    SecureBlob(), false,
-                                                   SecureBlob(), NULL));
+                                                   SecureBlob(), nullptr));
   EXPECT_FALSE(without_tpm.SignSimpleChallenge(false, "", "", SecureBlob(),
-                                               NULL));
-  EXPECT_FALSE(without_tpm.GetEKInfo(NULL));
+                                               nullptr));
+  EXPECT_FALSE(without_tpm.GetEKInfo(nullptr));
 }
 
 TEST_F(AttestationTest, PrepareForEnrollment) {
@@ -349,7 +402,7 @@ TEST_F(AttestationTest, PrepareForEnrollment) {
   EXPECT_TRUE(db.has_delegate());
 }
 
-TEST_F(AttestationTest, Enroll) {
+TEST_P(AttestationWithAbeDataTest, Enroll) {
   SecureBlob blob;
   EXPECT_FALSE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
                                                 &blob));
@@ -357,6 +410,7 @@ TEST_F(AttestationTest, Enroll) {
   EXPECT_FALSE(attestation_.IsEnrolled());
   EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
                                                &blob));
+  EXPECT_TRUE(VerifyAttestationEnrollmentRequest(blob));
   EXPECT_TRUE(attestation_.Enroll(Attestation::kDefaultPCA, GetEnrollBlob()));
   EXPECT_TRUE(attestation_.IsEnrolled());
 }
@@ -640,7 +694,8 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
 
   // Simulate second login.
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, false /* retain_endorsement_data */);
+      &install_attributes_, nullptr /* abe_data */,
+      false /* retain_endorsement_data */);
   // Expect endorsement data to be no longer available.
   db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&
@@ -659,7 +714,8 @@ TEST_F(AttestationTest, RetainEndorsementData) {
 
   // Simulate second login.
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, true /* retain_endorsement_data */);
+      &install_attributes_, nullptr /* abe_data */,
+      true /* retain_endorsement_data */);
   // Expect endorsement data to be still available.
   db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&
@@ -704,7 +760,7 @@ TEST_F(AttestationTest, AlternatePCAEnabled) {
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
                             Return(true)));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", nullptr))
       .WillRepeatedly(Return(true));
   attestation_.PrepareForEnrollment();
   // Expect all alternate PCA data to be available.
@@ -722,7 +778,7 @@ TEST_F(AttestationTest, AlternatePCAEnroll) {
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
                             Return(true)));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", nullptr))
       .WillRepeatedly(Return(true));
 
   SecureBlob blob;
@@ -749,7 +805,7 @@ TEST_F(AttestationTest, AlternatePCACertRequest) {
   EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(GetX509PublicKey()),
                             Return(true)));
-  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", NULL))
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_key", nullptr))
       .WillRepeatedly(Return(true));
 
   SecureBlob blob;
@@ -878,5 +934,15 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1NoHwID) {
   // Now initialize and the mocks will complain if PCR1 is extended.
   AttestationTest::Initialize();
 }
+
+INSTANTIATE_TEST_CASE_P(
+    AbeData,
+    AttestationWithAbeDataTest,
+    ::testing::Values(
+        AbeDataParam(nullptr, nullptr),
+        AbeDataParam(
+            "2eac34fa74994262b907c15a3a1462e349e5108ca0d0e807f4b1a3ee741a5594",
+            "865cc962ffe14b3638b2d1f860e77b53" /* continued for formatting */
+                "1644a3aba67e52e49e1f6c0a31d81daf")));
 
 }  // namespace cryptohome

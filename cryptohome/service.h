@@ -85,7 +85,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual ~Service();
 
   // Create the right Service based on command-line flags and TPM version.
-  static Service* CreateDefault();
+  static Service* CreateDefault(const std::string& abe_data);
 
   // From brillo::dbus::AbstractDbusService
   // Setup the wrapped GObject and the GMainLoop
@@ -383,13 +383,13 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Attestation functionality is implemented in descendant classes
 
   // Attestation-related hooks.
-  // Called from Service::Initialize() before any other attestation calls
+  // Called from Service::Initialize() before any other attestation calls.
   virtual void AttestationInitialize() = 0;
-  // Called from Service::Initialize() if initialize_tpm_ is true
+  // Called from Service::Initialize() if initialize_tpm_ is true.
   virtual void AttestationInitializeTpm() = 0;
-  // Called from Service::InitializeTpmComplete()
+  // Called from Service::InitializeTpmComplete().
   virtual void AttestationInitializeTpmComplete() = 0;
-  // Called from Service::DoGetTpmStatus to fill attestation-related fields
+  // Called from Service::DoGetTpmStatus to fill attestation-related fields.
   virtual void AttestationGetTpmStatus(GetTpmStatusReply* reply) = 0;
   // Called from Service::ResetDictionaryAttackMitigation()
   // Provides the owner delegate credentials normally used for AIK activation.
@@ -766,6 +766,8 @@ class Service : public brillo::dbus::AbstractDbusService,
 
  private:
   FRIEND_TEST(ServiceTest, GetPublicMountPassKey);
+
+  std::unique_ptr<SecureBlob> GetAttestationBasedEnrollmentData();
 
   bool CreateSystemSaltIfNeeded();
   bool CreatePublicMountSaltIfNeeded();
