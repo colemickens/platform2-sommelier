@@ -33,8 +33,10 @@ Attestation::PCAType GetPCAType(int value) {
 ServiceMonolithic::ServiceMonolithic(const std::string& abe_data)
     : default_attestation_(new Attestation()),
       attestation_(default_attestation_.get()) {
-  if (!GetAttestationBasedEnterpriseEnrollmentData(abe_data, &abe_data_)) {
-    LOG(FATAL) << "Invalid attestation-based enterprise enrollment data.";
+  if (!abe_data.empty()) {
+    if (!GetAttestationBasedEnterpriseEnrollmentData(abe_data, &abe_data_)) {
+      LOG(FATAL) << "Invalid attestation-based enterprise enrollment data.";
+    }
   }
 }
 
@@ -49,10 +51,12 @@ ServiceMonolithic::~ServiceMonolithic() {
 
 bool ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
     const std::string& data, brillo::SecureBlob* abe_data) {
-  abe_data->clear();
-  if (data.empty()) return true;     // No data is okay.
   // The data must be a valid 32 bytes (256 bites) hexadecimal string.
-  return base::HexStringToBytes(data, abe_data) && abe_data->size() == 32;
+  if (!base::HexStringToBytes(data, abe_data) || abe_data->size() != 32) {
+    abe_data->clear();
+    return false;
+  }
+  return true;
 }
 
 void ServiceMonolithic::AttestationInitialize() {
@@ -65,7 +69,7 @@ void ServiceMonolithic::AttestationInitialize() {
   // needing to always get the Attestation object to set them
   // during testing.
   attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_,
-     &abe_data_, base::CommandLine::ForCurrentProcess()->HasSwitch(
+     abe_data_, base::CommandLine::ForCurrentProcess()->HasSwitch(
          kRetainEndorsementDataSwitch));
 }
 

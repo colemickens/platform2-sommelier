@@ -8,6 +8,7 @@
 #include "cryptohome/service.h"
 #include "cryptohome/service_monolithic.h"
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>

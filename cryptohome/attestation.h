@@ -63,7 +63,7 @@ class Attestation : public base::PlatformThread::Delegate,
                           Platform* platform,
                           Crypto* crypto,
                           InstallAttributes* install_attributes,
-                          const brillo::SecureBlob* abe_data,
+                          const brillo::SecureBlob& abe_data,
                           bool retain_endorsement_data);
 
   // Returns true if the attestation enrollment blobs already exist.
@@ -451,7 +451,7 @@ class Attestation : public base::PlatformThread::Delegate,
   TpmInit* tpm_init_;
   Platform* platform_;
   Crypto* crypto_;
-  const brillo::SecureBlob* abe_data_;
+  brillo::SecureBlob abe_data_;
   // A lock to protect |database_pb_| because PrepareForEnrollment may happen on
   // a worker thread.
   base::Lock lock_;

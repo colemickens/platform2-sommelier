@@ -80,7 +80,7 @@ class AttestationTest : public testing::Test {
   virtual void Initialize() {
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
                             &install_attributes_,
-                            nullptr, /* abe_data */
+                            brillo::SecureBlob() /* abe_data */,
                             false /* retain_endorsement_data */);
   }
 
@@ -325,16 +325,15 @@ struct AbeDataParam {
 class AttestationWithAbeDataTest : public AttestationTest,
     public testing::WithParamInterface<AbeDataParam> {
   virtual void Initialize() {
-    abe_data_.clear();
+    SecureBlob abe_data;
     const char *data = GetParam().data;
-    if (data != nullptr) {
-      if (!base::HexStringToBytes(data, &abe_data_)) {
-        abe_data_.clear();
+    if (data != NULL) {
+      if (!base::HexStringToBytes(data, &abe_data)) {
+        abe_data.clear();
       }
     }
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-                            &install_attributes_,
-                            &abe_data_,
+                            &install_attributes_, abe_data,
                             false /* retain_endorsement_data */);
   }
 
@@ -345,7 +344,7 @@ class AttestationWithAbeDataTest : public AttestationTest,
       return false;
     }
     const AbeDataParam& param = GetParam();
-    if (param.data == nullptr) {
+    if (param.data == NULL) {
       if (request_pb.has_enterprise_enrollment_nonce()) {
         std::string nonce = request_pb.enterprise_enrollment_nonce();
       }
@@ -357,25 +356,20 @@ class AttestationWithAbeDataTest : public AttestationTest,
     std::string nonce = request_pb.enterprise_enrollment_nonce();
     return expected == SecureBlob(nonce.begin(), nonce.end());
   }
-
- private:
-    SecureBlob abe_data_;
 };
 
 TEST(AttestationTest_, NullTpm) {
   Crypto crypto(nullptr);
   InstallAttributes install_attributes(nullptr);
   Attestation without_tpm;
-  without_tpm.Initialize(nullptr, nullptr, nullptr,
-                         &crypto, &install_attributes,
-                         nullptr /* abe_data */,
+  without_tpm.Initialize(NULL, NULL, NULL, &crypto, &install_attributes,
+                         brillo::SecureBlob() /* abe_data */,
                          false /* retain_endorsement_data */);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
   EXPECT_FALSE(without_tpm.Verify(false));
   EXPECT_FALSE(without_tpm.VerifyEK(false));
-  EXPECT_FALSE(without_tpm.CreateEnrollRequest(Attestation::kDefaultPCA,
-                                               nullptr));
+  EXPECT_FALSE(without_tpm.CreateEnrollRequest(Attestation::kDefaultPCA, NULL));
   EXPECT_FALSE(without_tpm.Enroll(Attestation::kDefaultPCA, SecureBlob()));
   EXPECT_FALSE(without_tpm.CreateCertRequest(Attestation::kDefaultPCA,
                                              ENTERPRISE_USER_CERTIFICATE, "",
@@ -391,6 +385,21 @@ TEST(AttestationTest_, NullTpm) {
 }
 
 TEST_F(AttestationTest, PrepareForEnrollment) {
+  attestation_.PrepareForEnrollment();
+  EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
+  AttestationDatabase db = GetPersistentDatabase();
+  EXPECT_TRUE(db.has_credentials());
+  EXPECT_TRUE(db.has_identity_binding());
+  EXPECT_TRUE(db.has_identity_key());
+  EXPECT_TRUE(db.has_pcr0_quote());
+  EXPECT_TRUE(db.has_pcr1_quote());
+  EXPECT_TRUE(db.has_delegate());
+}
+
+TEST_P(AttestationWithAbeDataTest,
+       PrepareForEnrollmentInstallAttributesNotReady) {
+  EXPECT_CALL(install_attributes_, is_first_install())
+      .WillRepeatedly(Return(true));
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
   AttestationDatabase db = GetPersistentDatabase();
@@ -694,7 +703,7 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
 
   // Simulate second login.
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, nullptr /* abe_data */,
+      &install_attributes_, brillo::SecureBlob() /* abe_data */,
       false /* retain_endorsement_data */);
   // Expect endorsement data to be no longer available.
   db = GetPersistentDatabase();
@@ -714,7 +723,7 @@ TEST_F(AttestationTest, RetainEndorsementData) {
 
   // Simulate second login.
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_, nullptr /* abe_data */,
+      &install_attributes_, brillo::SecureBlob() /* abe_data */,
       true /* retain_endorsement_data */);
   // Expect endorsement data to be still available.
   db = GetPersistentDatabase();

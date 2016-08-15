@@ -160,6 +160,7 @@ class ServiceMonolithic : public Service {
                              DBusGMethodInvocation* context) override;
 
  private:
+  // Parses |data| and fills in |abe_data|, or clears it if |data| are invalid.
   static bool GetAttestationBasedEnterpriseEnrollmentData(
       const std::string& data, brillo::SecureBlob* abe_data);
 

@@ -294,7 +294,7 @@ void Attestation::Initialize(Tpm* tpm,
                              Platform* platform,
                              Crypto* crypto,
                              InstallAttributes* install_attributes,
-                             const SecureBlob* abe_data,
+                             const SecureBlob& abe_data,
                              bool retain_endorsement_data) {
   base::AutoLock lock(lock_);
   // Inject dependencies.
@@ -372,9 +372,10 @@ void Attestation::PrepareForEnrollment() {
     return;
   if (IsPreparedForEnrollment())
     return;
-  if (!retain_endorsement_data_ && install_attributes_->is_first_install()) {
-    LOG(INFO) << "Attestation: Waiting for install attributes to be finalized.";
-    return;
+  if (install_attributes_->is_first_install()) {
+    // We'll proceed now but we'll pick the default PCA as a result.
+    LOG(WARNING) << "Attestation: Using default PCA. Alternate PCA will not be"
+                    " available.";
   }
   bool enable_alternate_pca =
       install_attributes_->Get(kAlternatePCAKeyAttributeName, NULL);
@@ -2400,7 +2401,7 @@ std::string Attestation::GetPCAURL(PCAType pca_type,
 
 bool Attestation::ComputeEnterpriseEnrollmentNonce(
     brillo::SecureBlob* enterprise_enrollment_nonce) {
-  if (!abe_data_ || abe_data_->empty()) {
+  if (abe_data_.empty()) {
     // If there is no device secret we cannot compute the DEN. We do not
     // want to fail attestation for those devices.
     enterprise_enrollment_nonce->clear();
@@ -2410,7 +2411,7 @@ bool Attestation::ComputeEnterpriseEnrollmentNonce(
       kAttestationBasedEnterpriseEnrollmentContextName);
   SecureBlob context_key(context_name, context_name
       + sizeof(kAttestationBasedEnterpriseEnrollmentContextName) - 1);
-  SecureBlob nonce = CryptoLib::HmacSha256(context_key, *abe_data_);
+  SecureBlob nonce = CryptoLib::HmacSha256(context_key, abe_data_);
   enterprise_enrollment_nonce->swap(nonce);
   return true;
 }

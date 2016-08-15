@@ -166,7 +166,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
   // Declare service_ last so it gets destroyed before all the mocks. This is
   // important because otherwise the background thread may call into mocks that
   // have already been destroyed.
-  ServiceMonolithic service_ { "" };
+  ServiceMonolithic service_{std::string()};
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceTestNotInitialized);
@@ -192,9 +192,6 @@ TEST_F(ServiceTest, ValidAbeDataTest) {
       "2eac34fa74994262b907c15a3a1462e349e5108ca0d0e807f4b1a3ee741a5594",
       &abe_data));
   ASSERT_EQ(32, abe_data.size());
-  ASSERT_TRUE(ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
-      "", &abe_data));
-  ASSERT_EQ(0, abe_data.size());
 }
 
 TEST_F(ServiceTest, InvalidAbeDataTest) {
@@ -202,8 +199,13 @@ TEST_F(ServiceTest, InvalidAbeDataTest) {
   ASSERT_FALSE(ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
       "2eac34fa74994262b907c15a3a1462e349e5108c",
       &abe_data));
+  ASSERT_EQ(0, abe_data.size());
   ASSERT_FALSE(ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
       "garbage", &abe_data));
+  ASSERT_EQ(0, abe_data.size());
+  ASSERT_FALSE(ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
+      "", &abe_data));
+  ASSERT_EQ(0, abe_data.size());
 }
 
 TEST_F(ServiceTest, CheckKeySuccessTest) {

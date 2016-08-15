@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/dbus.h>

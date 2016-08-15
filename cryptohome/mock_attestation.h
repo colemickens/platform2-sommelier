@@ -7,6 +7,7 @@
 
 #include "cryptohome/attestation.h"
 
+#include <memory>
 #include <string>
 
 #include <brillo/secure_blob.h>
@@ -26,7 +27,7 @@ class MockAttestation : public Attestation {
                                 Platform*,
                                 Crypto*,
                                 InstallAttributes*,
-                                const brillo::SecureBlob*,
+                                const brillo::SecureBlob&,
                                 bool));
   MOCK_METHOD0(IsPreparedForEnrollment, bool());
   MOCK_METHOD0(IsEnrolled, bool());
