@@ -73,10 +73,18 @@ class ProxyGenerator : public HeaderGenerator {
   // Generates GetObjectProxy() method.
   static void AddGetObjectProxy(IndentedText* text);
 
-  // Generates SetPropertyChangedCallback/GetProperties() methods.
-  static void AddPropertyPublicMethods(const std::string& class_name,
-                                       bool declaration_only,
-                                       IndentedText* text);
+  // Generates InitializeProperties() method and callback.
+  static void AddInitializeProperties(const std::string& class_name,
+                                      bool declaration_only,
+                                      IndentedText* text);
+
+  // Generates SetPropertyChanged() method and callback.
+  static void AddSetPropertyChanged(const std::string& class_name,
+                                    bool declaration_only,
+                                    IndentedText* text);
+
+  // Generates GetProperties() methods.
+  static void AddGetProperties(IndentedText* text);
 
   // Generates OnPropertyChanged() method.
   static void AddOnPropertyChanged(IndentedText* text);
@@ -93,8 +101,7 @@ class ProxyGenerator : public HeaderGenerator {
                              IndentedText* text);
 
   // Generates the property accessors.
-  static void AddProperties(const ServiceConfig& config,
-                            const Interface& interface,
+  static void AddProperties(const Interface& interface,
                             bool declaration_only,
                             IndentedText* text);
 

@@ -211,11 +211,15 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
   for (const auto& signal : interface.signals) {
     AddSignalHandlerRegistration(signal, interface.name, true, text);
   }
-  AddProperties(config, interface, true, text);
+  AddProperties(interface, true, text);
   text->AddBlankLine();
   text->AddLine("virtual const dbus::ObjectPath& GetObjectPath() const = 0;");
-  if (!config.object_manager.name.empty() && !interface.properties.empty())
-    AddPropertyPublicMethods(proxy_name, true, text);
+  if (!interface.properties.empty()) {
+    if (config.object_manager.name.empty())
+      AddInitializeProperties(proxy_name, true, text);
+    else
+      AddSetPropertyChanged(proxy_name, true, text);
+  }
 
   text->PopOffset();
   text->AddLine("};");
@@ -252,13 +256,18 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   AddReleaseObjectProxy(text);
   AddGetObjectPath(text);
   AddGetObjectProxy(text);
-  if (!config.object_manager.name.empty() && !interface.properties.empty())
-    AddPropertyPublicMethods(proxy_name, false, text);
+  if (!interface.properties.empty()) {
+    if (config.object_manager.name.empty())
+      AddInitializeProperties(proxy_name, false, text);
+    else
+      AddSetPropertyChanged(proxy_name, false, text);
+    AddGetProperties(text);
+  }
   for (const auto& method : interface.methods) {
     AddMethodProxy(method, interface.name, false, text);
     AddAsyncMethodProxy(method, interface.name, false, text);
   }
-  AddProperties(config, interface, false, text);
+  AddProperties(interface, false, text);
 
   text->PopOffset();
   text->AddBlankLine();
@@ -288,6 +297,8 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
                      proxy_name.c_str()));
   }
   text->AddLine("dbus::ObjectProxy* dbus_object_proxy_;");
+  if (config.object_manager.name.empty() && !interface.properties.empty())
+    text->AddLine("std::unique_ptr<PropertySet> property_set_;");
   text->AddBlankLine();
 
   if (!config.object_manager.name.empty() && !interface.properties.empty()) {
@@ -450,9 +461,36 @@ void ProxyGenerator::AddGetObjectProxy(IndentedText* text) {
 }
 
 // static
-void ProxyGenerator::AddPropertyPublicMethods(const string& class_name,
-                                              bool declaration_only,
-                                              IndentedText* text) {
+void ProxyGenerator::AddInitializeProperties(const string& class_name,
+                                             bool declaration_only,
+                                             IndentedText* text) {
+  text->AddBlankLine();
+  text->AddLine(StringPrintf("%svoid InitializeProperties(",
+                             declaration_only ? "virtual " : ""));
+  text->AddLineWithOffset(
+      StringPrintf("const base::Callback<void(%sInterface*, "
+                   "const std::string&)>& callback) %s",
+                   class_name.c_str(),
+                   declaration_only ? "= 0;" : "override {"),
+      kLineContinuationOffset);
+  if (!declaration_only) {
+    IndentedText block;
+    block.PushOffset(kBlockOffset);
+    block.AddLine("property_set_.reset(");
+    block.AddLineWithOffset(
+        "new PropertySet(dbus_object_proxy_, base::Bind(callback, this)));",
+        kLineContinuationOffset);
+    block.AddLine("property_set_->ConnectSignals();");
+    block.AddLine("property_set_->GetAll();");
+    text->AddBlock(block);
+    text->AddLine("}");
+  }
+}
+
+// static
+void ProxyGenerator::AddSetPropertyChanged(const string& class_name,
+                                           bool declaration_only,
+                                           IndentedText* text) {
   text->AddBlankLine();
   text->AddLine(StringPrintf("%svoid SetPropertyChangedCallback(",
                              declaration_only ? "virtual " : ""));
@@ -465,12 +503,18 @@ void ProxyGenerator::AddPropertyPublicMethods(const string& class_name,
   if (!declaration_only) {
     text->AddLineWithOffset("on_property_changed_ = callback;", kBlockOffset);
     text->AddLine("}");
-    text->AddBlankLine();
-
-    text->AddLine(
-        "const PropertySet* GetProperties() const { return property_set_; }");
-    text->AddLine("PropertySet* GetProperties() { return property_set_; }");
   }
+}
+
+// static
+void ProxyGenerator::AddGetProperties(IndentedText* text) {
+  text->AddBlankLine();
+  // Dereference and take the address since sometimes property_set_ is a raw
+  // pointer and sometimes it is a std::unique_ptr.
+  text->AddLine(
+      "const PropertySet* GetProperties() const { "
+      "return &(*property_set_); }");
+  text->AddLine("PropertySet* GetProperties() { return &(*property_set_); }");
 }
 
 // static
@@ -522,8 +566,7 @@ void ProxyGenerator::AddSignalHandlerRegistration(
 void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
                                     const Interface& interface,
                                     IndentedText* text) {
-  // Must have ObjectManager in order for property system to work correctly.
-  if (config.object_manager.name.empty())
+  if (config.object_manager.name.empty() && interface.properties.empty())
     return;
 
   IndentedText block;
@@ -573,14 +616,9 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
 }
 
 // static
-void ProxyGenerator::AddProperties(const ServiceConfig& config,
-                                   const Interface& interface,
+void ProxyGenerator::AddProperties(const Interface& interface,
                                    bool declaration_only,
                                    IndentedText* text) {
-  // Must have ObjectManager in order for property system to work correctly.
-  if (config.object_manager.name.empty())
-    return;
-
   if (declaration_only && !interface.properties.empty())
     text->AddBlankLine();
 

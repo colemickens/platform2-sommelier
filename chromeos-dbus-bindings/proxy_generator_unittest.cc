@@ -668,8 +668,8 @@ class Itf1Proxy final : public Itf1ProxyInterface {
     on_property_changed_ = callback;
   }
 
-  const PropertySet* GetProperties() const { return property_set_; }
-  PropertySet* GetProperties() { return property_set_; }
+  const PropertySet* GetProperties() const { return &(*property_set_); }
+  PropertySet* GetProperties() { return &(*property_set_); }
 
   const std::string& data() const override {
     return property_set_->data.value();
@@ -946,6 +946,133 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   base::WeakPtrFactory<ObjectManagerProxy> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(ObjectManagerProxy);
+};
+
+}  // namespace chromium
+}  // namespace org
+)literal_string";
+
+const char kExpectedContentWithProperties[] = R"literal_string(
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/logging.h>
+#include <base/macros.h>
+#include <base/memory/ref_counted.h>
+#include <brillo/any.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_property.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_manager.h>
+#include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
+
+namespace org {
+namespace chromium {
+
+// Abstract interface proxy for org::chromium::Test.
+class TestProxyInterface {
+ public:
+  virtual ~TestProxyInterface() = default;
+
+  static const char* DataName() { return "Data"; }
+  virtual const std::string& data() const = 0;
+  static const char* NameName() { return "Name"; }
+  virtual const std::string& name() const = 0;
+  virtual void set_name(const std::string& value,
+                        const base::Callback<void(bool)>& callback) = 0;
+
+  virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+
+  virtual void InitializeProperties(
+      const base::Callback<void(TestProxyInterface*, const std::string&)>& callback) = 0;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
+// Interface proxy for org::chromium::Test.
+class TestProxy final : public TestProxyInterface {
+ public:
+  class PropertySet : public dbus::PropertySet {
+   public:
+    PropertySet(dbus::ObjectProxy* object_proxy,
+                const PropertyChangedCallback& callback)
+        : dbus::PropertySet{object_proxy,
+                            "org.chromium.Test",
+                            callback} {
+      RegisterProperty(DataName(), &data);
+      RegisterProperty(NameName(), &name);
+    }
+
+    brillo::dbus_utils::Property<std::string> data;
+    brillo::dbus_utils::Property<std::string> name;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(PropertySet);
+  };
+
+  TestProxy(const scoped_refptr<dbus::Bus>& bus) :
+      bus_{bus},
+      dbus_object_proxy_{
+          bus_->GetObjectProxy(service_name_, object_path_)} {
+  }
+
+  ~TestProxy() override {
+  }
+
+  void ReleaseObjectProxy(const base::Closure& callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  }
+
+  const dbus::ObjectPath& GetObjectPath() const override {
+    return object_path_;
+  }
+
+  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+
+  void InitializeProperties(
+      const base::Callback<void(TestProxyInterface*, const std::string&)>& callback) override {
+    property_set_.reset(
+        new PropertySet(dbus_object_proxy_, base::Bind(callback, this)));
+    property_set_->ConnectSignals();
+    property_set_->GetAll();
+  }
+
+  const PropertySet* GetProperties() const { return &(*property_set_); }
+  PropertySet* GetProperties() { return &(*property_set_); }
+
+  const std::string& data() const override {
+    return property_set_->data.value();
+  }
+
+  const std::string& name() const override {
+    return property_set_->name.value();
+  }
+
+  void set_name(const std::string& value,
+                const base::Callback<void(bool)>& callback) override {
+    property_set_->name.Set(value, callback);
+  }
+
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+  const std::string service_name_{"org.chromium.Test"};
+  const dbus::ObjectPath object_path_{"/org/chromium/Test"};
+  dbus::ObjectProxy* dbus_object_proxy_;
+  std::unique_ptr<PropertySet> property_set_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestProxy);
 };
 
 }  // namespace chromium
@@ -1373,6 +1500,24 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithServiceName) {
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
   test_utils::EXPECT_TEXT_CONTAINED(kExpectedContentWithService, contents);
+}
+
+TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithProperties) {
+  Interface interface;
+  interface.name = "org.chromium.Test";
+  interface.path = "/org/chromium/Test";
+  interface.properties.emplace_back("Data", "s", "read");
+  interface.properties.emplace_back("Name", "s", "readwrite");
+  vector<Interface> interfaces{interface};
+  base::FilePath output_path = temp_dir_.path().Append("output2.h");
+  ServiceConfig config;
+  config.service_name = "org.chromium.Test";
+  EXPECT_TRUE(ProxyGenerator::GenerateProxies(config, interfaces, output_path));
+  string contents;
+  EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
+  // The header guards contain the (temporary) filename, so we search for
+  // the content we need within the string.
+  test_utils::EXPECT_TEXT_CONTAINED(kExpectedContentWithProperties, contents);
 }
 
 TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
