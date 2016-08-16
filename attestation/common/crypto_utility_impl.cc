@@ -303,8 +303,12 @@ bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
   auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
   std::string mutable_signature(signature);
   unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
-  return (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
-                     signature.size(), rsa.get()) == 1);
+  if (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
+                 signature.size(), rsa.get()) != 1) {
+    LOG(ERROR) << __func__ << ": Invalid signature: " << GetOpenSSLError();
+    return false;
+  }
+  return true;
 }
 
 bool CryptoUtilityImpl::AesEncrypt(const std::string& data,
