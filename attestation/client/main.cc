@@ -63,9 +63,9 @@ Commands:
   attestation_key
       Prints info about the TPM attestation key.
 
-  activate --input=<input_file>
+  activate --input=<input_file> [--save]
       Activates an attestation key using the encrypted credential in
-      |input_file|.
+      |input_file| and optionally saves it for future certifications.
   encrypt_for_activate --input=<input_file> --output=<output_file>
       Encrypts the content of |input_file| as required by the TPM for activating
       an attestation key. The result is written to |output_file|.
@@ -169,7 +169,8 @@ class ClientLoop : public ClientLoopBase {
         return EX_NOINPUT;
       }
       task = base::Bind(&ClientLoop::CallActivateAttestationKey,
-                        weak_factory_.GetWeakPtr(), input);
+                        weak_factory_.GetWeakPtr(), input,
+                        command_line->HasSwitch("save"));
     } else if (args.front() == kEncryptForActivateCommand) {
       if (!command_line->HasSwitch("input") ||
           !command_line->HasSwitch("output")) {
@@ -312,11 +313,12 @@ class ClientLoop : public ClientLoopBase {
                    weak_factory_.GetWeakPtr()));
   }
 
-  void CallActivateAttestationKey(const std::string& input) {
+  void CallActivateAttestationKey(const std::string& input,
+                                  bool save_certificate) {
     ActivateAttestationKeyRequest request;
     request.set_key_type(KEY_TYPE_RSA);
     request.mutable_encrypted_certificate()->ParseFromString(input);
-    request.set_save_certificate(true);
+    request.set_save_certificate(save_certificate);
     attestation_->ActivateAttestationKey(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<ActivateAttestationKeyReply>,
