@@ -50,6 +50,7 @@ void InitMinijailSandbox() {
   brillo::Minijail* minijail = brillo::Minijail::GetInstance();
   struct minijail* jail = minijail->New();
 
+  minijail_log_seccomp_filter_failures(jail);
   minijail->DropRoot(jail, kAttestationUser, kAttestationGroup);
   minijail_inherit_usergroups(jail);
   minijail->UseSeccompFilter(jail, kAttestationSeccompPath);

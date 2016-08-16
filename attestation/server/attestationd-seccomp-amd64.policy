@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-# Tested on link
 gettid: 1
 getuid: 1
 geteuid: 1
@@ -66,6 +65,7 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 rt_sigprocmask: 1
+rt_sigaction: 1
 signalfd4: 1
 
 brk: 1
@@ -82,9 +82,8 @@ fsync: 1
 rename: 1
 chmod: 1
 tgkill: 1
+nanosleep: 1
+ioctl: 1
 
 # This call is attempted but apparently not necessary; return EPERM.
 prctl: return 1
-
-# Allow FIONREAD for FilePathWatcher.
-ioctl: arg1 == 0x541B
