@@ -711,11 +711,31 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void SendReply(DBusGMethodInvocation* context,
                          const BaseReply& reply);
 
-  // Posts a message back from mount_thread_ to the main thread where
-  // a DBus InvalidArgs GError is returned to the called.
+  // Helper methods that post a message back to the main thread where
+  // a DBus InvalidArgs GError is returned to the caller.
   // Only call from mount_thread_-based functions!
+  virtual void SendDBusErrorReply(DBusGMethodInvocation* context,
+                                  GQuark domain,
+                                  gint code,
+                                  const gchar* message);
   virtual void SendInvalidArgsReply(DBusGMethodInvocation* context,
-                                    const char* message);
+                                    const char* message) {
+    SendDBusErrorReply(context,
+                       DBUS_GERROR, DBUS_GERROR_INVALID_ARGS,
+                       message);
+  }
+  virtual void SendFailureReply(DBusGMethodInvocation* context,
+                                const char* message) {
+    SendDBusErrorReply(context,
+                       DBUS_GERROR, DBUS_GERROR_FAILED,
+                       message);
+  }
+  virtual void SendNotSupportedReply(DBusGMethodInvocation* context,
+                                     const char* message) {
+    SendDBusErrorReply(context,
+                       DBUS_GERROR, DBUS_GERROR_NOT_SUPPORTED,
+                       message);
+  }
 
   // Returns a CryptohomeErrorCode for an internal Mount::MountError code.
   virtual CryptohomeErrorCode MountErrorToCryptohomeError(

@@ -5,6 +5,9 @@
 #ifndef CRYPTOHOME_SERVICE_DISTRIBUTED_H_
 #define CRYPTOHOME_SERVICE_DISTRIBUTED_H_
 
+#include <string>
+
+#include "attestation/common/attestation_interface.h"
 #include "cryptohome/service.h"
 
 namespace cryptohome {
@@ -48,20 +51,18 @@ class ServiceDistributed : public Service {
                                      GArray* pca_response,
                                      gint* OUT_async_id,
                                      GError** error) override;
-  gboolean TpmAttestationCreateCertRequest(
-      gint pca_type,
-      gint certificate_profile,
-      gchar* username,
-      gchar* request_origin,
-      GArray** OUT_pca_request,
-      GError** error) override;
-  gboolean AsyncTpmAttestationCreateCertRequest(
-      gint pca_type,
-      gint certificate_profile,
-      gchar* username,
-      gchar* request_origin,
-      gint* OUT_async_id,
-      GError** error) override;
+  gboolean TpmAttestationCreateCertRequest(gint pca_type,
+                                           gint certificate_profile,
+                                           gchar* username,
+                                           gchar* request_origin,
+                                           GArray** OUT_pca_request,
+                                           GError** error) override;
+  gboolean AsyncTpmAttestationCreateCertRequest(gint pca_type,
+                                                gint certificate_profile,
+                                                gchar* username,
+                                                gchar* request_origin,
+                                                gint* OUT_async_id,
+                                                GError** error) override;
   gboolean TpmAttestationFinishCertRequest(GArray* pca_response,
                                            gboolean is_user_specific,
                                            gchar* username,
@@ -69,36 +70,35 @@ class ServiceDistributed : public Service {
                                            GArray** OUT_cert,
                                            gboolean* OUT_success,
                                            GError** error) override;
-  gboolean AsyncTpmAttestationFinishCertRequest(
-      GArray* pca_response,
-      gboolean is_user_specific,
-      gchar* username,
-      gchar* key_name,
-      gint* OUT_async_id,
-      GError** error) override;
+  gboolean AsyncTpmAttestationFinishCertRequest(GArray* pca_response,
+                                                gboolean is_user_specific,
+                                                gchar* username,
+                                                gchar* key_name,
+                                                gint* OUT_async_id,
+                                                GError** error) override;
   gboolean TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
                                     GError** error) override;
   gboolean TpmAttestationDoesKeyExist(gboolean is_user_specific,
                                       gchar* username,
                                       gchar* key_name,
-                                      gboolean *OUT_exists,
+                                      gboolean* OUT_exists,
                                       GError** error) override;
   gboolean TpmAttestationGetCertificate(gboolean is_user_specific,
                                         gchar* username,
                                         gchar* key_name,
-                                        GArray **OUT_certificate,
+                                        GArray** OUT_certificate,
                                         gboolean* OUT_success,
                                         GError** error) override;
   gboolean TpmAttestationGetPublicKey(gboolean is_user_specific,
                                       gchar* username,
                                       gchar* key_name,
-                                      GArray **OUT_public_key,
+                                      GArray** OUT_public_key,
                                       gboolean* OUT_success,
                                       GError** error) override;
   gboolean TpmAttestationRegisterKey(gboolean is_user_specific,
                                      gchar* username,
                                      gchar* key_name,
-                                     gint *OUT_async_id,
+                                     gint* OUT_async_id,
                                      GError** error) override;
   gboolean TpmAttestationSignEnterpriseChallenge(
       gboolean is_user_specific,
@@ -108,15 +108,14 @@ class ServiceDistributed : public Service {
       GArray* device_id,
       gboolean include_signed_public_key,
       GArray* challenge,
-      gint *OUT_async_id,
+      gint* OUT_async_id,
       GError** error) override;
-  gboolean TpmAttestationSignSimpleChallenge(
-      gboolean is_user_specific,
-      gchar* username,
-      gchar* key_name,
-      GArray* challenge,
-      gint *OUT_async_id,
-      GError** error) override;
+  gboolean TpmAttestationSignSimpleChallenge(gboolean is_user_specific,
+                                             gchar* username,
+                                             gchar* key_name,
+                                             GArray* challenge,
+                                             gint* OUT_async_id,
+                                             GError** error) override;
   gboolean TpmAttestationGetKeyPayload(gboolean is_user_specific,
                                        gchar* username,
                                        gchar* key_name,
@@ -147,6 +146,87 @@ class ServiceDistributed : public Service {
                              DBusGMethodInvocation* context) override;
 
  private:
+  // A helper function which maps an integer to a valid CertificateProfile.
+  static attestation::CertificateProfile GetProfile(int profile_value);
+
+  // Send GetKeyInfoRequest to attestationd and wait for reply.
+  bool GetKeyInfo(gboolean is_user_specific,
+                  gchar* username,
+                  gchar* key_name,
+                  attestation::GetKeyInfoReply* key_info);
+
+  // Prepare interface to attestationd, if not prepared yet.
+  // Can be called multiple times.
+  // Starts attestation_thread_ and initializes interface.
+  bool PrepareInterface();
+
+  // Get a unique async_id for use in async dbus methods.
+  static int AllocateAsyncId();
+
+  // Post a method on the attestation_thread_.
+  template <typename MethodType>
+  bool Post(const MethodType& method);
+
+  // Post a method on the attestation_thread and wait for its completion.
+  template <typename MethodType>
+  bool PostAndWait(const MethodType& method);
+
+  // Send request to attestationd and wait for reply.
+  // Request is sent from attestation_thread_.
+  template <typename ReplyProtoType, typename MethodType>
+  bool SendRequestAndWait(const MethodType& method,
+                          ReplyProtoType* reply_proto);
+
+  // Helper methods that fill GError where an error
+  // is returned directly from the original handler.
+  void ReportErrorFromStatus(GError** error,
+                             attestation::AttestationStatus status);
+  void ReportSendFailure(GError** error);
+  void ReportUnsupportedPCAType(GError** error, int pca_type);
+
+  std::unique_ptr<attestation::AttestationInterface>
+      default_attestation_interface_;
+  attestation::AttestationInterface* attestation_interface_;
+
+  // Callbacks processing different replies.
+  // Called from attestation_thread_.
+
+  // Process replies that contain only status.
+  // Sends event with proper async_id.
+  template <typename ReplyProtoType>
+  void ProcessStatusReply(int async_id, const ReplyProtoType& reply);
+
+  // Process replies that contain status and some binary data.
+  // The binary data is retrieved from the reply using func().
+  // Sends event with proper async_id.
+  template <typename ReplyProtoType>
+  void ProcessDataReply(const std::string& (ReplyProtoType::*func)() const,
+                        int async_id,
+                        const ReplyProtoType& reply);
+
+  // Process GetEndorsementInfoReply.
+  void ProcessGetEndorsementInfoReply(
+      DBusGMethodInvocation* context,
+      const attestation::GetEndorsementInfoReply& reply);
+
+  // Tasks executed by attestation_thread_ to process
+  // async requests.
+  void DoGetEndorsementInfo(const brillo::SecureBlob& request_array,
+                            DBusGMethodInvocation* context);
+  void DoInitializeCastKey(const brillo::SecureBlob& request_array,
+                           DBusGMethodInvocation* context);
+
+  // Does PCR0 contain the value that indicates the verified mode.
+  bool IsVerifiedModeMeasured();
+
+  base::WeakPtr<ServiceDistributed> GetWeakPtr();
+
+  // Message loop thread servicing dbus communications with attestationd.
+  base::Thread attestation_thread_{"attestation_thread"};
+
+  // Declared last, so that weak pointers are destroyed first.
+  base::WeakPtrFactory<ServiceDistributed> weak_factory_;
+
   DISALLOW_COPY_AND_ASSIGN(ServiceDistributed);
 };
 

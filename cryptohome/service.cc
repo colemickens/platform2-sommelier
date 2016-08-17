@@ -279,11 +279,11 @@ void Service::SendReply(DBusGMethodInvocation* context,
                                                   reply_str.release()));
 }
 
-void Service::SendInvalidArgsReply(DBusGMethodInvocation* context,
-                                   const char* message) {
-    GError* error = g_error_new_literal(DBUS_GERROR,
-                                        DBUS_GERROR_INVALID_ARGS,
-                                        message);
+void Service::SendDBusErrorReply(DBusGMethodInvocation* context,
+                                 GQuark domain,
+                                 gint code,
+                                 const gchar* message) {
+    GError* error = g_error_new_literal(domain, code, message);
     DBusErrorReply* reply_cb = reply_factory_->NewErrorReply(context, error);
     event_source_.AddEvent(reply_cb);
 }
