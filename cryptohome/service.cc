@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include "cryptohome/service.h"
+#if USE_TPM2
 #include "cryptohome/service_distributed.h"
+#endif
 #include "cryptohome/service_monolithic.h"
 
 #include <inttypes.h>
@@ -98,11 +100,9 @@ const mode_t kPreservedEnrollmentStatePermissions = 0600;
 
 #if USE_TPM2
 const bool kUseInternalAttestationModeByDefault = false;
-#else
-const bool kUseInternalAttestationModeByDefault = true;
+const char kAttestationMode[] = "attestation_mode";
 #endif
 
-const char kAttestationMode[] = "attestation_mode";
 const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
 
 class TpmInitStatus : public CryptohomeEventBase {
@@ -194,6 +194,7 @@ Service::~Service() {
 }
 
 Service* Service::CreateDefault() {
+#if USE_TPM2
   bool use_monolithic = kUseInternalAttestationModeByDefault;
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
 
@@ -208,6 +209,9 @@ Service* Service::CreateDefault() {
     return new ServiceMonolithic();
   else
     return new ServiceDistributed();
+#else
+  return new ServiceMonolithic();
+#endif
 }
 
 bool Service::GetExistingMounts(

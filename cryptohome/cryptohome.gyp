@@ -174,7 +174,6 @@
         'mount_stack.cc',
         'mount_task.cc',
         'service.cc',
-        'service_distributed.cc',
         'service_monolithic.cc',
         'stateful_recovery.cc',
         'username_passkey.cc',
@@ -182,6 +181,18 @@
         'user_session.cc',
         'vault_keyset.cc',
         'vault_keyset_factory.cc',
+      ],
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'sources': [
+            'service_distributed.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-lattestation',
+            ],
+          },
+        }],
       ],
     },
 
