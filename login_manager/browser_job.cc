@@ -99,9 +99,14 @@ bool BrowserJob::RunInBackground() {
   if (first_boot)
     extra_one_time_arguments_.push_back(kFirstExecAfterBootFlag);
 
-  LOG(INFO) << "Running child " << GetName() << "...";
+  // Debugging for crbug.com/631640.
+  const std::vector<std::string> argv(ExportArgv());
+  std::string argstr;
+  for (const std::string& s : argv)
+    argstr += s + ' ';
+  LOG(INFO) << "Running child " << argstr;
   RecordTime();
-  return subprocess_.ForkAndExec(ExportArgv(), environment_variables_);
+  return subprocess_.ForkAndExec(argv, environment_variables_);
 }
 
 void BrowserJob::KillEverything(int signal, const std::string& message) {
