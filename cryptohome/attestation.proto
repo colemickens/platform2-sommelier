@@ -196,6 +196,9 @@ enum CertificateProfile {
 
   // A certificate for enterprise enrollment.
   ENTERPRISE_ENROLLMENT_CERTIFICATE = 7;
+
+  // A certificate for signing Android Testsuite Results using CTS-in-a-box.
+  XTS_CERTIFICATE = 8;
 }
 
 // The certificate request to be sent to the attestation server.
