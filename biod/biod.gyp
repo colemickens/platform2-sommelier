@@ -13,5 +13,10 @@
       'type': 'executable',
       'sources': ['main.cc'],
     },
+    {
+      'target_name': 'fake_biometric_tool',
+      'type': 'executable',
+      'sources': ['tools/fake_biometric_tool.cc'],
+    },
   ],
 }
