@@ -24,7 +24,8 @@ class MountEntry {
   MountEntry(MountErrorType error_type,
              const std::string& source_path,
              MountSourceType source_type,
-             const std::string& mount_path);
+             const std::string& mount_path,
+             bool is_read_only);
   ~MountEntry();
 
   DBusMountEntry ToDBusFormat() const;
@@ -33,12 +34,14 @@ class MountEntry {
   const std::string& source_path() const { return source_path_; }
   MountSourceType source_type() const { return source_type_; }
   const std::string& mount_path() const { return mount_path_; }
+  bool is_read_only() const { return is_read_only_; }
 
  private:
   MountErrorType error_type_;
   std::string source_path_;
   MountSourceType source_type_;
   std::string mount_path_;
+  bool is_read_only_;
 };
 
 }  // namespace cros_disks

@@ -94,7 +94,8 @@ class DiskManager : public MountManager,
   MountErrorType DoMount(const std::string& source_path,
                          const std::string& filesystem_type,
                          const std::vector<std::string>& options,
-                         const std::string& mount_path) override;
+                         const std::string& mount_path,
+                         MountOptions* applied_options) override;
 
   // Unmounts |path| with |options|.
   MountErrorType DoUnmount(const std::string& path,

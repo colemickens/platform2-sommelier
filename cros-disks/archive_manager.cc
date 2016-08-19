@@ -120,7 +120,8 @@ bool ArchiveManager::CanMount(const string& source_path) const {
 MountErrorType ArchiveManager::DoMount(const string& source_path,
                                        const string& source_format,
                                        const vector<string>& options,
-                                       const string& mount_path) {
+                                       const string& mount_path,
+                                       MountOptions* applied_options) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 

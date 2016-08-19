@@ -151,11 +151,12 @@ TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
   string source_path = "/media/archive/test.zip/doc.zip";
   string mount_path = "/media/archive/doc.zip";
   vector<string> options;
+  MountOptions applied_options;
 
   manager_.avfs_started_ = true;
   EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_ARCHIVE,
             manager_.DoMount(source_path, filesystem_type, options,
-                             mount_path));
+                             mount_path, &applied_options));
 }
 
 TEST_F(ArchiveManagerTest, SuggestMountPath) {

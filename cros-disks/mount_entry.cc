@@ -11,11 +11,13 @@ namespace cros_disks {
 MountEntry::MountEntry(MountErrorType error_type,
                        const string& source_path,
                        MountSourceType source_type,
-                       const string& mount_path)
+                       const string& mount_path,
+                       bool is_read_only)
     : error_type_(error_type),
       source_path_(source_path),
       source_type_(source_type),
-      mount_path_(mount_path) {}
+      mount_path_(mount_path),
+      is_read_only_(is_read_only) {}
 
 MountEntry::~MountEntry() {}
 

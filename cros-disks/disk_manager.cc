@@ -460,7 +460,8 @@ bool DiskManager::CanMount(const string& source_path) const {
 MountErrorType DiskManager::DoMount(const string& source_path,
                                     const string& filesystem_type,
                                     const vector<string>& options,
-                                    const string& mount_path) {
+                                    const string& mount_path,
+                                    MountOptions* applied_options) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
@@ -501,6 +502,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
   if (error_type == MOUNT_ERROR_NONE) {
     ScheduleEjectOnUnmount(mount_path, disk);
   }
+  *applied_options = mounter->mount_options();
 
   return error_type;
 }

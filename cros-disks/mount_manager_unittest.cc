@@ -19,12 +19,14 @@
 
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount_entry.h"
+#include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 
 using std::set;
 using std::string;
 using std::vector;
 using testing::ElementsAre;
+using testing::Invoke;
 using testing::Return;
 using testing::_;
 
@@ -64,10 +66,11 @@ class MountManagerUnderTest : public MountManager {
 
   MOCK_CONST_METHOD1(CanMount, bool(const string& source_path));
   MOCK_CONST_METHOD0(GetMountSourceType, MountSourceType());
-  MOCK_METHOD4(DoMount, MountErrorType(const string& source_path,
+  MOCK_METHOD5(DoMount, MountErrorType(const string& source_path,
                                        const string& filesystem_type,
                                        const vector<string>& options,
-                                       const string& mount_path));
+                                       const string& mount_path,
+                                       MountOptions* applied_options));
   MOCK_METHOD2(DoUnmount, MountErrorType(const string& path,
                                          const vector<string>& options));
   MOCK_CONST_METHOD1(ShouldReserveMountPathOnError,
@@ -152,7 +155,7 @@ TEST_F(MountManagerTest, MountFailedWithEmptySourcePath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -170,7 +173,7 @@ TEST_F(MountManagerTest, MountFailedWithNullMountPath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -188,7 +191,7 @@ TEST_F(MountManagerTest, MountFailedWithInvalidMountPath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -207,7 +210,7 @@ TEST_F(MountManagerTest, MountFailedWithInvalidSuggestedMountPath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_))
       .WillRepeatedly(Return(suggested_mount_path));
@@ -233,7 +236,7 @@ TEST_F(MountManagerTest, MountFailedWithInvalidMountLabel) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_))
       .WillOnce(Return(suggested_mount_path));
@@ -254,7 +257,7 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectory) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -275,7 +278,7 @@ TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -303,7 +306,7 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(source_path_))
       .WillOnce(Return(suggested_mount_path));
@@ -330,7 +333,7 @@ TEST_F(MountManagerTest, MountFailedInSetOwnership) {
   EXPECT_CALL(platform_, SetPermissions(_, _)).Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -357,7 +360,7 @@ TEST_F(MountManagerTest, MountFailedInSetPermissions) {
       .WillOnce(Return(false));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -385,7 +388,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                mount_path_))
+                                mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(manager_, DoUnmount(mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -398,6 +401,84 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.UnmountAll());
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
+
+  MountManager::MountState mount_state;
+  manager_.GetMountStateFromCache(source_path_, &mount_state);
+  EXPECT_TRUE(mount_state.is_read_only);
+}
+
+// Mock action to emulate DoMount with fallback to read-only mode.
+MountErrorType DoMountSuccessReadOnly(
+    const std::string& source_path,
+    const std::string& filesystem_type,
+    const std::vector<std::string>& options,
+    const std::string& mount_path,
+    MountOptions* applied_options) {
+  applied_options->SetReadOnlyOption();
+  return MOUNT_ERROR_NONE;
+}
+
+// Verifies that MountManager::Mount() stores corret mount status in cache when
+// read-only option is specified.
+TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
+
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, SetOwnership(mount_path_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(mount_path_, _))
+      .WillOnce(Return(true));
+  // Add read-only mount option.
+  options_.push_back("ro");
+  EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
+                                mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
+
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            manager_.Mount(source_path_, filesystem_type_, options_,
+                           &mount_path_));
+  EXPECT_EQ(kTestMountPath, mount_path_);
+  EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
+
+  MountManager::MountState mount_state;
+  manager_.GetMountStateFromCache(source_path_, &mount_state);
+  EXPECT_TRUE(mount_state.is_read_only);
+}
+
+// Verifies that MountManager::Mount() stores corret mount status in cache when
+// the mounter successfully mounted a device but only in its read-only mode.
+TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
+
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, SetOwnership(mount_path_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(mount_path_, _))
+      .WillOnce(Return(true));
+  // Emulate Mounter added read-only option as a fallback.
+  EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
+                                mount_path_, _))
+      .WillOnce(Invoke(DoMountSuccessReadOnly));
+  EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
+
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            manager_.Mount(source_path_, filesystem_type_, options_,
+                           &mount_path_));
+  EXPECT_EQ(kTestMountPath, mount_path_);
+  EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
+
+  MountManager::MountState mount_state;
+  manager_.GetMountStateFromCache(source_path_, &mount_state);
+  EXPECT_TRUE(mount_state.is_read_only);
 }
 
 // Verifies that MountManager::Mount() returns no error when it successfully
@@ -416,7 +497,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(suggested_mount_path))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                suggested_mount_path))
+                                suggested_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(manager_, DoUnmount(suggested_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -451,7 +532,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(final_mount_path))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, updated_options,
-                                final_mount_path))
+                                final_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(manager_, DoUnmount(final_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -483,7 +564,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(suggested_mount_path))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                suggested_mount_path))
+                                suggested_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(manager_, DoUnmount(suggested_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -541,7 +622,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                mount_path_))
+                                mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_,
@@ -576,7 +657,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(suggested_mount_path))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                suggested_mount_path))
+                                suggested_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_,
@@ -613,7 +694,7 @@ TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(suggested_mount_path))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                suggested_mount_path))
+                                suggested_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_,
@@ -660,7 +741,7 @@ TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                mount_path_))
+                                mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_,
@@ -692,7 +773,7 @@ TEST_F(MountManagerTest, MountFailedWithEmptyMountPathInReservedCase) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(suggested_mount_path))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                suggested_mount_path))
+                                suggested_mount_path, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_,
@@ -716,7 +797,7 @@ TEST_F(MountManagerTest, UnmountFailedWithEmptyPath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -733,7 +814,7 @@ TEST_F(MountManagerTest, UnmountFailedWithPathNotMounted) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
       .Times(0);
   EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
-  EXPECT_CALL(manager_, DoMount(_, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
   EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
@@ -758,7 +839,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                mount_path_))
+                                mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(manager_, DoUnmount(mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -791,7 +872,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                mount_path_))
+                                mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(manager_, DoUnmount(mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -824,7 +905,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                mount_path_))
+                                mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(manager_, DoUnmount(mount_path_, _)).Times(0);
   EXPECT_CALL(manager_,
@@ -861,7 +942,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
-                                mount_path_))
+                                mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_UNKNOWN_FILESYSTEM));
   EXPECT_CALL(manager_, DoUnmount(mount_path_, _)).Times(0);
   EXPECT_CALL(manager_,
@@ -886,12 +967,18 @@ TEST_F(MountManagerTest, AddMountPathToCache) {
   string result;
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
+  bool is_read_only = true;
 
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
+  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_,
+                                           is_read_only));
   EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
   EXPECT_EQ(mount_path_, result);
+  MountManager::MountState result_state;
+  EXPECT_TRUE(manager_.GetMountStateFromCache(source_path_, &result_state));
+  EXPECT_EQ(kTestMountPath, result_state.mount_path);
+  EXPECT_EQ(is_read_only, result_state.is_read_only);
 
-  EXPECT_FALSE(manager_.AddMountPathToCache(source_path_, "target1"));
+  EXPECT_FALSE(manager_.AddMountPathToCache(source_path_, "target1", false));
   EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
   EXPECT_EQ(mount_path_, result);
 
@@ -905,7 +992,7 @@ TEST_F(MountManagerTest, GetSourcePathFromCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.GetSourcePathFromCache(mount_path_, &result));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
+  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
   EXPECT_TRUE(manager_.GetSourcePathFromCache(mount_path_, &result));
   EXPECT_EQ(source_path_, result);
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
@@ -919,7 +1006,7 @@ TEST_F(MountManagerTest, GetMountPathFromCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.GetMountPathFromCache(source_path_, &result));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
+  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
   EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
   EXPECT_EQ(mount_path_, result);
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
@@ -932,7 +1019,7 @@ TEST_F(MountManagerTest, IsMountPathInCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
+  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
@@ -944,7 +1031,7 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
+  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
 }
@@ -1030,12 +1117,13 @@ TEST_F(MountManagerTest, GetMountEntries) {
 
   // Verify that |mount_entries| is overwritten.
   mount_entries.push_back(
-      MountEntry(MOUNT_ERROR_NONE, "", MOUNT_SOURCE_ARCHIVE, ""));
+      MountEntry(MOUNT_ERROR_NONE, "", MOUNT_SOURCE_ARCHIVE, "", false));
   manager_.GetMountEntries(&mount_entries);
   EXPECT_TRUE(mount_entries.empty());
 
   // A normal mount entry is returned.
-  EXPECT_TRUE(manager_.AddMountPathToCache(kTestSourcePath, kTestMountPath));
+  EXPECT_TRUE(manager_.AddMountPathToCache(kTestSourcePath, kTestMountPath,
+                                           false));
   manager_.GetMountEntries(&mount_entries);
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type());

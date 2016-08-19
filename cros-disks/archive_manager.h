@@ -53,11 +53,15 @@ class ArchiveManager : public MountManager {
   // |source_format| can be used to specify the archive file format of
   // |source_path|, so that |source_path| can have any file extension.
   // If |source_format| is an empty string, the archive file format is
-  // determined based on the file extension of |source_path|.
+  // determined based on the file extension of |source_path|. The underlying
+  // mounter may decide to apply mount options different than |options|.
+  // |applied_options| is used to return the mount options applied by the
+  // mounter.
   MountErrorType DoMount(const std::string& source_path,
                          const std::string& source_format,
                          const std::vector<std::string>& options,
-                         const std::string& mount_path) override;
+                         const std::string& mount_path,
+                         MountOptions* applied_options) override;
 
   // Unmounts |path| with |options|. Returns true if |path| is unmounted
   // successfully.

@@ -19,6 +19,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
+#include "cros-disks/mount_options.h"
+
 namespace cros_disks {
 
 class Metrics;
@@ -32,6 +34,12 @@ class Platform;
 // supporting certain kinds of filesystem.
 class MountManager {
  public:
+  // Represents status of a mounted volume.
+  struct MountState {
+    std::string mount_path;
+    bool is_read_only;
+  };
+
   // Constructor that takes a mount root directory, an object for providing
   // platform service, and an object for collecting UMA metrics. The mount
   // root directory |mount_root| must be a non-empty path string, but it is
@@ -109,7 +117,8 @@ class MountManager {
   // Adds a mapping from |source_path| to |mount_path| to the cache.
   // Returns false if |source_path| is already in the cache.
   bool AddMountPathToCache(const std::string& source_path,
-                           const std::string& mount_path);
+                           const std::string& mount_path,
+                           bool is_read_only);
 
   // Gets the corresponding |source_path| of |mount_path| from the cache.
   // Returns false if |mount_path| is not found in the cache.
@@ -120,6 +129,11 @@ class MountManager {
   // Returns false if |source_path| is not found in the cache.
   bool GetMountPathFromCache(const std::string& source_path,
                              std::string* mount_path) const;
+
+  // Gets the corresponding mount state of |source_path| from the cache.
+  // Returns false if |source_path| is not found in the cache.
+  bool GetMountStateFromCache(const std::string& source_path,
+                              MountState* mount_state) const;
 
   // Returns true if |mount_path| is found in the cache.
   bool IsMountPathInCache(const std::string& mount_path) const;
@@ -154,20 +168,23 @@ class MountManager {
   void GetMountEntries(std::vector<MountEntry>* mount_entries);
 
  protected:
-  // Type definition of a cache mapping a source path to its mount path of
+  // Type definition of a cache mapping a source path to its mount state of
   // filesystems mounted by the manager.
-  typedef std::map<std::string, std::string> MountPathMap;
+  typedef std::map<std::string, MountState> MountStateMap;
 
   // Type definition of a cache mapping a reserved mount path to the mount
   // error that caused the mount path to be reserved.
   typedef std::map<std::string, MountErrorType> ReservedMountPathMap;
 
   // Implemented by a derived class to mount |source_path| to |mount_path|
-  // as |filesystem_type| with |options|.
+  // as |filesystem_type| with |options|. An implementation may change the
+  // options to mount command, and should store all options to
+  // |applied_options|.
   virtual MountErrorType DoMount(const std::string& source_path,
                                  const std::string& filesystem_type,
                                  const std::vector<std::string>& options,
-                                 const std::string& mount_path) = 0;
+                                 const std::string& mount_path,
+                                 MountOptions* applied_options) = 0;
 
   // Implemented by a derived class to unmount |path| with |options|.
   virtual MountErrorType DoUnmount(const std::string& path,
@@ -227,9 +244,9 @@ class MountManager {
   // An object that collects UMA metrics.
   Metrics* metrics_;
 
-  // A cache mapping a source path to its mount path of filesystems mounted
+  // A cache mapping a source path to its mount state of filesystems mounted
   // by the manager.
-  MountPathMap mount_paths_;
+  MountStateMap mount_states_;
 
   // A cache mapping a reserved mount path to the error that caused
   // the path to reserved.

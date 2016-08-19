@@ -18,6 +18,7 @@
 #include <base/strings/string_util.h>
 
 #include "cros-disks/mount_entry.h"
+#include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 
 using base::FilePath;
@@ -162,8 +163,10 @@ MountErrorType MountManager::Mount(const string& source_path,
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
   // should be reserved.
+  MountOptions applied_options;
   MountErrorType error_type =
-      DoMount(source_path, filesystem_type, updated_options, actual_mount_path);
+      DoMount(source_path, filesystem_type, updated_options, actual_mount_path,
+              &applied_options);
   if (error_type == MOUNT_ERROR_NONE) {
     LOG(INFO) << "Path '" << source_path << "' is mounted to '"
               << actual_mount_path << "'";
@@ -177,7 +180,8 @@ MountErrorType MountManager::Mount(const string& source_path,
     return error_type;
   }
 
-  AddMountPathToCache(source_path, actual_mount_path);
+  AddMountPathToCache(source_path, actual_mount_path,
+                      applied_options.IsReadOnlyOptionSet());
   *mount_path = actual_mount_path;
   return error_type;
 }
@@ -224,9 +228,9 @@ bool MountManager::UnmountAll() {
   vector<string> options;
   // Make a copy of the mount path cache before iterating through it
   // as Unmount modifies the cache.
-  MountPathMap mount_paths_copy = mount_paths_;
-  for (const auto& path_pair : mount_paths_copy) {
-    if (Unmount(path_pair.first, options) != MOUNT_ERROR_NONE) {
+  MountStateMap mount_states_copy = mount_states_;
+  for (const auto& mount_state : mount_states_copy) {
+    if (Unmount(mount_state.first, options) != MOUNT_ERROR_NONE) {
       all_umounted = false;
     }
   }
@@ -234,16 +238,20 @@ bool MountManager::UnmountAll() {
 }
 
 bool MountManager::AddMountPathToCache(const string& source_path,
-                                       const string& mount_path) {
-  return mount_paths_.insert(std::make_pair(source_path, mount_path)).second;
+                                       const string& mount_path,
+                                       bool is_read_only) {
+  MountState mount_state;
+  mount_state.mount_path = mount_path;
+  mount_state.is_read_only = is_read_only;
+  return mount_states_.insert(std::make_pair(source_path, mount_state)).second;
 }
 
 bool MountManager::GetSourcePathFromCache(const string& mount_path,
                                           string* source_path) const {
   CHECK(source_path) << "Invalid source path argument";
 
-  for (const auto& path_pair : mount_paths_) {
-    if (path_pair.second == mount_path) {
+  for (const auto& path_pair : mount_states_) {
+    if (path_pair.second.mount_path == mount_path) {
       *source_path = path_pair.first;
       return true;
     }
@@ -255,27 +263,40 @@ bool MountManager::GetMountPathFromCache(const string& source_path,
                                          string* mount_path) const {
   CHECK(mount_path) << "Invalid mount path argument";
 
-  MountPathMap::const_iterator path_iterator = mount_paths_.find(source_path);
-  if (path_iterator == mount_paths_.end())
+  MountState mount_state;
+  if (!GetMountStateFromCache(source_path, &mount_state)) {
+    return false;
+  }
+
+  *mount_path = mount_state.mount_path;
+  return true;
+}
+
+bool MountManager::GetMountStateFromCache(const string& source_path,
+                                          MountState* mount_state) const {
+  CHECK(mount_state) << "Invalid mount state argument";
+
+  MountStateMap::const_iterator path_iterator = mount_states_.find(source_path);
+  if (path_iterator == mount_states_.end())
     return false;
 
-  *mount_path = path_iterator->second;
+  *mount_state = path_iterator->second;
   return true;
 }
 
 bool MountManager::IsMountPathInCache(const string& mount_path) const {
-  for (const auto& path_pair : mount_paths_) {
-    if (path_pair.second == mount_path)
+  for (const auto& path_pair : mount_states_) {
+    if (path_pair.second.mount_path == mount_path)
       return true;
   }
   return false;
 }
 
 bool MountManager::RemoveMountPathFromCache(const string& mount_path) {
-  for (MountPathMap::iterator path_iterator = mount_paths_.begin();
-       path_iterator != mount_paths_.end(); ++path_iterator) {
-    if (path_iterator->second == mount_path) {
-      mount_paths_.erase(path_iterator);
+  for (MountStateMap::iterator path_iterator = mount_states_.begin();
+       path_iterator != mount_states_.end(); ++path_iterator) {
+    if (path_iterator->second.mount_path == mount_path) {
+      mount_states_.erase(path_iterator);
       return true;
     }
   }
@@ -317,14 +338,16 @@ void MountManager::GetMountEntries(vector<MountEntry>* mount_entries) {
   CHECK(mount_entries);
 
   mount_entries->clear();
-  for (const auto& entry : mount_paths_) {
+  for (const auto& entry : mount_states_) {
     const string& source_path = entry.first;
-    const string& mount_path = entry.second;
+    const MountState& mount_state = entry.second;
+    const string& mount_path = mount_state.mount_path;
+    bool is_read_only = mount_state.is_read_only;
     MountErrorType error_type = GetMountErrorOfReservedMountPath(mount_path);
     mount_entries->push_back(MountEntry(error_type,
                                         source_path,
                                         GetMountSourceType(),
-                                        mount_path));
+                                        mount_path, is_read_only));
   }
 }
 
