@@ -5,8 +5,8 @@
 #include <string>
 
 #include <base/command_line.h>
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
@@ -47,11 +47,13 @@ std::string GetTimeAsString(time_t utime) {
 int main(int argc, char* argv[]) {
   DEFINE_string(log_dir, "/var/log/", "Directory where logs are written.");
 
-  brillo::FlagHelper::Init(argc, argv,
-      "biod, the Chromium OS biometrics daemon.");
+  brillo::FlagHelper::Init(
+      argc, argv, "biod, the Chromium OS biometrics daemon.");
 
-  const base::FilePath log_file = base::FilePath(FLAGS_log_dir).Append(
-      base::StringPrintf("biod.%s", GetTimeAsString(::time(NULL)).c_str()));
+  const base::FilePath log_file =
+      base::FilePath(FLAGS_log_dir)
+          .Append(base::StringPrintf("biod.%s",
+                                     GetTimeAsString(::time(NULL)).c_str()));
   UpdateLogSymlinks(base::FilePath(FLAGS_log_dir).Append("biod.LATEST"),
                     base::FilePath(FLAGS_log_dir).Append("biod.PREVIOUS"),
                     log_file);
