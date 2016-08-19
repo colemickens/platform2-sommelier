@@ -11,7 +11,11 @@
     {
       'target_name': 'biod',
       'type': 'executable',
-      'sources': ['main.cc'],
+      'sources': [
+        'main.cc',
+        'biometrics_daemon.cc',
+        'fake_biometric.cc'
+      ],
     },
     {
       'target_name': 'fake_biometric_tool',

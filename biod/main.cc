@@ -13,6 +13,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
 
+#include "biod/biometrics_daemon.h"
+
 #ifndef VCSID
 #define VCSID "<not set>"
 #endif
@@ -66,6 +68,9 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "vcsid " << VCSID;
 
   base::MessageLoopForIO message_loop;
+
+  biod::BiometricsDaemon bio_daemon;
+
   message_loop.Run();
   return 0;
 }
