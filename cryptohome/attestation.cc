@@ -64,6 +64,7 @@ const size_t Attestation::kDigestSize = 32;
 const size_t Attestation::kNonceSize = 20;  // As per TPM_NONCE definition.
 const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
 #endif
+const size_t Attestation::kChallengeSignatureNonceSize = 20;  // For all TPMs.
 const mode_t Attestation::kDatabasePermissions = 0600;
 const char Attestation::kDatabaseOwner[] = "attestation";
 const char Attestation::kDefaultDatabasePath[] =
@@ -999,7 +1000,7 @@ bool Attestation::SignEnterpriseChallenge(
   ChallengeResponse response_pb;
   *response_pb.mutable_challenge() = signed_challenge;
   SecureBlob nonce;
-  if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
+  if (!tpm_->GetRandomData(kChallengeSignatureNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": Failed to generate nonce.";
     return false;
   }
@@ -1063,7 +1064,7 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
   }
   // Add a nonce to ensure this service cannot be used to sign arbitrary data.
   SecureBlob nonce;
-  if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
+  if (!tpm_->GetRandomData(kChallengeSignatureNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": Failed to generate nonce.";
     return false;
   }

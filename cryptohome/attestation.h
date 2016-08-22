@@ -416,6 +416,7 @@ class Attestation : public base::PlatformThread::Delegate,
   static const size_t kCipherKeySize;
   static const size_t kNonceSize;
   static const size_t kDigestSize;
+  static const size_t kChallengeSignatureNonceSize;
   static const mode_t kDatabasePermissions;
   static const char kDatabaseOwner[];
   static const char kDefaultDatabasePath[];
