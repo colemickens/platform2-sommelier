@@ -244,10 +244,12 @@ check_payload_image() {
 
     if [ "${FLAGS_skip_src_removable}" -eq "${FLAGS_FALSE}" ]; then
       if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
-        # Work around ARM kernel bug http://crosbug.com/14871
-        # Removable flag is implemented inconsistantly for ARM sdcard reader.
-        if [ "${SRC}" != "/dev/mmcblk1" ]; then
-          die "Error: Source does not look like a removable device: ${SRC}"
+          # Removable flag is implemented inconsistantly for ARM sdcard reader.
+          # Allow all devices except the default rootdev.
+          # DEFAULT_ROOTDEV can be a path expansion on some systems,
+          # so it will not be quoted.
+        if [ "${SRC}" = "/dev/$(basename ${DEFAULT_ROOTDEV})" ]; then
+          die "Error: Source can not be the destination device: ${SRC}"
         fi
       fi
     fi
