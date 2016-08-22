@@ -223,6 +223,8 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   SetUpPepperPlugins();
   AddUiFlags();
 
+  if (UseFlagIsSet("cheets"))
+    AddArg("--arc-available");
   if (UseFlagIsSet("arc") || (UseFlagIsSet("cheets") && IsTestBuild(lsb_data)))
     AddArg("--enable-arc");
 
