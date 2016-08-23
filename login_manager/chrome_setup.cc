@@ -210,7 +210,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
   }
 
   // TODO(jdufault): Remove this once quick unlock launches on all boards.
-  if (builder->IsBoard("kevin")) {
+  if (builder->IsBoard("kevin") || builder->IsBoard("kevin-tpm2")) {
     builder->AddFeatureEnableOverride("QuickUnlockPin");
     builder->AddArg("--ash-enable-palette");
   }
