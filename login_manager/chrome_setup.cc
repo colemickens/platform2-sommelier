@@ -220,7 +220,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
 
   // TODO(crbug.com/574923): Remove this when rialto is enrolled and using
   // standard kiosk mode.
-  if (builder->IsBoard("veyron_rialto")) {
+  if (builder->UseFlagIsSet("rialto")) {
     builder->AddArg("--disable-demo-mode");
     builder->AddArg("--kiosk");
     builder->AddArg("--login-user=chronos");
