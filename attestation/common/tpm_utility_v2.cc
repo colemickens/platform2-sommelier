@@ -20,6 +20,7 @@
 #include <base/memory/ptr_util.h>
 #include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
+#include <crypto/sha2.h>
 #include <openssl/rsa.h>
 
 #include "trunks/authorization_delegate.h"
@@ -626,6 +627,17 @@ bool TpmUtilityV2::QuotePCR(int pcr_index,
   }
   *quoted_data = StringFrom_TPM2B_ATTEST(quoted_struct);
   *quote = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
+  return true;
+}
+
+bool TpmUtilityV2::ReadPCR(int pcr_index,
+                           std::string* pcr_value) const {
+  TPM_RC result = trunks_utility_->ReadPCR(pcr_index, pcr_value);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to read PCR " << pcr_index << ": "
+               << trunks::GetErrorString(result);
+    return false;
+  }
   return true;
 }
 

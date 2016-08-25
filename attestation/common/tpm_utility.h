@@ -139,6 +139,11 @@ class TpmUtility {
                         std::string* quoted_data,
                         std::string* quote) = 0;
 
+  // Reads a PCR specified by |pcr_index|. On success returns true and
+  // populates |_pcr_value|.
+  virtual bool ReadPCR(int pcr_index,
+                       std::string* pcr_value) const = 0;
+
   // Convert a |tpm_public_key_object|, that is, a serialized TPM_PUBKEY for
   // TPM 1.2 or serialized TPMT_PUBLIC for TPM 2.0, to a DER encoded PKCS #1
   // RSAPublicKey.

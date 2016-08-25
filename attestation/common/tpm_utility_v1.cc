@@ -508,6 +508,12 @@ bool TpmUtilityV1::QuotePCR(int pcr_index,
   return false;
 }
 
+bool TpmUtilityV1::ReadPCR(int pcr_index,
+                           std::string* pcr_value) const {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
 bool TpmUtilityV1::ConnectContext(ScopedTssContext* context, TSS_HTPM* tpm) {
   *tpm = 0;
   TSS_RESULT result;

@@ -19,6 +19,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/sha1.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_utils.h>
@@ -64,6 +65,8 @@ const char kACAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
 #endif
 const size_t kNonceSize = 20;  // As per TPM_NONCE definition.
 const int kNumTemporalValues = 5;
+
+const std::string kVerifiedBootMode("\x00\x00\x01", 3);
 
 std::string GetHardwareID() {
   char buffer[VB_MAX_STRING_PROPERTY];
@@ -1086,11 +1089,42 @@ void AttestationService::GetStatus(
   worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
 }
 
+bool AttestationService::IsVerifiedMode() const {
+  if (!tpm_utility_->IsTpmReady()) {
+    VLOG(2) << __func__ << ": Tpm is not ready.";
+    return false;
+  }
+  std::string current_pcr_value;
+  if (!tpm_utility_->ReadPCR(0, &current_pcr_value)) {
+    LOG(WARNING) << __func__ << ": Failed to read PCR0.";
+    return false;
+  }
+  std::string verified_mode = base::SHA1HashString(kVerifiedBootMode);
+  std::string expected_pcr_value;
+  if (tpm_utility_->GetVersion() == TPM_1_2) {
+    // Use SHA-1 digests for TPM 1.2.
+    std::string initial(base::kSHA1Length, 0);
+    expected_pcr_value = base::SHA1HashString(initial + verified_mode);
+  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
+    // Use SHA-256 digests for TPM 2.0.
+    std::string initial(crypto::kSHA256Length, 0);
+    verified_mode.resize(crypto::kSHA256Length);
+    expected_pcr_value = crypto::SHA256HashString(initial + verified_mode);
+  } else {
+    LOG(ERROR) << __func__ << ": Unsupported TPM version.";
+    return false;
+  }
+  return (current_pcr_value == expected_pcr_value);
+}
+
 void AttestationService::GetStatusTask(
     const GetStatusRequest& request,
     const std::shared_ptr<GetStatusReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  result->set_prepared_for_enrollment(IsPreparedForEnrollment());
+  result->set_enrolled(IsEnrolled());
+  if (request.extended_status()) {
+    result->set_verified_boot(IsVerifiedMode());
+  }
 }
 
 void AttestationService::Verify(

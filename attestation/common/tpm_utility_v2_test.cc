@@ -467,6 +467,23 @@ TEST_F(TpmUtilityTest, QuotePCRFailReadPCR) {
   EXPECT_EQ("", value);
 }
 
+TEST_F(TpmUtilityTest, ReadPCR) {
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(5, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>("fake_pcr_value"), Return(TPM_RC_SUCCESS)));
+  std::string value;
+  EXPECT_TRUE(tpm_utility_->ReadPCR(5, &value));
+  EXPECT_EQ("fake_pcr_value", value);
+}
+
+TEST_F(TpmUtilityTest, ReadPCRFail) {
+  EXPECT_CALL(mock_tpm_utility_, ReadPCR(5, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  std::string value;
+  EXPECT_FALSE(tpm_utility_->ReadPCR(5, &value));
+  EXPECT_EQ("", value);
+}
+
 TEST_F(TpmUtilityTest, GetRSAPublicKeyFromTpmPublicKey) {
   std::string public_key;
   GetValidPublicKey(&public_key);

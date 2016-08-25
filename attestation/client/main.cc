@@ -47,6 +47,7 @@ const char kDecryptCommand[] = "decrypt";
 const char kSignCommand[] = "sign";
 const char kVerifyCommand[] = "verify";
 const char kRegisterCommand[] = "register";
+const char kStatusCommand[] = "status";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -56,6 +57,9 @@ Commands:
   create [--user=<email>] [--label=<keylabel] [--usage=sign|decrypt]
       Creates a certifiable key.
 
+  status [--extended]
+      Requests and prints status or extended status: prepared_for_enrollment,
+      enrolled, verified_boot [extended].
   info [--user=<email>] [--label=<keylabel>]
       Prints info about a key.
   endorsement
@@ -148,6 +152,9 @@ class ClientLoop : public ClientLoopBase {
                         weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"), usage);
+    } else if (args.front() == kStatusCommand) {
+      task = base::Bind(&ClientLoop::CallGetStatus, weak_factory_.GetWeakPtr(),
+                        command_line->HasSwitch("extended"));
     } else if (args.front() == kInfoCommand) {
       task = base::Bind(&ClientLoop::CallGetKeyInfo, weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
@@ -284,6 +291,14 @@ class ClientLoop : public ClientLoopBase {
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<CreateGoogleAttestedKeyReply>,
                    weak_factory_.GetWeakPtr()));
+  }
+
+  void CallGetStatus(bool extended_status) {
+    GetStatusRequest request;
+    request.set_extended_status(extended_status);
+    attestation_->GetStatus(
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetStatusReply>,
+                            weak_factory_.GetWeakPtr()));
   }
 
   void CallGetKeyInfo(const std::string& label, const std::string& username) {

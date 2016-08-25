@@ -82,6 +82,8 @@ class MockTpmUtility : public TpmUtility {
                         std::string* quoted_pcr_value,
                         std::string* quoted_data,
                         std::string* quote));
+  MOCK_CONST_METHOD2(ReadPCR,
+               bool(int pcr_index, std::string*));
   MOCK_METHOD2(GetRSAPublicKeyFromTpmPublicKey,
                bool(const std::string&, std::string*));
 };

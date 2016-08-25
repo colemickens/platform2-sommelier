@@ -374,6 +374,11 @@ class AttestationService : public AttestationInterface {
   bool ActivateAttestationKeyInternal(const EncryptedIdentityCredential&
     encrypted_certificate, bool save_certificate, std::string* certificate);
 
+  // Checks if PCR0 indicates that the system booted in verified mode.
+  // Always reads PCR0 contents from TPM, so works even when not prepared
+  // for enrollment.
+  bool IsVerifiedMode() const;
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   const std::string attestation_ca_origin_;

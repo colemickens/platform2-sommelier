@@ -79,6 +79,8 @@ class TpmUtilityV1 : public TpmUtility {
                 std::string* quoted_pcr_value,
                 std::string* quoted_data,
                 std::string* quote) override;
+  bool ReadPCR(int pcr_index,
+               std::string* pcr_value) const override;
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der) override;
 
