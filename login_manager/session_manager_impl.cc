@@ -530,6 +530,8 @@ void SessionManagerImpl::HandleLockScreenDismissed() {
 bool SessionManagerImpl::RestartJob(int fd,
                                     const std::vector<std::string>& argv,
                                     Error* error) {
+  // TODO(achuith): Remove debug logging once crbug.com/631640 is resolved.
+  LOG(INFO) << "SessionManagerImpl::RestartJob";
   struct ucred ucred = {0};
   socklen_t len = sizeof(struct ucred);
   if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
