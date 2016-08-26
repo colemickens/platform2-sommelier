@@ -710,22 +710,32 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     mounts_lock_.Acquire();
     for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
       cryptohome::Mount* mount = it->second.get();
-      MountTaskResult ignored_result;
-      base::WaitableEvent event(true, false);
       scoped_refptr<MountTaskResetTpmContext> mount_task =
           new MountTaskResetTpmContext(NULL, mount);
-      mount_task->set_result(&ignored_result);
-      mount_task->set_complete_event(&event);
       mount_thread_.message_loop()->PostTask(FROM_HERE,
           base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
-      event.Wait();
-      // Check if we have a pending pkcs11 init task due to tpm ownership
-      // not being done earlier. Trigger initialization if so.
-      if (mount->pkcs11_state() == cryptohome::Mount::kIsWaitingOnTPM)
-        InitializePkcs11(mount);
     }
     mounts_lock_.Release();
+  }
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::InitializeTpmFinalize, base::Unretained(this),
+                 status, took_ownership));
+}
 
+void Service::InitializeTpmFinalize(bool status, bool took_ownership) {
+  LOG(INFO) << "Finalizing TPM initialization, ownership taken: "
+            << took_ownership << ".";
+  if (took_ownership) {
+    // Check if we have pending pkcs11 init tasks due to tpm ownership
+    // not being done earlier. Trigger initialization if so.
+    mounts_lock_.Acquire();
+    for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
+      cryptohome::Mount* mount = it->second.get();
+      if (mount->pkcs11_state() == cryptohome::Mount::kIsWaitingOnTPM) {
+        InitializePkcs11(mount);
+      }
+    }
+    mounts_lock_.Release();
     // Initialize the install-time locked attributes since we
     // can't do it prior to ownership.
     InitializeInstallAttributes(true);

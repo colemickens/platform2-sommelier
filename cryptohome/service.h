@@ -177,6 +177,13 @@ class Service : public brillo::dbus::AbstractDbusService,
   // TpmInitCallback
   virtual void InitializeTpmComplete(bool status, bool took_ownership);
 
+  // Finalize TPM initialization:
+  // - initialize & finalize install attributes
+  // - send TpmInitStatus event
+  // - prepare for enrollment
+  // Posted on mount_thread_ by InitializeTpmComplete callback.
+  virtual void InitializeTpmFinalize(bool status, bool took_ownership);
+
   // Called during initialization (and on mount events) to ensure old mounts
   // are marked for unmount when possible by the kernel.  Returns true if any
   // mounts were stale and not cleaned up (because of open files).
@@ -627,6 +634,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
   FRIEND_TEST(ServiceTest, StoreEnrollmentState);
   FRIEND_TEST(ServiceTest, LoadEnrollmentState);
+  FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
 
   bool use_tpm_;
 

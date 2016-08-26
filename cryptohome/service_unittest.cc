@@ -16,6 +16,7 @@
 #include <base/files/file_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <brillo/bind_lambda.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <chaps/token_manager_client_mock.h>
@@ -467,6 +468,32 @@ TEST_F(ServiceTestNotInitialized, CheckLowDiskCallback) {
   g_signal_remove_emission_hook(low_disk_space_signal, hook_id);
 }
 
+TEST_F(ServiceTest, NoDeadlocksInInitializeTpmComplete) {
+  char user[] = "chromeos-user";
+  SetupMount(user);
+
+  // Put a task on mount_thread_ that starts before InitializeTpmComplete
+  // and finishes after it exits. Verify it doesn't wait for
+  // InitializeTpmComplete forever.
+  base::WaitableEvent event(false, false);  // auto-reset
+  base::WaitableEvent event_stop(true, false);  // manual reset
+  bool finished = false;
+  service_.mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind([](bool* finished,
+                    base::WaitableEvent* event,
+                    base::WaitableEvent* event_stop) {
+        event->Signal();  // Signal "Ready to start"
+        // Wait up to 2s for InitializeTpmComplete to finish
+        *finished = event_stop->TimedWait(base::TimeDelta::FromSeconds(2));
+        event->Signal();  // Signal "Result ready"
+     }, &finished, &event, &event_stop));
+
+  event.Wait();  // Wait for "Ready to start"
+  service_.InitializeTpmComplete(true, true);
+  event_stop.Signal();
+  event.Wait();  // Wait for "Result ready"
+  ASSERT_TRUE(finished);
+}
 
 struct Mounts {
   const FilePath src;
