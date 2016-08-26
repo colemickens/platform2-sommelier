@@ -389,6 +389,20 @@ class AttestationService : public AttestationInterface {
   // for enrollment.
   bool IsVerifiedMode() const;
 
+  // Validates incoming enterprise challenge data.
+  bool ValidateEnterpriseChallenge(const SignedData& signed_challenge);
+
+  // Encrypts a KeyInfo protobuf as required for an enterprise challenge
+  // response.
+  bool EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
+                                EncryptedData* encrypted_data);
+
+  // Signs data using the provided key. On success, returns true and fills
+  // |response| with serialized SignedData.
+  bool SignChallengeData(const CertifiedKey& key,
+                         const std::string& data_to_sign,
+                         std::string* response);
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   const std::string attestation_ca_origin_;

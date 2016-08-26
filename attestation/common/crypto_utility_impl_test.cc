@@ -300,10 +300,10 @@ TEST_F(CryptoUtilityImplTest, VerifySignatureBadKey) {
   EXPECT_FALSE(crypto_utility_->VerifySignature("bad_key", "input", ""));
 }
 
-TEST_F(CryptoUtilityImplTest, EncryptCertificateForGoogle) {
+TEST_F(CryptoUtilityImplTest, EncryptDataForGoogle) {
   std::string certificate(10000, 'C');
   EncryptedData encrypted;
-  ASSERT_TRUE(crypto_utility_->EncryptCertificateForGoogle(
+  ASSERT_TRUE(crypto_utility_->EncryptDataForGoogle(
       certificate, kValidModulusHex, "ID", &encrypted));
   EXPECT_EQ("ID", encrypted.wrapping_key_id());
   EXPECT_TRUE(encrypted.has_iv());
@@ -312,10 +312,10 @@ TEST_F(CryptoUtilityImplTest, EncryptCertificateForGoogle) {
   EXPECT_TRUE(encrypted.has_wrapped_key());
 }
 
-TEST_F(CryptoUtilityImplTest, EncryptCertificateForGoogleBadInput) {
+TEST_F(CryptoUtilityImplTest, EncryptDataForGoogleBadInput) {
   std::string certificate(10000, 'C');
   EncryptedData encrypted;
-  EXPECT_FALSE(crypto_utility_->EncryptCertificateForGoogle(
+  EXPECT_FALSE(crypto_utility_->EncryptDataForGoogle(
       certificate, "bad_public_key", "ID", &encrypted));
   EXPECT_FALSE(encrypted.has_wrapping_key_id());
   EXPECT_FALSE(encrypted.has_iv());

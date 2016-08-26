@@ -269,6 +269,44 @@ class AttestationServiceTest : public testing::Test {
     return pca_request;
   }
 
+  std::string CreateChallenge(const std::string& prefix) {
+    Challenge challenge;
+    challenge.set_prefix(prefix);
+    challenge.set_nonce("nonce");
+    challenge.set_timestamp(100500);
+    std::string serialized;
+    challenge.SerializeToString(&serialized);
+    return serialized;
+  }
+
+  std::string CreateSignedChallenge(const std::string& prefix) {
+    SignedData signed_data;
+    signed_data.set_data(CreateChallenge(prefix));
+    signed_data.set_signature("challenge_signature");
+    std::string serialized;
+    signed_data.SerializeToString(&serialized);
+    return serialized;
+  }
+
+  EncryptedData MockEncryptedData(std::string data) {
+    EncryptedData encrypted_data;
+    encrypted_data.set_wrapped_key("wrapped_key");
+    encrypted_data.set_iv("iv");
+    encrypted_data.set_mac("mac");
+    encrypted_data.set_encrypted_data(data);
+    encrypted_data.set_wrapping_key_id("wrapping_key_id");
+    return encrypted_data;
+  }
+
+  KeyInfo CreateChallengeKeyInfo() {
+    KeyInfo key_info;
+    key_info.set_key_type(EUK);
+    key_info.set_domain("domain");
+    key_info.set_device_id("device_id");
+    key_info.set_certificate("");
+    return key_info;
+  }
+
   void Run() { run_loop_.Run(); }
 
   void RunUntilIdle() { run_loop_.RunUntilIdle(); }
@@ -1636,6 +1674,132 @@ TEST_F(AttestationServiceTest, FinishCertificateRequestServerFailure) {
   request.set_key_label("label");
   request.set_pca_response(CreateCACertResponse(false, ""));
   service_->FinishCertificateRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignSimpleChallengeSuccess) {
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(std::string("signature")),
+                      Return(true)));
+  auto callback = [this](const SignSimpleChallengeReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_challenge_response());
+    SignedData signed_data;
+    EXPECT_TRUE(signed_data.ParseFromString(reply.challenge_response()));
+    EXPECT_EQ("signature", signed_data.signature());
+    EXPECT_EQ(0, signed_data.data().find("challenge"));
+    EXPECT_NE("challenge", signed_data.data());
+    Quit();
+  };
+  SignSimpleChallengeRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_challenge("challenge");
+  service_->SignSimpleChallenge(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignSimpleChallengeInternalFailure) {
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
+      .WillRepeatedly(Return(false));
+  auto callback = [this](const SignSimpleChallengeReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_challenge_response());
+    Quit();
+  };
+  SignSimpleChallengeRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_challenge("challenge");
+  service_->SignSimpleChallenge(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignEnterpriseChallengeSuccess) {
+  KeyInfo key_info = CreateChallengeKeyInfo();
+  std::string key_info_str;
+  key_info.SerializeToString(&key_info_str);
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_crypto_utility_,
+              EncryptDataForGoogle(key_info_str, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgumentPointee<3>(MockEncryptedData(key_info_str)),
+                Return(true)));
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(std::string("signature")),
+                      Return(true)));
+  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_challenge_response());
+    SignedData signed_data;
+    EXPECT_TRUE(signed_data.ParseFromString(reply.challenge_response()));
+    EXPECT_EQ("signature", signed_data.signature());
+    ChallengeResponse response_pb;
+    EXPECT_TRUE(response_pb.ParseFromString(signed_data.data()));
+    EXPECT_EQ(CreateChallenge("EnterpriseKeyChallenge"),
+              response_pb.challenge().data());
+    KeyInfo key_info = CreateChallengeKeyInfo();
+    std::string key_info_str;
+    key_info.SerializeToString(&key_info_str);
+    EXPECT_EQ(key_info_str,
+              response_pb.encrypted_key_info().encrypted_data());
+    Quit();
+  };
+  SignEnterpriseChallengeRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_domain(key_info.domain());
+  request.set_device_id(key_info.device_id());
+  request.set_include_signed_public_key(false);
+  request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
+  service_->SignEnterpriseChallenge(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignEnterpriseChallengeInternalFailure) {
+  KeyInfo key_info = CreateChallengeKeyInfo();
+  std::string key_info_str;
+  key_info.SerializeToString(&key_info_str);
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
+      .WillRepeatedly(Return(false));
+  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_challenge_response());
+    Quit();
+  };
+  SignEnterpriseChallengeRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_domain(key_info.domain());
+  request.set_device_id(key_info.device_id());
+  request.set_include_signed_public_key(false);
+  request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
+  service_->SignEnterpriseChallenge(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignEnterpriseChallengeBadPrefix) {
+  KeyInfo key_info = CreateChallengeKeyInfo();
+  std::string key_info_str;
+  key_info.SerializeToString(&key_info_str);
+  EXPECT_CALL(mock_crypto_utility_, VerifySignatureUsingHexKey(_, _, _))
+      .WillRepeatedly(Return(true));
+  auto callback = [this](const SignEnterpriseChallengeReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_challenge_response());
+    Quit();
+  };
+  SignEnterpriseChallengeRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_domain(key_info.domain());
+  request.set_device_id(key_info.device_id());
+  request.set_include_signed_public_key(false);
+  request.set_challenge(CreateSignedChallenge("bad_prefix"));
+  service_->SignEnterpriseChallenge(request, base::Bind(callback));
   Run();
 }
 

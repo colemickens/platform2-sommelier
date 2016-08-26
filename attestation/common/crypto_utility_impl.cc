@@ -22,6 +22,7 @@
 #include <arpa/inet.h>
 #include <base/sha1.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
 #include <crypto/sha2.h>
@@ -74,6 +75,21 @@ crypto::ScopedRSA CreateRSAFromHexModulus(const std::string& hex_modulus) {
   if (0 == BN_hex2bn(&rsa->n, hex_modulus.c_str()))
     return crypto::ScopedRSA();
   return rsa;
+}
+
+bool VerifySignatureRSA(RSA* rsa,
+                        const std::string& data,
+                        const std::string& signature) {
+  std::string digest = crypto::SHA256HashString(data);
+  auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
+  std::string mutable_signature(signature);
+  unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
+  if (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
+                 signature.size(), rsa) != 1) {
+    LOG(ERROR) << __func__ << ": Invalid signature: " << GetOpenSSLError();
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
@@ -360,23 +376,26 @@ bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
                << ": Failed to decode public key: " << GetOpenSSLError();
     return false;
   }
-  std::string digest = crypto::SHA256HashString(data);
-  auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
-  std::string mutable_signature(signature);
-  unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
-  if (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
-                 signature.size(), rsa.get()) != 1) {
-    LOG(ERROR) << __func__ << ": Invalid signature: " << GetOpenSSLError();
-    return false;
-  }
-  return true;
+  return VerifySignatureRSA(rsa.get(), data, signature);
 }
 
-bool CryptoUtilityImpl::EncryptCertificateForGoogle(
-    const std::string& certificate,
+bool CryptoUtilityImpl::VerifySignatureUsingHexKey(
+    const std::string& public_key_hex,
+    const std::string& data,
+    const std::string& signature) {
+  crypto::ScopedRSA rsa = CreateRSAFromHexModulus(public_key_hex);
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode public key.";
+    return false;
+  }
+  return VerifySignatureRSA(rsa.get(), data, signature);
+}
+
+bool CryptoUtilityImpl::EncryptDataForGoogle(
+    const std::string& data,
     const std::string& public_key_hex,
     const std::string& key_id,
-    EncryptedData* encrypted_certificate) {
+    EncryptedData* encrypted_data) {
   crypto::ScopedRSA rsa = CreateRSAFromHexModulus(public_key_hex);
   if (!rsa.get()) {
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
@@ -386,12 +405,12 @@ bool CryptoUtilityImpl::EncryptCertificateForGoogle(
   if (!GetRandom(kAesKeySize, &key)) {
     return false;
   }
-  if (!EncryptWithSeed(KeyDerivationScheme::kNone, certificate, key,
-                       encrypted_certificate)) {
+  if (!EncryptWithSeed(KeyDerivationScheme::kNone, data, key,
+                       encrypted_data)) {
     return false;
   }
-  if (!WrapKeyOAEP(key, rsa.get(), key_id, encrypted_certificate)) {
-    encrypted_certificate->Clear();
+  if (!WrapKeyOAEP(key, rsa.get(), key_id, encrypted_data)) {
+    encrypted_data->Clear();
     return false;
   }
   return true;
@@ -678,6 +697,100 @@ bool CryptoUtilityImpl::OAEPEncryptWithLabel(const std::string& label,
                << GetOpenSSLError();
     return false;
   }
+  return true;
+}
+
+bool CryptoUtilityImpl::CreateSPKAC(const std::string& key_blob,
+                                    const std::string& public_key,
+                                    std::string* spkac) {
+  // Get the certified public key as an EVP_PKEY.
+  const unsigned char* asn1_ptr =
+    reinterpret_cast<const unsigned char*>(public_key.data());
+  crypto::ScopedRSA rsa(
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, public_key.size()));
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__
+               << ": Failed to decode public key: " << GetOpenSSLError();
+    return false;
+  }
+  crypto::ScopedEVP_PKEY evp_pkey(EVP_PKEY_new());
+  if (!evp_pkey.get()) {
+    LOG(ERROR) << __func__ << ": Failed to get public key as EVP PKEY.";
+    return false;
+  }
+  EVP_PKEY_assign_RSA(evp_pkey.get(), rsa.release());
+
+  // Fill in the public key.
+  crypto::ScopedOpenSSL<NETSCAPE_SPKI, NETSCAPE_SPKI_free>
+      spki(NETSCAPE_SPKI_new());
+  if (!spki.get()) {
+    LOG(ERROR) << __func__ << ": Failed to create SPKI.";
+    return false;
+  }
+  if (!NETSCAPE_SPKI_set_pubkey(spki.get(), evp_pkey.get())) {
+    LOG(ERROR) << __func__ << ": Failed to set pubkey for SPKI.";
+    return false;
+  }
+
+  // Fill in a random challenge.
+  std::string challenge;
+  size_t challenge_size = (tpm_utility_->GetVersion() == TPM_1_2) ?
+                          base::kSHA1Length : crypto::kSHA256Length;
+  if (!GetRandom(challenge_size, &challenge)) {
+    LOG(ERROR) << __func__ << ": Failed to GetRandom(challenge).";
+    return false;
+  }
+  std::string challenge_hex = base::HexEncode(challenge.data(),
+                                              challenge.size());
+  if (!ASN1_STRING_set(spki.get()->spkac->challenge,
+                       challenge_hex.data(),
+                       challenge_hex.size())) {
+
+    LOG(ERROR) << __func__ << ": Failed to set challenge in SPKAC.";
+    return false;
+  }
+
+  // Generate the signature.
+  unsigned char* buffer = NULL;
+  int length = i2d_NETSCAPE_SPKAC(spki.get()->spkac, &buffer);
+  if (length <= 0) {
+    LOG(ERROR) << __func__ << ": Failed to get SPKAC.";
+    return false;
+  }
+  std::string data_to_sign(reinterpret_cast<char*>(buffer), length);
+  OPENSSL_free(buffer);
+  std::string signature;
+  if (!tpm_utility_->Sign(key_blob, data_to_sign, &signature)) {
+    LOG(ERROR) << __func__ << ": Failed to sign SPKAC.";
+    return false;
+  }
+
+  // Fill in the signature and algorithm.
+  if (!ASN1_BIT_STRING_set(spki.get()->signature,
+                           reinterpret_cast<unsigned char*>(
+                           const_cast<char *>(signature.data())),
+                           signature.size())) {
+    LOG(ERROR) << __func__ << ": Failed to set signature in SPKAC.";
+    return false;
+  }
+  // Be explicit that there are zero unused bits; otherwise i2d below will
+  // automatically detect unused bits but signatures require zero unused bits.
+  spki.get()->signature->flags = ASN1_STRING_FLAG_BITS_LEFT;
+  X509_ALGOR_set0(spki.get()->sig_algor,
+                  OBJ_nid2obj(NID_sha256WithRSAEncryption),
+                  V_ASN1_NULL,
+                  NULL);
+
+  // DER encode.
+  buffer = NULL;
+  length = i2d_NETSCAPE_SPKI(spki.get(), &buffer);
+  if (length <= 0) {
+    LOG(ERROR) << __func__ << ": Failed to get SPKI.";
+    return false;
+  }
+  spkac->assign(reinterpret_cast<char*>(buffer), length);
+  OPENSSL_free(buffer);
+
   return true;
 }
 

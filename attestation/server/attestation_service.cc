@@ -65,6 +65,23 @@ const char kACAPublicKey[] =
     "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
 const char kACAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
 #endif
+
+const char kEnterpriseEncryptionPublicKey[] =
+    "edba5e723da811e41636f792c7a77aef633fbf39b542aa537c93c93eaba7a3b1"
+    "0bc3e484388c13d625ef5573358ec9e7fbeb6baaaa87ca87d93fb61bf5760e29"
+    "6813c435763ed2c81f631e26e3ff1a670261cdc3c39a4640b6bbf4ead3d6587b"
+    "e43ef7f1f08e7596b628ec0b44c9b7ad71c9ee3a1258852c7a986c7614f0c4ec"
+    "f0ce147650a53b6aa9ae107374a2d6d4e7922065f2f6eb537a994372e1936c87"
+    "eb08318611d44daf6044f8527687dc7ce5319b51eae6ab12bee6bd16e59c499e"
+    "fa53d80232ae886c7ee9ad8bc1cbd6e4ac55cb8fa515671f7e7ad66e98769f52"
+    "c3c309f98bf08a3b8fbb0166e97906151b46402217e65c5d01ddac8514340e8b";
+
+// This value is opaque; it is proprietary to the system managing the private
+// key.  In this case the value has been supplied by the enterprise server
+// maintainers.
+const char kEnterpriseEncryptionPublicKeyID[] =
+    "\x00\x4a\xe2\xdc\xae";
+
 const size_t kNonceSize = 20;  // As per TPM_NONCE definition.
 const int kNumTemporalValues = 5;
 
@@ -84,6 +101,8 @@ std::string GetHardwareID() {
 }  // namespace
 
 namespace attestation {
+
+const size_t kChallengeSignatureNonceSize = 20; // For all TPMs.
 
 AttestationService::AttestationService()
     : attestation_ca_origin_(kACAWebOrigin), weak_factory_(this) {}
@@ -1014,7 +1033,7 @@ void AttestationService::PrepareForEnrollment() {
   credentials_pb->set_ecc_endorsement_public_key(ecc_ek_public_key);
   credentials_pb->set_ecc_endorsement_credential(ecc_ek_certificate);
 
-  if (!crypto_utility_->EncryptCertificateForGoogle(
+  if (!crypto_utility_->EncryptDataForGoogle(
           rsa_ek_certificate, kACAPublicKey,
           std::string(kACAPublicKeyID, arraysize(kACAPublicKeyID) - 1),
           credentials_pb->mutable_default_encrypted_endorsement_credential())) {
@@ -1342,6 +1361,44 @@ void AttestationService::FinishCertificateRequestTask(
   }
 }
 
+bool AttestationService::ValidateEnterpriseChallenge(
+    const SignedData& signed_challenge) {
+  const char kExpectedChallengePrefix[] = "EnterpriseKeyChallenge";
+  if (!crypto_utility_->VerifySignatureUsingHexKey(
+      kACAPublicKey,
+      signed_challenge.data(),
+      signed_challenge.signature())) {
+    LOG(ERROR) << __func__ << ": Failed to verify challenge signature.";
+    return false;
+  }
+  Challenge challenge;
+  if (!challenge.ParseFromString(signed_challenge.data())) {
+    LOG(ERROR) << __func__ << ": Failed to parse challenge protobuf.";
+    return false;
+  }
+  if (challenge.prefix() != kExpectedChallengePrefix) {
+    LOG(ERROR) << __func__ << ": Unexpected challenge prefix.";
+    return false;
+  }
+  return true;
+}
+
+bool AttestationService::EncryptEnterpriseKeyInfo(
+    const KeyInfo& key_info,
+    EncryptedData* encrypted_data) {
+  std::string serialized;
+  if (!key_info.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Failed to serialize key info.";
+    return false;
+  }
+  std::string enterprise_key_id(
+      kEnterpriseEncryptionPublicKeyID,
+      arraysize(kEnterpriseEncryptionPublicKeyID) - 1);
+  return crypto_utility_->EncryptDataForGoogle(
+             serialized, kEnterpriseEncryptionPublicKey,
+             enterprise_key_id, encrypted_data);
+}
+
 void AttestationService::SignEnterpriseChallenge(
     const SignEnterpriseChallengeRequest& request,
     const SignEnterpriseChallengeCallback& callback) {
@@ -1358,8 +1415,76 @@ void AttestationService::SignEnterpriseChallenge(
 void AttestationService::SignEnterpriseChallengeTask(
     const SignEnterpriseChallengeRequest& request,
     const std::shared_ptr<SignEnterpriseChallengeReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  CertifiedKey key;
+  if (!FindKeyByLabel(request.username(), request.key_label(), &key)) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+
+  // Validate that the challenge is coming from the expected source.
+  SignedData signed_challenge;
+  if (!signed_challenge.ParseFromString(request.challenge())) {
+    LOG(ERROR) << __func__ << ": Failed to parse signed challenge.";
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  if (!ValidateEnterpriseChallenge(signed_challenge)) {
+    LOG(ERROR) << __func__ << ": Invalid challenge.";
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  // Add a nonce to ensure this service cannot be used to sign arbitrary data.
+  std::string nonce;
+  if (!crypto_utility_->GetRandom(kChallengeSignatureNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": Failed to generate nonce.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+
+  bool is_user_specific = request.has_username();
+  KeyInfo key_info;
+  // EUK -> Enterprise User Key
+  // EMK -> Enterprise Machine Key
+  key_info.set_key_type(is_user_specific ? EUK : EMK);
+  key_info.set_domain(request.domain());
+  key_info.set_device_id(request.device_id());
+  // Only include the certificate if this is a user key.
+  if (is_user_specific) {
+    key_info.set_certificate(CreatePEMCertificateChain(key));
+  }
+  if (is_user_specific && request.include_signed_public_key()) {
+    std::string spkac;
+    if (!crypto_utility_->CreateSPKAC(key.key_blob(), key.public_key(),
+                                      &spkac)) {
+      LOG(ERROR) << __func__ << ": Failed to create signed public key.";
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+      return;
+    }
+    key_info.set_signed_public_key_and_challenge(spkac);
+  }
+  ChallengeResponse response_pb;
+  *response_pb.mutable_challenge() = signed_challenge;
+  response_pb.set_nonce(nonce);
+  if (!EncryptEnterpriseKeyInfo(key_info,
+                                response_pb.mutable_encrypted_key_info())) {
+    LOG(ERROR) << __func__ << ": Failed to encrypt KeyInfo.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+
+  // Serialize and sign the response protobuf.
+  std::string serialized;
+  if (!response_pb.SerializeToString(&serialized)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize response protobuf.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  if (!SignChallengeData(key, serialized,
+                         result->mutable_challenge_response())) {
+    result->clear_challenge_response();
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
 }
 
 void AttestationService::SignSimpleChallenge(
@@ -1378,8 +1503,42 @@ void AttestationService::SignSimpleChallenge(
 void AttestationService::SignSimpleChallengeTask(
     const SignSimpleChallengeRequest& request,
     const std::shared_ptr<SignSimpleChallengeReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  CertifiedKey key;
+  if (!FindKeyByLabel(request.username(), request.key_label(), &key)) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  // Add a nonce to ensure this service cannot be used to sign arbitrary data.
+  std::string nonce;
+  if (!crypto_utility_->GetRandom(kChallengeSignatureNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": Failed to generate nonce.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  if (!SignChallengeData(key, request.challenge() + nonce,
+                         result->mutable_challenge_response())) {
+    result->clear_challenge_response();
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+}
+
+bool AttestationService::SignChallengeData(const CertifiedKey& key,
+                                           const std::string& data_to_sign,
+                                           std::string* response) {
+  std::string signature;
+  if (!tpm_utility_->Sign(key.key_blob(), data_to_sign, &signature)) {
+    LOG(ERROR) << __func__ << ": Failed to sign data.";
+    return false;
+  }
+  SignedData signed_data;
+  signed_data.set_data(data_to_sign);
+  signed_data.set_signature(signature);
+  if (!signed_data.SerializeToString(response)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize signed data.";
+    return false;
+  }
+  return true;
 }
 
 void AttestationService::SetKeyPayload(

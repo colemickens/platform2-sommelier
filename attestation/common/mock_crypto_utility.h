@@ -68,11 +68,19 @@ class MockCryptoUtility : public CryptoUtility {
                bool(const std::string&,
                     const std::string&,
                     const std::string&));
-  MOCK_METHOD4(EncryptCertificateForGoogle,
+  MOCK_METHOD3(VerifySignatureUsingHexKey,
+               bool(const std::string&,
+                    const std::string&,
+                    const std::string&));
+  MOCK_METHOD4(EncryptDataForGoogle,
                bool(const std::string&,
                     const std::string&,
                     const std::string&,
                     EncryptedData*));
+  MOCK_METHOD3(CreateSPKAC,
+               bool(const std::string&,
+                    const std::string&,
+                    std::string*));
 };
 
 }  // namespace attestation

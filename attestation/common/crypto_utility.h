@@ -100,16 +100,31 @@ class CryptoUtility {
                                const std::string& data,
                                const std::string& signature) = 0;
 
-  // Encrypts a |certificate| as expected by the Google ACA. |public_key_hex| is
+  // Verifies a PKCS #1 v1.5 SHA-256 |signature| over |data|.
+  // The |public_key_hex| contains a modulus in hex format.
+  virtual bool VerifySignatureUsingHexKey(const std::string& public_key_hex,
+                                          const std::string& data,
+                                          const std::string& signature) = 0;
+
+  // Encrypts |data| as expected by the Google ACA. |public_key_hex| is
   // a hex modulus and the |key_id| is opaque; these can change depending on
   // which instance of the ACA is used (e.g. production vs test). On success
-  // returns true and populates |encrypted_certificate| which can be transmitted
+  // returns true and populates |encrypted_data| which can be transmitted
   // to the ACA.
-  virtual bool EncryptCertificateForGoogle(
+  virtual bool EncryptDataForGoogle(
       const std::string& certificate,
       const std::string& public_key_hex,
       const std::string& key_id,
-      EncryptedData* encrypted_certificate) = 0;
+      EncryptedData* encrypted_data) = 0;
+
+  // Creates a SignedPublicKeyAndChallenge signed with |key_blob| from
+  // |public_key| in PKCS #1 RSAPublicKey (ASN.1 DER) format with a random
+  // challenge. On success returns true and provides the |spkac|.
+  // |key_blob| and |public_key| are taken from the already loaded
+  // CertifiedKey.
+  virtual bool CreateSPKAC(const std::string& key_blob,
+                           const std::string& public_key,
+                           std::string* spkac) = 0;
 };
 
 }  // namespace attestation
