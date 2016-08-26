@@ -666,7 +666,16 @@ bool AttestationService::FinishCertificateRequestInternal(
     LOG(ERROR) << __func__ << ": Message ID mismatch.";
     return false;
   }
+  return PopulateAndStoreCertifiedKey(response_pb, username, key_label,
+                                      key, certificate_chain);
+}
 
+bool AttestationService::PopulateAndStoreCertifiedKey(
+    const AttestationCertificateResponse& response_pb,
+    const std::string& username,
+    const std::string& key_label,
+    CertifiedKey* key,
+    std::string* certificate_chain) {
   // Finish populating the CertifiedKey protobuf and store it.
   key->set_certified_key_credential(response_pb.certified_key_credential());
   key->set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
@@ -1174,8 +1183,10 @@ void AttestationService::CreateEnrollRequest(
 void AttestationService::CreateEnrollRequestTask(
     const CreateEnrollRequestRequest& request,
     const std::shared_ptr<CreateEnrollRequestReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  if (!CreateEnrollRequestInternal(result->mutable_pca_request())) {
+    result->clear_pca_request();
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+  }
 }
 
 void AttestationService::FinishEnroll(
@@ -1194,8 +1205,16 @@ void AttestationService::FinishEnroll(
 void AttestationService::FinishEnrollTask(
     const FinishEnrollRequest& request,
     const std::shared_ptr<FinishEnrollReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  std::string server_error;
+  if (!FinishEnrollInternal(request.pca_response(), &server_error)) {
+    if (server_error.empty()) {
+      LOG(ERROR) << __func__ << ": Server error";
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    } else {
+      LOG(ERROR) << __func__ << ": Server error details: " << server_error;
+      result->set_status(STATUS_REQUEST_DENIED_BY_CA);
+    }
+  }
 }
 
 void AttestationService::CreateCertificateRequest(
@@ -1214,8 +1233,59 @@ void AttestationService::CreateCertificateRequest(
 void AttestationService::CreateCertificateRequestTask(
     const CreateCertificateRequestRequest& request,
     const std::shared_ptr<CreateCertificateRequestReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  std::string key_label;
+  if (!crypto_utility_->GetRandom(kNonceSize, &key_label)) {
+    LOG(ERROR) << __func__ << ": GetRandom(message_id) failed.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  std::string nonce;
+  if (!crypto_utility_->GetRandom(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  std::string key_blob;
+  std::string public_key;
+  std::string public_key_tpm_format;
+  std::string key_info;
+  std::string proof;
+  auto database_pb = database_->GetProtobuf();
+  CertifiedKey key;
+  if (!tpm_utility_->CreateCertifiedKey(
+          KEY_TYPE_RSA, KEY_USAGE_SIGN,
+          database_pb.identity_key().identity_key_blob(), nonce, &key_blob,
+          &public_key, &public_key_tpm_format, &key_info, &proof)) {
+    LOG(ERROR) << __func__ << ": Failed to create a key.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  key.set_key_blob(key_blob);
+  key.set_public_key(public_key);
+  key.set_key_name(key_label);
+  key.set_public_key_tpm_format(public_key_tpm_format);
+  key.set_certified_key_info(key_info);
+  key.set_certified_key_proof(proof);
+  key.set_key_type(KEY_TYPE_RSA);
+  key.set_key_usage(KEY_USAGE_SIGN);
+  std::string message_id;
+  if (!CreateCertificateRequestInternal(request.username(), key,
+                                        request.certificate_profile(),
+                                        request.request_origin(),
+                                        result->mutable_pca_request(),
+                                        &message_id)) {
+    result->clear_pca_request();
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  std::string serialized_key;
+  if (!key.SerializeToString(&serialized_key)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize key protobuf.";
+    result->clear_pca_request();
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  pending_cert_requests_[message_id] = serialized_key;
 }
 
 void AttestationService::FinishCertificateRequest(
@@ -1234,8 +1304,42 @@ void AttestationService::FinishCertificateRequest(
 void AttestationService::FinishCertificateRequestTask(
     const FinishCertificateRequestRequest& request,
     const std::shared_ptr<FinishCertificateRequestReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  AttestationCertificateResponse response_pb;
+  if (!response_pb.ParseFromString(request.pca_response())) {
+    LOG(ERROR) << __func__ << ": Failed to parse response from Attestation CA.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  CertRequestMap::iterator iter = pending_cert_requests_.find(
+      response_pb.message_id());
+  if (iter == pending_cert_requests_.end()) {
+    LOG(ERROR) << __func__ << ": Pending request not found.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  if (response_pb.status() != OK) {
+    LOG(ERROR) << __func__ << ": Error received from Attestation CA: "
+               << response_pb.detail();
+    pending_cert_requests_.erase(iter);
+    result->set_status(STATUS_REQUEST_DENIED_BY_CA);
+    return;
+  }
+  CertifiedKey key;
+  if (!key.ParseFromArray(iter->second.data(),
+                          iter->second.size())) {
+    LOG(ERROR) << __func__ << ": Failed to parse pending request key.";
+    pending_cert_requests_.erase(iter);
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  pending_cert_requests_.erase(iter);
+  if (!PopulateAndStoreCertifiedKey(response_pb, request.username(),
+                                    request.key_label(), &key,
+                                    result->mutable_certificate())) {
+    result->clear_certificate();
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
 }
 
 void AttestationService::SignEnterpriseChallenge(

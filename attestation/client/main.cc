@@ -48,6 +48,10 @@ const char kSignCommand[] = "sign";
 const char kVerifyCommand[] = "verify";
 const char kRegisterCommand[] = "register";
 const char kStatusCommand[] = "status";
+const char kCreateEnrollRequestCommand[] = "create_enroll_request";
+const char kFinishEnrollCommand[] = "finish_enroll";
+const char kCreateCertRequestCommand[] = "create_cert_request";
+const char kFinishCertRequestCommand[] = "finish_cert_request";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -88,6 +92,19 @@ Commands:
           --signature=<signature_file>
       Verifies the signature in |signature_file| against the contents of
       |input_file|.
+
+  create_enroll_request [--output=<output_file>]
+      Creates enroll request to CA and stores it to |output_file|.
+  finish_enroll --input=<input_file>
+      Finishes enrollment using CA response from |input_file|.
+  create_cert_request [--user=<user>] [--profile=<profile>] [--origin=<origin>]
+          [--output=<output_file>]
+      Creates certificate request to CA for |user|, using provided certificate
+        |profile| and |origin|, and stores it to |output_file|.
+        Possible |profile| values: user, machine, content, cpsi, cast, gfsc.
+  finish_cert_request [--user=<user>] [--label=<label>] --input=<input_file>
+      Finishes certificate request for |user| using CA response from
+      |input_file|, and stores it in the key with the specified |label|.
 
   register [--user=<email>] [--label=<keylabel]
       Registers a key with a PKCS #11 token.
@@ -256,6 +273,64 @@ class ClientLoop : public ClientLoopBase {
       task = base::Bind(&ClientLoop::CallRegister, weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"));
+    } else if (args.front() == kCreateEnrollRequestCommand) {
+      task = base::Bind(
+          &ClientLoop::CallCreateEnrollRequest, weak_factory_.GetWeakPtr());
+    } else if (args.front() == kFinishEnrollCommand) {
+      if (!command_line->HasSwitch("input")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      task = base::Bind(
+          &ClientLoop::CallFinishEnroll, weak_factory_.GetWeakPtr(),
+          input);
+    } else if (args.front() == kCreateCertRequestCommand) {
+      std::string profile_str = command_line->GetSwitchValueASCII("profile");
+      CertificateProfile profile;
+      if (profile_str.empty() || profile_str == "enterprise_machine" ||
+          profile_str == "machine" || profile_str == "m") {
+        profile = ENTERPRISE_MACHINE_CERTIFICATE;
+      } else if (profile_str == "enterprise_user" || profile_str == "user" ||
+                 profile_str == "u") {
+        profile = ENTERPRISE_USER_CERTIFICATE;
+      } else if (profile_str == "content_protection" ||
+                 profile_str == "content" || profile_str == "c") {
+        profile = CONTENT_PROTECTION_CERTIFICATE;
+      } else if (profile_str == "content_protection_with_stable_id" ||
+                 profile_str == "cpsi") {
+        profile = CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
+      } else if (profile_str == "cast") {
+        profile = CAST_CERTIFICATE;
+      } else if (profile_str == "gfsc") {
+        profile = GFSC_CERTIFICATE;
+      } else {
+        return EX_USAGE;
+      }
+      task = base::Bind(
+          &ClientLoop::CallCreateCertRequest, weak_factory_.GetWeakPtr(),
+          profile,
+          command_line->GetSwitchValueASCII("user"),
+          command_line->GetSwitchValueASCII("origin"));
+    } else if (args.front() == kFinishCertRequestCommand) {
+      if (!command_line->HasSwitch("input")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      task = base::Bind(
+          &ClientLoop::CallFinishCertRequest, weak_factory_.GetWeakPtr(),
+          input,
+          command_line->GetSwitchValueASCII("label"),
+          command_line->GetSwitchValueASCII("user"));
     } else {
       return EX_USAGE;
     }
@@ -485,6 +560,61 @@ class ClientLoop : public ClientLoopBase {
         base::Bind(
             &ClientLoop::PrintReplyAndQuit<RegisterKeyWithChapsTokenReply>,
             weak_factory_.GetWeakPtr()));
+  }
+
+  void CallCreateEnrollRequest() {
+    CreateEnrollRequestRequest request;
+    attestation_->CreateEnrollRequest(
+        request, base::Bind(&ClientLoop::OnCreateEnrollRequestComplete,
+        weak_factory_.GetWeakPtr()));
+  }
+
+  void OnCreateEnrollRequestComplete(const CreateEnrollRequestReply& reply) {
+    if (reply.status() == STATUS_SUCCESS &&
+        base::CommandLine::ForCurrentProcess()->HasSwitch("output")) {
+      WriteOutput(reply.pca_request());
+    }
+    PrintReplyAndQuit<CreateEnrollRequestReply>(reply);
+  }
+
+  void CallFinishEnroll(const std::string& pca_response) {
+    FinishEnrollRequest request;
+    request.set_pca_response(pca_response);
+    attestation_->FinishEnroll(
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<FinishEnrollReply>,
+        weak_factory_.GetWeakPtr()));
+  }
+
+  void CallCreateCertRequest(CertificateProfile profile,
+                             const std::string& username,
+                             const std::string& origin) {
+    CreateCertificateRequestRequest request;
+    request.set_certificate_profile(profile);
+    request.set_username(username);
+    request.set_request_origin(origin);
+    attestation_->CreateCertificateRequest(
+        request, base::Bind(&ClientLoop::OnCreateCertRequestComplete,
+        weak_factory_.GetWeakPtr()));
+  }
+
+  void OnCreateCertRequestComplete(const CreateCertificateRequestReply& reply) {
+    if (reply.status() == STATUS_SUCCESS &&
+        base::CommandLine::ForCurrentProcess()->HasSwitch("output")) {
+      WriteOutput(reply.pca_request());
+    }
+    PrintReplyAndQuit<CreateCertificateRequestReply>(reply);
+  }
+
+  void CallFinishCertRequest(const std::string& pca_response,
+                             const std::string& label,
+                             const std::string& username) {
+    FinishCertificateRequestRequest request;
+    request.set_pca_response(pca_response);
+    request.set_key_label(label);
+    request.set_username(username);
+    attestation_->FinishCertificateRequest(
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<FinishCertificateRequestReply>,
+        weak_factory_.GetWeakPtr()));
   }
 
   std::unique_ptr<attestation::AttestationInterface> attestation_;

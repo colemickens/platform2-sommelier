@@ -29,6 +29,7 @@
 #include <brillo/bind_lambda.h>
 #include <brillo/http/http_transport.h>
 
+#include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/crypto_utility.h"
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/tpm_utility_factory.h"
@@ -151,6 +152,7 @@ class AttestationService : public AttestationInterface {
  private:
   friend class AttestationServiceTest;
 
+  typedef std::map<std::string, std::string> CertRequestMap;
   enum ACARequestType {
     kEnroll,          // Enrolls a device, certifying an identity key.
     kGetCertificate,  // Issues a certificate for a TPM-backed key.
@@ -298,7 +300,7 @@ class AttestationService : public AttestationInterface {
   // recover the |certificate_chain| and storing it in association with the
   // |key| identified by |username| and |key_label|. Returns true on success. On
   // failure, returns false and sets |server_error| to the error string from the
-  // CA.
+  // CA. Calls PopulateAndStoreCertifiedKey internally.
   bool FinishCertificateRequestInternal(const std::string& certificate_response,
                                         const std::string& username,
                                         const std::string& key_label,
@@ -306,6 +308,16 @@ class AttestationService : public AttestationInterface {
                                         CertifiedKey* key,
                                         std::string* certificate_chain,
                                         std::string* server_error);
+
+  // Recover the |certificate_chain| from |response_pb| and store it in
+  // association with the |key| identified by |username| and |key_label|.
+  // Returns true on success.
+  bool PopulateAndStoreCertifiedKey(
+    const AttestationCertificateResponse& response_pb,
+    const std::string& username,
+    const std::string& key_label,
+    CertifiedKey* key,
+    std::string* certificate_chain);
 
   // Sends a |request_type| |request| to the Google Attestation CA and waits for
   // the |reply|. Returns true on success.
@@ -389,6 +401,7 @@ class AttestationService : public AttestationInterface {
   KeyStore* key_store_{nullptr};
   TpmUtility* tpm_utility_{nullptr};
   std::string hwid_;
+  CertRequestMap pending_cert_requests_;
 
   // Default implementations for the above interfaces. These will be setup
   // during Initialize() if the corresponding interface has not been set with a

@@ -203,6 +203,72 @@ class AttestationServiceTest : public testing::Test {
     return request;
   }
 
+  std::string CreateCAEnrollResponse(bool success) {
+    AttestationEnrollmentResponse response_pb;
+    if (success) {
+      response_pb.set_status(OK);
+      response_pb.set_detail("");
+      response_pb.mutable_encrypted_identity_credential()->set_tpm_version(
+          kTpmVersionUnderTest);
+      response_pb.mutable_encrypted_identity_credential()->set_asym_ca_contents(
+          "1234");
+      response_pb.mutable_encrypted_identity_credential()
+          ->set_sym_ca_attestation("5678");
+      response_pb.mutable_encrypted_identity_credential()->set_encrypted_seed(
+          "seed");
+      response_pb.mutable_encrypted_identity_credential()->set_credential_mac(
+          "mac");
+      response_pb.mutable_encrypted_identity_credential()
+          ->mutable_wrapped_certificate()->set_wrapped_key("wrapped");
+    } else {
+      response_pb.set_status(SERVER_ERROR);
+      response_pb.set_detail("fake_enroll_error");
+    }
+    std::string response_str;
+    response_pb.SerializeToString(&response_str);
+    return response_str;
+  }
+
+  std::string CreateCACertResponse(bool success, std::string message_id) {
+    AttestationCertificateResponse response_pb;
+    if (success) {
+      response_pb.set_status(OK);
+      response_pb.set_detail("");
+      response_pb.set_message_id(message_id);
+      response_pb.set_certified_key_credential("fake_cert");
+      response_pb.set_intermediate_ca_cert("fake_ca_cert");
+      *response_pb.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+    } else {
+      response_pb.set_status(SERVER_ERROR);
+      response_pb.set_detail("fake_sign_error");
+    }
+    std::string response_str;
+    response_pb.SerializeToString(&response_str);
+    return response_str;
+  }
+
+  AttestationCertificateRequest GenerateCACertRequest() {
+    // Populate identity credential
+    AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+    database->mutable_identity_key()->set_identity_credential("cert");
+    base::RunLoop loop;
+    auto callback = [](base::RunLoop* loop,
+                       AttestationCertificateRequest* pca_request,
+                       const CreateCertificateRequestReply& reply) {
+      pca_request->ParseFromString(reply.pca_request());
+      loop->Quit();
+    };
+    CreateCertificateRequestRequest request;
+    request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+    request.set_username("user");
+    request.set_request_origin("origin");
+    AttestationCertificateRequest pca_request;
+    service_->CreateCertificateRequest(
+        request, base::Bind(callback, &loop, &pca_request));
+    loop.Run();
+    return pca_request;
+  }
+
   void Run() { run_loop_.Run(); }
 
   void RunUntilIdle() { run_loop_.RunUntilIdle(); }
@@ -232,31 +298,15 @@ class AttestationServiceTest : public testing::Test {
                           brillo::mime::application::kOctet_stream);
       return;
     }
-    AttestationEnrollmentResponse response_pb;
+    std::string response_str;
     if (state == kCommandFailure) {
-      response_pb.set_status(SERVER_ERROR);
-      response_pb.set_detail("fake_enroll_error");
+      response_str = CreateCAEnrollResponse(false);
     } else if (state == kSuccess) {
-      response_pb.set_status(OK);
-      response_pb.set_detail("");
-      response_pb.mutable_encrypted_identity_credential()->set_tpm_version(
-          kTpmVersionUnderTest);
-      response_pb.mutable_encrypted_identity_credential()->set_asym_ca_contents(
-          "1234");
-      response_pb.mutable_encrypted_identity_credential()
-          ->set_sym_ca_attestation("5678");
-      response_pb.mutable_encrypted_identity_credential()->set_encrypted_seed(
-          "seed");
-      response_pb.mutable_encrypted_identity_credential()->set_credential_mac(
-          "mac");
-      response_pb.mutable_encrypted_identity_credential()
-          ->mutable_wrapped_certificate()->set_wrapped_key("wrapped");
+      response_str = CreateCAEnrollResponse(true);
     } else {
       NOTREACHED();
     }
-    std::string tmp;
-    response_pb.SerializeToString(&tmp);
-    response->ReplyText(brillo::http::status_code::Ok, tmp,
+    response->ReplyText(brillo::http::status_code::Ok, response_str,
                         brillo::mime::application::kOctet_stream);
   }
 
@@ -270,23 +320,15 @@ class AttestationServiceTest : public testing::Test {
                           brillo::mime::application::kOctet_stream);
       return;
     }
-    AttestationCertificateResponse response_pb;
+    std::string response_str;
     if (state == kCommandFailure) {
-      response_pb.set_status(SERVER_ERROR);
-      response_pb.set_detail("fake_sign_error");
-    } else if (state == kSuccess || state == kBadMessageID) {
-      response_pb.set_status(OK);
-      response_pb.set_detail("");
-      if (state == kSuccess) {
-        response_pb.set_message_id(request_pb.message_id());
-      }
-      response_pb.set_certified_key_credential("fake_cert");
-      response_pb.set_intermediate_ca_cert("fake_ca_cert");
-      *response_pb.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+      response_str = CreateCACertResponse(false, "");
+    } else if (state == kSuccess) {
+      response_str = CreateCACertResponse(true, request_pb.message_id());
+    } else if (state == kBadMessageID) {
+      response_str = CreateCACertResponse(true, "");
     }
-    std::string tmp;
-    response_pb.SerializeToString(&tmp);
-    response->ReplyText(brillo::http::status_code::Ok, tmp,
+    response->ReplyText(brillo::http::status_code::Ok, response_str,
                         brillo::mime::application::kOctet_stream);
   }
 
@@ -1412,6 +1454,189 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+}
+
+TEST_F(AttestationServiceTest, CreateEnrollRequestSuccess) {
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_credentials()
+      ->mutable_default_encrypted_endorsement_credential()
+      ->set_wrapped_key("wrapped_key");
+  database->mutable_identity_binding()->set_identity_public_key("public_key");
+  database->mutable_pcr0_quote()->set_quote("pcr0");
+  database->mutable_pcr1_quote()->set_quote("pcr1");
+  auto callback = [this](const CreateEnrollRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationEnrollmentRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ("wrapped_key",
+              pca_request.encrypted_endorsement_credential().wrapped_key());
+    EXPECT_EQ("public_key", pca_request.identity_public_key());
+    EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
+    EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
+    Quit();
+  };
+  CreateEnrollRequestRequest request;
+  service_->CreateEnrollRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateEnrollRequestNotReady) {
+  // Empty database - not prepared for enrollment
+  mock_database_.GetMutableProtobuf()->Clear();
+  auto callback = [this](const CreateEnrollRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_pca_request());
+    Quit();
+  };
+  CreateEnrollRequestRequest request;
+  service_->CreateEnrollRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, FinishEnrollSuccess) {
+  auto callback = [this](const FinishEnrollReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    Quit();
+  };
+  FinishEnrollRequest request;
+  request.set_pca_response(CreateCAEnrollResponse(true));
+  service_->FinishEnroll(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, FinishEnrollFailure) {
+  auto callback = [this](const FinishEnrollReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    Quit();
+  };
+  FinishEnrollRequest request;
+  request.set_pca_response(CreateCAEnrollResponse(false));
+  service_->FinishEnroll(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertificateRequestSuccess) {
+  // Populate identity credential
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_identity_key()->set_identity_credential("cert");
+  auto callback = [this](const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_MACHINE_CERTIFICATE, pca_request.profile());
+    EXPECT_EQ("cert", pca_request.identity_credential());
+    Quit();
+  };
+  CreateCertificateRequestRequest request;
+  request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertificateRequestInternalFailure) {
+  // Populate identity credential
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_identity_key()->set_identity_credential("cert");
+  EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
+      .WillRepeatedly(Return(false));
+  auto callback = [this](const CreateCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_pca_request());
+    Quit();
+  };
+  CreateCertificateRequestRequest request;
+  request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertificateRequestNotEnrolled) {
+  // Empty database - not enrolled
+  mock_database_.GetMutableProtobuf()->Clear();
+  auto callback = [this](const CreateCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_pca_request());
+    Quit();
+  };
+  CreateCertificateRequestRequest request;
+  request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, FinishCertificateRequestSuccess) {
+  auto callback = [this](const FinishCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_certificate());
+    Quit();
+  };
+  AttestationCertificateRequest pca_request = GenerateCACertRequest();
+  FinishCertificateRequestRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_pca_response(
+      CreateCACertResponse(true, pca_request.message_id()));
+  service_->FinishCertificateRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, FinishCertificateRequestInternalFailure) {
+  EXPECT_CALL(mock_key_store_, Write(_, _, _)).WillRepeatedly(Return(false));
+  auto callback = [this](const FinishCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate());
+    Quit();
+  };
+  AttestationCertificateRequest pca_request = GenerateCACertRequest();
+  FinishCertificateRequestRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_pca_response(
+      CreateCACertResponse(true, pca_request.message_id()));
+  service_->FinishCertificateRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, FinishCertificateRequestWrongMessageId) {
+  auto callback = [this](const FinishCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate());
+    Quit();
+  };
+  // Generate some request to populate pending_requests, but ignore its fields.
+  GenerateCACertRequest();
+  FinishCertificateRequestRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_pca_response(CreateCACertResponse(true, "wrong_id"));
+  service_->FinishCertificateRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, FinishCertificateRequestServerFailure) {
+  auto callback = [this](const FinishCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate());
+    Quit();
+  };
+  // Generate some request to populate pending_requests, but ignore its fields.
+  GenerateCACertRequest();
+  FinishCertificateRequestRequest request;
+  request.set_username("user");
+  request.set_key_label("label");
+  request.set_pca_response(CreateCACertResponse(false, ""));
+  service_->FinishCertificateRequest(request, base::Bind(callback));
+  Run();
 }
 
 }  // namespace attestation
