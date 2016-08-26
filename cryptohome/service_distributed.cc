@@ -30,7 +30,15 @@ ServiceDistributed::ServiceDistributed()
       attestation_interface_(default_attestation_interface_.get()),
       weak_factory_(this) {}
 
-ServiceDistributed::~ServiceDistributed() {}
+ServiceDistributed::~ServiceDistributed() {
+  attestation_thread_.Stop();
+  // Must be called here. Otherwise, after this destructor,
+  // all pure virtual functions from Service overloaded here
+  // and all members defined for this class will be gone, while
+  // mount_thread_ will continue running tasks until stopped in
+  // ~Service.
+  StopTasks();
+}
 
 bool ServiceDistributed::PrepareInterface() {
   if (attestation_thread_.IsRunning()) {

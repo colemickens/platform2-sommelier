@@ -749,6 +749,13 @@ class Service : public brillo::dbus::AbstractDbusService,
                                     MountError return_code,
                                     bool return_status);
 
+  // Stop processing tasks on dbus and mount threads.
+  // Must be called from derived destructors. Otherwise, after derived
+  // destructor, all pure virtual functions from Service overloaded there and
+  // all members defined for that class will be gone, while mount_thread_
+  // will continue running tasks until stopped in ~Service.
+  void StopTasks();
+
  private:
   FRIEND_TEST(ServiceTest, GetPublicMountPassKey);
 

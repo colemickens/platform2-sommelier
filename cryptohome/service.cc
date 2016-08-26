@@ -193,6 +193,15 @@ Service::~Service() {
   }
 }
 
+void Service::StopTasks() {
+  LOG(INFO) << "Stopping cryptohome task processing.";
+  if (loop_) {
+    g_main_loop_quit(loop_);
+  }
+  // It is safe to call Stop() multiple times
+  mount_thread_.Stop();
+}
+
 Service* Service::CreateDefault() {
 #if USE_TPM2
   bool use_monolithic = kUseInternalAttestationModeByDefault;
