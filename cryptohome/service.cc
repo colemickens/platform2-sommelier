@@ -333,6 +333,7 @@ bool Service::CleanUpStaleMounts(bool force) {
     // Walk each set of sources as one group since multimaps are key ordered.
     for (; match != matches.end() && match->first == curr->first; ++match) {
       // Ignore known mounts.
+      mounts_lock_.Acquire();
       for (MountMap::iterator mount = mounts_.begin();
            mount != mounts_.end(); ++mount) {
         if (mount->second->OwnsMountPoint(match->second)) {
@@ -340,6 +341,7 @@ bool Service::CleanUpStaleMounts(bool force) {
           break;
         }
       }
+      mounts_lock_.Release();
       // Optionally, ignore mounts with open files.
       if (!force) {
         std::vector<ProcessInformation> processes;
@@ -764,12 +766,15 @@ gboolean Service::CheckKey(gchar *userid,
                            gboolean *OUT_result,
                            GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
+  mounts_lock_.Acquire();
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     if (it->second->AreSameUser(credentials)) {
       *OUT_result = it->second->AreValid(credentials);
+      mounts_lock_.Release();
       return TRUE;
     }
   }
+  mounts_lock_.Release();
 
   MountTaskResult result;
   base::WaitableEvent event(true, false);
@@ -792,6 +797,7 @@ gboolean Service::AsyncCheckKey(gchar *userid,
   // Freed by the message loop
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
+  mounts_lock_.Acquire();
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     // Fast path - because we can check credentials on a Mount very fast, we can
     // afford to check them synchronously here and post the result
@@ -799,9 +805,11 @@ gboolean Service::AsyncCheckKey(gchar *userid,
     if (it->second->AreSameUser(credentials)) {
       bool ok = it->second->AreValid(credentials);
       *OUT_async_id = PostAsyncCallResult(bridge, MOUNT_ERROR_NONE, ok);
+      mounts_lock_.Release();
       return TRUE;
     }
   }
+  mounts_lock_.Release();
 
   // Slow path - ask the HomeDirs to check credentials.
   scoped_refptr<MountTaskTestCredentials> mount_task
@@ -839,16 +847,19 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
   credentials.set_key_data(authorization->key().data());
 
   BaseReply reply;
+  mounts_lock_.Acquire();
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     if (it->second->AreSameUser(credentials)) {
       if (!it->second->AreValid(credentials)) {
         // Fallthrough to HomeDirs to cover different keys for the same user.
         break;
       }
+      mounts_lock_.Release();
       SendReply(context, reply);
       return;
     }
   }
+  mounts_lock_.Release();
 
   if (!homedirs_->Exists(credentials)) {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
@@ -1535,12 +1546,14 @@ gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
   // We consider "the cryptohome" to be mounted if any existing cryptohome is
   // mounted.
   *OUT_is_mounted = FALSE;
+  mounts_lock_.Acquire();
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     if (it->second->IsMounted()) {
       *OUT_is_mounted = TRUE;
       break;
     }
   }
+  mounts_lock_.Release();
   return TRUE;
 }
 
@@ -2222,8 +2235,11 @@ gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
 
 gboolean Service::UpdateCurrentUserActivityTimestamp(gint time_shift_sec,
                                                      GError **error) {
-  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it)
+  mounts_lock_.Acquire();
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     it->second->UpdateCurrentUserActivityTimestamp(time_shift_sec);
+  }
+  mounts_lock_.Release();
   return TRUE;
 }
 
@@ -2273,11 +2289,13 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   *OUT_ready = TRUE;
+  mounts_lock_.Acquire();
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     cryptohome::Mount* mount = it->second.get();
     bool ok = (mount->pkcs11_state() == cryptohome::Mount::kIsInitialized);
     *OUT_ready = *OUT_ready && ok;
   }
+  mounts_lock_.Release();
   return TRUE;
 }
 
@@ -2315,9 +2333,11 @@ gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* username,
 }
 
 gboolean Service::Pkcs11Terminate(gchar* username, GError **error) {
+  mounts_lock_.Acquire();
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     it->second->RemovePkcs11Token();
   }
+  mounts_lock_.Release();
   return TRUE;
 }
 
@@ -2794,8 +2814,11 @@ gboolean Service::RemoveFirmwareManagementParameters(const GArray* request,
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   base::DictionaryValue dv;
   base::ListValue* mounts = new base::ListValue();
-  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); it++)
+  mounts_lock_.Acquire();
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); it++) {
     mounts->Append(it->second->GetStatus());
+  }
+  mounts_lock_.Release();
   base::Value* attrs = install_attrs_->GetStatus();
 
   Tpm::TpmStatusInfo tpm_status_info;
@@ -2834,8 +2857,11 @@ void Service::AutoCleanupCallback() {
 
   // Update current user's activity timestamp every day.
   if (++ticks > update_user_activity_period_) {
-    for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it)
+    mounts_lock_.Acquire();
+    for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
       it->second->UpdateCurrentUserActivityTimestamp(0);
+    }
+    mounts_lock_.Release();
     ticks = 0;
   }
 
@@ -2913,9 +2939,12 @@ void Service::DetectEnterpriseOwnership() {
   if (install_attrs_->Get("enterprise.owned", &value) && value == true_value) {
     enterprise_owned_ = true;
     // Update any active mounts with the state.
+    mounts_lock_.Acquire();
     for (MountMap::const_iterator it = mounts_.begin();
-         it != mounts_.end(); ++it)
+         it != mounts_.end(); ++it) {
       it->second->set_enterprise_owned(true);
+    }
+    mounts_lock_.Release();
     homedirs_->set_enterprise_owned(true);
   }
 }
@@ -2940,8 +2969,9 @@ scoped_refptr<cryptohome::Mount> Service::GetOrCreateMountForUser(
 bool Service::RemoveMountForUser(const std::string& username) {
   bool ok = true;
   mounts_lock_.Acquire();
-  if (mounts_.count(username) != 0)
+  if (mounts_.count(username) != 0) {
     ok = (1U == mounts_.erase(username));
+  }
   mounts_lock_.Release();
   return ok;
 }
@@ -3003,9 +3033,13 @@ bool Service::GetMountPointForUser(const std::string& username,
 
 scoped_refptr<cryptohome::Mount> Service::GetMountForUser(
     const std::string& username) {
-  if (mounts_.count(username) == 1)
-    return mounts_[username];
-  return NULL;
+  scoped_refptr<cryptohome::Mount> mount = NULL;
+  mounts_lock_.Acquire();
+  if (mounts_.count(username) == 1) {
+    mount = mounts_[username];
+  }
+  mounts_lock_.Release();
+  return mount;
 }
 
 bool Service::CreateSystemSaltIfNeeded() {
