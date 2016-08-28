@@ -11,6 +11,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -33,7 +34,7 @@ class GdmDriver : public Driver,
 
   bool Initialize() override;
   bool Finalize() override;
-  bool GetDevices(std::vector<Device *> *devices) override;
+  bool GetDevices(std::vector<std::unique_ptr<Device>> *devices) override;
 
   bool OpenDevice(GdmDevice *device);
   bool CloseDevice(GdmDevice *device);

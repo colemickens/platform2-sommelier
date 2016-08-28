@@ -10,7 +10,6 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_vector.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
 
@@ -44,7 +43,9 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   const NetworkOperator *GetNetworkOperator(
       Network::Identifier network_id) const;
 
-  const std::vector<Device *> &devices() const { return devices_.get(); }
+  const std::vector<std::unique_ptr<Device>> &devices() const {
+    return devices_;
+  }
 
  private:
   FRIEND_TEST(ManagerTest, GetNetworkOperator);
@@ -61,7 +62,7 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   EventDispatcher *dispatcher_;
   std::unique_ptr<Config> config_;
   std::unique_ptr<Driver> driver_;
-  ScopedVector<Device> devices_;
+  std::vector<std::unique_ptr<Device>> devices_;
 
   int num_device_scans_;
   base::OneShotTimer device_scan_timer_;

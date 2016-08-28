@@ -6,6 +6,8 @@
 
 #include <fcntl.h>
 
+#include <utility>
+
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -98,7 +100,7 @@ bool Manager::ScanDevices() {
   if (!devices_.empty())
     return true;
 
-  if (!driver_->GetDevices(&devices_.get())) {
+  if (!driver_->GetDevices(&devices_)) {
     LOG(ERROR) << "Failed to get list of devices";
     return false;
   }

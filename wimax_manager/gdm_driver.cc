@@ -4,11 +4,14 @@
 
 #include "wimax_manager/gdm_driver.h"
 
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/utf_string_conversions.h>
 
+#include "wimax_manager/device_dbus_adaptor.h"
 #include "wimax_manager/gdm_device.h"
 #include "wimax_manager/network.h"
 
@@ -204,7 +207,7 @@ bool GdmDriver::Finalize() {
   return success;
 }
 
-bool GdmDriver::GetDevices(vector<Device *> *devices) {
+bool GdmDriver::GetDevices(vector<std::unique_ptr<Device>> *devices) {
   CHECK(devices);
 
   WIMAX_API_HW_DEVICE_ID device_list[kMaxNumberOfDevices];
@@ -229,15 +232,15 @@ bool GdmDriver::GetDevices(vector<Device *> *devices) {
                                   device_name.c_str(),
                                   device_index);
 
-    GdmDevice *device = new(std::nothrow) GdmDevice(
-        manager(), device_index, device_name, AsWeakPtr());
+    std::unique_ptr<GdmDevice> device(new(std::nothrow) GdmDevice(
+        manager(), device_index, device_name, AsWeakPtr()));
     CHECK(device);
     // The WiMAX device changes its MAC address to the actual value after the
     // firmware is loaded. Opening the device seems to be enough to trigger the
     // update of the MAC address. So open the device here before
     // Manager::ScanDevices() creates the device DBus objects.
     device->Open();
-    devices->push_back(device);
+    devices->push_back(std::move(device));
   }
   return true;
 }

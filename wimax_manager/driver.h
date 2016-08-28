@@ -5,6 +5,7 @@
 #ifndef WIMAX_MANAGER_DRIVER_H_
 #define WIMAX_MANAGER_DRIVER_H_
 
+#include <memory>
 #include <vector>
 
 #include <base/macros.h>
@@ -21,7 +22,7 @@ class Driver {
 
   virtual bool Initialize() = 0;
   virtual bool Finalize() = 0;
-  virtual bool GetDevices(std::vector<Device *> *devices) = 0;
+  virtual bool GetDevices(std::vector<std::unique_ptr<Device>> *devices) = 0;
 
  protected:
   Manager *manager() const { return manager_; }

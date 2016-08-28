@@ -26,7 +26,7 @@ ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection *connection,
 
 void ManagerDBusAdaptor::UpdateDevices() {
   vector<DBus::Path> device_paths;
-  const vector<Device *> &devices = manager_->devices();
+  const vector<std::unique_ptr<Device>> &devices = manager_->devices();
   for (const auto &device : devices) {
     device_paths.push_back(device->dbus_object_path());
   }
