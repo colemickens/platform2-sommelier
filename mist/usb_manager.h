@@ -7,8 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
+#include <vector>
+
 #include <base/macros.h>
-#include <base/memory/scoped_vector.h>
 #include <base/message_loop/message_loop.h>
 
 #include "mist/usb_error.h"
@@ -52,7 +54,7 @@ class UsbManager : public base::MessageLoopForIO::Watcher {
   // on success. |devices| is always cleared before being updated. The returned
   // UsbDevice objects become invalid, and thus should not be held, beyond the
   // lifetime of this object.
-  bool GetDevices(ScopedVector<UsbDevice>* devices);
+  bool GetDevices(std::vector<std::unique_ptr<UsbDevice>>* devices);
 
   const UsbError& error() const { return error_; }
 

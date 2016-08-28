@@ -11,6 +11,7 @@
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "mist/event_dispatcher.h"
@@ -78,25 +79,21 @@ UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
                                  uint8_t device_address,
                                  uint16_t vendor_id,
                                  uint16_t product_id) {
-  ScopedVector<UsbDevice> devices;
+  std::vector<std::unique_ptr<UsbDevice>> devices;
   if (!GetDevices(&devices))
     return nullptr;
 
-  for (ScopedVector<UsbDevice>::iterator it = devices.begin();
-       it != devices.end();
-       ++it) {
-    UsbDevice* device = *it;
+  for (auto& device : devices) {
     if (device->GetBusNumber() != bus_number ||
         device->GetDeviceAddress() != device_address)
       continue;
 
     unique_ptr<UsbDeviceDescriptor> device_descriptor(
-        (*it)->GetDeviceDescriptor());
+        device->GetDeviceDescriptor());
     VLOG(2) << *device_descriptor;
     if (device_descriptor->GetVendorId() == vendor_id &&
         device_descriptor->GetProductId() == product_id) {
-      devices.weak_erase(it);
-      return device;
+      return device.release();
     }
   }
 
@@ -104,7 +101,7 @@ UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
   return nullptr;
 }
 
-bool UsbManager::GetDevices(ScopedVector<UsbDevice>* devices) {
+bool UsbManager::GetDevices(std::vector<std::unique_ptr<UsbDevice>>* devices) {
   CHECK(context_);
   CHECK(devices);
 
@@ -116,7 +113,7 @@ bool UsbManager::GetDevices(ScopedVector<UsbDevice>* devices) {
     return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 
   for (ssize_t i = 0; i < result; ++i) {
-    devices->push_back(new UsbDevice(device_list[i]));
+    devices->push_back(base::MakeUnique<UsbDevice>(device_list[i]));
   }
 
   // UsbDevice holds a reference count of a libusb_device struct. Thus,
