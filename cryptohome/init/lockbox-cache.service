@@ -1,0 +1,15 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+[Unit]
+Description=Create validated caches of lockbox protected files
+After=ui.target
+
+[Service]
+Type=oneshot
+Environment=LOCKBOX_CACHE_DIR=/var/run/lockbox
+Environment=LOCKBOX_NVRAM_FILE=/tmp/lockbox.nvram
+Environment=INSTALL_ATTRS_CACHE=/var/run/lockbox/install_attributes.pb
+Environment=INSTALL_ATTRS_FILE=/home/.shadow/install_attributes.pb
+ExecStart=/bin/sh /usr/share/cros/init/lockbox-cache.sh
