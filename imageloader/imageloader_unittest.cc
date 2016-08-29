@@ -11,7 +11,8 @@
 #include <list>
 #include <vector>
 
-#include "mock_loop_mounter.h"
+#include "mock_verity_mounter.h"
+#include "verity_mounter.h"
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -34,7 +35,7 @@ using testing::_;
 namespace {
 
 // Test data always uses the dev key.
-const uint8_t kDevPublicKey[] = {
+constexpr uint8_t kDevPublicKey[] = {
     0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
     0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
     0x42, 0x00, 0x04, 0x7a, 0xaa, 0x2b, 0xf9, 0x3d, 0x7a, 0xbe, 0x35, 0x9a,
@@ -44,7 +45,7 @@ const uint8_t kDevPublicKey[] = {
     0x6e, 0x2b, 0x54, 0x41, 0xee, 0x92, 0xa2, 0x0f, 0xa2, 0x2a, 0xc0, 0x30,
     0xa6, 0x8c, 0xd1, 0x16, 0x0a, 0x48, 0xca};
 
-const char kImageLoaderJSON[] =
+constexpr char kImageLoaderJSON[] =
     "{\"image-sha256-hash\":"
     "\"6B1E52D97EE63DDFDB3375FDC7F840D54116667E02745D31427C108B3F6885FD\","
     "\"table-sha256-hash\":"
@@ -52,7 +53,7 @@ const char kImageLoaderJSON[] =
     "\"version\":\"22.0.0.256\","
     "\"manifest-version\":1}";
 
-const char kImageLoaderSig[] = {
+constexpr char kImageLoaderSig[] = {
     0x30, 0x46, 0x02, 0x21, 0x00, 0x86, 0x4f, 0x25, 0x51, 0x52, 0xb1, 0x79,
     0xa3, 0x3e, 0x9b, 0x08, 0x70, 0x10, 0x61, 0xca, 0x63, 0x37, 0x0c, 0xa2,
     0x9f, 0x4f, 0x21, 0xd7, 0x37, 0x05, 0x4e, 0x8d, 0x73, 0x39, 0x18, 0x98,
@@ -60,7 +61,7 @@ const char kImageLoaderSig[] = {
     0xe7, 0x4c, 0xa2, 0x5e, 0x00, 0xcb, 0x33, 0x43, 0x7b, 0x9d, 0x72, 0x3e,
     0x67, 0x39, 0x2c, 0xfb, 0x3a, 0xcb, 0x80, 0x2b, 0xc4, 0xca, 0xab, 0x8d};
 
-const char kImageLoaderBadSig[] = {
+constexpr char kImageLoaderBadSig[] = {
     0x30, 0x44, 0x02, 0x20, 0x0a, 0x75, 0x49, 0xaf, 0x01, 0x3b, 0x48, 0x51,
     0x45, 0x74, 0x8b, 0x41, 0x64, 0x21, 0x83, 0xce, 0xf1, 0x78, 0x1d, 0xd0,
     0xa8, 0xd6, 0xae, 0x84, 0xf3, 0xc1, 0x3c, 0x3a, 0xee, 0xb4, 0x35, 0xb7,
@@ -69,11 +70,11 @@ const char kImageLoaderBadSig[] = {
     0xe8, 0xed, 0x6a, 0x45, 0x38, 0x53, 0x54, 0xd2, 0xb1, 0x97};
 
 // This is the name of the component used in the test data.
-const char kTestComponentName[] = "PepperFlashPlayer";
+constexpr char kTestComponentName[] = "PepperFlashPlayer";
 // This is the version of flash player used in the test data.
-const char kTestDataVersion[] = "22.0.0.158";
+constexpr char kTestDataVersion[] = "22.0.0.158";
 // This is the version of the updated flash player in the test data.
-const char kTestUpdatedVersion[] = "22.0.0.256";
+constexpr char kTestUpdatedVersion[] = "22.0.0.256";
 
 }  // namespace {}
 
@@ -82,7 +83,7 @@ class ImageLoaderTest : public testing::Test {
   ImageLoaderConfig GetConfig(const char* path) {
     std::vector<uint8_t> key(std::begin(kDevPublicKey),
                              std::end(kDevPublicKey));
-    auto ops = base::MakeUnique<MockLoopMounter>();
+    auto ops = base::MakeUnique<MockVerityMounter>();
     ImageLoaderConfig config(key, path, "/foo", std::move(ops));
     return config;
   }
@@ -331,10 +332,9 @@ TEST_F(ImageLoaderTest, ParseManifest) {
 
 TEST_F(ImageLoaderTest, MountValidImage) {
   std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
-  auto mount_mock = base::MakeUnique<MockLoopMounter>();
-  ON_CALL(*mount_mock, Mount(_,_))
-      .WillByDefault(testing::Return(true));
-  EXPECT_CALL(*mount_mock, Mount(_, _)).Times(2);
+  auto mount_mock = base::MakeUnique<MockVerityMounter>();
+  ON_CALL(*mount_mock, Mount(_, _, _)).WillByDefault(testing::Return(true));
+  EXPECT_CALL(*mount_mock, Mount(_, _, _)).Times(2);
 
   base::ScopedTempDir scoped_temp_dir;
   base::ScopedTempDir scoped_mount_dir;
@@ -345,9 +345,9 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   // Delete the directory so that the ImageLoader can recreate it with the
   // correct permissions.
   base::DeleteFile(temp_dir, /*recursive=*/true);
-  ImageLoaderConfig config(
-      key, temp_dir.value().c_str(), scoped_mount_dir.path().value().c_str(),
-      std::move(mount_mock));
+  ImageLoaderConfig config(key, temp_dir.value().c_str(),
+                           scoped_mount_dir.path().value().c_str(),
+                           std::move(mount_mock));
   ImageLoaderImpl loader(std::move(config));
 
   // We previously tested RegisterComponent, so assume this works if it reports
@@ -367,10 +367,9 @@ TEST_F(ImageLoaderTest, MountValidImage) {
 
 TEST_F(ImageLoaderTest, MountInvalidImage) {
   std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
-  auto mount_mock = base::MakeUnique<MockLoopMounter>();
-  ON_CALL(*mount_mock, Mount(_, _))
-      .WillByDefault(testing::Return(true));
-  EXPECT_CALL(*mount_mock, Mount(_, _)).Times(0);
+  auto mount_mock = base::MakeUnique<MockVerityMounter>();
+  ON_CALL(*mount_mock, Mount(_, _, _)).WillByDefault(testing::Return(true));
+  EXPECT_CALL(*mount_mock, Mount(_, _, _)).Times(0);
 
   base::ScopedTempDir scoped_temp_dir;
   base::ScopedTempDir scoped_mount_dir;
@@ -382,9 +381,9 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   // correct permissions.
   base::DeleteFile(temp_dir, /*recursive=*/true);
 
-  ImageLoaderConfig config(
-      key, temp_dir.value().c_str(), scoped_mount_dir.path().value().c_str(),
-      std::move(mount_mock));
+  ImageLoaderConfig config(key, temp_dir.value().c_str(),
+                           scoped_mount_dir.path().value().c_str(),
+                           std::move(mount_mock));
   ImageLoaderImpl loader(std::move(config));
 
   // We previously tested RegisterComponent, so assume this works if it reports
@@ -399,6 +398,39 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   ASSERT_EQ(static_cast<int>(contents.size()),
             base::WriteFile(table, contents.data(), contents.size()));
   ASSERT_EQ("", loader.LoadComponent(kTestComponentName));
+}
+
+TEST_F(ImageLoaderTest, SetupTable) {
+  std::string base_table = "0 40 verity payload=ROOT_DEV hashtree=HASH_DEV "
+      "hashstart=40 alg=sha256 root_hexdigest="
+      "34663b9920632778d38a0943a5472cae196bd4bf1d7dfa191506e7a8e7ec84d2 "
+      "salt=fcfc9b5a329e44be73a323188ae75ca644122d920161f672f6935623831d07e2";
+
+  // Make sure excess newlines are rejected.
+  std::string bad_table = base_table + "\n\n";
+  EXPECT_FALSE(VerityMounter::SetupTable(&bad_table, "/dev/loop6"));
+
+  // Make sure it does the right replacements on a simple base table.
+  std::string good_table = base_table;
+  EXPECT_TRUE(VerityMounter::SetupTable(&good_table, "/dev/loop6"));
+
+  std::string known_good_table =
+      "0 40 verity payload=/dev/loop6 hashtree=/dev/loop6 "
+      "hashstart=40 alg=sha256 root_hexdigest="
+      "34663b9920632778d38a0943a5472cae196bd4bf1d7dfa191506e7a8e7ec84d2 "
+      "salt=fcfc9b5a329e44be73a323188ae75ca644122d920161f672f6935623831d07e2 "
+      "error_behavior=eio";
+  EXPECT_EQ(known_good_table, good_table);
+
+  // Make sure the newline is stripped.
+  std::string good_table_newline = base_table + "\n";
+  EXPECT_TRUE(VerityMounter::SetupTable(&good_table_newline, "/dev/loop6"));
+  EXPECT_EQ(known_good_table, good_table_newline);
+
+  // Make sure error_behavior isn't appended twice.
+  std::string good_table_error = base_table + " error_behavior=eio\n";
+  EXPECT_TRUE(VerityMounter::SetupTable(&good_table_error, "/dev/loop6"));
+  EXPECT_EQ(known_good_table, good_table_error);
 }
 
 }   // namespace imageloader

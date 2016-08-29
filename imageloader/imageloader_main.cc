@@ -11,10 +11,10 @@
 #include "imageloader.h"
 #include "imageloader_common.h"
 #include "imageloader_impl.h"
-#include "loop_mounter.h"
+#include "verity_mounter.h"
 
 // TODO(kerrnel): Switch to the prod keys before shipping this feature.
-const uint8_t kDevPublicKey[] = {
+constexpr uint8_t kDevPublicKey[] = {
     0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
     0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
     0x42, 0x00, 0x04, 0x7a, 0xaa, 0x2b, 0xf9, 0x3d, 0x7a, 0xbe, 0x35, 0x9a,
@@ -25,9 +25,10 @@ const uint8_t kDevPublicKey[] = {
     0xa6, 0x8c, 0xd1, 0x16, 0x0a, 0x48, 0xca};
 
 // The path where the components are stored on the device.
-const char kComponentsPath[] = "/mnt/stateful_partition/encrypted/imageloader";
+constexpr char kComponentsPath[] =
+    "/mnt/stateful_partition/encrypted/imageloader";
 // The base path where the components are mounted.
-const char kMountPath[] = "/mnt/stateful_partition/imageloader_mounts";
+constexpr char kMountPath[] = "/mnt/stateful_partition/imageloader_mounts";
 
 int main(int argc, char** argv) {
   signal(SIGTERM, imageloader::OnQuit);
@@ -47,9 +48,9 @@ int main(int argc, char** argv) {
   logging::InitLogging(settings);
 
   std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
-  auto loop_mounter = base::MakeUnique<imageloader::LoopMounter>();
+  auto verity_mounter = base::MakeUnique<imageloader::VerityMounter>();
   imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath,
-                                        std::move(loop_mounter));
+                                        std::move(verity_mounter));
 
   if (FLAGS_mount) {
     if (FLAGS_mount_point == "" || FLAGS_mount_component == "") {

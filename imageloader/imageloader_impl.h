@@ -1,8 +1,8 @@
 // Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef IMAGELOADER_IMAGELOADER_UTILITY_H_
-#define IMAGELOADER_IMAGELOADER_UTILITY_H_
+#ifndef IMAGELOADER_IMAGELOADER_IMPL_H_
+#define IMAGELOADER_IMAGELOADER_IMPL_H_
 
 #include <string>
 #include <vector>
@@ -11,22 +11,22 @@
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
-#include "loop_mounter.h"
+#include "verity_mounter.h"
 
 namespace imageloader {
 
 struct ImageLoaderConfig {
   ImageLoaderConfig(const std::vector<uint8_t> key, const char* storage_path,
-                    const char* mount_path, std::unique_ptr<LoopMounter> ops)
+                    const char* mount_path, std::unique_ptr<VerityMounter> ops)
       : key(key),
         storage_dir(storage_path),
         mount_path(mount_path),
-        loop_mounter(std::move(ops)) {}
+        verity_mounter(std::move(ops)) {}
 
   std::vector<uint8_t> key;
   base::FilePath storage_dir;
   base::FilePath mount_path;
-  std::unique_ptr<LoopMounter> loop_mounter;
+  std::unique_ptr<VerityMounter> verity_mounter;
 };
 
 
@@ -121,4 +121,4 @@ class ImageLoaderImpl {
 
 }  // namespace imageloader
 
-#endif  // IMAGELOADER_IMAGELOADER_UTILITY_H_
+#endif  // IMAGELOADER_IMAGELOADER_IMPL_H_

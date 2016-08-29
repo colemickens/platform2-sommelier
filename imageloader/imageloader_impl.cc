@@ -46,33 +46,33 @@ namespace {
 using imageloader::kBadResult;
 
 // The name of the fingerprint file.
-const char kFingerprintName[] = "manifest.fingerprint";
+constexpr char kFingerprintName[] = "manifest.fingerprint";
 // The name of the imageloader manifest file.
-const char kManifestName[] = "imageloader.json";
+constexpr char kManifestName[] = "imageloader.json";
 // The manifest signature.
-const char kManifestSignatureName[] = "imageloader.sig.1";
+constexpr char kManifestSignatureName[] = "imageloader.sig.1";
 // The current version of the manifest file.
-const int kCurrentManifestVersion = 1;
+constexpr int kCurrentManifestVersion = 1;
 // The name of the version field in the manifest.
-const char kManifestVersionField[] = "manifest-version";
+constexpr char kManifestVersionField[] = "manifest-version";
 // The name of the component version field in the manifest.
-const char kVersionField[] = "version";
+constexpr char kVersionField[] = "version";
 // The name of the field containing the image hash.
-const char kImageHashField[] = "image-sha256-hash";
+constexpr char kImageHashField[] = "image-sha256-hash";
 // The name of the image file.
-const char kImageFileName[] = "image.squash";
+constexpr char kImageFileName[] = "image.squash";
 // The name of the field containing the table hash.
-const char kTableHashField[] = "table-sha256-hash";
+constexpr char kTableHashField[] = "table-sha256-hash";
 // The name of the file containing the latest component version.
-const char kLatestVersionFile[] = "latest-version";
+constexpr char kLatestVersionFile[] = "latest-version";
 // The name of the table file.
-const char kTableFileName[] = "table";
+constexpr char kTableFileName[] = "table";
 // The permissions that the component update directory must use.
-const int kComponentDirPerms = 0755;
+constexpr int kComponentDirPerms = 0755;
 // The permissions that files in the component should have.
-const int kComponentFilePerms = 0644;
+constexpr int kComponentFilePerms = 0644;
 // The maximum size of any file to read into memory.
-const size_t kMaximumFilesize = 4096 * 10;
+constexpr size_t kMaximumFilesize = 4096 * 10;
 
 // TODO(kerrnel): A component should be abstracted into a class that hides the
 // disk structure.
@@ -606,7 +606,7 @@ bool ImageLoaderImpl::LoadComponentHelper(const std::string& name,
   }
 
   // The mount point is not yet taken, so go ahead.
-  if (!config_.loop_mounter->Mount(image_fd, mount_point)) {
+  if (!config_.verity_mounter->Mount(image_fd, mount_point, table)) {
     LOG(ERROR) << "Failed to mount image.";
     return false;
   }
