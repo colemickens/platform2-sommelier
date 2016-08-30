@@ -57,6 +57,10 @@ If you got here by mistake, don't panic!  Just close this tab and carry on.
 Type 'help' for a list of commands.
 "
 
+# Gets set to "1" when in dev mode.
+CROSH_DEVMODE=
+# Gets set to "1" when running on removable media (e.g. USB stick).
+CROSH_REMOVABLE=
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
 
 check_digits() {
@@ -65,40 +69,40 @@ check_digits() {
 
 load_extra_crosh() {
   # Keep `local` decl split from assignment so return code is checked.
-  local crosh_dir devmode removable src
+  local crosh_dir
 
   crosh_dir=$(dirname "$0")
 
-  if [ -e /usr/share/misc/chromeos-common.sh ]; then
-    . "/usr/share/misc/chromeos-common.sh" || exit 1
+  # Load the removable modules, if the rootfs is on removable
+  # media.  e.g. It's a USB stick.
+  if [ -z "${CROSH_REMOVABLE}" ]; then
+    local src
+    if [ -e /usr/share/misc/chromeos-common.sh ]; then
+      . "/usr/share/misc/chromeos-common.sh" || exit 1
 
-    src=$(get_block_dev_from_partition_dev $(rootdev -s))
-    if [ "$(cat /sys/block/${src#/dev/}/removable)" = "1" ]; then
-      removable=1
+      src=$(get_block_dev_from_partition_dev "$(rootdev -s)")
+      if [ "$(cat /sys/block/${src#/dev/}/removable 2>/dev/null)" = "1" ]; then
+        CROSH_REMOVABLE="1"
+      fi
     fi
   fi
-
-  case "${removable}: $* " in
-  1:*|\
-  *:*" --usb "*)
+  if [ "${CROSH_REMOVABLE}" = "1" ]; then
     . "${crosh_dir}/crosh-usb"
-    ;;
-  esac
-
-  # Force dev behavior on dev images.
-  if type crossystem >/dev/null 2>&1; then
-    crossystem "cros_debug?1"
-    devmode=$((!$?))
-  else
-    echo "Could not locate 'crossystem'; assuming devmode is off."
   fi
 
-  case "${devmode}: $* " in
-  1:*|\
-  *:*" --dev "*)
+  # Load the dev-mode modules, if in dev mode, or if forced.
+  # This comes last so it can override any release modules.
+  if [ -z "${CROSH_DEVMODE}" ]; then
+    if type crossystem >/dev/null 2>&1; then
+      crossystem "cros_debug?1"
+      CROSH_DEVMODE=$((!$?))
+    else
+      echo "Could not locate 'crossystem'; assuming devmode is off."
+    fi
+  fi
+  if [ "${CROSH_DEVMODE}" = "1" ]; then
     . "${crosh_dir}/crosh-dev"
-    ;;
-  esac
+  fi
 
   [ -e "${crosh_dir}/crosh-cups" ] && . "${crosh_dir}/crosh-cups"
 }
@@ -1411,8 +1415,48 @@ repl() {
   done
 }
 
+usage() {
+  if [ $# -ne 0 ]; then
+    # Send stdout below to stderr instead.
+    exec 1>&2
+  fi
+  cat <<EOF
+Usage: crosh [options]
+
+Options:
+  --dev         Force dev mode.
+  --removable   Force removable (USB) mode.
+  --usb         Same as above.
+  --help, -h    Show this help string.
+EOF
+  if [ $# -ne 0 ]; then
+    echo "ERROR: $*"
+    exit 1
+  else
+    exit 0
+  fi
+}
+
 main() {
-  load_extra_crosh "$@"
+  while [ $# -gt 0 ]; do
+    case $1 in
+    --dev)
+      CROSH_DEVMODE="1"
+      ;;
+    --removable|--usb)
+      CROSH_REMOVABLE="1"
+      ;;
+    --help|-h)
+      usage
+      ;;
+    *)
+      usage "Unknown option: $1"
+      ;;
+    esac
+    shift
+  done
+
+  load_extra_crosh
 
   INPUTRC="/usr/share/misc/inputrc.crosh"
   if [ ! -e "${INPUTRC}" ]; then
