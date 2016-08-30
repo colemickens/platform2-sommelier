@@ -79,6 +79,14 @@ class CryptoUtilityImpl : public CryptoUtility {
   bool CreateSPKAC(const std::string& key_blob,
                    const std::string& public_key,
                    std::string* spkac) override;
+  bool VerifyCertificate(const std::string& certificate,
+                         const std::string& ca_public_key_hex) override;
+  bool GetCertificateIssuerName(const std::string& certificate,
+                                std::string* issuer_name) override;
+  bool GetCertificatePublicKey(const std::string& certificate,
+                               std::string* public_key) override;
+  bool GetKeyDigest(const std::string& public_key,
+                    std::string* key_digest) override;
 
  private:
   friend class CryptoUtilityImplTest;
@@ -156,11 +164,12 @@ class CryptoUtilityImpl : public CryptoUtility {
       const std::string& public_key_tpm_format);
 
   // Computes KDFa as defined in TPM 2.0 specification Part 1 Rev 1.16 Section
-  // 11.4.9.1. It always uses SHA256 as the hash algorithm and always outputs
-  // a 256-bit value.
+  // 11.4.9.1. It always uses SHA256 as the hash algorithm and outputs a 128-bit
+  // or a 256-bit value, as defined by |bits|.
   std::string Tpm2CompatibleKDFa(const std::string& key,
                                  const std::string& label,
-                                 const std::string& context);
+                                 const std::string& context,
+                                 int bits);
 
   // Encrypts |input| using RSA-OAEP with a custom |label|. A zero byte will be
   // appended to the label as described in TPM 2.0 specification Part 1 Rev 1.16
@@ -177,6 +186,12 @@ class CryptoUtilityImpl : public CryptoUtility {
                             const EVP_MD* md,
                             const EVP_MD* mgf1md,
                             std::string* output);
+
+  // Verifies the |signature| for the provided |data| using the |key|.
+  // The digest algorithm depends on the TPM version.
+  bool VerifySignatureRSA(RSA* key,
+                          const std::string& data,
+                          const std::string& signature);
 
   TpmUtility* tpm_utility_;
 };

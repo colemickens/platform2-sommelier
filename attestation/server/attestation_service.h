@@ -411,6 +411,59 @@ class AttestationService : public AttestationInterface {
                          const std::string& data_to_sign,
                          std::string* response);
 
+  // Verifies identity key binding data.
+  bool VerifyIdentityBinding(const IdentityBinding& binding);
+
+  // Computes and returns the PCR value for a known 3-byte |mode|:
+  //  - byte 0: 1 if in developer mode, 0 otherwise,
+  //  - byte 1: 1 if in recovery mode, 0 otherwise,
+  //  - byte 2: 1 if verified firmware, 0 if developer firmware.
+  std::string GetPCRValueForMode(const char* mode) const;
+
+  // Verifies that PCR quote signature is correct.
+  // aik_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  bool VerifyQuoteSignature(const std::string& aik_public_key_info,
+                            const Quote& quote,
+                            int pcr_index);
+
+  // Verifies PCR0 quote.
+  // aik_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  bool VerifyPCR0Quote(const std::string& aik_public_key_info,
+                       const Quote& pcr0_quote);
+
+  // Verifies PCR1 quote.
+  // aik_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  bool VerifyPCR1Quote(const std::string& aik_public_key_info,
+                       const Quote& pcr1_quote);
+
+  // Calculates the digest for a certified key. The digest is TPM version (1.2
+  // vs 2.0) specific.
+  // public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  // public_key_tpm_format must be provided in TPM format.
+  bool GetCertifiedKeyDigest(const std::string& public_key_info,
+                             const std::string& public_key_tpm_format,
+                             std::string* key_digest);
+
+  // Verifies a certified key.
+  // aik_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  // public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  // key_info is a TPM_CERTIFY_INFO structure.
+  bool VerifyCertifiedKey(const std::string& aik_public_key_info,
+                          const std::string& public_key_info,
+                          const std::string& public_key_tpm_format,
+                          const std::string& key_info,
+                          const std::string& proof);
+
+  // Creates a certified key and verifies it.
+  // aik_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  bool VerifyCertifiedKeyGeneration(const std::string& aik_key_blob,
+                                    const std::string& aik_public_key_info);
+
+  // Performs AIK activation with a fake credential.
+  // ek_public_key_info must be provided in X.509 SubjectPublicKeyInfo format.
+  bool VerifyActivateIdentity(const std::string& ek_public_key_info,
+                              const std::string& aik_public_key_tpm_format);
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   const std::string attestation_ca_origin_;

@@ -77,19 +77,13 @@ crypto::ScopedRSA CreateRSAFromHexModulus(const std::string& hex_modulus) {
   return rsa;
 }
 
-bool VerifySignatureRSA(RSA* rsa,
-                        const std::string& data,
-                        const std::string& signature) {
-  std::string digest = crypto::SHA256HashString(data);
-  auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
-  std::string mutable_signature(signature);
-  unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
-  if (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
-                 signature.size(), rsa) != 1) {
-    LOG(ERROR) << __func__ << ": Invalid signature: " << GetOpenSSLError();
-    return false;
-  }
-  return true;
+crypto::ScopedOpenSSL<X509, X509_free> CreateX509FromCertificate(
+    const std::string& certificate) {
+  const unsigned char* asn1_ptr =
+      reinterpret_cast<const unsigned char*>(certificate.data());
+  crypto::ScopedOpenSSL<X509, X509_free> x509(
+      d2i_X509(NULL, &asn1_ptr, certificate.size()));
+  return x509;
 }
 
 }  // namespace
@@ -293,8 +287,8 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
     }
     std::string identity_key_name = GetTpm2KeyNameFromPublicKey(aik_public_key);
     std::string aes_key =
-        Tpm2CompatibleKDFa(seed, "STORAGE", identity_key_name);
-    std::string hmac_key = Tpm2CompatibleKDFa(seed, "INTEGRITY", "");
+        Tpm2CompatibleKDFa(seed, "STORAGE", identity_key_name, 128);
+    std::string hmac_key = Tpm2CompatibleKDFa(seed, "INTEGRITY", "", 256);
     // This will be the 'credential' that the TPM decrypts during activation.
     std::string inner_credential;
     if (!GetRandom(kAesKeySize, &inner_credential)) {
@@ -305,7 +299,7 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
     std::string encrypted_credential;
     std::string iv(kAesBlockSize, 0);
     std::string inner_credential_size_bytes("\x00\x20", 2);  // Big-endian 32.
-    if (!AesEncrypt(EVP_aes_256_cfb(),
+    if (!AesEncrypt(EVP_aes_128_cfb(),
                     inner_credential_size_bytes + inner_credential, aes_key, iv,
                     &encrypted_credential)) {
       return false;
@@ -366,6 +360,32 @@ bool CryptoUtilityImpl::EncryptForUnbind(const std::string& public_key,
   return true;
 }
 
+bool CryptoUtilityImpl::VerifySignatureRSA(RSA* key,
+                                           const std::string& data,
+                                           const std::string& signature) {
+  std::string digest;
+  int alg_type;
+  if (tpm_utility_->GetVersion() == TPM_1_2) {
+    alg_type = NID_sha1;
+    digest = base::SHA1HashString(data);
+  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
+    alg_type = NID_sha256;
+    digest = crypto::SHA256HashString(data);
+  } else {
+    LOG(ERROR) << __func__ << ": Unsupported TPM version.";
+    return false;
+  }
+  auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
+  std::string mutable_signature(signature);
+  unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
+  if (RSA_verify(alg_type, digest_buffer, digest.size(), signature_buffer,
+                 signature.size(), key) != 1) {
+    LOG(ERROR) << __func__ << ": Invalid signature: " << GetOpenSSLError();
+    return false;
+  }
+  return true;
+}
+
 bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
                                         const std::string& data,
                                         const std::string& signature) {
@@ -421,7 +441,8 @@ bool CryptoUtilityImpl::AesEncrypt(const EVP_CIPHER* cipher,
                                    const std::string& key,
                                    const std::string& iv,
                                    std::string* encrypted_data) {
-  if (key.size() != kAesKeySize || iv.size() != kAesBlockSize) {
+  if (key.size() != static_cast<size_t>(EVP_CIPHER_key_length(cipher)) ||
+      iv.size() != kAesBlockSize) {
     return false;
   }
   if (data.size() > static_cast<size_t>(std::numeric_limits<int>::max())) {
@@ -471,7 +492,8 @@ bool CryptoUtilityImpl::AesDecrypt(const EVP_CIPHER* cipher,
                                    const std::string& key,
                                    const std::string& iv,
                                    std::string* data) {
-  if (key.size() != kAesKeySize || iv.size() != kAesBlockSize) {
+  if (key.size() != static_cast<size_t>(EVP_CIPHER_key_length(cipher)) ||
+      iv.size() != kAesBlockSize) {
     return false;
   }
   if (encrypted_data.size() >
@@ -649,13 +671,20 @@ std::string CryptoUtilityImpl::GetTpm2KeyNameFromPublicKey(
 
 std::string CryptoUtilityImpl::Tpm2CompatibleKDFa(const std::string& key,
                                                   const std::string& label,
-                                                  const std::string& context) {
-  // Due to the assumptions of SHA256 and a 256-bit output, we can simplify to
-  // just one iteration.
+                                                  const std::string& context,
+                                                  int bits) {
+  // Due to the assumptions of SHA256 and a 128/256-bit output, we can simplify
+  // to just one iteration.
+  if (bits != 128 && bits != 256) {
+    LOG(ERROR) << __func__ << ": Unsupported key size: " << bits;
+    return std::string("");
+  }
   std::string iteration("\x00\x00\x00\x01", 4);  // Big-endian 32-bit 1.
   std::string null_separator("\x00", 1);
-  std::string bits("\x00\x00\x01\x00", 4);  // Big-endian 32-bit 256.
-  return HmacSha256(key, iteration + label + null_separator + context + bits);
+  // Encode number of bits as big-endian 32-bit value (128 or 256).
+  std::string b_buf(bits == 128 ? "\x00\x00\x00\x80" : "\x00\x00\x01\x00", 4);
+  return HmacSha256(key, iteration + label + null_separator + context + b_buf).
+             substr(0, bits / 8);
 }
 
 bool CryptoUtilityImpl::Tpm2CompatibleOAEPEncrypt(const std::string& label,
@@ -791,6 +820,81 @@ bool CryptoUtilityImpl::CreateSPKAC(const std::string& key_blob,
   spkac->assign(reinterpret_cast<char*>(buffer), length);
   OPENSSL_free(buffer);
 
+  return true;
+}
+
+bool CryptoUtilityImpl::VerifyCertificate(
+    const std::string& certificate,
+    const std::string& ca_public_key_hex) {
+  crypto::ScopedRSA rsa = CreateRSAFromHexModulus(ca_public_key_hex);
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode CA public key.";
+    return false;
+  }
+  crypto::ScopedEVP_PKEY issuer_key(EVP_PKEY_new());
+  if (!issuer_key.get()) {
+    LOG(ERROR) << __func__ << ": Failed to create EVP PKEY.";
+    return false;
+  }
+  EVP_PKEY_assign_RSA(issuer_key.get(), rsa.release());
+  auto x509 = CreateX509FromCertificate(certificate);
+  if (!x509.get()) {
+    LOG(ERROR) << __func__ << ": Failed to parse certificate.";
+    return false;
+  }
+  if (X509_verify(x509.get(), issuer_key.get()) != 1) {
+    LOG(ERROR) << __func__ << ": Bad certificate signature.";
+    return false;
+  }
+  return true;
+}
+
+bool CryptoUtilityImpl::GetCertificatePublicKey(
+    const std::string& certificate,
+    std::string* public_key) {
+  auto x509 = CreateX509FromCertificate(certificate);
+  if (!x509.get()) {
+    LOG(ERROR) << __func__ << ": Failed to parse certificate.";
+    return false;
+  }
+  public_key->assign(
+      reinterpret_cast<char *>(x509.get()->cert_info->key->public_key->data),
+      x509.get()->cert_info->key->public_key->length);
+  return true;
+}
+
+bool CryptoUtilityImpl::GetCertificateIssuerName(
+    const std::string& certificate,
+    std::string* issuer_name) {
+  auto x509 = CreateX509FromCertificate(certificate);
+  if (!x509.get()) {
+    LOG(ERROR) << __func__ << ": Failed to parse certificate.";
+    return false;
+  }
+  char issuer_buf[100];  // A longer CN will truncate.
+  X509_NAME_get_text_by_NID(x509.get()->cert_info->issuer,
+                            NID_commonName,
+                            issuer_buf,
+                            arraysize(issuer_buf));
+  issuer_name->assign(issuer_buf);
+  return true;
+}
+
+bool CryptoUtilityImpl::GetKeyDigest(
+    const std::string& public_key,
+    std::string* key_digest) {
+  auto asn1_ptr = reinterpret_cast<const unsigned char*>(public_key.data());
+  crypto::ScopedRSA rsa(d2i_RSA_PUBKEY(NULL, &asn1_ptr, public_key.size()));
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode certified public key.";
+    return false;
+  }
+  std::vector<unsigned char> modulus(BN_num_bytes(rsa.get()->n));
+  BN_bn2bin(rsa.get()->n, modulus.data());
+  char digest_buf[base::kSHA1Length];
+  base::SHA1HashBytes(modulus.data(), modulus.size(),
+                      reinterpret_cast<unsigned char *>(digest_buf));
+  key_digest->assign(digest_buf, sizeof(digest_buf));
   return true;
 }
 

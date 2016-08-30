@@ -670,6 +670,56 @@ bool TpmUtilityV2::QuotePCR(int pcr_index,
   return true;
 }
 
+bool TpmUtilityV2::IsQuoteForPCR(const std::string& quote,
+                                 int pcr_index) const {
+  std::string buffer = quote;
+  trunks::TPMS_ATTEST parsed_quote;
+  TPM_RC result = trunks::Parse_TPMS_ATTEST(&buffer, &parsed_quote, nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to parse the quote: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  if (parsed_quote.magic != trunks::TPM_GENERATED_VALUE) {
+    LOG(ERROR) << __func__ << ": Bad magic value";
+    return false;
+  }
+  if (parsed_quote.type != trunks::TPM_ST_ATTEST_QUOTE) {
+    LOG(ERROR) << __func__ << ": Not a quote";
+    return false;
+  }
+  trunks::TPML_PCR_SELECTION* pcr_select =
+      &parsed_quote.attested.quote.pcr_select;
+  if (pcr_select->count != 1) {
+    LOG(ERROR) << __func__ << ": PCR selection count=" << pcr_select->count;
+    return false;
+  }
+  int pcr_select_byte = pcr_index / 8;
+  trunks::BYTE pcr_select_mask = 1 << (pcr_index % 8);
+  trunks::TPMS_PCR_SELECTION* pcr_selection = pcr_select->pcr_selections;
+  if (pcr_selection->sizeof_select <= pcr_select_byte) {
+    LOG(ERROR) << __func__ << ": PCR selection is too short: "
+               << pcr_selection->sizeof_select;
+    return false;
+  }
+  int i;
+  for (i = 0; i < pcr_selection->sizeof_select; ++i) {
+    if (i == pcr_select_byte) {
+      if (pcr_selection->pcr_select[i] != pcr_select_mask) {
+        LOG(ERROR) << __func__ << ": wrong bits in PCR selection mask at " << i;
+        return false;
+      }
+    } else {
+      if (pcr_selection->pcr_select[i]) {
+        LOG(ERROR) << __func__ << ": non-zero byte in PCR selection mask at "
+                   << i;
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 bool TpmUtilityV2::ReadPCR(int pcr_index,
                            std::string* pcr_value) const {
   TPM_RC result = trunks_utility_->ReadPCR(pcr_index, pcr_value);

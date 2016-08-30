@@ -81,6 +81,14 @@ class MockCryptoUtility : public CryptoUtility {
                bool(const std::string&,
                     const std::string&,
                     std::string*));
+  MOCK_METHOD2(VerifyCertificate,
+               bool(const std::string&, const std::string&));
+  MOCK_METHOD2(GetCertificateIssuerName,
+               bool(const std::string&, std::string*));
+  MOCK_METHOD2(GetCertificatePublicKey,
+               bool(const std::string&, std::string*));
+  MOCK_METHOD2(GetKeyDigest,
+               bool(const std::string&, std::string*));
 };
 
 }  // namespace attestation

@@ -67,23 +67,23 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD2(Unseal, bool(const std::string&, std::string*));
   MOCK_METHOD2(GetEndorsementPublicKey, bool(KeyType, std::string*));
   MOCK_METHOD2(GetEndorsementCertificate,
-               bool(KeyType key_type, std::string* certificate));
+               bool(KeyType, std::string*));
   MOCK_METHOD3(Unbind,
                bool(const std::string&, const std::string&, std::string*));
   MOCK_METHOD3(Sign,
                bool(const std::string&, const std::string&, std::string*));
   MOCK_METHOD4(CreateRestrictedKey,
-               bool(KeyType key_type,
-                    KeyUsage key_usage,
-                    std::string* public_key,
-                    std::string* private_key_blob));
-  MOCK_METHOD5(QuotePCR, bool(int pcr_index,
-                        const std::string& key_blob,
-                        std::string* quoted_pcr_value,
-                        std::string* quoted_data,
-                        std::string* quote));
-  MOCK_CONST_METHOD2(ReadPCR,
-               bool(int pcr_index, std::string*));
+               bool(KeyType,
+                    KeyUsage,
+                    std::string*,
+                    std::string*));
+  MOCK_METHOD5(QuotePCR, bool(int,
+                        const std::string&,
+                        std::string*,
+                        std::string*,
+                        std::string*));
+  MOCK_CONST_METHOD2(IsQuoteForPCR, bool(const std::string&, int));
+  MOCK_CONST_METHOD2(ReadPCR, bool(int, std::string*));
   MOCK_METHOD2(GetRSAPublicKeyFromTpmPublicKey,
                bool(const std::string&, std::string*));
 };

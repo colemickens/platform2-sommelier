@@ -508,6 +508,12 @@ bool TpmUtilityV1::QuotePCR(int pcr_index,
   return false;
 }
 
+bool TpmUtilityV1::IsQuoteForPCR(const std::string& quote,
+                                 int pcr_index) const {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
 bool TpmUtilityV1::ReadPCR(int pcr_index,
                            std::string* pcr_value) const {
   LOG(ERROR) << __func__ << ": Not implemented.";

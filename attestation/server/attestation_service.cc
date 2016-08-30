@@ -96,7 +96,143 @@ const char kEnterpriseEncryptionPublicKeyID[] =
 const size_t kNonceSize = 20;  // As per TPM_NONCE definition.
 const int kNumTemporalValues = 5;
 
-const std::string kVerifiedBootMode("\x00\x00\x01", 3);
+const char kKnownBootModes[8][3] = {
+  {0, 0, 0}, {0, 0, 1},
+  {0, 1, 0}, {0, 1, 1},
+  {1, 0, 0}, {1, 0, 1},
+  {1, 1, 0}, {1, 1, 1}
+};
+const char kVerifiedBootMode[3] = {0, 0, 1};
+
+struct CertificateAuthority {
+  const char* issuer;
+  const char* modulus;  // In hex format.
+};
+
+const CertificateAuthority kKnownEndorsementCA[] = {
+  { "IFX TPM EK Intermediate CA 06",
+    "de9e58a353313d21d683c687d6aaaab240248717557c077161c5e515f41d8efa"
+    "48329f45658fb550f43f91d1ba0c2519429fb6ef964f89657098c90a9783ad6d"
+    "3baea625db044734c478768db53b6022c556d8174ed744bd6e4455665715cd5c"
+    "beb7c3fcb822ab3dfab1ecee1a628c3d53f6085983431598fb646f04347d5ae0"
+    "021d5757cc6e3027c1e13f10633ae48bbf98732c079c17684b0db58bd0291add"
+    "e277b037dd13fa3db910e81a4969622a79c85ac768d870f079b54c2b98c856e7"
+    "15ef0ba9c01ee1da1241838a1307fe94b1ddfa65cdf7eeaa7e5b4b8a94c3dcd0"
+    "29bb5ebcfc935e56641f4c8cb5e726c68f9dd6b41f8602ef6dc78d870a773571" },
+  { "IFX TPM EK Intermediate CA 07",
+    "f04c9b5b9f3cbc2509179f5e0f31dceb302900f528458e002c3e914d6b29e5e0"
+    "924b0bcab2dd053f65d9d4a8eea8269c85c419dba640a88e14dc5f8c8c1a4269"
+    "7a5ac4594b36f923110f91d1803d385540c01a433140b06054c77a144ee3a6a6"
+    "5950c20f9215be3473b1002eb6b1756a22fbc18d21efacbbc8c270c66cf74982"
+    "e24f057825cab51c0dd840a4f2d059032239c33e3f52c6ca06fe49bf4f60cc28"
+    "a0fb1173d2ee05a141d30e8ffa32dbb86c1aeb5b309f76c2e462965612ec929a"
+    "0d3b04acfa4525912c76f765e948be71f505d619cc673a889f0ed9e1d75f237b"
+    "7af6a68550253cb4c3a8ff16c8091dbcbdea0ff8eee3d5bd92f49c53c5a15c93" },
+  { "IFX TPM EK Intermediate CA 14",
+    "D5B2EB8F8F23DD0B5CA0C15D4376E27A0380FD8EB1E52C2C270D961E8C0F66FD"
+    "62E6ED6B3660FFBD8B0735179476F5E9C2EA4C762F5FEEDD3B5EB91785A724BC"
+    "4C0617B83966336DD9DC407640871BF99DF4E1701EB5A1F5647FC57879CBB973"
+    "B2A72BABA8536B2646A37AA5B73E32A4C8F03E35C8834B391AD363F1F7D1DF2B"
+    "EE39233F47384F3E2D2E8EF83C9539B4DFC360C8AEB88B6111E757AF646DC01A"
+    "68DAA908C7F8068894E9E991C59005068DD9B0F87113E6A80AB045DB4C1B23FF"
+    "38A106098C2E184E1CF42A43EA68753F2649999048E8A3C3406032BEB1457070"
+    "BCBE3A93E122638F6F18FF505C35FB827CE5D0C12F27F45C0F59C8A4A8697849" },
+  { "IFX TPM EK Intermediate CA 16",
+    "B98D42D5284620036A6613ED05A1BE11431AE7DE435EC55F72814652B9265EC2"
+    "9035D401B538A9C84BB5B875450FAE8FBEDEF3430C4108D8516404F3DE4D4615"
+    "2F471013673A7C7F236304C7363B91C0E0FD9FC7A9EC751521A60A6042839CF7"
+    "7AEDE3243D0F51F47ACC39676D236BD5298E18B9A4783C60B2A1CD1B32124909"
+    "D5844649EE4539D6AA05A5902C147B4F062D5145708EAE224EC65A8B51D7A418"
+    "6327DA8F3B9E7C796F8B2DB3D2BDB39B829BDEBA8D2BF882CBADDB75D76FA8FA"
+    "313682688BCD2835533A3A68A4AFDF7E597D8B965402FF22A5A4A418FDB4B549"
+    "F218C3908E66BDCEAB3E2FE5EE0A4A1D9EB41A286ED07B6C112581FDAEA088D9" },
+  { "IFX TPM EK Intermediate CA 17",
+    "B0F3CC6F02E8C0486501102731069644A815F631ED41676C05CE3F7E5E5E40DF"
+    "B3BF6D99787F2A9BE8F8B8035C03D5C2226072985230D4CE8407ACD6403F72E1"
+    "A4DBF069504E56FA8C0807A704526EAC1E379AE559EB4BBAD9DB4E652B3B14E5"
+    "38497A5E7768BCE0BFFAF800C61F1F2262775C526E1790A2BECF9A072A58F6A0"
+    "F3042B5279FE9957BCADC3C9725428B66B15D5263F00C528AC47716DE6938199"
+    "0FF23BC28F2C33B72D89B5F8EEEF9053B60D230431081D656EA8EC16C7CEFD9E"
+    "F5A9061A3C921394D453D9AC77397D59B4C3BAF258266F65559469C3007987D5"
+    "A8338E10FC54CD930303C37007D6E1E6C63F36BCFBA1E494AFB3ECD9A2407FF9" },
+  { "IFX TPM EK Intermediate CA 21",
+    "8149397109974D6C0850C8A60304ED7D209B1B88F435B695394DAD9FB4E64180"
+    "02A3940966D2F04103C88659600EEA8E2A5C697C5F989F62D33A06DA10B50075"
+    "F37F3CE6AD070413A0E109E16FE652B393C4DAFC5579CCB9915E9A70F5C05BCE"
+    "0D341D6B887F43C4334BD8EC6A293FFAB737F77A45069CD0345D3D534E84D029"
+    "029C37A267C0CC2D8DCE3E2C76F21A40F5D8D463882A8CBB92D8235685266753"
+    "E8F051E78B681E87810A5B21EF719662A8208DFD94C55A126A112E39E0D732D7"
+    "3C599095FAFF52BBC0E8C5B3DCD904D05DE00D5C5112F3DF7B76602ABE5DC0F8"
+    "F89B55889A24C54EDBA1234AE498BE9B02CB5C8048D1DC90210705BAFC0E2837" },
+  { "IFX TPM EK Intermediate CA 29",
+    "cd424370776890ace339c62d7faae843bb2c765d27685c0441d278361a929062"
+    "b4c95cc57213c864e91cbb92b1151f17a346a4e754c666f2a3e07ea9ffb9c80f"
+    "e54d9479f73458c64bf7b0ca4e38821dd318e82d6fe387903ca73ca3e59db48e"
+    "fe3b3c7c89599be87bb5e439a6f5843a412d4a321f154955448b71ca0b5fda47"
+    "5c86a1c999dde7a01aa16436e65f0b04874c0db3970546bd806157058c5576a5"
+    "c00b2bce7173c887f388dc4d5267c68fa5c47fcee3d8491071cd7742d43162cb"
+    "285f5ba5e0daa0e910fdce566c5bbf7b3701d51660090344195fd7278456bd98"
+    "48382fc5fceaebf93a2ec88c5722723519692e90d23f869c34d8b1af499d4127" },
+  { "IFX TPM EK Intermediate CA 30",
+    "a01cc43c4b66076d483086d0713a336f435e33ed23d3cda05f3c60a6f707416a"
+    "9e53f0ef0de62c82a720e9ad94df29805b56b44279fd7389de4c60d498c81e3b"
+    "a27692a045d993e9aaae152768588e5c62213721154529c95b09b201bcb3e573"
+    "3d98e398d6e05215867d94e3d222e5b7df9f948c14533285821658b282be4bd7"
+    "fe7197baa642f556d4f18738adef26b2eebfc64045cf4c5dcbff661aa95429f4"
+    "e2c4921a8723bd8116f0efc038cd4530bb6e9299b7d70327e3fe8790d3d6db3a"
+    "ebd3ccd12aef3d43cf89463a28ad1306a9d430b08c3411bfeeda63b9fdcc9a23"
+    "1ff5cc203a7f5ee713d50e1930add1cd32ff64637fc740edb63380a5e6725381" },
+  { "NTC TPM EK Root CA 01",
+    "e836ac61b43e3252d5e1a8a4061997a6a0a272ba3d519d6be6360cc8b4b79e8c"
+    "d53c07a7ce9e9310ca84b82bbdad32184544ada357d458cf224c4a3130c97d00"
+    "4933b5db232d8b6509412eb4777e9e1b093c58b82b1679c84e57a6b218b4d61f"
+    "6dd4c3a66b2dd33b52cb1ffdff543289fa36dd71b7c83b66c1aae37caf7fe88d"
+    "851a3523e3ea92b59a6b0ca095c5e1d191484c1bff8a33048c3976e826d4c12a"
+    "e198f7199d183e0e70c8b46e8106edec3914397e051ae2b9a7f0b4bb9cd7f2ed"
+    "f71064eb0eb473df27b7ccef9a018d715c5fe6ab012a8315f933c7f4fc35d34c"
+    "efc27de224b2e3de3b3ba316d5df8b90b2eb879e219d270141b78dbb671a3a05" },
+  { "STM TPM EK Intermediate CA 03",
+    "a5152b4fbd2c70c0c9a0dd919f48ddcde2b5c0c9988cff3b04ecd844f6cc0035"
+    "6c4e01b52463deb5179f36acf0c06d4574327c37572292fcd0f272c2d45ea7f2"
+    "2e8d8d18aa62354c279e03be9220f0c3822d16de1ea1c130b59afc56e08f22f1"
+    "902a07f881ebea3703badaa594ecbdf8fd1709211ba16769f73e76f348e2755d"
+    "bba2f94c1869ef71e726f56f8ece987f345c622e8b5c2a5466d41093c0dc2982"
+    "e6203d96f539b542347a08e87fc6e248a346d61a505f52add7f768a5203d70b8"
+    "68b6ec92ef7a83a4e6d1e1d259018705755d812175489fae83c4ab2957f69a99"
+    "9394ac7a243a5c1cd85f92b8648a8e0d23165fdd86fad06990bfd16fb3293379" },
+  /* TODO(ngm): remove by: Dec 13 00:00:58 2016 GMT */
+  { "CROS TPM DEV EK ROOT CA",
+    "cdc108745dc50dd6a1098c31486fb31578607fd64f64b0d91b994244ca1a9a69"
+    "a74c6bccc7f24923e1513e132dc0d9dbcb1b22089299bb6cb669cbf4b704c992"
+    "27bb769fa1f91ab11f67fb464a065b34b1a0e824136af5e59d1ac04bda22c199"
+    "9f7a5b34bd6b50c81b4a88cc097d4dfeb4dc695096463d9529d69f116e2a26de"
+    "070ef3118287072bdbe94466b8737049809bb8e1276b245930051b2bbbad71dd"
+    "20d26349d1d83cdb2ff9c65251a17dae4f400ecc3e77f89e27a75fe0709dc81f"
+    "e172008a3e65de685d9df43e036c557e88f1a9aedf7a91644391523d9728f946"
+    "45c0e8adaf37e9a15777021ad43b675583302402912d66233c59ad05fa3b34ed"
+  },
+};
+
+const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
+  { "IFX TPM EK Intermediate CA 24",
+    "9D3F39677EBDB7B95F383021EA6EF90AD2BEA4E38B10CA65DCD84D0B33D400FA"
+    "E7E56FC553975FDADD425227F055C029B6544331E3BA50ED33F6CC02D833EA4E"
+    "0EECFE9AD1ADD7095F3A804C560F031E8705A3AD5189CBD62678B5B8205C37ED"
+    "780A3EDE8DE64A08980C048872E789937A49FC4048EADCAC9B3FD0F0DD085E76"
+    "30DDF9C0C31EFF3B77C6C3601AA7C3DCD10F08616C01435697746A61F920335C"
+    "0C45A41149F5D22FCD23DBE35003A9AF7FD91C18715E3709F86A38AB149113C4"
+    "D5273C3C90599734FF627ACBF408B082C76E486091F27446E175C50D340DA0FE"
+    "5C3FE3D590B8729F4E364E5BF7D854D9AE28EFBCD0CE8F19E6462B3A593983DF" }
+};
+
+// Returns a human-readable description for a known 3-byte |mode|.
+std::string GetDescriptionForMode(const char* mode) {
+  return base::StringPrintf(
+      "Developer Mode: %s, Recovery Mode: %s, Firmware Type: %s",
+      mode[0] ? "On" : "Off",
+      mode[1] ? "On" : "Off",
+      mode[2] ? "Verified" : "Developer");
+}
 
 std::string GetHardwareID() {
   char buffer[VB_MAX_STRING_PROPERTY];
@@ -107,6 +243,26 @@ std::string GetHardwareID() {
   }
   LOG(WARNING) << "Could not read hwid property.";
   return std::string();
+}
+
+// Finds CA by |issuer_name| and |is_cros_core| flag. On success returns true
+// and fills |public_key_hex| with CA public key hex modulus.
+bool GetAuthorityPublicKey(
+    const std::string& issuer_name,
+    bool is_cros_core,
+    std::string* public_key_hex) {
+  const CertificateAuthority* const kKnownCA =
+      is_cros_core ? kKnownCrosCoreEndorsementCA : kKnownEndorsementCA;
+  const int kNumIssuers =
+      is_cros_core ? arraysize(kKnownCrosCoreEndorsementCA) :
+                     arraysize(kKnownEndorsementCA);
+  for (int i = 0; i < kNumIssuers; ++i) {
+    if (issuer_name == kKnownCA[i].issuer) {
+      public_key_hex->assign(kKnownCA[i].modulus);
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -1144,27 +1300,12 @@ bool AttestationService::IsVerifiedMode() const {
     VLOG(2) << __func__ << ": Tpm is not ready.";
     return false;
   }
-  std::string current_pcr_value;
-  if (!tpm_utility_->ReadPCR(0, &current_pcr_value)) {
+  std::string pcr_value;
+  if (!tpm_utility_->ReadPCR(0, &pcr_value)) {
     LOG(WARNING) << __func__ << ": Failed to read PCR0.";
     return false;
   }
-  std::string verified_mode = base::SHA1HashString(kVerifiedBootMode);
-  std::string expected_pcr_value;
-  if (tpm_utility_->GetVersion() == TPM_1_2) {
-    // Use SHA-1 digests for TPM 1.2.
-    std::string initial(base::kSHA1Length, 0);
-    expected_pcr_value = base::SHA1HashString(initial + verified_mode);
-  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
-    // Use SHA-256 digests for TPM 2.0.
-    std::string initial(crypto::kSHA256Length, 0);
-    verified_mode.resize(crypto::kSHA256Length);
-    expected_pcr_value = crypto::SHA256HashString(initial + verified_mode);
-  } else {
-    LOG(ERROR) << __func__ << ": Unsupported TPM version.";
-    return false;
-  }
-  return (current_pcr_value == expected_pcr_value);
+  return (pcr_value == GetPCRValueForMode(kVerifiedBootMode));
 }
 
 void AttestationService::GetStatusTask(
@@ -1190,11 +1331,301 @@ void AttestationService::Verify(
   worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
 }
 
+bool AttestationService::VerifyIdentityBinding(
+    const IdentityBinding& binding) {
+  if (tpm_utility_->GetVersion() == TPM_1_2) {
+    // Reconstruct and hash a serialized TPM_IDENTITY_CONTENTS structure.
+    const std::string header("\x01\x01\x00\x00\x00\x00\x00\x79", 8);
+    std::string digest =
+        base::SHA1HashString(binding.identity_label() +
+                             binding.pca_public_key());
+    std::string identity_public_key_info;
+    if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA,
+                                 binding.identity_public_key_der(),
+                                 &identity_public_key_info)) {
+      LOG(ERROR) << __func__ << ": Failed to get identity public key info.";
+      return false;
+    }
+    if (!crypto_utility_->VerifySignature(
+            identity_public_key_info,
+            header + digest + binding.identity_public_key(),
+            binding.identity_binding())) {
+      LOG(ERROR) << __func__ << ": Failed to verify identity binding signature.";
+      return false;
+    }
+  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
+    VLOG(1) << __func__ << ": Nothing to do for TPM 2.0.";
+  } else {
+    LOG(ERROR) << __func__ << ": Unsupported TPM version.";
+    return false;
+  }
+  return true;
+}
+
+bool AttestationService::VerifyQuoteSignature(
+    const std::string& aik_public_key_info,
+    const Quote& quote,
+    int pcr_index) {
+  if (!crypto_utility_->VerifySignature(aik_public_key_info,
+                                        quote.quoted_data(),
+                                        quote.quote())) {
+    LOG(ERROR) << __func__ << ": Signature mismatch.";
+    return false;
+  }
+  if (!tpm_utility_->IsQuoteForPCR(quote.quoted_data(), pcr_index)) {
+    LOG(ERROR) << __func__ << ": Invalid quote.";
+    return false;
+  }
+  return true;
+}
+
+std::string AttestationService::GetPCRValueForMode(const char* mode) const {
+  std::string mode_str(mode, 3);
+  std::string mode_digest = base::SHA1HashString(mode_str);
+  std::string pcr_value;
+  if (tpm_utility_->GetVersion() == TPM_1_2) {
+    // Use SHA-1 digests for TPM 1.2.
+    std::string initial(base::kSHA1Length, 0);
+    pcr_value = base::SHA1HashString(initial + mode_digest);
+  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
+    // Use SHA-256 digests for TPM 2.0.
+    std::string initial(crypto::kSHA256Length, 0);
+    mode_digest.resize(crypto::kSHA256Length);
+    pcr_value = crypto::SHA256HashString(initial + mode_digest);
+  } else {
+    LOG(ERROR) << __func__ << ": Unsupported TPM version.";
+  }
+  return pcr_value;
+}
+
+bool AttestationService::VerifyPCR0Quote(
+    const std::string& aik_public_key_info,
+    const Quote& pcr0_quote) {
+  if (!VerifyQuoteSignature(aik_public_key_info, pcr0_quote, 0)) {
+    return false;
+  }
+
+  // Check if the PCR0 value represents a known mode.
+  for (size_t i = 0; i < arraysize(kKnownBootModes); ++i) {
+    std::string pcr_value = GetPCRValueForMode(kKnownBootModes[i]);
+    if (pcr0_quote.quoted_pcr_value() == pcr_value) {
+      LOG(INFO) << "PCR0: " << GetDescriptionForMode(kKnownBootModes[i]);
+      return true;
+    }
+  }
+  LOG(WARNING) << "PCR0 value not recognized.";
+  return true;
+}
+
+bool AttestationService::VerifyPCR1Quote(
+    const std::string& aik_public_key_info,
+    const Quote& pcr1_quote) {
+  if (!VerifyQuoteSignature(aik_public_key_info, pcr1_quote, 1)) {
+    return false;
+  }
+
+  // Check that the source hint is correctly populated.
+  if (hwid_ != pcr1_quote.pcr_source_hint()) {
+    LOG(ERROR) << "PCR1 source hint does not match HWID: " << hwid_;
+    return false;
+  }
+
+  LOG(INFO) << "PCR1 verified as " << hwid_;
+  return true;
+}
+
+bool AttestationService::GetCertifiedKeyDigest(
+    const std::string& public_key_info,
+    const std::string& public_key_tpm_format,
+    std::string* key_digest) {
+  if (tpm_utility_->GetVersion() == TPM_1_2) {
+    return crypto_utility_->GetKeyDigest(public_key_info, key_digest);
+  } else if (tpm_utility_->GetVersion() == TPM_2_0) {
+    // TPM_ALG_SHA256 = 0x000B, here in big-endian order.
+    std::string prefix("\x00\x0B", 2);
+    key_digest->assign(prefix + crypto::SHA256HashString(public_key_tpm_format));
+    return true;
+  }
+  LOG(ERROR) << __func__ << ": Unsupported TPM version.";
+  return false;
+}
+
+bool AttestationService::VerifyCertifiedKey(
+    const std::string& aik_public_key_info,
+    const std::string& public_key_info,
+    const std::string& public_key_tpm_format,
+    const std::string& key_info,
+    const std::string& proof) {
+  if (!crypto_utility_->VerifySignature(aik_public_key_info, key_info, proof)) {
+    LOG(ERROR) << __func__ << ": Bad key signature.";
+    return false;
+  }
+  std::string key_digest;
+  if (!GetCertifiedKeyDigest(public_key_info, public_key_tpm_format,
+                             &key_digest)) {
+    LOG(ERROR) << __func__ << ": Failed to get key digest.";
+    return false;
+  }
+  if (key_info.find(key_digest) == std::string::npos) {
+    LOG(ERROR) << __func__ << ": Public key mismatch.";
+    return false;
+  }
+  return true;
+}
+
+bool AttestationService::VerifyCertifiedKeyGeneration(
+    const std::string& aik_key_blob,
+    const std::string& aik_public_key_info) {
+  std::string key_blob;
+  std::string public_key;
+  std::string public_key_tpm_format;
+  std::string public_key_der;
+  std::string key_info;
+  std::string proof;
+  std::string nonce;
+  if (!crypto_utility_->GetRandom(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
+    return false;
+  }
+  if (!tpm_utility_->CreateCertifiedKey(
+          KEY_TYPE_RSA, KEY_USAGE_SIGN, aik_key_blob, nonce, &key_blob,
+          &public_key, &public_key_tpm_format, &key_info, &proof)) {
+    LOG(ERROR) << __func__ << ": Failed to create certified key.";
+    return false;
+  }
+  if (!tpm_utility_->GetRSAPublicKeyFromTpmPublicKey(public_key_tpm_format,
+                                                     &public_key_der)) {
+    LOG(ERROR) << __func__ << ": Failed to convert key to DER format.";
+    return false;
+  }
+  std::string public_key_info;
+  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA, public_key_der, &public_key_info)) {
+    LOG(ERROR) << __func__ << ": Failed to get public key info.";
+    return false;
+  }
+  if (!VerifyCertifiedKey(aik_public_key_info, public_key_info,
+                          public_key_tpm_format, key_info, proof)) {
+    LOG(ERROR) << __func__ << ": Bad certified key.";
+    return false;
+  }
+  return true;
+}
+
+bool AttestationService::VerifyActivateIdentity(
+    const std::string& ek_public_key_info,
+    const std::string& aik_public_key_tpm_format) {
+  std::string test_credential = "test credential";
+  EncryptedIdentityCredential encrypted_credential;
+  if (!crypto_utility_->EncryptIdentityCredential(tpm_utility_->GetVersion(),
+                                                  test_credential,
+                                                  ek_public_key_info,
+                                                  aik_public_key_tpm_format,
+                                                  &encrypted_credential)) {
+    LOG(ERROR) << __func__ << ": Failed to encrypt identity credential";
+    return false;
+  }
+  if (!ActivateAttestationKeyInternal(encrypted_credential, false, nullptr)) {
+    LOG(ERROR) << __func__ << ": Failed to activate identity";
+    return false;
+  }
+  return true;
+}
+
 void AttestationService::VerifyTask(
     const VerifyRequest& request,
     const std::shared_ptr<VerifyReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  auto database_pb = database_->GetProtobuf();
+  const TPMCredentials& credentials = database_pb.credentials();
+  std::string ek_public_key;
+  std::string ek_cert;
+  result->set_verified(false);
+  if (credentials.has_endorsement_credential()) {
+    ek_cert = credentials.endorsement_credential();
+  } else {
+    if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA, &ek_cert)) {
+      LOG(ERROR) << __func__ << ": Endorsement cert not available.";
+      return;
+    }
+  }
+  if (credentials.has_endorsement_public_key()) {
+    ek_public_key = credentials.endorsement_public_key();
+  } else {
+    if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA, &ek_public_key)) {
+      LOG(ERROR) << __func__ << ": Endorsement key not available.";
+      return;
+    }
+  }
+  std::string issuer;
+  if (!crypto_utility_->GetCertificateIssuerName(ek_cert, &issuer)) {
+    LOG(ERROR) << __func__ << ": Failed to get certificate issuer.";
+    return;
+  }
+  std::string ca_public_key;
+  if (!GetAuthorityPublicKey(issuer, request.cros_core(), &ca_public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to get CA public key.";
+    return;
+  }
+  if (!crypto_utility_->VerifyCertificate(ek_cert, ca_public_key)) {
+    LOG(WARNING) << __func__ << ": Bad endorsement credential.";
+    return;
+  }
+  // Verify that the given public key matches the public key in the credential.
+  // Note: Do not use any openssl functions that attempt to decode the public
+  // key. These will fail because openssl does not recognize the OAEP key type.
+  std::string cert_public_key;
+  if (!crypto_utility_->GetCertificatePublicKey(ek_cert, &cert_public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to get certificate public key.";
+    return;
+  }
+  if (cert_public_key != ek_public_key) {
+    LOG(ERROR) << __func__ << ": Bad certificate public key.";
+    return;
+  }
+  // All done if we only needed to verify EK. Otherwise, continue with full
+  // verification.
+  if (request.ek_only()) {
+    result->set_verified(true);
+    return;
+  }
+  std::string identity_public_key_info;
+  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA,
+           database_pb.identity_binding().identity_public_key_der(),
+           &identity_public_key_info)) {
+    LOG(ERROR) << __func__ << ": Failed to get identity public key info.";
+    return;
+  }
+  if (!VerifyIdentityBinding(database_pb.identity_binding())) {
+    LOG(ERROR) << __func__ << ": Bad identity binding.";
+    return;
+  }
+  if (!VerifyPCR0Quote(identity_public_key_info, database_pb.pcr0_quote())) {
+    LOG(ERROR) << __func__ << ": Bad PCR0 quote.";
+    return;
+  }
+  if (!VerifyPCR1Quote(identity_public_key_info, database_pb.pcr1_quote())) {
+    // Don't fail because many devices don't use PCR1.
+    LOG(WARNING) << __func__ << ": Bad PCR1 quote.";
+  }
+  if (!VerifyCertifiedKeyGeneration(
+           database_pb.identity_key().identity_key_blob(),
+           identity_public_key_info)) {
+    LOG(ERROR) << __func__ << ": Failed to verify certified key generation.";
+    return;
+  }
+  std::string ek_public_key_info;
+  if (!GetSubjectPublicKeyInfo(KEY_TYPE_RSA, ek_public_key,
+                               &ek_public_key_info)) {
+    LOG(ERROR) << __func__ << ": Failed to get EK public key info.";
+    return;
+  }
+  if (!VerifyActivateIdentity(
+           ek_public_key_info,
+           database_pb.identity_binding().identity_public_key())) {
+    LOG(ERROR) << __func__ << ": Failed to verify identity activation.";
+    return;
+  }
+  LOG(INFO) << "Attestation: Verified OK.";
+  result->set_verified(true);
 }
 
 void AttestationService::CreateEnrollRequest(

@@ -82,8 +82,9 @@ class CryptoUtilityImplTest : public testing::Test {
 
   std::string KDFa(const std::string& key,
                    const std::string& label,
-                   const std::string& context) {
-    return crypto_utility_->Tpm2CompatibleKDFa(key, label, context);
+                   const std::string& context,
+                   int bits) {
+    return crypto_utility_->Tpm2CompatibleKDFa(key, label, context, bits);
   }
 
  protected:
@@ -329,9 +330,12 @@ TEST_F(CryptoUtilityImplTest, KDFaKnownAnswerTest) {
       "BF88BFC2D0FFA48025830745960EE0A53A66B31E7206321F8FC95B89FD63E8C3");
   std::string context = HexDecode(
       "000BEDB60C6A4E2470EF4804FDE7FA35B94A5338DB7D5B5A3A1DE0E7EB12152A1A95");
-  std::string expected_output = HexDecode(
+  std::string expected_output_256 = HexDecode(
       "C8307D1197CBD3A26E78D5519C26E08661C79D36B528A1089E6156627441ECCD");
-  EXPECT_EQ(expected_output, KDFa(key, "STORAGE", context));
+  std::string expected_output_128 = HexDecode(
+      "9FD97E677A4538557783B3442EC41993");
+  EXPECT_EQ(expected_output_256, KDFa(key, "STORAGE", context, 256));
+  EXPECT_EQ(expected_output_128, KDFa(key, "STORAGE", context, 128));
 }
 
 }  // namespace attestation

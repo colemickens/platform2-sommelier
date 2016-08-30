@@ -40,6 +40,7 @@ const char kCreateCommand[] = "create";
 const char kInfoCommand[] = "info";
 const char kEndorsementCommand[] = "endorsement";
 const char kAttestationKeyCommand[] = "attestation_key";
+const char kVerifyAttestationCommand[] = "verify_attestation";
 const char kActivateCommand[] = "activate";
 const char kEncryptForActivateCommand[] = "encrypt_for_activate";
 const char kEncryptCommand[] = "encrypt";
@@ -71,6 +72,10 @@ Commands:
       Prints info about the TPM endorsement.
   attestation_key
       Prints info about the TPM attestation key.
+  verify_attestation [--ek-only] [--cros-core]
+      Verifies attestation information. If |ek-only| flag is provided, verifies
+      only the endorsement key. If |cros-core| flag is provided, verifies
+      using CrosCore CA public key.
 
   activate --input=<input_file> [--save]
       Activates an attestation key using the encrypted credential in
@@ -189,6 +194,11 @@ class ClientLoop : public ClientLoopBase {
     } else if (args.front() == kAttestationKeyCommand) {
       task = base::Bind(&ClientLoop::CallGetAttestationKeyInfo,
                         weak_factory_.GetWeakPtr());
+    } else if (args.front() == kVerifyAttestationCommand) {
+      task = base::Bind(&ClientLoop::CallVerifyAttestation,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->HasSwitch("cros-core"),
+                        command_line->HasSwitch("ek-only"));
     } else if (args.front() == kActivateCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -435,6 +445,16 @@ class ClientLoop : public ClientLoopBase {
     attestation_->GetAttestationKeyInfo(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetAttestationKeyInfoReply>,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void CallVerifyAttestation(bool cros_core, bool ek_only) {
+    VerifyRequest request;
+    request.set_cros_core(cros_core);
+    request.set_ek_only(ek_only);
+    attestation_->Verify(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<VerifyReply>,
                    weak_factory_.GetWeakPtr()));
   }
 

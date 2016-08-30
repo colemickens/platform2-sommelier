@@ -125,6 +125,26 @@ class CryptoUtility {
   virtual bool CreateSPKAC(const std::string& key_blob,
                            const std::string& public_key,
                            std::string* spkac) = 0;
+
+  // Verifies that the X.509 |certificate| is signed by CA with the public key
+  // with hex modulus |ca_public_key_hex|.
+  virtual bool VerifyCertificate(const std::string& certificate,
+                                 const std::string& ca_public_key_hex) = 0;
+
+  // Gets issuer name for the X.509 |certificate|. On success returns true and
+  // populates |issuer_name|.
+  virtual bool GetCertificateIssuerName(const std::string& certificate,
+                                        std::string* issuer_name) = 0;
+
+  // Gets public key for the X.509 |certificate|. On success returns true and
+  // populates |public_key|.
+  virtual bool GetCertificatePublicKey(const std::string& certificate,
+                                       std::string* public_key) = 0;
+
+  // Calculates a SHA-1 |key_digest| over |public_key| modulus. The |public_key|
+  // must be provided in X.509 SubjectPublicKeyInfo format.
+  virtual bool GetKeyDigest(const std::string& public_key,
+                            std::string* key_digest) = 0;
 };
 
 }  // namespace attestation
