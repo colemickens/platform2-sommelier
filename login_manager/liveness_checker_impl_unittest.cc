@@ -15,7 +15,6 @@
 
 #include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_process_manager_service.h"
-#include "login_manager/mock_system_utils.h"
 
 using ::base::TimeDelta;
 using ::testing::InvokeWithoutArgs;

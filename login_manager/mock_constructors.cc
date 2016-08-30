@@ -83,6 +83,9 @@ MockProcessManagerService::~MockProcessManagerService() {}
 MockSessionManager::MockSessionManager() {}
 MockSessionManager::~MockSessionManager() {}
 
+MockSystemUtils::MockSystemUtils() {}
+MockSystemUtils::~MockSystemUtils() {}
+
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
     : UserPolicyServiceFactory(0, NULL, NULL) {}
 MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() {}

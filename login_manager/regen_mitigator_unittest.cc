@@ -19,7 +19,7 @@
 #include "login_manager/fake_child_process.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_policy_key.h"
-#include "login_manager/mock_system_utils.h"
+#include "login_manager/system_utils_impl.h"
 
 using ::testing::Return;
 using ::testing::StrEq;
@@ -32,7 +32,7 @@ class RegenMitigatorTest : public ::testing::Test {
   virtual ~RegenMitigatorTest() {}
 
  protected:
-  MockSystemUtils utils_;
+  SystemUtilsImpl utils_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RegenMitigatorTest);

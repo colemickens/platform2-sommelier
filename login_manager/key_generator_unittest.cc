@@ -26,7 +26,6 @@
 #include "login_manager/keygen_worker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_nss_util.h"
-#include "login_manager/mock_system_utils.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/system_utils_impl.h"
 
@@ -58,7 +57,7 @@ class KeyGeneratorTest : public ::testing::Test {
   }
 
  protected:
-  MockSystemUtils utils_;
+  SystemUtilsImpl utils_;
   base::ScopedTempDir tmpdir_;
   const base::FilePath original_user_prefix_;
   std::string fake_salt_;
@@ -99,9 +98,8 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
   ASSERT_EQ(keygen::GenerateKey(key_file_path, tmpdir_.path(), &nss), 0);
   ASSERT_TRUE(base::PathExists(key_file_path));
 
-  SystemUtilsImpl utils;
   int32_t file_size = 0;
-  ASSERT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
+  ASSERT_TRUE(utils_.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
   ASSERT_GT(file_size, 0);
 }
 

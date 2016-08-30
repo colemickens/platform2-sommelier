@@ -92,14 +92,16 @@ bool SystemUtilsImpl::ProcessGroupIsGone(pid_t child_spec,
 
 bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                                   int32_t* file_size_32) {
+  const base::FilePath file_in_base_dir = PutInsideBaseDir(file);
   // Get the file size (must fit in a 32 bit int for NSS).
   int64_t file_size;
-  if (!base::GetFileSize(file, &file_size)) {
-    LOG(ERROR) << "Could not get size of " << file.value();
+  if (!base::GetFileSize(file_in_base_dir, &file_size)) {
+    LOG(ERROR) << "Could not get size of " << file_in_base_dir.value();
     return false;
   }
   if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
-    LOG(ERROR) << file.value() << "is " << file_size << "bytes!!!  Too big!";
+    LOG(ERROR) << file_in_base_dir.value() << "is " << file_size
+               << "bytes!!!  Too big!";
     return false;
   }
   *file_size_32 = static_cast<int32_t>(file_size);
@@ -107,7 +109,7 @@ bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
 }
 
 bool SystemUtilsImpl::Exists(const base::FilePath& file) {
-  return base::PathExists(file);
+  return base::PathExists(PutInsideBaseDir(file));
 }
 
 bool SystemUtilsImpl::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
@@ -155,46 +157,76 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
 }
 
 bool SystemUtilsImpl::RemoveDirTree(const base::FilePath& dir) {
-  if (!base::DirectoryExists(dir))
+  const base::FilePath dir_in_base_dir = PutInsideBaseDir(dir);
+  if (!base::DirectoryExists(dir_in_base_dir))
     return false;
-  return base::DeleteFile(dir, true);
+  return base::DeleteFile(dir_in_base_dir, true);
 }
 
 bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
-  if (base::DirectoryExists(filename))
+  const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
+  if (base::DirectoryExists(filename_in_base_dir))
     return false;
-  return base::DeleteFile(filename, false);
+  return base::DeleteFile(filename_in_base_dir, false);
 }
 
 bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
                                       const std::string& data) {
+  const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
   return (
-      base::ImportantFileWriter::WriteFileAtomically(filename, data) &&
-      base::SetPosixFilePermissions(filename, (S_IRUSR | S_IWUSR | S_IROTH)));
+      base::ImportantFileWriter::WriteFileAtomically(
+          filename_in_base_dir, data) &&
+      base::SetPosixFilePermissions(
+          filename_in_base_dir, (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
 bool SystemUtilsImpl::DirectoryExists(const base::FilePath& dir) {
-  return base::DirectoryExists(dir);
+  return base::DirectoryExists(PutInsideBaseDir(dir));
 }
 
 bool SystemUtilsImpl::CreateTemporaryDirIn(const base::FilePath& parent_dir,
                                            base::FilePath* out_dir) {
-  return base::CreateTemporaryDirInDir(parent_dir, "temp", out_dir);
+  return base::CreateTemporaryDirInDir(
+      PutInsideBaseDir(parent_dir), "temp", out_dir);
 }
 
 bool SystemUtilsImpl::RenameDir(const base::FilePath& source,
                                 const base::FilePath& target) {
-  if (!base::DirectoryExists(source))
+  const base::FilePath source_in_base_dir = PutInsideBaseDir(source);
+  if (!base::DirectoryExists(source_in_base_dir))
     return false;
-  return base::ReplaceFile(source, target, nullptr);
+  return base::ReplaceFile(
+      source_in_base_dir, PutInsideBaseDir(target), nullptr);
 }
 
 bool SystemUtilsImpl::CreateDir(const base::FilePath& dir) {
-  return base::CreateDirectoryAndGetError(dir, nullptr);
+  return base::CreateDirectoryAndGetError(PutInsideBaseDir(dir), nullptr);
 }
 
 bool SystemUtilsImpl::IsDirectoryEmpty(const base::FilePath& dir) {
-  return !DirectoryExists(dir) || base::IsDirectoryEmpty(dir);
+  const base::FilePath dir_in_base_dir = PutInsideBaseDir(dir);
+  return !base::DirectoryExists(dir_in_base_dir) ||
+      base::IsDirectoryEmpty(dir_in_base_dir);
+}
+
+base::FilePath SystemUtilsImpl::PutInsideBaseDirForTesting(
+    const base::FilePath& path) {
+  return PutInsideBaseDir(path);
+}
+
+base::FilePath SystemUtilsImpl::PutInsideBaseDir(const base::FilePath& path) {
+  if (base_dir_for_testing_.empty())
+    return path;  // for production, this function does nothing.
+
+  if (base_dir_for_testing_.IsParent(path))
+    return path;  // already chroot'ed.
+
+  base::FilePath to_append(path);
+  while (to_append.IsAbsolute()) {
+    std::string ascii(path.MaybeAsASCII());
+    to_append = base::FilePath(ascii.substr(1, std::string::npos));
+  }
+  return base_dir_for_testing_.Append(to_append);
 }
 
 }  // namespace login_manager

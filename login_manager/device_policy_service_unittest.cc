@@ -31,8 +31,8 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_vpd_process.h"
+#include "login_manager/system_utils_impl.h"
 
 namespace em = enterprise_management;
 
@@ -311,7 +311,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   std::unique_ptr<StrictMock<MockMitigator>> mitigator_;
   PolicyService::Completion completion_;
   FakeCrossystem crossystem_;
-  MockSystemUtils utils_;
+  SystemUtilsImpl utils_;
   MockVpdProcess vpd_process_;
 
   std::unique_ptr<DevicePolicyService> service_;

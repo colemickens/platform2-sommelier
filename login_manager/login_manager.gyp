@@ -149,7 +149,6 @@
             'login_metrics_unittest.cc',
             'mock_constructors.cc',
             'mock_nss_util.cc',
-            'mock_system_utils.cc',
             'nss_util_unittest.cc',
             'policy_key_unittest.cc',
             'policy_service_unittest.cc',

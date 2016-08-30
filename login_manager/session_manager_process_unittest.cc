@@ -29,7 +29,6 @@
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_session_manager.h"
-#include "login_manager/mock_system_utils.h"
 #include "login_manager/system_utils_impl.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
@@ -112,7 +111,7 @@ class SessionManagerProcessTest : public ::testing::Test {
                                          false,
                                          base::TimeDelta(),
                                          &metrics_,
-                                         &real_utils_);
+                                         &utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
   }
@@ -142,9 +141,8 @@ class SessionManagerProcessTest : public ::testing::Test {
   int PackSignal(int signal) { return __W_EXITCODE(0, signal); }
 
   scoped_refptr<SessionManagerService> manager_;
-  SystemUtilsImpl real_utils_;
   MockMetrics metrics_;
-  MockSystemUtils utils_;
+  SystemUtilsImpl utils_;
 
   // These are bare pointers, not scoped_ptrs, because we need to give them
   // to a SessionManagerService instance, but also be able to set expectations

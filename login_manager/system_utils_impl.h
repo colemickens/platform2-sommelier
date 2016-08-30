@@ -29,7 +29,7 @@ namespace login_manager {
 class SystemUtilsImpl : public SystemUtils {
  public:
   SystemUtilsImpl();
-  virtual ~SystemUtilsImpl();
+  ~SystemUtilsImpl() override;
 
   int kill(pid_t pid, uid_t owner, int signal) override;
   time_t time(time_t* t) override;
@@ -55,14 +55,29 @@ class SystemUtilsImpl : public SystemUtils {
   bool AtomicFileWrite(const base::FilePath& filename,
                        const std::string& data) override;
 
+  void set_base_dir_for_testing(const base::FilePath& base_dir) {
+    CHECK(!base_dir.empty());
+    CHECK(base_dir_for_testing_.empty());
+    base_dir_for_testing_ = base_dir;
+  }
+
+  // Returns the given path "chrooted" inside |base_dir_for_testing_| if set.
+  // Ex: /var/run/foo -> /tmp/.org.Chromium.whatever/var/run/foo
+  base::FilePath PutInsideBaseDirForTesting(const base::FilePath& path);
+
  private:
+  // Provides the real implementation of PutInsideBaseDirForTesting.
+  base::FilePath PutInsideBaseDir(const base::FilePath& path);
+
   // If this file exists on the next boot, the stateful partition will be wiped.
   static const char kResetFile[];
 
   base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemUtilsImpl);
 };
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_SYSTEM_UTILS_IMPL_H_

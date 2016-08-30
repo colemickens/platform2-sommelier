@@ -132,12 +132,19 @@ class SessionManagerImplTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    utils_.set_base_dir_for_testing(tmpdir_.path());
     SetSystemSalt(&fake_salt_);
 
     android_data_dir_ = GetRootPath(kSaneEmail).Append(
         SessionManagerImpl::kAndroidDataDirName);
     android_data_old_dir_ = GetRootPath(kSaneEmail).Append(
         SessionManagerImpl::kAndroidDataOldDirName);
+
+    // AtomicFileWrite calls in TEST_F assume that these directories exist.
+    ASSERT_TRUE(utils_.CreateDir(
+        base::FilePath(FILE_PATH_LITERAL("/var/run/session_manager"))));
+    ASSERT_TRUE(utils_.CreateDir(
+        base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
 
     MockUserPolicyServiceFactory* factory = new MockUserPolicyServiceFactory;
     EXPECT_CALL(*factory, Create(_))
@@ -365,39 +372,45 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   args.push_back("--repeat-arg");
   args.push_back("--one-time-arg");
 
-  base::FilePath expected = utils_.GetUniqueFilename();
-  ASSERT_FALSE(expected.empty());
-  string expected_testing_path = expected.value();
+  base::FilePath temp_dir;
+  ASSERT_TRUE(base::CreateNewTempDirectory("" /* ignored */, &temp_dir));
 
+  const size_t random_suffix_len = strlen("XXXXXX");
+  ASSERT_LT(random_suffix_len, temp_dir.value().size()) << temp_dir.value();
+
+  // Check that RestartBrowserWithArgs() is called with a randomly chosen
+  // --testing-channel path name.
+  string expected_testing_path_prefix = temp_dir.value().substr(
+      0, temp_dir.value().size() - random_suffix_len);
   EXPECT_CALL(manager_, RestartBrowserWithArgs(
-                            ElementsAre(args[0], args[1],
-                                        HasSubstr(expected_testing_path)),
+                            ElementsAre(args[0], args[1], HasSubstr(
+                                expected_testing_path_prefix)),
                             true))
       .Times(1);
 
   string testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
-                             base::CompareCase::INSENSITIVE_ASCII));
+  EXPECT_NE(std::string::npos, testing_path.find(expected_testing_path_prefix))
+      << testing_path;
 
   // Calling again, without forcing relaunch, should not do anything.
   testing_path.clear();
   testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
-                             base::CompareCase::INSENSITIVE_ASCII));
+  EXPECT_NE(std::string::npos, testing_path.find(expected_testing_path_prefix))
+      << testing_path;
 
   // Force relaunch.  Should go through the whole path again.
   args[0] = "--dummy";
   args[1] = "--repeat-arg";
   testing_path.empty();
   EXPECT_CALL(manager_, RestartBrowserWithArgs(
-                            ElementsAre(args[0], args[1],
-                                        HasSubstr(expected_testing_path)),
+                            ElementsAre(args[0], args[1], HasSubstr(
+                                expected_testing_path_prefix)),
                             true))
       .Times(1);
 
   testing_path = impl_.EnableChromeTesting(true, args, NULL);
-  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path,
-                             base::CompareCase::INSENSITIVE_ASCII));
+  EXPECT_NE(std::string::npos, testing_path.find(expected_testing_path_prefix))
+      << testing_path;
 }
 
 TEST_F(SessionManagerImplTest, StartSession) {
@@ -800,14 +813,15 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
-  base::FilePath reset_path(SessionManagerImpl::kResetFile);
+  base::FilePath reset_path(utils_.PutInsideBaseDirForTesting(
+      base::FilePath(SessionManagerImpl::kResetFile)));
   ASSERT_TRUE(utils_.RemoveFile(logged_in_path));
   ExpectDeviceRestart();
   impl_.StartDeviceWipe(
       "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890",
       NULL);
   std::string contents;
-  ASSERT_TRUE(utils_.ReadFileToString(reset_path, &contents));
+  ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
   ASSERT_EQ(
       "fast safe keepimg reason="
       "overly_long_test_message_with_special_chars_____12",
@@ -852,6 +866,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 
   // Check that StartArcInstance emits the signal with ANDROID_DATA_OLD_DIR=
   // when |android_data_old_dir_| is not empty.
+  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("foo"), "test"));
 
@@ -956,6 +971,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
 TEST_F(SessionManagerImplTest, ArcRemoveDataInternal) {
   // Test that RemoveArcDataInternal() removes |android_data_dir_| and returns
   // true even if the directory is not empty.
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
@@ -980,6 +996,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_NoSourceDirectory) {
 TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_OldDirectoryExists) {
   // Test that RemoveArcDataInternal() can remove |android_data_dir_| and
   // returns true even if the "old" directory already exists.
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
@@ -993,7 +1010,9 @@ TEST_F(SessionManagerImplTest,
        ArcRemoveDataInternal_NonEmptyOldDirectoryExists) {
   // Test that RemoveArcDataInternal() can remove |android_data_dir_| and
   // returns true even if the "old" directory already exists and is not empty.
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
+  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("bar"), "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
@@ -1021,6 +1040,7 @@ TEST_F(SessionManagerImplTest,
   // Test that RemoveArcDataInternal() removes the "old" directory and returns
   // true even when |android_data_dir_| does not exist at all.
   ASSERT_FALSE(utils_.Exists(android_data_dir_));
+  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("foo"), "test"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
@@ -1034,6 +1054,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_OldFileExists) {
   // Test that RemoveArcDataInternal() can remove |android_data_dir_| and
   // returns true even if the "old" path exists as a file. This should never
   // happen, but RemoveArcDataInternal() can handle the case.
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_old_dir_, "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
@@ -1045,6 +1066,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_OldFileExists) {
 
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
   // Test the wrapper function, ArcRemoveData, without running ARC.
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
@@ -1056,6 +1078,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
 TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   // Test that RemoveArcData does nothing when ARC is running.
   ExpectAndRunStartSession(kSaneEmail);
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   impl_.StartArcInstance(kSaneEmail, &error_);
@@ -1066,7 +1089,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
 
 TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ExpectAndRunStartSession(kSaneEmail);
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
+  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("bar"), "test2"));
   impl_.StartArcInstance(kSaneEmail, &error_);
@@ -1080,6 +1105,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
 // When USE_CHEETS is not defined, these methods should immediately return
 // dbus_error::kNotAvailable.
 TEST_F(SessionManagerImplTest, ArcRemoveDataInternal) {
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
@@ -1090,6 +1116,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal) {
 }
 
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
