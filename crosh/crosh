@@ -87,11 +87,6 @@ load_modules() {
 }
 
 load_extra_crosh() {
-  # Keep `local` decl split from assignment so return code is checked.
-  local crosh_dir
-
-  crosh_dir=$(dirname "$0")
-
   # First load the common modules (board/project/etc... specific).
   load_modules "extra.d"
 
@@ -110,7 +105,6 @@ load_extra_crosh() {
   fi
   if [ "${CROSH_REMOVABLE}" = "1" ]; then
     load_modules "removable.d"
-    . "${crosh_dir}/crosh-usb"
   fi
 
   # Load the dev-mode modules, if in dev mode, or if forced.
@@ -125,10 +119,8 @@ load_extra_crosh() {
   fi
   if [ "${CROSH_DEVMODE}" = "1" ]; then
     load_modules "dev.d"
-    . "${crosh_dir}/crosh-dev"
   fi
 
-  [ -e "${crosh_dir}/crosh-cups" ] && . "${crosh_dir}/crosh-cups"
 }
 
 shell_read() {
@@ -1488,11 +1480,7 @@ main() {
 
   load_extra_crosh
 
-  INPUTRC="/usr/share/misc/inputrc.crosh"
-  if [ ! -e "${INPUTRC}" ]; then
-    # We aren't installed; use local copy for testing.
-    INPUTRC="$(dirname "$0")/inputrc.crosh"
-  fi
+  INPUTRC="${CROSH_MODPATH}/inputrc.crosh"
 
   shell_history_init
 

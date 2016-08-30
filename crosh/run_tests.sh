@@ -17,7 +17,7 @@ show_diff() {
 
 ret=0
 
-for s in crosh*; do
+for s in crosh {dev,extra,removable}.d/[0-9][0-9]-*.sh; do
   echo "Checking ${s}"
 
   #

@@ -1,14 +1,9 @@
-#!/bin/dash
 # Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Chrosh commands that are only loaded when we're booting from removable
 # media.
-
-if [ "$(basename $0)" = "crosh-usb" ]; then
-  exec "$(dirname $0)/crosh" --usb
-fi
 
 do_install() {
   if [ "$1" ]; then
