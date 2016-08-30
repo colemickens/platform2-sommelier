@@ -61,10 +61,29 @@ Type 'help' for a list of commands.
 CROSH_DEVMODE=
 # Gets set to "1" when running on removable media (e.g. USB stick).
 CROSH_REMOVABLE=
+CROSH_MODPATH="/usr/share/crosh"
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
 
 check_digits() {
   expr "$1" : '^[[:digit:]]*$' > /dev/null
+}
+
+# Load all modules found in the specified subdir.
+load_modules() {
+  local subdir="$1"
+  local dir="${CROSH_MODPATH}/${subdir}"
+  local mod
+
+  # Turn on path expansion long enough to find local modules.
+  set +f
+  for mod in "${dir}"/[0-9][0-9]-*.sh; do
+    # Then turn path expansion back off.
+    set -f
+    if [ -e "${mod}" ]; then
+      echo "Loading extra module: ${mod}"
+      . "${mod}" || :
+    fi
+  done
 }
 
 load_extra_crosh() {
@@ -72,6 +91,9 @@ load_extra_crosh() {
   local crosh_dir
 
   crosh_dir=$(dirname "$0")
+
+  # First load the common modules (board/project/etc... specific).
+  load_modules "extra.d"
 
   # Load the removable modules, if the rootfs is on removable
   # media.  e.g. It's a USB stick.
@@ -87,6 +109,7 @@ load_extra_crosh() {
     fi
   fi
   if [ "${CROSH_REMOVABLE}" = "1" ]; then
+    load_modules "removable.d"
     . "${crosh_dir}/crosh-usb"
   fi
 
@@ -101,6 +124,7 @@ load_extra_crosh() {
     fi
   fi
   if [ "${CROSH_DEVMODE}" = "1" ]; then
+    load_modules "dev.d"
     . "${crosh_dir}/crosh-dev"
   fi
 
@@ -1438,6 +1462,12 @@ EOF
 }
 
 main() {
+  # If we aren't installed, use local files for testing.
+  if [ ! -d "${CROSH_MODPATH}" ]; then
+    CROSH_MODPATH=$(dirname "$0")
+    echo "Loading from local paths instead: ${CROSH_MODPATH}"
+  fi
+
   while [ $# -gt 0 ]; do
     case $1 in
     --dev)
