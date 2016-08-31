@@ -11,12 +11,18 @@ PowerSupplyStub::PowerSupplyStub() : refresh_result_(true) {}
 
 PowerSupplyStub::~PowerSupplyStub() {}
 
+void PowerSupplyStub::NotifyObservers() {
+  FOR_EACH_OBSERVER(PowerSupplyObserver, observers_, OnPowerStatusUpdate());
+}
+
 void PowerSupplyStub::AddObserver(PowerSupplyObserver* observer) {
   CHECK(observer);
+  observers_.AddObserver(observer);
 }
 
 void PowerSupplyStub::RemoveObserver(PowerSupplyObserver* observer) {
   CHECK(observer);
+  observers_.RemoveObserver(observer);
 }
 
 PowerStatus PowerSupplyStub::GetPowerStatus() const {

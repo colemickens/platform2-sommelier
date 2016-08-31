@@ -80,6 +80,7 @@
       'sources': [
         'powerd/system/acpi_wakeup_helper_stub.cc',
         'powerd/system/ambient_light_sensor_stub.cc',
+        'powerd/system/audio_client_stub.cc',
         'powerd/system/backlight_stub.cc',
         'powerd/system/dark_resume_stub.cc',
         'powerd/system/dbus_wrapper_stub.cc',

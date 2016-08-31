@@ -11,10 +11,43 @@ namespace policy {
 
 BacklightControllerStub::BacklightControllerStub()
     : percent_(100.0),
+      power_button_presses_(0),
+      chrome_starts_(0),
+      dimmed_(false),
+      off_(false),
+      suspended_(false),
+      shutting_down_(false),
+      docked_(false),
+      user_brightness_percent_(0.0),
+      num_user_brightness_increases_(0),
+      num_user_brightness_decreases_(0),
       num_als_adjustments_(0),
       num_user_adjustments_(0) {}
 
 BacklightControllerStub::~BacklightControllerStub() {}
+
+void BacklightControllerStub::ResetStats() {
+  power_source_changes_.clear();
+  display_mode_changes_.clear();
+  session_state_changes_.clear();
+  power_button_presses_ = 0;
+  user_activity_reports_.clear();
+  video_activity_reports_.clear();
+  hover_state_changes_.clear();
+  tablet_mode_changes_.clear();
+  policy_changes_.clear();
+  chrome_starts_ = 0;
+  user_brightness_percent_ = 0.0;
+  num_user_brightness_increases_ = 0;
+  num_user_brightness_decreases_ = 0;
+}
+
+void BacklightControllerStub::NotifyObservers(double percent,
+                                              BrightnessChangeCause cause) {
+  percent_ = percent;
+  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
+                    OnBrightnessChange(percent_, cause, this));
+}
 
 void BacklightControllerStub::AddObserver(
     policy::BacklightControllerObserver* observer) {
@@ -28,17 +61,87 @@ void BacklightControllerStub::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
+void BacklightControllerStub::HandlePowerSourceChange(PowerSource source) {
+  power_source_changes_.push_back(source);
+}
+
+void BacklightControllerStub::HandleDisplayModeChange(DisplayMode mode) {
+  display_mode_changes_.push_back(mode);
+}
+
+void BacklightControllerStub::HandleSessionStateChange(SessionState state) {
+  session_state_changes_.push_back(state);
+}
+
+void BacklightControllerStub::HandlePowerButtonPress() {
+  power_button_presses_++;
+}
+
+void BacklightControllerStub::HandleUserActivity(UserActivityType type) {
+  user_activity_reports_.push_back(type);
+}
+
+void BacklightControllerStub::HandleVideoActivity(bool is_fullscreen) {
+  video_activity_reports_.push_back(is_fullscreen);
+}
+
+void BacklightControllerStub::HandleHoverStateChange(bool hovering) {
+  hover_state_changes_.push_back(hovering);
+}
+
+void BacklightControllerStub::HandleTabletModeChange(TabletMode mode) {
+  tablet_mode_changes_.push_back(mode);
+}
+
+void BacklightControllerStub::HandlePolicyChange(
+    const PowerManagementPolicy& policy) {
+  policy_changes_.push_back(policy);
+}
+
+void BacklightControllerStub::HandleChromeStart() {
+  chrome_starts_++;
+}
+
+void BacklightControllerStub::SetDimmedForInactivity(bool dimmed) {
+  dimmed_ = dimmed;
+}
+
+void BacklightControllerStub::SetOffForInactivity(bool off) {
+  off_ = off;
+}
+
+void BacklightControllerStub::SetSuspended(bool suspended) {
+  suspended_ = suspended;
+}
+
+void BacklightControllerStub::SetShuttingDown(bool shutting_down) {
+  shutting_down_ = shutting_down;
+}
+
+void BacklightControllerStub::SetDocked(bool docked) {
+  docked_ = docked;
+}
+
 bool BacklightControllerStub::GetBrightnessPercent(double* percent) {
   DCHECK(percent);
   *percent = percent_;
   return true;
 }
 
-void BacklightControllerStub::NotifyObservers(double percent,
-                                              BrightnessChangeCause cause) {
-  percent_ = percent;
-  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
-                    OnBrightnessChange(percent_, cause, this));
+bool BacklightControllerStub::SetUserBrightnessPercent(double percent,
+                                                       TransitionStyle style) {
+  user_brightness_percent_ = percent;
+  return true;
+}
+
+bool BacklightControllerStub::IncreaseUserBrightness() {
+  num_user_brightness_increases_++;
+  return true;
+}
+
+bool BacklightControllerStub::DecreaseUserBrightness(bool allow_off) {
+  num_user_brightness_decreases_++;
+  return true;
 }
 
 }  // namespace policy

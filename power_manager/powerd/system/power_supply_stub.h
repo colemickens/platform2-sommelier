@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <base/observer_list.h>
+
 namespace power_manager {
 namespace system {
 
@@ -20,6 +22,9 @@ class PowerSupplyStub : public PowerSupplyInterface {
 
   void set_refresh_result(bool result) { refresh_result_ = result; }
   void set_status(const PowerStatus& status) { status_ = status; }
+
+  // Notifies registered observers that the power status has been updated.
+  void NotifyObservers();
 
   // PowerSupplyInterface implementation:
   void AddObserver(PowerSupplyObserver* observer) override;
@@ -35,6 +40,8 @@ class PowerSupplyStub : public PowerSupplyInterface {
 
   // Status to return.
   PowerStatus status_;
+
+  base::ObserverList<PowerSupplyObserver> observers_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupplyStub);
 };
