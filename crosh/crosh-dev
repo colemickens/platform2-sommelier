@@ -132,7 +132,7 @@ HELP_live_in_a_coal_mine='
   device, please be familiar with this article first:
   https://support.google.com/chromebook/answer/1080595
 '
-cmd_live_in_a_coal_mine() {
+cmd_live_in_a_coal_mine() (
   shell_read "Are you sure you want to change to the canary channel? [y/N] "
   case "${REPLY}" in
   [yY])
@@ -141,4 +141,4 @@ cmd_live_in_a_coal_mine() {
     ;;
   *) echo "Fly, my pretties, fly! (not changing channels)";;
   esac
-}
+)

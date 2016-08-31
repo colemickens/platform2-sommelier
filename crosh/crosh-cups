@@ -18,7 +18,7 @@ cups_reset() {
   debugd CupsResetState > /dev/null
 }
 
-cmd_cups() {
+cmd_cups() (
   if [ $# -ne 1 ]; then
     help "incorrect number of arguments: $@"
     return 1
@@ -31,4 +31,4 @@ cmd_cups() {
       help "unknown option: $1"
       return 1
   esac
-}
+)
