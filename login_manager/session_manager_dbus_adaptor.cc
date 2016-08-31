@@ -134,6 +134,11 @@ class DBusMethodCompletion {
   static PolicyService::Completion CreateCallback(
       dbus::MethodCall* call,
       const dbus::ExportedObject::ResponseSender& sender);
+
+  // Permits objects to be destroyed before their calls have been completed. Can
+  // be called during shutdown to abandon in-progress calls.
+  static void AllowAbandonment();
+
   virtual ~DBusMethodCompletion();
 
  private:
@@ -142,11 +147,16 @@ class DBusMethodCompletion {
                        const dbus::ExportedObject::ResponseSender& sender);
   void HandleResult(const PolicyService::Error& error);
 
-  dbus::MethodCall* call_ = nullptr;
+  // Should we allow destroying objects before their calls have been completed?
+  static bool s_allow_abandonment_;
+
+  dbus::MethodCall* call_ = nullptr;  // Weak, owned by caller.
   dbus::ExportedObject::ResponseSender sender_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusMethodCompletion);
 };
+
+bool DBusMethodCompletion::s_allow_abandonment_ = false;
 
 // static
 PolicyService::Completion DBusMethodCompletion::CreateCallback(
@@ -156,18 +166,22 @@ PolicyService::Completion DBusMethodCompletion::CreateCallback(
                     base::Owned(new DBusMethodCompletion(call, sender)));
 }
 
-// Apparently, call is owned by sender, so it's safe to hang on to it.
+// static
+void DBusMethodCompletion::AllowAbandonment() {
+  s_allow_abandonment_ = true;
+}
+
+DBusMethodCompletion::~DBusMethodCompletion() {
+  if (call_ && !s_allow_abandonment_) {
+    NOTREACHED() << "Unfinished D-Bus call!";
+    sender_.Run(dbus::Response::FromMethodCall(call_));
+  }
+}
+
 DBusMethodCompletion::DBusMethodCompletion(
     dbus::MethodCall* call,
     const dbus::ExportedObject::ResponseSender& sender)
     : call_(call), sender_(sender) {
-}
-
-DBusMethodCompletion::~DBusMethodCompletion() {
-  if (call_) {
-    NOTREACHED() << "Unfinished DBUS call!";
-    sender_.Run(dbus::Response::FromMethodCall(call_));
-  }
 }
 
 void DBusMethodCompletion::HandleResult(const PolicyService::Error& error) {
@@ -191,6 +205,8 @@ SessionManagerDBusAdaptor::SessionManagerDBusAdaptor(SessionManagerImpl* impl)
 }
 
 SessionManagerDBusAdaptor::~SessionManagerDBusAdaptor() {
+  // Abandon in-progress incoming D-Bus method calls.
+  DBusMethodCompletion::AllowAbandonment();
 }
 
 void SessionManagerDBusAdaptor::ExportDBusMethods(
