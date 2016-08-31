@@ -77,6 +77,21 @@
     {
       'target_name': 'libsystem_stub',
       'type': 'static_library',
+      'variables': {
+        'exported_deps': [
+          'dbus-1',
+        ],
+        'deps': [
+          '<@(exported_deps)',
+        ],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
       'sources': [
         'powerd/system/acpi_wakeup_helper_stub.cc',
         'powerd/system/ambient_light_sensor_stub.cc',

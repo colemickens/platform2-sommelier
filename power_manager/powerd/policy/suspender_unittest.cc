@@ -221,7 +221,8 @@ class SuspenderTest : public testing::Test {
   // signal wasn't sent.
   int GetSuspendImminentId(int position) {
     SuspendImminent proto;
-    if (!dbus_wrapper_.GetSentSignal(position, kSuspendImminentSignal, &proto))
+    if (!dbus_wrapper_.GetSentSignal(position, kSuspendImminentSignal, &proto,
+                                     nullptr))
       return -1;
     return proto.suspend_id();
   }
@@ -231,7 +232,7 @@ class SuspenderTest : public testing::Test {
   int GetDarkSuspendImminentId(int position) {
     SuspendImminent proto;
     if (!dbus_wrapper_.GetSentSignal(
-            position, kDarkSuspendImminentSignal, &proto))
+            position, kDarkSuspendImminentSignal, &proto, nullptr))
       return -1;
     return proto.suspend_id();
   }
@@ -240,7 +241,8 @@ class SuspenderTest : public testing::Test {
   // wasn't sent.
   int GetSuspendDoneId(int position) {
     SuspendDone proto;
-    if (!dbus_wrapper_.GetSentSignal(position, kSuspendDoneSignal, &proto))
+    if (!dbus_wrapper_.GetSentSignal(position, kSuspendDoneSignal, &proto,
+                                     nullptr))
       return -1;
     return proto.suspend_id();
   }
@@ -315,7 +317,8 @@ TEST_F(SuspenderTest, SuspendResume) {
   // A SuspendDone signal should be emitted to announce that the attempt is
   // complete.
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
   EXPECT_EQ((kResumeTime - kRequestTime).ToInternalValue(),
             done_proto.suspend_duration());
@@ -636,7 +639,8 @@ TEST_F(SuspenderTest, SystemClockGoesBackward) {
   dbus_wrapper_.ClearSentSignals();
   AnnounceReadyForSuspend(test_api_.suspend_id());
   SuspendDone done_proto;
-  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto));
+  EXPECT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), done_proto.suspend_duration());
 }
 
@@ -691,7 +695,8 @@ TEST_F(SuspenderTest, SendSuspendDoneAtStartupForAbandonedAttempt) {
   delegate_.set_suspend_announced(true);
   Init();
   SuspendDone proto;
-  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &proto));
+  EXPECT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &proto, nullptr));
   EXPECT_EQ(0, proto.suspend_id());
   EXPECT_EQ(base::TimeDelta().ToInternalValue(), proto.suspend_duration());
   EXPECT_FALSE(delegate_.suspend_announced());
@@ -953,7 +958,8 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
   AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kDarkSuspendImminentSignal, NULL));
+  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kDarkSuspendImminentSignal,
+                                          nullptr, nullptr));
   dbus_wrapper_.ClearSentSignals();
 
   // The resuspend attempt fails due to a transient kernel error.

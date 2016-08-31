@@ -5,9 +5,13 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_STUB_H_
 
+#include <map>
+#include <memory>
 #include <string>
+#include <vector>
 
-#include <base/memory/scoped_vector.h>
+#include <base/memory/ref_counted.h>
+#include <dbus/message.h>
 #include <google/protobuf/message_lite.h>
 
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -21,6 +25,11 @@ class DBusWrapperStub : public DBusWrapperInterface {
   // Information about a signal that was sent.
   struct SignalInfo {
     std::string signal_name;
+
+    // Only set if EmitSignal() was called.
+    std::unique_ptr<dbus::Signal> signal;
+
+    // Only set if EmitSignalWithProtocolBuffer() was called.
     std::string protobuf_type;
     std::string serialized_data;
   };
@@ -32,17 +41,23 @@ class DBusWrapperStub : public DBusWrapperInterface {
   size_t num_sent_signals() const { return sent_signals_.size(); }
 
   // Copies the signal at position |index| in |sent_signals_| (that is, the
-  // |index|th-sent signal) to |protobuf|, which should be a concrete protocol
-  // buffer.  false is returned if the index is out-of-range, the D-Bus signal
-  // name doesn't match |expected_signal_name|, or the type of protocol buffer
-  // that was attached to the signal doesn't match |protobuf|'s type.
-  // |protobuf| can be NULL, in which case only the signal name is checked.
+  // |index|th-sent signal) to |protobuf_out|, which should be a concrete
+  // protocol buffer, and |signal_out|. false is returned if the index is
+  // out-of-range, the D-Bus signal name doesn't match |expected_signal_name|,
+  // or the type of protocol buffer that was attached to the signal doesn't
+  // match |protobuf_out|'s type. |protobuf_out| can be null, in which case only
+  // the signal name is checked. |signal_out| may also be null.
   bool GetSentSignal(size_t index,
                      const std::string& expected_signal_name,
-                     google::protobuf::MessageLite* protobuf);
+                     google::protobuf::MessageLite* protobuf_out,
+                     std::unique_ptr<dbus::Signal>* signal_out);
 
   // Clears |sent_signals_|.
   void ClearSentSignals();
+
+  // Invokes a method previously exported with ExportedMethod().
+  void CallExportedMethod(dbus::MethodCall* method_call,
+                          dbus::ExportedObject::ResponseSender response_cb);
 
   // DBusWrapperInterface overrides:
   dbus::Bus* GetBus() override;
@@ -75,10 +90,25 @@ class DBusWrapperStub : public DBusWrapperInterface {
       dbus::ObjectProxy::ResponseCallback callback) override;
 
  private:
+  // Information about a proxy returned by GetObjectProxy().
+  struct ObjectProxyInfo {
+    std::string service_name;
+    std::string object_path;
+    scoped_refptr<dbus::ObjectProxy> object_proxy;
+  };
+
   // Has PublishService() been called?
   bool service_published_;
 
-  ScopedVector<SignalInfo> sent_signals_;
+  // All proxies that have been created.
+  std::vector<ObjectProxyInfo> object_proxy_infos_;
+
+  // Methods that have been exported via ExportMethod(), keyed by method name.
+  std::map<std::string, dbus::ExportedObject::MethodCallCallback>
+      exported_methods_;
+
+  // Information about signals that have been sent using Emit*Signal*().
+  std::vector<SignalInfo> sent_signals_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusWrapperStub);
 };

@@ -107,7 +107,8 @@ class InputControllerTest : public ::testing::Test {
   int GetInputEventSignalType() {
     InputEvent proto;
     EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
-    EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kInputEventSignal, &proto));
+    EXPECT_TRUE(
+        dbus_wrapper_.GetSentSignal(0, kInputEventSignal, &proto, nullptr));
     return proto.type();
   }
 
@@ -116,7 +117,8 @@ class InputControllerTest : public ::testing::Test {
   int64_t GetInputEventSignalTimestamp() {
     InputEvent proto;
     EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
-    EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kInputEventSignal, &proto));
+    EXPECT_TRUE(
+        dbus_wrapper_.GetSentSignal(0, kInputEventSignal, &proto, nullptr));
     return proto.timestamp();
   }
 

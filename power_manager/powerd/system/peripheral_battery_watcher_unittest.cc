@@ -109,8 +109,8 @@ TEST_F(PeripheralBatteryWatcherTest, Basic) {
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeoutMs));
   EXPECT_EQ(1, test_wrapper_.num_sent_signals());
   PeripheralBatteryStatus proto;
-  EXPECT_TRUE(
-      test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal, &proto));
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
+                                          &proto, nullptr));
   EXPECT_EQ(80, proto.level());
   EXPECT_EQ(kDeviceModelName, proto.name());
 }
