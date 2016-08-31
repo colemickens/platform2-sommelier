@@ -32,11 +32,13 @@ socket: 1
 socketpair: 1
 connect: 1
 getsockname: 1
+getpeername: 1
 pipe: 1
 sendmsg: 1
 sendto: 1
 recvmsg: 1
 recvfrom: 1
+getsockopt: 1
 
 epoll_create: 1
 epoll_wait: 1
@@ -77,6 +79,7 @@ madvise: 1
 
 clone: 1
 setpriority: 1
+setitimer: 1
 pwrite: 1
 pwrite64: 1
 fdatasync: 1
