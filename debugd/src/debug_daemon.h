@@ -142,6 +142,13 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   std::map<std::string, std::string> GetUserLogFiles(
       DBus::Error& error) override;  // NOLINT
   std::string GetExample(DBus::Error& error) override;  // NOLINT
+  bool CupsAddPrinter(const std::string& name,
+                      const std::string& uri,
+                      const std::string& ppd_path,
+                      const bool& ipp_everywhere,
+                      DBus::Error& error) override;  // NOLINT
+  bool CupsRemovePrinter(const std::string& name,
+                         DBus::Error& error) override;  // NOLINT
   void CupsResetState(DBus::Error& error) override;  // NOLINT
   std::string GetInterfaces(DBus::Error& error) override;  // NOLINT
   std::string TestICMP(const std::string& host,

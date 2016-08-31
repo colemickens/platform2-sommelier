@@ -17,6 +17,17 @@ class CupsTool {
   CupsTool() = default;
   ~CupsTool() = default;
 
+  // Add a printer to CUPS using lpadmin.
+  bool AddPrinter(const std::string& name,
+                  const std::string& uri,
+                  const std::string& ppd_path,
+                  bool ipp_everywhere,
+                  DBus::Error* error);
+
+  // Remove a printer from CUPS using lpadmin.
+  bool RemovePrinter(const std::string& name, DBus::Error* error);
+
+  // Clear CUPS state.
   void ResetState(DBus::Error* error);
 
  private:

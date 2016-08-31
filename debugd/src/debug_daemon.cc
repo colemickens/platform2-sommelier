@@ -209,6 +209,19 @@ std::string DebugDaemon::GetExample(DBus::Error& error) {  // NOLINT
   return example_tool_->GetExample(&error);
 }
 
+bool DebugDaemon::CupsAddPrinter(const std::string& name,
+                                 const std::string& uri,
+                                 const std::string& ppd_path,
+                                 const bool& ipp_everywhere,
+                                 DBus::Error& error) { // NOLINT
+  return cups_tool_->AddPrinter(name, uri, ppd_path, ipp_everywhere, &error);
+}
+
+bool DebugDaemon::CupsRemovePrinter(const std::string& name,
+                                    DBus::Error& error) { // NOLINT
+  return cups_tool_->RemovePrinter(name, &error);
+}
+
 void DebugDaemon::CupsResetState(DBus::Error& error) { // NOLINT
   cups_tool_->ResetState(&error);
 }

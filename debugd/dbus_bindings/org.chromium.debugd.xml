@@ -322,6 +322,38 @@
       </tp:docstring>
       <arg name="result" type="s" direction="out" />
     </method>
+    <method name="CupsAddPrinter">
+      <tp:docstring>
+        Add a printer to CUPS.  Immediately attempt to connect.  Returns true if
+        setup was successful.
+      </tp:docstring>
+      <arg name="result" type="b" direction="out" />
+      <arg name="name" type="s" direction="in" />
+      <arg name="uri" type="s" direction="in" />
+      <arg name="ppd_path" type="s" direction="in">
+        <tp:docstring>
+          The path to the ppd file on disk.
+        </tp:docstring>
+      </arg>
+      <arg name="ipp_everywhere" type="b" direction="in">
+        <tp:docstring>
+          Indicate if the printer should be autoconfigured.  ppd_path will be
+          ignored if this is true.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="CupsRemovePrinter">
+      <tp:docstring>
+        Remove a printer from CUPS.  Returns true if the printer was removed
+        successfully.
+      </tp:docstring>
+      <arg name="result" type="b" direction="out" />
+      <arg name="name" type="s" direction="in">
+        <tp:docstring>
+          The name of the printer to remove.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="CupsResetState">
       <tp:docstring>
         Stop CUPS daemon and reset its state.
