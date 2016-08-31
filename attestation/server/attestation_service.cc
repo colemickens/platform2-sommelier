@@ -20,6 +20,8 @@
 
 #include <base/callback.h>
 #include <base/sha1.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_utils.h>
@@ -291,6 +293,21 @@ void AttestationService::GetEndorsementInfoTask(
     result->set_ek_certificate(
         database_pb.credentials().endorsement_credential());
   }
+  std::string ek_cert;
+  if (database_pb.credentials().has_endorsement_credential()) {
+    ek_cert = database_pb.credentials().endorsement_credential();
+  } else {
+    if (!tpm_utility_->GetEndorsementCertificate(KEY_TYPE_RSA, &ek_cert)) {
+      LOG(ERROR) << __func__ << ": Endorsement cert not available.";
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+      return;
+    }
+  }
+  std::string hash = crypto::SHA256HashString(ek_cert);
+  result->set_ek_info(base::StringPrintf(
+      "EK Certificate:\n%s\nHash:\n%s\n",
+      CreatePEMCertificate(ek_cert).c_str(),
+      base::HexEncode(hash.data(), hash.size()).c_str()));
 }
 
 void AttestationService::GetAttestationKeyInfo(
