@@ -148,11 +148,9 @@ class AttestationService : public AttestationInterface {
   // So tests don't need to duplicate URL decisions.
   const std::string& attestation_ca_origin() { return attestation_ca_origin_; }
 
-  // To allow tests to run out the worker thread's task runner. Must not be
-  // invoked on the worker thread.
-  void WaitUntilIdleForTesting();
-
  private:
+  friend class AttestationServiceTest;
+
   enum ACARequestType {
     kEnroll,          // Enrolls a device, certifying an identity key.
     kGetCertificate,  // Issues a certificate for a TPM-backed key.

@@ -529,12 +529,6 @@ void AttestationService::RegisterKeyWithChapsTokenTask(
   DeleteKey(request.username(), request.key_label());
 }
 
-void AttestationService::WaitUntilIdleForTesting() {
-  while (!worker_thread_->message_loop()->IsIdleForTesting()) {
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
-  }
-}
-
 bool AttestationService::IsPreparedForEnrollment() {
   if (!tpm_utility_->IsTpmReady()) {
     return false;

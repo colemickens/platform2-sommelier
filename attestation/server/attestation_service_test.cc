@@ -45,6 +45,83 @@ using testing::SetArgumentPointee;
 
 namespace attestation {
 
+// MessageLoopIdleEvent: waits for the moment when the message loop becomes
+// idle. Note: it is still possible that there are deferred tasks.
+//
+// Posts the task to the message loop that checks the following:
+// If there are tasks in the incoming queue, the loop is not idle, so re-post
+// the task.
+// If there are no tasks in the incoming queue, it's still possible that there
+// are other tasks in the work queue already picked for processing after this
+// task. So, in this case, re-post once again, and check the number of
+// tasks between now and the next invocation of this task. If only 1 (this
+// task only), the task runner is idle.
+class MessageLoopIdleEvent : public base::MessageLoop::TaskObserver {
+ public:
+  MessageLoopIdleEvent(base::MessageLoop* message_loop)
+      : event_(true /* manual_reset */, false /* initially_signalled */),
+        observer_added_(false),
+        tasks_processed_(0),
+        was_idle_(false),
+        message_loop_(message_loop) {
+    PostTask();
+  }
+  ~MessageLoopIdleEvent() {
+  }
+  // Observer callbacks: WillProcessTask and DidProcessTask.
+  // Count the number of run tasks in WillProcessTask.
+  void WillProcessTask(const base::PendingTask& pending_task) {
+    tasks_processed_++;
+  }
+  void DidProcessTask(const base::PendingTask& pending_task) { }
+  // The task we put on the message loop.
+  void RunTask() {
+    // We need to add observer in RunTask, since it can only
+    // be done by the thread that runs MessageLoop
+    if (!observer_added_) {
+      message_loop_->AddTaskObserver(this);
+      observer_added_ = true;
+    }
+    bool is_idle = (tasks_processed_ <= 1) &&
+                   message_loop_->IsIdleForTesting();
+    if (was_idle_ && is_idle) {
+      // We need to remove observer in RunTask, since it can only
+      // be done by the thread that runs MessageLoop
+      if (observer_added_) {
+        message_loop_->RemoveTaskObserver(this);
+        observer_added_ = false;
+      }
+      event_.Signal();
+      return;
+    }
+    was_idle_ = is_idle;
+    tasks_processed_ = 0;
+    PostTask();
+  }
+  // Waits until the message loop becomes idle.
+  void Wait() {
+    event_.Wait();
+  }
+
+ private:
+  void PostTask() {
+    auto task = base::Bind(&MessageLoopIdleEvent::RunTask,
+                           base::Unretained(this));
+    message_loop_->PostTask(FROM_HERE, task);
+  }
+
+  // Event to signal when we detect that the message loop is idle.
+  base::WaitableEvent event_;
+  // Was observer added to the mount loop?
+  bool observer_added_;
+  // Number of tasks run between previous invocation and now (including this).
+  int tasks_processed_;
+  // Did the loop appear idle during the previous task invocation?
+  bool was_idle_;
+  // MessageLoop we are waiting for.
+  base::MessageLoop* message_loop_;
+};
+
 class AttestationServiceTest : public testing::Test {
  public:
   enum FakeCAState {
@@ -82,7 +159,7 @@ class AttestationServiceTest : public testing::Test {
     CHECK(service_->Initialize());
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
-    service_->WaitUntilIdleForTesting();
+    WaitUntilIdleForTesting();
   }
 
  protected:
@@ -131,6 +208,11 @@ class AttestationServiceTest : public testing::Test {
   void RunUntilIdle() { run_loop_.RunUntilIdle(); }
 
   void Quit() { run_loop_.Quit(); }
+
+  void WaitUntilIdleForTesting() {
+    MessageLoopIdleEvent idle_event(service_->worker_thread_->message_loop());
+    idle_event.Wait();
+  }
 
   std::shared_ptr<brillo::http::fake::Transport> fake_http_transport_;
   NiceMock<MockCryptoUtility> mock_crypto_utility_;
@@ -1249,7 +1331,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollment) {
   mock_database_.GetMutableProtobuf()->Clear();
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
-  service_->WaitUntilIdleForTesting();
+  WaitUntilIdleForTesting();
   EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
   EXPECT_TRUE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_TRUE(mock_database_.GetProtobuf().has_identity_binding());
@@ -1264,7 +1346,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
-  service_->WaitUntilIdleForTesting();
+  WaitUntilIdleForTesting();
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
@@ -1279,7 +1361,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentNoCert) {
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
-  service_->WaitUntilIdleForTesting();
+  WaitUntilIdleForTesting();
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
@@ -1294,7 +1376,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
-  service_->WaitUntilIdleForTesting();
+  WaitUntilIdleForTesting();
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
@@ -1309,7 +1391,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentBadAIK) {
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
-  service_->WaitUntilIdleForTesting();
+  WaitUntilIdleForTesting();
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
@@ -1324,7 +1406,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
-  service_->WaitUntilIdleForTesting();
+  WaitUntilIdleForTesting();
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
