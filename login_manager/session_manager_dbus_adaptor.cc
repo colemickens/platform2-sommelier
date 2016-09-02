@@ -49,8 +49,6 @@ void HandleSynchronousDBusMethodCall(
 scoped_ptr<dbus::Response> CreateError(dbus::MethodCall* call,
                                        const std::string& name,
                                        const std::string& message) {
-  // TODO(achuith): Remove debug logging once crbug.com/631640 is resolved.
-  LOG(ERROR) << "CreateError name=" << name << ", message=" << message;
   return dbus::ErrorResponse::FromMethodCall(call, name, message);
 }
 
@@ -508,8 +506,6 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::HandleLockScreenDismissed(
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
     dbus::MethodCall* call) {
-  // TODO(achuith): Remove debug logging once crbug.com/631640 is resolved.
-  LOG(INFO) << "SessionManagerDBusAdaptor::RestartJob";
   dbus::FileDescriptor fd;
   std::vector<std::string> argv;
   dbus::MessageReader reader(call);
