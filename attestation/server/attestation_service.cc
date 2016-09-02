@@ -433,6 +433,7 @@ void AttestationService::GetKeyInfoTask(
   } else {
     result->set_certificate(key.certified_key_credential());
   }
+  result->set_payload(key.payload());
 }
 
 void AttestationService::GetEndorsementInfo(
@@ -985,6 +986,15 @@ void AttestationService::DeleteKey(const std::string& username,
   }
 }
 
+bool AttestationService::DeleteKeysByPrefix(
+    const std::string& username,
+    const std::string& key_prefix) {
+  if (!username.empty()) {
+    return key_store_->DeleteByPrefix(username, key_prefix);
+  }
+  return RemoveDeviceKeysByPrefix(key_prefix);
+}
+
 bool AttestationService::AddDeviceKey(const std::string& key_label,
                                       const CertifiedKey& key) {
   // If a key by this name already exists, reuse the field.
@@ -1021,6 +1031,30 @@ void AttestationService::RemoveDeviceKey(const std::string& key_label) {
       LOG(WARNING) << __func__ << ": Failed to persist key deletion.";
     }
   }
+}
+
+bool AttestationService::RemoveDeviceKeysByPrefix(
+    const std::string& key_prefix) {
+  // Manipulate the device keys protobuf field.  Linear time strategy is to swap
+  // all elements we want to keep to the front and then truncate.
+  auto device_keys = database_->GetMutableProtobuf()->mutable_device_keys();
+  int next_keep_index = 0;
+  for (int i = 0; i < device_keys->size(); ++i) {
+    if (device_keys->Get(i).key_name().find(key_prefix) != 0) {
+      // Prefix doesn't match -> keep.
+      if (i != next_keep_index)
+        device_keys->SwapElements(next_keep_index, i);
+      ++next_keep_index;
+    }
+  }
+  // If no matching keys, do nothing and return success.
+  if (next_keep_index == device_keys->size()) {
+    return true;
+  }
+  while (next_keep_index < device_keys->size()) {
+    device_keys->RemoveLast();
+  }
+  return database_->SaveChanges();
 }
 
 std::string AttestationService::CreatePEMCertificateChain(
@@ -1999,8 +2033,16 @@ void AttestationService::SetKeyPayload(
 void AttestationService::SetKeyPayloadTask(
     const SetKeyPayloadRequest& request,
     const std::shared_ptr<SetKeyPayloadReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  CertifiedKey key;
+  if (!FindKeyByLabel(request.username(), request.key_label(), &key)) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  key.set_payload(request.payload());
+  if (!SaveKey(request.username(), request.key_label(), key)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
 }
 
 void AttestationService::DeleteKeys(
@@ -2019,8 +2061,12 @@ void AttestationService::DeleteKeys(
 void AttestationService::DeleteKeysTask(
     const DeleteKeysRequest& request,
     const std::shared_ptr<DeleteKeysReply>& result) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  result->set_status(STATUS_NOT_SUPPORTED);
+  if (!DeleteKeysByPrefix(request.username(), request.key_prefix())) {
+    LOG(ERROR) << __func__ << ": Failed to delete keys with prefix: "
+               << request.key_prefix();
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
 }
 
 void AttestationService::ResetIdentity(

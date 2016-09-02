@@ -38,6 +38,8 @@ namespace attestation {
 const char kCreateAndCertifyCommand[] = "create_and_certify";
 const char kCreateCommand[] = "create";
 const char kInfoCommand[] = "info";
+const char kSetKeyPayloadCommand[] = "set_key_payload";
+const char kDeleteKeysCommand[] = "delete_keys";
 const char kEndorsementCommand[] = "endorsement";
 const char kAttestationKeyCommand[] = "attestation_key";
 const char kVerifyAttestationCommand[] = "verify_attestation";
@@ -60,8 +62,12 @@ Commands:
   create_and_certify [--user=<email>] [--label=<keylabel>]
       Creates a key and requests certification by the Google Attestation CA.
       This is the default command.
-  create [--user=<email>] [--label=<keylabel] [--usage=sign|decrypt]
+  create [--user=<email>] [--label=<keylabel>] [--usage=sign|decrypt]
       Creates a certifiable key.
+  set_key_payload [--user=<email>] --label=<keylabel> --input=<input_file>
+      Reads payload from |input_file| and sets it for the specified key.
+  delete_keys [--user=<email>]  --prefix=<prefix>
+      Deletes all keys with the specified |prefix|.
 
   status [--extended]
       Requests and prints status or extended status: prepared_for_enrollment,
@@ -187,6 +193,24 @@ class ClientLoop : public ClientLoopBase {
     } else if (args.front() == kInfoCommand) {
       task = base::Bind(&ClientLoop::CallGetKeyInfo, weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"));
+    } else if (args.front() == kSetKeyPayloadCommand) {
+      if (!command_line->HasSwitch("input")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      task = base::Bind(&ClientLoop::CallSetKeyPayload,
+                        weak_factory_.GetWeakPtr(), input,
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"));
+    } else if (args.front() == kDeleteKeysCommand) {
+      task = base::Bind(&ClientLoop::CallDeleteKeys, weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("prefix"),
                         command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kEndorsementCommand) {
       task = base::Bind(&ClientLoop::CallGetEndorsementInfo,
@@ -427,6 +451,27 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->GetKeyInfo(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetKeyInfoReply>,
+                            weak_factory_.GetWeakPtr()));
+  }
+
+  void CallSetKeyPayload(const std::string& payload,
+                         const std::string& label,
+                         const std::string& username) {
+    SetKeyPayloadRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    request.set_payload(payload);
+    attestation_->SetKeyPayload(
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<SetKeyPayloadReply>,
+                            weak_factory_.GetWeakPtr()));
+  }
+
+  void CallDeleteKeys(const std::string& prefix, const std::string& username) {
+    DeleteKeysRequest request;
+    request.set_key_prefix(prefix);
+    request.set_username(username);
+    attestation_->DeleteKeys(
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<DeleteKeysReply>,
                             weak_factory_.GetWeakPtr()));
   }
 
