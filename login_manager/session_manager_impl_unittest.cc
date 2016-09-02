@@ -302,7 +302,8 @@ class SessionManagerImplTest : public ::testing::Test {
         EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
                              StrEq(SessionManagerImpl::kStarted)))
         .Times(1);
-    EXPECT_CALL(utils_, IsDevMode()).WillOnce(Return(false));
+    EXPECT_CALL(
+        utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   }
 
   void ExpectStartSessionUnownedBoilerplate(const string& account_id_string,
@@ -333,7 +334,8 @@ class SessionManagerImplTest : public ::testing::Test {
         EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
                              StrEq(SessionManagerImpl::kStarted)))
         .Times(1);
-    EXPECT_CALL(utils_, IsDevMode()).WillOnce(Return(false));
+    EXPECT_CALL(
+        utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   }
 
   void FakeLockScreen() { actual_locks_++; }
@@ -879,6 +881,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
           StrEq(SessionManagerImpl::kArcStartSignal),
           ElementsAre(StartsWith("ANDROID_DATA_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
+                      "CHROMEOS_DEV_MODE=0",
                       StartsWith("ANDROID_DATA_OLD_DIR="))))
       .Times(1);
   EXPECT_CALL(
@@ -901,6 +904,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                       ElementsAre()))
       .Times(1);
+  EXPECT_CALL(
+      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
@@ -930,7 +935,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
                       ElementsAre(StartsWith("ANDROID_DATA_DIR="),
-                                  std::string("CHROMEOS_USER=") + kSaneEmail)))
+                                  std::string("CHROMEOS_USER=") + kSaneEmail,
+                                  "CHROMEOS_DEV_MODE=1")))
+
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -957,6 +964,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                       ElementsAre()))
       .Times(1);
+  EXPECT_CALL(
+      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_ON));
   impl_.StartArcInstance(kSaneEmail, &error_);
   EXPECT_TRUE(android_container_.running());
   android_container_.SimulateCrash();
@@ -1081,6 +1090,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
+  EXPECT_CALL(
+      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, &error_);
   impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
@@ -1094,6 +1105,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("bar"), "test2"));
+  EXPECT_CALL(
+      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, &error_);
   impl_.StopArcInstance(&error_);
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,

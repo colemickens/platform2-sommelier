@@ -23,6 +23,8 @@
 #include <base/files/important_file_writer.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/process/launch.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
 #include <chromeos/dbus/service_constants.h>
@@ -32,17 +34,52 @@ using std::vector;
 
 namespace login_manager {
 
-SystemUtilsImpl::SystemUtilsImpl() {
+namespace {
+
+bool LaunchAndWait(const vector<string>& argv, int* out_exit_code) {
+  base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
+  if (!process.IsValid()) {
+    PLOG(ERROR) << "Failed to create a process for '"
+                << base::JoinString(argv, " ") << "'";
+    return false;
+  }
+  if (!process.WaitForExit(out_exit_code)) {
+    PLOG(ERROR) << "Failed to wait for '" << base::JoinString(argv, " ")
+                << "' to exit";
+    return false;
+  }
+  return true;
 }
+
+}  // namespace
+
+SystemUtilsImpl::SystemUtilsImpl()
+    : dev_mode_state_(DevModeState::DEV_MODE_UNKNOWN) {
+}
+
 SystemUtilsImpl::~SystemUtilsImpl() {
 }
 
-int SystemUtilsImpl::IsDevMode() {
-  int dev_mode_code = system("crossystem 'cros_debug?0'");
-  if (WIFEXITED(dev_mode_code)) {
-    return WEXITSTATUS(dev_mode_code);
+DevModeState SystemUtilsImpl::GetDevModeState() {
+  // Return the cached result when possible. There is no reason to run
+  // crossytem twice as cros_debug is always read-only.
+  if (dev_mode_state_ == DevModeState::DEV_MODE_UNKNOWN) {
+    int exit_code;
+    if (LaunchAndWait({"crossystem", "cros_debug?0"}, &exit_code)) {
+      switch (exit_code) {
+        case 0:
+          dev_mode_state_ = DevModeState::DEV_MODE_OFF;
+          break;
+        case 1:
+          dev_mode_state_ = DevModeState::DEV_MODE_ON;
+          break;
+        default:
+          LOG(ERROR) << "Unexpected exit code from crossystem: " << exit_code;
+          break;
+      }
+    }
   }
-  return -1;
+  return dev_mode_state_;
 }
 
 int SystemUtilsImpl::kill(pid_t pid, uid_t owner, int signal) {

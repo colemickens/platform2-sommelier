@@ -25,7 +25,7 @@ class MockSystemUtils : public SystemUtilsImpl {
   MOCK_METHOD3(kill, int(pid_t pid, uid_t uid, int signal));
   MOCK_METHOD1(time, time_t(time_t*));  // NOLINT
   MOCK_METHOD0(fork, pid_t(void));
-  MOCK_METHOD0(IsDevMode, int(void));
+  MOCK_METHOD0(GetDevModeState, DevModeState(void));
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,
                                         base::TimeDelta timeout));
 

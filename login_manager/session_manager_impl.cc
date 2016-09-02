@@ -354,9 +354,13 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
 
   // Send each user login event to UMA (right before we start session
   // since the metrics library does not log events in guest mode).
-  int dev_mode = system_->IsDevMode();
-  if (dev_mode > -1)
-    login_metrics_->SendLoginUserType(dev_mode, is_incognito, user_is_owner);
+  const DevModeState dev_mode_state = system_->GetDevModeState();
+  if (dev_mode_state != DevModeState::DEV_MODE_UNKNOWN) {
+    login_metrics_->SendLoginUserType(
+        dev_mode_state != DevModeState::DEV_MODE_OFF,
+        is_incognito,
+        user_is_owner);
+  }
 
   scoped_ptr<dbus::Response> response = init_controller_->TriggerImpulse(
       "start-user-session",
@@ -614,10 +618,15 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
 
   const base::FilePath android_data_dir =
       GetAndroidDataDirForUser(actual_account_id);
+  // When GetDevModeState() returns UNKNOWN, assign true to |is_dev_mode|.
+  const bool is_dev_mode =
+      system_->GetDevModeState() != DevModeState::DEV_MODE_OFF;
+
   std::vector<std::string> keyvals = {
       base::StringPrintf("ANDROID_DATA_DIR=%s",
                          android_data_dir.value().c_str()),
       base::StringPrintf("CHROMEOS_USER=%s", actual_account_id.c_str()),
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", is_dev_mode),
   };
 
   const base::FilePath android_data_old_dir =

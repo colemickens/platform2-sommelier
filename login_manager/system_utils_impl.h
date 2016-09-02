@@ -34,7 +34,7 @@ class SystemUtilsImpl : public SystemUtils {
   int kill(pid_t pid, uid_t owner, int signal) override;
   time_t time(time_t* t) override;
   pid_t fork() override;
-  int IsDevMode() override;
+  DevModeState GetDevModeState() override;
   bool ProcessGroupIsGone(pid_t child_spec, base::TimeDelta timeout) override;
 
   bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
@@ -72,6 +72,7 @@ class SystemUtilsImpl : public SystemUtils {
   // If this file exists on the next boot, the stateful partition will be wiped.
   static const char kResetFile[];
 
+  DevModeState dev_mode_state_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_for_testing_;
 

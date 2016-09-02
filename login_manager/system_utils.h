@@ -26,6 +26,12 @@ struct DBusPendingCall;
 
 namespace login_manager {
 
+enum class DevModeState {
+  DEV_MODE_OFF,
+  DEV_MODE_ON,
+  DEV_MODE_UNKNOWN,
+};
+
 class ScopedDBusPendingCall;
 
 class SystemUtils {
@@ -44,8 +50,8 @@ class SystemUtils {
   // Forks a new process.  In the parent, returns child's pid.  In child, 0.
   virtual pid_t fork() = 0;
 
-  // Returns 0 if normal mode, 1 if developer mode, -1 if error.
-  virtual int IsDevMode() = 0;
+  // Returns the current developer mode.
+  virtual DevModeState GetDevModeState() = 0;
 
   // Returns: true if process group specified by |child_spec| exited,
   //          false if we time out.
