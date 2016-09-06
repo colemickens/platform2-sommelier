@@ -331,6 +331,11 @@ void Daemon::Init() {
   for (auto controller : all_backlight_controllers_)
     controller->AddObserver(this);
 
+  prefs_->GetBool(kSetWifiTransmitPowerForTabletModePref,
+                  &set_wifi_transmit_power_for_tablet_mode_);
+  if (set_wifi_transmit_power_for_tablet_mode_)
+    PopulateIwlWifiTransmitPowerTable();
+
   prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
@@ -372,10 +377,7 @@ void Daemon::Init() {
   peripheral_battery_watcher_ =
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
 
-  prefs_->GetBool(kSetWifiTransmitPowerForTabletModePref,
-                  &set_wifi_transmit_power_for_tablet_mode_);
-  if (set_wifi_transmit_power_for_tablet_mode_)
-    PopulateIwlWifiTransmitPowerTable();
+  HandleTabletModeChange(input_watcher_->GetTabletMode());
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
