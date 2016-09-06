@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -872,9 +873,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("foo"), "test"));
 
-  // TODO(lhchavez): Once session_manager controls the ARC instance process and
-  // upstart is not used, verify that the instance is killed when the session
-  // ends.
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(
@@ -882,6 +880,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
           ElementsAre(StartsWith("ANDROID_DATA_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
                       "CHROMEOS_DEV_MODE=0",
+                      "DISABLE_BOOT_COMPLETED_BROADCAST=0",
                       StartsWith("ANDROID_DATA_OLD_DIR="))))
       .Times(1);
   EXPECT_CALL(
@@ -906,14 +905,14 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       .Times(1);
   EXPECT_CALL(
       utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
-  impl_.StartArcInstance(kSaneEmail, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
   impl_.StopArcInstance(&error_);
   EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(android_container_.running());
 #else
-  impl_.StartArcInstance(kSaneEmail, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
@@ -922,7 +921,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
 #if USE_CHEETS
-  impl_.StartArcInstance(kSaneEmail, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
 #endif
 }
@@ -936,8 +935,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
                       ElementsAre(StartsWith("ANDROID_DATA_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
-                                  "CHROMEOS_DEV_MODE=1")))
-
+                                  "CHROMEOS_DEV_MODE=1",
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -966,7 +965,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       .Times(1);
   EXPECT_CALL(
       utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_ON));
-  impl_.StartArcInstance(kSaneEmail, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_TRUE(android_container_.running());
   android_container_.SimulateCrash();
   EXPECT_FALSE(android_container_.running());
@@ -1092,7 +1091,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   EXPECT_CALL(
       utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
-  impl_.StartArcInstance(kSaneEmail, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, &error_);
   impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
   EXPECT_TRUE(utils_.Exists(android_data_dir_));
@@ -1107,7 +1106,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
       android_data_old_dir_.Append("bar"), "test2"));
   EXPECT_CALL(
       utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
-  impl_.StartArcInstance(kSaneEmail, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, &error_);
   impl_.StopArcInstance(&error_);
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);

@@ -8,6 +8,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -620,8 +621,14 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
   if (!reader.PopString(&account_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
+  bool disable_boot_completed_broadcast = false;
+  if (!reader.PopBool(&disable_boot_completed_broadcast)) {
+    // TODO(xzhou): Return an error after Chrome has been updated to pass this.
+    LOG(WARNING) << "Failed to pop disable_boot_completed_broadcast";
+  }
+
   SessionManagerImpl::Error error;
-  impl_->StartArcInstance(account_id, &error);
+  impl_->StartArcInstance(account_id, disable_boot_completed_broadcast, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));

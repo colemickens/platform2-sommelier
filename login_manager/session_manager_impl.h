@@ -193,7 +193,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartContainer(const std::string& name, Error* error);
   void StopContainer(const std::string& name, Error* error);
 
-  void StartArcInstance(const std::string& account_id, Error* error);
+  void StartArcInstance(const std::string& account_id,
+                        bool disable_boot_completed_broadcast,
+                        Error* error);
   void StopArcInstance(Error* error);
   void PrioritizeArcInstance(Error* error);
   void EmitArcBooted(Error* error);

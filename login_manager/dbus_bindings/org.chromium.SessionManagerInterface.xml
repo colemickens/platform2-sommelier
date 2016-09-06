@@ -399,6 +399,8 @@
         StartArcInstance:
         @account_id: Account ID of the user to start ARC for. This
                   must be the same as the one given in StartSession.
+        @disable_boot_completed_broadcast: Option to disable
+                  ACTION_BOOT_COMPLETED broadcast for 3rd party apps.
 
         Starts an ARC instance. Only one instance of ARC can be executing at a
         given point in time. This method is only available if the board
@@ -406,6 +408,7 @@
     -->
     <method name="StartArcInstance">
       <arg type="s" name="account_id" direction="in" />
+      <arg type="b" name="disable_boot_completed_broadcast" direction="in" />
     </method>
 
     <!--

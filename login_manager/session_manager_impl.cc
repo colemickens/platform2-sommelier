@@ -10,7 +10,9 @@
 
 #include <algorithm>
 #include <locale>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -77,7 +79,6 @@ SessionManagerImpl::kAndroidDataOldDirName[] =
     FILE_PATH_LITERAL("android-data-old");
 
 namespace {
-
 // Constants used in email validation.
 const char kEmailSeparator = '@';
 const char kEmailLegalCharacters[] =
@@ -602,6 +603,7 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
 }
 
 void SessionManagerImpl::StartArcInstance(const std::string& account_id,
+                                          bool disable_boot_completed_broadcast,
                                           Error* error) {
 #if USE_CHEETS
   arc_start_time_ = base::TimeTicks::Now();
@@ -628,6 +630,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
                          android_data_dir.value().c_str()),
       base::StringPrintf("CHROMEOS_USER=%s", actual_account_id.c_str()),
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", is_dev_mode),
+      base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
+          disable_boot_completed_broadcast),
   };
 
   const base::FilePath android_data_old_dir =
