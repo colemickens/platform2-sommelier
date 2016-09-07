@@ -23,7 +23,7 @@
 #include <brillo/flag_helper.h>
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
-#define SIZE_2_9_GB (2900LL * 1024LL * 1024LL)
+#define SIZE_2_7_GB (2700LL * 1024LL * 1024LL)
 
 using base::FilePath;
 using std::set;
@@ -130,10 +130,10 @@ int main(int argc, char* argv[]) {
 
   uint32_t *ptr = Allocate(size);
 
-  /* Retry allocate at 2.9GiB on 32 bit userland machine */
+  /* Retry allocate at 2.7GiB on 32 bit userland machine */
   /* NOLINTNEXTLINE(runtime/int) - suppress using long instead of int32 */
-  if (!ptr && autosize && sizeof(long) == 4 && size > SIZE_2_9_GB) {
-    size = SIZE_2_9_GB;
+  if (!ptr && autosize && sizeof(long) == 4 && size > SIZE_2_7_GB) {
+    size = SIZE_2_7_GB;
     ptr = Allocate(size);
   }
 
