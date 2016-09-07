@@ -1442,10 +1442,11 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   suspender_->HandleShutdown();
   metrics_collector_->HandleShutdown(reason);
 
-  // If we want to display a low-battery alert while shutting down, don't turn
-  // the screen off immediately.
-  if (reason != SHUTDOWN_REASON_LOW_BATTERY) {
-    for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
+    // If we're going to display a low-battery alert while shutting down, don't
+    // turn the screen off immediately.
+    if (!(reason == SHUTDOWN_REASON_LOW_BATTERY &&
+          controller == display_backlight_controller_.get()))
       controller->SetShuttingDown(true);
   }
 
