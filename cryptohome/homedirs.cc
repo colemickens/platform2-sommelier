@@ -69,8 +69,10 @@ bool HomeDirs::Init(Platform* platform, Crypto* crypto,
 }
 
 bool HomeDirs::FreeDiskSpace() {
-  if (platform_->AmountOfFreeDiskSpace(shadow_root_) > kMinFreeSpaceInBytes) {
-    return false;
+  if (platform_->AmountOfFreeDiskSpace(shadow_root_) >=
+      kFreeSpaceThresholdToTriggerCleanup) {
+    // Already have enough space. No need to cleanup.
+    return true;
   }
 
   // If ephemeral users are enabled, remove all cryptohomes except those
@@ -86,7 +88,7 @@ bool HomeDirs::FreeDiskSpace() {
                                            base::Unretained(this)));
 
   int64_t freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
-  if (freeDiskSpace >= kEnoughFreeSpace)
+  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
     return true;
 
   // Clean GCache directories for every user (except current one).
@@ -98,16 +100,22 @@ bool HomeDirs::FreeDiskSpace() {
   ReportFreedGCacheDiskSpaceInMb((freeDiskSpace - oldFreeDiskSpace) / 1024 /
                                  1024);
 
-  if (freeDiskSpace >= kEnoughFreeSpace)
+  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
     return true;
 
-  // Clean Cache directories for every user (except current one).
+  // Clean Android cache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(base::Bind(
       &HomeDirs::DeleteAndroidCacheCallback,
       base::Unretained(this)));
 
-  if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
+  freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
+  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup)
     return true;
+
+  if (freeDiskSpace >= kMinFreeSpaceInBytes)
+    // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
+    // than the threshold to do more aggressive cleanup by removing users.
+    return false;
 
   // Initialize user timestamp cache if it has not been yet. This reads the
   // last-activity time from each homedir's SerializedVaultKeyset.  This value
@@ -164,14 +172,15 @@ bool HomeDirs::FreeDiskSpace() {
         LOG(INFO) << "Freeing disk space by deleting user "
                   << deleted_user_dir.value();
         platform_->DeleteFile(deleted_user_dir, true);
-        if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
+        if (platform_->AmountOfFreeDiskSpace(shadow_root_) >=
+            kTargetFreeSpaceAfterCleanup)
           return true;
       }
     }
   }
 
   // TODO(glotov): do further cleanup.
-  return true;
+  return false;
 }
 
 int64_t HomeDirs::AmountOfFreeDiskSpace() {

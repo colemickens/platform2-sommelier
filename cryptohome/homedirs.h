@@ -32,7 +32,8 @@
 
 namespace cryptohome {
 
-const int64_t kEnoughFreeSpace = 1LL << 30;
+const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
+const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
 extern const char kGCacheFilesAttribute[];
 extern const char kAndroidCacheFilesAttribute[];
 
@@ -50,9 +51,10 @@ class HomeDirs {
   virtual bool Init(Platform* platform, Crypto* crypto,
                     UserOldestActivityTimestampCache *cache);
 
-  // Frees disk space for unused cryptohomes. If less than kMinFreeSpace is
-  // available, frees space until kEnoughFreeSpace is available. Returns true if
-  // there is now at least kEnoughFreeSpace, or false otherwise.
+  // Frees disk space for unused cryptohomes. If the available disk space is
+  // below |kFreeSpaceThresholdToTriggerCleanup|, attempts to free space until
+  // it goes up to |kTargetFreeSpaceAfterCleanup|. Returns true if there is now
+  // at least |kTargetFreeSpaceAfterCleanup|, or false otherwise.
   virtual bool FreeDiskSpace();
 
   // Return the available disk space in bytes for home directories, or -1 on
