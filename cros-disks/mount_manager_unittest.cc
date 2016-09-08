@@ -399,12 +399,13 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
                            &mount_path_));
   EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.UnmountAll());
-  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 
   MountManager::MountState mount_state;
-  manager_.GetMountStateFromCache(source_path_, &mount_state);
+  EXPECT_TRUE(manager_.GetMountStateFromCache(source_path_, &mount_state));
   EXPECT_TRUE(mount_state.is_read_only);
+
+  EXPECT_TRUE(manager_.UnmountAll());
+  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
 // Mock action to emulate DoMount with fallback to read-only mode.
@@ -446,7 +447,7 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   MountManager::MountState mount_state;
-  manager_.GetMountStateFromCache(source_path_, &mount_state);
+  EXPECT_TRUE(manager_.GetMountStateFromCache(source_path_, &mount_state));
   EXPECT_TRUE(mount_state.is_read_only);
 }
 
@@ -477,7 +478,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
   MountManager::MountState mount_state;
-  manager_.GetMountStateFromCache(source_path_, &mount_state);
+  EXPECT_TRUE(manager_.GetMountStateFromCache(source_path_, &mount_state));
   EXPECT_TRUE(mount_state.is_read_only);
 }
 
