@@ -411,20 +411,6 @@ bool Service::Initialize() {
 
   AttestationInitialize();
 
-  // TODO(wad) Determine if this should only be called if
-  //           tpm->IsEnabled() is true.
-  if (tpm_ && initialize_tpm_) {
-    tpm_init_->Init(this);
-    if (!SeedUrandom()) {
-      LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
-    }
-    AttestationInitializeTpm();
-    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          kAutoInitializeTpmSwitch)) {
-      tpm_init_->AsyncInitializeTpm();
-    }
-  }
-
   // Install the type-info for the service with dbus.
   dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
                                   &gobject::dbus_glib_cryptohome_object_info);
@@ -500,6 +486,20 @@ bool Service::Initialize() {
   }
 
   mount_thread_.Start();
+
+  // TODO(wad) Determine if this should only be called if
+  //           tpm->IsEnabled() is true.
+  if (tpm_ && initialize_tpm_) {
+    tpm_init_->Init(this);
+    if (!SeedUrandom()) {
+      LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
+    }
+    AttestationInitializeTpm();
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          kAutoInitializeTpmSwitch)) {
+      tpm_init_->AsyncInitializeTpm();
+    }
+  }
 
   // Start scheduling periodic cleanup events. Subsequent events are scheduled
   // by the callback itself.

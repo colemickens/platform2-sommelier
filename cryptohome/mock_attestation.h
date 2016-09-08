@@ -32,6 +32,7 @@ class MockAttestation : public Attestation {
   MOCK_METHOD0(IsPreparedForEnrollment, bool());
   MOCK_METHOD0(IsEnrolled, bool());
   MOCK_METHOD0(PrepareForEnrollment, void());
+  MOCK_METHOD0(CacheEndorsementData, void());
   MOCK_METHOD0(PrepareForEnrollmentAsync, void());
   MOCK_METHOD1(Verify, bool(bool));
   MOCK_METHOD1(VerifyEK, bool(bool));

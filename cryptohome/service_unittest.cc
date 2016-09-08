@@ -41,6 +41,7 @@
 #include "cryptohome/mock_mount_factory.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
+#include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/username_passkey.h"
@@ -1446,6 +1447,27 @@ TEST_F(ServiceExTest, RemoveFirmwareManagementParametersError) {
   EXPECT_TRUE(reply.has_error());
   EXPECT_EQ(CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE,
             reply.error());
+}
+
+void ImmediatelyCallTpmComplete(TpmInit::TpmInitCallback* callback) {
+  callback->InitializeTpmComplete(true, false);
+}
+
+TEST_F(ServiceTestNotInitialized, CheckTpmInitRace) {
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
+
+  // Emulate quick tpm initialization by calling the InitializeTpmComplete()
+  // callback from TpmInit::Init(). In reality, it is called from the thread
+  // created by TpmInit::AsyncInitializeTpm(), but since it's guarded by a
+  // command line switch, call it from Init() instead. It should be safe to
+  // call InitializeTpmComplete() from the main thread.
+  EXPECT_CALL(tpm_init, Init(_))
+    .WillOnce(Invoke(ImmediatelyCallTpmComplete));
+  service_.set_tpm(&tpm);
+  service_.set_tpm_init(&tpm_init);
+  service_.set_initialize_tpm(true);
+  service_.Initialize();
 }
 
 }  // namespace cryptohome
