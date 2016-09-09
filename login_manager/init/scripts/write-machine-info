@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+if [ -e /var/lib/enterprise_serial_number_recovery -o \
+     ! -e /var/lib/whitelist/owner.key ]; then
+  touch $MACHINE_INFO
+  chmod 0644 $MACHINE_INFO
+  if crossystem "mainfw_type?nonchrome"; then
+    echo "serial_number=\"nonchrome-$(date -u +%s)\""
+  else
+    # Dump full information in the VPD, including the serial number.
+    dump_vpd_log --full --stdout
+  fi >> $MACHINE_INFO
+fi

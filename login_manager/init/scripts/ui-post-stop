@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+JOB=$(basename "$0")
+
+bootstat ui-post-stop
+set +e
+. /sbin/killers
+
+# Terminate PKCS #11 services.
+cryptohome --action=pkcs11_terminate
+
+# Thaw any renderers that may have been left behind. If we
+# have crashed while renderers are frozen, they'll be unkillable
+# until we do this.
+echo "THAWED" > "${CHROME_FREEZER_CGROUP_DIR}/to_be_frozen/freezer.state"
+
+# Terminate any processes with files open on the mount point
+# TODO(wad) parallelize with VFS/PID namespaces.
+kill_with_open_files_on /home/chronos/u-*
+
+# Make sure everything is going down. No exceptions.
+# The loop is so that clever daemons can't evade the kill by
+# racing us and killing us first; we'll just try over and over
+# until we win the race, and kill with pid -1 is atomic with
+# respect to process creation.
+while ! sudo -u chronos kill -9 -- -1 ; do
+  sleep .1
+done
+
+# Check for still-living chronos processes and log their status.
+ps -u chronos --no-headers -o pid,stat,args |
+  logger -i -t "${JOB}-unkillable" -p crit
+
+bootstat other-processes-terminated
+
+term_process '^X$'
+bootstat x-terminated
+
+cryptohome --action=unmount
+bootstat cryptohome-unmounted
+
+# If there are any orphaned containers, they should also be cleaned up.
+for container in /run/containers/* ; do
+  kill_with_open_files_on "${container}/root"
+  umount -R "${container}/root"
+  rm -rf "${container}"
+done
