@@ -611,6 +611,7 @@ bool TpmUtilityV2::QuotePCR(int pcr_index,
   pcr_selection.count = 1;
   pcr_selection.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
   pcr_selection.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
+  memset(pcr_selection.pcr_selections[0].pcr_select, 0, PCR_SELECT_MIN);
   pcr_selection.pcr_selections[0].pcr_select[pcr_select_index] =
       pcr_select_byte;
   trunks::TPM2B_ATTEST quoted_struct;
