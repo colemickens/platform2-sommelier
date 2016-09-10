@@ -9,6 +9,9 @@
 
 #include <string>
 
+#include <base/files/file.h>
+#include <base/macros.h>
+
 #include "image-burner/image_burner_utils_interfaces.h"
 
 namespace imageburn {
@@ -16,34 +19,44 @@ namespace imageburn {
 class BurnWriter : public FileSystemWriter {
  public:
   BurnWriter();
-  virtual ~BurnWriter();
+  ~BurnWriter() override = default;
 
-  virtual bool Open(const char* path);
-  virtual bool Close();
-  virtual int Write(char* data_block, int data_size);
+  bool Open(const char* path) override;
+  bool Close() override;
+  int Write(const char* data_block, int data_size) override;
 
  private:
-  FILE* file_;
-  int writes_count_;
+  base::File file_;
+  int writes_count_{0};
+
+  DISALLOW_COPY_AND_ASSIGN(BurnWriter);
 };
 
 class BurnReader : public FileSystemReader {
  public:
   BurnReader();
-  virtual ~BurnReader();
+  ~BurnReader() override = default;
 
-  virtual bool Open(const char* path);
-  virtual bool Close();
-  virtual int Read(char* data_block, int data_size);
-  virtual int64_t GetSize();
+  bool Open(const char* path) override;
+  bool Close() override;
+  int Read(char* data_block, int data_size) override;
+  int64_t GetSize() override;
 
  private:
-  FILE* file_;
+  base::File file_;
+
+  DISALLOW_COPY_AND_ASSIGN(BurnReader);
 };
 
 class BurnRootPathGetter : public RootPathGetter {
  public:
-  virtual bool GetRootPath(std::string* path);
+  BurnRootPathGetter();
+  ~BurnRootPathGetter() override = default;
+
+  bool GetRootPath(std::string* path) override;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(BurnRootPathGetter);
 };
 
 }  // namespace imageburn

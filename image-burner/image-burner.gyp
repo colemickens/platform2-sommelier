@@ -71,6 +71,7 @@
           'sources': [
             'unittest_runner.cc',
             'image_burner_impl_unittest.cc',
+            'image_burner_utils_unittest.cc',
           ],
         },
       ],

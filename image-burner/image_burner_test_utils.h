@@ -20,7 +20,7 @@ class MockFileSystemWriter : public FileSystemWriter {
  public:
   MOCK_METHOD1(Open, bool(const char*));
   MOCK_METHOD0(Close, bool());
-  MOCK_METHOD2(Write, int(char*, int));
+  MOCK_METHOD2(Write, int(const char*, int));
 };
 
 class MockFileSystemReader : public FileSystemReader {

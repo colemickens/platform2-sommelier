@@ -14,7 +14,7 @@ namespace imageburn {
 class FileSystemWriter {
  public:
   virtual ~FileSystemWriter() {}
-  virtual int Write(char* data_block, int data_size) = 0;
+  virtual int Write(const char* data_block, int data_size) = 0;
   virtual bool Open(const char* path) = 0;
   virtual bool Close() = 0;
 };

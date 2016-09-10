@@ -4,10 +4,7 @@
 
 #include "image-burner/image_burner_utils.h"
 
-#include <fcntl.h>
-#include <linux/limits.h>
-#include <stdio.h>
-
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <rootdev/rootdev.h>
 
@@ -15,23 +12,15 @@ namespace imageburn {
 
 const int kFsyncRatio = 1024;
 
-BurnWriter::BurnWriter() : file_(NULL),
-                           writes_count_(0) {
-}
-
-BurnWriter::~BurnWriter() {
-  if (file_)
-    fclose(file_);
-}
+BurnWriter::BurnWriter() {}
 
 bool BurnWriter::Open(const char* path) {
-  if (file_)
-    Close();
-  DCHECK(!file_);
-  int fd = open(path, O_WRONLY);
-  if (fd >= 0)
-    file_ = fdopen(fd, "wb");
-  if (!file_) {
+  if (file_.IsValid())
+    return false;
+
+  file_.Initialize(base::FilePath(path),
+                   base::File::FLAG_WRITE | base::File::FLAG_OPEN);
+  if (!file_.IsValid()) {
     PLOG(ERROR) << "Couldn't open target path " << path;
     return false;
   } else {
@@ -41,29 +30,24 @@ bool BurnWriter::Open(const char* path) {
 }
 
 bool BurnWriter::Close() {
-  if (file_) {
-    if (fclose(file_) != 0) {
-      PLOG(ERROR) << "Couldn't close target file";
-      return false;
-    } else {
-      LOG(INFO) << "Target file closed";
-    }
-    file_ = 0;
-  }
+  if (!file_.IsValid())
+    return false;
+  file_.Close();
   return true;
 }
 
-int BurnWriter::Write(char* data_block, int data_size) {
-  size_t written = fwrite(data_block, sizeof(char), data_size, file_);
-  if (written != static_cast<size_t>(data_size)) {
+int BurnWriter::Write(const char* data_block, int data_size) {
+  const int written = file_.WriteAtCurrentPos(data_block, data_size);
+  if (written != data_size) {
     PLOG(ERROR) << "Error writing to target file";
     return written;
   }
 
-  if (!writes_count_ && fsync(fileno(file_))) {
-    PLOG(ERROR) << "Error syncing target file";
+  if (!writes_count_ && !file_.Flush()) {
+    PLOG(ERROR) << "Error flushing target file.";
     return -1;
   }
+
   writes_count_++;
   if (writes_count_ == kFsyncRatio)
     writes_count_ = 0;
@@ -71,19 +55,15 @@ int BurnWriter::Write(char* data_block, int data_size) {
   return written;
 }
 
-BurnReader::BurnReader() : file_(NULL) {
-}
-
-BurnReader::~BurnReader() {
-  if (file_)
-    fclose(file_);
-}
+BurnReader::BurnReader() {}
 
 bool BurnReader::Open(const char* path) {
-  if (file_)
-    Close();
-  file_ = fopen(path, "rb");
-  if (!file_) {
+  if (file_.IsValid())
+    return false;
+
+  file_.Initialize(base::FilePath(path),
+                   base::File::FLAG_READ | base::File::FLAG_OPEN);
+  if (!file_.IsValid()) {
     PLOG(ERROR) << "Couldn't open source path " << path;
     return false;
   } else {
@@ -93,32 +73,26 @@ bool BurnReader::Open(const char* path) {
 }
 
 bool BurnReader::Close() {
-  if (file_) {
-    if (fclose(file_) != 0) {
-      PLOG(ERROR) << "Couldn't close source file";
-      return false;
-    } else {
-      LOG(INFO) << "Source file closed";
-    }
-    file_ = NULL;
-  }
+  if (!file_.IsValid())
+    return false;
+  file_.Close();
   return true;
 }
 
 int BurnReader::Read(char* data_block, int data_size) {
-  int read = fread(data_block, sizeof(char), data_size, file_);
+  const int read = file_.ReadAtCurrentPos(data_block, data_size);
   if (read < 0)
     PLOG(ERROR) << "Error reading from source file";
   return read;
 }
 
 int64_t BurnReader::GetSize() {
-  int current = ftell(file_);
-  fseek(file_, 0, SEEK_END);
-  int64_t result = static_cast<int64_t>(ftell(file_));
-  fseek(file_, current, SEEK_SET);
-  return result;
+  if (!file_.IsValid())
+    return -1;
+  return file_.GetLength();
 }
+
+BurnRootPathGetter::BurnRootPathGetter() {}
 
 bool BurnRootPathGetter::GetRootPath(std::string* path) {
   char root_path[PATH_MAX];
