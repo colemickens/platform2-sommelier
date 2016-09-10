@@ -94,11 +94,9 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Bind, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD3(Unmount, bool(const base::FilePath&, bool, bool*));
   MOCK_METHOD1(LazyUnmount, void(const base::FilePath&));
-  MOCK_METHOD2(GetMountsBySourcePrefix, bool(const std::string&,
+  MOCK_METHOD2(GetMountsBySourcePrefix, bool(const base::FilePath&,
                   std::multimap<const base::FilePath, const base::FilePath>*));
   MOCK_METHOD1(IsDirectoryMounted, bool(const base::FilePath&));
-  MOCK_METHOD2(IsDirectoryMountedWith, bool(const base::FilePath&,
-                                            const base::FilePath&));
   MOCK_METHOD2(GetProcessesWithOpenFiles, void(const base::FilePath&,
                                           std::vector<ProcessInformation>*));
   MOCK_CONST_METHOD3(GetOwnership, bool(const base::FilePath&, uid_t*, gid_t*));

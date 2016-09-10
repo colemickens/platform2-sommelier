@@ -76,7 +76,7 @@ const std::string& GetAccountId(const AccountIdentifier& id) {
 
 }  // anonymous namespace
 
-const char kSaltFilePath[] = "/home/.shadow/salt";
+const char kSaltFile[] = "salt";
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 const char kChapsSystemToken[] = "/var/lib/chaps";
 const int kAutoCleanupPeriodMS = 1000 * 60 * 60;  // 1 hour
@@ -224,9 +224,12 @@ Service* Service::CreateDefault(const std::string& abe_data) {
 
 bool Service::GetExistingMounts(
     std::multimap<const FilePath, const FilePath>* mounts) {
-  bool found = platform_->GetMountsBySourcePrefix("/home/.shadow/", mounts);
-  found |= platform_->GetMountsBySourcePrefix(kEphemeralDir, mounts);
-  found |= platform_->GetMountsBySourcePrefix(kGuestMountPath, mounts);
+  bool found = platform_->GetMountsBySourcePrefix(homedirs_->shadow_root(),
+                                                  mounts);
+  found |= platform_->GetMountsBySourcePrefix(FilePath(kEphemeralDir),
+                                              mounts);
+  found |= platform_->GetMountsBySourcePrefix(FilePath(kGuestMountPath),
+                                              mounts);
   return found;
 }
 
@@ -3046,7 +3049,7 @@ scoped_refptr<cryptohome::Mount> Service::GetMountForUser(
 bool Service::CreateSystemSaltIfNeeded() {
   if (!system_salt_.empty())
     return true;
-  FilePath saltfile(kSaltFilePath);
+  FilePath saltfile = homedirs_->shadow_root().Append(kSaltFile);
   return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
                                   false, &system_salt_);
 }

@@ -142,23 +142,15 @@ class Platform {
   // Parameters
   //   from_prefix - Prefix for matching mount sources
   //   mounts - matching mounted paths, may be NULL
-  virtual bool GetMountsBySourcePrefix(const std::string& from_prefix,
+  virtual bool GetMountsBySourcePrefix(const base::FilePath& from_prefix,
       std::multimap<const base::FilePath, const base::FilePath>* mounts);
 
-  // Returns true if the directory is in the mtab
+  // Returns true if the directory is in the mount_info
   //
   // Parameters
   //   directory - The directory to check
   virtual bool IsDirectoryMounted(const base::FilePath& directory);
 
-  // Returns true if the directory is in the mtab mounted with the specified
-  // source
-  //
-  // Parameters
-  //   directory - The directory to check
-  //   from - The source node
-  virtual bool IsDirectoryMountedWith(const base::FilePath& directory,
-                                      const base::FilePath& from);
 
   // GetProcessesWithOpenFiles
   //
@@ -498,9 +490,10 @@ class Platform {
                                     const std::string& key_sig,
                                     const brillo::SecureBlob& salt);
 
-  // Override the location of the mtab file used. Default is kMtab.
-  virtual void set_mtab_path(const base::FilePath &mtab_path) {
-    mtab_path_ = mtab_path;
+  // Override the location of the mountinfo file used.
+  // Default is kMountInfoFile.
+  virtual void set_mount_info_path(const base::FilePath &mount_info_path) {
+    mount_info_path_ = mount_info_path;
   }
 
   // Report condition of the Firmware Write-Protect flag.
@@ -617,10 +610,16 @@ class Platform {
                       const void* content,
                       size_t content_size);
 
-  base::FilePath mtab_path_;
+  bool DecodeProcInfoLine(const std::string& line,
+                          std::vector<std::string>* args,
+                          size_t* file_system_type_idx);
+
+  base::FilePath mount_info_path_;
 
   friend class PlatformTest;
-  FRIEND_TEST(PlatformTest, SyncDirectoryHasSaneReturnCodes);
+  FRIEND_TEST(PlatformTest, DecodeProcInfoLineCorruptedMountInfo);
+  FRIEND_TEST(PlatformTest, DecodeProcInfoLineIncompleteMountInfo);
+  FRIEND_TEST(PlatformTest, DecodeProcInfoLineGood);
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };
 

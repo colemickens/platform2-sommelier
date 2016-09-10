@@ -120,13 +120,14 @@ class HomeDirsTest : public ::testing::Test {
     FilePath fp = FilePath(kTestRoot);
     for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {
       const struct homedir *hd = &kHomedirs[i];
-      FilePath path;
-      std::string owner;
-      homedirs_.GetOwner(&owner);
-      path = fp.Append(hd->name);
-      if (!strcmp(hd->name, kOwner))
-        path = fp.Append(owner);
-      homedir_paths_.push_back(path);
+      FilePath path = fp.Append(hd->name);
+      std::string user;
+      if (hd->name == std::string(kOwner))
+        homedirs_.GetOwner(&user);
+      else
+        user = hd->name;
+      homedir_paths_.push_back(fp.Append(user));
+      user_paths_.push_back(brillo::cryptohome::home::GetHashedUserPath(user));
       base::Time t = base::Time::FromUTCExploded(hd->time);
       homedir_times_.push_back(t);
     }
@@ -155,6 +156,7 @@ class HomeDirsTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
   std::vector<FilePath> homedir_paths_;
+  std::vector<FilePath> user_paths_;
   MockUserOldestActivityTimestampCache timestamp_cache_;
   std::vector<base::Time> homedir_times_;
   MockVaultKeysetFactory vault_keyset_factory_;
@@ -178,7 +180,7 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
@@ -299,7 +301,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
               Return(true)));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
 
   // The master.* enumerators (wildcard matcher first)
@@ -754,7 +756,7 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true)).Times(0);
 
   EXPECT_CALL(platform_,
-              IsDirectoryMountedWith(_, _)).WillRepeatedly(Return(false));
+              IsDirectoryMounted(_)).WillRepeatedly(Return(false));
 
   ExpectCacheDirCleanupCalls(4);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
@@ -792,13 +794,13 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
     .WillOnce(Return(true));
 
   EXPECT_CALL(platform_,
-      IsDirectoryMountedWith(_, _))
-          .WillRepeatedly(Return(false));
+      IsDirectoryMounted(_))
+    .WillRepeatedly(Return(false));
+  // Catch /home/usr/<uid> mount.
   EXPECT_CALL(platform_,
-      IsDirectoryMountedWith(
-        Property(&FilePath::value, StartsWith(homedir_paths_[2].value())),
-        _))
-      .WillRepeatedly(Return(true));
+      IsDirectoryMounted(
+        Property(&FilePath::value, StrEq(user_paths_[2].value()))))
+    .WillRepeatedly(Return(true));
 
   ExpectCacheDirCleanupCalls(3);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
@@ -994,18 +996,14 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
     .Times(6).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   EXPECT_CALL(platform_,
-      IsDirectoryMountedWith(
-        Property(&FilePath::value,
-          StartsWith(homedir_paths_[0].value())),
-        _))
+      IsDirectoryMounted(
+        Property(&FilePath::value, StrEq(user_paths_[0].value()))))
     .Times(5)  // Cache, GCache, android, mounted dir count, user removal
     .WillRepeatedly(Return(true));
   for (size_t i = 1; i < arraysize(kHomedirs); ++i) {
     EXPECT_CALL(platform_,
-        IsDirectoryMountedWith(
-          Property(&FilePath::value,
-            StartsWith(homedir_paths_[i].value())),
-          _))
+        IsDirectoryMounted(
+          Property(&FilePath::value, StrEq(user_paths_[i].value()))))
       .Times(4)  // Cache, GCache, android, mounted dir count
       .WillRepeatedly(Return(false));
   }

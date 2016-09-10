@@ -99,41 +99,79 @@ const int kDefaultMountOptions = MS_NOEXEC | MS_NOSUID | MS_NODEV;
 const int kDefaultPwnameLength = 1024;
 const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
                                | S_IXOTH;
-const char kMtab[] = "/etc/mtab";
-const char kProcDir[] = "/proc";
-const char kPathTune2fs[] = "/sbin/tune2fs";
+const FilePath::CharType kProcDir[] = "/proc";
+const FilePath::CharType kMountInfoFile[] = "mountinfo";
+const FilePath::CharType kPathTune2fs[] = "/sbin/tune2fs";
+const char kEcyrptFS[] = "ecryptfs";
 
-Platform::Platform()
-  : mtab_path_(kMtab) {
+Platform::Platform() {
+    pid_t pid = getpid();
+    mount_info_path_ = FilePath(kProcDir).Append(std::to_string(pid))
+                                         .Append(kMountInfoFile);
 }
 
 Platform::~Platform() {
 }
 
-bool Platform::GetMountsBySourcePrefix(const std::string& from_prefix,
+/*
+ * Split a /proc/<id>/mountinfo line in arguments,
+ * Point to the file system type, first argument after the optional
+ * arguments.
+ * Return true if the line seems valid.
+ */
+bool Platform::DecodeProcInfoLine(const std::string& line,
+                                  std::vector<std::string>* args,
+                                  size_t* file_system_type_idx) {
+  *args = SplitString(line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  size_t fs_idx = 6;
+
+  while (fs_idx < args->size() && (*args)[fs_idx++] != "-") {}
+  if (fs_idx >= args->size()) {
+    LOG(ERROR) << "Invalid procinfo: separator not found: " << line;
+    return false;
+  } else {
+    *file_system_type_idx = fs_idx;
+    return true;
+  }
+}
+
+
+
+
+bool Platform::GetMountsBySourcePrefix(const FilePath& from_prefix,
     std::multimap<const FilePath, const FilePath>* mounts) {
   std::string contents;
-  if (!base::ReadFileToString(mtab_path_, &contents))
+  if (!base::ReadFileToString(mount_info_path_, &contents))
     return false;
 
-  std::vector<std::string> lines =
-      SplitString(contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (std::vector<std::string>::iterator it = lines.begin();
-       it < lines.end();
-       ++it) {
-    if (it->substr(0, from_prefix.size()) != from_prefix)
+  // Format:
+  // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=..
+  // (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9)         (10)
+  // the destination is (4).
+  // When using ecryptfs (8), we compare the mount device (9), otherwise,
+  // we use the root directory (3).
+  // When using ecryptfs (1st elemt after hyphen), we compare the mount device
+  // (2nd), otherwise, we use the root directory (3).
+  std::vector<std::string> lines = SplitString(
+      contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : lines) {
+    std::vector<std::string> args;
+    size_t fs_idx;
+    if (!Platform::DecodeProcInfoLine(line, &args, &fs_idx))
+      return false;
+
+    FilePath root_dir;
+    if (args[fs_idx] == kEcyrptFS)
+      root_dir = FilePath(args[fs_idx + 1]);
+    else
+      root_dir = FilePath(args[3]);
+    if (!from_prefix.IsParent(root_dir))
       continue;
     // If there is no mounts pointer, we can return true right away.
     if (!mounts)
       return true;
-    size_t src_end = it->find(' ');
-    std::string source = it->substr(0, src_end);
-    size_t dst_start = src_end + 1;
-    size_t dst_end = it->find(' ', dst_start);
-    std::string destination = it->substr(dst_start, dst_end - dst_start);
     mounts->insert(
-      std::pair<const FilePath, const FilePath>(
-        FilePath(source), FilePath(destination)));
+      std::pair<const FilePath, const FilePath>(root_dir, FilePath(args[4])));
   }
   return mounts && mounts->size();
 }
@@ -143,26 +181,9 @@ bool Platform::IsDirectoryMounted(const FilePath& directory) {
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
   std::string contents;
-  std::string pattern = StringPrintf(" %s ", directory.value().c_str());
-  if (base::ReadFileToString(mtab_path_, &contents)) {
-    if (contents.find(pattern) != std::string::npos) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool Platform::IsDirectoryMountedWith(const FilePath& directory,
-                                      const FilePath& from) {
-  // Trivial string match from /etc/mtab to see if the cryptohome mount point
-  // and the user's vault path are present.  Assumes this user is mounted if it
-  // finds both.  This will need to change if simultaneous login is implemented.
-  std::string contents;
-  std::string pattern_mount = StringPrintf(" %s ", directory.value().c_str());
-  std::string pattern_with = StringPrintf("%s ", from.value().c_str());
-  if (base::ReadFileToString(mtab_path_, &contents)) {
-    if ((contents.find(pattern_mount) != std::string::npos)
-        && (contents.find(pattern_with) != std::string::npos)) {
+  if (base::ReadFileToString(mount_info_path_, &contents)) {
+    if (contents.find(StringPrintf(" %s ", directory.value().c_str())) !=
+        std::string::npos) {
       return true;
     }
   }
@@ -221,8 +242,7 @@ void Platform::GetProcessesWithOpenFiles(
     std::vector<ProcessInformation>* processes) {
   std::vector<pid_t> pids;
   LookForOpenFiles(path, &pids);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
-    pid_t pid = static_cast<pid_t>(*it);
+  for (auto pid : pids) {
     processes->push_back(ProcessInformation());
     GetProcessOpenFileInformation(pid, path,
                                   &processes->at(processes->size() - 1));
@@ -869,21 +889,29 @@ bool Platform::FindFilesystemDevice(const FilePath &filesystem_in,
   /* Removing trailing slashes. */
   FilePath filesystem = filesystem_in.StripTrailingSeparators();
 
-  /* If we fail to open mtab, abort immediately. */
-  FILE *mtab_file = setmntent(mtab_path_.value().c_str(), "r");
-  if (!mtab_file)
+  std::string contents;
+  if (!base::ReadFileToString(mount_info_path_, &contents))
     return false;
 
-  /* Copy device of first matching filesystem location. */
-  struct mntent *entry;
-  while ((entry = getmntent(mtab_file)) != NULL) {
-    if (filesystem.value().compare(entry->mnt_dir) == 0) {
-      *device = entry->mnt_fsname;
-      break;
-    }
-  }
-  endmntent(mtab_file);
+  // Format:
+  // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=..
+  // (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9)         (10)
+  // the destination is (4).
+  // When using ecryptfs (1st elemt after hyphen), we compare the mount device
+  // (2nd), otherwise, we use the root directory (3).
+  std::vector<std::string> lines = SplitString(
+      contents, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : lines) {
+    std::vector<std::string> args;
+    size_t fs_idx;
+    if (!Platform::DecodeProcInfoLine(line, &args, &fs_idx))
+      return false;
 
+    if (args[4] != filesystem.value())
+      continue;
+
+    *device = args[fs_idx + 1];
+  }
   return (device->length() > 0);
 }
 

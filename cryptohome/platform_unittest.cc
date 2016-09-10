@@ -295,4 +295,111 @@ TEST_F(PlatformTest, HasNoDumpFileAttribute) {
   close(fd);
 }
 
+TEST_F(PlatformTest, DecodeProcInfoLineGood) {
+  std::string mount_info_contents;
+
+  mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
+  mount_info_contents.append("/home/user/uid1 rw,nodev,relatime - ext4 ");
+  mount_info_contents.append("/dev/mmcblk0p1 rw,commit=600,data=ordered");
+
+  std::vector<std::string> args;
+  size_t fs_idx;
+
+  EXPECT_TRUE(platform_.DecodeProcInfoLine(
+        mount_info_contents, &args, &fs_idx));
+  EXPECT_EQ(fs_idx, 7);
+}
+
+TEST_F(PlatformTest, DecodeProcInfoLineCorruptedMountInfo) {
+  std::string mount_info_contents;
+
+  mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
+  mount_info_contents.append("/home/user/uid1 rw,nodev,relatime hypen ext4 ");
+  mount_info_contents.append("/dev/mmcblk0p1 rw,commit=600,data=ordered");
+
+  std::vector<std::string> args;
+  size_t fs_idx;
+
+  EXPECT_FALSE(platform_.DecodeProcInfoLine(
+        mount_info_contents, &args, &fs_idx));
+}
+
+TEST_F(PlatformTest, DecodeProcInfoLineIncompleteMountInfo) {
+  std::string mount_info_contents;
+
+  mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
+
+  std::vector<std::string> args;
+  size_t fs_idx;
+
+  EXPECT_FALSE(platform_.DecodeProcInfoLine(
+        mount_info_contents, &args, &fs_idx));
+}
+
+TEST_F(PlatformTest, GetMountsBySourcePrefixExt4) {
+  base::FilePath mount_info;
+  FILE *fp;
+  std::string filesystem, device_in, device_out, mount_info_contents;
+
+  mount_info_contents.append("73 24 179:1 /beg/uid1/mount/user ");
+  mount_info_contents.append("/home/user/uid1 rw,nodev,relatime - ext4 ");
+  mount_info_contents.append("/dev/mmcblk0p1 rw,commit=600,data=ordered");
+
+  fp = base::CreateAndOpenTemporaryFile(&mount_info);
+  ASSERT_TRUE(fp != NULL);
+  EXPECT_EQ(fwrite(mount_info_contents.c_str(),
+            mount_info_contents.length(), 1, fp), 1);
+  EXPECT_EQ(fclose(fp), 0);
+
+  platform_.set_mount_info_path(mount_info);
+
+  /* Fails if item is missing. */
+  std::multimap<const FilePath, const FilePath> mounts;
+  EXPECT_FALSE(platform_.GetMountsBySourcePrefix(FilePath("monkey"), &mounts));
+
+  /* Works normally. */
+  mounts.clear();
+  EXPECT_TRUE(platform_.GetMountsBySourcePrefix(FilePath("/beg"), &mounts));
+  EXPECT_EQ(mounts.size(), 1);
+  auto it = mounts.begin();
+  EXPECT_EQ(it->first.value(), "/beg/uid1/mount/user");
+  EXPECT_EQ(it->second.value(), "/home/user/uid1");
+
+  /* Clean up. */
+  EXPECT_TRUE(base::DeleteFile(mount_info, false));
+}
+
+TEST_F(PlatformTest, GetMountsBySourcePrefixECryptFs) {
+  base::FilePath mount_info;
+  FILE *fp;
+  std::string filesystem, device_in, device_out, mount_info_contents;
+
+  mount_info_contents.append("84 24 0:29 /user /home/user/uid2 ");
+  mount_info_contents.append("rw,nosuid,nodev,noexec,relatime - ecryptfs ");
+  mount_info_contents.append("/beg/uid2/vault rw,ecryp...");
+
+  fp = base::CreateAndOpenTemporaryFile(&mount_info);
+  ASSERT_TRUE(fp != NULL);
+  EXPECT_EQ(fwrite(mount_info_contents.c_str(),
+            mount_info_contents.length(), 1, fp), 1);
+  EXPECT_EQ(fclose(fp), 0);
+
+  platform_.set_mount_info_path(mount_info);
+
+  /* Fails if item is missing. */
+  std::multimap<const FilePath, const FilePath> mounts;
+  EXPECT_FALSE(platform_.GetMountsBySourcePrefix(FilePath("monkey"), &mounts));
+
+  /* Works normally. */
+  mounts.clear();
+  EXPECT_TRUE(platform_.GetMountsBySourcePrefix(FilePath("/beg"), &mounts));
+  EXPECT_EQ(mounts.size(), 1);
+  auto it = mounts.begin();
+  EXPECT_EQ(it->first.value(), "/beg/uid2/vault");
+  EXPECT_EQ(it->second.value(), "/home/user/uid2");
+
+  /* Clean up. */
+  EXPECT_TRUE(base::DeleteFile(mount_info, false));
+}
+
 }  // namespace cryptohome

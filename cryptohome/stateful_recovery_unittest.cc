@@ -405,24 +405,24 @@ TEST(StatefulRecovery, FilesystemDetailsFailure) {
 
 TEST(StatefulRecovery, MountsParseOk) {
   Platform platform;
-  FilePath mtab;
+  FilePath mount_info;
   FILE *fp;
-  std::string device_out, mtab_contents;
+  std::string device_in = "/dev/pan", device_out, mount_info_contents;
 
-  FilePath filesystem("/second/star/to/the/right");
-  std::string device_in = "/dev/pan";
+  mount_info_contents.append("84 24 0:29 / ");
+  FilePath filesystem = FilePath("/second/star/to/the/right");
+  mount_info_contents.append(filesystem.value());
+  mount_info_contents.append(" rw,nosuid,nodev,noexec,relatime - fairyfs ");
+  mount_info_contents.append(device_in);
+  mount_info_contents.append(" rw,ecryp...");
 
-  mtab_contents.append(device_in);
-  mtab_contents.append(" ");
-  mtab_contents.append(filesystem.value());
-  mtab_contents.append(" pixie default 0 0\n");
-
-  fp = base::CreateAndOpenTemporaryFile(&mtab);
+  fp = base::CreateAndOpenTemporaryFile(&mount_info);
   ASSERT_TRUE(fp != NULL);
-  EXPECT_EQ(fwrite(mtab_contents.c_str(), mtab_contents.length(), 1, fp), 1);
+  EXPECT_EQ(fwrite(mount_info_contents.c_str(),
+                   mount_info_contents.length(), 1, fp), 1);
   EXPECT_EQ(fclose(fp), 0);
 
-  platform.set_mtab_path(mtab);
+  platform.set_mount_info_path(mount_info);
 
   /* Fails if item is missing. */
   EXPECT_FALSE(platform.FindFilesystemDevice(
@@ -434,7 +434,7 @@ TEST(StatefulRecovery, MountsParseOk) {
   EXPECT_TRUE(device_out == device_in);
 
   /* Clean up. */
-  EXPECT_TRUE(base::DeleteFile(mtab, false));
+  EXPECT_TRUE(base::DeleteFile(mount_info, false));
 }
 
 TEST(StatefulRecovery, UsageReportOk) {

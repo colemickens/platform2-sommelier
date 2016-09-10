@@ -533,10 +533,11 @@ const struct Mounts kShadowMounts[] = {
 const int kShadowMountsCount = 5;
 
 bool StaleShadowMounts(
-    const std::string& from_prefix,
+    const FilePath& from_prefix,
     std::multimap<const FilePath, const FilePath>* mounts) {
-  LOG(INFO) << "StaleShadowMounts(" << from_prefix << "): called";
-  if (from_prefix == "/home/.shadow/") {
+  LOG(INFO) << "StaleShadowMounts(" << from_prefix.value()
+            << "): called";
+  if (from_prefix.value() == "/home/.shadow") {
     if (!mounts)
       return true;
     const struct Mounts* m = &kShadowMounts[0];

@@ -89,7 +89,7 @@ bool HomeDirs::FreeDiskSpace() {
   if (freeDiskSpace >= kEnoughFreeSpace)
     return true;
 
-  // Clean Cache directories for every user (except current one).
+  // Clean GCache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteGCacheTmpCallback,
                                            base::Unretained(this)));
 
@@ -132,6 +132,7 @@ bool HomeDirs::FreeDiskSpace() {
     while (!timestamp_cache_->empty()) {
       base::Time deleted_timestamp = timestamp_cache_->oldest_known_timestamp();
       FilePath deleted_user_dir = timestamp_cache_->RemoveOldestUser();
+      std::string obfuscated = deleted_user_dir.BaseName().value();
 
       if (enterprise_owned_) {
         // If mounted_cryptohomes== 0, then there were no mounted cryptohomes
@@ -148,8 +149,7 @@ bool HomeDirs::FreeDiskSpace() {
           return true;
         }
       } else {
-        std::string obfuscated_username = deleted_user_dir.BaseName().value();
-        if (obfuscated_username == owner) {
+        if (obfuscated == owner) {
           // We should never delete the device owner, so we permanently skip
           // them by not adding them back to the cache.
           LOG(INFO) << "Skipped deletion of the device owner.";
@@ -157,9 +157,8 @@ bool HomeDirs::FreeDiskSpace() {
         }
       }
 
-      FilePath mountdir = deleted_user_dir.Append(kMountDir);
-      FilePath vaultdir = deleted_user_dir.Append(kVaultDir);
-      if (platform_->IsDirectoryMountedWith(mountdir, vaultdir)) {
+      if (platform_->IsDirectoryMounted(
+            brillo::cryptohome::home::GetHashedUserPath(obfuscated))) {
         LOG(INFO) << "Attempt to delete currently logged in user. Skipped...";
       } else {
         LOG(INFO) << "Freeing disk space by deleting user "
@@ -747,19 +746,15 @@ void HomeDirs::DoForEveryUnmountedCryptohome(
   }
   for (std::vector<FilePath>::iterator it = entries.begin();
        it != entries.end(); ++it) {
-    const std::string dir_name = it->BaseName().value();
-    if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name)) {
+    const std::string obfuscated = it->BaseName().value();
+    if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
       continue;
     }
-    FilePath vault_path = it->Append(kVaultDir);
-    FilePath mount_path = it->Append(kMountDir);
-    if (!platform_->DirectoryExists(vault_path)) {
+    if (platform_->IsDirectoryMounted(
+          brillo::cryptohome::home::GetHashedUserPath(obfuscated))) {
       continue;
     }
-    if (platform_->IsDirectoryMountedWith(mount_path, vault_path)) {
-      continue;
-    }
-    cryptohome_cb.Run(vault_path);
+    cryptohome_cb.Run(it->Append(kVaultDir));
   }
 }
 
@@ -771,16 +766,16 @@ int HomeDirs::CountMountedCryptohomes() const {
   }
   for (std::vector<FilePath>::iterator it = entries.begin();
        it != entries.end(); ++it) {
-    const std::string dir_name = it->BaseName().value();
-    if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name)) {
+    const std::string obfuscated = it->BaseName().value();
+    if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
       continue;
     }
-    FilePath vault_path = it->Append(kVaultDir);
-    FilePath mount_path = it->Append(kMountDir);
-    if (!platform_->DirectoryExists(vault_path)) {
+    FilePath user_path = brillo::cryptohome::home::GetHashedUserPath(
+        obfuscated);
+    if (!platform_->DirectoryExists(user_path)) {
       continue;
     }
-    if (!platform_->IsDirectoryMountedWith(mount_path, vault_path)) {
+    if (!platform_->IsDirectoryMounted(user_path)) {
       continue;
     }
     mounts++;

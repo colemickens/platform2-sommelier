@@ -1931,7 +1931,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
@@ -2013,7 +2013,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
@@ -2111,7 +2111,7 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
 
   std::vector<int> key_indices;
@@ -2183,7 +2183,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
     // Don't re-delete on Unmount.
     .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
   // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_,
@@ -2291,7 +2291,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
     // Don't re-delete on Unmount.
     .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
   // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_,
@@ -2401,7 +2401,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
     .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
 
   // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_,
@@ -2433,7 +2433,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
     .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
 
   // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_,
@@ -2465,7 +2465,7 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
     .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
   // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_,
@@ -2557,7 +2557,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
     .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
   // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_,
