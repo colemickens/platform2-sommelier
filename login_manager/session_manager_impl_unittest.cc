@@ -1146,6 +1146,20 @@ TEST_F(SessionManagerImplTest, PrioritizeArcInstance) {
 #endif
 }
 
+TEST_F(SessionManagerImplTest, EmitArcBooted) {
+#if USE_CHEETS
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+          OnSignalEmitted(StrEq(SessionManagerImpl::kArcBootedSignal),
+                          ElementsAre()))
+      .Times(1);
+  impl_.EmitArcBooted(&error_);
+#else
+  impl_.EmitArcBooted(&error_);
+  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+#endif
+}
+
 class SessionManagerImplStaticTest : public ::testing::Test {
  public:
   SessionManagerImplStaticTest() {}

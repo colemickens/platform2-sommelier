@@ -305,6 +305,9 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerPrioritizeArcInstance,
                        &SessionManagerDBusAdaptor::PrioritizeArcInstance);
   ExportSyncDBusMethod(object,
+                       kSessionManagerEmitArcBooted,
+                       &SessionManagerDBusAdaptor::EmitArcBooted);
+  ExportSyncDBusMethod(object,
                        kSessionManagerGetArcStartTimeTicks,
                        &SessionManagerDBusAdaptor::GetArcStartTimeTicks);
   ExportSyncDBusMethod(object,
@@ -637,6 +640,15 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::PrioritizeArcInstance(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   impl_->PrioritizeArcInstance(&error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitArcBooted(
+    dbus::MethodCall* call) {
+  SessionManagerImpl::Error error;
+  impl_->EmitArcBooted(&error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));

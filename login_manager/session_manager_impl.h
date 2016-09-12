@@ -77,6 +77,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   static const char kArcStopSignal[];
   static const char kArcNetworkStartSignal[];
   static const char kArcNetworkStopSignal[];
+  static const char kArcBootedSignal[];
   static const char kArcRemoveOldDataSignal[];
 
   class Error {
@@ -195,6 +196,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartArcInstance(const std::string& account_id, Error* error);
   void StopArcInstance(Error* error);
   void PrioritizeArcInstance(Error* error);
+  void EmitArcBooted(Error* error);
   base::TimeTicks GetArcStartTime(Error* error);
   void RemoveArcData(const std::string& account_id, Error* error);
 

@@ -66,6 +66,7 @@ const char SessionManagerImpl::kArcStartSignal[] = "start-arc-instance";
 const char SessionManagerImpl::kArcStopSignal[] = "stop-arc-instance";
 const char SessionManagerImpl::kArcNetworkStartSignal[] = "start-arc-network";
 const char SessionManagerImpl::kArcNetworkStopSignal[] = "stop-arc-network";
+const char SessionManagerImpl::kArcBootedSignal[] = "arc-booted";
 const char SessionManagerImpl::kArcRemoveOldDataSignal[] =
     "remove-old-arc-data";
 
@@ -691,6 +692,18 @@ void SessionManagerImpl::PrioritizeArcInstance(Error* error) {
     constexpr char msg[] = "Error updating Android container's cgroups.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kNotAvailable, msg);
+  }
+#else
+  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+#endif
+}
+
+void SessionManagerImpl::EmitArcBooted(Error* error) {
+#if USE_CHEETS
+  if (!init_controller_->TriggerImpulse(kArcBootedSignal, {})) {
+    static const char msg[] = "Emitting arc-booted upstart signal failed.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kEmitFailed, msg);
   }
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");

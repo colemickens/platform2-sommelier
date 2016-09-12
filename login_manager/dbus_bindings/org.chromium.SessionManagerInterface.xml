@@ -432,6 +432,14 @@
     </method>
 
     <!--
+        EmitArcBooted:
+
+        Emits the "arc-booted" upstart signal on the browser's behalf.
+    -->
+    <method name="EmitArcBooted">
+    </method>
+
+    <!--
         GetArcStartTimeTicks:
 
         Returns the value of start time (base::TimeTicks::ToInternalValue()) of
