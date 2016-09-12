@@ -171,6 +171,7 @@ Service::Service()
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
+      force_ecryptfs_(true),
       legacy_mount_(true),
       public_mount_salt_(),
       default_chaps_client_(new chaps::TokenManagerClient()),
@@ -1672,6 +1673,7 @@ gboolean Service::Mount(const gchar *userid,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
+  mount_args.force_ecryptfs = force_ecryptfs_;
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
                                                             NULL,
                                                             user_mount.get(),
@@ -1860,6 +1862,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = request->has_create();
   mount_args.ensure_ephemeral = request->require_ephemeral();
+  mount_args.force_ecryptfs = force_ecryptfs_;
   bool status = user_mount->MountCryptohome(credentials,
                                             mount_args,
                                             &code);

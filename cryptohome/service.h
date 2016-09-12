@@ -194,6 +194,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual bool CleanUpStaleMounts(bool force);
 
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
+  void set_force_ecryptfs(bool force_ecryptfs) {
+    force_ecryptfs_ = force_ecryptfs;
+  }
 
   virtual void set_boot_lockbox(BootLockbox* boot_lockbox) {
     boot_lockbox_ = boot_lockbox;
@@ -811,6 +814,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   std::unique_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
   std::string guest_user_;
+  bool force_ecryptfs_;
   bool legacy_mount_;
   brillo::SecureBlob public_mount_salt_;
   std::unique_ptr<chaps::TokenManagerClient> default_chaps_client_;

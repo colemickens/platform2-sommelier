@@ -78,13 +78,17 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   struct MountArgs {
     bool create_if_missing;
     bool ensure_ephemeral;
+    bool force_ecryptfs;
 
-    MountArgs() : create_if_missing(false), ensure_ephemeral(false) {
+    MountArgs() : create_if_missing(false),
+                  ensure_ephemeral(false),
+                  force_ecryptfs(false) {
     }
 
     void CopyFrom(const MountArgs& rhs) {
       this->create_if_missing = rhs.create_if_missing;
       this->ensure_ephemeral = rhs.ensure_ephemeral;
+      this->force_ecryptfs = rhs.force_ecryptfs;
     }
   };
 

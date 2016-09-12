@@ -39,6 +39,7 @@ namespace switches {
 // Keeps std* open for debugging.
 static const char *kNoCloseOnDaemonize = "noclose";
 static const char *kNoLegacyMount = "nolegacymount";
+static const char *kDirEncryption = "direncryption";
 }  // namespace switches
 
 static std::string ReadAbeDataFileContents(cryptohome::Platform* platform) {
@@ -71,6 +72,7 @@ int main(int argc, char **argv) {
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
+  bool direncryption = cl->HasSwitch(switches::kDirEncryption);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
 
   // Setup threading. This needs to be called before other calls into glib and
@@ -85,6 +87,7 @@ int main(int argc, char **argv) {
   cryptohome::Service* service = cryptohome::Service::CreateDefault(abe_data);
 
   service->set_legacy_mount(!nolegacymount);
+  service->set_force_ecryptfs(!direncryption);
 
   if (!service->Initialize()) {
     LOG(FATAL) << "Service initialization failed";
