@@ -59,6 +59,9 @@ const int kSecondsPerWeek = kSecondsPerDay * kDaysPerWeek;
 // Interval between calls to UpdateStats().
 const uint32_t kUpdateStatsIntervalMs = 300000;
 
+// Maximum amount of system memory that will be reported without overflow.
+const int kMaximumMemorySizeInKB = 32 * 1000 * 1000;
+
 const char kKernelCrashDetectedFile[] = "/var/run/kernel-crash-detected";
 const char kUncleanShutdownDetectedFile[] =
     "/var/run/unclean-shutdown-detected";
@@ -952,9 +955,11 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
   }
   mem_used_derived = total_memory - mem_free_derived;
   SendSample("Platform.MeminfoMemFreeDerived", mem_free_derived, 1,
-             total_memory, 100);
+             kMaximumMemorySizeInKB, 100);
   SendSample("Platform.MeminfoMemUsedDerived", mem_used_derived, 1,
-             total_memory, 100);
+             kMaximumMemorySizeInKB, 100);
+  SendSample("Platform.MeminfoMemTotal", total_memory, 1,
+             kMaximumMemorySizeInKB, 100);
   return true;
 }
 

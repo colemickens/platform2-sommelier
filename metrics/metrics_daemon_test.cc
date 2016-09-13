@@ -303,6 +303,9 @@ TEST_F(MetricsDaemonTest, ProcessMeminfo) {
       .Times(0);
   EXPECT_CALL(metrics_lib_, SendEnumToUMA("Platform.MeminfoMlocked", _, _))
       .Times(0);
+  // Check that the total memory is reported.
+  EXPECT_CALL(metrics_lib_, SendToUMA("Platform.MeminfoMemTotal",
+        2000000, 1, _, 100));
   EXPECT_TRUE(daemon_.ProcessMeminfo(meminfo));
 }
 
