@@ -114,7 +114,7 @@ FakeBiometric::GetEnrollments() {
 
 bool FakeBiometric::DestroyAllEnrollments() {
   enrollments_.clear();
-  return false;
+  return true;
 }
 
 void FakeBiometric::SetScannedHandler(const Biometric::ScanCallback& on_scan) {
