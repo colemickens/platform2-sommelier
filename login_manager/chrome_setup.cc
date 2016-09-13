@@ -210,12 +210,12 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
   }
 
   // TODO(jdufault): Remove this once quick unlock launches on all boards.
-  if (builder->IsBoard("kevin") || builder->IsBoard("kevin-tpm2")) {
+  if (builder->UseFlagIsSet("kevin")) {
     builder->AddFeatureEnableOverride("QuickUnlockPin");
     builder->AddArg("--ash-enable-palette");
     builder->AddArg("--num-raster-threads=1");
   }
-  if (builder->IsBoard("veyron_minnie"))
+  if (builder->UseFlagIsSet("veyron_minnie"))
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
 
   // TODO(crbug.com/574923): Remove this when rialto is enrolled and using
@@ -286,7 +286,7 @@ void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
   // This flag is only used in M49 to enable bootstrapping for ChromeBit. All
   // Chrome OS devices will be eligible for bootstrapping starting from M50.
   // TODO(xdai): Remove this after it's cherry-picked in M49.
-  if (builder->IsBoard("veyron_mickey"))
+  if (builder->UseFlagIsSet("veyron_mickey"))
     builder->AddArg("--oobe-bootstrapping-slave");
 }
 

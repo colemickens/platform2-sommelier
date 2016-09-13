@@ -99,7 +99,7 @@ TEST_F(ChromiumCommandBuilderTest, MissingUseFlagsFile) {
 }
 
 TEST_F(ChromiumCommandBuilderTest, UseFlags) {
-  use_flags_data_ = "# Here's a comment.\nfoo\nbar\nboard_use_blah\n";
+  use_flags_data_ = "# Here's a comment.\nfoo\nbar\n";
   ASSERT_TRUE(Init());
 
   EXPECT_TRUE(builder_.UseFlagIsSet("foo"));
@@ -108,10 +108,6 @@ TEST_F(ChromiumCommandBuilderTest, UseFlags) {
   EXPECT_FALSE(builder_.UseFlagIsSet("# Here's a comment."));
   EXPECT_FALSE(builder_.UseFlagIsSet("#"));
   EXPECT_FALSE(builder_.UseFlagIsSet("a"));
-
-  EXPECT_TRUE(builder_.IsBoard("blah"));
-  EXPECT_FALSE(builder_.IsBoard("foo"));
-  EXPECT_FALSE(builder_.IsBoard("blah1"));
 }
 
 TEST_F(ChromiumCommandBuilderTest, MissingLsbReleaseFile) {

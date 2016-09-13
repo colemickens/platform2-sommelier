@@ -27,9 +27,6 @@ namespace ui {
 
 namespace {
 
-// Prefix for the USE flag containing the name of the board.
-const char kBoardUseFlagPrefix[] = "board_use_";
-
 // Location where GPU debug information is bind-mounted.
 const char kDebugfsGpuPath[] = "/var/run/debugfs_gpu";
 
@@ -307,10 +304,6 @@ bool ChromiumCommandBuilder::UseFlagIsSet(const std::string& flag) const {
   return use_flags_.count(flag) > 0;
 }
 
-bool ChromiumCommandBuilder::IsBoard(const std::string& board) const {
-  return UseFlagIsSet(kBoardUseFlagPrefix + board);
-}
-
 void ChromiumCommandBuilder::AddEnvVar(const std::string& name,
                                        const std::string& value) {
   environment_variables_[name] = value;
@@ -473,7 +466,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("neon"))
     AddEnvVar("VPX_SIMD_CAPS", "0xf");
 
-  if (IsBoard("link") || IsBoard("link_freon")) {
+  if (UseFlagIsSet("link")) {
+    // This is the link board (aka Pixel).
     AddArg("--touch-calibration=0,0,0,50");
     AddArg("--touch-noise-filtering");
   }

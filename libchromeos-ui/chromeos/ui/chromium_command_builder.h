@@ -60,8 +60,8 @@ class ChromiumCommandBuilder {
     base_path_for_testing_ = path;
   }
 
-  // Performs just the basic initialization needed before UseFlagIsSet() and
-  // IsBoard() can be used. Returns true on success.
+  // Performs just the basic initialization needed before UseFlagIsSet() can be
+  // used. Returns true on success.
   bool Init();
 
   // Determines the environment variables and arguments that should be set for
@@ -101,9 +101,6 @@ class ChromiumCommandBuilder {
   // Returns true if a USE flag named |flag| was set when the system image was
   // built.
   bool UseFlagIsSet(const std::string& flag) const;
-
-  // Returns true if the system image was compiled for |board|.
-  bool IsBoard(const std::string& board) const;
 
   // Adds an environment variable to |environment_variables_|. Note that this
   // method does not call setenv(); it is the caller's responsibility to
