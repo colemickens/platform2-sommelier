@@ -433,11 +433,8 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
     if (plugin_name == "Shockwave Flash") {
       AddArg("--ppapi-flash-path=" + file_name);
       AddArg("--ppapi-flash-version=" + version);
-      const bool is_atom = IsBoard("x86-alex") || IsBoard("x86-alex_he") ||
-          IsBoard("x86-mario") || IsBoard("x86-zgb") || IsBoard("x86-zgb_he");
-      if (is_atom) {
+      if (UseFlagIsSet("disable_low_latency_audio"))
         AddArg("--ppapi-flash-args=enable_low_latency_audio=0");
-      }
     } else {
       const std::string description = LookUpInStringPairs(pairs, "DESCRIPTION");
       const std::string mime_types = LookUpInStringPairs(pairs, "MIME_TYPES");
