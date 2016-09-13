@@ -60,7 +60,10 @@ FakeBiometric::FakeBiometric()
   base::DeleteFile(base::FilePath(kFakeInputPath), false);
   CHECK_EQ(mkfifo(kFakeInputPath, 0600), 0)
       << "Failed to create fake biometric input";
-  fake_input_ = base::ScopedFD(open(kFakeInputPath, O_RDONLY | O_NONBLOCK));
+  // The pipe gets opened read/write to avoid triggering a constant stream of
+  // POLLHUP after the pipe is opened writable and closed. The pipe is never
+  // actually written to here.
+  fake_input_ = base::ScopedFD(open(kFakeInputPath, O_RDWR | O_NONBLOCK));
   CHECK_GE(fake_input_.get(), 0) << "Failed to open fake biometric input";
 
   fd_watcher_.reset(new base::MessageLoopForIO::FileDescriptorWatcher);
