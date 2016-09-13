@@ -188,7 +188,7 @@ bool ContainerManagerImpl::PrioritizeContainer() {
   int shares_size = strlen(kCpuSharesDefault);
   if (base::WriteFile(base::FilePath(kCpuSharesFile), kCpuSharesDefault,
                       shares_size) != shares_size) {
-    LOG(ERROR) << "Failed to set CPU shares for containers";
+    PLOG(ERROR) << "Failed to set CPU shares for containers";
     return false;
   }
   return true;
