@@ -65,11 +65,11 @@ readonly ROOT_SPOOL_DIR=/var/spool/power_manager/root
 readonly SUSPEND_TO_RAM_TIME_FILE=${ROOT_SPOOL_DIR}/suspend-to-ram-time
 
 log_msg() {
-    logger -t "powerd_suspend[$$]" -- $@
+    logger -t "powerd_suspend[$$]" -- "$@"
 }
 
 log_msg_from_file() {
-    logger -t "powerd_suspend[$$]" -f $1
+    logger -t "powerd_suspend[$$]" -f "$1"
 }
 
 log_wakeup_count() {
@@ -312,15 +312,17 @@ else
             do_blaze_huawei_modem on
         fi
     else
-        log_msg "Error writing to /sys/power/state: ${error}"
-        log_msg_from_file /sys/kernel/debug/suspend_stats
-
         # The write will fail with EBUSY if additional wakeup events have
         # occurred since the earlier write to /sys/power/wakeup_count.
         if echo "${error}" | grep -q 'Device or resource busy'; then
+            log_msg "Warning: Device or resource busy while writing to " \
+                    "/sys/power/state"
+            log_msg_from_file /sys/kernel/debug/suspend_stats
             log_wakeup_count
             result=$RESULT_CANCELED_LATE
         else
+            log_msg "Error writing to /sys/power/state: ${error}"
+            log_msg_from_file /sys/kernel/debug/suspend_stats
             result=$RESULT_FAILURE
         fi
     fi
