@@ -77,6 +77,7 @@ class Biometric {
       End();
       biometric_ = rhs.biometric_;
       rhs.biometric_.reset();
+      return *this;
     }
 
     explicit operator bool() const { return biometric_; }
