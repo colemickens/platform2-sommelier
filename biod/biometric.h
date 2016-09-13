@@ -108,6 +108,7 @@ class Biometric {
   class Enrollment {
    public:
     virtual ~Enrollment() {}
+    virtual uint64_t GetId() const = 0;
     virtual const std::string& GetUserId() const = 0;
     virtual const std::string& GetLabel() const = 0;
 

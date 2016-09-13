@@ -17,6 +17,10 @@
 
 namespace biod {
 
+uint64_t FakeBiometric::Enrollment::GetId() const {
+  return static_cast<uint64_t>(id_);
+}
+
 const std::string& FakeBiometric::Enrollment::GetUserId() const {
   InternalEnrollment* internal = GetInternal();
   CHECK(internal)

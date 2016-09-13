@@ -57,6 +57,7 @@ class FakeBiometric : public Biometric, public base::MessageLoopForIO::Watcher {
         : biometric_(biometric), id_(id) {}
 
     // Biometric::Enrollment overrides:
+    uint64_t GetId() const override;
     const std::string& GetUserId() const override;
     const std::string& GetLabel() const override;
     bool SetLabel(std::string label) override;
