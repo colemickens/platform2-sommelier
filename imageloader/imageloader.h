@@ -39,12 +39,6 @@ class ImageLoader : org::chromium::ImageLoaderInterface_adaptor,
     return impl_.GetComponentVersion(name);
   }
 
-  // TODO(kerrnel): errors should probably be returned using the err object.
-  // Load the specified component.
-  std::string LoadComponent(const std::string& name, ::DBus::Error& err) {
-    return impl_.LoadComponent(name);
-  }
-
  private:
   ImageLoaderImpl impl_;
 

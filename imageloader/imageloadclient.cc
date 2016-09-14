@@ -42,15 +42,6 @@ void ImageLoadClient::GetComponentVersionCallback(const std::string& version,
   }
 }
 
-void ImageLoadClient::LoadComponentCallback(const std::string& mount_point,
-                                            const ::DBus::Error& err, void*) {
-  if (mount_point == kBadResult) {
-    LOG(INFO) << "Could not mount.";
-  } else {
-    LOG(INFO) << "Mounted at " << mount_point << ".";
-  }
-}
-
 namespace {
 
 void *TestCalls(void *arg) {
@@ -73,9 +64,6 @@ void *TestCalls(void *arg) {
     } else if (inp == "gcv") {  // GetComponentVersion
       std::cin >> name;
       client->GetComponentVersionAsync(name, NULL);
-    } else if (inp == "lc") {  // LoadComponent
-      std::cin >> name;
-      client->LoadComponentAsync(name, NULL);
     }
   }
   return NULL;

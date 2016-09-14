@@ -332,7 +332,7 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   auto mount_mock = base::MakeUnique<MockLoopMounter>();
   ON_CALL(*mount_mock, Mount(_,_))
       .WillByDefault(testing::Return(true));
-  EXPECT_CALL(*mount_mock, Mount(_, _)).Times(1);
+  EXPECT_CALL(*mount_mock, Mount(_, _)).Times(2);
 
   base::ScopedTempDir scoped_temp_dir;
   base::ScopedTempDir scoped_mount_dir;
@@ -355,7 +355,12 @@ TEST_F(ImageLoaderTest, MountValidImage) {
 
   const std::string expected_path =
       scoped_mount_dir.path().value() + "/PepperFlashPlayer/22.0.0.158";
-  ASSERT_EQ(expected_path, loader.LoadComponent(kTestComponentName));
+  EXPECT_EQ(expected_path, loader.LoadComponent(kTestComponentName));
+
+  // Let's also test mounting the component at a fixed point.
+  const std::string expected_path2 =
+      scoped_mount_dir.path().value() + "/FixedMountPoint";
+  EXPECT_TRUE(loader.LoadComponent(kTestComponentName, expected_path2));
 }
 
 TEST_F(ImageLoaderTest, MountInvalidImage) {

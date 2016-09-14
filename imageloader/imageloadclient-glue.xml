@@ -16,9 +16,5 @@
       <arg type="s" name="name" direction="in" />
       <arg type="s" name="version" direction="out" />
     </method>
-    <method name="LoadComponent">
-      <arg type="s" name="name" direction="in" />
-      <arg type="s" name="mount_point" direction="out" />
-    </method>
   </interface>
 </node>

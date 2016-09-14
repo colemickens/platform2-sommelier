@@ -47,6 +47,9 @@ class ImageLoaderImpl {
   // Load the specified component.
   std::string LoadComponent(const std::string& name);
 
+  // Load the specified component at a set mount point.
+  bool LoadComponent(const std::string& name, const std::string& mount_point);
+
  private:
   // This is a parsed version of the imageloader.json manifest.
   struct Manifest {
@@ -100,6 +103,15 @@ class ImageLoaderImpl {
                             const base::FilePath& component_path,
                             Manifest* manifest, std::string* manifest_str,
                             std::string* manifest_sig);
+
+  // This performs the actual working of mounting the component. It must be
+  // passed a valid |manifest| argument and |mount_point| path.
+  bool LoadComponentHelper(const std::string& component_name,
+                           const Manifest& manifest,
+                           const base::FilePath& mount_point);
+
+  // Looks up the component path for |name| and returns a verified manifest.
+  bool GetManifestForComponent(const std::string& name, Manifest* manifest);
 
   // The configuration traits.
   ImageLoaderConfig config_;

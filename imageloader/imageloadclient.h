@@ -27,9 +27,6 @@ class ImageLoadClient
   void GetComponentVersionCallback(const std::string& version,
                                    const ::DBus::Error& err, void* data);
 
-  void LoadComponentCallback(const std::string& mount_point,
-                             const ::DBus::Error& err, void* data);
-
   void UnloadComponentCallback(const bool& success, const ::DBus::Error& err,
                                void* data);
 };

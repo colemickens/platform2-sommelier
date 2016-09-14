@@ -4,11 +4,13 @@
 
 #include <signal.h>
 
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/flag_helper.h>
 
 #include "imageloader.h"
 #include "imageloader_common.h"
+#include "imageloader_impl.h"
 #include "loop_mounter.h"
 
 // TODO(kerrnel): Switch to the prod keys before shipping this feature.
@@ -25,28 +27,47 @@ const uint8_t kDevPublicKey[] = {
 // The path where the components are stored on the device.
 const char kComponentsPath[] = "/mnt/stateful_partition/encrypted/imageloader";
 // The base path where the components are mounted.
-const char kMountPath[] = "/mnt/imageloader";
+const char kMountPath[] = "/mnt/stateful_partition/imageloader_mounts";
 
 int main(int argc, char** argv) {
   signal(SIGTERM, imageloader::OnQuit);
   signal(SIGINT, imageloader::OnQuit);
 
   DEFINE_bool(o, false, "run once");
+  DEFINE_bool(mount, false,
+              "Rather than starting a dbus daemon, verify and mount a single "
+              "component and exit immediately.");
+  DEFINE_string(mount_component, "",
+                "Specifies the name of the component when using --mount.");
+  DEFINE_string(mount_point, "",
+                "Specifies the mountpoint when using --mount.");
   brillo::FlagHelper::Init(argc, argv, "imageloader");
 
   logging::LoggingSettings settings;
   logging::InitLogging(settings);
 
+  std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
+  auto loop_mounter = base::MakeUnique<imageloader::LoopMounter>();
+  imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath,
+                                        std::move(loop_mounter));
+
+  if (FLAGS_mount) {
+    if (FLAGS_mount_point == "" || FLAGS_mount_component == "") {
+      LOG(ERROR) << "--mount_component=name and --mount_point=path must be set "
+                    "with --mount";
+      return 1;
+    }
+    // Access the ImageLoaderImpl directly to avoid needless dbus dependencies,
+    // which may not be available at early boot.
+    imageloader::ImageLoaderImpl loader(std::move(config));
+    return loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point) ? 0
+                                                                          : 1;
+  }
+
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
   conn.request_name(imageloader::kImageLoaderName);
-
-  std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
-
-  auto loop_mounter = base::MakeUnique<imageloader::LoopMounter>();
-  imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath,
-                                        std::move(loop_mounter));
   imageloader::ImageLoader helper(&conn, std::move(config));
 
   if (FLAGS_o) {
@@ -54,5 +75,6 @@ int main(int argc, char** argv) {
   } else {
     dispatcher.enter();
   }
+
   return 0;
 }

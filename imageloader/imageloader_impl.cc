@@ -309,6 +309,16 @@ bool CreateMountPointIfNeeded(const base::FilePath& mount_point,
 
 }  // namespace {}
 
+bool ImageLoaderImpl::GetManifestForComponent(const std::string& name,
+                                              Manifest* manifest) {
+  base::FilePath component_path(GetComponentPath(config_.storage_dir, name));
+  if (!base::PathExists(component_path)) {
+    LOG(ERROR) << "No valid component [" << name << "] on disk.";
+    return false;
+  }
+  return GetAndVerifyManifest(name, component_path, manifest, nullptr, nullptr);
+}
+
 bool ImageLoaderImpl::GetAndVerifyManifest(const std::string& component_name,
                                            const base::FilePath& component_path,
                                            Manifest* manifest,
@@ -563,17 +573,14 @@ bool ImageLoaderImpl::ECVerify(const base::StringPiece data,
   return verifier.VerifyFinal();
 }
 
-// Mount component at location generated.
-std::string ImageLoaderImpl::LoadComponent(const std::string& name) {
+bool ImageLoaderImpl::LoadComponentHelper(const std::string& name,
+                                          const Manifest& manifest,
+                                          const base::FilePath& mount_point) {
   base::FilePath component_path(GetComponentPath(config_.storage_dir, name));
   if (!base::PathExists(component_path)) {
     LOG(ERROR) << "No valid component [" << name << "] on disk.";
-    return kBadResult;
+    return false;
   }
-
-  Manifest manifest;
-  if (!GetAndVerifyManifest(name, component_path, &manifest, nullptr, nullptr))
-    return kBadResult;
   base::FilePath versioned_path(
       GetVersionedPath(component_path, manifest.version));
 
@@ -582,7 +589,7 @@ std::string ImageLoaderImpl::LoadComponent(const std::string& name) {
   if (!GetAndVerifyParams(GetParamsPath(versioned_path), manifest.params_sha256,
                           &params)) {
     LOG(ERROR) << "Could not read and verify dm-verity parameters.";
-    return kBadResult;
+    return false;
   }
 
   // Before we mount the image, check the hash as a sanity check.
@@ -590,23 +597,38 @@ std::string ImageLoaderImpl::LoadComponent(const std::string& name) {
   base::FilePath image_path(GetImagePath(versioned_path));
   if (!GetAndVerifyImage(image_path, manifest.image_sha256, &image_fd)) {
     LOG(ERROR) << "Failed to load and verify the disk image.";
-    return kBadResult;
+    return false;
   }
+
+  bool already_mounted = false;
+  if (!CreateMountPointIfNeeded(mount_point, &already_mounted)) return false;
+  if (!already_mounted) {
+    // The mount point is not yet taken, so go ahead.
+    if (!config_.loop_mounter->Mount(image_fd, mount_point)) {
+      LOG(ERROR) << "Failed to mount image.";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool ImageLoaderImpl::LoadComponent(const std::string& name,
+                                    const std::string& mount_point_str) {
+  Manifest manifest;
+  if (!GetManifestForComponent(name, &manifest)) return false;
+
+  base::FilePath mount_point(mount_point_str);
+  return LoadComponentHelper(name, manifest, mount_point);
+}
+
+std::string ImageLoaderImpl::LoadComponent(const std::string& name) {
+  Manifest manifest;
+  if (!GetManifestForComponent(name, &manifest)) return kBadResult;
 
   base::FilePath mount_point(
       GetMountPoint(config_.mount_path, name, manifest.version));
-
-  bool already_mounted = false;
-  if (!CreateMountPointIfNeeded(mount_point, &already_mounted))
-    return kBadResult;
-  if (already_mounted) return mount_point.value();
-
-  // The mount point is not yet taken, so go ahead.
-  if (!config_.loop_mounter->Mount(image_fd, mount_point)) {
-    LOG(ERROR) << "Failed to mount image.";
-    return kBadResult;
-  }
-  return mount_point.value();
+  return LoadComponentHelper(name, manifest, mount_point) ? mount_point.value()
+                                                          : kBadResult;
 }
 
 bool ImageLoaderImpl::RegisterComponent(
