@@ -46,6 +46,12 @@ const size_t kMaxPasswordLength = 32;
 // The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
 const uint32_t kMaxNVSpaceIndex = (1 << 24) - 1;
 
+// Auth policy used in RSA and ECC templates for EK keys generation.
+// From TCG Credential Profile EK 2.0. Section 2.1.5.
+const std::string kEKTemplateAuthPolicy(
+  "\x83\x71\x97\x67\x44\x84\xB3\xF8\x1A\x90\xCC\x8D\x46\xA5\xD7\x24"
+  "\xFD\x52\xD7\x6E\x06\x52\x0B\x64\xF2\xA1\xDA\x1B\x33\x14\x69\xAA");
+
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
 // handles use this name formula see Table 3 in the TPM 2.0 Library Spec Part 1
@@ -1506,16 +1512,27 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
   TPM2B_NAME object_name;
   object_name.size = 0;
   TPMT_PUBLIC public_area = CreateDefaultPublicArea(key_type);
-  public_area.object_attributes |= (kSensitiveDataOrigin | kUserWithAuth |
-                                    kNoDA | kRestricted | kDecrypt);
+  public_area.object_attributes = kFixedTPM | kFixedParent |
+                                  kSensitiveDataOrigin | kAdminWithPolicy |
+                                  kRestricted | kDecrypt;
+  public_area.auth_policy = Make_TPM2B_DIGEST(kEKTemplateAuthPolicy);
   if (key_type == TPM_ALG_RSA) {
     public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
-    public_area.parameters.rsa_detail.symmetric.key_bits.aes = 256;
+    public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;
     public_area.parameters.rsa_detail.symmetric.mode.aes = TPM_ALG_CFB;
+    public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+    public_area.parameters.rsa_detail.key_bits = 2048;
+    public_area.parameters.rsa_detail.exponent = 0;
+    public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(std::string(256, 0));
   } else {
     public_area.parameters.ecc_detail.symmetric.algorithm = TPM_ALG_AES;
-    public_area.parameters.ecc_detail.symmetric.key_bits.aes = 256;
+    public_area.parameters.ecc_detail.symmetric.key_bits.aes = 128;
     public_area.parameters.ecc_detail.symmetric.mode.aes = TPM_ALG_CFB;
+    public_area.parameters.ecc_detail.scheme.scheme = TPM_ALG_NULL;
+    public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
+    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_NULL;
+    public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER(std::string(32, 0));
+    public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER(std::string(32, 0));
   }
   TPM2B_PUBLIC rsa_public_area = Make_TPM2B_PUBLIC(public_area);
   TPM_RC result = tpm->CreatePrimarySync(
@@ -1820,24 +1837,23 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
 
 TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
   TPMT_PUBLIC public_area;
+  memset(&public_area, 0, sizeof(public_area));
+  public_area.type = key_alg;
   public_area.name_alg = TPM_ALG_SHA256;
   public_area.auth_policy = Make_TPM2B_DIGEST("");
   public_area.object_attributes = kFixedTPM | kFixedParent;
   if (key_alg == TPM_ALG_RSA) {
-    public_area.type = TPM_ALG_RSA;
     public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
     public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
     public_area.parameters.rsa_detail.key_bits = 2048;
     public_area.parameters.rsa_detail.exponent = 0;
     public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
   } else if (key_alg == TPM_ALG_ECC) {
-    public_area.type = TPM_ALG_ECC;
     public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
     public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_NULL;
     public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
     public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
   } else if (key_alg == TPM_ALG_KEYEDHASH) {
-    public_area.type = TPM_ALG_KEYEDHASH;
     public_area.parameters.keyed_hash_detail.scheme.scheme = TPM_ALG_NULL;
   } else {
     LOG(WARNING) << __func__
