@@ -16,16 +16,17 @@ namespace biod {
 
 // A Biometric object represents one biometric input device and all of the
 // enrollments registered with it. At a high level, there are 3 operations that
-// are supported: 1) enrolling new biometrics, 2) authenticating against those
-// enrolled biometrics, and 3) destroying all enrolled biometrics made from this
-// biometrics. For DestroyAllEnrollments the operation is as simple as calling
-// the function. For the other operations, the biometric object must be entered
-// into authentication or enrollment mode, which is represented in code by the
-// return of the session objects. They can
-// be thought of as session objects that are ongoing as long as the unique
-// pointers remain in scope and the End/Cancel methods haven't been called. It's
-// undefined what StartEnroll or StartAuthentication will do if there is an
-// valid outstanding Enroll or Authentication object in the wild.
+// are supported: 1) enrolling new enrollment objects, 2) authenticating
+// against those enrollment objects, and 3) destroying all enrollment
+// objects made from this biometrics. For DestroyAllEnrollments the operation
+// is as simple as calling the function. For the other operations,
+// the biometric object must be entered into authentication or enroll mode,
+// which is represented in code by the return of the session objects.
+// Enroll and authentication can be thought of as session objects that
+// are ongoing as long as the unique pointers remain in scope and
+// the End/Cancel methods haven't been called. It's undefined what
+// StartEnroll or StartAuthentication will do if there is an valid
+// outstanding Enroll or Authentication object in the wild.
 class Biometric {
  public:
   enum class Type {
@@ -56,9 +57,10 @@ class Biometric {
   };
 
   // Invokes the function object F with a given Biometric object when this
-  // Session object goes out of scope. It's possible that this will do nothing
-  // in the case that the session has ended due to failure/finishing or the
-  // Biometric object is no longer valid.
+  // Session(Enroll or Authentication) object goes out of scope.
+  // It's possible that this will do nothing in the case that the session
+  // has ended due to failure/finishing or the Biometric object is
+  // no longer valid.
   template <typename F>
   class Session {
    public:
