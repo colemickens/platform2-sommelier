@@ -19,6 +19,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/userdb_utils.h>
@@ -37,6 +38,7 @@ const char kTestPPDCommand[] = "/usr/bin/cupstestppd";
 const char kLpadminUser[] = "lpadmin";
 const char kLpadminGroup[] = "lpadmin";
 const char kLpGroup[] = "lp";
+const char kDownloadsFolder[] = "Downloads";
 
 bool IsInPPDCache(const base::FilePath& path) {
   // TODO(skau): Implement once cache location is determined.
@@ -47,18 +49,33 @@ bool IsInPPDCache(const base::FilePath& path) {
 bool MatchesPrimaryUserDownloads(
     const std::vector<std::string>& path_components) {
   std::vector<std::string> primary_user = {"/", "home", "chronos", "user",
-                                           "Downloads"};
+                                           kDownloadsFolder};
   return std::equal(primary_user.begin(), primary_user.end(),
                     path_components.begin());
 }
 
-bool IsHexDigits(const std::string& digits) {
+bool IsHexDigits(base::StringPiece digits) {
   for (char digit : digits) {
     if (!base::IsHexDigit(digit))
       return false;
   }
 
   return true;
+}
+
+bool MatchesUserString(base::StringPiece input) {
+  std::vector<base::StringPiece> pieces = base::SplitStringPiece(
+      input, "-", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  return pieces.size() == 2 && pieces[0] == "u" && IsHexDigits(pieces[1]);
+}
+
+// Matches the path reported by Chrome for the Downloads folder.
+bool MatchesChromeDownloadsPath(
+    const std::vector<std::string>& path_components) {
+  return path_components.size() > 5 && path_components[0] == "/" &&
+         path_components[1] == "home" && path_components[2] == "chronos" &&
+         MatchesUserString(path_components[3]) &&
+         path_components[4] == kDownloadsFolder;
 }
 
 // Returns true if the path is a child of the user's Downloads folder in a
@@ -68,14 +85,16 @@ bool MatchesMultiUserDownloads(
   // Path consists of /home/user/<hex string>/Downloads.
   return path_components.size() > 5 && path_components[0] == "/" &&
          path_components[1] == "home" && path_components[2] == "user" &&
-         IsHexDigits(path_components[3]) && path_components[4] == "Downloads";
+         IsHexDigits(path_components[3]) &&
+         path_components[4] == kDownloadsFolder;
 }
 
 bool IsDownload(const base::FilePath& path) {
   std::vector<std::string> path_components;
   path.GetComponents(&path_components);
 
-  return MatchesPrimaryUserDownloads(path_components) ||
+  return MatchesChromeDownloadsPath(path_components) ||
+         MatchesPrimaryUserDownloads(path_components) ||
          MatchesMultiUserDownloads(path_components);
 }
 
