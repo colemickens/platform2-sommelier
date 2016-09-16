@@ -18,6 +18,7 @@
 #define SHILL_DBUS_CHROMEOS_MANAGER_DBUS_ADAPTOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -83,6 +84,10 @@ class ChromeosManagerDBusAdaptor
   bool PushProfile(brillo::ErrorPtr* error,
                    const std::string& name,
                    dbus::ObjectPath* profile_path) override;
+  void SetNetworkThrottlingStatus(DBusMethodResponsePtr<> response,
+                                  bool enabled,
+                                  uint32_t upload_rate_kbits,
+                                  uint32_t download_rate_kbits) override;
   bool InsertUserProfile(brillo::ErrorPtr* error,
                          const std::string& name,
                          const std::string& user_hash,

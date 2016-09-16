@@ -54,6 +54,7 @@
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
+#include "shill/mock_throttler.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
@@ -124,8 +125,8 @@ class ManagerTest : public PropertyStoreTest {
 #if !defined(DISABLE_WIFI)
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
 #endif  // DISABLE_WIFI
-        crypto_util_proxy_(
-            new NiceMock<MockCryptoUtilProxy>(dispatcher())),
+        throttler_(new NiceMock<MockThrottler>()),
+        crypto_util_proxy_(new NiceMock<MockCryptoUtilProxy>(dispatcher())),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
     ON_CALL(*control_interface(), CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
@@ -179,6 +180,9 @@ class ManagerTest : public PropertyStoreTest {
     manager()->wifi_driver_hal_ = &wifi_driver_hal_;
 #endif  // __BRILLO__
 #endif  // DISABLE_WIFI
+
+    // Replace the manager's throttler with our mock.
+    manager()->throttler_.reset(throttler_);
 
     // Update the manager's map from technology to provider.
     manager()->UpdateProviderMapping();
@@ -512,6 +516,7 @@ class ManagerTest : public PropertyStoreTest {
   MockWiFiDriverHal wifi_driver_hal_;
 #endif  // __BRILLO__
 #endif  // DISABLE_WIFI
+  MockThrottler* throttler_;
   MockCryptoUtilProxy* crypto_util_proxy_;
   MockUpstart* upstart_;
 };
@@ -590,6 +595,23 @@ TEST_F(ManagerTest, DeviceRegistration) {
   EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
   EXPECT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
   EXPECT_TRUE(IsDeviceRegistered(mock_devices_[2], Technology::kCellular));
+}
+
+TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
+  manager()->network_throttling_enabled_ = true;
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*mock_devices_[2].get(), technology())
+      .WillByDefault(Return(Technology::kCellular));
+
+  EXPECT_CALL(*throttler_, ThrottleInterfaces(_, _, _)).Times(1);
+  EXPECT_CALL(*throttler_, ApplyThrottleToNewInterface(_)).Times(2);
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
 }
 
 TEST_F(ManagerTest, DeviceRegistrationAndStart) {

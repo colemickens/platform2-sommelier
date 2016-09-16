@@ -18,6 +18,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "shill/callbacks.h"
@@ -227,6 +228,18 @@ bool ChromeosManagerDBusAdaptor::RequestScan(brillo::ErrorPtr* error,
   Error e;
   manager_->RequestScan(technology, &e);
   return !e.ToChromeosError(error);
+}
+
+void ChromeosManagerDBusAdaptor::SetNetworkThrottlingStatus(
+    DBusMethodResponsePtr<> response,
+    bool enabled,
+    uint32_t upload_rate_kbits,
+    uint32_t download_rate_kbits) {
+  SLOG(this, 2) << __func__ << ": " << enabled;
+  ResultCallback callback = GetMethodReplyCallback(std::move(response));
+  manager_->SetNetworkThrottlingStatus(callback, enabled, upload_rate_kbits,
+                                       download_rate_kbits);
+  return;
 }
 
 void ChromeosManagerDBusAdaptor::EnableTechnology(

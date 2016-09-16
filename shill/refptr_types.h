@@ -83,6 +83,9 @@ typedef scoped_refptr<IPConfig> IPConfigRefPtr;
 class DHCPConfig;
 typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
 
+class Throttler;
+typedef scoped_refptr<Throttler> ThrottlerRefPtr;
+
 class Profile;
 typedef scoped_refptr<const Profile> ProfileConstRefPtr;
 typedef scoped_refptr<Profile> ProfileRefPtr;

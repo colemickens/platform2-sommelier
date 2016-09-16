@@ -364,6 +364,17 @@ Methods
 			For more details, see:
 			https://developers.google.com/maps/documentation/business/geolocation/
 
+
+		boolean SetNetworkThrottlingStatus(bool enabled,
+						   uint32 upload_rate_kbits,
+						   uint32 download_rate_kbits)
+
+			Enables or disables network throttling to limit bandwidth
+			consumed by the device. Applies to all interfaces. Both
+			rates are specified in kbits/s. If throttling already
+			exists, this will override current throttling settings.
+
+
 		boolean VerifyDestination(string certificate,
 					  string public_key
 					  string nonce,

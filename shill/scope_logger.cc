@@ -61,6 +61,7 @@ const char* const kScopeNames[] = {
   "service",
   "storage",
   "task",
+  "tc",
   "vpn",
   "wifi",
   "wimax",

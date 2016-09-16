@@ -78,6 +78,7 @@ TEST_F(ScopeLoggerTest, GetAllScopeNames) {
             "service+"
             "storage+"
             "task+"
+            "tc+"
             "vpn+"
             "wifi+"
             "wimax",

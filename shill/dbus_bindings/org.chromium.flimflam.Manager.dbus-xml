@@ -42,6 +42,12 @@
 			<arg type="s" direction="in"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
+		<method name="SetNetworkThrottlingStatus">
+			<arg type="b" direction="in"/>
+			<arg type="u" direction="in"/>
+			<arg type="u" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 		<method name="DisableTechnology">
 			<arg type="s" direction="in"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>

@@ -62,6 +62,7 @@
 #include "shill/service_sorter.h"
 #include "shill/store_factory.h"
 #include "shill/technology.h"
+#include "shill/throttler.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 #include "shill/wimax/wimax_service.h"
@@ -156,6 +157,7 @@ Manager::Manager(ControlInterface* control_interface,
       wimax_provider_(
           new WiMaxProvider(control_interface, dispatcher, metrics, this)),
 #endif  // DISABLE_WIMAX
+      throttler_(new Throttler(dispatcher, this)),
       resolver_(Resolver::GetInstance()),
       running_(false),
       connect_profiles_to_rpc_(true),
@@ -257,8 +259,26 @@ void Manager::SetWhitelistedDevices(const vector<string>& whitelisted_devices) {
   whitelisted_devices_ = whitelisted_devices;
 }
 
+void Manager::ApplyPolicies() {
+  if (!policy_provider_.get())
+    policy_provider_.reset(new policy::PolicyProvider());
+  policy_provider_->Reload();
+  SLOG(this, 2) << "Reloaded policies";
+
+  if (policy_provider_->device_policy_is_loaded()) {
+    // TODO(kirtika): Blocked on Chrome providing throttling policy.
+    // crbug.com/634529
+    // Read from the policy here instead of using dummy values
+    // network_throttling_enabled_ = true;
+    // download_rate_kbits_ = 1000;
+    // upload_rate_kbits_ = 1000;
+  }
+}
+
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
+
+  ApplyPolicies();
 
   power_manager_.reset(
       new PowerManager(dispatcher_, control_interface_));
@@ -1248,6 +1268,18 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
 
   // If |to_manage| is new, it needs to be persisted.
   UpdateDevice(to_manage);
+
+  if (network_throttling_enabled_ &&
+      Technology::IsPrimaryConnectivityTechnology(to_manage->technology())) {
+    if (devices_.size() == 1) {
+      ResultCallback dummy;
+      throttler_->ThrottleInterfaces(dummy, upload_rate_kbits_,
+                                     download_rate_kbits_);
+    } else {
+      // Apply any existing network bandwidth throttling policy
+      throttler_->ApplyThrottleToNewInterface(to_manage->UniqueName());
+    }
+  }
 
   // In normal usage, running_ will always be true when we are here, however
   // unit tests sometimes do things in otherwise invalid states.
@@ -2670,6 +2702,46 @@ void Manager::UpdateProviderMapping() {
 #if !defined(DISABLE_WIMAX)
   providers_[Technology::kWiMax] = wimax_provider_.get();
 #endif  // DISABLE_WIMAX
+}
+
+std::vector<std::string> Manager::GetDeviceInterfaceNames() {
+  std::vector<std::string> interfaces;
+
+  for (const auto& device : devices_) {
+    Technology::Identifier technology = device->technology();
+    if (Technology::IsPrimaryConnectivityTechnology(technology)) {
+      interfaces.push_back(device->UniqueName());
+      SLOG(this, 4) << "Adding device: " << device->UniqueName();
+    }
+  }
+  return interfaces;
+}
+
+bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,
+                                         bool enabled,
+                                         uint32_t upload_rate_kbits,
+                                         uint32_t download_rate_kbits) {
+  SLOG(this, 2) << __func__;
+
+  LOG(INFO) << "Received command for network throttling "
+            << (enabled ? "enabling" : "disabling");
+
+  bool result = false;
+
+  network_throttling_enabled_ = enabled;
+
+  if (enabled) {
+    upload_rate_kbits_ = upload_rate_kbits;
+    download_rate_kbits_ = upload_rate_kbits;
+
+    LOG(INFO) << "Asked for upload rate (kbits/s) : " << upload_rate_kbits_
+              << " download rate (kbits/s) : " << download_rate_kbits_;
+    result = throttler_->ThrottleInterfaces(callback, upload_rate_kbits_,
+                                            download_rate_kbits_);
+  } else {
+    result = throttler_->DisableThrottlingOnAllInterfaces(callback);
+  }
+  return result;
 }
 
 DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {

@@ -33,6 +33,8 @@
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <policy/device_policy.h>
+#include <policy/libpolicy.h>
 
 #include "shill/cellular/modem_info.h"
 #include "shill/crypto_util_proxy.h"
@@ -564,6 +566,15 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   RpcIdentifiers EnumerateDevices(Error* error);
 
+  bool SetNetworkThrottlingStatus(const ResultCallback& callback,
+                                  bool enabled,
+                                  uint32_t upload_rate_kbits,
+                                  uint32_t download_rate_kbits);
+
+  // Returns the interface names associated with 'real' devices
+  // on the system e.g. eth0, wlan0.
+  virtual std::vector<std::string> GetDeviceInterfaceNames();
+
  private:
   friend class CellularTest;
   friend class DeviceInfoTest;
@@ -600,6 +611,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, DeviceClaimerVanishedTask);
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
+  FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
   FRIEND_TEST(ManagerTest, DisableTechnology);
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
@@ -655,6 +667,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Time to wait for termination actions to complete.
   static const int kTerminationActionsTimeoutMilliseconds;
 
+  void ApplyPolicies();
   void AutoConnect();
   std::vector<std::string> AvailableTechnologies(Error* error);
   std::vector<std::string> ConnectedTechnologies(Error* error);
@@ -811,6 +824,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #if !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
 #endif  // DISABLE_WIRED_8021X
+  // To fetch network policies from
+  std::unique_ptr<policy::PolicyProvider> policy_provider_;
   std::unique_ptr<VPNProvider> vpn_provider_;
 #if !defined(DISABLE_WIFI)
   std::unique_ptr<WiFiProvider> wifi_provider_;
@@ -821,6 +836,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #if !defined(DISABLE_WIMAX)
   std::unique_ptr<WiMaxProvider> wimax_provider_;
 #endif  // DISABLE_WIMAX
+
+  // Entity that calls kernel commands ('tc') to throttle network bandwidth.
+  std::unique_ptr<Throttler> throttler_;
+
   // Hold pointer to singleton Resolver instance for testing purposes.
   Resolver* resolver_;
   bool running_;
@@ -931,6 +950,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // DhcpProperties stored for the default profile.
   std::unique_ptr<DhcpProperties> dhcp_properties_;
+
+  // Cache for bandwidth throttling policy variables, until Throttler class
+  // is called.
+  bool network_throttling_enabled_;
+  uint32_t download_rate_kbits_;
+  uint32_t upload_rate_kbits_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

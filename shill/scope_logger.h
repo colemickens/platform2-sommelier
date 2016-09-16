@@ -66,6 +66,7 @@ class ScopeLogger {
     kService,
     kStorage,
     kTask,
+    kTC,
     kVPN,
     kWiFi,
     kWiMax,
