@@ -753,9 +753,8 @@ void HomeDirs::DoForEveryUnmountedCryptohome(
   if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
     return;
   }
-  for (std::vector<FilePath>::iterator it = entries.begin();
-       it != entries.end(); ++it) {
-    const std::string obfuscated = it->BaseName().value();
+  for (const auto& entry : entries) {
+    const std::string obfuscated = entry.BaseName().value();
     if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
       continue;
     }
@@ -763,7 +762,7 @@ void HomeDirs::DoForEveryUnmountedCryptohome(
           brillo::cryptohome::home::GetHashedUserPath(obfuscated))) {
       continue;
     }
-    cryptohome_cb.Run(it->Append(kVaultDir));
+    cryptohome_cb.Run(entry.Append(kVaultDir));
   }
 }
 
@@ -773,9 +772,8 @@ int HomeDirs::CountMountedCryptohomes() const {
   if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
     return 0;
   }
-  for (std::vector<FilePath>::iterator it = entries.begin();
-       it != entries.end(); ++it) {
-    const std::string obfuscated = it->BaseName().value();
+  for (const auto& entry : entries) {
+    const std::string obfuscated = entry.BaseName().value();
     if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
       continue;
     }
@@ -812,17 +810,16 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
   std::string owner;
   if (!enterprise_owned_ && !GetOwner(&owner))
     return;
-  for (std::vector<FilePath>::iterator it = dirents.begin();
-       it != dirents.end(); ++it) {
-    const std::string basename = it->BaseName().value();
+  for (const auto& dirent : dirents) {
+    const std::string basename = dirent.BaseName().value();
     if (!enterprise_owned_ && !strcasecmp(basename.c_str(), owner.c_str()))
       continue;  // Skip the owner's directory.
     if (!brillo::cryptohome::home::IsSanitizedUserName(basename))
       continue;  // Skip any directory whose name is not an obfuscated user
                  // name.
-    if (platform_->IsDirectoryMounted(*it))
+    if (platform_->IsDirectoryMounted(dirent))
       continue;  // Skip any directory that is currently mounted.
-    platform_->DeleteFile(*it, true);
+    platform_->DeleteFile(dirent, true);
   }
 }
 

@@ -2077,10 +2077,9 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
 
   // No c-homes will be removed.  The rest of the mocking just gets us to
   // Mount().
-  std::vector<TestUser>::iterator it;
-  for (it = helper_.users.begin(); it != helper_.users.end(); ++it)
-    it->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                        shared_gid_, kDaemonGid);
+  for (auto& user : helper_.users)
+    user.InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
+                         shared_gid_, kDaemonGid);
 
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))

@@ -692,23 +692,17 @@ void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
     if (was_busy) {
       std::vector<ProcessInformation> processes;
       platform_->GetProcessesWithOpenFiles(dest, &processes);
-      for (std::vector<ProcessInformation>::iterator proc_itr =
-             processes.begin();
-           proc_itr != processes.end();
-           proc_itr++) {
-        LOG(ERROR) << "Process " << proc_itr->get_process_id()
+      for (const auto& proc : processes) {
+        LOG(ERROR) << "Process " << proc.get_process_id()
                    << " had open files.  Command line: "
-                   << proc_itr->GetCommandLine();
-        if (proc_itr->get_cwd().length()) {
-          LOG(ERROR) << "  (" << proc_itr->get_process_id() << ") CWD: "
-                     << proc_itr->get_cwd();
+                   << proc.GetCommandLine();
+        if (proc.get_cwd().length()) {
+          LOG(ERROR) << "  (" << proc.get_process_id() << ") CWD: "
+                     << proc.get_cwd();
         }
-        for (std::set<FilePath>::iterator file_itr =
-               proc_itr->get_open_files().begin();
-             file_itr != proc_itr->get_open_files().end();
-             file_itr++) {
-          LOG(ERROR) << "  (" << proc_itr->get_process_id() << ") Open File: "
-                     << file_itr->value();
+        for (const auto& file : proc.get_open_files()) {
+          LOG(ERROR) << "  (" << proc.get_process_id() << ") Open File: "
+                     << file.value();
         }
       }
     }
@@ -831,9 +825,9 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  for (size_t index = 0; index < arraysize(kTrackedDirs); ++index) {
-    const FilePath shadowside_dir = shadow_home.Append(kTrackedDirs[index]);
-    const FilePath userside_dir = user_home.Append(kTrackedDirs[index]);
+  for (const auto& tracked_dir : kTrackedDirs) {
+    const FilePath shadowside_dir = shadow_home.Append(tracked_dir);
+    const FilePath userside_dir = user_home.Append(tracked_dir);
 
     // If non-pass-through dir with the same name existed - delete it
     // to prevent duplication.
@@ -915,12 +909,12 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
   };
 
   mode_t mode = S_IXGRP;
-  for (size_t i = 0; i < arraysize(kGroupAccessiblePaths); ++i) {
-    if (!platform_->FileExists(kGroupAccessiblePaths[i].path) &&
-        kGroupAccessiblePaths[i].optional)
+  for (const auto& accessible : kGroupAccessiblePaths) {
+    if (!platform_->FileExists(accessible.path) &&
+        accessible.optional)
       continue;
 
-    if (!platform_->SetGroupAccessible(kGroupAccessiblePaths[i].path,
+    if (!platform_->SetGroupAccessible(accessible.path,
                                        default_access_group_, mode))
       return false;
   }
@@ -1014,11 +1008,10 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   if (!homedirs_->GetVaultKeysets(obfuscated_username, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
   }
-  std::vector<int>::const_iterator iter = key_indices.begin();
-  for ( ; iter != key_indices.end(); ++iter) {
+  for (auto key_index : key_indices) {
     // Load the encrypted keyset
-    if (!LoadVaultKeysetForUser(obfuscated_username, *iter, serialized)) {
-      LOG(ERROR) << "Could not parse keyset " << *iter
+    if (!LoadVaultKeysetForUser(obfuscated_username, key_index, serialized)) {
+      LOG(ERROR) << "Could not parse keyset " << key_index
                  << " for " << obfuscated_username;
       continue;
     }
@@ -1040,7 +1033,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
           continue;
       } else {
         if (credentials.key_data().label() !=
-            StringPrintf("%s%d", kKeyLegacyPrefix, *iter))
+            StringPrintf("%s%d", kKeyLegacyPrefix, key_index))
           continue;
       }
     }
@@ -1052,7 +1045,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                                     &crypto_error, vault_keyset)) {
       // Success!
       *error = MOUNT_ERROR_NONE;
-      *index = *iter;
+      *index = key_index;
       break;
     }
 
@@ -1470,8 +1463,8 @@ void Mount::MigrateToUserHome(const FilePath& vault_path) const {
     return;
   }
 
-  for (ent_iter = ent_list.begin(); ent_iter != ent_list.end(); ent_iter++) {
-    FilePath basename(*ent_iter);
+  for (const auto& ent : ent_list) {
+    FilePath basename(ent);
     FilePath next_path = basename;
     basename = basename.BaseName();
     // Don't move the user/ directory itself. We're currently operating on an
@@ -1524,8 +1517,7 @@ void Mount::CopySkeleton() const {
 
 
 bool Mount::CacheOldFiles(const std::vector<FilePath>& files) const {
-  for (unsigned int index = 0; index < files.size(); ++index) {
-    FilePath file = files[index];
+  for (const auto& file : files) {
     FilePath file_bak = file.AddExtension("bak");
     if (platform_->FileExists(file_bak)) {
       if (!platform_->DeleteFile(file_bak, false)) {
@@ -1577,8 +1569,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
 }
 
 bool Mount::RevertCacheFiles(const std::vector<FilePath>& files) const {
-  for (unsigned int index = 0; index < files.size(); ++index) {
-    FilePath file = files[index];
+  for (const auto& file : files) {
     FilePath file_bak = file.AddExtension("bak");
     if (platform_->FileExists(file_bak)) {
       if (!platform_->Move(file_bak, file)) {
@@ -1590,8 +1581,7 @@ bool Mount::RevertCacheFiles(const std::vector<FilePath>& files) const {
 }
 
 bool Mount::DeleteCacheFiles(const std::vector<FilePath>& files) const {
-  for (unsigned int index = 0; index < files.size(); ++index) {
-    FilePath file = files[index];
+  for (const auto& file : files) {
     FilePath file_bak = file.AddExtension("bak");
     if (platform_->FileExists(file_bak)) {
       if (!platform_->DeleteFile(file_bak, false)) {
@@ -1707,10 +1697,9 @@ base::Value* Mount::GetStatus() {
   base::ListValue* keysets = new base::ListValue();
   std::vector<int> key_indices;
   if (user.length() && homedirs_->GetVaultKeysets(user, &key_indices)) {
-    std::vector<int>::const_iterator iter = key_indices.begin();
-    for ( ; iter != key_indices.end(); ++iter) {
+    for (auto key_index : key_indices) {
       base::DictionaryValue* keyset_dict = new base::DictionaryValue();
-      if (LoadVaultKeysetForUser(user, *iter, &keyset)) {
+      if (LoadVaultKeysetForUser(user, key_index, &keyset)) {
         bool tpm = keyset.flags() & SerializedVaultKeyset::TPM_WRAPPED;
         bool scrypt = keyset.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
         keyset_dict->SetBoolean("tpm", tpm);
@@ -1727,9 +1716,9 @@ base::Value* Mount::GetStatus() {
       }
       // TODO(wad) Replace key_index use with key_label() use once
       //           legacy keydata is populated.
-      if (!ephemeral_mount_ && *iter == current_user_->key_index())
+      if (!ephemeral_mount_ && key_index == current_user_->key_index())
         keyset_dict->SetBoolean("current", true);
-      keyset_dict->SetInteger("index", *iter);
+      keyset_dict->SetInteger("index", key_index);
       keysets->Append(keyset_dict);
     }
   }

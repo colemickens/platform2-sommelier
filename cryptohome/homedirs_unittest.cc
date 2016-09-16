@@ -118,17 +118,16 @@ class HomeDirsTest : public ::testing::Test {
 
     homedirs_.Init(&platform_, &crypto_, &timestamp_cache_);
     FilePath fp = FilePath(kTestRoot);
-    for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {
-      const struct homedir *hd = &kHomedirs[i];
-      FilePath path = fp.Append(hd->name);
+    for (const auto& hd : kHomedirs) {
+      FilePath path = fp.Append(hd.name);
       std::string user;
-      if (hd->name == std::string(kOwner))
+      if (hd.name == std::string(kOwner))
         homedirs_.GetOwner(&user);
       else
-        user = hd->name;
+        user = hd.name;
       homedir_paths_.push_back(fp.Append(user));
       user_paths_.push_back(brillo::cryptohome::home::GetHashedUserPath(user));
-      base::Time t = base::Time::FromUTCExploded(hd->time);
+      base::Time t = base::Time::FromUTCExploded(hd.time);
       homedir_times_.push_back(t);
     }
   }

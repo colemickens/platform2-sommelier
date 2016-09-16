@@ -630,15 +630,13 @@ class ProcessInformation {
       process_id_(-1) { }
   virtual ~ProcessInformation() { }
 
-  std::string GetCommandLine() {
+  std::string GetCommandLine() const {
     std::string result;
-    for (std::vector<std::string>::iterator cmd_itr = cmd_line_.begin();
-         cmd_itr != cmd_line_.end();
-         cmd_itr++) {
-      if (result.length()) {
+    for (const auto& cmd : cmd_line_) {
+      if (result.length() != 0) {
         result.append(" ");
       }
-      result.append((*cmd_itr));
+      result.append(cmd);
     }
     return result;
   }
@@ -650,7 +648,7 @@ class ProcessInformation {
     cmd_line_.swap(*value);
   }
 
-  const std::vector<std::string>& get_cmd_line() {
+  const std::vector<std::string>& get_cmd_line() const {
     return cmd_line_;
   }
 
@@ -661,7 +659,7 @@ class ProcessInformation {
     open_files_.swap(*value);
   }
 
-  const std::set<base::FilePath>& get_open_files() {
+  const std::set<base::FilePath>& get_open_files() const {
     return open_files_;
   }
 
@@ -672,7 +670,7 @@ class ProcessInformation {
     cwd_.swap(*value);
   }
 
-  const std::string& get_cwd() {
+  const std::string& get_cwd() const {
     return cwd_;
   }
 
@@ -680,7 +678,7 @@ class ProcessInformation {
     process_id_ = value;
   }
 
-  int get_process_id() {
+  int get_process_id() const {
     return process_id_;
   }
 

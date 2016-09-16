@@ -374,12 +374,12 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
       &async_id,
       &error));
   EXPECT_NE(-1, async_id);
-  for (unsigned int i = 0; i < 64; i++) {
+  for (size_t i = 0; i < 64; i++) {
     bool found = false;
     service_.DispatchEvents();
-    for (unsigned int j = 0; j < event_sink_.completed_tasks_.size(); j++) {
-      if (event_sink_.completed_tasks_[j].sequence_id() == async_id) {
-        out = event_sink_.completed_tasks_[j].return_status();
+    for (const auto& completed_task : event_sink_.completed_tasks_) {
+      if (completed_task.sequence_id() == async_id) {
+        out = completed_task.return_status();
         found = true;
       }
     }
