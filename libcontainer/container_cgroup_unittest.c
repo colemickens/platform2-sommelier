@@ -27,10 +27,17 @@ static int check_is_dir(const char *path)
 	return S_ISDIR(st_buf.st_mode);
 }
 
-static void create_file(const char *name)
+static void create_file_with_content(const char *name, const char *content)
 {
 	FILE *fp = fopen(name, "w");
+	if (content)
+		fputs(content, fp);
 	fclose(fp);
+}
+
+static void create_file(const char *name)
+{
+	create_file_with_content(name, NULL);
 }
 
 static int string_in_file(const char *path, const char *str)
@@ -86,6 +93,7 @@ TEST(cgroup_new_with_parent) {
 	const char *cgroup_name;
 	char cpu_cg[256];
 	char cpuacct_cg[256];
+	char cpuset_cg[256];
 	char devices_cg[256];
 	char freezer_cg[256];
 
@@ -100,6 +108,8 @@ TEST(cgroup_new_with_parent) {
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/cpuacct", cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/cpuset", cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/devices", cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/freezer", cgroup_root);
@@ -113,12 +123,22 @@ TEST(cgroup_new_with_parent) {
 	snprintf(path, sizeof(path), "%s/cpuacct/%s", cgroup_root,
 		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/cpuset/%s", cgroup_root,
+		 cgroup_parent_name);
+	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/devices/%s", cgroup_root,
 		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/freezer/%s", cgroup_root,
 		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
+
+	snprintf(path, sizeof(path), "%s/cpuset/%s/cpus",
+		 cgroup_root, cgroup_parent_name);
+	create_file_with_content(path, "0-3");
+	snprintf(path, sizeof(path), "%s/cpuset/%s/mems",
+		 cgroup_root, cgroup_parent_name);
+	create_file_with_content(path, "0");
 
 	ccg = container_cgroup_new(CGNAME, cgroup_root, cgroup_parent_name,
 				   1000);
@@ -130,6 +150,8 @@ TEST(cgroup_new_with_parent) {
 		 cgroup_root, cgroup_parent_name, cgroup_name);
 	snprintf(cpuacct_cg, sizeof(cpuacct_cg), "%s/cpuacct/%s/%s",
 		 cgroup_root, cgroup_parent_name, cgroup_name);
+	snprintf(cpuset_cg, sizeof(cpuset_cg), "%s/cpuset/%s/%s",
+		 cgroup_root, cgroup_parent_name, cgroup_name);
 	snprintf(devices_cg, sizeof(devices_cg), "%s/devices/%s/%s",
 		 cgroup_root, cgroup_parent_name, cgroup_name);
 	snprintf(freezer_cg, sizeof(freezer_cg), "%s/freezer/%s/%s",
@@ -137,6 +159,7 @@ TEST(cgroup_new_with_parent) {
 
 	EXPECT_TRUE(check_is_dir(cpu_cg));
 	EXPECT_TRUE(check_is_dir(cpuacct_cg));
+	EXPECT_TRUE(check_is_dir(cpuset_cg));
 	EXPECT_TRUE(check_is_dir(devices_cg));
 	EXPECT_TRUE(check_is_dir(freezer_cg));
 
@@ -157,6 +180,7 @@ FIXTURE(basic_manipulation) {
 	const char *cgroup_name;
 	char cpu_cg[256];
 	char cpuacct_cg[256];
+	char cpuset_cg[256];
 	char devices_cg[256];
 	char freezer_cg[256];
 };
@@ -174,6 +198,8 @@ FIXTURE_SETUP(basic_manipulation)
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/cpuacct", self->cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/cpuset", self->cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/devices", self->cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/freezer", self->cgroup_root);
@@ -188,6 +214,8 @@ FIXTURE_SETUP(basic_manipulation)
 		 self->cgroup_root, self->cgroup_name);
 	snprintf(self->cpuacct_cg, sizeof(self->cpuacct_cg), "%s/cpuacct/%s",
 		 self->cgroup_root, self->cgroup_name);
+	snprintf(self->cpuset_cg, sizeof(self->cpuset_cg), "%s/cpuset/%s",
+		 self->cgroup_root, self->cgroup_name);
 	snprintf(self->devices_cg, sizeof(self->devices_cg), "%s/devices/%s",
 		 self->cgroup_root, self->cgroup_name);
 	snprintf(self->freezer_cg, sizeof(self->freezer_cg), "%s/freezer/%s",
@@ -195,6 +223,7 @@ FIXTURE_SETUP(basic_manipulation)
 
 	EXPECT_TRUE(check_is_dir(self->cpu_cg));
 	EXPECT_TRUE(check_is_dir(self->cpuacct_cg));
+	EXPECT_TRUE(check_is_dir(self->cpuset_cg));
 	EXPECT_TRUE(check_is_dir(self->devices_cg));
 	EXPECT_TRUE(check_is_dir(self->freezer_cg));
 
@@ -211,6 +240,8 @@ FIXTURE_SETUP(basic_manipulation)
 	snprintf(path, sizeof(path), "%s/cpu.rt_period_us", self->cpu_cg);
 	create_file(path);
 	snprintf(path, sizeof(path), "%s/tasks", self->cpuacct_cg);
+	create_file(path);
+	snprintf(path, sizeof(path), "%s/tasks", self->cpuset_cg);
 	create_file(path);
 	snprintf(path, sizeof(path), "%s/tasks", self->devices_cg);
 	create_file(path);

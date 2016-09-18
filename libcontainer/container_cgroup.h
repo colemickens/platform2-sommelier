@@ -15,6 +15,7 @@
 enum container_cgroup_types {
 	CGROUP_CPU,
 	CGROUP_CPUACCT,
+	CGROUP_CPUSET,
 	CGROUP_DEVICES,
 	CGROUP_FREEZER,
 	NUM_CGROUP_TYPES
@@ -61,6 +62,12 @@ static inline const char *cgroup_cpuacct_tasks_path(
 		const struct container_cgroup *cg)
 {
 	return cg->cgroup_tasks_paths[CGROUP_CPUACCT];
+}
+
+static inline const char *cgroup_cpuset_tasks_path(
+		const struct container_cgroup *cg)
+{
+	return cg->cgroup_tasks_paths[CGROUP_CPUSET];
 }
 
 static inline const char *cgroup_devices_tasks_path(

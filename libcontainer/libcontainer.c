@@ -1054,6 +1054,10 @@ int container_start(struct container *c, const struct container_config *config)
 	if (rc)
 		goto error_rmdir;
 	rc = minijail_add_to_cgroup(c->jail,
+				    cgroup_cpuset_tasks_path(c->cgroup));
+	if (rc)
+		goto error_rmdir;
+	rc = minijail_add_to_cgroup(c->jail,
 				    cgroup_devices_tasks_path(c->cgroup));
 	if (rc)
 		goto error_rmdir;
