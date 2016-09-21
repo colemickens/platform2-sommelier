@@ -228,6 +228,9 @@ bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   if (UseFlagIsSet("pointer_events"))
     AddFeatureEnableOverride("PointerEvent");
 
+  if (UseFlagIsSet("passive_event_listeners"))
+    AddArg("--passive-listeners-default=true");
+
   AddArg("--enable-logging");
   AddArg("--log-level=1");
   AddArg("--use-cras");
