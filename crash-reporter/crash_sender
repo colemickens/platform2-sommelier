@@ -526,7 +526,8 @@ send_crashes() {
     if [ "${kind}" != "minidump" ] && \
        [ "${kind}" != "kcrash" ] && \
        [ "${kind}" != "log" ] &&
-       [ "${kind}" != "devcore" ]; then
+       [ "${kind}" != "devcore" ] &&
+       [ "${kind}" != "eccrash" ]; then
       lecho "Unknown report kind ${kind}.  Removing report."
       remove_report "${meta_path}"
       continue

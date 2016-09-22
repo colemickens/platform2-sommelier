@@ -32,6 +32,7 @@
       'sources': [
         'chrome_collector.cc',
         'crash_collector.cc',
+        'ec_collector.cc',
         'kernel_collector.cc',
         'kernel_warning_collector.cc',
         'udev_collector.cc',
@@ -157,6 +158,7 @@
             'crash_collector_test.cc',
             'crash_collector_test.h',
             'crash_reporter_logs_test.cc',
+            'ec_collector_test.cc',
             'kernel_collector_test.cc',
             'kernel_collector_test.h',
             'testrunner.cc',

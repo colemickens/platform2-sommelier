@@ -19,6 +19,7 @@
 
 #include "crash-reporter/arc_collector.h"
 #include "crash-reporter/chrome_collector.h"
+#include "crash-reporter/ec_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
 #include "crash-reporter/udev_collector.h"
@@ -39,6 +40,7 @@ enum CrashKinds {
   kCrashKindKernel = 3,
   kCrashKindUdev = 4,
   kCrashKindKernelWarning = 5,
+  kCrashKindEC = 6,
   kCrashKindMax
 };
 
@@ -60,6 +62,10 @@ static void SendCrashMetrics(CrashKinds type, const char* name) {
   // crosbug.com/11163.
   s_metrics_lib.SendEnumToUMA(kCrashCounterHistogram, type, kCrashKindMax);
   s_metrics_lib.SendCrashToUMA(name);
+}
+
+static void CountECCrash() {
+  SendCrashMetrics(kCrashKindEC, "ec");
 }
 
 static void CountKernelCrash() {
@@ -114,9 +120,14 @@ static int Initialize(UserCollector *user_collector,
 }
 
 static int BootCollect(KernelCollector *kernel_collector,
+                       ECCollector *ec_collector,
                        UncleanShutdownCollector *unclean_shutdown_collector) {
   bool was_kernel_crash = false;
   bool was_unclean_shutdown = false;
+
+  /* TODO(drinkcat): Distinguish between EC crash and unclean shutdown. */
+  ec_collector->Collect();
+
   kernel_collector->Enable();
   if (kernel_collector->is_enabled()) {
     was_kernel_crash = kernel_collector->Collect();
@@ -309,6 +320,8 @@ int main(int argc, char *argv[]) {
 
   KernelCollector kernel_collector;
   kernel_collector.Initialize(CountKernelCrash, IsFeedbackAllowed);
+  ECCollector ec_collector;
+  ec_collector.Initialize(CountECCrash, IsFeedbackAllowed);
   UserCollector user_collector;
   UserCollector::FilterOutFunction filter_out = [](pid_t) { return false; };
 #if USE_CHEETS
@@ -347,7 +360,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (FLAGS_boot_collect) {
-    return BootCollect(&kernel_collector,
+    return BootCollect(&kernel_collector, &ec_collector,
                        &unclean_shutdown_collector);
   }
 
