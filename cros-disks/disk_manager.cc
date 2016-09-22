@@ -512,13 +512,41 @@ MountErrorType DiskManager::DoUnmount(const string& path,
                                       const vector<string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
 
+  // TODO(benchan): Deprecate "force" unmount options after updating the
+  // cros-disks client on the Chrome side.
   int unmount_flags;
   if (!ExtractUnmountOptions(options, &unmount_flags)) {
     LOG(ERROR) << "Invalid unmount options";
     return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
   }
 
-  if (umount2(path.c_str(), unmount_flags) != 0) {
+  // Temporarily filter out the force unmount flag set by Chrome.
+  // TODO(benchan): Remove this after the force unmount option is deprecated.
+  unmount_flags &= ~MNT_FORCE;
+
+  // The USB or SD drive on some system may be powered off after the system
+  // goes into the S3 suspend state. To avoid leaving a mount point in a stale
+  // state while its associated physical drive is gone, the cros-disks client
+  // on the Chrome side unmounts all the mount points it manages before the
+  // system goes into suspend. However, an ongoing filesystem access may keep a
+  // mount point busy, which is beyond the control of Chrome or cros-disks. We
+  // used to force umount the mount points but that has become undesirable. For
+  // instance, when force unmounting a mount point backed by a FUSE process,
+  // umount2() reports an error and the mount point is left in a half-broken
+  // state. Lazy unmount is preferred over force unmount under such condition
+  // (although it still doesn't necessarily guarantee a clean unmount if the
+  // filesystem access doesn't finish before the USB or SD drive is powered
+  // off). To better handle this kind of situation, we first try performing a
+  // normal unmount. If that fails with errno == EBUSY, we retry with a lazy
+  // unmount before giving up and reporting an error.
+  bool unmount_failed = (umount2(path.c_str(), unmount_flags) != 0);
+  if (unmount_failed && errno == EBUSY) {
+    LOG(ERROR) << "Failed to unmount '" << path
+               << "' as it is busy; retry with lazy unmount";
+    unmount_flags |= MNT_DETACH;
+    unmount_failed = (umount2(path.c_str(), unmount_flags) != 0);
+  }
+  if (unmount_failed) {
     PLOG(ERROR) << "Failed to unmount '" << path << "'";
     // TODO(benchan): Extract error from low-level unmount operation.
     return MOUNT_ERROR_UNKNOWN;
