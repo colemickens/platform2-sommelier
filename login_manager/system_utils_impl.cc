@@ -137,7 +137,7 @@ bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
     LOG(ERROR) << "Could not get size of " << file_in_base_dir.value();
     return false;
   }
-  if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
+  if (file_size > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
     LOG(ERROR) << file_in_base_dir.value() << "is " << file_size
                << "bytes!!!  Too big!";
     return false;
