@@ -27,10 +27,12 @@ int container_config_rootfs(struct container_config *c, const char *rootfs);
 const char *container_config_get_rootfs(const struct container_config *c);
 
 /* runfs - Path to where the container filesystem has been mounted. */
-int container_config_premounted_runfs(struct container_config *c, const char *runfs);
+int container_config_premounted_runfs(struct container_config *c,
+				      const char *runfs);
 
 /* Get the pre-mounted runfs path. */
-const char *container_config_get_premounted_runfs(const struct container_config *c);
+const char *container_config_get_premounted_runfs(
+		const struct container_config *c);
 
 /* The pid of the program will be written here. */
 int container_config_pid_file(struct container_config *c, const char *path);
