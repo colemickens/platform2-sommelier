@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>

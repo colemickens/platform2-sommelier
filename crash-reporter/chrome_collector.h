@@ -6,6 +6,7 @@
 #define CRASH_REPORTER_CHROME_COLLECTOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
