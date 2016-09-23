@@ -4,6 +4,7 @@
 
 #include "wimax_manager/manager_dbus_adaptor.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/logging.h>
