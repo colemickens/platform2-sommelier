@@ -4,6 +4,7 @@
 
 #include "mist/usb_modem_switch_operation.h"
 
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>

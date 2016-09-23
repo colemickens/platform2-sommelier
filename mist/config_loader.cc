@@ -6,6 +6,8 @@
 
 #include <fcntl.h>
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/posix/eintr_wrapper.h>
