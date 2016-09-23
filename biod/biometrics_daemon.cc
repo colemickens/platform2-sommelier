@@ -5,6 +5,7 @@
 #include "biod/biometrics_daemon.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <base/bind.h>
 #include <brillo/dbus/async_event_sequencer.h>
@@ -98,6 +99,10 @@ BiometricWrapper::EnrollmentWrapper::EnrollmentWrapper(
   enrollment_interface->AddSimpleMethodHandlerWithError(
       "Remove", base::Bind(&EnrollmentWrapper::Remove, base::Unretained(this)));
   dbus_object_.RegisterAndBlock();
+}
+
+BiometricWrapper::EnrollmentWrapper::~EnrollmentWrapper() {
+  dbus_object_.UnregisterAsync();
 }
 
 bool BiometricWrapper::EnrollmentWrapper::SetLabel(

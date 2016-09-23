@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -89,6 +90,7 @@ Biometric::EnrollSession FakeBiometric::StartEnroll(std::string user_id,
                                                     std::string label) {
   if (mode_ == Mode::kNone) {
     mode_ = Mode::kEnroll;
+    next_internal_enrollment_ = {std::move(user_id), std::move(label)};
     return Biometric::EnrollSession(session_weak_factory_.GetWeakPtr());
   }
   return Biometric::EnrollSession();
@@ -215,8 +217,17 @@ void FakeBiometric::OnFileCanReadWithoutBlocking(int fd) {
       LOG(INFO) << "Scan result " << static_cast<int>(res_code) << " done "
                 << static_cast<bool>(done);
 
-      if (!on_scan_.is_null() && mode_ == Mode::kEnroll)
-        on_scan_.Run(res, done);
+      if (mode_ == Mode::kEnroll) {
+        if (done) {
+          enrollments_[next_enrollment_id_++]
+                    = std::move(next_internal_enrollment_);
+          mode_ = Mode::kNone;
+          session_weak_factory_.InvalidateWeakPtrs();
+        }
+
+        if (!on_scan_.is_null())
+          on_scan_.Run(res, done);
+      }
       return;
     }
     case 'F':

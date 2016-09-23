@@ -42,6 +42,7 @@ class BiometricWrapper {
                       std::unique_ptr<Biometric::Enrollment> enrollment,
                       brillo::dbus_utils::ExportedObjectManager* object_manager,
                       const dbus::ObjectPath& object_path);
+    ~EnrollmentWrapper();
 
     const dbus::ObjectPath& path() const { return object_path_; }
 

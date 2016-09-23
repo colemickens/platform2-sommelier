@@ -5,7 +5,9 @@
 #ifndef BIOD_FAKE_BIOMETRIC_H_
 #define BIOD_FAKE_BIOMETRIC_H_
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -79,6 +81,7 @@ class FakeBiometric : public Biometric, public base::MessageLoopForIO::Watcher {
   Mode mode_ = Mode::kNone;
 
   size_t next_enrollment_id_ = 0;
+  InternalEnrollment next_internal_enrollment_;
   std::unordered_map<size_t, InternalEnrollment> enrollments_;
 
   base::ScopedFD fake_input_;
