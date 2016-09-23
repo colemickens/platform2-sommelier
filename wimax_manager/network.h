@@ -29,7 +29,7 @@ class NetworkDBusAdaptor;
 class Network : public base::RefCounted<Network>,
                 public DBusAdaptable<Network, NetworkDBusAdaptor> {
  public:
-  typedef uint32_t Identifier;
+  using Identifier = uint32_t;
 
   static const int kMaxCINR;
   static const int kMinCINR;
@@ -71,8 +71,8 @@ class Network : public base::RefCounted<Network>,
   DISALLOW_COPY_AND_ASSIGN(Network);
 };
 
-typedef scoped_refptr<Network> NetworkRefPtr;
-typedef std::map<Network::Identifier, NetworkRefPtr> NetworkMap;
+using NetworkRefPtr = scoped_refptr<Network>;
+using NetworkMap = std::map<Network::Identifier, NetworkRefPtr>;
 
 }  // namespace wimax_manager
 
