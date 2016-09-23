@@ -18,7 +18,7 @@ namespace cros_disks {
 class GlibProcess : public Process {
  public:
   // Callback upon the completion or termination of a process.
-  typedef base::Callback<void(GlibProcess* process)> Callback;
+  using Callback = base::Callback<void(GlibProcess* process)>;
 
   GlibProcess();
   ~GlibProcess() override;

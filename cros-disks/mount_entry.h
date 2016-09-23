@@ -15,9 +15,9 @@
 
 namespace cros_disks {
 
-typedef ::DBus::Struct<uint32_t, std::string, uint32_t, std::string>
-    DBusMountEntry;
-typedef std::vector<DBusMountEntry> DBusMountEntries;
+using DBusMountEntry =
+    ::DBus::Struct<uint32_t, std::string, uint32_t, std::string>;
+using DBusMountEntries = std::vector<DBusMountEntry>;
 
 class MountEntry {
  public:

@@ -16,8 +16,8 @@
 
 namespace cros_disks {
 
-typedef std::map<std::string, DBus::Variant> DBusDisk;
-typedef std::vector<DBusDisk> DBusDisks;
+using DBusDisk = std::map<std::string, DBus::Variant>;
+using DBusDisks = std::vector<DBusDisk>;
 
 // A simple type that describes a storage device attached to our system.
 //

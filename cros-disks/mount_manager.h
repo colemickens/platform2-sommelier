@@ -170,11 +170,11 @@ class MountManager {
  protected:
   // Type definition of a cache mapping a source path to its mount state of
   // filesystems mounted by the manager.
-  typedef std::map<std::string, MountState> MountStateMap;
+  using MountStateMap = std::map<std::string, MountState>;
 
   // Type definition of a cache mapping a reserved mount path to the mount
   // error that caused the mount path to be reserved.
-  typedef std::map<std::string, MountErrorType> ReservedMountPathMap;
+  using ReservedMountPathMap = std::map<std::string, MountErrorType>;
 
   // Implemented by a derived class to mount |source_path| to |mount_path|
   // as |filesystem_type| with |options|. An implementation may change the

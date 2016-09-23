@@ -14,7 +14,7 @@ namespace cros_disks {
 // A class for holding and manipulating mount options.
 class MountOptions {
  public:
-  typedef unsigned long Flags;  // NOLINT(runtime/int)
+  using Flags = unsigned long;  // NOLINT(runtime/int)
 
   static const char kOptionBind[];
   static const char kOptionDirSync[];

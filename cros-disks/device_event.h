@@ -42,7 +42,7 @@ struct DeviceEvent {
   std::string device_path;
 };
 
-typedef std::list<DeviceEvent> DeviceEventList;
+using DeviceEventList = std::list<DeviceEvent>;
 
 }  // namespace cros_disks
 

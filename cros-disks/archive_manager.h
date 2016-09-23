@@ -74,7 +74,7 @@ class ArchiveManager : public MountManager {
  private:
   // Type definition of a cache mapping a mount path to its source virtual path
   // in the AVFS mount.
-  typedef std::map<std::string, std::string> VirtualPathMap;
+  using VirtualPathMap = std::map<std::string, std::string>;
 
   // Returns the extension of a file, in lower case, at the specified |path|.
   std::string GetFileExtension(const std::string& path) const;
