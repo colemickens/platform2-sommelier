@@ -60,8 +60,8 @@ class EventDispatcher {
   void StopWatchingAllFileDescriptors();
 
  private:
-  typedef std::map<int, base::MessageLoopForIO::FileDescriptorWatcher*>
-      FileDescriptorWatcherMap;
+  using FileDescriptorWatcherMap =
+      std::map<int, base::MessageLoopForIO::FileDescriptorWatcher*>;
 
   std::unique_ptr<base::MessageLoop> dont_use_directly_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;

@@ -49,8 +49,8 @@ class UsbModemSwitchOperation
     : public base::SupportsWeakPtr<UsbModemSwitchOperation>,
       public UsbDeviceEventObserver {
  public:
-  typedef base::Callback<void(UsbModemSwitchOperation* operation, bool success)>
-      CompletionCallback;
+  using CompletionCallback =
+      base::Callback<void(UsbModemSwitchOperation* operation, bool success)>;
 
   // Constructs a UsbModemSwitchOperation object by taking a raw pointer to a
   // Context object as |context| and a raw pointer to a UsbModemSwitchContext
@@ -73,9 +73,9 @@ class UsbModemSwitchOperation
   void Cancel();
 
  private:
-  typedef void (UsbModemSwitchOperation::*Task)();
-  typedef void (UsbModemSwitchOperation::*UsbTransferCompletionHandler)(
-      UsbTransfer* transfer);
+  using Task = void (UsbModemSwitchOperation::*)();
+  using UsbTransferCompletionHandler =
+      void (UsbModemSwitchOperation::*)(UsbTransfer* transfer);
 
   // Schedules the specified |task| in the message loop for execution. At most
   // one pending task is allowed, so any pending task previously scheduled by

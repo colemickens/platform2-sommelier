@@ -29,7 +29,7 @@ namespace mist {
 // wrapped libusb_transfer accordingly for a specific type of transfer.
 class UsbTransfer {
  public:
-  typedef base::Callback<void(UsbTransfer* transfer)> CompletionCallback;
+  using CompletionCallback = base::Callback<void(UsbTransfer* transfer)>;
 
   enum State {
     kIdle,
