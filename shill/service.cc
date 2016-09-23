@@ -127,8 +127,6 @@ const char Service::kStorageManagedCredentials[] = "ManagedCredentials";
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
 
-const uint64_t Service::kMaxAutoConnectCooldownTimeMilliseconds =
-    1 * 60 * 1000;
 const uint64_t Service::kMinAutoConnectCooldownTimeMilliseconds = 1000;
 const uint64_t Service::kAutoConnectCooldownBackoffFactor = 2;
 
@@ -145,9 +143,7 @@ Service::Service(ControlInterface* control_interface,
                  Metrics* metrics,
                  Manager* manager,
                  Technology::Identifier technology)
-    : max_auto_connect_cooldown_time_milliseconds_(
-          Service::kMaxAutoConnectCooldownTimeMilliseconds),
-      weak_ptr_factory_(this),
+    : weak_ptr_factory_(this),
       state_(kStateIdle),
       previous_state_(kStateIdle),
       failure_(kFailureUnknown),
@@ -473,7 +469,7 @@ void Service::ThrottleFutureAutoConnects() {
                                  auto_connect_cooldown_milliseconds_);
   }
   auto_connect_cooldown_milliseconds_ =
-      std::min(max_auto_connect_cooldown_time_milliseconds_,
+      std::min(GetMaxAutoConnectCooldownTimeMilliseconds(),
                std::max(kMinAutoConnectCooldownTimeMilliseconds,
                         auto_connect_cooldown_milliseconds_ *
                         kAutoConnectCooldownBackoffFactor));
@@ -1334,6 +1330,10 @@ bool Service::IsAutoConnectable(const char** reason) const {
   }
 
   return true;
+}
+
+uint64_t Service::GetMaxAutoConnectCooldownTimeMilliseconds() const {
+  return 1 * 60 * 1000;  // 1 minute
 }
 
 bool Service::IsPortalDetectionDisabled() const {

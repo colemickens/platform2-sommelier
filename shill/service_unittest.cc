@@ -1111,7 +1111,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
             Service::kAutoConnectCooldownBackoffFactor *
             Service::kMinAutoConnectCooldownTimeMilliseconds);
   while (next_cooldown_time <=
-         Service::kMaxAutoConnectCooldownTimeMilliseconds) {
+         service_->GetMaxAutoConnectCooldownTimeMilliseconds()) {
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, next_cooldown_time));
     service_->AutoConnect();
     Mock::VerifyAndClearExpectations(&dispatcher_);
@@ -1124,7 +1124,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   // Once we hit our cap, future timeouts are the same.
   for (int32_t i = 0; i < 2; i++) {
     EXPECT_CALL(dispatcher_, PostDelayedTask(_,
-        Service::kMaxAutoConnectCooldownTimeMilliseconds));
+        service_->GetMaxAutoConnectCooldownTimeMilliseconds()));
     service_->AutoConnect();
     Mock::VerifyAndClearExpectations(&dispatcher_);
     EXPECT_FALSE(service_->IsAutoConnectable(&reason));

@@ -589,6 +589,9 @@ class Service : public base::RefCounted<Service> {
   // point to C-string explaining why the service is not auto-connectable.
   virtual bool IsAutoConnectable(const char** reason) const;
 
+  // Returns maximum auto connect cooldown time for ThrottleFutureAutoConnects.
+  virtual uint64_t GetMaxAutoConnectCooldownTimeMilliseconds() const;
+
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
   // Reads of the property will be handled by invoking |get|.
@@ -671,9 +674,6 @@ class Service : public base::RefCounted<Service> {
 
   // Emit property change notifications for all observed properties.
   void NotifyPropertyChanges();
-
-  // Maximum auto connect cooldown time for ThrottleFutureAutoConnects
-  uint64_t max_auto_connect_cooldown_time_milliseconds_;
 
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
@@ -770,7 +770,6 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortSerialNumber[];
   static const char kServiceSortTechnology[];
 
-  static const uint64_t kMaxAutoConnectCooldownTimeMilliseconds;
   static const uint64_t kMinAutoConnectCooldownTimeMilliseconds;
   static const uint64_t kAutoConnectCooldownBackoffFactor;
 

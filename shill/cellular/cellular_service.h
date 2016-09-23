@@ -129,6 +129,10 @@ class CellularService : public Service {
   // Overrides IsAutoConnectable from parent Service class.
   bool IsAutoConnectable(const char** reason) const override;
 
+  // Overrides the maximum auto connect cooldown time set in the Service class
+  // as a cellular service requires a much longer cooldown period.
+  uint64_t GetMaxAutoConnectCooldownTimeMilliseconds() const override;
+
  private:
   friend class CellularCapabilityUniversalTest;
   friend class CellularServiceTest;
@@ -165,8 +169,6 @@ class CellularService : public Service {
   static const char kAutoConnOutOfCreditsDetectionInProgress[];
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
-
-  static const uint64_t kMaxAutoConnectCooldownTimeMilliseconds;
 
   void HelpRegisterDerivedString(
       const std::string& name,
