@@ -11165,7 +11165,9 @@ Type
 
 Description
 
-tag {TPM_ST_AUTH_SIGNED, TPM_ST_AUTH_SECRET} TPM_ST
+tag {TPM_ST_AUTH_SIGNED, TPM_ST_AUTH_SECRET}
+
+TPM_ST
 
 ticket structure tag
 

@@ -3000,6 +3000,11 @@ TPM_RC Serialize_TPMT_TK_AUTH(const TPMT_TK_AUTH& value, std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
 
+  result = Serialize_TPM_ST(value.tag, buffer);
+  if (result) {
+    return result;
+  }
+
   result = Serialize_TPMI_RH_HIERARCHY(value.hierarchy, buffer);
   if (result) {
     return result;
@@ -3017,6 +3022,11 @@ TPM_RC Parse_TPMT_TK_AUTH(std::string* buffer,
                           std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
   VLOG(3) << __func__;
+
+  result = Parse_TPM_ST(buffer, &value->tag, value_bytes);
+  if (result) {
+    return result;
+  }
 
   result = Parse_TPMI_RH_HIERARCHY(buffer, &value->hierarchy, value_bytes);
   if (result) {

@@ -59,6 +59,13 @@ class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
   TPM_RC PolicyOR(const std::vector<std::string>& digests) override;
   TPM_RC PolicyPCR(uint32_t pcr_index, const std::string& pcr_value) override;
   TPM_RC PolicyCommandCode(TPM_CC command_code) override;
+  TPM_RC PolicySecret(TPMI_DH_ENTITY auth_entity,
+                      const std::string& auth_entity_name,
+                      const std::string& nonce,
+                      const std::string& cp_hash,
+                      const std::string& policy_ref,
+                      int32_t expiration,
+                      AuthorizationDelegate* delegate) override;
   TPM_RC PolicyAuthValue() override;
   TPM_RC PolicyRestart() override;
   void SetEntityAuthorizationValue(const std::string& value) override;

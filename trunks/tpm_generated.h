@@ -1064,6 +1064,7 @@ struct TPMT_TK_VERIFIED {
 };
 
 struct TPMT_TK_AUTH {
+  TPM_ST tag;
   TPMI_RH_HIERARCHY hierarchy;
   TPM2B_DIGEST digest;
 };

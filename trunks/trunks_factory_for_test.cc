@@ -496,6 +496,17 @@ class PolicySessionForwarder : public PolicySession {
     return target_->PolicyCommandCode(command_code);
   }
 
+  TPM_RC PolicySecret(TPMI_DH_ENTITY auth_entity,
+                      const std::string& auth_entity_name,
+                      const std::string& nonce,
+                      const std::string& cp_hash, const std::string& policy_ref,
+                      int32_t expiration,
+                      AuthorizationDelegate* delegate) override {
+    return target_->PolicySecret(auth_entity, auth_entity_name,
+                                 nonce, cp_hash, policy_ref,
+                                 expiration, delegate);
+  }
+
   TPM_RC PolicyAuthValue() override { return target_->PolicyAuthValue(); }
 
   TPM_RC PolicyRestart() override { return target_->PolicyRestart(); }

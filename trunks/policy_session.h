@@ -70,6 +70,26 @@ class PolicySession {
   // provided CommandCode.
   virtual TPM_RC PolicyCommandCode(TPM_CC command_code) = 0;
 
+  // This method includes a secret-based authorization to the PolicySession
+  // with the following parameters:
+  // |auth_entity| - handle of the entity providing authorization.
+  // |auth_entity_name| - name of the entity providing authorization.
+  // |nonce| - policy nonce for the session (can be empty string).
+  // |cp_hash| - digest of the command parameters to which this authorization
+  //             is limited (empty string, if not limited).
+  // |policy_ref| - reference to a policy relating to the authorization
+  //                (can be empty string).
+  // |expiration| - relative time in seconds when authorization will expire
+  //                (0 if never expires).
+  // |delegate| - authorization delegate for |auth_entity|.
+  virtual TPM_RC PolicySecret(TPMI_DH_ENTITY auth_entity,
+                              const std::string& auth_entity_name,
+                              const std::string& nonce,
+                              const std::string& cp_hash,
+                              const std::string& policy_ref,
+                              int32_t expiration,
+                              AuthorizationDelegate* delegate) = 0;
+
   // This method specifies that Authorization Values need to be included in
   // HMAC computation done by the AuthorizationDelegate.
   virtual TPM_RC PolicyAuthValue() = 0;
