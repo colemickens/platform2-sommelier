@@ -126,10 +126,10 @@ TEST_F(SerializationUtilsTest, ReadLongMessageTest) {
   std::unique_ptr<MetricSample> crash = MetricSample::CrashSample("test");
   SerializationUtils::WriteMetricToFile(*crash.get(), filename);
 
-  ScopedVector<MetricSample> samples;
+  std::vector<std::unique_ptr<MetricSample>> samples;
   SerializationUtils::ReadAndTruncateMetricsFromFile(filename, &samples);
   ASSERT_EQ(size_t(1), samples.size());
-  ASSERT_TRUE(samples[0] != NULL);
+  ASSERT_NE(nullptr, samples[0]);
   EXPECT_TRUE(crash->IsEqual(*samples[0]));
 }
 
@@ -149,17 +149,17 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
   SerializationUtils::WriteMetricToFile(*lhist.get(), filename);
   SerializationUtils::WriteMetricToFile(*shist.get(), filename);
   SerializationUtils::WriteMetricToFile(*action.get(), filename);
-  ScopedVector<MetricSample> vect;
-  SerializationUtils::ReadAndTruncateMetricsFromFile(filename, &vect);
-  ASSERT_EQ(vect.size(), size_t(5));
-  for (MetricSample* sample : vect) {
-    ASSERT_TRUE(sample != NULL);
+  std::vector<std::unique_ptr<MetricSample>> samples;
+  SerializationUtils::ReadAndTruncateMetricsFromFile(filename, &samples);
+  ASSERT_EQ(size_t(5), samples.size());
+  for (const auto& sample : samples) {
+    ASSERT_NE(nullptr, sample);
   }
-  EXPECT_TRUE(hist->IsEqual(*vect[0]));
-  EXPECT_TRUE(crash->IsEqual(*vect[1]));
-  EXPECT_TRUE(lhist->IsEqual(*vect[2]));
-  EXPECT_TRUE(shist->IsEqual(*vect[3]));
-  EXPECT_TRUE(action->IsEqual(*vect[4]));
+  EXPECT_TRUE(hist->IsEqual(*samples[0]));
+  EXPECT_TRUE(crash->IsEqual(*samples[1]));
+  EXPECT_TRUE(lhist->IsEqual(*samples[2]));
+  EXPECT_TRUE(shist->IsEqual(*samples[3]));
+  EXPECT_TRUE(action->IsEqual(*samples[4]));
 
   int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(filepath, &size));

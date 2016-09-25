@@ -8,13 +8,13 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
 #include "base/logging.h"
-#include "base/memory/scoped_vector.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "metrics/serialization/metric_sample.h"
@@ -125,7 +125,7 @@ std::unique_ptr<MetricSample> SerializationUtils::ParseSample(
 
 void SerializationUtils::ReadAndTruncateMetricsFromFile(
     const std::string& filename,
-    ScopedVector<MetricSample>* metrics) {
+    std::vector<std::unique_ptr<MetricSample>>* metrics) {
   struct stat stat_buf;
   int result;
 
@@ -162,7 +162,7 @@ void SerializationUtils::ReadAndTruncateMetricsFromFile(
 
     std::unique_ptr<MetricSample> sample = ParseSample(message);
     if (sample)
-      metrics->push_back(sample.release());
+      metrics->push_back(std::move(sample));
   }
 
   result = ftruncate(fd.get(), 0);

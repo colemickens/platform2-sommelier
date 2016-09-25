@@ -4,11 +4,12 @@
 
 #include "metrics/uploader/upload_service.h"
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/memory/scoped_vector.h>
 #include <base/message_loop/message_loop.h>
 #include <base/metrics/histogram.h>
 #include <base/metrics/histogram_base.h>
@@ -131,14 +132,12 @@ void UploadService::ReadMetrics() {
   CHECK(!staged_log_)
       << "cannot read metrics until the old logs have been discarded";
 
-  ScopedVector<metrics::MetricSample> vector;
-  metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
-      metrics_file_, &vector);
+  std::vector<std::unique_ptr<metrics::MetricSample>> samples;
+  metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(metrics_file_,
+                                                              &samples);
 
   int i = 0;
-  for (ScopedVector<metrics::MetricSample>::iterator it = vector.begin();
-       it != vector.end(); it++) {
-    metrics::MetricSample* sample = *it;
+  for (const auto& sample : samples) {
     AddSample(*sample);
     i++;
   }
