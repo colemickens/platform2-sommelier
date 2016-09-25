@@ -5,12 +5,12 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_PERIPHERAL_BATTERY_WATCHER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_PERIPHERAL_BATTERY_WATCHER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_vector.h>
 #include <base/observer_list.h>
 #include <base/timer/timer.h>
 
@@ -66,7 +66,7 @@ class PeripheralBatteryWatcher {
   int poll_interval_ms_;
 
   // AsyncFileReaders for different peripheral batteries.
-  ScopedVector<AsyncFileReader> battery_readers_;
+  std::vector<std::unique_ptr<AsyncFileReader>> battery_readers_;
 
   DISALLOW_COPY_AND_ASSIGN(PeripheralBatteryWatcher);
 };

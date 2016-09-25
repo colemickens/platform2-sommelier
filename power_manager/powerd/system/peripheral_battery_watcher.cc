@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -96,8 +97,8 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
     base::ReadFileToString(model_name_path, &model_name);
     base::TrimWhitespaceASCII(model_name, base::TRIM_TRAILING, &model_name);
 
-    AsyncFileReader* reader = new AsyncFileReader;
-    battery_readers_.push_back(reader);
+    battery_readers_.push_back(base::MakeUnique<AsyncFileReader>());
+    AsyncFileReader* reader = battery_readers_.back().get();
 
     if (reader->Init(capacity_path.value())) {
       reader->StartRead(
