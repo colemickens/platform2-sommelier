@@ -8,22 +8,22 @@
  */
 #define _GNU_SOURCE
 #define _FILE_OFFSET_BITS 64
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <linux/fs.h>
+#include <linux/loop.h>
 #include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/mount.h>
-#include <linux/fs.h>
-#include <linux/loop.h>
+#include <unistd.h>
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -33,10 +33,13 @@
 #include "mount-encrypted.h"
 #include "mount-helpers.h"
 
-static const gchar * const kRootDir = "/";
-static const gchar kLoopTemplate[] = "/dev/loop%d";
+static const gchar kRootDir[] = "/";
+static const gchar kSysBlockPath[] = "/sys/block";
+static const gchar kLoopPrefix[] = "loop";
+static const gchar kLoopTemplate[] = "/dev/loop%u";
+static const gchar kLoopControl[] = "/dev/loop-control";
+static const gchar kDevTemplate[] = "/dev/%s";
 static const int kLoopMajor = 7;
-static const int kLoopMax = 8;
 static const unsigned int kResizeStepSeconds = 2;
 static const uint64_t kResizeBlocks = 32768 * 10;
 static const uint64_t kBlocksPerGroup = 32768;
@@ -58,7 +61,7 @@ uint64_t blk_size(const char *device)
 {
 	uint64_t bytes;
 	int fd;
-	if ((fd = open(device, O_RDONLY | O_NOFOLLOW)) < 0) {
+	if ((fd = open(device, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)) < 0) {
 		PERROR("open(%s)", device);
 		return 0;
 	}
@@ -161,7 +164,7 @@ void shred(const char *pathname)
 	int fd, i;
 
 	/* Give up if we can't safely open or stat the target. */
-	if ((fd = open(pathname, O_WRONLY | O_NOFOLLOW)) < 0) {
+	if ((fd = open(pathname, O_WRONLY | O_NOFOLLOW | O_CLOEXEC)) < 0) {
 		PERROR("%s", pathname);
 		return;
 	}
@@ -208,32 +211,55 @@ static int loop_is_attached(int fd, struct loop_info64 *info)
 	return ioctl(fd, LOOP_GET_STATUS64, info ? info : &local_info) == 0;
 }
 
-/* Returns either the matching loopback name, or next available, if NULL. */
+/* Returns the matching loopback name. */
 static int loop_locate(gchar **loopback, const char *name)
 {
-	int i, fd, namelen = 0;
+	int fd = -1;
+	size_t namelen = 0;
+	DIR *sysfs_block_dir = NULL;
 
-	if (name) {
-		namelen = strlen(name);
-		if (namelen >= LO_NAME_SIZE) {
-			ERROR("'%s' too long (>= %d)", name, LO_NAME_SIZE);
-			return -1;
-		}
+	namelen = strlen(name);
+	if (namelen >= LO_NAME_SIZE) {
+		ERROR("'%s' too long (>= %d)", name, LO_NAME_SIZE);
+		return -1;
 	}
 
 	*loopback = NULL;
-	for (i = 0; i < kLoopMax; ++i) {
-		struct loop_info64 info;
-		int attached;
+	/* Read /sys/block to discover all loop devices. */
+	sysfs_block_dir = opendir(kSysBlockPath);
+	if (!sysfs_block_dir) {
+		PERROR("open(%s)", kSysBlockPath);
+		return -1;
+	}
 
-		g_free(*loopback);
-		*loopback = g_strdup_printf(kLoopTemplate, i);
-		if (!*loopback) {
-			PERROR("g_strdup_printf");
-			return -1;
+	while (1) {
+		int attached = 0;
+		struct loop_info64 info;
+		struct dirent *dirent = NULL;
+
+		errno = 0;
+		dirent = readdir(sysfs_block_dir);
+		if (!dirent) {
+			if (errno) {
+				PERROR("readdir(%s)", kSysBlockPath);
+				goto failed;
+			}
+			break;
 		}
 
-		fd = open(*loopback, O_RDONLY | O_NOFOLLOW);
+		if (strncmp(dirent->d_name, kLoopPrefix,
+			    sizeof(kLoopPrefix) - 1)) {
+			continue;
+		}
+
+		g_free(*loopback);
+		*loopback = g_strdup_printf(kDevTemplate, dirent->d_name);
+		if (!*loopback) {
+			PERROR("g_strdup_printf");
+			goto failed;
+		}
+
+		fd = open(*loopback, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
 		if (fd < 0) {
 			PERROR("open(%s)", *loopback);
 			goto failed;
@@ -247,23 +273,42 @@ static int loop_locate(gchar **loopback, const char *name)
 		attached = loop_is_attached(fd, &info);
 		close(fd);
 
-		if (attached)
-			DEBUG("Saw %s on %s", info.lo_file_name, *loopback);
+		DEBUG("Saw %s on %s", info.lo_file_name, *loopback);
 
-		if ((attached && name &&
-		     strncmp((char *)info.lo_file_name, name, namelen) == 0) ||
-		    (!attached && !name)) {
+		if (attached && name &&
+		    strncmp((char *)info.lo_file_name, name, namelen) == 0) {
 			DEBUG("Using %s", *loopback);
-			/* Reopen for working on it. */
-			fd = open(*loopback, O_RDWR | O_NOFOLLOW);
-			if (is_loop_device(fd) &&
-			    loop_is_attached(fd, NULL) == attached)
-				return fd;
+
+			/* Reopen for working on it. Note that strictly
+			 * speaking, there is a TOCTOU issue here because other
+			 * code can theoretically tear down and re-use the loop
+			 * device at any point in time. However, in practice we
+			 * assume that the devices cryptohomed has created are
+			 * only manipulated subsequently by cryptohomed, so we
+			 * should be safe.
+			 */
+			fd = open(*loopback, O_RDWR | O_NOFOLLOW | O_CLOEXEC);
+			if (fd < 0) {
+				PERROR("open(%s)", *loopback);
+				goto failed;
+			}
+
+			if (!is_loop_device(fd) ||
+			    !loop_is_attached(fd, NULL)) {
+				ERROR("%s in bad state", *loopback);
+				close(fd);
+				goto failed;
+			}
+
+			closedir(sysfs_block_dir);
+			return fd;
 		}
 	}
+
 	ERROR("Ran out of loopback devices");
 
 failed:
+	closedir(sysfs_block_dir);
 	g_free(*loopback);
 	*loopback = NULL;
 	return -1;
@@ -282,7 +327,7 @@ int loop_detach(const gchar *loopback)
 {
 	int fd, rc = 1;
 
-	fd = open(loopback, O_RDONLY | O_NOFOLLOW);
+	fd = open(loopback, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
 	if (fd < 0) {
 		PERROR("open(%s)", loopback);
 		return 0;
@@ -314,32 +359,82 @@ int loop_detach_name(const char *name)
 gchar *loop_attach(int fd, const char *name)
 {
 	gchar *loopback = NULL;
-	int loopfd;
+	gchar *result = NULL;
+	int control_fd = -1;
+	int loop_fd = -1;
+	int num = -1;
 	struct loop_info64 info;
 
-	loopfd = loop_locate(&loopback, NULL);
-	if (loopfd < 0)
-		return NULL;
-	if (ioctl(loopfd, LOOP_SET_FD, fd) < 0) {
-		PERROR("LOOP_SET_FD");
-		goto failed;
+	control_fd = open(kLoopControl, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+	if (control_fd < 0) {
+		PERROR("open(%s)", kLoopControl);
+		goto out;
 	}
+
+	while (1) {
+		/* LOOP_CTL_GET_FREE returns the number of an unused loop device
+		 * or if there is none, creates a new loop device and returns
+		 * its number. Note that this races against other code trying
+		 * to get a loop device concurrently, so it's possible another
+		 * process picks the same "free" loop device as we do, and then
+		 * collides with us binding it to a backing file...
+		 *
+		 * Fortunately, LOOP_SET_FD is atomic, i.e. it fails when the
+		 * loop device is already attached to a file. We use this for
+		 * detecting collisions and retry on EBUSY.
+		 */
+		num = ioctl(control_fd, LOOP_CTL_GET_FREE);
+		if (num < 0) {
+			PERROR("ioctl(LOOP_CTL_GET_FREE)");
+			goto out;
+		}
+
+		g_free(loopback);
+		loopback = g_strdup_printf(kLoopTemplate, num);
+		if (!loopback) {
+			PERROR("g_strdup_printf");
+			goto out;
+		}
+
+		loop_fd = open(loopback, O_RDWR | O_NOFOLLOW | O_CLOEXEC);
+		if (loop_fd < 0) {
+			PERROR("open(%s)", loopback);
+			goto out;
+		}
+
+		if (!is_loop_device(loop_fd)) {
+			goto out;
+		}
+
+		if (ioctl(loop_fd, LOOP_SET_FD, fd) == 0) {
+			break;
+		}
+
+		/* Retry on LOOP_SET_FD coming back with EBUSY. */
+		if (errno != EBUSY) {
+			PERROR("LOOP_SET_FD");
+			goto out;
+		}
+	}
+
+	DEBUG("Allocated loop device %d\n", num);
 
 	memset(&info, 0, sizeof(info));
 	strncpy((char*)info.lo_file_name, name, LO_NAME_SIZE);
-	if (ioctl(loopfd, LOOP_SET_STATUS64, &info)) {
+	if (ioctl(loop_fd, LOOP_SET_STATUS64, &info)) {
 		PERROR("LOOP_SET_STATUS64");
-		goto failed;
+		goto out;
 	}
 
-	close(loopfd);
-	close(fd);
-	return loopback;
-failed:
-	close(loopfd);
+	result = loopback;
+	loopback = NULL;
+
+out:
+	close(control_fd);
+	close(loop_fd);
 	close(fd);
 	g_free(loopback);
-	return 0;
+	return result;
 }
 
 int dm_setup(uint64_t sectors, const gchar *encryption_key, const char *name,
@@ -429,7 +524,8 @@ int sparse_create(const char *path, uint64_t bytes)
 {
 	int sparsefd;
 
-	sparsefd = open(path, O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW,
+	sparsefd = open(path,
+			O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
 			S_IRUSR | S_IWUSR);
 	if (sparsefd < 0)
 		goto out;
@@ -720,7 +816,7 @@ int file_sync_full(const char *filename) {
 	char *dirname = g_path_get_dirname((gchar*)filename);
 
 	/* sync file */
-	fd = TEMP_FAILURE_RETRY(open(filename, O_WRONLY));
+	fd = TEMP_FAILURE_RETRY(open(filename, O_WRONLY | O_CLOEXEC));
 	if (fd < 0) {
 		ERROR("Could not open %s for syncing", filename);
 		goto free_dirname;
@@ -737,7 +833,7 @@ int file_sync_full(const char *filename) {
 	}
 
 	/* sync directory */
-	fd = TEMP_FAILURE_RETRY(open(dirname, O_RDONLY));
+	fd = TEMP_FAILURE_RETRY(open(dirname, O_RDONLY | O_CLOEXEC));
 	if (fd < 0) {
 		ERROR("Could not open directory %s for syncing", dirname);
 		goto free_dirname;
