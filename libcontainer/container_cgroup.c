@@ -206,39 +206,55 @@ static const struct cgroup_ops cgroup_ops = {
 	.set_cpu_rt_period = set_cpu_rt_period,
 };
 
-static int create_cgroup_as_owner(const char *cgroup_path, uid_t cgroup_owner)
+static int create_cgroup_as_owner(const char *cgroup_path,
+				  uid_t cgroup_owner, gid_t cgroup_group)
 {
-	int mkdir_rc;
+	int error = 0;
 
 	/*
 	 * If running as root and the cgroup owner is a user, create the cgroup
 	 * as that user.
 	 */
-	if (getuid() == 0 && cgroup_owner != 0) {
-		if (seteuid(cgroup_owner))
+	if (getuid() == 0 && (cgroup_owner != 0 || cgroup_group != 0)) {
+
+		if (setegid(cgroup_group))
 			return -errno;
+
+		if (seteuid(cgroup_owner))
+			error = -errno;
+
 		/*
 		 * CAUTION: Make sure that no return path forgets to set the
 		 * user back to root from here.
 		 */
-		mkdir_rc = mkdir(cgroup_path, S_IRWXU | S_IRWXG);
 
-		if (seteuid(0))
-			return -errno;
+		if (!error &&
+		    mkdir(cgroup_path, S_IRWXU | S_IRWXG) < 0 &&
+		    errno != EEXIST) {
+			error = -errno;
+		}
+
+		if (seteuid(0) && !error)
+			error = -errno;
+
+		if (setegid(0) && !error)
+			error = -errno;
+
 	} else {
-		mkdir_rc = mkdir(cgroup_path, S_IRWXU | S_IRWXG);
+		if (mkdir(cgroup_path, S_IRWXU | S_IRWXG) < 0 &&
+		    errno != EEXIST) {
+			error = -errno;
+		}
 	}
 
-	if (mkdir_rc < 0 && errno != EEXIST)
-		return -errno;
-
-	return 0;
+	return error;
 }
 
 struct container_cgroup *container_cgroup_new(const char *name,
 					      const char *cgroup_root,
 					      const char *cgroup_parent,
-					      uid_t cgroup_owner)
+					      uid_t cgroup_owner,
+					      gid_t cgroup_group)
 {
 	int i;
 	struct container_cgroup *cg;
@@ -259,7 +275,8 @@ struct container_cgroup *container_cgroup_new(const char *name,
 				goto error_free_cg;
 		}
 
-		if (create_cgroup_as_owner(cg->cgroup_paths[i], cgroup_owner))
+		if (create_cgroup_as_owner(cg->cgroup_paths[i],
+					   cgroup_owner, cgroup_group))
 			goto error_free_cg;
 
 		if (asprintf(&cg->cgroup_tasks_paths[i], "%s/tasks",

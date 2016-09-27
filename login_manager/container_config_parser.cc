@@ -578,7 +578,8 @@ bool ParseContainerConfig(const std::string& config_json_data,
   // Set the cgroup configuration
   if (container_config_set_cgroup_parent(
           config_out->get(), parent_cgroup_name.c_str(),
-          container_config_get_uid(config_out->get()))) {
+          container_config_get_uid(config_out->get()),
+          container_config_get_gid(config_out->get()))) {
     LOG(ERROR) << "Failed to configure cgroup structure of " << container_name;
     return false;
   }

@@ -99,6 +99,7 @@ struct container_cpu_cgroup {
  * cpu_cgparams - CPU cgroup params.
  * cgroup_parent - Parent dir for cgroup creation
  * cgroup_owner - uid to own the created cgroups
+ * cgroup_group - gid to own the created cgroups
  * share_host_netns - Enable sharing of the host network namespace.
  */
 struct container_config {
@@ -121,6 +122,7 @@ struct container_config {
 	struct container_cpu_cgroup cpu_cgparams;
 	char *cgroup_parent;
 	uid_t cgroup_owner;
+	gid_t cgroup_group;
 	int share_host_netns;
 };
 
@@ -484,9 +486,10 @@ int container_config_get_cpu_rt_period(struct container_config *c)
 
 int container_config_set_cgroup_parent(struct container_config *c,
 				       const char *parent,
-				       uid_t cgroup_owner)
+				       uid_t cgroup_owner, gid_t cgroup_group)
 {
 	c->cgroup_owner = cgroup_owner;
+	c->cgroup_group = cgroup_group;
 	return strdup_and_free(&c->cgroup_parent, parent);
 }
 
@@ -945,7 +948,8 @@ int container_start(struct container *c, const struct container_config *config)
 	c->cgroup = container_cgroup_new(c->name,
 					 "/sys/fs/cgroup",
 					 config->cgroup_parent,
-					 config->cgroup_owner);
+					 config->cgroup_owner,
+					 config->cgroup_group);
 	if (!c->cgroup)
 		goto error_rmdir;
 

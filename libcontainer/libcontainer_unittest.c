@@ -159,7 +159,7 @@ static int mock_set_cpu_rt_period(const struct container_cgroup *cg, int rt_peri
 struct container_cgroup *container_cgroup_new(const char *name,
 					      const char *cgroup_root,
 					      const char *cgroup_parent,
-					      uid_t uid)
+					      uid_t uid, gid_t gid)
 {
 	gmcg.cg.name = strdup(name);
 	return &gmcg.cg;

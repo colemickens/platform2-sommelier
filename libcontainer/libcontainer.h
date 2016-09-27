@@ -174,10 +174,12 @@ int container_config_get_cpu_rt_period(struct container_config *c);
  *
  * cgroup_parent - Parent directory under which to create the cgroup.
  * cgroup_owner - The uid that should own the cgroups that are created.
+ * cgroup_group - The gid that should own the cgroups that are created.
  */
 int container_config_set_cgroup_parent(struct container_config *c,
 				       const char *parent,
-				       uid_t cgroup_owner);
+				       uid_t cgroup_owner,
+				       gid_t cgroup_group);
 
 /* Get the parent cgroup directory from the config.  Here for UT only. */
 const char *container_config_get_cgroup_parent(struct container_config *c);
