@@ -119,6 +119,7 @@ class TestInterfaceProxyInterface {
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
 }  // namespace chromium
@@ -173,7 +174,9 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
   bool Elements(
       const std::string& in_space_walk,
@@ -329,6 +332,7 @@ class TestInterface2ProxyInterface {
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
 }  // namespace chromium
@@ -362,7 +366,9 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
   bool GetPersonInfo(
       std::string* out_name,
@@ -440,6 +446,7 @@ class TestInterfaceProxyInterface {
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
 }  // namespace chromium
@@ -479,7 +486,9 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;
@@ -502,6 +511,7 @@ class TestInterface2ProxyInterface {
   virtual ~TestInterface2ProxyInterface() = default;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
 }  // namespace chromium
@@ -533,7 +543,9 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;
@@ -596,6 +608,7 @@ class Itf1ProxyInterface {
                         const base::Callback<void(bool)>& callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 
   virtual void SetPropertyChangedCallback(
       const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) = 0;
@@ -661,7 +674,9 @@ class Itf1Proxy final : public Itf1ProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
   void SetPropertyChangedCallback(
       const base::Callback<void(Itf1ProxyInterface*, const std::string&)>& callback) override {
@@ -713,6 +728,7 @@ class Itf2ProxyInterface {
   virtual ~Itf2ProxyInterface() = default;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
 }  // namespace chromium
@@ -760,7 +776,9 @@ class Itf2Proxy final : public Itf2ProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;
@@ -990,6 +1008,7 @@ class TestProxyInterface {
                         const base::Callback<void(bool)>& callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 
   virtual void InitializeProperties(
       const base::Callback<void(TestProxyInterface*, const std::string&)>& callback) = 0;
@@ -1039,7 +1058,9 @@ class TestProxy final : public TestProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
   void InitializeProperties(
       const base::Callback<void(TestProxyInterface*, const std::string&)>& callback) override {
@@ -1120,6 +1141,7 @@ class Itf1ProxyInterface {
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
 }  // namespace chromium
@@ -1173,7 +1195,9 @@ class Itf1Proxy final : public Itf1ProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;
@@ -1196,6 +1220,7 @@ class Itf2ProxyInterface {
   virtual ~Itf2ProxyInterface() = default;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
 }  // namespace chromium
@@ -1241,7 +1266,9 @@ class Itf2Proxy final : public Itf2ProxyInterface {
     return object_path_;
   }
 
-  dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
+  dbus::ObjectProxy* GetObjectProxy() const override {
+    return dbus_object_proxy_;
+  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;

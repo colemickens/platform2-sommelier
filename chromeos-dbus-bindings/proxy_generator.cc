@@ -214,6 +214,7 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
   AddProperties(interface, true, text);
   text->AddBlankLine();
   text->AddLine("virtual const dbus::ObjectPath& GetObjectPath() const = 0;");
+  text->AddLine("virtual dbus::ObjectProxy* GetObjectProxy() const = 0;");
   if (!interface.properties.empty()) {
     if (config.object_manager.name.empty())
       AddInitializeProperties(proxy_name, true, text);
@@ -363,13 +364,24 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
   }
   text->AddLine(
       "MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());");
-  if (!config.object_manager.name.empty() && !interface.properties.empty()) {
-    text->AddLineAndPushOffsetTo(
-        "MOCK_METHOD1(SetPropertyChangedCallback,", 1, '(');
-    text->AddLine(StringPrintf(
-        "void(const base::Callback<void(%sInterface*, const std::string&)>&));",
-        proxy_name.c_str()));
-    text->PopOffset();
+  text->AddLine(
+      "MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());");
+  if (!interface.properties.empty()) {
+    if (config.object_manager.name.empty()) {
+      text->AddLineAndPushOffsetTo(
+          "MOCK_METHOD1(InitializeProperties,", 1, '(');
+      text->AddLine(StringPrintf(
+          "void(const base::Callback<void(%sInterface*, "
+          "const std::string&)>&));", proxy_name.c_str()));
+      text->PopOffset();
+    } else {
+      text->AddLineAndPushOffsetTo(
+          "MOCK_METHOD1(SetPropertyChangedCallback,", 1, '(');
+      text->AddLine(StringPrintf("void(const base::Callback<void(%sInterface*, "
+                                 "const std::string&)>&));",
+                                 proxy_name.c_str()));
+      text->PopOffset();
+    }
   }
 
   text->PopOffset();
@@ -456,8 +468,9 @@ void ProxyGenerator::AddGetObjectPath(IndentedText* text) {
 // static
 void ProxyGenerator::AddGetObjectProxy(IndentedText* text) {
   text->AddBlankLine();
-  text->AddLine("dbus::ObjectProxy* GetObjectProxy() const { "
-                "return dbus_object_proxy_; }");
+  text->AddLine("dbus::ObjectProxy* GetObjectProxy() const override {");
+  text->AddLineWithOffset("return dbus_object_proxy_;", kBlockOffset);
+  text->AddLine("}");
 }
 
 // static

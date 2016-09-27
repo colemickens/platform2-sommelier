@@ -124,6 +124,7 @@ class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
                                               uint8_t)>& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TestInterfaceProxyMock);
@@ -152,6 +153,7 @@ class TestInterface2ProxyMock : public TestInterface2ProxyInterface {
   MOCK_CONST_METHOD0(name, const std::string&());
   MOCK_METHOD2(set_name, void(const std::string&, const base::Callback<bool>&));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
+  MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
   MOCK_METHOD1(SetPropertyChangedCallback,
                void(const base::Callback<void(TestInterface2ProxyInterface*, const std::string&)>&));
 
