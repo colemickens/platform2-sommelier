@@ -263,9 +263,48 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
     return false;
   }
 
+  std::string endorsement_password;
+  if (!GetEndorsementPassword(&endorsement_password)) {
+    LOG(ERROR) << __func__ << ": Failed to get endorsement password";
+    return false;
+  }
+
+  std::unique_ptr<HmacSession> endorsement_session =
+      trunks_factory_->GetHmacSession();
+  result =
+      endorsement_session->StartUnboundSession(false /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  endorsement_session->SetEntityAuthorizationValue(endorsement_password);
+
+  std::unique_ptr<trunks::PolicySession> session =
+      trunks_factory_->GetPolicySession();
+  result = session->StartUnboundSession(false /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to start session: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
+  trunks::TPMI_DH_ENTITY auth_entity = trunks::TPM_RH_ENDORSEMENT;
+  std::string auth_entity_name;
+  trunks::Serialize_TPM_HANDLE(auth_entity, &auth_entity_name);
+
+  result = session->PolicySecret(auth_entity, auth_entity_name, std::string(),
+                                 std::string(), std::string(), 0,
+                                 endorsement_session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to set the secret: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
   MultipleAuthorizations authorization;
   authorization.AddAuthorizationDelegate(empty_password_authorization.get());
-  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  authorization.AddAuthorizationDelegate(session->GetDelegate());
   std::string identity_object_data;
   trunks::Serialize_TPM2B_DIGEST(trunks::Make_TPM2B_DIGEST(credential_mac),
                                  &identity_object_data);
