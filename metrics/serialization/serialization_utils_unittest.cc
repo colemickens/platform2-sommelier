@@ -128,7 +128,7 @@ TEST_F(SerializationUtilsTest, ReadLongMessageTest) {
 
   std::vector<std::unique_ptr<MetricSample>> samples;
   SerializationUtils::ReadAndTruncateMetricsFromFile(filename, &samples);
-  ASSERT_EQ(size_t(1), samples.size());
+  ASSERT_EQ(1u, samples.size());
   ASSERT_NE(nullptr, samples[0]);
   EXPECT_TRUE(crash->IsEqual(*samples[0]));
 }
@@ -151,7 +151,7 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
   SerializationUtils::WriteMetricToFile(*action.get(), filename);
   std::vector<std::unique_ptr<MetricSample>> samples;
   SerializationUtils::ReadAndTruncateMetricsFromFile(filename, &samples);
-  ASSERT_EQ(size_t(5), samples.size());
+  ASSERT_EQ(5u, samples.size());
   for (const auto& sample : samples) {
     ASSERT_NE(nullptr, sample);
   }
