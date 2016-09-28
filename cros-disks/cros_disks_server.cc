@@ -67,6 +67,15 @@ void CrosDisksServer::Format(const string& path,
   }
 }
 
+MountManager* CrosDisksServer::FindMounter(const string& source_path) const {
+  for (const auto& manager : mount_managers_) {
+    if (manager->CanMount(source_path)) {
+      return manager;
+    }
+  }
+  return nullptr;
+}
+
 void CrosDisksServer::Mount(const string& path,
                             const string& filesystem_type,
                             const vector<string>& options,
@@ -77,13 +86,11 @@ void CrosDisksServer::Mount(const string& path,
   string mount_path;
 
   if (platform_->GetRealPath(path, &source_path)) {
-    for (const auto& manager : mount_managers_) {
-      if (manager->CanMount(source_path)) {
-        source_type = manager->GetMountSourceType();
-        error_type =
-            manager->Mount(source_path, filesystem_type, options, &mount_path);
-        break;
-      }
+    MountManager* mounter = FindMounter(source_path);
+    if (mounter) {
+      source_type = mounter->GetMountSourceType();
+      error_type =
+          mounter->Mount(source_path, filesystem_type, options, &mount_path);
     }
   }
 

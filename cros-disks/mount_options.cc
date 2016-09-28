@@ -24,6 +24,7 @@ const char MountOptions::kOptionNoExec[] = "noexec";
 const char MountOptions::kOptionNoSuid[] = "nosuid";
 const char MountOptions::kOptionReadOnly[] = "ro";
 const char MountOptions::kOptionReadWrite[] = "rw";
+const char MountOptions::kOptionRemount[] = "remount";
 const char MountOptions::kOptionSynchronous[] = "sync";
 const char MountOptions::kOptionUtf8[] = "utf8";
 
@@ -35,6 +36,7 @@ void MountOptions::Initialize(const vector<string>& options,
   options_.reserve(options.size());
 
   bool option_read_only = false, option_read_write = false;
+  bool option_remount = false;
   string option_user_id, option_group_id;
 
   for (const auto& option : options) {
@@ -48,6 +50,8 @@ void MountOptions::Initialize(const vector<string>& options,
       option_read_only = true;
     } else if (option == kOptionReadWrite) {
       option_read_write = true;
+    } else if (option == kOptionRemount) {
+      option_remount = true;
     } else if (base::StartsWith(option, "uid=",
                base::CompareCase::INSENSITIVE_ASCII)) {
       option_user_id = option;
@@ -76,6 +80,10 @@ void MountOptions::Initialize(const vector<string>& options,
     options_.push_back(kOptionReadOnly);
   } else {
     options_.push_back(kOptionReadWrite);
+  }
+
+  if (option_remount) {
+    options_.push_back(kOptionRemount);
   }
 
   if (set_user_and_group_id) {
@@ -127,6 +135,8 @@ pair<MountOptions::Flags, string> MountOptions::ToMountFlagsAndData() const {
       flags |= MS_RDONLY;
     } else if (option == kOptionReadWrite) {
       flags &= ~static_cast<Flags>(MS_RDONLY);
+    } else if (option == kOptionRemount) {
+      flags |= MS_REMOUNT;
     } else if (option == kOptionBind) {
       flags |= MS_BIND;
     } else if (option == kOptionDirSync) {

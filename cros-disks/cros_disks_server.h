@@ -133,6 +133,10 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // devices are returned.
   std::vector<std::string> DoEnumerateDevices(bool auto_mountable_only) const;
 
+  // Finds and returns a mounter which can mount |source_path|, or nullptr if no
+  // one can.
+  MountManager* FindMounter(const std::string& source_path) const;
+
   // Unmounts all paths mounted by Mount().
   void DoUnmountAll();
 

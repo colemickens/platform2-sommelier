@@ -24,6 +24,7 @@ class MountOptions {
   static const char kOptionNoSuid[];
   static const char kOptionReadOnly[];
   static const char kOptionReadWrite[];
+  static const char kOptionRemount[];
   static const char kOptionSynchronous[];
   static const char kOptionUtf8[];
 

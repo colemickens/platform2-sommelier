@@ -36,6 +36,8 @@ const char kMountRootDirectory[] = "/media/removable";
 const char kTestSourcePath[] = "source";
 const char kTestMountPath[] = "/media/removable/test";
 const char kInvalidMountPath[] = "/media/removable/../test/doc";
+const char kMountOptionRemount[] = "remount";
+const char kMountOptionReadOnly[] = "ro";
 
 }  // namespace
 
@@ -978,15 +980,15 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
-// Verifies that MountManager::AddMountPathToCache() works as expected.
-TEST_F(MountManagerTest, AddMountPathToCache) {
+// Verifies that MountManager::AddOrUpdateMountStateCache() works as expected.
+TEST_F(MountManagerTest, AddOrUpdateMountStateCache) {
   string result;
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
+  string mount_path_2 = "target2";
   bool is_read_only = true;
 
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_,
-                                           is_read_only));
+  manager_.AddOrUpdateMountStateCache(source_path_, mount_path_, is_read_only);
   EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
   EXPECT_EQ(mount_path_, result);
   MountManager::MountState result_state;
@@ -994,11 +996,13 @@ TEST_F(MountManagerTest, AddMountPathToCache) {
   EXPECT_EQ(kTestMountPath, result_state.mount_path);
   EXPECT_EQ(is_read_only, result_state.is_read_only);
 
-  EXPECT_FALSE(manager_.AddMountPathToCache(source_path_, "target1", false));
-  EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
-  EXPECT_EQ(mount_path_, result);
+  manager_.AddOrUpdateMountStateCache(source_path_, mount_path_2, false);
+  EXPECT_TRUE(manager_.GetMountStateFromCache(source_path_, &result_state));
+  EXPECT_EQ(mount_path_2, result_state.mount_path);
+  EXPECT_FALSE(result_state.is_read_only);
 
-  EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
+  EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
+  EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_2));
 }
 
 // Verifies that MountManager::GetSourcePathFromCache() works as expected.
@@ -1008,7 +1012,7 @@ TEST_F(MountManagerTest, GetSourcePathFromCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.GetSourcePathFromCache(mount_path_, &result));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
+  manager_.AddOrUpdateMountStateCache(source_path_, mount_path_, false);
   EXPECT_TRUE(manager_.GetSourcePathFromCache(mount_path_, &result));
   EXPECT_EQ(source_path_, result);
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
@@ -1022,7 +1026,7 @@ TEST_F(MountManagerTest, GetMountPathFromCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.GetMountPathFromCache(source_path_, &result));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
+  manager_.AddOrUpdateMountStateCache(source_path_, mount_path_, false);
   EXPECT_TRUE(manager_.GetMountPathFromCache(source_path_, &result));
   EXPECT_EQ(mount_path_, result);
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
@@ -1035,7 +1039,7 @@ TEST_F(MountManagerTest, IsMountPathInCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
+  manager_.AddOrUpdateMountStateCache(source_path_, mount_path_, false);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
@@ -1047,7 +1051,7 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   mount_path_ = kTestMountPath;
 
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
-  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_, false));
+  manager_.AddOrUpdateMountStateCache(source_path_, mount_path_, false);
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
 }
@@ -1138,8 +1142,7 @@ TEST_F(MountManagerTest, GetMountEntries) {
   EXPECT_TRUE(mount_entries.empty());
 
   // A normal mount entry is returned.
-  EXPECT_TRUE(manager_.AddMountPathToCache(kTestSourcePath, kTestMountPath,
-                                           false));
+  manager_.AddOrUpdateMountStateCache(kTestSourcePath, kTestMountPath, false);
   manager_.GetMountEntries(&mount_entries);
   ASSERT_EQ(1, mount_entries.size());
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_entries[0].error_type());
@@ -1274,6 +1277,54 @@ TEST_F(MountManagerTest, IsValidMountPath) {
   manager_.mount_root_ = "/media/archive";
   EXPECT_TRUE(manager_.IsValidMountPath("/media/archive/test"));
   EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test"));
+}
+
+// Verifies that MountManager::Mount() returns an error when the source is
+// not mounted yet but attempted to remount it.
+TEST_F(MountManagerTest, RemountFailedNotMounted) {
+  options_.push_back(kMountOptionRemount);
+
+  EXPECT_CALL(manager_, DoMount(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(manager_, DoUnmount(_, _)).Times(0);
+
+  // source_path = kTestSourcePath has not been mounted yet.
+  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED,
+            manager_.Mount(kTestSourcePath, filesystem_type_, options_,
+                           &mount_path_));
+}
+
+// Verifies that MountManager::Mount() returns no error when it successfully
+// remounts a source path on a specified mount path.
+TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
+  // Emulate that it has a mounted device in read-write mode.
+  manager_.AddOrUpdateMountStateCache(kTestSourcePath, kTestMountPath, false);
+
+  options_.push_back(kMountOptionRemount);
+  options_.push_back(kMountOptionReadOnly);
+  vector<string> expected_options = options_;
+  EXPECT_CALL(manager_, DoMount(kTestSourcePath, filesystem_type_,
+                                expected_options, kTestMountPath, _))
+      .WillOnce(Invoke(DoMountSuccess));
+
+  MountManager::MountState mount_state;
+  ASSERT_TRUE(manager_.GetMountStateFromCache(kTestSourcePath, &mount_state));
+  ASSERT_FALSE(mount_state.is_read_only);
+  // Remount with read-only mount option.
+  mount_path_ = "";
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.Mount(kTestSourcePath, filesystem_type_,
+                                             options_, &mount_path_));
+  EXPECT_EQ(kTestMountPath, mount_path_);
+  EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
+
+  EXPECT_TRUE(manager_.GetMountStateFromCache(kTestSourcePath, &mount_state));
+  EXPECT_TRUE(mount_state.is_read_only);
+
+  // Should be unmounted correctly even after remount.
+  EXPECT_CALL(manager_, DoUnmount(kTestMountPath, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_TRUE(manager_.UnmountAll());
+  EXPECT_FALSE(manager_.IsMountPathInCache(kTestMountPath));
+  EXPECT_FALSE(manager_.IsMountPathReserved(kTestMountPath));
 }
 
 }  // namespace cros_disks

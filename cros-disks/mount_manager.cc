@@ -36,6 +36,8 @@ const mode_t kMountRootDirectoryPermissions =
 const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
 // Prefix of the mount label option.
 const char kMountOptionMountLabelPrefix[] = "mountlabel=";
+// Literal for mount option: "remount".
+const char kMountOptionRemount[] = "remount";
 // Literal for unmount option: "force".
 const char kUnmountOptionForce[] = "force";
 // Literal for unmount option: "lazy".
@@ -88,7 +90,7 @@ bool MountManager::CanUnmount(const string& path) const {
 MountErrorType MountManager::Mount(const string& source_path,
                                    const string& filesystem_type,
                                    const vector<string>& options,
-                                   string *mount_path) {
+                                   string* mount_path) {
   if (source_path.empty()) {
     LOG(ERROR) << "Failed to mount an empty path";
     return MOUNT_ERROR_INVALID_ARGUMENT;
@@ -98,6 +100,49 @@ MountErrorType MountManager::Mount(const string& source_path,
     return MOUNT_ERROR_INVALID_ARGUMENT;
   }
 
+  if (find(options.begin(), options.end(), kMountOptionRemount) ==
+      options.end()) {
+    return MountNewSource(source_path, filesystem_type, options, mount_path);
+  } else {
+    return Remount(source_path, filesystem_type, options, mount_path);
+  }
+}
+
+MountErrorType MountManager::Remount(const string& source_path,
+                                     const string& filesystem_type,
+                                     const vector<string>& options,
+                                     string* mount_path) {
+  if (!GetMountPathFromCache(source_path, mount_path)) {
+    LOG(WARNING) << "Path '" << source_path << "' is not mounted yet";
+    return MOUNT_ERROR_PATH_NOT_MOUNTED;
+  }
+
+  vector<string> updated_options = options;
+  string mount_label;
+  ExtractMountLabelFromOptions(&updated_options, &mount_label);
+
+  // Perform the underlying mount operation.
+  MountOptions applied_options;
+  MountErrorType error_type =
+      DoMount(source_path, filesystem_type, updated_options, *mount_path,
+              &applied_options);
+  if (error_type != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Failed to remount path '" << source_path << "'";
+    return error_type;
+  }
+
+  LOG(INFO) << "Path '" << source_path << "' on '" << *mount_path
+            << "' is remounted with read_only="
+            << applied_options.IsReadOnlyOptionSet();
+  AddOrUpdateMountStateCache(source_path, *mount_path,
+                             applied_options.IsReadOnlyOptionSet());
+  return error_type;
+}
+
+MountErrorType MountManager::MountNewSource(const string& source_path,
+                                            const string& filesystem_type,
+                                            const vector<string>& options,
+                                            string* mount_path) {
   string actual_mount_path;
   if (GetMountPathFromCache(source_path, &actual_mount_path)) {
     LOG(WARNING) << "Path '" << source_path << "' is already mounted to '"
@@ -180,8 +225,8 @@ MountErrorType MountManager::Mount(const string& source_path,
     return error_type;
   }
 
-  AddMountPathToCache(source_path, actual_mount_path,
-                      applied_options.IsReadOnlyOptionSet());
+  AddOrUpdateMountStateCache(source_path, actual_mount_path,
+                             applied_options.IsReadOnlyOptionSet());
   *mount_path = actual_mount_path;
   return error_type;
 }
@@ -237,13 +282,13 @@ bool MountManager::UnmountAll() {
   return all_umounted;
 }
 
-bool MountManager::AddMountPathToCache(const string& source_path,
-                                       const string& mount_path,
-                                       bool is_read_only) {
+void MountManager::AddOrUpdateMountStateCache(const string& source_path,
+                                              const string& mount_path,
+                                              bool is_read_only) {
   MountState mount_state;
   mount_state.mount_path = mount_path;
   mount_state.is_read_only = is_read_only;
-  return mount_states_.insert(std::make_pair(source_path, mount_state)).second;
+  mount_states_[source_path] = mount_state;
 }
 
 bool MountManager::GetSourcePathFromCache(const string& mount_path,

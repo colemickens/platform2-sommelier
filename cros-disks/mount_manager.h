@@ -95,15 +95,19 @@ class MountManager {
   virtual MountSourceType GetMountSourceType() const = 0;
 
   // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
-  // If |mount_path| is an empty string, SuggestMountPath() is called to
-  // obtain a suggested mount path. |mount_path| is set to actual mount path
-  // on success. If an error occurs and ShouldReserveMountPathOnError()
-  // returns true for that type of error, the mount path is reserved and
-  // |mount_path| is set to the reserved mount path.
+  // If "remount" option exists in |options|, attempts to remount |source_path|
+  // to the mount path which it's currently mounted to. Content of |mount_path|
+  // will be ignored and |mount_path| is set to the existing mount path.
+  // Otherwise, attempts to mount a new source. When mounting a new source, if
+  // |mount_path| is an empty string, SuggestMountPath() is called to obtain a
+  // suggested mount path. |mount_path| is set to actual mount path on success.
+  // If an error occurs and ShouldReserveMountPathOnError() returns true for
+  // that type of error, the mount path is reserved and |mount_path| is set to
+  // the reserved mount path.
   MountErrorType Mount(const std::string& source_path,
                        const std::string& filesystem_type,
                        const std::vector<std::string>& options,
-                       std::string *mount_path);
+                       std::string* mount_path);
 
   // Unmounts |path|, which can be a source path or a mount path,
   // with |options|. If the mount path is reserved during Mount(),
@@ -114,11 +118,10 @@ class MountManager {
   // Unmounts all mounted paths.
   virtual bool UnmountAll();
 
-  // Adds a mapping from |source_path| to |mount_path| to the cache.
-  // Returns false if |source_path| is already in the cache.
-  bool AddMountPathToCache(const std::string& source_path,
-                           const std::string& mount_path,
-                           bool is_read_only);
+  // Adds or updates a mapping |source_path| to its mount state in the cache.
+  void AddOrUpdateMountStateCache(const std::string& source_path,
+                                  const std::string& mount_path,
+                                  bool is_read_only);
 
   // Gets the corresponding |source_path| of |mount_path| from the cache.
   // Returns false if |mount_path| is not found in the cache.
@@ -175,6 +178,18 @@ class MountManager {
   // Type definition of a cache mapping a reserved mount path to the mount
   // error that caused the mount path to be reserved.
   using ReservedMountPathMap = std::map<std::string, MountErrorType>;
+
+  // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
+  MountErrorType MountNewSource(const std::string& source_path,
+                                const std::string& filesystem_type,
+                                const std::vector<std::string>& options,
+                                std::string* mount_path);
+
+  // Remounts |source_path| on |mount_path| as |filesystem_type| with |options|.
+  MountErrorType Remount(const std::string& source_path,
+                         const std::string& filesystem_type,
+                         const std::vector<std::string>& options,
+                         std::string* mount_path);
 
   // Implemented by a derived class to mount |source_path| to |mount_path|
   // as |filesystem_type| with |options|. An implementation may change the
