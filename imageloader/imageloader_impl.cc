@@ -576,6 +576,11 @@ bool ImageLoaderImpl::ECVerify(const base::StringPiece data,
 bool ImageLoaderImpl::LoadComponentHelper(const std::string& name,
                                           const Manifest& manifest,
                                           const base::FilePath& mount_point) {
+  // First check if the component is already mounted and avoid unnecessary work.
+  bool already_mounted = false;
+  if (!CreateMountPointIfNeeded(mount_point, &already_mounted)) return false;
+  if (already_mounted) return true;
+
   base::FilePath component_path(GetComponentPath(config_.storage_dir, name));
   if (!base::PathExists(component_path)) {
     LOG(ERROR) << "No valid component [" << name << "] on disk.";
@@ -600,14 +605,10 @@ bool ImageLoaderImpl::LoadComponentHelper(const std::string& name,
     return false;
   }
 
-  bool already_mounted = false;
-  if (!CreateMountPointIfNeeded(mount_point, &already_mounted)) return false;
-  if (!already_mounted) {
-    // The mount point is not yet taken, so go ahead.
-    if (!config_.loop_mounter->Mount(image_fd, mount_point)) {
-      LOG(ERROR) << "Failed to mount image.";
-      return false;
-    }
+  // The mount point is not yet taken, so go ahead.
+  if (!config_.loop_mounter->Mount(image_fd, mount_point)) {
+    LOG(ERROR) << "Failed to mount image.";
+    return false;
   }
   return true;
 }
