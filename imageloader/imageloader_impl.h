@@ -55,7 +55,7 @@ class ImageLoaderImpl {
   struct Manifest {
     int manifest_version;
     std::vector<uint8_t> image_sha256;
-    std::vector<uint8_t> params_sha256;
+    std::vector<uint8_t> table_sha256;
     std::string version;
   };
 

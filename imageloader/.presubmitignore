@@ -1,6 +1,6 @@
-test/22.0.0.158_chromeos_intel64_PepperFlashPlayer/params
+test/22.0.0.158_chromeos_intel64_PepperFlashPlayer/table
 test/22.0.0.158_chromeos_intel64_PepperFlashPlayer/hash
-test/22.0.0.256_chromeos_intel64_PepperFlashPlayer/params
+test/22.0.0.256_chromeos_intel64_PepperFlashPlayer/table
 test/22.0.0.256_chromeos_intel64_PepperFlashPlayer/hash
 imageloader.conf
 org.chromium.ImageLoader.conf

@@ -1,1 +1,0 @@
-0 24 verity payload=ROOT_DEV hashtree=HASH_DEV hashstart=24 alg=sha256 root_hexdigest=3f3ff523e7ff64b07590ed33164c9448507694ac6f7328a1d4d5671436e00ed8 salt=15e1760f04a1a0bcecba1bc78274e0e1ff413ae687d05bf596f3fa9ae590219b

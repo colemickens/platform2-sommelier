@@ -61,12 +61,12 @@ const char kVersionField[] = "version";
 const char kImageHashField[] = "image-sha256-hash";
 // The name of the image file.
 const char kImageFileName[] = "image.squash";
-// The name of the field containing the parameters hash.
-const char kParamsHashField[] = "params-sha256-hash";
+// The name of the field containing the table hash.
+const char kTableHashField[] = "table-sha256-hash";
 // The name of the file containing the latest component version.
 const char kLatestVersionFile[] = "latest-version";
-// The name of the params file.
-const char kParamsFileName[] = "params";
+// The name of the table file.
+const char kTableFileName[] = "table";
 // The permissions that the component update directory must use.
 const int kComponentDirPerms = 0755;
 // The permissions that files in the component should have.
@@ -85,11 +85,11 @@ const size_t kMaximumFilesize = 4096 * 10;
 //    - imageloader.json  # a manifest file containing the hashes of all the
 //                        # files, and some other metadata.
 //    - imageloader.sig.1 # a signature blob of the imageloader.json manifest.
-//    - params            # contains the parameters (including merkle tree root
-//                        # hash), of the dm-verity image.
+//    - table             # contains the device mapper table (including merkle
+//                        # tree root hash), of the dm-verity image.
 //    - image.squash      # The squashfs disk image containing the actual
 //                        # component files. The dm-verity hash tree is appended
-//                        # to the end of the disk image, and the |params| tell
+//                        # to the end of the disk image, and the |table| tells
 //                        # the kernel the offset of the tree.
 
 // Functions to generate paths to various files in the components.
@@ -123,8 +123,8 @@ base::FilePath GetFingerprintPath(
   return component_version_path.Append(kFingerprintName);
 }
 
-base::FilePath GetParamsPath(const base::FilePath& component_version_path) {
-  return component_version_path.Append(kParamsFileName);
+base::FilePath GetTablePath(const base::FilePath& component_version_path) {
+  return component_version_path.Append(kTableFileName);
 }
 
 base::FilePath GetImagePath(const base::FilePath& component_version_path) {
@@ -193,22 +193,22 @@ bool CreateDirectoryWithMode(const base::FilePath& full_path, int mode) {
   return true;
 }
 
-bool GetAndVerifyParams(const base::FilePath& path,
-                        const std::vector<uint8_t>& hash,
-                        std::string* out_params) {
-  std::string params;
-  if (!base::ReadFileToStringWithMaxSize(path, &params, kMaximumFilesize)) {
+bool GetAndVerifyTable(const base::FilePath& path,
+                       const std::vector<uint8_t>& hash,
+                       std::string* out_table) {
+  std::string table;
+  if (!base::ReadFileToStringWithMaxSize(path, &table, kMaximumFilesize)) {
     return false;
   }
 
-  std::vector<uint8_t> params_hash(crypto::kSHA256Length);
-  crypto::SHA256HashString(params, params_hash.data(), params_hash.size());
-  if (params_hash != hash) {
-    LOG(ERROR) << "dm-verity parameters file has the wrong hash.";
+  std::vector<uint8_t> table_hash(crypto::kSHA256Length);
+  crypto::SHA256HashString(table, table_hash.data(), table_hash.size());
+  if (table_hash != hash) {
+    LOG(ERROR) << "dm-verity table file has the wrong hash.";
     return false;
   }
 
-  out_params->assign(params);
+  out_table->assign(table);
   return true;
 }
 
@@ -486,14 +486,14 @@ bool ImageLoaderImpl::VerifyAndParseManifest(
     return false;
   }
 
-  std::string params_hash_str;
-  if (!manifest_dict->GetString(kParamsHashField, &params_hash_str)) {
-    LOG(ERROR) << "Could not parse parameters hash from manifest.";
+  std::string table_hash_str;
+  if (!manifest_dict->GetString(kTableHashField, &table_hash_str)) {
+    LOG(ERROR) << "Could not parse table hash from manifest.";
     return false;
   }
 
-  if (!GetSHA256FromString(params_hash_str, &(manifest->params_sha256))) {
-    LOG(ERROR) << "Could not convert params hash to bytes.";
+  if (!GetSHA256FromString(table_hash_str, &(manifest->table_sha256))) {
+    LOG(ERROR) << "Could not convert table hash to bytes.";
     return false;
   }
 
@@ -533,10 +533,10 @@ bool ImageLoaderImpl::CopyComponentDirectory(
     return false;
   }
 
-  base::FilePath params_src(GetParamsPath(component_path));
-  base::FilePath params_dest(GetParamsPath(destination_folder));
-  if (!CopyAndHashFile(params_src, params_dest, manifest.params_sha256)) {
-    LOG(ERROR) << "Could not copy params file.";
+  base::FilePath table_src(GetTablePath(component_path));
+  base::FilePath table_dest(GetTablePath(destination_folder));
+  if (!CopyAndHashFile(table_src, table_dest, manifest.table_sha256)) {
+    LOG(ERROR) << "Could not copy table file.";
     return false;
   }
 
@@ -584,11 +584,11 @@ bool ImageLoaderImpl::LoadComponentHelper(const std::string& name,
   base::FilePath versioned_path(
       GetVersionedPath(component_path, manifest.version));
 
-  // Now read the parameters in and verify the hash.
-  std::string params;
-  if (!GetAndVerifyParams(GetParamsPath(versioned_path), manifest.params_sha256,
-                          &params)) {
-    LOG(ERROR) << "Could not read and verify dm-verity parameters.";
+  // Now read the table in and verify the hash.
+  std::string table;
+  if (!GetAndVerifyTable(GetTablePath(versioned_path), manifest.table_sha256,
+                         &table)) {
+    LOG(ERROR) << "Could not read and verify dm-verity table.";
     return false;
   }
 

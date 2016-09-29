@@ -46,18 +46,19 @@ const uint8_t kDevPublicKey[] = {
 
 const char kImageLoaderJSON[] =
     "{\"image-sha256-hash\":"
-    "\"71D11CA4E2B4A3F5E71D789F0E64116F49BB13DE6A591505CA6404985E13F6EF\","
-    "\"version\":\"22.0.0.158\",\"params-sha256-hash\":"
-    "\"40608D72852DBD223B159FE149CEEE8F8865D46AB28557C2955BC1F02FFECCA7\","
+    "\"6B1E52D97EE63DDFDB3375FDC7F840D54116667E02745D31427C108B3F6885FD\","
+    "\"table-sha256-hash\":"
+    "\"24ECDCEC354FB7D020A237908A525CC96F6F77B95E906D5A0E49644D02692F2F\","
+    "\"version\":\"22.0.0.256\","
     "\"manifest-version\":1}";
 
 const char kImageLoaderSig[] = {
-    0x30, 0x44, 0x02, 0x20, 0x0a, 0x75, 0x49, 0xaf, 0x01, 0x3b, 0x48, 0x51,
-    0x45, 0x74, 0x8b, 0x41, 0x64, 0x21, 0x83, 0xce, 0xf1, 0x78, 0x1d, 0xd0,
-    0xa8, 0xd6, 0xae, 0x84, 0xf3, 0xc0, 0x3c, 0x3a, 0xee, 0xb4, 0x35, 0xb7,
-    0x02, 0x20, 0x34, 0xeb, 0xdc, 0x68, 0x2d, 0x8b, 0x4f, 0x64, 0x94, 0x64,
-    0xa3, 0xd5, 0xde, 0xab, 0xf9, 0xa0, 0xbd, 0xcc, 0xc1, 0x2f, 0x78, 0xd4,
-    0xe8, 0xed, 0x6a, 0x45, 0x38, 0x53, 0x54, 0xd2, 0xb1, 0x97};
+    0x30, 0x46, 0x02, 0x21, 0x00, 0x86, 0x4f, 0x25, 0x51, 0x52, 0xb1, 0x79,
+    0xa3, 0x3e, 0x9b, 0x08, 0x70, 0x10, 0x61, 0xca, 0x63, 0x37, 0x0c, 0xa2,
+    0x9f, 0x4f, 0x21, 0xd7, 0x37, 0x05, 0x4e, 0x8d, 0x73, 0x39, 0x18, 0x98,
+    0x94, 0x02, 0x21, 0x00, 0xf1, 0x64, 0x4f, 0x9d, 0x39, 0x58, 0xca, 0xef,
+    0xe7, 0x4c, 0xa2, 0x5e, 0x00, 0xcb, 0x33, 0x43, 0x7b, 0x9d, 0x72, 0x3e,
+    0x67, 0x39, 0x2c, 0xfb, 0x3a, 0xcb, 0x80, 0x2b, 0xc4, 0xca, 0xab, 0x8d};
 
 const char kImageLoaderBadSig[] = {
     0x30, 0x44, 0x02, 0x20, 0x0a, 0x75, 0x49, 0xaf, 0x01, 0x3b, 0x48, 0x51,
@@ -142,7 +143,7 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
   std::list<std::string> files;
   GetFilesInDir(version_dir, &files);
   EXPECT_THAT(files, testing::UnorderedElementsAre(
-                         "imageloader.json", "imageloader.sig.1", "params",
+                         "imageloader.json", "imageloader.sig.1", "table",
                          "image.squash", "manifest.fingerprint"));
 
   // Reject a component if the version already exists.
@@ -168,7 +169,7 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
   GetFilesInDir(version_dir2, &files2);
   EXPECT_THAT(files2, testing::UnorderedElementsAre("imageloader.json",
                                                     "imageloader.sig.1",
-                                                    "params", "image.squash"));
+                                                    "table", "image.squash"));
 
   EXPECT_EQ(kTestUpdatedVersion,
             loader.GetComponentVersion(kTestComponentName));
@@ -226,10 +227,10 @@ TEST_F(ImageLoaderTest, CopyValidComponent) {
   EXPECT_THAT(original_files,
               testing::UnorderedElementsAre(
                   "imageloader.json", "imageloader.sig.1", "manifest.json",
-                  "params", "image.squash", "manifest.fingerprint"));
+                  "table", "image.squash", "manifest.fingerprint"));
   EXPECT_THAT(copied_files,
               testing::UnorderedElementsAre(
-                  "imageloader.json", "imageloader.sig.1", "params",
+                  "imageloader.json", "imageloader.sig.1", "table",
                   "image.squash", "manifest.fingerprint"));
 }
 
@@ -310,12 +311,13 @@ TEST_F(ImageLoaderTest, CopyInvalidImage) {
 TEST_F(ImageLoaderTest, ParseManifest) {
   ImageLoaderImpl loader(GetConfig("/nonexistant"));
   ImageLoaderImpl::Manifest manifest;
-  ASSERT_TRUE(loader.VerifyAndParseManifest(kImageLoaderJSON, kImageLoaderSig,
+  std::string imageloader_sig(kImageLoaderSig, sizeof(kImageLoaderSig));
+  ASSERT_TRUE(loader.VerifyAndParseManifest(kImageLoaderJSON, imageloader_sig,
                                             &manifest));
   EXPECT_EQ(1, manifest.manifest_version);
-  EXPECT_EQ(kTestDataVersion, manifest.version);
+  EXPECT_EQ(kTestUpdatedVersion, manifest.version);
   EXPECT_EQ(32, manifest.image_sha256.size());
-  EXPECT_EQ(32, manifest.params_sha256.size());
+  EXPECT_EQ(32, manifest.table_sha256.size());
 
   std::string bad_manifest = "{\"foo\":\"128.0.0.9\"}";
   ImageLoaderImpl::Manifest manifest2;
@@ -390,12 +392,12 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
                                        GetComponentPath().value()));
 
-  base::FilePath params = temp_dir.Append(kTestComponentName)
+  base::FilePath table = temp_dir.Append(kTestComponentName)
                               .Append(kTestDataVersion)
-                              .Append("params");
+                              .Append("table");
   std::string contents = "corrupt";
   ASSERT_EQ(static_cast<int>(contents.size()),
-            base::WriteFile(params, contents.data(), contents.size()));
+            base::WriteFile(table, contents.data(), contents.size()));
   ASSERT_EQ("", loader.LoadComponent(kTestComponentName));
 }
 
