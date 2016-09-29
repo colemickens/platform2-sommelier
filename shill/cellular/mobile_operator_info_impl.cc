@@ -24,6 +24,7 @@
 
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <google/protobuf/repeated_field.h>
 
@@ -32,6 +33,7 @@
 
 using base::Bind;
 using base::FilePath;
+using base::PathExists;
 using google::protobuf::io::CopyingInputStreamAdaptor;
 using google::protobuf::RepeatedField;
 using google::protobuf::RepeatedPtrField;
@@ -59,6 +61,8 @@ static string ObjectID(const MobileOperatorInfoImpl* m) {
 // static
 const char* MobileOperatorInfoImpl::kDefaultDatabasePath =
     "/usr/share/shill/serviceproviders.pbf";
+const char* MobileOperatorInfoImpl::kOverrideDatabasePath =
+    "/usr/share/shill/serviceproviders-override.pbf";
 const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
 
 namespace {
@@ -85,6 +89,10 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
       requires_roaming_(false),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
+  // Overrides need to be installed before defaults
+  if (PathExists(FilePath(kOverrideDatabasePath))) {
+    AddDatabasePath(FilePath(kOverrideDatabasePath));
+  }
   AddDatabasePath(FilePath(kDefaultDatabasePath));
 }
 

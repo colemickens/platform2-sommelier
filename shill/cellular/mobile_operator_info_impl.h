@@ -45,7 +45,7 @@ class MobileOperatorInfoImpl {
   ~MobileOperatorInfoImpl();
 
   // API functions of the interface.
-  // See mobile_operator_info_impl.h for details.
+  // See mobile_operator_info.h for details.
   void ClearDatabasePaths();
   void AddDatabasePath(const base::FilePath& absolute_path);
   bool Init();
@@ -87,6 +87,7 @@ class MobileOperatorInfoImpl {
   // Static variables.
   // Default databases to load.
   static const char* kDefaultDatabasePath;
+  static const char* kOverrideDatabasePath;
   // MCCMNC can be of length 5 or 6. When using this constant, keep in mind that
   // the length of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
   static const int kMCCMNCMinLen;

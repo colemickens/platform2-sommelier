@@ -84,7 +84,7 @@ class MobileOperatorInfo {
   virtual ~MobileOperatorInfo();
 
   // These functions can be called before Init to read non default database
-  // file(s).
+  // file(s). Files included earlier will take precedence over later additions.
   void ClearDatabasePaths();
   void AddDatabasePath(const base::FilePath& absolute_path);
 
