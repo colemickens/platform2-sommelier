@@ -92,6 +92,29 @@ class MountManagerTest : public ::testing::Test {
   vector<string> options_;
 };
 
+// Mock action to emulate DoMount with fallback to read-only mode.
+MountErrorType DoMountSuccessReadOnly(
+    const std::string& source_path,
+    const std::string& filesystem_type,
+    const std::vector<std::string>& options,
+    const std::string& mount_path,
+    MountOptions* applied_options) {
+  applied_options->Initialize(options, false, "", "");
+  applied_options->SetReadOnlyOption();
+  return MOUNT_ERROR_NONE;
+}
+
+// Mock action to emulate DoMount successfully finished.
+MountErrorType DoMountSuccess(
+    const std::string& source_path,
+    const std::string& filesystem_type,
+    const std::vector<std::string>& options,
+    const std::string& mount_path,
+    MountOptions* applied_options) {
+  applied_options->Initialize(options, false, "", "");
+  return MOUNT_ERROR_NONE;
+}
+
 // Verifies that MountManager::Initialize() returns false when it fails to
 // create the mount root directory.
 TEST_F(MountManagerTest, InitializeFailedInCreateDirectory) {
@@ -372,11 +395,12 @@ TEST_F(MountManagerTest, MountFailedInSetPermissions) {
 }
 
 // Verifies that MountManager::Mount() returns no error when it successfully
-// mounts a source path to a specified mount path.
+// mounts a source path to a specified mount path in read-write mode.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
 
+  options_.push_back(MountOptions::kOptionReadWrite);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -389,7 +413,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
                                 mount_path_, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Invoke(DoMountSuccess));
   EXPECT_CALL(manager_, DoUnmount(mount_path_, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
@@ -402,24 +426,13 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
 
   MountManager::MountState mount_state;
   EXPECT_TRUE(manager_.GetMountStateFromCache(source_path_, &mount_state));
-  EXPECT_TRUE(mount_state.is_read_only);
+  EXPECT_FALSE(mount_state.is_read_only);
 
   EXPECT_TRUE(manager_.UnmountAll());
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
-// Mock action to emulate DoMount with fallback to read-only mode.
-MountErrorType DoMountSuccessReadOnly(
-    const std::string& source_path,
-    const std::string& filesystem_type,
-    const std::vector<std::string>& options,
-    const std::string& mount_path,
-    MountOptions* applied_options) {
-  applied_options->SetReadOnlyOption();
-  return MOUNT_ERROR_NONE;
-}
-
-// Verifies that MountManager::Mount() stores corret mount status in cache when
+// Verifies that MountManager::Mount() stores correct mount status in cache when
 // read-only option is specified.
 TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   source_path_ = kTestSourcePath;
@@ -434,10 +447,10 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   EXPECT_CALL(platform_, SetPermissions(mount_path_, _))
       .WillOnce(Return(true));
   // Add read-only mount option.
-  options_.push_back("ro");
+  options_.push_back(MountOptions::kOptionReadOnly);
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
                                 mount_path_, _))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Invoke(DoMountSuccess));
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
   EXPECT_EQ(MOUNT_ERROR_NONE,
@@ -451,8 +464,9 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   EXPECT_TRUE(mount_state.is_read_only);
 }
 
-// Verifies that MountManager::Mount() stores corret mount status in cache when
-// the mounter successfully mounted a device but only in its read-only mode.
+// Verifies that MountManager::Mount() stores correct mount status in cache when
+// the mounter requested to mount in read-write mode but fell back to read-only
+// mode.
 TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
   source_path_ = kTestSourcePath;
   mount_path_ = kTestMountPath;
@@ -465,6 +479,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetPermissions(mount_path_, _))
       .WillOnce(Return(true));
+  options_.push_back(MountOptions::kOptionReadWrite);
   // Emulate Mounter added read-only option as a fallback.
   EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, options_,
                                 mount_path_, _))
