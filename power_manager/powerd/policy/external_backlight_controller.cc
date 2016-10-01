@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
@@ -25,16 +27,7 @@ const double kBrightnessAdjustmentPercent = 5.0;
 
 }  // namespace
 
-ExternalBacklightController::ExternalBacklightController()
-    : display_watcher_(NULL),
-      display_power_setter_(NULL),
-      dimmed_for_inactivity_(false),
-      off_for_inactivity_(false),
-      suspended_(false),
-      shutting_down_(false),
-      currently_off_(false),
-      num_brightness_adjustments_in_session_(0) {
-}
+ExternalBacklightController::ExternalBacklightController() {}
 
 ExternalBacklightController::~ExternalBacklightController() {
   if (display_watcher_)
@@ -146,6 +139,18 @@ bool ExternalBacklightController::DecreaseUserBrightness(bool allow_off) {
 
 void ExternalBacklightController::SetDocked(bool docked) {}
 
+void ExternalBacklightController::SetForcedOff(bool forced_off) {
+  if (forced_off_ == forced_off)
+    return;
+
+  forced_off_ = forced_off;
+  UpdateScreenPowerState();
+}
+
+bool ExternalBacklightController::GetForcedOff() {
+  return forced_off_;
+}
+
 int ExternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
   return 0;
 }
@@ -160,7 +165,8 @@ void ExternalBacklightController::OnDisplaysChanged(
 }
 
 void ExternalBacklightController::UpdateScreenPowerState() {
-  bool should_turn_off = off_for_inactivity_ || suspended_ || shutting_down_;
+  bool should_turn_off =
+      off_for_inactivity_ || suspended_ || shutting_down_ || forced_off_;
   if (should_turn_off != currently_off_) {
     currently_off_ = should_turn_off;
     display_power_setter_->SetDisplayPower(should_turn_off ?

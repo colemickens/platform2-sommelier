@@ -9,20 +9,7 @@
 namespace power_manager {
 namespace policy {
 
-BacklightControllerStub::BacklightControllerStub()
-    : percent_(100.0),
-      power_button_presses_(0),
-      chrome_starts_(0),
-      dimmed_(false),
-      off_(false),
-      suspended_(false),
-      shutting_down_(false),
-      docked_(false),
-      user_brightness_percent_(0.0),
-      num_user_brightness_increases_(0),
-      num_user_brightness_decreases_(0),
-      num_als_adjustments_(0),
-      num_user_adjustments_(0) {}
+BacklightControllerStub::BacklightControllerStub() {}
 
 BacklightControllerStub::~BacklightControllerStub() {}
 
@@ -120,6 +107,14 @@ void BacklightControllerStub::SetShuttingDown(bool shutting_down) {
 
 void BacklightControllerStub::SetDocked(bool docked) {
   docked_ = docked;
+}
+
+void BacklightControllerStub::SetForcedOff(bool forced_off) {
+  forced_off_ = forced_off;
+}
+
+bool BacklightControllerStub::GetForcedOff() {
+  return forced_off_;
 }
 
 bool BacklightControllerStub::GetBrightnessPercent(double* percent) {

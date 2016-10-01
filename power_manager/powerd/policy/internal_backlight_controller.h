@@ -96,6 +96,8 @@ class InternalBacklightController : public BacklightController,
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
   void SetDocked(bool docked) override;
+  void SetForcedOff(bool forced_off) override;
+  bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
   bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
   bool IncreaseUserBrightness() override;
@@ -165,13 +167,13 @@ class InternalBacklightController : public BacklightController,
                        base::TimeDelta delay);
 
   // Backlight used for dimming. Weak pointer.
-  system::BacklightInterface* backlight_;
+  system::BacklightInterface* backlight_ = nullptr;
 
   // Interface for saving preferences. Weak pointer.
-  PrefsInterface* prefs_;
+  PrefsInterface* prefs_ = nullptr;
 
   // Used to turn displays on and off.
-  system::DisplayPowerSetterInterface* display_power_setter_;
+  system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;
 
   std::unique_ptr<AmbientLightHandler> ambient_light_handler_;
 
@@ -181,86 +183,89 @@ class InternalBacklightController : public BacklightController,
   base::ObserverList<BacklightControllerObserver> observers_;
 
   // Information describing the current state of the system.
-  PowerSource power_source_;
-  DisplayMode display_mode_;
-  bool dimmed_for_inactivity_;
-  bool off_for_inactivity_;
-  bool suspended_;
-  bool shutting_down_;
-  bool docked_;
+  PowerSource power_source_ = POWER_BATTERY;
+  DisplayMode display_mode_ = DISPLAY_NORMAL;
+  bool dimmed_for_inactivity_ = false;
+  bool off_for_inactivity_ = false;
+  bool suspended_ = false;
+  bool shutting_down_ = false;
+  bool docked_ = false;
+  bool forced_off_ = false;
 
   // Time at which Init() was called.
   base::TimeTicks init_time_;
 
   // Indicates whether SetBrightnessPercentForAmbientLight() and
   // HandlePowerSourceChange() have been called yet.
-  bool got_ambient_light_brightness_percent_;
-  bool got_power_source_;
+  bool got_ambient_light_brightness_percent_ = false;
+  bool got_power_source_ = false;
 
   // Has UpdateState() already set the initial state?
-  bool already_set_initial_state_;
+  bool already_set_initial_state_ = false;
 
   // Number of ambient-light- and user-triggered brightness adjustments in the
   // current session.
-  int als_adjustment_count_;
-  int user_adjustment_count_;
+  int als_adjustment_count_ = 0;
+  int user_adjustment_count_ = 0;
 
   // Ambient-light-sensor-derived brightness percent supplied by
   // |ambient_light_handler_|.
-  double ambient_light_brightness_percent_;
+  double ambient_light_brightness_percent_ = 100.0;
 
   // User- or policy-set brightness percent when on AC or battery power.
-  double ac_explicit_brightness_percent_;
-  double battery_explicit_brightness_percent_;
+  double ac_explicit_brightness_percent_ = 100.0;
+  double battery_explicit_brightness_percent_ = 100.0;
 
   // True if the most-recently-received policy message requested a specific
   // brightness and no user adjustments have been made since then.
-  bool using_policy_brightness_;
+  bool using_policy_brightness_ = false;
 
   // True if the brightness should be forced to be nonzero in response to user
   // activity.
-  bool force_nonzero_brightness_for_user_activity_;
+  bool force_nonzero_brightness_for_user_activity_ = true;
 
   // Maximum raw brightness level for |backlight_| (0 is assumed to be the
   // minimum, with the backlight turned off).
-  int64_t max_level_;
+  int64_t max_level_ = 0;
 
   // Minimum raw brightness level that we'll stop at before turning the
   // backlight off entirely when adjusting the brightness down.  Note that we
   // can still quickly animate through lower (still technically visible) levels
   // while transitioning to the off state; this is the minimum level that we'll
   // use in the steady state while the backlight is on.
-  int64_t min_visible_level_;
+  int64_t min_visible_level_ = 0;
 
   // Indicates whether transitions between 0 and |min_visible_level_| must be
   // instant, i.e. the brightness may not smoothly transition between those
   // levels.
-  bool instant_transitions_below_min_level_;
+  bool instant_transitions_below_min_level_ = false;
 
   // If true, then suggestions from |ambient_light_handler_| are used. False if
-  // |ambient_light_handler_| is NULL or the user has manually set the
+  // |ambient_light_handler_| is null or the user has manually set the
   // brightness.
-  bool use_ambient_light_;
+  bool use_ambient_light_ = true;
 
   // Percentage by which we offset the brightness in response to increase and
   // decrease requests.
-  double step_percent_;
+  double step_percent_ = 1.0;
 
   // Percentage, in the range [0.0, 100.0], to which we dim the backlight on
-  // idle.
+  // idle. (Initialized to a const value in c'tor.)
   double dimmed_brightness_percent_;
 
   // Brightness level fractions (e.g. 140/200) are raised to this power when
   // converting them to percents.  A value below 1.0 gives us more granularity
-  // at the lower end of the range and less at the upper end.
+  // at the lower end of the range and less at the upper end. (Initialized to a
+  // const value in c'tor.)
   double level_to_percent_exponent_;
 
   // |backlight_|'s current brightness level (or the level to which it's
   // transitioning).
-  int64_t current_level_;
+  int64_t current_level_ = 0;
 
   // Most-recently-requested display power state.
-  chromeos::DisplayPowerState display_power_state_;
+  chromeos::DisplayPowerState display_power_state_ =
+      chromeos::DISPLAY_POWER_ALL_ON;
 
   // Screen off delay when user sets brightness to 0.
   base::TimeDelta turn_off_screen_timeout_;

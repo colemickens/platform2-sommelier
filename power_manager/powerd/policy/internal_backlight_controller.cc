@@ -135,36 +135,9 @@ const double InternalBacklightController::kDefaultMinVisibleBrightnessFraction =
 const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
 
 InternalBacklightController::InternalBacklightController()
-    : backlight_(NULL),
-      prefs_(NULL),
-      display_power_setter_(NULL),
-      clock_(new Clock),
-      power_source_(POWER_BATTERY),
-      display_mode_(DISPLAY_NORMAL),
-      dimmed_for_inactivity_(false),
-      off_for_inactivity_(false),
-      suspended_(false),
-      shutting_down_(false),
-      docked_(false),
-      got_ambient_light_brightness_percent_(false),
-      got_power_source_(false),
-      already_set_initial_state_(false),
-      als_adjustment_count_(0),
-      user_adjustment_count_(0),
-      ambient_light_brightness_percent_(kMaxPercent),
-      ac_explicit_brightness_percent_(kMaxPercent),
-      battery_explicit_brightness_percent_(kMaxPercent),
-      using_policy_brightness_(false),
-      force_nonzero_brightness_for_user_activity_(true),
-      max_level_(0),
-      min_visible_level_(0),
-      instant_transitions_below_min_level_(false),
-      use_ambient_light_(true),
-      step_percent_(1.0),
+    : clock_(new Clock),
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
-      level_to_percent_exponent_(kDefaultLevelToPercentExponent),
-      current_level_(0),
-      display_power_state_(chromeos::DISPLAY_POWER_ALL_ON) {
+      level_to_percent_exponent_(kDefaultLevelToPercentExponent) {
 }
 
 InternalBacklightController::~InternalBacklightController() {}
@@ -436,6 +409,19 @@ void InternalBacklightController::SetDocked(bool docked) {
   UpdateState();
 }
 
+void InternalBacklightController::SetForcedOff(bool forced_off) {
+  if (forced_off_ == forced_off)
+    return;
+
+  VLOG(1) << (forced_off ? "Forcing" : "Not forcing") << " backlight off";
+  forced_off_ = forced_off;
+  UpdateState();
+}
+
+bool InternalBacklightController::GetForcedOff() {
+  return forced_off_;
+}
+
 bool InternalBacklightController::GetBrightnessPercent(double* percent) {
   DCHECK(percent);
   *percent = LevelToPercent(current_level_);
@@ -568,6 +554,8 @@ void InternalBacklightController::UpdateState() {
 
   // Hold off on changing the brightness at startup until all the required
   // state has been received.
+  // TODO(derat): Don't bail out if we'll turn the display off, since that's
+  // independent of all of this.
   if (!got_power_source_ ||
       (use_ambient_light_ && !got_ambient_light_brightness_percent_))
     return;
@@ -580,7 +568,7 @@ void InternalBacklightController::UpdateState() {
   TransitionStyle display_transition = TRANSITION_INSTANT;
   bool set_display_power = true;
 
-  if (shutting_down_) {
+  if (shutting_down_ || forced_off_) {
     brightness_percent = 0.0;
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
   } else if (suspended_) {

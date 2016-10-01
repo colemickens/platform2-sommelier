@@ -84,29 +84,7 @@ bool KeyboardBacklightController::TestApi::TriggerVideoTimeout() {
 const double KeyboardBacklightController::kDimPercent = 10.0;
 
 KeyboardBacklightController::KeyboardBacklightController()
-    : clock_(new Clock),
-      backlight_(NULL),
-      prefs_(NULL),
-      display_backlight_controller_(NULL),
-      supports_hover_(false),
-      turn_on_for_user_activity_(false),
-      session_state_(SESSION_STOPPED),
-      tablet_mode_(TABLET_MODE_OFF),
-      dimmed_for_inactivity_(false),
-      off_for_inactivity_(false),
-      suspended_(false),
-      shutting_down_(false),
-      docked_(false),
-      hovering_(false),
-      fullscreen_video_playing_(false),
-      max_level_(0),
-      current_level_(0),
-      user_step_index_(-1),
-      automated_percent_(100.0),
-      num_als_adjustments_(0),
-      num_user_adjustments_(0),
-      display_brightness_is_zero_(false) {
-}
+    : clock_(new Clock) {}
 
 KeyboardBacklightController::~KeyboardBacklightController() {
   if (display_backlight_controller_)
@@ -316,6 +294,17 @@ void KeyboardBacklightController::SetDocked(bool docked) {
   UpdateState(TRANSITION_INSTANT, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
+void KeyboardBacklightController::SetForcedOff(bool forced_off) {
+  if (forced_off_ == forced_off)
+    return;
+  forced_off_ = forced_off;
+  UpdateState(TRANSITION_INSTANT, BRIGHTNESS_CHANGE_AUTOMATED);
+}
+
+bool KeyboardBacklightController::GetForcedOff() {
+  return forced_off_;
+}
+
 bool KeyboardBacklightController::GetBrightnessPercent(double* percent) {
   DCHECK(percent);
   *percent = LevelToPercent(current_level_);
@@ -472,7 +461,8 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
 bool KeyboardBacklightController::UpdateState(TransitionStyle transition,
                                               BrightnessChangeCause cause) {
   // Force the backlight off immediately in several special cases.
-  if (shutting_down_ || docked_ || suspended_ || tablet_mode_ == TABLET_MODE_ON)
+  if (forced_off_ || shutting_down_ || docked_ || suspended_ ||
+      tablet_mode_ == TABLET_MODE_ON)
     return ApplyBrightnessPercent(0.0, transition, cause);
 
   // If the user has asked for a specific brightness level, use it unless the

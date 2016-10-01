@@ -592,7 +592,7 @@ TEST_F(InternalBacklightControllerTest, NoAmbientLightSensorMultipleDefaults) {
   EXPECT_EQ(PercentToLevel(35.0), backlight_.current_level());
 }
 
-TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
+TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   // Set the brightness to zero and check that it's increased to the
   // minimum visible level when the session state changes.
   Init(POWER_AC);
@@ -955,6 +955,34 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
 
   backlight_.set_clock(nullptr);
   display_power_setter_.set_clock(nullptr);
+}
+
+TEST_F(InternalBacklightControllerTest, ForcedOff) {
+  Init(POWER_AC);
+  ASSERT_GT(backlight_.current_level(), 0);
+
+  // When SetForcedOff() is called, both the backlight and display should turn
+  // off immediately.
+  controller_->SetForcedOff(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+
+  // While the display is still forced off, also turn it off for inactivity.
+  controller_->SetOffForInactivity(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+
+  // Stop forcing it off and check that it remains off due to inactivity.
+  controller_->SetForcedOff(false);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+
+  // When activity is seen, the backlight and display should be turned on again.
+  controller_->SetOffForInactivity(false);
+  EXPECT_GT(backlight_.current_level(), 0);
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 }
 
 }  // namespace policy

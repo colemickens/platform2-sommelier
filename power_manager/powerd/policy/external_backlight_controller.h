@@ -58,6 +58,8 @@ class ExternalBacklightController : public BacklightController,
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
   void SetDocked(bool docked) override;
+  void SetForcedOff(bool forced_off) override;
+  bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
   bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
   bool IncreaseUserBrightness() override;
@@ -84,18 +86,19 @@ class ExternalBacklightController : public BacklightController,
   // percent in the range [-100.0, 100.0].
   void AdjustBrightnessByPercent(double percent_offset);
 
-  system::DisplayWatcherInterface* display_watcher_;  // weak
-  system::DisplayPowerSetterInterface* display_power_setter_;  // weak
+  system::DisplayWatcherInterface* display_watcher_ = nullptr;  // weak
+  system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;  // weak
 
   base::ObserverList<BacklightControllerObserver> observers_;
 
-  bool dimmed_for_inactivity_;
-  bool off_for_inactivity_;
-  bool suspended_;
-  bool shutting_down_;
+  bool dimmed_for_inactivity_ = false;
+  bool off_for_inactivity_ = false;
+  bool suspended_ = false;
+  bool shutting_down_ = false;
+  bool forced_off_ = false;
 
   // Are the external displays currently turned off?
-  bool currently_off_;
+  bool currently_off_ = false;
 
   // Map from DRM device directories to ExternalDisplay objects for controlling
   // the corresponding displays.
@@ -105,7 +108,7 @@ class ExternalBacklightController : public BacklightController,
 
   // Number of times the user has requested that the brightness be changed in
   // the current session.
-  int num_brightness_adjustments_in_session_;
+  int num_brightness_adjustments_in_session_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklightController);
 };

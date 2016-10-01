@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -892,6 +893,10 @@ void Daemon::InitDBus() {
       {kSetIsProjectingMethod, &Daemon::HandleSetIsProjectingMethod},
       {kSetPolicyMethod, &Daemon::HandleSetPolicyMethod},
       {kSetPowerSourceMethod, &Daemon::HandleSetPowerSourceMethod},
+      {kSetBacklightsForcedOffMethod,
+       &Daemon::HandleSetBacklightsForcedOffMethod},
+      {kGetBacklightsForcedOffMethod,
+       &Daemon::HandleGetBacklightsForcedOffMethod},
       {kHandlePowerButtonAcknowledgmentMethod,
        &Daemon::HandlePowerButtonAcknowledgment},
   };
@@ -1370,6 +1375,33 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPowerSourceMethod(
         method_call, DBUS_ERROR_FAILED, "Couldn't set power source"));
   }
   return std::unique_ptr<dbus::Response>();
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleSetBacklightsForcedOffMethod(
+    dbus::MethodCall* method_call) {
+  bool force_off = false;
+  if (!dbus::MessageReader(method_call).PopBool(&force_off)) {
+    LOG(ERROR) << "Unable to read " << kSetBacklightsForcedOffMethod << " args";
+    return CreateInvalidArgsError(method_call, "Expected bool");
+  }
+  LOG(INFO) << "Received request to " << (force_off ? "start" : "stop")
+            << " forcing backlights off";
+  for (auto controller : all_backlight_controllers_)
+    controller->SetForcedOff(force_off);
+  return std::unique_ptr<dbus::Response>();
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleGetBacklightsForcedOffMethod(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+
+  // We can get the current state from any backlight controller.
+  bool forced_off = all_backlight_controllers_.empty()
+                        ? false
+                        : all_backlight_controllers_.front()->GetForcedOff();
+  dbus::MessageWriter(response.get()).AppendBool(forced_off);
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(

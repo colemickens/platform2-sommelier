@@ -133,5 +133,15 @@ TEST_F(ExternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 }
 
+TEST_F(ExternalBacklightControllerTest, ForcedOff) {
+  controller_.SetForcedOff(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+
+  controller_.SetForcedOff(false);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+}
+
 }  // namespace policy
 }  // namespace power_manager

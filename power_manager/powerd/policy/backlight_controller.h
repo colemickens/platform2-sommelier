@@ -103,6 +103,12 @@ class BacklightController {
   // connected while lid closed).
   virtual void SetDocked(bool docked) = 0;
 
+  // Forces the backlight off.
+  virtual void SetForcedOff(bool forced_off) = 0;
+
+  // Returns the state most recently passed to SetForcedOff.
+  virtual bool GetForcedOff() = 0;
+
   // Gets the brightness that the backlight currently using or
   // transitioning to, in the range [0.0, 100.0].
   virtual bool GetBrightnessPercent(double* percent) = 0;

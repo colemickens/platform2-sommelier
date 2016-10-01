@@ -90,6 +90,8 @@ class KeyboardBacklightController
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
   void SetDocked(bool docked) override;
+  void SetForcedOff(bool forced_off) override;
+  bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
   bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
   bool IncreaseUserBrightness() override;
@@ -145,13 +147,13 @@ class KeyboardBacklightController
   mutable std::unique_ptr<Clock> clock_;
 
   // Backlight used for dimming. Weak pointer.
-  system::BacklightInterface* backlight_;
+  system::BacklightInterface* backlight_ = nullptr;
 
   // Interface for saving preferences. Weak pointer.
-  PrefsInterface* prefs_;
+  PrefsInterface* prefs_ = nullptr;
 
   // Controller responsible for the display's brightness. Weak pointer.
-  BacklightController* display_backlight_controller_;
+  BacklightController* display_backlight_controller_ = nullptr;
 
   // May be NULL if no ambient light sensor is present.
   std::unique_ptr<AmbientLightHandler> ambient_light_handler_;
@@ -161,36 +163,37 @@ class KeyboardBacklightController
 
   // True if the system is capable of detecting whether the user's hands are
   // hovering over the touchpad.
-  bool supports_hover_;
+  bool supports_hover_ = false;
 
   // True if the keyboard should be turned on for user activity but kept off
   // otherwise. This has no effect if |supports_hover_| is set.
-  bool turn_on_for_user_activity_;
+  bool turn_on_for_user_activity_ = false;
 
-  SessionState session_state_;
-  TabletMode tablet_mode_;
+  SessionState session_state_ = SESSION_STOPPED;
+  TabletMode tablet_mode_ = TABLET_MODE_OFF;
 
-  bool dimmed_for_inactivity_;
-  bool off_for_inactivity_;
-  bool suspended_;
-  bool shutting_down_;
-  bool docked_;
-  bool hovering_;
+  bool dimmed_for_inactivity_ = false;
+  bool off_for_inactivity_ = false;
+  bool suspended_ = false;
+  bool shutting_down_ = false;
+  bool docked_ = false;
+  bool forced_off_ = false;
+  bool hovering_ = false;
 
   // Is a fullscreen video currently being played?
-  bool fullscreen_video_playing_;
+  bool fullscreen_video_playing_ = false;
 
   // Maximum brightness level exposed by the backlight driver.
   // 0 is always the minimum.
-  int64_t max_level_;
+  int64_t max_level_ = 0;
 
   // Current level that |backlight_| is set to (or possibly in the process
   // of transitioning to).
-  int64_t current_level_;
+  int64_t current_level_ = 0;
 
   // Current brightness step within |user_steps_| set by user, or -1 if
   // |automated_percent_| should be used.
-  ssize_t user_step_index_;
+  ssize_t user_step_index_ = -1;
 
   // Set of percentages that the user can select from for setting the
   // brightness. This is populated from a preference.
@@ -200,7 +203,7 @@ class KeyboardBacklightController
   // light sensor is controlling the brightness. This is set by
   // |ambient_light_handler_|. If no ambient light sensor is present, it is
   // initialized from kKeyboardBacklightNoAlsBrightnessPref.
-  double automated_percent_;
+  double automated_percent_ = 100.0;
 
   // Time at which the user's hands stopped hovering over the touchpad. Unset if
   // |hovering_| is true or |supports_hover_| is false.
@@ -229,12 +232,12 @@ class KeyboardBacklightController
   base::OneShotTimer log_hover_off_timer_;
 
   // Counters for stat tracking.
-  int num_als_adjustments_;
-  int num_user_adjustments_;
+  int num_als_adjustments_ = 0;
+  int num_user_adjustments_ = 0;
 
   // Did |display_backlight_controller_| indicate that the display
   // backlight brightness is currently zero?
-  bool display_brightness_is_zero_;
+  bool display_brightness_is_zero_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(KeyboardBacklightController);
 };

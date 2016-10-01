@@ -54,6 +54,7 @@ class BacklightControllerStub : public policy::BacklightController {
   bool suspended() const { return suspended_; }
   bool shutting_down() const { return shutting_down_; }
   bool docked() const { return docked_; }
+  bool forced_off() const { return forced_off_; }
   double user_brightness_percent() const { return user_brightness_percent_; }
   int num_user_brightness_increases() const {
     return num_user_brightness_increases_;
@@ -90,6 +91,8 @@ class BacklightControllerStub : public policy::BacklightController {
   void SetSuspended(bool suspended) override;
   void SetShuttingDown(bool shutting_down) override;
   void SetDocked(bool docked) override;
+  void SetForcedOff(bool forced_off) override;
+  bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
   bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
   bool IncreaseUserBrightness() override;
@@ -103,32 +106,33 @@ class BacklightControllerStub : public policy::BacklightController {
   base::ObserverList<BacklightControllerObserver> observers_;
 
   // Percent to be returned by GetBrightnessPercent().
-  double percent_;
+  double percent_ = 100.0;
 
   std::vector<PowerSource> power_source_changes_;
   std::vector<DisplayMode> display_mode_changes_;
   std::vector<SessionState> session_state_changes_;
-  int power_button_presses_;
+  int power_button_presses_ = 0;
   std::vector<UserActivityType> user_activity_reports_;
   std::vector<bool> video_activity_reports_;
   std::vector<bool> hover_state_changes_;
   std::vector<TabletMode> tablet_mode_changes_;
   std::vector<PowerManagementPolicy> policy_changes_;
-  int chrome_starts_;
+  int chrome_starts_ = 0;
 
-  bool dimmed_;
-  bool off_;
-  bool suspended_;
-  bool shutting_down_;
-  bool docked_;
+  bool dimmed_ = false;
+  bool off_ = false;
+  bool suspended_ = false;
+  bool shutting_down_ = false;
+  bool docked_ = false;
+  bool forced_off_ = false;
 
-  double user_brightness_percent_;
-  int num_user_brightness_increases_;
-  int num_user_brightness_decreases_;
+  double user_brightness_percent_ = 0.0;
+  int num_user_brightness_increases_ = 0;
+  int num_user_brightness_decreases_ = 0;
 
   // Counts to be returned by GetNum*Adjustments().
-  int num_als_adjustments_;
-  int num_user_adjustments_;
+  int num_als_adjustments_ = 0;
+  int num_user_adjustments_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(BacklightControllerStub);
 };

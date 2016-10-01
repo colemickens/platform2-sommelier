@@ -688,5 +688,19 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenInTabletMode) {
             backlight_.current_interval().InMilliseconds());
 }
 
+TEST_F(KeyboardBacklightControllerTest, ForcedOff) {
+  initial_backlight_level_ = 50;
+  Init();
+  ASSERT_GT(backlight_.current_level(), 0);
+
+  controller_.SetForcedOff(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+
+  controller_.SetForcedOff(false);
+  EXPECT_GT(backlight_.current_level(), 0);
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+}
+
 }  // namespace policy
 }  // namespace power_manager

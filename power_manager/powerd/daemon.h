@@ -235,6 +235,10 @@ class Daemon : public policy::BacklightControllerObserver,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleSetPowerSourceMethod(
       dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleSetBacklightsForcedOffMethod(
+      dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleGetBacklightsForcedOffMethod(
+      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandlePowerButtonAcknowledgment(
       dbus::MethodCall* method_call);
 

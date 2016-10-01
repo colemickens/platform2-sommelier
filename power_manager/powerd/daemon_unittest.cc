@@ -7,6 +7,7 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -575,6 +576,40 @@ TEST_F(DaemonTest, ChangeBacklightBrightness) {
                                      kDecreaseKeyboardBrightnessMethod);
   ASSERT_TRUE(CallSyncDBusMethod(&decrease_key_call).get());
   EXPECT_EQ(1, keyboard_backlight_controller_->num_user_brightness_decreases());
+}
+
+TEST_F(DaemonTest, ForceBacklightsOff) {
+  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
+  Init();
+
+  // Tell Daemon to force the backlights off.
+  dbus::MethodCall set_off_call(kPowerManagerInterface,
+                                kSetBacklightsForcedOffMethod);
+  dbus::MessageWriter(&set_off_call).AppendBool(true);
+  ASSERT_TRUE(CallSyncDBusMethod(&set_off_call).get());
+  EXPECT_TRUE(internal_backlight_controller_->forced_off());
+  EXPECT_TRUE(keyboard_backlight_controller_->forced_off());
+
+  dbus::MethodCall get_call(kPowerManagerInterface,
+                            kGetBacklightsForcedOffMethod);
+  auto response = CallSyncDBusMethod(&get_call);
+  ASSERT_TRUE(response.get());
+  bool forced_off = false;
+  ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&forced_off));
+  EXPECT_TRUE(forced_off);
+
+  // Now stop forcing them off.
+  dbus::MethodCall set_on_call(kPowerManagerInterface,
+                               kSetBacklightsForcedOffMethod);
+  dbus::MessageWriter(&set_on_call).AppendBool(false);
+  ASSERT_TRUE(CallSyncDBusMethod(&set_on_call).get());
+  EXPECT_FALSE(internal_backlight_controller_->forced_off());
+  EXPECT_FALSE(keyboard_backlight_controller_->forced_off());
+
+  response = CallSyncDBusMethod(&get_call);
+  ASSERT_TRUE(response.get());
+  ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&forced_off));
+  EXPECT_FALSE(forced_off);
 }
 
 TEST_F(DaemonTest, EmitDBusSignalForBrightnessChange) {
