@@ -16,8 +16,9 @@
 
 #include "shill/crypto_provider.h"
 
-#include <memory>
+#include <utility>
 
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 
 #include "shill/crypto_des_cbc.h"
@@ -39,13 +40,13 @@ void CryptoProvider::Init() {
   // Register the crypto modules in priority order -- highest priority first.
   std::unique_ptr<CryptoDESCBC> des_cbc(new CryptoDESCBC());
   if (des_cbc->LoadKeyMatter(key_matter_file_)) {
-    cryptos_.push_back(des_cbc.release());
+    cryptos_.push_back(std::move(des_cbc));
   }
-  cryptos_.push_back(new CryptoROT47());
+  cryptos_.push_back(base::MakeUnique<CryptoROT47>());
 }
 
 string CryptoProvider::Encrypt(const string& plaintext) {
-  for (auto crypto : cryptos_) {
+  for (auto& crypto : cryptos_) {
     string ciphertext;
     if (crypto->Encrypt(plaintext, &ciphertext)) {
       const string prefix = crypto->GetID() + ":";
@@ -57,7 +58,7 @@ string CryptoProvider::Encrypt(const string& plaintext) {
 }
 
 string CryptoProvider::Decrypt(const string& ciphertext) {
-  for (auto crypto : cryptos_) {
+  for (auto& crypto : cryptos_) {
     const string prefix = crypto->GetID() + ":";
     if (base::StartsWith(ciphertext, prefix, base::CompareCase::SENSITIVE)) {
       string to_decrypt = ciphertext;

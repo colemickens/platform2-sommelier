@@ -17,10 +17,11 @@
 #ifndef SHILL_CRYPTO_PROVIDER_H_
 #define SHILL_CRYPTO_PROVIDER_H_
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
-#include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/crypto_interface.h"
@@ -50,12 +51,11 @@ class CryptoProvider {
  private:
   FRIEND_TEST(CryptoProviderTest, Init);
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
-  typedef ScopedVector<CryptoInterface> Cryptos;
 
   static const char kKeyMatterFile[];
 
   // Registered crypto modules in high to low priority order.
-  Cryptos cryptos_;
+  std::vector<std::unique_ptr<CryptoInterface>> cryptos_;
 
   base::FilePath key_matter_file_;
 
