@@ -21,8 +21,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
-#include <base/memory/scoped_vector.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
@@ -1142,7 +1142,8 @@ class Metrics {
   FRIEND_TEST(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume);
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
-  typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
+  typedef std::vector<std::unique_ptr<chromeos_metrics::TimerReporter>>
+      TimerReporters;
   typedef std::list<chromeos_metrics::TimerReporter*> TimerReportersList;
   typedef std::map<Service::ConnectState, TimerReportersList>
       TimerReportersByState;

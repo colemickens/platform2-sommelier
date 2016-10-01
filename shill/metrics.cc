@@ -16,6 +16,7 @@
 
 #include "shill/metrics.h"
 
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
@@ -689,14 +690,12 @@ void Metrics::AddServiceStateTransitionTimer(
   }
   ServiceMetrics* service_metrics = it->second.get();
   CHECK(start_state < stop_state);
-  chromeos_metrics::TimerReporter* timer =
-      new chromeos_metrics::TimerReporter(histogram_name,
-                                          kTimerHistogramMillisecondsMin,
-                                          kTimerHistogramMillisecondsMax,
-                                          kTimerHistogramNumBuckets);
-  service_metrics->timers.push_back(timer);  // passes ownership.
-  service_metrics->start_on_state[start_state].push_back(timer);
-  service_metrics->stop_on_state[stop_state].push_back(timer);
+  auto timer = base::MakeUnique<chromeos_metrics::TimerReporter>(
+      histogram_name, kTimerHistogramMillisecondsMin,
+      kTimerHistogramMillisecondsMax, kTimerHistogramNumBuckets);
+  service_metrics->start_on_state[start_state].push_back(timer.get());
+  service_metrics->stop_on_state[stop_state].push_back(timer.get());
+  service_metrics->timers.push_back(std::move(timer));
 }
 
 void Metrics::NotifyDefaultServiceChanged(const Service* service) {
