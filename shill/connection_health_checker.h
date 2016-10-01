@@ -24,7 +24,6 @@
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
-#include <base/memory/scoped_vector.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
@@ -171,7 +170,7 @@ class ConnectionHealthChecker {
   // request is made on the device.
   static const int kTCPStateUpdateWaitMilliseconds;
 
-  // Callback for DnsClient
+  // Callback for DNSClient
   void GetDNSResult(const Error& error, const IPAddress& ip);
   void GarbageCollectDNSClients();
 
@@ -211,7 +210,7 @@ class ConnectionHealthChecker {
   std::unique_ptr<SocketInfoReader> socket_info_reader_;
 
   DNSClientFactory* dns_client_factory_;
-  ScopedVector<DNSClient> dns_clients_;
+  std::vector<std::unique_ptr<DNSClient>> dns_clients_;
   const base::Callback<void(const Error&, const IPAddress&)>
       dns_client_callback_;
 

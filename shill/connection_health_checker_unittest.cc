@@ -20,12 +20,13 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
-#include <base/memory/scoped_vector.h>
+#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_async_connection.h"
@@ -164,7 +165,7 @@ class ConnectionHealthCheckerTest : public Test {
   const AsyncConnection* tcp_connection() {
     return health_checker_->tcp_connection_.get();
   }
-  ScopedVector<DNSClient>& dns_clients() {
+  std::vector<std::unique_ptr<DNSClient>>& dns_clients() {
     return health_checker_->dns_clients_;
   }
   int NumDNSQueries() {
@@ -360,20 +361,17 @@ TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
   EXPECT_TRUE(dns_clients().empty());
 
   for (int i = 0; i < 3; ++i) {
-    MockDNSClient* dns_client = new MockDNSClient();
+    auto dns_client = base::MakeUnique<MockDNSClient>();
     EXPECT_CALL(*dns_client, IsActive())
         .WillOnce(Return(true))
         .WillOnce(Return(true))
         .WillOnce(Return(false));
-    // Takes ownership.
-    dns_clients().push_back(dns_client);
+    dns_clients().push_back(std::move(dns_client));
   }
   for (int i = 0; i < 2; ++i) {
-    MockDNSClient* dns_client = new MockDNSClient();
-    EXPECT_CALL(*dns_client, IsActive())
-        .WillOnce(Return(false));
-    // Takes ownership.
-    dns_clients().push_back(dns_client);
+    auto dns_client = base::MakeUnique<MockDNSClient>();
+    EXPECT_CALL(*dns_client, IsActive()).WillOnce(Return(false));
+    dns_clients().push_back(std::move(dns_client));
   }
 
   EXPECT_EQ(5, dns_clients().size());

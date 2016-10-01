@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <time.h>
 
+#include <algorithm>
 #include <vector>
 
 #include <base/bind.h>
@@ -149,14 +150,11 @@ void ConnectionHealthChecker::AddRemoteURL(const string& url_string) {
   }
   for (int i = 0; i < kNumDNSQueries; ++i) {
     Error error;
-    DNSClient* dns_client =
-      dns_client_factory_->CreateDNSClient(IPAddress::kFamilyIPv4,
-                                           connection_->interface_name(),
-                                           connection_->dns_servers(),
-                                           kDNSTimeoutMilliseconds,
-                                           dispatcher_,
-                                           dns_client_callback_);
-    dns_clients_.push_back(dns_client);
+    std::unique_ptr<DNSClient> dns_client(dns_client_factory_->CreateDNSClient(
+        IPAddress::kFamilyIPv4, connection_->interface_name(),
+        connection_->dns_servers(), kDNSTimeoutMilliseconds, dispatcher_,
+        dns_client_callback_));
+    dns_clients_.push_back(std::move(dns_client));
     if (!dns_clients_[i]->Start(url.host(), &error)) {
       SLOG(connection_.get(), 2) << __func__ << ": Failed to start DNS client "
                                  << "(query #" << i << "): "
@@ -247,17 +245,12 @@ void ConnectionHealthChecker::GetDNSResult(const Error& error,
 }
 
 void ConnectionHealthChecker::GarbageCollectDNSClients() {
-  ScopedVector<DNSClient> keep;
-  ScopedVector<DNSClient> discard;
-  for (size_t i = 0; i < dns_clients_.size(); ++i) {
-    if (dns_clients_[i]->IsActive())
-      keep.push_back(dns_clients_[i]);
-    else
-      discard.push_back(dns_clients_[i]);
-  }
-  dns_clients_.weak_clear();
-  dns_clients_ = std::move(keep);
-  discard.clear();
+  dns_clients_.erase(
+      std::remove_if(dns_clients_.begin(), dns_clients_.end(),
+                     [](const std::unique_ptr<DNSClient>& dns_client) {
+                       return !dns_client->IsActive();
+                     }),
+      dns_clients_.end());
 }
 
 void ConnectionHealthChecker::NextHealthCheckSample() {
