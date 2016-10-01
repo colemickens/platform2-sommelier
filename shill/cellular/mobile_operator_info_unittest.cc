@@ -18,12 +18,15 @@
 
 #include <fstream>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/macros.h>
+#include <base/memory/ptr_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -1101,7 +1104,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     EXPECT_EQ(apn_list_.size(), operator_info_->apn_list().size());
     map<string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
     for (const auto& apn_node : operator_info_->apn_list()) {
-      mobile_apns[apn_node->apn] = apn_node;
+      mobile_apns[apn_node->apn] = apn_node.get();
     }
     for (const auto& apn_lhs : apn_list_) {
       ASSERT_TRUE(mobile_apns.find(apn_lhs->apn) != mobile_apns.end());
@@ -1179,13 +1182,12 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_.push_back({"name200002", ""});
 
     apn_list_.clear();
-    MobileOperatorInfo::MobileAPN* apn;
-    apn = new MobileOperatorInfo::MobileAPN();
+    auto apn = base::MakeUnique<MobileOperatorInfo::MobileAPN>();
     apn->apn = "test@test.com";
     apn->username = "testuser";
     apn->password = "is_public_boohoohoo";
     apn->operator_name_list.push_back({"name200003", "hi"});
-    apn_list_.push_back(apn);  // Takes ownership.
+    apn_list_.push_back(std::move(apn));
 
     olp_list_.clear();
     olp_list_.push_back({"some@random.com", "POST", "random_data"});
@@ -1212,12 +1214,11 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_.push_back({"name200102", ""});
 
     apn_list_.clear();
-    MobileOperatorInfo::MobileAPN* apn;
-    apn = new MobileOperatorInfo::MobileAPN();
+    auto apn = base::MakeUnique<MobileOperatorInfo::MobileAPN>();
     apn->apn = "test2@test.com";
     apn->username = "testuser2";
     apn->password = "is_public_boohoohoo_too";
-    apn_list_.push_back(apn);  // Takes ownership.
+    apn_list_.push_back(std::move(apn));
 
     olp_list_.clear();
     olp_list_.push_back({"someother@random.com", "GET", ""});
@@ -1232,7 +1233,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   string activation_code_;
   vector<string> mccmnc_list_;
   vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
-  ScopedVector<MobileOperatorInfo::MobileAPN> apn_list_;
+  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list_;
   vector<MobileOperatorInfo::OnlinePortal> olp_list_;
   vector<string> sid_list_;
 

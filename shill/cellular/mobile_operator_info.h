@@ -22,7 +22,6 @@
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/memory/scoped_vector.h>
 
 namespace shill {
 
@@ -180,7 +179,7 @@ class MobileOperatorInfo {
   // All localized names associated with this carrier entry.
   const std::vector<LocalizedName>& operator_name_list() const;
   // All access point names associated with this carrier entry.
-  const ScopedVector<MobileAPN>& apn_list() const;
+  const std::vector<std::unique_ptr<MobileAPN>>& apn_list() const;
   // All Online Payment Portal URLs associated with this carrier entry. There
   // are usually multiple OLPs based on access technology and it is up to the
   // application to use the appropriate one.

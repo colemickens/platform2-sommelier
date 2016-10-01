@@ -23,6 +23,7 @@
 #include <map>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <google/protobuf/repeated_field.h>
 
@@ -203,7 +204,7 @@ MobileOperatorInfoImpl::operator_name_list() const {
   return operator_name_list_;
 }
 
-const ScopedVector<MobileOperatorInfo::MobileAPN> &
+const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
 MobileOperatorInfoImpl::apn_list() const {
   return apn_list_;
 }
@@ -818,7 +819,7 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
   if (data.mobile_apn_size() > 0) {
     apn_list_.clear();
     for (const auto& apn_data : data.mobile_apn()) {
-      auto* apn = new MobileOperatorInfo::MobileAPN();
+      auto apn = base::MakeUnique<MobileOperatorInfo::MobileAPN>();
       apn->apn = apn_data.apn();
       apn->username = apn_data.username();
       apn->password = apn_data.password();
@@ -826,9 +827,7 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
         apn->operator_name_list.push_back({localized_name.name(),
                                            localized_name.language()});
       }
-
-      // Takes ownership.
-      apn_list_.push_back(apn);
+      apn_list_.push_back(std::move(apn));
     }
   }
 

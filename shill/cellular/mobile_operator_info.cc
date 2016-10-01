@@ -168,7 +168,7 @@ MobileOperatorInfo::operator_name_list() const {
   return result;
 }
 
-const ScopedVector<MobileOperatorInfo::MobileAPN> &
+const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
 MobileOperatorInfo::apn_list() const {
   const auto& result = impl_->apn_list();
   if (SLOG_IS_ON(Cellular, 3)) {

@@ -24,7 +24,6 @@
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_util.h>
-#include <base/memory/scoped_vector.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 
@@ -65,7 +64,8 @@ class MobileOperatorInfoImpl {
   const std::vector<std::string>& sid_list() const;
   const std::vector<MobileOperatorInfo::LocalizedName>
       &operator_name_list() const;
-  const ScopedVector<MobileOperatorInfo::MobileAPN>& apn_list() const;
+  const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>& apn_list()
+      const;
   const std::vector<MobileOperatorInfo::OnlinePortal>& olp_list() const;
   const std::string& activation_code() const;
   bool requires_roaming() const;
@@ -201,7 +201,7 @@ class MobileOperatorInfoImpl {
   std::vector<std::string> mccmnc_list_;
   std::vector<std::string> sid_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
-  ScopedVector<MobileOperatorInfo::MobileAPN> apn_list_;
+  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
   std::string activation_code_;

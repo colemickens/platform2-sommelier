@@ -1479,11 +1479,8 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   }
   set_home_provider(home_provider);
 
-  const ScopedVector<MobileOperatorInfo::MobileAPN>& apn_list =
-      operator_info->apn_list();
   Stringmaps apn_list_dict;
-
-  for (const auto& mobile_apn : apn_list) {
+  for (const auto& mobile_apn : operator_info->apn_list()) {
     Stringmap props;
     if (!mobile_apn->apn.empty()) {
       props[kApnProperty] = mobile_apn->apn;
