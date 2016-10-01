@@ -16,6 +16,7 @@
 
 #include "shill/cellular/modem_info.h"
 
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 
@@ -69,13 +70,10 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
   EXPECT_CALL(control_interface_,
               CreateModemManagerProxy(_, _, kService, _, _))
       .WillOnce(Return(new MockModemManagerProxy()));
-  modem_info_.RegisterModemManager(
-      new ModemManagerClassic(&control_interface_,
-                              kService,
-                              "/dbus/service/path",
-                              &modem_info_));
+  modem_info_.RegisterModemManager(base::MakeUnique<ModemManagerClassic>(
+      &control_interface_, kService, "/dbus/service/path", &modem_info_));
   ASSERT_EQ(1, modem_info_.modem_managers_.size());
-  ModemManager* manager = modem_info_.modem_managers_[0];
+  ModemManager* manager = modem_info_.modem_managers_[0].get();
   EXPECT_EQ(kService, manager->service_);
   EXPECT_EQ(&modem_info_, manager->modem_info_);
 }

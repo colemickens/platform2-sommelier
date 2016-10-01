@@ -19,8 +19,9 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
-#include <base/memory/scoped_vector.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
@@ -76,12 +77,10 @@ class ModemInfo {
   FRIEND_TEST(ModemInfoTest, RegisterModemManager);
   FRIEND_TEST(ModemInfoTest, StartStop);
 
-  typedef ScopedVector<ModemManager> ModemManagers;
+  // Registers and starts |manager|.
+  void RegisterModemManager(std::unique_ptr<ModemManager> manager);
 
-  // Registers and starts |manager|. Takes ownership of |manager|.
-  void RegisterModemManager(ModemManager* manager);
-  ModemManagers modem_managers_;
-
+  std::vector<std::unique_ptr<ModemManager>> modem_managers_;
   ControlInterface* control_interface_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;

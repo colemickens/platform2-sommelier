@@ -16,7 +16,10 @@
 
 #include "shill/cellular/modem_info.h"
 
+#include <utility>
+
 #include <base/files/file_path.h>
+#include <base/memory/ptr_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -50,15 +53,12 @@ void ModemInfo::Start() {
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->storage_path());
 
-  RegisterModemManager(new ModemManagerClassic(control_interface_,
-                                               cromo::kCromoServiceName,
-                                               cromo::kCromoServicePath,
-                                               this));
-  RegisterModemManager(
-      new ModemManager1(control_interface_,
-                        modemmanager::kModemManager1ServiceName,
-                        modemmanager::kModemManager1ServicePath,
-                        this));
+  RegisterModemManager(base::MakeUnique<ModemManagerClassic>(
+      control_interface_, cromo::kCromoServiceName, cromo::kCromoServicePath,
+      this));
+  RegisterModemManager(base::MakeUnique<ModemManager1>(
+      control_interface_, modemmanager::kModemManager1ServiceName,
+      modemmanager::kModemManager1ServicePath, this));
 }
 
 void ModemInfo::Stop() {
@@ -77,9 +77,9 @@ void ModemInfo::set_pending_activation_store(
   pending_activation_store_.reset(pending_activation_store);
 }
 
-void ModemInfo::RegisterModemManager(ModemManager* manager) {
-  modem_managers_.push_back(manager);  // Passes ownership.
-  manager->Start();
+void ModemInfo::RegisterModemManager(std::unique_ptr<ModemManager> manager) {
+  modem_managers_.push_back(std::move(manager));
+  modem_managers_.back()->Start();
 }
 
 }  // namespace shill
