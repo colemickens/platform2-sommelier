@@ -41,5 +41,21 @@
         'org.chromium.PermissionBroker.h',
       ],
     },
+    {
+      'target_name': 'device_jail',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'fuse',
+          'libbrillo-<(libbase_ver)',
+        ],
+      },
+      'dependencies': [
+        'permission-broker-proxy',
+      ],
+      'sources': [
+        'device_jail.cc',
+      ],
+    },
   ],
 }
