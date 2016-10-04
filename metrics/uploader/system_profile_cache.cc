@@ -73,10 +73,13 @@ bool SystemProfileCache::Initialize() {
       !base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_BOARD", &board) ||
       !base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_BUILD_TYPE",
                                          &build_type) ||
-      !GetChromeOSVersion(&chromeos_version) ||
-      !GetHardwareId(&profile_.hardware_class)) {
+      !GetChromeOSVersion(&chromeos_version)) {
     DLOG(ERROR) << "failing to initialize profile cache";
     return false;
+  }
+
+  if (!GetHardwareId(&profile_.hardware_class)) {
+    profile_.hardware_class.clear();
   }
 
   std::string channel_string;
