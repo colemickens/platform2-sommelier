@@ -49,8 +49,15 @@ get_device_list ()
 get_phy_info ()
 {
   local device="${1}"
-  iw dev "${device}" info 2>/dev/null |
-      awk '/^\ttype/ { print $2 }; /^\twiphy/ { print $2 };'
+  local info
+
+  # We run it directly at first so we can return an error when it's not a WiFi
+  # interface.  Otherwise we mishandle wired devices.
+  if ! info=$(iw dev "${device}" info 2>/dev/null); then
+    return 1
+  fi
+
+  echo "${info}" | awk '/^\ttype/ { print $2 }; /^\twiphy/ { print $2 };'
 }
 
 
