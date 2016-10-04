@@ -29,7 +29,8 @@ Environment=VMODULE_ARG=
 
 ExecStartPre=/bin/sh -u /usr/share/cros/init/powerd-pre-start.sh
 
-ExecStart=/sbin/minijail0 -u power -g power -G --  \
+ExecStart=/sbin/minijail0 -u power -g power -G -i  \
+  --                                               \
   /usr/bin/powerd                                  \
     --prefs_dir="${PREFS_DIR}"                     \
     --default_prefs_dir="${DEFAULT_PREFS_DIR}"     \
