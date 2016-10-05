@@ -15,6 +15,7 @@ extern const char kContainerShutdownFail[];
 extern const char kEmitFailed[];
 extern const char kInitMachineInfoFail[];
 extern const char kInvalidAccount[];
+extern const char kLowFreeDisk[];
 extern const char kNoOwnerKey[];
 extern const char kNoUserNssDb[];
 extern const char kNotAvailable[];

@@ -28,6 +28,7 @@ class MockSystemUtils : public SystemUtilsImpl {
   MOCK_METHOD0(GetDevModeState, DevModeState(void));
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,
                                         base::TimeDelta timeout));
+  MOCK_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath& path));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);

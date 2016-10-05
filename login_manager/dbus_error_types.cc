@@ -15,6 +15,7 @@ const char kContainerShutdownFail[] = INTERFACE ".ContainerShutdownFail";
 const char kEmitFailed[] = INTERFACE ".EmitFailed";
 const char kInitMachineInfoFail[] = INTERFACE ".InitMachineInfoFail";
 const char kInvalidAccount[] = INTERFACE ".InvalidAccount";
+const char kLowFreeDisk[] = INTERFACE ".LowFreeDisk";
 const char kNoOwnerKey[] = INTERFACE ".NoOwnerKey";
 const char kNoUserNssDb[] = INTERFACE ".NoUserNssDb";
 const char kNotAvailable[] = INTERFACE ".NotAvailable";

@@ -25,6 +25,7 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/string_util.h>
+#include <base/sys_info.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
 #include <chromeos/dbus/service_constants.h>
@@ -244,6 +245,10 @@ bool SystemUtilsImpl::IsDirectoryEmpty(const base::FilePath& dir) {
   const base::FilePath dir_in_base_dir = PutInsideBaseDir(dir);
   return !base::DirectoryExists(dir_in_base_dir) ||
       base::IsDirectoryEmpty(dir_in_base_dir);
+}
+
+int64_t SystemUtilsImpl::AmountOfFreeDiskSpace(const base::FilePath& path) {
+  return base::SysInfo::AmountOfFreeDiskSpace(path);
 }
 
 base::FilePath SystemUtilsImpl::PutInsideBaseDirForTesting(

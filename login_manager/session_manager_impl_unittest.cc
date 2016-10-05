@@ -873,6 +873,10 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("foo"), "test"));
 
+  // 10 GB Free Disk Space.
+  EXPECT_CALL(
+      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
+
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(
@@ -921,14 +925,32 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
 #if USE_CHEETS
+  // 10 GB Free Disk Space.
+  EXPECT_CALL(
+      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
+#endif
+}
+
+TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
+#if USE_CHEETS
+  ExpectAndRunStartSession(kSaneEmail);
+
+  // No free disk space.
+  EXPECT_CALL(utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(0));
+  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  EXPECT_EQ(dbus_error::kLowFreeDisk, error_.name());
 #endif
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
 #if USE_CHEETS
   ExpectAndRunStartSession(kSaneEmail);
+
+  // 10 GB Free Disk Space.
+  EXPECT_CALL(
+      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
 
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -1089,6 +1111,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
+  // 10 GB Free Disk Space.
+  EXPECT_CALL(
+      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
   EXPECT_CALL(
       utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
@@ -1104,6 +1129,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("bar"), "test2"));
+  // 10 GB Free Disk Space.
+  EXPECT_CALL(
+      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
   EXPECT_CALL(
       utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, false, &error_);

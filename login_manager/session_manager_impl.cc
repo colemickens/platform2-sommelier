@@ -100,6 +100,13 @@ const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
     FILE_PATH_LITERAL("/var/lib/device_local_accounts");
 
+#if USE_CHEETS
+// To launch ARC, certain amount of free disk space is needed.
+// Path and the amount for the check.
+constexpr base::FilePath::CharType kArcDiskCheckPath[] = "/home";
+constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
+#endif
+
 // SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
 // minimum amount of time we must wait before killing the containers.
 constexpr int kContainerTimeoutSec = 1;
@@ -607,6 +614,16 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
                                           Error* error) {
 #if USE_CHEETS
   arc_start_time_ = base::TimeTicks::Now();
+
+  // To boot ARC instance, certain amount of disk space is needed under the
+  // home. We first check it.
+  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath))
+          < kArcCriticalDiskFreeBytes) {
+    static const char msg[] = "Low free disk under /home";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kLowFreeDisk, msg);
+    return;
+  }
 
   std::string actual_account_id;
   if (!NormalizeAccountId(account_id, &actual_account_id, error)) {

@@ -105,6 +105,10 @@ class SystemUtils {
   virtual bool AtomicFileWrite(const base::FilePath& filename,
                                const std::string& data) = 0;
 
+  // Returns the amount of free disk space in bytes for the filesystem
+  // containing |path|.
+  virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };

@@ -54,6 +54,7 @@ class SystemUtilsImpl : public SystemUtils {
                  const base::FilePath& target) override;
   bool AtomicFileWrite(const base::FilePath& filename,
                        const std::string& data) override;
+  int64_t AmountOfFreeDiskSpace(const base::FilePath& path) override;
 
   void set_base_dir_for_testing(const base::FilePath& base_dir) {
     CHECK(!base_dir.empty());
