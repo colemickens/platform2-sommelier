@@ -9,6 +9,7 @@
 #include <base/strings/stringprintf.h>
 
 using base::FilePath;
+using base::StringPiece;
 using base::StringPrintf;
 
 namespace {
@@ -85,7 +86,11 @@ bool ECCollector::Collect() {
       return true;
     }
 
+    std::string signature = StringPrintf("%s-%08X", kECExecName,
+                                         HashString(StringPiece(data, len)));
+
     /* TODO(drinkcat): Figure out a way to add EC version to metadata. */
+    AddCrashMetaData("sig", signature);
     WriteCrashMetaData(
         root_crash_directory.Append(
             StringPrintf("%s.meta", dump_basename.c_str())),
