@@ -61,12 +61,12 @@ find_current_locale() {
   echo "${locale}"
 }
 
-# Determine the right console. On Freon systems, the default TTY (/dev/tty1) may
+# Determine the right console. On Freon systems, the default VT (/run/frecon/vt0) may
 # not exist until we've invoked Frecon (via display_boot_message) and would
 # cause problems when we try to write then read (for example, warn_dev).  To
 # prevent that, fall back to /dev/null if not available.
 setup_tty() {
-  TTY=/dev/tty1
+  [ -x /sbin/frecon ] && TTY=/run/frecon/vt0 || TTY=/dev/tty1
   [ -e "${TTY}" ] || TTY=/dev/null
 }
 

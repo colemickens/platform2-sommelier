@@ -15,7 +15,7 @@ set -x
 
 # Log file to store the output of this run.
 CLOBBER_STATE_LOG="/tmp/clobber-state.log"
-: ${TTY=/dev/tty1}
+: [ -x /sbin/frecon ] && ${TTY=/run/frecon/vt0} || ${TTY=/dev/tty1}
 
 # Run "clobber-state fast" to clobber the state quickly but unsecurely.
 FACTORY_WIPE=$(echo "$@" | grep -sqw factory && echo "factory")
