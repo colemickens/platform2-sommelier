@@ -59,6 +59,7 @@ void PrintUsage() {
   puts("  --stress_test - Runs some basic stress tests.");
   puts("  --read_pcr --index=<N> - Reads a PCR and prints the value.");
   puts("  --extend_pcr --index=<N> --value=<value> - Extends a PCR.");
+  puts("  --tpm_version - Prints TPM versions and IDs similar to tpm_version.");
 }
 
 std::string HexEncode(const std::string& bytes) {
@@ -156,6 +157,75 @@ int ExtendPCR(const TrunksFactory& factory,
     LOG(ERROR) << "ExtendPCR: " << trunks::GetErrorString(result);
     return result;
   }
+  return 0;
+}
+
+char* TpmPropertyToStr(uint32_t value) {
+  static char str[5];
+  char c;
+  int i = 0;
+  int shift = 24;
+  for( ; i < 4; i++, shift -= 8) {
+    c = static_cast<char>((value >> shift) & 0xFF);
+    if (c == 0)
+      break;
+    str[i] = (c >= 32 && c < 127) ? c : ' ';
+  }
+  str[i] = 0;
+  return str;
+}
+
+int TpmVersion(const TrunksFactory& factory) {
+  std::unique_ptr<trunks::TpmState> state = factory.GetTpmState();
+  trunks::TPM_RC result = state->Initialize();
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to read TPM state: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  printf("  TPM 2.0 Version Info:\n");
+  // Print Chip Version for compatibility with tpm_version, hardcoded as
+  // there's no 2.0 equivalent (TPM_PT_FAMILY_INDICATOR is const).
+  printf("  Chip Version:        2.0.0.0\n");
+  uint32_t value;
+  if (state->GetTpmProperty(trunks::TPM_PT_FAMILY_INDICATOR, &value)) {
+    printf("  Spec Family:         %08x\n", value);
+    printf("  Spec Family String:  %s\n", TpmPropertyToStr(value));
+  }
+  if (state->GetTpmProperty(trunks::TPM_PT_LEVEL, &value)) {
+    printf("  Spec Level:          %u\n", value);
+  }
+  if (state->GetTpmProperty(trunks::TPM_PT_REVISION, &value)) {
+    printf("  Spec Revision:       %u\n", value);
+  }
+  if (state->GetTpmProperty(trunks::TPM_PT_MANUFACTURER, &value)) {
+    printf("  Manufacturer Info:   %08x\n", value);
+    printf("  Manufacturer String: %s\n", TpmPropertyToStr(value));
+  }
+  if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_1, &value)) {
+    printf("  Vendor ID:           %s", TpmPropertyToStr(value));
+    if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_2, &value)) {
+      printf("%s", TpmPropertyToStr(value));
+    }
+    if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_3, &value)) {
+      printf("%s", TpmPropertyToStr(value));
+    }
+    if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_4, &value)) {
+      printf("%s", TpmPropertyToStr(value));
+    }
+    printf("\n");
+  }
+  if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_TPM_TYPE, &value)) {
+    printf("  TPM Model:           %08x\n", value);
+  }
+  if (state->GetTpmProperty(trunks::TPM_PT_FIRMWARE_VERSION_1, &value)) {
+    printf("  Firmware Version:    %08x", value);
+    if (!state->GetTpmProperty(trunks::TPM_PT_FIRMWARE_VERSION_2, &value)) {
+      value = 0;
+    }
+    printf("%08x\n", value);
+  }
+
   return 0;
 }
 
@@ -289,6 +359,9 @@ int main(int argc, char** argv) {
       cl->HasSwitch("value")) {
     return ExtendPCR(factory, atoi(cl->GetSwitchValueASCII("index").c_str()),
                      cl->GetSwitchValueASCII("value"));
+  }
+  if (cl->HasSwitch("tpm_version")) {
+    return TpmVersion(factory);
   }
   puts("Invalid options!");
   PrintUsage();
