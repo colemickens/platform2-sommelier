@@ -1341,6 +1341,22 @@ cmd_uptime() (
   fi
 )
 
+USAGE_uname='[-a|-s|-n|-r|-v|-m|-p|-i|-o]'
+HELP_uname='
+  Display system info
+'
+cmd_uname() (
+  # We whitelist only a few options.
+  local opt
+  for opt in "$@"; do
+    if ! printf '%s' "${opt}" | grep -sqE "^-[asnrvmpio]+$"; then
+      help "unknown option: $*"
+      return 1
+    fi
+  done
+  uname "$@"
+)
+
 substr() {
   local str="$1"
   local start="$2"
