@@ -4,6 +4,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Abort on errors.
+set -e
+
 ASSETS=/usr/share/chromeos-assets
 ASSETS_200=$ASSETS/images_200_percent
 ASSETS_100=$ASSETS/images_100_percent
@@ -39,8 +42,8 @@ for image in ${SEQ_100}; do
   BAT_IMAGES="${BAT_IMAGES} --image ${image}"
 done
 
-killall -9 frecon
+# Kill running frecon processes, continue if no frecon process found.
+pkill -9 frecon || [ "$?" -eq "1" ]
+
 /sbin/frecon --clear 0x000000 --loop-interval=100 --loop-count=3 \
              --loop-start=0 --splash-only ${BAT_IMAGES}
-
-
