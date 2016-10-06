@@ -102,6 +102,11 @@ class KernelCollector : public CrashCollector {
   // Returns the architecture kind for which we are built.
   static ArchKind GetCompilerArch();
 
+  // Watchdog reboots leave no stack trace. Generate a poor man's signature out
+  // of the last log line instead (minus the timestamp ended by ']').
+  static void WatchdogSignature(const std::string &console_ramoops,
+                                std::string *signature);
+
   bool is_enabled_;
   base::FilePath eventlog_path_;
   base::FilePath ramoops_dump_path_;

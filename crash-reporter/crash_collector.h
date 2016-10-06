@@ -183,6 +183,10 @@ class CrashCollector {
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy>
       session_manager_proxy_;
 
+  // Hash a string to a number.  We define our own hash function to not
+  // be dependent on a C++ library that might change.
+  static unsigned HashString(base::StringPiece input);
+
  private:
   // True if reports should always be stored in the user crash directory.
   const bool force_user_crash_dir_;

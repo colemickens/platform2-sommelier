@@ -349,17 +349,6 @@ bool KernelCollector::Enable() {
   return true;
 }
 
-// Hash a string to a number.  We define our own hash function to not
-// be dependent on a C++ library that might change.  This function
-// uses basically the same approach as tr1/functional_hash.h but with
-// a larger prime number (16127 vs 131).
-static unsigned HashString(StringPiece input) {
-  unsigned hash = 0;
-  for (auto c : input)
-    hash = hash * 16127 + c;
-  return hash;
-}
-
 void KernelCollector::ProcessStackTrace(
     pcrecpp::StringPiece kernel_dump,
     bool print_diagnostics,
@@ -578,8 +567,8 @@ bool KernelCollector::ComputeKernelStackSignature(
 
 // Watchdog reboots leave no stack trace. Generate a poor man's signature out
 // of the last log line instead (minus the timestamp ended by ']').
-void WatchdogSignature(const std::string &console_ramoops,
-                       std::string *signature) {
+void KernelCollector::WatchdogSignature(const std::string &console_ramoops,
+                                        std::string *signature) {
   StringPiece line(console_ramoops);
   line = line.substr(line.rfind("] ") + 2);
   size_t end = std::min(line.find("\n"), kMaxHumanStringLength) - 1;

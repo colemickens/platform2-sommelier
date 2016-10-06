@@ -531,3 +531,14 @@ bool CrashCollector::ShouldHandleChromeCrashes() {
 bool CrashCollector::IsUserSpecificDirectoryEnabled() {
   return !ShouldHandleChromeCrashes();
 }
+
+// Hash a string to a number.  We define our own hash function to not
+// be dependent on a C++ library that might change.  This function
+// uses basically the same approach as tr1/functional_hash.h but with
+// a larger prime number (16127 vs 131).
+unsigned CrashCollector::HashString(base::StringPiece input) {
+  unsigned hash = 0;
+  for (auto c : input)
+    hash = hash * 16127 + c;
+  return hash;
+}
