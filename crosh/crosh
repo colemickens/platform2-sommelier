@@ -360,7 +360,7 @@ cmd_swap() (
       # remove file in case root owns it
       rm -f $swap_enable_file
       touch $swap_enable_file
-    elif ! echo "$2" | grep -q "^[0-9]*$"; then
+    elif ! printf '%s' "$2" | grep -q "^[0-9]*$"; then
       help "$2 is not a valid integer literal"
       return 1
     elif [ "$2" -ne 500 -a \
@@ -1298,7 +1298,7 @@ cmd_dmesg() (
   # We whitelist only a few options.
   local opt
   for opt in "$@"; do
-    if ! echo "${opt}" | grep -sqE "^-[dkrtux]+$"; then
+    if ! printf '%s' "${opt}" | grep -sqE "^-[dkrtux]+$"; then
       help "unknown option: $*"
       return 1
     fi
@@ -1362,7 +1362,7 @@ substr() {
     end=$(expr "$end" - 1)
   fi
 
-  echo "$str" | cut -c${start}-${end}
+  printf '%s' "${str}" | cut -c${start}-${end}
 }
 
 # Return true if the first arg is a valid command.
