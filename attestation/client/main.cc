@@ -52,6 +52,7 @@ const char kCreateEnrollRequestCommand[] = "create_enroll_request";
 const char kFinishEnrollCommand[] = "finish_enroll";
 const char kCreateCertRequestCommand[] = "create_cert_request";
 const char kFinishCertRequestCommand[] = "finish_cert_request";
+const char kSignChallengeCommand[] = "sign_challenge";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -105,6 +106,12 @@ Commands:
   finish_cert_request [--user=<user>] [--label=<label>] --input=<input_file>
       Finishes certificate request for |user| using CA response from
       |input_file|, and stores it in the key with the specified |label|.
+  sign_challenge [--enterprise] [--user=<user>] [--label=<label>]
+          [--domain=<domain>] [--device_id=<device_id>] [--spkac]
+          --input=<input_file> [--output=<output_file>]
+      Signs a challenge (EnterpriseChallenge, if |enterprise| flag is given,
+        otherwise a SimpleChallenge) provided in the |input_file|. Stores
+        the response in the |output_file|, if specified.
 
   register [--user=<email>] [--label=<keylabel]
       Registers a key with a PKCS #11 token.
@@ -331,6 +338,34 @@ class ClientLoop : public ClientLoopBase {
           input,
           command_line->GetSwitchValueASCII("label"),
           command_line->GetSwitchValueASCII("user"));
+    } else if(args.front() == kSignChallengeCommand) {
+      if (!command_line->HasSwitch("input")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      if (command_line->HasSwitch("enterprise")) {
+        task = base::Bind(
+            &ClientLoop::CallSignEnterpriseChallenge,
+            weak_factory_.GetWeakPtr(),
+            input,
+            command_line->GetSwitchValueASCII("label"),
+            command_line->GetSwitchValueASCII("user"),
+            command_line->GetSwitchValueASCII("domain"),
+            command_line->GetSwitchValueASCII("device_id"),
+            command_line->HasSwitch("spkac"));
+      } else {
+        task = base::Bind(
+            &ClientLoop::CallSignSimpleChallenge,
+            weak_factory_.GetWeakPtr(),
+            input,
+            command_line->GetSwitchValueASCII("label"),
+            command_line->GetSwitchValueASCII("user"));
+      }
     } else {
       return EX_USAGE;
     }
@@ -615,6 +650,54 @@ class ClientLoop : public ClientLoopBase {
     attestation_->FinishCertificateRequest(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<FinishCertificateRequestReply>,
         weak_factory_.GetWeakPtr()));
+  }
+
+  void CallSignEnterpriseChallenge(const std::string& input,
+                                   const std::string& label,
+                                   const std::string& username,
+                                   const std::string& domain,
+                                   const std::string& device_id,
+                                   bool include_spkac) {
+    SignEnterpriseChallengeRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    request.set_domain(domain);
+    request.set_device_id(device_id);
+    request.set_include_signed_public_key(include_spkac);
+    request.set_challenge(input);
+    attestation_->SignEnterpriseChallenge(request,
+        base::Bind(&ClientLoop::OnSignEnterpriseChallengeComplete,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void OnSignEnterpriseChallengeComplete(
+      const SignEnterpriseChallengeReply& reply) {
+    if (reply.status() == STATUS_SUCCESS &&
+        base::CommandLine::ForCurrentProcess()->HasSwitch("output")) {
+      WriteOutput(reply.challenge_response());
+    }
+    PrintReplyAndQuit<SignEnterpriseChallengeReply>(reply);
+  }
+
+  void CallSignSimpleChallenge(const std::string& input,
+                               const std::string& label,
+                               const std::string& username) {
+    SignSimpleChallengeRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    request.set_challenge(input);
+    attestation_->SignSimpleChallenge(request,
+        base::Bind(&ClientLoop::OnSignSimpleChallengeComplete,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void OnSignSimpleChallengeComplete(
+      const SignSimpleChallengeReply& reply) {
+    if (reply.status() == STATUS_SUCCESS &&
+        base::CommandLine::ForCurrentProcess()->HasSwitch("output")) {
+      WriteOutput(reply.challenge_response());
+    }
+    PrintReplyAndQuit<SignSimpleChallengeReply>(reply);
   }
 
   std::unique_ptr<attestation::AttestationInterface> attestation_;
