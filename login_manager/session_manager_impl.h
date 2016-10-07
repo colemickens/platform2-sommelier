@@ -69,6 +69,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Name of android-data-old directory which RemoveArcDataInternal uses.
   static const base::FilePath::CharType kAndroidDataOldDirName[];
 
+  // Name of upstart signal emitted when user session starts.
+  static const char kStartUserSessionSignal[];
+
   // Name of the Android container.
   static const char kArcContainerName[];
 

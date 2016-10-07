@@ -159,6 +159,8 @@ class SessionManagerImplTest : public ::testing::Test {
         scoped_ptr<DevicePolicyService>(device_policy_service_),
         scoped_ptr<UserPolicyServiceFactory>(factory),
         std::move(device_local_account_policy));
+
+    SetDefaultMockBehavior();
   }
 
   void TearDown() override {
@@ -222,11 +224,13 @@ class SessionManagerImplTest : public ::testing::Test {
   void ExpectAndRunStartSession(const string& email) {
     ExpectStartSession(email);
     EXPECT_TRUE(impl_.StartSession(email, kNothing, NULL));
+    VerifyAndClearExpectations();
   }
 
   void ExpectAndRunGuestSession() {
     ExpectGuestSession();
     EXPECT_TRUE(impl_.StartSession(kGuestUserName, kNothing, NULL));
+    VerifyAndClearExpectations();
   }
 
   PolicyService* CreateUserPolicyService(const string& username) {
@@ -245,6 +249,10 @@ class SessionManagerImplTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(&metrics_);
     Mock::VerifyAndClearExpectations(&nss_);
     Mock::VerifyAndClearExpectations(&utils_);
+    Mock::VerifyAndClearExpectations(&upstart_signal_emitter_delegate_);
+
+    // Reset the default mock behavior.
+    SetDefaultMockBehavior();
   }
 
   bool RemoveArcDataInternal(const base::FilePath& android_data_dir,
@@ -289,6 +297,14 @@ class SessionManagerImplTest : public ::testing::Test {
   static const char kSaneEmail[];
 
  private:
+  void SetDefaultMockBehavior() {
+    // 10 GB Free Disk Space for ARC launch.
+    EXPECT_CALL(utils_, AmountOfFreeDiskSpace(_))
+        .WillRepeatedly(Return(10LL << 30));
+    EXPECT_CALL(utils_, GetDevModeState())
+        .WillRepeatedly(Return(DevModeState::DEV_MODE_OFF));
+  }
+
   void ExpectSessionBoilerplate(const string& account_id_string,
                                 bool guest,
                                 bool for_owner) {
@@ -305,12 +321,16 @@ class SessionManagerImplTest : public ::testing::Test {
 
     EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner)).Times(1);
     EXPECT_CALL(
+        upstart_signal_emitter_delegate_,
+        OnSignalEmitted(
+            StrEq(SessionManagerImpl::kStartUserSessionSignal),
+            ElementsAre(StartsWith("CHROMEOS_USER="))))
+        .Times(1);
+    EXPECT_CALL(
         dbus_emitter_,
         EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
                              StrEq(SessionManagerImpl::kStarted)))
         .Times(1);
-    EXPECT_CALL(
-        utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   }
 
   void ExpectStartSessionUnownedBoilerplate(const string& account_id_string,
@@ -336,13 +356,18 @@ class SessionManagerImplTest : public ::testing::Test {
     else
       EXPECT_CALL(key_gen_, Start(_)).Times(0);
 
+    EXPECT_CALL(metrics_, SendLoginUserType(false, false, false)).Times(1);
+    EXPECT_CALL(
+        upstart_signal_emitter_delegate_,
+        OnSignalEmitted(
+            StrEq(SessionManagerImpl::kStartUserSessionSignal),
+            ElementsAre(StartsWith("CHROMEOS_USER="))))
+        .Times(1);
     EXPECT_CALL(
         dbus_emitter_,
         EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
                              StrEq(SessionManagerImpl::kStarted)))
         .Times(1);
-    EXPECT_CALL(
-        utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   }
 
   void FakeLockScreen() { actual_locks_++; }
@@ -881,10 +906,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("foo"), "test"));
 
-  // 10 GB Free Disk Space.
-  EXPECT_CALL(
-      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
-
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(
@@ -915,8 +936,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                       ElementsAre()))
       .Times(1);
-  EXPECT_CALL(
-      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(suspend_delay_set_up_);
@@ -935,9 +954,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
 #if USE_CHEETS
-  // 10 GB Free Disk Space.
-  EXPECT_CALL(
-      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
 #endif
@@ -957,10 +973,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
 #if USE_CHEETS
   ExpectAndRunStartSession(kSaneEmail);
-
-  // 10 GB Free Disk Space.
-  EXPECT_CALL(
-      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
 
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -995,8 +1007,10 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                       ElementsAre()))
       .Times(1);
-  EXPECT_CALL(
-      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_ON));
+  // Overrides dev mode state.
+  EXPECT_CALL(utils_, GetDevModeState())
+      .WillOnce(Return(DevModeState::DEV_MODE_ON))
+      .RetiresOnSaturation();
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(suspend_delay_set_up_);
@@ -1123,11 +1137,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  // 10 GB Free Disk Space.
-  EXPECT_CALL(
-      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
-  EXPECT_CALL(
-      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
@@ -1141,11 +1150,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(
       android_data_old_dir_.Append("bar"), "test2"));
-  // 10 GB Free Disk Space.
-  EXPECT_CALL(
-      utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(10LL << 30));
-  EXPECT_CALL(
-      utils_, GetDevModeState()).WillOnce(Return(DevModeState::DEV_MODE_OFF));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   impl_.StopArcInstance(&error_);
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
