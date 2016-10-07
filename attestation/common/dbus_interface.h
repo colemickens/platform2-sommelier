@@ -45,6 +45,7 @@ constexpr char kSignSimpleChallenge[] = "SignSimpleChallenge";
 constexpr char kSetKeyPayload[] = "SetKeyPayload";
 constexpr char kDeleteKeys[] = "DeleteKeys";
 constexpr char kResetIdentity[] = "ResetIdentity";
+constexpr char kSetSystemSalt[] = "SetSystemSalt";
 
 }  // namespace attestation
 

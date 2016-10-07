@@ -343,4 +343,19 @@ void DBusProxy::ResetIdentity(
       base::Bind(on_error, callback), request);
 }
 
+void DBusProxy::SetSystemSalt(
+    const SetSystemSaltRequest& request,
+    const SetSystemSaltCallback& callback) {
+  auto on_error = [](const SetSystemSaltCallback& callback,
+                     brillo::Error* error) {
+    SetSystemSaltReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  brillo::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS, object_proxy_, attestation::kAttestationInterface,
+      attestation::kSetSystemSalt, callback,
+      base::Bind(on_error, callback), request);
+}
+
 }  // namespace attestation

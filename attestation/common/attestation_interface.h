@@ -188,6 +188,14 @@ class AttestationInterface {
       const ResetIdentityRequest& request,
       const ResetIdentityCallback& callback) = 0;
 
+  // Processes a SetSystemSaltRequest and responds with a
+  // SetSystemSaltReply.
+  using SetSystemSaltCallback =
+      base::Callback<void(const SetSystemSaltReply&)>;
+  virtual void SetSystemSalt(
+      const SetSystemSaltRequest& request,
+      const SetSystemSaltCallback& callback) = 0;
+
 };
 
 }  // namespace attestation

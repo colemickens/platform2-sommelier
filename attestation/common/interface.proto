@@ -371,3 +371,15 @@ message ResetIdentityReply {
   // Request to be sent to the CA.
   optional bytes reset_request = 2;
 }
+
+// Set system salt.
+// TODO(http://crosbug.com/p/58299): remove after cryptohomed calls to
+// attestationd become non-blocking. Until then, we need to pass the system
+// salt this way, since we can't query cryptohomed from attestationd.
+message SetSystemSaltRequest {
+  optional string system_salt = 1;
+}
+
+message SetSystemSaltReply {
+  optional AttestationStatus status = 1;
+}

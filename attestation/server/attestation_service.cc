@@ -23,6 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/bind_lambda.h>
+#include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>
@@ -1599,6 +1600,26 @@ void AttestationService::ResetIdentityTask(
     const std::shared_ptr<ResetIdentityReply>& result) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   result->set_status(STATUS_NOT_SUPPORTED);
+}
+
+void AttestationService::SetSystemSalt(
+    const SetSystemSaltRequest& request,
+    const SetSystemSaltCallback& callback) {
+  auto result = std::make_shared<SetSystemSaltReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::SetSystemSaltTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<SetSystemSaltReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::SetSystemSaltTask(
+    const SetSystemSaltRequest& request,
+    const std::shared_ptr<SetSystemSaltReply>& result) {
+  system_salt_.assign(request.system_salt());
+  brillo::cryptohome::home::SetSystemSalt(&system_salt_);
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

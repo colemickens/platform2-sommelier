@@ -167,6 +167,12 @@ std::string GetProtoDebugString(const ResetIdentityRequest& value);
 std::string GetProtoDebugStringWithIndent(const ResetIdentityReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const ResetIdentityReply& value);
+std::string GetProtoDebugStringWithIndent(const SetSystemSaltRequest& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const SetSystemSaltRequest& value);
+std::string GetProtoDebugStringWithIndent(const SetSystemSaltReply& value,
+                                          int indent_size);
+std::string GetProtoDebugString(const SetSystemSaltReply& value);
 
 }  // namespace attestation
 

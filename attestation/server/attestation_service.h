@@ -127,6 +127,9 @@ class AttestationService : public AttestationInterface {
   void ResetIdentity(
       const ResetIdentityRequest& request,
       const ResetIdentityCallback& callback) override;
+  void SetSystemSalt(
+      const SetSystemSaltRequest& request,
+      const SetSystemSaltCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -267,6 +270,11 @@ class AttestationService : public AttestationInterface {
   void ResetIdentityTask(
       const ResetIdentityRequest& request,
       const std::shared_ptr<ResetIdentityReply>& result);
+
+  // A synchronous implementation of SetSystemSalt.
+  void SetSystemSaltTask(
+      const SetSystemSaltRequest& request,
+      const std::shared_ptr<SetSystemSaltReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.
@@ -416,6 +424,7 @@ class AttestationService : public AttestationInterface {
   TpmUtility* tpm_utility_{nullptr};
   std::string hwid_;
   CertRequestMap pending_cert_requests_;
+  std::string system_salt_;
 
   // Default implementations for the above interfaces. These will be setup
   // during Initialize() if the corresponding interface has not been set with a

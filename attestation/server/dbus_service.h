@@ -167,6 +167,12 @@ class DBusService {
           const ResetIdentityReply&>> response,
       const ResetIdentityRequest& request);
 
+  // Handles a SetSystemSalt D-Bus call.
+  void HandleSetSystemSalt(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const SetSystemSaltReply&>> response,
+      const SetSystemSaltRequest& request);
+
   brillo::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 
