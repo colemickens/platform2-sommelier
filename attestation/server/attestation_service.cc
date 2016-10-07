@@ -67,6 +67,16 @@ const char kACAPublicKey[] =
 const char kACAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
 #endif
 
+const char kEnterpriseSigningPublicKey[] =
+    "bf7fefa3a661437b26aed0801db64d7ba8b58875c351d3bdc9f653847d4a67b3"
+    "b67479327724d56aa0f71a3f57c2290fdc1ff05df80589715e381dfbbda2c4ac"
+    "114c30d0a73c5b7b2e22178d26d8b65860aa8dd65e1b3d61a07c81de87c1e7e4"
+    "590145624936a011ece10434c1d5d41f917c3dc4b41dd8392479130c4fd6eafc"
+    "3bb4e0dedcc8f6a9c28428bf8fbba8bd6438a325a9d3eabee1e89e838138ad99"
+    "69c292c6d9f6f52522333b84ddf9471ffe00f01bf2de5faa1621f967f49e158b"
+    "f2b305360f886826cc6fdbef11a12b2d6002d70d8d1e8f40e0901ff94c203cb2"
+    "01a36a0bd6e83955f14b494f4f2f17c0c826657b85c25ffb8a73599721fa17ab";
+
 const char kEnterpriseEncryptionPublicKey[] =
     "edba5e723da811e41636f792c7a77aef633fbf39b542aa537c93c93eaba7a3b1"
     "0bc3e484388c13d625ef5573358ec9e7fbeb6baaaa87ca87d93fb61bf5760e29"
@@ -1366,7 +1376,7 @@ bool AttestationService::ValidateEnterpriseChallenge(
     const SignedData& signed_challenge) {
   const char kExpectedChallengePrefix[] = "EnterpriseKeyChallenge";
   if (!crypto_utility_->VerifySignatureUsingHexKey(
-      kACAPublicKey,
+      kEnterpriseSigningPublicKey,
       signed_challenge.data(),
       signed_challenge.signature())) {
     LOG(ERROR) << __func__ << ": Failed to verify challenge signature.";
