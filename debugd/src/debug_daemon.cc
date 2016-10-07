@@ -50,6 +50,7 @@ bool DebugDaemon::Init() {
   log_tool_ = new LogTool();
   perf_tool_ = new PerfTool();
   storage_tool_ = new StorageTool();
+  swap_tool_ = new SwapTool();
   memory_tool_ = new MemtesterTool();
   wimax_status_tool_ = new WiMaxStatusTool();
   if (!dbus_->acquire_name(kDebugdServiceName)) {
@@ -380,6 +381,26 @@ void DebugDaemon::DisableDevCoredumpUpload(DBus::Error& error) {  // NOLINT
     PLOG(ERROR) << "Failed to delete flag file.";
     return;
   }
+}
+
+std::string DebugDaemon::SwapEnable(const uint32_t& size,
+                                    const bool& change_now,
+                                    DBus::Error& error) {  // NOLINT
+  return swap_tool_->SwapEnable(size, change_now, &error);
+}
+
+std::string DebugDaemon::SwapDisable(const bool& change_now,
+                                     DBus::Error& error) {  // NOLINT
+  return swap_tool_->SwapDisable(change_now, &error);
+}
+
+std::string DebugDaemon::SwapStartStop(const bool& on,
+                                       DBus::Error& error) {  // NOLINT
+  return swap_tool_->SwapStartStop(on, &error);
+}
+
+std::string DebugDaemon::SwapStatus(DBus::Error& error) {  // NOLINT
+  return swap_tool_->SwapStatus(&error);
 }
 
 }  // namespace debugd

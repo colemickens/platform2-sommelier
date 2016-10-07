@@ -112,6 +112,7 @@
         'src/session_manager_proxy.cc',
         'src/storage_tool.cc',
         'src/subprocess_tool.cc',
+        'src/swap_tool.cc',
         'src/sysrq_tool.cc',
         'src/systrace_tool.cc',
         'src/tracepath_tool.cc',

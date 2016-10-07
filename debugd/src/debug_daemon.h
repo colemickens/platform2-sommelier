@@ -37,6 +37,7 @@
 #include "debugd/src/route_tool.h"
 #include "debugd/src/session_manager_proxy.h"
 #include "debugd/src/storage_tool.h"
+#include "debugd/src/swap_tool.h"
 #include "debugd/src/sysrq_tool.h"
 #include "debugd/src/systrace_tool.h"
 #include "debugd/src/tracepath_tool.h"
@@ -191,6 +192,13 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   void DisableDevCoredumpUpload(DBus::Error& error) override;  // NOLINT
   std::string SetOomScoreAdj(const std::map<pid_t, int32_t>& scores,
                              DBus::Error& error) override;  // NOLINT
+  std::string SwapEnable(const uint32_t& size, const bool& change_now,
+                         DBus::Error& error) override;  // NOLINT
+  std::string SwapDisable(const bool& change_now,
+                          DBus::Error& error) override;  // NOLINT
+  std::string SwapStartStop(const bool& on,
+                            DBus::Error& error) override;  // NOLINT
+  std::string SwapStatus(DBus::Error& error) override;  // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -217,6 +225,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   PingTool* ping_tool_ = nullptr;
   RouteTool* route_tool_ = nullptr;
   StorageTool* storage_tool_ = nullptr;
+  SwapTool* swap_tool_ = nullptr;
   BatteryTool* battery_tool_ = nullptr;
   SysrqTool* sysrq_tool_ = nullptr;
   SystraceTool* systrace_tool_ = nullptr;

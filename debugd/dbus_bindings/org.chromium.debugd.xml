@@ -699,5 +699,57 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="SwapEnable">
+      <tp:docstring>
+        Enable swap file usage via config files.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+      <arg name="size" type="u" direction="in">
+        <tp:docstring>
+          Size (in MB) for the swap file.
+        </tp:docstring>
+      </arg>
+      <arg name="change_now" type="b" direction="in">
+        <tp:docstring>
+          Whether to enable immediately, or wait until next reboot.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SwapDisable">
+      <tp:docstring>
+        Disable swap file usage via config files.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+      <arg name="change_now" type="b" direction="in">
+        <tp:docstring>
+          Whether to disable immediately, or wait until next reboot.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SwapStartStop">
+      <tp:docstring>
+        Turn swap usage on/off (leaves config files alone).
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+      <arg name="on" type="b" direction="in">
+        <tp:docstring>
+          Whether to turn it on or off.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SwapStatus">
+      <tp:docstring>
+        Show current swap status.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+    </method>
   </interface>
 </node>

@@ -347,57 +347,61 @@ https://chrome.google.com/webstore/detail/pnhechapfaindjhompbnflcldabbghjo
 EOF
 )
 
-USAGE_swap='[enable <size (MB)> | disable | status]'
+USAGE_swap='[enable <size (MB)> | disable | start | stop | status]'
 HELP_swap='
   Manage the system swap file.
+
+  The enable/disable options update the config file settings and will take
+  effect at the next boot.
+
+  The start/stop options will turn swap on/off immediately, but leave the config
+  file settings alone (so next boot will revert back).
+
+  Warning: If swap is heavily used, then turning it off might cause the system
+  to hang while the kernel tries to release pages and free up memory.  In some
+  extreme situations, this can take a long time to finish.
 '
 cmd_swap() (
-  local swap_enable_file="/home/chronos/.swap_enabled"
+  local cmd="${1:-}"
+  shift
 
-  case "$1" in
-  "enable")
-    if [ -z "$2" ]; then
-      # remove file in case root owns it
-      rm -f $swap_enable_file
-      touch $swap_enable_file
-    elif ! printf '%s' "$2" | grep -q "^[0-9]*$"; then
-      help "$2 is not a valid integer literal"
+  # Check the usage first.
+  case "${cmd}" in
+  enable)
+    if [ $# -gt 1 ]; then
+      help "${cmd} takes only one optional argument"
       return 1
-    elif [ "$2" -ne 500 -a \
-           "$2" -ne 1000 -a \
-           "$2" -ne 2000 -a \
-           "$2" -ne 3000 -a \
-           "$2" -ne 4000 -a \
-           "$2" -ne 4500 -a \
-           "$2" -ne 6000 ]; then
-      echo "Valid choices: 500, 1000, 2000, 3000, 4000, 4500 or 6000."
-      help "invalid size $2."
-      return 1
-    else
-      # remove file in case root owns it
-      rm -f $swap_enable_file
-      echo "$2" > $swap_enable_file
-      echo "You have selected a size of $2 MB for compressed swap."
-      echo "Your choice may affect system performance in various ways."
-      echo "Presumably you know what you are doing."
     fi
-    echo "Swap will be ON at next reboot."
     ;;
-  "disable")
-    # remove file in case root owns it
-    rm -f $swap_enable_file
-    echo 0 > $swap_enable_file
-    echo "You are turning compressed swap off."
-    echo "This may impact system performance in various ways."
-    echo "Presumably you know what you are doing."
-    echo "Swap will be OFF at next reboot."
-    ;;
-  "status"|"")
-    /sbin/swapon -s
+  disable|start|stop|status|"")
+    if [ $# -ne 0 ]; then
+      help "${cmd} takes no arguments"
+      return 1
+    fi
     ;;
   *)
-    help "unknown option: $1"
+    help "unknown option: ${cmd}"
     return 1
+    ;;
+  esac
+
+  # Then actually process the request.
+  case "${cmd}" in
+  "enable")
+    local size="${1:-}"
+    debugd SwapEnable "uint32:${size}" "boolean:false"
+    ;;
+  "disable")
+    debugd SwapDisable "boolean:false"
+    ;;
+  "start")
+    debugd SwapStartStop "boolean:true"
+    ;;
+  "stop")
+    debugd SwapStartStop "boolean:false"
+    ;;
+  "status"|"")
+    debugd SwapStatus
     ;;
   esac
 )
@@ -1361,16 +1365,6 @@ substr() {
   local str="$1"
   local start="$2"
   local end="$3"
-
-  if [ "$IS_BASH" = "1" ]; then
-    # NB: use printf to avoid echo interpreting -n
-    if [ -z "$end" ]; then
-      printf '%s\n' ${str:$start}
-    else
-      printf '%s\n' ${str:$start:$end}
-    fi
-    return
-  fi
 
   start=$(expr "$start" + 1)
 
