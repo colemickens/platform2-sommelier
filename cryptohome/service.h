@@ -767,6 +767,11 @@ class Service : public brillo::dbus::AbstractDbusService,
   // will continue running tasks until stopped in ~Service.
   void StopTasks();
 
+  // Get system salt (create, if doesn't exist yet)
+  bool GetSystemSalt(brillo::SecureBlob* system_salt) {
+    return homedirs_->GetSystemSalt(system_salt);
+  }
+
  private:
   FRIEND_TEST(ServiceTest, GetPublicMountPassKey);
 
