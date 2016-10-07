@@ -60,17 +60,7 @@ const char WakeupController::kInhibited[] = "inhibited";
 const char WakeupController::kTPAD[] = "TPAD";
 const char WakeupController::kTSCR[] = "TSCR";
 
-WakeupController::WakeupController()
-    : udev_(NULL),
-      acpi_wakeup_helper_(NULL),
-      ec_wakeup_helper_(NULL),
-      prefs_(NULL),
-      lid_state_(LidState::OPEN),
-      display_mode_(DisplayMode::NORMAL),
-      allow_docked_mode_(false),
-      backlight_enabled_(false),
-      mode_(Mode::LAPTOP),
-      initialized_(false) {}
+WakeupController::WakeupController() {}
 
 WakeupController::~WakeupController() {
   if (udev_)
@@ -85,6 +75,7 @@ void WakeupController::Init(
     system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
     system::EcWakeupHelperInterface* ec_wakeup_helper,
     LidState lid_state,
+    TabletMode tablet_mode,
     DisplayMode display_mode,
     PrefsInterface* prefs) {
   backlight_controller_ = backlight_controller;
@@ -99,6 +90,7 @@ void WakeupController::Init(
   // Trigger initial configuration.
   prefs_ = prefs;
   lid_state_ = lid_state;
+  tablet_mode_ = tablet_mode;
   display_mode_ = display_mode;
   backlight_enabled_ = true;
   prefs_->GetBool(kAllowDockedModePref, &allow_docked_mode_);
@@ -110,6 +102,11 @@ void WakeupController::Init(
 
 void WakeupController::SetLidState(LidState lid_state) {
   lid_state_ = lid_state;
+  UpdatePolicy();
+}
+
+void WakeupController::SetTabletMode(TabletMode tablet_mode) {
+  tablet_mode_ = tablet_mode;
   UpdatePolicy();
 }
 
@@ -214,12 +211,15 @@ WakeupController::Mode WakeupController::GetMode() const {
       lid_state_ == LidState::CLOSED)
     return Mode::DOCKED;
 
+  // Prioritize DISPLAY_OFF over TABLET so that the keyboard won't be disabled
+  // if a device in tablet mode is used as a "smart keyboard" (e.g.
+  // panel-side-down with an external display connected).
   if (!backlight_enabled_ && display_mode_ == DisplayMode::PRESENTATION &&
       lid_state_ == LidState::OPEN)
     return Mode::DISPLAY_OFF;
 
-  if (lid_state_ == LidState::OPEN)
-    return Mode::LAPTOP;
+  if (tablet_mode_ == TabletMode::ON)
+    return Mode::TABLET;
   else if (lid_state_ == LidState::CLOSED)
     return Mode::CLOSED;
   else

@@ -388,7 +388,8 @@ void Daemon::Init() {
 
   wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
                            acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(),
-                           lid_state, DisplayMode::NORMAL, prefs_.get());
+                           lid_state, tablet_mode, DisplayMode::NORMAL,
+                           prefs_.get());
 
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
@@ -543,6 +544,7 @@ void Daemon::HandleHoverStateChange(bool hovering) {
 void Daemon::HandleTabletModeChange(TabletMode mode) {
   DCHECK_NE(mode, TabletMode::UNSUPPORTED);
   LOG(INFO) << "Tablet mode " << TabletModeToString(mode);
+  wakeup_controller_->SetTabletMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
   if (set_wifi_transmit_power_for_tablet_mode_)

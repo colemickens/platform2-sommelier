@@ -70,10 +70,12 @@ class WakeupController : public policy::BacklightControllerObserver,
             system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
             system::EcWakeupHelperInterface* ec_wakeup_helper,
             LidState lid_state,
+            TabletMode tablet_mode,
             DisplayMode display_mode,
             PrefsInterface* prefs);
 
   void SetLidState(LidState lid_state);
+  void SetTabletMode(TabletMode tablet_mode);
   void SetDisplayMode(DisplayMode display_mode);
 
   // Implementation of TaggedDeviceObserver.
@@ -107,22 +109,23 @@ class WakeupController : public policy::BacklightControllerObserver,
   // Re-configures all known devices to reflect a policy change.
   void UpdatePolicy();
 
-  system::UdevInterface* udev_;  // weak
-  policy::BacklightController* backlight_controller_;  // weak
-  system::AcpiWakeupHelperInterface* acpi_wakeup_helper_;  // weak
-  system::EcWakeupHelperInterface* ec_wakeup_helper_;  // weak
+  system::UdevInterface* udev_ = nullptr;  // weak
+  policy::BacklightController* backlight_controller_ = nullptr;  // weak
+  system::AcpiWakeupHelperInterface* acpi_wakeup_helper_ = nullptr;  // weak
+  system::EcWakeupHelperInterface* ec_wakeup_helper_ = nullptr;  // weak
 
-  PrefsInterface* prefs_;  // weak
+  PrefsInterface* prefs_ = nullptr;  // weak
 
-  LidState lid_state_;
-  DisplayMode display_mode_;
-  bool allow_docked_mode_;
-  bool backlight_enabled_;
+  LidState lid_state_ = LidState::OPEN;
+  TabletMode tablet_mode_ = TabletMode::OFF;
+  DisplayMode display_mode_ = DisplayMode::NORMAL;
+  bool allow_docked_mode_ = false;
+  bool backlight_enabled_ = false;
 
   // The mode calculated in the most recent invocation of UpdatePolicy().
-  Mode mode_;
+  Mode mode_ = Mode::LAPTOP;
 
-  bool initialized_;
+  bool initialized_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(WakeupController);
 };
