@@ -348,14 +348,16 @@
         @state_keys: The array of currently valid state keys.
 
         Requests server-backed state keys to be computed and returned. A
-        server-backed state key is an opaque client-determined identifier
-        that's used to stage state in a server to be retrieved after device
+        server-backed state key is an opaque client-determined identifier that's
+        used to stage state in a server to be retrieved after device
         recovery. These are used to figure out device state such as previous
         enrollment domain and whether the device got marked as stolen by its
-        owner. The keys are time-dependent, with each key being valid only for
-        a window of time, and this call returns the currently valid state key
-        plus a number of subsequent state keys that span a year of time in
-        coverage.
+        owner. The keys are time-dependent, with each key being valid only for a
+        window of time, and based on system time this call returns the currently
+        valid state key plus a number of subsequent state keys (all sorted by
+        time in ascending order) that span approximately a year of time in
+        coverage. It is the responsibility of the caller to ensure that the
+        system time is accurate before starting the request!
     -->
     <method name="GetServerBackedStateKeys">
       <arg type="aay" name="state_keys" direction="out" />

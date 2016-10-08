@@ -73,10 +73,13 @@ class ServerBackedStateKeyGenerator {
   // missing.
   bool InitMachineInfo(const std::map<std::string, std::string>& params);
 
-  // Requests the currently-valid state keys to be computed. The state keys will
-  // be returned via |callback|, potentially after waiting for machine info to
-  // become available. If the state keys can't be computed due to missing
-  // machine identifiers, |callback| will be invoked with an empty vector.
+  // Requests the currently-valid state keys to be computed based on system
+  // time. It is the responsibility of the caller to ensure that the system time
+  // is accurate before starting the request! The state keys (sorted by time
+  // quantum in ascending order) are returned via |callback|, potentially after
+  // waiting for machine info to become available. If the state keys can't be
+  // computed due to missing machine identifiers, |callback| will be invoked
+  // with an empty vector.
   void RequestStateKeys(const StateKeyCallback& callback);
 
  private:
