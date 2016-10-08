@@ -10,7 +10,7 @@ After=system-services.target
 EnvironmentFile=/usr/sbin/netfilter-common
 Environment=EXEC_NAME=/usr/sbin/netfilter-queue-helper
 Restart=always
-ExecStart=/sbin/minijail0 -u nfqueue -g nfqueue -c 1000 \
+ExecStart=/sbin/minijail0 -u nfqueue -g nfqueue -c 1000 -i \
 	-S /usr/share/policy/nfqueue-seccomp.policy -n \
 	${EXEC_NAME} \
 		--input-queue=${NETFILTER_INPUT_NFQUEUE} \
