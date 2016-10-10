@@ -358,12 +358,12 @@ ln -s /run/lock /var/lock
 
 # Make sure required /var subdirectories exist.
 mkdir -p -m 0755 /var/cache /var/db /var/empty /var/log/metrics \
-                 /var/tmp
+                 /var/spool /var/tmp
 
 # Before operating on them, verify that all stateful partition paths are
 # directories (as opposed to say, symlinks).
 for d in /var/cache /var/db /var/empty /var/log /var/log/metrics \
-         /var/tmp /home/chronos /home/root; do
+         /var/spool /var/tmp /home/chronos /home/root; do
   check_directory "${d}"
 done
 
@@ -378,7 +378,7 @@ chgrp syslog /var/log
 chmod 1775 /var/log
 # /var/cache, /var/db, and /var/empty may already exist with wrong permissions.
 # Force the correct ones.
-chmod 0755 /var/cache /var/db /var/empty
+chmod 0755 /var/cache /var/db /var/empty /var/spool
 
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
