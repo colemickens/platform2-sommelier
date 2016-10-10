@@ -78,8 +78,8 @@ int fifo;                       /* 1 when reading from fifo (for devel) */
 int draining;                   /* 1 when draining renamed log file */
 
 const char *msg_path = "/var/log/messages";
-const char warn_dump_dir[]  = "/var/run/kwarn";
-const char *warn_dump_path = "/var/run/kwarn/warning";
+const char warn_dump_dir[]  = "/run/kwarn";
+const char *warn_dump_path = "/run/kwarn/warning";
 const char *crash_reporter_command;
 
 __attribute__((__format__(__printf__, 1, 2)))

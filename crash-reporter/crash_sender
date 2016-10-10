@@ -14,7 +14,7 @@ CHROMEOS_PRODUCT=ChromeOS
 CONSENT_ID="/home/chronos/Consent To Send Stats"
 
 # Crash sender lock in case the sender is already running.
-CRASH_SENDER_LOCK="/var/lock/crash_sender"
+CRASH_SENDER_LOCK="/run/lock/crash_sender"
 
 # Path to file that indicates a crash test is currently running.
 CRASH_TEST_IN_PROGRESS_FILE="/tmp/crash-test-in-progress"
@@ -64,7 +64,7 @@ REPORT_UPLOAD_PROD_URL="https://clients2.google.com/cr/report"
 RESTRICTED_CERTIFICATES_PATH="/usr/share/chromeos-ca-certificates"
 
 # File whose existence implies we're running and not to start again.
-RUN_FILE="/var/run/crash_sender.pid"
+RUN_FILE="/run/crash_sender.pid"
 
 # Maximum time to sleep between sends.
 SECONDS_SEND_SPREAD=${SECONDS_SEND_SPREAD:-600}

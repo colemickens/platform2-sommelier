@@ -29,9 +29,9 @@
 static const char kCrashCounterHistogram[] = "Logging.CrashCounter";
 static const char kUserCrashSignal[] =
     "org.chromium.CrashReporter.UserCrash";
-static const char kKernelCrashDetected[] = "/var/run/kernel-crash-detected";
+static const char kKernelCrashDetected[] = "/run/kernel-crash-detected";
 static const char kUncleanShutdownDetected[] =
-    "/var/run/unclean-shutdown-detected";
+    "/run/unclean-shutdown-detected";
 
 // Enumeration of kinds of crashes to be used in the CrashCounter histogram.
 enum CrashKinds {
