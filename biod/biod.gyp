@@ -22,6 +22,8 @@
         'fake_biometric.cc',
         'fpc_biometric.cc',
         'bio_library.cc',
+        'biod_storage.cc',
+        'scoped_umask.cc',
       ],
     },
     {

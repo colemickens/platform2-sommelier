@@ -366,8 +366,7 @@ void BiometricWrapper::RefreshEnrollmentObjects() {
       object_path_.value() + std::string("/Enrollment");
 
   for (std::unique_ptr<Biometric::Enrollment>& enrollment : enrollments) {
-    ObjectPath enrollment_path(enrollments_root_path +
-                               std::to_string(enrollment->GetId()));
+    ObjectPath enrollment_path(enrollments_root_path + enrollment->GetId());
     enrollments_.emplace_back(new EnrollmentWrapper(
         this, std::move(enrollment), object_manager, enrollment_path));
   }

@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 
+#include "biod/biod_storage.h"
 #include "biod/biometric.h"
 #include "biod/fake_biometric_common.h"
 
@@ -55,11 +56,11 @@ class FakeBiometric : public Biometric, public base::MessageLoopForIO::Watcher {
   // are all stored inside the FakeBiometric object's enrollments map.
   class Enrollment : public Biometric::Enrollment {
    public:
-    Enrollment(const base::WeakPtr<FakeBiometric>& biometric, size_t id)
+    Enrollment(const base::WeakPtr<FakeBiometric>& biometric, std::string id)
         : biometric_(biometric), id_(id) {}
 
     // Biometric::Enrollment overrides:
-    uint64_t GetId() const override;
+    const std::string& GetId() const override;
     const std::string& GetUserId() const override;
     const std::string& GetLabel() const override;
     bool SetLabel(std::string label) override;
@@ -67,7 +68,7 @@ class FakeBiometric : public Biometric, public base::MessageLoopForIO::Watcher {
 
    private:
     base::WeakPtr<FakeBiometric> biometric_;
-    size_t id_;
+    std::string id_;
 
     InternalEnrollment* GetInternal() const;
   };
@@ -80,9 +81,8 @@ class FakeBiometric : public Biometric, public base::MessageLoopForIO::Watcher {
 
   Mode mode_ = Mode::kNone;
 
-  size_t next_enrollment_id_ = 0;
   InternalEnrollment next_internal_enrollment_;
-  std::unordered_map<size_t, InternalEnrollment> enrollments_;
+  std::unordered_map<std::string, InternalEnrollment> enrollments_;
 
   base::ScopedFD fake_input_;
   std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
@@ -93,6 +93,13 @@ class FakeBiometric : public Biometric, public base::MessageLoopForIO::Watcher {
 
   base::WeakPtrFactory<FakeBiometric> session_weak_factory_;
   base::WeakPtrFactory<FakeBiometric> weak_factory_;
+
+  BiodStorage biod_storage_;
+
+  bool LoadEnrollment(std::string user_id,
+                      std::string label,
+                      std::string enrollment_id,
+                      base::Value* data);
 
   DISALLOW_COPY_AND_ASSIGN(FakeBiometric);
 };

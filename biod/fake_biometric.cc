@@ -7,19 +7,22 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <uuid/uuid.h>
 
 #include <algorithm>
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/values.h>
 
 namespace biod {
 
-uint64_t FakeBiometric::Enrollment::GetId() const {
-  return static_cast<uint64_t>(id_);
+const std::string& FakeBiometric::Enrollment::GetId() const {
+  return id_;
 }
 
 const std::string& FakeBiometric::Enrollment::GetUserId() const {
@@ -39,14 +42,23 @@ bool FakeBiometric::Enrollment::SetLabel(std::string label) {
   InternalEnrollment* internal = GetInternal();
   if (internal) {
     internal->label = std::move(label);
-    return true;
+    // Set label by overwriting enrollments in file.
+    return biometric_->biod_storage_.WriteEnrollment(
+        *this,
+        std::unique_ptr<base::Value>(new base::StringValue("Hello, world!")));
   }
   LOG(ERROR) << "Attempt to set label for invalid Biometric Enrollment";
   return false;
 }
 
 bool FakeBiometric::Enrollment::Remove() {
-  return biometric_->enrollments_.erase(id_) > 0;
+  // Delete one enrollment.
+  if (biometric_->biod_storage_.DeleteEnrollment(
+          biometric_->enrollments_[id_].user_id, id_)) {
+    return biometric_->enrollments_.erase(id_) > 0;
+  } else {
+    return false;
+  }
 }
 
 FakeBiometric::InternalEnrollment* FakeBiometric::Enrollment::GetInternal()
@@ -119,8 +131,14 @@ FakeBiometric::GetEnrollments() {
 }
 
 bool FakeBiometric::DestroyAllEnrollments() {
+  // Enumerate through enrollments_ and delete each enrollment.
+  bool delete_all_enrollments = true;
+  for (auto& enrollment_pair : enrollments_) {
+    delete_all_enrollments &= biod_storage_.DeleteEnrollment(
+        enrollment_pair.second.user_id, enrollment_pair.first);
+  }
   enrollments_.clear();
-  return true;
+  return delete_all_enrollments;
 }
 
 void FakeBiometric::SetScannedHandler(const Biometric::ScanCallback& on_scan) {
@@ -219,8 +237,19 @@ void FakeBiometric::OnFileCanReadWithoutBlocking(int fd) {
 
       if (mode_ == Mode::kEnroll) {
         if (done) {
-          enrollments_[next_enrollment_id_++]
-                    = std::move(next_internal_enrollment_);
+          std::string enrollment_id(biod_storage_.GenerateNewEnrollmentId());
+
+          enrollments_[enrollment_id] = std::move(next_internal_enrollment_);
+          Enrollment current_enrollment(weak_factory_.GetWeakPtr(),
+                                        enrollment_id);
+
+          if (!biod_storage_.WriteEnrollment(
+                  current_enrollment,
+                  std::unique_ptr<base::Value>(
+                      new base::StringValue("Hello, world!")))) {
+            enrollments_.erase(enrollment_id);
+          }
+
           mode_ = Mode::kNone;
           session_weak_factory_.InvalidateWeakPtrs();
         }
@@ -235,5 +264,16 @@ void FakeBiometric::OnFileCanReadWithoutBlocking(int fd) {
       if (!on_failure_.is_null())
         on_failure_.Run();
   }
+}
+
+bool FakeBiometric::LoadEnrollment(std::string user_id,
+                                   std::string label,
+                                   std::string enrollment_id,
+                                   base::Value* data) {
+  InternalEnrollment internal_enrollment = {std::move(user_id),
+                                            std::move(label)};
+  enrollments_[enrollment_id] = std::move(internal_enrollment);
+  LOG(INFO) << "Load enrollment " << enrollment_id << " from disk.";
+  return true;
 }
 }  // namespace biod
