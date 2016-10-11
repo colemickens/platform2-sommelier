@@ -78,6 +78,10 @@ bool SandboxedProcess::Init() {
     AddStringOption("-V", "/proc/1/ns/mnt");
   }
 
+  if (!seccomp_filter_policy_file_.empty()) {
+    AddStringOption("-S", seccomp_filter_policy_file_);
+  }
+
   AddArg("--");
 
   return true;
@@ -97,6 +101,10 @@ void SandboxedProcess::SandboxAs(const std::string& user,
   sandboxing_ = true;
   user_ = user;
   group_ = group;
+}
+
+void SandboxedProcess::SetSeccompFilterPolicyFile(const std::string& path) {
+  seccomp_filter_policy_file_ = path;
 }
 
 void SandboxedProcess::AllowAccessRootMountNamespace() {
