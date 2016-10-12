@@ -1,0 +1,156 @@
+// Copyright 2016 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module arc.mojom;
+
+struct Camera3Stream {
+  uint64 id;
+  int32 stream_type;
+  uint32 width;
+  uint32 height;
+  int32 format;
+  uint32 usage;
+  uint32 max_buffers;
+  uint32 data_space;
+  int32 rotation;
+};
+
+struct Camera3StreamConfiguration {
+  uint32 num_streams;
+  array<Camera3Stream> streams;
+  uint32 operation_mode;
+  int32 error;  // Used to piggyback error code returned by driver.
+};
+
+union Handle {
+  bool none;
+  handle h;
+};
+
+struct NativeHandle {
+  int32 version;
+  int32 num_fds;
+  int32 num_ints;
+  array<Handle> fds;
+  array<int32> ints;
+};
+
+struct Camera3StreamBuffer {
+  uint64 stream_id;
+  NativeHandle buffer;
+  int32 status;
+  Handle acquire_fence;
+  Handle release_fence;
+};
+
+union CameraMetadata {
+  bool none;
+  handle<data_pipe_consumer> metadata_handle;
+};
+
+union Camera3CaptureInputBuffer {
+  bool none;
+  Camera3StreamBuffer input_buffer;
+};
+
+union Camera3CaptureOutputBuffers {
+  bool none;
+  array<Camera3StreamBuffer> output_buffers;
+};
+
+struct Camera3CaptureRequest {
+  uint32 frame_number;
+  CameraMetadata settings;
+  Camera3CaptureInputBuffer input_buffer;
+  uint32 num_output_buffers;
+  Camera3CaptureOutputBuffers output_buffers;
+};
+
+interface Camera3DeviceOps {
+  Initialize@0(Camera3CallbackOps callback_ops) => (int32 result);
+
+  ConfigureStreams@1(Camera3StreamConfiguration config) =>
+      (Camera3StreamConfiguration updated_config);
+
+  ConstructDefaultRequestSettings@2(int32 type) => (CameraMetadata settings);
+
+  ProcessCaptureRequest@3(Camera3CaptureRequest request) => (int32 result);
+
+  Dump@4(handle fd) => ();
+
+  Flush@5() => (int32 result);
+};
+
+struct Camera3CaptureResult {
+  uint32 frame_number;
+  CameraMetadata result;
+  uint32 num_output_buffers;
+  Camera3CaptureOutputBuffers output_buffers;
+  Camera3CaptureInputBuffer input_buffer;
+  uint32 partial_result;
+};
+
+struct Camera3ErrorMsg {
+  uint32 frame_number;
+  uint64 error_stream_id;
+  int32 error_code;
+};
+
+struct Camera3ShutterMsg {
+  uint32 frame_number;
+  uint64 timestamp;
+};
+
+union Camera3NotifyMsgMessage {
+  Camera3ErrorMsg error;
+  Camera3ShutterMsg shutter;
+  array<uint8> generic;
+};
+
+struct Camera3NotifyMsg {
+  int32 type;
+  Camera3NotifyMsgMessage message;
+};
+
+interface Camera3CallbackOps {
+  ProcessCaptureResult@0(Camera3CaptureResult result) => ();
+
+  Notify@1(Camera3NotifyMsg msg) => ();
+};
+
+union OpenDeviceResult {
+  int32 error;
+  Camera3DeviceOps device_ops;
+};
+
+struct CameraInfo {
+  int32 facing;
+  int32 orientation;
+  uint32 device_version;
+  handle<data_pipe_consumer> metadata_handle;
+  // resource cost is not valid in CAMERA_MODULE_API_VERSION_2_3 or lower.
+  // conflicting_devices is not valid in CAMERA_MODULE_API_VERSION_2_3 or lower.
+  // conflicting_devices_length is not valid in CAMERA_MODULE_API_VERSION_2_3 or lower.
+};
+
+union GetCameraInfoResult {
+  int32 error;
+  CameraInfo info;
+};
+
+interface CameraModule {
+  OpenDevice@0(int32 camera_id) => (OpenDeviceResult result);
+
+  CloseDevice@1(int32 camera_id) => (int32 result);
+
+  GetNumberOfCameras@2() => (int32 result);
+
+  GetCameraInfo@3(int32 camera_id) => (GetCameraInfoResult result);
+
+  SetCallbacks@4(CameraModuleCallbacks callbacks) => (int32 result);
+};
+
+interface CameraModuleCallbacks {
+  CameraDeviceStatusChange@0(int32 camera_id, int32 new_status) => ();
+};
