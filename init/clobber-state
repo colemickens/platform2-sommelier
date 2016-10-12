@@ -113,6 +113,19 @@ preserve_files() {
   fi
 }
 
+wait_for_tty() {
+  local device="$1"
+  local loop=0
+  until stty -F "${device}"; do
+    if [ ${loop} -ge 30 ]; then
+      dlog "timed out waiting for ${device}"
+      break
+    fi
+    sleep 0.1
+    : $(( loop += 1 ))
+  done
+}
+
 wipe_block_dev() {
   DEV="$1"
   # Wipe the filesystem size if we can determine it. Full partition wipe
@@ -134,10 +147,13 @@ wipe_block_dev() {
     # to allocate and configure the terminal before using tty for output.
     # Note &2 is currently used for debug messages dumping so we can't redirect
     # subshell by 2>"${TTY}".
-    ( stty -F "${TTY}" raw -echo -cread
+    ( trap '' INT QUIT KILL TSTP TERM
+      wait_for_tty "${TTY}"
+      stty -F "${TTY}" raw -echo -cread || :
+      exec 0</dev/null || :
       pv -etp -s $((4 * 1024 * 1024 * ${FULL_BLKS})) /dev/zero 2>"${TTY}" |
         dd of=${DEV} bs=4M count=${FULL_BLKS} iflag=fullblock oflag=sync
-    ) >"${TTY}"
+    )
   else
     dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
   fi
