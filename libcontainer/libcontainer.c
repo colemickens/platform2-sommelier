@@ -1106,6 +1106,8 @@ int container_start(struct container *c, const struct container_config *config)
 	/* TODO(dgreid) - remove this once shared mounts are cleaned up. */
 	minijail_skip_remount_private(c->jail);
 
+	minijail_close_open_fds(c->jail);
+
 	rc = minijail_run_pid_pipes_no_preload(c->jail,
 					       config->program_argv[0],
 					       config->program_argv,
