@@ -41,6 +41,8 @@
 #include "shill/mobile_operator_db/test_protos/init_test_empty_db_init.h"
 #include "shill/mobile_operator_db/test_protos/init_test_multiple_db_init_1.h"
 #include "shill/mobile_operator_db/test_protos/init_test_multiple_db_init_2.h"
+#include "shill/mobile_operator_db/test_protos/init_test_override_db_init_1.h"
+#include "shill/mobile_operator_db/test_protos/init_test_override_db_init_2.h"
 #include "shill/mobile_operator_db/test_protos/init_test_successful_init.h"
 #include "shill/mobile_operator_db/test_protos/main_test.h"
 #undef IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
@@ -86,6 +88,16 @@ enum EventCheckingPolicy {
 
 }  // namespace
 
+static void GenericAddDatabase(const unsigned char database_data[],
+                               size_t num_elems,
+                               FilePath& tmp_db_path) {
+  CHECK(base::CreateTemporaryFile(&tmp_db_path));
+
+  base::WriteFile(tmp_db_path,
+                  reinterpret_cast<const char*>(database_data),
+                  num_elems);
+}
+
 class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
  public:
   MockMobileOperatorInfoObserver() {}
@@ -109,15 +121,9 @@ class MobileOperatorInfoInitTest : public Test {
  protected:
   void AddDatabase(const unsigned char database_data[], size_t num_elems) {
     FilePath tmp_db_path;
-    CHECK(base::CreateTemporaryFile(&tmp_db_path));
+    GenericAddDatabase(database_data, num_elems, tmp_db_path);
     tmp_db_paths_.push_back(tmp_db_path);
-
-    ofstream tmp_db(tmp_db_path.value(), ofstream::binary);
-    for (size_t i = 0; i < num_elems; ++i) {
-      tmp_db << database_data[i];
-    }
-    tmp_db.close();
-    operator_info_->AddDatabasePath(tmp_db_path);
+    operator_info_->AddDatabasePath(tmp_db_paths_.back());
   }
 
   void AssertDatabaseEmpty() {
@@ -1614,6 +1620,84 @@ TEST_P(MobileOperatorInfoObserverTest, LateObserver) {
   Mock::VerifyAndClearExpectations(&second_observer_);
 }
 
+class MobileOperatorInfoOverrideTest
+    : public ::testing::TestWithParam<vector<std::pair<string, string>>> {
+ public:
+  MobileOperatorInfoOverrideTest() {
+      PopulateDatabases(
+          mobile_operator_db::init_test_override_db_init_2,
+          arraysize(mobile_operator_db::init_test_override_db_init_2),
+          mobile_operator_db::init_test_override_db_init_1,
+          arraysize(mobile_operator_db::init_test_override_db_init_1));
+
+      this->operator_info_impl_ = new MobileOperatorInfoImpl(
+                                          &dispatcher_,
+                                          "Operator",
+                                          db_path_.c_str(),
+                                          override_db_path_.c_str());
+  }
+
+  virtual void SetUp() override {
+    operator_info_impl_->Init();
+  }
+  void TearDown() override {
+    for (const auto& tmp_db_path : tmp_db_paths_) {
+      base::DeleteFile(tmp_db_path, false);
+    }
+  }
+
+ protected:
+  void VerifyAPNForMCCMNC(const string& mccmnc, const string& apn){
+    UpdateMCCMNC(mccmnc);
+    EXPECT_TRUE(operator_info_impl_->IsMobileNetworkOperatorKnown());
+    EXPECT_FALSE(operator_info_impl_->IsMobileVirtualNetworkOperatorKnown());
+    map<string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
+
+    bool found_apn = false;
+    for (const auto& apn_node : operator_info_impl_->apn_list()) {
+      if (apn_node->apn == apn) {
+        found_apn = true;
+        break;
+      }
+    }
+    ASSERT_TRUE(found_apn);
+  }
+
+  void UpdateMCCMNC(const string& mccmnc) {
+    operator_info_impl_->UpdateMCCMNC(mccmnc);
+  }
+
+  EventDispatcherForTest dispatcher_;
+  vector<FilePath> tmp_db_paths_;
+  MobileOperatorInfoImpl* operator_info_impl_;
+  string db_path_;
+  string override_db_path_;
+
+ private:
+  void PopulateDatabases(const unsigned char override_db_data[],
+                         size_t override_num_elems,
+                         const unsigned char db_data[],
+                         size_t num_elems) {
+    FilePath override_tmp_path;
+    GenericAddDatabase(override_db_data, override_num_elems, override_tmp_path);
+    tmp_db_paths_.push_back(override_tmp_path);
+    this->override_db_path_ = override_tmp_path.MaybeAsASCII();
+
+    FilePath tmp_path;
+    GenericAddDatabase(db_data, num_elems, tmp_path);
+    tmp_db_paths_.push_back(tmp_path);
+    this->db_path_ = tmp_path.MaybeAsASCII();
+  }
+};
+
+// Prevent regression of database override behavior introduced in
+// chromium:654149
+TEST_P(MobileOperatorInfoOverrideTest, MultipleDBOverrides){
+  for (const auto& mcc_apn_pair : GetParam()) {
+    VerifyAPNForMCCMNC(mcc_apn_pair.first, mcc_apn_pair.second);
+  }
+}
+
 INSTANTIATE_TEST_CASE_P(MobileOperatorInfoMainTestInstance,
                         MobileOperatorInfoMainTest,
                         Values(kEventCheckingPolicyStrict,
@@ -1626,4 +1710,16 @@ INSTANTIATE_TEST_CASE_P(MobileOperatorInfoDataTestInstance,
 INSTANTIATE_TEST_CASE_P(MobileOperatorInfoObserverTestInstance,
                         MobileOperatorInfoObserverTest,
                         Values(kEventCheckingPolicyStrict));
+
+vector<std::pair<string, string>> kMccmncApnPairs = {
+  {"00", "zeroes_override"},
+  {"00", "twosies_override"},
+  {"01", "zeros_default"},
+  {"01", "onesies_default"},
+  {"02", "zeroes_override"},
+  {"02", "twosies_override"}};
+
+INSTANTIATE_TEST_CASE_P(MobileOperatorInfoOverrideTestInstance,
+                        MobileOperatorInfoOverrideTest,
+                        Values(kMccmncApnPairs));
 }  // namespace shill

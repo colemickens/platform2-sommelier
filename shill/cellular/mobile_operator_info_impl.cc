@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cctype>
 #include <map>
+#include <iostream>
 
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
@@ -61,6 +62,7 @@ static string ObjectID(const MobileOperatorInfoImpl* m) {
 // static
 const char MobileOperatorInfoImpl::kDefaultDatabasePath[] =
     "/usr/share/shill/serviceproviders.pbf";
+// Warning: changing this can break overlays!
 const char MobileOperatorInfoImpl::kOverrideDatabasePath[] =
     "/usr/share/shill/serviceproviders-override.pbf";
 const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
@@ -78,7 +80,9 @@ string GetRegError(int code, const regex_t* compiled) {
 }  // namespace
 
 MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
-                                               const string& info_owner)
+                                               const string& info_owner,
+                                               const string& default_db_path,
+                                               const string& override_db_path)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
       observers_(
@@ -90,11 +94,17 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
   // Overrides need to be installed before defaults
-  if (PathExists(FilePath(kOverrideDatabasePath))) {
-    AddDatabasePath(FilePath(kOverrideDatabasePath));
+  if (PathExists(FilePath(override_db_path))) {
+    AddDatabasePath(FilePath(override_db_path));
   }
-  AddDatabasePath(FilePath(kDefaultDatabasePath));
+  AddDatabasePath(FilePath(default_db_path));
 }
+
+MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
+                                               const string& info_owner)
+    : MobileOperatorInfoImpl::MobileOperatorInfoImpl(
+                                  dispatcher, info_owner, kDefaultDatabasePath,
+                                  kOverrideDatabasePath){}
 
 MobileOperatorInfoImpl::~MobileOperatorInfoImpl() {}
 

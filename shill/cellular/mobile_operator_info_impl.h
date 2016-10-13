@@ -40,6 +40,7 @@ class MobileOperatorInfoImpl {
            std::vector<const mobile_operator_db::MobileNetworkOperator*>>
       StringToMNOListMap;
 
+  // Delegates to private constructor
   MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                          const std::string& info_owner);
   ~MobileOperatorInfoImpl();
@@ -82,6 +83,15 @@ class MobileOperatorInfoImpl {
 
  private:
   friend class MobileOperatorInfoInitTest;
+  friend class MobileOperatorInfoOverrideTest;
+
+
+  // ///////////////////////////////////////////////////////////////////////////
+  // Constructor
+  MobileOperatorInfoImpl(EventDispatcher* dispatcher,
+                         const std::string& info_owner,
+                         const std::string& default_db_path,
+                         const std::string& override_db_path);
 
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
