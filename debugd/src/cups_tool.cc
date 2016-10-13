@@ -202,7 +202,7 @@ bool TestPPD(const std::string& path, DBus::Error* error) {
 // Runs lpadmin with the provided |arg_list|.
 int Lpadmin(const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
   // TODO(skau): Run lpadmin in seccomp crbug.com/637160.
-  // Run in lp group so we can read and write /var/run/cups.sock.
+  // Run in lp group so we can read and write /run/cups/cups.sock.
   return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand, arg_list, error);
 }
 

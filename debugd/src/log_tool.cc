@@ -194,7 +194,7 @@ const Log feedback_logs[] = {
 // LogTool::GetBigFeedbackLogs().
 const Log big_feedback_logs[] = {
   { "arc-bugreport",
-    "/bin/cat /var/run/arc/bugreport/pipe 2> /dev/null",
+    "/bin/cat /run/arc/bugreport/pipe 2> /dev/null",
     // ARC bugreport permissions are weird. Since we're just running cat, this
     // shouldn't cause any issues.
     kRoot,
