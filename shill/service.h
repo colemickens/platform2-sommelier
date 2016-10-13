@@ -60,7 +60,6 @@ class MockManager;
 class ServiceAdaptorInterface;
 class ServiceMockAdaptor;
 class ServicePropertyChangeNotifier;
-class Sockets;
 class StoreInterface;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -910,7 +909,6 @@ class Service : public base::RefCounted<Service> {
   StaticIPParameters static_ip_parameters_;
   Metrics* metrics_;
   Manager* manager_;
-  std::unique_ptr<Sockets> sockets_;
   Time* time_;
   DiagnosticsReporter* diagnostics_reporter_;
 

@@ -41,7 +41,6 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/event_history.h"
-#include "shill/net/sockets.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
@@ -182,7 +181,6 @@ Service::Service(ControlInterface* control_interface,
           new ServicePropertyChangeNotifier(adaptor_.get())),
       metrics_(metrics),
       manager_(manager),
-      sockets_(new Sockets()),
       time_(Time::GetInstance()),
       connection_id_(0),
       is_dns_auto_fallback_allowed_(false),

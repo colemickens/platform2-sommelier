@@ -33,7 +33,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
-#include "shill/net/mock_sockets.h"
 #include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
 #include "shill/vpn/mock_vpn_driver.h"
@@ -58,10 +57,8 @@ class VPNServiceTest : public testing::Test {
         metrics_(nullptr),
         device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new NiceMock<MockConnection>(&device_info_)),
-        sockets_(new MockSockets()),
         service_(new VPNService(&control_, nullptr, &metrics_, &manager_,
                                 driver_)) {
-    service_->sockets_.reset(sockets_);  // Passes ownership.
   }
 
   virtual ~VPNServiceTest() {}
@@ -124,7 +121,6 @@ class VPNServiceTest : public testing::Test {
   MockMetrics metrics_;
   MockDeviceInfo device_info_;
   scoped_refptr<NiceMock<MockConnection>> connection_;
-  MockSockets* sockets_;  // Owned by |service_|.
   VPNServiceRefPtr service_;
 };
 
