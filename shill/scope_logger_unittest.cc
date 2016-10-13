@@ -61,7 +61,6 @@ TEST_F(ScopeLoggerTest, GetAllScopeNames) {
             "dns+"
             "ethernet+"
             "http+"
-            "httpproxy+"
             "inet+"
             "link+"
             "manager+"

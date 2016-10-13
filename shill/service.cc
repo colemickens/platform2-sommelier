@@ -37,7 +37,6 @@
 #include "shill/control_interface.h"
 #include "shill/dhcp_properties.h"
 #include "shill/error.h"
-#include "shill/http_proxy.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -229,8 +228,6 @@ Service::Service(ControlInterface* control_interface,
   // see an autotest depending on it.
   store_.RegisterConstString(kErrorProperty, &error_);
   store_.RegisterConstString(kErrorDetailsProperty, &error_details_);
-  HelpRegisterConstDerivedUint16(kHTTPProxyPortProperty,
-                                 &Service::GetHTTPProxyPort);
   HelpRegisterConstDerivedRpcIdentifier(kIPConfigProperty,
                                         &Service::GetIPConfigRpcIdentifier);
   HelpRegisterDerivedBool(kIsActiveProperty, &Service::IsActive, nullptr,
@@ -808,14 +805,9 @@ void Service::EnableAndRetainAutoConnect() {
 
 void Service::SetConnection(const ConnectionRefPtr& connection) {
   if (connection.get()) {
-    // TODO(pstew): Make this function testable by using a factory here.
-    // http://crbug.com/216664
-    http_proxy_.reset(new HTTPProxy(connection));
-    http_proxy_->Start(dispatcher_, sockets_.get());
     Error unused_error;
     connection->set_tethering(GetTethering(&unused_error));
   } else {
-    http_proxy_.reset();
     static_ip_parameters_.ClearSavedParameters();
   }
   connection_ = connection;
@@ -1627,13 +1619,6 @@ bool Service::SetProfileRpcId(const string& profile, Error* error) {
   // Can't just use error.IsSuccess(), because that also requires saving
   // the profile to succeed. (See Profile::AdoptService)
   return (profile_ != old_profile);
-}
-
-uint16_t Service::GetHTTPProxyPort(Error* /*error*/) const {
-  if (http_proxy_.get()) {
-    return static_cast<uint16_t>(http_proxy_->proxy_port());
-  }
-  return 0;
 }
 
 string Service::GetProxyConfig(Error* error) {

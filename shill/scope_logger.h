@@ -49,7 +49,6 @@ class ScopeLogger {
     kDNS,
     kEthernet,
     kHTTP,
-    kHTTPProxy,
     kInet,
     kLink,
     kManager,

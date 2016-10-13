@@ -44,7 +44,6 @@ const char* const kScopeNames[] = {
   "dns",
   "ethernet",
   "http",
-  "httpproxy",
   "inet",
   "link",
   "manager",

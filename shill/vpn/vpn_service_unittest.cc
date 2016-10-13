@@ -252,7 +252,6 @@ TEST_F(VPNServiceTest, EnableAndRetainAutoConnect) {
 TEST_F(VPNServiceTest, SetConnection) {
   EXPECT_FALSE(service_->connection_binder_.get());
   EXPECT_FALSE(service_->connection());
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
   service_->SetConnection(connection_);
   ASSERT_TRUE(service_->connection_binder_.get());
   EXPECT_EQ(connection_.get(),
@@ -262,7 +261,6 @@ TEST_F(VPNServiceTest, SetConnection) {
 }
 
 TEST_F(VPNServiceTest, OnConnectionDisconnected) {
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
   service_->SetConnection(connection_);
   EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(1);
   connection_->OnLowerDisconnect();
@@ -361,7 +359,6 @@ TEST_F(VPNServiceTest, CustomSetterNoopChange) {
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
   scoped_refptr<Connection> null_connection;
 
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
   service_->SetConnection(connection_);
   EXPECT_EQ(connection_.get(), service_->connection().get());
 
@@ -383,7 +380,6 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
   EXPECT_CALL(*connection_, GetCarrierConnection())
       .WillOnce(Return(lower_connection_));
 
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
   service_->SetConnection(connection_);
   EXPECT_EQ(connection_.get(), service_->connection().get());
 
@@ -407,7 +403,6 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
 TEST_F(VPNServiceTest, GetTethering) {
   scoped_refptr<Connection> null_connection;
 
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
   service_->SetConnection(connection_);
   EXPECT_EQ(connection_.get(), service_->connection().get());
 

@@ -53,7 +53,6 @@ class DiagnosticsReporter;
 class Endpoint;
 class Error;
 class EventDispatcher;
-class HTTPProxy;
 class KeyValueStore;
 class Manager;
 class Metrics;
@@ -802,9 +801,6 @@ class Service : public base::RefCounted<Service> {
   std::string GetProfileRpcId(Error* error);
   bool SetProfileRpcId(const std::string& profile, Error* error);
 
-  // Returns TCP port of service's HTTP proxy in host order.
-  uint16_t GetHTTPProxyPort(Error* error) const;
-
   std::string GetProxyConfig(Error* error);
   bool SetProxyConfig(const std::string& proxy_config, Error* error);
 
@@ -910,7 +906,6 @@ class Service : public base::RefCounted<Service> {
 
   std::unique_ptr<ServiceAdaptorInterface> adaptor_;
   std::unique_ptr<ServicePropertyChangeNotifier> property_change_notifier_;
-  std::unique_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
   StaticIPParameters static_ip_parameters_;
   Metrics* metrics_;
