@@ -227,6 +227,23 @@ list_fixed_mmc_disks() {
   done
 }
 
+# NVMe device
+# Exclude disks with size 0, it means they did not spin up properly.
+list_fixed_nvme_disks() {
+  local nvme remo size
+
+  for nvme in /sys/block/nvme*; do
+    if [ ! -r "${sd}/size" ]; then
+      continue
+    fi
+    size=$(cat "${sd}/size")
+    remo=$(cat "${sd}/removable")
+    if [ ${remo:-0} -eq 0 -a ${size:-0} -gt 0 ]; then
+      echo "${nvme##*/}"
+    fi
+  done
+}
+
 # Find the drive to install based on the build write_cgpt.sh
 # script. If not found, return ""
 get_fixed_dst_drive() {

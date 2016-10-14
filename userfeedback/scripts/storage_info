@@ -18,7 +18,7 @@ SSD_CMD_1_ALTERNATE="smartctl -a -f brief"
 SSD_CMD_MAX=1
 
 # This match SanDisk SSD U100/i100 with any size with version *.xx.* when x < 54
-# Seen Error: U100 10.52.01 / i100 CS.51.00 / U100 10.01.04
+# Seen Error with U100 10.52.01 / i100 CS.51.00 / U100 10.01.04.
 MODEL_BLACKLIST_0="SanDisk_SSD_[iU]100.*"
 VERSION_BLACKLIST_0="(CS|10)\.([01234].|5[0123])\..*"
 MODEL_BLACKLIST_1="SanDisk_SDSA5GK-.*"
@@ -43,6 +43,8 @@ MMC_NAME_14="rel_sectors"
 MMC_NAME_15="serial"
 MMC_NAME_MAX=15
 
+NVME_CMD_0="smartctl -x"
+NVME_CMD_MAX=0
 
 # Example of hdparm result
 # Model=SanDisk SSD i100 32GB, FwRev=11.56.00, SerialNo=123456789012
@@ -82,7 +84,7 @@ print_ssd_info() {
   # BUG: On some machines, smartctl -x causes SSD error (crbug.com/328587)
   # We need to check model and firmware version of the SSD to avoid this bug.
 
-  # SSD model and firmware version is on the same line in hdparm result
+  # SSD model and firmware version is on the same line in hdparm result.
   local hdparm_result="$(hdparm -i /dev/$1 | grep "Model=")"
   local model="$(get_ssd_model "${hdparm_result}")"
   local version="$(get_ssd_version "${hdparm_result}")"
@@ -96,7 +98,7 @@ print_ssd_info() {
   fi
 
   for i in $(seq 0 ${SSD_CMD_MAX}); do
-    # use eval for variable indirection
+    # Use eval for variable indirection.
     eval ssd_cmd=\${SSD_CMD_${i}}
     echo "$ ${ssd_cmd} /dev/$1"
     ${ssd_cmd} "/dev/$1"
@@ -120,6 +122,20 @@ print_mmc_info() {
   mmc extcsd read "/dev/$1"
 }
 
+print_nvme_info() {
+  local nvme_cmd
+  local mvme_dev="/dev/$1"
+  local i
+
+  for i in $(seq 0 ${NMVE_CMD_MAX}); do
+    # Use eval for variable indirection.
+    eval nvme_cmd=\${NVME_CMD_${i}}
+    echo "$ ${nvme_cmd} ${mvme_dev}"
+    ${nvme_cmd} "${mvme_dev}"
+    echo ""
+  done
+}
+
 main() {
   local dev
 
@@ -135,9 +151,13 @@ main() {
   for dev in $(list_fixed_mmc_disks); do
     print_mmc_info ${dev}
   done
+
+  for dev in $(list_fixed_nvme_disks); do
+    print_nvme_info ${dev}
+  done
 }
 
-# don't run script in test mode
+# Do not run script in test mode.
 if [ ! "$1" = "--test" ]; then
   main
 fi
