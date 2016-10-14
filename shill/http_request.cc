@@ -228,6 +228,12 @@ void HTTPRequest::OnServerReadError(const string& /*error_msg*/) {
 // server.
 void HTTPRequest::ReadFromServer(InputData* data) {
   SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
+
+  if (data->len < 0) {
+    SendStatus(kResultResponseFailure);
+    return;
+  }
+
   if (data->len == 0) {
     SendStatus(kResultSuccess);
     return;

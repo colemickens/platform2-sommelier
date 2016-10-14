@@ -293,6 +293,10 @@ class HTTPRequestTest : public Test {
     InputData server_data(data_writable.data(), data_writable.size());
     request_->ReadFromServer(&server_data);
   }
+  void ReadFromServerBadData(InputData* data) {
+    CHECK(data->len < 0);
+    request_->ReadFromServer(data);
+  }
   void WriteToServer(int fd) {
     request_->WriteToServer(fd);
   }
@@ -493,6 +497,20 @@ TEST_F(HTTPRequestTest, ResponseData) {
   ExpectStop();
   ReadFromServer("");
   ExpectReset();
+}
+
+TEST_F(HTTPRequestTest, ResponseBadData) {
+  // Test that ReadFromServer works with corrupt input / length
+  SetupConnectComplete();
+  const string response2("test no crash");
+  const unsigned char* ptr =
+      reinterpret_cast<const unsigned char*>(response2.c_str());
+  vector<unsigned char> data_writable(ptr, ptr + response2.length());
+  // Deliberately use negative size
+  InputData server_data(data_writable.data(), 0 - data_writable.size());
+  ExpectResultCallback(HTTPRequest::kResultResponseFailure);
+  ExpectStop();
+  ReadFromServerBadData(&server_data);
 }
 
 }  // namespace shill
