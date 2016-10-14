@@ -128,19 +128,10 @@ main() {
   chmod 644 ${STORAGE_INFO_FILE}
   exec > ${STORAGE_INFO_FILE}
 
-  # We need to check both sda and sdb for internal disk because:
-  # 1) If we use rootdev command to determine the disk to check, it will return
-  #    the usb stick, not the internal drive, when we boot from usb.
-  # 2) We also can not assume that sda is an internal disk because in some
-  #    systems (e.g., parrot), the usb stick might be labeled as sda and the
-  #    internal disk as sdb.
   for dev in $(list_fixed_ata_disks); do
     print_ssd_info ${dev}
   done
 
-  # For devices with eMMC, the internal disk will always be labeled as mmcblk0
-  # so we can check only mmcblk0, but to be safe we will check both mmcblk0 and
-  # mmcblk1.
   for dev in $(list_fixed_mmc_disks); do
     print_mmc_info ${dev}
   done
