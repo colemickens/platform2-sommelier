@@ -34,6 +34,7 @@ connect: 1
 getsockname: 1
 getpeername: 1
 pipe: 1
+pipe2: 1
 sendmsg: 1
 sendto: 1
 recvmsg: 1
