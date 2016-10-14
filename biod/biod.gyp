@@ -20,6 +20,7 @@
         'main.cc',
         'biometrics_daemon.cc',
         'fake_biometric.cc',
+        'fpc_biometric.cc',
         'bio_library.cc',
       ],
     },

@@ -11,6 +11,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 
 #include "biod/fake_biometric.h"
+#include "biod/fpc_biometric.h"
 
 namespace biod {
 
@@ -393,6 +394,16 @@ BiometricsDaemon::BiometricsDaemon() {
       std::unique_ptr<Biometric>(new FakeBiometric),
       object_manager_.get(),
       fake_bio_path,
+      sequencer->GetHandler("Failed to register biometric object", true)));
+
+  ObjectPath fpc_bio_path =
+      ObjectPath(dbus_constants::kServicePath + std::string("/FpcBiometric"));
+  std::unique_ptr<Biometric> fpc_bio = FpcBiometric::Create();
+  CHECK(fpc_bio);
+  biometrics_.emplace_back(new BiometricWrapper(
+      std::move(fpc_bio),
+      object_manager_.get(),
+      fpc_bio_path,
       sequencer->GetHandler("Failed to register biometric object", true)));
 
   CHECK(bus_->RequestOwnershipAndBlock(dbus_constants::kServiceName,

@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -68,8 +69,10 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "vcsid " << VCSID;
 
   base::MessageLoopForIO message_loop;
+  base::AtExitManager at_exit_manager;
 
   biod::BiometricsDaemon bio_daemon;
+
 
   message_loop.Run();
   return 0;
