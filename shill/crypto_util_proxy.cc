@@ -293,6 +293,8 @@ void CryptoUtilProxy::HandleShimStdinReady(int fd) {
 void CryptoUtilProxy::HandleShimOutput(InputData* data) {
   CHECK(shim_pid_);
   CHECK(!result_handler_.is_null());
+  DCHECK_GE(data->len, 0);
+
   if (data->len > 0) {
     // Everyone is shipping features and I'm just here copying bytes from one
     // buffer to another.

@@ -57,10 +57,10 @@ void IOInputHandler::OnFileCanReadWithoutBlocking(int fd) {
         "File read error: %d", errno);
     LOG(ERROR) << condition;
     error_callback_.Run(condition);
+  } else {
+    InputData input_data(buf, len);
+    input_callback_.Run(&input_data);
   }
-
-  InputData input_data(buf, len);
-  input_callback_.Run(&input_data);
 }
 
 void IOInputHandler::OnFileCanWriteWithoutBlocking(int fd) {

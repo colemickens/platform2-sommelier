@@ -161,6 +161,8 @@ void IcmpSession::TransmitEchoRequestTask(const IPAddress& destination) {
 }
 
 void IcmpSession::OnEchoReplyReceived(InputData* data) {
+  DCHECK_GE(data->len, 0);
+
   ByteString message(data->buf, data->len);
   if (message.GetLength() < sizeof(struct iphdr) + sizeof(struct icmphdr)) {
     LOG(WARNING) << "Received ICMP packet is too short to contain ICMP header";
