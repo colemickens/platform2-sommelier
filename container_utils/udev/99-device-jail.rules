@@ -1,0 +1,2 @@
+KERNEL=="jail-control", MODE="0660", GROUP="devicejail"
+SUBSYSTEM=="device_jail", MODE="0660", GROUP="chronos"
