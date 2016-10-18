@@ -61,7 +61,8 @@ const char kSuspendDelayDescription[] = "session_manager";
 const char kContainerInstallDirectory[] = "/opt/google/containers";
 
 const base::FilePath::CharType kArcCgroupFreezerStatePath[] =
-    FILE_PATH_LITERAL("/sys/fs/cgroup/freezer/android/freezer.state");
+    FILE_PATH_LITERAL("/sys/fs/cgroup/freezer/session_manager_containers"
+                      "/android/freezer.state");
 
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {
