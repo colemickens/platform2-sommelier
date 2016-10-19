@@ -46,6 +46,7 @@ class Biometric {
     kSensorDirty = 3,
     kTooSlow = 4,
     kTooFast = 5,
+    kImmobile = 6,
   };
 
   struct EnrollEnder {
