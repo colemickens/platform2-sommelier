@@ -5,6 +5,7 @@
 #include "imageloader_impl.h"
 
 #include <dirent.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include <algorithm>
@@ -53,7 +54,7 @@ constexpr char kImageLoaderJSON[] =
     "\"version\":\"22.0.0.256\","
     "\"manifest-version\":1}";
 
-constexpr char kImageLoaderSig[] = {
+constexpr uint8_t kImageLoaderSig[] = {
     0x30, 0x46, 0x02, 0x21, 0x00, 0x86, 0x4f, 0x25, 0x51, 0x52, 0xb1, 0x79,
     0xa3, 0x3e, 0x9b, 0x08, 0x70, 0x10, 0x61, 0xca, 0x63, 0x37, 0x0c, 0xa2,
     0x9f, 0x4f, 0x21, 0xd7, 0x37, 0x05, 0x4e, 0x8d, 0x73, 0x39, 0x18, 0x98,
@@ -61,7 +62,7 @@ constexpr char kImageLoaderSig[] = {
     0xe7, 0x4c, 0xa2, 0x5e, 0x00, 0xcb, 0x33, 0x43, 0x7b, 0x9d, 0x72, 0x3e,
     0x67, 0x39, 0x2c, 0xfb, 0x3a, 0xcb, 0x80, 0x2b, 0xc4, 0xca, 0xab, 0x8d};
 
-constexpr char kImageLoaderBadSig[] = {
+constexpr uint8_t kImageLoaderBadSig[] = {
     0x30, 0x44, 0x02, 0x20, 0x0a, 0x75, 0x49, 0xaf, 0x01, 0x3b, 0x48, 0x51,
     0x45, 0x74, 0x8b, 0x41, 0x64, 0x21, 0x83, 0xce, 0xf1, 0x78, 0x1d, 0xd0,
     0xa8, 0xd6, 0xae, 0x84, 0xf3, 0xc1, 0x3c, 0x3a, 0xee, 0xb4, 0x35, 0xb7,
@@ -187,11 +188,13 @@ TEST_F(ImageLoaderTest, ECVerify) {
   ImageLoaderImpl loader(GetConfig("/nonexistant"));
   EXPECT_TRUE(loader.ECVerify(
       base::StringPiece(kImageLoaderJSON),
-      base::StringPiece(kImageLoaderSig, sizeof(kImageLoaderSig))));
+      base::StringPiece(reinterpret_cast<const char*>(kImageLoaderSig),
+                        sizeof(kImageLoaderSig))));
 
   EXPECT_FALSE(loader.ECVerify(
       base::StringPiece(kImageLoaderJSON),
-      base::StringPiece(kImageLoaderBadSig, sizeof(kImageLoaderBadSig))));
+      base::StringPiece(reinterpret_cast<const char*>(kImageLoaderBadSig),
+                        sizeof(kImageLoaderBadSig))));
 }
 
 TEST_F(ImageLoaderTest, ManifestFingerPrint) {
@@ -312,7 +315,8 @@ TEST_F(ImageLoaderTest, CopyInvalidImage) {
 TEST_F(ImageLoaderTest, ParseManifest) {
   ImageLoaderImpl loader(GetConfig("/nonexistant"));
   ImageLoaderImpl::Manifest manifest;
-  std::string imageloader_sig(kImageLoaderSig, sizeof(kImageLoaderSig));
+  std::string imageloader_sig(reinterpret_cast<const char*>(kImageLoaderSig),
+                              sizeof(kImageLoaderSig));
   ASSERT_TRUE(loader.VerifyAndParseManifest(kImageLoaderJSON, imageloader_sig,
                                             &manifest));
   EXPECT_EQ(1, manifest.manifest_version);
@@ -323,11 +327,17 @@ TEST_F(ImageLoaderTest, ParseManifest) {
   std::string bad_manifest = "{\"foo\":\"128.0.0.9\"}";
   ImageLoaderImpl::Manifest manifest2;
   EXPECT_FALSE(
-      loader.VerifyAndParseManifest(bad_manifest, kImageLoaderSig, &manifest2));
+      loader.VerifyAndParseManifest(
+          bad_manifest,
+          reinterpret_cast<const char*>(kImageLoaderSig),
+          &manifest2));
 
   ImageLoaderImpl::Manifest manifest3;
-  EXPECT_FALSE(loader.VerifyAndParseManifest(kImageLoaderJSON,
-                                             kImageLoaderBadSig, &manifest3));
+  EXPECT_FALSE(
+      loader.VerifyAndParseManifest(
+          kImageLoaderJSON,
+          reinterpret_cast<const char*>(kImageLoaderBadSig),
+          &manifest3));
 }
 
 TEST_F(ImageLoaderTest, MountValidImage) {

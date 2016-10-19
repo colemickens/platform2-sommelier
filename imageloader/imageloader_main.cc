@@ -67,7 +67,12 @@ int main(int argc, char** argv) {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
-  conn.request_name(imageloader::kImageLoaderName);
+  if (!conn.acquire_name(imageloader::kImageLoaderName)) {
+    LOG(ERROR) << "Failed to acquire dbus service with name: "
+               << imageloader::kImageLoaderName;
+    return 1;
+  }
+
   imageloader::ImageLoader helper(&conn, std::move(config));
 
   if (FLAGS_o) {
