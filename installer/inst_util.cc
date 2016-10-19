@@ -392,7 +392,7 @@ bool VersionLess(const string& left, const string& right) {
 
 // This is an array of device names that are allowed in end in a digit, and
 // which use the 'p' notation to denote partitions.
-const char *numbered_devices[] = {"/dev/mmcblk", "/dev/loop"};
+const char *numbered_devices[] = { "/dev/loop", "/dev/mmcblk", "/dev/nvme" };
 
 bool StartsWith(const string& s, const string& prefix) {
   return s.compare(0, prefix.length(), prefix) == 0;

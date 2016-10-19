@@ -266,6 +266,7 @@ TEST(UtilTest, GetBlockDevFromPartitionDev) {
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/ubi1_0"), "/dev/mtd0");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mtd2_0"), "/dev/mtd0");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/ubiblock3_0"), "/dev/mtd0");
+  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/nvme0n1p12"), "/dev/nvme0n1");
 }
 
 TEST(UtilTest, GetPartitionDevTest) {
@@ -287,6 +288,7 @@ TEST(UtilTest, GetPartitionDevTest) {
   EXPECT_EQ(GetPartitionFromPartitionDev("/dev/mtd6_0"), 6);
   EXPECT_EQ(GetPartitionFromPartitionDev("/dev/ubiblock7_0"), 7);
   EXPECT_EQ(GetPartitionFromPartitionDev("/dev/ubi8_0"), 8);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/nvme0n1p12"), 12);
 }
 
 TEST(UtilTest, MakePartitionDevTest) {
@@ -302,6 +304,7 @@ TEST(UtilTest, MakePartitionDevTest) {
   EXPECT_EQ(MakePartitionDev("/dev/mtd0", 3), "/dev/ubiblock3_0");
   EXPECT_EQ(MakePartitionDev("/dev/mtd0", 4), "/dev/mtd4");
   EXPECT_EQ(MakePartitionDev("/dev/mtd0", 5), "/dev/ubiblock5_0");
+  EXPECT_EQ(MakePartitionDev("/dev/nvme0n1", 12), "/dev/nvme0n1p12");
 }
 
 TEST(UtilTest, DirnameTest) {
