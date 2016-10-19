@@ -11,10 +11,16 @@
     {
       'target_name': 'biod',
       'type': 'executable',
+      'link_settings': {
+        'libraries': [
+          '-ldl',
+        ],
+      },
       'sources': [
         'main.cc',
         'biometrics_daemon.cc',
-        'fake_biometric.cc'
+        'fake_biometric.cc',
+        'bio_library.cc',
       ],
     },
     {
