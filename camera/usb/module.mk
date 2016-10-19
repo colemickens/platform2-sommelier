@@ -4,7 +4,10 @@
 
 include common.mk
 
-CXX_LIBRARY(usb/camera_hal.so): $(usb_CXX_OBJECTS) $(COMMON_OBJECTS)
+CXX_LIBRARY(usb/camera_hal.so): \
+	$(ANDROID_OBJECTS) \
+	$(COMMON_OBJECTS) \
+	$(usb_CXX_OBJECTS)
 
 usb/camera_hal: CXX_LIBRARY(usb/camera_hal.so)
 

@@ -8,7 +8,9 @@
 #include <base/lazy_instance.h>
 
 #include "arc/common.h"
+#include "usb/camera_metadata.h"
 #include "usb/common_types.h"
+#include "usb/stream_format.h"
 #include "usb/v4l2_camera_device.h"
 
 namespace arc {
@@ -16,11 +18,31 @@ namespace arc {
 base::LazyInstance<CameraHal> g_camera_hal = LAZY_INSTANCE_INITIALIZER;
 
 CameraHal::CameraHal() {
-  device_infos_ = V4L2CameraDevice().GetCameraDeviceInfos();
+  std::unique_ptr<V4L2CameraDevice> device(new V4L2CameraDevice());
+  device_infos_ = device->GetCameraDeviceInfos();
   VLOGF(1) << "Number of cameras is " << GetNumberOfCameras();
+
+  for (auto& device_info : device_infos_) {
+    CameraMetadata metadata;
+    metadata.FillDefaultMetadata();
+    metadata.FillMetadataFromDeviceInfo(device_info);
+
+    SupportedFormats supported_formats =
+        device->GetDeviceSupportedFormats(device_info.device_path);
+    SupportedFormats qualified_formats = GetQualifiedFormats(supported_formats);
+    metadata.FillMetadataFromSupportedFormats(qualified_formats);
+
+    static_infos_.push_back(metadata.Release());
+  }
 }
 
-CameraHal::~CameraHal() {}
+CameraHal::~CameraHal() {
+  for (auto& static_info : static_infos_) {
+    if (static_info) {
+      free_camera_metadata(static_info);
+    }
+  }
+}
 
 CameraHal& CameraHal::GetInstance() {
   return g_camera_hal.Get();
@@ -41,8 +63,8 @@ int CameraHal::OpenDevice(int id,
     LOGF(ERROR) << "Camera " << id << " is already opened";
     return -EBUSY;
   }
-  cameras_[id].reset(
-      new CameraClient(id, device_infos_[id].device_path, module, hw_device));
+  cameras_[id].reset(new CameraClient(id, device_infos_[id].device_path,
+                                      *static_infos_[id], module, hw_device));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -62,7 +84,7 @@ int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
   info->facing = device_infos_[id].lens_facing;
   info->orientation = device_infos_[id].sensor_orientation;
   info->device_version = CAMERA_DEVICE_API_VERSION_3_3;
-  info->static_camera_characteristics = NULL;
+  info->static_camera_characteristics = static_infos_[id];
   return 0;
 }
 

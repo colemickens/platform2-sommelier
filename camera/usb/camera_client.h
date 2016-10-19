@@ -6,6 +6,7 @@
 #ifndef USB_CAMERA_CLIENT_H_
 #define USB_CAMERA_CLIENT_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -13,7 +14,9 @@
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
+#include "usb/camera_metadata.h"
 #include "usb/common_types.h"
+#include "usb/v4l2_camera_device.h"
 
 namespace arc {
 
@@ -26,6 +29,7 @@ class CameraClient {
   // id is used to distinguish cameras. 0 <= id < number of cameras.
   CameraClient(int id,
                const std::string& device_path,
+               const camera_metadata_t& static_info,
                const hw_module_t* module,
                hw_device_t** hw_device);
   ~CameraClient();
@@ -53,7 +57,7 @@ class CameraClient {
   const std::string device_path_;
 
   // Camera device handle returned to framework for use.
-  camera3_device_t device_;
+  camera3_device_t camera3_device_;
 
   // Use to check the constructor, OpenDevice, and CloseDevice are called on the
   // same thread.
@@ -61,6 +65,12 @@ class CameraClient {
 
   // Use to check camera v3 device operations are called on the same thread.
   base::ThreadChecker ops_thread_checker_;
+
+  // Delegate to communicate with camera device.
+  std::unique_ptr<V4L2CameraDevice> device_;
+
+  // Metadata containing persistent camera characteristics
+  CameraMetadata metadata_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraClient);
 };

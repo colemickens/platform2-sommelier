@@ -10,24 +10,29 @@
 #include "arc/common.h"
 #include "usb/camera_hal.h"
 #include "usb/camera_hal_device_ops.h"
+#include "usb/camera_metadata.h"
 
 namespace arc {
 
 CameraClient::CameraClient(int id,
                            const std::string& device_path,
+                           const camera_metadata_t& static_info,
                            const hw_module_t* module,
                            hw_device_t** hw_device)
-    : id_(id), device_path_(device_path) {
-  memset(&device_, 0, sizeof(device_));
-  device_.common.tag = HARDWARE_DEVICE_TAG;
-  device_.common.version = CAMERA_DEVICE_API_VERSION_3_3;
-  device_.common.close = arc::camera_device_close;
-  device_.common.module = const_cast<hw_module_t*>(module);
-  device_.ops = &g_camera_device_ops;
-  device_.priv = this;
-  *hw_device = &device_.common;
+    : id_(id), device_path_(device_path), device_(new V4L2CameraDevice()) {
+  memset(&camera3_device_, 0, sizeof(camera3_device_));
+  camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
+  camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_3;
+  camera3_device_.common.close = arc::camera_device_close;
+  camera3_device_.common.module = const_cast<hw_module_t*>(module);
+  camera3_device_.ops = &g_camera_device_ops;
+  camera3_device_.priv = this;
+  *hw_device = &camera3_device_.common;
 
   ops_thread_checker_.DetachFromThread();
+
+  // MetadataBase::operator= will make a copy of camera_metadata_t.
+  metadata_ = &static_info;
 }
 
 CameraClient::~CameraClient() {}
