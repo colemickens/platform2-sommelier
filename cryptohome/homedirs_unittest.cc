@@ -698,25 +698,75 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
     .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
     .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator));
 
-  // Return a cache and non-cache directory.
+  // Return N based and pre-N based cache directories, and a non-cache
+  // directory.
   EXPECT_CALL(*fe, Next())
     .WillOnce(Return(homedir_paths_[0].Append(
             "android-data/data/data/com.google.hogehoge/cache")))
     .WillOnce(Return(homedir_paths_[0].Append(
             "android-data/data/data/com.google.hogehoge/data")))
+    .WillOnce(Return(homedir_paths_[0].Append(
+            "android-data/data/data/com.google.nbased/cache")))
+    .WillOnce(Return(homedir_paths_[0].Append(
+            "android-data/data/data/com.google.nbased/code_cache")))
     .WillRepeatedly(Return(FilePath()));
 
   EXPECT_CALL(platform_, HasExtendedFileAttribute(
         Property(
           &FilePath::value,
           EndsWith("android-data/data/data/com.google.hogehoge/cache")),
-        kAndroidCacheFilesAttribute))
+        kAndroidCacheFilesAttributes[0]))
     .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.nbased/cache")),
+        kAndroidCacheFilesAttributes[0]))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.nbased/cache")),
+        kAndroidCacheFilesAttributes[1]))
+    .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.nbased/code_cache")),
+        kAndroidCacheFilesAttributes[0]))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.nbased/code_cache")),
+        kAndroidCacheFilesAttributes[1]))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.nbased/code_cache")),
+        kAndroidCacheFilesAttributes[2]))
+    .WillOnce(Return(true));
+
   EXPECT_CALL(platform_, HasExtendedFileAttribute(
         Property(
           &FilePath::value,
           EndsWith("android-data/data/data/com.google.hogehoge/data")),
-        kAndroidCacheFilesAttribute))
+        kAndroidCacheFilesAttributes[0]))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.hogehoge/data")),
+        kAndroidCacheFilesAttributes[1]))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.hogehoge/data")),
+        kAndroidCacheFilesAttributes[2]))
     .WillOnce(Return(false));
 
   // Confirm android cache dir is removed and data directory is not.
@@ -724,6 +774,18 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
         Property(
           &FilePath::value,
           EndsWith("android-data/data/data/com.google.hogehoge/cache")),
+        _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.nbased/cache")),
+        _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(
+        Property(
+          &FilePath::value,
+          EndsWith("android-data/data/data/com.google.nbased/code_cache")),
         _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(

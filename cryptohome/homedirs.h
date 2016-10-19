@@ -35,7 +35,7 @@ namespace cryptohome {
 const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
 const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
 extern const char kGCacheFilesAttribute[];
-extern const char kAndroidCacheFilesAttribute[];
+extern const char *kAndroidCacheFilesAttributes[];
 
 class Credentials;
 class Platform;

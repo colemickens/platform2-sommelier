@@ -38,7 +38,11 @@ namespace cryptohome {
 const FilePath::CharType *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
 const char kGCacheFilesAttribute[] = "user.GCacheFiles";
-const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
+const char *kAndroidCacheFilesAttributes[] = {
+  "user.AndroidCache",  // Android M data cache.
+  "user.inode_cache",  // Android N and beyond data cache.
+  "user.inode_code_cache",  // Android N and beyond JIT cache.
+};
 
 HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
@@ -894,10 +898,13 @@ void HomeDirs::DeleteAndroidCacheCallback(const FilePath& vault) {
   FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     std::string value;
-    if (platform_->HasExtendedFileAttribute(
-            next_path, kAndroidCacheFilesAttribute)) {
-      LOG(WARNING) << "Deleting Android Cache " << next_path.value();
-      platform_->DeleteFile(next_path, true);
+    for (size_t i = 0; i < arraysize(kAndroidCacheFilesAttributes); ++i) {
+      if (platform_->HasExtendedFileAttribute(
+              next_path, kAndroidCacheFilesAttributes[i])) {
+        LOG(WARNING) << "Deleting Android Cache " << next_path.value();
+        platform_->DeleteFile(next_path, true);
+        break;
+      }
     }
   }
 }
