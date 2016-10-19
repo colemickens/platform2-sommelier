@@ -81,10 +81,8 @@ class FirmwareManagementParametersTest : public ::testing::Test {
         .Times(1)
         .WillOnce(DoAll(SaveArg<1>(nvram_data), Return(true)));
 
-      // Expect an empty write to lock the space
-      brillo::Blob empty_data(0);
       EXPECT_CALL(tpm_,
-          WriteNvram(FirmwareManagementParameters::kNvramIndex, Eq(empty_data)))
+                  WriteLockNvram(FirmwareManagementParameters::kNvramIndex))
         .WillOnce(Return(true));
       EXPECT_CALL(tpm_,
                   IsNvramLocked(FirmwareManagementParameters::kNvramIndex))

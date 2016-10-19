@@ -67,6 +67,7 @@ class Tpm2Impl : public Tpm {
   bool ReadNvram(uint32_t index, brillo::SecureBlob* blob) override;
   bool IsNvramDefined(uint32_t index) override;
   bool IsNvramLocked(uint32_t index) override;
+  bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
   bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) override;
   bool GetEndorsementCredential(brillo::SecureBlob* credential) override;

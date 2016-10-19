@@ -161,8 +161,12 @@ bool TpmLiveTest::NvramTest() {
     LOG(ERROR) << "Error writing to Nvram.";
     return false;
   }
+  if (!tpm_->WriteLockNvram(index)) {
+    LOG(ERROR) << "Error locking Nvram space.";
+    return false;
+  }
   if (!tpm_->IsNvramLocked(index)) {
-    LOG(ERROR) << "Nvram should be locked after a write.";
+    LOG(ERROR) << "Nvram should be locked after locking.";
     return false;
   }
   SecureBlob data;
@@ -186,7 +190,7 @@ bool TpmLiveTest::NvramTest() {
     LOG(ERROR) << "Nvram still defined after it was destroyed.";
     return false;
   }
-  VLOG(1) << "NvramTest eneded successfully.";
+  VLOG(1) << "NvramTest ended successfully.";
   return true;
 }
 

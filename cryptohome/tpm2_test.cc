@@ -262,9 +262,6 @@ TEST_F(Tpm2Test, WriteNvramSuccess) {
   EXPECT_TRUE(tpm_->WriteNvram(index, SecureBlob(data)));
   EXPECT_EQ(index, last_write_space_request.index());
   EXPECT_EQ(data, last_write_space_request.data());
-  EXPECT_EQ(index, last_lock_space_request.index());
-  EXPECT_TRUE(last_lock_space_request.lock_write());
-  EXPECT_FALSE(last_lock_space_request.lock_read());
 }
 
 TEST_F(Tpm2Test, WriteNvramFailure) {
@@ -272,9 +269,17 @@ TEST_F(Tpm2Test, WriteNvramFailure) {
   EXPECT_FALSE(tpm_->WriteNvram(0, SecureBlob()));
 }
 
-TEST_F(Tpm2Test, WriteNvramLockFailure) {
+TEST_F(Tpm2Test, WriteLockNvramSuccess) {
+  uint32_t index = 2;
+  EXPECT_TRUE(tpm_->WriteLockNvram(index));
+  EXPECT_EQ(index, last_lock_space_request.index());
+  EXPECT_TRUE(last_lock_space_request.lock_write());
+  EXPECT_FALSE(last_lock_space_request.lock_read());
+}
+
+TEST_F(Tpm2Test, WriteLockNvramFailure) {
   next_lock_space_reply.set_result(NVRAM_RESULT_IPC_ERROR);
-  EXPECT_FALSE(tpm_->WriteNvram(0, SecureBlob()));
+  EXPECT_FALSE(tpm_->WriteLockNvram(0));
 }
 
 TEST_F(Tpm2Test, ReadNvramSuccess) {

@@ -224,6 +224,14 @@ class Tpm {
   // exist, or there is a TPM-related error.
   virtual bool IsNvramLocked(uint32_t index) = 0;
 
+  // Locks NVRAM space for writing
+  //
+  // Parameters
+  //  index - The index of the space
+  // Returns true if the index has been successfully write-locked, and false
+  // otherwise.
+  virtual bool WriteLockNvram(uint32_t index) = 0;
+
   // Returns the reported size of the NVRAM space indicated by its index
   //
   // Parameters

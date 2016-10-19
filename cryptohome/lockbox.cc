@@ -350,9 +350,8 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
     *error = kErrorIdTpmError;
     return false;
   }
-  SecureBlob lock(0);
-  // Write 0 to the nvram
-  if (!tpm_->WriteNvram(nvram_index_, lock)) {
+  // Lock nvram index for writing.
+  if (!tpm_->WriteLockNvram(nvram_index_)) {
     LOG(ERROR) << "Store() failed to lock the NVRAM space";
     *error = kErrorIdTpmError;
     return false;

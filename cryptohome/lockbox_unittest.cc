@@ -99,9 +99,7 @@ class LockboxTest : public ::testing::Test {
       EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, _))
         .Times(1)
         .WillOnce(DoAll(SaveArg<1>(nvram_data), Return(true)));
-      // size==0 locks.
-      brillo::Blob empty_data(0);
-      EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, Eq(empty_data)))
+      EXPECT_CALL(tpm_, WriteLockNvram(0xdeadbeef))
         .Times(1)
         .WillRepeatedly(Return(true));
       EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))

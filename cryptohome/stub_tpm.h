@@ -56,6 +56,8 @@ class StubTpm : public Tpm {
   bool DestroyNvram(uint32_t index) override { return false; }
   bool WriteNvram(uint32_t index, const SecureBlob& blob) override
     { return false; }
+  bool WriteLockNvram(uint32_t index) override
+    { return false; }
   bool GetEndorsementPublicKey(SecureBlob* ek_public_key) override
     { return false; }
   bool GetEndorsementCredential(SecureBlob* credential) override

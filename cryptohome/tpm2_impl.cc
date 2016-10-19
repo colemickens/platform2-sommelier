@@ -186,17 +186,6 @@ bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
     LOG(ERROR) << "Failed to write nvram space: " << write_reply.result();
     return false;
   }
-  tpm_manager::LockSpaceRequest lock_request;
-  lock_request.set_index(index);
-  lock_request.set_lock_write(true);
-  auto lock_method = base::Bind(&tpm_manager::TpmNvramInterface::LockSpace,
-                                base::Unretained(tpm_nvram_), lock_request);
-  tpm_manager::LockSpaceReply lock_reply;
-  SendTpmManagerRequestAndWait(lock_method, &lock_reply);
-  if (lock_reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
-    LOG(ERROR) << "Failed to lock nvram space: " << lock_reply.result();
-    return false;
-  }
   return true;
 }
 
@@ -256,6 +245,24 @@ bool Tpm2Impl::IsNvramLocked(uint32_t index) {
     return false;
   }
   return reply.is_write_locked();
+}
+
+bool Tpm2Impl::WriteLockNvram(uint32_t index) {
+  if (!InitializeTpmManagerClients()) {
+    return false;
+  }
+  tpm_manager::LockSpaceRequest lock_request;
+  lock_request.set_index(index);
+  lock_request.set_lock_write(true);
+  auto lock_method = base::Bind(&tpm_manager::TpmNvramInterface::LockSpace,
+                                base::Unretained(tpm_nvram_), lock_request);
+  tpm_manager::LockSpaceReply lock_reply;
+  SendTpmManagerRequestAndWait(lock_method, &lock_reply);
+  if (lock_reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to lock nvram space: " << lock_reply.result();
+    return false;
+  }
+  return true;
 }
 
 unsigned int Tpm2Impl::GetNvramSize(uint32_t index) {

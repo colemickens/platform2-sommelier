@@ -1334,6 +1334,11 @@ bool TpmImpl::WriteNvram(uint32_t index, const SecureBlob& blob) {
   return true;
 }
 
+bool TpmImpl::WriteLockNvram(uint32_t index) {
+  SecureBlob lock(0);
+  return WriteNvram(index, lock);
+}
+
 bool TpmImpl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
   *enabled = false;
   *owned = false;

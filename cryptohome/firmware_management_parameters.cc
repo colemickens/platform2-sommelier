@@ -239,9 +239,8 @@ bool FirmwareManagementParameters::Store(uint32_t flags,
     return false;
   }
 
-  // Write 0 to the nvram to lock it
-  SecureBlob lock(0);
-  if (!tpm_->WriteNvram(kNvramIndex, lock)) {
+  // Lock nvram index for writing.
+  if (!tpm_->WriteLockNvram(kNvramIndex)) {
     LOG(ERROR) << "Store() failed to lock the NVRAM space";
     return false;
   }
