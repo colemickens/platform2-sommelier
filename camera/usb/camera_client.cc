@@ -52,6 +52,17 @@ int CameraClient::CloseDevice() {
 int CameraClient::Initialize(const camera3_callback_ops_t* callback_ops) {
   VLOGFID(1, id_);
   DCHECK(ops_thread_checker_.CalledOnValidThread());
+
+  callback_ops_ = callback_ops;
+
+  // camera3_request_template_t starts at 1.
+  for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
+    template_settings_[i] = metadata_.CreateDefaultRequestSettings(i);
+    if (template_settings_[i].get() == NULL) {
+      LOGFID(ERROR, id_) << "metadata for template type (" << i << ") is NULL";
+      return -ENODATA;
+    }
+  }
   return 0;
 }
 
@@ -64,9 +75,14 @@ int CameraClient::ConfigureStreams(
 
 const camera_metadata_t* CameraClient::ConstructDefaultRequestSettings(
     int type) {
-  VLOGFID(1, id_);
+  VLOGFID(1, id_) << "type=" << type;
   DCHECK(ops_thread_checker_.CalledOnValidThread());
-  return NULL;
+
+  if (!CameraMetadata::IsValidTemplateType(type)) {
+    LOGFID(ERROR, id_) << "Invalid template request type: " << type;
+    return NULL;
+  }
+  return template_settings_[type].get();
 }
 
 int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {

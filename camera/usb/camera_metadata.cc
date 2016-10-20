@@ -288,4 +288,45 @@ int CameraMetadata::FillMetadataFromDeviceInfo(const DeviceInfo& device_info) {
   return 0;
 }
 
+CameraMetadataUniquePtr CameraMetadata::CreateDefaultRequestSettings(
+    int template_type) {
+  uint8_t capture_intent;
+  switch (template_type) {
+    case CAMERA3_TEMPLATE_PREVIEW:
+      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
+      break;
+    case CAMERA3_TEMPLATE_STILL_CAPTURE:
+      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
+      break;
+    case CAMERA3_TEMPLATE_VIDEO_RECORD:
+      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
+      break;
+    case CAMERA3_TEMPLATE_VIDEO_SNAPSHOT:
+      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT;
+      break;
+    case CAMERA3_TEMPLATE_ZERO_SHUTTER_LAG:
+      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG;
+      break;
+    case CAMERA3_TEMPLATE_MANUAL:
+      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_MANUAL;
+      break;
+    default:
+      LOGF(ERROR) << "Invalid template request type: " << template_type;
+      return NULL;
+  }
+
+  CameraMetadata metadata(*this);
+  uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
+
+  if (metadata.Update(ANDROID_CONTROL_MODE, &control_mode, 1) ||
+      metadata.Update(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1)) {
+    return CameraMetadataUniquePtr();
+  }
+  return CameraMetadataUniquePtr(metadata.Release());
+}
+
+bool CameraMetadata::IsValidTemplateType(int type) {
+  return type > 0 && type < CAMERA3_TEMPLATE_COUNT;
+}
+
 }  // namespace arc

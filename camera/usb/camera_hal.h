@@ -53,8 +53,8 @@ class CameraHal {
   // All methods of this class should be run on the same thread.
   base::ThreadChecker thread_checker_;
 
-  // CameraHal owns camera_metadata_t in |static_infos_|.
-  std::vector<camera_metadata_t*> static_infos_;
+  // Used to report camera info at anytime.
+  std::vector<CameraMetadataUniquePtr> static_infos_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraHal);
 };

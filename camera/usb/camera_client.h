@@ -72,6 +72,13 @@ class CameraClient {
   // Metadata containing persistent camera characteristics
   CameraMetadata metadata_;
 
+  // Methods used to call back into the framework.
+  const camera3_callback_ops_t* callback_ops_;
+
+  // Static array of standard camera settings templates. These are owned by
+  // CameraClient.
+  CameraMetadataUniquePtr template_settings_[CAMERA3_TEMPLATE_COUNT];
+
   DISALLOW_COPY_AND_ASSIGN(CameraClient);
 };
 

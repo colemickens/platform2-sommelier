@@ -6,6 +6,8 @@
 #ifndef USB_CAMERA_METADATA_H_
 #define USB_CAMERA_METADATA_H_
 
+#include <memory>
+
 #include "arc/metadata_base.h"
 #include "usb/common_types.h"
 
@@ -18,6 +20,15 @@
   }
 
 namespace arc {
+
+struct CameraMetadataDeleter {
+  inline void operator()(camera_metadata_t* metadata) const {
+    free_camera_metadata(metadata);
+  }
+};
+
+typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
+    CameraMetadataUniquePtr;
 
 class CameraMetadata : public MetadataBase {
  public:
@@ -40,6 +51,11 @@ class CameraMetadata : public MetadataBase {
       const SupportedFormats& supported_formats);
 
   int FillMetadataFromDeviceInfo(const DeviceInfo& device_info);
+
+  // Return a copy of metadata. Caller takes the ownership.
+  CameraMetadataUniquePtr CreateDefaultRequestSettings(int template_type);
+
+  static bool IsValidTemplateType(int type);
 };
 
 }  // namespace arc

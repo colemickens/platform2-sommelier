@@ -32,17 +32,11 @@ CameraHal::CameraHal() {
     SupportedFormats qualified_formats = GetQualifiedFormats(supported_formats);
     metadata.FillMetadataFromSupportedFormats(qualified_formats);
 
-    static_infos_.push_back(metadata.Release());
+    static_infos_.push_back(CameraMetadataUniquePtr(metadata.Release()));
   }
 }
 
-CameraHal::~CameraHal() {
-  for (auto& static_info : static_infos_) {
-    if (static_info) {
-      free_camera_metadata(static_info);
-    }
-  }
-}
+CameraHal::~CameraHal() {}
 
 CameraHal& CameraHal::GetInstance() {
   return g_camera_hal.Get();
@@ -64,7 +58,8 @@ int CameraHal::OpenDevice(int id,
     return -EBUSY;
   }
   cameras_[id].reset(new CameraClient(id, device_infos_[id].device_path,
-                                      *static_infos_[id], module, hw_device));
+                                      *static_infos_[id].get(), module,
+                                      hw_device));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -84,7 +79,7 @@ int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
   info->facing = device_infos_[id].lens_facing;
   info->orientation = device_infos_[id].sensor_orientation;
   info->device_version = CAMERA_DEVICE_API_VERSION_3_3;
-  info->static_camera_characteristics = static_infos_[id];
+  info->static_camera_characteristics = static_infos_[id].get();
   return 0;
 }
 
