@@ -54,7 +54,9 @@
         'permission-broker-proxy',
       ],
       'sources': [
-        'device_jail.cc',
+        'device_jail/device_jail.cc',
+        'device_jail/permission_broker_client.cc',
+        'device_jail/permission_broker_client.h',
       ],
     },
   ],

@@ -7,14 +7,15 @@
 #include <string>
 #include <type_traits>
 
+#include <base/at_exit.h>
+#include <base/bind.h>
+#include <base/bind_helpers.h>
+#include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <dbus/bus.h>
-#include <dbus/file_descriptor.h>
-#include <dbus/message.h>
-#include <dbus/object_proxy.h>
 #include <fuse.h>
 #include <fuse/cuse_lowlevel.h>
 #include <stdio.h>
@@ -23,63 +24,27 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 
-#include <chromeos/dbus/service_constants.h>
+#include "container_utils/device_jail/permission_broker_client.h"
 
 namespace device_jail {
 
 class DeviceJail {
  public:
-  DeviceJail(std::string device_path, dev_t device_number)
-      : device_path_(std::move(device_path)) {
+  DeviceJail(std::string device_path, dev_t device_number,
+             PermissionBrokerClientInterface* broker_client)
+      : device_path_(std::move(device_path)),
+        broker_client_(broker_client) {
     jailed_device_name_ = base::StringPrintf("jailed-%d-%d",
                                              major(device_number),
                                              minor(device_number));
   }
 
-  static int OpenWithBroker(fuse_req_t req) {
-    const std::string& path =
-        static_cast<DeviceJail*>(fuse_req_userdata(req))->device_path_;
-    DLOG(INFO) << "OpenWithBroker(" << path << ")";
+  static DeviceJail* Get(fuse_req_t req) {
+    return static_cast<DeviceJail*>(fuse_req_userdata(req));
+  }
 
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-    if (!bus->Connect()) {
-      LOG(ERROR) << "OpenWithBroker(" << path << "): D-Bus unavailable";
-      return -EINTR;
-    }
-    dbus::ObjectProxy* proxy = bus->GetObjectProxy(
-        permission_broker::kPermissionBrokerServiceName,
-        dbus::ObjectPath(permission_broker::kPermissionBrokerServicePath));
-
-    dbus::MethodCall method_call(permission_broker::kPermissionBrokerInterface,
-                                 permission_broker::kOpenPath);
-    dbus::MessageWriter writer(&method_call);
-    writer.AppendString(path);
-
-    std::unique_ptr<dbus::Response> response =
-        proxy->CallMethodAndBlock(&method_call,
-                                  dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-    if (!response) {
-      DLOG(INFO) << "OpenWithBroker(" << path << "): permission denied";
-      return -EACCES;
-    }
-
-    dbus::FileDescriptor fd;
-    dbus::MessageReader reader(response.get());
-    if (!reader.PopFileDescriptor(&fd)) {
-      LOG(ERROR) << "Could not parse permission broker's response";
-      return -EINVAL;
-    }
-
-    fd.CheckValidity();
-    if (!fd.is_valid()) {
-      LOG(ERROR) << "Permission broker returned invalid fd";
-      return -EINVAL;
-    }
-
-    DLOG(INFO) << "OpenWithBroker(" << path << ") -> " << fd.value();
-    return fd.TakeValue();
+  int OpenWithBroker() {
+    return broker_client_->Open(device_path_);
   }
 
   const std::string& jailed_device_name() {
@@ -89,11 +54,13 @@ class DeviceJail {
  private:
   const std::string device_path_;
   std::string jailed_device_name_;
+
+  PermissionBrokerClientInterface* broker_client_;  // weak
 };
 
 void jail_open(fuse_req_t req, struct fuse_file_info* fi) {
   DLOG(INFO) << "open";
-  int fd = DeviceJail::OpenWithBroker(req);
+  int fd = DeviceJail::Get(req)->OpenWithBroker();
   if (fd < 0) {
     fuse_reply_err(req, -fd);
   } else {
@@ -172,38 +139,59 @@ struct cuse_lowlevel_ops cops = {
 
 }  // namespace device_jail
 
-int main(int argc, char** argv) {
-  struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-  char* device_path;
-  if (fuse_parse_cmdline(&args, &device_path, nullptr, nullptr) < 0)
-    LOG(FATAL) << "Failed to parse command line";
-  if (!device_path)
-    LOG(FATAL) << "Need device to jail";
-
-  struct stat dev_stat;
-  if (stat(device_path, &dev_stat) < 0)
-    PLOG(FATAL) << "stat";
-  if (!S_ISCHR(dev_stat.st_mode))
-    LOG(FATAL) << device_path << " does not describe character device";
-
-  brillo::OpenLog("device_jail", true);
-  brillo::InitLog(brillo::kLogToSyslog);
-
-  device_jail::DeviceJail jail(device_path, dev_stat.st_rdev);
+static void OnPermissionBrokerClientInitialized(
+    char* program_name,
+    const std::string& device_path,
+    dev_t device_number,
+    std::unique_ptr<device_jail::PermissionBrokerClient> broker_client) {
+  device_jail::DeviceJail jail(device_path, device_number, broker_client.get());
 
   std::string cuse_devname_arg = "DEVNAME=" + jail.jailed_device_name();
   const char* dev_info_argv[] = { cuse_devname_arg.c_str() };
   struct cuse_info ci = {
-    .dev_major = major(dev_stat.st_rdev),
-    .dev_minor = ~minor(dev_stat.st_rdev) & 0xFFFF,
+    .dev_major = major(device_number),
+    .dev_minor = ~minor(device_number) & 0xFFFF,
     .dev_info_argc = std::extent<decltype(dev_info_argv)>::value,
     .dev_info_argv = dev_info_argv,
     .flags = 0,
   };
 
-  int ret = cuse_lowlevel_main(argc, argv, &ci, &device_jail::cops, &jail);
+  // Keep CUSE in the foreground to avoid forking and reparenting the
+  // daemon.
+  char foreground_opt[] = "-f";
+  char* fuse_argv[] = { program_name, foreground_opt };
+  int fuse_argc = std::extent<decltype(fuse_argv)>::value;
 
-  free(device_path);
-  fuse_opt_free_args(&args);
-  return ret;
+  DLOG(INFO) << "Starting cuse_lowlevel_main";
+  int ret = cuse_lowlevel_main(fuse_argc, fuse_argv, &ci,
+                               &device_jail::cops, &jail);
+  exit(ret);
+}
+
+int main(int argc, char** argv) {
+  brillo::OpenLog("device_jail", true);
+  brillo::InitLog(brillo::kLogToSyslog);
+
+  base::CommandLine command_line(argc, argv);
+  if (command_line.GetArgs().empty())
+    LOG(FATAL) << "Need device to jail";
+  std::string device_path = command_line.GetArgs()[0];
+
+  base::AtExitManager at_exit_manager;
+  base::MessageLoopForIO message_loop;
+
+  struct stat dev_stat;
+  if (stat(device_path.c_str(), &dev_stat) < 0)
+    PLOG(FATAL) << "stat(" << device_path << ")";
+  if (!S_ISCHR(dev_stat.st_mode))
+    LOG(FATAL) << device_path << " does not describe character device";
+
+  auto broker_client = base::MakeUnique<device_jail::PermissionBrokerClient>();
+  broker_client->Start(
+      base::Bind(&OnPermissionBrokerClientInitialized,
+                 argv[0], device_path, dev_stat.st_rdev,
+                 base::Passed(&broker_client)));
+
+  message_loop.Run();
+  return 0;
 }
