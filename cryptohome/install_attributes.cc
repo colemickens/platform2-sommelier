@@ -28,7 +28,7 @@ const FilePath::CharType InstallAttributes::kDefaultDataFile[] =
 const mode_t InstallAttributes::kDataFilePermissions = 0644;
 // This is the default location for the cache file.
 const FilePath::CharType InstallAttributes::kDefaultCacheFile[] =
-  "/var/run/lockbox/install_attributes.pb";
+  "/run/lockbox/install_attributes.pb";
 const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 
 InstallAttributes::InstallAttributes(Tpm* tpm)
