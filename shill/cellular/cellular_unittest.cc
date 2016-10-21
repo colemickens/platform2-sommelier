@@ -37,6 +37,7 @@
 #include "shill/cellular/cellular_capability_universal.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mock_cellular_service.h"
+#include "shill/cellular/mock_mm1_modem_location_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
 #include "shill/cellular/mock_mm1_modem_simple_proxy.h"
@@ -194,6 +195,7 @@ class CellularTest : public testing::Test {
     cdma_proxy_.reset(new MockModemCDMAProxy());
     gsm_card_proxy_.reset(new MockModemGSMCardProxy());
     gsm_network_proxy_.reset(new MockModemGSMNetworkProxy());
+    mm1_modem_location_proxy_.reset(new mm1::MockModemLocationProxy());
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
     mm1_proxy_.reset(new mm1::MockModemProxy());
     mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
@@ -528,9 +530,16 @@ class CellularTest : public testing::Test {
       return test_->gsm_network_proxy_.release();
     }
 
+    virtual mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
+        const std::string& path,
+        const std::string& service) {
+      CHECK(test_->mm1_modem_location_proxy_);
+      return test_->mm1_modem_location_proxy_.release();
+    }
+
     virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
-      const std::string& path,
-      const std::string& service) {
+        const std::string& path,
+        const std::string& service) {
       CHECK(test_->mm1_modem_3gpp_proxy_);
       return test_->mm1_modem_3gpp_proxy_.release();
     }
@@ -620,6 +629,7 @@ class CellularTest : public testing::Test {
   unique_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
+  unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
   unique_ptr<mm1::MockModemProxy> mm1_proxy_;
   unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
   MockMobileOperatorInfo* mock_home_provider_info_;
@@ -2144,6 +2154,50 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   EXPECT_EQ(kDNS[1], device_->ipconfig()->properties().dns_servers[1]);
   EXPECT_EQ(kDNS[2], device_->ipconfig()->properties().dns_servers[2]);
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, GetGeolocationObjects) {
+  static const Cellular::LocationInfo kGoodLocations[] = {
+      {"310", "410", "DE7E", "4985F6"},
+      {"001", "010", "O100", "googol"},
+      {"foo", "bar", "bazz", "quuux"}};
+  static const Cellular::LocationInfo kBadLocations[] = {
+      {"wat", "", "", ""},
+      {"", "", "", ""}};
+
+  vector<GeolocationInfo> objects;
+
+  for (const auto& location : kGoodLocations) {
+    string raw_location = location.mcc + "," + location.mnc + "," +
+                          location.lac + "," + location.ci;
+    Error error;
+
+    GeolocationInfo expected_info;
+    device_->GetLocationCallback(raw_location, error);
+    objects = device_->GetGeolocationObjects();
+
+    EXPECT_EQ(objects.size(), 1);
+
+    expected_info.AddField(kGeoMobileCountryCodeProperty, location.mcc);
+    expected_info.AddField(kGeoMobileNetworkCodeProperty, location.mnc);
+    expected_info.AddField(kGeoLocationAreaCodeProperty, location.lac);
+    expected_info.AddField(kGeoCellIdProperty, location.ci);
+
+    EXPECT_TRUE(objects[0].Equals(expected_info));
+  }
+
+  for (const auto& location : kBadLocations) {
+    string raw_location = location.mcc + "," + location.mnc + "," +
+                          location.lac + "," + location.ci;
+    Error error;
+    GeolocationInfo empty_info;
+
+    device_->GetLocationCallback(raw_location, error);
+    objects = device_->GetGeolocationObjects();
+
+    EXPECT_EQ(objects.size(), 1);
+    EXPECT_TRUE(objects[0].Equals(empty_info));
+  }
 }
 
 }  // namespace shill

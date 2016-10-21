@@ -33,6 +33,7 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
+#include "shill/cellular/mm1_modem_location_proxy_interface.h"
 #include "shill/cellular/mm1_modem_proxy_interface.h"
 #include "shill/cellular/mm1_modem_simple_proxy_interface.h"
 #include "shill/cellular/mm1_sim_proxy_interface.h"
@@ -127,6 +128,15 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void GetProperties();
   virtual void Register(const ResultCallback& callback);
 
+  // Location proxy methods
+  void SetupLocation(uint32_t sources,
+                     bool signal_location,
+                     const ResultCallback& callback) override;
+
+  void GetLocation(const StringCallback& callback) override;
+
+  bool IsLocationUpdateSupported() override;
+
  protected:
   virtual void InitProxies();
   void ReleaseProxies() override;
@@ -173,6 +183,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Plugin strings via ModemManager.
   static const char kAltairLTEMMPlugin[];
   static const char kNovatelLTEMMPlugin[];
+  static const char kTelitMMPlugin[];
 
   static const int64_t kActivationRegistrationTimeoutMilliseconds;
   static const int64_t kEnterPinTimeoutMilliseconds;
@@ -378,6 +389,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnConnectReply(const ResultCallback& callback,
                       const std::string& bearer,
                       const Error& error);
+  void OnSetupLocationReply(const Error& error);
+  void OnGetLocationReply(const StringCallback& callback,
+                          const std::map<uint32_t, brillo::Any>& results,
+                          const Error& error);
 
   // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a
   // path is accepted to be valid, as long as it is not equal to one of ""
@@ -407,6 +422,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::unique_ptr<mm1::ModemProxyInterface> modem_proxy_;
   std::unique_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
   std::unique_ptr<mm1::SimProxyInterface> sim_proxy_;
+  std::unique_ptr<mm1::ModemLocationProxyInterface> modem_location_proxy_;
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
   // once the context has been separated out. (crbug.com/363874)

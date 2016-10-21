@@ -42,6 +42,7 @@ class GeolocationInfo {
   }
 
  private:
+  FRIEND_TEST(CellularTest, GetGeolocationObjects);
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   // An equality testing helper for unit tests.

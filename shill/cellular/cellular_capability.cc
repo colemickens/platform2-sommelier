@@ -47,9 +47,11 @@ const int CellularCapability::kTimeoutConnect = 45000;
 const int CellularCapability::kTimeoutDefault = 5000;
 const int CellularCapability::kTimeoutDisconnect = 45000;
 const int CellularCapability::kTimeoutEnable = 45000;
+const int CellularCapability::kTimeoutGetLocation = 45000;
 const int CellularCapability::kTimeoutRegister = 90000;
 const int CellularCapability::kTimeoutReset = 90000;
 const int CellularCapability::kTimeoutScan = 120000;
+const int CellularCapability::kTimeoutSetupLocation = 45000;
 
 CellularCapability::CellularCapability(Cellular* cellular,
                                        ControlInterface* control_interface,
@@ -142,6 +144,22 @@ bool CellularCapability::IsActivating() const {
 }
 
 bool CellularCapability::ShouldDetectOutOfCredit() const {
+  return false;
+}
+
+void CellularCapability::SetupLocation(uint32_t sources,
+                                       bool signal_location,
+                                       const ResultCallback& callback) {
+  Error e(Error::kNotImplemented);
+  callback.Run(e);
+}
+
+void CellularCapability::GetLocation(const StringCallback& callback) {
+  Error e(Error::kNotImplemented);
+  callback.Run(string(), e);
+}
+
+bool CellularCapability::IsLocationUpdateSupported() {
   return false;
 }
 

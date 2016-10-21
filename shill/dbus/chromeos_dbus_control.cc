@@ -48,6 +48,7 @@
 #if !defined(DISABLE_CELLULAR)
 #include "shill/dbus/chromeos_dbus_objectmanager_proxy.h"
 #include "shill/dbus/chromeos_dbus_properties_proxy.h"
+#include "shill/dbus/chromeos_mm1_modem_location_proxy.h"
 #include "shill/dbus/chromeos_mm1_modem_modem3gpp_proxy.h"
 #include "shill/dbus/chromeos_mm1_modem_modemcdma_proxy.h"
 #include "shill/dbus/chromeos_mm1_modem_proxy.h"
@@ -351,6 +352,13 @@ ModemGobiProxyInterface* ChromeosDBusControl::CreateModemGobiProxy(
 }
 
 // Proxies for ModemManager1 interfaces
+mm1::ModemLocationProxyInterface*
+    ChromeosDBusControl::CreateMM1ModemLocationProxy(
+        const string& path,
+        const string& service) {
+  return new mm1::ChromeosModemLocationProxy(proxy_bus_, path, service);
+}
+
 mm1::ModemModem3gppProxyInterface*
     ChromeosDBusControl::CreateMM1ModemModem3gppProxy(
         const string& path,

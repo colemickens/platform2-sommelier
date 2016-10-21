@@ -354,13 +354,14 @@ Methods
 
 		dict GetNetworksForGeolocation()
 
-		        Returns an array of dictionaries containing information
-			about visible cellular and WiFi networks which may be
-			then used for Geolocation.
-			Each key is a string, and the value itself is an array
-			of dictionaries mapping string key-value pairs. Each of
-			these (sub) dictionaries contains information about
-			one single network for Geolocation.
+		        Returns a dictionary (array of dictionary entries)
+			containing information about visible cellular and WiFi
+			networks which may be then used for Geolocation.
+			Each key is a string representing a network type (cellular
+			or WiFi), and the value itself is an array of dictionaries
+			mapping string key-value pairs. Each of these
+			(sub) dictionaries contains information about one single
+			network for Geolocation.
 			For more details, see:
 			https://developers.google.com/maps/documentation/business/geolocation/
 

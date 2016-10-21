@@ -88,6 +88,7 @@ const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kAltairLTEMMPlugin[] = "Altair LTE";
 const char CellularCapabilityUniversal::kNovatelLTEMMPlugin[] = "Novatel LTE";
+const char CellularCapabilityUniversal::kTelitMMPlugin[] = "Telit";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
 
@@ -215,6 +216,9 @@ void CellularCapabilityUniversal::InitProxies() {
       control_interface()->CreateMM1ModemSimpleProxy(
           cellular()->dbus_path(), cellular()->dbus_service()));
 
+  modem_location_proxy_.reset(control_interface()->CreateMM1ModemLocationProxy(
+      cellular()->dbus_path(), cellular()->dbus_service()));
+
   modem_proxy_->set_state_changed_callback(
       Bind(&CellularCapabilityUniversal::OnModemStateChangedSignal,
            weak_ptr_factory_.GetWeakPtr()));
@@ -227,6 +231,7 @@ void CellularCapabilityUniversal::StartModem(Error* error,
                                              const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   InitProxies();
+
   deferred_enable_modem_callback_.Reset();
   EnableModem(true, error, callback);
 }
@@ -285,6 +290,15 @@ void CellularCapabilityUniversal::EnableModemCompleted(
                nullptr,
                callback);
     }
+
+    if (IsLocationUpdateSupported()) {
+      ResultCallback setup_callback =
+          Bind(&CellularCapabilityUniversal::OnSetupLocationReply,
+               weak_ptr_factory_.GetWeakPtr());
+      SetupLocation(MM_MODEM_LOCATION_SOURCE_3GPP_LAC_CI, false,
+                    setup_callback);
+    }
+
     return;
   }
 
@@ -591,13 +605,15 @@ void CellularCapabilityUniversal::ReleaseProxies() {
   SLOG(this, 3) << __func__;
   modem_3gpp_proxy_.reset();
   modem_proxy_.reset();
+  modem_location_proxy_.reset();
   modem_simple_proxy_.reset();
   sim_proxy_.reset();
 }
 
 bool CellularCapabilityUniversal::AreProxiesInitialized() const {
   return (modem_3gpp_proxy_.get() && modem_proxy_.get() &&
-          modem_simple_proxy_.get() && sim_proxy_.get());
+          modem_simple_proxy_.get() && sim_proxy_.get() &&
+          modem_location_proxy_.get());
 }
 
 void CellularCapabilityUniversal::UpdateServiceActivationState() {
@@ -1072,6 +1088,58 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
     }
   }
   return parsed;
+}
+
+void CellularCapabilityUniversal::SetupLocation(
+    uint32_t sources,
+    bool signal_location,
+    const ResultCallback& callback) {
+  Error error;
+  modem_location_proxy_->Setup(sources, signal_location, &error, callback,
+                               kTimeoutSetupLocation);
+}
+
+void CellularCapabilityUniversal::OnSetupLocationReply(const Error& error) {
+  SLOG(this, 3) << __func__;
+  if (error.IsFailure()) {
+    // Not fatal: most devices already enable this when
+    // ModemManager starts. This failure is only likely for devices
+    // which don't support location gathering.
+    SLOG(this, 2) << "Failed to setup modem location capability.";
+    return;
+  }
+}
+
+void CellularCapabilityUniversal::GetLocation(const StringCallback& callback) {
+  BrilloAnyCallback cb = Bind(&CellularCapabilityUniversal::OnGetLocationReply,
+                              weak_ptr_factory_.GetWeakPtr(), callback);
+  Error error;
+  modem_location_proxy_->GetLocation(&error, cb, kTimeoutGetLocation);
+}
+
+void CellularCapabilityUniversal::OnGetLocationReply(
+    const StringCallback& callback,
+    const std::map<uint32_t, brillo::Any>& results,
+    const Error& error) {
+  SLOG(this, 3) << __func__;
+  if (error.IsFailure()) {
+    SLOG(this, 2) << "Error getting location.";
+    return;
+  }
+  // For 3G modems we currently only care about the "MCC,MNC,LAC,CI" location
+  auto it = results.find(MM_MODEM_LOCATION_SOURCE_3GPP_LAC_CI);
+  if (it != results.end()) {
+    brillo::Any gpp_value = it->second;
+    const string& location_string = gpp_value.Get<const string>();
+    callback.Run(location_string, Error());
+  } else {
+    callback.Run(std::string(), Error());
+  }
+}
+
+bool CellularCapabilityUniversal::IsLocationUpdateSupported() {
+  // Whitelist modems as they're tested / needed
+  return cellular()->mm_plugin() == kTelitMMPlugin;
 }
 
 CellularBearer* CellularCapabilityUniversal::GetActiveBearer() const {

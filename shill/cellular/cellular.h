@@ -40,6 +40,7 @@ namespace shill {
 class CellularCapability;
 class Error;
 class ExternalTask;
+class GeolocationInfo;
 class MobileOperatorInfo;
 class PPPDeviceFactory;
 class ProcessManager;
@@ -165,6 +166,13 @@ class Cellular : public Device, public RPCTaskDelegate {
   // destroying or updating the CellularService.
   void HandleNewRegistrationState();
 
+  // Asynchronously queries capability for cellular location.
+  void PollLocation();
+
+  // Starts and stops scheduled location polls
+  void StartLocationPolling();
+  void StopLocationPolling();
+
   virtual void OnPropertiesChanged(
       const std::string& interface,
       const KeyValueStore& changed_properties,
@@ -199,11 +207,13 @@ class Cellular : public Device, public RPCTaskDelegate {
   void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
   void OnBeforeSuspend(const ResultCallback& callback) override;
   void OnAfterResume() override;
+  std::vector<GeolocationInfo> GetGeolocationObjects() const override;
 
   void StartModemCallback(const EnabledStateChangedCallback& callback,
                           const Error& error);
   void StopModemCallback(const EnabledStateChangedCallback& callback,
                          const Error& error);
+
   void OnDisabled();
   void OnEnabled();
   void OnConnecting();
@@ -388,6 +398,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StartPPPAlreadyStarted);
   FRIEND_TEST(CellularTest, UpdateScanning);
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
+  FRIEND_TEST(CellularTest, GetGeolocationObjects);
+  FRIEND_TEST(CellularTest, PollLocationFailure);
+  FRIEND_TEST(CellularTest, PollLocationSuccess);
 
   class MobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
    public:
@@ -418,6 +431,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   // time it is set to true, it must be reset to false after a time equal to
   // this constant.
   static const int64_t kDefaultScanningTimeoutMilliseconds;
+
+  // Time between asynchronous calls to ModemManager1's GetLocation()
+  static const int64_t kPollLocationIntervalMilliseconds;
 
   // Generic service name prefix, shown when the correct carrier name is
   // unknown.
@@ -482,10 +498,23 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   void UpdateScanning();
 
+  void GetLocationCallback(const std::string& gpp_lac_ci_string,
+                           const Error& error);
+
+  void PollLocationTask();
+
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 
   State state_;
   ModemState modem_state_;
+
+  struct LocationInfo {
+    std::string mcc;
+    std::string mnc;
+    std::string lac;
+    std::string ci;
+  };
+  LocationInfo location_info_;
 
   std::unique_ptr<CellularCapability> capability_;
 
@@ -520,6 +549,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   std::string model_id_;
   std::string mm_plugin_;
   bool scanning_;
+  bool polling_location_;
+  base::CancelableClosure poll_location_task_;
 
   // GSM only properties.
   // They are always exposed but are non empty only for GSM technology modems.

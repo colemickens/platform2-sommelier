@@ -36,6 +36,7 @@
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_cellular_service.h"
+#include "shill/cellular/mock_mm1_modem_location_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
@@ -83,6 +84,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         modem_info_(&control_interface_, dispatcher, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
+        modem_location_proxy_(new mm1::MockModemLocationProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
         modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         sim_proxy_(new mm1::MockSimProxy()),
@@ -273,6 +275,12 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       return &inactive_bearer_properties_;
     }
 
+    virtual mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
+      return test_->modem_location_proxy_.release();
+    }
+
     virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
         const std::string& /*path*/,
         const std::string& /*service*/) {
@@ -334,6 +342,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   MockModemInfo modem_info_;
   unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
+  unique_ptr<mm1::MockModemLocationProxy> modem_location_proxy_;
   unique_ptr<mm1::MockModemProxy> modem_proxy_;
   unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   unique_ptr<mm1::MockSimProxy> sim_proxy_;

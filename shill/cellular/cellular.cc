@@ -25,6 +25,8 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/file_path.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
@@ -47,6 +49,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/external_task.h"
+#include "shill/geolocation_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
@@ -75,6 +78,7 @@ static string ObjectID(Cellular* c) { return c->GetRpcIdentifier(); }
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
+const int64_t Cellular::kPollLocationIntervalMilliseconds = 300000;  // 5 mins
 const char Cellular::kGenericServiceNamePrefix[] = "MobileNetwork";
 unsigned int Cellular::friendly_service_name_id_ = 1;
 
@@ -106,6 +110,7 @@ Cellular::Cellular(ModemInfo* modem_info,
       dbus_path_(path),
       scanning_supported_(false),
       scanning_(false),
+      polling_location_(false),
       provider_requires_roaming_(false),
       scan_interval_(0),
       sim_present_(false),
@@ -567,6 +572,43 @@ void Cellular::OnScanReply(const Stringmaps& found_networks,
   set_found_networks(found_networks);
 }
 
+// Called from an asyc D-Bus function
+// Relies on location handler to fetch relevant value from map
+void Cellular::GetLocationCallback(const string& gpp_lac_ci_string,
+                                   const Error& error) {
+  // Expects string of form "MCC,MNC,LAC,CI"
+  SLOG(this, 2) << __func__ << ": " << gpp_lac_ci_string;
+  vector<string> location_vec = SplitString(
+      gpp_lac_ci_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (location_vec.size() < 4) {
+    LOG(ERROR) << "Unable to parse location string " << gpp_lac_ci_string;
+    return;
+  }
+  location_info_.mcc = location_vec[0];
+  location_info_.mnc = location_vec[1];
+  location_info_.lac = location_vec[2];
+  location_info_.ci = location_vec[3];
+
+  // Alert manager that location has been updated.
+  manager()->OnDeviceGeolocationInfoUpdated(this);
+}
+
+void Cellular::PollLocationTask() {
+  SLOG(this, 4) << __func__;
+
+  PollLocation();
+
+  dispatcher()->PostDelayedTask(FROM_HERE,
+                                poll_location_task_.callback(),
+                                kPollLocationIntervalMilliseconds);
+}
+
+void Cellular::PollLocation() {
+  StringCallback cb = Bind(&Cellular::GetLocationCallback,
+                           weak_ptr_factory_.GetWeakPtr());
+  capability_->GetLocation(cb);
+}
+
 void Cellular::HandleNewRegistrationState() {
   SLOG(this, 2) << __func__
                 << ": (new state " << GetStateString(state_) << ")";
@@ -582,6 +624,7 @@ void Cellular::HandleNewRegistrationState() {
         state_ == kStateRegistered) {
       SetState(kStateEnabled);
     }
+    StopLocationPolling();
     return;
   }
   // In Disabled state, defer creating a service until fully
@@ -592,6 +635,10 @@ void Cellular::HandleNewRegistrationState() {
   }
   if (state_ == kStateEnabled) {
     SetState(kStateRegistered);
+
+    // Once modem enters registered state, begin polling location:
+    // registered means we've successfully connected
+    StartLocationPolling();
   }
   if (!service_.get()) {
     metrics()->NotifyDeviceScanFinished(interface_index());
@@ -1343,6 +1390,38 @@ void Cellular::set_mm_plugin(const string& mm_plugin) {
   mm_plugin_ = mm_plugin;
 }
 
+void Cellular::StartLocationPolling() {
+  if (!capability_->IsLocationUpdateSupported()){
+    SLOG(this, 2) << "Location polling not enabled for "
+                  << mm_plugin_ << " plugin.";
+    return;
+  }
+
+  if (polling_location_) return;
+
+  polling_location_ = true;
+
+  CHECK(poll_location_task_.IsCancelled());
+  SLOG(this, 2) << __func__ << ": "
+                << "Starting location polling tasks.";
+  poll_location_task_.Reset(
+      Bind(&Cellular::PollLocationTask, weak_ptr_factory_.GetWeakPtr()));
+
+  // Schedule an immediate task
+  dispatcher()->PostTask(FROM_HERE, poll_location_task_.callback());
+}
+
+void Cellular::StopLocationPolling() {
+  if (!polling_location_) return;
+  polling_location_ = false;
+
+  if (!poll_location_task_.IsCancelled()) {
+    SLOG(this, 2) << __func__ << ": "
+                  << "Cancelling outstanding timeout.";
+    poll_location_task_.Cancel();
+  }
+}
+
 void Cellular::set_scanning(bool scanning) {
   if (scanning_ == scanning)
     return;
@@ -1559,6 +1638,27 @@ void Cellular::UpdateServingOperator(
     }
   }
   service()->SetFriendlyName(service_name);
+}
+
+vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
+  const string& mcc = location_info_.mcc;
+  const string& mnc = location_info_.mnc;
+  const string& lac = location_info_.lac;
+  const string& cid = location_info_.ci;
+
+  GeolocationInfo geolocation_info;
+
+  if (!(mcc.empty() || mnc.empty() || lac.empty() || cid.empty())) {
+    geolocation_info.AddField(kGeoMobileCountryCodeProperty, mcc);
+    geolocation_info.AddField(kGeoMobileNetworkCodeProperty, mnc);
+    geolocation_info.AddField(kGeoLocationAreaCodeProperty, lac);
+    geolocation_info.AddField(kGeoCellIdProperty, cid);
+    // kGeoTimingAdvanceProperty currently unused in geolocation API
+  }
+  // Else we have either an incomplete location, no location yet,
+  // or some unsupported location type, so don't return something incorrect.
+
+  return {geolocation_info};
 }
 
 // /////////////////////////////////////////////////////////////////////////////

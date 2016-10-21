@@ -125,6 +125,9 @@ class MockControl : public ControlInterface {
   MOCK_METHOD2(CreateModemGobiProxy,
                ModemGobiProxyInterface*(const std::string& path,
                                         const std::string& service));
+  MOCK_METHOD2(CreateMM1ModemLocationProxy,
+               mm1::ModemLocationProxyInterface*(const std::string& path,
+                                                  const std::string& service));
   MOCK_METHOD2(CreateMM1ModemModem3gppProxy,
                mm1::ModemModem3gppProxyInterface*(const std::string& path,
                                                   const std::string& service));

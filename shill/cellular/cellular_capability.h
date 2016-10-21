@@ -72,9 +72,11 @@ class CellularCapability {
   static const int kTimeoutDefault;
   static const int kTimeoutDisconnect;
   static const int kTimeoutEnable;
+  static const int kTimeoutGetLocation;
   static const int kTimeoutRegister;
   static const int kTimeoutReset;
   static const int kTimeoutScan;
+  static const int kTimeoutSetupLocation;
 
   static const char kModemPropertyIMSI[];
   static const char kModemPropertyState[];
@@ -218,6 +220,19 @@ class CellularCapability {
 
   // TODO(armansito): Remove this method once cromo is deprecated.
   virtual void GetSignalQuality() = 0;
+
+  // -------------------------------------------------------------------------
+  // Location reporting
+  // -------------------------------------------------------------------------
+  // These default to dummy methods, and should be overriden in subclasses if
+  // the modem supports location reporting
+  virtual void SetupLocation(uint32_t sources,
+                             bool signal_location,
+                             const ResultCallback& callback);
+
+  virtual void GetLocation(const StringCallback& callback);
+
+  virtual bool IsLocationUpdateSupported();
 
   // -------------------------------------------------------------------------
   // Connection management

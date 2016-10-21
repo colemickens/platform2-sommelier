@@ -191,6 +191,9 @@ class FlimFlam(object):
         path = self.manager.GetService(params)
         return self.GetObjectInterface("Service", path)
 
+    def GetNetworksForGeolocation(self):
+      return self.manager.GetNetworksForGeolocation()
+
     def ConnectService(self, assoc_timeout=15, config_timeout=15,
                        async=False, service=None, service_type='',
                        retry=False, retries=1, retry_sleep=15,

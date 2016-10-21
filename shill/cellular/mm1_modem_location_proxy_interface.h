@@ -28,6 +28,7 @@ namespace mm1 {
 // proxy must support. The interface is provided so that it can be mocked
 // in tests. All calls are made asynchronously. Call completion is signalled
 // via callbacks passed to the methods.
+// Implemented as ChromeosModemLocationProxy.
 class ModemLocationProxyInterface {
  public:
   virtual ~ModemLocationProxyInterface() {}
@@ -39,7 +40,7 @@ class ModemLocationProxyInterface {
                      int timeout) = 0;
 
   virtual void GetLocation(Error* error,
-                           const DBusEnumValueMapCallback& callback,
+                           const BrilloAnyCallback& callback,
                            int timeout) = 0;
 };
 
