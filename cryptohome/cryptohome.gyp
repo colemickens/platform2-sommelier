@@ -327,13 +327,6 @@
       'dependencies': [
         'libcrostpm',
       ],
-      'link_settings': {
-        'libraries': [
-          '-lchaps',
-          '-lscrypt',
-          '-lvboot_host',
-        ],
-      },
       'variables': {
         'deps': [
           'glib-2.0',
@@ -344,6 +337,32 @@
       },
       'sources': [
         'tpm_manager.cc',
+      ],
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'sources': [
+            'tpm_manager_v2.cc',
+          ],
+          'link_settings': {
+            'libraries': [
+              '-ltrunks',
+              '-ltpm_manager',
+              '-lattestation',
+            ],
+          },
+        }],
+        ['USE_tpm2 == 0', {
+          'sources': [
+            'tpm_manager_v1.cc',
+          ],
+          'link_settings': {
+            'libraries': [
+              '-lchaps',
+              '-lscrypt',
+              '-lvboot_host',
+            ],
+          },
+        }],
       ],
     },
   ],
