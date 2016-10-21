@@ -38,6 +38,7 @@ sendmsg: 1
 sendto: 1
 recvmsg: 1
 recvfrom: 1
+setsockopt: 1
 getsockopt: 1
 
 epoll_create: 1
