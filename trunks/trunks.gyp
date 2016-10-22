@@ -114,6 +114,16 @@
       ],
     },
     {
+      'target_name': 'trunks_send',
+      'type': 'executable',
+      'sources': [
+        'trunks_send.cc',
+      ],
+      'dependencies': [
+        'trunks',
+      ],
+    },
+    {
       'target_name': 'trunksd_lib',
       'type': 'static_library',
       'sources': [
