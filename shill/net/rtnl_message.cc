@@ -36,7 +36,6 @@ struct RTNLHeader {
     struct ifinfomsg ifi;
     struct ifaddrmsg ifa;
     struct rtmsg rtm;
-    struct rtgenmsg gen;
     struct nduseroptmsg nd_user_opt;
     struct ndmsg ndm;
   };
@@ -349,9 +348,9 @@ ByteString RTNLMessage::Encode() const {
       NOTIMPLEMENTED();
       return ByteString();
     }
-    hdr.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr.gen));
+    hdr.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr.ifi));
     hdr.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-    hdr.gen.rtgen_family = family_;
+    hdr.ifi.ifi_family = family_;
   } else {
     switch (type_) {
     case kTypeLink:
