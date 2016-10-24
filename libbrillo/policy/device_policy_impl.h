@@ -5,6 +5,7 @@
 #ifndef LIBBRILLO_POLICY_DEVICE_POLICY_IMPL_H_
 #define LIBBRILLO_POLICY_DEVICE_POLICY_IMPL_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -14,6 +15,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "install_attributes/libinstallattributes.h"
 #include "policy/device_policy.h"
 
 #pragma GCC visibility push(default)
@@ -69,6 +71,7 @@ class DevicePolicyImpl : public DevicePolicy {
 
   base::FilePath policy_path_;
   base::FilePath keyfile_path_;
+  std::unique_ptr<InstallAttributesReader> install_attributes_reader_;
 
  private:
   // Verifies that the policy signature is correct.

@@ -4,13 +4,17 @@
 
 #include "policy/libpolicy.h"
 
+#include <utility>
+
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
+#include "install_attributes/mock_install_attributes_reader.h"
 #include "policy/device_policy_impl.h"
 
 namespace policy {
@@ -20,19 +24,23 @@ static const char kPolicyFileAllSet[] =
 static const char kPolicyFileNoneSet[] =
     "policy/tests/whitelist/policy_none";
 static const char kKeyFile[] = "policy/tests/whitelist/owner.key";
+static const char kNonExistingFile[] = "file-does-not-exist";
 
-// This class mocks only the minimally needed functionionality to run tests
-// that would otherwise fail because of hard restrictions like root file
-// ownership. Otherwise, it preserves all the functionallity of the original
+// This class mocks only the minimally needed functionionality to run tests that
+// would otherwise fail because of hard restrictions like root file
+// ownership. Otherwise, it preserves all the functionality of the original
 // class.
 class MockDevicePolicyImpl : public DevicePolicyImpl {
  public:
-  MockDevicePolicyImpl(const base::FilePath& policy_path,
-                       const base::FilePath& keyfile_path,
-                       bool verify_files)
+  MockDevicePolicyImpl(
+      std::unique_ptr<InstallAttributesReader> install_attributes_reader,
+      const base::FilePath& policy_path,
+      const base::FilePath& keyfile_path,
+      bool verify_files)
       : verify_files_(verify_files) {
     policy_path_ = policy_path;
     keyfile_path_ = keyfile_path;
+    install_attributes_reader_ = std::move(install_attributes_reader);
   }
 
  private:
@@ -49,8 +57,10 @@ class MockDevicePolicyImpl : public DevicePolicyImpl {
 TEST(PolicyTest, DevicePolicyAllSetTest) {
   base::FilePath policy_file(kPolicyFileAllSet);
   base::FilePath key_file(kKeyFile);
-  MockDevicePolicyImpl* device_policy =
-      new MockDevicePolicyImpl(policy_file, key_file, false);
+  MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
+      base::MakeUnique<MockInstallAttributesReader>(
+          cryptohome::SerializedInstallAttributes()),
+      policy_file, key_file, false);
   PolicyProvider provider(device_policy);
   provider.Reload();
 
@@ -171,8 +181,10 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
 TEST(PolicyTest, DevicePolicyNoneSetTest) {
   base::FilePath policy_file(kPolicyFileNoneSet);
   base::FilePath key_file(kKeyFile);
-  MockDevicePolicyImpl* device_policy =
-      new MockDevicePolicyImpl(policy_file, key_file, false);
+  MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
+      base::MakeUnique<MockInstallAttributesReader>(
+          cryptohome::SerializedInstallAttributes()),
+      policy_file, key_file, false);
   PolicyProvider provider(device_policy);
   provider.Reload();
 
@@ -216,12 +228,75 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
 TEST(PolicyTest, DevicePolicyFailure) {
   LOG(INFO) << "Errors expected.";
   // Try loading non-existing protobuf should fail.
-  base::FilePath non_existing("this_file_is_doof");
-  MockDevicePolicyImpl* device_policy =
-      new MockDevicePolicyImpl(non_existing, non_existing, true);
+  base::FilePath policy_file(kNonExistingFile);
+  base::FilePath key_file(kNonExistingFile);
+  MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
+      base::MakeUnique<MockInstallAttributesReader>(
+          cryptohome::SerializedInstallAttributes()),
+      policy_file, key_file, true);
   PolicyProvider provider(device_policy);
   // Even after reload the policy should still be not loaded.
   ASSERT_FALSE(provider.Reload());
+  ASSERT_FALSE(provider.device_policy_is_loaded());
+}
+
+// Verify that signature verification is waived for a device in enterprise_ad
+// mode.
+TEST(PolicyTest, SkipSignatureForEnterpriseAD) {
+  base::FilePath policy_file(kPolicyFileAllSet);
+  base::FilePath key_file(kNonExistingFile);
+  cryptohome::SerializedInstallAttributes install_attributes;
+  cryptohome::SerializedInstallAttributes::Attribute* attr =
+      install_attributes.add_attributes();
+  ASSERT_NE(nullptr, attr);
+  attr->set_name("enterprise.mode");
+  attr->set_value("enterprise_ad");
+
+  MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
+      base::MakeUnique<MockInstallAttributesReader>(install_attributes),
+      policy_file, key_file, false);
+  PolicyProvider provider(device_policy);
+  provider.Reload();
+
+  // Ensure we successfully loaded the device policy file.
+  ASSERT_TRUE(provider.device_policy_is_loaded());
+}
+
+// Ensure that signature verification is enforced for a device in vanilla
+// enterprise mode.
+TEST(PolicyTest, DontSkipSignatureForEnterprise) {
+  base::FilePath policy_file(kPolicyFileAllSet);
+  base::FilePath key_file(kNonExistingFile);
+  cryptohome::SerializedInstallAttributes install_attributes;
+  cryptohome::SerializedInstallAttributes::Attribute* attr =
+      install_attributes.add_attributes();
+  ASSERT_NE(nullptr, attr);
+  attr->set_name("enterprise.mode");
+  attr->set_value("enterprise");
+
+  MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
+      base::MakeUnique<MockInstallAttributesReader>(install_attributes),
+      policy_file, key_file, false);
+  PolicyProvider provider(device_policy);
+  provider.Reload();
+
+  // Ensure that unverifed policy is not loaded.
+  ASSERT_FALSE(provider.device_policy_is_loaded());
+}
+
+// Ensure that signature verification is enforced for a device in consumer mode.
+TEST(PolicyTest, DontSkipSignatureForConsumer) {
+  base::FilePath policy_file(kPolicyFileAllSet);
+  base::FilePath key_file(kNonExistingFile);
+  cryptohome::SerializedInstallAttributes install_attributes;
+
+  MockDevicePolicyImpl* device_policy = new MockDevicePolicyImpl(
+      base::MakeUnique<MockInstallAttributesReader>(install_attributes),
+      policy_file, key_file, false);
+  PolicyProvider provider(device_policy);
+  provider.Reload();
+
+  // Ensure that unverifed policy is not loaded.
   ASSERT_FALSE(provider.device_policy_is_loaded());
 }
 

@@ -7,6 +7,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/memory/ptr_util.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
@@ -104,7 +105,18 @@ DevicePolicyImpl::~DevicePolicyImpl() {
 }
 
 bool DevicePolicyImpl::LoadPolicy() {
-  if (!VerifyPolicyFiles()) {
+  bool verify_policy = true;
+  if (!install_attributes_reader_) {
+    install_attributes_reader_ = base::MakeUnique<InstallAttributesReader>();
+  }
+  const std::string& mode =
+      install_attributes_reader_->GetAttribute(
+          InstallAttributesReader::kAttrMode);
+  if (mode == InstallAttributesReader::kDeviceModeEnterpriseAD) {
+    verify_policy = false;
+  }
+
+  if (verify_policy && !VerifyPolicyFiles()) {
     return false;
   }
 
@@ -124,7 +136,7 @@ bool DevicePolicyImpl::LoadPolicy() {
   }
 
   // Make sure the signature is still valid.
-  if (!VerifyPolicySignature()) {
+  if (verify_policy && !VerifyPolicySignature()) {
     LOG(ERROR) << "Policy signature verification failed!";
     return false;
   }

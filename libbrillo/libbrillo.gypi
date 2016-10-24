@@ -24,6 +24,7 @@
         'libbrillo-http-<(libbase_ver)',
         'libbrillo-minijail-<(libbase_ver)',
         'libbrillo-streams-<(libbase_ver)',
+        'libinstallattributes-<(libbase_ver)',
         'libpolicy-<(libbase_ver)',
       ],
       'direct_dependent_settings': {
@@ -212,9 +213,34 @@
       ],
     },
     {
+      'target_name': 'libinstallattributes-<(libbase_ver)',
+      'type': 'shared_library',
+      'dependencies': [
+        'libinstallattributes-includes',
+        '../common-mk/external_dependencies.gyp:install_attributes-proto',
+      ],
+      'variables': {
+        'exported_deps': [
+          'protobuf-lite',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        'install_attributes/libinstallattributes.cc',
+      ],
+    },
+    {
       'target_name': 'libpolicy-<(libbase_ver)',
       'type': 'shared_library',
       'dependencies': [
+        'libinstallattributes-<(libbase_ver)',
         'libpolicy-includes',
         '../common-mk/external_dependencies.gyp:policy-protos',
       ],
@@ -366,11 +392,28 @@
           ]
         },
         {
-          'target_name': 'libpolicy-<(libbase_ver)_unittests',
+          'target_name': 'libinstallattributes-<(libbase_ver)_unittests',
           'type': 'executable',
-          'dependencies': ['libpolicy-<(libbase_ver)'],
+          'dependencies': [
+            '../common-mk/external_dependencies.gyp:install_attributes-proto',
+            'libinstallattributes-<(libbase_ver)',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'install_attributes/tests/libinstallattributes_unittest.cc',
+          ]
+        },
+        {
+          'target_name': 'libpolicy-<(libbase_ver)_unittests',
+          'type': 'executable',
+          'dependencies': [
+            '../common-mk/external_dependencies.gyp:install_attributes-proto',
+            'libinstallattributes-<(libbase_ver)',
+            'libpolicy-<(libbase_ver)',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'install_attributes/mock_install_attributes_reader.cc',
             'policy/tests/libpolicy_unittest.cc',
           ]
         },

@@ -39,7 +39,7 @@ class PolicyProvider {
 
  private:
   std::unique_ptr<DevicePolicy> device_policy_;
-  bool device_policy_is_loaded_;
+  bool device_policy_is_loaded_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyProvider);
 };
