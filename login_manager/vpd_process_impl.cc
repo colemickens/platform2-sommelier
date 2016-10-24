@@ -11,6 +11,13 @@
 #include <base/sys_info.h>
 
 #include "login_manager/dbus_error_types.h"
+#include "metrics/metrics_library.h"
+
+namespace {
+
+constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateSuccess";
+
+}  // namespace
 
 namespace login_manager {
 
@@ -64,18 +71,26 @@ void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
 }
 
 void VpdProcessImpl::HandleExit(const siginfo_t& info) {
+  const bool success = (info.si_status == 0);
+
+  MetricsLibrary metrics;
+  metrics.Init();
+  metrics.SendBoolToUMA(kVpdUpdateMetric, success);
+
+  if (!success) {
+    LOG(ERROR) << "Failed to update VPD, code = " << info.si_status;
+  }
+
   if (completion_.is_null()) {
-    LOG(ERROR) << "No completion provided.";
     return;
   }
 
   // We have to notify Chrome that the process has finished.
-  if (info.si_status == 0) {
+  if (success) {
     completion_.Run(PolicyService::Error());
   } else {
-    LOG(ERROR) << "Failed to update VPD, code = " << info.si_status;
     // TODO(igorcov): Remove the exception when crbug/653814 is fixed.
-    std::string board_name = base::ToLowerASCII(
+    const std::string board_name = base::ToLowerASCII(
         base::SysInfo::GetLsbReleaseBoard());
     if (board_name == "parrot" || board_name == "glimmer") {
       completion_.Run(PolicyService::Error());
