@@ -8,6 +8,7 @@
 #include <linux/usbdevice_fs.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <string>
