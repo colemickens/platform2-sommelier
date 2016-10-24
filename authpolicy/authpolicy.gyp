@@ -28,6 +28,12 @@
         'policy/registry_dict.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+      'link_settings': {
+        'libraries': [
+          '-linstallattributes-<(libbase_ver)',
+        ]
+      },
+
     }
   ]
 }

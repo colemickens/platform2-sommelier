@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include "chromeos/dbus/service_constants.h"
+#include <chromeos/dbus/service_constants.h>
+#include <install_attributes/libinstallattributes.h>
 
 #include "authpolicy/org.chromium.AuthPolicy.h"
 
@@ -86,6 +90,22 @@ class Daemon : public brillo::DBusServiceDaemon {
 }  // namespace org
 
 int main() {
+  // Safety check to ensure that authpolicyd cannot run after the device has
+  // been locked to a mode other than enterprise_ad.  (The lifetime management
+  // of authpolicyd happens through upstart, this check only serves as a second
+  // line of defense.)
+  InstallAttributesReader install_attributes_reader;
+  if (install_attributes_reader.IsLocked()) {
+    const std::string& mode =
+        install_attributes_reader.GetAttribute(
+            InstallAttributesReader::kAttrMode);
+    if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
+      LOG(ERROR) << "OOBE completed but device not in AD management mode.";
+      // Exit with "success" to prevent respawn by upstart.
+      exit(0);
+    }
+  }
+
   org::chromium::authpolicy::Daemon daemon;
   return daemon.Run();
 }
