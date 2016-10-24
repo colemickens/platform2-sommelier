@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
-<node name="/org/chromium/authpolicy/Domain"
+<node name="/org/chromium/AuthPolicy"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-  <interface name="org.chromium.authpolicy.Domain">
-    <method name="Auth">
-      <arg name="login" type="s" direction="in"/>
-      <arg name="password" type="h" direction="in"/>
+  <interface name="org.chromium.AuthPolicy">
+    <method name="AuthenticateUser">
+      <arg name="user_principal_name" type="s" direction="in"/>
+      <arg name="password_fd" type="h" direction="in"/>
       <arg name="code" type="i" direction="out"/>
-      <arg name="sid" type="s" direction="out" />
+      <arg name="account_id" type="s" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <method name="Join">
+    <method name="JoinADDomain">
       <arg name="machine_name" type="s" direction="in"/>
-      <arg name="login" type="s" direction="in"/>
-      <arg name="password" type="h" direction="in"/>
+      <arg name="user_principal_name" type="s" direction="in"/>
+      <arg name="password_fd" type="h" direction="in"/>
       <arg name="code" type="i" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>

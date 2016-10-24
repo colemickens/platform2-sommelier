@@ -4,8 +4,9 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
+#include "chromeos/dbus/service_constants.h"
 
-#include "authpolicy/org.chromium.authpolicy.Domain.h"
+#include "authpolicy/org.chromium.AuthPolicy.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 
@@ -13,32 +14,31 @@ namespace org {
 namespace chromium {
 namespace authpolicy {
 
-const char kServiceName[] = "org.chromium.authpolicy";
-const char kRootServicePath[] = "/org/chromium/authpolicy";
+const char kObjectServicePath[] = "/org/chromium/AuthPolicy/ObjectManager";
 
-class Domain : public org::chromium::authpolicy::DomainInterface {
+class Domain : public org::chromium::AuthPolicyInterface {
  public:
   explicit Domain(brillo::dbus_utils::ExportedObjectManager* object_manager)
       : dbus_object_{new brillo::dbus_utils::DBusObject{
         object_manager, object_manager->GetBus(),
-            org::chromium::authpolicy::DomainAdaptor::GetObjectPath()}} {
+            org::chromium::AuthPolicyAdaptor::GetObjectPath()}} {
       }
 
   ~Domain() override = default;
-  bool Auth(
+  bool AuthenticateUser(
       brillo::ErrorPtr* error,
-      const std::string& in_login,
-      const dbus::FileDescriptor& in_password,
+      const std::string& in_user_principal_name,
+      const dbus::FileDescriptor& in_password_fd,
       int32_t* out_code,
-      std::string* sid) override {
+      std::string* account_id) override {
     return false;
   }
 
-  bool Join(
+  bool JoinADDomain(
       brillo::ErrorPtr* error,
       const std::string& in_machine_name,
-      const std::string& in_login,
-      const dbus::FileDescriptor& in_password,
+      const std::string& in_user_principal_name,
+      const dbus::FileDescriptor& in_password_fd,
       int32_t* out_code) override {
     return false;
   }
@@ -53,13 +53,14 @@ class Domain : public org::chromium::authpolicy::DomainInterface {
   }
 
  private:
-  org::chromium::authpolicy::DomainAdaptor dbus_adaptor_{this};
+  org::chromium::AuthPolicyAdaptor dbus_adaptor_{this};
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 };
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon(kServiceName, kRootServicePath) {
+  Daemon() : DBusServiceDaemon(::authpolicy::kAuthPolicyInterface,
+    kObjectServicePath) {
   }
 
  protected:
