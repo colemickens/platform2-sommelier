@@ -22,6 +22,7 @@
       'sources': [
         'authpolicy.cc',
         'dbus_bindings/org.chromium.AuthPolicy.xml',
+        'policy/policy_keys.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     }
