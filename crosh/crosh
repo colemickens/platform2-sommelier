@@ -46,7 +46,7 @@ try_bash() {
   fi
 
   # Still here?  Relaunch in bash.
-  exec /bin/bash $0 "$@"
+  exec /bin/bash "$0" "$@"
 }
 try_bash "$@"
 
