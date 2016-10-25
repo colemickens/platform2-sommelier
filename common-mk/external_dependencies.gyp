@@ -100,5 +100,17 @@
       ],
       'includes': ['protoc.gypi'],
     },
+    {
+      'target_name': 'install_attributes-proto',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '<(sysroot)/usr/include/proto',
+        'proto_out_dir': 'include/bindings',
+      },
+      'sources': [
+        '<(proto_in_dir)/install_attributes.proto',
+      ],
+      'includes': ['protoc.gypi'],
+    },
   ],
 }
