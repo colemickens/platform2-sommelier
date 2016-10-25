@@ -143,6 +143,10 @@ const Log common_logs[] = {
               " -e 'synaptics: Touchpad model'"
               " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
               " /var/log/messages | tail -n 20" },
+  {
+    "trim",
+    "cat /var/lib/trim/stateful_trim_state /var/lib/trim/stateful_trim_data"
+  },
   { "ui_log", "/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST" },
   { "uname", "/bin/uname -a" },
   { "update_engine.log", "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
