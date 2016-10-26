@@ -136,6 +136,10 @@ class CellularService : public Service {
  private:
   friend class CellularCapabilityUniversalTest;
   friend class CellularServiceTest;
+
+  template <typename key_type, typename value_type>
+  friend class ContainsCellularPropertiesMatcherP2;
+
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
@@ -147,7 +151,12 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
+  FRIEND_TEST(CellularServiceTest, LoadFromFirstOfMultipleMatchingProfiles);
+  FRIEND_TEST(CellularServiceTest, LoadFromProfileMatchingImsi);
+  FRIEND_TEST(CellularServiceTest, LoadFromProfileMatchingMeid);
+  FRIEND_TEST(CellularServiceTest, LoadFromProfileMatchingStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, LoadResetsPPPAuthFailure);
+  FRIEND_TEST(CellularServiceTest, Save);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsDetected);
   FRIEND_TEST(CellularServiceTest,
@@ -167,6 +176,10 @@ class CellularService : public Service {
   static const char kAutoConnDeviceDisabled[];
   static const char kAutoConnOutOfCredits[];
   static const char kAutoConnOutOfCreditsDetectionInProgress[];
+  static const char kStorageIccid[];
+  static const char kStorageImei[];
+  static const char kStorageImsi[];
+  static const char kStorageMeid[];
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
 
@@ -184,6 +197,20 @@ class CellularService : public Service {
       bool(CellularService::*set)(const bool&, Error*));
 
   std::string GetDeviceRpcId(Error* error) const override;
+
+  std::set<std::string> GetStorageGroupsWithProperty(
+      const StoreInterface& storage,
+      const std::string& key,
+      const std::string& value) const;
+
+  // The cellular service may be loaded from profile entries with matching
+  // properties but a different storage identifier. The following methods are
+  // overridden from the Service base class to return a loadable profile from
+  // |storage| for this cellular service, which either matches the current
+  // storage identifier or certain service properties.
+  std::string GetLoadableStorageIdentifier(
+      const StoreInterface& storage) const override;
+  bool IsLoadableFrom(const StoreInterface& storage) const override;
 
   std::string CalculateActivationType(Error* error);
 

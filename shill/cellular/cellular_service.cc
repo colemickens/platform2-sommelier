@@ -30,6 +30,7 @@
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 
+using std::set;
 using std::string;
 
 namespace shill {
@@ -47,6 +48,10 @@ const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
 const char CellularService::kAutoConnOutOfCredits[] = "device out of credits";
 const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
     "device detecting out-of-credits";
+const char CellularService::kStorageIccid[] = "Cellular.Iccid";
+const char CellularService::kStorageImei[] = "Cellular.Imei";
+const char CellularService::kStorageImsi[] = "Cellular.Imsi";
+const char CellularService::kStorageMeid[] = "Cellular.Meid";
 const char CellularService::kStoragePPPUsername[] = "Cellular.PPP.Username";
 const char CellularService::kStoragePPPPassword[] = "Cellular.PPP.Password";
 
@@ -249,11 +254,39 @@ void CellularService::InitOutOfCreditsDetection(
 }
 
 bool CellularService::Load(StoreInterface* storage) {
+  // The initial storage identifier contains the MAC address of the cellular
+  // device. However, the MAC address of a cellular device may not be constant
+  // (e.g. the kernel driver may pick a random MAC address for a modem when the
+  // driver can't obtain that information from the modem). As a remedy, we
+  // first try to locate a profile with other service related properties (IMSI,
+  // MEID, etc).
+  string id = GetLoadableStorageIdentifier(*storage);
+  if (id.empty()) {
+    // The default storage identifier is still used for backward compatibility
+    // as an older profile doesn't have other service related properties
+    // stored.
+    //
+    // TODO(benchan): We can probably later switch to match profiles solely
+    // based on service properties, instead of storage identifier.
+    id = GetStorageIdentifier();
+    SLOG(this, 2) << __func__ << ": No service with matching properties found; "
+                                 "try storage identifier instead";
+    if (!storage->ContainsGroup(id)) {
+      LOG(WARNING) << "Service is not available in the persistent store: "
+                   << id;
+      return false;
+    }
+  } else {
+    SLOG(this, 2) << __func__
+                  << ": Service with matching properties found: " << id;
+    // Set our storage identifier to match the storage name in the Profile.
+    storage_identifier_ = id;
+  }
+
   // Load properties common to all Services.
   if (!Service::Load(storage))
     return false;
 
-  const string id = GetStorageIdentifier();
   LoadApn(storage, id, kStorageAPN, &apn_info_);
   LoadApn(storage, id, kStorageLastGoodAPN, &last_good_apn_info_);
 
@@ -300,6 +333,11 @@ bool CellularService::Save(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   SaveApn(storage, id, GetUserSpecifiedApn(), kStorageAPN);
   SaveApn(storage, id, GetLastGoodApn(), kStorageLastGoodAPN);
+  SaveString(
+      storage, id, kStorageIccid, cellular_->sim_identifier(), false, true);
+  SaveString(storage, id, kStorageImei, cellular_->imei(), false, true);
+  SaveString(storage, id, kStorageImsi, cellular_->imsi(), false, true);
+  SaveString(storage, id, kStorageMeid, cellular_->meid(), false, true);
   SaveString(storage, id, kStoragePPPUsername, ppp_username_, false, true);
   SaveString(storage, id, kStoragePPPPassword, ppp_password_, false, true);
   return true;
@@ -387,6 +425,56 @@ string CellularService::GetStorageIdentifier() const {
 
 string CellularService::GetDeviceRpcId(Error* /*error*/) const {
   return cellular_->GetRpcIdentifier();
+}
+
+set<string> CellularService::GetStorageGroupsWithProperty(
+    const StoreInterface& storage,
+    const std::string& key,
+    const std::string& value) const {
+  KeyValueStore properties;
+  properties.SetString(kStorageType, kTypeCellular);
+  properties.SetString(key, value);
+  return storage.GetGroupsWithProperties(properties);
+}
+
+string CellularService::GetLoadableStorageIdentifier(
+    const StoreInterface& storage) const {
+  // We try the following service related identifiers in order:
+  // - IMSI
+  // - MEID
+  //
+  // TODO(benchan): IMSI / MEID is associated with the subscriber but not
+  // necessarily with the currently registered network. In case of roaming and
+  // MVNO, we may need to consider the home provider or serving operator UUID,
+  // which requires further investigations.
+  set<string> groups;
+  if (!cellular_->imsi().empty()) {
+    groups =
+        GetStorageGroupsWithProperty(storage, kStorageImsi, cellular_->imsi());
+  }
+
+  if (groups.empty() && !cellular_->meid().empty()) {
+    groups =
+        GetStorageGroupsWithProperty(storage, kStorageMeid, cellular_->meid());
+  }
+
+  if (groups.empty()) {
+    LOG(WARNING) << "Configuration for service " << unique_name()
+                 << " is not available in the persistent store";
+    return std::string();
+  }
+  if (groups.size() > 1) {
+    LOG(WARNING) << "More than one configuration for service " << unique_name()
+                 << " is available; choosing the first.";
+  }
+  return *groups.begin();
+}
+
+bool CellularService::IsLoadableFrom(const StoreInterface& storage) const {
+  // TODO(benchan): Remove `|| Service::IsLoadableFrom(storage)` once we no
+  // longer locate a profile based on storage identifier.
+  return !GetLoadableStorageIdentifier(storage).empty() ||
+         Service::IsLoadableFrom(storage);
 }
 
 void CellularService::SetActivationType(ActivationType type) {

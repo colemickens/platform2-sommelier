@@ -624,7 +624,9 @@ void Cellular::CreateService() {
   // Storage identifier must be set only once, and before registering the
   // service with the manager, since we key off of this identifier to
   // determine the profile to load.
-  // TODO(pprabhu) Make profile matching more robust (crbug.com/369755)
+  //
+  // TODO(benchan): Use a simpler scheme for generating the storage identifier
+  // once we no longer depend on it to locate a profile.
   string service_id;
   if (home_provider_info_->IsMobileNetworkOperatorKnown() &&
       !home_provider_info_->uuid().empty()) {

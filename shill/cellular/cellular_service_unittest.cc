@@ -27,6 +27,7 @@
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/cellular_capability_cdma.h"
 #include "shill/cellular/mock_cellular.h"
+#include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/cellular/mock_out_of_credits_detector.h"
 #include "shill/mock_adaptors.h"
@@ -44,8 +45,15 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
+using testing::StrEq;
 
 namespace shill {
+
+MATCHER_P2(ContainsCellularProperties, key, value, "") {
+  return arg.ContainsString(CellularService::kStorageType) &&
+         arg.GetString(CellularService::kStorageType) == kTypeCellular &&
+         arg.ContainsString(key) && arg.GetString(key) == value;
+}
 
 class CellularServiceTest : public testing::Test {
  public:
@@ -416,7 +424,7 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   // again.
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(service_->GetStorageIdentifier()))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
@@ -475,6 +483,115 @@ TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
       }
     }
   }
+}
+
+TEST_F(CellularServiceTest, LoadFromProfileMatchingStorageIdentifier) {
+  NiceMock<MockStore> storage;
+  string storage_id = service_->GetStorageIdentifier();
+  EXPECT_CALL(storage, ContainsGroup(storage_id)).WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_TRUE(service_->IsLoadableFrom(storage));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(storage_id, service_->GetStorageIdentifier());
+}
+
+TEST_F(CellularServiceTest, LoadFromProfileMatchingImsi) {
+  device_->set_imsi("111222123456789");
+
+  NiceMock<MockStore> storage;
+  string initial_storage_id = service_->GetStorageIdentifier();
+  string matching_storage_id = "another-storage-id";
+  std::set<string> groups = {matching_storage_id};
+  EXPECT_CALL(storage, ContainsGroup(initial_storage_id)).Times(0);
+  EXPECT_CALL(storage, ContainsGroup(matching_storage_id))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage,
+              GetGroupsWithProperties(ContainsCellularProperties(
+                  CellularService::kStorageImsi, device_->imsi())))
+      .WillRepeatedly(Return(groups));
+  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_TRUE(service_->IsLoadableFrom(storage));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(matching_storage_id, service_->GetStorageIdentifier());
+}
+
+TEST_F(CellularServiceTest, LoadFromProfileMatchingMeid) {
+  device_->set_meid("ABCDEF01234567");
+
+  NiceMock<MockStore> storage;
+  string initial_storage_id = service_->GetStorageIdentifier();
+  string matching_storage_id = "another-storage-id";
+  std::set<string> groups = {matching_storage_id};
+  EXPECT_CALL(storage, ContainsGroup(initial_storage_id)).Times(0);
+  EXPECT_CALL(storage, ContainsGroup(matching_storage_id))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage,
+              GetGroupsWithProperties(ContainsCellularProperties(
+                  CellularService::kStorageMeid, device_->meid())))
+      .WillRepeatedly(Return(groups));
+  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_TRUE(service_->IsLoadableFrom(storage));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(matching_storage_id, service_->GetStorageIdentifier());
+}
+
+TEST_F(CellularServiceTest, LoadFromFirstOfMultipleMatchingProfiles) {
+  device_->set_imsi("111222123456789");
+
+  NiceMock<MockStore> storage;
+  string initial_storage_id = service_->GetStorageIdentifier();
+  string matching_storage_id1 = "another-storage-id1";
+  string matching_storage_id2 = "another-storage-id2";
+  string matching_storage_id3 = "another-storage-id3";
+  std::set<string> groups = {
+      matching_storage_id1, matching_storage_id2, matching_storage_id3,
+  };
+  EXPECT_CALL(storage, ContainsGroup(initial_storage_id)).Times(0);
+  EXPECT_CALL(storage, ContainsGroup(matching_storage_id1))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage,
+              GetGroupsWithProperties(ContainsCellularProperties(
+                  CellularService::kStorageImsi, device_->imsi())))
+      .WillRepeatedly(Return(groups));
+  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_TRUE(service_->IsLoadableFrom(storage));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(matching_storage_id1, service_->GetStorageIdentifier());
+}
+
+TEST_F(CellularServiceTest, Save) {
+  NiceMock<MockStore> storage;
+  device_->set_sim_identifier("9876543210123456789");
+  device_->set_imei("012345678901234");
+  device_->set_imsi("111222123456789");
+  device_->set_meid("ABCDEF01234567");
+  EXPECT_CALL(storage, SetString(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(storage,
+              SetString(service_->GetStorageIdentifier(),
+                        StrEq(Service::kStorageType),
+                        kTypeCellular))
+      .Times(1);
+  EXPECT_CALL(storage,
+              SetString(service_->GetStorageIdentifier(),
+                        StrEq(CellularService::kStorageIccid),
+                        device_->sim_identifier()))
+      .Times(1);
+  EXPECT_CALL(storage,
+              SetString(service_->GetStorageIdentifier(),
+                        StrEq(CellularService::kStorageImei),
+                        device_->imei()))
+      .Times(1);
+  EXPECT_CALL(storage,
+              SetString(service_->GetStorageIdentifier(),
+                        StrEq(CellularService::kStorageImsi),
+                        device_->imsi()))
+      .Times(1);
+  EXPECT_CALL(storage,
+              SetString(service_->GetStorageIdentifier(),
+                        StrEq(CellularService::kStorageMeid),
+                        device_->meid()))
+      .Times(1);
+  EXPECT_TRUE(service_->Save(&storage));
 }
 
 // Some of these tests duplicate signals tested above. However, it's
