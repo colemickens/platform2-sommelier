@@ -9,6 +9,7 @@
 
 #include "base/files/file_path.h"
 
+#include "authpolicy/policy/device_policy_encoder.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "authpolicy/policy/proto/cloud_policy.pb.h"
 #include "authpolicy/policy/registry_dict.h"
@@ -58,6 +59,24 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
     UserPolicyEncoder enc(&merged_mandatory_dict, POLICY_LEVEL_MANDATORY);
     enc.EncodeUserPolicy(policy);
   }
+
+  return true;
+}
+
+bool ParsePRegFilesIntoDevicePolicy(
+    const std::vector<base::FilePath>& preg_files,
+    brillo::ErrorPtr* error,
+    em::ChromeDeviceSettingsProto* policy) {
+  DCHECK(policy);
+
+  RegistryDict policy_dict;
+  for (const base::FilePath& preg_file : preg_files) {
+    if (!helper::LoadPRegFile(preg_file, error, &policy_dict))
+      return false;
+  }
+
+  DevicePolicyEncoder encoder(&policy_dict);
+  encoder.EncodeDevicePolicy(policy);
 
   return true;
 }

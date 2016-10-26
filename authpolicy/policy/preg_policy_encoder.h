@@ -15,14 +15,15 @@ class FilePath;
 
 namespace enterprise_management {
 class CloudPolicySettings;
+class ChromeDeviceSettingsProto;
 }  // namespace enterprise_management
 
 namespace policy {
 
 // Loads the given set of |preg_files| and encodes all user policies into the
 // given |policy| blob. Note that user policy can contain mandatory and
-// recommended policies. If multiple files f1,...,fN are passed in, the order
-// of application obeys the following rules:
+// recommended policies. If multiple files f1,...,fN are passed in, policies
+// are merged with following rules:
 // - Mandatory policies in fn overwrite mandatory policies in fm if n > m.
 // - Recommended policies in fn overwrite recommended policies in fm if n > m.
 // - Mandatory policies always overwrite recommended policies.
@@ -32,6 +33,15 @@ bool ParsePRegFilesIntoUserPolicy(
     const std::vector<base::FilePath>& preg_files,
     brillo::ErrorPtr* error,
     enterprise_management::CloudPolicySettings* policy);
+
+// Loads the given set of |preg_files| and encodes all device policies into the
+// given |policy| blob. If multiple files f1,...,fN are passed in, policies
+// are merged with following rule:
+// - Policies in fn overwrite policies in fm if n > m.
+bool ParsePRegFilesIntoDevicePolicy(
+    const std::vector<base::FilePath>& preg_files,
+    brillo::ErrorPtr* error,
+    enterprise_management::ChromeDeviceSettingsProto* policy);
 
 }  // namespace policy
 

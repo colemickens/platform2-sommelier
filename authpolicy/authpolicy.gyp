@@ -42,6 +42,7 @@
         'authpolicy.cc',
         'dbus_bindings/org.chromium.AuthPolicy.xml',
         'errors.cc',
+        'policy/device_policy_encoder.cc',
         'policy/policy_encoder_helper.cc',
         'policy/policy_keys.cc',
         'policy/preg_parser.cc',
