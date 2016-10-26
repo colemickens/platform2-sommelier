@@ -50,6 +50,7 @@
         'policy/registry_dict.cc',
         'policy/user_policy_encoder.cc',
         'policy/user_policy_encoder_gen.cc',
+        'process_executor.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
       'link_settings': {
