@@ -41,10 +41,14 @@
       'sources': [
         'authpolicy.cc',
         'dbus_bindings/org.chromium.AuthPolicy.xml',
-        'policy/policy_keys.cc',
         'errors.cc',
+        'policy/policy_encoder_helper.cc',
+        'policy/policy_keys.cc',
         'policy/preg_parser.cc',
+        'policy/preg_policy_encoder.cc',
         'policy/registry_dict.cc',
+        'policy/user_policy_encoder.cc',
+        'policy/user_policy_encoder_gen.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
       'link_settings': {
