@@ -12,6 +12,7 @@ extern "C" {
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/macros.h>
 #include <base/strings/stringprintf.h>
 #include <cromo/carrier.h>
 #include <mm/mm-modem.h>
@@ -70,13 +71,14 @@ void GobiCdmaModem::GetCdmaRegistrationState(ULONG* cdma_1x_state,
   ULONG reg_state;
   ULONG l1;
   WORD w1, w2;
-  BYTE radio_interfaces[10];
-  BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
+  ULONG radio_interfaces[10];
+  BYTE num_radio_interfaces = arraysize(radio_interfaces);
   CHAR netname[32];
 
   ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
-                                     radio_interfaces, roaming_state,
-                                     &w1, &w2, sizeof(netname), netname);
+                                     reinterpret_cast<BYTE*>(radio_interfaces),
+                                     roaming_state, &w1, &w2, sizeof(netname),
+                                     netname);
   if (rc != 0) {
     // All errors are treated as if the modem is not yet registered.
     *cdma_1x_state = gobi::kUnregistered;
@@ -686,13 +688,14 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiCdmaModem::GetServingSystem(
   ULONG reg_state;
   ULONG roaming_state;
   ULONG l1;
-  BYTE radio_interfaces[10];
-  BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
+  ULONG radio_interfaces[10];
+  BYTE num_radio_interfaces = arraysize(radio_interfaces);
   LOG(INFO) << "GetServingSystem";
 
   ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
-                                     radio_interfaces, &roaming_state,
-                                     &mcc, &mnc, sizeof(netname), netname);
+                                     reinterpret_cast<BYTE*>(radio_interfaces),
+                                     &roaming_state, &mcc, &mnc,
+                                     sizeof(netname), netname);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetServingNetwork, rc, kSdkError, result);
   LOG(INFO) << "Serving MCC/MNC: " << mcc << "/" << mnc;
   if (reg_state != gobi::kRegistered) {

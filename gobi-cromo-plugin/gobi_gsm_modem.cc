@@ -10,6 +10,7 @@
 #include <memory>
 #include <sstream>
 
+#include <base/macros.h>
 #include <cromo/carrier.h>
 #include <cromo/sms_message.h>
 #include <mm/mm-modem.h>
@@ -299,13 +300,14 @@ void GobiGsmModem::GetGsmRegistrationInfo(uint32_t* registration_state,
   ULONG l1;
   WORD mcc, mnc;
   CHAR netname[32];
-  BYTE radio_interfaces[10];
-  BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
+  ULONG radio_interfaces[10];
+  BYTE num_radio_interfaces = arraysize(radio_interfaces);
 
   ULONG rc = sdk_->GetServingNetwork(&gobi_reg_state, &l1,
                                      &num_radio_interfaces,
-                                     radio_interfaces, &roaming_state,
-                                     &mcc, &mnc, sizeof(netname), netname);
+                                     reinterpret_cast<BYTE*>(radio_interfaces),
+                                     &roaming_state, &mcc, &mnc,
+                                     sizeof(netname), netname);
   if (rc != 0) {
     // All errors are treated as if the registration state is unknown
     gobi_reg_state = gobi::kRegistrationStateUnknown;

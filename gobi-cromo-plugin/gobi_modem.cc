@@ -22,6 +22,7 @@ extern "C" {
 }
 
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/strings/stringprintf.h>
 #include <cromo/carrier.h>
 #include <cromo/cromo_server.h>
@@ -862,11 +863,12 @@ unsigned int GobiModem::QCStateToMMState(ULONG qcstate) {
       ULONG reg_state;
       ULONG l1, l2;      // don't care
       WORD w1, w2;
-      BYTE b3[10];
-      BYTE b2 = sizeof(b3)/sizeof(BYTE);
+      ULONG radio_interfaces[10];
+      BYTE num_radio_interfaces = arraysize(radio_interfaces);
       char buf[255];
-      rc = sdk_->GetServingNetwork(&reg_state, &l1, &b2, b3, &l2, &w1, &w2,
-                                   sizeof(buf), buf);
+      rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
+                                   reinterpret_cast<BYTE*>(radio_interfaces),
+                                   &l2, &w1, &w2, sizeof(buf), buf);
       if (rc == 0) {
         if (reg_state == gobi::kRegistered) {
           mmstate = MM_MODEM_STATE_REGISTERED;
@@ -1348,15 +1350,14 @@ void GobiModem::SetModemProperties() {
 
   ULONG rc;
   ULONG u1, u2, u3, u4;
-  BYTE radioInterfaces[10];
-  ULONG numRadioInterfaces = sizeof(radioInterfaces)/sizeof(BYTE);
-  rc = sdk_->GetDeviceCapabilities(&u1, &u2, &u3, &u4,
-                                         &numRadioInterfaces,
-                                         radioInterfaces);
+  ULONG radio_interfaces[10];
+  ULONG num_radio_interfaces = arraysize(radio_interfaces);
+  rc = sdk_->GetDeviceCapabilities(&u1, &u2, &u3, &u4, &num_radio_interfaces,
+                                   reinterpret_cast<BYTE*>(radio_interfaces));
   if (rc == 0) {
-    if (numRadioInterfaces != 0) {
-      if (radioInterfaces[0] == gobi::kRfiGsm ||
-          radioInterfaces[0] == gobi::kRfiUmts) {
+    if (num_radio_interfaces != 0) {
+      if (radio_interfaces[0] == gobi::kRfiGsm ||
+          radio_interfaces[0] == gobi::kRfiUmts) {
         Type = MM_MODEM_TYPE_GSM;
       } else {
         Type = MM_MODEM_TYPE_CDMA;
