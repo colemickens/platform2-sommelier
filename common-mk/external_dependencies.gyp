@@ -120,7 +120,6 @@
         '<(proto_in_dir)/chrome_extension_policy.proto',
         '<(proto_in_dir)/device_management_backend.proto',
         '<(proto_in_dir)/device_management_local.proto',
-        '<(proto_in_dir)/install_attributes.proto',
       ],
       'includes': ['protoc.gypi'],
     },

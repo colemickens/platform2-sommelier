@@ -47,6 +47,7 @@
       'target_name': 'libsession_manager',
       'type': 'static_library',
       'dependencies': [
+        '../common-mk/external_dependencies.gyp:install_attributes-proto',
         '../common-mk/external_dependencies.gyp:policy-protos',
       ],
       'link_settings': {
