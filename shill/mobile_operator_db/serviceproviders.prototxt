@@ -11583,6 +11583,17 @@ mno {
     }
     mccmnc : "26001"
     mobile_apn {
+      apn : "internet"
+      plan : POSTPAID
+      localized_name {
+        name : "LTE Plus"
+      }
+      username : "plusgsm"
+      password : "plusgsm"
+      dns : "212.2.96.51"
+      dns : "212.2.96.52"
+    }
+    mobile_apn {
       apn : "www.plusgsm.pl"
       plan : POSTPAID
       plan : PREPAID
