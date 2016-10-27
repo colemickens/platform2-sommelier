@@ -105,6 +105,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                       weave::PairingType pairing_type,
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
+  void OnConnectionStateChanged();
 
   void RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
                           weave::ErrorPtr error);

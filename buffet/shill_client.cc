@@ -4,7 +4,9 @@
 
 #include "buffet/shill_client.h"
 
+#include <memory>
 #include <set>
+#include <utility>
 
 #include <base/message_loop/message_loop.h>
 #include <base/stl_util.h>
@@ -67,12 +69,12 @@ Network::State ShillServiceStateToNetworkState(const string& state) {
   // TODO(wiley) What does "unconfigured" mean in a world with multiple sets
   //             of WiFi credentials?
   // TODO(wiley) Detect disabled devices, update state appropriately.
-  if ((state.compare(shill::kStateReady) == 0) ||
-      (state.compare(shill::kStatePortal) == 0) ||
-      (state.compare(shill::kStateOnline) == 0)) {
+  if (state.compare(shill::kStateOnline) == 0) {
     return Network::State::kOnline;
   }
-  if ((state.compare(shill::kStateAssociation) == 0) ||
+  if ((state.compare(shill::kStateReady) == 0) ||
+      (state.compare(shill::kStatePortal) == 0) ||
+      (state.compare(shill::kStateAssociation) == 0) ||
       (state.compare(shill::kStateConfiguration) == 0)) {
     return Network::State::kConnecting;
   }

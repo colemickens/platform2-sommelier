@@ -4,9 +4,10 @@
 
 #include "buffet/http_transport_client.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <brillo/errors/error.h>
-#include <brillo/http/http_request.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/streams/memory_stream.h>
 #include <weave/enum_to_string.h>
@@ -21,6 +22,8 @@ using weave::provider::HttpClient;
 
 // The number of seconds each HTTP request will be allowed before timing out.
 const int kRequestTimeoutSeconds = 30;
+
+const char kErrorDomain[] = "buffet";
 
 class ResponseImpl : public HttpClient::Response {
  public:
@@ -43,22 +46,6 @@ class ResponseImpl : public HttpClient::Response {
   std::string data_;
   DISALLOW_COPY_AND_ASSIGN(ResponseImpl);
 };
-
-void OnSuccessCallback(const HttpClient::SendRequestCallback& callback,
-                       int id,
-                       std::unique_ptr<brillo::http::Response> response) {
-  callback.Run(std::unique_ptr<HttpClient::Response>{new ResponseImpl{
-                   std::move(response)}},
-               nullptr);
-}
-
-void OnErrorCallback(const HttpClient::SendRequestCallback& callback,
-                     int id,
-                     const brillo::Error* brillo_error) {
-  weave::ErrorPtr error;
-  ConvertError(*brillo_error, &error);
-  callback.Run(nullptr, std::move(error));
-}
 
 }  // anonymous namespace
 
@@ -89,8 +76,55 @@ void HttpTransportClient::SendRequest(Method method,
       return;
     }
   }
-  request.GetResponse(base::Bind(&OnSuccessCallback, callback),
-                      base::Bind(&OnErrorCallback, callback));
+
+  callbacks_.emplace(
+      request.GetResponse(base::Bind(&HttpTransportClient::OnSuccessCallback,
+                                     weak_ptr_factory_.GetWeakPtr()),
+                          base::Bind(&HttpTransportClient::OnErrorCallback,
+                                     weak_ptr_factory_.GetWeakPtr())),
+      callback);
+}
+
+void HttpTransportClient::OnSuccessCallback(
+    int id,
+    std::unique_ptr<brillo::http::Response> response) {
+  auto it = callbacks_.find(id);
+  if (it == callbacks_.end()) {
+    LOG(INFO) << "Request has already been cancelled: " << id;
+    return;
+  }
+
+  it->second.Run(std::unique_ptr<HttpClient::Response>{new ResponseImpl{
+      std::move(response)}}, nullptr);
+  callbacks_.erase(it);
+}
+
+void HttpTransportClient::OnErrorCallback(int id,
+                                          const brillo::Error* brillo_error) {
+  auto it = callbacks_.find(id);
+  if (it == callbacks_.end()) {
+    LOG(INFO) << "Request has already been cancelled: " << id;
+    return;
+  }
+
+  weave::ErrorPtr error;
+  ConvertError(*brillo_error, &error);
+  it->second.Run(nullptr, std::move(error));
+  callbacks_.erase(it);
+}
+
+void HttpTransportClient::SetOnline(bool online) {
+  if (!online) {
+    for (const auto &pair : callbacks_) {
+      weave::ErrorPtr error;
+      weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "offline",
+                          "offline");
+      transport_->RunCallbackAsync(
+          FROM_HERE, base::Bind(pair.second, nullptr, base::Passed(&error)));
+    }
+
+    callbacks_.clear();
+  }
 }
 
 }  // namespace buffet

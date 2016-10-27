@@ -5,9 +5,12 @@
 #ifndef BUFFET_HTTP_TRANSPORT_CLIENT_H_
 #define BUFFET_HTTP_TRANSPORT_CLIENT_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+#include <brillo/http/http_request.h>
 #include <weave/provider/http_client.h>
 
 namespace brillo {
@@ -30,8 +33,18 @@ class HttpTransportClient : public weave::provider::HttpClient {
                    const std::string& data,
                    const SendRequestCallback& callback) override;
 
+  void OnSuccessCallback(int id,
+                         std::unique_ptr<brillo::http::Response> response);
+  void OnErrorCallback(int id, const brillo::Error* brillo_error);
+
+  void SetOnline(bool online);
+
  private:
+  std::map<int, HttpClient::SendRequestCallback> callbacks_;
+
   std::shared_ptr<brillo::http::Transport> transport_;
+
+  base::WeakPtrFactory<HttpTransportClient> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(HttpTransportClient);
 };
 

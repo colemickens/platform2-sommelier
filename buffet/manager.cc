@@ -161,6 +161,9 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   shill_client_.reset(new ShillClient{dbus_object_.GetBus(),
                                       options_.device_whitelist,
                                       !options_.xmpp_enabled});
+  shill_client_->AddConnectionChangedCallback(
+      base::Bind(&Manager::OnConnectionStateChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
   weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options_.disable_privet) {
@@ -409,6 +412,13 @@ void Manager::OnPairingEnd(const std::string& session_id) {
   std::string exposed_session{it->second.TryGet<std::string>()};
   if (exposed_session == session_id) {
     dbus_adaptor_.SetPairingInfo(brillo::VariantDictionary{});
+  }
+}
+
+void Manager::OnConnectionStateChanged() {
+  if (http_client_) {
+    http_client_->SetOnline(shill_client_->GetConnectionState() ==
+          weave::provider::Network::State::kOnline);
   }
 }
 
