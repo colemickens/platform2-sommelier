@@ -18,6 +18,11 @@
       ],
     },
     {
+      'target_name': 'biod_client_tool',
+      'type': 'executable',
+      'sources': ['tools/biod_client_tool.cc'],
+    },
+    {
       'target_name': 'fake_biometric_tool',
       'type': 'executable',
       'sources': ['tools/fake_biometric_tool.cc'],
