@@ -21,9 +21,10 @@ class PermissionBrokerClientInterface {
  public:
   virtual ~PermissionBrokerClientInterface() {}
 
-  // Opens the given file path with permission broker and returns
+  // Opens the given file path with permission broker and calls back with
   // a file descriptor if successful, or -errno on failure.
-  virtual int Open(const std::string& path) = 0;
+  virtual void Open(const std::string& path,
+                    const base::Callback<void(int)>& callback) = 0;
 };
 
 class PermissionBrokerClient : public PermissionBrokerClientInterface {
@@ -35,7 +36,8 @@ class PermissionBrokerClient : public PermissionBrokerClientInterface {
   virtual ~PermissionBrokerClient() {}
 
   // PermissionBrokerClientInterface overrides.
-  int Open(const std::string& path) override;
+  void Open(const std::string& path,
+            const base::Callback<void(int)>& callback) override;
 
  private:
   dbus::ObjectProxy* broker_proxy_;  // weak

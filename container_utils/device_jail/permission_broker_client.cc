@@ -16,34 +16,9 @@
 
 namespace {
 
-class FutureFD {
- public:
-  FutureFD() : lock_(), cond_(&lock_), set_(false), fd_(-1) {}
-
-  void Set(int fd) {
-    base::AutoLock l(lock_);
-    fd_ = fd;
-    set_ = true;
-    cond_.Signal();
-  }
-
-  int Get() {
-    base::AutoLock l(lock_);
-    while (!set_)
-      cond_.Wait();
-    return fd_;
-  }
-
- private:
-  base::Lock lock_;
-  base::ConditionVariable cond_;
-  bool set_;
-  int fd_;
-};
-
 void OpenWithBrokerAsync(dbus::ObjectProxy* broker_proxy,
                          const std::string& path,
-                         FutureFD* out_fd) {
+                         const base::Callback<void(int)>& callback) {
   DLOG(INFO) << "Open(" << path << ")";
   dbus::MethodCall method_call(permission_broker::kPermissionBrokerInterface,
                                permission_broker::kOpenPath);
@@ -55,7 +30,7 @@ void OpenWithBrokerAsync(dbus::ObjectProxy* broker_proxy,
                                        dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!response) {
     DLOG(INFO) << "Open(" << path << "): permission denied";
-    out_fd->Set(-EACCES);
+    callback.Run(-EACCES);
     return;
   }
 
@@ -63,21 +38,21 @@ void OpenWithBrokerAsync(dbus::ObjectProxy* broker_proxy,
   dbus::MessageReader reader(response.get());
   if (!reader.PopFileDescriptor(&fd)) {
     LOG(ERROR) << "Could not parse permission broker's response";
-    out_fd->Set(-EINVAL);
+    callback.Run(-EINVAL);
     return;
   }
 
   fd.CheckValidity();
   if (!fd.is_valid()) {
     LOG(ERROR) << "Permission broker returned invalid fd";
-    out_fd->Set(-EINVAL);
+    callback.Run(-EINVAL);
     return;
   }
 
   DLOG(INFO) << "Open(" << path << ") -> " << fd.value();
 
   // Pass the FD back to the caller.
-  out_fd->Set(fd.TakeValue());
+  callback.Run(fd.TakeValue());
 }
 
 }  // namespace
@@ -85,17 +60,13 @@ void OpenWithBrokerAsync(dbus::ObjectProxy* broker_proxy,
 namespace device_jail {
 
 
-int PermissionBrokerClient::Open(const std::string& path) {
-  FutureFD out_fd;
-
+void PermissionBrokerClient::Open(const std::string& path,
+                                  const base::Callback<void(int)>& callback) {
   // This must be run on the thread which instantiated the D-Bus objects
   // or else the library will get mad, as above.
   message_loop_->PostTask(
       FROM_HERE,
-      base::Bind(&OpenWithBrokerAsync, broker_proxy_, path, &out_fd));
-
-  // Wait for the task to complete.
-  return out_fd.Get();
+      base::Bind(&OpenWithBrokerAsync, broker_proxy_, path, callback));
 }
 
 }  // namespace device_jail

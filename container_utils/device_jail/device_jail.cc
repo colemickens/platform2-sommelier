@@ -49,8 +49,8 @@ class DeviceJail {
     return static_cast<DeviceJail*>(fuse_req_userdata(req));
   }
 
-  int OpenWithBroker() {
-    return broker_client_->Open(device_path_);
+  void OpenWithBroker(const base::Callback<void(int)>& callback) {
+    broker_client_->Open(device_path_, callback);
   }
 
   const std::string& jailed_device_name() {
@@ -64,15 +64,20 @@ class DeviceJail {
   PermissionBrokerClientInterface* broker_client_;  // weak
 };
 
-void jail_open(fuse_req_t req, struct fuse_file_info* fi) {
-  DLOG(INFO) << "open";
-  int fd = DeviceJail::Get(req)->OpenWithBroker();
+static void jail_open_helper(fuse_req_t req, struct fuse_file_info fi, int fd) {
   if (fd < 0) {
     fuse_reply_err(req, -fd);
   } else {
-    fi->fh = fd;
-    fuse_reply_open(req, fi);
+    fi.fh = fd;
+    fuse_reply_open(req, &fi);
   }
+}
+
+void jail_open(fuse_req_t req, struct fuse_file_info* fi) {
+  DLOG(INFO) << "open";
+  // Copy |fi| because we're doing this asynchronously and it's on the FUSE
+  // message loop stack.
+  DeviceJail::Get(req)->OpenWithBroker(base::Bind(&jail_open_helper, req, *fi));
 }
 
 void jail_read(fuse_req_t req, size_t size, off_t off,
