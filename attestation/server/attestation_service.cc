@@ -2092,21 +2092,10 @@ void AttestationService::ResetIdentityTask(
 void AttestationService::SetSystemSalt(
     const SetSystemSaltRequest& request,
     const SetSystemSaltCallback& callback) {
-  auto result = std::make_shared<SetSystemSaltReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::SetSystemSaltTask,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
-      &AttestationService::TaskRelayCallback<SetSystemSaltReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
-}
-
-void AttestationService::SetSystemSaltTask(
-    const SetSystemSaltRequest& request,
-    const std::shared_ptr<SetSystemSaltReply>& result) {
   system_salt_.assign(request.system_salt());
   brillo::cryptohome::home::SetSystemSalt(&system_salt_);
+  SetSystemSaltReply result;
+  callback.Run(result);
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

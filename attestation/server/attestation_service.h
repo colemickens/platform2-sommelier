@@ -271,11 +271,6 @@ class AttestationService : public AttestationInterface {
       const ResetIdentityRequest& request,
       const std::shared_ptr<ResetIdentityReply>& result);
 
-  // A synchronous implementation of SetSystemSalt.
-  void SetSystemSaltTask(
-      const SetSystemSaltRequest& request,
-      const std::shared_ptr<SetSystemSaltReply>& result);
-
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.
   bool IsPreparedForEnrollment();
