@@ -45,7 +45,7 @@ const char kCrashReporterMatchRule[] =
     "type='signal',interface='%s',path='/',member='%s'";
 
 // Build type of an official build.
-// See src/third_party/chromiumos-overlay/chromeos/scripts/cros_set_lsb_release.
+// See chromite/scripts/cros_set_lsb_release.py.
 const char kOfficialBuild[] = "Official Build";
 
 const int kSecondsPerMinute = 60;
