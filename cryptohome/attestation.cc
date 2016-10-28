@@ -70,8 +70,8 @@ const char Attestation::kDatabaseOwner[] = "attestation";
 const char Attestation::kDefaultDatabasePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 
-#ifndef USE_TEST_PCA
-// This has been extracted from the Chrome OS PCA's encryption certificate.
+// This has been extracted from the Chrome OS PCA's encryption certificate
+// for the production PCA server.
 const char Attestation::kDefaultPCAPublicKey[] =
     "A2976637E113CC457013F4334312A416395B08D4B2A9724FC9BAD65D0290F39C"
     "866D1163C2CD6474A24A55403C968CF78FA153C338179407FE568C6E550949B1"
@@ -87,9 +87,10 @@ const char Attestation::kDefaultPCAPublicKey[] =
 const char Attestation::kDefaultPCAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
 const char Attestation::kDefaultPCAWebOrigin[] =
     "https://chromeos-ca.gstatic.com";
-#else
-// The test instance uses different keys.
-const char Attestation::kDefaultPCAPublicKey[] =
+
+// This has been extracted from the Chrome OS PCA's encryption certificate
+// for the test PCA server.
+const char Attestation::kTestPCAPublicKey[] =
     "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
     "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
     "FC3078D465F4DF97E03A52A587BD0165AE3B180FE7B255B7BEDC1BE81CB1383F"
@@ -99,9 +100,15 @@ const char Attestation::kDefaultPCAPublicKey[] =
     "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
     "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
 
-const char Attestation::kDefaultPCAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
-const char Attestation::kDefaultPCAWebOrigin[] =
+// This value is opaque; it is proprietary to the system managing the private
+// key.  In this case the value has been supplied by the PCA maintainers.
+const char Attestation::kTestPCAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
+const char Attestation::kTestPCAWebOrigin[] =
     "https://asbestos-qa.corp.google.com";
+
+#ifdef USE_TEST_PCA
+#error "Do not compile with USE_TEST_PCA"
+       " but provide the right PCA_type in calls."
 #endif
 
 const char Attestation::kEnterpriseSigningPublicKey[] =
@@ -513,12 +520,19 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
     return;
   }
+  if (!EncryptEndorsementCredential(
+      kTestPCA,
+      endorsement_credential,
+      credentials_pb->mutable_test_encrypted_endorsement_credential())) {
+    LOG(ERROR) << "Attestation: Failed to encrypt EK cert (test).";
+    return;
+  }
   if (enable_alternate_pca) {
     if (!EncryptEndorsementCredential(
         kAlternatePCA,
         endorsement_credential,
         credentials_pb->mutable_alternate_encrypted_endorsement_credential())) {
-      LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
+      LOG(ERROR) << "Attestation: Failed to encrypt EK cert (alternate).";
       return;
     }
   }
@@ -734,10 +748,9 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
   }
   base::AutoLock lock(lock_);
   AttestationEnrollmentRequest request_pb;
+  *request_pb.mutable_encrypted_endorsement_credential() =
+      GetEncryptedEndorsementCredential(pca_type);
   bool use_alternate_pca = (pca_type == kAlternatePCA);
-  *request_pb.mutable_encrypted_endorsement_credential() = use_alternate_pca ?
-      database_pb_.credentials().alternate_encrypted_endorsement_credential() :
-      database_pb_.credentials().default_encrypted_endorsement_credential();
   request_pb.set_identity_public_key(use_alternate_pca ?
       database_pb_.alternate_identity_binding().identity_public_key() :
       database_pb_.identity_binding().identity_public_key());
@@ -1215,6 +1228,7 @@ bool Attestation::GetIdentityResetRequest(const std::string& reset_token,
   base::AutoLock lock(lock_);
   AttestationResetRequest proto;
   proto.set_token(reset_token);
+  // This only works with the default PCA right now.
   *proto.mutable_encrypted_endorsement_credential() =
       database_pb_.credentials().default_encrypted_endorsement_credential();
   std::string serial;
@@ -1733,6 +1747,11 @@ bool Attestation::EncryptEndorsementCredential(
       key_id = std::string(kDefaultPCAPublicKeyID,
                            arraysize(kDefaultPCAPublicKeyID) - 1);
       break;
+    case kTestPCA:
+      rsa = CreateRSAFromHexModulus(kTestPCAPublicKey);
+      key_id = std::string(kTestPCAPublicKeyID,
+                           arraysize(kTestPCAPublicKeyID) - 1);
+      break;
     case kAlternatePCA:
       {
         brillo::Blob pca_key;
@@ -1757,6 +1776,26 @@ bool Attestation::EncryptEndorsementCredential(
     return false;
   }
   return EncryptData(credential, rsa.get(), key_id, encrypted_credential);
+}
+
+const EncryptedData& Attestation::GetEncryptedEndorsementCredential(
+    PCAType pca_type) const {
+  switch (pca_type) {
+    case kDefaultPCA:
+    default:
+      return database_pb_.credentials()
+          .default_encrypted_endorsement_credential();
+      break;
+
+    case kTestPCA:
+      return database_pb_.credentials()
+          .test_encrypted_endorsement_credential();
+      break;
+
+    case kAlternatePCA:
+      return database_pb_.credentials()
+          .alternate_encrypted_endorsement_credential();
+  }
 }
 
 bool Attestation::AddDeviceKey(const std::string& key_name,
@@ -2223,12 +2262,22 @@ void Attestation::FinalizeEndorsementData() {
     return;
   }
   if (!credentials->has_default_encrypted_endorsement_credential()) {
-    LOG(INFO) << "Attestation: Migrating endorsement data.";
+    LOG(INFO) << "Attestation: Migrating default endorsement data.";
     if (!EncryptEndorsementCredential(
         kDefaultPCA,
         SecureBlob(credentials->endorsement_credential()),
         credentials->mutable_default_encrypted_endorsement_credential())) {
       LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
+      return;
+    }
+  }
+  if (!credentials->has_test_encrypted_endorsement_credential()) {
+    LOG(INFO) << "Attestation: Migrating endorsement data (test).";
+    if (!EncryptEndorsementCredential(
+        kTestPCA,
+        SecureBlob(credentials->endorsement_credential()),
+        credentials->mutable_test_encrypted_endorsement_credential())) {
+      LOG(ERROR) << "Attestation: Failed to encrypt EK cert (test).";
       return;
     }
   }

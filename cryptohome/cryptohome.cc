@@ -65,6 +65,15 @@ const int kDefaultTimeoutMs = 300000;
 
 namespace switches {
   static const char kSyslogSwitch[] = "syslog";
+  static const char kAttestationServerSwitch[] = "attestation-server";
+  static struct {
+    const char *name;
+    const cryptohome::Attestation::PCAType pca_type;
+  } kAttestationServers[] = {
+    { "default",  cryptohome::Attestation::kDefaultPCA },
+    { "test",     cryptohome::Attestation::kTestPCA },
+    { nullptr,    cryptohome::Attestation::kMaxPCAType }
+  };
   static const char kActionSwitch[] = "action";
   static const char *kActions[] = {
     "mount",
@@ -623,6 +632,19 @@ int main(int argc, char **argv) {
     brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   else
     brillo::InitLog(brillo::kLogToStderr);
+
+  cryptohome::Attestation::PCAType pca_type =
+      cryptohome::Attestation::kDefaultPCA;
+  if (cl->HasSwitch(switches::kAttestationServerSwitch)) {
+    std::string server =
+        cl->GetSwitchValueASCII(switches::kAttestationServerSwitch);
+    for (int i = 0; switches::kAttestationServers[i].name; ++i) {
+      if (server == switches::kAttestationServers[i].name) {
+        pca_type = switches::kAttestationServers[i].pca_type;
+        break;
+      }
+    }
+  }
 
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
   g_type_init();
@@ -1921,7 +1943,7 @@ int main(int argc, char **argv) {
       brillo::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(  // NOLINT
           proxy.gproxy(),
-          cryptohome::Attestation::kDefaultPCA,
+          pca_type,
           &brillo::Resetter(&data).lvalue(),
           &brillo::Resetter(&error).lvalue())) {
         printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
@@ -1935,7 +1957,7 @@ int main(int argc, char **argv) {
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_enroll_request(  // NOLINT
               proxy.gproxy(),
-              cryptohome::Attestation::kDefaultPCA,
+              pca_type,
               &async_id,
               &brillo::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationCreateEnrollRequest call failed: %s.\n",
@@ -1965,7 +1987,7 @@ int main(int argc, char **argv) {
     brillo::glib::ScopedError error;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
-              proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
+              proxy.gproxy(), pca_type, data.get(),
               &success, &brillo::Resetter(&error).lvalue())) {
         printf("TpmAttestationEnroll call failed: %s.\n", error->message);
         return 1;
@@ -1975,7 +1997,7 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_enroll(
-              proxy.gproxy(), cryptohome::Attestation::kDefaultPCA, data.get(),
+              proxy.gproxy(), pca_type, data.get(),
               &async_id, &brillo::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationEnroll call failed: %s.\n", error->message);
         return 1;
@@ -1997,7 +2019,7 @@ int main(int argc, char **argv) {
       brillo::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
           proxy.gproxy(),
-          cryptohome::Attestation::kDefaultPCA,
+          pca_type,
           cryptohome::ENTERPRISE_USER_CERTIFICATE,
           "", "",
           &brillo::Resetter(&data).lvalue(),
@@ -2013,7 +2035,7 @@ int main(int argc, char **argv) {
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(  // NOLINT
               proxy.gproxy(),
-              cryptohome::Attestation::kDefaultPCA,
+              pca_type,
               cryptohome::ENTERPRISE_USER_CERTIFICATE,
               "", "",
               &async_id,

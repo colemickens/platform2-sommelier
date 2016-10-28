@@ -42,6 +42,7 @@ class Attestation : public base::PlatformThread::Delegate,
  public:
   enum PCAType {
     kDefaultPCA,    // The Google-operated Privacy CA.
+    kTestPCA,       // The test version of the Google-operated Privacy CA.
     kAlternatePCA,  // An alternate Privacy CA specified by enterprise policy.
     kMaxPCAType
   };
@@ -426,6 +427,9 @@ class Attestation : public base::PlatformThread::Delegate,
   static const char kDefaultPCAPublicKey[];
   static const char kDefaultPCAPublicKeyID[];
   static const char kDefaultPCAWebOrigin[];
+  static const char kTestPCAPublicKey[];
+  static const char kTestPCAPublicKeyID[];
+  static const char kTestPCAWebOrigin[];
   static const char kEnterpriseSigningPublicKey[];
   static const char kEnterpriseEncryptionPublicKey[];
   static const char kEnterpriseEncryptionPublicKeyID[];
@@ -667,6 +671,10 @@ class Attestation : public base::PlatformThread::Delegate,
   // If PCR1 is clear (i.e. all 0 bytes), extends the PCR with the HWID. This is
   // a fallback if the device firmware does not already do this.
   void ExtendPCR1IfClear();
+
+  // Returns the encrypted endorsement credential for a given |pca_type|.
+  const EncryptedData& GetEncryptedEndorsementCredential(PCAType pca_type)
+      const;
 
   // Creates a PCA URL for the given |pca_type| and |request_type|.
   std::string GetPCAURL(PCAType pca_type, PCARequestType request_type) const;
