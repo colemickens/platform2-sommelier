@@ -42,6 +42,16 @@
       ],
     },
     {
+      'target_name': 'container_config_parser',
+      'type': 'shared_library',
+      'cflags': [
+        '-fvisibility=default',
+      ],
+      'sources': [
+        'container_config_parser.cc',
+      ],
+    },
+    {
       'target_name': 'device_jail',
       'type': 'executable',
       'variables': {
@@ -59,5 +69,27 @@
         'device_jail/permission_broker_client.h',
       ],
     },
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'container_config_parser_unittest',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'defines': ['UNIT_TEST'],
+          'variables': {
+            'deps': [
+              'libbrillo-test-<(libbase_ver)',
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'container_config_parser.cc',
+            'container_config_parser_unittest.cc',
+          ],
+        },
+      ]},
+    ],
   ],
 }
