@@ -49,8 +49,8 @@ class CromoServer : public org::freedesktop::ModemManager_adaptor,
   void SetLogging(const std::string& level,
                   DBus::Error& error);  // NOLINT - refs.
 
-  static const char* kServiceName;
-  static const char* kServicePath;
+  static const char kServiceName[];
+  static const char kServicePath[];
 
   HookTable& start_exit_hooks() { return start_exit_hooks_; }
   HookTable& exit_ok_hooks() { return exit_ok_hooks_; }

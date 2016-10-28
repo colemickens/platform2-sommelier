@@ -19,10 +19,10 @@
 
 using std::vector;
 
-const char* CromoServer::kServiceName = "org.chromium.ModemManager";
-const char* CromoServer::kServicePath = "/org/chromium/ModemManager";
+const char CromoServer::kServiceName[] = "org.chromium.ModemManager";
+const char CromoServer::kServicePath[] = "/org/chromium/ModemManager";
 
-static const char* kDBusInvalidArgs = "org.freedesktop.DBus.Error.InvalidArgs";
+static const char kDBusInvalidArgs[] = "org.freedesktop.DBus.Error.InvalidArgs";
 
 CromoServer::CromoServer(
     DBus::Connection& connection)  // NOLINT(runtime/references)
