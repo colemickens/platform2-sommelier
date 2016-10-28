@@ -111,11 +111,11 @@ static const char kHelpMessage[] = "\n"
 namespace {
 
 #if !defined(__ANDROID__)
-const char* kLoggerCommand = "/usr/bin/logger";
-const char* kLoggerUser = "syslog";
+const char kLoggerCommand[] = "/usr/bin/logger";
+const char kLoggerUser[] = "syslog";
 #endif  // __ANDROID__
 
-const char* kDefaultTechnologyOrder = "vpn,ethernet,wifi,wimax,cellular";
+const char kDefaultTechnologyOrder[] = "vpn,ethernet,wifi,wimax,cellular";
 
 }  // namespace
 

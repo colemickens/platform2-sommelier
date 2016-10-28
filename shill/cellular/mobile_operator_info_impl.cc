@@ -59,9 +59,9 @@ static string ObjectID(const MobileOperatorInfoImpl* m) {
 }
 
 // static
-const char* MobileOperatorInfoImpl::kDefaultDatabasePath =
+const char MobileOperatorInfoImpl::kDefaultDatabasePath[] =
     "/usr/share/shill/serviceproviders.pbf";
-const char* MobileOperatorInfoImpl::kOverrideDatabasePath =
+const char MobileOperatorInfoImpl::kOverrideDatabasePath[] =
     "/usr/share/shill/serviceproviders-override.pbf";
 const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
 

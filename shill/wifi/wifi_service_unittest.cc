@@ -334,9 +334,9 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   static const int16_t kOkEndpointSignal = -50;
   static const int16_t kBadEndpointSignal = -75;
   static const int16_t kGoodEndpointSignal = -25;
-  static const char* kOkEndpointBssId;
-  static const char* kGoodEndpointBssId;
-  static const char* kBadEndpointBssId;
+  static const char kOkEndpointBssId[];
+  static const char kGoodEndpointBssId[];
+  static const char kBadEndpointBssId[];
   // Can't be both static and const (because initialization requires a
   // function call). So choose to be just const.
   const uint8_t kOkEndpointStrength;
@@ -349,11 +349,11 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   ServiceMockAdaptor& adaptor;
 };
 
-const char* WiFiServiceUpdateFromEndpointsTest::kOkEndpointBssId =
+const char WiFiServiceUpdateFromEndpointsTest::kOkEndpointBssId[] =
     "00:00:00:00:00:01";
-const char* WiFiServiceUpdateFromEndpointsTest::kGoodEndpointBssId =
+const char WiFiServiceUpdateFromEndpointsTest::kGoodEndpointBssId[] =
     "00:00:00:00:00:02";
-const char* WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId =
+const char WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId[] =
     "00:00:00:00:00:03";
 
 class WiFiServiceFixupStorageTest : public WiFiServiceTest {

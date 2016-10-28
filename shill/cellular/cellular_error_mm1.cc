@@ -30,22 +30,20 @@ namespace shill {
 
 namespace {
 
-const char* kErrorGprsMissingOrUnknownApn =
+const char kErrorGprsMissingOrUnknownApn[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsMissingOrUnknownApn";
 
-const char* kErrorGprsServiceOptionNotSubscribed =
+const char kErrorGprsServiceOptionNotSubscribed[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsServiceOptionNotSubscribed";
 
-const char* kErrorIncorrectPassword =
+const char kErrorIncorrectPassword[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword";
 
-const char* kErrorSimPin =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
+const char kErrorSimPin[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
 
-const char* kErrorSimPuk =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
+const char kErrorSimPuk[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
 
-const char* kErrorWrongState = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
+const char kErrorWrongState[] = MM_CORE_ERROR_DBUS_PREFIX ".WrongState";
 
 }  // namespace
 

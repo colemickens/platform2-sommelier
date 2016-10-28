@@ -27,13 +27,13 @@ using std::string;
 
 namespace shill {
 
-static const char* kErrorIncorrectPassword =
+static const char kErrorIncorrectPassword[] =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_INCORRECTPASSWORD);
-static const char* kErrorSimPinRequired =
+static const char kErrorSimPinRequired[] =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_SIMPINREQUIRED);
-static const char* kErrorSimPukRequired =
+static const char kErrorSimPukRequired[] =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_SIMPUKREQUIRED);
-static const char* kErrorGprsNotSubscribed =
+static const char kErrorGprsNotSubscribed[] =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_GPRSNOTSUBSCRIBED);
 
 // static

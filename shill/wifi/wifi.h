@@ -340,7 +340,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const WiFiService*, std::string> ReverseServiceMap;
 
-  static const char* kDefaultBgscanMethod;
+  static const char* const kDefaultBgscanMethod;
   static const uint16_t kBackgroundScanIntervalSeconds;
   static const uint16_t kDefaultBgscanShortIntervalSeconds;
   static const int32_t kDefaultBgscanSignalThresholdDbm;

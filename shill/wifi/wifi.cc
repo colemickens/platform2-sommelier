@@ -86,7 +86,7 @@ static string ObjectID(WiFi* w) { return w->GetRpcIdentifier(); }
 }
 
 // statics
-const char* WiFi::kDefaultBgscanMethod =
+const char* const WiFi::kDefaultBgscanMethod =
     WPASupplicant::kNetworkBgscanMethodSimple;
 const uint16_t WiFi::kDefaultBgscanShortIntervalSeconds = 30;
 const int32_t WiFi::kDefaultBgscanSignalThresholdDbm = -50;
