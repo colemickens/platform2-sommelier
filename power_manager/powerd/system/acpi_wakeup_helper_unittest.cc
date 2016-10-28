@@ -12,7 +12,7 @@ namespace system {
 
 namespace {
 
-const char* kFileContents[] = {
+const char* const kFileContents[] = {
   // State 0
   "Device\tS-state\t  Status   Sysfs node\n"
   "LID0\t  S4\t*enabled \n"

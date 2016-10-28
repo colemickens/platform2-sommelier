@@ -481,8 +481,9 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
 
   // If the kernel reports a USB charger of any type that is not "USB_PD_DRP"
   // powerd should report it as being active by default.
-  const char* kUsbTypes[] = { "USB", "USB_DCP", "USB_CDP", "USB_ACA",
-                              "USB_C", "USB_PD" };
+  const char* const kUsbTypes[] = {
+      "USB", "USB_DCP", "USB_CDP", "USB_ACA", "USB_C", "USB_PD",
+  };
   for (size_t i = 0; i < arraysize(kUsbTypes); ++i) {
     const char* kType = kUsbTypes[i];
     SCOPED_TRACE(kType);
@@ -1072,7 +1073,7 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
   // Check that the "connected to USB" status is reported for all
   // USB-related strings used by the kernel.
   PowerStatus status;
-  const char* kUsbTypes[] = { "USB", "USB_DCP", "USB_CDP", "USB_ACA" };
+  const char* const kUsbTypes[] = {"USB", "USB_DCP", "USB_CDP", "USB_ACA"};
   for (size_t i = 0; i < arraysize(kUsbTypes); ++i) {
     const char* kType = kUsbTypes[i];
     SCOPED_TRACE(kType);
