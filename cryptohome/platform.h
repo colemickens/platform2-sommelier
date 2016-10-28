@@ -335,12 +335,12 @@ class Platform {
   //   path - Path of the file to write
   //   data - Blob to populate from
   //   mode - File permission bit-pattern, eg. 0644 for rw-r--r--
-  bool WriteFileAtomic(const base::FilePath& path,
-                       const brillo::Blob& blob,
-                       mode_t mode);
-  bool WriteStringToFileAtomic(const base::FilePath& path,
-                               const std::string& data,
+  virtual bool WriteFileAtomic(const base::FilePath& path,
+                               const brillo::Blob& blob,
                                mode_t mode);
+  virtual bool WriteStringToFileAtomic(const base::FilePath& path,
+                                       const std::string& data,
+                                       mode_t mode);
 
   // Atomically and durably writes the entirety of the given data to |path| with
   // |mode| permissions (modulo umask).  If missing, parent (and parent of

@@ -126,6 +126,9 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Rename, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD2(WriteOpenFile, bool(FILE*, const brillo::Blob&));
   MOCK_METHOD2(WriteFile, bool(const base::FilePath&, const brillo::Blob&));
+  MOCK_METHOD3(WriteFileAtomic, bool(const base::FilePath&,
+                                     const brillo::Blob&,
+                                     mode_t mode));
   MOCK_METHOD3(WriteFileAtomicDurable, bool(const base::FilePath&,
                                             const brillo::Blob&,
                                             mode_t mode));

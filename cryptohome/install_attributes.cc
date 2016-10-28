@@ -289,10 +289,10 @@ bool InstallAttributes::Finalize() {
     return false;
   }
 
-  // Since the cache file is re-created upon every boot, atomic write is not
-  // required.
-  if (!platform_->WriteFile(cache_file_, attr_bytes) ||
-      !platform_->SetPermissions(cache_file_, kCacheFilePermissions)) {
+  // As the cache file is stored on tmpfs, durable write is not required but we
+  // need atomicity to be safe in case of concurrent reads.
+  if (!platform_->WriteFileAtomic(cache_file_, attr_bytes,
+                                  kCacheFilePermissions)) {
     LOG(WARNING) << "Finalize() failed to create cache file.";
   }
 

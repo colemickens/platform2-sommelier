@@ -106,8 +106,8 @@ class InstallAttributesTest : public ::testing::Test {
       .WillOnce(DoAll(SaveArg<1>(serialized_data), Return(true)));
     brillo::Blob cached_data;
     EXPECT_CALL(platform_,
-        WriteFile(
-          FilePath(InstallAttributes::kDefaultCacheFile), _))
+        WriteFileAtomic(
+          FilePath(InstallAttributes::kDefaultCacheFile), _, _))
       .Times(1)
       .WillOnce(DoAll(SaveArg<1>(&cached_data), Return(true)));
 
