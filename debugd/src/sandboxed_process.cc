@@ -80,6 +80,10 @@ bool SandboxedProcess::Init() {
 
   if (!seccomp_filter_policy_file_.empty()) {
     AddStringOption("-S", seccomp_filter_policy_file_);
+
+    // Whenever we use a seccomp filter, we want no-new-privs so we can apply
+    // the policy after dropping other privs.
+    AddArg("-n");
   }
 
   AddArg("--");

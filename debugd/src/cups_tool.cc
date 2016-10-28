@@ -33,7 +33,10 @@ namespace {
 
 const char kJobName[] = "cupsd";
 const char kLpadminCommand[] = "/usr/sbin/lpadmin";
+const char kLpadminSeccompPolicy[] = "/usr/share/policy/lpadmin-seccomp.policy";
 const char kTestPPDCommand[] = "/usr/bin/cupstestppd";
+const char kTestPPDSeccompPolicy[] =
+    "/usr/share/policy/cupstestppd-seccomp.policy";
 
 const char kLpadminUser[] = "lpadmin";
 const char kLpadminGroup[] = "lpadmin";
@@ -59,7 +62,6 @@ bool IsHexDigits(base::StringPiece digits) {
     if (!base::IsHexDigit(digit))
       return false;
   }
-
   return true;
 }
 
@@ -157,12 +159,17 @@ int ClearCupsState() {
 // that access to the root mount namespace is enabled if |root_mount_ns| is
 // true.
 int RunAsUserWithMount(const std::string& user, const std::string& group,
-              const std::string& command,
-              const ProcessWithOutput::ArgList& arg_list, bool root_mount_ns,
-              DBus::Error* error) {
+                       const std::string& command,
+                       const std::string& seccomp_policy,
+                       const ProcessWithOutput::ArgList& arg_list,
+                       bool root_mount_ns, DBus::Error* error) {
   ProcessWithOutput process;
   process.set_separate_stderr(true);
   process.SandboxAs(user, group);
+
+  if (!seccomp_policy.empty())
+    process.SetSeccompFilterPolicyFile(seccomp_policy);
+
   if (root_mount_ns)
     process.AllowAccessRootMountNamespace();
 
@@ -184,26 +191,30 @@ int RunAsUserWithMount(const std::string& user, const std::string& group,
   return result;
 }
 
-// Runs |command| as |user|:|group| with args |arg_list|.  Returns the exit code
+// Runs |command| as |user|:|group| with args |arg_list|.  If |seccomp_policy|
+// is non-empty, apply it to restrict syscalls.  Returns the exit code
 // for the executed process.
 int RunAsUser(const std::string& user, const std::string& group,
               const std::string& command,
+              const std::string& seccomp_policy,
               const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
-  return RunAsUserWithMount(user, group, command, arg_list, false, error);
+  return RunAsUserWithMount(user, group, command, seccomp_policy, arg_list,
+                            false, error);
 }
 
 // Runs cupstestppd on |file_name| returns true if it is a valid ppd file.
 bool TestPPD(const std::string& path, DBus::Error* error) {
   // TODO(skau): Run cupstestppd in seccomp crbug.com/633383.
-  return RunAsUser(kLpadminUser, kLpadminGroup, kTestPPDCommand, {path},
-                   error) == 0;
+  return RunAsUser(kLpadminUser, kLpadminGroup, kTestPPDCommand,
+                   kTestPPDSeccompPolicy, {path}, error) == 0;
 }
 
 // Runs lpadmin with the provided |arg_list|.
 int Lpadmin(const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
   // TODO(skau): Run lpadmin in seccomp crbug.com/637160.
   // Run in lp group so we can read and write /run/cups/cups.sock.
-  return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand, arg_list, error);
+  return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
+                   kLpadminSeccompPolicy, arg_list, error);
 }
 
 // Runs /bin/cp in a new minijail.  This is done becuase /home might not be
@@ -212,7 +223,7 @@ bool RunCopy(const std::string& src, const std::string& dst,
              DBus::Error* error) {
   std::string err_msg;
   int result =
-      RunAsUserWithMount("root", "root", "/bin/cp",
+      RunAsUserWithMount("root", "root", "/bin/cp", "",  // No seccomp policy.
                          {"-u", src, dst},  // update, source, destination
                          true,  // access to root mount namespace required
                          error);
