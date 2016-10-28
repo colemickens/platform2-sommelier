@@ -16,8 +16,8 @@ using std::string;
 namespace {
 
 // Expected locations of an external mount program
-const char* kMountProgramPaths[] = {
-  "/bin/mount", "/sbin/mount", "/usr/bin/mount", "/usr/sbin/mount"
+const char* const kMountProgramPaths[] = {
+    "/bin/mount", "/sbin/mount", "/usr/bin/mount", "/usr/sbin/mount",
 };
 
 }  // namespace

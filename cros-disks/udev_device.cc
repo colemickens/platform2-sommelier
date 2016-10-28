@@ -57,12 +57,12 @@ const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 const char kLoopDevicePathPrefix[] = "/sys/devices/virtual/block/loop";
 const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
 const char kUSBIdentifierDatabase[] = "/usr/share/misc/usb.ids";
-const char* kPartitionTypesToHide[] = {
-  "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",  // EFI system partition
-  "fe3a2a5d-4f32-41a7-b725-accc3285a309",  // Chrome OS kernel
-  "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec",  // Chrome OS root filesystem
-  "cab6e88e-abf3-4102-a07a-d4bb9be3c1d3",  // Chrome OS firmware
-  "2e0a753d-9e48-43b0-8337-b15192cb1b5e",  // Chrome OS reserved
+const char* const kPartitionTypesToHide[] = {
+    "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",  // EFI system partition
+    "fe3a2a5d-4f32-41a7-b725-accc3285a309",  // Chrome OS kernel
+    "3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec",  // Chrome OS root filesystem
+    "cab6e88e-abf3-4102-a07a-d4bb9be3c1d3",  // Chrome OS firmware
+    "2e0a753d-9e48-43b0-8337-b15192cb1b5e",  // Chrome OS reserved
 };
 
 }  // namespace

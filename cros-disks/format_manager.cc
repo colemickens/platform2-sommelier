@@ -21,13 +21,13 @@ using std::string;
 namespace {
 
 // Expected locations of an external format program
-const char* kFormatProgramPaths[] = {
-  "/usr/sbin/mkfs.", "/bin/mkfs.", "/sbin/mkfs.", "/usr/bin/mkfs.",
+const char* const kFormatProgramPaths[] = {
+    "/usr/sbin/mkfs.", "/bin/mkfs.", "/sbin/mkfs.", "/usr/bin/mkfs.",
 };
 
 // Supported file systems
-const char* kSupportedFilesystems[] = {
-  "vfat"
+const char* const kSupportedFilesystems[] = {
+    "vfat",
 };
 
 const char kDefaultLabel[] = "UNTITLED";
