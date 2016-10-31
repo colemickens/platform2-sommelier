@@ -55,6 +55,23 @@ is_var_full() {
   [ ${var_avail} -lt 10000 ]
 }
 
+# Sanity check the date in case the RTC battery died and it initialized to
+# something old (https://crbug.com/195715).  This doesn't need to be perfect,
+# just somewhat recent/sane.  We'll recover later via tlsdate.
+sanity_check_clock() {
+  # We manage this base timestamp by hand.  It isolates us from bad clocks on
+  # the system where this image was built/modified, and on the runtime image
+  # (in case a dev modified random paths while the clock was out of sync).
+  # Calculated using: date -d"01 Jan $(date +%Y) UTC" +%s
+  local year="2017"
+  local base_secs="1483228800"
+
+  # See if the current time is older than our sanity time.  If so, pull up.
+  if [ $(date -u +%s) -lt ${base_secs} ]; then
+    date -u 01020000${year}
+  fi
+}
+
 # Mount debugfs as bootstat depends on /sys/kernel/debug
 mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
   debugfs /sys/kernel/debug
@@ -178,10 +195,9 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   mount -n -t ${FS_FORMAT_OEM} -o ${OEM_FLAGS} ${OEM_DEV} /usr/share/oem
 fi
 
-# Sanity check the date (crosbug.com/13200)
-if [ $(date +%Y) -lt 1970 ]; then
-  date 010200001970.00
-fi
+# Make sure our clock is somewhat up-to-date.
+# TODO: See if we can move this before the stateful initialization above.
+sanity_check_clock
 
 # This file is created by clobber-state after the transition
 # to dev mode.
