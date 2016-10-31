@@ -271,6 +271,16 @@ get_hardware_class() {
 send_crash() {
   local meta_path="$1"
   local report_payload="$(get_key_value "${meta_path}" "payload")"
+
+  if [ "${report_payload}" = "undefined" ]; then
+    lecho "Failed reading payload from metadata."
+    return 1
+  elif [ ! -r "${report_payload}" ]; then
+    lecho "Removing report with missing payload."
+    remove_report "${meta_path}"
+    return 1
+  fi
+
   local kind="$(get_kind "${meta_path}")"
   local exec_name="$(get_key_value "${meta_path}" "exec_name")"
   local url="${REPORT_UPLOAD_PROD_URL}"
@@ -294,10 +304,8 @@ send_crash() {
       -F "sig=${sig}" \
       -F "sig2=${sig}"
   fi
-  if [ -r "${report_payload}" ]; then
-    set -- "$@" \
-      -F "upload_file_${kind}=@${report_payload}"
-  fi
+  set -- "$@" \
+    -F "upload_file_${kind}=@${report_payload}"
   if [ "${log}" != "undefined" -a -r "${log}" ]; then
     set -- "$@" \
       -F "log=@${log}"
@@ -521,6 +529,11 @@ send_crashes() {
   # then decide whether it should be sent right now or kept for later sending.
   for meta_path in $(ls -1tr "${dir}"/*.meta 2>/dev/null); do
     lecho "Considering metadata ${meta_path}."
+
+    if [ ! -r "${meta_path}" ]; then
+      lecho "Ignoring inaccessible metadata."
+      continue
+    fi
 
     local kind=$(get_kind "${meta_path}")
     if [ "${kind}" != "minidump" ] && \
