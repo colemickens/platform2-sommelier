@@ -24,10 +24,9 @@ constexpr uint8_t kProdPublicKey[] = {
     0x65, 0xe5, 0x71, 0xbc, 0x8d, 0x72, 0x02};
 
 // The path where the components are stored on the device.
-constexpr char kComponentsPath[] =
-    "/mnt/stateful_partition/encrypted/imageloader";
+constexpr char kComponentsPath[] = "/var/lib/imageloader";
 // The base path where the components are mounted.
-constexpr char kMountPath[] = "/mnt/stateful_partition/imageloader_mounts";
+constexpr char kMountPath[] = "/run/imageloader";
 
 int main(int argc, char** argv) {
   signal(SIGTERM, imageloader::OnQuit);
