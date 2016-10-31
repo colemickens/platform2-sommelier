@@ -58,6 +58,9 @@ constexpr TPMA_NV TPMA_NV_WRITTEN = 1U << 29;
 constexpr TPMA_NV TPMA_NV_PLATFORMCREATE = 1U << 30;
 constexpr TPMA_NV TPMA_NV_READ_STCLEAR = 1U << 31;
 
+// TPM Vendor-Specific commands (TPM Spec Part 2, section 6.5.1)
+constexpr TPM_CC TPM_CC_VENDOR_SPECIFIC_MASK = 1U << 29;
+
 }  // namespace trunks
 
 #endif  // TRUNKS_TPM_CONSTANTS_H_

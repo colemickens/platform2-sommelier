@@ -506,6 +506,15 @@ TPM_RC ResourceManager::ParseCommand(const std::string& command,
   if (result != TPM_RC_SUCCESS) {
     return MakeError(result, FROM_HERE);
   }
+
+  if (command_info->code & TPM_CC_VENDOR_SPECIFIC_MASK &&
+      !command_info->has_sessions) {
+    // Vendor-specific commands must have no sessions & no handles.
+    // All remaining data is parameter data.
+    command_info->parameter_data = buffer;
+    return TPM_RC_SUCCESS;
+  }
+
   if (command_info->code < TPM_CC_FIRST || command_info->code > TPM_CC_LAST) {
     return MakeError(TPM_RC_COMMAND_CODE, FROM_HERE);
   }
@@ -591,6 +600,13 @@ TPM_RC ResourceManager::ParseResponse(const MessageInfo& command_info,
   result = Parse_TPM_RC(&buffer, &response_info->code, nullptr);
   if (result != TPM_RC_SUCCESS) {
     return MakeError(result, FROM_HERE);
+  }
+
+  if (command_info.code & TPM_CC_VENDOR_SPECIFIC_MASK) {
+    // Vendor-specific commands should have no sessions & no handles.
+    // All remaining data is parameter data.
+    response_info->parameter_data = buffer;
+    return TPM_RC_SUCCESS;
   }
 
   size_t number_of_handles = GetNumberOfResponseHandles(command_info.code);

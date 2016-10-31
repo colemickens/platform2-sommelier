@@ -20,6 +20,7 @@
 #include <string>
 
 #include <base/callback_forward.h>
+#include <trunks/tpm_constants.h>
 
 namespace trunks {
 
