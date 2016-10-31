@@ -290,7 +290,7 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path) {
       base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs);
       if (pairs.size() == 1U && pairs[0].first == "vmodule")
         AddVmodulePattern(pairs[0].second);
-      if (pairs.size() == 1U && pairs[0].first == "enable-features")
+      else if (pairs.size() == 1U && pairs[0].first == "enable-features")
         AddFeatureEnableOverride(pairs[0].second);
       else if (pairs.size() == 1U && IsEnvironmentVariableName(pairs[0].first))
         AddEnvVar(pairs[0].first, pairs[0].second);

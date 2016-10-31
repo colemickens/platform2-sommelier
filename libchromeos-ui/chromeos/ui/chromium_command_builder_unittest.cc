@@ -232,6 +232,8 @@ TEST_F(ChromiumCommandBuilderTest, UserConfig) {
 }
 
 TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
+  const char kPrefix[] = "--vmodule=";
+
   ASSERT_TRUE(Init());
   builder_.AddArg("--foo");
   builder_.AddVmodulePattern("a=2");
@@ -244,7 +246,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   builder_.AddVmodulePattern("b=1");
-  ASSERT_EQ("--vmodule=a=2,b=1", GetFirstArgWithPrefix("--vmodule="));
+  ASSERT_EQ("--vmodule=a=2,b=1", GetFirstArgWithPrefix(kPrefix));
 
   // Delete the --vmodule flag.
   const char kConfig2[] = "!--vmodule=";
@@ -255,17 +257,22 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
 
   // Now add another vmodule pattern and check that the flag is re-added.
   builder_.AddVmodulePattern("c=1");
-  ASSERT_EQ("--vmodule=c=1", GetFirstArgWithPrefix("--vmodule="));
+  ASSERT_EQ("--vmodule=c=1", GetFirstArgWithPrefix(kPrefix));
 
   // Check that vmodule directives in config files are handled.
   const char kConfig3[] = "vmodule=a=1\nvmodule=b=2";
   ASSERT_EQ(strlen(kConfig3),
             base::WriteFile(path, kConfig3, strlen(kConfig3)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
-  ASSERT_EQ("--vmodule=c=1,a=1,b=2", GetFirstArgWithPrefix("--vmodule="));
+  ASSERT_EQ("--vmodule=c=1,a=1,b=2", GetFirstArgWithPrefix(kPrefix));
+
+  // Also check that literal "vmodule=..." arguments don't get added.
+  ASSERT_EQ("", GetFirstArgWithPrefix("vmodule="));
 }
 
 TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
+  const char kPrefix[] = "--enable-features=";
+
   ASSERT_TRUE(Init());
   builder_.AddArg("--foo");
   builder_.AddFeatureEnableOverride("a");
@@ -278,8 +285,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
   ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   builder_.AddFeatureEnableOverride("b");
-  ASSERT_EQ("--enable-features=a,b",
-            GetFirstArgWithPrefix("--enable-features="));
+  ASSERT_EQ("--enable-features=a,b", GetFirstArgWithPrefix(kPrefix));
 
   // Delete the --enable-features flag.
   const char kConfig2[] = "!--enable-features=";
@@ -290,15 +296,17 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
 
   // Now add another feature and check that the flag is re-added.
   builder_.AddFeatureEnableOverride("c");
-  ASSERT_EQ("--enable-features=c", GetFirstArgWithPrefix("--enable-features="));
+  ASSERT_EQ("--enable-features=c", GetFirstArgWithPrefix(kPrefix));
 
   // Check that enable-features directives in config files are handled.
   const char kConfig3[] = "enable-features=d\nenable-features=e";
   ASSERT_EQ(strlen(kConfig3),
             base::WriteFile(path, kConfig3, strlen(kConfig3)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
-  ASSERT_EQ("--enable-features=c,d,e",
-            GetFirstArgWithPrefix("--enable-features="));
+  ASSERT_EQ("--enable-features=c,d,e", GetFirstArgWithPrefix(kPrefix));
+
+  // Also check that literal "enable-features=..." arguments don't get added.
+  ASSERT_EQ("", GetFirstArgWithPrefix("enable-features="));
 }
 
 TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
