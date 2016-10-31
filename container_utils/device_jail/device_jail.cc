@@ -16,6 +16,8 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
 #include <fuse.h>
 #include <fuse/cuse_lowlevel.h>
 #include <stdio.h>
@@ -25,6 +27,10 @@
 #include <sys/types.h>
 
 #include "container_utils/device_jail/permission_broker_client.h"
+
+namespace dbus {
+class ObjectProxy;
+}
 
 namespace device_jail {
 
@@ -139,35 +145,6 @@ struct cuse_lowlevel_ops cops = {
 
 }  // namespace device_jail
 
-static void OnPermissionBrokerClientInitialized(
-    char* program_name,
-    const std::string& device_path,
-    dev_t device_number,
-    std::unique_ptr<device_jail::PermissionBrokerClient> broker_client) {
-  device_jail::DeviceJail jail(device_path, device_number, broker_client.get());
-
-  std::string cuse_devname_arg = "DEVNAME=" + jail.jailed_device_name();
-  const char* dev_info_argv[] = { cuse_devname_arg.c_str() };
-  struct cuse_info ci = {
-    .dev_major = major(device_number),
-    .dev_minor = ~minor(device_number) & 0xFFFF,
-    .dev_info_argc = std::extent<decltype(dev_info_argv)>::value,
-    .dev_info_argv = dev_info_argv,
-    .flags = 0,
-  };
-
-  // Keep CUSE in the foreground to avoid forking and reparenting the
-  // daemon.
-  char foreground_opt[] = "-f";
-  char* fuse_argv[] = { program_name, foreground_opt };
-  int fuse_argc = std::extent<decltype(fuse_argv)>::value;
-
-  DLOG(INFO) << "Starting cuse_lowlevel_main";
-  int ret = cuse_lowlevel_main(fuse_argc, fuse_argv, &ci,
-                               &device_jail::cops, &jail);
-  exit(ret);
-}
-
 int main(int argc, char** argv) {
   brillo::OpenLog("device_jail", true);
   brillo::InitLog(brillo::kLogToSyslog);
@@ -185,12 +162,46 @@ int main(int argc, char** argv) {
     PLOG(FATAL) << "stat(" << device_path << ")";
   if (!S_ISCHR(dev_stat.st_mode))
     LOG(FATAL) << device_path << " does not describe character device";
+  dev_t device_number = dev_stat.st_rdev;
 
-  auto broker_client = base::MakeUnique<device_jail::PermissionBrokerClient>();
-  broker_client->Start(
-      base::Bind(&OnPermissionBrokerClientInitialized,
-                 argv[0], device_path, dev_stat.st_rdev,
-                 base::Passed(&broker_client)));
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  if (!bus->Connect())
+    LOG(FATAL) << "D-Bus unavailable";
+
+  dbus::ObjectProxy* broker_proxy = bus->GetObjectProxy(
+      permission_broker::kPermissionBrokerServiceName,
+      dbus::ObjectPath(permission_broker::kPermissionBrokerServicePath));
+
+  auto broker_client = base::MakeUnique<device_jail::PermissionBrokerClient>(
+      broker_proxy, &message_loop);
+  device_jail::DeviceJail jail(device_path, device_number, broker_client.get());
+
+  std::string cuse_devname_arg = "DEVNAME=" + jail.jailed_device_name();
+  const char* dev_info_argv[] = { cuse_devname_arg.c_str() };
+  struct cuse_info ci = {
+    .dev_major = major(device_number),
+    .dev_minor = ~minor(device_number) & 0xFFFF,
+    .dev_info_argc = std::extent<decltype(dev_info_argv)>::value,
+    .dev_info_argv = dev_info_argv,
+    .flags = 0,
+  };
+
+  // Keep CUSE in the foreground to avoid forking and reparenting the
+  // daemon.
+  char foreground_opt[] = "-f";
+  char* fuse_argv[] = { argv[0], foreground_opt };
+  int fuse_argc = std::extent<decltype(fuse_argv)>::value;
+
+  base::Thread cuse_thread("cuse_lowlevel_main");
+
+  DLOG(INFO) << "Starting cuse_lowlevel_main thread";
+  cuse_thread.Start();
+  cuse_thread.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&cuse_lowlevel_main),
+                 fuse_argc, fuse_argv, &ci, &device_jail::cops, &jail));
 
   message_loop.Run();
   return 0;

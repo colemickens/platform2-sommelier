@@ -7,15 +7,12 @@
 #include <memory>
 
 #include <base/bind.h>
-#include <base/run_loop.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
-#include <dbus/bus.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/file_descriptor.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-
-#include <chromeos/dbus/service_constants.h>
 
 namespace {
 
@@ -87,36 +84,13 @@ void OpenWithBrokerAsync(dbus::ObjectProxy* broker_proxy,
 
 namespace device_jail {
 
-void PermissionBrokerClient::Init() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  if (!bus_->Connect())
-    LOG(FATAL) << "D-Bus unavailable";
-
-  broker_proxy_ = bus_->GetObjectProxy(
-      permission_broker::kPermissionBrokerServiceName,
-      dbus::ObjectPath(permission_broker::kPermissionBrokerServicePath));
-}
-
-void PermissionBrokerClient::Start(const base::Closure& after_init) {
-  // The reason why the PermissionBrokerClient spawns its own thread is
-  // that we have to get the D-Bus objects and use them on the same thread.
-  // CUSE may be running in a multi-threaded fashion so it is hard to
-  // guarantee that this will be the case without packing in our own thread.
-  dbus_thread_.Start();
-  dbus_thread_.task_runner()->PostTaskAndReply(
-      FROM_HERE,
-      base::Bind(&PermissionBrokerClient::Init, base::Unretained(this)),
-      after_init);
-}
 
 int PermissionBrokerClient::Open(const std::string& path) {
   FutureFD out_fd;
 
   // This must be run on the thread which instantiated the D-Bus objects
   // or else the library will get mad, as above.
-  dbus_thread_.task_runner()->PostTask(
+  message_loop_->PostTask(
       FROM_HERE,
       base::Bind(&OpenWithBrokerAsync, broker_proxy_, path, &out_fd));
 

@@ -28,27 +28,18 @@ class PermissionBrokerClientInterface {
 
 class PermissionBrokerClient : public PermissionBrokerClientInterface {
  public:
-  PermissionBrokerClient()
-      : bus_(nullptr),
-        broker_proxy_(nullptr),
-        dbus_thread_("permission_broker_client") {}
+  PermissionBrokerClient(dbus::ObjectProxy* broker_proxy,
+                         base::MessageLoop* message_loop)
+      : broker_proxy_(broker_proxy),
+        message_loop_(message_loop) {}
   virtual ~PermissionBrokerClient() {}
-
-  // Runs the client in its own thread.
-  void Start(const base::Closure& after_init);
 
   // PermissionBrokerClientInterface overrides.
   int Open(const std::string& path) override;
 
  private:
-  // Connects to the system bus and gets an object proxy for the
-  // permission broker.
-  void Init();
-
-  scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* broker_proxy_;  // owned by |bus_|
-
-  base::Thread dbus_thread_;
+  dbus::ObjectProxy* broker_proxy_;  // weak
+  base::MessageLoop* message_loop_;  // weak
 };
 
 }  // namespace device_jail
