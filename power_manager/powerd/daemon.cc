@@ -362,6 +362,8 @@ void Daemon::Init() {
   ec_wakeup_helper_ = delegate_->CreateEcWakeupHelper();
 
   const LidState lid_state = input_watcher_->QueryLidState();
+  if (lid_state == LID_CLOSED)
+    LOG(INFO) << "Lid closed at startup";
   wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
                            acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(),
                            lid_state, DISPLAY_NORMAL, prefs_.get());
