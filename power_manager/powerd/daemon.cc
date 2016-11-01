@@ -381,7 +381,9 @@ void Daemon::Init() {
   peripheral_battery_watcher_ =
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
 
-  HandleTabletModeChange(input_watcher_->GetTabletMode());
+  TabletMode tablet_mode = input_watcher_->GetTabletMode();
+  if (tablet_mode != TABLET_MODE_UNSUPPORTED)
+    HandleTabletModeChange(tablet_mode);
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
@@ -518,8 +520,8 @@ void Daemon::HandleHoverStateChange(bool hovering) {
 }
 
 void Daemon::HandleTabletModeChange(TabletMode mode) {
-  LOG(INFO) << (mode == TABLET_MODE_ON ? "Entered" : "Exited")
-            << " tablet mode";
+  DCHECK_NE(mode, TABLET_MODE_UNSUPPORTED);
+  LOG(INFO) << "Tablet mode " << TabletModeToString(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
 

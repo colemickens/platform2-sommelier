@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_keyboard) {
     auto controller = new power_manager::policy::KeyboardBacklightController;
     controller->Init(&stub_backlight, &prefs, light_sensor.get(), nullptr,
-                     power_manager::TABLET_MODE_OFF);
+                     power_manager::TABLET_MODE_UNSUPPORTED);
     controller->HandleHoverStateChange(true /* hovering */);
     backlight_controller.reset(controller);
   } else {

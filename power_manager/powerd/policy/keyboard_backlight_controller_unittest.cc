@@ -29,7 +29,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
         initial_backlight_level_(50),
         pass_light_sensor_(true),
         initial_als_lux_(0),
-        initial_tablet_mode_(TABLET_MODE_OFF),
+        initial_tablet_mode_(TABLET_MODE_UNSUPPORTED),
         als_steps_pref_("20.0 -1 50\n50.0 35 75\n75.0 60 -1"),
         user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
         no_als_brightness_pref_(40.0),

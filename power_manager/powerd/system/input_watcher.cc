@@ -111,7 +111,7 @@ InputWatcher::InputWatcher()
       hover_device_(nullptr),
       use_lid_(true),
       lid_state_(LID_OPEN),
-      tablet_mode_(TABLET_MODE_OFF),
+      tablet_mode_(TABLET_MODE_UNSUPPORTED),
       detect_hover_(false),
       hovering_(false),
       current_multitouch_slot_(0),

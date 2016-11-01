@@ -274,6 +274,7 @@ enum LidState {
 enum TabletMode {
   TABLET_MODE_ON,
   TABLET_MODE_OFF,
+  TABLET_MODE_UNSUPPORTED,
 };
 
 enum SessionState {

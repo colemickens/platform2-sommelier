@@ -35,7 +35,7 @@ InputController::InputController()
       clock_(new Clock),
       only_has_external_display_(false),
       lid_state_(LID_NOT_PRESENT),
-      tablet_mode_(TABLET_MODE_OFF) {
+      tablet_mode_(TABLET_MODE_UNSUPPORTED) {
 }
 
 InputController::~InputController() {
@@ -120,6 +120,7 @@ void InputController::OnLidEvent(LidState state) {
 }
 
 void InputController::OnTabletModeEvent(TabletMode mode) {
+  DCHECK_NE(mode, TABLET_MODE_UNSUPPORTED);
   tablet_mode_ = mode;
 
   delegate_->HandleTabletModeChange(mode);

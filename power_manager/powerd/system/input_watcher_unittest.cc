@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/input_watcher.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -27,13 +28,55 @@ namespace {
 // Strings that can be compared against TestObserver::GetActions().
 const char kLidClosedAction[] = "lid-closed";
 const char kLidOpenAction[] = "lid-open";
+const char kLidNotPresentAction[] = "lid-not-present";
 const char kTabletModeOnAction[] = "tablet-mode-on";
 const char kTabletModeOffAction[] = "tablet-mode-off";
+const char kTabletModeUnsupportedAction[] = "tablet-mode-unsupported";
 const char kPowerButtonDownAction[] = "power-down";
 const char kPowerButtonUpAction[] = "power-down";
+const char kPowerButtonRepeatAction[] = "power-repeat";
 const char kHoverOnAction[] = "hover-on";
 const char kHoverOffAction[] = "hover-off";
 const char kNoActions[] = "";
+
+const char* GetLidAction(LidState state) {
+  switch (state) {
+    case LID_CLOSED:
+      return kLidClosedAction;
+    case LID_OPEN:
+      return kLidOpenAction;
+    case LID_NOT_PRESENT:
+      return kLidNotPresentAction;
+  }
+  NOTREACHED() << "Invalid lid state " << state;
+  return "lid-invalid";
+}
+
+const char* GetTabletModeAction(TabletMode mode) {
+  switch (mode) {
+    case TABLET_MODE_ON:
+      return kTabletModeOnAction;
+    case TABLET_MODE_OFF:
+      return kTabletModeOffAction;
+    case TABLET_MODE_UNSUPPORTED:
+      return kTabletModeUnsupportedAction;
+  }
+  NOTREACHED() << "Invalid tablet mode " << mode;
+  return "tablet-mode-invalid";
+}
+
+const char* GetPowerButtonAction(ButtonState state) {
+  switch (state) {
+    case BUTTON_DOWN:
+      return kPowerButtonDownAction;
+    case BUTTON_UP:
+      return kPowerButtonUpAction;
+    case BUTTON_REPEAT:
+      return kPowerButtonRepeatAction;
+  }
+  NOTREACHED() << "Invalid power button state " << state;
+  return "power-invalid";
+}
 
 }  // namespace
 
@@ -51,18 +94,15 @@ class TestObserver : public InputObserver,
 
   // InputObserver implementation:
   void OnLidEvent(LidState state) override {
-    CHECK(state == LID_OPEN || state == LID_CLOSED);
-    AppendAction(state == LID_OPEN ? kLidOpenAction : kLidClosedAction);
+    EXPECT_NE(LID_NOT_PRESENT, state);
+    AppendAction(GetLidAction(state));
   }
   void OnTabletModeEvent(TabletMode mode) override {
-    CHECK(mode == TABLET_MODE_ON || mode == TABLET_MODE_OFF);
-    AppendAction(mode == TABLET_MODE_ON ? kTabletModeOnAction :
-                 kTabletModeOffAction);
+    EXPECT_NE(TABLET_MODE_UNSUPPORTED, mode);
+    AppendAction(GetTabletModeAction(mode));
   }
   void OnPowerButtonEvent(ButtonState state) override {
-    CHECK(state == BUTTON_DOWN || state == BUTTON_UP);
-    AppendAction(state == BUTTON_DOWN ? kPowerButtonDownAction :
-                 kPowerButtonUpAction);
+    AppendAction(GetPowerButtonAction(state));
   }
   void OnHoverStateChange(bool hovering) override {
     AppendAction(hovering ? kHoverOnAction : kHoverOffAction);
@@ -603,7 +643,7 @@ TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {
   dev_input_path_ = base::FilePath("nonexistent/path");
   Init();
   EXPECT_EQ(LID_NOT_PRESENT, input_watcher_->QueryLidState());
-  EXPECT_EQ(TABLET_MODE_OFF, input_watcher_->GetTabletMode());
+  EXPECT_EQ(TABLET_MODE_UNSUPPORTED, input_watcher_->GetTabletMode());
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
 }
 

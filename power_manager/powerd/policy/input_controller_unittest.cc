@@ -33,6 +33,7 @@ const char kLidClosed[] = "lid_closed";
 const char kLidOpened[] = "lid_opened";
 const char kPowerButtonDown[] = "power_down";
 const char kPowerButtonUp[] = "power_up";
+const char kPowerButtonRepeat[] = "power_repeat";
 const char kDeferInactivity[] = "defer_inactivity";
 const char kShutDown[] = "shut_down";
 const char kMissingPowerButtonAcknowledgment[] = "missing_power_button_ack";
@@ -40,6 +41,33 @@ const char kHoverOn[] = "hover_on";
 const char kHoverOff[] = "hover_off";
 const char kTabletOn[] = "tablet_on";
 const char kTabletOff[] = "tablet_off";
+const char kTabletUnsupported[] = "tablet_unsupported";
+
+const char* GetTabletModeAction(TabletMode mode) {
+  switch (mode) {
+    case TABLET_MODE_ON:
+      return kTabletOn;
+    case TABLET_MODE_OFF:
+      return kTabletOff;
+    case TABLET_MODE_UNSUPPORTED:
+      return kTabletUnsupported;
+  }
+  NOTREACHED() << "Invalid tablet mode " << mode;
+  return "tablet_invalid";
+}
+
+const char* GetPowerButtonAction(ButtonState state) {
+  switch (state) {
+    case BUTTON_DOWN:
+      return kPowerButtonDown;
+    case BUTTON_UP:
+      return kPowerButtonUp;
+    case BUTTON_REPEAT:
+      return kPowerButtonRepeat;
+  }
+  NOTREACHED() << "Invalid power button state " << state;
+  return "power_invalid";
+}
 
 std::string GetAcknowledgmentDelayAction(base::TimeDelta delay) {
   return base::StringPrintf("power_button_ack_delay(%" PRId64 ")",
@@ -60,13 +88,14 @@ class TestInputControllerDelegate : public InputController::Delegate,
     AppendAction(kLidOpened);
   }
   void HandlePowerButtonEvent(ButtonState state) override {
-    AppendAction(state == BUTTON_DOWN ? kPowerButtonDown : kPowerButtonUp);
+    AppendAction(GetPowerButtonAction(state));
   }
   void HandleHoverStateChange(bool hovering) override {
     AppendAction(hovering ? kHoverOn : kHoverOff);
   }
   void HandleTabletModeChange(TabletMode mode) override {
-    AppendAction(mode == TABLET_MODE_ON ? kTabletOn : kTabletOff);
+    EXPECT_NE(TABLET_MODE_UNSUPPORTED, mode);
+    AppendAction(GetTabletModeAction(mode));
   }
   void DeferInactivityTimeoutForVT2() override {
     AppendAction(kDeferInactivity);

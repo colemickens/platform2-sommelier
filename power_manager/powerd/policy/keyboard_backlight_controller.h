@@ -170,7 +170,7 @@ class KeyboardBacklightController
   bool turn_on_for_user_activity_ = false;
 
   SessionState session_state_ = SESSION_STOPPED;
-  TabletMode tablet_mode_ = TABLET_MODE_OFF;
+  TabletMode tablet_mode_ = TABLET_MODE_UNSUPPORTED;
 
   bool dimmed_for_inactivity_ = false;
   bool off_for_inactivity_ = false;

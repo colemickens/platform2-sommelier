@@ -131,6 +131,8 @@ std::string TabletModeToString(TabletMode mode) {
       return "on";
     case TABLET_MODE_OFF:
       return "off";
+    case TABLET_MODE_UNSUPPORTED:
+      return "unsupported";
     default:
       return base::StringPrintf("unknown (%d)", mode);
   }
