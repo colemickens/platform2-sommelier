@@ -33,13 +33,14 @@ EcWakeupHelper::EcWakeupHelper()
     VLOG(1) << "Accessing EC wake angle through 3.18+ sysfs node: "
             << sysfs_node_.value();
   } else if (base::IsLink(k314IioLinkPath)) {  // Kernel 3.14
-    base::FilePath iioDevPath;
-    if (!base::ReadSymbolicLink(k314IioLinkPath, &iioDevPath)) {
+    base::FilePath iio_dev_path;
+    if (!base::ReadSymbolicLink(k314IioLinkPath, &iio_dev_path)) {
       LOG(ERROR) << "Cannot read link target of " << k314IioLinkPath.value();
       return;
     }
-    iioDevPath = iioDevPath.BaseName();
-    sysfs_node_ = k314IioSysfsPath.Append(iioDevPath).Append(k314AccelNodeName);
+    iio_dev_path = iio_dev_path.BaseName();
+    sysfs_node_ =
+        k314IioSysfsPath.Append(iio_dev_path).Append(k314AccelNodeName);
     if (!base::PathExists(sysfs_node_)) {
       LOG(ERROR) << "Cannot find EC wake angle node: " << sysfs_node_.value();
       return;
