@@ -14,7 +14,6 @@
 #define AUTHPOLICY_POLICY_PREG_PARSER_H_
 
 #include "base/strings/string16.h"
-#include "brillo/errors/error.h"
 
 namespace base {
 class FilePath;
@@ -32,7 +31,7 @@ namespace preg_parser {
 bool ReadFile(const base::FilePath& file_path,
               const base::string16& root,
               RegistryDict* dict,
-              brillo::ErrorPtr* error);
+              const char** out_error_code);
 
 }  // namespace preg_parser
 }  // namespace policy

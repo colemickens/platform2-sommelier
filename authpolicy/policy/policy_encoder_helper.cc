@@ -44,18 +44,16 @@ namespace policy {
 namespace helper {
 
 bool LoadPRegFile(const base::FilePath& preg_file,
-                  brillo::ErrorPtr* error,
-                  RegistryDict* dict) {
-  // Report the error if the preg file does not exist.
+                  RegistryDict* out_dict,
+                  const char** out_error_code) {
   if (!base::PathExists(preg_file)) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, errors::kAuthPolicy,
-                               errors::kPreg, "PReg file doesn't exist: %s",
-                               preg_file.value().c_str());
+    LOG(ERROR) << "PReg file " << preg_file.value() << " does not exist";
+    *out_error_code = errors::kPregFileNotFound;
     return false;
   }
 
-  // Load the file.
-  return preg_parser::ReadFile(preg_file, kRegistryKey, dict, error);
+  return preg_parser::ReadFile(preg_file, kRegistryKey, out_dict,
+                               out_error_code);
 }
 
 bool GetAsBoolean(const base::Value* value, bool* bool_value) {

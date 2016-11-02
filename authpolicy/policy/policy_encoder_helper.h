@@ -8,7 +8,6 @@
 #include <string>
 
 #include "base/values.h"
-#include "brillo/errors/error.h"
 
 namespace base {
 class FilePath;
@@ -22,8 +21,8 @@ namespace helper {
 
 // Checks a PReg file for existence and loads it into |dict|.
 bool LoadPRegFile(const base::FilePath& preg_file,
-                  brillo::ErrorPtr* error,
-                  RegistryDict* dict);
+                  RegistryDict* out_dict,
+                  const char** out_error_code);
 
 // Similar to base::Value::GetAsBoolean(), but in addition it converts int
 // values of 0 or 1 to bool. Returns true on success and stores the output in

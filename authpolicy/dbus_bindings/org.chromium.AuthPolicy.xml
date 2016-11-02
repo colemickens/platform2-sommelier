@@ -3,19 +3,64 @@
 <node name="/org/chromium/AuthPolicy"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.AuthPolicy">
+    <!--
+         AuthenticateUser:
+         @user_principal_name: user@workgroup.domain.
+         @password_fd: File descriptor of the user's password.
+         @error_code: Returned error code, 0 means success.
+         @account_id: Returned unique account id of the user.
+
+         Authenticates the user with an Active Directory domain.
+    -->
     <method name="AuthenticateUser">
       <arg name="user_principal_name" type="s" direction="in"/>
       <arg name="password_fd" type="h" direction="in"/>
-      <arg name="code" type="i" direction="out"/>
+      <arg name="error_code" type="i" direction="out"/>
       <arg name="account_id" type="s" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+
+    <!--
+         JoinADDomain:
+         @machine_name: Netbios name of the machine (aka device) to join.
+         @user_principal_name: user@workgroup.domain, used for authentication.
+         @password_fd: File descriptor of the user's password.
+         @error_code: Returned error code, 0 means success.
+
+         Joins the given machine with an Active Directory domain.
+    -->
     <method name="JoinADDomain">
       <arg name="machine_name" type="s" direction="in"/>
       <arg name="user_principal_name" type="s" direction="in"/>
       <arg name="password_fd" type="h" direction="in"/>
-      <arg name="code" type="i" direction="out"/>
+      <arg name="error_code" type="i" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+
+    <!--
+         RefreshUserPolicy:
+         @account_id: Unique account id of the user to fetch policy for.
+         @error_code: Returned error code, 0 means success.
+
+         Retrieves user policy for the currently authenticated user and sends it
+         to Session Manager. Must be authenticated, see |AuthenticateUser|.
+    -->
+    <method name="RefreshUserPolicy">
+      <arg name="account_id" type="s" direction="in" />
+      <arg name="error_code" type="i" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
+
+    <!--
+         RefreshDevicePolicy:
+         @error_code: Returned error code, 0 means success.
+
+         Retrieves device policy and sends it to Session Manager. Must be joined
+         to an Active Directory domain, see |JoinADDomain|.
+    -->
+    <method name="RefreshDevicePolicy">
+      <arg name="error_code" type="i" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
   </interface>
 </node>

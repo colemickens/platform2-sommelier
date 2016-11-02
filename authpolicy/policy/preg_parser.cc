@@ -248,20 +248,18 @@ void HandleRecord(const base::string16& key_name,
 bool ReadFile(const base::FilePath& file_path,
               const base::string16& root,
               RegistryDict* dict,
-              brillo::ErrorPtr* error) {
+              const char** out_error_code) {
   base::MemoryMappedFile mapped_file;
   if (!mapped_file.Initialize(file_path) || !mapped_file.IsValid()) {
-    PLOG(ERROR) << "Failed to map ";
-    brillo::Error::AddToPrintf(error, FROM_HERE, errors::kAuthPolicy,
-                               errors::kPreg, "Failed to map PReg file %s",
-                               file_path.value().c_str());
+    PLOG(ERROR) << "Failed to map " << file_path.value();
+    *out_error_code = errors::kPregReadError;
     return false;
   }
 
   if (mapped_file.length() > kMaxPRegFileSize) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, errors::kAuthPolicy,
-                               errors::kPreg, "PReg file %s too large: %zu",
-                               file_path.value().c_str(), mapped_file.length());
+    LOG(ERROR) << "PReg file " << file_path.value() << " too large: "
+               << mapped_file.length();
+    *out_error_code = errors::kPregTooBig;
     return false;
   }
 
@@ -269,9 +267,8 @@ bool ReadFile(const base::FilePath& file_path,
   const int kHeaderSize = arraysize(kPRegFileHeader);
   if (mapped_file.length() < kHeaderSize ||
       memcmp(kPRegFileHeader, mapped_file.data(), kHeaderSize) != 0) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, errors::kAuthPolicy,
-                               errors::kPreg, "Bad PReg file %s",
-                               file_path.value().c_str());
+    LOG(ERROR) << "Bad policy file " << file_path.value();
+    *out_error_code = errors::kPregParseError;
     return false;
   }
 
@@ -333,10 +330,10 @@ bool ReadFile(const base::FilePath& file_path,
       HandleRecord(key_name.substr(root.size()), value, type, data, dict);
   }
 
-  brillo::Error::AddToPrintf(
-      error, FROM_HERE, errors::kAuthPolicy, errors::kPreg,
-      "Error parsing %s at offset %zu", file_path.value().c_str(),
-      reinterpret_cast<const uint8_t*>(cursor - 1) - mapped_file.data());
+  LOG(ERROR) << "Error parsing " << file_path.value() << " at offset "
+             << reinterpret_cast<const uint8_t*>(cursor - 1) -
+                    mapped_file.data();
+  *out_error_code = errors::kPregParseError;
   return false;
 }
 
