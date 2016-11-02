@@ -15,7 +15,7 @@
 
 namespace {
 
-constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateSuccess";
+constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateStatus";
 
 }  // namespace
 
@@ -71,12 +71,11 @@ void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
 }
 
 void VpdProcessImpl::HandleExit(const siginfo_t& info) {
-  const bool success = (info.si_status == 0);
-
   MetricsLibrary metrics;
   metrics.Init();
-  metrics.SendBoolToUMA(kVpdUpdateMetric, success);
+  metrics.SendSparseToUMA(kVpdUpdateMetric, info.si_status);
 
+  const bool success = (info.si_status == 0);
   if (!success) {
     LOG(ERROR) << "Failed to update VPD, code = " << info.si_status;
   }
