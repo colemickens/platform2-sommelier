@@ -28,6 +28,18 @@ bool ParseUint32FromDict(const base::DictionaryValue& dict, const char *name,
   return true;
 }
 
+// Gets a uint64 from the given dictionary.
+bool ParseUint64FromDict(const base::DictionaryValue& dict, const char *name,
+                         uint64_t* val_out) {
+  double double_val;
+  if (!dict.GetDouble(name, &double_val)) {
+    LOG(ERROR) << "Failed to get " << name << " uid info from config";
+    return false;
+  }
+  *val_out = double_val;
+  return true;
+}
+
 // Parses basic platform configuration.
 bool ParsePlatformConfig(const base::DictionaryValue& config_root_dict,
                          OciConfigPtr const& config_out) {
@@ -237,6 +249,86 @@ bool ParseLinuxIdMappings(const base::ListValue* id_map_list,
   return true;
 }
 
+// Parses seccomp syscall args.
+bool ParseSeccompArgs(const base::DictionaryValue& syscall_dict,
+                      OciSeccompSyscall* syscall_out) {
+  const base::ListValue* args = nullptr;
+  if (syscall_dict.GetList("args", &args)) {
+    for (size_t i = 0; i < args->GetSize(); ++i) {
+      const base::DictionaryValue* args_dict = nullptr;
+      if (!args->GetDictionary(i, &args_dict)) {
+        LOG(ERROR) << "Failed to pars args dict for " << syscall_out->name;
+        return false;
+      }
+      OciSeccompArg this_arg;
+      if (!ParseUint32FromDict(*args_dict, "index", &this_arg.index))
+        return false;
+      if (!ParseUint64FromDict(*args_dict, "value", &this_arg.value))
+        return false;
+      if (!ParseUint64FromDict(*args_dict, "value2", &this_arg.value2))
+        return false;
+      if (!args_dict->GetString("op", &this_arg.op)) {
+        LOG(ERROR) << "Failed to parse op for arg " << this_arg.index
+                   << " of " << syscall_out->name;
+        return false;
+      }
+      syscall_out->args.push_back(this_arg);
+    }
+  }
+  return true;
+}
+
+// Parses the seccomp node if it is present.
+bool ParseSeccompInfo(const base::DictionaryValue& seccomp_dict,
+                      OciSeccomp* seccomp_out) {
+  if (!seccomp_dict.GetString("defaultAction",
+                              &seccomp_out->defaultAction))
+    return false;
+
+  // Gets the list of architectures.
+  const base::ListValue* architectures = nullptr;
+  if (!seccomp_dict.GetList("architectures", &architectures)) {
+    LOG(ERROR) << "Fail to read seccomp architectures";
+    return false;
+  }
+  for (size_t i = 0; i < architectures->GetSize(); ++i) {
+    std::string this_arch;
+    if (!architectures->GetString(i, &this_arch)) {
+      LOG(ERROR) << "Fail to parse seccomp architecture list";
+      return false;
+    }
+    seccomp_out->architectures.push_back(this_arch);
+  }
+
+  // Gets the list of syscalls.
+  const base::ListValue* syscalls = nullptr;
+  if (!seccomp_dict.GetList("syscalls", &syscalls)) {
+    LOG(ERROR) << "Fail to read seccomp syscalls";
+    return false;
+  }
+  for (size_t i = 0; i < syscalls->GetSize(); ++i) {
+    const base::DictionaryValue* syscall_dict = nullptr;
+    if (!syscalls->GetDictionary(i, &syscall_dict)) {
+      LOG(ERROR) << "Fail to parse seccomp syscalls list";
+      return false;
+    }
+    OciSeccompSyscall this_syscall;
+    if (!syscall_dict->GetString("name", &this_syscall.name)) {
+      LOG(ERROR) << "Fail to parse syscall name " << i;
+      return false;
+    }
+    if (!syscall_dict->GetString("action", &this_syscall.action)) {
+      LOG(ERROR) << "Fail to parse syscall action for " << this_syscall.name;
+      return false;
+    }
+    if (!ParseSeccompArgs(*syscall_dict, &this_syscall))
+      return false;
+    seccomp_out->syscalls.push_back(this_syscall);
+  }
+
+  return true;
+}
+
 // Parses the linux node which has information about setting up a user
 // namespace, and the list of devices for the container.
 bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
@@ -266,6 +358,12 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
 
   if (!ParseDeviceList(*linux_dict, config_out))
     return false;
+
+  const base::DictionaryValue* seccomp_dict = nullptr;
+  if (linux_dict->GetDictionary("seccomp", &seccomp_dict)) {
+    if (!ParseSeccompInfo(*seccomp_dict, &config_out->linux_config.seccomp))
+      return false;
+  }
 
   return true;
 }

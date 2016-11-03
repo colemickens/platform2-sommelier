@@ -57,13 +57,32 @@ struct OciLinuxDevice {
   uint32_t gid;  // Optional
 };
 
+struct OciSeccompArg {
+  uint32_t index;
+  uint64_t value;
+  uint64_t value2;
+  std::string op;
+};
+
+struct OciSeccompSyscall {
+  std::string name;
+  std::string action;
+  std::vector<OciSeccompArg> args;  // Optional
+};
+
+struct OciSeccomp {
+  std::string defaultAction;
+  std::vector<std::string> architectures;
+  std::vector<OciSeccompSyscall> syscalls;
+};
+
 struct OciLinux {
   std::vector<OciLinuxDevice> devices;  // Optional
   std::string cgroupsPath;  // Optional
   // Unused: resources, namespace
   std::vector<OciLinuxNamespaceMapping> uidMappings;  // Optional
   std::vector<OciLinuxNamespaceMapping> gidMappings;  // Optional
-  // TODO seccomp
+  OciSeccomp seccomp;  // Optional
   // Unused: maskedPaths, readonlyPaths, rootfsPropagation, mountLabel, sysctl
 };
 

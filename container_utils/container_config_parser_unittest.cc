@@ -242,7 +242,31 @@ const char kBasicJsonData[] = R"json(
                 "/proc/irq",
                 "/proc/sys",
                 "/proc/sysrq-trigger"
-            ]
+            ],
+            "seccomp": {
+                "defaultAction": "SCP_ACT_KILL",
+                "architectures": [
+                    "SCP_ARCH_X86"
+                ],
+                "syscalls": [
+                    {
+                        "name": "read",
+                        "action": "SCP_ACT_ALLOW"
+                    },
+                    {
+                        "name": "write",
+                        "action": "SCP_ACT_ALLOW",
+                        "args": [
+                            {
+                                "index": 1,
+                                "value": 255,
+                                "value2": 4,
+                                "op": "SCMP_CMP_EQ"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     }
 )json";
@@ -289,6 +313,18 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(id_map->hostID, 1000);
   EXPECT_EQ(id_map->containerID, 0);
   EXPECT_EQ(id_map->size, 10);
+  // seccomp
+  OciSeccomp *seccomp = &basic_config->linux_config.seccomp;
+  EXPECT_EQ(seccomp->defaultAction, "SCP_ACT_KILL");
+  EXPECT_EQ(seccomp->architectures[0], "SCP_ARCH_X86");
+  EXPECT_EQ(seccomp->syscalls[0].name, "read");
+  EXPECT_EQ(seccomp->syscalls[0].action, "SCP_ACT_ALLOW");
+  EXPECT_EQ(seccomp->syscalls[1].name, "write");
+  EXPECT_EQ(seccomp->syscalls[1].action, "SCP_ACT_ALLOW");
+  EXPECT_EQ(seccomp->syscalls[1].args[0].index, 1);
+  EXPECT_EQ(seccomp->syscalls[1].args[0].value, 255);
+  EXPECT_EQ(seccomp->syscalls[1].args[0].value2, 4);
+  EXPECT_EQ(seccomp->syscalls[1].args[0].op, "SCMP_CMP_EQ");
 }
 
 }  // namespace container_utils
