@@ -32,6 +32,12 @@ enum class DevModeState {
   DEV_MODE_UNKNOWN,
 };
 
+enum class VmState {
+  OUTSIDE_VM,
+  INSIDE_VM,
+  UNKNOWN,
+};
+
 class ScopedDBusPendingCall;
 
 class SystemUtils {
@@ -52,6 +58,9 @@ class SystemUtils {
 
   // Returns the current developer mode.
   virtual DevModeState GetDevModeState() = 0;
+
+  // Returns whether Chrome OS is running inside a Virtual Machine.
+  virtual VmState GetVmState() = 0;
 
   // Returns: true if process group specified by |child_spec| exited,
   //          false if we time out.

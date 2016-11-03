@@ -26,6 +26,7 @@ class MockSystemUtils : public SystemUtilsImpl {
   MOCK_METHOD1(time, time_t(time_t*));  // NOLINT
   MOCK_METHOD0(fork, pid_t(void));
   MOCK_METHOD0(GetDevModeState, DevModeState(void));
+  MOCK_METHOD0(GetVmState, VmState(void));
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,
                                         base::TimeDelta timeout));
   MOCK_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath& path));

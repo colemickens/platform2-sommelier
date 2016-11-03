@@ -55,7 +55,8 @@ bool LaunchAndWait(const vector<string>& argv, int* out_exit_code) {
 }  // namespace
 
 SystemUtilsImpl::SystemUtilsImpl()
-    : dev_mode_state_(DevModeState::DEV_MODE_UNKNOWN) {
+    : dev_mode_state_(DevModeState::DEV_MODE_UNKNOWN),
+      vm_state_(VmState::UNKNOWN) {
 }
 
 SystemUtilsImpl::~SystemUtilsImpl() {
@@ -65,7 +66,7 @@ DevModeState SystemUtilsImpl::GetDevModeState() {
   // Return the cached result when possible. There is no reason to run
   // crossytem twice as cros_debug is always read-only.
   if (dev_mode_state_ == DevModeState::DEV_MODE_UNKNOWN) {
-    int exit_code;
+    int exit_code = -1;
     if (LaunchAndWait({"crossystem", "cros_debug?0"}, &exit_code)) {
       switch (exit_code) {
         case 0:
@@ -81,6 +82,28 @@ DevModeState SystemUtilsImpl::GetDevModeState() {
     }
   }
   return dev_mode_state_;
+}
+
+VmState SystemUtilsImpl::GetVmState() {
+  // Return the cached result when possible. There is no reason to run
+  // crossystem twice as inside_vm is always read-only.
+  if (vm_state_ == VmState::UNKNOWN) {
+    int exit_code = -1;
+    if (LaunchAndWait({"crossystem", "inside_vm?0"}, &exit_code)) {
+      switch (exit_code) {
+        case 0:
+          vm_state_ = VmState::OUTSIDE_VM;
+          break;
+        case 1:
+          vm_state_ = VmState::INSIDE_VM;
+          break;
+        default:
+          LOG(ERROR) << "Unexpected exit code from crossystem: " << exit_code;
+          break;
+      }
+    }
+  }
+  return vm_state_;
 }
 
 int SystemUtilsImpl::kill(pid_t pid, uid_t owner, int signal) {

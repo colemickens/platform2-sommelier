@@ -303,6 +303,8 @@ class SessionManagerImplTest : public ::testing::Test {
         .WillRepeatedly(Return(10LL << 30));
     EXPECT_CALL(utils_, GetDevModeState())
         .WillRepeatedly(Return(DevModeState::DEV_MODE_OFF));
+    EXPECT_CALL(utils_, GetVmState())
+        .WillRepeatedly(Return(VmState::OUTSIDE_VM));
   }
 
   void ExpectSessionBoilerplate(const string& account_id_string,
@@ -913,6 +915,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
           ElementsAre(StartsWith("ANDROID_DATA_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
                       "CHROMEOS_DEV_MODE=0",
+                      "CHROMEOS_INSIDE_VM=0",
                       "DISABLE_BOOT_COMPLETED_BROADCAST=0",
                       StartsWith("ANDROID_DATA_OLD_DIR="))))
       .Times(1);
@@ -980,6 +983,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                       ElementsAre(StartsWith("ANDROID_DATA_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
                                   "CHROMEOS_DEV_MODE=1",
+                                  "CHROMEOS_INSIDE_VM=0",
                                   "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
       .Times(1);
   EXPECT_CALL(

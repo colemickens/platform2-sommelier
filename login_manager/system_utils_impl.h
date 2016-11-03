@@ -35,6 +35,7 @@ class SystemUtilsImpl : public SystemUtils {
   time_t time(time_t* t) override;
   pid_t fork() override;
   DevModeState GetDevModeState() override;
+  VmState GetVmState() override;
   bool ProcessGroupIsGone(pid_t child_spec, base::TimeDelta timeout) override;
 
   bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
@@ -74,6 +75,7 @@ class SystemUtilsImpl : public SystemUtils {
   static const char kResetFile[];
 
   DevModeState dev_mode_state_;
+  VmState vm_state_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_for_testing_;
 
