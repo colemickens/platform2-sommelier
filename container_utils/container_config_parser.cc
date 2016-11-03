@@ -50,7 +50,7 @@ bool ParseRootFileSystemConfig(const base::DictionaryValue& config_root_dict,
     LOG(ERROR) << "Fail to get rootfs path from config";
     return false;
   }
-  rootfs_dict->GetBoolean("readonly", &config_out->root.read_only);
+  rootfs_dict->GetBoolean("readonly", &config_out->root.readonly);
   return true;
 }
 
@@ -141,7 +141,7 @@ bool ParseMounts(const base::DictionaryValue& config_root_dict,
       LOG(ERROR) << "Fail to get mount path for mount " << i;
       return false;
     }
-    if (!mount_dict->GetString("type", &mount.mount_type)) {
+    if (!mount_dict->GetString("type", &mount.type)) {
       LOG(ERROR) << "Fail to get mount type for mount " << i;
       return false;
     }
@@ -191,7 +191,7 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
       LOG(ERROR) << "Fail to get path for dev";
       return false;
     }
-    if (!dev->GetString("type", &device.dev_type)) {
+    if (!dev->GetString("type", &device.type)) {
       LOG(ERROR) << "Fail to get type for " << device.path;
       return false;
     }
@@ -201,9 +201,9 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
     int minor = 0;
     dev->GetInteger("minor", &minor);
     device.minor = minor;
-    int file_mode = 0;
-    dev->GetInteger("fileMode", &file_mode);
-    device.file_mode = file_mode;
+    int fileMode = 0;
+    dev->GetInteger("fileMode", &fileMode);
+    device.fileMode = fileMode;
     int dev_uid = 0;
     dev->GetInteger("uid", &dev_uid);
     device.uid = dev_uid;
@@ -227,18 +227,18 @@ bool ParseLinuxIdMappings(const base::ListValue* id_map_list,
       LOG(ERROR) << "Fail to get id map " << i;
       return false;
     }
-    int host_id = 0;
-    if (!map->GetInteger("hostID", &host_id)) {
+    int hostID = 0;
+    if (!map->GetInteger("hostID", &hostID)) {
       LOG(ERROR) << "Failed to read hostID from map " << i;
       return false;
     }
-    new_map.host_id = host_id;
-    int container_id = 0;
-    if (!map->GetInteger("containerID", &container_id)) {
+    new_map.hostID = hostID;
+    int containerID = 0;
+    if (!map->GetInteger("containerID", &containerID)) {
       LOG(ERROR) << "Failed to read containerID from map " << i;
       return false;
     }
-    new_map.container_id = container_id;
+    new_map.containerID = containerID;
     int size = 0;
     if (!map->GetInteger("size", &size)) {
       LOG(ERROR) << "Failed to read size from map " << i;
@@ -267,7 +267,7 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
     LOG(ERROR) << "Fail to get uid mappings list";
     return false;
   }
-  ParseLinuxIdMappings(uid_map_list, config_out->linux_config.uid_mappings);
+  ParseLinuxIdMappings(uid_map_list, config_out->linux_config.uidMappings);
 
   // |gid_map_list| is owned by |linux_dict|
   const base::ListValue* gid_map_list = nullptr;
@@ -275,7 +275,7 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
     LOG(ERROR) << "Fail to get gid mappings list";
     return false;
   }
-  ParseLinuxIdMappings(gid_map_list, config_out->linux_config.gid_mappings);
+  ParseLinuxIdMappings(gid_map_list, config_out->linux_config.gidMappings);
 
   if (!ParseDeviceList(*linux_dict, config_out))
     return false;
@@ -288,7 +288,7 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
 // cgroup, and syscall configurations are also specified
 bool ParseConfigDict(const base::DictionaryValue& config_root_dict,
                      OciConfigPtr const& config_out) {
-  if (!config_root_dict.GetString("ociVersion", &config_out->oci_version)) {
+  if (!config_root_dict.GetString("ociVersion", &config_out->ociVersion)) {
     LOG(ERROR) << "Failed to parse ociVersion";
     return false;
   }

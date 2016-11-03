@@ -256,14 +256,14 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   ASSERT_TRUE(ParseContainerConfig(kBasicJsonData,
                                    basic_config));
 
-  EXPECT_EQ(basic_config->oci_version, "1.0.0-rc1");
+  EXPECT_EQ(basic_config->ociVersion, "1.0.0-rc1");
   EXPECT_EQ(basic_config->platform.os, "linux");
   EXPECT_EQ(basic_config->root.path, "rootfs");
-  EXPECT_EQ(basic_config->root.read_only, true);
+  EXPECT_EQ(basic_config->root.readonly, true);
   EXPECT_EQ(basic_config->process.terminal, true);
   EXPECT_EQ(basic_config->process.user.uid, 0);
   EXPECT_EQ(basic_config->process.user.gid, 0);
-  EXPECT_EQ(basic_config->process.user.additional_gids.size(), 0);
+  EXPECT_EQ(basic_config->process.user.additionalGids.size(), 0);
   EXPECT_EQ(basic_config->process.args.size(), 1);
   EXPECT_EQ(basic_config->process.args[0], "sh");
   EXPECT_EQ(basic_config->process.env.size(), 2);
@@ -277,16 +277,16 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   // Devices
   ASSERT_EQ(2, basic_config->linux_config.devices.size());
   OciLinuxDevice *dev = &basic_config->linux_config.devices[0];
-  EXPECT_EQ(dev->dev_type, "c");
+  EXPECT_EQ(dev->type, "c");
   EXPECT_EQ(dev->path, "/dev/fuse");
-  EXPECT_EQ(dev->file_mode, 438);
+  EXPECT_EQ(dev->fileMode, 438);
   EXPECT_EQ(dev->uid, 0);
   // Namespace Maps
-  ASSERT_EQ(1, basic_config->linux_config.uid_mappings.size());
+  ASSERT_EQ(1, basic_config->linux_config.uidMappings.size());
   OciLinuxNamespaceMapping *id_map =
-          &basic_config->linux_config.uid_mappings[0];
-  EXPECT_EQ(id_map->host_id, 1000);
-  EXPECT_EQ(id_map->container_id, 0);
+          &basic_config->linux_config.uidMappings[0];
+  EXPECT_EQ(id_map->hostID, 1000);
+  EXPECT_EQ(id_map->containerID, 0);
   EXPECT_EQ(id_map->size, 10);
 }
 
