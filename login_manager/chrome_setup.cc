@@ -142,6 +142,12 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/shared_extensions"), uid, gid, 0700));
 
+  // Create the directory where policies for extensions installed in the
+  // sign-in profile are cached. This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/signin_profile_component_policy"),
+      uid, gid, 0700));
+
   // Tell Chrome where to write logging messages before the user logs in.
   base::FilePath system_log_dir("/var/log/chrome");
   CHECK(EnsureDirectoryExists(system_log_dir, uid, gid, 0755));
