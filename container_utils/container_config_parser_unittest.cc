@@ -164,7 +164,7 @@ const char kBasicJsonData[] = R"json(
                     "minor": 229,
                     "fileMode": 438,
                     "uid": 0,
-                    "gid": 0
+                    "gid": 3221225472
                 },
                 {
                     "path": "/dev/sda",
@@ -281,6 +281,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(dev->path, "/dev/fuse");
   EXPECT_EQ(dev->fileMode, 438);
   EXPECT_EQ(dev->uid, 0);
+  EXPECT_EQ(dev->gid, 3221225472); // INT32_MAX < id < UINT32_MAX
   // Namespace Maps
   ASSERT_EQ(1, basic_config->linux_config.uidMappings.size());
   OciLinuxNamespaceMapping *id_map =

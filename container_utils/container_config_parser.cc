@@ -16,6 +16,18 @@ namespace container_utils {
 
 namespace {
 
+// Gets a uint32 from the given dictionary.
+bool ParseUint32FromDict(const base::DictionaryValue& dict, const char *name,
+                         uint32_t* val_out) {
+  double double_val;
+  if (!dict.GetDouble(name, &double_val)) {
+    LOG(ERROR) << "Failed to get " << name << " uint32_t value from config";
+    return false;
+  }
+  *val_out = double_val;
+  return true;
+}
+
 // Parses basic platform configuration.
 bool ParsePlatformConfig(const base::DictionaryValue& config_root_dict,
                          OciConfigPtr const& config_out) {
@@ -71,18 +83,10 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
     LOG(ERROR) << "Failed to get user info from config";
     return false;
   }
-  int uid;
-  if (!user_dict->GetInteger("uid", &uid)) {
-    LOG(ERROR) << "Failed to get uid info from config";
+  if (!ParseUint32FromDict(*user_dict, "uid", &config_out->process.user.uid))
     return false;
-  }
-  config_out->process.user.uid = uid;
-  int gid;
-  if (!user_dict->GetInteger("gid", &gid)) {
-    LOG(ERROR) << "Failed to get gid info from config";
+  if (!ParseUint32FromDict(*user_dict, "gid", &config_out->process.user.gid))
     return false;
-  }
-  config_out->process.user.gid = gid;
   // |args_list| stays owned by |process_dict|
   const base::ListValue* args_list = nullptr;
   if (!process_dict->GetList("args", &args_list)) {
@@ -195,21 +199,16 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
       LOG(ERROR) << "Fail to get type for " << device.path;
       return false;
     }
-    int major = 0;
-    dev->GetInteger("major", &major);
-    device.major = major;
-    int minor = 0;
-    dev->GetInteger("minor", &minor);
-    device.minor = minor;
-    int fileMode = 0;
-    dev->GetInteger("fileMode", &fileMode);
-    device.fileMode = fileMode;
-    int dev_uid = 0;
-    dev->GetInteger("uid", &dev_uid);
-    device.uid = dev_uid;
-    int dev_gid = 0;
-    dev->GetInteger("gid", &dev_gid);
-    device.gid = dev_gid;
+    if (!ParseUint32FromDict(*dev, "major", &device.major))
+      return false;
+    if (!ParseUint32FromDict(*dev, "minor", &device.minor))
+      return false;
+    if (!ParseUint32FromDict(*dev, "fileMode", &device.fileMode))
+      return false;
+    if (!ParseUint32FromDict(*dev, "uid", &device.uid))
+      return false;
+    if (!ParseUint32FromDict(*dev, "gid", &device.gid))
+      return false;
 
     config_out->linux_config.devices.push_back(device);
   }
@@ -227,24 +226,12 @@ bool ParseLinuxIdMappings(const base::ListValue* id_map_list,
       LOG(ERROR) << "Fail to get id map " << i;
       return false;
     }
-    int hostID = 0;
-    if (!map->GetInteger("hostID", &hostID)) {
-      LOG(ERROR) << "Failed to read hostID from map " << i;
+    if (!ParseUint32FromDict(*map, "hostID", &new_map.hostID))
       return false;
-    }
-    new_map.hostID = hostID;
-    int containerID = 0;
-    if (!map->GetInteger("containerID", &containerID)) {
-      LOG(ERROR) << "Failed to read containerID from map " << i;
+    if (!ParseUint32FromDict(*map, "containerID", &new_map.containerID))
       return false;
-    }
-    new_map.containerID = containerID;
-    int size = 0;
-    if (!map->GetInteger("size", &size)) {
-      LOG(ERROR) << "Failed to read size from map " << i;
+    if (!ParseUint32FromDict(*map, "size", &new_map.size))
       return false;
-    }
-    new_map.size = size;
     mappings_out.push_back(new_map);
   }
   return true;
