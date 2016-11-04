@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -61,7 +62,8 @@ void UserPolicyService::PersistKeyCopy() {
 bool UserPolicyService::Store(const uint8_t* policy_blob,
                               uint32_t len,
                               const Completion& completion,
-                              int flags) {
+                              int key_flags,
+                              SignatureCheck signature_check) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;
   if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
@@ -87,7 +89,8 @@ bool UserPolicyService::Store(const uint8_t* policy_blob,
     return true;
   }
 
-  return PolicyService::StorePolicy(policy, completion, flags);
+  return PolicyService::StorePolicy(policy, completion, key_flags,
+                                    signature_check);
 }
 
 void UserPolicyService::OnKeyPersisted(bool status) {

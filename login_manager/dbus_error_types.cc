@@ -22,6 +22,7 @@ const char kNotAvailable[] = INTERFACE ".NotAvailable";
 const char kNotStarted[] = INTERFACE ".NotStarted";
 const char kPolicyInitFail[] = INTERFACE ".PolicyInitFail";
 const char kPubkeySetIllegal[] = INTERFACE ".PubkeySetIllegal";
+const char kPolicySignatureRequired[] = INTERFACE ".PolicySignatureRequired";
 const char kSessionDoesNotExist[] = INTERFACE ".SessionDoesNotExist";
 const char kSessionExists[] = INTERFACE ".SessionExists";
 const char kSigDecodeFail[] = INTERFACE ".SigDecodeFail";

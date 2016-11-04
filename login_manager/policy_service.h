@@ -7,12 +7,11 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
-#include <base/files/file_path.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -29,6 +28,9 @@ namespace login_manager {
 class PolicyKey;
 class PolicyStore;
 
+// Whether policy signature must be checked in PolicyService::Store().
+enum class SignatureCheck { kEnabled, kDisabled };
+
 // Manages policy storage and retrieval from an underlying PolicyStore, thereby
 // enforcing policy signatures against a given policy key. Also handles key
 // rotations in case a new policy payload comes with an updated policy key.
@@ -36,6 +38,7 @@ class PolicyService {
  public:
   // Flags determining what do to with new keys in Store().
   enum KeyInstallFlags {
+    KEY_NONE = 0,         // No key changes allowed.
     KEY_ROTATE = 1,       // Existing key may be rotated.
     KEY_INSTALL_NEW = 2,  // Allow to install a key if none is present.
     KEY_CLOBBER = 4,      // OK to replace the existing key without any checks.
@@ -75,20 +78,22 @@ class PolicyService {
                 PolicyKey* policy_key);
   virtual ~PolicyService();
 
-  // Stores a new policy. Verifies the passed-in policy blob against the policy
-  // key if it exists, takes care of key rotation if required and persists
-  // everything to disk. The |flags| parameter determines what to do with a
-  // new key present in the policy. See KeyInstallFlags for possible values.
+  // Stores a new policy. If mandated by |signature_check|, verifies the
+  // passed-in policy blob against the policy key (if it exists), takes care of
+  // key rotation if required and persists everything to disk. The |key_flags|
+  // parameter determines what to do with a new key present in the policy, see
+  // KeyInstallFlags for possible values.
   //
   // Returns false on immediate errors. Otherwise, returns true and reports the
   // status of the operation through |completion|.
   virtual bool Store(const uint8_t* policy_blob,
                      uint32_t len,
                      const Completion& completion,
-                     int flags);
+                     int key_flags,
+                     SignatureCheck signature_check);
 
-  // Retrieves the current policy blob. Returns true if successful, false
-  // otherwise.
+  // Retrieves the current policy blob (does not verify the signature). Returns
+  // true if successful, false otherwise.
   virtual bool Retrieve(std::vector<uint8_t>* policy_blob);
 
   // Policy is persisted to disk on the IO loop. The current thread waits for
@@ -122,7 +127,8 @@ class PolicyService {
   // data to disk.
   bool StorePolicy(const enterprise_management::PolicyFetchResponse& policy,
                    const Completion& completion,
-                   int flags);
+                   int key_flags,
+                   SignatureCheck signature_check);
 
   // Completes a key storage operation on the UI thread, reporting the result to
   // the delegate.

@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+#include <install_attributes/libinstallattributes.h>
 
 #include "login_manager/android_container_manager_impl.h"
 #include "login_manager/child_exit_handler.h"
@@ -287,6 +288,7 @@ class SessionManagerService
   CrossystemImpl crossystem_;
   VpdProcessImpl vpd_process_;
   AndroidContainerManagerImpl android_container_;
+  InstallAttributesReader install_attributes_reader_;
   scoped_ptr<DBusSignalEmitterInterface> dbus_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;

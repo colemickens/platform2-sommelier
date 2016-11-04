@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -114,7 +115,9 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   EXPECT_CALL(*key_, Verify(_, _, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              PolicyService::KEY_NONE,
+                              SignatureCheck::kEnabled));
   fake_loop_.Run();
 }
 
@@ -125,7 +128,9 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   EXPECT_CALL(*key_, Verify(_, _, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              PolicyService::KEY_NONE,
+                              SignatureCheck::kEnabled));
   fake_loop_.Run();
 }
 
@@ -145,7 +150,9 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
   EXPECT_CALL(*key_, Persist()).InSequence(s2).WillOnce(Return(true));
 
   EXPECT_FALSE(base::PathExists(key_copy_file_));
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              PolicyService::KEY_NONE,
+                              SignatureCheck::kEnabled));
   fake_loop_.Run();
 
   EXPECT_TRUE(base::PathExists(key_copy_file_));
@@ -163,7 +170,9 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
 
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              PolicyService::KEY_NONE,
+                              SignatureCheck::kEnabled));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(key_copy_file_));
 }
@@ -176,7 +185,8 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
 
   EXPECT_FALSE(service_->Store(policy_data_, policy_len_,
                                MockPolicyService::CreateExpectFailureCallback(),
-                               0));
+                               PolicyService::KEY_NONE,
+                               SignatureCheck::kEnabled));
 
   fake_loop_.Run();
 }

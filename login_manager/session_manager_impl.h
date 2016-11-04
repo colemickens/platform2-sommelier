@@ -24,6 +24,7 @@
 #include "login_manager/server_backed_state_key_generator.h"
 
 class Crossystem;
+class InstallAttributesReader;
 
 namespace login_manager {
 class DBusSignalEmitterInterface;
@@ -115,7 +116,8 @@ class SessionManagerImpl : public SessionManagerInterface,
                      Crossystem* crossystem,
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
-                     ContainerManagerInterface* android_container);
+                     ContainerManagerInterface* android_container,
+                     InstallAttributesReader* install_attributes_reader);
   virtual ~SessionManagerImpl();
 
   void InjectPolicyServices(
@@ -155,12 +157,14 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   void StorePolicy(const uint8_t* policy_blob,
                    size_t policy_blob_len,
+                   SignatureCheck signature_check,
                    const PolicyService::Completion& completion);
   void RetrievePolicy(std::vector<uint8_t>* policy_data, Error* error);
 
   void StorePolicyForUser(const std::string& account_id,
                           const uint8_t* policy_blob,
                           size_t policy_blob_len,
+                          SignatureCheck signature_check,
                           const PolicyService::Completion& completion);
   void RetrievePolicyForUser(const std::string& account_id,
                              std::vector<uint8_t>* policy_data,
@@ -298,6 +302,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   VpdProcess* vpd_process_;                             // Owned by the caller.
   PolicyKey* owner_key_;                                // Owned by the caller.
   ContainerManagerInterface* android_container_;        // Owned by the caller.
+  InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
 
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;

@@ -52,6 +52,7 @@
       'link_settings': {
         'libraries': [
           '-lbootstat',
+          '-linstallattributes-<(libbase_ver)',
         ],
       },
       'sources': [

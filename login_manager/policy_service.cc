@@ -7,13 +7,12 @@
 #include <stdint.h>
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/memory/weak_ptr.h>
-#include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
 #include <brillo/message_loops/message_loop.h>
 
@@ -45,7 +44,7 @@ PolicyService::Delegate::~Delegate() {
 }
 
 PolicyService::PolicyService(
-    scoped_ptr<PolicyStore> policy_store,
+    std::unique_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key)
     : policy_store_(std::move(policy_store)),
       policy_key_(policy_key),
@@ -60,10 +59,10 @@ PolicyService::~PolicyService() {
 bool PolicyService::Store(const uint8_t* policy_blob,
                           uint32_t len,
                           const Completion& completion,
-                          int flags) {
+                          int key_flags,
+                          SignatureCheck signature_check) {
   em::PolicyFetchResponse policy;
-  if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
-      !policy.has_policy_data_signature()) {
+  if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data()) {
     static const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
     Error error(dbus_error::kSigDecodeFail, msg);
@@ -71,7 +70,7 @@ bool PolicyService::Store(const uint8_t* policy_blob,
     return false;
   }
 
-  return StorePolicy(policy, completion, flags);
+  return StorePolicy(policy, completion, key_flags, signature_check);
 }
 
 bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
@@ -112,7 +111,14 @@ void PolicyService::PersistPolicyWithCompletion(const Completion& completion) {
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
                                 const Completion& completion,
-                                int flags) {
+                                int key_flags,
+                                SignatureCheck signature_check) {
+  if (signature_check == SignatureCheck::kDisabled) {
+    store()->Set(policy);
+    PersistPolicyWithCompletion(completion);
+    return true;
+  }
+
   // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
     // The policy contains a new key, and it is different from |key_|.
@@ -121,18 +127,18 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
 
     bool installed = false;
     if (key()->IsPopulated()) {
-      if (policy.has_new_public_key_signature() && (flags & KEY_ROTATE)) {
+      if (policy.has_new_public_key_signature() && (key_flags & KEY_ROTATE)) {
         // Graceful key rotation.
         LOG(INFO) << "Attempting policy key rotation.";
         std::vector<uint8_t> sig;
         NssUtil::BlobFromBuffer(policy.new_public_key_signature(), &sig);
         installed = key()->Rotate(der, sig);
       }
-    } else if (flags & KEY_INSTALL_NEW) {
+    } else if (key_flags & KEY_INSTALL_NEW) {
       LOG(INFO) << "Attempting to install new policy key.";
       installed = key()->PopulateFromBuffer(der);
     }
-    if (!installed && (flags & KEY_CLOBBER)) {
+    if (!installed && (key_flags & KEY_CLOBBER)) {
       LOG(INFO) << "Clobbering existing policy key.";
       installed = key()->ClobberCompromisedKey(der);
     }

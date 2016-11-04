@@ -14,6 +14,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <dbus/exported_object.h>  // For ResponseSender.
 
+#include "login_manager/session_manager_impl.h"
+
 namespace dbus {
 class MethodCall;
 class ObjectProxy;
@@ -21,12 +23,11 @@ class Response;
 }  // namespace dbus
 
 namespace login_manager {
-class SessionManagerImpl;
 
 // Implements the DBus SessionManagerInterface.
 //
-// All signatures used in the methods of the ownership API are
-// SHA1 with RSA encryption.
+// All signatures used in the methods of the ownership API are SHA1 with RSA
+// encryption.
 class SessionManagerDBusAdaptor {
  public:
   explicit SessionManagerDBusAdaptor(SessionManagerImpl* impl);
@@ -46,11 +47,15 @@ class SessionManagerDBusAdaptor {
   // Asynchronous.
   void StorePolicy(dbus::MethodCall* call,
                    dbus::ExportedObject::ResponseSender sender);
+  void StoreUnsignedPolicy(dbus::MethodCall* call,
+                           dbus::ExportedObject::ResponseSender sender);
   scoped_ptr<dbus::Response> RetrievePolicy(dbus::MethodCall* call);
 
   // Asynchronous.
   void StorePolicyForUser(dbus::MethodCall* call,
                           dbus::ExportedObject::ResponseSender sender);
+  void StoreUnsignedPolicyForUser(dbus::MethodCall* call,
+                                  dbus::ExportedObject::ResponseSender sender);
   scoped_ptr<dbus::Response> RetrievePolicyForUser(dbus::MethodCall* call);
 
   // Asynchronous.
@@ -108,6 +113,12 @@ class SessionManagerDBusAdaptor {
   void ExportAsyncDBusMethod(dbus::ExportedObject* object,
                              const std::string& method_name,
                              AsyncDBusMethodCallMemberFunction member);
+  void DoStorePolicy(dbus::MethodCall* call,
+                     dbus::ExportedObject::ResponseSender sender,
+                     SignatureCheck signature_check);
+  void DoStorePolicyForUser(dbus::MethodCall* call,
+                            dbus::ExportedObject::ResponseSender sender,
+                            SignatureCheck signature_check);
 
   SessionManagerImpl* const impl_;
 

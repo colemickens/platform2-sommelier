@@ -23,7 +23,6 @@
 
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/policy_service.h"
-#include "login_manager/session_manager_impl.h"
 
 namespace login_manager {
 namespace {
@@ -228,6 +227,9 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
   ExportAsyncDBusMethod(object,
                         kSessionManagerStorePolicy,
                         &SessionManagerDBusAdaptor::StorePolicy);
+  ExportAsyncDBusMethod(object,
+                        kSessionManagerStoreUnsignedPolicy,
+                        &SessionManagerDBusAdaptor::StoreUnsignedPolicy);
   ExportSyncDBusMethod(object,
                        kSessionManagerRetrievePolicy,
                        &SessionManagerDBusAdaptor::RetrievePolicy);
@@ -235,6 +237,9 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
   ExportAsyncDBusMethod(object,
                         kSessionManagerStorePolicyForUser,
                         &SessionManagerDBusAdaptor::StorePolicyForUser);
+  ExportAsyncDBusMethod(object,
+                        kSessionManagerStoreUnsignedPolicyForUser,
+                        &SessionManagerDBusAdaptor::StoreUnsignedPolicyForUser);
   ExportSyncDBusMethod(object,
                        kSessionManagerRetrievePolicyForUser,
                        &SessionManagerDBusAdaptor::RetrievePolicyForUser);
@@ -371,6 +376,19 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
 void SessionManagerDBusAdaptor::StorePolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
+  DoStorePolicy(call, sender, SignatureCheck::kEnabled);
+}
+
+void SessionManagerDBusAdaptor::StoreUnsignedPolicy(
+    dbus::MethodCall* call,
+    dbus::ExportedObject::ResponseSender sender) {
+  DoStorePolicy(call, sender, SignatureCheck::kDisabled);
+}
+
+void SessionManagerDBusAdaptor::DoStorePolicy(
+    dbus::MethodCall* call,
+    dbus::ExportedObject::ResponseSender sender,
+    SignatureCheck signature_check) {
   const uint8_t* policy_blob = NULL;
   size_t policy_blob_len = 0;
   dbus::MessageReader reader(call);
@@ -378,7 +396,7 @@ void SessionManagerDBusAdaptor::StorePolicy(
   if (!reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
   } else {
-    impl_->StorePolicy(policy_blob, policy_blob_len,
+    impl_->StorePolicy(policy_blob, policy_blob_len, signature_check,
                        DBusMethodCompletion::CreateCallback(call, sender));
     // Response will be sent asynchronously.
   }
@@ -395,6 +413,19 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
 void SessionManagerDBusAdaptor::StorePolicyForUser(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
+  DoStorePolicyForUser(call, sender, SignatureCheck::kEnabled);
+}
+
+void SessionManagerDBusAdaptor::StoreUnsignedPolicyForUser(
+    dbus::MethodCall* call,
+    dbus::ExportedObject::ResponseSender sender) {
+  DoStorePolicyForUser(call, sender, SignatureCheck::kDisabled);
+}
+
+void SessionManagerDBusAdaptor::DoStorePolicyForUser(
+    dbus::MethodCall* call,
+    dbus::ExportedObject::ResponseSender sender,
+    SignatureCheck signature_check) {
   std::string account_id;
   const uint8_t* policy_blob = NULL;
   size_t policy_blob_len = 0;
@@ -405,7 +436,7 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
   } else {
     impl_->StorePolicyForUser(
-        account_id, policy_blob, policy_blob_len,
+        account_id, policy_blob, policy_blob_len, signature_check,
         DBusMethodCompletion::CreateCallback(call, sender));
     // Response will normally be sent asynchronously.
   }

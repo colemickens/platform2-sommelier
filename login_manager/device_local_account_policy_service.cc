@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#include <utility>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -55,8 +57,8 @@ bool DeviceLocalAccountPolicyService::Store(
     return false;
   }
 
-  // NB: Passing 0 for flags disallows all key changes.
-  return service->Store(policy_data, policy_data_size, completion, 0);
+  return service->Store(policy_data, policy_data_size, completion,
+                        PolicyService::KEY_NONE, SignatureCheck::kEnabled);
 }
 
 bool DeviceLocalAccountPolicyService::Retrieve(

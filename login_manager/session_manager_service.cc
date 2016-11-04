@@ -217,7 +217,8 @@ bool SessionManagerService::Initialize() {
       &crossystem_,
       &vpd_process_,
       &owner_key_,
-      &android_container_);
+      &android_container_,
+      &install_attributes_reader_);
 
   adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);

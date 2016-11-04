@@ -39,6 +39,7 @@
 #include "login_manager/mock_dbus_signal_emitter.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_install_attributes_reader.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_nss_util.h"
@@ -124,7 +125,8 @@ class SessionManagerImplTest : public ::testing::Test {
               &crossystem_,
               &vpd_process_,
               &owner_key_,
-              &android_container_),
+              &android_container_,
+              &install_attributes_reader_),
         fake_salt_("fake salt"),
         actual_locks_(0),
         expected_locks_(0),
@@ -170,6 +172,10 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
  protected:
+  void SetDeviceMode(const std::string& mode) {
+    install_attributes_reader_.SetAttributes({{"enterprise.mode", mode}});
+  }
+
   void ExpectStartSession(const string& account_id_string) {
     ExpectSessionBoilerplate(account_id_string, false, false);
   }
@@ -216,9 +222,15 @@ class SessionManagerImplTest : public ::testing::Test {
 
   void ExpectStorePolicy(MockDevicePolicyService* service,
                          const string& policy,
-                         int flags) {
-    EXPECT_CALL(*service, Store(CastEq(policy), policy.size(), _, flags))
+                         int flags,
+                         SignatureCheck signature_check) {
+    EXPECT_CALL(*service,
+                Store(CastEq(policy), policy.size(), _, flags, signature_check))
         .WillOnce(Return(true));
+  }
+
+  void ExpectNoStorePolicy(MockDevicePolicyService* service) {
+    EXPECT_CALL(*service, Store(_, _, _, _, _)).Times(0);
   }
 
   void ExpectAndRunStartSession(const string& email) {
@@ -280,6 +292,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
   FakeContainerManager android_container_;
+  MockInstallAttributesReader install_attributes_reader_;
 
   // Used by fake closures to simulate calling into powerd to set up
   // suspend delays when ARC starts or stops.
@@ -295,6 +308,7 @@ class SessionManagerImplTest : public ::testing::Test {
   static const pid_t kDummyPid;
   static const char kNothing[];
   static const char kSaneEmail[];
+  static const int kAllKeyFlags;
 
  private:
   void SetDefaultMockBehavior() {
@@ -395,6 +409,9 @@ class SessionManagerImplTest : public ::testing::Test {
 const pid_t SessionManagerImplTest::kDummyPid = 4;
 const char SessionManagerImplTest::kNothing[] = "";
 const char SessionManagerImplTest::kSaneEmail[] = "user@somewhere.com";
+const int SessionManagerImplTest::kAllKeyFlags =
+    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
+    PolicyService::KEY_CLOBBER;
 
 TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   const char event_name[] = "login-prompt-visible";
@@ -540,10 +557,10 @@ TEST_F(SessionManagerImplTest, StopSession) {
 TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
-  ExpectStorePolicy(device_policy_service_, fake_policy,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
-                        PolicyService::KEY_CLOBBER);
+  ExpectStorePolicy(device_policy_service_, fake_policy, kAllKeyFlags,
+                    SignatureCheck::kEnabled);
   impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
+                    SignatureCheck::kEnabled,
                     MockPolicyService::CreateDoNothing());
 }
 
@@ -552,8 +569,39 @@ TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   ExpectStorePolicy(device_policy_service_, fake_policy,
-                    PolicyService::KEY_ROTATE);
+                    PolicyService::KEY_ROTATE, SignatureCheck::kEnabled);
   impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
+                    SignatureCheck::kEnabled,
+                    MockPolicyService::CreateDoNothing());
+}
+
+TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
+  const string fake_policy("fake policy");
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
+  ExpectNoStorePolicy(device_policy_service_);
+  impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
+                    SignatureCheck::kDisabled,
+                    MockPolicyService::CreateDoNothing());
+}
+
+TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
+  const string fake_policy("fake policy");
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
+  SetDeviceMode("enterprise");
+  ExpectNoStorePolicy(device_policy_service_);
+  impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
+                    SignatureCheck::kDisabled,
+                    MockPolicyService::CreateDoNothing());
+}
+
+TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
+  const string fake_policy("fake policy");
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
+  SetDeviceMode("enterprise_ad");
+  ExpectStorePolicy(device_policy_service_, fake_policy, kAllKeyFlags,
+                    SignatureCheck::kDisabled);
+  impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
+                    SignatureCheck::kDisabled,
                     MockPolicyService::CreateDoNothing());
 }
 
@@ -583,6 +631,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   string error_code;
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kEnabled,
                            base::Bind(&CaptureErrorCode, &error_code));
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
 }
@@ -593,9 +642,11 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
               Store(CastEq(fake_policy), fake_policy.size(), _,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kEnabled))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kEnabled,
                            MockPolicyService::CreateDoNothing());
 }
 
@@ -608,9 +659,11 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
               Store(CastEq(fake_policy), fake_policy.size(), _,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kEnabled))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kEnabled,
                            MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
 
@@ -618,6 +671,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   const char user2[] = "user2@somewhere.com";
   string error_code;
   impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kEnabled,
                            base::Bind(&CaptureErrorCode, &error_code));
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
 
@@ -628,11 +682,51 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   // Storing policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[user2],
               Store(CastEq(fake_policy), fake_policy.size(), _,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kEnabled))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kEnabled,
                            MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
+}
+
+TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const string fake_policy("fake policy");
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
+      .Times(0);
+  impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kDisabled,
+                           MockPolicyService::CreateDoNothing());
+}
+
+TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const string fake_policy("fake policy");
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
+  SetDeviceMode("enterprise");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
+      .Times(0);
+  impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kDisabled,
+                           MockPolicyService::CreateDoNothing());
+}
+
+TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
+  ExpectAndRunStartSession(kSaneEmail);
+  const string fake_policy("fake policy");
+  const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
+  SetDeviceMode("enterprise_ad");
+  EXPECT_CALL(*user_policy_services_[kSaneEmail],
+              Store(CastEq(fake_policy), fake_policy.size(), _,
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kDisabled))
+      .WillOnce(Return(true));
+  impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           SignatureCheck::kDisabled,
+                           MockPolicyService::CreateDoNothing());
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {

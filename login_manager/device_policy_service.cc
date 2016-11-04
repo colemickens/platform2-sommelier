@@ -7,6 +7,7 @@
 #include <secmodt.h>
 #include <stdint.h>
 
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -206,8 +207,10 @@ bool DevicePolicyService::Initialize() {
 bool DevicePolicyService::Store(const uint8_t* policy_blob,
                                 uint32_t len,
                                 const Completion& completion,
-                                int flags) {
-  bool result = PolicyService::Store(policy_blob, len, completion, flags);
+                                int key_flags,
+                                SignatureCheck signature_check) {
+  bool result = PolicyService::Store(policy_blob, len, completion, key_flags,
+                                     signature_check);
 
   if (result) {
     UpdateSerialNumberRecoveryFlagFile();

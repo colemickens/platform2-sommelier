@@ -24,6 +24,7 @@
 #include <brillo/cryptohome.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
+#include <install_attributes/libinstallattributes.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
@@ -188,7 +189,8 @@ SessionManagerImpl::SessionManagerImpl(
     Crossystem* crossystem,
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
-    ContainerManagerInterface* android_container)
+    ContainerManagerInterface* android_container,
+    InstallAttributesReader* install_attributes_reader)
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
@@ -209,6 +211,7 @@ SessionManagerImpl::SessionManagerImpl(
       vpd_process_(vpd_process),
       owner_key_(owner_key),
       android_container_(android_container),
+      install_attributes_reader_(install_attributes_reader),
       mitigator_(key_gen),
       weak_ptr_factory_(this) {}
 
@@ -417,11 +420,28 @@ bool SessionManagerImpl::StopSession() {
 void SessionManagerImpl::StorePolicy(
     const uint8_t* policy_blob,
     size_t policy_blob_len,
+    SignatureCheck signature_check,
     const PolicyService::Completion& completion) {
+  // Skipping of signature checks is gated on enterprise_ad device mode being
+  // locked into install attributes.
+  if (signature_check == SignatureCheck::kDisabled) {
+    const std::string& mode = install_attributes_reader_->GetAttribute(
+        InstallAttributesReader::kAttrMode);
+    if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
+      PolicyService::Error error(
+          dbus_error::kPolicySignatureRequired,
+          "Device mode doesn't permit unsigned policy!");
+      LOG(ERROR) << error.message();
+      completion.Run(error);
+      return;
+    }
+  }
+
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  device_policy_->Store(policy_blob, policy_blob_len, completion, flags);
+  device_policy_->Store(policy_blob, policy_blob_len, completion, flags,
+                        signature_check);
 }
 
 void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
@@ -438,7 +458,23 @@ void SessionManagerImpl::StorePolicyForUser(
     const std::string& account_id,
     const uint8_t* policy_blob,
     size_t policy_blob_len,
+    SignatureCheck signature_check,
     const PolicyService::Completion& completion) {
+  // Skipping of signature checks is gated on enterprise_ad device mode being
+  // locked into install attributes.
+  if (signature_check == SignatureCheck::kDisabled) {
+    const std::string& mode = install_attributes_reader_->GetAttribute(
+        InstallAttributesReader::kAttrMode);
+    if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
+      PolicyService::Error error(
+          dbus_error::kPolicySignatureRequired,
+          "Device mode doesn't permit unsigned policy!");
+      LOG(ERROR) << error.message();
+      completion.Run(error);
+      return;
+    }
+  }
+
   PolicyService* policy_service = GetPolicyService(account_id);
   if (!policy_service) {
     PolicyService::Error error(
@@ -451,7 +487,8 @@ void SessionManagerImpl::StorePolicyForUser(
 
   policy_service->Store(
       policy_blob, policy_blob_len, completion,
-      PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE);
+      PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
+      signature_check);
 }
 
 void SessionManagerImpl::RetrievePolicyForUser(

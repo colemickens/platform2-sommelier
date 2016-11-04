@@ -25,7 +25,7 @@ class UserPolicyService : public PolicyService {
                     scoped_ptr<PolicyKey> policy_key,
                     const base::FilePath& key_copy_path,
                     SystemUtils* system_utils);
-  virtual ~UserPolicyService();
+  ~UserPolicyService() override;
 
   // Persists a copy of |scoped_policy_key_| at |key_copy_path_|, if both the
   // key and the copy path are present.
@@ -33,16 +33,17 @@ class UserPolicyService : public PolicyService {
 
   // Store a new policy. The only difference from the base PolicyService is that
   // this override allows storage of policy blobs that indiciate the user is
-  // unmanaged even if they are unsigned. If an non-signed blob gets installed,
+  // unmanaged even if they are unsigned. If a non-signed blob gets installed,
   // we also clear the signing key.
-  virtual bool Store(const uint8_t* policy_blob,
-                     uint32_t len,
-                     const Completion& completion,
-                     int flags);
+  bool Store(const uint8_t* policy_blob,
+             uint32_t len,
+             const Completion& completion,
+             int key_flags,
+             SignatureCheck signature_check) override;
 
   // Invoked after a new key has been persisted. This creates a copy of the key
   // at |key_copy_path_| that is readable by chronos, and notifies the delegate.
-  virtual void OnKeyPersisted(bool status);
+  void OnKeyPersisted(bool status) override;
 
  private:
   // UserPolicyService owns its PolicyKey, note that PolicyService just keeps a

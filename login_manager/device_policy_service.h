@@ -7,9 +7,11 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <crypto/scoped_nss_types.h>
@@ -114,7 +116,8 @@ class DevicePolicyService : public PolicyService {
   bool Store(const uint8_t* policy_blob,
              uint32_t len,
              const Completion& completion,
-             int flags) override;
+             int key_flags,
+             SignatureCheck signature_check) override;
   void PersistPolicyOnLoop(const Completion& completion) override;
 
   static const char kPolicyPath[];

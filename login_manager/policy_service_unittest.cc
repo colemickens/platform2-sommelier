@@ -7,10 +7,11 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/ptr_util.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
 #include <brillo/message_loops/fake_message_loop.h>
@@ -50,7 +51,8 @@ class PolicyServiceTest : public testing::Test {
   virtual void SetUp() {
     fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
-    service_.reset(new PolicyService(scoped_ptr<PolicyStore>(store_), &key_));
+    service_ = base::MakeUnique<PolicyService>(
+        std::unique_ptr<PolicyStore>(store_), &key_);
     service_->set_delegate(&delegate_);
   }
 
@@ -85,6 +87,12 @@ class PolicyServiceTest : public testing::Test {
         *sequence);
   }
 
+  void ExpectSetPolicy(Sequence* sequence) {
+    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_)))
+        .Times(1)
+        .InSequence(*sequence);
+  }
+
   void ExpectPersistKey(Sequence* sequence) {
     EXPECT_CALL(key_, Persist()).InSequence(*sequence).WillOnce(Return(true));
     EXPECT_CALL(delegate_, OnKeyPersisted(true));
@@ -107,15 +115,17 @@ class PolicyServiceTest : public testing::Test {
         Return(return_value));
   }
 
-  void ExpectStoreFail(int flags, const std::string& code) {
+  void ExpectStoreFail(int flags,
+                       SignatureCheck signature_check,
+                       const std::string& code) {
     EXPECT_CALL(key_, Persist()).Times(0);
     EXPECT_CALL(*store_, Set(_)).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
 
     EXPECT_FALSE(
         service_->Store(policy_data_, policy_len_,
-                        MockPolicyService::CreateExpectFailureCallback(),
-                        flags));
+                        MockPolicyService::CreateExpectFailureCallback(), flags,
+                        signature_check));
     fake_loop_.Run();
   }
 
@@ -146,7 +156,7 @@ class PolicyServiceTest : public testing::Test {
   MockPolicyServiceDelegate delegate_;
   PolicyService::Completion completion_;
 
-  scoped_ptr<PolicyService> service_;
+  std::unique_ptr<PolicyService> service_;
 };
 
 const int PolicyServiceTest::kAllKeyFlags = PolicyService::KEY_ROTATE |
@@ -172,8 +182,21 @@ TEST_F(PolicyServiceTest, Store) {
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              kAllKeyFlags, SignatureCheck::kEnabled));
+
+  fake_loop_.Run();
+}
+
+TEST_F(PolicyServiceTest, StoreUnsigned) {
+  InitPolicy(fake_data_, "", "", "");
+
+  Sequence s1, s2;
+  ExpectSetPolicy(&s1);
+  ExpectPersistPolicy(&s2);
+
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              kAllKeyFlags, SignatureCheck::kDisabled));
 
   fake_loop_.Run();
 }
@@ -192,19 +215,29 @@ TEST_F(PolicyServiceTest, StoreWrongSignature) {
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
-  ExpectStoreFail(kAllKeyFlags, dbus_error::kVerifyFail);
+  ExpectStoreFail(kAllKeyFlags, SignatureCheck::kEnabled,
+                  dbus_error::kVerifyFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNoData) {
   InitPolicy("", "", "", "");
 
-  ExpectStoreFail(kAllKeyFlags, dbus_error::kSigDecodeFail);
+  ExpectStoreFail(kAllKeyFlags, SignatureCheck::kEnabled,
+                  dbus_error::kSigDecodeFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNoSignature) {
   InitPolicy(fake_data_, "", "", "");
 
-  ExpectStoreFail(kAllKeyFlags, dbus_error::kSigDecodeFail);
+  EXPECT_CALL(key_,
+              Verify(CastEq(fake_data_),
+                     fake_data_.size(),
+                     CastEq(std::string()),
+                     0))
+      .WillOnce(Return(false));
+
+  ExpectStoreFail(kAllKeyFlags, SignatureCheck::kEnabled,
+                  dbus_error::kVerifyFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNoKey) {
@@ -221,7 +254,8 @@ TEST_F(PolicyServiceTest, StoreNoKey) {
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
-  ExpectStoreFail(kAllKeyFlags, dbus_error::kVerifyFail);
+  ExpectStoreFail(kAllKeyFlags, SignatureCheck::kEnabled,
+                  dbus_error::kVerifyFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNewKey) {
@@ -238,8 +272,8 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              kAllKeyFlags, SignatureCheck::kEnabled));
 
   fake_loop_.Run();
 }
@@ -258,8 +292,9 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, completion_, PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              PolicyService::KEY_CLOBBER,
+                              SignatureCheck::kEnabled));
 
   fake_loop_.Run();
 }
@@ -274,8 +309,8 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   ExpectVerifyAndSetPolicy(&s3);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              kAllKeyFlags, SignatureCheck::kEnabled));
 
   fake_loop_.Run();
 }
@@ -287,7 +322,8 @@ TEST_F(PolicyServiceTest, StoreNewKeyNotAllowed) {
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, false);
 
-  ExpectStoreFail(0, dbus_error::kPubkeySetIllegal);
+  ExpectStoreFail(PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+                  dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, StoreRotation) {
@@ -304,8 +340,8 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              kAllKeyFlags, SignatureCheck::kEnabled));
 
   fake_loop_.Run();
 }
@@ -324,8 +360,9 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, completion_, PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
+                              PolicyService::KEY_CLOBBER,
+                              SignatureCheck::kEnabled));
 
   fake_loop_.Run();
 }
@@ -337,7 +374,8 @@ TEST_F(PolicyServiceTest, StoreRotationNoSignature) {
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
 
-  ExpectStoreFail(PolicyService::KEY_ROTATE, dbus_error::kPubkeySetIllegal);
+  ExpectStoreFail(PolicyService::KEY_ROTATE, SignatureCheck::kEnabled,
+                  dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, StoreRotationBadSignature) {
@@ -350,7 +388,8 @@ TEST_F(PolicyServiceTest, StoreRotationBadSignature) {
       .InSequence(s1, s2)
       .WillOnce(Return(false));
 
-  ExpectStoreFail(PolicyService::KEY_ROTATE, dbus_error::kPubkeySetIllegal);
+  ExpectStoreFail(PolicyService::KEY_ROTATE, SignatureCheck::kEnabled,
+                  dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, StoreRotationNotAllowed) {
@@ -360,7 +399,8 @@ TEST_F(PolicyServiceTest, StoreRotationNotAllowed) {
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
 
-  ExpectStoreFail(0, dbus_error::kPubkeySetIllegal);
+  ExpectStoreFail(PolicyService::KEY_NONE, SignatureCheck::kEnabled,
+                  dbus_error::kPubkeySetIllegal);
 }
 
 TEST_F(PolicyServiceTest, Retrieve) {

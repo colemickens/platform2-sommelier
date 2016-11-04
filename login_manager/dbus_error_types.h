@@ -22,6 +22,7 @@ extern const char kNotAvailable[];
 extern const char kNotStarted[];
 extern const char kPolicyInitFail[];
 extern const char kPubkeySetIllegal[];
+extern const char kPolicySignatureRequired[];
 extern const char kSessionDoesNotExist[];
 extern const char kSessionExists[];
 extern const char kSigDecodeFail[];

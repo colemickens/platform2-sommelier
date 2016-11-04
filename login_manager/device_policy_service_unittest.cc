@@ -963,7 +963,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
                       completion_,
-                      PolicyService::KEY_CLOBBER));
+                      PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
   // Storing an enterprise policy blob with the |valid_serial_number_missing|
@@ -973,12 +974,14 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
                       completion_,
-                      PolicyService::KEY_CLOBBER));
+                      PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Storing bad policy shouldn't remove the file.
   EXPECT_FALSE(
-      service_->Store(NULL, 0, completion_, PolicyService::KEY_CLOBBER));
+      service_->Store(NULL, 0, completion_, PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Clearing the flag should remove the file.
@@ -987,7 +990,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
                       completion_,
-                      PolicyService::KEY_CLOBBER));
+                      PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
   // Create install attributes file to mock enterprise enrolled device.
@@ -1008,7 +1012,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
                       completion_,
-                      PolicyService::KEY_CLOBBER));
+                      PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
   // Missing DM token should lead to creation of flag file.
@@ -1017,7 +1022,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
                       completion_,
-                      PolicyService::KEY_CLOBBER));
+                      PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 }
 
@@ -1044,7 +1050,8 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
                       completion_,
-                      PolicyService::KEY_CLOBBER));
+                      PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   fake_loop_.Run();
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
             settings.SerializeAsString());
@@ -1074,7 +1081,8 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
                       completion_,
-                      PolicyService::KEY_CLOBBER));
+                      PolicyService::KEY_CLOBBER,
+                      SignatureCheck::kEnabled));
   fake_loop_.Run();
 
   std::vector<std::string> flags = service_->GetStartUpFlags();
