@@ -65,6 +65,10 @@ const char kProductField[] = "prod";
 const char kSignatureField[] = "sig";
 const char kUptimeField[] = "uptime";
 
+// If this metadata key is set to "true", the report is uploaded silently, i.e.
+// it does not appear in chrome://crashes.
+const char kSilentKey[] = "silent";
+
 // Keys for crash log headers.
 const char kBuildKey[] = "Build";
 const char kProcessKey[] = "Process";
@@ -80,6 +84,10 @@ const size_t kBufferSize = 4096;
 
 inline bool IsAppProcess(const std::string &name) {
   return name == "app_process32" || name == "app_process64";
+}
+
+inline bool IsSilentReport(const std::string &type) {
+  return type == "system_app_wtf" || type == "system_server_wtf";
 }
 
 inline TimeTicks ToSeconds(const TimeTicks &time) {
@@ -362,14 +370,16 @@ void ArcCollector::AddArcMetaData(const std::string &process,
 
   int64_t start_time;
   brillo::ErrorPtr error;
-  if (!session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
+  if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
+    const uint64_t delta = static_cast<uint64_t>((TimeTicks::Now() -
+        TimeTicks::FromInternalValue(start_time)).InSeconds());
+    AddCrashMetaUploadData(kUptimeField, FormatDuration(delta));
+  } else {
     LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
-    return;
   }
 
-  const uint64_t delta = static_cast<uint64_t>((TimeTicks::Now() -
-      TimeTicks::FromInternalValue(start_time)).InSeconds());
-  AddCrashMetaUploadData(kUptimeField, FormatDuration(delta));
+  if (IsSilentReport(crash_type))
+    AddCrashMetaData(kSilentKey, "true");
 }
 
 // static
