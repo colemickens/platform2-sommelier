@@ -51,6 +51,11 @@ class TRUNKS_EXPORT TpmUtility {
   // and self-tests or, if already started, just the result of the self-tests.
   virtual TPM_RC Startup() = 0;
 
+  // Check if the TPM is in a state which allows trunks to proceed. The only
+  // condition when the state is considered unacceptable and an error is
+  // returned is if there is no way to communicate with the TPM.
+  virtual TPM_RC CheckState() = 0;
+
   // This method removes all TPM context associated with a specific Owner.
   // As part of this process, it resets the SPS to a new random value, and
   // clears ownerAuth, endorsementAuth and lockoutAuth.

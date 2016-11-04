@@ -33,7 +33,6 @@
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/hmac_session.h"
 #include "trunks/policy_session.h"
-#include "trunks/scoped_key_handle.h"
 #include "trunks/tpm_constants.h"
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
@@ -139,9 +138,10 @@ void TpmUtilityImpl::Shutdown() {
   }
 }
 
-TPM_RC TpmUtilityImpl::InitializeTpm() {
+TPM_RC TpmUtilityImpl::TpmBasicInit(std::unique_ptr<TpmState> &tpm_state) {
   TPM_RC result = TPM_RC_SUCCESS;
-  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+
+  tpm_state = factory_.GetTpmState();
   result = tpm_state->Initialize();
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
@@ -154,6 +154,44 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
   }
   if (tpm_state->IsInLockout()) {
     LOG(WARNING) << __func__ << ": WARNING: The TPM is currently in lockout.";
+  }
+
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::CheckState() {
+  TPM_RC result;
+  std::unique_ptr<TpmState> tpm_state;
+
+
+  result = TpmBasicInit(tpm_state);
+
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+
+  if (tpm_state->IsPlatformHierarchyEnabled())
+    LOG(WARNING) << __func__ << ": Platform Hierarchy Enabled!";
+
+  if (!tpm_state->IsStorageHierarchyEnabled())
+    LOG(WARNING) << __func__ << ": Storage Hierarchy Disabled!";
+
+  if (!tpm_state->IsEndorsementHierarchyEnabled())
+    LOG(WARNING) << __func__ << ": Endorsement Hierarchy Disabled!";
+
+  LOG(INFO) << __func__ << ": TPM State verified.";
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::InitializeTpm() {
+  TPM_RC result;
+  std::unique_ptr<TpmState> tpm_state;
+
+  result = TpmBasicInit(tpm_state);
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
   }
 
   // We expect the firmware has already locked down the platform hierarchy. If

@@ -120,6 +120,8 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC Startup() override { return target_->Startup(); }
 
+  TPM_RC CheckState() override { return target_->CheckState(); }
+
   TPM_RC Clear() override { return target_->Clear(); }
 
   void Shutdown() override { return target_->Shutdown(); }

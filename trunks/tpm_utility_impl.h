@@ -27,6 +27,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "trunks/trunks_export.h"
+#include "trunks/scoped_key_handle.h"
 
 namespace trunks {
 
@@ -43,6 +44,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC Startup() override;
   TPM_RC Clear() override;
   void Shutdown() override;
+  TPM_RC CheckState() override;
   TPM_RC InitializeTpm() override;
   TPM_RC AllocatePCR(const std::string& platform_password) override;
   TPM_RC TakeOwnership(const std::string& owner_password,
@@ -220,6 +222,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Looks for a given persistent |key_handle| and outputs whether or not it
   // |exists|. Returns TPM_RC_SUCCESS on success.
   TPM_RC DoesPersistentKeyExist(TPMI_DH_PERSISTENT key_handle, bool* exists);
+
+  // Connects to the TPM driver and runs a few basic operations/checks.
+  // Returns an error in case it failed to conect to the tpm, genereates log
+  // warnings for other conditions.
+  //
+  // Also returns tpm_state to the caller for further use.
+  TPM_RC TpmBasicInit(std::unique_ptr<TpmState> &tpm_state);
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };
