@@ -44,9 +44,6 @@
     {
       'target_name': 'container_config_parser',
       'type': 'shared_library',
-      'cflags': [
-        '-fvisibility=default',
-      ],
       'sources': [
         'container_config_parser.cc',
       ],
