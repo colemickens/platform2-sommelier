@@ -461,18 +461,6 @@ tag_developer_mode_flags() {
   fi
 }
 
-board_specific_wiping() {
-  # Do any board specific wiping here.
-  # board_factory_wipe.sh will be installed by the board overlay if necessary.
-  if [ "$FACTORY_WIPE" = "factory" ]; then
-    [ -n "${FACTORY_RETURN_AFTER_WIPING}" ] && exit
-    BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
-    if [ -x "${BOARD_WIPE}" ]; then
-      ${BOARD_WIPE} ${WIPE_OPTION}
-    fi
-  fi
-}
-
 main() {
   ensure_root_account
   redirect_log_start
@@ -506,8 +494,12 @@ main() {
   # Flush linux caches.
   sync
 
-  board_specific_wiping
   redirect_log_stop
+
+  # Factory wipe should stop here and return to the caller script.
+  if [ "${FACTORY_WIPE}" = "factory" ]; then
+    exit
+  fi
 
   /sbin/shutdown -r now
   sleep 1d  # Wait for shutdown
