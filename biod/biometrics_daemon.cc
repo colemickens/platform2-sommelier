@@ -273,9 +273,7 @@ bool BiometricWrapper::StartEnroll(brillo::ErrorPtr* error,
 
 bool BiometricWrapper::GetEnrollments(brillo::ErrorPtr* error,
                                       std::vector<ObjectPath>* out) {
-  std::vector<std::unique_ptr<Biometric::Enrollment>> enrollments =
-      biometric_->GetEnrollments();
-  out->resize(enrollments.size());
+  out->resize(enrollments_.size());
   std::transform(enrollments_.begin(),
                  enrollments_.end(),
                  out->begin(),
