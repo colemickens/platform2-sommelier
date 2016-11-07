@@ -29,7 +29,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
         initial_backlight_level_(50),
         pass_light_sensor_(true),
         initial_als_lux_(0),
-        initial_tablet_mode_(TABLET_MODE_UNSUPPORTED),
+        initial_tablet_mode_(TabletMode::UNSUPPORTED),
         als_steps_pref_("20.0 -1 50\n50.0 35 75\n75.0 60 -1"),
         user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
         no_als_brightness_pref_(40.0),
@@ -138,7 +138,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   user_steps_pref_ = "0.0\n100.0";
   Init();
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   light_sensor_.NotifyObservers();
   ASSERT_EQ(20, backlight_.current_level());
 
@@ -172,12 +172,12 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
             backlight_.current_interval().InMilliseconds());
 
   // Fullscreen video should be ignored when the user isn't logged in.
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(20, backlight_.current_level());
 
   // It should also be ignored after the brightness has been set by the user.
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
@@ -234,7 +234,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   EXPECT_EQ(2, controller_.GetNumAmbientLightSensorAdjustments());
 
   // The count should be reset after a new session starts.
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 }
 
@@ -395,7 +395,7 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
 
   // The count should be reset after a new session starts.
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());
 }
 
@@ -469,20 +469,20 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
   light_sensor_.NotifyObservers();
 
   display_backlight_controller_.NotifyObservers(
-      10.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      10.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_EQ(50, backlight_.current_level());
 
   // When the display backlight's brightness goes to zero while the
   // keyboard backlight is using an ambient-light-derived brightness, the
   // keyboard backlight should be turned off automatically.
   display_backlight_controller_.NotifyObservers(
-      0.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 
   display_backlight_controller_.NotifyObservers(
-      20.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      20.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_EQ(50, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -492,7 +492,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(100, backlight_.current_level());
   display_backlight_controller_.NotifyObservers(
-      0.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_EQ(100, backlight_.current_level());
 }
 
@@ -503,7 +503,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   keep_on_ms_pref_ = 30000;
   keep_on_during_video_ms_pref_ = 3000;
   Init();
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   light_sensor_.NotifyObservers();
 
   // The backlight should initially be off since the user isn't hovering.
@@ -649,7 +649,7 @@ TEST_F(KeyboardBacklightControllerTest, PreemptTransitionForShutdown) {
   // Notify the keyboard controller that the display has been turned off (as
   // happens when shutting down).
   display_backlight_controller_.NotifyObservers(
-      0.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      0.0, BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -669,20 +669,20 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenInTabletMode) {
   initial_backlight_level_ = 100;
   no_als_brightness_pref_ = 100.0;
   pass_light_sensor_ = false;
-  initial_tablet_mode_ = TABLET_MODE_ON;
+  initial_tablet_mode_ = TabletMode::ON;
   Init();
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 
   // It should quickly turn on when the device leaves tablet mode.
-  controller_.HandleTabletModeChange(TABLET_MODE_OFF);
+  controller_.HandleTabletModeChange(TabletMode::OFF);
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 
   // Going back to tablet mode should turn the backlight off again.
-  controller_.HandleTabletModeChange(TABLET_MODE_ON);
+  controller_.HandleTabletModeChange(TabletMode::ON);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());

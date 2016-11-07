@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_enumerator.h>
@@ -462,7 +463,8 @@ PowerStatus PowerSupply::GetPowerStatus() const {
 }
 
 bool PowerSupply::RefreshImmediately() {
-  return PerformUpdate(UPDATE_UNCONDITIONALLY, NOTIFY_ASYNCHRONOUSLY);
+  return PerformUpdate(UpdatePolicy::UNCONDITIONALLY,
+                       NotifyPolicy::ASYNCHRONOUSLY);
 }
 
 void PowerSupply::SetSuspended(bool suspended) {
@@ -478,7 +480,7 @@ void PowerSupply::SetSuspended(bool suspended) {
     DeferBatterySampling(battery_stabilized_after_resume_delay_);
     charge_samples_->Clear();
     current_samples_on_line_power_->Clear();
-    PerformUpdate(UPDATE_UNCONDITIONALLY, NOTIFY_ASYNCHRONOUSLY);
+    PerformUpdate(UpdatePolicy::UNCONDITIONALLY, NotifyPolicy::ASYNCHRONOUSLY);
   }
 }
 
@@ -508,8 +510,10 @@ void PowerSupply::OnUdevEvent(const std::string& subsystem,
   // Bail out of the update if the available power sources didn't actually
   // change to avoid recording new samples and updating battery estimates in
   // response to spurious udev events (see http://crosbug.com/p/37403).
-  if (!is_suspended_)
-    PerformUpdate(UPDATE_ONLY_IF_STATE_CHANGED, NOTIFY_SYNCHRONOUSLY);
+  if (!is_suspended_) {
+    PerformUpdate(UpdatePolicy::ONLY_IF_STATE_CHANGED,
+                  NotifyPolicy::SYNCHRONOUSLY);
+  }
 }
 
 std::string PowerSupply::GetIdForPath(const base::FilePath& path) const {
@@ -618,7 +622,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
 
   // Bail out before recording charge and current samples if this was a spurious
   // update request.
-  if (policy == UPDATE_ONLY_IF_STATE_CHANGED &&
+  if (policy == UpdatePolicy::ONLY_IF_STATE_CHANGED &&
       power_status_initialized_ &&
       status.external_power == power_status_.external_power &&
       status.battery_state == power_status_.battery_state &&
@@ -1004,7 +1008,7 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   if (!is_suspended_)
     SchedulePoll();
   if (success) {
-    if (notify_policy == NOTIFY_SYNCHRONOUSLY) {
+    if (notify_policy == NotifyPolicy::SYNCHRONOUSLY) {
       NotifyObservers();
     } else {
       notify_observers_task_.Reset(
@@ -1032,7 +1036,7 @@ void PowerSupply::SchedulePoll() {
 
 void PowerSupply::HandlePollTimeout() {
   current_poll_delay_for_testing_ = base::TimeDelta();
-  PerformUpdate(UPDATE_UNCONDITIONALLY, NOTIFY_SYNCHRONOUSLY);
+  PerformUpdate(UpdatePolicy::UNCONDITIONALLY, NotifyPolicy::SYNCHRONOUSLY);
 }
 
 void PowerSupply::NotifyObservers() {

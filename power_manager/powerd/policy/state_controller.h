@@ -171,7 +171,7 @@ class StateController : public PrefsObserver {
 
   // These correspond to the identically-named values in the
   // PowerManagementPolicy_Action enum.
-  enum Action {
+  enum class Action {
     SUSPEND,
     STOP_SESSION,
     SHUT_DOWN,
@@ -203,8 +203,8 @@ class StateController : public PrefsObserver {
   // Is the system currently in "docked mode", where it remains awake while
   // the lid is closed because an external display is connected?
   bool in_docked_mode() {
-    return allow_docked_mode_ && display_mode_ == DISPLAY_PRESENTATION &&
-        lid_state_ == LID_CLOSED;
+    return allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
+        lid_state_ == LidState::CLOSED;
   }
 
   // Is StateController currently waiting for the display mode and policy to be
@@ -217,7 +217,7 @@ class StateController : public PrefsObserver {
   // waiting for user activity to be seen during the current session?
   bool waiting_for_initial_user_activity() const {
     return wait_for_initial_user_activity_ &&
-        session_state_ == SESSION_STARTED &&
+        session_state_ == SessionState::STARTED &&
         !saw_user_activity_during_current_session_;
   }
 

@@ -10,8 +10,6 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <memory>
-
 #include <base/callback.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -66,7 +64,7 @@ bool GetLidStateFromEvent(const input_event& event, LidState* state_out) {
   if (event.type != EV_SW || event.code != SW_LID)
     return false;
 
-  *state_out = event.value == 1 ? LID_CLOSED : LID_OPEN;
+  *state_out = event.value == 1 ? LidState::CLOSED : LidState::OPEN;
   return true;
 }
 
@@ -77,7 +75,7 @@ bool GetTabletModeFromEvent(const input_event& event,
   if (event.type != EV_SW || event.code != SW_TABLET_MODE)
     return false;
 
-  *mode_out = event.value == 1 ? TABLET_MODE_ON : TABLET_MODE_OFF;
+  *mode_out = event.value == 1 ? TabletMode::ON : TabletMode::OFF;
   return true;
 }
 
@@ -89,10 +87,17 @@ bool GetPowerButtonStateFromEvent(const input_event& event,
     return false;
 
   switch (event.value) {
-    case 0: *state_out = BUTTON_UP;      break;
-    case 1: *state_out = BUTTON_DOWN;    break;
-    case 2: *state_out = BUTTON_REPEAT;  break;
-    default: LOG(ERROR) << "Unhandled button state " << event.value;
+    case 0:
+      *state_out = ButtonState::UP;
+      break;
+    case 1:
+      *state_out = ButtonState::DOWN;
+      break;
+    case 2:
+      *state_out = ButtonState::REPEAT;
+      break;
+    default:
+      LOG(ERROR) << "Unhandled button state " << event.value;
   }
   return true;
 }
@@ -110,8 +115,8 @@ InputWatcher::InputWatcher()
       tablet_mode_device_(nullptr),
       hover_device_(nullptr),
       use_lid_(true),
-      lid_state_(LID_OPEN),
-      tablet_mode_(TABLET_MODE_UNSUPPORTED),
+      lid_state_(LidState::OPEN),
+      tablet_mode_(TabletMode::UNSUPPORTED),
       detect_hover_(false),
       hovering_(false),
       current_multitouch_slot_(0),
@@ -140,7 +145,7 @@ bool InputWatcher::Init(
 
   prefs->GetBool(kUseLidPref, &use_lid_);
   if (!use_lid_)
-    lid_state_ = LID_NOT_PRESENT;
+    lid_state_ = LidState::NOT_PRESENT;
 
   bool legacy_power_button = false;
   if (prefs->GetBool(kLegacyPowerButtonPref, &legacy_power_button) &&
@@ -182,7 +187,7 @@ void InputWatcher::RemoveObserver(InputObserver* observer) {
 
 LidState InputWatcher::QueryLidState() {
   if (!lid_device_)
-    return LID_NOT_PRESENT;
+    return LidState::NOT_PRESENT;
 
   const uint32_t device_types = GetDeviceTypes(lid_device_);
   while (true) {
@@ -275,9 +280,9 @@ void InputWatcher::OnUdevEvent(const std::string& subsystem,
   DCHECK_EQ(subsystem, kInputUdevSubsystem);
   int input_num = -1;
   if (GetInputNumber(sysname, &input_num)) {
-    if (action == UDEV_ACTION_ADD)
+    if (action == UdevAction::ADD)
       HandleAddedInput(sysname, input_num);
-    else if (action == UDEV_ACTION_REMOVE)
+    else if (action == UdevAction::REMOVE)
       HandleRemovedInput(input_num);
   }
 }
@@ -317,7 +322,7 @@ void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
 
 void InputWatcher::ProcessEvent(const input_event& event,
                                 uint32_t device_types) {
-  LidState lid_state = LID_OPEN;
+  LidState lid_state = LidState::OPEN;
   if ((device_types & DEVICE_LID_SWITCH) &&
       GetLidStateFromEvent(event, &lid_state)) {
     VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
@@ -325,7 +330,7 @@ void InputWatcher::ProcessEvent(const input_event& event,
     FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
   }
 
-  TabletMode tablet_mode = TABLET_MODE_OFF;
+  TabletMode tablet_mode = TabletMode::OFF;
   if (device_types & DEVICE_TABLET_MODE_SWITCH &&
       GetTabletModeFromEvent(event, &tablet_mode)) {
     tablet_mode_ = tablet_mode;
@@ -335,7 +340,7 @@ void InputWatcher::ProcessEvent(const input_event& event,
                       OnTabletModeEvent(tablet_mode));
   }
 
-  ButtonState button_state = BUTTON_DOWN;
+  ButtonState button_state = ButtonState::DOWN;
   if ((device_types & DEVICE_POWER_BUTTON) &&
       GetPowerButtonStateFromEvent(event, &button_state)) {
     VLOG(1) << "Notifying observers about power button "

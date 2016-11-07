@@ -25,8 +25,8 @@ class WakeupControllerTest : public ::testing::Test {
  public:
   WakeupControllerTest()
       : default_allow_docked_mode_(true),
-        initial_lid_state_(LID_OPEN),
-        initial_display_mode_(DISPLAY_NORMAL) {
+        initial_lid_state_(LidState::OPEN),
+        initial_display_mode_(DisplayMode::NORMAL) {
   }
 
  protected:
@@ -112,7 +112,7 @@ TEST_F(WakeupControllerTest, DisableWakeupWhenClosed) {
   EXPECT_TRUE(GetAcpiWakeup("TPAD"));
 
   // When the lid is closed, wakeup should be disabled.
-  wakeup_controller_.SetLidState(LID_CLOSED);
+  wakeup_controller_.SetLidState(LidState::CLOSED);
   EXPECT_EQ(WakeupController::kDisabled,
             GetSysattr(kSyspath0, WakeupController::kPowerWakeup));
   EXPECT_FALSE(GetAcpiWakeup(WakeupController::kTPAD));
@@ -144,11 +144,11 @@ TEST_F(WakeupControllerTest, ConfigureInhibit) {
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When the lid is closed, inhibit should be on.
-  wakeup_controller_.SetLidState(LID_CLOSED);
+  wakeup_controller_.SetLidState(LidState::CLOSED);
   EXPECT_EQ("1", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When the lid is open, inhibit should be off again.
-  wakeup_controller_.SetLidState(LID_OPEN);
+  wakeup_controller_.SetLidState(LidState::OPEN);
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 }
 
@@ -159,18 +159,18 @@ TEST_F(WakeupControllerTest, InhibitDocking) {
                          WakeupController::kTagInhibit,
                          WakeupController::kTagUsableWhenLaptop,
                          WakeupController::kTagUsableWhenDocked));
-  initial_display_mode_ = DISPLAY_PRESENTATION;
+  initial_display_mode_ = DisplayMode::PRESENTATION;
   InitWakeupController();
 
   // In laptop mode, inhibit should be off.
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When the lid is closed, inhibit should remain off.
-  wakeup_controller_.SetLidState(LID_CLOSED);
+  wakeup_controller_.SetLidState(LidState::CLOSED);
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When the lid is open, inhibit should still be off.
-  wakeup_controller_.SetLidState(LID_OPEN);
+  wakeup_controller_.SetLidState(LidState::OPEN);
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 }
 
@@ -182,7 +182,7 @@ TEST_F(WakeupControllerTest, InhibitDockingDisallowed) {
                          WakeupController::kTagUsableWhenLaptop,
                          WakeupController::kTagUsableWhenDocked));
   default_allow_docked_mode_ = false;
-  initial_display_mode_ = DISPLAY_PRESENTATION;
+  initial_display_mode_ = DisplayMode::PRESENTATION;
   InitWakeupController();
 
   // In laptop mode, inhibit should be off.
@@ -190,11 +190,11 @@ TEST_F(WakeupControllerTest, InhibitDockingDisallowed) {
 
   // When the lid is closed, inhibit should be on since docking is disallowed,
   // even though the device supports it.
-  wakeup_controller_.SetLidState(LID_CLOSED);
+  wakeup_controller_.SetLidState(LidState::CLOSED);
   EXPECT_EQ("1", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When the lid is open, inhibit should be off again.
-  wakeup_controller_.SetLidState(LID_OPEN);
+  wakeup_controller_.SetLidState(LidState::OPEN);
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 }
 
@@ -205,7 +205,7 @@ TEST_F(WakeupControllerTest, SetDisplayModeExternalInput) {
                          WakeupController::kTagInhibit,
                          WakeupController::kTagUsableWhenLaptop,
                          WakeupController::kTagUsableWhenDocked));
-  initial_lid_state_ = LID_CLOSED;
+  initial_lid_state_ = LidState::CLOSED;
   InitWakeupController();
 
   // When the lid is closed with no external display, external input devices
@@ -213,11 +213,11 @@ TEST_F(WakeupControllerTest, SetDisplayModeExternalInput) {
   EXPECT_EQ("1", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When an external display is attached, device should be un-inhibited.
-  wakeup_controller_.SetDisplayMode(DISPLAY_PRESENTATION);
+  wakeup_controller_.SetDisplayMode(DisplayMode::PRESENTATION);
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When external display goes away, input should be inhibited again.
-  wakeup_controller_.SetDisplayMode(DISPLAY_NORMAL);
+  wakeup_controller_.SetDisplayMode(DisplayMode::NORMAL);
   EXPECT_EQ("1", GetSysattr(kSyspath0, WakeupController::kInhibited));
 }
 
@@ -234,15 +234,15 @@ TEST_F(WakeupControllerTest, SetDisplayModeInternalInput) {
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When an external display is attached, device should remain uninhibited.
-  wakeup_controller_.SetDisplayMode(DISPLAY_PRESENTATION);
+  wakeup_controller_.SetDisplayMode(DisplayMode::PRESENTATION);
   EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
   // When the lid is closed, internal input should be inhibited regardless
   // of display mode.
-  wakeup_controller_.SetLidState(LID_CLOSED);
+  wakeup_controller_.SetLidState(LidState::CLOSED);
   EXPECT_EQ("1", GetSysattr(kSyspath0, WakeupController::kInhibited));
 
-  wakeup_controller_.SetDisplayMode(DISPLAY_NORMAL);
+  wakeup_controller_.SetDisplayMode(DisplayMode::NORMAL);
   EXPECT_EQ("1", GetSysattr(kSyspath0, WakeupController::kInhibited));
 }
 
@@ -250,32 +250,32 @@ TEST_F(WakeupControllerTest, AllowEcWakeupAsTabletWhenDisplayOff) {
   InitWakeupController();
 
   // Start in presentation mode at full brightness.
-  wakeup_controller_.SetDisplayMode(DISPLAY_PRESENTATION);
+  wakeup_controller_.SetDisplayMode(DisplayMode::PRESENTATION);
   backlight_controller_.NotifyObservers(100.0,
-      policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
 
   // EC wakeups should be inhibited in tablet mode while backlight is on.
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // Automated display off should not trigger a mode change.
   backlight_controller_.NotifyObservers(0.0,
-      policy::BacklightController::BRIGHTNESS_CHANGE_AUTOMATED);
+      policy::BacklightController::BrightnessChangeCause::AUTOMATED);
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // ...but manual should.
   backlight_controller_.NotifyObservers(0.0,
-      policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_TRUE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // Leaving presentation mode should disallow it.
-  wakeup_controller_.SetDisplayMode(DISPLAY_NORMAL);
+  wakeup_controller_.SetDisplayMode(DisplayMode::NORMAL);
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
-  wakeup_controller_.SetDisplayMode(DISPLAY_PRESENTATION);
+  wakeup_controller_.SetDisplayMode(DisplayMode::PRESENTATION);
   EXPECT_TRUE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 
   // As should raising the brightness, even if automatic.
   backlight_controller_.NotifyObservers(10.0,
-      policy::BacklightController::BRIGHTNESS_CHANGE_AUTOMATED);
+      policy::BacklightController::BrightnessChangeCause::AUTOMATED);
   EXPECT_FALSE(ec_wakeup_helper_.IsWakeupAsTabletAllowed());
 }
 

@@ -24,20 +24,20 @@ class BacklightControllerObserver;
 class BacklightController {
  public:
   // Possible causes of changes to the backlight brightness level.
-  enum BrightnessChangeCause {
+  enum class BrightnessChangeCause {
     // The brightness was changed automatically (in response to e.g. an idle
     // transition or AC getting plugged or unplugged).
-    BRIGHTNESS_CHANGE_AUTOMATED,
+    AUTOMATED,
 
     // The user requested that the brightness be changed.
-    BRIGHTNESS_CHANGE_USER_INITIATED,
+    USER_INITIATED,
   };
 
   // Different ways to transition between brightness levels.
-  enum TransitionStyle {
-    TRANSITION_INSTANT,
-    TRANSITION_FAST,
-    TRANSITION_SLOW,
+  enum class Transition {
+    INSTANT,
+    FAST,
+    SLOW,
   };
 
   BacklightController() {}
@@ -118,7 +118,7 @@ class BacklightController {
   // immediately (e.g. the screen may be dimmed or turned off).  Returns
   // true if the brightness was changed.
   virtual bool SetUserBrightnessPercent(double percent,
-                                        TransitionStyle style) = 0;
+                                        Transition transition) = 0;
 
   // Increases the brightness level of the backlight by one step in
   // response to a user request.  Returns true if the brightness was

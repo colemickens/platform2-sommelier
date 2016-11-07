@@ -93,7 +93,7 @@ class KeyboardBacklightController
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
-  bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
+  bool SetUserBrightnessPercent(double percent, Transition transition) override;
   bool IncreaseUserBrightness() override;
   bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
@@ -132,12 +132,12 @@ class KeyboardBacklightController
   // whenever the state changes. |transition| and |cause| are passed to
   // ApplyBrightnessPercent(). Returns true if the brightness was changed and
   // false otherwise.
-  bool UpdateState(TransitionStyle transition, BrightnessChangeCause cause);
+  bool UpdateState(Transition transition, BrightnessChangeCause cause);
 
   // Sets the backlight's brightness to |percent| over |transition|.
   // Returns true and notifies observers if the brightness was changed.
   bool ApplyBrightnessPercent(double percent,
-                              TransitionStyle transition,
+                              Transition transition,
                               BrightnessChangeCause cause);
 
   // Logs that hovering stopped at |last_hover_time_|. Called by
@@ -169,8 +169,8 @@ class KeyboardBacklightController
   // otherwise. This has no effect if |supports_hover_| is set.
   bool turn_on_for_user_activity_ = false;
 
-  SessionState session_state_ = SESSION_STOPPED;
-  TabletMode tablet_mode_ = TABLET_MODE_UNSUPPORTED;
+  SessionState session_state_ = SessionState::STOPPED;
+  TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
 
   bool dimmed_for_inactivity_ = false;
   bool off_for_inactivity_ = false;

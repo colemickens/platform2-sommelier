@@ -26,9 +26,9 @@ namespace policy {
 // and makes decisions about when backlight brightness should be adjusted.
 class AmbientLightHandler : public system::AmbientLightObserver {
  public:
-  enum BrightnessChangeCause {
-    CAUSED_BY_AMBIENT_LIGHT = 0,
-    CAUSED_BY_POWER_SOURCE,
+  enum class BrightnessChangeCause {
+    AMBIENT_LIGHT = 0,
+    POWER_SOURCE,
   };
 
   // Interface for classes that perform actions on behalf of
@@ -108,16 +108,16 @@ class AmbientLightHandler : public system::AmbientLightObserver {
     int increase_lux_threshold;
   };
 
-  enum HysteresisState {
+  enum class HysteresisState {
     // The most-recent lux level matched |lux_level_|.
-    HYSTERESIS_STABLE,
+    STABLE,
     // The most-recent lux level was less than |lux_level_|.
-    HYSTERESIS_DECREASING,
+    DECREASING,
     // The most-recent lux level was greater than |lux_level_|.
-    HYSTERESIS_INCREASING,
+    INCREASING,
     // The brightness should be adjusted immediately after the next sensor
     // reading.
-    HYSTERESIS_IMMEDIATE,
+    IMMEDIATE,
   };
 
   // Returns the current target backlight brightness percent based on
@@ -134,9 +134,8 @@ class AmbientLightHandler : public system::AmbientLightObserver {
 
   HysteresisState hysteresis_state_;
 
-  // If |hysteresis_state_| is HYSTERESIS_DECREASING or
-  // HYSTERESIS_INCREASING, number of readings that have been received in
-  // the current state.
+  // If |hysteresis_state_| is DECREASING or INCREASING, number of readings
+  // that have been received in the current state.
   int hysteresis_count_;
 
   // Brightness step data read from prefs. It is assumed that this data is

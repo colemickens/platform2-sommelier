@@ -48,14 +48,14 @@ const double kDefaultLevelToPercentExponent = 0.5;
 const double kMinLevelsForNonLinearMapping = 100;
 
 // Returns the animation duration for |transition|.
-base::TimeDelta TransitionStyleToTimeDelta(
-    BacklightController::TransitionStyle transition) {
+base::TimeDelta TransitionToTimeDelta(
+    BacklightController::Transition transition) {
   switch (transition) {
-    case BacklightController::TRANSITION_INSTANT:
+    case BacklightController::Transition::INSTANT:
       return base::TimeDelta();
-    case BacklightController::TRANSITION_FAST:
+    case BacklightController::Transition::FAST:
       return base::TimeDelta::FromMilliseconds(kFastBacklightTransitionMs);
-    case BacklightController::TRANSITION_SLOW:
+    case BacklightController::Transition::SLOW:
       return base::TimeDelta::FromMilliseconds(kSlowBacklightTransitionMs);
   }
   NOTREACHED();
@@ -268,7 +268,7 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   // Ensure that the screen isn't dimmed in response to a transition to AC
   // or brightened in response to a transition to battery.
   if (got_power_source_) {
-    const bool on_ac = source == POWER_AC;
+    const bool on_ac = source == PowerSource::AC;
     const bool battery_exceeds_ac =
         battery_explicit_brightness_percent_ > ac_explicit_brightness_percent_;
     if (on_ac && battery_exceeds_ac)
@@ -291,13 +291,13 @@ void InternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {
   display_mode_ = mode;
 
   // If there's no external display now, make sure that the panel is on.
-  if (display_mode_ == DISPLAY_NORMAL)
+  if (display_mode_ == DisplayMode::NORMAL)
     EnsureUserBrightnessIsNonzero();
 }
 
 void InternalBacklightController::HandleSessionStateChange(SessionState state) {
   EnsureUserBrightnessIsNonzero();
-  if (state == SESSION_STARTED) {
+  if (state == SessionState::STARTED) {
     als_adjustment_count_ = 0;
     user_adjustment_count_ = 0;
   }
@@ -348,7 +348,8 @@ void InternalBacklightController::HandlePolicyChange(
   using_policy_brightness_ = got_policy_brightness;
   if (got_policy_brightness) {
     SetExplicitBrightnessPercent(ac_brightness, battery_brightness,
-                                 TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
+                                 Transition::FAST,
+                                 BrightnessChangeCause::AUTOMATED);
   }
   force_nonzero_brightness_for_user_activity_ =
       policy.has_force_nonzero_brightness_for_user_activity() ?
@@ -430,7 +431,7 @@ bool InternalBacklightController::GetBrightnessPercent(double* percent) {
 
 bool InternalBacklightController::SetUserBrightnessPercent(
     double percent,
-    TransitionStyle style) {
+    Transition transition) {
   LOG(INFO) << "Got user-triggered request to set brightness to "
             << percent << "%";
   user_adjustment_count_++;
@@ -438,8 +439,8 @@ bool InternalBacklightController::SetUserBrightnessPercent(
 
   // When the user explicitly requests a specific brightness level, use it for
   // both AC and battery power.
-  return SetExplicitBrightnessPercent(percent, percent, style,
-                                      BRIGHTNESS_CHANGE_USER_INITIATED);
+  return SetExplicitBrightnessPercent(percent, percent, transition,
+                                      BrightnessChangeCause::USER_INITIATED);
 }
 
 bool InternalBacklightController::IncreaseUserBrightness() {
@@ -448,7 +449,7 @@ bool InternalBacklightController::IncreaseUserBrightness() {
       (old_percent < kMinVisiblePercent - kEpsilon) ? kMinVisiblePercent :
       ClampPercentToVisibleRange(
           SnapBrightnessPercentToNearestStep(old_percent + step_percent_));
-  return SetUserBrightnessPercent(new_percent, TRANSITION_FAST);
+  return SetUserBrightnessPercent(new_percent, Transition::FAST);
 }
 
 bool InternalBacklightController::DecreaseUserBrightness(bool allow_off) {
@@ -464,7 +465,7 @@ bool InternalBacklightController::DecreaseUserBrightness(bool allow_off) {
     return false;
   }
 
-  return SetUserBrightnessPercent(new_percent, TRANSITION_FAST);
+  return SetUserBrightnessPercent(new_percent, Transition::FAST);
 }
 
 int InternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
@@ -487,12 +488,15 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
       // reading has been received, so it may need to be called at this point.
       UpdateState();
     } else {
-      TransitionStyle transition =
-          cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
-          TRANSITION_SLOW : TRANSITION_FAST;
-      if (UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED) &&
-          cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT)
+      Transition transition =
+          cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT
+              ? Transition::SLOW
+              : Transition::FAST;
+      if (UpdateUndimmedBrightness(transition,
+                                   BrightnessChangeCause::AUTOMATED) &&
+          cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT) {
         als_adjustment_count_++;
+      }
     }
   }
 }
@@ -503,7 +507,7 @@ double InternalBacklightController::SnapBrightnessPercentToNearestStep(
 }
 
 double InternalBacklightController::GetExplicitBrightnessPercent() const {
-  return power_source_ == POWER_AC ? ac_explicit_brightness_percent_ :
+  return power_source_ == PowerSource::AC ? ac_explicit_brightness_percent_ :
       battery_explicit_brightness_percent_;
 }
 
@@ -520,26 +524,27 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
   // connected since doing so may result in the desktop being resized. Also
   // don't turn it on if a policy has forced the brightness to zero.
   if (force_nonzero_brightness_for_user_activity_ &&
-      display_mode_ == DISPLAY_NORMAL &&
+      display_mode_ == DisplayMode::NORMAL &&
       GetExplicitBrightnessPercent() < kMinVisiblePercent &&
       !using_policy_brightness_ &&
       !use_ambient_light_) {
     SetExplicitBrightnessPercent(kMinVisiblePercent, kMinVisiblePercent,
-                                 TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
+                                 Transition::FAST,
+                                 BrightnessChangeCause::AUTOMATED);
   }
 }
 
 bool InternalBacklightController::SetExplicitBrightnessPercent(
     double ac_percent,
     double battery_percent,
-    TransitionStyle style,
+    Transition transition,
     BrightnessChangeCause cause) {
   use_ambient_light_ = false;
   ac_explicit_brightness_percent_ = ac_percent <= kEpsilon ? 0.0 :
       ClampPercentToVisibleRange(ac_percent);
   battery_explicit_brightness_percent_ = battery_percent <= kEpsilon ? 0.0 :
       ClampPercentToVisibleRange(battery_percent);
-  return UpdateUndimmedBrightness(style, cause);
+  return UpdateUndimmedBrightness(transition, cause);
 }
 
 void InternalBacklightController::UpdateState() {
@@ -561,11 +566,11 @@ void InternalBacklightController::UpdateState() {
     return;
 
   double brightness_percent = 100.0;
-  TransitionStyle brightness_transition = TRANSITION_INSTANT;
+  Transition brightness_transition = Transition::INSTANT;
   double resume_percent = -1.0;
 
   chromeos::DisplayPowerState display_power = chromeos::DISPLAY_POWER_ALL_ON;
-  TransitionStyle display_transition = TRANSITION_INSTANT;
+  Transition display_transition = Transition::INSTANT;
   bool set_display_power = true;
 
   if (shutting_down_ || forced_off_) {
@@ -578,9 +583,9 @@ void InternalBacklightController::UpdateState() {
     set_display_power = false;
   } else if (off_for_inactivity_) {
     brightness_percent = 0.0;
-    brightness_transition = TRANSITION_FAST;
+    brightness_transition = Transition::FAST;
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
-    display_transition = TRANSITION_FAST;
+    display_transition = Transition::FAST;
   } else if (docked_) {
     brightness_percent = 0.0;
     display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
@@ -590,8 +595,8 @@ void InternalBacklightController::UpdateState() {
     const bool turning_on =
         display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
         current_level_ == 0;
-    brightness_transition = turning_on ? TRANSITION_INSTANT :
-        (already_set_initial_state_ ? TRANSITION_FAST : TRANSITION_SLOW);
+    brightness_transition = turning_on ? Transition::INSTANT :
+        (already_set_initial_state_ ? Transition::FAST : Transition::SLOW);
 
     // Keep the external display(s) on if the brightness was explicitly set to
     // 0.
@@ -603,8 +608,7 @@ void InternalBacklightController::UpdateState() {
   if (set_display_power) {
     // For instant transitions, this call blocks until Chrome confirms that it
     // has made the change.
-    SetDisplayPower(display_power,
-                    TransitionStyleToTimeDelta(display_transition));
+    SetDisplayPower(display_power, TransitionToTimeDelta(display_transition));
   }
 
   // Apply the brightness after toggling the display power. If we do it the
@@ -614,7 +618,7 @@ void InternalBacklightController::UpdateState() {
   // previous value instead. See chrome-os-partner:31186 and :35662 for more
   // details.
   ApplyBrightnessPercent(brightness_percent, brightness_transition,
-                         BRIGHTNESS_CHANGE_AUTOMATED);
+                         BrightnessChangeCause::AUTOMATED);
 
   if (resume_percent >= 0.0)
     ApplyResumeBrightnessPercent(resume_percent);
@@ -623,7 +627,7 @@ void InternalBacklightController::UpdateState() {
 }
 
 bool InternalBacklightController::UpdateUndimmedBrightness(
-    TransitionStyle style,
+    Transition transition,
     BrightnessChangeCause cause) {
   const double percent = GetUndimmedBrightnessPercent();
   if (suspended_)
@@ -634,7 +638,7 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
       dimmed_for_inactivity_)
     return false;
 
-  if (!ApplyBrightnessPercent(percent, style, cause))
+  if (!ApplyBrightnessPercent(percent, transition, cause))
     return false;
 
   if (percent <= kEpsilon) {
@@ -643,7 +647,7 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
     SetDisplayPower(
         chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
         docked_ ? base::TimeDelta() :
-        TransitionStyleToTimeDelta(style) + turn_off_screen_timeout_);
+        TransitionToTimeDelta(transition) + turn_off_screen_timeout_);
   } else {
     SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
   }
@@ -652,7 +656,7 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
 
 bool InternalBacklightController::ApplyBrightnessPercent(
     double percent,
-    TransitionStyle transition,
+    Transition transition,
     BrightnessChangeCause cause) {
   int64_t level = PercentToLevel(percent);
   if (level == current_level_ && !backlight_->TransitionInProgress())
@@ -664,9 +668,9 @@ bool InternalBacklightController::ApplyBrightnessPercent(
   bool ending_below_min_visible_level = level < min_visible_level_;
   if (instant_transitions_below_min_level_ &&
       starting_below_min_visible_level != ending_below_min_visible_level)
-    transition = TRANSITION_INSTANT;
+    transition = Transition::INSTANT;
 
-  base::TimeDelta interval = TransitionStyleToTimeDelta(transition);
+  base::TimeDelta interval = TransitionToTimeDelta(transition);
   LOG(INFO) << "Setting brightness to " << level << " (" << percent
             << "%) over " << interval.InMilliseconds() << " ms";
   if (!backlight_->SetBrightnessLevel(level, interval)) {

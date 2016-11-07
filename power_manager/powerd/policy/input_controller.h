@@ -52,7 +52,7 @@ class InputController : public system::InputObserver {
     virtual void HandleHoverStateChange(bool hovering) = 0;
 
     // Handles the device entering or leaving tablet mode.
-    // TABLET_MODE_UNSUPPORTED will never be passed.
+    // TabletMode::UNSUPPORTED will never be passed.
     virtual void HandleTabletModeChange(TabletMode mode) = 0;
 
     // Defers the inactivity timeout in response to VT2 being active (since

@@ -61,7 +61,7 @@ void ExternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
 void ExternalBacklightController::HandleSessionStateChange(
     SessionState state) {
-  if (state == SESSION_STARTED)
+  if (state == SessionState::STARTED)
     num_brightness_adjustments_in_session_ = 0;
 }
 
@@ -121,7 +121,7 @@ bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
 
 bool ExternalBacklightController::SetUserBrightnessPercent(
     double percent,
-    TransitionStyle style) {
+    Transition transition) {
   return false;
 }
 
@@ -180,7 +180,7 @@ void ExternalBacklightController::UpdateScreenPowerState() {
 void ExternalBacklightController::NotifyObservers() {
   FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
                     OnBrightnessChange(currently_off_ ? 0.0 : 100.0,
-                                       BRIGHTNESS_CHANGE_AUTOMATED, this));
+                                       BrightnessChangeCause::AUTOMATED, this));
 }
 
 void ExternalBacklightController::UpdateDisplays(

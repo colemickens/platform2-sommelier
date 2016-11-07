@@ -147,9 +147,9 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Passed to ShutDown() to specify whether the system should power off or
   // reboot.
-  enum ShutdownMode {
-    SHUTDOWN_MODE_POWER_OFF,
-    SHUTDOWN_MODE_REBOOT,
+  enum class ShutdownMode {
+    POWER_OFF,
+    REBOOT,
   };
 
   // Convenience method that returns true if |name| exists and is true.

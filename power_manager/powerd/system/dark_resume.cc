@@ -74,7 +74,7 @@ DarkResume::DarkResume()
       pm_test_delay_path_(kPMTestDelayPath),
       power_state_path_(kPowerStatePath),
       battery_shutdown_threshold_(0.0),
-      next_action_(SUSPEND) {
+      next_action_(Action::SUSPEND) {
 }
 
 DarkResume::~DarkResume() {
@@ -141,7 +141,7 @@ void DarkResume::GetActionForSuspendAttempt(Action* action,
   DCHECK(suspend_duration);
 
   if (!enabled_ || !power_supply_->RefreshImmediately()) {
-    *action = SUSPEND;
+    *action = Action::SUSPEND;
     *suspend_duration = base::TimeDelta();
     return;
   }
@@ -194,7 +194,8 @@ void DarkResume::UpdateNextAction() {
   }
 
   next_action_ = (battery < battery_shutdown_threshold_ && !line_power)
-      ? SHUT_DOWN : SUSPEND;
+                     ? Action::SHUT_DOWN
+                     : Action::SUSPEND;
 }
 
 void DarkResume::HandleSuccessfulResume() {

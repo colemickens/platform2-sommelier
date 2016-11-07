@@ -120,7 +120,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
 TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   default_min_visible_level_ = 100;
   default_als_steps_ = "50.0 -1 -1";
-  Init(POWER_BATTERY);
+  Init(PowerSource::BATTERY);
   ASSERT_EQ(default_min_visible_level_,
             PercentToLevel(InternalBacklightController::kMinVisiblePercent));
   const int64_t kAlsLevel = PercentToLevel(50.0);
@@ -171,7 +171,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   const double kMiddlePercent =
       kStep * InternalBacklightController::kMaxBrightnessSteps / 2;
   controller_->SetUserBrightnessPercent(
-      kMiddlePercent + 0.75 * kStep, BacklightController::TRANSITION_INSTANT);
+      kMiddlePercent + 0.75 * kStep, BacklightController::Transition::INSTANT);
   ASSERT_EQ(PercentToLevel(kMiddlePercent + 0.75 * kStep),
             backlight_.current_level());
   controller_->DecreaseUserBrightness(true);
@@ -180,7 +180,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   // Start at 1/4 of a step below the middle step. After an increase request,
   // the brightness should be snapped to one step above the middle step.
   controller_->SetUserBrightnessPercent(
-      kMiddlePercent - 0.25 * kStep, BacklightController::TRANSITION_INSTANT);
+      kMiddlePercent - 0.25 * kStep, BacklightController::Transition::INSTANT);
   ASSERT_EQ(PercentToLevel(kMiddlePercent - 0.25 * kStep),
             backlight_.current_level());
   controller_->IncreaseUserBrightness();
@@ -192,7 +192,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
 TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   default_min_visible_level_ = 100;
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
-  Init(POWER_BATTERY);
+  Init(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
 
   BacklightControllerObserverStub observer;
@@ -208,7 +208,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -218,7 +218,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::USER_INITIATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -228,7 +228,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::USER_INITIATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -236,11 +236,11 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   observer.Clear();
   const double kLowPercent = 40.0;
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kLowPercent, BacklightController::TRANSITION_INSTANT));
+      kLowPercent, BacklightController::Transition::INSTANT));
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::USER_INITIATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -250,7 +250,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -261,7 +261,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
 // level exposed by hardware.
 TEST_F(InternalBacklightControllerTest, MinBrightnessLevelMatchesMax) {
   default_min_visible_level_ = max_backlight_level_;
-  Init(POWER_AC);
+  Init(PowerSource::AC);
 
   // Decrease the brightness with allow_off=false.
   controller_->DecreaseUserBrightness(false /* allow_off */);
@@ -274,7 +274,7 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevelMatchesMax) {
 
 // Test the saved brightness level before and after suspend.
 TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   const int64_t initial_level = backlight_.current_level();
 
   // Test suspend and resume.  When suspending, the previously-current
@@ -330,7 +330,7 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
 // when a small range of levels is exposed by the hardware.
 TEST_F(InternalBacklightControllerTest, LinearMappingForSmallBacklightRange) {
   max_backlight_level_ = initial_backlight_level_ = 10;
-  Init(POWER_BATTERY);
+  Init(PowerSource::BATTERY);
 
   // The minimum visible level should use the bottom brightness step's
   // percentage, and above it, there should be a linear mapping between levels
@@ -348,7 +348,7 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
   // We should use a non-linear mapping that provides more granularity at
   // the bottom end when a large range is exposed.
   max_backlight_level_ = initial_backlight_level_ = 1000;
-  Init(POWER_BATTERY);
+  Init(PowerSource::BATTERY);
 
   EXPECT_EQ(0, PercentToLevel(0.0));
   EXPECT_LT(PercentToLevel(50.0), max_backlight_level_ / 2);
@@ -359,7 +359,7 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   initial_backlight_level_ = max_backlight_level_;
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   report_initial_als_reading_ = false;
-  Init(POWER_AC);
+  Init(PowerSource::AC);
 
   // The controller should leave the initial brightness unchanged before it's
   // received a reading from the ambient light sensor.
@@ -386,7 +386,7 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   EXPECT_EQ(1, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Check that the adjustment count is reset when a new session starts.
-  controller_->HandleSessionStateChange(SESSION_STARTED);
+  controller_->HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 }
 
@@ -395,20 +395,20 @@ TEST_F(InternalBacklightControllerTest, PowerSourceChangeNotReportedAsAmbient) {
   // while on AC and 50% while on battery.
   initial_backlight_level_ = max_backlight_level_;
   default_als_steps_ = "60.0 50.0 -1 -1";
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   ASSERT_EQ(PercentToLevel(60.0), backlight_.current_level());
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
   // The brightness should be updated after switching to battery power, but the
   // change shouldn't be reported as having been triggered by the ambient light
   // sensor.
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   ASSERT_EQ(PercentToLevel(50.0), backlight_.current_level());
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 }
 
 TEST_F(InternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
-  Init(POWER_AC);
+  Init(PowerSource::AC);
 
   // When the backlight controller is told that the system is shutting down, it
   // should turn off all displays.
@@ -426,29 +426,29 @@ TEST_F(InternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
 // Test that HandlePowerSourceChange() uses the same user-set brightness level
 // when the computer is plugged and unplugged.
 TEST_F(InternalBacklightControllerTest, TestPlugAndUnplug) {
-  Init(POWER_BATTERY);
+  Init(PowerSource::BATTERY);
 
   // A custom level set while using battery power should be used after switching
   // to AC.
   const double kFirstPercent = 40.0;
   EXPECT_TRUE(controller_->SetUserBrightnessPercent(
-      kFirstPercent, BacklightController::TRANSITION_INSTANT));
+      kFirstPercent, BacklightController::Transition::INSTANT));
   EXPECT_EQ(PercentToLevel(kFirstPercent), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
+  controller_->HandlePowerSourceChange(PowerSource::AC);
   EXPECT_EQ(PercentToLevel(kFirstPercent), backlight_.current_level());
 
   // Ditto for switching from AC to battery.
   const double kSecondPercent = 60.0;
   EXPECT_TRUE(controller_->SetUserBrightnessPercent(
-      kSecondPercent, BacklightController::TRANSITION_INSTANT));
+      kSecondPercent, BacklightController::Transition::INSTANT));
   EXPECT_EQ(PercentToLevel(kSecondPercent), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(kSecondPercent), backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, TestDimming) {
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   int64_t bottom_als_level = PercentToLevel(50.0);
   EXPECT_EQ(bottom_als_level, backlight_.current_level());
 
@@ -481,7 +481,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   EXPECT_EQ(dimmed_level, backlight_.current_level());
   const double kNewUserOffset = 67.0;
   EXPECT_FALSE(controller_->SetUserBrightnessPercent(
-      kNewUserOffset, BacklightController::TRANSITION_INSTANT));
+      kNewUserOffset, BacklightController::Transition::INSTANT));
   EXPECT_EQ(dimmed_level, backlight_.current_level());
 
   // After leaving the dimmed state, the updated user level should be used.
@@ -494,7 +494,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   // changed when dimming is requested.
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
       InternalBacklightController::kMinVisiblePercent,
-      BacklightController::TRANSITION_INSTANT));
+      BacklightController::Transition::INSTANT));
   int64_t new_undimmed_level = backlight_.current_level();
   ASSERT_LT(new_undimmed_level, dimmed_level);
   controller_->SetDimmedForInactivity(true);
@@ -503,14 +503,14 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
 
 TEST_F(InternalBacklightControllerTest, UserLevelOverridesAmbientLight) {
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
   EXPECT_EQ(0, controller_->GetNumUserAdjustments());
 
   const double kUserPercent = 80.0;
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kUserPercent, BacklightController::TRANSITION_INSTANT));
+      kUserPercent, BacklightController::Transition::INSTANT));
   EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
   EXPECT_EQ(1, controller_->GetNumUserAdjustments());
 
@@ -523,7 +523,7 @@ TEST_F(InternalBacklightControllerTest, UserLevelOverridesAmbientLight) {
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Starting a new session should reset the user adjustment count.
-  controller_->HandleSessionStateChange(SESSION_STARTED);
+  controller_->HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(0, controller_->GetNumUserAdjustments());
 }
 
@@ -533,11 +533,11 @@ TEST_F(InternalBacklightControllerTest, DeferInitialAdjustment) {
   report_initial_power_source_ = false;
   report_initial_als_reading_ = false;
   default_als_steps_ = "50.0 -1 -1";
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // Send the power source; the level still shouldn't change.
-  controller_->HandlePowerSourceChange(POWER_AC);
+  controller_->HandlePowerSourceChange(PowerSource::AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // After the ambient light level is also received, the backlight should
@@ -554,15 +554,15 @@ TEST_F(InternalBacklightControllerTest, NoAmbientLightSensor) {
   report_initial_als_reading_ = false;
   default_no_als_ac_brightness_ = "95.0";
   default_no_als_battery_brightness_ = "75.0";
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // The brightness percentages from the "no ALS" prefs should be used as
   // starting points when there's no ALS.
-  controller_->HandlePowerSourceChange(POWER_AC);
+  controller_->HandlePowerSourceChange(PowerSource::AC);
   EXPECT_EQ(PercentToLevel(95.0), backlight_.current_level());
 
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
 }
 
@@ -574,46 +574,46 @@ TEST_F(InternalBacklightControllerTest, NoAmbientLightSensorMultipleDefaults) {
   default_no_als_ac_brightness_ = "40.0 300\n50.0 400\n30.0";
   default_no_als_battery_brightness_ = "35.0 400\n25.0 300\n15.0\n";
 
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(PercentToLevel(30.0), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(15.0), backlight_.current_level());
 
   prefs_.SetInt64(kInternalBacklightMaxNitsPref, 300);
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(PercentToLevel(40.0), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(25.0), backlight_.current_level());
 
   prefs_.SetInt64(kInternalBacklightMaxNitsPref, 400);
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(35.0), backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   // Set the brightness to zero and check that it's increased to the
   // minimum visible level when the session state changes.
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   const int kMinVisibleLevel =
       PercentToLevel(InternalBacklightController::kMinVisiblePercent);
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT));
+      0.0, BacklightController::Transition::INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
-  controller_->HandleSessionStateChange(SESSION_STARTED);
+  controller_->HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
   // Pressing the power button should also increase the brightness.
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT));
+      0.0, BacklightController::Transition::INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
   controller_->HandlePowerButtonPress();
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
   // Ditto for most user activity.
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT));
+      0.0, BacklightController::Transition::INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
@@ -621,14 +621,14 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
 
   // Both the explicit AC and battery brightness should have been updated
   // (http://crbug.com/507944).
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
 
   // User activity corresponding to brightness- or volume-related key presses
   // shouldn't increase the brightness, though.
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT));
+      0.0, BacklightController::Transition::INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
   controller_->HandleUserActivity(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS);
   EXPECT_EQ(0, backlight_.current_level());
@@ -644,9 +644,9 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   // Enter presentation mode.  The same actions that forced the backlight
   // on before shouldn't do anything now; turning the panel back on while a
   // second display is connected would resize the desktop.
-  controller_->HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  controller_->HandleDisplayModeChange(DisplayMode::PRESENTATION);
   ASSERT_EQ(0, backlight_.current_level());
-  controller_->HandleSessionStateChange(SESSION_STOPPED);
+  controller_->HandleSessionStateChange(SessionState::STOPPED);
   EXPECT_EQ(0, backlight_.current_level());
   controller_->HandlePowerButtonPress();
   EXPECT_EQ(0, backlight_.current_level());
@@ -654,7 +654,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   EXPECT_EQ(0, backlight_.current_level());
 
   // The backlight should be turned on after exiting presentation mode.
-  controller_->HandleDisplayModeChange(DISPLAY_NORMAL);
+  controller_->HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
   // Send a policy disabling the forcing behavior and check that the brightness
@@ -663,16 +663,16 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   policy.set_force_nonzero_brightness_for_user_activity(false);
   controller_->HandlePolicyChange(policy);
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT));
+      0.0, BacklightController::Transition::INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
-  controller_->HandleSessionStateChange(SESSION_STARTED);
+  controller_->HandleSessionStateChange(SessionState::STARTED);
   controller_->HandlePowerButtonPress();
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(0, backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, DockedMode) {
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   const int64_t initial_level = backlight_.current_level();
   ASSERT_GT(initial_level, 0);
 
@@ -716,9 +716,9 @@ TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
   // should avoid changing the backlight from its initial brightness.
   init_time_ = base::TimeTicks::FromInternalValue(1000);
   report_initial_als_reading_ = false;
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
+  controller_->HandlePowerSourceChange(PowerSource::AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // After the timeout has elapsed, state changes (like dimming due to
@@ -732,7 +732,7 @@ TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
 
 TEST_F(InternalBacklightControllerTest, UserAdjustmentBeforeAmbientLight) {
   report_initial_als_reading_ = false;
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   ASSERT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // Check that a decrease request actually decreases the brightness (i.e. the
@@ -747,7 +747,7 @@ TEST_F(InternalBacklightControllerTest,
        DockedNotificationReceivedBeforeAmbientLight) {
   // Send a docked-mode request before the first ambient light reading.
   report_initial_als_reading_ = false;
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   controller_->SetDocked(true);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
@@ -762,7 +762,7 @@ TEST_F(InternalBacklightControllerTest,
 
 TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   default_als_steps_ = "50.0 -1 200\n90.0 100 -1";
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   ASSERT_EQ(PercentToLevel(50.0), backlight_.current_level());
 
   BacklightControllerObserverStub observer;
@@ -777,7 +777,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -791,10 +791,10 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
 
   // The previously-set brightness should be used after switching to battery.
   observer.Clear();
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  controller_->HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(PercentToLevel(43.0), backlight_.current_level());
   ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
 
@@ -820,7 +820,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   policy.set_battery_brightness_percent(0.0);
   controller_->HandlePolicyChange(policy);
   EXPECT_EQ(0, backlight_.current_level());
-  controller_->HandleSessionStateChange(SESSION_STARTED);
+  controller_->HandleSessionStateChange(SessionState::STARTED);
   controller_->HandlePowerButtonPress();
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
 
@@ -852,7 +852,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
 TEST_F(InternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
   // Init() shouldn't ask Chrome to turn all displays on (maybe Chrome hasn't
   // started yet).
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   EXPECT_EQ(0, display_power_setter_.num_power_calls());
 
   // After Chrome starts, the controller should turn the displays on.
@@ -887,18 +887,18 @@ TEST_F(InternalBacklightControllerTest, MinVisibleLevelPrefUndercutsDefault) {
 
   // Set the brightness to 0%, increase it one step, and confirm that the level
   // configured by the pref is used instead of the higher computed default.
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT);
+      0.0, BacklightController::Transition::INSTANT);
   controller_->IncreaseUserBrightness();
   EXPECT_EQ(default_min_visible_level_, backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, PreemptTransitionForShutdown) {
   // Start a user-requested transition to 0.
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   controller_->SetUserBrightnessPercent(
-      0, BacklightController::TRANSITION_FAST);
+      0, BacklightController::Transition::FAST);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -920,7 +920,7 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
   backlight_.set_clock(&clock);
   display_power_setter_.set_clock(&clock);
 
-  Init(POWER_AC);
+  Init(PowerSource::AC);
 
   // Dim the backlight and then turn the display off. powerd should instruct the
   // display to turn off before it sets the backlight to zero.
@@ -958,7 +958,7 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
 }
 
 TEST_F(InternalBacklightControllerTest, ForcedOff) {
-  Init(POWER_AC);
+  Init(PowerSource::AC);
   ASSERT_GT(backlight_.current_level(), 0);
 
   // When SetForcedOff() is called, both the backlight and display should turn

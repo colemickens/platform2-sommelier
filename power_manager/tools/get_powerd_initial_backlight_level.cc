@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_keyboard) {
     auto controller = new power_manager::policy::KeyboardBacklightController;
     controller->Init(&stub_backlight, &prefs, light_sensor.get(), nullptr,
-                     power_manager::TABLET_MODE_UNSUPPORTED);
+                     power_manager::TabletMode::UNSUPPORTED);
     controller->HandleHoverStateChange(true /* hovering */);
     backlight_controller.reset(controller);
   } else {
@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
   CHECK(power_supply.RefreshImmediately());
   const power_manager::PowerSource power_source =
       power_supply.GetPowerStatus().line_power_on ?
-      power_manager::POWER_AC : power_manager::POWER_BATTERY;
+      power_manager::PowerSource::AC : power_manager::PowerSource::BATTERY;
 
   // Mimic powerd startup and grab the brightness level that's used.
   if (light_sensor.get())

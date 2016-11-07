@@ -10,7 +10,7 @@
 namespace power_manager {
 
 MetricsSenderStub::Metric::Metric()
-    : type(EXPONENTIAL),
+    : type(Type::EXPONENTIAL),
       sample(0),
       min(0),  // NOLINT(build/include_what_you_use)
       max(0),  // NOLINT(build/include_what_you_use)
@@ -27,7 +27,7 @@ MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateExp(
     int num_buckets) {
   Metric metric;
   metric.name = name;
-  metric.type = EXPONENTIAL;
+  metric.type = Type::EXPONENTIAL;
   metric.sample = sample;
   metric.min = min;
   metric.max = max;
@@ -41,7 +41,7 @@ MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateEnum(
     int max) {
   Metric metric;
   metric.name = name;
-  metric.type = ENUMERATION;
+  metric.type = Type::ENUMERATION;
   metric.sample = sample;
   metric.max = max;
   return metric;
@@ -50,7 +50,7 @@ MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateEnum(
 std::string MetricsSenderStub::Metric::ToString() const {
   return base::StringPrintf(
       "name=%s,type=%d,sample=%d,min=%d,max=%d,num_buckets=%d",
-      name.c_str(), type, sample, min, max, num_buckets);
+      name.c_str(), static_cast<int>(type), sample, min, max, num_buckets);
 }
 
 MetricsSenderStub::MetricsSenderStub() {

@@ -26,19 +26,19 @@ static const char kPowerdTagsVar[] = "POWERD_TAGS";
 
 UdevAction StrToAction(const char* action_str) {
   if (!action_str)
-    return UDEV_ACTION_UNKNOWN;
+    return UdevAction::UNKNOWN;
   else if (strcmp(action_str, "add") == 0)
-    return UDEV_ACTION_ADD;
+    return UdevAction::ADD;
   else if (strcmp(action_str, "remove") == 0)
-    return UDEV_ACTION_REMOVE;
+    return UdevAction::REMOVE;
   else if (strcmp(action_str, "change") == 0)
-    return UDEV_ACTION_CHANGE;
+    return UdevAction::CHANGE;
   else if (strcmp(action_str, "online") == 0)
-    return UDEV_ACTION_ONLINE;
+    return UdevAction::ONLINE;
   else if (strcmp(action_str, "offline") == 0)
-    return UDEV_ACTION_OFFLINE;
+    return UdevAction::OFFLINE;
   else
-    return UDEV_ACTION_UNKNOWN;
+    return UdevAction::UNKNOWN;
 }
 
 };  // namespace
@@ -248,12 +248,12 @@ void Udev::HandleTaggedDevice(UdevAction action,
   const char* tags = udev_device_get_property_value(dev, kPowerdTagsVar);
 
   switch (action) {
-    case UDEV_ACTION_ADD:
-    case UDEV_ACTION_CHANGE:
+    case UdevAction::ADD:
+    case UdevAction::CHANGE:
       TaggedDeviceChanged(syspath, tags ? tags : "");
       break;
 
-    case UDEV_ACTION_REMOVE:
+    case UdevAction::REMOVE:
       TaggedDeviceRemoved(syspath);
       break;
 

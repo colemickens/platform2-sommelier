@@ -19,15 +19,22 @@ namespace policy {
 
 namespace {
 
-bool IsUsableInMode(const system::TaggedDevice& device, WakeupMode mode) {
-  return ((device.HasTag(WakeupController::kTagUsableWhenDocked) &&
-               mode == WAKEUP_MODE_DOCKED) ||
-          (device.HasTag(WakeupController::kTagUsableWhenDisplayOff) &&
-               mode == WAKEUP_MODE_DISPLAY_OFF) ||
-          (device.HasTag(WakeupController::kTagUsableWhenLaptop) &&
-               mode == WAKEUP_MODE_LAPTOP) ||
-          (device.HasTag(WakeupController::kTagUsableWhenTablet) &&
-               mode == WAKEUP_MODE_TABLET));
+bool IsUsableInMode(const system::TaggedDevice& device,
+                    WakeupController::Mode mode) {
+  switch (mode) {
+    case WakeupController::Mode::CLOSED:
+      return false;
+    case WakeupController::Mode::DOCKED:
+      return device.HasTag(WakeupController::kTagUsableWhenDocked);
+    case WakeupController::Mode::DISPLAY_OFF:
+      return device.HasTag(WakeupController::kTagUsableWhenDisplayOff);
+    case WakeupController::Mode::LAPTOP:
+      return device.HasTag(WakeupController::kTagUsableWhenLaptop);
+    case WakeupController::Mode::TABLET:
+      return device.HasTag(WakeupController::kTagUsableWhenTablet);
+  }
+  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
+  return false;
 }
 
 }  // namespace
@@ -58,11 +65,11 @@ WakeupController::WakeupController()
       acpi_wakeup_helper_(NULL),
       ec_wakeup_helper_(NULL),
       prefs_(NULL),
-      lid_state_(LID_OPEN),
-      display_mode_(DISPLAY_NORMAL),
+      lid_state_(LidState::OPEN),
+      display_mode_(DisplayMode::NORMAL),
       allow_docked_mode_(false),
       backlight_enabled_(false),
-      mode_(WAKEUP_MODE_LAPTOP),
+      mode_(Mode::LAPTOP),
       initialized_(false) {}
 
 WakeupController::~WakeupController() {
@@ -73,7 +80,7 @@ WakeupController::~WakeupController() {
 }
 
 void WakeupController::Init(
-    policy::BacklightController* backlight_controller,
+    BacklightController* backlight_controller,
     system::UdevInterface* udev,
     system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
     system::EcWakeupHelperInterface* ec_wakeup_helper,
@@ -113,13 +120,14 @@ void WakeupController::SetDisplayMode(DisplayMode display_mode) {
 
 void WakeupController::OnBrightnessChange(
     double brightness_percent,
-    policy::BacklightController::BrightnessChangeCause cause,
-    policy::BacklightController* source) {
+    BacklightController::BrightnessChangeCause cause,
+    BacklightController* source) {
   // Ignore if the brightness is turned *off* automatically (before suspend),
   // but do care if it's automatically turned *on* (unplugging ext. display).
   if (brightness_percent == 0.0 &&
-      cause != policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED)
+      cause != BacklightController::BrightnessChangeCause::USER_INITIATED) {
     return;
+  }
   backlight_enabled_ = brightness_percent != 0.0;
   UpdatePolicy();
 }
@@ -187,7 +195,7 @@ void WakeupController::ConfigureEcWakeup() {
   if (!ec_wakeup_helper_->IsSupported())
     return;
 
-  ec_wakeup_helper_->AllowWakeupAsTablet(mode_ == WAKEUP_MODE_DISPLAY_OFF);
+  ec_wakeup_helper_->AllowWakeupAsTablet(mode_ == Mode::DISPLAY_OFF);
 }
 
 void WakeupController::ConfigureAcpiWakeup() {
@@ -197,31 +205,31 @@ void WakeupController::ConfigureAcpiWakeup() {
   if (!acpi_wakeup_helper_->IsSupported())
     return;
 
-  acpi_wakeup_helper_->SetWakeupEnabled(kTPAD, mode_ == WAKEUP_MODE_LAPTOP);
+  acpi_wakeup_helper_->SetWakeupEnabled(kTPAD, mode_ == Mode::LAPTOP);
   acpi_wakeup_helper_->SetWakeupEnabled(kTSCR, false);
 }
 
-WakeupMode WakeupController::GetWakeupMode() const {
-  if (allow_docked_mode_ && display_mode_ == DISPLAY_PRESENTATION &&
-      lid_state_ == LID_CLOSED)
-    return WAKEUP_MODE_DOCKED;
+WakeupController::Mode WakeupController::GetMode() const {
+  if (allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
+      lid_state_ == LidState::CLOSED)
+    return Mode::DOCKED;
 
-  if (!backlight_enabled_ && display_mode_ == DISPLAY_PRESENTATION &&
-      lid_state_ == LID_OPEN)
-    return WAKEUP_MODE_DISPLAY_OFF;
+  if (!backlight_enabled_ && display_mode_ == DisplayMode::PRESENTATION &&
+      lid_state_ == LidState::OPEN)
+    return Mode::DISPLAY_OFF;
 
-  if (lid_state_ == LID_OPEN)
-    return WAKEUP_MODE_LAPTOP;
-  else if (lid_state_ == LID_CLOSED)
-    return WAKEUP_MODE_CLOSED;
+  if (lid_state_ == LidState::OPEN)
+    return Mode::LAPTOP;
+  else if (lid_state_ == LidState::CLOSED)
+    return Mode::CLOSED;
   else
-    return WAKEUP_MODE_LAPTOP;
+    return Mode::LAPTOP;
 }
 
 void WakeupController::UpdatePolicy() {
   DCHECK(udev_);
 
-  WakeupMode new_mode = GetWakeupMode();
+  Mode new_mode = GetMode();
   if (initialized_ && mode_ == new_mode)
     return;
 

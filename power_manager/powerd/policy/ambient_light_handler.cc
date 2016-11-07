@@ -28,9 +28,9 @@ AmbientLightHandler::AmbientLightHandler(
     Delegate* delegate)
     : sensor_(sensor),
       delegate_(delegate),
-      power_source_(POWER_AC),
+      power_source_(PowerSource::AC),
       lux_level_(0),
-      hysteresis_state_(HYSTERESIS_IMMEDIATE),
+      hysteresis_state_(HysteresisState::IMMEDIATE),
       hysteresis_count_(0),
       step_index_(0),
       sent_initial_adjustment_(false) {
@@ -118,7 +118,7 @@ void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
     LOG(INFO) << "Going from " << old_percent << "% to " << new_percent
               << "% for power source change (" << name_ << ")";
     delegate_->SetBrightnessPercentForAmbientLight(
-        new_percent, CAUSED_BY_POWER_SOURCE);
+        new_percent, BrightnessChangeCause::POWER_SOURCE);
   }
 }
 
@@ -132,18 +132,19 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     return;
   }
 
-  if (hysteresis_state_ != HYSTERESIS_IMMEDIATE && new_lux == lux_level_) {
-    hysteresis_state_ = HYSTERESIS_STABLE;
+  if (hysteresis_state_ != HysteresisState::IMMEDIATE &&
+      new_lux == lux_level_) {
+    hysteresis_state_ = HysteresisState::STABLE;
     return;
   }
 
   int new_step_index = step_index_;
   int num_steps = steps_.size();
   if (new_lux > lux_level_) {
-    if (hysteresis_state_ != HYSTERESIS_IMMEDIATE &&
-        hysteresis_state_ != HYSTERESIS_INCREASING) {
+    if (hysteresis_state_ != HysteresisState::IMMEDIATE &&
+        hysteresis_state_ != HysteresisState::INCREASING) {
       VLOG(1) << "ALS transitioned to brightness increasing (" << name_ << ")";
-      hysteresis_state_ = HYSTERESIS_INCREASING;
+      hysteresis_state_ = HysteresisState::INCREASING;
       hysteresis_count_ = 0;
     }
     for (; new_step_index < num_steps; new_step_index++) {
@@ -152,10 +153,10 @@ void AmbientLightHandler::OnAmbientLightUpdated(
         break;
     }
   } else if (new_lux < lux_level_) {
-    if (hysteresis_state_ != HYSTERESIS_IMMEDIATE &&
-        hysteresis_state_ != HYSTERESIS_DECREASING) {
+    if (hysteresis_state_ != HysteresisState::IMMEDIATE &&
+        hysteresis_state_ != HysteresisState::DECREASING) {
       VLOG(1) << "ALS transitioned to brightness decreasing (" << name_ << ")";
-      hysteresis_state_ = HYSTERESIS_DECREASING;
+      hysteresis_state_ = HysteresisState::DECREASING;
       hysteresis_count_ = 0;
     }
     for (; new_step_index >= 0; new_step_index--) {
@@ -167,16 +168,16 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   CHECK_GE(new_step_index, 0);
   CHECK_LT(new_step_index, num_steps);
 
-  if (hysteresis_state_ == HYSTERESIS_IMMEDIATE) {
+  if (hysteresis_state_ == HysteresisState::IMMEDIATE) {
     step_index_ = new_step_index;
     double target_percent = GetTargetPercent();
     LOG(INFO) << "Immediately going to " << target_percent << "% (step "
               << step_index_ << ") for lux " << new_lux << " (" << name_ << ")";
     lux_level_ = new_lux;
-    hysteresis_state_ = HYSTERESIS_STABLE;
+    hysteresis_state_ = HysteresisState::STABLE;
     hysteresis_count_ = 0;
     delegate_->SetBrightnessPercentForAmbientLight(
-        target_percent, CAUSED_BY_AMBIENT_LIGHT);
+        target_percent, BrightnessChangeCause::AMBIENT_LIGHT);
     sent_initial_adjustment_ = true;
     return;
   }
@@ -197,14 +198,14 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     lux_level_ = new_lux;
     hysteresis_count_ = 1;
     delegate_->SetBrightnessPercentForAmbientLight(
-        target_percent, CAUSED_BY_AMBIENT_LIGHT);
+        target_percent, BrightnessChangeCause::AMBIENT_LIGHT);
     sent_initial_adjustment_ = true;
   }
 }
 
 double AmbientLightHandler::GetTargetPercent() const {
   CHECK_LT(step_index_, steps_.size());
-  return power_source_ == POWER_AC ?
+  return power_source_ == PowerSource::AC ?
       steps_[step_index_].ac_target_percent :
       steps_[step_index_].battery_target_percent;
 }

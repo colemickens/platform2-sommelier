@@ -10,8 +10,8 @@ namespace power_manager {
 namespace system {
 
 InputWatcherStub::InputWatcherStub()
-    : lid_state_(LID_OPEN),
-      tablet_mode_(TABLET_MODE_UNSUPPORTED),
+    : lid_state_(LidState::OPEN),
+      tablet_mode_(TabletMode::UNSUPPORTED),
       usb_input_device_connected_(true),
       active_vt_(1) {
 }

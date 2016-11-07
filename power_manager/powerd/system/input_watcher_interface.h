@@ -24,7 +24,7 @@ class InputWatcherInterface {
   virtual void AddObserver(InputObserver* observer) = 0;
   virtual void RemoveObserver(InputObserver* observer) = 0;
 
-  // Queries the system for the current lid state. LID_NOT_PRESENT is
+  // Queries the system for the current lid state. LidState::NOT_PRESENT is
   // returned on error.
   virtual LidState QueryLidState() = 0;
 

@@ -101,11 +101,11 @@ extern const int kMetricDarkResumeWakeDurationMsMin;
 extern const int kMetricDarkResumeWakeDurationMsMax;
 
 // Enum for kMetricBatteryInfoSample.
-enum BatteryInfoSampleResult {
-  BATTERY_INFO_READ,
-  BATTERY_INFO_GOOD,
-  BATTERY_INFO_BAD,
-  BATTERY_INFO_MAX,
+enum class BatteryInfoSampleResult {
+  READ,
+  GOOD,
+  BAD,
+  MAX,
 };
 
 }  // namespace power_manager

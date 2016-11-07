@@ -31,15 +31,15 @@ namespace power_manager {
 std::string MetricsCollector::AppendPowerSourceToEnumName(
     const std::string& enum_name,
     PowerSource power_source) {
-  return enum_name +
-      (power_source == POWER_AC ? kMetricACSuffix : kMetricBatterySuffix);
+  return enum_name + (power_source == PowerSource::AC ? kMetricACSuffix
+                                                      : kMetricBatterySuffix);
 }
 
 MetricsCollector::MetricsCollector()
     : prefs_(NULL),
       display_backlight_controller_(NULL),
       keyboard_backlight_controller_(NULL),
-      session_state_(SESSION_STOPPED),
+      session_state_(SessionState::STOPPED),
       battery_energy_before_suspend_(0.0),
       on_line_power_before_suspend_(false),
       report_battery_discharge_rate_while_suspended_(false) {
@@ -97,7 +97,7 @@ void MetricsCollector::HandleSessionStateChange(SessionState state) {
   session_state_ = state;
 
   switch (state) {
-    case SESSION_STARTED:
+    case SessionState::STARTED:
       session_start_time_ = clock_.GetCurrentTime();
       if (!last_power_status_.line_power_on)
         IncrementNumOfSessionsPerChargeMetric();
@@ -109,7 +109,7 @@ void MetricsCollector::HandleSessionStateChange(SessionState state) {
             kMetricMaxPercent);
       }
       break;
-    case SESSION_STOPPED: {
+    case SessionState::STOPPED: {
       if (last_power_status_.battery_is_present) {
         // Enum to avoid exponential histogram's varyingly-sized buckets.
         SendEnumMetricWithPowerSource(
@@ -161,7 +161,7 @@ void MetricsCollector::HandlePowerStatusUpdate(
                      kMetricBatteryChargeHealthMax);
     }
   } else if (!status.line_power_on && previously_on_line_power) {
-    if (session_state_ == SESSION_STARTED)
+    if (session_state_ == SessionState::STARTED)
       IncrementNumOfSessionsPerChargeMetric();
   }
 
@@ -169,18 +169,18 @@ void MetricsCollector::HandlePowerStatusUpdate(
   GenerateBatteryDischargeRateWhileSuspendedMetric();
 
   SendEnumMetric(kMetricBatteryInfoSampleName,
-                 BATTERY_INFO_READ,
-                 BATTERY_INFO_MAX);
-  // TODO(derat): Continue sending BATTERY_INFO_BAD in some situations?
-  // Remove this metric entirely?
+                 static_cast<int>(BatteryInfoSampleResult::READ),
+                 static_cast<int>(BatteryInfoSampleResult::MAX));
+  // TODO(derat): Continue sending BAD in some situations? Remove this metric
+  // entirely?
   SendEnumMetric(kMetricBatteryInfoSampleName,
-                 BATTERY_INFO_GOOD,
-                 BATTERY_INFO_MAX);
+                 static_cast<int>(BatteryInfoSampleResult::GOOD),
+                 static_cast<int>(BatteryInfoSampleResult::MAX));
 }
 
 void MetricsCollector::HandleShutdown(ShutdownReason reason) {
   SendEnumMetric(kMetricShutdownReasonName, static_cast<int>(reason),
-                 kMetricShutdownReasonMax);
+                 static_cast<int>(kMetricShutdownReasonMax));
 }
 
 void MetricsCollector::PrepareForSuspend() {
@@ -289,7 +289,7 @@ void MetricsCollector::GenerateBacklightLevelMetrics() {
 
 void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
   switch (state) {
-    case BUTTON_DOWN:
+    case ButtonState::DOWN:
       // Just keep track of the time when the button was pressed.
       if (!last_power_button_down_timestamp_.is_null()) {
         LOG(ERROR) << "Got power-button-down event while button was already "
@@ -297,7 +297,7 @@ void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
       }
       last_power_button_down_timestamp_ = clock_.GetCurrentTime();
       break;
-    case BUTTON_UP: {
+    case ButtonState::UP: {
       // Metrics are sent after the button is released.
       if (last_power_button_down_timestamp_.is_null()) {
         LOG(ERROR) << "Got power-button-up event while button was already up";
@@ -313,7 +313,7 @@ void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
       }
       break;
     }
-    case BUTTON_REPEAT:
+    case ButtonState::REPEAT:
       // Ignore repeat events if we get them.
       break;
   }
@@ -334,7 +334,8 @@ bool MetricsCollector::SendMetricWithPowerSource(const std::string& name,
                                                  int max,
                                                  int num_buckets) {
   const std::string full_name = AppendPowerSourceToEnumName(
-      name, last_power_status_.line_power_on ? POWER_AC : POWER_BATTERY);
+      name, last_power_status_.line_power_on ? PowerSource::AC
+                                             : PowerSource::BATTERY);
   return SendMetric(full_name, sample, min, max, num_buckets);
 }
 
@@ -342,7 +343,8 @@ bool MetricsCollector::SendEnumMetricWithPowerSource(const std::string& name,
                                                      int sample,
                                                      int max) {
   const std::string full_name = AppendPowerSourceToEnumName(
-      name, last_power_status_.line_power_on ? POWER_AC : POWER_BATTERY);
+      name, last_power_status_.line_power_on ? PowerSource::AC
+                                             : PowerSource::BATTERY);
   return SendEnumMetric(full_name, sample, max);
 }
 

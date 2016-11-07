@@ -8,7 +8,7 @@ namespace power_manager {
 namespace system {
 
 DarkResumeStub::DarkResumeStub()
-    : action_(SUSPEND),
+    : action_(Action::SUSPEND),
       in_dark_resume_(false),
       enabled_(false),
       can_safely_exit_dark_resume_(true) {

@@ -25,16 +25,6 @@ class UdevInterface;
 
 namespace policy {
 
-// Describes which mode the system is currently in, depending on e.g. the state
-// of the lid. Currently, WakeupController only tracks CLOSED and OPEN.
-enum WakeupMode {
-  WAKEUP_MODE_CLOSED = 0,   // Lid closed, no external monitor attached.
-  WAKEUP_MODE_DOCKED,       // Lid closed, external monitor attached.
-  WAKEUP_MODE_DISPLAY_OFF,  // Internal display off, external monitor attached.
-  WAKEUP_MODE_LAPTOP,       // Lid open.
-  WAKEUP_MODE_TABLET,       // Tablet mode, e.g. lid open more than 180 degrees.
-};
-
 // Configures wakeup-capable devices according to the current lid state.
 class WakeupController : public policy::BacklightControllerObserver,
                          public system::UdevTaggedDeviceObserver {
@@ -61,6 +51,17 @@ class WakeupController : public policy::BacklightControllerObserver,
   static const char kTPAD[];
   static const char kTSCR[];
 
+  // Describes which mode the system is currently in, depending on e.g. the
+  // state of the lid.
+  // TODO(derat): Track tablet mode: http://crbug.com/661368
+  enum class Mode {
+    CLOSED = 0,   // Lid closed, no external monitor attached.
+    DOCKED,       // Lid closed, external monitor attached.
+    DISPLAY_OFF,  // Internal display off, external monitor attached.
+    LAPTOP,       // Lid open.
+    TABLET,       // Tablet mode, e.g. lid open more than 180 degrees.
+  };
+
   WakeupController();
   virtual ~WakeupController();
 
@@ -85,8 +86,8 @@ class WakeupController : public policy::BacklightControllerObserver,
                           BacklightController* source) override;
 
  private:
-  // Derive the currently applicable WakeupMode according to lid state.
-  WakeupMode GetWakeupMode() const;
+  // Derive the currently applicable mode according to lid state.
+  Mode GetMode() const;
 
   // Enables or disables wakeup from S3 for this device (through power/wakeup).
   void SetWakeupFromS3(const system::TaggedDevice& device, bool enabled);
@@ -119,7 +120,7 @@ class WakeupController : public policy::BacklightControllerObserver,
   bool backlight_enabled_;
 
   // The mode calculated in the most recent invocation of UpdatePolicy().
-  WakeupMode mode_;
+  Mode mode_;
 
   bool initialized_;
 

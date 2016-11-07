@@ -26,13 +26,13 @@ class UdevSubsystemObserver;
 class UdevTaggedDeviceObserver;
 
 // Action described in a udev event.
-enum UdevAction {
-  UDEV_ACTION_ADD = 0,
-  UDEV_ACTION_REMOVE,
-  UDEV_ACTION_CHANGE,
-  UDEV_ACTION_ONLINE,
-  UDEV_ACTION_OFFLINE,
-  UDEV_ACTION_UNKNOWN,
+enum class UdevAction {
+  ADD = 0,
+  REMOVE,
+  CHANGE,
+  ONLINE,
+  OFFLINE,
+  UNKNOWN,
 };
 
 // Watches the udev manager for device-related events (e.g. hotplug).

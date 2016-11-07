@@ -17,7 +17,7 @@ class MetricsSenderStub : public MetricsSenderInterface {
  public:
   // Information about a sent metric.
   struct Metric {
-    enum Type {
+    enum class Type {
       EXPONENTIAL,
       ENUMERATION,
     };

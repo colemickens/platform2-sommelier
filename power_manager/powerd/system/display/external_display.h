@@ -91,34 +91,34 @@ class ExternalDisplay {
 
   // Possible outcomes when sending a message to the display. These values are
   // reported as a histogram and cannot be renumbered.
-  enum SendResult {
+  enum class SendResult {
     // The message was successfully sent to the display.
-    SEND_SUCCESS = 0,
+    SUCCESS = 0,
     // The ioctl() syscall failed.
-    SEND_IOCTL_FAILED = 1,
+    IOCTL_FAILED = 1,
   };
 
   // Possible outcomes when reading a message from the display. These values are
   // reported as a histogram and cannot be renumbered.
-  enum ReceiveResult {
+  enum class ReceiveResult {
     // The message was successfully read from the display.
-    RECEIVE_SUCCESS = 0,
+    SUCCESS = 0,
     // The ioctl() syscall failed.
-    RECEIVE_IOCTL_FAILED = 1,
+    IOCTL_FAILED = 1,
     // The message had a bad checksum.
-    RECEIVE_BAD_CHECKSUM = 2,
+    BAD_CHECKSUM = 2,
     // The message had an unexpected source address.
-    RECEIVE_BAD_ADDRESS = 3,
+    BAD_ADDRESS = 3,
     // The message body's length didn't match the expected length.
-    RECEIVE_BAD_LENGTH = 4,
+    BAD_LENGTH = 4,
     // The message body contained an unexpected command code.
-    RECEIVE_BAD_COMMAND = 5,
+    BAD_COMMAND = 5,
     // The message body contained a non-successful result code.
-    RECEIVE_BAD_RESULT = 6,
+    BAD_RESULT = 6,
     // The message body contained an unexpected feature index.
-    RECEIVE_BAD_INDEX = 7,
+    BAD_INDEX = 7,
     // The message body contained an unexpected maximum value of zero.
-    RECEIVE_ZERO_MAX_VALUE = 8,
+    ZERO_MAX_VALUE = 8,
   };
 
   // Interface that abstracts the portion of ExternalDisplay that needs to
@@ -151,15 +151,15 @@ class ExternalDisplay {
 
    private:
     // These values are reported as a histogram and cannot be renumbered.
-    enum OpenResult {
+    enum class OpenResult {
       // Calling open() on the I2C device succeeded.
-      OPEN_SUCCESS = 0,
+      SUCCESS = 0,
       // Calling open() on the I2C device failed with EACCES.
-      OPEN_FAILURE_EACCES = 1,
+      FAILURE_EACCES = 1,
       // Calling open() on the I2C device failed with ENOENT.
-      OPEN_FAILURE_ENOENT = 2,
+      FAILURE_ENOENT = 2,
       // Calling open() on the I2C device failed for some other reason.
-      OPEN_FAILURE_UNKNOWN = 3,
+      FAILURE_UNKNOWN = 3,
     };
 
     // Name describing the I2C bus.
@@ -202,14 +202,14 @@ class ExternalDisplay {
   void AdjustBrightnessByPercent(double offset_percent);
 
  private:
-  enum State {
+  enum class State {
     // Not currently mid-request (but if |timer_| is running, temporarily
     // blocked from sending another request due to a "set brightness" request
     // having just been sent).
-    STATE_IDLE,
+    IDLE,
 
     // Waiting before reading the reply to a "get brightness" request.
-    STATE_WAITING_FOR_REPLY,
+    WAITING_FOR_REPLY,
   };
 
   // Returns the monitor-specific brightness level corresponding to |percent|, a

@@ -138,7 +138,7 @@ class PowerSupplyTest : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(battery_dir_));
 
     UpdatePowerSourceAndBatteryStatus(source, kAcType,
-        source == POWER_AC ? kCharging : kDischarging);
+        source == PowerSource::AC ? kCharging : kDischarging);
     WriteValue(battery_dir_, "type", kBatteryType);
     WriteValue(battery_dir_, "present", "1");
 
@@ -154,7 +154,7 @@ class PowerSupplyTest : public ::testing::Test {
   void UpdatePowerSourceAndBatteryStatus(PowerSource power_source,
                                          const std::string& ac_type,
                                          const std::string& battery_status) {
-    WriteValue(ac_dir_, "online", power_source == POWER_AC ? "1" : "0");
+    WriteValue(ac_dir_, "online", power_source == PowerSource::AC ? "1" : "0");
     WriteValue(ac_dir_, "type", ac_type);
     WriteValue(battery_dir_, "status", battery_status);
   }
@@ -214,7 +214,7 @@ class PowerSupplyTest : public ::testing::Test {
   // Sends a udev event to |power_supply_|.
   void SendUdevEvent() {
     power_supply_->OnUdevEvent(
-        PowerSupply::kUdevSubsystem, "AC", UDEV_ACTION_CHANGE);
+        PowerSupply::kUdevSubsystem, "AC", UdevAction::CHANGE);
   }
 
   FakePrefs prefs_;
@@ -243,7 +243,7 @@ TEST_F(PowerSupplyTest, NoPowerSupplySysfs) {
 
 // Test line power without battery.
 TEST_F(PowerSupplyTest, NoBattery) {
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   base::DeleteFile(battery_dir_, true);
   Init();
   PowerStatus power_status;
@@ -262,7 +262,7 @@ TEST_F(PowerSupplyTest, NoBattery) {
 TEST_F(PowerSupplyTest, ChargingAndDischarging) {
   const double kCharge = 0.5;
   const double kCurrent = 1.0;
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(kCharge, kCurrent);
   Init();
   PowerStatus power_status;
@@ -280,7 +280,8 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
   EXPECT_FALSE(power_status.supports_dual_role_devices);
 
   // Switch to battery.
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_FALSE(power_status.line_power_on);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
@@ -304,8 +305,8 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
 // Tests that the line power source doesn't need to be named "Mains".
 TEST_F(PowerSupplyTest, NonMainsLinePower) {
   const char kType[] = "ArbitraryName";
-  WriteDefaultValues(POWER_AC);
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kType, kCharging);
+  WriteDefaultValues(PowerSource::AC);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kType, kCharging);
   Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
@@ -320,7 +321,7 @@ TEST_F(PowerSupplyTest, NonMainsLinePower) {
 TEST_F(PowerSupplyTest, DualRolePowerSources) {
   // Delete the AC power supply and report two line power sources, both
   // initially offline.
-  WriteDefaultValues(POWER_BATTERY);
+  WriteDefaultValues(PowerSource::BATTERY);
   base::DeleteFile(ac_dir_, true);
 
   const char kLine1Id[] = "line1";
@@ -522,7 +523,7 @@ TEST_F(PowerSupplyTest, ChargingPortNames) {
       kChargingPortsPref,
       base::StringPrintf("%s LEFT_FRONT\n%s RIGHT_BACK",
                          ac_dir_.BaseName().value().c_str(), kSecondName));
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
 
   // Connect a second, idle power source.
   const base::FilePath kSecondDir = temp_dir_.path().Append(kSecondName);
@@ -555,7 +556,7 @@ TEST_F(PowerSupplyTest, ChargingPortNames) {
 TEST_F(PowerSupplyTest, IgnorePeripherals) {
   // Power supplies corresponding to external peripherals (i.e. with a "scope"
   // of "Device") should be ignored.
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   WriteValue(ac_dir_, "scope", "Device");
   WriteValue(battery_dir_, "status", kDischarging);
 
@@ -571,7 +572,7 @@ TEST_F(PowerSupplyTest, IgnorePeripherals) {
 
 // Test battery reporting energy instead of charge.
 TEST_F(PowerSupplyTest, EnergyDischarging) {
-  WriteDefaultValues(POWER_BATTERY);
+  WriteDefaultValues(PowerSource::BATTERY);
   base::DeleteFile(battery_dir_.Append("charge_full"), false);
   base::DeleteFile(battery_dir_.Append("charge_full_design"), false);
   base::DeleteFile(battery_dir_.Append("charge_now"), false);
@@ -622,7 +623,7 @@ TEST_F(PowerSupplyTest, EnergyDischarging) {
 }
 
 TEST_F(PowerSupplyTest, PollDelays) {
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
 
   const base::TimeDelta kPollDelay = base::TimeDelta::FromSeconds(30);
   const base::TimeDelta kStartupDelay = base::TimeDelta::FromSeconds(6);
@@ -672,7 +673,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
   // battery times should be reported as "calculating" again.
   current_time += base::TimeDelta::FromSeconds(120);
   test_api_->SetCurrentTime(current_time);
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   power_supply_->SetSuspended(false);
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
@@ -689,7 +691,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   EXPECT_FALSE(status.is_calculating_battery_time);
 
   // Connect AC, report a udev event, and check that the status is updated.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kCharging);
   SendUdevEvent();
   status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
@@ -706,7 +708,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
   EXPECT_FALSE(status.is_calculating_battery_time);
 
   // Now test the delay when going back to battery power.
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   SendUdevEvent();
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
@@ -725,7 +728,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
 TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   // Start out with the battery 50% full and an unset current.
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(0.5, 0.0);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
   // To simplify this test, average just the last two samples.
@@ -760,7 +763,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // Disconnect the charger and report an immediate drop in charge and
   // current. The current shouldn't be used yet.
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   UpdateChargeAndCurrent(0.5, -0.5);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
 
@@ -794,7 +798,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // Switch back to line power. Since the current delivered on line power can
   // vary greatly, the previous sample should be discarded.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kCharging);
   UpdateChargeAndCurrent(0.5, 0.25);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
@@ -802,7 +806,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // Go back to battery and check that the previous on-battery current sample
   // (-2.5) is included in the average.
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   UpdateChargeAndCurrent(0.5, -1.5);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
@@ -810,8 +815,8 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 }
 
 TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
-  WriteDefaultValues(POWER_AC);
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kUsbType, kCharging);
+  WriteDefaultValues(PowerSource::AC);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kUsbType, kCharging);
   UpdateChargeAndCurrent(0.5, 1.0);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
   prefs_.SetInt64(kMaxCurrentSamplesPref, 2);
@@ -823,7 +828,7 @@ TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
 
   // Now discharge while still on USB. Since the averaged charge is still
   // positive, we should avoid providing a time-to-empty estimate.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kUsbType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kUsbType, kDischarging);
   UpdateChargeAndCurrent(0.5, -0.5);
   EXPECT_EQ(MakeEstimateString(false, -1, 0), UpdateAndGetEstimateString());
 
@@ -834,19 +839,20 @@ TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
 
   // Now start charging. Since the average current is still negative, we should
   // avoid computing time-to-full.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kUsbType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kUsbType, kCharging);
   UpdateChargeAndCurrent(0.5, 0.5);
   EXPECT_EQ(MakeEstimateString(false, 0, -1), UpdateAndGetEstimateString());
 
   // Switch to battery power.
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   UpdateChargeAndCurrent(0.5, -1.0);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
   EXPECT_EQ(MakeEstimateString(false, 1800, 0), UpdateAndGetEstimateString());
 
   // Go back to USB.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kCharging);
   UpdateChargeAndCurrent(0.5, 1.0);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
 
@@ -857,7 +863,7 @@ TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
 }
 
 TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(0.5, 0.1 * kEpsilon);
   Init();
 
@@ -867,7 +873,8 @@ TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   SetStabilizedTime();
   EXPECT_EQ(MakeEstimateString(false, 0, -1), UpdateAndGetEstimateString());
 
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
   EXPECT_EQ(MakeEstimateString(false, -1, 0), UpdateAndGetEstimateString());
@@ -876,7 +883,7 @@ TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
 TEST_F(PowerSupplyTest, FullFactor) {
   // When the battery has reached the full factor, it should be reported as
   // fully charged regardless of the current.
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(kFullFactor, 1.0);
   Init();
   PowerStatus status;
@@ -896,7 +903,7 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
 
   // Start out with a full battery on AC power.
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(1.0, 0.0);
   Init();
 
@@ -904,7 +911,8 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   UpdateChargeAndCurrent(1.0, -1.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
@@ -926,7 +934,7 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
                    status.display_battery_percentage);
 
   // Switch to AC and check that the scaling remains the same.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kCharging);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0 * (100.0 * kLowerCharge - kShutdownPercent) /
                    (100.0 * kFullFactor - kShutdownPercent),
@@ -955,7 +963,7 @@ TEST_F(PowerSupplyTest, IgnoreReadingsDuringFirmwareUpdate) {
   // Check that reading broken battery data the first time through yields
   // failure but still results in the partially-correct status being recorded.
   // At startup, powerd needs to use what it can get.
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(0.0, 0.0);
   WriteDoubleValue(battery_dir_, "voltage_min_design", 0.0);
   Init();
@@ -986,7 +994,7 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
   const double kCurrent = -1.0;
   prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
 
-  WriteDefaultValues(POWER_BATTERY);
+  WriteDefaultValues(PowerSource::BATTERY);
   UpdateChargeAndCurrent((kShutdownPercent + 1.0) / 100.0, kCurrent);
   Init();
 
@@ -1006,20 +1014,20 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
 
   // Don't shut down when on AC power when the battery's charge isn't observed
   // to be decreasing.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kDischarging);
   UpdateChargeAndCurrent((kShutdownPercent - 1.0) / 100.0, kCurrent);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.battery_below_shutdown_threshold);
 
   // Don't shut down for other chargers in this situation, either.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kUsbType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kUsbType, kDischarging);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.battery_below_shutdown_threshold);
 
   // Test that the system shuts down while on AC power if the charge appears to
   // be falling (i.e. the charger isn't able to deliver enough current).
   SetStabilizedTime();
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kDischarging);
   UpdateChargeAndCurrent((kShutdownPercent - 1.0) / 100.0, kCurrent);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.battery_below_shutdown_threshold);
@@ -1044,7 +1052,7 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
 TEST_F(PowerSupplyTest, LowPowerCharger) {
   // If a charger is connected but the current is zero and the battery
   // isn't full, the battery should be reported as discharging.
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(0.5, 0.0);
   Init();
   PowerStatus status;
@@ -1056,7 +1064,7 @@ TEST_F(PowerSupplyTest, LowPowerCharger) {
 
   // If the current is nonzero but the kernel-reported status is
   // "Discharging", the battery should be reported as discharging.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kDischarging);
   UpdateChargeAndCurrent(0.5, 1.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
@@ -1066,7 +1074,7 @@ TEST_F(PowerSupplyTest, LowPowerCharger) {
 }
 
 TEST_F(PowerSupplyTest, ConnectedToUsb) {
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(0.5, 1.0);
   Init();
 
@@ -1077,7 +1085,7 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
   for (size_t i = 0; i < arraysize(kUsbTypes); ++i) {
     const char* kType = kUsbTypes[i];
     SCOPED_TRACE(kType);
-    UpdatePowerSourceAndBatteryStatus(POWER_AC, kType, kCharging);
+    UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kType, kCharging);
     ASSERT_TRUE(UpdateStatus(&status));
     EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING,
               status.battery_state);
@@ -1085,7 +1093,7 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
   }
 
   // The USB type should be reported even when the current is 0.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kUsbType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kUsbType, kCharging);
   UpdateChargeAndCurrent(0.5, 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
@@ -1101,7 +1109,7 @@ TEST_F(PowerSupplyTest, ShutdownPercentAffectsBatteryTime) {
   prefs_.SetDouble(kLowBatteryShutdownTimePref, kShutdownSec);
   const double kCurrent = -1.0;
 
-  WriteDefaultValues(POWER_BATTERY);
+  WriteDefaultValues(PowerSource::BATTERY);
   UpdateChargeAndCurrent(0.5, kCurrent);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
   Init();
@@ -1141,7 +1149,7 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
   prefs_.SetInt64(kMaxCurrentSamplesPref, kMaxSamples);
   prefs_.SetInt64(kMaxChargeSamplesPref, kMaxSamples);
 
-  WriteDefaultValues(POWER_BATTERY);
+  WriteDefaultValues(PowerSource::BATTERY);
   WriteDoubleValue(battery_dir_, "charge_full", 10.0);
   UpdateChargeAndCurrent(10.0, -1.0);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
@@ -1174,7 +1182,7 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
 
   // Switch to AC power and report a different charge. The rate should be
   // reported as 0 initially.
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kCharging);
   UpdateChargeAndCurrent(7.0, 1.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(0.0, status.observed_battery_charge_rate);
@@ -1212,8 +1220,8 @@ TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
   // Start out discharging on AC with a ludicrously-high current where all of
   // the charge will be drained in a minute.
   const double kCurrent = -60.0;
-  WriteDefaultValues(POWER_AC);
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kDischarging);
+  WriteDefaultValues(PowerSource::AC);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kDischarging);
   UpdateChargeAndCurrent(0.5, kCurrent);
   prefs_.SetInt64(kLowBatteryShutdownTimePref, 180);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
@@ -1253,7 +1261,7 @@ TEST_F(PowerSupplyTest, NotifyObserver) {
   // Check that observers are notified about updates asynchronously.
   TestObserver observer;
   power_supply_->AddObserver(&observer);
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   Init();
   ASSERT_TRUE(power_supply_->RefreshImmediately());
   EXPECT_TRUE(observer.WaitForNotification());
@@ -1274,7 +1282,7 @@ TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
 TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   TestObserver observer;
   power_supply_->AddObserver(&observer);
-  WriteDefaultValues(POWER_AC);
+  WriteDefaultValues(PowerSource::AC);
   prefs_.SetInt64(kMaxCurrentSamplesPref, 3);
   prefs_.SetInt64(kLowBatteryShutdownTimePref, 0);
   prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref, 0);
@@ -1300,7 +1308,8 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
 
   // Switch to battery power and check that a udev event triggers a synchronous
   // notification.
-  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kAcType,
+                                    kDischarging);
   SendUdevEvent();
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
@@ -1323,7 +1332,7 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   // Switch to AC and check that another event triggers another notification and
   // updated estimates.
   observer.reset_num_updates();
-  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kAcType, kCharging);
   SendUdevEvent();
   EXPECT_EQ(1, observer.num_updates());
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
@@ -1471,7 +1480,7 @@ TEST_F(PowerSupplyTest, BatteryEnergyValue) {
   // it is used instead of a value calculated from voltage and charge.
   const double kEnergy = kVoltage * kCharge + 1.0;
 
-  WriteDefaultValues(POWER_BATTERY);
+  WriteDefaultValues(PowerSource::BATTERY);
   UpdateChargeAndCurrent(kCharge, 0.0);
   WriteDoubleValue(battery_dir_, "energy_now", kEnergy);
   Init();
@@ -1487,7 +1496,7 @@ TEST_F(PowerSupplyTest, BatteryEnergyValue) {
 TEST_F(PowerSupplyTest, NoNominalVoltage) {
   const double kCharge = 0.5;
   const double kCurrent = 1.0;
-  WriteDefaultValues(POWER_BATTERY);
+  WriteDefaultValues(PowerSource::BATTERY);
   UpdateChargeAndCurrent(kCharge, kCurrent);
 
   // Remove the default min voltage attribute from the battery

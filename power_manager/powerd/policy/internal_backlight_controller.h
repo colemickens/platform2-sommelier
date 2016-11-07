@@ -99,7 +99,7 @@ class InternalBacklightController : public BacklightController,
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
-  bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
+  bool SetUserBrightnessPercent(double percent, Transition transition) override;
   bool IncreaseUserBrightness() override;
   bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;
@@ -136,7 +136,7 @@ class InternalBacklightController : public BacklightController,
   bool SetExplicitBrightnessPercent(
       double ac_percent,
       double battery_percent,
-      TransitionStyle style,
+      Transition transition,
       BrightnessChangeCause cause);
 
   // Updates the current brightness after assessing the current state
@@ -147,14 +147,14 @@ class InternalBacklightController : public BacklightController,
   // If the display is currently in the undimmed state, calls
   // ApplyBrightnessPercent() to update the backlight brightness.  Returns
   // true if the brightness was changed.
-  bool UpdateUndimmedBrightness(TransitionStyle style,
+  bool UpdateUndimmedBrightness(Transition transition,
                                 BrightnessChangeCause cause);
 
   // Sets |backlight_|'s brightness to |percent| over |transition|.  If the
   // brightness changed, notifies |observers_| that the change was due to
   // |cause| and returns true.
   bool ApplyBrightnessPercent(double percent,
-                              TransitionStyle transition,
+                              Transition transition,
                               BrightnessChangeCause cause);
 
   // Configures |backlight_| to resume from suspend at |resume_percent|.
@@ -183,8 +183,8 @@ class InternalBacklightController : public BacklightController,
   base::ObserverList<BacklightControllerObserver> observers_;
 
   // Information describing the current state of the system.
-  PowerSource power_source_ = POWER_BATTERY;
-  DisplayMode display_mode_ = DISPLAY_NORMAL;
+  PowerSource power_source_ = PowerSource::BATTERY;
+  DisplayMode display_mode_ = DisplayMode::NORMAL;
   bool dimmed_for_inactivity_ = false;
   bool off_for_inactivity_ = false;
   bool suspended_ = false;

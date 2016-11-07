@@ -61,7 +61,7 @@ class ExternalBacklightController : public BacklightController,
   void SetForcedOff(bool forced_off) override;
   bool GetForcedOff() override;
   bool GetBrightnessPercent(double* percent) override;
-  bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
+  bool SetUserBrightnessPercent(double percent, Transition transition) override;
   bool IncreaseUserBrightness() override;
   bool DecreaseUserBrightness(bool allow_off) override;
   int GetNumAmbientLightSensorAdjustments() const override;

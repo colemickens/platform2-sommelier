@@ -41,11 +41,11 @@ const char kNoActions[] = "";
 
 const char* GetLidAction(LidState state) {
   switch (state) {
-    case LID_CLOSED:
+    case LidState::CLOSED:
       return kLidClosedAction;
-    case LID_OPEN:
+    case LidState::OPEN:
       return kLidOpenAction;
-    case LID_NOT_PRESENT:
+    case LidState::NOT_PRESENT:
       return kLidNotPresentAction;
   }
   NOTREACHED() << "Invalid lid state " << state;
@@ -54,11 +54,11 @@ const char* GetLidAction(LidState state) {
 
 const char* GetTabletModeAction(TabletMode mode) {
   switch (mode) {
-    case TABLET_MODE_ON:
+    case TabletMode::ON:
       return kTabletModeOnAction;
-    case TABLET_MODE_OFF:
+    case TabletMode::OFF:
       return kTabletModeOffAction;
-    case TABLET_MODE_UNSUPPORTED:
+    case TabletMode::UNSUPPORTED:
       return kTabletModeUnsupportedAction;
   }
   NOTREACHED() << "Invalid tablet mode " << mode;
@@ -67,11 +67,11 @@ const char* GetTabletModeAction(TabletMode mode) {
 
 const char* GetPowerButtonAction(ButtonState state) {
   switch (state) {
-    case BUTTON_DOWN:
+    case ButtonState::DOWN:
       return kPowerButtonDownAction;
-    case BUTTON_UP:
+    case ButtonState::UP:
       return kPowerButtonUpAction;
-    case BUTTON_REPEAT:
+    case ButtonState::REPEAT:
       return kPowerButtonRepeatAction;
   }
   NOTREACHED() << "Invalid power button state " << state;
@@ -94,11 +94,11 @@ class TestObserver : public InputObserver,
 
   // InputObserver implementation:
   void OnLidEvent(LidState state) override {
-    EXPECT_NE(LID_NOT_PRESENT, state);
+    EXPECT_NE(LidState::NOT_PRESENT, state);
     AppendAction(GetLidAction(state));
   }
   void OnTabletModeEvent(TabletMode mode) override {
-    EXPECT_NE(TABLET_MODE_UNSUPPORTED, mode);
+    EXPECT_NE(TabletMode::UNSUPPORTED, mode);
     AppendAction(GetTabletModeAction(mode));
   }
   void OnPowerButtonEvent(ButtonState state) override {
@@ -281,18 +281,18 @@ TEST_F(InputWatcherTest, PowerButton) {
 TEST_F(InputWatcherTest, LidSwitch) {
   linked_ptr<EventDeviceStub> lid_switch(new EventDeviceStub);
   lid_switch->set_is_lid_switch(true);
-  lid_switch->set_initial_lid_state(LID_CLOSED);
+  lid_switch->set_initial_lid_state(LidState::CLOSED);
   AddDevice("event0", lid_switch);
 
   // Before any events have been received, check that the initially-read state
   // is returned.
   Init();
-  EXPECT_EQ(LID_CLOSED, input_watcher_->QueryLidState());
+  EXPECT_EQ(LidState::CLOSED, input_watcher_->QueryLidState());
 
   // Add an event and requery. The updated state should be returned but the
   // action shouldn't yet be sent to the observer.
   lid_switch->AppendEvent(EV_SW, SW_LID, 0);
-  EXPECT_EQ(LID_OPEN, input_watcher_->QueryLidState());
+  EXPECT_EQ(LidState::OPEN, input_watcher_->QueryLidState());
   EXPECT_EQ(kNoActions, observer_->GetActions());
 
   // When the message loop runs, the event should be sent.
@@ -303,7 +303,7 @@ TEST_F(InputWatcherTest, LidSwitch) {
   // before running the message loop. Both the queued and new events should be
   // sent.
   lid_switch->AppendEvent(EV_SW, SW_LID, 1);
-  EXPECT_EQ(LID_CLOSED, input_watcher_->QueryLidState());
+  EXPECT_EQ(LidState::CLOSED, input_watcher_->QueryLidState());
   lid_switch->AppendEvent(EV_SW, SW_LID, 0);
   lid_switch->AppendEvent(EV_SW, SW_LID, 1);
   lid_switch->NotifyAboutEvents();
@@ -321,7 +321,7 @@ TEST_F(InputWatcherTest, LidSwitch) {
   // reported correctly.
   use_lid_pref_ = 0;
   Init();
-  EXPECT_EQ(LID_NOT_PRESENT, input_watcher_->QueryLidState());
+  EXPECT_EQ(LidState::NOT_PRESENT, input_watcher_->QueryLidState());
 
   // The switch shouldn't be watched for events either.
   lid_switch->AppendEvent(EV_SW, SW_LID, 1);
@@ -332,13 +332,13 @@ TEST_F(InputWatcherTest, LidSwitch) {
 TEST_F(InputWatcherTest, TabletModeSwitch) {
   linked_ptr<EventDeviceStub> tablet_mode_switch(new EventDeviceStub);
   tablet_mode_switch->set_is_tablet_mode_switch(true);
-  tablet_mode_switch->set_initial_tablet_mode(TABLET_MODE_ON);
+  tablet_mode_switch->set_initial_tablet_mode(TabletMode::ON);
   AddDevice("event0", tablet_mode_switch);
 
   // Before any events have been received, check that the initially-read mode is
   // returned.
   Init();
-  EXPECT_EQ(TABLET_MODE_ON, input_watcher_->GetTabletMode());
+  EXPECT_EQ(TabletMode::ON, input_watcher_->GetTabletMode());
 
   // Add an event, run the message loop, and check that the observer was
   // notified and that GetTabletMode() returns the updated mode.
@@ -346,14 +346,14 @@ TEST_F(InputWatcherTest, TabletModeSwitch) {
   tablet_mode_switch->NotifyAboutEvents();
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(kTabletModeOffAction, observer_->GetActions());
-  EXPECT_EQ(TABLET_MODE_OFF, input_watcher_->GetTabletMode());
+  EXPECT_EQ(TabletMode::OFF, input_watcher_->GetTabletMode());
 
   // Now enable tablet mode.
   tablet_mode_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 1);
   tablet_mode_switch->NotifyAboutEvents();
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(kTabletModeOnAction, observer_->GetActions());
-  EXPECT_EQ(TABLET_MODE_ON, input_watcher_->GetTabletMode());
+  EXPECT_EQ(TabletMode::ON, input_watcher_->GetTabletMode());
 }
 
 TEST_F(InputWatcherTest, HoverMultitouch) {
@@ -532,13 +532,13 @@ TEST_F(InputWatcherTest, IgnoreUnexpectedEvents) {
   linked_ptr<EventDeviceStub> lid_switch(new EventDeviceStub);
   lid_switch->set_debug_name("lid_switch");
   lid_switch->set_is_lid_switch(true);
-  lid_switch->set_initial_lid_state(LID_OPEN);
+  lid_switch->set_initial_lid_state(LidState::OPEN);
   AddDevice("event2", lid_switch);
 
   linked_ptr<EventDeviceStub> tablet_mode_switch(new EventDeviceStub);
   tablet_mode_switch->set_debug_name("tablet_mode_switch");
   tablet_mode_switch->set_is_tablet_mode_switch(true);
-  tablet_mode_switch->set_initial_tablet_mode(TABLET_MODE_ON);
+  tablet_mode_switch->set_initial_tablet_mode(TabletMode::ON);
   AddDevice("event3", tablet_mode_switch);
 
   detect_hover_pref_ = 1;
@@ -586,9 +586,9 @@ TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
   device->set_has_left_button(true);
   device->set_is_power_button(true);
   device->set_is_lid_switch(true);
-  device->set_initial_lid_state(LID_OPEN);
+  device->set_initial_lid_state(LidState::OPEN);
   device->set_is_tablet_mode_switch(true);
-  device->set_initial_tablet_mode(TABLET_MODE_OFF);
+  device->set_initial_tablet_mode(TabletMode::OFF);
   AddDevice("event0", device);
   detect_hover_pref_ = 1;
   Init();
@@ -618,14 +618,14 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   keyboard->set_is_power_button(true);
   AddDevice(kDeviceName, keyboard);
   input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem,
-                              kDeviceName, UDEV_ACTION_ADD);
+                              kDeviceName, UdevAction::ADD);
   keyboard->AppendEvent(EV_KEY, KEY_POWER, 1);
   keyboard->NotifyAboutEvents();
   EXPECT_EQ(kPowerButtonDownAction, observer_->GetActions());
 
   // Disconnect the keyboard.
   input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem,
-                              kDeviceName, UDEV_ACTION_REMOVE);
+                              kDeviceName, UdevAction::REMOVE);
 
   // Check that the InputWatcher unregisters itself.
   InputWatcher* dead_ptr = input_watcher_.get();
@@ -642,8 +642,8 @@ TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {
   use_lid_pref_ = 0;
   dev_input_path_ = base::FilePath("nonexistent/path");
   Init();
-  EXPECT_EQ(LID_NOT_PRESENT, input_watcher_->QueryLidState());
-  EXPECT_EQ(TABLET_MODE_UNSUPPORTED, input_watcher_->GetTabletMode());
+  EXPECT_EQ(LidState::NOT_PRESENT, input_watcher_->QueryLidState());
+  EXPECT_EQ(TabletMode::UNSUPPORTED, input_watcher_->GetTabletMode());
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
 }
 

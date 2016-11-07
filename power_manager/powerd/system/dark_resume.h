@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
@@ -28,7 +29,7 @@ namespace system {
 // automatically.
 class DarkResumeInterface {
  public:
-  enum Action {
+  enum class Action {
     // Suspend the system.
     SUSPEND = 0,
     // Shut the system down immediately.

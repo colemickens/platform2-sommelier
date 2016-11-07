@@ -38,14 +38,14 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
   double percent = 0.0;
   EXPECT_FALSE(controller_.GetBrightnessPercent(&percent));
   EXPECT_FALSE(controller_.SetUserBrightnessPercent(
-      50.0, BacklightController::TRANSITION_INSTANT));
+      50.0, BacklightController::Transition::INSTANT));
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
   EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
 
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());
 }
 
@@ -65,7 +65,7 @@ TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(0.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 
@@ -83,7 +83,7 @@ TEST_F(ExternalBacklightControllerTest, DimAndTurnOffScreen) {
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(100.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 }
@@ -108,7 +108,7 @@ TEST_F(ExternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
   ASSERT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(100.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 
@@ -128,7 +128,7 @@ TEST_F(ExternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
   EXPECT_TRUE(display_power_setter_.dimmed());
   ASSERT_EQ(1, static_cast<int>(observer_.changes().size()));
   EXPECT_DOUBLE_EQ(0.0, observer_.changes()[0].percent);
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BrightnessChangeCause::AUTOMATED,
             observer_.changes()[0].cause);
   EXPECT_EQ(&controller_, observer_.changes()[0].source);
 }

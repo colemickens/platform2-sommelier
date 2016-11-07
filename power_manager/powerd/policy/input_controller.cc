@@ -34,8 +34,8 @@ InputController::InputController()
       dbus_wrapper_(NULL),
       clock_(new Clock),
       only_has_external_display_(false),
-      lid_state_(LID_NOT_PRESENT),
-      tablet_mode_(TABLET_MODE_UNSUPPORTED) {
+      lid_state_(LidState::NOT_PRESENT),
+      tablet_mode_(TabletMode::UNSUPPORTED) {
 }
 
 InputController::~InputController() {
@@ -104,15 +104,15 @@ void InputController::OnLidEvent(LidState state) {
   lid_state_ = state;
   InputEvent proto;
   switch (lid_state_) {
-    case LID_CLOSED:
+    case LidState::CLOSED:
       delegate_->HandleLidClosed();
       proto.set_type(InputEvent_Type_LID_CLOSED);
       break;
-    case LID_OPEN:
+    case LidState::OPEN:
       delegate_->HandleLidOpened();
       proto.set_type(InputEvent_Type_LID_OPEN);
       break;
-    case LID_NOT_PRESENT:
+    case LidState::NOT_PRESENT:
       return;
   }
   proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
@@ -120,13 +120,13 @@ void InputController::OnLidEvent(LidState state) {
 }
 
 void InputController::OnTabletModeEvent(TabletMode mode) {
-  DCHECK_NE(mode, TABLET_MODE_UNSUPPORTED);
+  DCHECK_NE(mode, TabletMode::UNSUPPORTED);
   tablet_mode_ = mode;
 
   delegate_->HandleTabletModeChange(mode);
 
   InputEvent proto;
-  proto.set_type(tablet_mode_ == TABLET_MODE_ON ?
+  proto.set_type(tablet_mode_ == TabletMode::ON ?
                  InputEvent_Type_TABLET_MODE_ON :
                  InputEvent_Type_TABLET_MODE_OFF);
   proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
@@ -134,23 +134,23 @@ void InputController::OnTabletModeEvent(TabletMode mode) {
 }
 
 void InputController::OnPowerButtonEvent(ButtonState state) {
-  if (state == BUTTON_DOWN && only_has_external_display_ &&
+  if (state == ButtonState::DOWN && only_has_external_display_ &&
       display_watcher_->GetDisplays().empty()) {
     delegate_->ShutDownForPowerButtonWithNoDisplay();
     return;
   }
 
-  if (state != BUTTON_REPEAT) {
+  if (state != ButtonState::REPEAT) {
     const base::TimeTicks now = clock_->GetCurrentTime();
 
     InputEvent proto;
-    proto.set_type(state == BUTTON_DOWN ?
+    proto.set_type(state == ButtonState::DOWN ?
                    InputEvent_Type_POWER_BUTTON_DOWN :
                    InputEvent_Type_POWER_BUTTON_UP);
     proto.set_timestamp(now.ToInternalValue());
     dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 
-    if (state == BUTTON_DOWN) {
+    if (state == ButtonState::DOWN) {
       expected_power_button_acknowledgment_timestamp_ = now;
       power_button_acknowledgment_timer_.Start(FROM_HERE,
           base::TimeDelta::FromMilliseconds(

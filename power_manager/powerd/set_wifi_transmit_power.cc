@@ -76,10 +76,10 @@ int ValidHandler(struct nl_msg* msg, void* arg) {
   return NL_OK;
 }
 
-enum WirelessDriver {
-  DRIVER_NONE = 0,
-  DRIVER_MWIFIEX,
-  DRIVER_IWL
+enum class WirelessDriver {
+  NONE = 0,
+  MWIFIEX,
+  IWL
 };
 
 class SetWiFiTransmitPower {
@@ -134,9 +134,9 @@ SetWiFiTransmitPower::~SetWiFiTransmitPower() {
 
 WirelessDriver SetWiFiTransmitPower::GetWirelessDriverType() {
   if (base::PathExists(base::FilePath(kMwifiexModulePath))) {
-    return DRIVER_MWIFIEX;
+    return WirelessDriver::MWIFIEX;
   }
-  return DRIVER_IWL;
+  return WirelessDriver::IWL;
 }
 
 int SetWiFiTransmitPower::GetWirelessDeviceIndex() {
@@ -258,10 +258,10 @@ void SetWiFiTransmitPower::SetPowerMode(bool tablet,
   CHECK(!err) << "Failed to put NL80211_ATTR_IFINDEX";
 
   switch (GetWirelessDriverType()) {
-    case DRIVER_MWIFIEX:
+    case WirelessDriver::MWIFIEX:
       FillMessageMwifiex(msg, tablet);
       break;
-    case DRIVER_IWL:
+    case WirelessDriver::IWL:
       FillMessageIwl(msg, tablet, iwl_power_table);
       break;
     default:

@@ -124,7 +124,7 @@ bool BacklightControllerStub::GetBrightnessPercent(double* percent) {
 }
 
 bool BacklightControllerStub::SetUserBrightnessPercent(double percent,
-                                                       TransitionStyle style) {
+                                                       Transition transition) {
   user_brightness_percent_ = percent;
   return true;
 }

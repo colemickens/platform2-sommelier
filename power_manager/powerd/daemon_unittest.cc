@@ -405,7 +405,7 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   // (including for lid events).
 
   // Power button events.
-  input_watcher_->NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  input_watcher_->NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(1, internal_backlight_controller_->power_button_presses());
   EXPECT_EQ(1, keyboard_backlight_controller_->power_button_presses());
 
@@ -420,13 +420,13 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   EXPECT_FALSE(keyboard_backlight_controller_->hover_state_changes()[1]);
 
   // Tablet mode changes.
-  input_watcher_->set_tablet_mode(TABLET_MODE_ON);
+  input_watcher_->set_tablet_mode(TabletMode::ON);
   input_watcher_->NotifyObserversAboutTabletMode();
   ASSERT_EQ(1, internal_backlight_controller_->tablet_mode_changes().size());
-  EXPECT_EQ(TABLET_MODE_ON,
+  EXPECT_EQ(TabletMode::ON,
             internal_backlight_controller_->tablet_mode_changes()[0]);
   ASSERT_EQ(1, keyboard_backlight_controller_->tablet_mode_changes().size());
-  EXPECT_EQ(TABLET_MODE_ON,
+  EXPECT_EQ(TabletMode::ON,
             keyboard_backlight_controller_->tablet_mode_changes()[0]);
 
   // Power source changes.
@@ -435,10 +435,10 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   power_supply_->set_status(status);
   power_supply_->NotifyObservers();
   ASSERT_EQ(1, internal_backlight_controller_->power_source_changes().size());
-  EXPECT_EQ(POWER_AC,
+  EXPECT_EQ(PowerSource::AC,
             internal_backlight_controller_->power_source_changes()[0]);
   ASSERT_EQ(1, keyboard_backlight_controller_->power_source_changes().size());
-  EXPECT_EQ(POWER_AC,
+  EXPECT_EQ(PowerSource::AC,
             keyboard_backlight_controller_->power_source_changes()[0]);
 
   // User activity reports.
@@ -468,9 +468,11 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   dbus::MessageWriter(&display_call).AppendBool(true /* is_projecting */);
   ASSERT_TRUE(CallSyncDBusMethod(&display_call).get());
   ASSERT_EQ(1, internal_backlight_controller_->display_mode_changes().size());
-  EXPECT_EQ(true, internal_backlight_controller_->display_mode_changes()[0]);
+  EXPECT_EQ(DisplayMode::PRESENTATION,
+            internal_backlight_controller_->display_mode_changes()[0]);
   ASSERT_EQ(1, keyboard_backlight_controller_->display_mode_changes().size());
-  EXPECT_EQ(true, keyboard_backlight_controller_->display_mode_changes()[0]);
+  EXPECT_EQ(DisplayMode::PRESENTATION,
+            keyboard_backlight_controller_->display_mode_changes()[0]);
 
   // Policy updates.
   dbus::MethodCall policy_call(kPowerManagerInterface, kSetPolicyMethod);
@@ -495,10 +497,10 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
                                     login_manager::kSessionManagerServicePath),
       &session_signal);
   ASSERT_EQ(1, internal_backlight_controller_->session_state_changes().size());
-  EXPECT_EQ(SESSION_STARTED,
+  EXPECT_EQ(SessionState::STARTED,
             internal_backlight_controller_->session_state_changes()[0]);
   ASSERT_EQ(1, keyboard_backlight_controller_->session_state_changes().size());
-  EXPECT_EQ(SESSION_STARTED,
+  EXPECT_EQ(SessionState::STARTED,
             keyboard_backlight_controller_->session_state_changes()[0]);
 
   // Chrome restarts.
@@ -618,18 +620,18 @@ TEST_F(DaemonTest, EmitDBusSignalForBrightnessChange) {
 
   dbus_wrapper_->ClearSentSignals();
   internal_backlight_controller_->NotifyObservers(
-      50.0, policy::BacklightController::BRIGHTNESS_CHANGE_AUTOMATED);
+      50.0, policy::BacklightController::BrightnessChangeCause::AUTOMATED);
   internal_backlight_controller_->NotifyObservers(
-      25.0, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      25.0, policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
   CheckBrightnessChangedSignal(0, kBrightnessChangedSignal, 50.0, false);
   CheckBrightnessChangedSignal(1, kBrightnessChangedSignal, 25.0, true);
 
   dbus_wrapper_->ClearSentSignals();
   keyboard_backlight_controller_->NotifyObservers(
-      8.0, policy::BacklightController::BRIGHTNESS_CHANGE_AUTOMATED);
+      8.0, policy::BacklightController::BrightnessChangeCause::AUTOMATED);
   keyboard_backlight_controller_->NotifyObservers(
-      4.0, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      4.0, policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
   EXPECT_EQ(2, dbus_wrapper_->num_sent_signals());
   CheckBrightnessChangedSignal(0, kKeyboardBrightnessChangedSignal, 8.0, false);
   CheckBrightnessChangedSignal(1, kKeyboardBrightnessChangedSignal, 4.0, true);
@@ -668,7 +670,7 @@ TEST_F(DaemonTest, RequestShutdown) {
 
   EXPECT_EQ(0, sync_commands_.size());
   ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(GetShutdownCommand(SHUTDOWN_REASON_USER_REQUEST),
+  EXPECT_EQ(GetShutdownCommand(ShutdownReason::USER_REQUEST),
             async_commands_[0]);
 
   // Sending another request shouldn't do anything.
@@ -715,7 +717,7 @@ TEST_F(DaemonTest, ShutDownForLowBattery) {
   EXPECT_TRUE(keyboard_backlight_controller_->shutting_down());
 
   ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(GetShutdownCommand(SHUTDOWN_REASON_LOW_BATTERY),
+  EXPECT_EQ(GetShutdownCommand(ShutdownReason::LOW_BATTERY),
             async_commands_[0]);
 }
 
@@ -744,7 +746,7 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   ASSERT_TRUE(base::DeleteFile(kFlashromPidDir, true /* recursive */));
   ASSERT_TRUE(daemon_->TriggerRetryShutdownTimerForTesting());
   ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(GetShutdownCommand(SHUTDOWN_REASON_USER_REQUEST),
+  EXPECT_EQ(GetShutdownCommand(ShutdownReason::USER_REQUEST),
             async_commands_[0]);
 
   // The timer should've been stopped.

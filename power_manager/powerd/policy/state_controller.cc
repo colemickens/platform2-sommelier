@@ -216,11 +216,11 @@ StateController::StateController()
       initialized_(false),
       got_initial_display_mode_(false),
       got_initial_policy_(false),
-      power_source_(POWER_AC),
-      lid_state_(LID_NOT_PRESENT),
-      session_state_(SESSION_STOPPED),
-      updater_state_(UPDATER_IDLE),
-      display_mode_(DISPLAY_NORMAL),
+      power_source_(PowerSource::AC),
+      lid_state_(LidState::NOT_PRESENT),
+      session_state_(SessionState::STOPPED),
+      updater_state_(UpdaterState::IDLE),
+      display_mode_(DisplayMode::NORMAL),
       screen_dimmed_(false),
       screen_turned_off_(false),
       requested_screen_lock_(false),
@@ -239,8 +239,8 @@ StateController::StateController()
       tpm_dictionary_attack_count_(0),
       tpm_dictionary_attack_suspend_threshold_(0),
       audio_is_active_(false),
-      idle_action_(DO_NOTHING),
-      lid_closed_action_(DO_NOTHING),
+      idle_action_(Action::DO_NOTHING),
+      lid_closed_action_(Action::DO_NOTHING),
       use_audio_activity_(true),
       use_video_activity_(true),
       wait_for_initial_user_activity_(false) {
@@ -288,7 +288,7 @@ void StateController::HandleLidStateChange(LidState state) {
     return;
 
   lid_state_ = state;
-  if (state == LID_OPEN)
+  if (state == LidState::OPEN)
     UpdateLastUserActivityTime();
   UpdateState();
 }
@@ -334,19 +334,19 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
 void StateController::HandleResume() {
   CHECK(initialized_);
   switch (delegate_->QueryLidState()) {
-    case LID_OPEN:  // fallthrough
-    case LID_NOT_PRESENT:
+    case LidState::OPEN:  // fallthrough
+    case LidState::NOT_PRESENT:
       // Undim the screen and turn it back on immediately after the user
       // opens the lid or wakes the system through some other means.
       UpdateLastUserActivityTime();
       break;
-    case LID_CLOSED:
+    case LidState::CLOSED:
       // If the lid is closed to suspend the machine and then very quickly
       // opened and closed again, the machine may resume without lid-opened
       // and lid-closed events being generated.  Ensure that we're able to
       // resuspend immediately in this case.
-      if (lid_state_ == LID_CLOSED &&
-          lid_closed_action_ == SUSPEND &&
+      if (lid_state_ == LidState::CLOSED &&
+          lid_closed_action_ == Action::SUSPEND &&
           lid_closed_action_performed_) {
         LOG(INFO) << "Lid still closed after resuming from lid-close-triggered "
                   << "suspend; repeating lid-closed action";
@@ -373,7 +373,7 @@ void StateController::HandleUserActivity() {
 
   // Ignore user activity reported while the lid is closed unless we're in
   // docked mode.
-  if (lid_state_ == LID_CLOSED && !in_docked_mode()) {
+  if (lid_state_ == LidState::CLOSED && !in_docked_mode()) {
     LOG(WARNING) << "Ignoring user activity received while lid is closed";
     return;
   }
@@ -391,7 +391,7 @@ void StateController::HandleUserActivity() {
     saw_user_activity_soon_after_screen_dim_or_off_ = true;
   }
 
-  if (session_state_ == SESSION_STARTED)
+  if (session_state_ == SessionState::STARTED)
     saw_user_activity_during_current_session_ = true;
 
   UpdateLastUserActivityTime();
@@ -442,17 +442,17 @@ void StateController::OnPrefChanged(const std::string& pref_name) {
 // static
 std::string StateController::ActionToString(Action action) {
   switch (action) {
-    case SUSPEND:
+    case Action::SUSPEND:
       return "suspend";
-    case STOP_SESSION:
+    case Action::STOP_SESSION:
       return "logout";
-    case SHUT_DOWN:
+    case Action::SHUT_DOWN:
       return "shutdown";
-    case DO_NOTHING:
+    case Action::DO_NOTHING:
       return "no-op";
-    default:
-      return base::StringPrintf("unknown (%d)", action);
   }
+  NOTREACHED() << "Unhandled action " << action;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(action));
 }
 
 // static
@@ -460,16 +460,16 @@ StateController::Action StateController::ProtoActionToAction(
     PowerManagementPolicy_Action proto_action) {
   switch (proto_action) {
     case PowerManagementPolicy_Action_SUSPEND:
-      return SUSPEND;
+      return Action::SUSPEND;
     case PowerManagementPolicy_Action_STOP_SESSION:
-      return STOP_SESSION;
+      return Action::STOP_SESSION;
     case PowerManagementPolicy_Action_SHUT_DOWN:
-      return SHUT_DOWN;
+      return Action::SHUT_DOWN;
     case PowerManagementPolicy_Action_DO_NOTHING:
-      return DO_NOTHING;
+      return Action::DO_NOTHING;
     default:
       NOTREACHED() << "Unhandled action " << proto_action;
-      return DO_NOTHING;
+      return Action::DO_NOTHING;
   }
 }
 
@@ -652,12 +652,12 @@ void StateController::UpdateSettingsAndState() {
   const Action old_lid_closed_action = lid_closed_action_;
   const base::TimeDelta old_idle_delay = delays_.idle;
 
-  const bool on_ac = power_source_ == POWER_AC;
-  const bool presenting = display_mode_ == DISPLAY_PRESENTATION;
+  const bool on_ac = power_source_ == PowerSource::AC;
+  const bool presenting = display_mode_ == DisplayMode::PRESENTATION;
 
   // Start out with the defaults loaded from the power manager's prefs.
-  idle_action_ = SUSPEND;
-  lid_closed_action_ = SUSPEND;
+  idle_action_ = Action::SUSPEND;
+  lid_closed_action_ = Action::SUSPEND;
   delays_ = on_ac ? pref_ac_delays_ : pref_battery_delays_;
   use_audio_activity_ = true;
   use_video_activity_ = true;
@@ -702,20 +702,20 @@ void StateController::UpdateSettingsAndState() {
   // prevents the system from shutting down on idle if no session has been
   // started.
   if (disable_idle_suspend_ &&
-      (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN))
-    idle_action_ = DO_NOTHING;
+      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN))
+    idle_action_ = Action::DO_NOTHING;
 
   // Avoid suspending or shutting down due to inactivity while a system
   // update is being applied on AC power so users on slow connections can
   // get updates.  Continue suspending on lid-close so users don't get
   // confused, though.
-  if (updater_state_ == UPDATER_UPDATING && on_ac &&
-      (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN))
-    idle_action_ = DO_NOTHING;
+  if (updater_state_ == UpdaterState::UPDATING && on_ac &&
+      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN))
+    idle_action_ = Action::DO_NOTHING;
 
   // Ignore the lid being closed while presenting to support docked mode.
   if (allow_docked_mode_ && presenting)
-    lid_closed_action_ = DO_NOTHING;
+    lid_closed_action_ = Action::DO_NOTHING;
 
   // Override the idle and lid-closed actions to suspend instead of shutting
   // down if the TPM dictionary-attack counter is high.
@@ -726,10 +726,10 @@ void StateController::UpdateSettingsAndState() {
                  << tpm_dictionary_attack_count_ << " (threshold is "
                  << tpm_dictionary_attack_suspend_threshold_ << "); "
                  << "overriding actions to suspend instead of shutting down";
-    if (idle_action_ == SHUT_DOWN)
-      idle_action_ = SUSPEND;
-    if (lid_closed_action_ == SHUT_DOWN)
-      lid_closed_action_ = SUSPEND;
+    if (idle_action_ == Action::SHUT_DOWN)
+      idle_action_ = Action::SUSPEND;
+    if (lid_closed_action_ == Action::SHUT_DOWN)
+      lid_closed_action_ = Action::SUSPEND;
   }
 
   // If the idle or lid-closed actions changed, make sure that we perform
@@ -768,16 +768,16 @@ void StateController::UpdateSettingsAndState() {
 
 void StateController::PerformAction(Action action) {
   switch (action) {
-    case SUSPEND:
+    case Action::SUSPEND:
       delegate_->Suspend();
       break;
-    case STOP_SESSION:
+    case Action::STOP_SESSION:
       delegate_->StopSession();
       break;
-    case SHUT_DOWN:
+    case Action::SHUT_DOWN:
       delegate_->ShutDown();
       break;
-    case DO_NOTHING:
+    case Action::DO_NOTHING:
       break;
     default:
       NOTREACHED() << "Unhandled action " << action;
@@ -820,7 +820,7 @@ void StateController::UpdateState() {
   // The idle-imminent signal is only emitted if an idle action is set.
   if (delays_.idle_warning > base::TimeDelta() &&
       idle_duration >= delays_.idle_warning &&
-      idle_action_ != DO_NOTHING) {
+      idle_action_ != Action::DO_NOTHING) {
     if (!sent_idle_warning_ || resend_idle_warning_) {
       const base::TimeDelta time_until_idle = delays_.idle - idle_duration;
       LOG(INFO) << "Emitting idle-imminent signal with "
@@ -834,7 +834,7 @@ void StateController::UpdateState() {
     // When resetting the idle-warning trigger, only emit the idle-deferred
     // signal if the idle action hasn't been performed yet or if it was a
     // no-op action.
-    if (!idle_action_performed_ || idle_action_ == DO_NOTHING) {
+    if (!idle_action_performed_ || idle_action_ == Action::DO_NOTHING) {
       LOG(INFO) << "Emitting idle-deferred signal";
       delegate_->EmitIdleActionDeferred();
     }
@@ -849,25 +849,25 @@ void StateController::UpdateState() {
     turned_panel_off_for_docked_mode_ = docked;
   }
 
-  Action idle_action_to_perform = DO_NOTHING;
+  Action idle_action_to_perform = Action::DO_NOTHING;
   if (idle_duration >= delays_.idle) {
     if (!idle_action_performed_) {
       idle_action_to_perform = idle_action_;
       if (!delegate_->IsOobeCompleted()) {
         LOG(INFO) << "Not performing idle action without OOBE completed";
-        idle_action_to_perform = DO_NOTHING;
+        idle_action_to_perform = Action::DO_NOTHING;
       }
-      if (idle_action_to_perform == SUSPEND &&
+      if (idle_action_to_perform == Action::SUSPEND &&
           require_usb_input_device_to_suspend_ &&
           !delegate_->IsUsbInputDeviceConnected()) {
         LOG(INFO) << "Not suspending for idle without USB input device";
-        idle_action_to_perform = DO_NOTHING;
+        idle_action_to_perform = Action::DO_NOTHING;
       }
-      if (idle_action_to_perform == SUSPEND &&
+      if (idle_action_to_perform == Action::SUSPEND &&
           avoid_suspend_when_headphone_jack_plugged_ &&
           delegate_->IsHeadphoneJackPlugged()) {
         LOG(INFO) << "Not suspending for idle due to headphone jack";
-        idle_action_to_perform = DO_NOTHING;
+        idle_action_to_perform = Action::DO_NOTHING;
       }
       LOG(INFO) << "Ready to perform idle action ("
                 << ActionToString(idle_action_to_perform) << ") after "
@@ -878,12 +878,12 @@ void StateController::UpdateState() {
     idle_action_performed_ = false;
   }
 
-  Action lid_closed_action_to_perform = DO_NOTHING;
+  Action lid_closed_action_to_perform = Action::DO_NOTHING;
   // Hold off on the lid-closed action if the initial display mode or policy
   // hasn't been received. powerd starts before Chrome's gotten a chance to
   // configure the displays and send the policy, and we don't want to shut down
   // immediately if the user rebooted with the lid closed.
-  if (lid_state_ == LID_CLOSED && !waiting_for_initial_state()) {
+  if (lid_state_ == LidState::CLOSED && !waiting_for_initial_state()) {
     if (!lid_closed_action_performed_) {
       lid_closed_action_to_perform = lid_closed_action_;
       LOG(INFO) << "Ready to perform lid-closed action ("
@@ -894,10 +894,10 @@ void StateController::UpdateState() {
     lid_closed_action_performed_ = false;
   }
 
-  if (idle_action_to_perform == SHUT_DOWN ||
-      lid_closed_action_to_perform == SHUT_DOWN) {
+  if (idle_action_to_perform == Action::SHUT_DOWN ||
+      lid_closed_action_to_perform == Action::SHUT_DOWN) {
     // If either of the actions is shutting down, don't perform the other.
-    PerformAction(SHUT_DOWN);
+    PerformAction(Action::SHUT_DOWN);
   } else if (idle_action_to_perform == lid_closed_action_to_perform) {
     // If both actions are the same, only perform it once.
     PerformAction(idle_action_to_perform);

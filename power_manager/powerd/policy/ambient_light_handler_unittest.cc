@@ -22,7 +22,7 @@ class TestDelegate : public AmbientLightHandler::Delegate {
  public:
   TestDelegate()
       : percent_(-1.0),
-        cause_(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT) {}
+        cause_(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT) {}
   virtual ~TestDelegate() {}
 
   double percent() const { return percent_; }
@@ -94,7 +94,8 @@ TEST_F(AmbientLightHandlerTest, UpdatePercent) {
   // The middle step should be used as soon as a light reading is received.
   UpdateSensor(50);
   EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT, delegate_.cause());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
 
   // An initial reading in the lower step should be ignored, but a second
   // reading should overcome hysteresis.
@@ -102,7 +103,8 @@ TEST_F(AmbientLightHandlerTest, UpdatePercent) {
   EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
   UpdateSensor(10);
   EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT, delegate_.cause());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
 
   // Send two high readings and check that the second one causes a jump to
   // the top step.
@@ -110,7 +112,8 @@ TEST_F(AmbientLightHandlerTest, UpdatePercent) {
   EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
   UpdateSensor(90);
   EXPECT_DOUBLE_EQ(100.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT, delegate_.cause());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
 }
 
 TEST_F(AmbientLightHandlerTest, PowerSources) {
@@ -126,8 +129,9 @@ TEST_F(AmbientLightHandlerTest, PowerSources) {
   // bottom step.
   UpdateSensor(0);
   EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT, delegate_.cause());
-  handler_.HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+  handler_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
 
   // Check that the brightness is updated in response to power source
@@ -135,18 +139,22 @@ TEST_F(AmbientLightHandlerTest, PowerSources) {
   UpdateSensor(50);
   UpdateSensor(50);
   EXPECT_DOUBLE_EQ(40.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT, delegate_.cause());
-  handler_.HandlePowerSourceChange(POWER_AC);
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+  handler_.HandlePowerSourceChange(PowerSource::AC);
   EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_POWER_SOURCE, delegate_.cause());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::POWER_SOURCE,
+            delegate_.cause());
 
   UpdateSensor(100);
   UpdateSensor(100);
   EXPECT_DOUBLE_EQ(100.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT, delegate_.cause());
-  handler_.HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+  handler_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_DOUBLE_EQ(90.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_POWER_SOURCE, delegate_.cause());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::POWER_SOURCE,
+            delegate_.cause());
 }
 
 TEST_F(AmbientLightHandlerTest, DeferInitialChange) {
@@ -158,14 +166,15 @@ TEST_F(AmbientLightHandlerTest, DeferInitialChange) {
   // shouldn't trigger changes.
   Init();
   EXPECT_LT(delegate_.percent(), 0.0);
-  handler_.HandlePowerSourceChange(POWER_BATTERY);
+  handler_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_LT(delegate_.percent(), 0.0);
 
   // After the first ambient light reading, the battery percent from the
   // bottom step should be used.
   UpdateSensor(0);
   EXPECT_DOUBLE_EQ(30.0, delegate_.percent());
-  EXPECT_EQ(AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT, delegate_.cause());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
 }
 
 }  // namespace policy

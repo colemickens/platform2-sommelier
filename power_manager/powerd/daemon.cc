@@ -216,8 +216,8 @@ class Daemon::StateControllerDelegate
   }
 
   void ShutDown() override {
-    daemon_->ShutDown(SHUTDOWN_MODE_POWER_OFF,
-                      SHUTDOWN_REASON_STATE_TRANSITION);
+    daemon_->ShutDown(ShutdownMode::POWER_OFF,
+                      ShutdownReason::STATE_TRANSITION);
   }
 
   void UpdatePanelForDockedMode(bool docked) override {
@@ -268,7 +268,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       proc_path_(kDefaultProcPath),
       suspended_state_path_(kDefaultSuspendedStatePath),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
-      session_state_(SESSION_STOPPED),
+      session_state_(SessionState::STOPPED),
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
       log_suspend_with_mosys_eventlog_(false),
@@ -362,14 +362,14 @@ void Daemon::Init() {
   ec_wakeup_helper_ = delegate_->CreateEcWakeupHelper();
 
   const LidState lid_state = input_watcher_->QueryLidState();
-  if (lid_state == LID_CLOSED)
+  if (lid_state == LidState::CLOSED)
     LOG(INFO) << "Lid closed at startup";
   wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
                            acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(),
-                           lid_state, DISPLAY_NORMAL, prefs_.get());
+                           lid_state, DisplayMode::NORMAL, prefs_.get());
 
   const PowerSource power_source =
-      power_status.line_power_on ? POWER_AC : POWER_BATTERY;
+      power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
                           power_source, lid_state);
 
@@ -382,7 +382,7 @@ void Daemon::Init() {
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
 
   TabletMode tablet_mode = input_watcher_->GetTabletMode();
-  if (tablet_mode != TABLET_MODE_UNSUPPORTED)
+  if (tablet_mode != TabletMode::UNSUPPORTED)
     HandleTabletModeChange(tablet_mode);
 
   // Call this last to ensure that all of our members are already initialized.
@@ -462,7 +462,7 @@ void Daemon::SendBrightnessChangedSignal(
   dbus::MessageWriter writer(&signal);
   writer.AppendInt32(round(brightness_percent));
   writer.AppendBool(cause ==
-      policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+      policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
   dbus_wrapper_->EmitSignal(&signal);
 }
 
@@ -489,25 +489,24 @@ void Daemon::HandleLidClosed() {
   // It is important that we notify WakeupController first so that it can
   // inhibit input devices quickly. StateController will issue a blocking call
   // to Chrome which can take longer than a second.
-  wakeup_controller_->SetLidState(LID_CLOSED);
-  state_controller_->HandleLidStateChange(LID_CLOSED);
+  wakeup_controller_->SetLidState(LidState::CLOSED);
+  state_controller_->HandleLidStateChange(LidState::CLOSED);
 }
 
 void Daemon::HandleLidOpened() {
   LOG(INFO) << "Lid opened";
   suspender_->HandleLidOpened();
-  state_controller_->HandleLidStateChange(LID_OPEN);
-  wakeup_controller_->SetLidState(LID_OPEN);
+  state_controller_->HandleLidStateChange(LidState::OPEN);
+  wakeup_controller_->SetLidState(LidState::OPEN);
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
   // Don't log spammy repeat events if we see them.
-  if (state != BUTTON_REPEAT)
+  if (state != ButtonState::REPEAT)
     LOG(INFO) << "Power button " << ButtonStateToString(state);
   metrics_collector_->HandlePowerButtonEvent(state);
-  if (state == BUTTON_DOWN)
+  if (state == ButtonState::DOWN) {
     delegate_->Launch("sync");
-  if (state == BUTTON_DOWN) {
     for (auto controller : all_backlight_controllers_)
       controller->HandlePowerButtonPress();
   }
@@ -520,13 +519,13 @@ void Daemon::HandleHoverStateChange(bool hovering) {
 }
 
 void Daemon::HandleTabletModeChange(TabletMode mode) {
-  DCHECK_NE(mode, TABLET_MODE_UNSUPPORTED);
+  DCHECK_NE(mode, TabletMode::UNSUPPORTED);
   LOG(INFO) << "Tablet mode " << TabletModeToString(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
 
   if (set_wifi_transmit_power_for_tablet_mode_) {
-    std::string args = (mode == TABLET_MODE_ON) ?
+    std::string args = (mode == TabletMode::ON) ?
         "--wifi_transmit_power_tablet" : "--nowifi_transmit_power_tablet";
 
     // Intel iwlwifi driver requires extra power table.
@@ -534,7 +533,7 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
       args += " --wifi_transmit_power_iwl_power_table=" + iwl_wifi_power_table_;
     }
 
-    LOG(INFO) << ((mode == TABLET_MODE_ON) ? "Enabling": "Disabling")
+    LOG(INFO) << ((mode == TabletMode::ON) ? "Enabling": "Disabling")
               << " tablet mode wifi transmit power";
     RunSetuidHelper("set_wifi_transmit_power", args, false);
   }
@@ -548,8 +547,8 @@ void Daemon::DeferInactivityTimeoutForVT2() {
 void Daemon::ShutDownForPowerButtonWithNoDisplay() {
   LOG(INFO) << "Shutting down due to power button press while no display is "
             << "connected";
-  metrics_collector_->HandlePowerButtonEvent(BUTTON_DOWN);
-  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
+  metrics_collector_->HandlePowerButtonEvent(ButtonState::DOWN);
+  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::USER_REQUEST);
 }
 
 void Daemon::HandleMissingPowerButtonAcknowledgment() {
@@ -581,7 +580,7 @@ int Daemon::GetInitialDarkSuspendId() {
 }
 
 bool Daemon::IsLidClosedForSuspend() {
-  return input_watcher_->QueryLidState() == LID_CLOSED;
+  return input_watcher_->QueryLidState() == LidState::CLOSED;
 }
 
 bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
@@ -648,7 +647,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   while (FirmwareIsBeingUpdated(&details)) {
     if (firmware_duration >= firmware_timeout) {
       LOG(INFO) << "Aborting suspend attempt for firmware update: " << details;
-      return SUSPEND_FAILED;
+      return policy::Suspender::Delegate::SuspendResult::FAILURE;
     }
     firmware_duration += firmware_poll_interval;
     base::PlatformThread::Sleep(firmware_poll_interval);
@@ -701,16 +700,16 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   // These exit codes are defined in powerd/powerd_suspend.
   switch (exit_code) {
     case 0:
-      return SUSPEND_SUCCESSFUL;
+      return policy::Suspender::Delegate::SuspendResult::SUCCESS;
     case 1:
-      return SUSPEND_FAILED;
+      return policy::Suspender::Delegate::SuspendResult::FAILURE;
     case 2:  // Wakeup event received before write to wakeup_count.
     case 3:  // Wakeup event received after write to wakeup_count.
-      return SUSPEND_CANCELED;
+      return policy::Suspender::Delegate::SuspendResult::CANCELED;
     default:
       LOG(ERROR) << "Treating unexpected exit code " << exit_code
                  << " as suspend failure";
-      return SUSPEND_FAILED;
+      return policy::Suspender::Delegate::SuspendResult::FAILURE;
   }
 }
 
@@ -718,7 +717,7 @@ void Daemon::UndoPrepareToSuspend(bool success,
                                   int num_suspend_attempts,
                                   bool canceled_while_in_dark_resume) {
   if (canceled_while_in_dark_resume && !dark_resume_->ExitDarkResume())
-    ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED);
+    ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::EXIT_DARK_RESUME_FAILED);
 
   // Do this first so we have the correct settings (including for the
   // backlight).
@@ -753,11 +752,11 @@ void Daemon::GenerateDarkResumeMetrics(
 }
 
 void Daemon::ShutDownForFailedSuspend() {
-  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_SUSPEND_FAILED);
+  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::SUSPEND_FAILED);
 }
 
 void Daemon::ShutDownForDarkResume() {
-  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_DARK_RESUME);
+  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::DARK_RESUME);
 }
 
 void Daemon::OnAudioStateChange(bool active) {
@@ -780,7 +779,7 @@ void Daemon::OnPowerStatusUpdate() {
   metrics_collector_->HandlePowerStatusUpdate(status);
 
   const PowerSource power_source =
-      status.line_power_on ? POWER_AC : POWER_BATTERY;
+      status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
   for (auto controller : all_backlight_controllers_)
     controller->HandlePowerSourceChange(power_source);
   state_controller_->HandlePowerSourceChange(power_source);
@@ -793,7 +792,7 @@ void Daemon::OnPowerStatusUpdate() {
               << base::StringPrintf(
                      "%0.3f", status.observed_battery_charge_rate)
               << "A observed charge rate)";
-    ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_LOW_BATTERY);
+    ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::LOW_BATTERY);
   }
 
   PowerSupplyProperties protobuf;
@@ -955,8 +954,8 @@ void Daemon::InitDBus() {
     buffet::InitCommandHandlers(bus,
                                 base::Bind(&Daemon::ShutDown,
                                            weak_ptr_factory_.GetWeakPtr(),
-                                           SHUTDOWN_MODE_REBOOT,
-                                           SHUTDOWN_REASON_USER_REQUEST));
+                                           ShutdownMode::REBOOT,
+                                           ShutdownReason::USER_REQUEST));
   }
 #endif  // USE_BUFFET
 }
@@ -1145,7 +1144,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestShutdownMethod << " message from "
             << method_call->GetSender();
-  ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_USER_REQUEST);
+  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::USER_REQUEST);
   return std::unique_ptr<dbus::Response>();
 }
 
@@ -1153,23 +1152,23 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Got " << kRequestRestartMethod << " message from "
             << method_call->GetSender();
-  ShutdownReason shutdown_reason = SHUTDOWN_REASON_USER_REQUEST;
+  ShutdownReason shutdown_reason = ShutdownReason::USER_REQUEST;
 
   dbus::MessageReader reader(method_call);
   int32_t arg = 0;
   if (reader.PopInt32(&arg)) {
     switch (static_cast<RequestRestartReason>(arg)) {
       case REQUEST_RESTART_FOR_USER:
-        shutdown_reason = SHUTDOWN_REASON_USER_REQUEST;
+        shutdown_reason = ShutdownReason::USER_REQUEST;
         break;
       case REQUEST_RESTART_FOR_UPDATE:
-        shutdown_reason = SHUTDOWN_REASON_SYSTEM_UPDATE;
+        shutdown_reason = ShutdownReason::SYSTEM_UPDATE;
         break;
       default:
         LOG(WARNING) << "Got unknown restart reason " << arg;
     }
   }
-  ShutDown(SHUTDOWN_MODE_REBOOT, shutdown_reason);
+  ShutDown(ShutdownMode::REBOOT, shutdown_reason);
   return std::unique_ptr<dbus::Response>();
 }
 
@@ -1205,7 +1204,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleDecreaseScreenBrightnessMethod(
   if (!changed &&
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
-        percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+        percent,
+        policy::BacklightController::BrightnessChangeCause::USER_INITIATED,
         kBrightnessChangedSignal);
   }
   return std::unique_ptr<dbus::Response>();
@@ -1221,7 +1221,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleIncreaseScreenBrightnessMethod(
   if (!changed &&
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
-        percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+        percent,
+        policy::BacklightController::BrightnessChangeCause::USER_INITIATED,
         kBrightnessChangedSignal);
   }
   return std::unique_ptr<dbus::Response>();
@@ -1233,26 +1234,27 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetScreenBrightnessMethod(
     return CreateNotSupportedError(method_call, "Backlight uninitialized");
 
   double percent = 0.0;
-  int dbus_style = 0;
+  int dbus_transition = 0;
   dbus::MessageReader reader(method_call);
-  if (!reader.PopDouble(&percent) || !reader.PopInt32(&dbus_style)) {
+  if (!reader.PopDouble(&percent) || !reader.PopInt32(&dbus_transition)) {
     LOG(ERROR) << "Missing " << kSetScreenBrightnessPercentMethod << " args";
-    return CreateInvalidArgsError(method_call, "Expected percent and style");
+    return CreateInvalidArgsError(method_call,
+                                  "Expected percent and transition");
   }
 
-  policy::BacklightController::TransitionStyle style =
-      policy::BacklightController::TRANSITION_FAST;
-  switch (dbus_style) {
+  using Transition = policy::BacklightController::Transition;
+  Transition transition = Transition::FAST;
+  switch (dbus_transition) {
     case kBrightnessTransitionGradual:
-      style = policy::BacklightController::TRANSITION_FAST;
+      transition = Transition::FAST;
       break;
     case kBrightnessTransitionInstant:
-      style = policy::BacklightController::TRANSITION_INSTANT;
+      transition = Transition::INSTANT;
       break;
     default:
-      LOG(ERROR) << "Invalid transition style (" << dbus_style << ")";
+      LOG(ERROR) << "Invalid brightness transition " << dbus_transition;
   }
-  display_backlight_controller_->SetUserBrightnessPercent(percent, style);
+  display_backlight_controller_->SetUserBrightnessPercent(percent, transition);
   return std::unique_ptr<dbus::Response>();
 }
 
@@ -1337,7 +1339,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
     return CreateInvalidArgsError(method_call, "Expected boolean state");
   }
 
-  DisplayMode mode = is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL;
+  DisplayMode mode =
+      is_projecting ? DisplayMode::PRESENTATION : DisplayMode::NORMAL;
   LOG(INFO) << "Chrome is using " << DisplayModeToString(mode)
             << " display mode";
   state_controller_->HandleDisplayModeChange(mode);
@@ -1424,7 +1427,7 @@ std::unique_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
 
 void Daemon::OnSessionStateChange(const std::string& state_str) {
   SessionState state = (state_str == kSessionStarted) ?
-      SESSION_STARTED : SESSION_STOPPED;
+      SessionState::STARTED : SessionState::STOPPED;
   if (state == session_state_)
     return;
 
@@ -1438,13 +1441,13 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
 
 void Daemon::OnUpdateOperation(const std::string& operation) {
   LOG(INFO) << "Update operation is " << operation;
-  UpdaterState state = UPDATER_IDLE;
+  UpdaterState state = UpdaterState::IDLE;
   if (operation == update_engine::kUpdateStatusDownloading ||
       operation == update_engine::kUpdateStatusVerifying ||
       operation == update_engine::kUpdateStatusFinalizing) {
-    state = UPDATER_UPDATING;
+    state = UpdaterState::UPDATING;
   } else if (operation == update_engine::kUpdateStatusUpdatedNeedReboot) {
-    state = UPDATER_UPDATED;
+    state = UpdaterState::UPDATED;
   }
   state_controller_->HandleUpdaterStateChange(state);
 }
@@ -1489,18 +1492,18 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   for (auto controller : all_backlight_controllers_) {
     // If we're going to display a low-battery alert while shutting down, don't
     // turn the screen off immediately.
-    if (!(reason == SHUTDOWN_REASON_LOW_BATTERY &&
+    if (!(reason == ShutdownReason::LOW_BATTERY &&
           controller == display_backlight_controller_.get()))
       controller->SetShuttingDown(true);
   }
 
   const std::string reason_str = ShutdownReasonToString(reason);
   switch (mode) {
-    case SHUTDOWN_MODE_POWER_OFF:
+    case ShutdownMode::POWER_OFF:
       LOG(INFO) << "Shutting down, reason: " << reason_str;
       RunSetuidHelper("shut_down", "--shutdown_reason=" + reason_str, false);
       break;
-    case SHUTDOWN_MODE_REBOOT:
+    case ShutdownMode::REBOOT:
       LOG(INFO) << "Restarting, reason: " << reason_str;
       RunSetuidHelper("reboot", "", false);
       break;

@@ -258,68 +258,68 @@ extern const double kEpsilon;
 extern const int64_t kFastBacklightTransitionMs;
 extern const int64_t kSlowBacklightTransitionMs;
 
-enum PowerSource {
-  POWER_AC,
-  POWER_BATTERY,
+enum class PowerSource {
+  AC,
+  BATTERY,
 };
 
-enum LidState {
-  LID_OPEN,
-  LID_CLOSED,
-  LID_NOT_PRESENT,
+enum class LidState {
+  OPEN,
+  CLOSED,
+  NOT_PRESENT,
 };
 
 // Convertible Chromebooks may either be folded into a tablet or used as a
 // clamshell.
-enum TabletMode {
-  TABLET_MODE_ON,
-  TABLET_MODE_OFF,
-  TABLET_MODE_UNSUPPORTED,
+enum class TabletMode {
+  ON,
+  OFF,
+  UNSUPPORTED,
 };
 
-enum SessionState {
-  SESSION_STOPPED,
-  SESSION_STARTED,
+enum class SessionState {
+  STOPPED,
+  STARTED,
 };
 
 // Current status of update engine, the system updater.
-enum UpdaterState {
+enum class UpdaterState {
   // No update is currently being applied.
-  UPDATER_IDLE,
+  IDLE,
   // An update is being downloaded, verified, or applied.
-  UPDATER_UPDATING,
+  UPDATING,
   // An update has been successfully applied and will be used after a reboot.
-  UPDATER_UPDATED,
+  UPDATED,
 };
 
-enum DisplayMode {
-  DISPLAY_NORMAL,
-  DISPLAY_PRESENTATION,
+enum class DisplayMode {
+  NORMAL,
+  PRESENTATION,
 };
 
-enum ButtonState {
-  BUTTON_UP,
-  BUTTON_DOWN,
-  BUTTON_REPEAT,
+enum class ButtonState {
+  UP,
+  DOWN,
+  REPEAT,
 };
 
 // Reasons for the system being shut down.
 // Note: These are reported in a histogram and must not be renumbered.
-enum ShutdownReason {
+enum class ShutdownReason {
   // Explicit user request (e.g. holding power button).
-  SHUTDOWN_REASON_USER_REQUEST            = 0,
+  USER_REQUEST            = 0,
   // Request from StateController (e.g. lid was closed or user was inactive).
-  SHUTDOWN_REASON_STATE_TRANSITION        = 1,
+  STATE_TRANSITION        = 1,
   // Battery level dropped below shutdown threshold.
-  SHUTDOWN_REASON_LOW_BATTERY             = 2,
+  LOW_BATTERY             = 2,
   // Multiple suspend attempts failed.
-  SHUTDOWN_REASON_SUSPEND_FAILED          = 3,
+  SUSPEND_FAILED          = 3,
   // Battery level was below threshold during dark resume from suspend.
-  SHUTDOWN_REASON_DARK_RESUME             = 4,
+  DARK_RESUME             = 4,
   // System is being rebooted to apply an update.
-  SHUTDOWN_REASON_SYSTEM_UPDATE           = 5,
+  SYSTEM_UPDATE           = 5,
   // Failed to properly recover from dark resume.
-  SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED = 6,
+  EXIT_DARK_RESUME_FAILED = 6,
 };
 
 // Returns human-readable descriptions of enum values.

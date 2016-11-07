@@ -40,18 +40,17 @@ const int64_t kLogHoverOffDelayMs = 20000;
 
 // Returns the total duration for |style|.
 base::TimeDelta GetTransitionDuration(
-    BacklightController::TransitionStyle style) {
-  switch (style) {
-    case BacklightController::TRANSITION_INSTANT:
+    BacklightController::Transition transition) {
+  switch (transition) {
+    case BacklightController::Transition::INSTANT:
       return base::TimeDelta();
-    case BacklightController::TRANSITION_FAST:
+    case BacklightController::Transition::FAST:
       return base::TimeDelta::FromMilliseconds(kFastBacklightTransitionMs);
-    case BacklightController::TRANSITION_SLOW:
+    case BacklightController::Transition::SLOW:
       return base::TimeDelta::FromMilliseconds(kSlowBacklightTransitionMs);
-    default:
-      NOTREACHED() << "Unhandled transition style " << style;
-      return base::TimeDelta();
   }
+  NOTREACHED() << "Unhandled transition style " << transition;
+  return base::TimeDelta();
 }
 
 }  // namespace
@@ -68,7 +67,7 @@ bool KeyboardBacklightController::TestApi::TriggerTurnOffTimeout() {
     return false;
 
   controller_->turn_off_timer_.Stop();
-  controller_->UpdateState(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
+  controller_->UpdateState(Transition::SLOW, BrightnessChangeCause::AUTOMATED);
   return true;
 }
 
@@ -153,7 +152,7 @@ void KeyboardBacklightController::Init(
     automated_percent_ = user_steps_.back();
     prefs_->GetDouble(kKeyboardBacklightNoAlsBrightnessPref,
                       &automated_percent_);
-    UpdateState(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
+    UpdateState(Transition::SLOW, BrightnessChangeCause::AUTOMATED);
   }
 }
 
@@ -175,7 +174,7 @@ void KeyboardBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
 void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
   session_state_ = state;
-  if (state == SESSION_STARTED) {
+  if (state == SessionState::STARTED) {
     num_als_adjustments_ = 0;
     num_user_adjustments_ = 0;
   }
@@ -186,20 +185,20 @@ void KeyboardBacklightController::HandlePowerButtonPress() {}
 void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {
   last_user_activity_time_ = clock_->GetCurrentTime();
   UpdateTurnOffTimer();
-  UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::FAST, BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
   // Ignore fullscreen video that's reported when the user isn't logged in;
   // it may be triggered by animations on the login screen.
-  if (is_fullscreen && session_state_ == SESSION_STOPPED)
+  if (is_fullscreen && session_state_ == SessionState::STOPPED)
     is_fullscreen = false;
 
   if (is_fullscreen != fullscreen_video_playing_) {
     VLOG(1) << "Fullscreen video "
             << (is_fullscreen ? "started" : "went non-fullscreen");
     fullscreen_video_playing_ = is_fullscreen;
-    UpdateState(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
+    UpdateState(Transition::SLOW, BrightnessChangeCause::AUTOMATED);
   }
 
   video_timer_.Stop();
@@ -241,8 +240,8 @@ void KeyboardBacklightController::HandleHoverStateChange(bool hovering) {
       log_hover_off_timer_.Stop();
   }
 
-  UpdateState(hovering_ ? TRANSITION_FAST : TRANSITION_SLOW,
-              BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(hovering_ ? Transition::FAST : Transition::SLOW,
+              BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::HandleTabletModeChange(TabletMode mode) {
@@ -250,7 +249,7 @@ void KeyboardBacklightController::HandleTabletModeChange(TabletMode mode) {
     return;
 
   tablet_mode_ = mode;
-  UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::FAST, BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::HandlePolicyChange(
@@ -262,43 +261,43 @@ void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed == dimmed_for_inactivity_)
     return;
   dimmed_for_inactivity_ = dimmed;
-  UpdateState(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::SLOW, BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::SetOffForInactivity(bool off) {
   if (off == off_for_inactivity_)
     return;
   off_for_inactivity_ = off;
-  UpdateState(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::SLOW, BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::SetSuspended(bool suspended) {
   if (suspended == suspended_)
     return;
   suspended_ = suspended;
-  UpdateState(suspended ? TRANSITION_INSTANT : TRANSITION_FAST,
-              BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(suspended ? Transition::INSTANT : Transition::FAST,
+              BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::SetShuttingDown(bool shutting_down) {
   if (shutting_down == shutting_down_)
     return;
   shutting_down_ = shutting_down;
-  UpdateState(TRANSITION_INSTANT, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::INSTANT, BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::SetDocked(bool docked) {
   if (docked == docked_)
     return;
   docked_ = docked;
-  UpdateState(TRANSITION_INSTANT, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::INSTANT, BrightnessChangeCause::AUTOMATED);
 }
 
 void KeyboardBacklightController::SetForcedOff(bool forced_off) {
   if (forced_off_ == forced_off)
     return;
   forced_off_ = forced_off;
-  UpdateState(TRANSITION_INSTANT, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::INSTANT, BrightnessChangeCause::AUTOMATED);
 }
 
 bool KeyboardBacklightController::GetForcedOff() {
@@ -313,7 +312,7 @@ bool KeyboardBacklightController::GetBrightnessPercent(double* percent) {
 
 bool KeyboardBacklightController::SetUserBrightnessPercent(
     double percent,
-    TransitionStyle style) {
+    Transition transition) {
   // There's currently no UI for setting the keyboard backlight brightness
   // to arbitrary levels; the user is instead just given the option of
   // increasing or decreasing the brightness between pre-defined levels.
@@ -328,7 +327,7 @@ bool KeyboardBacklightController::IncreaseUserBrightness() {
     user_step_index_++;
   num_user_adjustments_++;
 
-  return UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_USER_INITIATED);
+  return UpdateState(Transition::FAST, BrightnessChangeCause::USER_INITIATED);
 }
 
 bool KeyboardBacklightController::DecreaseUserBrightness(bool allow_off) {
@@ -339,7 +338,7 @@ bool KeyboardBacklightController::DecreaseUserBrightness(bool allow_off) {
     user_step_index_--;
   num_user_adjustments_++;
 
-  return UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_USER_INITIATED);
+  return UpdateState(Transition::FAST, BrightnessChangeCause::USER_INITIATED);
 }
 
 int KeyboardBacklightController::GetNumAmbientLightSensorAdjustments() const {
@@ -354,11 +353,11 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     double brightness_percent,
     AmbientLightHandler::BrightnessChangeCause cause) {
   automated_percent_ = brightness_percent;
-  TransitionStyle transition =
-      cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
-      TRANSITION_SLOW : TRANSITION_FAST;
-  if (UpdateState(transition, BRIGHTNESS_CHANGE_AUTOMATED) &&
-      cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT)
+  Transition transition =
+      cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT ?
+      Transition::SLOW : Transition::FAST;
+  if (UpdateState(transition, BrightnessChangeCause::AUTOMATED) &&
+      cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT)
     num_als_adjustments_++;
 }
 
@@ -371,7 +370,7 @@ void KeyboardBacklightController::OnBrightnessChange(
   bool zero = brightness_percent <= kEpsilon;
   if (zero != display_brightness_is_zero_) {
     display_brightness_is_zero_ = zero;
-    UpdateState(TRANSITION_SLOW, cause);
+    UpdateState(Transition::SLOW, cause);
   }
 }
 
@@ -379,7 +378,7 @@ void KeyboardBacklightController::HandleVideoTimeout() {
   if (fullscreen_video_playing_)
     VLOG(1) << "Fullscreen video stopped";
   fullscreen_video_playing_ = false;
-  UpdateState(TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
+  UpdateState(Transition::FAST, BrightnessChangeCause::AUTOMATED);
   UpdateTurnOffTimer();
 }
 
@@ -454,15 +453,15 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
       FROM_HERE, remaining_delay,
       base::Bind(
           base::IgnoreResult(&KeyboardBacklightController::UpdateState),
-          base::Unretained(this), TRANSITION_SLOW,
-          BRIGHTNESS_CHANGE_AUTOMATED));
+          base::Unretained(this), Transition::SLOW,
+          BrightnessChangeCause::AUTOMATED));
 }
 
-bool KeyboardBacklightController::UpdateState(TransitionStyle transition,
+bool KeyboardBacklightController::UpdateState(Transition transition,
                                               BrightnessChangeCause cause) {
   // Force the backlight off immediately in several special cases.
   if (forced_off_ || shutting_down_ || docked_ || suspended_ ||
-      tablet_mode_ == TABLET_MODE_ON)
+      tablet_mode_ == TabletMode::ON)
     return ApplyBrightnessPercent(0.0, transition, cause);
 
   // If the user has asked for a specific brightness level, use it unless the
@@ -502,7 +501,7 @@ bool KeyboardBacklightController::UpdateState(TransitionStyle transition,
 
 bool KeyboardBacklightController::ApplyBrightnessPercent(
     double percent,
-    TransitionStyle transition,
+    Transition transition,
     BrightnessChangeCause cause) {
   int64_t level = PercentToLevel(percent);
   if (level == current_level_ && !backlight_->TransitionInProgress())

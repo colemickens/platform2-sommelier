@@ -15,8 +15,8 @@ EventDeviceStub::EventDeviceStub()
       is_power_button_(false),
       hover_supported_(false),
       has_left_button_(false),
-      initial_lid_state_(LID_OPEN),
-      initial_tablet_mode_(TABLET_MODE_OFF) {}
+      initial_lid_state_(LidState::OPEN),
+      initial_tablet_mode_(TabletMode::OFF) {}
 
 EventDeviceStub::~EventDeviceStub() {}
 

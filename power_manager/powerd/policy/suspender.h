@@ -90,13 +90,13 @@ class Suspender : public SuspendDelayObserver {
   class Delegate {
    public:
     // Outcomes for a suspend attempt.
-    enum SuspendResult {
+    enum class SuspendResult {
       // The system successfully suspended and resumed.
-      SUSPEND_SUCCESSFUL = 0,
+      SUCCESS = 0,
       // The kernel reported a (possibly transient) error while suspending.
-      SUSPEND_FAILED,
+      FAILURE,
       // The suspend attempt was canceled as a result of a wakeup event.
-      SUSPEND_CANCELED,
+      CANCELED,
     };
 
     virtual ~Delegate() {}
@@ -256,33 +256,33 @@ class Suspender : public SuspendDelayObserver {
 
  private:
   // States that Suspender can be in while the event loop is running.
-  enum State {
+  enum class State {
     // Nothing suspend-related is going on.
-    STATE_IDLE = 0,
+    IDLE = 0,
     // powerd has announced a new suspend request to other processes and is
     // waiting for clients that have registered suspend delays to report
     // readiness.
-    STATE_WAITING_FOR_SUSPEND_DELAYS,
+    WAITING_FOR_SUSPEND_DELAYS,
     // powerd is waiting to resuspend after a failed suspend attempt or after
     // waking into dark resume.
-    STATE_WAITING_TO_RESUSPEND,
+    WAITING_TO_RESUSPEND,
     // The system is shutting down. Suspend requests are ignored.
-    STATE_SHUTTING_DOWN,
+    SHUTTING_DOWN,
   };
 
-  enum Event {
+  enum class Event {
     // A suspend request was received.
-    EVENT_SUSPEND_REQUESTED = 0,
+    SUSPEND_REQUESTED = 0,
     // Clients that have registered suspend delays have all reported readiness
     // (or timed out).
-    EVENT_SUSPEND_DELAYS_READY,
+    SUSPEND_DELAYS_READY,
     // User activity was reported.
-    EVENT_USER_ACTIVITY,
+    USER_ACTIVITY,
     // The system is ready to resuspend (after either a failed suspend attempt
     // or a dark resume).
-    EVENT_READY_TO_RESUSPEND,
+    READY_TO_RESUSPEND,
     // The system is shutting down.
-    EVENT_SHUTDOWN_STARTED,
+    SHUTDOWN_STARTED,
   };
 
   // Internal functions that actually process the received D-Bus messages.

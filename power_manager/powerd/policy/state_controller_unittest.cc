@@ -56,7 +56,7 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
         oobe_completed_(true),
         hdmi_audio_active_(false),
         headphone_jack_plugged_(false),
-        lid_state_(LID_OPEN) {
+        lid_state_(LidState::OPEN) {
   }
   virtual ~TestDelegate() {}
 
@@ -148,9 +148,9 @@ class StateControllerTest : public testing::Test {
         default_avoid_suspend_when_headphone_jack_plugged_(0),
         default_ignore_external_policy_(0),
         default_allow_docked_mode_(1),
-        initial_power_source_(POWER_AC),
-        initial_lid_state_(LID_OPEN),
-        initial_display_mode_(DISPLAY_NORMAL),
+        initial_power_source_(PowerSource::AC),
+        initial_lid_state_(LidState::OPEN),
+        initial_display_mode_(DisplayMode::NORMAL),
         send_initial_display_mode_(true),
         send_initial_policy_(true) {
   }
@@ -399,15 +399,15 @@ TEST_F(StateControllerTest, AudioDefersSuspend) {
 // Tests that the system is suspended when the lid is closed.
 TEST_F(StateControllerTest, LidCloseSuspendsByDefault) {
   Init();
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // After the lid is opened, the next delay should be screen-dimming (i.e.
   // all timers should be reset).
-  delegate_.set_lid_state(LID_OPEN);
+  delegate_.set_lid_state(LidState::OPEN);
   controller_.HandleResume();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_OPEN);
+  controller_.HandleLidStateChange(LidState::OPEN);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
@@ -416,13 +416,13 @@ TEST_F(StateControllerTest, LidCloseSuspendsByDefault) {
 // Tests that timeouts are reset when the user logs in or out.
 TEST_F(StateControllerTest, SessionStateChangeResetsTimeouts) {
   Init();
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // The screen should be undimmed and turned on when a user logs out.
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
 
   // The screen should be dimmed again after the usual delay.
@@ -459,7 +459,7 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   policy.set_presentation_screen_dim_delay_factor(kScreenDimFactor);
   controller_.HandlePolicyChange(policy);
 
-  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimDelay));
@@ -474,7 +474,7 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
-  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
@@ -494,7 +494,7 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
 // and AC power.
 TEST_F(StateControllerTest, PowerSourceChange) {
   // Start out on battery power.
-  initial_power_source_ = POWER_BATTERY;
+  initial_power_source_ = PowerSource::BATTERY;
   default_battery_screen_dim_delay_ = base::TimeDelta::FromSeconds(60);
   default_battery_screen_off_delay_ = base::TimeDelta::FromSeconds(90);
   default_battery_suspend_delay_ = base::TimeDelta::FromSeconds(100);
@@ -513,7 +513,7 @@ TEST_F(StateControllerTest, PowerSourceChange) {
   // Switch to AC power and check that the AC delays are used instead.
   controller_.HandleResume();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  controller_.HandlePowerSourceChange(POWER_AC);
+  controller_.HandlePowerSourceChange(PowerSource::AC);
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
@@ -532,7 +532,7 @@ TEST_F(StateControllerTest, PowerSourceChange) {
   // change as a user action and undim the screen (rather than e.g.
   // suspending immediately since |default_battery_suspend_delay_| has been
   // exceeded) and then proceed through the battery delays.
-  controller_.HandlePowerSourceChange(POWER_BATTERY);
+  controller_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_dim_delay_));
@@ -583,8 +583,8 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
 
   // The policy's request to do nothing when the lid is closed should be
   // honored.
-  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Wait 120 seconds and then send an updated policy that dims the screen
@@ -596,7 +596,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
 
   // Switch to battery power, which still has an unset screen-dimming
   // delay.  The screen should undim immediately.
-  controller_.HandlePowerSourceChange(POWER_BATTERY);
+  controller_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
 
   // Wait for the idle timeout to be reached and check that the battery
@@ -614,7 +614,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   // be used.
   prefs_.SetInt64(kIgnoreExternalPolicyPref, 1);
   prefs_.NotifyObservers(kIgnoreExternalPolicyPref);
-  controller_.HandlePowerSourceChange(POWER_AC);
+  controller_.HandlePowerSourceChange(PowerSource::AC);
   controller_.HandleAudioStateChange(false);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
 }
@@ -707,7 +707,7 @@ TEST_F(StateControllerTest, SimultaneousIdleAndLidActions) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
   AdvanceTime(default_ac_suspend_delay_ - default_ac_screen_off_delay_);
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
@@ -781,7 +781,7 @@ TEST_F(StateControllerTest, DontSuspendBeforeOobeCompleted) {
 TEST_F(StateControllerTest, DisableIdleSuspend) {
   default_disable_idle_suspend_ = 1;
   Init();
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
 
   // With the disable-idle-suspend pref set, the system shouldn't suspend
   // when it's idle.
@@ -803,7 +803,7 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   // Shutdown actions should be ignored, though.
   policy.set_ac_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
   controller_.HandlePolicyChange(policy);
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
@@ -871,11 +871,11 @@ TEST_F(StateControllerTest, ReportMetrics) {
   EXPECT_EQ(kReportUserActivityMetrics, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  controller_.HandlePowerSourceChange(POWER_BATTERY);
+  controller_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(JoinActions(kReportUserActivityMetrics, kScreenUndim, NULL),
             delegate_.GetActions());
   AdvanceTime(default_ac_screen_dim_delay_ / 2);
-  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   EXPECT_EQ(kReportUserActivityMetrics, delegate_.GetActions());
 }
 
@@ -923,10 +923,10 @@ TEST_F(StateControllerTest, LidCloseAfterIdleSuspend) {
   // Close the lid, which may wake the system.  The controller should
   // re-suspend immediately after it receives the lid-closed event, without
   // turning the screen back on.
-  delegate_.set_lid_state(LID_CLOSED);
+  delegate_.set_lid_state(LidState::CLOSED);
   controller_.HandleResume();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
@@ -935,8 +935,8 @@ TEST_F(StateControllerTest, LidCloseAfterIdleSuspend) {
 // no events are generated (http://crosbug.com/p/17499).
 TEST_F(StateControllerTest, ResuspendAfterLidOpenAndClose) {
   Init();
-  delegate_.set_lid_state(LID_CLOSED);
-  controller_.HandleLidStateChange(LID_CLOSED);
+  delegate_.set_lid_state(LidState::CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // The lid-closed action should be repeated if the lid is still closed
@@ -948,8 +948,8 @@ TEST_F(StateControllerTest, ResuspendAfterLidOpenAndClose) {
 // Tests that delays function as expected on a system that lacks a lid and
 // that resume is treated as user activity.
 TEST_F(StateControllerTest, LidNotPresent) {
-  initial_lid_state_ = LID_NOT_PRESENT;
-  delegate_.set_lid_state(LID_NOT_PRESENT);
+  initial_lid_state_ = LidState::NOT_PRESENT;
+  delegate_.set_lid_state(LidState::NOT_PRESENT);
   Init();
 
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
@@ -965,34 +965,34 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
 
   // Inform the controller that an update is being applied.  The screen
   // should dim and be turned off, but the system should stay on.
-  controller_.HandleUpdaterStateChange(UPDATER_UPDATING);
+  controller_.HandleUpdaterStateChange(UpdaterState::UPDATING);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // When the update has been applied, the system should suspend immediately.
-  controller_.HandleUpdaterStateChange(UPDATER_UPDATED);
+  controller_.HandleUpdaterStateChange(UpdaterState::UPDATED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // Resume the system and announce another update.
   controller_.HandleResume();
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  controller_.HandleUpdaterStateChange(UPDATER_UPDATING);
+  controller_.HandleUpdaterStateChange(UpdaterState::UPDATING);
 
   // Closing the lid should still suspend.
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   // Step through all of the timeouts again.
   controller_.HandleResume();
-  controller_.HandleLidStateChange(LID_OPEN);
+  controller_.HandleLidStateChange(LidState::OPEN);
   controller_.HandleUserActivity();
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // The system should also suspend immediately after transitioning from
   // the "updating" state back to "idle" (i.e. the update was unsuccessful).
-  controller_.HandleUpdaterStateChange(UPDATER_IDLE);
+  controller_.HandleUpdaterStateChange(UpdaterState::IDLE);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   controller_.HandleResume();
   controller_.HandleUserActivity();
@@ -1004,7 +1004,7 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   PowerManagementPolicy policy;
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  controller_.HandleUpdaterStateChange(UPDATER_UPDATING);
+  controller_.HandleUpdaterStateChange(UpdaterState::UPDATING);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kStopSession, NULL),
             delegate_.GetActions());
@@ -1171,20 +1171,20 @@ TEST_F(StateControllerTest, DockedMode) {
 
   // Connect an external display and close the lid.  The internal panel
   // should be turned off, but the system shouldn't suspend.
-  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kDocked, delegate_.GetActions());
 
   // Open the lid and check that the internal panels turns back on.
-  controller_.HandleLidStateChange(LID_OPEN);
+  controller_.HandleLidStateChange(LidState::OPEN);
   EXPECT_EQ(kUndocked, delegate_.GetActions());
 
   // Close the lid again and check that the system suspends immediately
   // after the external display is unplugged.
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kDocked, delegate_.GetActions());
-  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kUndocked, kSuspend, NULL), delegate_.GetActions());
 }
 
@@ -1195,9 +1195,9 @@ TEST_F(StateControllerTest, DisallowDockedMode) {
   Init();
 
   // Connect an external display and close the lid.  The system should suspend.
-  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
@@ -1205,7 +1205,7 @@ TEST_F(StateControllerTest, DisallowDockedMode) {
 // |user_activity_screen_dim_delay_factor| field is honored.
 TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   Init();
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
 
   // Send a policy where delays are doubled if user activity is observed
   // while the screen is dimmed or soon after it's turned off.
@@ -1252,7 +1252,7 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   // lengthened after user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
@@ -1268,7 +1268,7 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   // reporting user activity.  The delays should be unchanged.
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, NULL), delegate_.GetActions());
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
@@ -1286,7 +1286,7 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   // delays.  The delays should still be scaled.
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, NULL), delegate_.GetActions());
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
@@ -1311,12 +1311,12 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
 TEST_F(StateControllerTest, SuspendIfLidClosedAtStartup) {
   // Nothing should happen yet; we need to wait to see if the system is about to
   // go into docked mode.
-  initial_lid_state_ = LID_CLOSED;
+  initial_lid_state_ = LidState::CLOSED;
   send_initial_display_mode_ = false;
   Init();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerInitialStateTimeout());
 }
@@ -1325,8 +1325,8 @@ TEST_F(StateControllerTest, SuspendIfLidClosedAtStartup) {
 // mode is received soon afterwards, the system should go into docked mode
 // instead of suspending (http://crbug.com/277091).
 TEST_F(StateControllerTest, EnterDockedModeAtStartup) {
-  initial_lid_state_ = LID_CLOSED;
-  initial_display_mode_ = DISPLAY_PRESENTATION;
+  initial_lid_state_ = LidState::CLOSED;
+  initial_display_mode_ = DisplayMode::PRESENTATION;
   Init();
   EXPECT_EQ(kDocked, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerInitialStateTimeout());
@@ -1336,7 +1336,7 @@ TEST_F(StateControllerTest, EnterDockedModeAtStartup) {
 // arrives, StateController should give up eventually and just suspend the
 // system.
 TEST_F(StateControllerTest, TimeOutIfInitialDisplayModeNotReceived) {
-  initial_lid_state_ = LID_CLOSED;
+  initial_lid_state_ = LidState::CLOSED;
   send_initial_display_mode_ = false;
   Init();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -1348,7 +1348,7 @@ TEST_F(StateControllerTest, TimeOutIfInitialDisplayModeNotReceived) {
 // The lid-closed action shouldn't be performed until the initial policy is
 // received.
 TEST_F(StateControllerTest, WaitForPolicyAtStartup) {
-  initial_lid_state_ = LID_CLOSED;
+  initial_lid_state_ = LidState::CLOSED;
   send_initial_policy_ = false;
   Init();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -1366,7 +1366,7 @@ TEST_F(StateControllerTest, WaitForPolicyAtStartup) {
 // If the initial state timeout occurs before the initial policy is received,
 // the default lid-closed action should be performed.
 TEST_F(StateControllerTest, TimeOutIfInitialPolicyNotReceived) {
-  initial_lid_state_ = LID_CLOSED;
+  initial_lid_state_ = LidState::CLOSED;
   send_initial_policy_ = false;
   Init();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -1387,26 +1387,26 @@ TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // User activity received while the lid is closed should be ignored.
-  delegate_.set_lid_state(LID_CLOSED);
-  controller_.HandleLidStateChange(LID_CLOSED);
+  delegate_.set_lid_state(LidState::CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   controller_.HandleUserActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Resume and go through the same sequence as before, but this time while
   // presenting so that docked mode will be used.
-  delegate_.set_lid_state(LID_OPEN);
+  delegate_.set_lid_state(LidState::OPEN);
   controller_.HandleResume();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_OPEN);
-  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  controller_.HandleLidStateChange(LidState::OPEN);
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // User activity while docked should turn the screen back on and undim it.
-  controller_.HandleLidStateChange(LID_CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kDocked, delegate_.GetActions());
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
@@ -1442,7 +1442,7 @@ TEST_F(StateControllerTest, AudioDelay) {
 // inactivity-triggered actions are deferred until user activity is reported.
 TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   Init();
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
 
   const base::TimeDelta kWarningDelay = base::TimeDelta::FromSeconds(585);
   const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
@@ -1479,9 +1479,9 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
 
   // Restart the session and check that the actions are avoided again.
   // User activity reported while the session is stopped should be disregarded.
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   controller_.HandleUserActivity();
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -1498,9 +1498,9 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
 
   // User activity that is seen before the |wait| field is set should still be
   // honored and result in the delays taking effect.
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   controller_.HandlePolicyChange(PowerManagementPolicy());
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   controller_.HandleUserActivity();
   controller_.HandlePolicyChange(policy);
   ResetLastStepDelay();
@@ -1516,8 +1516,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   PowerManagementPolicy policy_without_wait = policy;
   policy_without_wait.set_wait_for_initial_user_activity(false);
   controller_.HandlePolicyChange(policy_without_wait);
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
-  controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STARTED);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
   EXPECT_EQ(GetIdleImminentAction(kIdleDelay - kWarningDelay),
             delegate_.GetActions());
@@ -1525,7 +1525,7 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
 
   // |wait| should have no effect when no session is ongoing.
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleSessionStateChange(SessionState::STOPPED);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kWarningDelay));
 }
 
@@ -1547,11 +1547,11 @@ TEST_F(StateControllerTest, SuspendInsteadOfShuttingDownForTpmCounter) {
   // With the count below the threshold, the "shut down" lid-closed action
   // should be honored.
   controller_.HandleTpmStatus(kThreshold - 1);
-  delegate_.set_lid_state(LID_CLOSED);
-  controller_.HandleLidStateChange(LID_CLOSED);
+  delegate_.set_lid_state(LidState::CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kShutDown, delegate_.GetActions());
-  delegate_.set_lid_state(LID_OPEN);
-  controller_.HandleLidStateChange(LID_OPEN);
+  delegate_.set_lid_state(LidState::OPEN);
+  controller_.HandleLidStateChange(LidState::OPEN);
 
   // Ditto for the idle action.
   EXPECT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
@@ -1561,11 +1561,11 @@ TEST_F(StateControllerTest, SuspendInsteadOfShuttingDownForTpmCounter) {
   // If the count reaches the threshold, the system should suspend instead of
   // shutting down.
   controller_.HandleTpmStatus(kThreshold);
-  delegate_.set_lid_state(LID_CLOSED);
-  controller_.HandleLidStateChange(LID_CLOSED);
+  delegate_.set_lid_state(LidState::CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  delegate_.set_lid_state(LID_OPEN);
-  controller_.HandleLidStateChange(LID_OPEN);
+  delegate_.set_lid_state(LidState::OPEN);
+  controller_.HandleLidStateChange(LidState::OPEN);
 
   EXPECT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
@@ -1577,11 +1577,11 @@ TEST_F(StateControllerTest, SuspendInsteadOfShuttingDownForTpmCounter) {
       PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(initial_policy_);
 
-  delegate_.set_lid_state(LID_CLOSED);
-  controller_.HandleLidStateChange(LID_CLOSED);
+  delegate_.set_lid_state(LidState::CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kStopSession, delegate_.GetActions());
-  delegate_.set_lid_state(LID_OPEN);
-  controller_.HandleLidStateChange(LID_OPEN);
+  delegate_.set_lid_state(LidState::OPEN);
+  controller_.HandleLidStateChange(LidState::OPEN);
 
   EXPECT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kNoActions, delegate_.GetActions());

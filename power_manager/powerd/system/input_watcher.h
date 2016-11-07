@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -91,11 +92,11 @@ class InputWatcher : public InputWatcherInterface,
   // Different types of devices monitored by InputWatcher. It's possible for a
   // given device to fulfill more than one role.
   enum DeviceType {
-    DEVICE_NONE                = 0,
-    DEVICE_POWER_BUTTON        = 1 << 0,
-    DEVICE_LID_SWITCH          = 1 << 1,
-    DEVICE_TABLET_MODE_SWITCH  = 1 << 2,
-    DEVICE_HOVER               = 1 << 3,
+    DEVICE_NONE               = 0,
+    DEVICE_POWER_BUTTON       = 1 << 0,
+    DEVICE_LID_SWITCH         = 1 << 1,
+    DEVICE_TABLET_MODE_SWITCH = 1 << 2,
+    DEVICE_HOVER              = 1 << 3,
   };
 
   // Returns a bitfield of DeviceType values describing |device|.

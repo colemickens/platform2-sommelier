@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <cmath>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -72,19 +73,19 @@ class MetricsCollectorTest : public Test {
   // (except ones listed in |metrics_to_test_|).
   void IgnoreHandleSessionStateChangeMetrics() {
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtStartOfSessionName, POWER_AC));
+        kMetricBatteryRemainingAtStartOfSessionName, PowerSource::AC));
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtStartOfSessionName, POWER_BATTERY));
+        kMetricBatteryRemainingAtStartOfSessionName, PowerSource::BATTERY));
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtEndOfSessionName, POWER_AC));
+        kMetricBatteryRemainingAtEndOfSessionName, PowerSource::AC));
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtEndOfSessionName, POWER_BATTERY));
+        kMetricBatteryRemainingAtEndOfSessionName, PowerSource::BATTERY));
     IgnoreMetric(kMetricLengthOfSessionName);
     IgnoreMetric(kMetricNumberOfAlsAdjustmentsPerSessionName);
     IgnoreMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricUserBrightnessAdjustmentsPerSessionName, POWER_AC));
+        kMetricUserBrightnessAdjustmentsPerSessionName, PowerSource::AC));
     IgnoreMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricUserBrightnessAdjustmentsPerSessionName, POWER_BATTERY));
+        kMetricUserBrightnessAdjustmentsPerSessionName, PowerSource::BATTERY));
   }
 
   // Adds expectations to ignore all metrics sent by HandlePowerStatusUpdate()
@@ -191,7 +192,7 @@ TEST_F(MetricsCollectorTest, BacklightLevel) {
 
   collector_.HandleScreenDimmedChange(false, base::TimeTicks::Now());
   ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-                       kMetricBacklightLevelName, POWER_BATTERY),
+                       kMetricBacklightLevelName, PowerSource::BATTERY),
                    kCurrentDisplayPercent, kMetricMaxPercent);
   ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
                    kMetricMaxPercent);
@@ -201,7 +202,7 @@ TEST_F(MetricsCollectorTest, BacklightLevel) {
   IgnoreHandlePowerStatusUpdateMetrics();
   collector_.HandlePowerStatusUpdate(power_status_);
   ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-                       kMetricBacklightLevelName, POWER_AC),
+                       kMetricBacklightLevelName, PowerSource::AC),
                    kCurrentDisplayPercent, kMetricMaxPercent);
   ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
                    kMetricMaxPercent);
@@ -302,15 +303,15 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
     power_status_.battery_percentage = kBatteryPercentages[i];
     ExpectEnumMetric(
         MetricsCollector::AppendPowerSourceToEnumName(
-            kMetricBatteryRemainingAtStartOfSessionName, POWER_BATTERY),
+            kMetricBatteryRemainingAtStartOfSessionName, PowerSource::BATTERY),
         round(kBatteryPercentages[i]), kMetricMaxPercent);
     collector_.HandlePowerStatusUpdate(power_status_);
-    collector_.HandleSessionStateChange(SESSION_STARTED);
+    collector_.HandleSessionStateChange(SessionState::STARTED);
     Mock::VerifyAndClearExpectations(metrics_lib_);
 
     ExpectEnumMetric(
         MetricsCollector::AppendPowerSourceToEnumName(
-            kMetricBatteryRemainingAtEndOfSessionName, POWER_BATTERY),
+            kMetricBatteryRemainingAtEndOfSessionName, PowerSource::BATTERY),
         round(kBatteryPercentages[i]), kMetricMaxPercent);
 
     display_backlight_controller_.set_num_als_adjustments(kAlsAdjustments[i]);
@@ -322,11 +323,10 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
                  kMetricDefaultBuckets);
     ExpectMetric(
         MetricsCollector::AppendPowerSourceToEnumName(
-            kMetricUserBrightnessAdjustmentsPerSessionName, POWER_BATTERY),
-        kUserAdjustments[i],
-        kMetricUserBrightnessAdjustmentsPerSessionMin,
-        kMetricUserBrightnessAdjustmentsPerSessionMax,
-        kMetricDefaultBuckets);
+            kMetricUserBrightnessAdjustmentsPerSessionName,
+            PowerSource::BATTERY),
+        kUserAdjustments[i], kMetricUserBrightnessAdjustmentsPerSessionMin,
+        kMetricUserBrightnessAdjustmentsPerSessionMax, kMetricDefaultBuckets);
 
     AdvanceTime(base::TimeDelta::FromSeconds(kSessionSecs[i]));
     ExpectMetric(kMetricLengthOfSessionName,
@@ -335,7 +335,7 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
                  kMetricLengthOfSessionMax,
                  kMetricDefaultBuckets);
 
-    collector_.HandleSessionStateChange(SESSION_STOPPED);
+    collector_.HandleSessionStateChange(SessionState::STOPPED);
     Mock::VerifyAndClearExpectations(metrics_lib_);
   }
 }
@@ -353,7 +353,7 @@ TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
   // counted. Additional power status updates that don't describe a power source
   // change shouldn't increment the count.
   IgnoreHandleSessionStateChangeMetrics();
-  collector_.HandleSessionStateChange(SESSION_STARTED);
+  collector_.HandleSessionStateChange(SessionState::STARTED);
   IgnoreHandlePowerStatusUpdateMetrics();
   UpdatePowerStatusLinePower(false);
   UpdatePowerStatusLinePower(false);
@@ -364,14 +364,14 @@ TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
 
   // Sessions that start while on battery power should also be counted.
   IgnoreHandleSessionStateChangeMetrics();
-  collector_.HandleSessionStateChange(SESSION_STOPPED);
+  collector_.HandleSessionStateChange(SessionState::STOPPED);
   IgnoreHandlePowerStatusUpdateMetrics();
   UpdatePowerStatusLinePower(false);
-  collector_.HandleSessionStateChange(SESSION_STARTED);
-  collector_.HandleSessionStateChange(SESSION_STOPPED);
-  collector_.HandleSessionStateChange(SESSION_STARTED);
-  collector_.HandleSessionStateChange(SESSION_STOPPED);
-  collector_.HandleSessionStateChange(SESSION_STARTED);
+  collector_.HandleSessionStateChange(SessionState::STARTED);
+  collector_.HandleSessionStateChange(SessionState::STOPPED);
+  collector_.HandleSessionStateChange(SessionState::STARTED);
+  collector_.HandleSessionStateChange(SessionState::STOPPED);
+  collector_.HandleSessionStateChange(SessionState::STARTED);
   ExpectNumOfSessionsPerChargeMetric(3);
   UpdatePowerStatusLinePower(true);
   Mock::VerifyAndClearExpectations(metrics_lib_);
@@ -435,16 +435,16 @@ TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
   Init();
 
   // We should ignore a button release that wasn't preceded by a press.
-  collector_.HandlePowerButtonEvent(BUTTON_UP);
+  collector_.HandlePowerButtonEvent(ButtonState::UP);
   Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Presses that are followed by additional presses should also be ignored.
-  collector_.HandlePowerButtonEvent(BUTTON_DOWN);
-  collector_.HandlePowerButtonEvent(BUTTON_DOWN);
+  collector_.HandlePowerButtonEvent(ButtonState::DOWN);
+  collector_.HandlePowerButtonEvent(ButtonState::DOWN);
   Mock::VerifyAndClearExpectations(metrics_lib_);
 
   // Send a regular sequence of events and check that the duration is reported.
-  collector_.HandlePowerButtonEvent(BUTTON_DOWN);
+  collector_.HandlePowerButtonEvent(ButtonState::DOWN);
   const base::TimeDelta kDuration = base::TimeDelta::FromMilliseconds(243);
   AdvanceTime(kDuration);
   ExpectMetric(kMetricPowerButtonDownTimeName,
@@ -452,7 +452,7 @@ TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
                kMetricPowerButtonDownTimeMin,
                kMetricPowerButtonDownTimeMax,
                kMetricDefaultBuckets);
-  collector_.HandlePowerButtonEvent(BUTTON_UP);
+  collector_.HandlePowerButtonEvent(ButtonState::UP);
 }
 
 TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {

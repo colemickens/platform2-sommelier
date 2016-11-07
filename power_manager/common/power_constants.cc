@@ -103,87 +103,87 @@ const int64_t kSlowBacklightTransitionMs = 2000;
 
 std::string PowerSourceToString(PowerSource source) {
   switch (source) {
-    case POWER_AC:
+    case PowerSource::AC:
       return "AC";
-    case POWER_BATTERY:
+    case PowerSource::BATTERY:
       return "battery";
-    default:
-      return base::StringPrintf("unknown (%d)", source);
   }
+  NOTREACHED() << "Unhandled power source " << source;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(source));
 }
 
 std::string LidStateToString(LidState state) {
   switch (state) {
-    case LID_OPEN:
+    case LidState::OPEN:
       return "open";
-    case LID_CLOSED:
+    case LidState::CLOSED:
       return "closed";
-    case LID_NOT_PRESENT:
+    case LidState::NOT_PRESENT:
       return "not present";
-    default:
-      return base::StringPrintf("unknown (%d)", state);
   }
+  NOTREACHED() << "Unhandled lid state " << state;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
 std::string TabletModeToString(TabletMode mode) {
   switch (mode) {
-    case TABLET_MODE_ON:
+    case TabletMode::ON:
       return "on";
-    case TABLET_MODE_OFF:
+    case TabletMode::OFF:
       return "off";
-    case TABLET_MODE_UNSUPPORTED:
+    case TabletMode::UNSUPPORTED:
       return "unsupported";
-    default:
-      return base::StringPrintf("unknown (%d)", mode);
   }
+  NOTREACHED() << "Unhandled tablet mode " << mode;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(mode));
 }
 
 std::string SessionStateToString(SessionState state) {
   switch (state) {
-    case SESSION_STOPPED:
+    case SessionState::STOPPED:
       return "stopped";
-    case SESSION_STARTED:
+    case SessionState::STARTED:
       return "started";
-    default:
-      return base::StringPrintf("unknown (%d)", state);
   }
+  NOTREACHED() << "Unhandled session state " << state;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
 std::string UpdaterStateToString(UpdaterState state) {
   switch (state) {
-    case UPDATER_IDLE:
+    case UpdaterState::IDLE:
       return "idle";
-    case UPDATER_UPDATING:
+    case UpdaterState::UPDATING:
       return "updating";
-    case UPDATER_UPDATED:
+    case UpdaterState::UPDATED:
       return "updated";
-    default:
-      return base::StringPrintf("unknown (%d)", state);
   }
+  NOTREACHED() << "Unhandled updater state " << state;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
 std::string DisplayModeToString(DisplayMode mode) {
   switch (mode) {
-    case DISPLAY_NORMAL:
+    case DisplayMode::NORMAL:
       return "normal";
-    case DISPLAY_PRESENTATION:
+    case DisplayMode::PRESENTATION:
       return "presentation";
-    default:
-      return base::StringPrintf("unknown (%d)", mode);
   }
+  NOTREACHED() << "Unhandled display mode " << mode;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(mode));
 }
 
 std::string ButtonStateToString(ButtonState state) {
   switch (state) {
-    case BUTTON_UP:
+    case ButtonState::UP:
       return "up";
-    case BUTTON_DOWN:
+    case ButtonState::DOWN:
       return "down";
-    case BUTTON_REPEAT:
+    case ButtonState::REPEAT:
       return "repeat";
-    default:
-      return base::StringPrintf("unknown (%d)", state);
   }
+  NOTREACHED() << "Unhandled button state " << state;
+  return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
 std::string ShutdownReasonToString(ShutdownReason reason) {
@@ -191,19 +191,19 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
   // switch to runlevel 0 (i.e. don't change these strings without checking that
   // other upstart jobs aren't depending on them).
   switch (reason) {
-    case SHUTDOWN_REASON_USER_REQUEST:
+    case ShutdownReason::USER_REQUEST:
       return "user-request";
-    case SHUTDOWN_REASON_STATE_TRANSITION:
+    case ShutdownReason::STATE_TRANSITION:
       return "state-transition";
-    case SHUTDOWN_REASON_LOW_BATTERY:
+    case ShutdownReason::LOW_BATTERY:
       return "low-battery";
-    case SHUTDOWN_REASON_SUSPEND_FAILED:
+    case ShutdownReason::SUSPEND_FAILED:
       return "suspend-failed";
-    case SHUTDOWN_REASON_DARK_RESUME:
+    case ShutdownReason::DARK_RESUME:
       return "dark-resume";
-    case SHUTDOWN_REASON_SYSTEM_UPDATE:
+    case ShutdownReason::SYSTEM_UPDATE:
       return "system-update";
-    case SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED:
+    case ShutdownReason::EXIT_DARK_RESUME_FAILED:
       return "exit-dark-resume-failed";
   }
   NOTREACHED() << "Unhandled shutdown reason " << reason;

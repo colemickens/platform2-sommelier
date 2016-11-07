@@ -283,20 +283,20 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
  private:
   // Specifies when UpdatePowerStatus() should update |power_status_|.
-  enum UpdatePolicy {
+  enum class UpdatePolicy {
     // Update the status after any successful refresh.
-    UPDATE_UNCONDITIONALLY,
+    UNCONDITIONALLY,
     // Update the status only if the new state (i.e. the connected power sources
     // or the battery state) differs from the current state.
-    UPDATE_ONLY_IF_STATE_CHANGED,
+    ONLY_IF_STATE_CHANGED,
   };
 
   // Specifies how PerformUpdate() should notify observers.
-  enum NotifyPolicy {
+  enum class NotifyPolicy {
     // Call NotifyObservers() directly.
-    NOTIFY_SYNCHRONOUSLY,
+    SYNCHRONOUSLY,
     // Post |notify_observers_task_| to call NotifyObservers() asynchronously.
-    NOTIFY_ASYNCHRONOUSLY,
+    ASYNCHRONOUSLY,
   };
 
   std::string GetIdForPath(const base::FilePath& path) const;

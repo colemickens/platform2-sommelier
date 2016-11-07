@@ -45,11 +45,11 @@ const char kTabletUnsupported[] = "tablet_unsupported";
 
 const char* GetTabletModeAction(TabletMode mode) {
   switch (mode) {
-    case TABLET_MODE_ON:
+    case TabletMode::ON:
       return kTabletOn;
-    case TABLET_MODE_OFF:
+    case TabletMode::OFF:
       return kTabletOff;
-    case TABLET_MODE_UNSUPPORTED:
+    case TabletMode::UNSUPPORTED:
       return kTabletUnsupported;
   }
   NOTREACHED() << "Invalid tablet mode " << mode;
@@ -58,11 +58,11 @@ const char* GetTabletModeAction(TabletMode mode) {
 
 const char* GetPowerButtonAction(ButtonState state) {
   switch (state) {
-    case BUTTON_DOWN:
+    case ButtonState::DOWN:
       return kPowerButtonDown;
-    case BUTTON_UP:
+    case ButtonState::UP:
       return kPowerButtonUp;
-    case BUTTON_REPEAT:
+    case ButtonState::REPEAT:
       return kPowerButtonRepeat;
   }
   NOTREACHED() << "Invalid power button state " << state;
@@ -94,7 +94,7 @@ class TestInputControllerDelegate : public InputController::Delegate,
     AppendAction(hovering ? kHoverOn : kHoverOff);
   }
   void HandleTabletModeChange(TabletMode mode) override {
-    EXPECT_NE(TABLET_MODE_UNSUPPORTED, mode);
+    EXPECT_NE(TabletMode::UNSUPPORTED, mode);
     AppendAction(GetTabletModeAction(mode));
   }
   void DeferInactivityTimeoutForVT2() override {
@@ -181,7 +181,7 @@ TEST_F(InputControllerTest, LidEvents) {
   dbus_wrapper_.ClearSentSignals();
 
   AdvanceTime(base::TimeDelta::FromSeconds(1));
-  input_watcher_.set_lid_state(LID_CLOSED);
+  input_watcher_.set_lid_state(LidState::CLOSED);
   input_watcher_.NotifyObserversAboutLidState();
   EXPECT_EQ(kLidClosed, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_LID_CLOSED, GetInputEventSignalType());
@@ -189,7 +189,7 @@ TEST_F(InputControllerTest, LidEvents) {
   dbus_wrapper_.ClearSentSignals();
 
   AdvanceTime(base::TimeDelta::FromSeconds(5));
-  input_watcher_.set_lid_state(LID_OPEN);
+  input_watcher_.set_lid_state(LidState::OPEN);
   input_watcher_.NotifyObserversAboutLidState();
   EXPECT_EQ(kLidOpened, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_LID_OPEN, GetInputEventSignalType());
@@ -203,7 +203,7 @@ TEST_F(InputControllerTest, TabletModeEvents) {
   dbus_wrapper_.ClearSentSignals();
 
   AdvanceTime(base::TimeDelta::FromSeconds(1));
-  input_watcher_.set_tablet_mode(TABLET_MODE_ON);
+  input_watcher_.set_tablet_mode(TabletMode::ON);
   input_watcher_.NotifyObserversAboutTabletMode();
   EXPECT_EQ(kTabletOn, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_TABLET_MODE_ON, GetInputEventSignalType());
@@ -211,7 +211,7 @@ TEST_F(InputControllerTest, TabletModeEvents) {
   dbus_wrapper_.ClearSentSignals();
 
   AdvanceTime(base::TimeDelta::FromSeconds(1));
-  input_watcher_.set_tablet_mode(TABLET_MODE_OFF);
+  input_watcher_.set_tablet_mode(TabletMode::OFF);
   input_watcher_.NotifyObserversAboutTabletMode();
   EXPECT_EQ(kTabletOff, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_TABLET_MODE_OFF, GetInputEventSignalType());
@@ -225,14 +225,14 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
   display_watcher_.set_displays(displays);
   Init();
 
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_POWER_BUTTON_DOWN, GetInputEventSignalType());
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
   dbus_wrapper_.ClearSentSignals();
 
   AdvanceTime(base::TimeDelta::FromMilliseconds(100));
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_POWER_BUTTON_UP, GetInputEventSignalType());
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
@@ -241,7 +241,7 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
   // With no displays connected, the system should shut down immediately.
   displays.clear();
   display_watcher_.set_displays(displays);
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kShutDown, delegate_.GetActions());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 }
@@ -280,43 +280,43 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
 
   // Press the power button, acknowledge the event nearly immediately, and check
   // that no further actions are performed and that the timeout is stopped.
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   AdvanceTime(kShortDelay);
   controller_.HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp()));
   EXPECT_EQ(GetAcknowledgmentDelayAction(kShortDelay), delegate_.GetActions());
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 
   // Check that releasing the power button before it's been acknowledged also
   // stops the timeout.
   AdvanceTime(base::TimeDelta::FromSeconds(1));
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   dbus_wrapper_.ClearSentSignals();
 
   // Let the timeout fire and check that the delegate is notified.
   AdvanceTime(base::TimeDelta::FromSeconds(1));
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   ASSERT_TRUE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
                         kMissingPowerButtonAcknowledgment, NULL),
             delegate_.GetActions());
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 
   // Send an acknowledgment with a stale timestamp and check that it doesn't
   // stop the timeout.
   AdvanceTime(base::TimeDelta::FromSeconds(1));
   dbus_wrapper_.ClearSentSignals();
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_DOWN);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   controller_.HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp() - 100));
@@ -326,7 +326,7 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
                         kMissingPowerButtonAcknowledgment, NULL),
             delegate_.GetActions());
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
-  input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 }
 
