@@ -5,5 +5,10 @@ SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1",    SUBSYSTEMS=="i2c",       ENV
 SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1",    SUBSYSTEMS=="serio",     ENV{POWERD_ROLE}="internal_touchpad"
 SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHSCREEN}=="1", SUBSYSTEMS=="i2c",       ENV{POWERD_ROLE}="internal_touchscreen"
 
+# Udev does not make distinction between regular tablets and stylus devices
+# complementing touchscreens, but if we see a "tablet" on an internal bus,
+# it must be such stylus.
+SUBSYSTEM=="input", ENV{ID_INPUT_TABLET}=="1",      SUBSYSTEMS=="i2c",       ENV{POWERD_ROLE}="internal_stylus"
+
 SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="usbhid", ENV{POWERD_ROLE}="external_input"
 SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="btusb",  ENV{POWERD_ROLE}="external_input"
