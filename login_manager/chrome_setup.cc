@@ -318,6 +318,11 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*zygote*=1");
   builder->AddVmodulePattern("*plugin*=2");
 
+  // Needed for investigating auto-enrollment issues.
+  // TODO(tnagel): Remove after switching to device_event_log:
+  // http://crbug.com/636184
+  builder->AddVmodulePattern("auto_enrollment_controller=1");
+
   // There is a mysterious offline login failure. Turn on logging on
   // the login code path.
   // TODO(xiyuan): Remove after http://crbug.com/547857 is resolved.
