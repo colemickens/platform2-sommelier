@@ -22,6 +22,11 @@ namespace em = enterprise_management;
 
 using brillo::dbus_utils::ExtractMethodCallResults;
 
+namespace {
+const char kChromeUserPolicyType[] = "google/chromeos/user";
+const char kChromeDevicePolicyType[] = "google/chromeos/device";
+}  // namespace
+
 namespace authpolicy {
 
 AuthPolicy::AuthPolicy(
@@ -71,12 +76,13 @@ bool AuthPolicy::JoinADDomain(brillo::ErrorPtr* error,
   LOG(INFO) << "Received 'JoinADDomain' request";
   *out_error_code = 0;
 
-  // Call samba to join machine to the AD domain.
+  // Call samba to join machine to the Active Directory domain.
   const char* error_code;
   if (!samba_.JoinMachine(in_machine_name, in_user_principal_name,
                           in_password_fd.value(), &error_code)) {
     brillo::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
-                               error_code, "Failed to join AD domain.");
+                               error_code,
+                               "Failed to join Active Directory domain.");
     return false;
   }
 
@@ -84,7 +90,7 @@ bool AuthPolicy::JoinADDomain(brillo::ErrorPtr* error,
   return true;
 }
 
-void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback response,
+void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
                                    const std::string& in_account_id) {
   LOG(INFO) << "Received 'RefreshUserPolicy' request";
 
@@ -92,7 +98,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback response,
   const char* error_code;
   std::vector<base::FilePath> gpo_file_paths;
   if (!samba_.FetchUserGpos(in_account_id, &gpo_file_paths, &error_code)) {
-    response->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
+    callback->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
                              "Failed to fetch user policy.");
     return;
   }
@@ -101,7 +107,7 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback response,
   em::CloudPolicySettings policy;
   if (!policy::ParsePRegFilesIntoUserPolicy(gpo_file_paths, &policy,
                                             &error_code)) {
-    response->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
+    callback->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
                              "Failed to parse user policy preg files.");
     return;
   }
@@ -109,17 +115,17 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback response,
   LOG(INFO) << "User policy fetch and parsing succeeded";
 
   // Send policy to Session Manager.
-  StoreUserPolicy(in_account_id, policy, std::move(response));
+  StoreUserPolicy(in_account_id, policy, std::move(callback));
 }
 
-void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback response) {
+void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   LOG(INFO) << "Received 'RefreshDevicePolicy' request";
 
   // Fetch GPOs for the device.
   const char* error_code;
   std::vector<base::FilePath> gpo_file_paths;
   if (!samba_.FetchDeviceGpos(&gpo_file_paths, &error_code)) {
-    response->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
+    callback->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
                              "Failed to refresh device policy");
     return;
   }
@@ -128,7 +134,7 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback response) {
   em::ChromeDeviceSettingsProto policy;
   if (!policy::ParsePRegFilesIntoDevicePolicy(gpo_file_paths, &policy,
                                               &error_code)) {
-    response->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
+    callback->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
                              "Failed to parse device policy preg files.");
     return;
   }
@@ -136,42 +142,61 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback response) {
   LOG(INFO) << "Device policy fetch and parsing succeeded";
 
   // Send policy to Session Manager.
-  StoreDevicePolicy(policy, std::move(response));
+  StoreDevicePolicy(policy, std::move(callback));
 }
 
 void AuthPolicy::StoreUserPolicy(const std::string& account_id,
                                  const em::CloudPolicySettings& policy,
                                  PolicyResponseCallback callback) {
-  em::PolicyFetchResponse policy_response;
-  // Note: No signature required here, AD policy is unsigned!
-  if (!policy.SerializeToString(policy_response.mutable_policy_data())) {
+  // Note: Only policy_value required here, the other data only impacts
+  // signature, but since we don't sign, we don't need it.
+  em::PolicyData policy_data;
+  if (!policy.SerializeToString(policy_data.mutable_policy_value())) {
     callback->ReplyWithError(FROM_HERE, errors::kDomain,
                              errors::kStorePolicyFailed,
                              "Failed to serialize user policy protobuf.");
     return;
   }
-
-  StorePolicy(policy_response.SerializeAsString(), &account_id,
-              std::move(callback));
+  policy_data.set_policy_type(kChromeUserPolicyType);
+  StorePolicy(policy_data, &account_id, std::move(callback));
 }
 
 void AuthPolicy::StoreDevicePolicy(const em::ChromeDeviceSettingsProto& policy,
                                    PolicyResponseCallback callback) {
-  em::PolicyFetchResponse policy_response;
-  // Note: No signature required here, AD policy is unsigned!
-  if (!policy.SerializeToString(policy_response.mutable_policy_data())) {
+  // Note: Only policy_value required here, the other data only impacts
+  // signature, but since we don't sign, we don't need it.
+  em::PolicyData policy_data;
+  if (!policy.SerializeToString(policy_data.mutable_policy_value())) {
     callback->ReplyWithError(FROM_HERE, errors::kDomain,
                              errors::kStorePolicyFailed,
                              "Failed to serialize device policy protobuf.");
     return;
   }
-  StorePolicy(policy_response.SerializeAsString(), nullptr,
-              std::move(callback));
+  policy_data.set_policy_type(kChromeDevicePolicyType);
+  StorePolicy(policy_data, nullptr, std::move(callback));
 }
 
-void AuthPolicy::StorePolicy(const std::string& policy_blob,
+void AuthPolicy::StorePolicy(const em::PolicyData& policy_data,
                              const std::string* account_id,
                              PolicyResponseCallback callback) {
+  // Note: No signature required here, Active Directory policy is unsigned!
+  em::PolicyFetchResponse policy_response;
+  if (!policy_data.SerializeToString(policy_response.mutable_policy_data())) {
+    callback->ReplyWithError(FROM_HERE, errors::kDomain,
+                             errors::kStorePolicyFailed,
+                             "Failed to serialize policy data.");
+    return;
+  }
+
+  // Finally, write response to a string blob.
+  std::string policy_blob;
+  if (!policy_response.SerializeToString(&policy_blob)) {
+    callback->ReplyWithError(FROM_HERE, errors::kDomain,
+                             errors::kStorePolicyFailed,
+                             "Failed to serialize policy response.");
+    return;
+  }
+
   const char* const method =
       account_id ? login_manager::kSessionManagerStoreUnsignedPolicyForUser
                  : login_manager::kSessionManagerStoreUnsignedPolicy;

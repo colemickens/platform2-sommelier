@@ -22,8 +22,7 @@ extern const char kNotLoggedIn[];            // Can't fetch GPOs, not logged in.
 extern const char kParseGpoFailed[];         // Can't parse gpo list result.
 extern const char kParseGpoPathFailed[];     // Failed to parse GPO filesyspath.
 extern const char kParseNetAdsInfoFailed[];  // Can't parse DC name info.
-extern const char
-    kParseNetAdsSearchFailed[];              // Can't parse account id info.
+extern const char kParseNetAdsSearchFailed[];  // Can't parse account id info.
 extern const char kParseSmbConfFailed[];     // Failed to parse samba conf file.
 extern const char kParseUPNFailed[];         // Can't parse user principal name.
 extern const char kPregFileNotFound[];       // Preg file path does not exist.
@@ -33,6 +32,7 @@ extern const char kPregTooBig[];             // Preg file was too big.
 extern const char kReadSmbConfFailed[];      // Failed to read samba conf file.
 extern const char kSmbClientFailed[];        // Downloading GPOs failed.
 extern const char kStorePolicyFailed[];      // Can't send to Session Manager.
+extern const char kWriteKrb5ConfFailed[];    // Failed to write krb5 conf file.
 extern const char kWriteSmbConfFailed[];     // Failed to write samba conf file.
 
 }  // namespace errors

@@ -60,6 +60,7 @@
         'policy/user_policy_encoder.cc',
         'policy/user_policy_encoder_gen.cc',
         'process_executor.cc',
+        'samba_interface.cc',
       ],
     },
     # Main program.

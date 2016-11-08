@@ -29,6 +29,7 @@ const char kPregTooBig[] = "preg_too_big";
 const char kReadSmbConfFailed[] = "read_smb_conf_failed";
 const char kSmbClientFailed[] = "smd_client_failed";
 const char kStorePolicyFailed[] = "store_policy_failed";
+const char kWriteKrb5ConfFailed[] = "write_krb5_conf_failed";
 const char kWriteSmbConfFailed[] = "write_smb_conf_failed";
 
 }  // namespace errors
