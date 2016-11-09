@@ -7,6 +7,7 @@
 #define LIBCONTAINER_LIBCONTAINER_H_
 
 #include <stddef.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
