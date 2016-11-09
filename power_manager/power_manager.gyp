@@ -36,6 +36,7 @@
         },
       },
       'sources': [
+        'common/activity_logger.cc',
         'common/clock.cc',
         'common/metrics_constants.cc',
         'common/metrics_sender.cc',
@@ -315,6 +316,7 @@
             'libutil_test',
           ],
           'sources': [
+            'common/activity_logger_unittest.cc',
             'common/prefs_unittest.cc',
             'common/testrunner.cc',
             'common/util_unittest.cc',

@@ -22,6 +22,7 @@
 #include <dbus/message.h>
 
 #include "cryptohome/proto_bindings/rpc.pb.h"
+#include "power_manager/common/activity_logger.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -91,14 +92,27 @@ const int kFirmwareUpdatePollMs = 100;
 // |flashrom_lock_path_| or |battery_lock_path_| exist, in seconds.
 const int kRetryShutdownForFirmwareUpdateSec = 5;
 
-// Interval between log messages while audio is active, in seconds.
-const int kLogAudioSec = 180;
-
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
 const int kSessionManagerDBusTimeoutMs = 3000;
 const int kUpdateEngineDBusTimeoutMs = 3000;
 const int kCryptohomedDBusTimeoutMs = 2 * 60 * 1000;  // Two minutes.
+
+// Interval between log messages while user, audio, or video activity is
+// ongoing, in seconds.
+const int kLogOngoingActivitySec = 180;
+
+// Time after the last report from Chrome of video or user activity at which
+// point a message is logged about the activity having stopped. Chrome reports
+// these every five seconds, but longer delays here reduce the amount of log
+// spam due to sporadic activity.
+const int kLogVideoActivityStoppedDelaySec = 20;
+const int kLogUserActivityStoppedDelaySec = 20;
+
+// Delay to wait before logging that hovering has stopped. This is ideally
+// smaller than kKeyboardBacklightKeepOnMsPref; otherwise the backlight can be
+// turned off before the hover-off event that triggered it is logged.
+const int64_t kLogHoveringStoppedDelaySec = 20;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -129,12 +143,6 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(
   return std::unique_ptr<dbus::Response>(
       dbus::ErrorResponse::FromMethodCall(
           method_call, DBUS_ERROR_INVALID_ARGS, message));
-}
-
-// Intended to aid in debugging: if powerd only logs when audio starts, people
-// often get confused about why their system is blocked from suspending.
-void LogAudioActivity() {
-  LOG(INFO) << "Audio is still active";
 }
 
 }  // namespace
@@ -260,7 +268,6 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       shutting_down_(false),
       retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
                                                 true /* is_repeating */),
-      log_audio_timer_(false /* retain_user_task */, true /* is_repeating */),
       wakeup_count_path_(kDefaultWakeupCountPath),
       oobe_completed_path_(kDefaultOobeCompletedPath),
       flashrom_lock_path_(kDefaultFlashromLockPath),
@@ -274,6 +281,20 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       log_suspend_with_mosys_eventlog_(false),
       suspend_to_idle_(false),
       set_wifi_transmit_power_for_tablet_mode_(false),
+      video_activity_logger_(new PeriodicActivityLogger(
+          "Video activity",
+          base::TimeDelta::FromSeconds(kLogVideoActivityStoppedDelaySec),
+          base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
+      user_activity_logger_(new PeriodicActivityLogger(
+          "User activity",
+          base::TimeDelta::FromSeconds(kLogUserActivityStoppedDelaySec),
+          base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
+      audio_activity_logger_(new StartStopActivityLogger(
+          "Audio activity", base::TimeDelta(),
+          base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
+      hovering_logger_(new StartStopActivityLogger(
+          "Hovering", base::TimeDelta::FromSeconds(kLogHoveringStoppedDelaySec),
+          base::TimeDelta())),
       weak_ptr_factory_(this) {}
 
 Daemon::~Daemon() {
@@ -513,7 +534,11 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
 }
 
 void Daemon::HandleHoverStateChange(bool hovering) {
-  VLOG(1) << "Hovering " << (hovering ? "on" : "off");
+  if (hovering)
+    hovering_logger_->OnActivityStarted();
+  else
+    hovering_logger_->OnActivityStopped();
+
   for (auto controller : all_backlight_controllers_)
     controller->HandleHoverStateChange(hovering);
 }
@@ -760,15 +785,11 @@ void Daemon::ShutDownForDarkResume() {
 }
 
 void Daemon::OnAudioStateChange(bool active) {
-  LOG(INFO) << "Audio is " << (active ? "active" : "inactive");
+  if (active)
+    audio_activity_logger_->OnActivityStarted();
+  else
+    audio_activity_logger_->OnActivityStopped();
   state_controller_->HandleAudioStateChange(active);
-  if (active) {
-    log_audio_timer_.Start(FROM_HERE,
-                           base::TimeDelta::FromSeconds(kLogAudioSec),
-                           base::Bind(&LogAudioActivity));
-  } else {
-    log_audio_timer_.Stop();
-  }
 }
 
 void Daemon::OnPowerStatusUpdate() {
@@ -1306,8 +1327,9 @@ std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
   if (!reader.PopBool(&fullscreen))
     LOG(ERROR) << "Unable to read " << kHandleVideoActivityMethod << " args";
 
-  LOG(INFO) << "Saw " << (fullscreen ? "fullscreen" : "normal")
-            << " video activity";
+  // TODO(derat): Log fullscreen vs. not?
+  video_activity_logger_->OnActivityReported();
+
   for (auto controller : all_backlight_controllers_)
     controller->HandleVideoActivity(fullscreen);
   state_controller_->HandleVideoActivity();
@@ -1316,13 +1338,14 @@ std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
 
 std::unique_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
     dbus::MethodCall* method_call) {
+  user_activity_logger_->OnActivityReported();
+
   int type_int = USER_ACTIVITY_OTHER;
   dbus::MessageReader reader(method_call);
   if (!reader.PopInt32(&type_int))
     LOG(ERROR) << "Unable to read " << kHandleUserActivityMethod << " args";
   UserActivityType type = static_cast<UserActivityType>(type_int);
 
-  LOG(INFO) << "Saw user activity";
   suspender_->HandleUserActivity();
   state_controller_->HandleUserActivity();
   for (auto controller : all_backlight_controllers_)

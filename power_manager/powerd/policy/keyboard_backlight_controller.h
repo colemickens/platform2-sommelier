@@ -140,10 +140,6 @@ class KeyboardBacklightController
                               Transition transition,
                               BrightnessChangeCause cause);
 
-  // Logs that hovering stopped at |last_hover_time_|. Called by
-  // |log_hover_off_timer_| after a delay to avoid spamming logs.
-  void LogHoverOff();
-
   mutable std::unique_ptr<Clock> clock_;
 
   // Backlight used for dimming. Weak pointer.
@@ -227,9 +223,6 @@ class KeyboardBacklightController
 
   // Runs HandleVideoTimeout().
   base::OneShotTimer video_timer_;
-
-  // Runs LogHoverOff().
-  base::OneShotTimer log_hover_off_timer_;
 
   // Counters for stat tracking.
   int num_als_adjustments_ = 0;

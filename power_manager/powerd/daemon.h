@@ -35,7 +35,9 @@ namespace power_manager {
 class DaemonDelegate;
 class MetricsCollector;
 class MetricsSenderInterface;
+class PeriodicActivityLogger;
 class PrefsInterface;
+class StartStopActivityLogger;
 
 namespace policy {
 class BacklightController;
@@ -324,9 +326,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // eventually be shut down after the firmware-updating process exits.
   base::Timer retry_shutdown_for_firmware_update_timer_;
 
-  // Timer that periodically calls LogAudioActivity() while audio is active.
-  base::Timer log_audio_timer_;
-
   // Timer that periodically calls RequestTpmStatus() if
   // |cryptohome_dbus_proxy_| is non-null.
   base::RepeatingTimer tpm_status_timer_;
@@ -384,6 +383,12 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Intel iwlwifi driver power table.
   std::string iwl_wifi_power_table_;
+
+  // Used to log video, user, and audio activity and hovering.
+  std::unique_ptr<PeriodicActivityLogger> video_activity_logger_;
+  std::unique_ptr<PeriodicActivityLogger> user_activity_logger_;
+  std::unique_ptr<StartStopActivityLogger> audio_activity_logger_;
+  std::unique_ptr<StartStopActivityLogger> hovering_logger_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
