@@ -17,6 +17,20 @@ namespace {
 
 constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateStatus";
 
+// Convenience function to get the board name and remove "-signed.." if present.
+// The output is converted to lower-case. Returns "unknown" if
+// CHROMEOS_RELEASE_BOARD is not set.
+// TODO(igorcov): Remove this when similar function appears in libchrome.
+std::string GetStrippedReleaseBoard() {
+  std::string board = base::SysInfo::GetLsbReleaseBoard();
+  const size_t index = board.find("-signed-");
+  if (index != std::string::npos) {
+    board.resize(index);
+  }
+
+  return base::ToLowerASCII(board);
+}
+
 }  // namespace
 
 namespace login_manager {
@@ -88,12 +102,18 @@ void VpdProcessImpl::HandleExit(const siginfo_t& info) {
   if (success) {
     completion_.Run(PolicyService::Error());
   } else {
+    const std::string board_name = GetStrippedReleaseBoard();
+
     // TODO(igorcov): Remove the exception when crbug/653814 is fixed.
-    const std::string board_name = base::ToLowerASCII(
-        base::SysInfo::GetLsbReleaseBoard());
     if (board_name == "parrot" || board_name == "glimmer") {
+      LOG(ERROR) << "Failed to update VPD, but error ignored for device: "
+                 << board_name;
       completion_.Run(PolicyService::Error());
     } else {
+      LOG(ERROR) << "The device failed to update VPD: "
+                 << board_name
+                 << ", full board name: "
+                 << base::SysInfo::GetLsbReleaseBoard();
       completion_.Run(PolicyService::Error(dbus_error::kVpdUpdateFailed,
                      "Failed to update VPD"));
     }
