@@ -6,7 +6,9 @@
 
 #include <algorithm>
 
+#include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/process/launch.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 
@@ -41,17 +43,25 @@ void ReadPipe(int fd, std::string* out) {
 }  // namespace
 
 ProcessExecutor& ProcessExecutor::SetInputFile(int fd) {
-  fds_to_remap_.push_back(std::make_pair(fd, STDIN_FILENO));
+  input_fd_ = fd;
   return *this;
 }
 
-ProcessExecutor& ProcessExecutor::SetEnv(
-    const std::map<std::string, std::string>& environ) {
-  launch_options_.environ = environ;
+ProcessExecutor& ProcessExecutor::SetEnv(const std::string& key,
+                                         const std::string& value) {
+  env_[key] = value;
   return *this;
 }
 
 bool ProcessExecutor::Execute() {
+  ResetOutput();
+  if (args_.empty() || args_[0].empty()) return true;
+
+  if (!base::FilePath(args_[0]).IsAbsolute()) {
+    LOG(ERROR) << "Command must be specified by absolute path.";
+    return false;
+  }
+
   int stdout_pipe[2];
   if (!base::CreateLocalNonBlockingPipe(stdout_pipe)) {
     LOG(ERROR) << "Failed to create pipe.";
@@ -68,19 +78,21 @@ bool ProcessExecutor::Execute() {
   base::ScopedFD stderr_read_end(stderr_pipe[0]);
   base::ScopedFD stderr_write_end(stderr_pipe[1]);
 
-  fds_to_remap_.push_back(std::make_pair(stdout_write_end.get(),
-                                         STDOUT_FILENO));
-  fds_to_remap_.push_back(std::make_pair(stderr_write_end.get(),
-                                         STDERR_FILENO));
-  launch_options_.fds_to_remap = &fds_to_remap_;
+  base::FileHandleMappingVector fds_to_remap;
+  if (input_fd_ != -1)
+    fds_to_remap.push_back(std::make_pair(input_fd_, STDIN_FILENO));
+  fds_to_remap.push_back(std::make_pair(stdout_write_end.get(), STDOUT_FILENO));
+  fds_to_remap.push_back(std::make_pair(stderr_write_end.get(), STDERR_FILENO));
+
+  base::LaunchOptions launch_options_;
+  launch_options_.fds_to_remap = &fds_to_remap;
   launch_options_.clear_environ = true;
+  launch_options_.environ = env_;
   if (LOG_IS_ON(INFO)) {
-    if (!args_.empty()) {
-      std::string cmd = args_[0];
-      for (size_t n = 1; n < args_.size(); ++n)
-        cmd += base::StringPrintf(" '%s'", args_[n].c_str());
-      LOG(INFO) << "Executing " << cmd;
-    }
+    std::string cmd = args_[0];
+    for (size_t n = 1; n < args_.size(); ++n)
+      cmd += base::StringPrintf(" '%s'", args_[n].c_str());
+    LOG(INFO) << "Executing " << cmd;
   }
 
   base::Process process(base::LaunchProcess(args_, launch_options_));
@@ -103,6 +115,12 @@ bool ProcessExecutor::Execute() {
   LOG(INFO) << "Stderr: " << GetStderr();
   LOG(INFO) << "Exit code: " << GetExitCode();
   return GetExitCode() == 0;
+}
+
+void ProcessExecutor::ResetOutput() {
+  exit_code_ = 0;
+  out_data_.clear();
+  err_data_.clear();
 }
 
 }  // namespace authpolicy

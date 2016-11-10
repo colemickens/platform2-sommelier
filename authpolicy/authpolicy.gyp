@@ -26,22 +26,30 @@
         '../common-mk/protoc.gypi',
       ],
     },
-    # Main programs.
+    # D-Bus code generator.
     {
-      'target_name': 'authpolicyd',
-      'type': 'executable',
-      'dependencies': [
-        '../common-mk/external_dependencies.gyp:policy-protos',
-        'user-policy-proto',
-      ],
+      'target_name': 'dbus_code_generator',
+      'type': 'none',
       'variables': {
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'dbus_adaptors_out_dir': 'include/authpolicy',
       },
       'sources': [
-        'authpolicy.cc',
-        'authpolicy_main.cc',
         'dbus_bindings/org.chromium.AuthPolicy.xml',
+      ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+    },
+    # Authpolicy library.
+    {
+      'target_name': 'libauthpolicy',
+      'type': 'static_library',
+      'dependencies': [
+        '../common-mk/external_dependencies.gyp:policy-protos',
+        'user-policy-proto',
+        'dbus_code_generator',
+      ],
+      'sources': [
+        'authpolicy.cc',
         'errors.cc',
         'policy/device_policy_encoder.cc',
         'policy/policy_encoder_helper.cc',
@@ -53,12 +61,36 @@
         'policy/user_policy_encoder_gen.cc',
         'process_executor.cc',
       ],
-      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+    },
+    # Main program.
+    {
+      'target_name': 'authpolicyd',
+      'type': 'executable',
+      'dependencies': ['libauthpolicy'],
+      'sources': ['authpolicy_main.cc'],
       'link_settings': {
         'libraries': [
           '-linstallattributes-<(libbase_ver)',
         ]
       },
     }
-  ]
+  ],
+  # Unit tests.
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'authpolicy_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'defines': ['UNIT_TEST'],
+          'dependencies': ['libauthpolicy'],
+          'sources': [
+            'authpolicy_testrunner.cc',
+            'process_executor_unittest.cc',
+          ],
+        },
+      ],
+    }],
+  ],
 }
