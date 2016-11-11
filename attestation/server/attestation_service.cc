@@ -864,6 +864,7 @@ bool AttestationService::PopulateAndStoreCertifiedKey(
     CertifiedKey* key,
     std::string* certificate_chain) {
   // Finish populating the CertifiedKey protobuf and store it.
+  key->set_key_name(key_label);
   key->set_certified_key_credential(response_pb.certified_key_credential());
   key->set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
   key->mutable_additional_intermediate_ca_cert()->MergeFrom(
