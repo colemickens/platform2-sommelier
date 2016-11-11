@@ -4,11 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_HAL_ADAPTER_H_
-#define CAMERA_HAL_ADAPTER_H_
-
-#include "arc_camera3.mojom.h"
-#include "hardware/camera3.h"
+#ifndef HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_
+#define HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_
 
 #include <map>
 #include <memory>
@@ -16,6 +13,9 @@
 
 #include <base/threading/thread.h>
 #include <mojo/edk/embedder/process_delegate.h>
+
+#include "hal_adapter/arc_camera3.mojom.h"
+#include "hardware/camera3.h"
 
 namespace arc {
 
@@ -69,4 +69,4 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
 
 }  // namespace arc
 
-#endif  // CAMERA_HAL_ADAPTER_H_
+#endif  // HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_

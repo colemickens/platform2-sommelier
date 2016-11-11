@@ -3,16 +3,16 @@
  * found in the LICENSE file.
  */
 
-#include "arc_camera3_service_provider.h"
-#include "camera_hal_adapter.h"
-#include "hardware/hardware.h"
+#include <dlfcn.h>
 
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 
-#include <dlfcn.h>
+#include "hal_adapter/arc_camera3_service_provider.h"
+#include "hal_adapter/camera_hal_adapter.h"
+#include "hardware/hardware.h"
 
 const char kCameraHalDllName[] = "libarccamera.so";
 

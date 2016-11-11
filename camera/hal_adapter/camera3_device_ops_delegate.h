@@ -4,11 +4,11 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA3_DEVICE_OPS_DELEGATE_H_
-#define CAMERA3_DEVICE_OPS_DELEGATE_H_
+#ifndef HAL_ADAPTER_CAMERA3_DEVICE_OPS_DELEGATE_H_
+#define HAL_ADAPTER_CAMERA3_DEVICE_OPS_DELEGATE_H_
 
-#include "arc_camera3.mojom.h"
-#include "arc_camera3_mojo_utils.h"
+#include "hal_adapter/arc_camera3.mojom.h"
+#include "hal_adapter/arc_camera3_mojo_utils.h"
 
 namespace arc {
 
@@ -17,7 +17,7 @@ class CameraDeviceAdapter;
 class Camera3DeviceOpsDelegate
     : public internal::MojoBindingDelegate<mojom::Camera3DeviceOps> {
  public:
-  Camera3DeviceOpsDelegate(CameraDeviceAdapter* camera_device_adapter);
+  explicit Camera3DeviceOpsDelegate(CameraDeviceAdapter* camera_device_adapter);
 
   ~Camera3DeviceOpsDelegate();
 
@@ -47,4 +47,4 @@ class Camera3DeviceOpsDelegate
 
 }  // namespace arc
 
-#endif  // CAMERA3_DEVICE_OPS_DELEGATE_H_
+#endif  // HAL_ADAPTER_CAMERA3_DEVICE_OPS_DELEGATE_H_

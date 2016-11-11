@@ -4,7 +4,9 @@
  * found in the LICENSE file.
  */
 
-#include "camera_module_callbacks_delegate.h"
+#include "hal_adapter/camera_module_callbacks_delegate.h"
+
+#include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>

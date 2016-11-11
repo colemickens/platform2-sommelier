@@ -4,7 +4,9 @@
  * found in the LICENSE file.
  */
 
-#include "arc_camera3_mojo_utils.h"
+#include "hal_adapter/arc_camera3_mojo_utils.h"
+
+#include <utility>
 
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
@@ -36,8 +38,8 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
   return scoped_platform_handle.release().handle;
 }
 
-mojom::HandlePtr SerializeHandle(int handle) {
-  mojom::HandlePtr ret = mojom::Handle::New();
+arc::mojom::HandlePtr SerializeHandle(int handle) {
+  arc::mojom::HandlePtr ret = arc::mojom::Handle::New();
   if (handle == -1) {
     ret->set_none(true);
   } else if (handle >= 0) {
@@ -51,21 +53,22 @@ mojom::HandlePtr SerializeHandle(int handle) {
 }
 
 // Transfers ownership of the handle.
-int DeserializeHandle(mojom::HandlePtr& handle) {
+int DeserializeHandle(const arc::mojom::HandlePtr& handle) {
   if (handle->is_none()) {
     return -1;
   }
   return UnwrapPlatformHandle(std::move(handle->get_h()));
 }
 
-mojom::NativeHandlePtr SerializeNativeHandle(const native_handle_t* handle) {
-  mojom::NativeHandlePtr ret = mojom::NativeHandle::New();
+arc::mojom::NativeHandlePtr SerializeNativeHandle(
+    const native_handle_t* handle) {
+  arc::mojom::NativeHandlePtr ret = arc::mojom::NativeHandle::New();
   ret->version = handle->version;
   ret->num_fds = handle->numFds;
   ret->num_ints = handle->numInts;
 
   for (int i = 0; i < handle->numFds; i++) {
-    mojom::HandlePtr wrapped_handle = SerializeHandle(handle->data[i]);
+    arc::mojom::HandlePtr wrapped_handle = SerializeHandle(handle->data[i]);
     if (wrapped_handle->is_h() && !wrapped_handle->get_h().is_valid()) {
       LOG(ERROR) << "Failed to wrap buffer handle";
       ret.reset();
@@ -82,7 +85,7 @@ mojom::NativeHandlePtr SerializeNativeHandle(const native_handle_t* handle) {
 }
 
 // The caller must allocate the memory for out_handle.
-int DeserializeNativeHandle(mojom::NativeHandlePtr& ptr,
+int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
                             native_handle_t* out_handle) {
   out_handle->version = ptr->version;
   out_handle->numFds = ptr->num_fds;
@@ -104,10 +107,11 @@ int DeserializeNativeHandle(mojom::NativeHandlePtr& ptr,
   return 0;
 }
 
-mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
+arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
-    UniqueStreams& streams) {
-  mojom::Camera3StreamBufferPtr ret = mojom::Camera3StreamBuffer::New();
+    const UniqueStreams& streams) {
+  arc::mojom::Camera3StreamBufferPtr ret =
+      arc::mojom::Camera3StreamBuffer::New();
 
   if (!buffer) {
     ret.reset();
@@ -152,8 +156,8 @@ mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   return ret;
 }
 
-int DeserializeStreamBuffer(mojom::Camera3StreamBufferPtr& ptr,
-                            UniqueStreams& streams,
+int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
+                            const UniqueStreams& streams,
                             camera3_stream_buffer_t* out_buffer) {
   auto it = streams.find(ptr->stream_id);
   if (it == streams.end()) {

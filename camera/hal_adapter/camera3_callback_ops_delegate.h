@@ -4,11 +4,11 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA3_CALLBACK_OPS_DELEGATE_H_
-#define CAMERA3_CALLBACK_OPS_DELEGATE_H_
+#ifndef HAL_ADAPTER_CAMERA3_CALLBACK_OPS_DELEGATE_H_
+#define HAL_ADAPTER_CAMERA3_CALLBACK_OPS_DELEGATE_H_
 
-#include "arc_camera3.mojom.h"
-#include "arc_camera3_mojo_utils.h"
+#include "hal_adapter/arc_camera3.mojom.h"
+#include "hal_adapter/arc_camera3_mojo_utils.h"
 #include "hardware/camera3.h"
 
 namespace arc {
@@ -46,4 +46,4 @@ class Camera3CallbackOpsDelegate
 
 }  // end of namespace arc
 
-#endif  // CAMERA3_CALLBACK_OPS_DELEGATE_H_
+#endif  // HAL_ADAPTER_CAMERA3_CALLBACK_OPS_DELEGATE_H_

@@ -4,11 +4,11 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_MODULE_DELEGATE_H_
-#define CAMERA_MODULE_DELEGATE_H_
+#ifndef HAL_ADAPTER_CAMERA_MODULE_DELEGATE_H_
+#define HAL_ADAPTER_CAMERA_MODULE_DELEGATE_H_
 
-#include "arc_camera3_mojo_utils.h"
-#include "arc_camera3.mojom.h"
+#include "hal_adapter/arc_camera3.mojom.h"
+#include "hal_adapter/arc_camera3_mojo_utils.h"
 
 namespace arc {
 
@@ -44,4 +44,4 @@ class CameraModuleDelegate
 
 }  // namespace arc
 
-#endif  // CAMERA_MODULE_DELEGATE_H_
+#endif  // HAL_ADAPTER_CAMERA_MODULE_DELEGATE_H_

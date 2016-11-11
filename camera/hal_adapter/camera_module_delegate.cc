@@ -4,8 +4,11 @@
  * found in the LICENSE file.
  */
 
-#include "camera_hal_adapter.h"
-#include "camera_module_delegate.h"
+#include "hal_adapter/camera_module_delegate.h"
+
+#include <utility>
+
+#include "hal_adapter/camera_hal_adapter.h"
 
 namespace arc {
 

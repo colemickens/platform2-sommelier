@@ -4,14 +4,12 @@
  * found in the LICENSE file.
  */
 
-#include "arc_camera3_mojo_utils.h"
-#include "camera_device_adapter.h"
-#include "camera_hal_adapter.h"
-#include "camera_module_callbacks_delegate.h"
-#include "camera_module_delegate.h"
+#include "hal_adapter/camera_hal_adapter.h"
+
+#include <fcntl.h>
 
 #include <deque>
-#include <fcntl.h>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -21,6 +19,11 @@
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 #include <mojo/edk/embedder/platform_handle_vector.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
+
+#include "hal_adapter/arc_camera3_mojo_utils.h"
+#include "hal_adapter/camera_device_adapter.h"
+#include "hal_adapter/camera_module_callbacks_delegate.h"
+#include "hal_adapter/camera_module_delegate.h"
 
 namespace arc {
 

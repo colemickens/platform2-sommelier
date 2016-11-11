@@ -18,8 +18,9 @@ ANDROID_INCLUDE_PATHS := \
 	-I$(ANDROID_INCLUDE)/system/media/private/camera/include
 
 CPPFLAGS += $(PC_CFLAGS)
-CXXFLAGS += -std=c++11 -Wall -Wpointer-arith $(ANDROID_INCLUDE_PATHS)
-CFLAGS += -Wall -std=gnu99 $(ANDROID_INCLUDE_PATHS)
+CXXFLAGS += -std=c++11 -Wall -Wpointer-arith -I$(abspath $(SRC)/../) \
+	    $(ANDROID_INCLUDE_PATHS)
+CFLAGS += -Wall -std=gnu99 -I$(abspath $(SRC)/../) $(ANDROID_INCLUDE_PATHS)
 
 LDLIBS += $(PC_LIBS) -ldl
 

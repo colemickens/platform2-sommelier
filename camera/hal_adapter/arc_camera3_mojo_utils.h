@@ -4,16 +4,14 @@
  * found in the LICENSE file.
  */
 
-#ifndef ARC_CAMERA3_MOJO_UTILS_H_
-#define ARC_CAMERA3_MOJO_UTILS_H_
+#ifndef HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_
+#define HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_
 
-#include "arc_camera3.mojom.h"
-#include "hardware/camera3.h"
-
-#include <chrono>
-#include <future>
+#include <chrono>  // NOLINT(build/c++11)
+#include <future>  // NOLINT(build/c++11)
 #include <map>
 #include <memory>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -21,9 +19,10 @@
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/data_pipe.h>
 
-namespace internal {
+#include "hal_adapter/arc_camera3.mojom.h"
+#include "hardware/camera3.h"
 
-using namespace arc;
+namespace internal {
 
 // Common data types.
 
@@ -53,21 +52,22 @@ mojo::ScopedHandle WrapPlatformHandle(int handle);
 
 int UnwrapPlatformHandle(mojo::ScopedHandle handle);
 
-mojom::HandlePtr SerializeHandle(int handle);
+arc::mojom::HandlePtr SerializeHandle(int handle);
 
-int DeserializeHandle(mojom::HandlePtr& handle);
+int DeserializeHandle(const arc::mojom::HandlePtr& handle);
 
-mojom::NativeHandlePtr SerializeNativeHandle(const native_handle_t* handle);
+arc::mojom::NativeHandlePtr SerializeNativeHandle(
+    const native_handle_t* handle);
 
-int DeserializeNativeHandle(mojom::NativeHandlePtr& ptr,
+int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
                             native_handle_t* handle);
 
-mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
+arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
-    UniqueStreams& streams);
+    const UniqueStreams& streams);
 
-int DeserializeStreamBuffer(mojom::Camera3StreamBufferPtr& ptr,
-                            UniqueStreams& streams,
+int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
+                            const UniqueStreams& streams,
                             camera3_stream_buffer_t* buffer);
 
 int32_t SerializeCameraMetadata(
@@ -139,12 +139,12 @@ class Future<void> {
 template <typename T>
 void FutureCallback(Future<T>* future, T ret) {
   future->Set(std::move(ret));
-};
+}
 
 template <typename T>
 base::Callback<void(T)> GetFutureCallback(Future<T>* future) {
   return base::Bind(&FutureCallback<T>, base::Unretained(future));
-};
+}
 
 base::Callback<void()> GetFutureCallback(Future<void>* future);
 
@@ -153,7 +153,7 @@ base::Callback<void()> GetFutureCallback(Future<void>* future);
 template <typename T>
 class MojoInterfaceDelegate {
  public:
-  MojoInterfaceDelegate(mojo::InterfacePtrInfo<T> interface_ptr_info)
+  explicit MojoInterfaceDelegate(mojo::InterfacePtrInfo<T> interface_ptr_info)
       : thread_("Delegate thread") {
     if (!thread_.StartWithOptions(
             base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
@@ -224,7 +224,7 @@ class MojoInterfaceDelegate {
 template <typename T>
 class MojoBindingDelegate : public T {
  public:
-  MojoBindingDelegate(base::Closure quit_cb = base::Closure())
+  explicit MojoBindingDelegate(base::Closure quit_cb = base::Closure())
       : thread_("Delegate thread"), binding_(this) {
     if (!thread_.StartWithOptions(
             base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
@@ -315,4 +315,4 @@ class MojoBindingDelegate : public T {
 
 }  // namespace internal
 
-#endif  // ARC_CAMERA3_MOJO_UTILS_H_
+#endif  // HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_

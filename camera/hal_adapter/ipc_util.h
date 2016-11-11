@@ -4,8 +4,10 @@
  * found in the LICENSE file.
  */
 
-#ifndef IPC_UTIL_H_
-#define IPC_UTIL_H_
+#ifndef HAL_ADAPTER_IPC_UTIL_H_
+#define HAL_ADAPTER_IPC_UTIL_H_
+
+#include <string>
 
 namespace base {
 class FilePath;
@@ -17,6 +19,6 @@ bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
                                   int* server_listen_fd);
 bool ServerAcceptConnection(int server_listen_fd, int* server_socket);
 
-}  // namespace
+}  // namespace internal
 
-#endif  // IPC_UTIL_H_
+#endif  // HAL_ADAPTER_IPC_UTIL_H_

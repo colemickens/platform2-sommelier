@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef ARC_CAMERA3_SERVICE_PROVIDER_H_
-#define ARC_CAMERA3_SERVICE_PROVIDER_H_
+#ifndef HAL_ADAPTER_ARC_CAMERA3_SERVICE_PROVIDER_H_
+#define HAL_ADAPTER_ARC_CAMERA3_SERVICE_PROVIDER_H_
 
 #include <base/files/scoped_file.h>
 
@@ -26,9 +26,10 @@ class ArcCamera3ServiceProvider {
   // creating socket file failed. Otherwise, return fd for accepted connection.
   int Start();
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(ArcCamera3ServiceProvider);
 };
 
 }  // namespace arc
 
-#endif  // ARC_CAMERA3_SERVICE_PROVIDER_H_
+#endif  // HAL_ADAPTER_ARC_CAMERA3_SERVICE_PROVIDER_H_

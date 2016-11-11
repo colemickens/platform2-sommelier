@@ -4,8 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "arc_camera3_service_provider.h"
-#include "ipc_util.h"
+#include "hal_adapter/arc_camera3_service_provider.h"
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -16,6 +15,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+
+#include "hal_adapter/ipc_util.h"
 
 namespace arc {
 

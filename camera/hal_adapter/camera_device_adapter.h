@@ -4,18 +4,18 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_DEVICE_ADAPTER_H_
-#define CAMERA_DEVICE_ADAPTER_H_
-
-#include "arc_camera3.mojom.h"
-#include "arc_camera3_mojo_utils.h"
-#include "hardware/camera3.h"
+#ifndef HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
+#define HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 
 #include <map>
 #include <memory>
 
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/binding.h>
+
+#include "hal_adapter/arc_camera3.mojom.h"
+#include "hal_adapter/arc_camera3_mojo_utils.h"
+#include "hardware/camera3.h"
 
 namespace arc {
 
@@ -25,7 +25,7 @@ class Camera3CallbackOpsDelegate;
 
 class CameraDeviceAdapter {
  public:
-  CameraDeviceAdapter(camera3_device_t* camera_device);
+  explicit CameraDeviceAdapter(camera3_device_t* camera_device);
 
   ~CameraDeviceAdapter();
 
@@ -71,4 +71,4 @@ class CameraDeviceAdapter {
 
 }  // namespace arc
 
-#endif  // CAMERA_DEVICE_ADAPTER_H_
+#endif  // HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_

@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "ipc_util.h"
+#include "hal_adapter/ipc_util.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -127,4 +127,4 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket) {
   return true;
 }
 
-}  // namespace
+}  // namespace internal
