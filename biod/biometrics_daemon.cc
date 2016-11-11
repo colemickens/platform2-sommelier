@@ -132,11 +132,11 @@ bool BiometricWrapper::EnrollmentWrapper::Remove(brillo::ErrorPtr* error) {
 
 void BiometricWrapper::OnScanned(Biometric::ScanResult scan_result, bool done) {
   if (enroll_dbus_object_) {
-    dbus::Signal scanned_signal(dbus_constants::kEnrollInterface, "Scanned");
+    dbus::Signal scanned_signal(dbus_constants::kBiometricInterface, "Scanned");
     dbus::MessageWriter writer(&scanned_signal);
     writer.AppendUint32(static_cast<uint32_t>(scan_result));
     writer.AppendBool(done);
-    enroll_dbus_object_->SendSignal(&scanned_signal);
+    dbus_object_.SendSignal(&scanned_signal);
     if (done) {
       enroll_dbus_object_->UnregisterAsync();
       enroll_dbus_object_.reset();
@@ -148,12 +148,11 @@ void BiometricWrapper::OnScanned(Biometric::ScanResult scan_result, bool done) {
 void BiometricWrapper::OnAttempt(Biometric::ScanResult scan_result,
                                  std::vector<std::string> recognized_user_ids) {
   if (authentication_dbus_object_) {
-    dbus::Signal attempt_signal(dbus_constants::kAuthenticationInterface,
-                                "Attempt");
+    dbus::Signal attempt_signal(dbus_constants::kBiometricInterface, "Attempt");
     dbus::MessageWriter writer(&attempt_signal);
     writer.AppendUint32(static_cast<uint32_t>(scan_result));
     writer.AppendArrayOfStrings(recognized_user_ids);
-    authentication_dbus_object_->SendSignal(&attempt_signal);
+    dbus_object_.SendSignal(&attempt_signal);
   }
 }
 
@@ -161,16 +160,16 @@ void BiometricWrapper::OnFailure() {
   const char kFailureSignal[] = "Failure";
 
   if (enroll_dbus_object_) {
-    dbus::Signal failure_signal(dbus_constants::kEnrollInterface,
+    dbus::Signal failure_signal(dbus_constants::kBiometricInterface,
                                 kFailureSignal);
-    enroll_dbus_object_->SendSignal(&failure_signal);
+    dbus_object_.SendSignal(&failure_signal);
     enroll_dbus_object_->UnregisterAsync();
     enroll_dbus_object_.reset();
   }
   if (authentication_dbus_object_) {
-    dbus::Signal failure_signal(dbus_constants::kAuthenticationInterface,
+    dbus::Signal failure_signal(dbus_constants::kBiometricInterface,
                                 kFailureSignal);
-    authentication_dbus_object_->SendSignal(&failure_signal);
+    dbus_object_.SendSignal(&failure_signal);
     authentication_dbus_object_->UnregisterAsync();
     authentication_dbus_object_.reset();
   }
