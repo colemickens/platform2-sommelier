@@ -683,6 +683,13 @@ bool ImageLoaderImpl::RegisterComponent(
   // Take ownership of the component and verify it.
   base::FilePath version_path(GetVersionedPath(component_root, version));
   base::FilePath folder_path(component_folder_abs_path);
+
+  // If |version_path| exists but was not the active version, ImageLoader
+  // probably crashed previously and could not cleanup.
+  if (base::PathExists(version_path)) {
+    base::DeleteFile(version_path, /*recursive=*/true);
+  }
+
   if (!CopyComponentDirectory(folder_path, version_path, version)) {
     base::DeleteFile(version_path, /*recursive=*/true);
     return false;

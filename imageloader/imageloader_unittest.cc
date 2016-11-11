@@ -184,6 +184,28 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
             loader.GetComponentVersion(kTestComponentName));
 }
 
+// Pretend ImageLoader crashed, by creating an incomplete installation, and then
+// attempt registration with ImageLoader.
+TEST_F(ImageLoaderTest, RegisterComponentAfterCrash) {
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+  const base::FilePath& temp_dir = scoped_temp_dir.path();
+  // Set the correct permissions on temp dir.
+  ASSERT_TRUE(base::SetPosixFilePermissions(temp_dir, 0755));
+
+  // Now create the junk there.
+  const std::string junk_contents ="Bad file contents";
+  const base::FilePath junk_path =
+      temp_dir.Append(kTestComponentName).Append(kTestDataVersion);
+  ASSERT_TRUE(base::CreateDirectory(junk_path));
+  ASSERT_EQ(static_cast<int>(junk_contents.size()),
+            base::WriteFile(junk_path.Append("junkfile"), junk_contents.data(),
+                            junk_contents.size()));
+  ImageLoaderImpl loader(GetConfig(temp_dir.value().c_str()));
+  ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
+                                       GetComponentPath().value()));
+}
+
 TEST_F(ImageLoaderTest, ECVerify) {
   ImageLoaderImpl loader(GetConfig("/nonexistant"));
   EXPECT_TRUE(loader.ECVerify(
@@ -268,8 +290,8 @@ TEST_F(ImageLoaderTest, CopyValidImage) {
   base::FilePath image_path = temp_dir.Append("image");
   std::vector<char> image(image_size,
                           0xBB);  // large enough to test streaming read.
-  ASSERT_TRUE(base::WriteFile(image_path, image.data(), image.size()) ==
-              image_size);
+  ASSERT_EQ(image_size,
+            base::WriteFile(image_path, image.data(), image.size()));
 
   std::vector<uint8_t> hash(crypto::kSHA256Length);
 
