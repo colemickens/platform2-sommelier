@@ -242,7 +242,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
     for (unsigned int i = 0; i < result->num_output_buffers; i++) {
       mojom::Camera3StreamBufferPtr out_buf =
           internal::SerializeStreamBuffer(result->output_buffers + i, streams_);
-      if (!out_buf.is_null()) {
+      if (out_buf.is_null()) {
         LOG(ERROR) << "Failed to serialize output stream buffer";
         // TODO(jcliang): Handle error?
       }
@@ -274,6 +274,7 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::Notify(
   // Fill in the data from msg...
   mojom::Camera3NotifyMsgPtr m = mojom::Camera3NotifyMsg::New();
   m->type = msg->type;
+  m->message = mojom::Camera3NotifyMsgMessage::New();
 
   if (msg->type == CAMERA3_MSG_ERROR) {
     mojom::Camera3ErrorMsgPtr error = mojom::Camera3ErrorMsg::New();
