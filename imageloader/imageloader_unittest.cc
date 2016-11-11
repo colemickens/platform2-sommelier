@@ -315,7 +315,7 @@ TEST_F(ImageLoaderTest, CopyInvalidImage) {
 TEST_F(ImageLoaderTest, ParseManifest) {
   ImageLoaderImpl loader(GetConfig("/nonexistant"));
   ImageLoaderImpl::Manifest manifest;
-  std::string imageloader_sig(reinterpret_cast<const char*>(kImageLoaderSig),
+  base::StringPiece imageloader_sig(reinterpret_cast<const char*>(kImageLoaderSig),
                               sizeof(kImageLoaderSig));
   ASSERT_TRUE(loader.VerifyAndParseManifest(kImageLoaderJSON, imageloader_sig,
                                             &manifest));
@@ -327,17 +327,14 @@ TEST_F(ImageLoaderTest, ParseManifest) {
   std::string bad_manifest = "{\"foo\":\"128.0.0.9\"}";
   ImageLoaderImpl::Manifest manifest2;
   EXPECT_FALSE(
-      loader.VerifyAndParseManifest(
-          bad_manifest,
-          reinterpret_cast<const char*>(kImageLoaderSig),
-          &manifest2));
+      loader.VerifyAndParseManifest(bad_manifest, imageloader_sig, &manifest2));
 
+  base::StringPiece imageloader_bad_sig(
+      reinterpret_cast<const char*>(kImageLoaderBadSig),
+      sizeof(kImageLoaderBadSig));
   ImageLoaderImpl::Manifest manifest3;
-  EXPECT_FALSE(
-      loader.VerifyAndParseManifest(
-          kImageLoaderJSON,
-          reinterpret_cast<const char*>(kImageLoaderBadSig),
-          &manifest3));
+  EXPECT_FALSE(loader.VerifyAndParseManifest(kImageLoaderJSON,
+                                             imageloader_bad_sig, &manifest3));
 }
 
 TEST_F(ImageLoaderTest, MountValidImage) {

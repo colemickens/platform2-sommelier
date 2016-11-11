@@ -436,7 +436,7 @@ bool ImageLoaderImpl::CopyAndHashFile(
 }
 
 bool ImageLoaderImpl::VerifyAndParseManifest(
-    const std::string& manifest_contents, const std::string& signature,
+    const std::string& manifest_contents, const base::StringPiece signature,
     Manifest* manifest) {
   // Verify the manifest before trusting any of its contents.
   if (!ECVerify(manifest_contents, signature)) {

@@ -85,7 +85,8 @@ class ImageLoaderImpl {
   // Verify the imageloader.json manifest file and parse the file information
   // out of it.
   bool VerifyAndParseManifest(const std::string& manifest_str,
-                              const std::string& signature, Manifest* manifest);
+                              const base::StringPiece signature,
+                              Manifest* manifest);
 
   // Copies files over and checks their hash in the process. The copy fails if
   // the hashes do not match.
