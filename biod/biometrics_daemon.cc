@@ -23,6 +23,9 @@ using brillo::dbus_utils::ExportedPropertySet;
 using dbus::ObjectPath;
 
 namespace dbus_constants {
+const char kBusServiceName[] = "org.freedesktop.DBus";
+const char kBusServicePath[] = "/org/freedesktop/DBus";
+const char kBusInterface[] = "org.freedesktop.DBus";
 const char kServiceName[] = "org.chromium.BiometricsDaemon";
 const char kServicePath[] = "/org/chromium/BiometricsDaemon";
 const char kBiometricInterface[] = "org.chromium.BiometricsDaemon.Biometric";
@@ -36,6 +39,14 @@ namespace errors {
 const char kDomain[] = "biod";
 const char kInternalError[] = "internal_error";
 const char kInvalidArguments[] = "invalid_arguments";
+}
+
+void LogOnSignalConnected(const std::string& interface_name,
+                          const std::string& signal_name,
+                          bool success) {
+  if (!success)
+    LOG(ERROR) << "Failed to connect to signal " << signal_name
+               << " of interface " << interface_name;
 }
 
 BiometricWrapper::BiometricWrapper(
@@ -57,11 +68,20 @@ BiometricWrapper::BiometricWrapper(
   biometric_->SetFailureHandler(
       base::Bind(&BiometricWrapper::OnFailure, base::Unretained(this)));
 
+  dbus::ObjectProxy* bus_proxy = object_manager->GetBus()->GetObjectProxy(
+      dbus_constants::kBusServiceName,
+      dbus::ObjectPath(dbus_constants::kBusServicePath));
+  bus_proxy->ConnectToSignal(
+      dbus_constants::kBusInterface,
+      "NameOwnerChanged",
+      base::Bind(&BiometricWrapper::OnNameOwnerChanged, base::Unretained(this)),
+      base::Bind(&LogOnSignalConnected));
+
   DBusInterface* bio_interface =
       dbus_object_.AddOrGetInterface(dbus_constants::kBiometricInterface);
   property_type_.SetValue(static_cast<uint32_t>(biometric_->GetType()));
   bio_interface->AddProperty("Type", &property_type_);
-  bio_interface->AddSimpleMethodHandlerWithError(
+  bio_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       "StartEnroll",
       base::Bind(&BiometricWrapper::StartEnroll, base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithError(
@@ -71,7 +91,7 @@ BiometricWrapper::BiometricWrapper(
       "DestroyAllEnrollments",
       base::Bind(&BiometricWrapper::DestroyAllEnrollments,
                  base::Unretained(this)));
-  bio_interface->AddSimpleMethodHandlerWithError(
+  bio_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       "StartAuthentication",
       base::Bind(&BiometricWrapper::StartAuthentication,
                  base::Unretained(this)));
@@ -130,6 +150,55 @@ bool BiometricWrapper::EnrollmentWrapper::Remove(brillo::ErrorPtr* error) {
   return true;
 }
 
+void BiometricWrapper::FinalizeEnrollObject() {
+  enroll_owner_.clear();
+  enroll_dbus_object_->UnregisterAsync();
+  enroll_dbus_object_.reset();
+}
+
+void BiometricWrapper::FinalizeAuthenticationObject() {
+  authentication_owner_.clear();
+  authentication_dbus_object_->UnregisterAsync();
+  authentication_dbus_object_.reset();
+}
+
+void BiometricWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
+  dbus::MessageReader reader(sig);
+  std::string name, old_owner, new_owner;
+  if (!reader.PopString(&name) || !reader.PopString(&old_owner) ||
+      !reader.PopString(&new_owner)) {
+    LOG(ERROR) << "Received invalid NameOwnerChanged signal";
+    return;
+  }
+
+  // We are only interested in cases where a name gets dropped from D-Bus.
+  if (name.empty() || !new_owner.empty())
+    return;
+
+  // If one of the session was owned by the dropped name, the session should
+  // also be dropped, as there is nobody left to end it explicitly.
+
+  if (name == enroll_owner_) {
+    LOG(INFO) << "Enroll object owner " << enroll_owner_
+              << " has died. Enrollment is canceled automatically.";
+    if (enroll_)
+      enroll_.End();
+
+    if (enroll_dbus_object_)
+      FinalizeEnrollObject();
+  }
+
+  if (name == authentication_owner_) {
+    LOG(INFO) << "Authentication object owner " << authentication_owner_
+              << " has died. Authentication is ended automatically.";
+    if (authentication_)
+      authentication_.End();
+
+    if (authentication_dbus_object_)
+      FinalizeAuthenticationObject();
+  }
+}
+
 void BiometricWrapper::OnScanned(Biometric::ScanResult scan_result, bool done) {
   if (enroll_dbus_object_) {
     dbus::Signal scanned_signal(dbus_constants::kBiometricInterface, "Scanned");
@@ -138,8 +207,7 @@ void BiometricWrapper::OnScanned(Biometric::ScanResult scan_result, bool done) {
     writer.AppendBool(done);
     dbus_object_.SendSignal(&scanned_signal);
     if (done) {
-      enroll_dbus_object_->UnregisterAsync();
-      enroll_dbus_object_.reset();
+      FinalizeEnrollObject();
       RefreshEnrollmentObjects();
     }
   }
@@ -163,19 +231,18 @@ void BiometricWrapper::OnFailure() {
     dbus::Signal failure_signal(dbus_constants::kBiometricInterface,
                                 kFailureSignal);
     dbus_object_.SendSignal(&failure_signal);
-    enroll_dbus_object_->UnregisterAsync();
-    enroll_dbus_object_.reset();
+    FinalizeEnrollObject();
   }
   if (authentication_dbus_object_) {
     dbus::Signal failure_signal(dbus_constants::kBiometricInterface,
                                 kFailureSignal);
     dbus_object_.SendSignal(&failure_signal);
-    authentication_dbus_object_->UnregisterAsync();
-    authentication_dbus_object_.reset();
+    FinalizeAuthenticationObject();
   }
 }
 
 bool BiometricWrapper::StartEnroll(brillo::ErrorPtr* error,
+                                   dbus::Message* message,
                                    const std::string& user_id,
                                    const std::string& label,
                                    ObjectPath* enroll_path) {
@@ -198,6 +265,7 @@ bool BiometricWrapper::StartEnroll(brillo::ErrorPtr* error,
       base::Bind(&BiometricWrapper::EnrollCancel, base::Unretained(this)));
   enroll_dbus_object_->RegisterAndBlock();
   *enroll_path = enroll_object_path_;
+  enroll_owner_ = message->GetSender();
 
   return true;
 }
@@ -229,6 +297,7 @@ bool BiometricWrapper::DestroyAllEnrollments(brillo::ErrorPtr* error) {
 }
 
 bool BiometricWrapper::StartAuthentication(brillo::ErrorPtr* error,
+                                           dbus::Message* message,
                                            ObjectPath* authentication_path) {
   Biometric::AuthenticationSession authentication =
       biometric_->StartAuthentication();
@@ -251,6 +320,7 @@ bool BiometricWrapper::StartAuthentication(brillo::ErrorPtr* error,
       base::Bind(&BiometricWrapper::AuthenticationEnd, base::Unretained(this)));
   authentication_dbus_object_->RegisterAndBlock();
   *authentication_path = authentication_object_path_;
+  authentication_owner_ = message->GetSender();
 
   return true;
 }
@@ -266,8 +336,7 @@ bool BiometricWrapper::EnrollCancel(brillo::ErrorPtr* error) {
   }
   enroll_.End();
   if (enroll_dbus_object_) {
-    enroll_dbus_object_->UnregisterAsync();
-    enroll_dbus_object_.reset();
+    FinalizeEnrollObject();
   }
   return true;
 }
@@ -283,8 +352,7 @@ bool BiometricWrapper::AuthenticationEnd(brillo::ErrorPtr* error) {
   }
   authentication_.End();
   if (authentication_dbus_object_) {
-    authentication_dbus_object_->UnregisterAsync();
-    authentication_dbus_object_.reset();
+    FinalizeAuthenticationObject();
   }
   return true;
 }

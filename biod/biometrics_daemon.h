@@ -67,12 +67,19 @@ class BiometricWrapper {
   std::vector<std::unique_ptr<EnrollmentWrapper>> enrollments_;
 
   Biometric::EnrollSession enroll_;
+  std::string enroll_owner_;
   dbus::ObjectPath enroll_object_path_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> enroll_dbus_object_;
 
   Biometric::AuthenticationSession authentication_;
+  std::string authentication_owner_;
   dbus::ObjectPath authentication_object_path_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> authentication_dbus_object_;
+
+  void FinalizeEnrollObject();
+  void FinalizeAuthenticationObject();
+
+  void OnNameOwnerChanged(dbus::Signal *signal);
 
   void OnScanned(Biometric::ScanResult scan_result, bool done);
   void OnAttempt(Biometric::ScanResult scan_result,
@@ -80,6 +87,7 @@ class BiometricWrapper {
   void OnFailure();
 
   bool StartEnroll(brillo::ErrorPtr* error,
+                   dbus::Message* message,
                    const std::string& user_id,
                    const std::string& label,
                    dbus::ObjectPath* enroll_path);
@@ -87,6 +95,7 @@ class BiometricWrapper {
                       std::vector<dbus::ObjectPath>* out);
   bool DestroyAllEnrollments(brillo::ErrorPtr* error);
   bool StartAuthentication(brillo::ErrorPtr* error,
+                           dbus::Message* message,
                            dbus::ObjectPath* authentication_path);
 
   bool EnrollCancel(brillo::ErrorPtr* error);
