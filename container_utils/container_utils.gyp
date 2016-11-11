@@ -62,6 +62,20 @@
       ],
     },
     {
+      'target_name': 'run_oci',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'libcontainer',
+          'libbrillo-<(libbase_ver)'
+        ],
+      },
+      'sources': [
+        'container_config_parser.cc',
+        'run_oci.cc',
+      ],
+    },
+    {
       'target_name': 'device_jail',
       'type': 'executable',
       'variables': {
