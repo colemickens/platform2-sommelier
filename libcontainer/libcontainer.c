@@ -101,6 +101,7 @@ struct container_cpu_cgroup {
  * cgroup_owner - uid to own the created cgroups
  * cgroup_group - gid to own the created cgroups
  * share_host_netns - Enable sharing of the host network namespace.
+ * keep_fds_open - Allow the child process to keep open FDs (for stdin/out/err).
  */
 struct container_config {
 	char *rootfs;
@@ -124,6 +125,7 @@ struct container_config {
 	uid_t cgroup_owner;
 	gid_t cgroup_group;
 	int share_host_netns;
+	int keep_fds_open;
 };
 
 struct container_config *container_config_create()
@@ -506,6 +508,11 @@ void container_config_share_host_netns(struct container_config *c)
 int get_container_config_share_host_netns(struct container_config *c)
 {
 	return c->share_host_netns;
+}
+
+void container_config_keep_fds_open(struct container_config *c)
+{
+	c->keep_fds_open = 1;
 }
 
 /*
@@ -1106,7 +1113,8 @@ int container_start(struct container *c, const struct container_config *config)
 	/* TODO(dgreid) - remove this once shared mounts are cleaned up. */
 	minijail_skip_remount_private(c->jail);
 
-	minijail_close_open_fds(c->jail);
+	if (!config->keep_fds_open)
+		minijail_close_open_fds(c->jail);
 
 	rc = minijail_run_pid_pipes_no_preload(c->jail,
 					       config->program_argv[0],

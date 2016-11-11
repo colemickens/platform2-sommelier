@@ -189,6 +189,13 @@ const char *container_config_get_cgroup_parent(struct container_config *c);
 void container_config_share_host_netns(struct container_config *c);
 int get_container_config_share_host_netns(struct container_config *c);
 
+/*
+ * Configures the container so that any FDs open in the parent process are still
+ * visible to the child.  Useful for apps that need stdin/stdout/stderr.  Use
+ * with caution to avoid leaking other FDs into the namespaced app.
+ */
+void container_config_keep_fds_open(struct container_config *c);
+
 /* Container manipulation. */
 struct container;
 
