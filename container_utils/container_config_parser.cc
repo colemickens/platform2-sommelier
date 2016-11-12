@@ -190,8 +190,8 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
   // |device_list| is owned by |linux_dict|
   const base::ListValue* device_list = nullptr;
   if (!linux_dict.GetList("devices", &device_list)) {
-    LOG(ERROR) << "Fail to get device list";
-    return false;
+    // The device list is optional.
+    return true;
   }
   size_t num_devices = device_list->GetSize();
   for (size_t i = 0; i < num_devices; ++i) {

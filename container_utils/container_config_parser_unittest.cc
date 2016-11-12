@@ -271,6 +271,56 @@ const char kBasicJsonData[] = R"json(
     }
 )json";
 
+const char kStrippedJsonData[] = R"json(
+    {
+        "ociVersion": "1.0.0-rc1",
+        "platform": {
+            "os": "linux",
+            "arch": "amd64"
+        },
+        "root": {
+            "path": "rootfs",
+            "readonly": true
+        },
+        "process": {
+            "terminal": true,
+            "user": {
+                "uid": 0,
+                "gid": 0
+            },
+            "args": [
+                "sh"
+            ],
+            "cwd": "/",
+            "noNewPrivileges": true
+        },
+        "hostname": "tester",
+        "mounts": [
+            {
+                "destination": "/proc",
+                "type": "proc",
+                "source": "proc"
+            }
+        ],
+        "linux": {
+            "uidMappings": [
+                {
+                    "hostID": 1000,
+                    "containerID": 0,
+                    "size": 10
+                }
+            ],
+            "gidMappings": [
+                {
+                    "hostID": 1000,
+                    "containerID": 0,
+                    "size": 10
+                }
+            ]
+        }
+    }
+)json";
+
 }  // anonymous namespace
 
 namespace container_utils {
@@ -325,6 +375,12 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(seccomp->syscalls[1].args[0].value, 255);
   EXPECT_EQ(seccomp->syscalls[1].args[0].value2, 4);
   EXPECT_EQ(seccomp->syscalls[1].args[0].op, "SCMP_CMP_EQ");
+}
+
+TEST(OciConfigParserTest, TestStrippedConfig) {
+  OciConfigPtr stripped_config(new OciConfig());
+  ASSERT_TRUE(ParseContainerConfig(kStrippedJsonData,
+                                   stripped_config));
 }
 
 }  // namespace container_utils
