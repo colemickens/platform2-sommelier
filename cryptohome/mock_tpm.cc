@@ -14,6 +14,8 @@ using testing::Return;
 namespace cryptohome {
 
 MockTpm::MockTpm() {
+  ON_CALL(*this, GetVersion())
+      .WillByDefault(Return(TpmVersion::TPM_UNKNOWN));
   ON_CALL(*this, EncryptBlob(_, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::Xor));
   ON_CALL(*this, DecryptBlob(_, _, _, _))

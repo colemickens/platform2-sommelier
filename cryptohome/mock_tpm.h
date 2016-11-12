@@ -24,6 +24,7 @@ class MockTpm : public Tpm {
  public:
   MockTpm();
   ~MockTpm();
+  MOCK_METHOD0(GetVersion, TpmVersion());
   MOCK_METHOD4(EncryptBlob, TpmRetryAction(TpmKeyHandle,
                                            const brillo::SecureBlob&,
                                            const brillo::SecureBlob&,

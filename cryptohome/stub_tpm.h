@@ -20,6 +20,8 @@ class StubTpm : public Tpm {
   ~StubTpm() override { }
 
   // See tpm.h for comments
+  TpmVersion GetVersion() override
+    { return TpmVersion::TPM_UNKNOWN; }
   TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
                              const SecureBlob& plaintext,
                              const SecureBlob& key,

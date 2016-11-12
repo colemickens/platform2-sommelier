@@ -21,6 +21,7 @@ class TpmImpl : public Tpm {
   TpmImpl();
   virtual ~TpmImpl();
   // Tpm methods
+  TpmVersion GetVersion() override { return TpmVersion::TPM_1_2; }
   TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
                              const brillo::SecureBlob& plaintext,
                              const brillo::SecureBlob& key,

@@ -52,6 +52,12 @@ class ScopedKeyHandle {
 
 class Tpm {
  public:
+  enum TpmVersion {
+    TPM_UNKNOWN = 0,
+    TPM_1_2 = 1,
+    TPM_2_0 = 2,
+  };
+
   enum TpmRetryAction {
     kTpmRetryNone,
     kTpmRetryFailNoRetry,
@@ -89,6 +95,9 @@ class Tpm {
   static const uint32_t kLockboxIndex;
 
   virtual ~Tpm() {}
+
+  // Returns TPM version
+  virtual TpmVersion GetVersion() = 0;
 
   // Encrypts a data blob using the provided RSA key. Returns a TpmRetryAction
   // struct
