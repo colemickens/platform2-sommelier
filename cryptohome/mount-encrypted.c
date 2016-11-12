@@ -43,6 +43,13 @@
 #define PROP_SIZE 64
 #define LOCKBOX_SIZE_MAX 0x45
 
+/* TPM2 NVRAM space attributes. */
+#define TPMA_NV_AUTHWRITE       (1U << 2)
+#define TPMA_NV_WRITELOCKED     (1U << 11)
+#define TPMA_NV_WRITEDEFINE     (1U << 13)
+#define TPMA_NV_AUTHREAD        (1U << 18)
+#define TPMA_NV_READ_STCLEAR    (1U << 31)
+
 static const gchar * const kKernelCmdline = "/proc/cmdline";
 static const gchar * const kKernelCmdlineOption = " encrypted-stateful-key=";
 static const gchar * const kEncryptedFSType = "ext4";
@@ -63,6 +70,18 @@ static const char * const kStaticKeyFinalizationNeeded = "needs finalization";
 static const int kModeProduction = 0;
 static const int kModeFactory = 1;
 static const int kCryptAllowDiscard = 1;
+
+/* TPM2 NVRAM area and related constants. */
+static const uint32_t kNvramAreaTpm2Index = 0x800005;
+static const uint32_t kNvramAreaTpm2Magic = 0x54504D32;
+static const uint32_t kNvramAreaTpm2VersionMask = 0x000000FF;
+static const uint32_t kNvramAreaTpm2CurrentVersion = 1;
+
+struct nvram_area_tpm2 {
+  uint32_t magic;
+  uint32_t ver_flags;
+  uint8_t salt[DIGEST_LENGTH];
+};
 
 enum migration_method {
 	MIGRATE_TEST_ONLY,
@@ -157,9 +176,52 @@ static void tpm_close(void)
 	tpm_init_called = 0;
 }
 
+static int check_tpm_result(uint32_t result, const char *operation) {
+	INFO("%s %s.", operation,
+			result == TPM_SUCCESS ? "succeeded" : "failed");
+	return result == TPM_SUCCESS;
+}
+#define RETURN_ON_FAILURE(x,y) if (!check_tpm_result(x,y)) return 0
+#define LOG_RESULT(x,y) check_tpm_result(x,y)
+
 static void sha256(char *string, uint8_t *digest)
 {
 	SHA256((unsigned char *)string, strlen(string), digest);
+}
+
+/* Returns 1 on success, 0 on failure. */
+static int get_random_bytes_tpm(unsigned char *buffer, int wanted)
+{
+	uint32_t remaining = wanted;
+
+	tpm_init();
+	/* Read random bytes from TPM, which can return short reads. */
+	while (remaining) {
+		uint32_t result, size;
+
+		result = TlclGetRandom(buffer + (wanted - remaining),
+				       remaining, &size);
+		if (result != TPM_SUCCESS || size > remaining) {
+			ERROR("TPM GetRandom failed: error 0x%02x.", result);
+			return 0;
+		}
+		remaining -= size;
+	}
+
+	return 1;
+}
+
+/* Returns 1 on success, 0 on failure. */
+static int get_random_bytes(unsigned char *buffer, int wanted)
+{
+	if (has_tpm && get_random_bytes_tpm(buffer, wanted))
+		return 1;
+
+	if (RAND_bytes(buffer, wanted))
+		return 1;
+	SSL_ERROR("RAND_bytes");
+
+	return 0;
 }
 
 /* Extract the desired system key from the kernel's boot command line. */
@@ -240,6 +302,15 @@ static int is_cr48(void)
 	return state;
 }
 
+static int is_tpm2(void)
+{
+#if USE_TPM2
+	return 1;
+#else
+	return 0;
+#endif
+}
+
 static uint32_t
 _read_nvram(uint8_t *buffer, size_t len, uint32_t index, uint32_t size)
 {
@@ -260,6 +331,114 @@ _read_nvram(uint8_t *buffer, size_t len, uint32_t index, uint32_t size)
 							       : "FAIL");
 
 	return result;
+}
+
+/*
+ * For TPM2, NVRAM area is separate from Lockbox.
+ * No legacy systems, so migration is never allowed.
+ * Cases:
+ *  - wrong-size NVRAM or invalid write-locked NVRAM: tampered with / corrupted
+ *    ignore
+ *    will never have the salt in NVRAM (finalization_needed forever)
+ *    return 0 (will re-create the mounts, if existed)
+ *  - read-locked NVRAM: already started / tampered with
+ *    ignore
+ *    return 0 (will re-create the mounts, if existed)
+ *  - no NVRAM or invalid but not write-locked NVRAM: OOBE or interrupted OOBE
+ *    generate new salt, write to NVRAM, write-lock, read-lock
+ *    return 1
+ *  - valid NVRAM not write-locked: interrupted OOBE
+ *    use NVRAM, write-lock, read-lock
+ *    (security-wise not worse than finalization_needed forever)
+ *    return 1
+ *  - valid NVRAM:
+ *    use NVRAM, read-lock
+ *    return 1
+ *
+ * When returning 1: (NVRAM area found and used)
+ *  - *digest populated with NVRAM area entropy.
+ *  - *migrate is 0
+ * When returning 0: (NVRAM missing or error)
+ *  - *digest untouched.
+ *  - *migrate is 0
+ */
+static int get_nvram_key_tpm2(uint8_t *digest, int *migrate)
+{
+	uint32_t result;
+	uint32_t perm;
+	struct nvram_area_tpm2 area;
+
+	/* Don't ever allow migration, we have no legacy TPM2 systems. */
+	*migrate = 0;
+
+	INFO("Getting key from TPM2 NVRAM index 0x%x", kNvramAreaTpm2Index);
+
+	tpm_init();
+	if (!has_tpm)
+		return 0;
+
+	result = TlclGetPermissions(kNvramAreaTpm2Index, &perm);
+	if (result == TPM_SUCCESS) {
+		DEBUG("NVRAM area permissions = 0x%08x", perm);
+		DEBUG("Reading %d bytes from NVRAM", sizeof(area));
+		RETURN_ON_FAILURE(
+				TlclRead(kNvramAreaTpm2Index, &area,
+						sizeof(area)),
+						"Reading NVRAM area");
+		debug_dump_hex("nvram", (uint8_t *)&area, sizeof(area));
+	} else {
+		INFO("NVRAM area doesn't exist or can't check permissions");
+		memset(&area, 0, sizeof(area));
+		perm = TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD |
+				TPMA_NV_WRITEDEFINE | TPMA_NV_READ_STCLEAR;
+		DEBUG("Defining NVRAM area 0x%x, perm 0x%08x, size %d",
+				kNvramAreaTpm2Index, perm, sizeof(area));
+		RETURN_ON_FAILURE(
+				TlclDefineSpace(kNvramAreaTpm2Index, perm,
+						sizeof(area)),
+				"Defining NVRAM area");
+	}
+
+	if (area.magic != kNvramAreaTpm2Magic ||
+			(area.ver_flags & kNvramAreaTpm2VersionMask) !=
+			kNvramAreaTpm2CurrentVersion) {
+		unsigned char rand_bytes[DIGEST_LENGTH];
+		if (perm & TPMA_NV_WRITELOCKED) {
+			ERROR("NVRAM area is not valid and write-locked");
+			return 0;
+		}
+		INFO("NVRAM area is new or not valid -- generating new key");
+
+		if (!get_random_bytes(rand_bytes, sizeof(rand_bytes)))
+			ERROR("No entropy source found -- "
+					"using uninitialized stack");
+
+		area.magic = kNvramAreaTpm2Magic;
+		area.ver_flags = kNvramAreaTpm2CurrentVersion;
+		memcpy(area.salt, rand_bytes, DIGEST_LENGTH);
+		debug_dump_hex("nvram", (uint8_t *)&area, sizeof(area));
+
+		RETURN_ON_FAILURE(
+				TlclWrite(kNvramAreaTpm2Index, &area,
+						sizeof(area)),
+						"Writing NVRAM area");
+	}
+
+	/* Lock the area as needed. Write-lock may be already set.
+	 * Read-lock is never set at this point, since we were able to read.
+	 * Not being able to lock is not fatal, though exposes the key.
+	 */
+	if (!(perm & TPMA_NV_WRITELOCKED))
+		LOG_RESULT(TlclWriteLock(kNvramAreaTpm2Index),
+				"Write-locking NVRAM area");
+	LOG_RESULT(TlclReadLock(kNvramAreaTpm2Index),
+			"Read-locking NVRAM area");
+
+	/* Use the salt from the area to generate the key. */
+	SHA256(area.salt, DIGEST_LENGTH, digest);
+	debug_dump_hex("system key", digest, DIGEST_LENGTH);
+
+	return 1;
 }
 
 /*
@@ -292,7 +471,7 @@ _read_nvram(uint8_t *buffer, size_t len, uint32_t index, uint32_t size)
  *  - *digest untouched.
  *  - *migrate always 1
  */
-static int get_nvram_key(uint8_t *digest, int *migrate)
+static int get_nvram_key_tpm1(uint8_t *digest, int *migrate)
 {
 	uint8_t owned = 0;
 	uint8_t value[kLockboxSizeV2], bytes_anded, bytes_ored;
@@ -384,6 +563,12 @@ static int get_nvram_key(uint8_t *digest, int *migrate)
 	return 1;
 }
 
+static int get_nvram_key(uint8_t *digest, int *migrate) {
+	return is_tpm2() ?
+			get_nvram_key_tpm2(digest, migrate) :
+			get_nvram_key_tpm1(digest, migrate);
+}
+
 /* Find the system key used for decrypting the stored encryption key.
  * ChromeOS devices are required to use the NVRAM area, all the rest will
  * fallback through various places (kernel command line, BIOS UUID, and
@@ -438,41 +623,6 @@ static int find_system_key(int mode, uint8_t *digest, int *migration_allowed)
 	sha256((char *)kStaticKeyDefault, digest);
 	debug_dump_hex("system key", digest, DIGEST_LENGTH);
 	return 1;
-}
-
-/* Returns 1 on success, 0 on failure. */
-static int get_random_bytes_tpm(unsigned char *buffer, int wanted)
-{
-	uint32_t remaining = wanted;
-
-	tpm_init();
-	/* Read random bytes from TPM, which can return short reads. */
-	while (remaining) {
-		uint32_t result, size;
-
-		result = TlclGetRandom(buffer + (wanted - remaining),
-				       remaining, &size);
-		if (result != TPM_SUCCESS || size > remaining) {
-			ERROR("TPM GetRandom failed: error 0x%02x.", result);
-			return 0;
-		}
-		remaining -= size;
-	}
-
-	return 1;
-}
-
-/* Returns 1 on success, 0 on failure. */
-static int get_random_bytes(unsigned char *buffer, int wanted)
-{
-	if (has_tpm && get_random_bytes_tpm(buffer, wanted))
-		return 1;
-
-	if (RAND_bytes(buffer, wanted))
-		return 1;
-	SSL_ERROR("RAND_bytes");
-
-	return 0;
 }
 
 static char *choose_encryption_key(void)
@@ -662,6 +812,13 @@ static int finalize_from_cmdline(char *key)
 	uint8_t system_key[DIGEST_LENGTH];
 	char *encryption_key;
 	int migrate;
+
+	/* For TPM2 mount-encrypted itself generates the system-key, and
+	 * finalizes the encryption key at boot time. So, finalization from
+	 * command line is ignored.
+	 */
+	if (is_tpm2() && has_chromefw())
+		return EXIT_SUCCESS;
 
 	/* Early sanity-check to see if the encrypted device exists,
 	 * instead of failing at the end of this function.
@@ -1170,6 +1327,7 @@ static int report_info(void)
 	struct bind_mount *mnt;
 	int migrate = -1;
 
+	tpm_init();
 	printf("TPM: %s\n", has_tpm ? "yes" : "no");
 	if (has_tpm) {
 		printf("TPM Owned: %s\n", tpm_owned(&owned) != TPM_SUCCESS ?
@@ -1177,6 +1335,7 @@ static int report_info(void)
 	}
 	printf("ChromeOS: %s\n", has_chromefw() ? "yes" : "no");
 	printf("CR48: %s\n", is_cr48() ? "yes" : "no");
+	printf("TPM2: %s\n", is_tpm2() ? "yes" : "no");
 	if (has_chromefw()) {
 		int rc;
 		rc = get_nvram_key(system_key, &migrate);
