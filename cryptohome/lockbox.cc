@@ -299,10 +299,17 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
 
   // Grab a salt from the TPM.
   brillo::Blob salt(0);
-  if (!tpm_->GetRandomData(contents_->salt_size, &salt)) {
-    LOG(ERROR) << "Store() failed to get a salt from the TPM.";
-    *error = kErrorIdTpmError;
-    return false;
+  if (tpm_->GetVersion() == Tpm::TpmVersion::TPM_2_0) {
+    // We don't use salt generated here in mount-encrypted for TPM 2.0.
+    // So, save a TPM command, and just fill the salt with zeroes.
+    LOG(INFO) << "Skipping random salt generation for TPM2.0.";
+    salt.resize(contents_->salt_size);
+  } else {
+    if (!tpm_->GetRandomData(contents_->salt_size, &salt)) {
+      LOG(ERROR) << "Store() failed to get a salt from the TPM.";
+      *error = kErrorIdTpmError;
+      return false;
+    }
   }
   // Keep the data locally too.
   DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
