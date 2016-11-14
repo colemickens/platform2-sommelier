@@ -91,7 +91,7 @@ TEST_F(TDLSManagerTest, DiscoverPeer) {
   EXPECT_CALL(supplicant_interface_proxy_, TDLSDiscover(StrEq(kPeer)))
       .WillOnce(Return(true));
   // Post delayed task for discover peer cleanup timer.
-  EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _)).Times(1);
+  EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _, _)).Times(1);
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSDiscoverOperation, &error));
@@ -105,7 +105,7 @@ TEST_F(TDLSManagerTest, DiscoverPeer) {
   error.Reset();
   EXPECT_CALL(supplicant_interface_proxy_, TDLSDiscover(StrEq(kPeer)))
       .WillOnce(Return(false));
-  EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _)).Times(0);
+  EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSDiscoverOperation, &error));
@@ -235,7 +235,7 @@ TEST_F(TDLSManagerTest, PeerDiscoveryCleanup) {
   EXPECT_CALL(supplicant_interface_proxy_, TDLSDiscover(StrEq(kPeer)))
       .WillOnce(Return(true));
   // Post delayed task for discover peer cleanup timer.
-  EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _)).Times(1);
+  EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _, _)).Times(1);
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSDiscoverOperation, &error));

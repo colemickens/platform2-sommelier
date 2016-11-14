@@ -72,7 +72,8 @@ bool PassiveLinkMonitor::Start(int num_cycles) {
   // Start the monitor cycle.
   monitor_cycle_timeout_callback_.Reset(
       Bind(&PassiveLinkMonitor::CycleTimeoutHandler, Unretained(this)));
-  dispatcher_->PostDelayedTask(monitor_cycle_timeout_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               monitor_cycle_timeout_callback_.callback(),
                                kCyclePeriodMilliseconds);
   num_cycles_to_monitor_ = num_cycles;
   return true;
@@ -133,7 +134,8 @@ void PassiveLinkMonitor::CycleTimeoutHandler() {
     if (num_cycles_passed_ < num_cycles_to_monitor_) {
       // Continue on with the next cycle.
       StartArpClient();
-      dispatcher_->PostDelayedTask(monitor_cycle_timeout_callback_.callback(),
+      dispatcher_->PostDelayedTask(FROM_HERE,
+                                   monitor_cycle_timeout_callback_.callback(),
                                    kCyclePeriodMilliseconds);
       return;
     }
@@ -146,7 +148,7 @@ void PassiveLinkMonitor::CycleTimeoutHandler() {
   // cleanup.
   monitor_completed_callback_.Reset(
       Bind(&PassiveLinkMonitor::MonitorCompleted, Unretained(this), status));
-  dispatcher_->PostTask(monitor_completed_callback_.callback());
+  dispatcher_->PostTask(FROM_HERE, monitor_completed_callback_.callback());
 }
 
 void PassiveLinkMonitor::MonitorCompleted(bool status) {

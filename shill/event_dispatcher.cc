@@ -26,6 +26,7 @@
 
 using base::Callback;
 using base::Closure;
+using tracked_objects::Location;
 
 namespace shill {
 
@@ -44,13 +45,14 @@ void EventDispatcher::DispatchPendingEvents() {
   base::RunLoop().RunUntilIdle();
 }
 
-void EventDispatcher::PostTask(const Closure& task) {
-  base::MessageLoop::current()->PostTask(FROM_HERE, task);
+void EventDispatcher::PostTask(const Location& location, const Closure& task) {
+  base::MessageLoop::current()->PostTask(location, task);
 }
 
-void EventDispatcher::PostDelayedTask(const Closure& task, int64_t delay_ms) {
+void EventDispatcher::PostDelayedTask(const Location& location,
+                                      const Closure& task, int64_t delay_ms) {
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
+      location, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }
 
 // TODO(zqiu): Remove all reference to this function and use the

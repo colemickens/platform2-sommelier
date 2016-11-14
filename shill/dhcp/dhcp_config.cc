@@ -285,6 +285,7 @@ void DHCPConfig::StartAcquisitionTimeout() {
       Bind(&DHCPConfig::ProcessAcquisitionTimeout,
            weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
+      FROM_HERE,
       lease_acquisition_timeout_callback_.callback(),
       lease_acquisition_timeout_seconds_ * 1000);
 }
@@ -312,6 +313,7 @@ void DHCPConfig::StartExpirationTimeout(uint32_t lease_duration_seconds) {
       Bind(&DHCPConfig::ProcessExpirationTimeout,
            weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
+      FROM_HERE,
       lease_expiration_callback_.callback(),
       lease_duration_seconds * 1000);
 }

@@ -70,7 +70,7 @@ class DaemonTaskForTest : public DaemonTask {
 
   bool Quit(const base::Closure& completion_callback) override {
     quit_result_ = DaemonTask::Quit(completion_callback);
-    dispatcher_->PostTask(base::MessageLoop::QuitWhenIdleClosure());
+    dispatcher_->PostTask(FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
     return quit_result_;
   }
 
@@ -192,6 +192,7 @@ TEST_F(DaemonTaskTest, QuitWithTerminationAction) {
 
   // Run Daemon::Quit() after the daemon starts running.
   dispatcher_->PostTask(
+      FROM_HERE,
       Bind(IgnoreResult(&DaemonTask::Quit), Unretained(&daemon_),
            Bind(&DaemonTaskTest::BreakTerminationLoop, Unretained(this))));
 

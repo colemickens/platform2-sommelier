@@ -192,7 +192,7 @@ bool CryptoUtilProxy::StartShimForCommand(
   result_handler_ = result_handler;
   shim_job_timeout_callback_.Reset(Bind(&CryptoUtilProxy::HandleShimTimeout,
                                         AsWeakPtr()));
-  dispatcher_->PostDelayedTask(shim_job_timeout_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, shim_job_timeout_callback_.callback(),
                                 kShimJobTimeoutMilliseconds);
   do {
     if (file_io_->SetFdNonBlocking(shim_stdin_) ||

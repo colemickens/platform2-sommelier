@@ -108,7 +108,8 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
   base::Closure task;
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _));  // TODO(pstew): crbug/502320
+  // TODO(pstew): crbug.com/502320
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   provider_->UnbindPID(kPid);
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_TRUE(provider_->IsRecentlyUnbound(kPid));

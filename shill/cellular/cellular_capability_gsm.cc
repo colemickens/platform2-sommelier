@@ -773,6 +773,7 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback& callback,
           Bind(&CellularCapabilityGSM::GetIMSI,
                weak_ptr_factory_.GetWeakPtr(), callback);
       cellular()->dispatcher()->PostDelayedTask(
+          FROM_HERE,
           retry_get_imsi_cb,
           get_imsi_retry_delay_milliseconds_);
     } else {

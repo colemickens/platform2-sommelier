@@ -49,7 +49,7 @@ ExternalTask::~ExternalTask() {
 
 void ExternalTask::DestroyLater(EventDispatcher* dispatcher) {
   // Passes ownership of |this| to Destroy.
-  dispatcher->PostTask(base::Bind(&Destroy, this));
+  dispatcher->PostTask(FROM_HERE, base::Bind(&Destroy, this));
 }
 
 bool ExternalTask::Start(const FilePath& program,

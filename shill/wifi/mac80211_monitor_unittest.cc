@@ -79,7 +79,7 @@ class Mac80211MonitorTest : public testing::Test {
   void AllowWakeQueuesIfNeededCommonCalls() {
     // Allow any number of these calls, as these aspects of
     // WakeQueuesIfNeeded interaction are tested elsewhere.
-    EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _))
+    EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _, _))
         .Times(AnyNumber());
     EXPECT_CALL(metrics(), SendEnumToUMA(_, _, _))
         .Times(AnyNumber());
@@ -151,7 +151,7 @@ class Mac80211MonitorTest : public testing::Test {
     EXPECT_CALL(
         event_dispatcher_,
         PostDelayedTask(
-            _, Mac80211Monitor::kQueueStatePollIntervalSeconds * 1000));
+            _, _, Mac80211Monitor::kQueueStatePollIntervalSeconds * 1000));
     mac80211_monitor_.Start(phy_name);
     if (fake_sysfs_tree_.IsValid()) {
       PlumbFakeSysfs();  // Re-plumb, since un-plumbed by Start().
@@ -239,7 +239,7 @@ TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededFullMacDevice) {
   FakeUpSysfs();
   StartMonitor("dont-care-phy");
   UpdateConnectedState(false);
-  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _));
+  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _, _));
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, HasSubstr(": incomplete read on "))).Times(0);
 
@@ -253,7 +253,7 @@ TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRearmsTimerWhenDisconnected) {
   FakeUpSysfs();
   StartMonitor("dont-care-phy");
   UpdateConnectedState(false);
-  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _));
+  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _, _));
   WakeQueuesIfNeeded();
 }
 
@@ -275,7 +275,7 @@ TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRearmsTimerWhenConnected) {
   FakeUpSysfs();
   StartMonitor("dont-care-phy");
   UpdateConnectedState(true);
-  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _));
+  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _, _));
   WakeQueuesIfNeeded();
 }
 

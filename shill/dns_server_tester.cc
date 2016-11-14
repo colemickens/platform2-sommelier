@@ -77,7 +77,7 @@ void DNSServerTester::Start() {
 void DNSServerTester::StartAttempt(int delay_ms) {
   start_attempt_.Reset(Bind(&DNSServerTester::StartAttemptTask,
                             weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(start_attempt_.callback(), delay_ms);
+  dispatcher_->PostDelayedTask(FROM_HERE, start_attempt_.callback(), delay_ms);
 }
 
 void DNSServerTester::StartAttemptTask() {

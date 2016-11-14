@@ -120,11 +120,11 @@ TEST_F(DNSServerTesterTest, Constructor) {
 
 TEST_F(DNSServerTesterTest, StartAttempt) {
   // Start attempt with no delay.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   dns_server_tester()->StartAttempt(0);
 
   // Start attempt with delay.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 100));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 100));
   dns_server_tester()->StartAttempt(100);
 }
 
@@ -169,7 +169,7 @@ TEST_F(DNSServerTesterTest, AttemptCompleted) {
   // DNS test attempt failed with retry_until_success_ being set.
   dns_server_tester()->retry_until_success_ = true;
   EXPECT_CALL(callback_target(), ResultCallback(_)).Times(0);
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
   dns_server_tester()->CompleteAttempt(DNSServerTester::kStatusFailure);
 }
 

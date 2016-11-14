@@ -106,7 +106,7 @@ void Mac80211Monitor::StartTimer() {
         Bind(&Mac80211Monitor::WakeQueuesIfNeeded,
              weak_ptr_factory_.GetWeakPtr()));
   }
-  dispatcher_->PostDelayedTask(check_queues_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, check_queues_callback_.callback(),
                                 kQueueStatePollIntervalSeconds * 1000);
 }
 

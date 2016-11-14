@@ -194,7 +194,7 @@ class HTTPRequestTest : public Test {
     EXPECT_CALL(*connection_.get(), ReleaseRouting());
   }
   void ExpectSetTimeout(int timeout) {
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, timeout * 1000));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, timeout * 1000));
   }
   void ExpectSetConnectTimeout() {
     ExpectSetTimeout(HTTPRequest::kConnectTimeoutSeconds);

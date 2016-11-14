@@ -93,7 +93,8 @@ To keep the shill source code consistent, please follow the conventions below:
   the name of the function deferring the work. E.g.
 
   void Modem::Init() {
-    dispatcher_->PostTask(task_factory_.NewRunnableMethod(&Modem::InitTask));
+    dispatcher_->PostTask(FROM_HERE,
+                          task_factory_.NewRunnableMethod(&Modem::InitTask));
   }
 
   RATIONALE: The naming convention makes the relationship between the signal

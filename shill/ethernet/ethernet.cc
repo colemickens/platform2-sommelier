@@ -225,7 +225,8 @@ void Ethernet::TryEapAuthentication() {
   try_eap_authentication_callback_.Reset(
       Bind(&Ethernet::TryEapAuthenticationTask,
            weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostTask(try_eap_authentication_callback_.callback());
+  dispatcher()->PostTask(FROM_HERE,
+                         try_eap_authentication_callback_.callback());
 }
 
 void Ethernet::BSSAdded(const string& path, const KeyValueStore& properties) {
@@ -240,14 +241,16 @@ void Ethernet::Certification(const KeyValueStore& properties) {
   string subject;
   uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
-    dispatcher()->PostTask(Bind(&Ethernet::CertificationTask,
+    dispatcher()->PostTask(FROM_HERE,
+                           Bind(&Ethernet::CertificationTask,
                                 weak_ptr_factory_.GetWeakPtr(),
                                 subject, depth));
   }
 }
 
 void Ethernet::EAPEvent(const string& status, const string& parameter) {
-  dispatcher()->PostTask(Bind(&Ethernet::EAPEventTask,
+  dispatcher()->PostTask(FROM_HERE,
+                         Bind(&Ethernet::EAPEventTask,
                               weak_ptr_factory_.GetWeakPtr(),
                               status,
                               parameter));
@@ -258,6 +261,7 @@ void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
     return;
   }
   dispatcher()->PostTask(
+      FROM_HERE,
       Bind(&Ethernet::SupplicantStateChangedTask,
            weak_ptr_factory_.GetWeakPtr(),
            properties.GetString(WPASupplicant::kInterfacePropertyState)));

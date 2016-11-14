@@ -169,7 +169,7 @@ class DNSClientTest : public Test {
                 CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
         .WillOnce(ReturnNew<IOHandler>());
     SetActive();
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
     Error error;
     ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
     EXPECT_TRUE(error.IsSuccess());
@@ -205,7 +205,7 @@ class DNSClientTest : public Test {
   }
 
   void ExpectPostCompletionTask() {
-    EXPECT_CALL(dispatcher_, PostTask(_));
+    EXPECT_CALL(dispatcher_, PostTask(_, _));
   }
 
   void ExpectReset() {
@@ -307,7 +307,7 @@ TEST_F(DNSClientTest, GoodRequestWithTimeout) {
   // Insert an intermediate HandleTimeout callback.
   AdvanceTime(kAresWaitMS);
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, ARES_SOCKET_BAD));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   CallTimeout();
   AdvanceTime(kAresWaitMS);
   TestValidCompletion();
@@ -318,7 +318,7 @@ TEST_F(DNSClientTest, GoodRequestWithDNSRead) {
   // Insert an intermediate HandleDNSRead callback.
   AdvanceTime(kAresWaitMS);
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   CallDNSRead();
   AdvanceTime(kAresWaitMS);
   TestValidCompletion();
@@ -329,7 +329,7 @@ TEST_F(DNSClientTest, GoodRequestWithDNSWrite) {
   // Insert an intermediate HandleDNSWrite callback.
   AdvanceTime(kAresWaitMS);
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, kAresFd));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   CallDNSWrite();
   AdvanceTime(kAresWaitMS);
   TestValidCompletion();
@@ -406,7 +406,7 @@ TEST_F(DNSClientTest, IOHandleDeallocGetSock) {
   EXPECT_CALL(dispatcher_,
               CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
       .WillOnce(Return(io_handler));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   SetActive();
   Error error;
   ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
@@ -414,7 +414,7 @@ TEST_F(DNSClientTest, IOHandleDeallocGetSock) {
   SetInActive();
   EXPECT_CALL(*io_handler, Die());
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   CallDNSRead();
   EXPECT_CALL(ares_, Destroy(kAresChannel));
 }
@@ -427,7 +427,7 @@ TEST_F(DNSClientTest, IOHandleDeallocStop) {
   EXPECT_CALL(dispatcher_,
               CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
       .WillOnce(Return(io_handler));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
   SetActive();
   Error error;
   ASSERT_TRUE(dns_client_->Start(kGoodName, &error));

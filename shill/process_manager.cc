@@ -237,7 +237,7 @@ bool ProcessManager::StopProcessAndBlock(pid_t pid) {
 
 bool ProcessManager::KillProcessWithTimeout(pid_t pid, bool kill_signal) {
   SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
-  
+
   bool killed = false;
   if (KillProcess(pid, kill_signal ? SIGKILL : SIGTERM, &killed)) {
     if (killed) {
@@ -363,7 +363,7 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
                      weak_factory_.GetWeakPtr(),
                      pid,
                      kill_signal)));
-  dispatcher_->PostDelayedTask(termination_callback->callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, termination_callback->callback(),
                                kTerminationTimeoutSeconds * 1000);
   pending_termination_processes_.emplace(pid, std::move(termination_callback));
   return true;

@@ -167,7 +167,8 @@ void DeviceInfo::Start() {
                              RTNLHandler::kRequestAddr);
   request_link_statistics_callback_.Reset(
       Bind(&DeviceInfo::RequestLinkStatistics, AsWeakPtr()));
-  dispatcher_->PostDelayedTask(request_link_statistics_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               request_link_statistics_callback_.callback(),
                                kRequestLinkStatisticsIntervalMilliseconds);
 }
 
@@ -1135,7 +1136,7 @@ void DeviceInfo::DelayDeviceCreation(int interface_index) {
   delayed_devices_.insert(interface_index);
   delayed_devices_callback_.Reset(
       Bind(&DeviceInfo::DelayedDeviceCreationTask, AsWeakPtr()));
-  dispatcher_->PostDelayedTask(delayed_devices_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, delayed_devices_callback_.callback(),
                                kDelayedDeviceCreationSeconds * 1000);
 }
 
@@ -1216,7 +1217,8 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
 
 void DeviceInfo::RequestLinkStatistics() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
-  dispatcher_->PostDelayedTask(request_link_statistics_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               request_link_statistics_callback_.callback(),
                                kRequestLinkStatisticsIntervalMilliseconds);
 }
 

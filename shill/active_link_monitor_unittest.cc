@@ -251,12 +251,12 @@ class ActiveLinkMonitorTest : public Test {
         IsArpRequest(local_ip_, gateway_ip_, local_mac_, destination_mac)))
         .WillOnce(Return(true));
     EXPECT_CALL(dispatcher_,
-                PostDelayedTask(_, transmit_period_milliseconds));
+                PostDelayedTask(_, _, transmit_period_milliseconds));
   }
   void SendNextRequest() {
     EXPECT_CALL(*client_, TransmitRequest(_)).WillOnce(Return(true));
     EXPECT_CALL(dispatcher_,
-                PostDelayedTask(_, GetCurrentTestPeriodMilliseconds()));
+                PostDelayedTask(_, _, GetCurrentTestPeriodMilliseconds()));
     TriggerRequestTimer();
   }
   void ExpectNoTransmit() {
@@ -266,7 +266,7 @@ class ActiveLinkMonitorTest : public Test {
     EXPECT_CALL(device_info_, GetMACAddress(0, _))
         .WillOnce(DoAll(SetArgumentPointee<1>(local_mac_), Return(true)));
     EXPECT_CALL(*client_, StartReplyListener()).WillOnce(Return(true));
-    EXPECT_CALL(dispatcher_, PostTask(_)).Times(1);
+    EXPECT_CALL(dispatcher_, PostTask(_, _)).Times(1);
     EXPECT_TRUE(monitor_.Start(
         ActiveLinkMonitor::kDefaultTestPeriodMilliseconds));
     EXPECT_FALSE(GetSendRequestCallback().IsCancelled());

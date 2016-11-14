@@ -342,7 +342,7 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   EXPECT_EQ(nullptr, GetSelectedService().get());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).Times(0);
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
-  EXPECT_CALL(dispatcher_, PostTask(_)).Times(0);
+  EXPECT_CALL(dispatcher_, PostTask(_, _)).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(nullptr, GetSelectedService().get());
@@ -356,7 +356,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(false));
-  EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.
+  EXPECT_CALL(dispatcher_, PostTask(_, _));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateFailure));
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(mock_service_, GetSelectedService().get());
@@ -370,7 +370,7 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(true));
-  EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.
+  EXPECT_CALL(dispatcher_, PostTask(_, _));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(GetService().get(), GetSelectedService().get());
@@ -387,7 +387,7 @@ TEST_F(EthernetTest, OnEapDetected) {
   EXPECT_CALL(*eap_listener_, Stop());
   EXPECT_CALL(ethernet_eap_provider_,
               SetCredentialChangeCallback(ethernet_.get(), _));
-  EXPECT_CALL(dispatcher_, PostTask(_));  // Posts TryEapAuthenticationTask.
+  EXPECT_CALL(dispatcher_, PostTask(_, _));  // Posts TryEapAuthenticationTask.
   TriggerOnEapDetected();
   EXPECT_TRUE(GetIsEapDetected());
 }

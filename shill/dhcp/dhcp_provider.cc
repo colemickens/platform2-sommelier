@@ -146,9 +146,11 @@ void DHCPProvider::UnbindPID(int pid) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   configs_.erase(pid);
   recently_unbound_pids_.insert(pid);
-  dispatcher_->PostDelayedTask(base::Bind(&DHCPProvider::RetireUnboundPID,
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               base::Bind(&DHCPProvider::RetireUnboundPID,
                                           base::Unretained(this),
-                                          pid), kUnbindDelayMilliseconds);
+                                          pid),
+                               kUnbindDelayMilliseconds);
 }
 
 void DHCPProvider::RetireUnboundPID(int pid) {

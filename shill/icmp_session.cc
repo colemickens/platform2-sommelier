@@ -83,11 +83,11 @@ bool IcmpSession::Start(const IPAddress& destination,
   result_callback_ = result_callback;
   timeout_callback_.Reset(Bind(&IcmpSession::ReportResultAndStopSession,
                                weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(timeout_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
                                kTimeoutSeconds * 1000);
   seq_num_to_sent_recv_time_.clear();
   received_echo_reply_seq_numbers_.clear();
-  dispatcher_->PostTask(Bind(&IcmpSession::TransmitEchoRequestTask,
+  dispatcher_->PostTask(FROM_HERE, Bind(&IcmpSession::TransmitEchoRequestTask,
                              weak_ptr_factory_.GetWeakPtr(), destination));
 
   return true;
@@ -153,7 +153,7 @@ void IcmpSession::TransmitEchoRequestTask(const IPAddress& destination) {
   // requests are sent.
 
   if (seq_num_to_sent_recv_time_.size() != kTotalNumEchoRequests) {
-    dispatcher_->PostDelayedTask(
+    dispatcher_->PostDelayedTask(FROM_HERE,
         Bind(&IcmpSession::TransmitEchoRequestTask,
              weak_ptr_factory_.GetWeakPtr(), destination),
         kEchoRequestIntervalSeconds * 1000);

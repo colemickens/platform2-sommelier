@@ -120,7 +120,8 @@ void ConnectivityTrial::StartTrialAfterDelay(int start_delay_milliseconds) {
                              << "ms.";
   trial_.Reset(Bind(&ConnectivityTrial::StartTrialTask,
                     weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(trial_.callback(), start_delay_milliseconds);
+  dispatcher_->PostDelayedTask(
+      FROM_HERE, trial_.callback(), start_delay_milliseconds);
 }
 
 void ConnectivityTrial::StartTrialTask() {
@@ -134,7 +135,7 @@ void ConnectivityTrial::StartTrialTask() {
 
   trial_timeout_.Reset(Bind(&ConnectivityTrial::TimeoutTrialTask,
                             weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(trial_timeout_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, trial_timeout_.callback(),
                                trial_timeout_seconds_ * 1000);
 }
 

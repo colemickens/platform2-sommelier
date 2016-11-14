@@ -132,7 +132,7 @@ TEST_F(ResultAggregatorTestWithMockDispatcher, BothFail) {
 
 TEST_F(ResultAggregatorTestWithMockDispatcher,
        TimeoutCallbackPostedOnConstruction) {
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, kTimeoutMilliseconds));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kTimeoutMilliseconds));
   auto result_aggregator = make_scoped_refptr(new ResultAggregator(
       Bind(&ResultAggregatorTest::ReportResult, Unretained(this)), &dispatcher_,
       kTimeoutMilliseconds));

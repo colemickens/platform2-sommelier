@@ -123,7 +123,7 @@ DBusHandlerResult ChromeosDHCPCDListener::HandleMessage(
                                                      &pid,
                                                      &reason,
                                                      &configurations)) {
-      dispatcher_->PostTask(
+      dispatcher_->PostTask(FROM_HERE,
           base::Bind(&ChromeosDHCPCDListener::EventSignal,
                      weak_factory_.GetWeakPtr(),
                      sender, pid, reason, configurations));
@@ -136,7 +136,7 @@ DBusHandlerResult ChromeosDHCPCDListener::HandleMessage(
                                                      nullptr,
                                                      &pid,
                                                      &status)) {
-      dispatcher_->PostTask(
+      dispatcher_->PostTask(FROM_HERE,
           base::Bind(&ChromeosDHCPCDListener::StatusChangedSignal,
                      weak_factory_.GetWeakPtr(),
                      sender, pid, status));

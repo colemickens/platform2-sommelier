@@ -1368,6 +1368,7 @@ void Cellular::set_scanning(bool scanning) {
                                           weak_ptr_factory_.GetWeakPtr(),
                                           false));
     dispatcher()->PostDelayedTask(
+        FROM_HERE,
         scanning_timeout_callback_.callback(),
         scanning_timeout_milliseconds_);
   }

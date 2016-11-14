@@ -580,7 +580,7 @@ TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(_, _))
       .Times(0);
-  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_, _)).Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
@@ -592,7 +592,7 @@ TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
               GetActivationState(_, _))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
-  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_, _)).Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
@@ -604,7 +604,7 @@ TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
               GetActivationState(_, _))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStatePending));
-  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_, _)).Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
@@ -615,7 +615,7 @@ TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
               GetActivationState(_, _))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStateFailureRetry));
-  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(1);
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_, _)).Times(1);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
@@ -629,7 +629,7 @@ TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
       .WillOnce(Return(PendingActivationStore::kStateActivated))
       .WillOnce(Return(PendingActivationStore::kStateUnknown))
       .WillOnce(Return(PendingActivationStore::kStateUnknown));
-  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_, _)).Times(0);
   capability_->UpdatePendingActivationState();
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());

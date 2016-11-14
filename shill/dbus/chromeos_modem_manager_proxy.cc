@@ -107,9 +107,9 @@ void ChromeosModemManagerProxy::OnServiceAvailable(bool available) {
   // The callback might invoke calls to the ObjectProxy, so defer the callback
   // to event loop.
   if (available && !service_appeared_callback_.is_null()) {
-    dispatcher_->PostTask(service_appeared_callback_);
+    dispatcher_->PostTask(FROM_HERE, service_appeared_callback_);
   } else if (!available && !service_vanished_callback_.is_null()) {
-    dispatcher_->PostTask(service_vanished_callback_);
+    dispatcher_->PostTask(FROM_HERE, service_vanished_callback_);
   }
   service_available_ = available;
 }

@@ -63,7 +63,7 @@ void TrafficMonitor::Start() {
 
   sample_traffic_callback_.Reset(base::Bind(&TrafficMonitor::SampleTraffic,
                                             base::Unretained(this)));
-  dispatcher_->PostDelayedTask(sample_traffic_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, sample_traffic_callback_.callback(),
                                kSamplingIntervalMilliseconds);
 }
 
@@ -212,7 +212,7 @@ void TrafficMonitor::SampleTraffic() {
 
   // Schedule the sample callback first, so it is possible for the network
   // problem callback to stop the traffic monitor.
-  dispatcher_->PostDelayedTask(sample_traffic_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, sample_traffic_callback_.callback(),
                                kSamplingIntervalMilliseconds);
 
   if (IsCongestedTxQueues() &&

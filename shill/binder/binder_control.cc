@@ -93,7 +93,7 @@ void BinderControl::RegisterManagerObject(
   // function expects |registration_done_callback| to be called asynchronously,
   // post the callback to the message loop ourselves.
   manager->RegisterAsync(base::Callback<void(bool)>());
-  dispatcher_->PostTask(registration_done_callback);
+  dispatcher_->PostTask(FROM_HERE, registration_done_callback);
 }
 
 DeviceAdaptorInterface* BinderControl::CreateDeviceAdaptor(Device* device) {

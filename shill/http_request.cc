@@ -264,7 +264,7 @@ void HTTPRequest::StartIdleTimeout(int timeout_seconds, Result timeout_result) {
   timeout_result_ = timeout_result;
   timeout_closure_.Reset(
       Bind(&HTTPRequest::TimeoutTask, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(timeout_closure_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, timeout_closure_.callback(),
                                timeout_seconds * 1000);
 }
 

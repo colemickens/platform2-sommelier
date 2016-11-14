@@ -142,7 +142,7 @@ class ConnectivityTrialTest : public Test {
     AssignHTTPRequest();
     EXPECT_CALL(*http_request(), Start(_, _, _))
         .WillOnce(Return(HTTPRequest::kResultInProgress));
-    EXPECT_CALL(dispatcher(), PostDelayedTask(_, kTrialTimeout * 1000));
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kTrialTimeout * 1000));
     connectivity_trial()->StartTrialTask();
   }
 
@@ -176,7 +176,7 @@ class ConnectivityTrialTest : public Test {
     EXPECT_CALL(*http_request(), Stop());
 
     // Expect the ConnectivityTrial to schedule the next attempt.
-    EXPECT_CALL(dispatcher(), PostDelayedTask(_, delay));
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay));
   }
 
   void AdvanceTime(int milliseconds) {
@@ -185,14 +185,14 @@ class ConnectivityTrialTest : public Test {
   }
 
   void StartTrial() {
-    EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
     EXPECT_TRUE(StartTrial(kURL));
 
     // Expect that the request will be started -- return failure.
     EXPECT_CALL(*http_request(), Start(_, _, _))
         .WillOnce(Return(HTTPRequest::kResultInProgress));
     EXPECT_CALL(dispatcher(), PostDelayedTask(
-        _, kTrialTimeout * 1000));
+        _, _, kTrialTimeout * 1000));
 
     connectivity_trial()->StartTrialTask();
   }
@@ -232,7 +232,7 @@ TEST_F(ConnectivityTrialTest, Constructor) {
 
 TEST_F(ConnectivityTrialTest, InvalidURL) {
   EXPECT_FALSE(connectivity_trial()->IsActive());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0)).Times(0);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
   EXPECT_FALSE(StartTrial(kBadURL));
   ExpectReset();
 
@@ -245,7 +245,7 @@ TEST_F(ConnectivityTrialTest, IsActive) {
   EXPECT_FALSE(connectivity_trial()->IsActive());
 
   // Once the trial is started, IsActive should return true.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
   StartTrialTask();
   EXPECT_TRUE(connectivity_trial()->IsActive());
@@ -259,7 +259,7 @@ TEST_F(ConnectivityTrialTest, IsActive) {
 }
 
 TEST_F(ConnectivityTrialTest, StartAttemptFailed) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   // Expect that the request will be started -- return failure.
@@ -273,31 +273,31 @@ TEST_F(ConnectivityTrialTest, StartAttemptFailed) {
                       ConnectivityTrial::kStatusFailure))))
       .Times(1);
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0)).Times(0);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
   EXPECT_CALL(*http_request(), Stop());
 
   connectivity_trial()->StartTrialTask();
 }
 
 TEST_F(ConnectivityTrialTest, StartRepeated) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(1);
   EXPECT_TRUE(StartTrial(kURL));
 
   // A second call should cancel the existing trial and set up the new one.
   EXPECT_CALL(*http_request(), Stop());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 10)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 10)).Times(1);
   EXPECT_TRUE(StartTrialWithDelay(kURL, 10));
 }
 
 TEST_F(ConnectivityTrialTest, StartTrialAfterDelay) {
   const int kDelaySeconds = 123;
   // The trial should be delayed by kDelaySeconds.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, kDelaySeconds));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kDelaySeconds));
   EXPECT_TRUE(StartTrialWithDelay(kURL, kDelaySeconds));
 }
 
 TEST_F(ConnectivityTrialTest, TrialRetry) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   // Expect that the request will be started -- return failure.
@@ -308,12 +308,12 @@ TEST_F(ConnectivityTrialTest, TrialRetry) {
 
   const int kRetryDelay = 7;
   EXPECT_CALL(*http_request(), Stop());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, kRetryDelay)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kRetryDelay)).Times(1);
   EXPECT_TRUE(connectivity_trial()->Retry(kRetryDelay));
 }
 
 TEST_F(ConnectivityTrialTest, TrialRetryFail) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   EXPECT_CALL(*http_request(), Stop());
@@ -329,7 +329,7 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
   int sec_between_attempts = 3;
 
   // Expect ConnectivityTrial to immediately post a task for the each attempt.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   // Expect that the request will be started and return the in progress status.
@@ -338,7 +338,7 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
           Return(HTTPRequest::kResultInProgress));
 
   // Each HTTP request that gets started will have a request timeout.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, kTrialTimeout * 1000))
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kTrialTimeout * 1000))
       .Times(num_failures);
 
   // Expect failures for all attempts but the last.
@@ -357,7 +357,7 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
     connectivity_trial()->StartTrialTask();
     AdvanceTime(sec_between_attempts * 1000);
     EXPECT_CALL(*http_request(), Stop()).Times(2);
-    EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0)).Times(1);
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(1);
     connectivity_trial()->RequestReadCallback(response_data);
     EXPECT_TRUE(connectivity_trial()->Retry(0));
   }
@@ -365,7 +365,7 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
 
 
 TEST_F(ConnectivityTrialTest, ReadBadHeader) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   StartTrialTask();
@@ -377,7 +377,7 @@ TEST_F(ConnectivityTrialTest, ReadBadHeader) {
 }
 
 TEST_F(ConnectivityTrialTest, RequestTimeout) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   StartTrialTask();
@@ -393,7 +393,7 @@ TEST_F(ConnectivityTrialTest, RequestTimeout) {
 }
 
 TEST_F(ConnectivityTrialTest, ReadPartialHeaderTimeout) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   StartTrialTask();
@@ -417,7 +417,7 @@ TEST_F(ConnectivityTrialTest, ReadCompleteHeader) {
   const string response_expected(ConnectivityTrial::kResponseExpected);
   const size_t partial_size = response_expected.length() / 2;
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   StartTrialTask();
@@ -434,7 +434,7 @@ TEST_F(ConnectivityTrialTest, ReadCompleteHeader) {
 TEST_F(ConnectivityTrialTest, ReadMatchingHeader) {
   const string kResponse("HTTP/9.8 204");
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
   StartTrialTask();

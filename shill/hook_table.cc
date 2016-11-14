@@ -82,7 +82,8 @@ void HookTable::Run(int timeout_ms, const ResultCallback& done) {
   }
   done_callback_ = done;
   timeout_callback_.Reset(Bind(&HookTable::ActionsTimedOut, Unretained(this)));
-  event_dispatcher_->PostDelayedTask(timeout_callback_.callback(), timeout_ms);
+  event_dispatcher_->PostDelayedTask(
+      FROM_HERE, timeout_callback_.callback(), timeout_ms);
 
   // Mark all actions as having started before we execute any actions.
   // Otherwise, if the first action completes inline, its call to

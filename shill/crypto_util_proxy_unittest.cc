@@ -145,7 +145,7 @@ class CryptoUtilProxyTest : public testing::Test {
         .WillOnce(Invoke(this,
                          &CryptoUtilProxyTest::HandleStartInMinijailWithPipes));
     // We should always schedule a shim timeout callback.
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
     // We don't allow file I/O to block.
     EXPECT_CALL(file_io_,
                 SetFdNonBlocking(kTestStdinFd))

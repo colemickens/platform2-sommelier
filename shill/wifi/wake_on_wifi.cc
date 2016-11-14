@@ -140,7 +140,7 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore* store) {
 
 void WakeOnWiFi::StartMetricsTimer() {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  dispatcher_->PostDelayedTask(report_metrics_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, report_metrics_callback_.callback(),
                                kMetricsReportingFrequencySeconds * 1000);
 #endif  // DISABLE_WAKE_ON_WIFI
 }
@@ -988,7 +988,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
   verify_wake_on_packet_settings_callback_.Reset(
       Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
            weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
+  dispatcher_->PostDelayedTask(FROM_HERE,
       verify_wake_on_packet_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
@@ -1020,7 +1020,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
   verify_wake_on_packet_settings_callback_.Reset(
       Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
            weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
+  dispatcher_->PostDelayedTask(FROM_HERE,
       verify_wake_on_packet_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
@@ -1257,12 +1257,12 @@ void WakeOnWiFi::OnBeforeSuspend(
       time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThresholdSeconds) {
     // Renew DHCP lease immediately if we have one that is expiring soon.
     renew_dhcp_lease_callback.Run();
-    dispatcher_->PostTask(Bind(&WakeOnWiFi::BeforeSuspendActions,
+    dispatcher_->PostTask(FROM_HERE, Bind(&WakeOnWiFi::BeforeSuspendActions,
                                weak_ptr_factory_.GetWeakPtr(), is_connected,
                                false, time_to_next_lease_renewal,
                                remove_supplicant_networks_callback));
   } else {
-    dispatcher_->PostTask(Bind(&WakeOnWiFi::BeforeSuspendActions,
+    dispatcher_->PostTask(FROM_HERE, Bind(&WakeOnWiFi::BeforeSuspendActions,
                                weak_ptr_factory_.GetWeakPtr(), is_connected,
                                have_dhcp_lease, time_to_next_lease_renewal,
                                remove_supplicant_networks_callback));
@@ -1349,7 +1349,7 @@ void WakeOnWiFi::OnDarkResume(
       // Go back to suspend immediately since packet would have been delivered
       // to userspace upon waking in dark resume. Do not reset the lease renewal
       // timer since we are not getting a new lease.
-      dispatcher_->PostTask(Bind(
+      dispatcher_->PostTask(FROM_HERE, Bind(
           &WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
           is_connected, false, 0, remove_supplicant_networks_callback));
       break;
@@ -1385,7 +1385,8 @@ void WakeOnWiFi::OnDarkResume(
   dark_resume_actions_timeout_callback_.Reset(
       Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
            false, false, 0, remove_supplicant_networks_callback));
-  dispatcher_->PostDelayedTask(dark_resume_actions_timeout_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               dark_resume_actions_timeout_callback_.callback(),
                                DarkResumeActionsTimeoutMilliseconds);
 #endif  // DISABLE_WAKE_ON_WIFI
 }

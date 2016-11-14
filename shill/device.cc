@@ -682,7 +682,8 @@ void Device::StartIPv6DNSServerTimer(uint32_t lifetime_seconds) {
   int64_t delay = static_cast<int64_t>(lifetime_seconds) * 1000;
   ipv6_dns_server_expired_callback_.Reset(
       base::Bind(&Device::IPv6DNSServerExpired, base::Unretained(this)));
-  dispatcher_->PostDelayedTask(ipv6_dns_server_expired_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               ipv6_dns_server_expired_callback_.callback(),
                                delay);
 }
 
@@ -811,7 +812,7 @@ bool Device::AcquireIPConfigWithLeaseName(const string& lease_name) {
                                           weak_ptr_factory_.GetWeakPtr()));
   ipconfig_->RegisterExpireCallback(Bind(&Device::OnIPConfigExpired,
                                          weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
+  dispatcher_->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
                              weak_ptr_factory_.GetWeakPtr()));
   if (!ipconfig_->RequestIP()) {
     return false;
@@ -850,7 +851,7 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   EnableIPv6();
   ipconfig_ = new IPConfig(control_interface_, link_name_);
   ipconfig_->set_properties(properties);
-  dispatcher_->PostTask(Bind(&Device::OnIPConfigUpdated,
+  dispatcher_->PostTask(FROM_HERE, Bind(&Device::OnIPConfigUpdated,
                              weak_ptr_factory_.GetWeakPtr(), ipconfig_, true));
 }
 
@@ -1117,7 +1118,7 @@ void Device::OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig) {
   ipconfig->RestoreSavedIPParameters(
       selected_service_->mutable_static_ip_parameters());
 
-  dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
+  dispatcher_->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
                              weak_ptr_factory_.GetWeakPtr()));
 }
 
@@ -1164,7 +1165,7 @@ void Device::OnConnected() {
     // failure is detected in the next 5 minutes.
     reliable_link_callback_.Reset(
         base::Bind(&Device::OnReliableLink, base::Unretained(this)));
-    dispatcher_->PostDelayedTask(
+    dispatcher_->PostDelayedTask(FROM_HERE,
         reliable_link_callback_.callback(),
         kLinkUnreliableThresholdSeconds * 1000);
   }

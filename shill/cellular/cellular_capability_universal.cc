@@ -323,7 +323,7 @@ void CellularCapabilityUniversal::StopModem(Error* error,
                 weak_ptr_factory_.GetWeakPtr(),
                 callback);
   }
-  cellular()->dispatcher()->PostTask(task);
+  cellular()->dispatcher()->PostTask(FROM_HERE, task);
   deferred_enable_modem_callback_.Reset();
 }
 
@@ -1547,6 +1547,7 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
              operator_code,
              operator_name));
     cellular()->dispatcher()->PostDelayedTask(
+        FROM_HERE,
         registration_dropped_update_callback_.callback(),
         registration_dropped_update_timeout_milliseconds_);
   } else {

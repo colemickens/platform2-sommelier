@@ -279,7 +279,7 @@ void VPNDriver::StartConnectTimeout(int timeout_seconds) {
   connect_timeout_seconds_ = timeout_seconds;
   connect_timeout_callback_.Reset(
       Bind(&VPNDriver::OnConnectTimeout, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
+  dispatcher_->PostDelayedTask(FROM_HERE,
       connect_timeout_callback_.callback(), timeout_seconds * 1000);
 }
 

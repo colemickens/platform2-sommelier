@@ -460,7 +460,8 @@ void Service::ThrottleFutureAutoConnects() {
               << auto_connect_cooldown_milliseconds_ << " milliseconds.";
     reenable_auto_connect_task_.Reset(Bind(&Service::ReEnableAutoConnectTask,
                                            weak_ptr_factory_.GetWeakPtr()));
-    dispatcher_->PostDelayedTask(reenable_auto_connect_task_.callback(),
+    dispatcher_->PostDelayedTask(FROM_HERE,
+                                 reenable_auto_connect_task_.callback(),
                                  auto_connect_cooldown_milliseconds_);
   }
   auto_connect_cooldown_milliseconds_ =

@@ -303,7 +303,7 @@ void Manager::Start() {
   }
 
   // Start task for checking connection status.
-  dispatcher_->PostDelayedTask(device_status_check_task_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
                                kDeviceStatusCheckIntervalMilliseconds);
 }
 
@@ -1891,7 +1891,7 @@ void Manager::SortServices() {
   // Defer this work to the event loop.
   if (sort_services_task_.IsCancelled()) {
     sort_services_task_.Reset(Bind(&Manager::SortServicesTask, AsWeakPtr()));
-    dispatcher_->PostTask(sort_services_task_.callback());
+    dispatcher_->PostTask(FROM_HERE, sort_services_task_.callback());
   }
 }
 
@@ -1969,7 +1969,7 @@ void Manager::DeviceStatusCheckTask() {
   ConnectionStatusCheck();
   DevicePresenceStatusCheck();
 
-  dispatcher_->PostDelayedTask(device_status_check_task_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
                                kDeviceStatusCheckIntervalMilliseconds);
 }
 
@@ -2083,7 +2083,7 @@ void Manager::AutoConnect() {
 }
 
 void Manager::ConnectToBestServices(Error* /*error*/) {
-  dispatcher_->PostTask(Bind(&Manager::ConnectToBestServicesTask, AsWeakPtr()));
+  dispatcher_->PostTask(FROM_HERE, Bind(&Manager::ConnectToBestServicesTask, AsWeakPtr()));
 }
 
 void Manager::ConnectToBestServicesTask() {

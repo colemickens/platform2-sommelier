@@ -35,7 +35,8 @@ ResultAggregator::ResultAggregator(const ResultCallback& callback,
       timed_out_(false) {
   CHECK(!callback.is_null());
   if (dispatcher && timeout_milliseconds >= 0) {
-    dispatcher->PostDelayedTask(timeout_callback_.callback(),
+    dispatcher->PostDelayedTask(FROM_HERE,
+                                timeout_callback_.callback(),
                                 timeout_milliseconds);
   }
 }

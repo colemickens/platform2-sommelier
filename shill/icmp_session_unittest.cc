@@ -93,8 +93,8 @@ class IcmpSessionTest : public Test {
     EXPECT_CALL(*icmp_, IsStarted());
     EXPECT_CALL(*icmp_, Start()).WillOnce(Return(true));
     EXPECT_CALL(dispatcher_, CreateInputHandler(icmp_->socket(), _, _));
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, GetTimeoutSeconds() * 1000));
-    EXPECT_CALL(dispatcher_, PostTask(_));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeoutSeconds() * 1000));
+    EXPECT_CALL(dispatcher_, PostTask(_, _));
     EXPECT_TRUE(Start(destination));
     EXPECT_TRUE(GetSeqNumToSentRecvTime()->empty());
     EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
@@ -199,8 +199,8 @@ TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
   // Since an ICMP session is already started, we should fail to start it again.
   EXPECT_CALL(*icmp_, Start()).Times(0);
   EXPECT_CALL(dispatcher_, CreateInputHandler(_, _, _)).Times(0);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _)).Times(0);
-  EXPECT_CALL(dispatcher_, PostTask(_)).Times(0);
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
+  EXPECT_CALL(dispatcher_, PostTask(_, _)).Times(0);
   EXPECT_FALSE(Start(ipv4_destination));
 }
 
@@ -242,7 +242,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   now = testing_clock_.NowTicks();
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetEchoRequestIntervalSeconds() * 1000));
+              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
   TransmitEchoRequestTask(ipv4_destination, true);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
@@ -268,7 +268,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   testing_clock_.Advance(kSentTime2 - now);
   now = testing_clock_.NowTicks();
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetEchoRequestIntervalSeconds() * 1000));
+              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
   TransmitEchoRequestTask(ipv4_destination, true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
@@ -279,7 +279,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   // Sending final request.
   testing_clock_.Advance(kSentTime3 - now);
   now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _)).Times(0);
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_CALL(*icmp_, Stop()).Times(0);
   TransmitEchoRequestTask(ipv4_destination, true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
@@ -365,7 +365,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   now = testing_clock_.NowTicks();
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetEchoRequestIntervalSeconds() * 1000));
+              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
   TransmitEchoRequestTask(ipv4_destination, true);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
@@ -377,7 +377,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   testing_clock_.Advance(kSentTime2 - now);
   now = testing_clock_.NowTicks();
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetEchoRequestIntervalSeconds() * 1000));
+              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
   TransmitEchoRequestTask(ipv4_destination, false);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
@@ -404,7 +404,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   testing_clock_.Advance(kResendTime1 - now);
   now = testing_clock_.NowTicks();
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetEchoRequestIntervalSeconds() * 1000));
+              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
   TransmitEchoRequestTask(ipv4_destination, true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());

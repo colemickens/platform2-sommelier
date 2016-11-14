@@ -23,6 +23,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/tracked_objects.h>
 
 #include "shill/net/io_handler_factory_container.h"
 
@@ -48,8 +49,10 @@ class EventDispatcher {
 
   // These are thin wrappers around calls of the same name in
   // <base/message_loop_proxy.h>
-  virtual void PostTask(const base::Closure& task);
-  virtual void PostDelayedTask(const base::Closure& task, int64_t delay_ms);
+  virtual void PostTask(const tracked_objects::Location& location,
+                        const base::Closure& task);
+  virtual void PostDelayedTask(const tracked_objects::Location& location,
+                               const base::Closure& task, int64_t delay_ms);
 
   virtual IOHandler* CreateInputHandler(
       int fd,

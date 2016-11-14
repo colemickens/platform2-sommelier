@@ -257,17 +257,17 @@ void ConnectionHealthChecker::NextHealthCheckSample() {
   // Finish conditions:
   if (num_connection_failures_ == kMaxFailedConnectionAttempts) {
     health_check_result_ = kResultConnectionFailure;
-    dispatcher_->PostTask(report_result_);
+    dispatcher_->PostTask(FROM_HERE, report_result_);
     return;
   }
   if (num_congested_queue_detected_ == kMinCongestedQueueAttempts) {
     health_check_result_ = kResultCongestedTxQueue;
-    dispatcher_->PostTask(report_result_);
+    dispatcher_->PostTask(FROM_HERE, report_result_);
     return;
   }
   if (num_successful_sends_ == kMinSuccessfulSendAttempts) {
     health_check_result_ = kResultSuccess;
-    dispatcher_->PostTask(report_result_);
+    dispatcher_->PostTask(FROM_HERE, report_result_);
     return;
   }
 
@@ -329,7 +329,7 @@ void ConnectionHealthChecker::OnConnectionComplete(bool success, int sock_fd) {
 
   verify_sent_data_callback_.Reset(
       Bind(&ConnectionHealthChecker::VerifySentData, Unretained(this)));
-  dispatcher_->PostDelayedTask(verify_sent_data_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, verify_sent_data_callback_.callback(),
                                tcp_state_update_wait_milliseconds_);
 }
 
@@ -360,7 +360,8 @@ void ConnectionHealthChecker::VerifySentData() {
       ++num_tx_queue_polling_attempts_;
       verify_sent_data_callback_.Reset(
           Bind(&ConnectionHealthChecker::VerifySentData, Unretained(this)));
-      dispatcher_->PostDelayedTask(verify_sent_data_callback_.callback(),
+      dispatcher_->PostDelayedTask(FROM_HERE,
+                                   verify_sent_data_callback_.callback(),
                                    tcp_state_update_wait_milliseconds_);
       return;
     }

@@ -320,7 +320,7 @@ void ChromeosPowerManagerProxy::OnServiceAvailable(bool available) {
   // The callback might invoke calls to the ObjectProxy, so defer the callback
   // to event loop.
   if (!service_appeared_callback_.is_null()) {
-    dispatcher_->PostTask(service_appeared_callback_);
+    dispatcher_->PostTask(FROM_HERE, service_appeared_callback_);
   }
 
   service_available_ = true;
@@ -334,14 +334,14 @@ void ChromeosPowerManagerProxy::OnServiceOwnerChanged(
     // The callback might invoke calls to the ObjectProxy, so defer the
     // callback to event loop.
     if (!service_vanished_callback_.is_null()) {
-        dispatcher_->PostTask(service_vanished_callback_);
+        dispatcher_->PostTask(FROM_HERE, service_vanished_callback_);
     }
     service_available_ = false;
   } else {
     // The callback might invoke calls to the ObjectProxy, so defer the
     // callback to event loop.
     if (!service_appeared_callback_.is_null()) {
-      dispatcher_->PostTask(service_appeared_callback_);
+      dispatcher_->PostTask(FROM_HERE, service_appeared_callback_);
     }
     service_available_ = true;
   }

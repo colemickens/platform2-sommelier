@@ -150,7 +150,7 @@ bool ActiveLinkMonitor::StartInternal(int probe_period_milliseconds) {
   // Post a task to send ARP request instead of calling it synchronously, to
   // maintain consistent expectation in the case of send failures, which will
   // always invoke failure callback.
-  dispatcher_->PostTask(send_request_callback_.callback());
+  dispatcher_->PostTask(FROM_HERE, send_request_callback_.callback());
   return true;
 }
 
@@ -339,7 +339,7 @@ void ActiveLinkMonitor::SendRequest() {
 
   time_->GetTimeMonotonic(&sent_request_at_);
 
-  dispatcher_->PostDelayedTask(send_request_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE, send_request_callback_.callback(),
                                test_period_milliseconds_);
 }
 

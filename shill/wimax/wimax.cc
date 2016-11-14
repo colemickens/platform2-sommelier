@@ -348,8 +348,9 @@ void WiMax::StartConnectTimeout() {
   }
   connect_timeout_callback_.Reset(
       Bind(&WiMax::OnConnectTimeout, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(
-      connect_timeout_callback_.callback(), connect_timeout_seconds_ * 1000);
+  dispatcher()->PostDelayedTask(FROM_HERE,
+                                connect_timeout_callback_.callback(),
+                                connect_timeout_seconds_ * 1000);
 }
 
 void WiMax::StopConnectTimeout() {

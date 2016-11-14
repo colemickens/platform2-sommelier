@@ -175,6 +175,7 @@ void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
     case PendingActivationStore::kStateFailureRetry:
       SLOG(this, 3) << "OTA activation failed. Scheduling a retry.";
       cellular()->dispatcher()->PostTask(
+          FROM_HERE,
           Bind(&CellularCapabilityUniversalCDMA::ActivateAutomatic,
                weak_cdma_ptr_factory_.GetWeakPtr()));
       break;

@@ -235,7 +235,7 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent* hostent) {
   SLOG(this, 3) << "In " << __func__;
   running_ = false;
   timeout_closure_.Cancel();
-  dispatcher_->PostTask(Bind(&DNSClient::HandleCompletion,
+  dispatcher_->PostTask(FROM_HERE, Bind(&DNSClient::HandleCompletion,
                              weak_ptr_factory_.GetWeakPtr()));
 
   if (status == ARES_SUCCESS &&
@@ -369,7 +369,7 @@ bool DNSClient::RefreshHandles() {
     //    in the posted task.
     running_ = false;
     error_.Populate(Error::kOperationTimeout, kErrorTimedOut);
-    dispatcher_->PostTask(Bind(&DNSClient::HandleCompletion,
+    dispatcher_->PostTask(FROM_HERE, Bind(&DNSClient::HandleCompletion,
                                weak_ptr_factory_.GetWeakPtr()));
     return false;
   } else {
@@ -379,7 +379,7 @@ bool DNSClient::RefreshHandles() {
                                         &max, &ret_tv);
     timeout_closure_.Reset(
         Bind(&DNSClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
-    dispatcher_->PostDelayedTask(timeout_closure_.callback(),
+    dispatcher_->PostDelayedTask(FROM_HERE, timeout_closure_.callback(),
                                  tv->tv_sec * 1000 + tv->tv_usec / 1000);
   }
 

@@ -952,7 +952,7 @@ void MobileOperatorInfoImpl::PostNotifyOperatorChanged() {
   notify_operator_changed_task_.Reset(
       Bind(&MobileOperatorInfoImpl::NotifyOperatorChanged,
            weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostTask(notify_operator_changed_task_.callback());
+  dispatcher_->PostTask(FROM_HERE, notify_operator_changed_task_.callback());
 }
 
 void MobileOperatorInfoImpl::NotifyOperatorChanged() {

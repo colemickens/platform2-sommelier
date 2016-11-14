@@ -155,7 +155,8 @@ void TDLSManager::StartPeerDiscoveryCleanupTimer() {
   }
   peer_discovery_cleanup_callback_.Reset(
       Bind(&TDLSManager::PeerDiscoveryCleanup, base::Unretained(this)));
-  dispatcher_->PostDelayedTask(peer_discovery_cleanup_callback_.callback(),
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               peer_discovery_cleanup_callback_.callback(),
                                kPeerDiscoveryCleanupTimeoutSeconds * 1000);
 }
 

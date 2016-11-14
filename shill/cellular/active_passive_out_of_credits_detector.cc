@@ -262,6 +262,7 @@ void ActivePassiveOutOfCreditsDetector::DetectConnectDisconnectLoop(
       // out-of-credits detection.
       out_of_credits_detection_in_progress_ = true;
       dispatcher()->PostTask(
+          FROM_HERE,
           Bind(&ActivePassiveOutOfCreditsDetector::OutOfCreditsReconnect,
                weak_ptr_factory_.GetWeakPtr()));
     } else {

@@ -147,7 +147,7 @@ void CellularCapabilityClassic::RunNextStep(CellularTaskList* tasks) {
   SLOG(this, 2) << __func__ << ": " << tasks->size() << " remaining tasks";
   Closure task = (*tasks)[0];
   tasks->erase(tasks->begin());
-  cellular()->dispatcher()->PostTask(task);
+  cellular()->dispatcher()->PostTask(FROM_HERE, task);
 }
 
 void CellularCapabilityClassic::StepCompletedCallback(
