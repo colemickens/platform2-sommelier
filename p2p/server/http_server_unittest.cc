@@ -119,7 +119,9 @@ class ClientThread : public base::SimpleThread {
   DISALLOW_COPY_AND_ASSIGN(ClientThread);
 };
 
-TEST(HttpServer, Basic) {
+// TODO(adlr): Find an owner for this code and have them reenable this test. It
+// sometimes causes long hangs in the commit queue: http://crbug.com/452807
+TEST(HttpServer, DISABLED_Basic) {
   if (!util::IsXAttrSupported(FilePath("/tmp"))) {
     LOG(WARNING) << "Skipping test because /tmp does not support xattr. "
                  << "Please update your system to support this feature.";
