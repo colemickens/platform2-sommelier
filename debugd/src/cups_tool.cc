@@ -43,19 +43,9 @@ const char kLpadminGroup[] = "lpadmin";
 const char kLpGroup[] = "lp";
 const char kDownloadsFolder[] = "Downloads";
 
-bool IsInPPDCache(const base::FilePath& path) {
-  // TODO(skau): Implement once cache location is determined.
-  return false;
-}
-
-// Returns true if the path is a child of the primary user's Downloads folder.
-bool MatchesPrimaryUserDownloads(
-    const std::vector<std::string>& path_components) {
-  std::vector<std::string> primary_user = {"/", "home", "chronos", "user",
-                                           kDownloadsFolder};
-  return std::equal(primary_user.begin(), primary_user.end(),
-                    path_components.begin());
-}
+// This pathname has to match the path generated in
+// //chrome/browser/ui/webui/settings/chromeos/cups_printers_handler.cc
+const char kPPDCacheFolder[] = "PPDCache";
 
 bool IsHexDigits(base::StringPiece digits) {
   for (char digit : digits) {
@@ -69,6 +59,23 @@ bool MatchesUserString(base::StringPiece input) {
   std::vector<base::StringPiece> pieces = base::SplitStringPiece(
       input, "-", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   return pieces.size() == 2 && pieces[0] == "u" && IsHexDigits(pieces[1]);
+}
+
+bool IsInPPDCache(const std::vector<std::string>& path_components) {
+  return path_components.size() == 5 && path_components[0] == "/" &&
+         path_components[1] == "home" && path_components[2] == "chronos" &&
+         MatchesUserString(path_components[3]) &&
+         path_components[4] == kPPDCacheFolder;
+}
+
+// Returns true if the path is a child of the primary user's Downloads folder.
+bool MatchesPrimaryUserDownloads(
+    const std::vector<std::string>& path_components) {
+  std::vector<std::string> primary_user = {"/", "home", "chronos", "user",
+                                           kDownloadsFolder};
+  return path_components.size() >= primary_user.size() &&
+         std::equal(primary_user.begin(), primary_user.end(),
+                    path_components.begin());
 }
 
 // Matches the path reported by Chrome for the Downloads folder.
@@ -91,10 +98,7 @@ bool MatchesMultiUserDownloads(
          path_components[4] == kDownloadsFolder;
 }
 
-bool IsDownload(const base::FilePath& path) {
-  std::vector<std::string> path_components;
-  path.GetComponents(&path_components);
-
+bool IsDownload(const std::vector<std::string>& path_components) {
   return MatchesChromeDownloadsPath(path_components) ||
          MatchesPrimaryUserDownloads(path_components) ||
          MatchesMultiUserDownloads(path_components);
@@ -217,7 +221,7 @@ int Lpadmin(const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
                    kLpadminSeccompPolicy, arg_list, error);
 }
 
-// Runs /bin/cp in a new minijail.  This is done becuase /home might not be
+// Runs /bin/cp in a new minijail.  This is done because /home might not be
 // mounted in our current minijail.  Returns true if successful.
 bool RunCopy(const std::string& src, const std::string& dst,
              DBus::Error* error) {
@@ -284,7 +288,10 @@ bool ValidatePPDPath(const base::FilePath& path) {
     return false;
   }
 
-  if (!IsInPPDCache(path) && !IsDownload(path)) {
+  std::vector<std::string> path_components;
+  path.GetComponents(&path_components);
+
+  if (!IsInPPDCache(path_components) && !IsDownload(path_components)) {
     LOG(ERROR) << "Illegal path " << path.value();
     return false;
   }
