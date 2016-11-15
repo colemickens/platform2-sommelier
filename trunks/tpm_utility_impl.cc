@@ -422,6 +422,7 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
   // Part 2 (Section 10.5 - PCR structures).
   uint8_t pcr_select_index = pcr_index / 8;
   uint8_t pcr_select_byte = 1 << (pcr_index % 8);
+  memset(&pcr_select_in, 0, sizeof(pcr_select_in));
   pcr_select_in.count = 1;
   pcr_select_in.pcr_selections[0].hash = TPM_ALG_SHA256;
   pcr_select_in.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
