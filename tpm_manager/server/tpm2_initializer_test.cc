@@ -139,6 +139,9 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
   EXPECT_EQ(lockout_password, fake_local_data_.lockout_password());
 }
 
+// TODO(http://crosbug.com/p/59837): restore when TPM_RC_PCR_CHANGED is
+// properly handled. Until then, VerifiedBootHelper won't extend PCRs.
+#if 0
 TEST_F(Tpm2InitializerTest, PCRSpoofGuard) {
   // Setup empty PCRs that need to be extended.
   EXPECT_CALL(mock_tpm_utility_, ReadPCR(_, _))
@@ -165,6 +168,7 @@ TEST_F(Tpm2InitializerTest, PCRSpoofGuardExtendFailure) {
       .WillRepeatedly(Return(trunks::TPM_RC_FAILURE));
   tpm_initializer_->VerifiedBootHelper();
 }
+#endif
 
 TEST_F(Tpm2InitializerTest, DAResetSuccess) {
   fake_local_data_.set_lockout_password("lockout");

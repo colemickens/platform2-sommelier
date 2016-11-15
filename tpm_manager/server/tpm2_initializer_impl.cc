@@ -116,7 +116,11 @@ bool Tpm2InitializerImpl::InitializeTpm() {
 }
 
 void Tpm2InitializerImpl::VerifiedBootHelper() {
+// TODO(http://crosbug.com/p/59837): restore when TPM_RC_PCR_CHANGED is
+// properly handled.
+#if 0
   constexpr char kVerifiedBootLateStageTag[] = "BOOT_PCR_LATE_STAGE";
+#endif
   std::unique_ptr<trunks::TpmUtility> tpm_utility =
       trunks_factory_.GetTpmUtility();
   // Make sure PCRs 0-3 can't be spoofed from this point forward.
@@ -131,11 +135,15 @@ void Tpm2InitializerImpl::VerifiedBootHelper() {
     if (value == std::string(32, 0)) {
       LOG(WARNING) << "WARNING: Verified boot PCR " << pcr
                    << " is not initialized.";
+// TODO(http://crosbug.com/p/59837): restore when TPM_RC_PCR_CHANGED is
+// properly handled.
+#if 0
       result = tpm_utility->ExtendPCR(pcr, kVerifiedBootLateStageTag, nullptr);
       if (result) {
         LOG(ERROR) << "Failed to extend PCR " << pcr << ": "
                    << trunks::GetErrorString(result);
       }
+#endif
     }
   }
 }
