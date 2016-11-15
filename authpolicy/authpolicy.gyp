@@ -11,21 +11,6 @@
     },
   },
   'targets': [
-    # User policy proto compiler.
-    {
-      'target_name': 'user-policy-proto',
-      'type': 'static_library',
-      'variables': {
-        'proto_in_dir': 'policy/proto',
-        'proto_out_dir': 'include/authpolicy/policy/proto',
-      },
-      'sources': [
-        '<(proto_in_dir)/cloud_policy.proto',
-      ],
-     'includes': [
-        '../common-mk/protoc.gypi',
-      ],
-    },
     # D-Bus code generator.
     {
       'target_name': 'dbus_code_generator',
@@ -45,7 +30,7 @@
       'type': 'static_library',
       'dependencies': [
         '../common-mk/external_dependencies.gyp:policy-protos',
-        'user-policy-proto',
+        '../common-mk/external_dependencies.gyp:user_policy-protos',
         'dbus_code_generator',
       ],
       'sources': [

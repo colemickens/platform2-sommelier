@@ -9,13 +9,13 @@
 
 #include <base/strings/stringprintf.h>
 #include <bindings/chrome_device_policy.pb.h>
+#include <bindings/cloud_policy.pb.h>
 #include <bindings/device_management_backend.pb.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "authpolicy/errors.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
-#include "authpolicy/policy/proto/cloud_policy.pb.h"
 #include "authpolicy/samba_interface.h"
 
 namespace em = enterprise_management;

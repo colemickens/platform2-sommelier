@@ -7,11 +7,11 @@
 #include <string>
 #include <vector>
 
-#include "base/strings/string_number_conversions.h"
-#include "base/values.h"
+#include <base/strings/string_number_conversions.h>
+#include <base/values.h>
+#include <bindings/cloud_policy.pb.h>
 
 #include "authpolicy/policy/policy_encoder_helper.h"
-#include "authpolicy/policy/proto/cloud_policy.pb.h"
 #include "authpolicy/policy/registry_dict.h"
 
 namespace em = enterprise_management;
