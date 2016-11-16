@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include "chaps/tpm2_utility_impl.h"
 
 #include <base/bind.h>
@@ -53,6 +55,39 @@ void InitTransceiver(trunks::CommandTransceiver* transceiver) {
 
 namespace chaps {
 
+class ScopedSession {
+ public:
+#ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
+  ScopedSession(trunks::TrunksFactory* factory,
+      std::unique_ptr<trunks::HmacSession> *session) {}
+#else
+  ScopedSession(trunks::TrunksFactory* factory,
+      std::unique_ptr<trunks::HmacSession> *session) {
+    target_session_ = session;
+    if (*target_session_) {
+      LOG(ERROR) << "Concurrent sessions";
+    }
+    std::unique_ptr<trunks::HmacSession> new_session =
+      factory->GetHmacSession();
+    TPM_RC result =
+      new_session->StartUnboundSession(false /* disable encryption */);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error starting an AuthorizationSession: "
+                 << trunks::GetErrorString(result);
+      *target_session_ = nullptr;
+    } else {
+      *target_session_ = std::move(new_session);
+    }
+  }
+  ~ScopedSession() {
+    *target_session_ = nullptr;
+  }
+
+ private:
+  std::unique_ptr<trunks::HmacSession> *target_session_;
+#endif
+};
+
 TPM2UtilityImpl::TPM2UtilityImpl()
     : default_factory_(
         new trunks::TrunksFactoryImpl()),
@@ -61,7 +96,9 @@ TPM2UtilityImpl::TPM2UtilityImpl()
     LOG(ERROR) << "Unable to initialize trunks.";
     return;
   }
+#ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
   session_ = factory_->GetHmacSession();
+#endif
   trunks_tpm_utility_ = factory_->GetTpmUtility();
 }
 
@@ -83,13 +120,17 @@ TPM2UtilityImpl::TPM2UtilityImpl(
       new trunks::TrunksFactoryImpl(default_background_transceiver_.get()));
   CHECK(default_factory_->Initialize());
   factory_ = default_factory_.get();
+#ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
   session_ = factory_->GetHmacSession();
+#endif
   trunks_tpm_utility_ = factory_->GetTpmUtility();
 }
 
 TPM2UtilityImpl::TPM2UtilityImpl(TrunksFactory* factory)
     : factory_(factory),
+#ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
       session_(factory_->GetHmacSession()),
+#endif
       trunks_tpm_utility_(factory_->GetTpmUtility()) {}
 
 TPM2UtilityImpl::~TPM2UtilityImpl() {
@@ -125,12 +166,14 @@ bool TPM2UtilityImpl::Init() {
     LOG(ERROR) << "TPM2Utility cannot be ready if the TPM is not owned.";
     return false;
   }
+#ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
   result = session_->StartUnboundSession(true /* enable encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting an AuthorizationSession: "
                << trunks::GetErrorString(result);
     return false;
   }
+#endif
   is_initialized_ = true;
   return true;
 }
@@ -193,6 +236,10 @@ bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
   if (!LoadKeyWithParentInternal(slot_id, old_auth_key_blob, old_auth_data,
                                  kRSAStorageRootKey, &key_handle)) {
     LOG(ERROR) << "Error loading key under old authorization data.";
+    return false;
+  }
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
     return false;
   }
   session_->SetEntityAuthorizationValue(old_auth_data.to_string());
@@ -259,6 +306,10 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
   if (modulus_bits < static_cast<int>(kMinModulusSize)) {
     LOG(ERROR) << "Minimum modulus size is: " << kMinModulusSize;
   }
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
+    return false;
+  }
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
   TPM_RC result = trunks_tpm_utility_->CreateRSAKeyPair(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
@@ -323,6 +374,10 @@ bool TPM2UtilityImpl::WrapKey(int slot,
   }
   if (modulus.size() < kMinModulusSize) {
     LOG(ERROR) << "Minimum modulus size is: " << kMinModulusSize;
+    return false;
+  }
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
     return false;
   }
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
@@ -433,6 +488,10 @@ bool TPM2UtilityImpl::Sign(int key_handle,
                            std::string* signature) {
   AutoLock Lock(lock_);
   std::string auth_data = handle_auth_data_[key_handle].to_string();
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
+    return false;
+  }
   session_->SetEntityAuthorizationValue(auth_data);
   TPM_RC result = trunks_tpm_utility_->Sign(key_handle,
                                  trunks::TPM_ALG_RSASSA,
@@ -493,6 +552,10 @@ bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
     LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
     return false;
   }
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
+    return false;
+  }
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
   TPM_RC result = trunks_tpm_utility_->LoadKey(
       key_blob,
@@ -524,6 +587,10 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
     return false;
   }
   std::string auth_data = handle_auth_data_[key_handle].to_string();
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
+    return false;
+  }
   session_->SetEntityAuthorizationValue(auth_data);
   TPM_RC result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
                                               trunks::TPM_ALG_RSAES,

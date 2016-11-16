@@ -113,6 +113,7 @@ TEST_F(TPM2UtilityTest, InitTpmNotOwned) {
   EXPECT_FALSE(utility.Init());
 }
 
+#ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
 TEST_F(TPM2UtilityTest, InitTpmNoSession) {
   TPM2UtilityImpl utility(factory_.get());
   EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
@@ -121,6 +122,7 @@ TEST_F(TPM2UtilityTest, InitTpmNoSession) {
      .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(utility.Init());
 }
+#endif
 
 TEST_F(TPM2UtilityTest, IsTPMAvailable) {
   TPM2UtilityImpl utility(factory_.get());
