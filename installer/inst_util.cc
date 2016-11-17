@@ -598,10 +598,28 @@ bool R10FileSystemPatch(const string& dev_name) {
   return (fd.close() == 0);
 }
 
-bool MakeFileSystemRw(const string& dev_name, bool rw) {
+bool MakeFileSystemRw(const string& dev_name) {
   const int offset = 0x464 + 3;  // Set 'highest' byte
 
-  ScopedFileDescriptor fd(open(dev_name.c_str(), O_WRONLY));
+  ScopedFileDescriptor fd(open(dev_name.c_str(), O_RDWR));
+
+  const off_t magic_offset = 0x438;
+  if (lseek(fd, magic_offset, SEEK_SET) != magic_offset) {
+    printf("Failed to seek\n");
+    return false;
+  }
+
+  uint16_t fs_id;
+  if (read(fd, &fs_id, sizeof(fs_id)) != sizeof(fs_id)) {
+      printf("Can't read the filesystem identifier\n");
+      return false;
+  }
+
+  if (fs_id != 0xef53) {
+      printf("Non-EXT filesystem with magic 0x%04x can't be made writable.\n",
+             fs_id);
+      return false;
+  }
 
   if (fd == -1) {
     printf("Failed to open\n");
@@ -614,10 +632,9 @@ bool MakeFileSystemRw(const string& dev_name, bool rw) {
     return false;
   }
 
-  // buff[0] is disable_rw_mount, buff[1] is rw enabled
-  unsigned char buff[] = { 0xFF , 0 };
+  unsigned char buff = 0;  // rw enabled.  0xFF for disable_rw_mount
 
-  if (write(fd, &(buff[rw]), 1) != 1) {
+  if (write(fd, &buff, 1) != 1) {
     printf("Failed to write\n");
     return false;
   }

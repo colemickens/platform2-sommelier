@@ -164,7 +164,7 @@ void ReplaceAll(std::string* target,
 bool R10FileSystemPatch(const std::string& dev_name);
 
 // Mark ext2 (3 or 4???) filesystem RW
-bool MakeFileSystemRw(const std::string& dev_name, bool rw);
+bool MakeFileSystemRw(const std::string& dev_name);
 
 // hdparm -r 1 /device
 bool MakeDeviceReadOnly(const std::string& dev_name);
