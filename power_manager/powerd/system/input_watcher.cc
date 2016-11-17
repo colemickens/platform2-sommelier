@@ -98,6 +98,7 @@ bool GetPowerButtonStateFromEvent(const input_event& event,
       break;
     default:
       LOG(ERROR) << "Unhandled button state " << event.value;
+      return false;
   }
   return true;
 }

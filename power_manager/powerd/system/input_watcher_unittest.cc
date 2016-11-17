@@ -249,12 +249,21 @@ TEST_F(InputWatcherTest, PowerButton) {
 
   power_button->AppendEvent(EV_KEY, KEY_POWER, 1);
   power_button->AppendEvent(EV_KEY, KEY_POWER, 0);
+  // Non-KEY_POWER events should be ignored.
   power_button->AppendEvent(EV_KEY, KEY_VOLUMEDOWN, 1);
   power_button->AppendEvent(EV_KEY, KEY_POWER, 1);
+  power_button->AppendEvent(EV_KEY, KEY_POWER, 2);
+  power_button->AppendEvent(EV_KEY, KEY_POWER, 2);
+  // The kernel should only send values 0, 1, and 2. Others should be ignored.
+  power_button->AppendEvent(EV_KEY, KEY_POWER, 3);
+  power_button->AppendEvent(EV_KEY, KEY_POWER, 0);
   power_button->NotifyAboutEvents();
   EXPECT_EQ(JoinActions(kPowerButtonDownAction,
                         kPowerButtonUpAction,
                         kPowerButtonDownAction,
+                        kPowerButtonRepeatAction,
+                        kPowerButtonRepeatAction,
+                        kPowerButtonUpAction,
                         NULL),
             observer_->GetActions());
 
